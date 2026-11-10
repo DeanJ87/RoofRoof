@@ -22,7 +22,7 @@ The repository is private, so there is no public site: these docs and the [live 
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: 0afc570277e8f522
+fingerprint: 8417a3d2ad430a16
 -->
 <figure class="diagram" markdown>
 
@@ -103,7 +103,7 @@ No. This is the platform stage. The motor, the roof position, the safety rules a
 
 ### Is this SQMeter?
 
-No. RoofRoof started as a copy of the author's SQMeter project (a sky quality meter) and removed its sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check. It is a separate project with its own repository, partition layout name (`l2`), hostname (`roofroof`) and setup hotspot (`RoofRoof-Setup`).
+No. RoofRoof started as a copy of the author's SQMeter project (a sky quality meter) and removed its sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check. It is a separate project with its own repository, partition layout name (`l2`), hostname (`roofroof`) and setup hotspot (`RoofRoof-Setup`). A board that ran SQMeter starts as a new device: RoofRoof's settings live under another NVS namespace and its backups use another key, so SQMeter's settings are ignored (not erased) and an SQMeter backup is refused ([Flashing](getting-started/flashing.md)).
 
 ### Does it work with N.I.N.A.?
 

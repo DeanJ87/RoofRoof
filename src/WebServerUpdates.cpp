@@ -207,7 +207,7 @@ namespace SQM
             if (verdict != FirmwareImage::Verdict::Ok)
             {
                 // Before Update.end(): the boot partition is never switched.
-                uploadRefusal = FirmwareImage::verdictMessage(verdict);
+                uploadRefusal = FirmwareImage::verdictMessage(verdict, uploadScanner.product());
                 Logger::error("OTA", "Firmware refused: %s", uploadRefusal.c_str());
                 Update.abort();
                 return;

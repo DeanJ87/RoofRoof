@@ -80,13 +80,12 @@ test('send mode not in effect while Alpaca is off', async ({ page }) => {
   await expect(item(page, 'alerts-mode-not-in-effect')).toHaveCount(0);
 });
 
-test('imaging app: none without a device; one "Alpaca off" tile when Alpaca is off', async ({ page }) => {
+test('imaging app: no tile without an Alpaca device, whether Alpaca is on or off', async ({ page }) => {
   // inventory: imaging-app
   await open(page);
   await expect(tile(page, 'imaging-app')).toHaveCount(0);
   await setConfig(page, { 'alpaca.enabled': false });
-  await expect(tile(page, 'imaging-app')).toHaveCount(1);
-  await expect(tile(page, 'imaging-app')).toContainText('Alpaca off');
+  await expect(tile(page, 'imaging-app')).toHaveCount(0);
   await setConfig(page, { 'alpaca.enabled': true });
   await expect(tile(page, 'imaging-app')).toHaveCount(0);
 });
@@ -118,7 +117,7 @@ test('the Status card repeats no other card', async ({ page }) => {
     await page
       .locator('.masonry-item')
       .filter({ hasNot: statusCard(page) })
-      .locator('.card-actions .pill, .hero-pills .pill')
+      .locator('.card-actions .pill')
       .allInnerTexts()
   ).map((text) => text.trim());
   const status = (await statusCard(page).locator('.pill').allInnerTexts()).map((text) => text.trim());

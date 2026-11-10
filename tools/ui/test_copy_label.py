@@ -82,7 +82,7 @@ class LabelTests(unittest.TestCase):
     def run_check(self, english: dict, docs: dict, entities: str = "", context: dict | None = None) -> list:
         glossary = {
             "names": [
-                {"name": "Light sensor", "keys": ["sensor.light"], "avoid": ["TSL2591 Light Sensor"], "parts": ["TSL2591"]},
+                {"name": "Park sensor", "keys": ["sensor.park"], "avoid": ["A3144 Park Sensor"], "parts": ["A3144"]},
                 {"name": "Alerts", "keys": [], "avoid": [], "ha": "Alerts"},
             ]
         }
@@ -98,16 +98,14 @@ class LabelTests(unittest.TestCase):
             return [message for _, message in label_check.check(root)]
 
     def test_one_name(self):
-        problems = self.run_check(
-            {"sensor.light": "Light Sensor", "system.x": "TSL2591 Light Sensor"}, {}, '{"switch", "alerts", "Alerts"}'
-        )
+        problems = self.run_check({"sensor.park": "Park Sensor", "system.x": "A3144 Park Sensor"}, {}, '{"switch", "alerts", "Alerts"}')
         self.assertEqual(len(problems), 1)
         self.assertIn("system.x", problems[0])
 
     def test_prose_and_hardware_pages_and_device_text_pass(self):
         problems = self.run_check(
-            {"sensor.light": "Light sensor", "device.x": "TSL2591 Light Sensor"},
-            {"docs/guide.md": "the TSL2591 light sensor", "docs/hardware/bom.md": "TSL2591 Light Sensor"},
+            {"sensor.park": "Park sensor", "device.x": "A3144 Park Sensor"},
+            {"docs/guide.md": "the A3144 park sensor", "docs/hardware/bom.md": "A3144 Park Sensor"},
             '"Alerts"',
         )
         self.assertEqual(problems, [])
@@ -115,12 +113,12 @@ class LabelTests(unittest.TestCase):
     def test_card_titles_and_device_reasons_use_the_name(self):
         problems = self.run_check(
             {
-                "sensor.light": "Light sensor",
-                "dashboard.t": "TSL2591 Readings",
-                "device.alert.f": "Sensor fault: TSL2591 light",
-                "device.alert.g": "TSL2591 Light Sensor recovered",
-                "device.api.x": "TSL2591 not detected",
-                "system.row": "TSL2591",
+                "sensor.park": "Park sensor",
+                "dashboard.t": "A3144 Readings",
+                "device.alert.f": "Sensor fault: A3144 park",
+                "device.alert.g": "A3144 Park Sensor recovered",
+                "device.api.x": "A3144 not detected",
+                "system.row": "A3144",
             },
             {},
             '"Alerts"',
@@ -132,17 +130,17 @@ class LabelTests(unittest.TestCase):
         # Why a setting isn't in effect is status text: the thing, not the part.
         problems = self.run_check(
             {
-                "sensor.light": "Light sensor",
-                "settingsDeps.tslMissing": "TSL2591 not detected",
-                "settingsDeps.ok": "Light sensor not detected",
+                "sensor.park": "Park sensor",
+                "settingsDeps.hallMissing": "A3144 not detected",
+                "settingsDeps.ok": "Park sensor not detected",
             },
             {},
             '"Alerts"',
         )
-        self.assertEqual([p.split(" ")[0] for p in problems], ["settingsDeps.tslMissing"])
+        self.assertEqual([p.split(" ")[0] for p in problems], ["settingsDeps.hallMissing"])
 
     def test_docs_and_home_assistant(self):
-        problems = self.run_check({"sensor.light": "Light sensor"}, {"docs/guide.md": "the TSL2591 Light Sensor"})
+        problems = self.run_check({"sensor.park": "Park sensor"}, {"docs/guide.md": "the A3144 Park Sensor"})
         self.assertTrue(any("docs call" in p for p in problems))
         self.assertTrue(any("Home Assistant" in p for p in problems))
 

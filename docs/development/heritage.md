@@ -39,10 +39,11 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `WebServerBackup.cpp`, `WebServerShared.h` | same | Changed: small edits for the removed settings | No |
 | `ConfigStore.cpp` | same | Changed: removed settings dropped from load and save | No |
 | `TimeManager.cpp/.h` | same | Changed: NTP only, GPS time removed | No |
-| `MQTTClient.cpp/.h` | same | Unchanged (code) | No |
+| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; otherwise the code is the same | No |
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
-| The WiFi manager, `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
+| `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
+| `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
 | `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins; pin map | No |
 
@@ -69,7 +70,7 @@ The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*
 
 ## Web UI
 
-The web UI keeps SQMeter's React, Vite and Tailwind stack, design system and tests, and is being renamed to RoofRoof.
+The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keeps SQMeter's design system and tests. The rename to RoofRoof is done.
 
 | Area | SQMeter path | State | Upstream candidate |
 |---|---|---|---|

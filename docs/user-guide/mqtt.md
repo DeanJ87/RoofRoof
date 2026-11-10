@@ -50,7 +50,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 93ee2e9c90d6c05c
+fingerprint: 2b2421daf3cbfadc
 -->
 <figure class="diagram" markdown>
 
@@ -62,7 +62,7 @@ flowchart LR
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
-    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Alerts switch only while Send alerts is on"]
+    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Connectivity sensor always, the Alerts switch only while Send alerts is on"]
 ```
 
 <figcaption>MQTT topic map: the one topic RoofRoof listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>roofroof</code>.</figcaption>
@@ -78,7 +78,7 @@ flowchart LR
 
     It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
 
-    With Home Assistant discovery on, it also publishes a retained `config` topic for the Alerts switch under the discovery prefix (default `homeassistant`), and clears it when discovery is switched off or moved. The switch is only announced while **Send alerts** is on, and is removed otherwise.
+    With Home Assistant discovery on, it also publishes retained `config` topics for the Connectivity sensor and the Alerts switch under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved. The sensor is always announced; the switch is only announced while **Send alerts** is on, and is removed otherwise.
 
 !!! note "The same in every language"
     Topics and payloads never change with the UI language, including Home Assistant discovery. Alert titles and messages are English (or your own alert wording) for people to read: automate on the alert `event`.
@@ -89,9 +89,10 @@ flowchart LR
 
 Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**. RoofRoof then appears as a device (named after the device name) with:
 
+- **Connectivity** (binary sensor): connected while the device is `online`, disconnected when it goes `offline`. It is announced whenever discovery is on, so the device shows up even with **Send alerts** off.
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send)). It is announced only while **Send alerts** is on.
 
-The entity is unavailable while the device is offline. The discovery prefix defaults to `homeassistant`. The roof's own entities *come in a later spec*.
+The Alerts switch is unavailable while the device is offline. The discovery prefix defaults to `homeassistant`. The roof's own entities *come in a later spec*.
 
 See [Alerts](alerts.md) for the alert events.
 

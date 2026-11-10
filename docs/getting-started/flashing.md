@@ -62,6 +62,14 @@ The same command is in the package's `FLASH.txt`. Replace `PORT` with your seria
     Nothing is written between `0x9000` and `0xDFFF`, where the device keeps its settings and WiFi
     credentials. Don't run `erase_flash` unless you want to start again from the setup hotspot.
 
+!!! note "A board that ran SQMeter starts as new"
+    RoofRoof keeps its settings under its own NVS namespace (`roofroof`), so the settings, WiFi
+    credentials and alert state SQMeter left on the board are not read, and RoofRoof starts from the
+    setup hotspot like a new device. They are not erased, so the board can go back to SQMeter. A
+    settings backup is not interchangeable either: X
+    derivation context, so a backup made by SQMeter is refused. An SQMeter firmware image is
+    refused by the image marker, and the other way round.
+
 !!! warning "Wire the EN pull-down first"
     Before the roof's motor driver is connected, fit the 10 kΩ pull-down on its enable pin ([Wiring](../hardware/wiring.md#the-en-pull-down)). Until the firmware starts, the driver's pins float.
 

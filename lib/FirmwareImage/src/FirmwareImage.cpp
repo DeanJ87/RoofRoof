@@ -124,22 +124,22 @@ namespace SQM
             return Verdict::Ok;
         }
 
-        const char *verdictMessage(Verdict verdict)
+        std::string verdictMessage(Verdict verdict, const std::string &product)
         {
             switch (verdict)
             {
             case Verdict::Ok:
-                return "";
+                return std::string();
             case Verdict::NoMarker:
                 return "Not RoofRoof firmware.";
             case Verdict::OtherProduct:
-                return "This firmware is for another product.";
+                return "This is firmware for another product (" + product + ").";
             case Verdict::OtherLayout:
-                return "Built for a different partition layout: flash it over USB.";
+                return "Wrong partition layout: flash this one over USB.";
             case Verdict::OtherBuild:
                 return "Not a RoofRoof build.";
             }
-            return "";
+            return std::string();
         }
 
         bool fsImageFits(size_t uploadBytes, size_t partitionSize, size_t overhead)

@@ -4,7 +4,11 @@ import { uploadOutcome } from '../updates';
 // The device refuses another product's image before writing it (spec 001
 // FR, lib/FirmwareImage verdictMessage); the Updates page shows its reason.
 describe('uploadOutcome', () => {
-  it.each(['Not RoofRoof firmware.', 'This firmware is for another product.'])('shows the refusal "%s"', (reason) => {
+  it.each([
+    'Not RoofRoof firmware.',
+    'This is firmware for another product (sqmeter).',
+    'Wrong partition layout: flash this one over USB.',
+  ])('shows the refusal "%s"', (reason) => {
     expect(uploadOutcome(400, JSON.stringify({ error: reason }), 'Unknown error')).toEqual({ ok: false, errorMsg: reason });
   });
 

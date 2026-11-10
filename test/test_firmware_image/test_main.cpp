@@ -78,7 +78,17 @@ void test_sqmeter_image_is_not_roofroof_firmware()
     const auto scanner = scan(image(sqmeterMarker()), 512);
     TEST_ASSERT_FALSE(scanner.found());
     TEST_ASSERT_EQUAL(Verdict::NoMarker, FirmwareImage::check(scanner, "l2"));
-    TEST_ASSERT_EQUAL_STRING("Not RoofRoof firmware.", FirmwareImage::verdictMessage(Verdict::NoMarker));
+    TEST_ASSERT_EQUAL_STRING("Not RoofRoof firmware.", FirmwareImage::verdictMessage(Verdict::NoMarker).c_str());
+}
+
+// contracts/firmware-marker.md: the messages, with the product found in the image.
+void test_refusal_messages_follow_the_contract()
+{
+    TEST_ASSERT_EQUAL_STRING(
+        "This is firmware for another product (sqmeter).", FirmwareImage::verdictMessage(Verdict::OtherProduct, "sqmeter").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Wrong partition layout: flash this one over USB.", FirmwareImage::verdictMessage(Verdict::OtherLayout, "roofroof").c_str());
+    TEST_ASSERT_EQUAL_STRING("", FirmwareImage::verdictMessage(Verdict::Ok).c_str());
 }
 
 void test_partial_magic_then_real_marker()
@@ -184,6 +194,7 @@ int main()
     RUN_TEST(test_finds_marker_in_any_chunking);
     RUN_TEST(test_no_marker_in_an_image_without_one);
     RUN_TEST(test_sqmeter_image_is_not_roofroof_firmware);
+    RUN_TEST(test_refusal_messages_follow_the_contract);
     RUN_TEST(test_partial_magic_then_real_marker);
     RUN_TEST(test_stray_magic_without_fields_is_skipped);
     RUN_TEST(test_magic_bytes_never_repeat);

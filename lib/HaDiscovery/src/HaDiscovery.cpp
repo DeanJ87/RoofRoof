@@ -10,6 +10,7 @@ namespace SQM
         {
             enum class Group : uint8_t
             {
+                Connectivity, // always, whenever discovery is on
                 AlertsSwitch,
             };
 
@@ -20,16 +21,20 @@ namespace SQM
                 const char *name;
                 Group group;
                 const char *icon;
+                const char *deviceClass; // nullptr when the entity has none
             };
 
             constexpr Entity ENTITIES[] = {
-                {"switch", "alerts", "Alerts", Group::AlertsSwitch, "mdi:bell-ring"},
+                {"binary_sensor", "connectivity", "Connectivity", Group::Connectivity, nullptr, "connectivity"},
+                {"switch", "alerts", "Alerts", Group::AlertsSwitch, "mdi:bell-ring", nullptr},
             };
 
             bool enabled(Group group, const Groups &groups)
             {
                 switch (group)
                 {
+                case Group::Connectivity:
+                    return true;
                 case Group::AlertsSwitch:
                     return groups.alertsSwitch;
                 }
@@ -39,6 +44,14 @@ namespace SQM
             // Where the entity's state comes from, and how to command it.
             void addStateTopic(JsonDocument &doc, const Entity &entity, const std::string &base)
             {
+                if (entity.group == Group::Connectivity)
+                {
+                    // The availability topic itself is the state: MQTTClient
+                    // publishes "online", and "offline" as the last will.
+                    doc["state_topic"] = base + "/availability";
+                    doc["payload_on"] = "online";
+                    doc["payload_off"] = "offline";
+                }
                 if (entity.group == Group::AlertsSwitch)
                 {
                     doc["state_topic"] = base + "/alerts/armed";
@@ -57,10 +70,14 @@ namespace SQM
                 doc["name"] = entity.name;
                 doc["unique_id"] = device.id + "_" + entity.object;
                 doc["object_id"] = device.id + "_" + entity.object;
-                doc.createNestedArray("availability").createNestedObject()["topic"] = base + "/availability";
+                // Connectivity has no availability of its own: offline is its state.
+                if (entity.group != Group::Connectivity)
+                    doc.createNestedArray("availability").createNestedObject()["topic"] = base + "/availability";
                 addStateTopic(doc, entity, base);
                 if (entity.icon != nullptr)
                     doc["icon"] = entity.icon;
+                if (entity.deviceClass != nullptr)
+                    doc["device_class"] = entity.deviceClass;
 
                 JsonObject dev = doc.createNestedObject("device");
                 dev.createNestedArray("identifiers").add(device.id);

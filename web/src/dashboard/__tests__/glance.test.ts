@@ -112,7 +112,7 @@ describe('glanceItems', () => {
     expect(ids({ config: none })).toContain('no-channel');
   });
 
-  it('always shows the imaging app; not connected counts only when alerts wait for one (FR-009)', () => {
+  it('shows the imaging app per Alpaca device, none without one; not connected counts only when alerts wait for one (FR-009)', () => {
     const quiet = { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null };
     const status = withStatus((s) => {
       s.alpaca!.clients = { dome: { ...quiet } };
@@ -133,9 +133,11 @@ describe('glanceItems', () => {
     });
     expect(glanceItems(input({ status, config: needed })).filter((i) => i.id === 'imaging-app' && i.severity === 'note')).toHaveLength(1);
     const off = withStatus((s) => (s.alpaca!.enabled = false));
-    const alpacaOff = glanceItems(input({ status: off })).filter((i) => i.id === 'imaging-app');
-    expect(alpacaOff).toHaveLength(1);
-    expect(alpacaOff[0]).toMatchObject({ state: 'Alpaca off', severity: 'idle' });
+    expect(glanceItems(input({ status: off })).some((i) => i.id === 'imaging-app')).toBe(false);
+    const none = withStatus((s) => {
+      s.alpaca!.clients = {};
+    });
+    expect(glanceItems(input({ status: none })).some((i) => i.id === 'imaging-app')).toBe(false);
   });
 
   it('leaves settings not in effect to Settings', () => {

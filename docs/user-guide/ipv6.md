@@ -50,7 +50,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: ef1a1b0660c60a27
+fingerprint: 5ed2919a404e3e4e
 -->
 <figure class="diagram" markdown>
 

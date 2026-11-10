@@ -76,8 +76,9 @@ namespace SQM
         Verdict check(const Scanner &scanner, const std::string &deviceLayout);
 
         // One line for the person updating (DS-22), English; the UI
-        // translates it through the device-message templates.
-        const char *verdictMessage(Verdict verdict);
+        // translates it through the device-message templates. `product` is the
+        // one found in the image, named in the other-product message.
+        std::string verdictMessage(Verdict verdict, const std::string &product = std::string());
 
         // A LittleFS image must fill this device's partition exactly.
         // `uploadBytes` is a multipart body's length: the image plus up to

@@ -32,7 +32,7 @@ If switching the device to the new firmware fails once after a complete upload (
 If an upload stops sending for 20 seconds, usually a weak WiFi link, the Updates page cancels it and tries once more by itself ("Upload stalled, trying again"). The device drops the half-sent image straight away, so the retry starts clean; nothing was written to the running firmware. If it stalls again, move the device or the access point closer, or upload from a computer on the same network, then try again.
 
 !!! note "Files the device refuses"
-    Every firmware file carries a marker with the product and the partition layout it is made for. The device checks it before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for this device: "Not RoofRoof firmware." (no RoofRoof marker, for example another project's image), "This firmware is for another product.", or a wrong partition layout. A web UI file must fill this device's web UI partition exactly; one made for a different layout is refused before anything is erased. Nothing is changed by a refused upload.
+    Every firmware file carries a marker with the product and the partition layout it is made for. The device checks it before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for this device: "Not RoofRoof firmware." (no RoofRoof marker, for example another project's image), "This is firmware for another product (sqmeter)." (naming the product the file is for), or "Wrong partition layout: flash this one over USB." A web UI file must fill this device's web UI partition exactly; one made for a different layout is refused before anything is erased. Nothing is changed by a refused upload.
 
 !!! warning "Don't interrupt"
     Keep the browser open during upload. A power cut mid-flash leaves the slot being written incomplete; it's never booted, so the device keeps starting the firmware it was running.
@@ -110,7 +110,7 @@ Settings (WiFi, thresholds, alert channels) live in NVS, a separate partition fr
 <!-- diagram: DIA-08
 sources: src/WebServerUpdates.cpp#firmwareUploadChunk src/WebServerUpdates.cpp#firmwareUploadEnd src/WebServerUpdates.cpp#WebServer::handleFirmwareUploadDone lib/FirmwareImage/ src/FirmwareMarker.cpp
 blocking: false
-fingerprint: e260198a99fc89a3
+fingerprint: 406b1a5cc7bdb389
 -->
 <figure class="diagram" markdown>
 

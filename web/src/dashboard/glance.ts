@@ -126,17 +126,9 @@ const channelsItem = ({ config, effective }: GlanceInput): GlanceItem | null => 
 const SEVERITY: Record<ClientView['tone'], Severity> = { ok: 'ok', warn: 'problem', muted: 'note' };
 
 // The card's main job: is an imaging app (N.I.N.A. and the like) watching
-// each Alpaca device? One tile per device; one tile when Alpaca is off.
+// each Alpaca device? One tile per device; none while there is no Alpaca
+// device, including when Alpaca is off (FR-016).
 const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
-  if (status?.alpaca?.enabled === false)
-    return [
-      item('imaging-app', 'idle', {
-        label: t('status.imagingApp'),
-        state: t('status.alpacaOff'),
-        detail: t('status.alpacaOffHint'),
-        fix: settingsLink('network', 'alpaca'),
-      }),
-    ];
   const clients = status?.alpaca?.clients;
   if (!clients) return [];
   // Not connected only needs a look when alerts wait for an imaging app.
