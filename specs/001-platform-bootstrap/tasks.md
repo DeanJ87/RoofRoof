@@ -142,7 +142,7 @@ with the local check green (plan, Phases): `pio run -e esp32dev`, `pio test -e n
   - link it from the docs nav.
 - [x] T049 Run [quickstart.md §1-2](quickstart.md) in full (check.py with clang-tidy, Playwright, `mkdocs build --strict`, the removed-feature grep) and fix what it finds
 - [ ] T050 Bench check on a board, without a motor, per [quickstart.md §3-5](quickstart.md); record the results (SC-001, SC-002, SC-006) in the PR description
-- [ ] T051 Run `/speckit-converge` until it reports converged; open the PR "001: platform bootstrap" against `main`, noting the principles touched
+- [x] T051 Run `/speckit-converge` until it reports converged; open the PR "001: platform bootstrap" against `main`, noting the principles touched
 
 ## Dependencies
 
