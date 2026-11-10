@@ -64,7 +64,7 @@ namespace SQM
 
     private:
         static constexpr const char *TAG = "WiFiManager";
-        static constexpr const char *AP_SSID = "SQM-Setup";
+        static constexpr const char *AP_SSID = "RoofRoof-Setup";
 
         WiFiConfig config;
         bool apMode;

@@ -1,68 +1,35 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <esp_task_wdt.h>
-#include <LittleFS.h>
 #include <ArduinoOTA.h>
-#include <esp_ota_ops.h>
 #include <ESPmDNS.h>
-#include "Logger.h"
-#include "SafetyHistory.h"
-#include "HeapTrace.h"
+#include <LittleFS.h>
+#include <esp_ota_ops.h>
+#include <esp_task_wdt.h>
+
 #include "Config.h"
-#include "WiFiManager.h"
-#include "WebServer.h"
-#include "MQTTClient.h"
-#include "TimeManager.h"
-#include "sensors/TSL2591Sensor.h"
-#include "sensors/BME280Sensor.h"
-#include "sensors/MLX90614Sensor.h"
-#include "sensors/GPSSensor.h"
-#include "sensors/RG15Sensor.h"
-#include "sensors/WindSensor.h"
-#include "sensors/MAX17048Sensor.h"
 #include "FirmwareMarker.h"
-#include "OledDisplay.h"
-#include "PowerManager.h"
+#include "HeapTrace.h"
+#include "Logger.h"
+#include "MQTTClient.h"
+#include "MotorDriver.h"
+#include "TimeManager.h"
+#include "WebServer.h"
+#include "WiFiManager.h"
 
 using namespace SQM;
 
 // Global objects
 static Config config;
 static std::unique_ptr<WiFiManager> wifiManager;
-static std::unique_ptr<TSL2591Sensor> tslSensor;  // SQM, I2C-1 (Wire)
-static std::unique_ptr<TSL2591Sensor> tslSensorL; // SQM-L, I2C-2 (Wire1), spec 030
-static bool i2c2Started = false;
-static std::unique_ptr<BME280Sensor> bmeSensor;
-static std::unique_ptr<MLX90614Sensor> mlxSensor;
-static std::unique_ptr<GPSSensor> gpsSensor;
-static std::unique_ptr<RG15Sensor> rg15Sensor;
-static std::unique_ptr<WindSensor> windSensor;
-static std::unique_ptr<MAX17048Sensor> batteryGauge; // spec 032; probed once, read only with monitoring on
-static std::unique_ptr<PowerManager> powerManager;   // spec 032: power saving and the battery sleep
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
-static std::unique_ptr<OledDisplay> oled; // spec 031; framebuffer and bus traffic only while enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
-// Default is 8 KB, which left only ~1.5 KB spare at peak (alert processing,
-// config saves). 4 KB more heap is cheap insurance against a stack-overflow reboot.
+// The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
+// processing, config saves). 4 KB more is cheap insurance against a
+// stack-overflow reboot.
 SET_LOOP_TASK_STACK_SIZE(12 * 1024);
-
-// Timing
-static uint32_t lastSensorUpdate = 0;
-
-static WindSensorSettings toWindSettings(const WindConfig &wind)
-{
-    WindSensorSettings settings;
-    settings.enabled = wind.enabled;
-    settings.speedPin = wind.speedPin;
-    settings.directionEnabled = wind.directionEnabled;
-    settings.kmhPerHz = wind.kmhPerHz;
-    settings.directionOffsetDeg = wind.directionOffsetDeg;
-    return settings;
-}
 
 // Callbacks for WebServer
 const Config &getConfigCallback()
@@ -73,60 +40,24 @@ const Config &getConfigCallback()
 bool saveConfigCallback(const Config &newConfig)
 {
     config = newConfig;
-    bool saved = config.save();
+    const bool saved = config.save();
+    if (!saved)
+        return false;
 
-    if (saved)
-    {
-        // Update MQTT config if changed
-        if (mqttClient)
-        {
-            mqttClient->updateConfig(config.mqtt);
-        }
+    if (mqttClient)
+        mqttClient->updateConfig(config.mqtt);
+    if (timeManager)
+        timeManager->updateConfig(config.ntp);
 
-        // Update time manager config if changed
-        if (timeManager)
-        {
-            timeManager->updateConfig(config.ntp, config.gps, config.primaryTimeSource, config.secondaryTimeSource);
-        }
-
-        if (!config.ota.enabled || config.ota.password.empty())
-        {
-            arduinoOTAEnabled = false;
-        }
-        else if (!arduinoOTAEnabled)
-        {
-            Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
-        }
-
-        // Reconfigure RG-15 in-place so WebServer's reference stays valid
-        if (rg15Sensor)
-        {
-            if (config.rain.enabled)
-            {
-                rg15Sensor->reconfigure(config.rain);
-            }
-            else
-            {
-                rg15Sensor->stop();
-            }
-        }
-
-        if (windSensor)
-        {
-            windSensor->configure(toWindSettings(config.wind));
-        }
-
-        if (oled)
-            oled->requestReconfigure(); // applied by the loop task, no restart
-        if (batteryGauge)
-            batteryGauge->requestReconfigure();
-    }
-
-    return saved;
+    if (!config.ota.enabled || config.ota.password.empty())
+        arduinoOTAEnabled = false;
+    else if (!arduinoOTAEnabled)
+        Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
+    return true;
 }
 
-// Spec 027 FR-021: tell the Arduino core not to mark a new firmware valid at
-// start-up; setup() does it once the device is up (see the end of setup()).
+// SQMeter spec 027 FR-021: tell the Arduino core not to mark a new firmware
+// valid at start-up; loop() does it once the device is up.
 extern "C" bool verifyRollbackLater()
 {
     return true;
@@ -139,89 +70,6 @@ void setupWatchdog()
     const esp_task_wdt_config_t wdtConfig = {.timeout_ms = 30000, .idle_core_mask = 0, .trigger_panic = true};
     esp_task_wdt_reconfigure(&wdtConfig);
     esp_task_wdt_add(NULL);
-}
-
-void setupI2C()
-{
-    Logger::info("Main", "Initializing I2C (SDA:%d, SCL:%d, %dHz)", config.sensor.i2cSDA, config.sensor.i2cSCL, config.sensor.i2cFrequency);
-
-    Wire.begin(config.sensor.i2cSDA, config.sensor.i2cSCL);
-    Wire.setClock(config.sensor.i2cFrequency);
-
-    // The second bus only carries the SQM-L: started when it is on and wired.
-    if (config.sky.sqmlEnabled && config.sensor.i2c2Configured())
-    {
-        Logger::info("Main", "Initializing I2C-2 (SDA:%d, SCL:%d)", config.sensor.i2c2SDA, config.sensor.i2c2SCL);
-        i2c2Started = Wire1.begin(config.sensor.i2c2SDA, config.sensor.i2c2SCL);
-        if (i2c2Started)
-            Wire1.setClock(config.sensor.i2cFrequency);
-        else
-            Logger::error("Main", "I2C-2 failed to start");
-    }
-}
-
-// Whether a sky sensor is read: on in the settings and its bus running.
-static bool skySensorActive(SkyRole role)
-{
-    return config.skyEnabled(role) && (role == SkyRole::Sqm || i2c2Started);
-}
-
-// GPS and the RG-15 (UART, not I2C): created switched off when disabled,
-// so the web server always has an object to report on.
-void setupSerialSensors()
-{
-    if (config.gps.enabled)
-    {
-        gpsSensor = std::make_unique<GPSSensor>(config.gps.rxPin, config.gps.txPin, config.gps.baudRate);
-        if (!gpsSensor->begin())
-            Logger::warn("Main", "GPS initialization failed");
-    }
-    else
-    {
-        gpsSensor = std::make_unique<GPSSensor>();
-        Logger::info("Main", "GPS disabled in configuration");
-    }
-
-    if (config.rain.enabled)
-    {
-        rg15Sensor = std::make_unique<RG15Sensor>(config.rain);
-        if (!rg15Sensor->begin())
-            Logger::warn("Main", "RG-15 initialization failed");
-    }
-    else
-    {
-        rg15Sensor = std::make_unique<RG15Sensor>();
-        Logger::info("Main", "RG-15 rain sensor disabled in configuration");
-    }
-}
-
-void setupSensors()
-{
-    Logger::info("Main", "Initializing sensors");
-
-    // Both sky sensors always exist (the web server reports on both); one
-    // that is off is never begun or read.
-    tslSensor = std::make_unique<TSL2591Sensor>(Wire, SkyRole::Sqm);
-    tslSensorL = std::make_unique<TSL2591Sensor>(Wire1, SkyRole::Sqml);
-    bmeSensor = std::make_unique<BME280Sensor>();
-    mlxSensor = std::make_unique<MLX90614Sensor>();
-
-    for (TSL2591Sensor *sky : {tslSensor.get(), tslSensorL.get()})
-    {
-        sky->configureSkyMeasurement(config.averaging(sky->role()), config.calibration(sky->role()));
-        if (skySensorActive(sky->role()) && !sky->begin())
-            Logger::error("Main", "Failed to initialize %s", skyRoleLabel(sky->role()));
-    }
-    if (!bmeSensor->begin())
-        Logger::warn("Main", "BME280 not detected (optional sensor)");
-    if (!mlxSensor->begin())
-        Logger::warn("Main", "MLX90614 not detected (optional sensor)");
-
-    setupSerialSensors();
-
-    windSensor = std::make_unique<WindSensor>(Wire);
-    windSensor->configure(toWindSettings(config.wind));
-    windSensor->begin();
 }
 
 void loadConfig()
@@ -255,9 +103,8 @@ void startWifi()
     // Give the saved network a moment so most boots start fully connected. If
     // it isn't joined yet, start anyway: WiFiManager keeps trying, and opens
     // the setup hotspot only if it still hasn't joined after
-    // CaptivePortal::FALLBACK_AFTER_MS (spec 014). A saved network that
-    // isn't in range (the scan didn't find it) ends the wait at once, so the
-    // display shows the sky within seconds in the field (spec 031 SC-001).
+    // CaptivePortal::FALLBACK_AFTER_MS (SQMeter spec 014). A saved network that
+    // isn't in range ends the wait at once.
     int attempts = 0;
     while (!wifiManager->isConnected() && !wifiManager->isInAPMode() && attempts < 20)
     {
@@ -277,23 +124,16 @@ void startWifi()
 
 void onArduinoOtaStart()
 {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-    {
-        type = "firmware";
-    }
-    else
-    { // U_SPIFFS
-        type = "filesystem";
-        LittleFS.end(); // Unmount filesystem
-    }
-    Logger::info("OTA", "Start updating %s", type.c_str());
+    const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
+    if (!firmware)
+        LittleFS.end(); // writing the filesystem: unmount it first
+    Logger::info("OTA", "Start updating %s", firmware ? "firmware" : "filesystem");
 }
 
 void onArduinoOtaProgress(unsigned int progress, unsigned int total)
 {
     static int lastPercent = -1;
-    int percent = (progress / (total / 100));
+    const int percent = static_cast<int>(progress / (total / 100));
     if (percent != lastPercent && percent % 10 == 0)
     {
         Logger::info("OTA", "Progress: %u%%", percent);
@@ -303,17 +143,9 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
 
 void onArduinoOtaError(ota_error_t error)
 {
-    Logger::error("OTA", "Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR)
-        Logger::error("OTA", "Auth Failed");
-    else if (error == OTA_BEGIN_ERROR)
-        Logger::error("OTA", "Begin Failed");
-    else if (error == OTA_CONNECT_ERROR)
-        Logger::error("OTA", "Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR)
-        Logger::error("OTA", "Receive Failed");
-    else if (error == OTA_END_ERROR)
-        Logger::error("OTA", "End Failed");
+    static const char *const REASONS[] = {"Auth failed", "Begin failed", "Connect failed", "Receive failed", "End failed"};
+    const unsigned index = static_cast<unsigned>(error);
+    Logger::error("OTA", "Error[%u]: %s", index, index < 5 ? REASONS[index] : "unknown");
 }
 
 // ArduinoOTA for command-line firmware uploads, only when configured securely.
@@ -340,39 +172,10 @@ void startArduinoOta()
     Logger::info("Main", "ArduinoOTA enabled with password authentication");
 }
 
-// The OLED on the main I2C bus (spec 031). Always created (it's small), but
-// it only allocates its framebuffer and touches the bus while enabled.
-// The fuel gauge on the main I2C bus (spec 032): one probe at boot, so
-// Settings can say whether one is fitted, then reads only with monitoring on.
-void setupBattery()
-{
-    batteryGauge = std::make_unique<MAX17048Sensor>(Wire);
-    batteryGauge->begin(config.battery);
-    powerManager = std::make_unique<PowerManager>(*batteryGauge);
-}
-
-void setupDisplay()
-{
-    oled = std::make_unique<OledDisplay>(Wire);
-    oled->configure(config.display);
-}
-
-// The display's view: the readings, the verdict and the network, after each refresh.
-static void feedDisplay()
-{
-    Core::DisplayNetwork network;
-    network.connected = wifiManager->isConnected();
-    network.apMode = wifiManager->isInAPMode();
-    network.ip = wifiManager->getIPAddress();
-    network.apName = WiFiManager::apName();
-    webServer->feedDisplay(network);
-}
-
-// Time (GPS/NTP priority), MQTT, then the web server, which needs them all.
+// Time, MQTT, then the web server, which needs them both.
 void startServices()
 {
-    timeManager =
-        std::make_unique<TimeManager>(config.ntp, config.gps, config.primaryTimeSource, config.secondaryTimeSource, gpsSensor.get());
+    timeManager = std::make_unique<TimeManager>(config.ntp);
     if (wifiManager->isConnected())
         timeManager->begin();
     HeapTrace::mark("ota + time");
@@ -381,50 +184,38 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    const WebServer::Sensors sensors{*tslSensor, *tslSensorL, *bmeSensor, *mlxSensor, *gpsSensor, *rg15Sensor, *windSensor, *batteryGauge};
-    webServer = std::make_unique<WebServer>(sensors, timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
-    webServer->setDisplay(oled.get());
-    webServer->setPowerManager(powerManager.get());
+    webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->begin();
-    webServer->refreshSensorSnapshot(lastSensorUpdate);
-    feedDisplay();
     HeapTrace::mark("setup complete");
 }
 
 void setup()
 {
+    // Before anything else: the motor driver off (constitution Principle I).
+    MotorDriver::holdOff();
+
     Serial.begin(115200);
     delay(100);
     bootCount++;
-    SQM::SafetyHistory::begin(static_cast<uint8_t>(esp_reset_reason()));
 
     Logger::init();
-    Logger::info("Main", "=== SQMeter Starting ===");
+    Logger::info("Main", "=== RoofRoof Starting ===");
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
-    // Spec 027: the image's own marker and the partition layout it runs on.
-    Logger::info("Main", "Firmware %s partitions %s", SQM::FirmwareMarker::fields(), SQM::FirmwareMarker::layout().c_str());
-    if (SQM::FirmwareMarker::layout() == SQM::FirmwareImage::LEGACY_LAYOUT)
-        Logger::warn("Main", "Old partition layout: this device needs the one-time USB flash (sqmeter.dev)");
+    // The image's own marker and the partition layout it runs on.
+    Logger::info("Main", "Firmware %s partitions %s", FirmwareMarker::fields(), FirmwareMarker::layout().c_str());
     HeapTrace::mark("boot");
 
     setupWatchdog();
     loadConfig();
     mountFilesystem();
-    setupI2C();
-    // After a battery sleep woken by the hourly timer: back to sleep if still empty (spec 032).
-    PowerManager::bootCheck(Wire, config.battery);
-    setupSensors();
-    setupBattery();
-    setupDisplay();
-    HeapTrace::mark("sensors");
     startWifi();
     startArduinoOta();
     startServices();
 
-#ifdef SQM_TEST_BOOT_CRASH
-    // Rollback test build only (spec 027 device check): a firmware that dies
-    // while starting must fall back to the previous one.
+#ifdef RR_TEST_BOOT_CRASH
+    // Rollback test build only (SQMeter spec 027 device check): a firmware that
+    // dies while starting must fall back to the previous one.
     abort();
 #endif
     Logger::info("Main", "=== Setup complete ===");
@@ -434,10 +225,8 @@ void setup()
 
 void loop()
 {
-    // Feed watchdog
     esp_task_wdt_reset();
 
-    // Handle WiFi
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
 
@@ -451,77 +240,25 @@ void loop()
         restartingFromHotspot = WebServer::scheduleRestart(1000);
     }
 
-    // Handle ArduinoOTA
     if (arduinoOTAEnabled)
-    {
         ArduinoOTA.handle();
-    }
-
-    // Handle time manager
     if (timeManager)
-    {
         timeManager->handle();
-    }
-
-    // Handle web server
     webServer->handle();
 
-    // Spec 027 FR-021: a new firmware is only kept once it has started
-    // properly, Bluetooth included (it starts a few seconds after setup);
-    // one that fails before this point rolls back on its next boot.
+    // SQMeter spec 027 FR-021: a new firmware is only kept once it has
+    // started properly; one that fails before this point rolls back on its
+    // next boot.
     static bool firmwareConfirmed = false;
-    if (!firmwareConfirmed && !webServer->isBleStartPending())
+    if (!firmwareConfirmed)
     {
         esp_ota_mark_app_valid_cancel_rollback();
         firmwareConfirmed = true;
     }
 
-    // Handle MQTT
     if (mqttClient)
-    {
         mqttClient->handle();
-    }
 
-    // Anemometer samples itself once a second.
-    windSensor->update();
-
-    // Both sky sensors integrate side by side on their own ~650 ms cadence
-    // (dark-sky rolling averages are based on 600 ms samples); tick() never
-    // waits for an integration.
-    const uint32_t now = millis();
-    for (TSL2591Sensor *sky : {tslSensor.get(), tslSensorL.get()})
-    {
-        if (skySensorActive(sky->role()))
-            sky->tick(now);
-    }
-
-    // The gauge every 5 s and the charger lines every 500 ms; the power
-    // policy slows reads, turns the display off and sleeps when empty (spec 032).
-    batteryGauge->tick(now, config.battery);
-    const Battery::PowerState powerBefore = powerManager->state();
-    powerManager->tick(now, config.battery, webServer->alertsIdle(), wifiManager->isConnected());
-    oled->setForcedOff(powerManager->saving());
-    // A change of power state reaches the verdict at once, not at the next (slow) read.
-    const bool powerChanged = powerManager->state() != powerBefore;
-
-    // NMEA arrives continuously; drain it every pass, not only at the sensor read.
-    gpsSensor->poll();
-
-    // Update slower sensors and publish periodically.
-    if (powerChanged || now - lastSensorUpdate >= powerManager->sensorIntervalMs(config))
-    {
-        bmeSensor->update();
-        mlxSensor->update();
-        gpsSensor->update();
-        rg15Sensor->update();
-        lastSensorUpdate = now;
-        webServer->refreshSensorSnapshot(lastSensorUpdate); // also feeds MQTT <base>/state
-        feedDisplay();
-    }
-
-    // At most one framebuffer page per pass (spec 031): the loop never waits on the display.
-    oled->tick(now, config.display);
-
-    // Small delay to prevent tight loop
+    // Small delay to prevent a tight loop.
     delay(10);
 }

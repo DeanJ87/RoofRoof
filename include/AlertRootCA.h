@@ -232,7 +232,7 @@
 
 namespace SQM
 {
-    // The root certificates SQMeter trusts (spec 027 FR-005: each embedded
+    // The root certificates RoofRoof trusts (SQMeter spec 027 FR-005: each embedded
     // once). Each TLS connection parses every certificate it's given into
     // heap, so a connection to a known host gets only that host's roots;
     // webhooks (any host) and self-hosted ntfy get the whole set.
@@ -246,14 +246,13 @@ namespace SQM
     //
     // One block, ordered so each smaller set is the tail of the larger one:
     //   ALERT_ROOT_CA_PEM  = everything below
-    //   PUSHOVER_ROOT_CA_PEM = DigiCert Global Root G2 + the GitHub roots
-    //   GITHUB_ROOT_CA_PEM = USERTrust ECC (api.github.com) + ISRG X1 (release downloads)
+    //   PUSHOVER_ROOT_CA_PEM = DigiCert Global Root G2 + USERTrust ECC + ISRG X1
     //   NTFY_SH_ROOT_CA_PEM = ISRG X1 (ntfy.sh and other Let's Encrypt sites)
+    // (USERTrust ECC was SQMeter's GitHub root; RoofRoof doesn't contact GitHub.)
     // Defined in src/RootCertificates.cpp.
     extern const char *const ALERT_ROOT_CA_PEM;
-    extern const char *const GITHUB_ROOT_CA_PEM;
     extern const char *const NTFY_SH_ROOT_CA_PEM;
-    // api.pushover.net chains to DigiCert Global Root G2: the tail from G2 on
-    // (G2 + the two GitHub roots), so G2 is embedded once too.
+    // api.pushover.net chains to DigiCert Global Root G2: the tail from G2 on,
+    // so G2 is embedded once too.
     extern const char *const PUSHOVER_ROOT_CA_PEM;
 } // namespace SQM

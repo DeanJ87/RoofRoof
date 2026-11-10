@@ -125,8 +125,6 @@ namespace SQM
             mqtt.take("username", m.username);
             assignSecret(mqtt, "password", m.password, keepSecrets);
             mqtt.take("topic", m.topic);
-            const Section publish = mqtt.child("publish");
-            publish.take("diagnostics", m.publish.diagnostics);
             const Section homeAssistant = mqtt.child("homeAssistant");
             homeAssistant.take("enabled", m.homeAssistant);
             homeAssistant.take("discoveryPrefix", m.discoveryPrefix);

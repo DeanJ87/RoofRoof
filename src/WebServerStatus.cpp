@@ -1,120 +1,43 @@
-#include "WebServer.h"
-#include "OledDisplay.h"
 #include "ConnectionBudget.h"
-#include "WebServerShared.h"
+#include "FirmwareMarker.h"
+#include "HeapTrace.h"
+#include "Ipv6Network.h"
 #include "Logger.h"
+#include "WebServer.h"
 #include "version.h"
-#include <WiFi.h>
-#include <Update.h>
 #include <ArduinoJson.h>
 #include <LittleFS.h>
-#include <AsyncJson.h>
-#include <PubSubClient.h>
-#include <esp_partition.h>
-#include <esp_ota_ops.h>
-#include <esp_system.h>
-#include <esp_timer.h>
+#include <WiFi.h>
 #include <cstring>
-#include <nvs.h>
-#include <nvs_flash.h>
 #include <ctime>
-#include "calculations/CloudDetection.h"
-#include "sensors/RG15Sensor.h"
-#include "AlpacaDiscovery.h"
-#include "Ipv6Network.h"
-#include "DualStackClient.h"
-#include "NetAddress.h"
-#include "WiFiManager.h"
-#include "HeapTrace.h"
-#include "SunPosition.h"
-#include "SafetyHistory.h"
-#include "FirmwareMarker.h"
-#include <Preferences.h>
+#include <esp_ota_ops.h>
+#include <esp_partition.h>
+#include <esp_system.h>
+#include <nvs.h>
 
 extern uint32_t bootCount;
 
-// Documents the device publishes: readings, /api/status, MQTT readings and Home Assistant discovery.
+// Documents the device publishes: /api/status, the settings facts and Home
+// Assistant discovery.
 
 namespace SQM
 {
-    using namespace WebShared;
-
-    void WebServer::appendDiagnostics(JsonObject root, const SensorSnapshot &snapshot) const
-    {
-        Core::writeDiagnostics(root, snapshot, getConfigCallback(), millis());
-    }
-
-    // MQTT <base>/state (+ /diagnostics) every publish interval, and Home
-    // Assistant discovery whenever the connection or the settings change.
-    void WebServer::publishMqttReadings(uint32_t now)
+    // Home Assistant discovery whenever the connection or the settings change.
+    void WebServer::publishDiscovery()
     {
         if (mqttClient == nullptr || !mqttClient->isConnected())
             return;
-        const MQTTConfig &mqtt = getConfigCallback().mqtt;
-        Readings::Groups groups;
-        groups.sky = mqtt.publish.sky;
-        groups.environment = mqtt.publish.environment;
-        groups.clouds = mqtt.publish.clouds;
-        groups.gps = mqtt.publish.gps;
-        groups.rain = mqtt.publish.rain;
-        groups.wind = mqtt.publish.wind;
-        groups.battery = mqtt.publish.battery;
         const Config &cfg = getConfigCallback();
-        const BleAlarmStatus alarm = ble.alarmStatus();
-        groups.alertsSwitch = cfg.alerts.enabled || (cfg.ble.enabled && alarm.serviceActive && alarm.bondedPhones > 0); // dep: D-13
-        // Home Assistant's per-sensor sky entities follow the sensors switched on (spec 030).
-        groups.skySqm = cfg.sky.sqmEnabled;
-        groups.skySqml = cfg.sky.sqmlEnabled;
-        // The battery's entities while a gauge is present (spec 032); republished when that changes.
-        groups.batteryEntities = getSensorSnapshot().battery.present; // dep: D-49
+        const MQTTConfig &mqtt = cfg.mqtt;
+        HaDiscovery::Groups groups;
+        groups.alertsSwitch = cfg.alerts.enabled; // dep: D-13
 
-        publishDiscovery(mqtt, groups);
-
-        const bool reconnected = mqttClient->connectionCount() != mqttStateConnection;
-        if (!reconnected && mqttStatePublishedAt != 0 && now - mqttStatePublishedAt < mqtt.publishIntervalMs)
-            return;
-        DynamicJsonDocument doc(Readings::DOC_CAPACITY);
-        Readings::write(doc.to<JsonObject>(), buildReadings(), groups);
-        std::string payload;
-        serializeJson(doc, payload);
-        if (!mqttClient->publishSubtopic("state", payload, true))
-        {
-            Logger::warn(TAG, "MQTT state publish failed (%u bytes)", static_cast<unsigned>(payload.size()));
-            return;
-        }
-        mqttStatePublishedAt = now == 0 ? 1 : now;
-        mqttStateConnection = mqttClient->connectionCount();
-
-        if (mqtt.publish.diagnostics)
-        {
-            DynamicJsonDocument diag(2048); // +512 for the battery (spec 032)
-            appendDiagnostics(diag.to<JsonObject>(), getSensorSnapshot());
-            std::string diagPayload;
-            serializeJson(diag, diagPayload);
-            mqttClient->publishSubtopic("diagnostics", diagPayload, false);
-        }
-    }
-
-    void WebServer::publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups)
-    {
         // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
         snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
-        Readings::DiscoveryDevice device{
-            std::string("sqmeter_") + mac, getConfigCallback().deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
+        HaDiscovery::Device device{std::string("roofroof_") + mac, cfg.deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
         std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
-        for (bool on :
-             {groups.sky,
-              groups.skySqm,
-              groups.skySqml,
-              groups.environment,
-              groups.clouds,
-              groups.rain,
-              groups.wind,
-              groups.battery && groups.batteryEntities,
-              mqtt.publish.safety,
-              groups.alertsSwitch})
-            key += on ? '1' : '0';
+        key += groups.alertsSwitch ? '1' : '0';
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
 
@@ -123,11 +46,10 @@ namespace SQM
             (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
         {
             // Remove what was announced under the old settings.
-            Readings::forEachDiscovery(
-                discoveryDevice, groups, true, [&](const std::string &topic, const std::string &) { publish(topic, ""); });
+            HaDiscovery::forEach(discoveryDevice, groups, [&](const std::string &topic, const std::string &) { publish(topic, ""); });
         }
         if (mqtt.homeAssistant)
-            Readings::forEachDiscovery(device, groups, mqtt.publish.safety, publish);
+            HaDiscovery::forEach(device, groups, publish);
 
         discoveryKey = key;
         discoveryConnection = mqttClient->connectionCount();
@@ -135,26 +57,19 @@ namespace SQM
         discoveryWasOn = mqtt.homeAssistant;
     }
 
-    Deps::Facts WebServer::settingsFacts(const SensorSnapshot &snapshot) const
+    Deps::Facts WebServer::settingsFacts() const
     {
         Deps::Facts facts;
-        Core::sensorFacts(
-            facts, snapshot, Core::buildReadings(snapshot, getConfigCallback(), millis(), static_cast<int64_t>(time(nullptr))));
         facts.wifiConnected = WiFi.status() == WL_CONNECTED;
         facts.mqttConnected = mqttClient != nullptr && mqttClient->isConnected();
         facts.clockSet = static_cast<int64_t>(time(nullptr)) >= Core::CLOCK_VALID_EPOCH;
-        facts.bluetoothBuild = BleService::available();
-        facts.bluetoothRunning = ble.isActive();
-        const uint32_t phones = ble.alarmStatus().bondedPhones;
-        facts.pairedPhones = static_cast<uint8_t>(phones > 255 ? 255 : phones);
-        facts.languageInstalled = languagePack != nullptr && languagePack->installed();
-        Core::displayFacts(facts, getConfigCallback(), display != nullptr && display->detected());
+        facts.alpacaDevices = static_cast<uint8_t>(alpacaBackend.devices().size());
         return facts;
     }
 
-    ChannelBlocks WebServer::channelBlocks(const SensorSnapshot &snapshot) const
+    ChannelBlocks WebServer::channelBlocks() const
     {
-        const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), settingsFacts(snapshot));
+        const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), settingsFacts());
         auto blocked = [&entries](const char *setting) -> const char *
         {
             const Deps::Reason *reason = Deps::reasonFor(entries, setting);
@@ -166,26 +81,6 @@ namespace SQM
         blocks[static_cast<size_t>(AlertChannel::Ntfy)] = blocked("alerts.ntfy.enabled");
         blocks[static_cast<size_t>(AlertChannel::Webhook)] = blocked("alerts.webhook.enabled");
         return blocks;
-    }
-
-    void WebServer::appendSafetyStatus(JsonObject target) const
-    {
-        Core::writeSafety(target, getSafetyStatus(), getConfigCallback(), millis());
-    }
-
-    Readings::Snapshot WebServer::buildReadings() const
-    {
-        return Core::buildReadings(getSensorSnapshot(), getConfigCallback(), millis(), static_cast<int64_t>(time(nullptr)));
-    }
-
-    std::string WebServer::createSensorDataJson() const
-    {
-        DynamicJsonDocument doc(Readings::DOC_CAPACITY + Readings::SAFETY_CAPACITY);
-        Readings::write(doc.to<JsonObject>(), buildReadings());
-        appendSafetyStatus(doc.createNestedObject("safety"));
-        std::string json;
-        serializeJson(doc, json);
-        return json;
     }
 
     namespace
@@ -275,22 +170,9 @@ namespace SQM
         firmware["version"] = FIRMWARE_VERSION;
         firmware["buildDate"] = FIRMWARE_BUILD_DATE;
         firmware["buildTime"] = FIRMWARE_BUILD_TIME;
-        firmware["variant"] = BleService::available() ? "ble" : "standard";
-        // Spec 027: "l2" (the whole-chip layout), or "legacy" when the device
-        // still needs the one-time USB flash.
+        firmware["product"] = FirmwareImage::PRODUCT;
+        // "l2", or "other" when the partition table isn't RoofRoof's.
         firmware["layout"] = FirmwareMarker::layout();
-
-        JsonObject bleStatus = doc.createNestedObject("ble");
-        bleStatus["available"] = BleService::available();
-        bleStatus["active"] = ble.isActive();
-        bleStatus["clients"] = ble.connectedClients();
-        const BleAlarmStatus bleAlarm = ble.alarmStatus();
-        JsonObject bleAlarmJson = bleStatus.createNestedObject("alarm");
-        bleAlarmJson["serviceActive"] = bleAlarm.serviceActive;
-        bleAlarmJson["active"] = bleAlarm.alarmActive;
-        bleAlarmJson["sequence"] = bleAlarm.sequence;
-        bleAlarmJson["acknowledgedSequence"] = bleAlarm.acknowledgedSequence;
-        bleAlarmJson["bondedPhones"] = bleAlarm.bondedPhones;
     }
 
     void WebServer::appendRuntime(JsonDocument &doc) const
@@ -304,13 +186,12 @@ namespace SQM
         JsonObject stacks = doc.createNestedObject("stackFree");
         stacks["asyncTcp"] = uxTaskGetStackHighWaterMark(nullptr);
         stacks["loop"] = loopTaskHandle != nullptr ? uxTaskGetStackHighWaterMark(loopTaskHandle) : 0;
-        doc["sensorSnapshotBytes"] = sizeof(SensorSnapshot);
     }
 
     void WebServer::appendTime(JsonDocument &doc) const
     {
         // Current time: `epoch` in Unix seconds like every other timestamp
-        // (0 until the clock is set, spec 013 FR-003); `iso` is the local time
+        // (0 until the clock is set, SQMeter spec 013 FR-003); `iso` is the local time
         // with its offset, for display.
         JsonObject timeObj = doc.createNestedObject("time");
         const time_t epochNow = time(nullptr);
@@ -333,7 +214,7 @@ namespace SQM
             timeObj["timezone"] = getConfigCallback().ntp.timezone;
         }
 
-        // NTP/GPS Time status
+        // NTP status
         if (timeManager)
         {
             TimeStatus timeStatus = timeManager->getStatus();
@@ -345,11 +226,6 @@ namespace SQM
             ntp["nextSync"] = timeStatus.nextSyncMs;
             ntp["drift"] = timeStatus.driftSeconds;
             ntp["server"] = timeStatus.server;
-            ntp["activeSource"] = static_cast<int>(timeStatus.activeSource); // 0=None, 1=NTP, 2=GPS
-            ntp["gpsEnabled"] = timeStatus.gpsEnabled;
-            ntp["gpsHasFix"] = timeStatus.gpsHasFix;
-            ntp["gpsTimeUTC"] = timeStatus.gpsTimeUTC;
-            ntp["gpsSatellites"] = timeStatus.gpsSatellites;
         }
     }
 
@@ -392,11 +268,10 @@ namespace SQM
 
     void WebServer::appendConnections(JsonDocument &doc) const
     {
-        // Who holds the device's connections (spec 011 FR-008, 013 FR-012).
+        // Who holds the device's connections (SQMeter spec 011 FR-008, 013 FR-012).
         JsonObject connections = doc.createNestedObject("connections");
         connections["tcpLimit"] = ConnectionBudget::TCP_CONNECTIONS;
         JsonObject live = connections.createNestedObject("liveUpdates");
-        live["sensors"] = wsSensors.count();
         live["status"] = wsStatus.count();
         live["limitPerEndpoint"] = ConnectionBudget::WEBSOCKETS_PER_ENDPOINT;
         live["replaced"] = wsReplaced;
@@ -406,33 +281,20 @@ namespace SQM
 
     std::string WebServer::createStatusJson() const
     {
-        // Includes MQTT, partition, boot, sensor (both sky sensors), BLE and
-        // alert-schedule diagnostics; sized by test_status_document_fits.
+        // Sized by test_status_document_fits.
         DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY);
-        const SensorSnapshot snapshot = getSensorSnapshot();
         appendFirmware(doc);
         appendRuntime(doc);
-        Core::writeSky(doc.createNestedObject("sky"), computeNight(snapshot, getConfigCallback()));
         JsonObject alerts = doc.createNestedObject("alerts");
         Core::writeAlertSchedule(alerts, sharedSchedule(), getConfigCallback(), millis());
         alerts["recentRevision"] = alertDispatcher ? alertDispatcher->recentRevision() : 0;
-        Core::writeClientWatch(doc.createNestedObject("alpaca"), sharedClientWatch(), getConfigCallback(), millis());
+        Core::writeClientWatch(doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
         appendMemory(doc);
         appendPartitions(doc);
         appendTime(doc);
         appendWifi(doc);
-
-        // Per-sensor health for present hardware, and bring-up diagnostics.
-        // Readings themselves are in /api/sensors.
-        const Readings::Snapshot readings = buildReadings();
-        Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, getConfigCallback());
-        Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
-        Core::writeBatteryStatus(doc.as<JsonObject>(), snapshot, readings);
-        JsonObject diagnostics = doc.createNestedObject("diagnostics");
-        appendDiagnostics(diagnostics, snapshot);
         appendMqttStatus(doc);
         appendConnections(doc);
-        appendDisplayStatus(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())
             Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));

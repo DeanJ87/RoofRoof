@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Config.h"
-#include "sensors/GPSSensor.h"
-#include <time.h>
-#include <sys/time.h>
 #include <cstdint>
 #include <string>
+#include <sys/time.h>
+#include <time.h>
 
 namespace SQM
 {
@@ -17,67 +16,47 @@ namespace SQM
         FAILED = 3
     };
 
-    enum class ActiveTimeSource
-    {
-        NONE = 0,
-        NTP = 1,
-        GPS = 2
-    };
-
     struct TimeStatus
     {
         bool ntpEnabled;
-        bool gpsEnabled;
         NTPSyncStatus syncStatus;
-        ActiveTimeSource activeSource;
         uint32_t lastSyncMs;
         uint32_t nextSyncMs;
         int32_t driftSeconds;
         std::string server;
         std::string timezone;
-        bool gpsHasFix;
-        uint32_t gpsTimeSinceUpdate;
-        std::string gpsTimeUTC; // GPS time in ISO format (UTC)
-        uint32_t gpsSatellites;
     };
 
+    // The device clock from NTP, and the time zone it reports in. NTP is the
+    // only source (no GPS, spec 001 research R11).
     class TimeManager
     {
     public:
-        TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg, TimeSource primary, TimeSource secondary, GPSSensor *gps);
+        explicit TimeManager(const NTPConfig &ntpCfg);
         ~TimeManager() = default;
 
         void begin();
         void handle();
-        void updateConfig(const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig, TimeSource newPrimary, TimeSource newSecondary);
+        void updateConfig(const NTPConfig &newNtpConfig);
 
         TimeStatus getStatus() const;
         std::string getCurrentTimeISO() const;
         time_t getCurrentTime() const;
-        ActiveTimeSource getActiveTimeSource() const { return activeSource; }
 
     private:
-        void fillGpsStatus(TimeStatus &status) const;
         uint32_t nextSyncInMs() const;
         static constexpr const char *TAG = "TimeManager";
 
         NTPConfig ntpConfig;
-        GPSConfig gpsConfig;
-        TimeSource primarySource;
-        TimeSource secondarySource;
-        GPSSensor *gpsSensor;
 
-        NTPSyncStatus syncStatus;
-        ActiveTimeSource activeSource;
-        uint32_t lastSyncAttempt;
-        uint32_t lastSuccessfulSync;
-        time_t lastKnownTime;
+        NTPSyncStatus syncStatus = NTPSyncStatus::NOT_SYNCED;
+        uint32_t lastSyncAttempt = 0;
+        uint32_t lastSuccessfulSync = 0;
+        time_t lastKnownTime = 0;
 
+        void startSntp();
         void syncTime();
-        bool syncFromNTP();
-        bool syncFromGPS();
         void configureTimezone();
-        bool tryTimeSource(TimeSource source);
     };
 
 } // namespace SQM

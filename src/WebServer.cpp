@@ -1,40 +1,21 @@
 #include "WebServer.h"
-#include "WebServerShared.h"
-#include "Logger.h"
-#include "version.h"
-#include <WiFi.h>
-#include <Update.h>
-#include <ArduinoJson.h>
-#include <LittleFS.h>
-#include <AsyncJson.h>
-#include <PubSubClient.h>
-#include <esp_partition.h>
-#include <esp_ota_ops.h>
-#include <esp_system.h>
-#include <esp_timer.h>
-#include <cstring>
-#include <nvs.h>
-#include <nvs_flash.h>
-#include <ctime>
-#include "calculations/CloudDetection.h"
-#include "sensors/RG15Sensor.h"
 #include "AlpacaDiscovery.h"
 #include "CaptivePortal.h"
-#include "Ipv6Network.h"
-#include "DualStackClient.h"
-#include "NetAddress.h"
-#include "WiFiManager.h"
 #include "HeapTrace.h"
-#include "SunPosition.h"
-#include "SafetyHistory.h"
+#include "Ipv6Network.h"
+#include "Logger.h"
+#include "WebServerShared.h"
+#include "WiFiManager.h"
+#include <ArduinoJson.h>
+#include <LittleFS.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <esp_timer.h>
 
-extern uint32_t bootCount;
-
-// The web server's core: start-up, the main-loop pass, the sensor snapshot,
-// static files and the live-update WebSockets. Routes and documents are in
-// WebServerApi.cpp, WebServerAlerts.cpp, WebServerAlpaca.cpp,
-// WebServerStatus.cpp and WebServerUpdates.cpp.
+// The web server's core: start-up, the main-loop pass, static files and the
+// captive portal. Routes and documents are in WebServerApi.cpp,
+// WebServerAlerts.cpp, WebServerAlpaca.cpp, WebServerBackup.cpp,
+// WebServerLive.cpp, WebServerStatus.cpp and WebServerUpdates.cpp.
 
 namespace SQM
 {
@@ -83,19 +64,9 @@ namespace SQM
 
     } // namespace
 
-    WebServer::WebServer(
-        const Sensors &sensors, TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig)
+    WebServer::WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig)
         : server(PORT),
-          wsSensors("/ws/sensors"),
           wsStatus("/ws/status"),
-          tslSensor(sensors.tsl),
-          tslSensorL(sensors.tslL),
-          bmeSensor(sensors.bme),
-          mlxSensor(sensors.mlx),
-          gpsSensor(sensors.gps),
-          rg15Sensor(sensors.rg15),
-          windSensor(sensors.wind),
-          batterySensor(sensors.battery),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
@@ -107,46 +78,16 @@ namespace SQM
                   if (saved)
                       ++configRevision;
                   return saved;
-              }),
-          lastSensorBroadcast(0),
-          lastStatusBroadcast(0),
-          sensorSnapshotMutex(xSemaphoreCreateMutex()),
-          wifiConnectActive(false),
-          wifiConnectConfigSaved(false),
-          wifiConnectStartedAt(0)
+              })
     {
-        refreshSensorSnapshot(0);
-
-        alertDispatcher = std::make_unique<AlertDispatcher>(
-            mqttClient,
-            [this]
-            {
-                const OtaUpdater::Phase phase = otaUpdater ? otaUpdater->phase() : OtaUpdater::Phase::Idle;
-                return phase == OtaUpdater::Phase::Downloading || phase == OtaUpdater::Phase::Writing;
-            });
-
-        otaUpdater = std::make_unique<OtaUpdater>(
-            [this](int percent) { setOTAProgress(percent); },
-            [this](const char *message) { setOTAError(message); },
-            [] { WebServer::scheduleRestart(1000); });
-
-        languagePack = std::make_unique<LanguagePack>(*this);
+        // Alerts wait while an upload is written: TLS and flash writes together
+        // stall the upload (SQMeter spec 012 FR-003a).
+        alertDispatcher = std::make_unique<AlertDispatcher>(mqttClient, [] { return uploadActive.load(); });
     }
 
     WebServer::~WebServer()
     {
-        wsSensors.closeAll();
         wsStatus.closeAll();
-        if (sensorSnapshotMutex)
-        {
-            vSemaphoreDelete(sensorSnapshotMutex);
-            sensorSnapshotMutex = nullptr;
-        }
-        if (safetyMutex)
-        {
-            vSemaphoreDelete(safetyMutex);
-            safetyMutex = nullptr;
-        }
     }
 
     void WebServer::begin()
@@ -162,16 +103,13 @@ namespace SQM
         setupAPIRoutes();
         setupWebSocket();
         setupOTA();
-        setupGithubUpdates();
         setupAlpacaRoutes();
         setupAlertRoutes();
-        languagePack->registerRoutes(server);
         setupStaticRoutes(); // Must be last - has catch-all serveStatic
 
         HeapTrace::mark("web server routes");
         alertDispatcher->begin();
         HeapTrace::mark("alert dispatcher");
-        startBle();
         if (getConfigCallback().alpaca.enabled)
             startAlpacaDiscovery();
 
@@ -213,29 +151,6 @@ namespace SQM
                 if (parseArmPayload(payload, armed))
                     pendingArm = encodeArm(armed, Alerts::ScheduleReason::UserMqtt);
             });
-    }
-
-    void WebServer::startBle()
-    {
-        if (!BleService::available())
-            return;
-        if (!getConfigCallback().ble.enabled)
-        {
-            BleService::releaseControllerMemory();
-            HeapTrace::mark("bluetooth memory released");
-            return;
-        }
-        bleStartPending = true;
-        bleStartAt = millis();
-    }
-
-    void WebServer::startPendingBle(uint32_t now)
-    {
-        if (!bleStartPending || now - bleStartAt < BLE_START_DELAY_MS)
-            return;
-        bleStartPending = false;
-        ble.begin(getConfigCallback().deviceName, getConfigCallback().ble.passkey);
-        HeapTrace::mark("bluetooth");
     }
 
     void WebServer::startAlpacaDiscovery()
@@ -286,8 +201,8 @@ namespace SQM
             request->send(404, "application/json", "{\"error\":\"Not found\"}");
             return;
         case CaptivePortal::NotFound::FileMissing:
-            // A file the app asked for that isn't there (e.g. /lang.json while
-            // a language downloads): a plain 404, not the app's page.
+            // A file the app asked for that isn't there: a plain 404, not the
+            // app's page.
             request->send(404, "text/plain", "Not found");
             return;
         case CaptivePortal::NotFound::AppPage:
@@ -317,60 +232,37 @@ namespace SQM
             return;
 
         const Config &cfg = getConfigCallback();
-        const Core::SampleAlert *sample = pendingTest.sample;
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
-        const SafetyStatus safety = getSafetyStatus();
-        const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
-        const SensorSnapshot snapshot = getSensorSnapshot();
-        const Core::NightState night = computeNight(snapshot, cfg);
         const Core::TestWording wording{pendingTest.level, pendingTest.sound, pendingTest.title, pendingTest.message};
-        const Core::AlertSources sources{
-            cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
-        const Alerts::Alert test = Core::buildTestAlert(sample, wording, sources, clock);
-        if (sample != nullptr && test.level == Alerts::AlertLevel::Wake)
-        {
-            const time_t wallClock = time(nullptr);
-            ble.raiseAlarm(sample->bleFlags, wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0);
-        }
-        if (pendingTest.mask != BLE_ONLY_TEST)
-            alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask, channelBlocks(getSensorSnapshot()));
+        const Alerts::Alert test = Core::buildTestAlert(pendingTest.sample, wording, Core::AlertSources{cfg}, clock);
+        alertDispatcher->dispatch(test, cfg.alerts, cfg.deviceName, pendingTest.mask, channelBlocks());
     }
 
     void WebServer::handle()
     {
-        capWebSocketClients(wsSensors);
         capWebSocketClients(wsStatus);
         rememberAlpacaConnections();
         pollWiFiConnect();
-        languagePack->loop();
 
         const uint32_t now = millis();
 
         applyPendingArm();
-        startPendingBle(now);
         retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
-        publishMqttReadings(now);
+        publishDiscovery();
 
-        if (now - lastSafetyEvaluation >= SAFETY_EVALUATION_INTERVAL_MS)
+        if (now - lastAlertPass >= ALERT_PASS_INTERVAL_MS)
         {
-            updateSafetyStatus();
-            lastSafetyEvaluation = now;
+            processAlerts();
+            lastAlertPass = now;
         }
 
         sendPendingAlertTest();
 
-        // Broadcast sensor data every 1 second (for Dashboard)
-        if (now - lastSensorBroadcast >= WS_SENSOR_BROADCAST_INTERVAL_MS)
-        {
-            broadcastSensorData();
-            lastSensorBroadcast = now;
-        }
-
-        // Broadcast status data every 2 seconds (for System page)
-        // ... and at once when the recent alerts or the settings change.
+        // Status every 2 seconds, and at once when the recent alerts or the
+        // settings change.
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
         const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision;
         if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
@@ -385,63 +277,6 @@ namespace SQM
     bool WebServer::alertsIdle() const
     {
         return alertDispatcher == nullptr || alertDispatcher->idle();
-    }
-
-    void WebServer::refreshSensorSnapshot(uint32_t dataTimestampMs)
-    {
-        SensorSnapshot next;
-        // Both sky sensors; Core::derive picks the authoritative copy.
-        for (size_t i = 0; i < SKY_ROLE_COUNT; ++i)
-        {
-            const TSL2591Sensor &driver = skySensor(static_cast<SkyRole>(i));
-            SkySensorSnapshot &sky = next.skySensors[i];
-            sky.reading = driver.getReading();
-            sky.diagnostics = driver.getDiagnostics();
-            sky.initialized = driver.isInitialized();
-            sky.lastUpdate = driver.getLastUpdateTime();
-        }
-        next.bme = bmeSensor.getReading();
-        next.mlx = mlxSensor.getReading();
-        next.gps = gpsSensor.getReading();
-        next.rg15 = rg15Sensor.copyReading();
-        next.rg15Diagnostics = rg15Sensor.getDiagnostics();
-        next.bmeInitialized = bmeSensor.isInitialized();
-        next.mlxInitialized = mlxSensor.isInitialized();
-        next.gpsInitialized = gpsSensor.isInitialized();
-        next.rg15Initialized = rg15Sensor.isInitialized();
-        next.bmeLastUpdate = bmeSensor.getLastUpdateTime();
-        next.mlxLastUpdate = mlxSensor.getLastUpdateTime();
-        next.gpsLastUpdate = gpsSensor.getLastUpdateTime();
-        next.rg15LastUpdate = rg15Sensor.getLastUpdateTime();
-        next.wind = windSensor.getReading();
-        next.battery.detected = batterySensor.isDetected();
-        next.battery.initialized = batterySensor.isInitialized();
-        next.battery.lastUpdate = batterySensor.getLastUpdateTime();
-        next.battery.reading = batterySensor.getReading();
-        if (powerManager != nullptr)
-        {
-            next.battery.power = powerManager->state();
-            next.battery.shutdownInSeconds = powerManager->shutdownInSeconds();
-            next.readIntervalMs = powerManager->sensorIntervalMs(getConfigCallback());
-        }
-        next.dataTimestamp = dataTimestampMs;
-        next.capturedAt = millis();
-
-        Core::derive(next, getConfigCallback());
-
-        if (!sensorSnapshotMutex)
-        {
-            sensorSnapshot = next;
-        }
-        else if (xSemaphoreTake(sensorSnapshotMutex, pdMS_TO_TICKS(20)) == pdTRUE)
-        {
-            sensorSnapshot = next;
-            xSemaphoreGive(sensorSnapshotMutex);
-        }
-        else
-        {
-            Logger::warn(TAG, "Sensor snapshot lock unavailable");
-        }
     }
 
     void WebServer::setupStaticRoutes()
@@ -479,31 +314,6 @@ namespace SQM
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
-    SensorSnapshot WebServer::getSensorSnapshot() const
-    {
-        SensorSnapshot snapshot;
-        if (!sensorSnapshotMutex)
-        {
-            return sensorSnapshot;
-        }
-
-        if (xSemaphoreTake(sensorSnapshotMutex, pdMS_TO_TICKS(20)) == pdTRUE)
-        {
-            snapshot = sensorSnapshot;
-            xSemaphoreGive(sensorSnapshotMutex);
-        }
-        else
-        {
-            Logger::warn(TAG, "Sensor snapshot read lock unavailable");
-        }
-        return snapshot;
-    }
-
-    uint32_t WebServer::ageMs(uint32_t now, uint32_t timestamp)
-    {
-        return timestamp == 0 ? 0 : now - timestamp;
-    }
-
     bool WebServer::scheduleRestart(uint32_t delayMs)
     {
         if (!restartTimer)
@@ -512,7 +322,7 @@ namespace SQM
             restartTimerArgs.callback = &restartTimerCallback;
             restartTimerArgs.arg = nullptr;
             restartTimerArgs.dispatch_method = ESP_TIMER_TASK;
-            restartTimerArgs.name = "sqm_restart";
+            restartTimerArgs.name = "rr_restart";
             restartTimerArgs.skip_unhandled_events = false;
 
             if (esp_timer_create(&restartTimerArgs, &restartTimer) != ESP_OK)
@@ -541,7 +351,7 @@ namespace SQM
         }
         if (!request->authenticate(cfg.auth.username.c_str(), cfg.auth.password.c_str()))
         {
-            request->requestAuthentication("SQMeter", false);
+            request->requestAuthentication("RoofRoof", false);
             return false;
         }
         return true;

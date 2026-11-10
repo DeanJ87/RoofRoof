@@ -1,161 +1,96 @@
 #pragma once
 
-#include "Config.h"
-#include <atomic>
-#include "sensors/TSL2591Sensor.h"
-#include "sensors/BME280Sensor.h"
-#include "sensors/MLX90614Sensor.h"
-#include "sensors/GPSSensor.h"
-#include "sensors/RG15Sensor.h"
-#include "sensors/WindSensor.h"
-#include "sensors/MAX17048Sensor.h"
-#include "PowerManager.h"
-#include "DeviceCore.h"
-#include "TimeManager.h"
-#include "MQTTClient.h"
-#include "OtaUpdater.h"
-#include "LanguagePack.h"
-#include "SafetyEvaluator.h"
-#include "ObservingConditionsMapper.h"
-#include "AlpacaProtocol.h"
-#include "AlpacaRouter.h"
-#include "Readings.h"
 #include "AlertDispatcher.h"
 #include "AlertEngine.h"
-#include "SafetyStatus.h"
-#include "BleService.h"
+#include "AlpacaProtocol.h"
+#include "AlpacaRouter.h"
+#include "Config.h"
 #include "ConfigBackup.h"
-#include <atomic>
-#include <ESPAsyncWebServer.h>
-#include <AsyncWebSocket.h>
-#include <map>
-#include <mutex>
+#include "DeviceCore.h"
+#include "HaDiscovery.h"
+#include "MQTTClient.h"
+#include "SettingsDeps.h"
+#include "TimeManager.h"
 #include <ArduinoJson.h>
-#include <memory>
-#include <vector>
 #include <AsyncUDP.h>
-#include <functional>
+#include <AsyncWebSocket.h>
+#include <ESPAsyncWebServer.h>
+#include <atomic>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 namespace SQM
 {
-    class OledDisplay;
-
+    // The device's HTTP server: the REST API, the live-update WebSocket, the
+    // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer,
+    // without the sensors). Spec 002 onwards adds the roof.
     class WebServer
     {
-        friend class LanguagePack;
-
     public:
         using GetConfigCallback = std::function<const Config &()>;
         using SaveConfigCallback = std::function<bool(const Config &)>;
 
-        // The sensors the server reads and acts on (calibration, RG-15 commands).
-        struct Sensors
-        {
-            TSL2591Sensor &tsl;  // SQM (I2C-1)
-            TSL2591Sensor &tslL; // SQM-L (I2C-2), spec 030
-            BME280Sensor &bme;
-            MLX90614Sensor &mlx;
-            GPSSensor &gps;
-            RG15Sensor &rg15;
-            WindSensor &wind;
-            MAX17048Sensor &battery; // fuel gauge and charger lines, spec 032
-        };
-
-        WebServer(
-            const Sensors &sensors, TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig);
+        WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig);
         ~WebServer();
 
-        // Delete copy operations
         WebServer(const WebServer &) = delete;
         WebServer &operator=(const WebServer &) = delete;
 
         void begin();
         void handle();
-        void refreshSensorSnapshot(uint32_t dataTimestampMs);
-        // The battery power policy (spec 032): its state for the snapshot and
-        // its one-shots for the alerts. Set once at start-up.
-        void setPowerManager(PowerManager *manager) { powerManager = manager; }
-        // No alert queued or being delivered (the shutdown waits for it).
+        // No alert queued or being delivered.
         bool alertsIdle() const;
-        // The driver of a sky sensor (spec 030).
-        TSL2591Sensor &skySensor(SkyRole role) const { return role == SkyRole::Sqml ? tslSensorL : tslSensor; }
-        SafetyStatus getSafetyStatus() const;
 
-        // Broadcast sensor data to Dashboard WebSocket clients
-        void broadcastSensorData();
-
-        // Broadcast status data to System WebSocket clients
+        // Broadcast status data to /ws/status clients.
         void broadcastStatusData();
-
-        // OTA update status
-        void setOTAProgress(int progress);
-        void setOTAError(const char *error);
-
-        // The optional OLED (spec 031): status, routes and its view.
-        void setDisplay(OledDisplay *oled) { display = oled; }
-        // Hands the display the latest readings and night (after each refresh).
-        void feedDisplay(const Core::DisplayNetwork &network);
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
-        // Bluetooth is switched on but hasn't started yet (see startBle()).
-        bool isBleStartPending() const { return bleStartPending; }
         static bool scheduleRestart(uint32_t delayMs);
 
     private:
         static constexpr const char *TAG = "WebServer";
         static constexpr uint16_t PORT = 80;
-        static constexpr uint32_t WS_SENSOR_BROADCAST_INTERVAL_MS = 1000; // Sensors update every 1s
-        static constexpr uint32_t WS_STATUS_BROADCAST_INTERVAL_MS = 2000; // Status updates every 2s
+        static constexpr uint32_t WS_STATUS_BROADCAST_INTERVAL_MS = 2000;
+        static constexpr uint32_t ALERT_PASS_INTERVAL_MS = 1000;
         static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
 
         AsyncWebServer server;
-        AsyncWebSocket wsSensors; // /ws/sensors for Dashboard
-        AsyncWebSocket wsStatus;  // /ws/status for System page
-        // Live-update clients closed since boot (spec 011 FR-008): the oldest
-        // past the per-endpoint limit, and ones that stopped reading.
+        AsyncWebSocket wsStatus; // /ws/status
+        // Live-update clients closed since boot (SQMeter spec 011 FR-008): the
+        // oldest past the per-endpoint limit, and ones that stopped reading.
         uint32_t wsReplaced = 0;
         uint32_t wsStalled = 0;
         // Live-update clients by id, with when each one's queue was first seen
         // full (0 = not full). Events arrive on the network task, the sweep
         // runs on the loop task.
-        std::map<uint32_t, uint32_t> wsSensorClients;
         std::map<uint32_t, uint32_t> wsStatusClients;
         std::mutex wsClientsLock;
         // Imaging-app connections restored after a restart the device caused.
         bool alpacaConnectionsRestored = false;
 
-        TSL2591Sensor &tslSensor;
-        TSL2591Sensor &tslSensorL;
-        BME280Sensor &bmeSensor;
-        MLX90614Sensor &mlxSensor;
-        GPSSensor &gpsSensor;
-        RG15Sensor &rg15Sensor;
-        WindSensor &windSensor;
-        MAX17048Sensor &batterySensor;
-        PowerManager *powerManager = nullptr;
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;
 
-        uint32_t lastSensorBroadcast;
-        uint32_t lastStatusBroadcast;
+        uint32_t lastStatusBroadcast = 0;
+        uint32_t lastAlertPass = 0;
         uint32_t lastAlertsRevision = 0;
         std::atomic<uint32_t> configRevision{0};
         uint32_t lastConfigRevision = 0;
-        SensorSnapshot sensorSnapshot;
-        SemaphoreHandle_t sensorSnapshotMutex;
-        bool wifiConnectActive;
-        bool wifiConnectConfigSaved;
-        uint32_t wifiConnectStartedAt;
+        bool wifiConnectActive = false;
+        bool wifiConnectConfigSaved = false;
+        uint32_t wifiConnectStartedAt = 0;
         std::string pendingWifiSSID;
         std::string pendingWifiPassword;
-
-        std::unique_ptr<OtaUpdater> otaUpdater;
-        std::unique_ptr<LanguagePack> languagePack;
+        // A firmware or web UI upload is being written (the alert sender waits).
+        static inline std::atomic<bool> uploadActive{false};
 
         AsyncUDP alpacaDiscoveryUdp; // answers in the network task, not the main loop
         // IPv6 discovery (ff12::a1:2345) needs an IPv6 address first; retried from handle().
@@ -165,8 +100,6 @@ namespace SQM
         // begin(), step by step.
         void restoreAlertSchedule();
         void subscribeArmCommands();
-        void startBle();
-        void startPendingBle(uint32_t now);
         void sendPendingAlertTest();
         void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);
@@ -180,8 +113,7 @@ namespace SQM
             {
             }
             bool alpacaEnabled() const override;
-            bool isSafe() const override;
-            Alpaca::ObservingConditionsSnapshot observingConditions() const override;
+            std::vector<Alpaca::DeviceInfo> devices() const override;
             std::string serverName() const override;
             std::string location() const override;
             std::string timestampUtc() const override;
@@ -192,26 +124,13 @@ namespace SQM
         static Alpaca::ServerIdentity alpacaIdentity();
         AlpacaBackend alpacaBackend{*this};
         Alpaca::Router alpacaRouter{alpacaBackend, alpacaIdentity()};
-
-        SafetyStatus safetyStatus;
-        Alpaca::SafeDelayFilter safeDelayFilter;
-        SemaphoreHandle_t safetyMutex = xSemaphoreCreateMutex();
         TaskHandle_t loopTaskHandle = nullptr;
-        uint32_t lastSafetyEvaluation = 0;
-        // Bluetooth starts this long after begin(), not alongside WiFi: their
-        // combined start-up current browns out a marginal supply.
-        static constexpr uint32_t BLE_START_DELAY_MS = 5000;
-        bool bleStartPending = false;
-        uint32_t bleStartAt = 0;
-        static constexpr uint32_t SAFETY_EVALUATION_INTERVAL_MS = 1000;
-        void updateSafetyStatus();
 
         // Alerts
         Alerts::AlertEngine alertEngine;
-        bool alertEngineSeeded = false;
 
-        // When alerts go out (specs/021): the send mode and the pause state
-        // ("armed"), with why and since when. Saved in NVS. Pause/resume
+        // When alerts go out (SQMeter spec 021): the send mode and the pause
+        // state ("armed"), with why and since when. Saved in NVS. Pause/resume
         // requests come from HTTP (AsyncTCP task) and MQTT; the loop task
         // applies them, and Alpaca connects in the alert pass.
         Alerts::AlertSchedule alertSchedule;
@@ -235,8 +154,7 @@ namespace SQM
         void scheduleChanged(bool wasSending);
         void publishArmedState();
         std::unique_ptr<AlertDispatcher> alertDispatcher;
-        // Set by the HTTP handler, sent from the loop task. event < 0 is the
-        // plain channel test; otherwise an index into the sample events.
+        // Set by the HTTP handler, sent from the loop task.
         struct PendingAlertTest
         {
             uint8_t mask = 0;
@@ -248,47 +166,28 @@ namespace SQM
         };
         PendingAlertTest pendingAlertTest;
         portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
-        uint32_t mqttSafetyConnection = 0xFFFFFFFF;
-        uint32_t mqttStatePublishedAt = 0;
-        uint32_t mqttStateConnection = 0xFFFFFFFF;
         std::string discoveryKey;
         uint32_t discoveryConnection = 0xFFFFFFFF;
-        Readings::DiscoveryDevice discoveryDevice;
+        HaDiscovery::Device discoveryDevice;
         bool discoveryWasOn = false;
-        Readings::Snapshot buildReadings() const;
-        void appendDiagnostics(JsonObject root, const SensorSnapshot &snapshot) const;
-        void publishMqttReadings(uint32_t now);
-        void publishDiscovery(const MQTTConfig &mqtt, const Readings::Groups &groups);
-        bool mqttSafetyPublished = false;
-        bool mqttLastPublishedSafe = false;
-        uint32_t mqttSafetyPublishedAt = 0;
-        static constexpr uint32_t MQTT_SAFETY_REPUBLISH_MS = 60000;
-        void processAlerts(const SafetyStatus &status);
-        void seedAlertEngine();
+        void publishDiscovery();
+        void processAlerts();
         void watchClients(Alerts::AlertInputs &inputs, const Config &cfg, const std::string &localTime);
-        void updateBle(const Alerts::AlertInputs &inputs, const Core::AlertSources &sources);
-        void sendAlerts(const Core::AlertStep &step, const Core::AlertSources &sources, const SensorSnapshot &snapshot, uint32_t epoch);
-        void forwardBleAcks(const Config &cfg, const SensorSnapshot &snapshot);
+        void sendAlerts(const Core::AlertStep &step, const Config &cfg);
 
-        static Core::NightState computeNight(const SensorSnapshot &snapshot, const Config &cfg);
         // What the settings dependencies need to know (lib/SettingsDeps).
-        Deps::Facts settingsFacts(const SensorSnapshot &snapshot) const;
+        Deps::Facts settingsFacts() const;
         // Alert channels switched on but inactive, with the reason. Alerts
         // being off doesn't block: tests work while alerts are off.
-        ChannelBlocks channelBlocks(const SensorSnapshot &snapshot) const;
+        ChannelBlocks channelBlocks() const;
         // "HH:MM" and "YYYY-MM-DD" in the device's time zone, or "--:--"/"--" before the clock is set.
         static void localClock(std::string &timeText, std::string &dateText);
-        void publishMqttSafety(const SafetyStatus &status);
         void setupAlertRoutes();
         void handleAlertTest(AsyncWebServerRequest *request);
         void handleAlertsClear(AsyncWebServerRequest *request);
-        void handleBleAck(AsyncWebServerRequest *request);
-        void handleBleForgetBonds(AsyncWebServerRequest *request);
         void handleArm(AsyncWebServerRequest *request, bool armed);
         void handleAlertsArmed(AsyncWebServerRequest *request);
         void handleAlertsRecent(AsyncWebServerRequest *request);
-
-        BleService ble;
 
         // Setup route handlers
         void setupStaticRoutes();
@@ -297,48 +196,26 @@ namespace SQM
         void setupOTA();
         void handleFsUploadDone(AsyncWebServerRequest *request);
         void handleFirmwareUploadDone(AsyncWebServerRequest *request);
-        void setupGithubUpdates();
-        void handleUpdatesCheck(AsyncWebServerRequest *request);
-        // One update check at a time, in its own task (see handleUpdatesCheck).
-        struct UpdatesCheckJob
-        {
-            AsyncWebServerRequestPtr request;
-            OtaUpdater *ota;
-            std::string track;
-        };
-        static constexpr uint32_t UPDATES_CHECK_STACK_BYTES = 12288;
-        static inline std::atomic<bool> updatesCheckRunning{false};
-        static void runUpdatesCheck(void *arg);
-        static std::string releasesJson(const std::vector<GithubRelease> &releases);
-        void handleUpdatesApply(AsyncWebServerRequest *request, JsonVariant &json);
         void setupAlpacaRoutes();
         void handleAlpacaRequest(AsyncWebServerRequest *request);
 
         // API endpoint handlers
         void handleGetStatus(AsyncWebServerRequest *request);
-        void handleGetSensors(AsyncWebServerRequest *request);
         void handleGetConfig(AsyncWebServerRequest *request);
         void handleRestart(AsyncWebServerRequest *request);
         void handleWiFiScan(AsyncWebServerRequest *request);
-        void handleRG15Test(AsyncWebServerRequest *request);
-        void handleTSL2591DarkCalibration(AsyncWebServerRequest *request);
-        void handleRG15ResetTotal(AsyncWebServerRequest *request);
-        void handleRG15Reboot(AsyncWebServerRequest *request);
         void handleMQTTTest(AsyncWebServerRequest *request, JsonVariant &json);
         void pollWiFiConnect();
         // setupAPIRoutes(), by group (registration order matters: more
         // specific paths first).
-        void setupReadingRoutes();
         void setupSettingsRoutes();
         void setupNetworkRoutes();
-        static void handleSafetyHistory(AsyncWebServerRequest *request);
         void handleSettingsEffective(AsyncWebServerRequest *request);
-        void handleGetSafety(AsyncWebServerRequest *request);
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
         // Saves settings and applies what takes effect at once (a settings save and a restore).
         bool saveAndApply(const Config &next);
 
-        // Settings backup and restore (specs/033-config-backup, src/WebServerBackup.cpp).
+        // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;
         struct StagedRestore
         {
@@ -371,20 +248,12 @@ namespace SQM
         void appendConnections(JsonDocument &doc) const;
         void restoreAlpacaConnections();
         void rememberAlpacaConnections();
-        void onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
         void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
-
-        // The OLED (src/WebServerDisplay.cpp).
-        OledDisplay *display = nullptr;
-        void setupDisplayRoutes();
-        void handleDisplayRequest(AsyncWebServerRequest *request, bool wake);
-        void appendDisplayStatus(JsonDocument &doc) const;
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;
-        SensorSnapshot getSensorSnapshot() const;
-        std::string createSensorDataJson() const;
-        void appendSafetyStatus(JsonObject target) const;
+        // The request carries the password when protection is on (no reply sent).
+        bool requestAuthorised(AsyncWebServerRequest *request) const;
         std::string createStatusJson() const;
         // createStatusJson() sections, in document order.
         void appendFirmware(JsonDocument &doc) const;
@@ -393,13 +262,6 @@ namespace SQM
         void appendWifi(JsonDocument &doc) const;
         void appendMqttStatus(JsonDocument &doc) const;
         static std::string createErrorJson(const char *error);
-        static uint32_t ageMs(uint32_t now, uint32_t timestamp);
-
-        // Alpaca helpers
-        Alpaca::SafetyInputs buildAlpacaSafetyInputs() const;
-        static Alpaca::SafetyThresholds buildAlpacaSafetyThresholds(const Config &cfg);
-        Alpaca::SafetyResult evaluateAlpacaSafety() const;
-        Alpaca::ObservingConditionsSnapshot buildAlpacaObservingConditionsSnapshot() const;
     };
 
 } // namespace SQM

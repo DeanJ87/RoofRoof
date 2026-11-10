@@ -370,7 +370,7 @@ void test_wrong_types_are_rejected_not_defaulted()
     TEST_ASSERT_EQUAL_STRING("mqtt.port must be a whole number in range", reason("{\"mqtt\":{\"port\":70000}}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: ota.enabled must be true or false", reason("{\"ota\":{\"enabled\":\"yes\"}}").c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "Settings: mqtt.publish.diagnostics must be true or false", reason("{\"mqtt\":{\"publish\":{\"diagnostics\":1}}}").c_str());
+        "Settings: mqtt.homeAssistant.enabled must be true or false", reason("{\"mqtt\":{\"homeAssistant\":{\"enabled\":1}}}").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "Settings: alerts.events.client_lost.level must be a whole number in range",
         reason("{\"alerts\":{\"events\":{\"client_lost\":{\"level\":\"4\"}}}}").c_str());

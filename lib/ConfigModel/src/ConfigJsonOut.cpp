@@ -97,8 +97,6 @@ namespace SQM
             mqtt["password"] = secretOut(c.mqtt.password, redact);
             mqtt["topic"] = c.mqtt.topic;
             mqtt["publishIntervalMs"] = c.mqtt.publishIntervalMs;
-            JsonObject publish = mqtt.createNestedObject("publish");
-            publish["diagnostics"] = c.mqtt.publish.diagnostics;
             JsonObject homeAssistant = mqtt.createNestedObject("homeAssistant");
             homeAssistant["enabled"] = c.mqtt.homeAssistant;
             homeAssistant["discoveryPrefix"] = c.mqtt.discoveryPrefix;

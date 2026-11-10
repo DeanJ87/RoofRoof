@@ -1,8 +1,6 @@
-#include "WebServer.h"
 #include "ConfigBackup.h"
-#include "LanguagePack.h"
 #include "Logger.h"
-#include "sensors/TSL2591Sensor.h"
+#include "WebServer.h"
 #include "version.h"
 
 #include <ArduinoJson.h>
@@ -12,7 +10,7 @@
 #include <cstring>
 #include <ctime>
 
-// Settings backup and restore (specs/033-config-backup): POST /api/backup,
+// Settings backup and restore (SQMeter spec 033): POST /api/backup,
 // /api/backup/preview and /api/backup/apply. The file format, the crypto and
 // the preview are lib/ConfigBackup; this collects request bodies, runs the
 // slow steps (key derivation) in a task and keeps the previewed config until
@@ -99,23 +97,14 @@ namespace SQM
         Backup::DeviceInfo device;
         device.firmware = FIRMWARE_VERSION;
         device.board = CONFIG_IDF_TARGET;
-        device.bluetoothBuild = BleService::available();
-        device.pins = Backup::buildBoardPins(); // this build's board profile (spec 034)
         return device;
     }
 
-    // Saves a whole new configuration and applies what needs no restart (PUT
-    // /api/config and a restore).
+    // Saves a whole new configuration (PUT /api/config and a restore). What
+    // applies without a restart is applied by the save callback (src/main.cpp).
     bool WebServer::saveAndApply(const Config &next)
     {
-        const std::string previousLanguage = getConfigCallback().language;
-        if (!saveConfigCallback(next))
-            return false;
-        for (SkyRole role : {SkyRole::Sqm, SkyRole::Sqml})
-            skySensor(role).configureSkyMeasurement(next.averaging(role), next.calibration(role));
-        if (previousLanguage != next.language)
-            languagePack->onLanguageChanged(next.language);
-        return true;
+        return saveConfigCallback(next);
     }
 
     void WebServer::handleBackupStart(AsyncWebServerRequest *request, bool preview)

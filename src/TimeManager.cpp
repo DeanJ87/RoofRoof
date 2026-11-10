@@ -1,53 +1,45 @@
 #include "TimeManager.h"
-#include "GpsTime.h"
 #include "Logger.h"
-#include <esp_sntp.h>
 #include <Arduino.h>
+#include <esp_sntp.h>
 
 namespace SQM
 {
-    TimeManager::TimeManager(const NTPConfig &ntpCfg, const GPSConfig &gpsCfg, TimeSource primary, TimeSource secondary, GPSSensor *gps)
-        : ntpConfig(ntpCfg),
-          gpsConfig(gpsCfg),
-          primarySource(primary),
-          secondarySource(secondary),
-          gpsSensor(gps),
-          syncStatus(NTPSyncStatus::NOT_SYNCED),
-          activeSource(ActiveTimeSource::NONE),
-          lastSyncAttempt(0),
-          lastSuccessfulSync(0),
-          lastKnownTime(0)
+    namespace
+    {
+        // A clock below this has never been set (the ESP32 starts in 1970).
+        constexpr time_t CLOCK_SET_EPOCH = 1000000000;
+        constexpr uint32_t SYNC_TIMEOUT_MS = 30000;
+        constexpr uint32_t RETRY_WITHOUT_NTP_MS = 300000; // 5 min
+    } // namespace
+
+    TimeManager::TimeManager(const NTPConfig &ntpCfg)
+        : ntpConfig(ntpCfg)
     {
     }
 
     void TimeManager::begin()
     {
         Logger::info(TAG, "Initializing time synchronization");
-        Logger::info(
-            TAG,
-            "Primary source: %s, Secondary: %s",
-            primarySource == TimeSource::NTP ? "NTP" : "GPS",
-            secondarySource == TimeSource::NTP ? "NTP" : "GPS");
-
         configureTimezone();
-
-        // Initialize NTP if enabled
         if (ntpConfig.enabled)
-        {
-            Logger::info(TAG, "Configuring NTP: %s / %s", ntpConfig.server1.c_str(), ntpConfig.server2.c_str());
-            sntp_setoperatingmode(SNTP_OPMODE_POLL);
-            sntp_setservername(0, ntpConfig.server1.c_str());
-            if (!ntpConfig.server2.empty())
-            {
-                sntp_setservername(1, ntpConfig.server2.c_str());
-            }
-            sntp_init();
-        }
-
+            startSntp();
         syncStatus = NTPSyncStatus::IN_PROGRESS;
         lastSyncAttempt = millis();
-
         Logger::info(TAG, "Time synchronization started");
+    }
+
+    // esp_sntp_*: the sntp_* names are deprecated in ESP-IDF 5.
+    void TimeManager::startSntp()
+    {
+        Logger::info(TAG, "Configuring NTP: %s / %s", ntpConfig.server1.c_str(), ntpConfig.server2.c_str());
+        if (esp_sntp_enabled())
+            esp_sntp_stop();
+        esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, ntpConfig.server1.c_str());
+        if (!ntpConfig.server2.empty())
+            esp_sntp_setservername(1, ntpConfig.server2.c_str());
+        esp_sntp_init();
     }
 
     void TimeManager::handle()
@@ -58,132 +50,48 @@ namespace SQM
         bool needsSync = false;
         if (syncStatus == NTPSyncStatus::SYNCED || syncStatus == NTPSyncStatus::FAILED)
         {
-            uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : 300000; // 5 min default
-            if (now - lastSyncAttempt >= syncInterval)
-            {
-                needsSync = true;
-            }
+            const uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : RETRY_WITHOUT_NTP_MS;
+            needsSync = now - lastSyncAttempt >= syncInterval;
         }
 
-        // Check if current time is valid, if not try to sync immediately
+        // A clock that was never set: try again at once.
         time_t currentTime;
         time(&currentTime);
-        if (currentTime < 1000000000 && syncStatus != NTPSyncStatus::IN_PROGRESS)
-        {
+        if (currentTime < CLOCK_SET_EPOCH && syncStatus != NTPSyncStatus::IN_PROGRESS)
             needsSync = true;
-        }
 
         if (needsSync)
-        {
             syncTime();
-        }
 
-        // Check sync progress
-        if (syncStatus == NTPSyncStatus::IN_PROGRESS)
+        if (syncStatus != NTPSyncStatus::IN_PROGRESS)
+            return;
+        time(&currentTime);
+        if (currentTime > CLOCK_SET_EPOCH)
         {
-            time(&currentTime);
-            if (currentTime > 1000000000) // Time is set
-            {
-                syncStatus = NTPSyncStatus::SYNCED;
-                lastSuccessfulSync = now;
-                lastKnownTime = currentTime;
-                Logger::info(TAG, "Time sync successful via %s", activeSource == ActiveTimeSource::NTP ? "NTP" : "GPS");
-            }
-            else if (now - lastSyncAttempt > 30000) // 30 second timeout
-            {
-                syncStatus = NTPSyncStatus::FAILED;
-                activeSource = ActiveTimeSource::NONE;
-                Logger::warn(TAG, "Time sync timeout");
-            }
+            syncStatus = NTPSyncStatus::SYNCED;
+            lastSuccessfulSync = now;
+            lastKnownTime = currentTime;
+            Logger::info(TAG, "Time sync successful via NTP");
+        }
+        else if (now - lastSyncAttempt > SYNC_TIMEOUT_MS)
+        {
+            syncStatus = NTPSyncStatus::FAILED;
+            Logger::warn(TAG, "Time sync timeout");
         }
     }
 
     void TimeManager::syncTime()
     {
-        Logger::info(TAG, "Attempting time sync");
-        syncStatus = NTPSyncStatus::IN_PROGRESS;
         lastSyncAttempt = millis();
-        activeSource = ActiveTimeSource::NONE; // Clear until source succeeds
-
-        // Try primary source first, then fallback to secondary
-        if (tryTimeSource(primarySource))
+        if (!ntpConfig.enabled)
         {
-            return; // Primary initiated/succeeded
-        }
-
-        Logger::warn(TAG, "Primary time source failed, trying secondary");
-        if (!tryTimeSource(secondarySource))
-        {
-            Logger::error(TAG, "Both time sources failed");
             syncStatus = NTPSyncStatus::FAILED;
-            activeSource = ActiveTimeSource::NONE;
+            return;
         }
-    }
-
-    bool TimeManager::tryTimeSource(TimeSource source)
-    {
-        if (source == TimeSource::NTP && ntpConfig.enabled)
-        {
-            return syncFromNTP();
-        }
-        else if (source == TimeSource::GPS && gpsConfig.enabled && gpsSensor)
-        {
-            return syncFromGPS();
-        }
-        return false;
-    }
-
-    bool TimeManager::syncFromNTP()
-    {
-        Logger::info(TAG, "Attempting sync from NTP");
-        esp_sntp_stop();
-        sntp_init();
-        // NTP sync is async - will be verified in handle() when time > 1000000000
-        // Set activeSource as pending NTP
-        activeSource = ActiveTimeSource::NTP;
-        return true; // NTP started successfully
-    }
-
-    bool TimeManager::syncFromGPS()
-    {
-        if (!gpsSensor)
-        {
-            Logger::error(TAG, "GPS sensor not available");
-            return false;
-        }
-
-        GPSReading reading = gpsSensor->getReading();
-        if (!reading.hasFix)
-        {
-            Logger::warn(TAG, "GPS has no fix, cannot sync time");
-            return false;
-        }
-
-        if (!gpsSensor->hasValidTime() || !gpsSensor->hasValidDate())
-        {
-            Logger::warn(TAG, "GPS time/date not valid");
-            return false;
-        }
-
-        struct tm timeinfo;
-        if (!gpsSensor->getDateTime(&timeinfo))
-        {
-            Logger::error(TAG, "Failed to get GPS time");
-            return false;
-        }
-
-        // Set system time from GPS
-        time_t gpsTime = static_cast<time_t>(GpsTime::utcEpoch(
-            {timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec}));
-        struct timeval tv = {.tv_sec = gpsTime, .tv_usec = 0};
-        settimeofday(&tv, nullptr);
-
-        activeSource = ActiveTimeSource::GPS;
-        syncStatus = NTPSyncStatus::SYNCED;
-        lastSuccessfulSync = millis();
-
-        Logger::info(TAG, "Time synced from GPS");
-        return true;
+        Logger::info(TAG, "Attempting time sync from NTP");
+        syncStatus = NTPSyncStatus::IN_PROGRESS;
+        // NTP is asynchronous: handle() sees the clock set.
+        startSntp();
     }
 
     void TimeManager::configureTimezone()
@@ -193,63 +101,22 @@ namespace SQM
         tzset();
     }
 
-    void TimeManager::updateConfig(
-        const NTPConfig &newNtpConfig, const GPSConfig &newGpsConfig, TimeSource newPrimary, TimeSource newSecondary)
+    void TimeManager::updateConfig(const NTPConfig &newNtpConfig)
     {
-        bool serverChanged = (ntpConfig.server1 != newNtpConfig.server1) || (ntpConfig.server2 != newNtpConfig.server2);
-        bool tzChanged = (ntpConfig.timezone != newNtpConfig.timezone);
-        bool priorityChanged = (primarySource != newPrimary) || (secondarySource != newSecondary);
-
+        const bool serverChanged = ntpConfig.server1 != newNtpConfig.server1 || ntpConfig.server2 != newNtpConfig.server2;
+        const bool tzChanged = ntpConfig.timezone != newNtpConfig.timezone;
+        const bool enabledChanged = ntpConfig.enabled != newNtpConfig.enabled;
         ntpConfig = newNtpConfig;
-        gpsConfig = newGpsConfig;
-        primarySource = newPrimary;
-        secondarySource = newSecondary;
 
         if (tzChanged)
-        {
             configureTimezone();
-        }
-
-        if ((serverChanged && ntpConfig.enabled) || priorityChanged)
+        if (!ntpConfig.enabled && esp_sntp_enabled())
+            esp_sntp_stop();
+        if ((serverChanged || enabledChanged) && ntpConfig.enabled)
         {
             Logger::info(TAG, "Time config changed, re-synchronizing");
-            if (ntpConfig.enabled)
-            {
-                esp_sntp_stop();
-            }
-            // Trigger immediate re-sync with new config
             syncTime();
         }
-    }
-
-    void TimeManager::fillGpsStatus(TimeStatus &status) const
-    {
-        if (!gpsSensor)
-        {
-            status.gpsHasFix = false;
-            status.gpsTimeSinceUpdate = 0xFFFFFFFF;
-            status.gpsSatellites = 0;
-            status.gpsTimeUTC = "GPS disabled";
-            return;
-        }
-        GPSReading reading = gpsSensor->getReading();
-        status.gpsHasFix = reading.hasFix;
-        status.gpsTimeSinceUpdate = gpsSensor->getTimeSinceLastUpdate();
-        status.gpsSatellites = reading.satellites;
-        if (!gpsSensor->hasValidTime() || !gpsSensor->hasValidDate())
-        {
-            status.gpsTimeUTC = "No GPS time";
-            return;
-        }
-        struct tm gpsTime;
-        if (!gpsSensor->getDateTime(&gpsTime))
-        {
-            status.gpsTimeUTC = "Invalid";
-            return;
-        }
-        char buffer[32];
-        strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S UTC", &gpsTime);
-        status.gpsTimeUTC = std::string(buffer);
     }
 
     // Time until the next NTP sync is due (0 if not synced or overdue).
@@ -257,8 +124,8 @@ namespace SQM
     {
         if (syncStatus != NTPSyncStatus::SYNCED)
             return 0;
-        uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : 300000;
-        uint32_t timeSinceSync = millis() - lastSuccessfulSync;
+        const uint32_t syncInterval = ntpConfig.enabled ? ntpConfig.syncIntervalMs : RETRY_WITHOUT_NTP_MS;
+        const uint32_t timeSinceSync = millis() - lastSuccessfulSync;
         return timeSinceSync < syncInterval ? syncInterval - timeSinceSync : 0; // 0: overdue for sync
     }
 
@@ -266,18 +133,12 @@ namespace SQM
     {
         TimeStatus status;
         status.ntpEnabled = ntpConfig.enabled;
-        status.gpsEnabled = gpsConfig.enabled;
         status.syncStatus = syncStatus;
-        status.activeSource = activeSource;
         status.lastSyncMs = lastSuccessfulSync;
         status.server = ntpConfig.server1;
         status.timezone = ntpConfig.timezone;
-
-        fillGpsStatus(status);
-
         status.nextSyncMs = nextSyncInMs();
         status.driftSeconds = 0;
-
         return status;
     }
 
@@ -285,13 +146,10 @@ namespace SQM
     {
         time_t now;
         time(&now);
-
         struct tm timeinfo;
         localtime_r(&now, &timeinfo);
-
         char buffer[32];
         strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S%z", &timeinfo);
-
         return std::string(buffer);
     }
 

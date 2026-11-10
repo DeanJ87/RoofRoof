@@ -2,31 +2,23 @@
 #include "ConnectionBudget.h"
 #include "Logger.h"
 
-// Live updates: the dashboard's /ws/sensors and the System page's /ws/status,
-// kept within the connection budget (spec 011 FR-008).
+// Live updates: /ws/status, kept within the connection budget (SQMeter spec
+// 011 FR-008). Spec 008 adds the roof's live stream.
 
 namespace SQM
 {
     void WebServer::setupWebSocket()
     {
-        // Sensor WebSocket for Dashboard (/ws/sensors)
-        wsSensors.onEvent(
-            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-            { onSensorWebSocketEvent(client, type); });
-
-        // Status WebSocket for System page (/ws/status)
         wsStatus.onEvent(
-            [this](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+            [this](AsyncWebSocket *, AsyncWebSocketClient *client, AwsEventType type, void *, uint8_t *, size_t)
             { onStatusWebSocketEvent(client, type); });
-
-        server.addHandler(&wsSensors);
         server.addHandler(&wsStatus);
     }
 
     void WebServer::prepareWebSocketClient(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client)
     {
         // Ping quiet clients so a peer that vanished is noticed (AsyncTCP drops
-        // one that doesn't acknowledge); spec 011 FR-008.
+        // one that doesn't acknowledge); SQMeter spec 011 FR-008.
         client->keepAlivePeriod(ConnectionBudget::WEBSOCKET_PING_SECONDS);
         const std::lock_guard<std::mutex> lock(wsClientsLock);
         clients[client->id()] = 0;
@@ -82,50 +74,17 @@ namespace SQM
         }
     }
 
-    void WebServer::broadcastSensorData()
+    void WebServer::broadcastStatusData()
     {
         // A client that stops reading is closed after a while
         // (closeStalledClients); a full queue just skips it meanwhile, so one
         // stuck tab never holds up the rest.
-        closeStalledClients(wsSensors, wsSensorClients, millis());
-        if (wsSensors.count() == 0)
-            return;
-
-        // Send only sensor data to Dashboard clients
-        std::string json = createSensorDataJson();
-        wsSensors.textAll(json.c_str());
-    }
-
-    void WebServer::broadcastStatusData()
-    {
         closeStalledClients(wsStatus, wsStatusClients, millis());
         if (wsStatus.count() == 0)
             return;
 
-        // Send only status data to System page clients
         std::string json = createStatusJson();
         wsStatus.textAll(json.c_str());
-    }
-
-    void WebServer::onSensorWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)
-    {
-        switch (type)
-        {
-        case WS_EVT_CONNECT:
-            prepareWebSocketClient(wsSensorClients, client);
-            Logger::info(TAG, "Sensor WebSocket client connected: %u", client->id());
-            // Send initial sensor data
-            client->text(createSensorDataJson().c_str());
-            break;
-
-        case WS_EVT_DISCONNECT:
-            noteWebSocketClosed(wsSensorClients, client);
-            Logger::info(TAG, "Sensor WebSocket client disconnected: %u", client->id());
-            break;
-
-        default:
-            break;
-        }
     }
 
     void WebServer::onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)

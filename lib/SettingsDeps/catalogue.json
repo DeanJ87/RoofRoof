@@ -13,7 +13,6 @@
     "mqtt.username",
     "mqtt.password",
     "mqtt.publishIntervalMs",
-    "mqtt.publish.diagnostics",
     "mqtt.homeAssistant.discoveryPrefix",
     "ota.password",
     "auth.enabled",

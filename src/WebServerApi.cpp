@@ -1,36 +1,15 @@
+#include "DualStackClient.h"
+#include "Logger.h"
+#include "NetAddress.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
-#include "Logger.h"
-#include "version.h"
-#include <WiFi.h>
-#include <Update.h>
 #include <ArduinoJson.h>
-#include <LittleFS.h>
 #include <AsyncJson.h>
 #include <PubSubClient.h>
-#include <esp_partition.h>
-#include <esp_ota_ops.h>
-#include <esp_system.h>
-#include <esp_timer.h>
+#include <WiFi.h>
 #include <cstring>
-#include <nvs.h>
-#include <nvs_flash.h>
-#include <ctime>
-#include "calculations/CloudDetection.h"
-#include "sensors/RG15Sensor.h"
-#include "AlpacaDiscovery.h"
-#include "Ipv6Network.h"
-#include "DualStackClient.h"
-#include "NetAddress.h"
-#include "WiFiManager.h"
-#include "HeapTrace.h"
-#include "SunPosition.h"
-#include "SafetyHistory.h"
-#include <Preferences.h>
 
-extern uint32_t bootCount;
-
-// The REST API: settings, status, restart, WiFi, sensor actions and the MQTT test.
+// The REST API: settings, status, restart, WiFi and the MQTT test.
 
 namespace SQM
 {
@@ -39,38 +18,15 @@ namespace SQM
     void WebServer::setupAPIRoutes()
     {
         setupBackupRoutes();
-        setupReadingRoutes();
+        server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
+        // What's actually in effect (SQMeter spec 020).
+        server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });
         setupSettingsRoutes();
         setupNetworkRoutes();
-        setupDisplayRoutes();
-    }
-
-    void WebServer::setupReadingRoutes()
-    {
-        server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
-        server.on("/api/sensors", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetSensors(request); });
-
-        // Plain-text "1" (safe) or "0" (unsafe) - the SafetyMonitor verdict
-        // for scripts and loggers.
-        server.on(
-            "/api/safe",
-            HTTP_GET,
-            [this](AsyncWebServerRequest *request) { request->send(200, "text/plain", getSafetyStatus().isSafe ? "1" : "0"); });
-
-        // Before /api/safety, which would otherwise match this path too.
-        server.on("/api/safety/history", HTTP_GET, [](AsyncWebServerRequest *request) { handleSafetyHistory(request); });
-        // What's actually in effect (specs/020-settings-dependencies).
-        server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });
-        server.on("/api/safety", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetSafety(request); });
     }
 
     void WebServer::setupSettingsRoutes()
     {
-        server.on(
-            "/api/sensors/tsl2591/calibrate-dark",
-            HTTP_POST,
-            [this](AsyncWebServerRequest *request) { handleTSL2591DarkCalibration(request); });
-
         server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetConfig(request); });
         AsyncCallbackJsonWebHandler *configHandler = new AsyncCallbackJsonWebHandler(
             "/api/config",
@@ -86,64 +42,18 @@ namespace SQM
     {
         server.on("/api/wifi/scan", HTTP_GET, [this](AsyncWebServerRequest *request) { handleWiFiScan(request); });
 
-        server.on("/api/sensors/rg15/test", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15Test(request); });
-        server.on("/api/sensors/rg15/reset-total", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15ResetTotal(request); });
-        server.on("/api/sensors/rg15/reboot", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRG15Reboot(request); });
-
         server.addHandler(new AsyncCallbackJsonWebHandler(
             "/api/mqtt/test", [this](AsyncWebServerRequest *request, JsonVariant &json) { handleMQTTTest(request, json); }));
         server.addHandler(new AsyncCallbackJsonWebHandler(
             "/api/wifi/connect", [this](AsyncWebServerRequest *request, JsonVariant &json) { handleWiFiConnect(request, json); }));
     }
 
-    void WebServer::handleSafetyHistory(AsyncWebServerRequest *request)
-    {
-        static SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
-        const size_t n = SafetyHistory::entries(entries, SafetyHistory::CAPACITY);
-        static const char *const KIND[] = {"boot", "change", "alert", "armed"};
-        DynamicJsonDocument doc(256 + n * 160);
-        doc["boot"] = SafetyHistory::currentBoot();
-        doc["uptime"] = millis() / 1000;
-        JsonArray list = doc.createNestedArray("entries");
-        for (size_t i = n; i-- > 0;) // newest first
-        {
-            const SafetyHistory::Entry &e = entries[i];
-            JsonObject item = list.createNestedObject();
-            item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
-            item["boot"] = e.boot;
-            item["uptime"] = e.uptimeS;
-            if (e.epoch != 0)
-                item["timestamp"] = e.epoch;
-            if (e.kind == SafetyHistory::Kind::Boot)
-                item["resetReason"] = e.resetReason;
-            else
-                item["safe"] = static_cast<bool>(e.safe);
-            if (e.kind == SafetyHistory::Kind::Change)
-            {
-                item["held"] = static_cast<bool>(e.held);
-                item["reasonFlags"] = e.flags;
-            }
-        }
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
-    }
-
     void WebServer::handleSettingsEffective(AsyncWebServerRequest *request)
     {
-        const Deps::Facts facts = settingsFacts(getSensorSnapshot());
+        const Deps::Facts facts = settingsFacts();
         const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), facts);
         DynamicJsonDocument doc(Deps::reportCapacity(entries));
         Deps::writeReport(doc.to<JsonObject>(), entries, facts);
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
-    }
-
-    void WebServer::handleGetSafety(AsyncWebServerRequest *request)
-    {
-        DynamicJsonDocument doc(1536);
-        appendSafetyStatus(doc.to<JsonObject>());
         std::string json;
         serializeJson(doc, json);
         request->send(200, "application/json", json.c_str());
@@ -213,12 +123,6 @@ namespace SQM
         request->send(200, "application/json", json.c_str());
     }
 
-    void WebServer::handleGetSensors(AsyncWebServerRequest *request)
-    {
-        std::string json = createSensorDataJson();
-        request->send(200, "application/json", json.c_str());
-    }
-
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
     {
         const Config &cfg = getConfigCallback();
@@ -280,165 +184,6 @@ namespace SQM
         serializeJson(doc, json);
         request->send(200, "application/json", json.c_str());
         WiFi.scanDelete();
-    }
-
-    void WebServer::handleRG15Test(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-
-        if (!getConfigCallback().rain.enabled)
-        {
-            request->send(
-                409, "application/json", createErrorJson("The rain sensor is switched off (Settings → Sensors → Rain sensor)").c_str());
-            return;
-        }
-
-        const uint32_t startedAt = millis();
-        const bool ok = rg15Sensor.testCommunication();
-        const RG15Reading reading = rg15Sensor.copyReading();
-        const RG15Diagnostics diagnostics = rg15Sensor.getDiagnostics();
-        const uint32_t now = millis();
-        const bool success = ok && reading.status == SensorStatus::Ok;
-
-        // Success: 200 {"success": true, ...}; failure: 502 {"error": ..., ...}.
-        // Both carry what was sent and received, for bring-up.
-        StaticJsonDocument<1024> response;
-        if (success)
-            response["success"] = true;
-        else
-            response["error"] = diagnostics.lastError ? diagnostics.lastError->c_str() : "No valid response from the RG-15";
-        response["command"] = diagnostics.lastCommand ? diagnostics.lastCommand->c_str() : "R";
-        response["bytesWritten"] = diagnostics.lastBytesWritten;
-        response["elapsedMs"] = now - startedAt;
-        if (diagnostics.lastRawResponse)
-            response["rawResponse"] = diagnostics.lastRawResponse->c_str();
-        if (diagnostics.lastAck)
-            response["ack"] = diagnostics.lastAck->c_str();
-        response["online"] = reading.online;
-        if (diagnostics.lastSuccessfulReadMs != 0)
-            response["lastSuccessfulReadAgeMs"] = now - diagnostics.lastSuccessfulReadMs;
-        if (!success)
-            response["hint"] = "Check RG-15 Serial OUT -> ESP32 RX, Serial IN -> ESP32 TX, common ground, baud rate, and voltage level.";
-
-        String responseStr;
-        serializeJson(response, responseStr);
-        request->send(success ? 200 : 502, "application/json", responseStr.c_str());
-    }
-
-    namespace
-    {
-        // A dark offset is only good from a covered sensor with a full window:
-        // the 409 body that says why not, or "" when it is.
-        std::string darkCalibrationRefusal(const TSL2591Diagnostics &diagnostics)
-        {
-            DynamicJsonDocument error(256);
-            // A covered sensor reads near zero at maximum gain. Out of night mode
-            // it's seeing light, and the offset would wipe out real readings.
-            if (!diagnostics.nightMode)
-            {
-                error["error"] = "The sensor is seeing light. Cover it completely and wait for the averaging window to fill.";
-            }
-            else
-            {
-                // The offset is the window's average: wait until the window holds
-                // only covered readings, not a mix from before it was covered.
-                const uint16_t needed = Core::windowSamples(diagnostics);
-                if (diagnostics.sampleCount >= needed)
-                    return "";
-                error["error"] = "The averaging window isn't full yet (" + std::to_string(diagnostics.sampleCount) + " of " +
-                                 std::to_string(needed) + " samples). Keep the sensor covered and try again.";
-                error["sampleCount"] = diagnostics.sampleCount;
-                error["windowSamples"] = needed;
-            }
-            std::string body;
-            serializeJson(error, body);
-            return body;
-        }
-    } // namespace
-
-    void WebServer::handleTSL2591DarkCalibration(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-
-        // ?sensor=sqm|sqml (spec 030); none = the SQM, as before.
-        SkyRole role = SkyRole::Sqm;
-        if (request->hasParam("sensor") && !parseSkyRole(request->getParam("sensor")->value().c_str(), role))
-        {
-            request->send(400, "application/json", createErrorJson("Unknown sky sensor").c_str());
-            return;
-        }
-        TSL2591Sensor &sensor = skySensor(role);
-        const TSL2591Diagnostics diagnostics = sensor.getDiagnostics();
-        if (!getConfigCallback().skyEnabled(role) || !sensor.isInitialized() || diagnostics.sampleCount == 0)
-        {
-            request->send(409, "application/json", createErrorJson("No light-sensor readings to calibrate from").c_str());
-            return;
-        }
-        const std::string refusal = darkCalibrationRefusal(diagnostics);
-        if (!refusal.empty())
-        {
-            request->send(409, "application/json", refusal.c_str());
-            return;
-        }
-
-        Config updated = getConfigCallback();
-        const time_t epochSeconds = time(nullptr);
-        Core::applyDarkCalibration(
-            updated,
-            role,
-            diagnostics,
-            epochSeconds >= Core::CLOCK_VALID_EPOCH ? static_cast<int64_t>(epochSeconds) : static_cast<int64_t>(millis()));
-
-        if (!saveConfigCallback(updated))
-        {
-            request->send(500, "application/json", createErrorJson("Failed to save dark calibration").c_str());
-            return;
-        }
-
-        sensor.configureSkyMeasurement(updated.averaging(role), updated.calibration(role));
-
-        const SkyCalibrationConfig &cal = updated.calibration(role);
-        StaticJsonDocument<384> response;
-        response["success"] = true;
-        response["sensor"] = skyRoleName(role);
-        response["darkVisibleOffset"] = cal.darkVisibleOffset;
-        response["sampleCount"] = cal.darkSampleCount;
-        response["darkCalibratedAt"] = cal.darkCalibratedAt;
-
-        String responseStr;
-        serializeJson(response, responseStr);
-        request->send(200, "application/json", responseStr.c_str());
-    }
-
-    void WebServer::handleRG15ResetTotal(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-
-        const bool ok = rg15Sensor.resetTotalAccumulation();
-        if (!ok)
-        {
-            request->send(502, "application/json", createErrorJson("RG-15 total accumulation reset failed").c_str());
-            return;
-        }
-        request->send(
-            200, "application/json", "{\"success\":true,\"command\":\"O\",\"message\":\"RG-15 total accumulation reset command sent\"}");
-    }
-
-    void WebServer::handleRG15Reboot(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-
-        const bool ok = rg15Sensor.rebootSensor();
-        if (!ok)
-        {
-            request->send(502, "application/json", createErrorJson("RG-15 reboot command failed").c_str());
-            return;
-        }
-        request->send(200, "application/json", "{\"success\":true,\"command\":\"K\",\"message\":\"RG-15 reboot command sent\"}");
     }
 
     void WebServer::pollWiFiConnect()
@@ -531,7 +276,7 @@ namespace SQM
         const char *broker = jsonObj["broker"];
         uint16_t port = jsonObj["port"];
         const char *username = jsonObj["username"] | "";
-        const char *clientId = jsonObj["clientId"] | "SQM-Test";
+        const char *clientId = jsonObj["clientId"] | "RoofRoof-Test";
         // The form shows a saved password as the mask: test with the saved one, but only for the
         // saved broker, port and user.
         const auto passwordToTry =
@@ -544,7 +289,7 @@ namespace SQM
         }
         const char *password = passwordToTry->c_str();
 
-        // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (spec 015).
+        // "[fd00::10]:1883" and bare IPv6 work as in the saved settings (SQMeter spec 015).
         Net::Host host;
         const Net::HostError hostError = Net::parseHost(broker, host);
         if (hostError != Net::HostError::None)

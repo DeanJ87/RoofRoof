@@ -1,80 +1,15 @@
 #include "WebServer.h"
-#include "WebServerShared.h"
 #include "Logger.h"
-#include "version.h"
-#include <WiFi.h>
-#include <Update.h>
+#include "WebServerShared.h"
 #include <ArduinoJson.h>
-#include <LittleFS.h>
-#include <AsyncJson.h>
-#include <PubSubClient.h>
-#include <esp_partition.h>
-#include <esp_ota_ops.h>
-#include <esp_system.h>
-#include <esp_timer.h>
-#include <cstring>
-#include <nvs.h>
-#include <nvs_flash.h>
-#include <ctime>
-#include "calculations/CloudDetection.h"
-#include "sensors/RG15Sensor.h"
-#include "AlpacaDiscovery.h"
-#include "Ipv6Network.h"
-#include "DualStackClient.h"
-#include "NetAddress.h"
-#include "WiFiManager.h"
-#include "HeapTrace.h"
-#include "SunPosition.h"
-#include "SafetyHistory.h"
 #include <Preferences.h>
+#include <ctime>
 
-extern uint32_t bootCount;
-
-// The safety verdict, alerts (engine, schedule, dispatch) and the /api/alerts and /api/safety routes.
+// Alerts (engine, schedule, dispatch) and the /api/alerts routes.
 
 namespace SQM
 {
     using namespace WebShared;
-
-    Alpaca::SafetyInputs WebServer::buildAlpacaSafetyInputs() const
-    {
-        return Core::safetyInputs(getSensorSnapshot(), getConfigCallback(), millis());
-    }
-
-    Alpaca::SafetyThresholds WebServer::buildAlpacaSafetyThresholds(const Config &cfg)
-    {
-        return Core::safetyThresholds(cfg);
-    }
-
-    Alpaca::SafetyResult WebServer::evaluateAlpacaSafety() const
-    {
-        return Alpaca::evaluateSafety(buildAlpacaSafetyInputs(), buildAlpacaSafetyThresholds(getConfigCallback()));
-    }
-
-    void WebServer::updateSafetyStatus()
-    {
-        const Alpaca::SafetyResult result = evaluateAlpacaSafety();
-        const uint32_t now = millis();
-
-        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
-            const bool first = safetyStatus.evaluatedAtMs == 0;
-            if (Core::updateSafety(safetyStatus, safeDelayFilter, result, getConfigCallback(), now))
-            {
-                if (!first)
-                    Logger::info(TAG, "SafetyMonitor now %s", safetyStatus.isSafe ? "SAFE" : "UNSAFE");
-                SafetyHistory::recordChange(safetyStatus.isSafe, !safetyStatus.isSafe && result.isSafe, result.reasonFlags);
-            }
-            xSemaphoreGive(safetyMutex);
-        }
-
-        processAlerts(getSafetyStatus());
-    }
-
-    Core::NightState WebServer::computeNight(const SensorSnapshot &snapshot, const Config &cfg)
-    {
-        return Core::night(snapshot, cfg, static_cast<int64_t>(time(nullptr)));
-    }
 
     void WebServer::localClock(std::string &timeText, std::string &dateText)
     {
@@ -92,39 +27,22 @@ namespace SQM
         dateText = date;
     }
 
-    void WebServer::processAlerts(const SafetyStatus &status)
+    void WebServer::processAlerts()
     {
         const Config &cfg = getConfigCallback();
-        if (mqttClient != nullptr && mqttClient->isConnected() && cfg.mqtt.publish.safety && status.evaluatedAtMs != 0)
-            publishMqttSafety(status);
-
-        const SensorSnapshot snapshot = getSensorSnapshot();
-        const Alpaca::ObservingConditionsSnapshot obs = buildAlpacaObservingConditionsSnapshot();
-        seedAlertEngine();
-        const Core::NightState night = computeNight(snapshot, cfg);
-        const Core::AlertSources sources{
-            cfg, obs, night, status, Core::skyReadings(snapshot, cfg, millis()), Core::batteryReadings(snapshot, cfg, millis())};
-        Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, millis());
-        if (powerManager != nullptr)
-        {
-            // The power policy's one-shots (spec 032): going to sleep, power restored.
-            in.battery.shutdownStarted = powerManager->takeShutdownStarted();
-            in.battery.powerRestored = powerManager->takePowerRestored();
-            in.battery.recovered = powerManager->takeRecovered();
-        }
+        Alerts::AlertInputs in;
+        in.nowSeconds = millis() / 1000;
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         watchClients(in, cfg, clock.time);
-        if (ble.isActive())
-            updateBle(in, sources);
 
         // Always run the engine so its state tracks reality while alerts are
         // off. Each alert gets its configured level, sound and wording;
         // everything raised in the same pass goes out as one notification.
         const time_t wallClock = time(nullptr);
-        const uint32_t epoch = wallClock >= 1704067200 ? static_cast<uint32_t>(wallClock) : 0;
-        const Core::AlertStep step = Core::runAlerts(alertEngine, in, Core::alertRules(cfg), sources, clock);
-        sendAlerts(step, sources, snapshot, epoch);
+        const uint32_t epoch = wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0;
+        const Core::AlertStep step = Core::runAlerts(alertEngine, in, Core::alertRules(cfg), Core::AlertSources{cfg}, clock);
+        sendAlerts(step, cfg);
 
         // Only after this pass's alerts went out: a clean disconnect's
         // "imaging app disconnected" is sent before it pauses alerts.
@@ -134,97 +52,27 @@ namespace SQM
         portENTER_CRITICAL(&scheduleLock);
         clientWatchShared = clientWatch;
         portEXIT_CRITICAL(&scheduleLock);
-
-        forwardBleAcks(cfg, snapshot);
-    }
-
-    void WebServer::seedAlertEngine()
-    {
-        if (alertEngineSeeded)
-            return;
-        alertEngineSeeded = true;
-        bool toldSafe = false;
-        if (SafetyHistory::lastAlert(toldSafe))
-            alertEngine.seedSafety(!toldSafe);
     }
 
     // The imaging app: is each Alpaca device still being checked?
     void WebServer::watchClients(Alerts::AlertInputs &in, const Config &cfg, const std::string &localTime)
     {
-        const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {
-            alpacaRouter.activity(Alpaca::Device::SafetyMonitor), alpacaRouter.activity(Alpaca::Device::ObservingConditions)};
-        uint32_t silenceMs[Alpaca::DEVICE_COUNT];
+        Alpaca::DeviceActivity activity[Alpaca::MAX_DEVICES];
+        for (size_t i = 0; i < Alpaca::MAX_DEVICES; ++i)
+            activity[i] = alpacaRouter.activity(i);
+        uint32_t silenceMs[Alpaca::MAX_DEVICES];
         Core::clientSilenceMs(cfg, silenceMs);
         clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, millis());
-        Core::addClientInputs(in, clientWatch, cfg, millis(), localTime);
+        Core::addClientInputs(in, clientWatch, alpacaBackend.devices(), cfg, millis(), localTime);
     }
 
-    void WebServer::updateBle(const Alerts::AlertInputs &in, const Core::AlertSources &sources)
+    // Push channels need the master switch. Paused: state is still tracked,
+    // nothing goes out.
+    void WebServer::sendAlerts(const Core::AlertStep &step, const Config &cfg)
     {
-        const SafetyStatus &status = sources.status;
-        const Alpaca::ObservingConditionsSnapshot &obs = sources.obs;
-        Ble::State bleState;
-        bleState.safetyKnown = in.safetyKnown;
-        bleState.isSafe = status.isSafe;
-        bleState.rawSafe = status.rawSafe;
-        bleState.reasonFlags = status.reasonFlags;
-        bleState.rainEnabled = sources.cfg.rain.enabled;
-        bleState.rainHealthy = obs.rain.valid;
-        bleState.raining = in.raining;
-        bleState.rainRateMmPerHour = obs.rainRateMmPerHour;
-        bleState.sqmValid = obs.skyLight.valid;
-        bleState.sqm = obs.skyQualityMagArcsec2;
-
-        StaticJsonDocument<Core::BLE_SUMMARY_CAPACITY> summary; // + sqmSource (spec 030), battery (spec 032)
-        Core::writeBleSummary(summary.to<JsonObject>(), obs, sources.battery);
-        std::string summaryJson;
-        serializeJson(summary, summaryJson);
-        ble.update(bleState, summaryJson);
-    }
-
-    // Push channels need the master switch, paired phones only Bluetooth.
-    // Paused: state is still tracked, nothing goes out.
-    void WebServer::sendAlerts(
-        const Core::AlertStep &step, const Core::AlertSources &sources, const SensorSnapshot &snapshot, uint32_t epoch)
-    {
-        if (!alertSchedule.state().sending)
+        if (!alertSchedule.state().sending || step.outgoing.empty() || !cfg.alerts.enabled)
             return;
-        if (step.outgoing.empty())
-        {
-            // The battery rule rings paired phones even with its alert off (spec 032).
-            if (step.ringPhones)
-                ble.raiseAlarm(step.alarmFlags, epoch);
-            return;
-        }
-        const Config &cfg = sources.cfg;
-        const Alerts::Alert notification = Alerts::stackAlerts(step.outgoing);
-        if (cfg.alerts.enabled)
-        {
-            alertDispatcher->dispatch(notification, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(snapshot));
-            ble.publishAlert(notification);
-            for (const Alerts::Alert &sent : step.outgoing)
-                if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
-                    SafetyHistory::recordAlert(sent.type == Alerts::AlertType::Safe);
-        }
-        if (notification.level == Alerts::AlertLevel::Wake || step.ringPhones)
-            ble.raiseAlarm(step.alarmFlags, epoch);
-        else
-            ble.raiseInfo(sources.status.reasonFlags, epoch);
-    }
-
-    void WebServer::forwardBleAcks(const Config &cfg, const SensorSnapshot &snapshot)
-    {
-        uint32_t acknowledged = 0;
-        bool fromPhone = false;
-        if (!ble.processAcks(acknowledged, fromPhone) || !cfg.alerts.enabled)
-            return;
-        Alerts::Alert ack;
-        ack.type = Alerts::AlertType::Acknowledged;
-        ack.level = Alerts::AlertLevel::Quiet;
-        ack.title = "Alarm acknowledged";
-        ack.message = std::string("Phone alarm #") + std::to_string(acknowledged) + " was acknowledged " +
-                      (fromPhone ? "on a phone." : "in the web UI.");
-        alertDispatcher->dispatch(ack, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(snapshot));
+        alertDispatcher->dispatch(Alerts::stackAlerts(step.outgoing), cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
     void WebServer::applyPendingArm()
@@ -284,26 +132,19 @@ namespace SQM
         if (state.sending == wasSending)
             return;
         Logger::info(TAG, "Alerts %s (%s)", state.sending ? "resumed" : "paused", Alerts::scheduleReasonName(state.reason));
-        SafetyHistory::recordArmed(state.sending);
         publishArmedState();
 
         const Config &cfg = getConfigCallback();
         if (state.sending && cfg.alerts.enabled)
         {
-            // One quiet line so you know where things stand as you start.
-            const SafetyStatus safety = getSafetyStatus();
+            // One quiet line so you know alerts are going out again. Spec 004
+            // adds where things stand (the roof and the weather).
             Alerts::Alert on;
             on.type = Alerts::AlertType::AlertsOn;
             on.level = Alerts::AlertLevel::Quiet;
             on.title = "Alerts resumed";
-            if (safety.evaluatedAtMs == 0)
-                on.message = "Safety not evaluated yet.";
-            else if (safety.isSafe)
-                on.message = "Observatory safe.";
-            else
-                on.message =
-                    "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
-            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks(getSensorSnapshot()));
+            on.message = "Alerts from this device are going out again.";
+            alertDispatcher->dispatch(on, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
         }
     }
 
@@ -313,29 +154,6 @@ namespace SQM
             return;
         if (mqttClient->publishSubtopic("alerts/armed", alertSchedule.state().sending ? "1" : "0", true))
             mqttArmedConnection = mqttClient->connectionCount();
-    }
-
-    void WebServer::publishMqttSafety(const SafetyStatus &status)
-    {
-        const uint32_t now = millis();
-        const bool changed =
-            !mqttSafetyPublished || status.isSafe != mqttLastPublishedSafe || mqttClient->connectionCount() != mqttSafetyConnection;
-        if (!changed && now - mqttSafetyPublishedAt < MQTT_SAFETY_REPUBLISH_MS)
-            return;
-
-        // Same object as GET /api/safety; <base>/safe is the bare 1/0 for
-        // loggers, simple automations and the Home Assistant binary sensor.
-        DynamicJsonDocument doc(1024);
-        appendSafetyStatus(doc.to<JsonObject>());
-        std::string payload;
-        serializeJson(doc, payload);
-        if (mqttClient->publishSubtopic("safety", payload, true) && mqttClient->publishSubtopic("safe", status.isSafe ? "1" : "0", true))
-        {
-            mqttSafetyPublished = true;
-            mqttLastPublishedSafe = status.isSafe;
-            mqttSafetyPublishedAt = now;
-            mqttSafetyConnection = mqttClient->connectionCount();
-        }
     }
 
     namespace
@@ -371,7 +189,7 @@ namespace SQM
             return request->hasParam(name) ? request->getParam(name)->value() : fallback;
         }
 
-        // ?event=rain_started&level=4&sound=siren&title=..&message=..: a
+        // ?event=client_lost&level=4&sound=siren&title=..&message=..: a
         // sample of that event at the given level and wording, so unsaved
         // choices can be tried out.
         struct TestSample
@@ -409,8 +227,6 @@ namespace SQM
     {
         server.on("/api/alerts/test", HTTP_POST, [this](AsyncWebServerRequest *request) { handleAlertTest(request); });
         server.on("/api/alerts/clear", HTTP_POST, [this](AsyncWebServerRequest *request) { handleAlertsClear(request); });
-        server.on("/api/ble/ack", HTTP_POST, [this](AsyncWebServerRequest *request) { handleBleAck(request); });
-        server.on("/api/ble/forget-bonds", HTTP_POST, [this](AsyncWebServerRequest *request) { handleBleForgetBonds(request); });
 
         // Resume ("arm") and pause ("disarm") for automations (Home Assistant
         // rest_command, N.I.N.A. sequence scripts) and the web UI, which adds
@@ -439,10 +255,7 @@ namespace SQM
             return;
         }
 
-        uint8_t sendMask = mask & enabledChannelMask(getConfigCallback().alerts);
-        const bool ringsPhone = test.sample != nullptr && test.level == 4 && ble.alarmStatus().serviceActive;
-        if (sendMask == 0 && ringsPhone)
-            sendMask = BLE_ONLY_TEST;
+        const uint8_t sendMask = mask & enabledChannelMask(getConfigCallback().alerts);
         if (sendMask == 0)
         {
             request->send(
@@ -467,32 +280,6 @@ namespace SQM
             return;
         alertDispatcher->clearRecent();
         request->send(200, "application/json", "{\"success\":true}");
-    }
-
-    void WebServer::handleBleAck(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-        if (!ble.alarmStatus().alarmActive)
-        {
-            request->send(409, "application/json", createErrorJson("No phone alarm is active").c_str());
-            return;
-        }
-        ble.requestLocalAck();
-        request->send(202, "application/json", "{\"success\":true}");
-    }
-
-    void WebServer::handleBleForgetBonds(AsyncWebServerRequest *request)
-    {
-        if (!requireAuth(request))
-            return;
-        if (!ble.isActive())
-        {
-            request->send(409, "application/json", createErrorJson("Bluetooth is off").c_str());
-            return;
-        }
-        ble.requestForgetBonds();
-        request->send(202, "application/json", "{\"success\":true}");
     }
 
     void WebServer::handleArm(AsyncWebServerRequest *request, bool armed)
@@ -546,17 +333,6 @@ namespace SQM
         std::string json;
         serializeJson(doc, json);
         request->send(200, "application/json", json.c_str());
-    }
-
-    SafetyStatus WebServer::getSafetyStatus() const
-    {
-        SafetyStatus copy;
-        if (safetyMutex && xSemaphoreTake(safetyMutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
-            copy = safetyStatus;
-            xSemaphoreGive(safetyMutex);
-        }
-        return copy;
     }
 
 } // namespace SQM

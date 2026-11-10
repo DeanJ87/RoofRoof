@@ -28,13 +28,9 @@ namespace SQM
         std::string username;
         std::string password;
         std::string topic; // base topic: <topic>/availability, /alerts, ...
+        // How often periodic topics are republished. Spec 008 adds the roof's
+        // topics and the groups that choose them.
         uint32_t publishIntervalMs;
-        // What the device publishes besides availability and alerts. Spec 008
-        // adds the roof's groups.
-        struct Publish
-        {
-            bool diagnostics = false; // <topic>/diagnostics
-        } publish;
         bool homeAssistant = false; // MQTT discovery
         std::string discoveryPrefix = "homeassistant";
     };

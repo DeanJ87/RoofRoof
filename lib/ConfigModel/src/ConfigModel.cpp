@@ -25,7 +25,6 @@ namespace SQM
             cfg.mqtt.username = "";
             cfg.mqtt.password = "";
             cfg.mqtt.topic = "roofroof";
-            cfg.mqtt.publish = MQTTConfig::Publish{};
             cfg.mqtt.homeAssistant = false;
             cfg.mqtt.discoveryPrefix = "homeassistant";
             cfg.mqtt.publishIntervalMs = 60000; // 1 minute
