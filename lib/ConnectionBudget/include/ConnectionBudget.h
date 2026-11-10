@@ -19,8 +19,8 @@ namespace SQM
         constexpr size_t WEBSOCKETS_PER_ENDPOINT = 3;
         constexpr size_t WEBSOCKET_ENDPOINTS = 2;
 
-        // Outbound: MQTT, plus one TLS connection at a time (alerts, update
-        // check, language download share one lock).
+        // Outbound: MQTT, plus one TLS connection at a time (alerts share one
+        // lock).
         constexpr size_t OUTBOUND = 2;
 
         // What's always left for HTTP: N.I.N.A., ConformU, the web UI's pages.

@@ -142,7 +142,8 @@ describe('Alert schedule status line', () => {
 });
 
 describe('describeSchedule', () => {
-  const at = (schedule: Partial<AlertSchedule>) => describeSchedule({ armed: false, mode: 'any', reason: 'none', since: null, sinceAgeMs: null, ...schedule });
+  const at = (schedule: Partial<AlertSchedule>) =>
+    describeSchedule({ armed: false, mode: 'any', reason: 'none', since: null, sinceAgeMs: null, ...schedule });
   it('states each reason in words', () => {
     expect(at({ armed: true })).toBe('Sending alerts.');
     expect(at({ armed: true, mode: 'whileConnected', reason: 'client-connected', sinceAgeMs: 60000 })).toBe(

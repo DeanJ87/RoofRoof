@@ -34,7 +34,7 @@ namespace
             watch.update(activity, silence, true, nowMs);
             Alerts::AlertInputs in;
             in.nowSeconds = nowMs / 1000;
-            Core::addClientInputs(in, watch, ONE_DOME, cfg, nowMs, "23:01");
+            Core::addClientInputs(in, {watch, ONE_DOME, nowMs}, cfg, "23:01");
             return in;
         }
     };

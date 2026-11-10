@@ -7,7 +7,7 @@ import Ajv from 'ajv';
 import { demoDevice } from '../device';
 import { statusDocument } from '../handlers';
 
-// The OpenAPI document's examples (SQMeter spec 028 FR-006) come from the
+// The OpenAPI document's examples come from the
 // demo's emulated device - the firmware's own code - so they're true answers.
 // This checks the committed examples still match the contract schemas;
 // OPENAPI_EXAMPLES=write refreshes them from the demo, then run

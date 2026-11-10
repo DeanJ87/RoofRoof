@@ -49,7 +49,8 @@ void test_pushover_form_body()
     TEST_ASSERT_EQUAL_STRING("https://api.pushover.net/1/messages.json", r.url.c_str());
     TEST_ASSERT_EQUAL_STRING("application/x-www-form-urlencoded", r.contentType.c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "token=tok1&user=user1&title=Obs%3A%20Imaging%20app%20stopped%20checking&message=No%20request%20to%20the%20Dome%20%26%20roof%20for%202%20min&priority=1&sound=siren",
+        "token=tok1&user=user1&title=Obs%3A%20Imaging%20app%20stopped%20checking&message=No%20request%20to%20the%20Dome%20%26%20roof%20for%"
+        "202%20min&priority=1&sound=siren",
         r.body.c_str());
 }
 

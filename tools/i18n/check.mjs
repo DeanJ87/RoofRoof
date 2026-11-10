@@ -24,7 +24,8 @@ const SHARED_KEEP = (() => {
   }
 })();
 
-// The supported languages: web/src/i18n/languages.ts is the source.
+// The supported languages: web/src/i18n/languages.ts is the source (English
+// only in RoofRoof for now, so only en.json and its context are checked).
 export const languageCodes = () =>
   [...fs.readFileSync(path.join(I18N, 'languages.ts'), 'utf8').matchAll(/code: '([^']+)'/g)].map((m) => m[1]).filter((c) => c !== 'en');
 
@@ -143,7 +144,7 @@ export function checkAll({ review = false } = {}) {
   return { problems, flags };
 }
 
-/** One candidate file, before it is written (tools/i18n/translate.py). */
+/** One candidate language file, before it is added to web/src/i18n/locales. */
 export function checkCandidate(code, file, { review = false } = {}) {
   const problems = [];
   const en = readJson(path.join(I18N, 'en.json'), problems);
@@ -166,7 +167,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   for (const p of problems) console.log(`${p.file}: ${p.message}`);
   for (const f of flags) console.log(`review: ${f}`);
-  const ok = option('--file') ? `OK: ${option('--file')}` : `OK: ${languageCodes().length} languages complete`;
+  const ok = option('--file') ? `OK: ${option('--file')}` : `OK: English and ${languageCodes().length} other language(s) complete`;
   console.log(problems.length ? `${problems.length} problem(s)` : ok);
   process.exit(problems.length ? 1 : 0);
 }

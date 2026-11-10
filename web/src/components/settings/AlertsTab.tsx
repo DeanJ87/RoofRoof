@@ -24,11 +24,7 @@ const ScheduleStatus: FunctionalComponent<{ schedule: Schedule }> = ({ schedule 
   };
   return (
     <div class="btn-row" data-schedule-status>
-      {shownSchedule && (
-        <Note tone={shownSchedule.armed ? 'ok' : 'warn'}>
-          {describeSchedule(shownSchedule)}
-        </Note>
-      )}
+      {shownSchedule && <Note tone={shownSchedule.armed ? 'ok' : 'warn'}>{describeSchedule(shownSchedule)}</Note>}
       <ActionButton onClick={() => pauseOrResume(!(shownSchedule?.armed ?? true))} disabled={shownSchedule === null || scheduleBusy}>
         {shownSchedule?.armed === false ? t('settings.alerts.resumeAlerts') : t('settings.alerts.pauseAlerts')}
       </ActionButton>

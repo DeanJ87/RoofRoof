@@ -143,11 +143,7 @@ const MqttFields: FunctionalComponent<SettingsTabProps> = ({ config, update, err
           onInput={(v) => update(['mqtt', 'password'], v)}
         />
       </Field>
-      <Field
-        label={t('settings.network.baseTopic')}
-        error={error('mqttTopic')}
-        hint={t('settings.network.topicsGoUnderBase', { base })}
-      >
+      <Field label={t('settings.network.baseTopic')} error={error('mqttTopic')} hint={t('settings.network.topicsGoUnderBase', { base })}>
         <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="roofroof" onInput={(v) => update(['mqtt', 'topic'], v)} />
       </Field>
       <Field label={t('settings.network.publishEvery')} error={error('mqttInterval')}>
@@ -223,10 +219,7 @@ const mqttBadge = ({ config, status }: SettingsTabProps) => {
   const connected = status?.mqtt ? status.mqtt.connected : null;
   if (!config.mqtt.enabled || connected === null) return undefined;
   return (
-    <StatusBadge
-      tone={connected ? 'ok' : 'bad'}
-      label={connected ? t('settings.network.connected') : t('settings.network.notConnected')}
-    />
+    <StatusBadge tone={connected ? 'ok' : 'bad'} label={connected ? t('settings.network.connected') : t('settings.network.notConnected')} />
   );
 };
 

@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 5952aff1717bc94c
+fingerprint: 2fa650e3f883ba4f
 -->
 <figure class="diagram" markdown>
 
@@ -13,12 +13,12 @@ fingerprint: 5952aff1717bc94c
 flowchart TB
     accTitle: Code layers and dependency direction
     accDescr: The hardware-free logic in lib/ is the core. The firmware in src/ and include/ uses it on the ESP32, the native tests in test/ run it on a computer, and tools/demo-core compiles it to WebAssembly for the demo. The web UI in web/ talks to the firmware only over HTTP and WebSocket.
-    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, SkyLogic, AlpacaLogic, AlertLogic,<br/>RainLogic, WindLogic, Readings, ConfigModel, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
-    SRC["<b>src/, include/</b> - ESP32 firmware<br/>sensor drivers, web server, MQTT, WiFi,<br/>OTA, Bluetooth, alert delivery"]
+    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, DriverLogic, AlpacaLogic, AlertLogic,<br/>ConfigModel, ConfigBackup, HaDiscovery, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
+    SRC["<b>src/, include/</b> - ESP32 firmware<br/>the motor driver, web server, MQTT, WiFi,<br/>uploads, alert delivery"]
     TEST["<b>test/</b> - native unit tests<br/>pio test -e native"]
     DEMO["<b>tools/demo-core</b><br/>lib/ compiled to WebAssembly"]
     WEB["<b>web/</b> - Preact UI<br/>built into the LittleFS image"]
-    WEBDEMO["<b>web/src/demo</b><br/>simulator and request handlers"]
+    WEBDEMO["<b>web/src/demo</b><br/>request handlers and Demo panel"]
     SRC -->|uses| LIB
     TEST -->|tests| LIB
     DEMO -->|compiles| LIB
@@ -32,10 +32,10 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    - **`lib/`** holds the hardware-free logic: the device core, sky quality and cloud maths, Alpaca, alerts, rain and wind, the readings schema, settings and more. It never includes Arduino or ESP-IDF headers.
-    - **`src/` and `include/`** are the ESP32 firmware: sensor drivers, the web server, MQTT, WiFi, OTA, Bluetooth and alert delivery. They use `lib/`.
+    - **`lib/`** holds the hardware-free logic: the device core, the motor driver's output logic (`DriverLogic`), Alpaca, alerts, settings and their backup, Home Assistant discovery and more. It never includes Arduino or ESP-IDF headers.
+    - **`src/` and `include/`** are the ESP32 firmware: the motor driver (the only code that writes the H-bridge pins), the web server, MQTT, WiFi, uploads and alert delivery. They use `lib/`.
     - **`test/`** runs `lib/` natively on a computer (`pio test -e native`).
-    - **`tools/demo-core`** compiles `lib/` to WebAssembly; the demo's simulator and request handlers in **`web/src/demo`** run it in the browser.
+    - **`tools/demo-core`** compiles `lib/` to WebAssembly; the demo's request handlers and Demo panel in **`web/src/demo`** run it in the browser.
     - **`web/`** is the Preact UI. It has no code dependency on the firmware: it talks to it over HTTP and WebSocket, and in the demo the same requests are answered in the browser.
 
 ## Spec-driven changes
@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: fdd8159d44bcb317
+fingerprint: 90e8296b72778324
 -->
 <figure class="diagram" markdown>
 
@@ -58,7 +58,7 @@ flowchart TB
     IMPLEMENT --> CONVERGE{"speckit-converge:<br/>anything missing?"}
     CONVERGE -->|yes, new tasks| IMPLEMENT
     CONVERGE -->|converged| PR["One pull request to main"]
-    PR --> CI{"CI passes?<br/>build and tests, quality check,<br/>ConformU, docs and diagrams"}
+    PR --> CI{"CI passes?<br/>build and tests, quality check,<br/>docs and diagrams"}
     CI -->|no| IMPLEMENT
     CI -->|yes| MERGE["Merge"]
 ```
@@ -71,13 +71,13 @@ flowchart TB
     1. **Specify**: `spec.md` says what the feature does and why. **Clarify** settles open questions, when there are any.
     2. **Plan**: the plan, research, data model and contracts. **Tasks**: `tasks.md`.
     3. **Implement** the tasks, then **converge**: compare the code with the spec and add a task for anything missing. Repeat until converge reports nothing missing.
-    4. Open **one pull request** to `main`. It merges only when CI passes: the build and tests, the quality check (`tools/quality/check.py`, the [coding standard](coding-standards.md)), ConformU against the Alpaca simulator, and the docs build with its diagram checks.
+    4. Open **one pull request** to `main`. It merges only when CI passes: the build and tests, the quality check (`tools/quality/check.py`, the [coding standard](coding-standards.md)), and the docs build with its diagram checks. ConformU is suspended until the roof's Alpaca device exists, because it has nothing to test before then.
 
 ---
 
 ## Prerequisites
 
-- [PlatformIO CLI](https://platformio.org/install/cli) or VS Code with PlatformIO extension
+- [PlatformIO CLI](https://platformio.org/install/cli) or VS Code with PlatformIO extension (build with `pio run -e esp32dev`; the repository's `esp32dev` environment is the only firmware build)
 - Node.js 24+
 - Python 3
 
@@ -92,7 +92,7 @@ Config lives in **NVS** (Non-Volatile Storage) — a separate 20 KB partition at
     - `pio run --target uploadfs` — update web UI, WiFi config untouched
 
 !!! danger "Clears everything"
-    `pio run --target erase` followed by re-flash — only do this to force the captive portal
+    `pio run --target erase` followed by re-flash — only do this to force the setup hotspot
 
 ---
 
@@ -154,12 +154,12 @@ pio run --target buildfs # littlefs image
 | Property | Value |
 |----------|-------|
 | Partition | `nvs` at `0x9000` |
-| Namespace | `sqm` |
+| Namespace | `roofroof` |
 | Key | `config` |
 | Survives | Firmware uploads, filesystem uploads, power cycles |
 | Cleared by | Full chip erase only |
 
-To force the captive portal (reset all config):
+To force the setup hotspot (reset all config):
 
 ```bash
 esptool.py --chip esp32 --port PORT erase_flash

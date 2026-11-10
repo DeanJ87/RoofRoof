@@ -246,8 +246,8 @@ void test_router_counts_requests_disconnects_and_client_id(void)
     SQM::Alpaca::Router router(backend, IDENTITY);
     route(router, true, "/api/v1/dome/0/connected", {{"Connected", "True"}, {"ClientID", "42"}});
     route(router, false, "/api/v1/dome/0/name", {{"ClientID", "42"}});
-    route(router, false, "/management/v1/description");                // management requests don't count
-    route(router, false, "/api/v1/dome/0/name", {{"source", "ui"}});   // nor the web UI's own
+    route(router, false, "/management/v1/description");              // management requests don't count
+    route(router, false, "/api/v1/dome/0/name", {{"source", "ui"}}); // nor the web UI's own
     DeviceActivity sm = router.activity(0);
     TEST_ASSERT_TRUE(sm.connected);
     TEST_ASSERT_EQUAL_UINT32(2, sm.requests);

@@ -1,15 +1,15 @@
 # Releasing
 
-Releases are made from tags. Until the first stable release, every tag is a beta: `vX.Y.Z-beta.N`. GitHub publishes it as a pre-release, which devices on the beta track are offered.
+Releases are made from tags. Until the first stable release, every tag is a beta: `vX.Y.Z-beta.N`. GitHub publishes it as a pre-release. An early build for testers is an alpha: `vX.Y.Z-alpha.N`, also a pre-release.
 
-An early build for testers is an alpha: `vX.Y.Z-alpha.N`. It is published as a pre-release too, so devices on the beta track are offered it as well. The browser flasher on sqmeter.dev skips alphas and keeps serving the newest beta.
+The repository is private and the device never looks for updates: a release is a set of files you download and upload to the device yourself ([Updates](../user-guide/ota.md)).
 
 ## 1. Changelog pull request
 
 Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section:
 
 ```markdown
-## [0.3.3-beta.1] — 2026-10-20
+## [0.1.0-beta.1] — 2026-12-01
 
 ### Fixed
 
@@ -21,7 +21,7 @@ Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new section:
 - To choose the banner's highlights yourself, add a comment anywhere in the section. It's removed from the published notes:
 
   ```markdown
-  <!-- banner: Restart history | Fixed: N.I.N.A. disconnects | API explorer -->
+  <!-- banner: Restart history | Fixed: stalled uploads | API explorer -->
   ```
 
   Keep each one short: a highlight too wide for the banner is cut at a word with "…".
@@ -32,7 +32,7 @@ To preview locally:
 
 ```bash
 cd web && npm ci && npx playwright install chromium && cd ..
-node tools/release/notes.mjs --tag v0.3.3-beta.1 --dry-run   # writes release-notes/
+node tools/release/notes.mjs --tag v0.1.0-beta.1 --dry-run   # writes release-notes/
 ```
 
 ## 2. Tag
@@ -41,22 +41,21 @@ Once the changelog is merged, tag `main` and push the tag:
 
 ```bash
 git fetch origin
-git tag -a v0.3.3-beta.1 -m "SQMeter v0.3.3-beta.1" origin/main
-git push origin v0.3.3-beta.1
+git tag -a v0.1.0-beta.1 -m "RoofRoof v0.1.0-beta.1" origin/main
+git push origin v0.1.0-beta.1
 ```
 
 ## 3. The release job
 
 The tag starts the **Build Firmware & LittleFS** workflow. Its release job:
 
-1. builds both firmware variants and the web UI with the version stamped in, and the USB flash packages, for the classic ESP32 (`sqmeter-l2-*`) and each ESP32-S3 board (`sqmeter-esp32s3-eth-*`, `sqmeter-esp32s3-zero-*`, `sqmeter-esp32s3-zero8-*`; spec 034). Each board's firmware only offers and installs its own files;
-2. builds the language files and the OpenAPI description for this version;
+1. builds the firmware and the web UI with the version stamped in, and the USB flash package;
+2. builds the OpenAPI description for this version;
 3. writes the release notes and banner from the changelog section (`tools/release/notes.mjs`). If `CHANGELOG.md` has no section for the tag, the job stops here and nothing is published;
-4. publishes the release with the banner at the top, the changelog section, how to upgrade, and GitHub's list of merged pull requests;
-5. starts **Deploy Docs & Demo** on `main`, so the browser flasher on sqmeter.dev serves the new release's USB packages. The demo reports the newest version in `CHANGELOG.md`, so it changes when the changelog PR merges. To redeploy by hand: `gh workflow run docs.yml --ref main`.
+4. publishes the release with the banner at the top, the changelog section and GitHub's list of merged pull requests.
 
-The banner is attached as `sqmeter-release-<tag>.png` (and `@2x`). The docs address in the upgrade note comes from `site_url` in `mkdocs.yml`.
+The assets are `roofroof-l2-firmware-<tag>.bin`, `roofroof-l2-littlefs-<tag>.bin`, `roofroof-l2-usb-<tag>.zip` and `roofroof-openapi-<tag>.json`, plus the banner. There are no language files, and the release does not start a docs deploy: the docs and the demo are built by **Docs & Demo** on every pull request and on `main`, as the `site` artifact.
 
 ## 4. Check it
 
-Update a test device from the Updates page (beta track) and confirm the version, settings and WiFi are unchanged.
+Download the firmware and web UI files, upload them from the **Updates** page of a test device and confirm the version, settings and WiFi are unchanged.

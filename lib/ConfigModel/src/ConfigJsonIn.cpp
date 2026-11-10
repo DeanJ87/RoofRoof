@@ -151,7 +151,6 @@ namespace SQM
             ntp.take("server2", cfg.ntp.server2);
             ntp.take("timezone", cfg.ntp.timezone);
             ntp.take("syncIntervalMs", cfg.ntp.syncIntervalMs);
-
         }
 
         // Applies an "events" object ({"client_lost": {"level": 3, ...}, ...}).

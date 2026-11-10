@@ -115,7 +115,9 @@ const PreviewView: FunctionalComponent<{ restore: Restore & { preview: RestorePr
       <PathGroup title={t('settings.backup.unknownToThisFirmware')} paths={details.ignored} value={t('settings.backup.ignored')} />
       {nothing && <Note>{t('settings.backup.nothingWillChange')}</Note>}
       {preview.restart.length > 0 && (
-        <Note tone="warn">{t('settings.backup.restartsToApply', { listReasons: listReasons(preview.restart.map((code) => restartLabel(code))) })}</Note>
+        <Note tone="warn">
+          {t('settings.backup.restartsToApply', { listReasons: listReasons(preview.restart.map((code) => restartLabel(code))) })}
+        </Note>
       )}
       {details.warnings.map((warning) => (
         <Note key={warning.code} tone="warn">

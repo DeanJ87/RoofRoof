@@ -59,7 +59,7 @@ const ClockSpeed: FunctionalComponent = () => (
           key={multiplier}
           small
           variant={demoDevice.timeMultiplier === multiplier ? 'primary' : 'ghost'}
-          ariaLabel={`Clock speed ${multiplier}x${demoDevice.timeMultiplier === multiplier ? " (current)" : ""}`}
+          ariaLabel={`Clock speed ${multiplier}x${demoDevice.timeMultiplier === multiplier ? ' (current)' : ''}`}
           onClick={() => demoDevice.setTimeMultiplier(multiplier)}
         >
           {multiplier}x
@@ -96,9 +96,7 @@ const DemoPanel: FunctionalComponent = () => {
               Close
             </Button>
           </div>
-          <Note>
-            The device's own code runs in your browser. Nothing is sent anywhere unless you turn on Real notifications.
-          </Note>
+          <Note>The device's own code runs in your browser. Nothing is sent anywhere unless you turn on Real notifications.</Note>
           <ClockSpeed />
           <RealNotifications />
           <div class="btn-row">

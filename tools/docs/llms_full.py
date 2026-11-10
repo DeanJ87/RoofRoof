@@ -14,9 +14,9 @@ import re
 from pathlib import Path
 
 HEADER = (
-    "# SQMeter documentation (full text)\n\n"
-    "> Every page of https://sqmeter.dev/ as Markdown, in site order. The short summary is "
-    "https://sqmeter.dev/llms.txt\n"
+    "# RoofRoof documentation (full text)\n\n"
+    "> Every page of the documentation site as Markdown, in site order. The short summary is "
+    "llms.txt in the same folder.\n"
 )
 # Diagram freshness markers and other HTML comments mean nothing outside the repo.
 COMMENT = re.compile(r"<!--.*?-->\n?", re.DOTALL)
@@ -42,7 +42,8 @@ def on_nav(nav, config, files, **kwargs):
 
 
 def on_page_markdown(markdown, page, config, files, **kwargs):
-    url = config["site_url"].rstrip("/") + "/" + page.url
+    # site_url is empty (the docs are a CI artifact), so a page is named by its path in the site.
+    url = (config["site_url"] or "").rstrip("/") + "/" + page.url
     _pages[page.file.src_uri] = (url, markdown)
     return markdown
 

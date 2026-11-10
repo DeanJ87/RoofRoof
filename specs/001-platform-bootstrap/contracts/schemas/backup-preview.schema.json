@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BackupPreview",
-  "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied (specs/033-config-backup/contracts/rest-api.md). Hand-written, not generated.",
+  "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied. Hand-written, not generated.",
   "type": "object",
   "properties": {
     "token": { "type": "string", "description": "32 hex characters; send it to POST /api/backup/apply." },
@@ -38,7 +38,7 @@
         "properties": {
           "path": { "type": "string" },
           "value": { "description": "The backup's value (left out for a secret)." },
-          "reason": { "type": "string", "enum": ["pin", "analog", "bluetooth", "pushover-keys"] }
+          "reason": { "type": "string", "enum": ["pushover-keys"] }
         },
         "required": ["path", "reason"],
         "additionalProperties": false
@@ -47,7 +47,7 @@
     "restart": {
       "type": "array",
       "description": "Why applying restarts the device; empty: no restart.",
-      "items": { "type": "string", "enum": ["wifi", "ota", "gps", "i2c", "ipv6", "alpaca", "ble"] }
+      "items": { "type": "string", "enum": ["wifi", "ota", "ipv6", "alpaca"] }
     }
   },
   "required": ["token", "backup", "settings", "secrets", "notApplicable", "restart"],

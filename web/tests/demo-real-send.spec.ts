@@ -48,7 +48,6 @@ test('off by default: alerts are recorded and nothing is sent', async ({ page, c
   const seen = await fakeServices(context);
   await openPanel(page);
   await expect(page.getByText('Off: nothing leaves your browser.')).toBeVisible();
-  await page.getByRole('button', { name: 'Rain', exact: true }).click();
   const test = await page.evaluate(async () => (await fetch('/api/alerts/test?channel=all', { method: 'POST' })).status);
   expect(test).toBe(202);
   const recent = await page.evaluate(async () => (await fetch('/api/alerts/recent')).json());
@@ -69,7 +68,7 @@ test('ntfy: the device’s request reaches ntfy.sh; the result shows; the rate l
   const sent = seen.posts[0];
   expect(sent.url()).toBe(`https://ntfy.sh/${TOPIC}`);
   const headers = sent.headers();
-  expect(headers['title']).toMatch(/^SQMeter Demo: /);
+  expect(headers['title']).toMatch(/^RoofRoof Demo: /);
   expect(headers['tags']).toBe('test_tube');
   expect(headers['priority']).toBeTruthy();
 
@@ -105,7 +104,7 @@ test('Pushover: the service’s error in plain words; keys never stored', async 
 test('webhooks and MQTT without secure WebSockets are explained before trying', async ({ page }) => {
   await openPanel(page);
   await turnOn(page);
-  await expect(page.getByText(/Webhooks and self-hosted ntfy servers need a real SQMeter/)).toBeVisible();
+  await expect(page.getByText(/Webhooks and self-hosted ntfy servers need a real RoofRoof/)).toBeVisible();
   await page.getByLabel('Broker (secure WebSocket)').fill('ws://broker.example:1883');
   await expect(page.getByText(/a wss:\/\/ address/)).toBeVisible();
 });
@@ -133,5 +132,5 @@ test('MQTT over a secure WebSocket: connect, publish the device’s alert JSON t
   await expect(page.getByText(/MQTT: Published/)).toBeVisible();
   await expect.poll(() => published.length).toBe(1);
   expect(published[0].topic).toBe('observatory/alerts');
-  expect(JSON.parse(published[0].payload)).toMatchObject({ event: 'test', device: 'SQMeter Demo' });
+  expect(JSON.parse(published[0].payload)).toMatchObject({ event: 'test', device: 'RoofRoof Demo' });
 });

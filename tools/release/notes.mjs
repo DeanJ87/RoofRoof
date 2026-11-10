@@ -5,7 +5,7 @@
 //   node tools/release/notes.mjs --tag v0.3.2-beta.1 --out dir --dry-run
 //   node tools/release/notes.mjs --latest --dry-run            newest version in the changelog
 //
-// Writes release-notes.md (the release body) and sqmeter-release-<tag>.png
+// Writes release-notes.md (the release body) and roofroof-release-<tag>.png
 // (+ @2x). The release job in .github/workflows/build.yml runs this on a tag;
 // --dry-run also prints the body, for checking a changelog before tagging.
 // Fails if CHANGELOG.md has no section for the tag.
@@ -20,18 +20,20 @@ import { renderReleaseBanner } from '../brand/render.mjs';
 import { bannerUrl, findSection, formatDate, highlights, releaseBody, versionOf } from './changelog.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const REPOSITORY = process.env.GITHUB_REPOSITORY || 'DeanJ87/SQMeter';
+const REPOSITORY = process.env.GITHUB_REPOSITORY || 'DeanJ87/RoofRoof';
 
 function arg(name) {
   const at = process.argv.indexOf(name);
   return at === -1 ? undefined : process.argv[at + 1];
 }
 
-// The docs address lives in one place: mkdocs.yml's site_url.
+// The docs address lives in one place: mkdocs.yml's site_url. RoofRoof's repo
+// is private and its docs are a CI artifact, so site_url is empty and the
+// release body gets relative links (an empty base).
 function docsBase() {
-  const match = /^site_url:\s*(\S+)/m.exec(readFileSync(join(ROOT, 'mkdocs.yml'), 'utf8'));
+  const match = /^site_url:[ \t]*(\S*)/m.exec(readFileSync(join(ROOT, 'mkdocs.yml'), 'utf8'));
   if (!match) throw new Error('mkdocs.yml has no site_url');
-  return match[1];
+  return match[1].replace(/^["']|["']$/g, '');
 }
 
 function newestVersion(changelog) {

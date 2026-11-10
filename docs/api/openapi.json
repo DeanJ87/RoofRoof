@@ -1,26 +1,26 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "SQMeter REST API",
-    "version": "0.4.0-alpha.2+dev",
-    "summary": "The REST API of an SQMeter sky-quality and safety monitor.",
-    "description": "Every `/api/*` route an SQMeter serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (`reasons`, alert `title` and `message`, `error`) may be reworded between releases: key on `safe`, `reasonFlags` and the alert `event`.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here: the device is a SafetyMonitor and an ObservingConditions device. See https://ascom-standards.org/api/.",
+    "title": "RoofRoof REST API",
+    "version": "0.1.0+dev",
+    "summary": "The REST API of a RoofRoof roll-off-roof controller.",
+    "description": "Every `/api/*` route a RoofRoof roll-off-roof controller serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (alert `title` and `message`, `error`) may be reworded between releases: key on the alert `event`, not its text.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here. The device offers no Alpaca device yet (the Dome comes later): `/api/v1/*` answers \"unknown device\". See https://ascom-standards.org/api/.",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
     }
   },
   "externalDocs": {
-    "description": "SQMeter REST API guide",
-    "url": "https://sqmeter.dev/api/rest/"
+    "description": "RoofRoof REST API guide",
+    "url": "https://github.com/DeanJ87/RoofRoof/blob/main/docs/api/rest.md"
   },
   "servers": [
     {
       "url": "http://{device}",
-      "description": "Your SQMeter",
+      "description": "Your RoofRoof",
       "variables": {
         "device": {
-          "default": "sqmeter.local",
+          "default": "roofroof.local",
           "description": "The device's address or .local name"
         }
       }
@@ -28,12 +28,8 @@
   ],
   "tags": [
     {
-      "name": "Readings",
-      "description": "Sensor readings and device status."
-    },
-    {
-      "name": "Safety",
-      "description": "The SafetyMonitor verdict and its history."
+      "name": "Status",
+      "description": "Device status."
     },
     {
       "name": "Settings",
@@ -44,10 +40,6 @@
       "description": "Alerts: whether they're sent, recent ones, tests."
     },
     {
-      "name": "Sensors",
-      "description": "Sensor maintenance actions."
-    },
-    {
       "name": "Network",
       "description": "WiFi and MQTT."
     },
@@ -56,16 +48,8 @@
       "description": "Firmware and web UI updates."
     },
     {
-      "name": "Language",
-      "description": "The device-wide UI language."
-    },
-    {
-      "name": "Bluetooth",
-      "description": "Phone alarm (Bluetooth firmware build only)."
-    },
-    {
       "name": "Device",
-      "description": "Restart, and the optional OLED display."
+      "description": "Restart."
     },
     {
       "name": "Alpaca",
@@ -80,10 +64,10 @@
       "get": {
         "operationId": "get_status",
         "tags": [
-          "Readings"
+          "Status"
         ],
         "summary": "Device status",
-        "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, Bluetooth, darkness, alerts, Alpaca clients, connections, sensor health and diagnostics. Also pushed over `/ws/status`.\n\nOpen: Read-only status for integrations.",
+        "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, alerts, Alpaca clients and connections. Also pushed over `/ws/status`.\n\nOpen: Read-only status for integrations.",
         "security": [],
         "responses": {
           "200": {
@@ -96,7 +80,6 @@
                 "example": {
                   "alerts": {
                     "armed": true,
-                    "armWithAlpaca": false,
                     "mode": "any",
                     "reason": "none",
                     "since": null,
@@ -105,50 +88,15 @@
                   },
                   "alpaca": {
                     "enabled": true,
-                    "clients": {
-                      "safetymonitor": {
-                        "connected": false,
-                        "watching": false,
-                        "silent": false,
-                        "lastCheckedAgeMs": null,
-                        "clientId": null
-                      },
-                      "observingconditions": {
-                        "connected": false,
-                        "watching": false,
-                        "silent": false,
-                        "lastCheckedAgeMs": null,
-                        "clientId": null
-                      }
-                    }
-                  },
-                  "sky": {
-                    "locationSource": "manual",
-                    "nightKnown": true,
-                    "latitude": 51.5074,
-                    "longitude": -0.1278,
-                    "isNight": false,
-                    "sunAltitudeDeg": 30.7
+                    "clients": {}
                   },
                   "firmware": {
-                    "name": "SQMeter",
-                    "version": "0.3.0-beta.1",
-                    "buildDate": "Apr 24 2026",
+                    "name": "RoofRoof",
+                    "product": "roofroof",
+                    "version": "0.0.0",
+                    "buildDate": "Nov 10 2026",
                     "buildTime": "12:00:00",
-                    "variant": "standard",
                     "layout": "l2"
-                  },
-                  "ble": {
-                    "available": false,
-                    "active": false,
-                    "clients": 0,
-                    "alarm": {
-                      "serviceActive": false,
-                      "active": false,
-                      "sequence": 0,
-                      "acknowledgedSequence": 0,
-                      "bondedPhones": 0
-                    }
                   },
                   "uptime": 2,
                   "bootCount": 3,
@@ -156,7 +104,6 @@
                   "connections": {
                     "tcpLimit": 16,
                     "liveUpdates": {
-                      "sensors": 1,
                       "status": 1,
                       "limitPerEndpoint": 3,
                       "replaced": 0,
@@ -172,16 +119,10 @@
                     "asyncTcp": 3360,
                     "loop": 3612
                   },
-                  "sensorSnapshotBytes": 808,
                   "heapStages": [
                     {
                       "stage": "boot",
                       "free": 279836,
-                      "largest": 110580
-                    },
-                    {
-                      "stage": "sensors",
-                      "free": 271484,
                       "largest": 110580
                     },
                     {
@@ -218,23 +159,18 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1791716745,
-                    "iso": "2026-10-11T12:05:45+0100",
+                    "epoch": 1794350418,
+                    "iso": "2026-11-10T22:40:18+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1791713143305,
-                    "nextSync": 1791720343305,
+                    "lastSync": 1794346816480,
+                    "nextSync": 1794354016480,
                     "drift": 0.003,
-                    "server": "pool.ntp.org",
-                    "activeSource": 1,
-                    "gpsEnabled": true,
-                    "gpsHasFix": true,
-                    "gpsTimeUTC": "2026-10-11T11:05:43.305Z",
-                    "gpsSatellites": 9
+                    "server": "pool.ntp.org"
                   },
                   "wifi": {
                     "connected": true,
@@ -244,7 +180,7 @@
                     "mac": "AA:BB:CC:DD:EE:FF",
                     "connectPending": false,
                     "apMode": false,
-                    "hostname": "sqmeter",
+                    "hostname": "roofroof",
                     "mdns": true,
                     "ipv6": {
                       "enabled": true,
@@ -264,232 +200,15 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1791716683305,
+                    "lastPublish": 1794350356480,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
-                    "topic": "sqmeter",
-                    "availabilityTopic": "sqmeter/availability",
-                    "clientId": "SQMeter-D4E5F6"
+                    "topic": "roofroof",
+                    "availabilityTopic": "roofroof/availability",
+                    "clientId": "RoofRoof-D4E5F6"
                   },
-                  "sensors": {
-                    "light": {
-                      "status": "ok",
-                      "ageMs": 0
-                    },
-                    "environment": {
-                      "status": "ok",
-                      "ageMs": 0
-                    },
-                    "infrared": {
-                      "status": "ok",
-                      "ageMs": 0
-                    },
-                    "rain": {
-                      "status": "ok",
-                      "ageMs": 0
-                    },
-                    "wind": {
-                      "status": "ok",
-                      "ageMs": 0,
-                      "vaneStatus": "ok",
-                      "vaneMagnet": "ok",
-                      "vaneAgc": 128
-                    }
-                  },
-                  "diagnostics": {
-                    "light": {
-                      "rollingVisible": 56360,
-                      "correctedVisible": 56360,
-                      "darkVisibleOffset": 0,
-                      "sampleCount": 3,
-                      "windowSamples": 150,
-                      "nightMode": false,
-                      "rejectedSamples": 0,
-                      "consecutiveSaturatedSamples": 0,
-                      "consecutiveLowSamples": 0
-                    },
-                    "rain": {
-                      "state": "online",
-                      "uartOpened": true,
-                      "rxPin": 18,
-                      "txPin": 19,
-                      "baudRate": 9600,
-                      "uartPort": 1,
-                      "lastCommand": "R",
-                      "lastAck": null,
-                      "lastResponse": "Acc 0.00 mm, EventAcc 0.00 mm, TotalAcc 0.00 mm, RInt 0.00 mmph",
-                      "lastError": null,
-                      "timeouts": 0,
-                      "parseErrors": 0,
-                      "successfulReads": 3,
-                      "lastPollAgeMs": 0,
-                      "lastResponseAgeMs": 0,
-                      "lastSuccessfulReadAgeMs": 0,
-                      "softwareVersion": null,
-                      "softwareBuildDate": null,
-                      "resetReason": null
-                    }
-                  },
-                  "configRevision": 3470718486
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/sensors": {
-      "get": {
-        "operationId": "get_sensors",
-        "tags": [
-          "Readings"
-        ],
-        "summary": "Readings",
-        "description": "Every reading, with each group's `status` (`ok`, `stale`, `missing`, `error`). The same document as `/ws/sensors` and MQTT `<base>/state`. Groups for switched-off sensors are left out.\n\nOpen: Read-only readings for integrations.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Readings"
-                },
-                "example": {
-                  "timestamp": 1791716745,
-                  "timeValid": true,
-                  "dataAgeMs": 0,
-                  "dataStale": false,
-                  "light": {
-                    "status": "ok",
-                    "ageMs": 0,
-                    "lux": 52499.44922,
-                    "visible": 56360,
-                    "infrared": 9175,
-                    "full": 65535,
-                    "gain": "HIGH",
-                    "gainFactor": 428,
-                    "integrationMs": 600,
-                    "saturated": false,
-                    "nightMode": false
-                  },
-                  "sky": {
-                    "status": "ok",
-                    "sqm": 0.8,
-                    "rawSqm": 0.8,
-                    "nelm": 0,
-                    "bortle": 9,
-                    "description": "Inner-city sky",
-                    "calibrated": false,
-                    "averagingWindowSeconds": 90
-                  },
-                  "environment": {
-                    "status": "ok",
-                    "ageMs": 0,
-                    "temperature": 11,
-                    "humidity": 62,
-                    "pressure": 1013,
-                    "dewpoint": 4
-                  },
-                  "infrared": {
-                    "status": "ok",
-                    "ageMs": 0,
-                    "skyTemperature": -9.9,
-                    "ambientTemperature": 11.4
-                  },
-                  "clouds": {
-                    "status": "ok",
-                    "coverPercent": 0,
-                    "condition": "clear",
-                    "description": "Clear",
-                    "temperatureDelta": -21.3,
-                    "correctedDelta": -21.8,
-                    "humidity": 62,
-                    "humiditySource": "measured"
-                  },
-                  "rain": {
-                    "status": "ok",
-                    "ageMs": 0,
-                    "raining": false,
-                    "rainingNow": false,
-                    "intensity": 0,
-                    "eventAccumulation": 0,
-                    "sensorEventAccumulation": 0,
-                    "totalAccumulation": 0,
-                    "lensFault": false,
-                    "emitterSaturated": false
-                  },
-                  "wind": {
-                    "status": "ok",
-                    "ageMs": 0,
-                    "speed": 3.2,
-                    "gust": 6.1,
-                    "direction": 242,
-                    "vaneFault": false
-                  },
-                  "safety": {
-                    "safe": true,
-                    "rawSafe": true,
-                    "alpacaEnabled": true,
-                    "reasonFlags": 0,
-                    "reasons": [],
-                    "secondsUntilSafe": 0,
-                    "rulesNotInEffect": [],
-                    "evaluatedAgeMs": 0,
-                    "changedAgeMs": 2005
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/safe": {
-      "get": {
-        "operationId": "get_safe",
-        "tags": [
-          "Safety"
-        ],
-        "summary": "Safe or unsafe, as text",
-        "description": "Plain text `1` (safe) or `0` (unsafe): the SafetyMonitor verdict, for scripts and loggers.\n\nOpen: Read-only verdict for scripts.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "1 or 0",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "0",
-                    "1"
-                  ]
-                },
-                "example": "1"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/safety/history": {
-      "get": {
-        "operationId": "get_safety_history",
-        "tags": [
-          "Safety"
-        ],
-        "summary": "Safety history",
-        "description": "The last 32 safety changes, device restarts and safe/unsafe alerts, newest first. Survives software restarts, crashes and updates, not power cuts.\n\nOpen: Read-only history.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SafetyHistory"
+                  "configRevision": 887913319
                 }
               }
             }
@@ -504,7 +223,7 @@
           "Settings"
         ],
         "summary": "Settings in effect",
-        "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason (spec 020).\n\nOpen: Read-only effective-settings report (no secrets).",
+        "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason.\n\nOpen: Read-only effective-settings report (no secrets).",
         "security": [],
         "responses": {
           "200": {
@@ -518,105 +237,6 @@
             }
           }
         }
-      }
-    },
-    "/api/safety": {
-      "get": {
-        "operationId": "get_safety",
-        "tags": [
-          "Safety"
-        ],
-        "summary": "Safety verdict",
-        "description": "The verdict served to Alpaca clients as `IsSafe`, with the reasons and the safe-delay countdown. Key on `safe` and `reasonFlags`; `reasons` is English text that may be reworded.\n\nOpen: Read-only verdict and reasons.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Safety"
-                },
-                "example": {
-                  "safe": true,
-                  "rawSafe": true,
-                  "alpacaEnabled": true,
-                  "reasonFlags": 0,
-                  "reasons": [],
-                  "secondsUntilSafe": 0,
-                  "rulesNotInEffect": [],
-                  "evaluatedAgeMs": 0,
-                  "changedAgeMs": 2005
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/sensors/tsl2591/calibrate-dark": {
-      "post": {
-        "operationId": "post_sensors_tsl2591_calibrate_dark",
-        "tags": [
-          "Sensors"
-        ],
-        "summary": "Calibrate a sky sensor's dark offset",
-        "description": "Stores the current rolling visible count as the dark offset of one sky sensor (`sensor`, default the SQM) and writes only that sensor's calibration (`skyCalibration` or `skyCalibrationL`). Cover the sensor first and wait for the averaging window to fill. The answer names the `sensor`. 400 for an unknown `sensor`; 409 while it can't give a good offset (sensor off or not found, no readings yet, not in night mode, window not full).\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        },
-        "parameters": [
-          {
-            "name": "sensor",
-            "in": "query",
-            "description": "`sqm` (default, the wide sensor on I2C-1) or `sqml` (the narrow SQM-L on I2C-2).",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "sqm",
-                "sqml"
-              ],
-              "default": "sqm"
-            }
-          }
-        ]
       }
     },
     "/api/config": {
@@ -689,10 +309,7 @@
                 "$ref": "#/components/schemas/ConfigUpdate"
               },
               "example": {
-                "deviceName": "backyard-sqm",
-                "sensor": {
-                  "readIntervalMs": 10000
-                }
+                "deviceName": "backyard-roof"
               }
             }
           }
@@ -855,7 +472,7 @@
                 "additionalProperties": false
               },
               "example": {
-                "backup": "{\"sqmeterBackup\":1,\"firmware\":\"0.3.4-beta.1\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-sqm\",\"settings\":{\"deviceName\":\"backyard-sqm\"}}"
+                "backup": "{\"roofroofBackup\":1,\"firmware\":\"0.1.0\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-roof\",\"settings\":{\"deviceName\":\"backyard-roof\"}}"
               }
             }
           }
@@ -1086,216 +703,6 @@
         }
       }
     },
-    "/api/sensors/rg15/test": {
-      "post": {
-        "operationId": "post_sensors_rg15_test",
-        "tags": [
-          "Sensors"
-        ],
-        "summary": "Test the rain sensor",
-        "description": "Reads the RG-15 now and returns serial diagnostics. 409 when the rain sensor is switched off; 502 with a wiring `hint` when it doesn't answer.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "A sensor, broker or GitHub didn't answer",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/sensors/rg15/reset-total": {
-      "post": {
-        "operationId": "post_sensors_rg15_reset_total",
-        "tags": [
-          "Sensors"
-        ],
-        "summary": "Reset the rain total",
-        "description": "Sends the RG-15 its `O` command (reset total accumulation).\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "A sensor, broker or GitHub didn't answer",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/sensors/rg15/reboot": {
-      "post": {
-        "operationId": "post_sensors_rg15_reboot",
-        "tags": [
-          "Sensors"
-        ],
-        "summary": "Reboot the rain sensor",
-        "description": "Sends the RG-15 its `K` command (reboot).\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "A sensor, broker or GitHub didn't answer",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/display/wake": {
-      "post": {
-        "operationId": "post_display_wake",
-        "tags": [
-          "Device"
-        ],
-        "summary": "Wake the display",
-        "description": "Turns the OLED display on for its switch-off time (applied within one loop pass). 409 when the display is off in settings, not detected, or off to save power.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/display/blank": {
-      "post": {
-        "operationId": "post_display_blank",
-        "tags": [
-          "Device"
-        ],
-        "summary": "Blank the display",
-        "description": "Turns the OLED display off now, until the next wake (a restart, a wake request or the wake button). 409 when the display is off in settings or not detected.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
     "/api/mqtt/test": {
       "post": {
         "operationId": "post_mqtt_test",
@@ -1331,7 +738,7 @@
             }
           },
           "502": {
-            "description": "A sensor, broker or GitHub didn't answer",
+            "description": "The broker didn't answer",
             "content": {
               "application/json": {
                 "schema": {
@@ -1376,7 +783,7 @@
                 "port": 1883,
                 "username": "",
                 "password": "",
-                "clientId": "SQM-Test"
+                "clientId": "RoofRoof-Test"
               }
             }
           }
@@ -1508,7 +915,7 @@
                   "filesystem": {
                     "type": "string",
                     "contentMediaType": "application/octet-stream",
-                    "description": "sqmeter-l2-littlefs-<version>.bin"
+                    "description": "roofroof-l2-littlefs-<version>.bin"
                   }
                 },
                 "required": [
@@ -1527,7 +934,7 @@
           "Updates"
         ],
         "summary": "Upload firmware",
-        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout or build (nothing changed); 500 keeps the running firmware. The device restarts on success.\n\nNeeds the password when protection is on.",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1578,156 +985,11 @@
                   "firmware": {
                     "type": "string",
                     "contentMediaType": "application/octet-stream",
-                    "description": "sqmeter-l2-firmware-<version>.bin (sqmeter-l2-ble-firmware-... on the Bluetooth build)"
+                    "description": "roofroof-l2-firmware-<version>.bin"
                   }
                 },
                 "required": [
                   "firmware"
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/updates/check": {
-      "get": {
-        "operationId": "get_updates_check",
-        "tags": [
-          "Updates"
-        ],
-        "summary": "Check for updates",
-        "description": "GitHub releases on the chosen track that have both files this device needs. 502 when GitHub can't be reached (a dropped connection is retried once); 409 while another check runs.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Releases"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "A sensor, broker or GitHub didn't answer",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        },
-        "parameters": [
-          {
-            "name": "track",
-            "in": "query",
-            "description": "`stable` (default) or `beta`.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "stable",
-                "beta"
-              ],
-              "default": "stable"
-            }
-          }
-        ]
-      }
-    },
-    "/api/updates/apply": {
-      "post": {
-        "operationId": "post_updates_apply",
-        "tags": [
-          "Updates"
-        ],
-        "summary": "Install a release",
-        "description": "Downloads and flashes a release from `check` in the background. Progress is pushed over `/ws/status` as `{\"type\":\"ota_progress\",\"progress\":N}`; the device restarts when both files are flashed.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "firmwareAssetUrl": {
-                    "type": "string"
-                  },
-                  "firmwareAssetSize": {
-                    "type": "integer"
-                  },
-                  "fsAssetUrl": {
-                    "type": "string"
-                  },
-                  "fsAssetSize": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "firmwareAssetUrl",
-                  "firmwareAssetSize",
-                  "fsAssetUrl",
-                  "fsAssetSize"
                 ]
               }
             }
@@ -1781,7 +1043,6 @@
           {
             "name": "channel",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string",
               "enum": [
@@ -1791,7 +1052,8 @@
                 "webhook",
                 "all"
               ]
-            }
+            },
+            "description": "Defaults to `all`."
           },
           {
             "name": "event",
@@ -1799,15 +1061,6 @@
             "schema": {
               "type": "string",
               "enum": [
-                "unsafe",
-                "safe",
-                "rain_started",
-                "rain_stopped",
-                "sensor_fault",
-                "sensor_recovered",
-                "dew_risk",
-                "clear_sky",
-                "clouded_over",
                 "client_lost",
                 "client_back",
                 "client_disconnected"
@@ -1817,7 +1070,7 @@
           {
             "name": "level",
             "in": "query",
-            "description": "1 quiet, 2 normal, 3 urgent, 4 wake me (also rings paired phones).",
+            "description": "1 quiet, 2 normal, 3 urgent, 4 wake me.",
             "schema": {
               "type": "integer",
               "minimum": 1,
@@ -1883,86 +1136,6 @@
         }
       }
     },
-    "/api/ble/ack": {
-      "post": {
-        "operationId": "post_ble_ack",
-        "tags": [
-          "Bluetooth"
-        ],
-        "summary": "Acknowledge the phone alarm",
-        "description": "As if a phone had. 409 if no alarm is ringing.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/ble/forget-bonds": {
-      "post": {
-        "operationId": "post_ble_forget_bonds",
-        "tags": [
-          "Bluetooth"
-        ],
-        "summary": "Unpair every phone",
-        "description": "Phones need to pair again (with the passkey) to get alarms. 409 if Bluetooth is off.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ActionResult"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
     "/api/alerts/arm": {
       "post": {
         "operationId": "post_alerts_arm",
@@ -2005,7 +1178,7 @@
           "Alerts"
         ],
         "summary": "Pause alerts",
-        "description": "While paused nothing is sent and paired phones don't ring. Takes effect at once and survives restarts.\n\nNeeds the password when protection is on.",
+        "description": "While paused nothing is sent. Takes effect at once and survives restarts.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -2033,155 +1206,6 @@
         ]
       }
     },
-    "/api/i18n": {
-      "get": {
-        "operationId": "get_i18n",
-        "tags": [
-          "Language"
-        ],
-        "summary": "Language status",
-        "description": "The chosen language and whether its file is installed, downloading, restoring or failed.\n\nOpen: Read-only language status the UI needs before it can show the password prompt.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/I18n"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/i18n/install": {
-      "post": {
-        "operationId": "post_i18n_install",
-        "tags": [
-          "Language"
-        ],
-        "summary": "Download the language again",
-        "description": "Downloads the chosen language's file for this firmware from GitHub. 409 when the language is English, or an update or another download is running.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "202": {
-            "description": "Accepted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "started": {
-                      "const": true
-                    }
-                  },
-                  "required": [
-                    "started"
-                  ]
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Not now",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        }
-      }
-    },
-    "/api/i18n/upload": {
-      "post": {
-        "operationId": "post_i18n_upload",
-        "tags": [
-          "Language"
-        ],
-        "summary": "Upload a language file",
-        "description": "Stores a language file by hand, for devices without internet. Answers with the `/api/i18n` document; 400 for a file that isn't gzip, is over 64 KB or doesn't fit.\n\nNeeds the password when protection is on.",
-        "security": [
-          {
-            "deviceLogin": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/I18n"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "The password is needed"
-          }
-        },
-        "parameters": [
-          {
-            "name": "lang",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "version",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "contentMediaType": "application/octet-stream",
-                    "description": "sqmeter-i18n-<code>.json.gz from the release"
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/alerts/armed": {
       "get": {
         "operationId": "get_alerts_armed",
@@ -2201,7 +1225,6 @@
                 },
                 "example": {
                   "armed": true,
-                  "armWithAlpaca": false,
                   "mode": "any",
                   "reason": "none",
                   "since": null,
@@ -2258,7 +1281,7 @@
     "schemas": {
       "ActionResult": {
         "title": "Action result",
-        "description": "What every action endpoint answers (spec 013 FR-009): on a 2xx status, success true plus details; on a 4xx/5xx status, an error message (an action may add its own details, e.g. the RG-15 test's raw response). Hand-written, not generated: tools/contract-check.py checks the device's actions against it.",
+        "description": "What every action endpoint answers on a 2xx status, success true plus details; on a 4xx/5xx status, an error message. Hand-written, not generated: tools/contract-check.py checks the device's actions against it.",
         "oneOf": [
           {
             "type": "object",
@@ -2302,9 +1325,6 @@
           "armed": {
             "type": "boolean"
           },
-          "armWithAlpaca": {
-            "type": "boolean"
-          },
           "mode": {
             "type": "string",
             "enum": [
@@ -2339,7 +1359,6 @@
           }
         },
         "required": [
-          "armWithAlpaca",
           "armed",
           "mode",
           "reason",
@@ -2442,31 +1461,7 @@
             "type": "number"
           },
           "Value": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "DeviceName": {
-                  "type": "string"
-                },
-                "DeviceNumber": {
-                  "type": "number"
-                },
-                "DeviceType": {
-                  "type": "string"
-                },
-                "UniqueID": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "DeviceName",
-                "DeviceNumber",
-                "DeviceType",
-                "UniqueID"
-              ],
-              "additionalProperties": false
-            }
+            "type": "array"
           }
         },
         "required": [
@@ -2528,61 +1523,12 @@
         ],
         "additionalProperties": false
       },
-      "AlpacaDevicestate": {
-        "title": "alpaca-devicestate",
-        "type": "object",
-        "properties": {
-          "ClientTransactionID": {
-            "type": "number"
-          },
-          "ErrorMessage": {
-            "type": "string"
-          },
-          "ErrorNumber": {
-            "type": "number"
-          },
-          "ServerTransactionID": {
-            "type": "number"
-          },
-          "Value": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "Name": {
-                  "type": "string"
-                },
-                "Value": {
-                  "type": [
-                    "boolean",
-                    "number",
-                    "string"
-                  ]
-                }
-              },
-              "required": [
-                "Name",
-                "Value"
-              ],
-              "additionalProperties": false
-            }
-          }
-        },
-        "required": [
-          "ClientTransactionID",
-          "ErrorMessage",
-          "ErrorNumber",
-          "ServerTransactionID",
-          "Value"
-        ],
-        "additionalProperties": false
-      },
       "Backup": {
         "title": "Backup",
-        "description": "POST /api/backup (src/WebServerBackup.cpp, lib/ConfigBackup): the settings backup file, format 1 (specs/033-config-backup/contracts/backup-file.md). Hand-written, not generated.",
+        "description": "POST /api/backup (src/WebServerBackup.cpp, lib/ConfigBackup): the settings backup file, format 1. Hand-written, not generated.",
         "type": "object",
         "properties": {
-          "sqmeterBackup": {
+          "roofroofBackup": {
             "type": "integer",
             "const": 1,
             "description": "Format version."
@@ -2598,8 +1544,7 @@
           "build": {
             "type": "string",
             "enum": [
-              "standard",
-              "ble"
+              "standard"
             ]
           },
           "deviceName": {
@@ -2615,7 +1560,7 @@
           },
           "secrets": {
             "type": "object",
-            "description": "Only with a passphrase: the nine secrets, encrypted with AES-256-GCM under a PBKDF2-HMAC-SHA256 key.",
+            "description": "Only with a passphrase: the eight secrets, encrypted with AES-256-GCM under a PBKDF2-HMAC-SHA256 key.",
             "properties": {
               "kdf": {
                 "type": "string",
@@ -2640,7 +1585,7 @@
               },
               "data": {
                 "type": "string",
-                "description": "Base64 ciphertext followed by the 16-byte tag; associated data \"sqmeter-backup/1\"."
+                "description": "Base64 ciphertext followed by the 16-byte tag; associated data \"roofroof-backup/1\"."
               }
             },
             "required": [
@@ -2655,7 +1600,7 @@
           }
         },
         "required": [
-          "sqmeterBackup",
+          "roofroofBackup",
           "firmware",
           "board",
           "build",
@@ -2666,7 +1611,7 @@
       },
       "BackupPreview": {
         "title": "BackupPreview",
-        "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied (specs/033-config-backup/contracts/rest-api.md). Hand-written, not generated.",
+        "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied. Hand-written, not generated.",
         "type": "object",
         "properties": {
           "token": {
@@ -2753,9 +1698,6 @@
                 "reason": {
                   "type": "string",
                   "enum": [
-                    "pin",
-                    "analog",
-                    "bluetooth",
                     "pushover-keys"
                   ]
                 }
@@ -2775,11 +1717,8 @@
               "enum": [
                 "wifi",
                 "ota",
-                "gps",
-                "i2c",
                 "ipv6",
-                "alpaca",
-                "ble"
+                "alpaca"
               ]
             }
           }
@@ -2801,25 +1740,10 @@
           "alerts": {
             "type": "object",
             "properties": {
-              "armWithAlpaca": {
-                "type": "boolean"
-              },
-              "clearSkyCloudPercent": {
-                "type": "number"
-              },
-              "clientSilentSafetySeconds": {
-                "type": "number"
-              },
-              "clientSilentWeatherSeconds": {
-                "type": "number"
-              },
-              "cloudedOverCloudPercent": {
+              "clientSilentSeconds": {
                 "type": "number"
               },
               "cooldownSeconds": {
-                "type": "number"
-              },
-              "dewRiskMarginC": {
                 "type": "number"
               },
               "enabled": {
@@ -2828,30 +1752,6 @@
               "events": {
                 "type": "object",
                 "properties": {
-                  "clear_sky": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
                   "client_back": {
                     "type": "object",
                     "properties": {
@@ -2923,357 +1823,12 @@
                       "title"
                     ],
                     "additionalProperties": false
-                  },
-                  "clouded_over": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "dew_risk": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "rain_started": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "rain_stopped": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "safe": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "sensor_fault": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "sensor_recovered": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "unsafe": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "battery_low": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "battery_critical": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "battery_shutdown": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "power_restored": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "charge_complete": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "charge_fault": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "level",
-                      "message",
-                      "sound",
-                      "title"
-                    ],
-                    "additionalProperties": false
                   }
                 },
                 "required": [
-                  "clear_sky",
                   "client_back",
                   "client_disconnected",
-                  "client_lost",
-                  "clouded_over",
-                  "dew_risk",
-                  "rain_started",
-                  "rain_stopped",
-                  "safe",
-                  "sensor_fault",
-                  "sensor_recovered",
-                  "unsafe"
+                  "client_lost"
                 ],
                 "additionalProperties": false
               },
@@ -3288,9 +1843,6 @@
                   "enabled"
                 ],
                 "additionalProperties": false
-              },
-              "nightSunAltitudeDeg": {
-                "type": "number"
               },
               "ntfy": {
                 "type": "object",
@@ -3340,18 +1892,12 @@
                 ],
                 "additionalProperties": false
               },
-              "safetyNightOnly": {
-                "type": "boolean"
-              },
               "sendMode": {
                 "type": "string",
                 "enum": [
                   "any",
                   "whileConnected"
                 ]
-              },
-              "skyNightOnly": {
-                "type": "boolean"
               },
               "webhook": {
                 "type": "object",
@@ -3379,22 +1925,14 @@
               }
             },
             "required": [
-              "armWithAlpaca",
-              "clearSkyCloudPercent",
-              "clientSilentSafetySeconds",
-              "clientSilentWeatherSeconds",
-              "cloudedOverCloudPercent",
+              "clientSilentSeconds",
               "cooldownSeconds",
-              "dewRiskMarginC",
               "enabled",
               "events",
               "mqtt",
-              "nightSunAltitudeDeg",
               "ntfy",
               "pushover",
-              "safetyNightOnly",
               "sendMode",
-              "skyNightOnly",
               "webhook"
             ],
             "additionalProperties": false
@@ -3402,92 +1940,12 @@
           "alpaca": {
             "type": "object",
             "properties": {
-              "cloudCoverEnabled": {
-                "type": "boolean"
-              },
-              "cloudCoverUnsafePercent": {
-                "type": "number"
-              },
-              "dewpointMarginEnabled": {
-                "type": "boolean"
-              },
-              "dewpointMarginMinC": {
-                "type": "number"
-              },
               "enabled": {
                 "type": "boolean"
-              },
-              "humidityMaxEnabled": {
-                "type": "boolean"
-              },
-              "humidityMaxSafe": {
-                "type": "number"
-              },
-              "manualOverrideUnsafe": {
-                "type": "boolean"
-              },
-              "rainSensorRequired": {
-                "type": "boolean"
-              },
-              "rainUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "safeDelaySeconds": {
-                "type": "number"
-              },
-              "sqmMinEnabled": {
-                "type": "boolean"
-              },
-              "sqmMinSafe": {
-                "type": "number"
-              },
-              "staleAfterSeconds": {
-                "type": "number"
-              },
-              "windGustUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "windGustUnsafeMs": {
-                "type": "number"
-              },
-              "windSpeedUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "windSpeedUnsafeMs": {
-                "type": "number"
-              },
-              "batteryEnabled": {
-                "type": "boolean"
-              },
-              "batteryAlert": {
-                "type": "boolean"
-              },
-              "batteryPhoneAlarm": {
-                "type": "boolean"
-              },
-              "batteryMinPercent": {
-                "type": "number"
               }
             },
             "required": [
-              "cloudCoverEnabled",
-              "cloudCoverUnsafePercent",
-              "dewpointMarginEnabled",
-              "dewpointMarginMinC",
-              "enabled",
-              "humidityMaxEnabled",
-              "humidityMaxSafe",
-              "manualOverrideUnsafe",
-              "rainSensorRequired",
-              "rainUnsafeEnabled",
-              "safeDelaySeconds",
-              "sqmMinEnabled",
-              "sqmMinSafe",
-              "staleAfterSeconds",
-              "windGustUnsafeEnabled",
-              "windGustUnsafeMs",
-              "windSpeedUnsafeEnabled",
-              "windSpeedUnsafeMs"
+              "enabled"
             ],
             "additionalProperties": false
           },
@@ -3511,95 +1969,8 @@
             ],
             "additionalProperties": false
           },
-          "ble": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "passkey": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "enabled",
-              "passkey"
-            ],
-            "additionalProperties": false
-          },
-          "cloudDetection": {
-            "type": "object",
-            "properties": {
-              "clearSkyThreshold": {
-                "type": "number"
-              },
-              "cloudyThreshold": {
-                "type": "number"
-              },
-              "humidityCorrection": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "clearSkyThreshold",
-              "cloudyThreshold",
-              "humidityCorrection"
-            ],
-            "additionalProperties": false
-          },
           "deviceName": {
             "type": "string"
-          },
-          "gps": {
-            "type": "object",
-            "properties": {
-              "baudRate": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "rxPin": {
-                "type": "number"
-              },
-              "txPin": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "baudRate",
-              "enabled",
-              "rxPin",
-              "txPin"
-            ],
-            "additionalProperties": false
-          },
-          "language": {
-            "type": "string"
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "latitude": {
-                "type": "number"
-              },
-              "longitude": {
-                "type": "number"
-              },
-              "set": {
-                "type": "boolean"
-              },
-              "showSunMoon": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "latitude",
-              "longitude",
-              "set",
-              "showSunMoon"
-            ],
-            "additionalProperties": false
           },
           "mqtt": {
             "type": "object",
@@ -3632,49 +2003,6 @@
               "port": {
                 "type": "number"
               },
-              "publish": {
-                "type": "object",
-                "properties": {
-                  "clouds": {
-                    "type": "boolean"
-                  },
-                  "diagnostics": {
-                    "type": "boolean"
-                  },
-                  "environment": {
-                    "type": "boolean"
-                  },
-                  "gps": {
-                    "type": "boolean"
-                  },
-                  "rain": {
-                    "type": "boolean"
-                  },
-                  "safety": {
-                    "type": "boolean"
-                  },
-                  "sky": {
-                    "type": "boolean"
-                  },
-                  "wind": {
-                    "type": "boolean"
-                  },
-                  "battery": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "clouds",
-                  "diagnostics",
-                  "environment",
-                  "gps",
-                  "rain",
-                  "safety",
-                  "sky",
-                  "wind"
-                ],
-                "additionalProperties": false
-              },
               "publishIntervalMs": {
                 "type": "number"
               },
@@ -3691,7 +2019,6 @@
               "homeAssistant",
               "password",
               "port",
-              "publish",
               "publishIntervalMs",
               "topic",
               "username"
@@ -3742,226 +2069,6 @@
             ],
             "additionalProperties": false
           },
-          "primaryTimeSource": {
-            "type": "number"
-          },
-          "rain": {
-            "type": "object",
-            "properties": {
-              "baudRate": {
-                "type": "number"
-              },
-              "dailyResetEnabled": {
-                "type": "boolean"
-              },
-              "dailyResetHour": {
-                "type": "number"
-              },
-              "dailyResetMinute": {
-                "type": "number"
-              },
-              "debugUart": {
-                "type": "boolean"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "mode": {
-                "type": "string"
-              },
-              "pollIntervalMs": {
-                "type": "number"
-              },
-              "rainClearDelayMs": {
-                "type": "number"
-              },
-              "resolution": {
-                "type": "string"
-              },
-              "rxPin": {
-                "type": "number"
-              },
-              "txPin": {
-                "type": "number"
-              },
-              "units": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "baudRate",
-              "dailyResetEnabled",
-              "dailyResetHour",
-              "dailyResetMinute",
-              "debugUart",
-              "enabled",
-              "mode",
-              "pollIntervalMs",
-              "rainClearDelayMs",
-              "resolution",
-              "rxPin",
-              "txPin",
-              "units"
-            ],
-            "additionalProperties": false
-          },
-          "secondaryTimeSource": {
-            "type": "number"
-          },
-          "sensor": {
-            "type": "object",
-            "properties": {
-              "i2c2SCL": {
-                "type": "number"
-              },
-              "i2c2SDA": {
-                "type": "number"
-              },
-              "i2cFrequency": {
-                "type": "number"
-              },
-              "i2cSCL": {
-                "type": "number"
-              },
-              "i2cSDA": {
-                "type": "number"
-              },
-              "readIntervalMs": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "i2cFrequency",
-              "i2cSCL",
-              "i2cSDA",
-              "readIntervalMs"
-            ],
-            "additionalProperties": false
-          },
-          "sky": {
-            "type": "object",
-            "properties": {
-              "authoritative": {
-                "type": "string",
-                "enum": [
-                  "sqm",
-                  "sqml"
-                ]
-              },
-              "showOther": {
-                "type": "boolean"
-              },
-              "sqmEnabled": {
-                "type": "boolean"
-              },
-              "sqmlEnabled": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "authoritative",
-              "showOther",
-              "sqmEnabled",
-              "sqmlEnabled"
-            ],
-            "additionalProperties": false
-          },
-          "skyAveraging": {
-            "type": "object",
-            "properties": {
-              "windowSeconds": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "windowSeconds"
-            ],
-            "additionalProperties": false
-          },
-          "skyAveragingL": {
-            "type": "object",
-            "properties": {
-              "windowSeconds": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "windowSeconds"
-            ],
-            "additionalProperties": false
-          },
-          "skyCalibration": {
-            "type": "object",
-            "properties": {
-              "darkCalibratedAt": {
-                "type": "number"
-              },
-              "darkFullOffset": {
-                "type": "number"
-              },
-              "darkIrOffset": {
-                "type": "number"
-              },
-              "darkSampleCount": {
-                "type": "number"
-              },
-              "darkVisibleOffset": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "sqmOffset": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "darkCalibratedAt",
-              "darkFullOffset",
-              "darkIrOffset",
-              "darkSampleCount",
-              "darkVisibleOffset",
-              "enabled",
-              "sqmOffset"
-            ],
-            "additionalProperties": false
-          },
-          "skyCalibrationL": {
-            "type": "object",
-            "properties": {
-              "darkCalibratedAt": {
-                "type": "number"
-              },
-              "darkFullOffset": {
-                "type": "number"
-              },
-              "darkIrOffset": {
-                "type": "number"
-              },
-              "darkSampleCount": {
-                "type": "number"
-              },
-              "darkVisibleOffset": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "sqmOffset": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "darkCalibratedAt",
-              "darkFullOffset",
-              "darkIrOffset",
-              "darkSampleCount",
-              "darkVisibleOffset",
-              "enabled",
-              "sqmOffset"
-            ],
-            "additionalProperties": false
-          },
           "wifi": {
             "type": "object",
             "properties": {
@@ -4001,180 +2108,17 @@
               "ssid"
             ],
             "additionalProperties": false
-          },
-          "wind": {
-            "type": "object",
-            "properties": {
-              "directionEnabled": {
-                "type": "boolean"
-              },
-              "directionOffsetDeg": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "kmhPerHz": {
-                "type": "number"
-              },
-              "speedPin": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "directionEnabled",
-              "directionOffsetDeg",
-              "enabled",
-              "kmhPerHz",
-              "speedPin"
-            ],
-            "additionalProperties": false
-          },
-          "display": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "pages": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 7,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "sky",
-                    "environment",
-                    "cloud",
-                    "safety",
-                    "gps",
-                    "battery",
-                    "network"
-                  ]
-                }
-              },
-              "cycleSeconds": {
-                "type": "number",
-                "minimum": 2,
-                "maximum": 60
-              },
-              "brightness": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high"
-                ]
-              },
-              "timeoutSeconds": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1800
-              },
-              "wakeOnBoot": {
-                "type": "boolean"
-              },
-              "stayOnAtNight": {
-                "type": "boolean"
-              },
-              "rotate180": {
-                "type": "boolean"
-              },
-              "buttonPin": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "enabled",
-              "pages",
-              "cycleSeconds",
-              "brightness",
-              "timeoutSeconds",
-              "wakeOnBoot",
-              "stayOnAtNight",
-              "rotate180",
-              "buttonPin"
-            ],
-            "additionalProperties": false
-          },
-          "battery": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "lowPercent": {
-                "type": "number"
-              },
-              "criticalPercent": {
-                "type": "number"
-              },
-              "shutdownPercent": {
-                "type": "number"
-              },
-              "capacityMah": {
-                "type": "number"
-              },
-              "powerSaving": {
-                "type": "boolean"
-              },
-              "saveReadIntervalSeconds": {
-                "type": "number"
-              },
-              "shutdownGraceSeconds": {
-                "type": "number"
-              },
-              "alertPin": {
-                "type": "number"
-              },
-              "stat1Pin": {
-                "type": "number"
-              },
-              "stat2Pin": {
-                "type": "number"
-              },
-              "pgPin": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "enabled",
-              "lowPercent",
-              "criticalPercent",
-              "shutdownPercent",
-              "capacityMah",
-              "powerSaving",
-              "saveReadIntervalSeconds",
-              "shutdownGraceSeconds",
-              "alertPin",
-              "stat1Pin",
-              "stat2Pin",
-              "pgPin"
-            ],
-            "additionalProperties": false
           }
         },
         "required": [
           "alerts",
           "alpaca",
           "auth",
-          "ble",
-          "cloudDetection",
           "deviceName",
-          "gps",
-          "location",
           "mqtt",
           "ntp",
           "ota",
-          "primaryTimeSource",
-          "rain",
-          "secondaryTimeSource",
-          "sensor",
-          "skyAveraging",
-          "skyCalibration",
-          "wifi",
-          "wind"
+          "wifi"
         ],
         "additionalProperties": false
       },
@@ -4185,25 +2129,10 @@
           "alerts": {
             "type": "object",
             "properties": {
-              "armWithAlpaca": {
-                "type": "boolean"
-              },
-              "clearSkyCloudPercent": {
-                "type": "number"
-              },
-              "clientSilentSafetySeconds": {
-                "type": "number"
-              },
-              "clientSilentWeatherSeconds": {
-                "type": "number"
-              },
-              "cloudedOverCloudPercent": {
+              "clientSilentSeconds": {
                 "type": "number"
               },
               "cooldownSeconds": {
-                "type": "number"
-              },
-              "dewRiskMarginC": {
                 "type": "number"
               },
               "enabled": {
@@ -4212,24 +2141,6 @@
               "events": {
                 "type": "object",
                 "properties": {
-                  "clear_sky": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
                   "client_back": {
                     "type": "object",
                     "properties": {
@@ -4283,258 +2194,6 @@
                       }
                     },
                     "additionalProperties": false
-                  },
-                  "clouded_over": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "dew_risk": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "rain_started": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "rain_stopped": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "safe": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "sensor_fault": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "sensor_recovered": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "unsafe": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "battery_low": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "battery_critical": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "battery_shutdown": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "power_restored": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "charge_complete": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
-                  },
-                  "charge_fault": {
-                    "type": "object",
-                    "properties": {
-                      "level": {
-                        "type": "number"
-                      },
-                      "message": {
-                        "type": "string"
-                      },
-                      "sound": {
-                        "type": "string"
-                      },
-                      "title": {
-                        "type": "string"
-                      }
-                    },
-                    "additionalProperties": false
                   }
                 },
                 "additionalProperties": false
@@ -4547,9 +2206,6 @@
                   }
                 },
                 "additionalProperties": false
-              },
-              "nightSunAltitudeDeg": {
-                "type": "number"
               },
               "ntfy": {
                 "type": "object",
@@ -4587,18 +2243,12 @@
                 },
                 "additionalProperties": false
               },
-              "safetyNightOnly": {
-                "type": "boolean"
-              },
               "sendMode": {
                 "type": "string",
                 "enum": [
                   "any",
                   "whileConnected"
                 ]
-              },
-              "skyNightOnly": {
-                "type": "boolean"
               },
               "webhook": {
                 "type": "object",
@@ -4624,71 +2274,8 @@
           "alpaca": {
             "type": "object",
             "properties": {
-              "cloudCoverEnabled": {
-                "type": "boolean"
-              },
-              "cloudCoverUnsafePercent": {
-                "type": "number"
-              },
-              "dewpointMarginEnabled": {
-                "type": "boolean"
-              },
-              "dewpointMarginMinC": {
-                "type": "number"
-              },
               "enabled": {
                 "type": "boolean"
-              },
-              "humidityMaxEnabled": {
-                "type": "boolean"
-              },
-              "humidityMaxSafe": {
-                "type": "number"
-              },
-              "manualOverrideUnsafe": {
-                "type": "boolean"
-              },
-              "rainSensorRequired": {
-                "type": "boolean"
-              },
-              "rainUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "safeDelaySeconds": {
-                "type": "number"
-              },
-              "sqmMinEnabled": {
-                "type": "boolean"
-              },
-              "sqmMinSafe": {
-                "type": "number"
-              },
-              "staleAfterSeconds": {
-                "type": "number"
-              },
-              "windGustUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "windGustUnsafeMs": {
-                "type": "number"
-              },
-              "windSpeedUnsafeEnabled": {
-                "type": "boolean"
-              },
-              "windSpeedUnsafeMs": {
-                "type": "number"
-              },
-              "batteryEnabled": {
-                "type": "boolean"
-              },
-              "batteryAlert": {
-                "type": "boolean"
-              },
-              "batteryPhoneAlarm": {
-                "type": "boolean"
-              },
-              "batteryMinPercent": {
-                "type": "number"
               }
             },
             "additionalProperties": false
@@ -4708,74 +2295,8 @@
             },
             "additionalProperties": false
           },
-          "ble": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "passkey": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          },
-          "cloudDetection": {
-            "type": "object",
-            "properties": {
-              "clearSkyThreshold": {
-                "type": "number"
-              },
-              "cloudyThreshold": {
-                "type": "number"
-              },
-              "humidityCorrection": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
           "deviceName": {
             "type": "string"
-          },
-          "gps": {
-            "type": "object",
-            "properties": {
-              "baudRate": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "rxPin": {
-                "type": "number"
-              },
-              "txPin": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "language": {
-            "type": "string"
-          },
-          "location": {
-            "type": "object",
-            "properties": {
-              "latitude": {
-                "type": "number"
-              },
-              "longitude": {
-                "type": "number"
-              },
-              "set": {
-                "type": "boolean"
-              },
-              "showSunMoon": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
           },
           "mqtt": {
             "type": "object",
@@ -4803,39 +2324,6 @@
               },
               "port": {
                 "type": "number"
-              },
-              "publish": {
-                "type": "object",
-                "properties": {
-                  "clouds": {
-                    "type": "boolean"
-                  },
-                  "diagnostics": {
-                    "type": "boolean"
-                  },
-                  "environment": {
-                    "type": "boolean"
-                  },
-                  "gps": {
-                    "type": "boolean"
-                  },
-                  "rain": {
-                    "type": "boolean"
-                  },
-                  "safety": {
-                    "type": "boolean"
-                  },
-                  "sky": {
-                    "type": "boolean"
-                  },
-                  "wind": {
-                    "type": "boolean"
-                  },
-                  "battery": {
-                    "type": "boolean"
-                  }
-                },
-                "additionalProperties": false
               },
               "publishIntervalMs": {
                 "type": "number"
@@ -4882,175 +2370,6 @@
             },
             "additionalProperties": false
           },
-          "primaryTimeSource": {
-            "type": "number"
-          },
-          "rain": {
-            "type": "object",
-            "properties": {
-              "baudRate": {
-                "type": "number"
-              },
-              "dailyResetEnabled": {
-                "type": "boolean"
-              },
-              "dailyResetHour": {
-                "type": "number"
-              },
-              "dailyResetMinute": {
-                "type": "number"
-              },
-              "debugUart": {
-                "type": "boolean"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "mode": {
-                "type": "string"
-              },
-              "pollIntervalMs": {
-                "type": "number"
-              },
-              "rainClearDelayMs": {
-                "type": "number"
-              },
-              "resolution": {
-                "type": "string"
-              },
-              "rxPin": {
-                "type": "number"
-              },
-              "txPin": {
-                "type": "number"
-              },
-              "units": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          },
-          "secondaryTimeSource": {
-            "type": "number"
-          },
-          "sensor": {
-            "type": "object",
-            "properties": {
-              "i2c2SCL": {
-                "type": "number"
-              },
-              "i2c2SDA": {
-                "type": "number"
-              },
-              "i2cFrequency": {
-                "type": "number"
-              },
-              "i2cSCL": {
-                "type": "number"
-              },
-              "i2cSDA": {
-                "type": "number"
-              },
-              "readIntervalMs": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "sky": {
-            "type": "object",
-            "properties": {
-              "authoritative": {
-                "type": "string",
-                "enum": [
-                  "sqm",
-                  "sqml"
-                ]
-              },
-              "showOther": {
-                "type": "boolean"
-              },
-              "sqmEnabled": {
-                "type": "boolean"
-              },
-              "sqmlEnabled": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          },
-          "skyAveraging": {
-            "type": "object",
-            "properties": {
-              "windowSeconds": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "skyAveragingL": {
-            "type": "object",
-            "properties": {
-              "windowSeconds": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "skyCalibration": {
-            "type": "object",
-            "properties": {
-              "darkCalibratedAt": {
-                "type": "number"
-              },
-              "darkFullOffset": {
-                "type": "number"
-              },
-              "darkIrOffset": {
-                "type": "number"
-              },
-              "darkSampleCount": {
-                "type": "number"
-              },
-              "darkVisibleOffset": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "sqmOffset": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "skyCalibrationL": {
-            "type": "object",
-            "properties": {
-              "darkCalibratedAt": {
-                "type": "number"
-              },
-              "darkFullOffset": {
-                "type": "number"
-              },
-              "darkIrOffset": {
-                "type": "number"
-              },
-              "darkSampleCount": {
-                "type": "number"
-              },
-              "darkVisibleOffset": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "sqmOffset": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
           "wifi": {
             "type": "object",
             "properties": {
@@ -5080,126 +2399,6 @@
               }
             },
             "additionalProperties": false
-          },
-          "wind": {
-            "type": "object",
-            "properties": {
-              "directionEnabled": {
-                "type": "boolean"
-              },
-              "directionOffsetDeg": {
-                "type": "number"
-              },
-              "enabled": {
-                "type": "boolean"
-              },
-              "kmhPerHz": {
-                "type": "number"
-              },
-              "speedPin": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "display": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "pages": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 7,
-                "uniqueItems": true,
-                "items": {
-                  "type": "string",
-                  "enum": [
-                    "sky",
-                    "environment",
-                    "cloud",
-                    "safety",
-                    "gps",
-                    "battery",
-                    "network"
-                  ]
-                }
-              },
-              "cycleSeconds": {
-                "type": "number",
-                "minimum": 2,
-                "maximum": 60
-              },
-              "brightness": {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "medium",
-                  "high"
-                ]
-              },
-              "timeoutSeconds": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 1800
-              },
-              "wakeOnBoot": {
-                "type": "boolean"
-              },
-              "stayOnAtNight": {
-                "type": "boolean"
-              },
-              "rotate180": {
-                "type": "boolean"
-              },
-              "buttonPin": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
-          },
-          "battery": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "lowPercent": {
-                "type": "number"
-              },
-              "criticalPercent": {
-                "type": "number"
-              },
-              "shutdownPercent": {
-                "type": "number"
-              },
-              "capacityMah": {
-                "type": "number"
-              },
-              "powerSaving": {
-                "type": "boolean"
-              },
-              "saveReadIntervalSeconds": {
-                "type": "number"
-              },
-              "shutdownGraceSeconds": {
-                "type": "number"
-              },
-              "alertPin": {
-                "type": "number"
-              },
-              "stat1Pin": {
-                "type": "number"
-              },
-              "stat2Pin": {
-                "type": "number"
-              },
-              "pgPin": {
-                "type": "number"
-              }
-            },
-            "additionalProperties": false
           }
         },
         "additionalProperties": false
@@ -5217,753 +2416,6 @@
           "error"
         ]
       },
-      "I18n": {
-        "title": "GET /api/i18n - the device's language (specs/023-i18n)",
-        "type": "object",
-        "properties": {
-          "language": {
-            "type": "string"
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "idle",
-              "downloading",
-              "installed",
-              "failed",
-              "restoring"
-            ]
-          },
-          "firmwareVersion": {
-            "type": "string"
-          },
-          "pack": {
-            "type": [
-              "object",
-              "null"
-            ],
-            "properties": {
-              "lang": {
-                "type": "string"
-              },
-              "version": {
-                "type": "string"
-              },
-              "size": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "lang",
-              "version",
-              "size"
-            ],
-            "additionalProperties": false
-          },
-          "error": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "language",
-          "state",
-          "firmwareVersion",
-          "pack"
-        ],
-        "additionalProperties": false
-      },
-      "Readings": {
-        "title": "readings",
-        "type": "object",
-        "properties": {
-          "clouds": {
-            "type": "object",
-            "properties": {
-              "condition": {
-                "type": "string"
-              },
-              "correctedDelta": {
-                "type": "number"
-              },
-              "coverPercent": {
-                "type": "number"
-              },
-              "description": {
-                "type": "string"
-              },
-              "humidity": {
-                "type": "number"
-              },
-              "humiditySource": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              },
-              "temperatureDelta": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "dataAgeMs": {
-            "type": "number"
-          },
-          "dataStale": {
-            "type": "boolean"
-          },
-          "environment": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "dewpoint": {
-                "type": "number"
-              },
-              "humidity": {
-                "type": "number"
-              },
-              "pressure": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              },
-              "temperature": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "gps": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "altitude": {
-                "type": "number"
-              },
-              "fix": {
-                "type": "boolean"
-              },
-              "hdop": {
-                "type": "number"
-              },
-              "latitude": {
-                "type": "number"
-              },
-              "longitude": {
-                "type": "number"
-              },
-              "satellites": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "infrared": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "ambientTemperature": {
-                "type": "number"
-              },
-              "skyTemperature": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "light": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "full": {
-                "type": "number"
-              },
-              "gain": {
-                "type": "string"
-              },
-              "gainFactor": {
-                "type": "number"
-              },
-              "infrared": {
-                "type": "number"
-              },
-              "integrationMs": {
-                "type": "number"
-              },
-              "lux": {
-                "type": "number"
-              },
-              "nightMode": {
-                "type": "boolean"
-              },
-              "saturated": {
-                "type": "boolean"
-              },
-              "status": {
-                "type": "string"
-              },
-              "visible": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "rain": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "emitterSaturated": {
-                "type": "boolean"
-              },
-              "eventAccumulation": {
-                "type": "number"
-              },
-              "intensity": {
-                "type": "number"
-              },
-              "lensFault": {
-                "type": "boolean"
-              },
-              "raining": {
-                "type": "boolean"
-              },
-              "rainingNow": {
-                "type": "boolean"
-              },
-              "sensorEventAccumulation": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              },
-              "totalAccumulation": {
-                "type": "number"
-              },
-              "clearInSeconds": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "Seconds until the rain hold releases; present only while rain has stopped but the clear delay holds it (spec 025)."
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "safety": {
-            "type": "object",
-            "properties": {
-              "alpacaEnabled": {
-                "type": "boolean"
-              },
-              "changedAgeMs": {
-                "type": "number"
-              },
-              "evaluatedAgeMs": {
-                "type": "number"
-              },
-              "rawSafe": {
-                "type": "boolean"
-              },
-              "reasonFlags": {
-                "type": "number"
-              },
-              "reasons": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "rulesNotInEffect": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "safe": {
-                "type": "boolean"
-              },
-              "secondsUntilSafe": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "alpacaEnabled",
-              "changedAgeMs",
-              "evaluatedAgeMs",
-              "rawSafe",
-              "reasonFlags",
-              "reasons",
-              "rulesNotInEffect",
-              "safe",
-              "secondsUntilSafe"
-            ],
-            "additionalProperties": false
-          },
-          "sky": {
-            "type": "object",
-            "properties": {
-              "averagingWindowSeconds": {
-                "type": "number"
-              },
-              "bortle": {
-                "type": "number"
-              },
-              "calibrated": {
-                "type": "boolean"
-              },
-              "description": {
-                "type": "string"
-              },
-              "nelm": {
-                "type": "number"
-              },
-              "rawSqm": {
-                "type": "number"
-              },
-              "source": {
-                "type": "string",
-                "enum": [
-                  "sqm",
-                  "sqml"
-                ]
-              },
-              "sqm": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "skySensors": {
-            "type": "object",
-            "properties": {
-              "deltaSqm": {
-                "type": "number"
-              },
-              "sqm": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "averagingWindowSeconds": {
-                    "type": "number"
-                  },
-                  "bortle": {
-                    "type": "number"
-                  },
-                  "calibrated": {
-                    "type": "boolean"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "gain": {
-                    "type": "string"
-                  },
-                  "integrationMs": {
-                    "type": "number"
-                  },
-                  "lux": {
-                    "type": "number"
-                  },
-                  "nelm": {
-                    "type": "number"
-                  },
-                  "nightMode": {
-                    "type": "boolean"
-                  },
-                  "rawSqm": {
-                    "type": "number"
-                  },
-                  "saturated": {
-                    "type": "boolean"
-                  },
-                  "sqm": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "sqml": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "averagingWindowSeconds": {
-                    "type": "number"
-                  },
-                  "bortle": {
-                    "type": "number"
-                  },
-                  "calibrated": {
-                    "type": "boolean"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "gain": {
-                    "type": "string"
-                  },
-                  "integrationMs": {
-                    "type": "number"
-                  },
-                  "lux": {
-                    "type": "number"
-                  },
-                  "nelm": {
-                    "type": "number"
-                  },
-                  "nightMode": {
-                    "type": "boolean"
-                  },
-                  "rawSqm": {
-                    "type": "number"
-                  },
-                  "saturated": {
-                    "type": "boolean"
-                  },
-                  "sqm": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          "timeValid": {
-            "type": "boolean"
-          },
-          "timestamp": {
-            "type": "number"
-          },
-          "wind": {
-            "type": "object",
-            "properties": {
-              "ageMs": {
-                "type": "number"
-              },
-              "direction": {
-                "type": "number"
-              },
-              "gust": {
-                "type": "number"
-              },
-              "speed": {
-                "type": "number"
-              },
-              "status": {
-                "type": "string"
-              },
-              "vaneFault": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "status"
-            ],
-            "additionalProperties": false
-          },
-          "battery": {
-            "type": "object",
-            "properties": {
-              "present": {
-                "type": "boolean"
-              },
-              "status": {
-                "type": "string"
-              },
-              "ageMs": {
-                "type": "number"
-              },
-              "estimating": {
-                "type": "boolean"
-              },
-              "percent": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "voltage": {
-                "type": "number"
-              },
-              "ratePercentPerHour": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "state": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "discharging",
-                  "charging",
-                  "charged",
-                  "fault",
-                  "no-battery",
-                  null
-                ]
-              },
-              "usbPower": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "fault": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "temperature",
-                  null
-                ]
-              },
-              "timeToEmptyMinutes": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "timeToFullMinutes": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "powerSaving": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "present"
-            ],
-            "additionalProperties": false
-          }
-        },
-        "required": [
-          "clouds",
-          "dataAgeMs",
-          "dataStale",
-          "environment",
-          "infrared",
-          "light",
-          "safety",
-          "sky",
-          "timeValid",
-          "timestamp"
-        ],
-        "additionalProperties": false
-      },
-      "Releases": {
-        "title": "Releases",
-        "description": "GET /api/updates/check (src/WebServerUpdates.cpp, lib/ReleaseLogic): GitHub releases on the chosen track that have both a firmware file for this build and a web UI file for this partition layout, newest first. Hand-written, not generated.",
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "tag": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "prerelease": {
-              "type": "boolean"
-            },
-            "publishedAt": {
-              "type": "string"
-            },
-            "firmwareAssetUrl": {
-              "type": "string"
-            },
-            "firmwareAssetSize": {
-              "type": "integer"
-            },
-            "fsAssetUrl": {
-              "type": "string"
-            },
-            "fsAssetSize": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "tag",
-            "name",
-            "prerelease",
-            "publishedAt",
-            "firmwareAssetUrl",
-            "firmwareAssetSize",
-            "fsAssetUrl",
-            "fsAssetSize"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "Safety": {
-        "title": "safety",
-        "type": "object",
-        "properties": {
-          "alpacaEnabled": {
-            "type": "boolean"
-          },
-          "changedAgeMs": {
-            "type": "number"
-          },
-          "evaluatedAgeMs": {
-            "type": "number"
-          },
-          "rawSafe": {
-            "type": "boolean"
-          },
-          "reasonFlags": {
-            "type": "number"
-          },
-          "reasons": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "rulesNotInEffect": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "safe": {
-            "type": "boolean"
-          },
-          "secondsUntilSafe": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "alpacaEnabled",
-          "changedAgeMs",
-          "evaluatedAgeMs",
-          "rawSafe",
-          "reasonFlags",
-          "reasons",
-          "rulesNotInEffect",
-          "safe",
-          "secondsUntilSafe"
-        ],
-        "additionalProperties": false
-      },
-      "SafetyHistory": {
-        "title": "safety-history",
-        "type": "object",
-        "properties": {
-          "boot": {
-            "type": "number"
-          },
-          "entries": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "boot": {
-                  "type": "number"
-                },
-                "held": {
-                  "type": "boolean"
-                },
-                "kind": {
-                  "type": "string"
-                },
-                "reasonFlags": {
-                  "type": "number"
-                },
-                "resetReason": {
-                  "type": "number"
-                },
-                "safe": {
-                  "type": "boolean"
-                },
-                "timestamp": {
-                  "type": "number"
-                },
-                "uptime": {
-                  "type": "number"
-                }
-              },
-              "required": [
-                "boot",
-                "kind",
-                "uptime"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "uptime": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "boot",
-          "entries",
-          "uptime"
-        ],
-        "additionalProperties": false
-      },
       "SettingsEffective": {
         "title": "settings-effective",
         "type": "object",
@@ -5971,67 +2423,23 @@
           "facts": {
             "type": "object",
             "properties": {
-              "bluetoothBuild": {
-                "type": "boolean"
-              },
-              "bluetoothRunning": {
-                "type": "boolean"
+              "alpacaDevices": {
+                "type": "number"
               },
               "clockSet": {
-                "type": "boolean"
-              },
-              "environmentDetected": {
-                "type": "boolean"
-              },
-              "gpsFix": {
-                "type": "boolean"
-              },
-              "gpsRunning": {
-                "type": "boolean"
-              },
-              "infraredDetected": {
-                "type": "boolean"
-              },
-              "languageInstalled": {
-                "type": "boolean"
-              },
-              "lightDetected": {
                 "type": "boolean"
               },
               "mqttConnected": {
                 "type": "boolean"
               },
-              "pairedPhones": {
-                "type": "number"
-              },
-              "sqmDetected": {
-                "type": "boolean"
-              },
-              "sqmlDetected": {
-                "type": "boolean"
-              },
               "wifiConnected": {
-                "type": "boolean"
-              },
-              "displayDetected": {
-                "type": "boolean"
-              },
-              "batteryDetected": {
                 "type": "boolean"
               }
             },
             "required": [
-              "bluetoothBuild",
-              "bluetoothRunning",
+              "alpacaDevices",
               "clockSet",
-              "environmentDetected",
-              "gpsFix",
-              "gpsRunning",
-              "infraredDetected",
-              "languageInstalled",
-              "lightDetected",
               "mqttConnected",
-              "pairedPhones",
               "wifiConnected"
             ],
             "additionalProperties": false
@@ -6047,9 +2455,6 @@
                 "id": {
                   "type": "string"
                 },
-                "neutral": {
-                  "type": "boolean"
-                },
                 "reason": {
                   "type": "string"
                 },
@@ -6060,9 +2465,6 @@
                   "type": "string"
                 },
                 "text": {
-                  "type": "string"
-                },
-                "unmet": {
                   "type": "string"
                 }
               },
@@ -6091,9 +2493,6 @@
               "armed": {
                 "type": "boolean"
               },
-              "armWithAlpaca": {
-                "type": "boolean"
-              },
               "mode": {
                 "type": "string",
                 "enum": [
@@ -6114,6 +2513,10 @@
                   "migrated"
                 ]
               },
+              "recentRevision": {
+                "type": "integer",
+                "minimum": 0
+              },
               "since": {
                 "type": [
                   "null",
@@ -6125,106 +2528,60 @@
                   "null",
                   "number"
                 ]
-              },
-              "recentRevision": {
-                "type": "integer",
-                "minimum": 0
               }
             },
             "required": [
-              "armWithAlpaca",
               "armed",
               "mode",
               "reason",
+              "recentRevision",
               "since",
-              "sinceAgeMs",
-              "recentRevision"
+              "sinceAgeMs"
             ],
             "additionalProperties": false
           },
           "alpaca": {
             "type": "object",
             "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
               "clients": {
                 "type": "object",
-                "properties": {
-                  "safetymonitor": {
-                    "type": "object",
-                    "properties": {
-                      "connected": {
-                        "type": "boolean"
-                      },
-                      "watching": {
-                        "type": "boolean"
-                      },
-                      "silent": {
-                        "type": "boolean"
-                      },
-                      "lastCheckedAgeMs": {
-                        "type": [
-                          "null",
-                          "number"
-                        ]
-                      },
-                      "clientId": {
-                        "type": [
-                          "null",
-                          "number"
-                        ]
-                      }
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "clientId": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
                     },
-                    "required": [
-                      "clientId",
-                      "connected",
-                      "lastCheckedAgeMs",
-                      "silent",
-                      "watching"
-                    ],
-                    "additionalProperties": false
+                    "connected": {
+                      "type": "boolean"
+                    },
+                    "lastCheckedAgeMs": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "silent": {
+                      "type": "boolean"
+                    },
+                    "watching": {
+                      "type": "boolean"
+                    }
                   },
-                  "observingconditions": {
-                    "type": "object",
-                    "properties": {
-                      "connected": {
-                        "type": "boolean"
-                      },
-                      "watching": {
-                        "type": "boolean"
-                      },
-                      "silent": {
-                        "type": "boolean"
-                      },
-                      "lastCheckedAgeMs": {
-                        "type": [
-                          "null",
-                          "number"
-                        ]
-                      },
-                      "clientId": {
-                        "type": [
-                          "null",
-                          "number"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "clientId",
-                      "connected",
-                      "lastCheckedAgeMs",
-                      "silent",
-                      "watching"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "observingconditions",
-                  "safetymonitor"
-                ],
-                "additionalProperties": false
+                  "required": [
+                    "clientId",
+                    "connected",
+                    "lastCheckedAgeMs",
+                    "silent",
+                    "watching"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "enabled": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -6233,288 +2590,56 @@
             ],
             "additionalProperties": false
           },
-          "ble": {
+          "bootCount": {
+            "type": "number"
+          },
+          "configRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "connections": {
             "type": "object",
             "properties": {
-              "active": {
+              "alpacaRestoredAfterRestart": {
                 "type": "boolean"
               },
-              "alarm": {
+              "liveUpdates": {
                 "type": "object",
                 "properties": {
-                  "acknowledgedSequence": {
+                  "limitPerEndpoint": {
                     "type": "number"
                   },
-                  "active": {
-                    "type": "boolean"
-                  },
-                  "bondedPhones": {
+                  "replaced": {
                     "type": "number"
                   },
-                  "sequence": {
+                  "stalledClosed": {
                     "type": "number"
                   },
-                  "serviceActive": {
-                    "type": "boolean"
+                  "status": {
+                    "type": "number"
                   }
                 },
                 "required": [
-                  "acknowledgedSequence",
-                  "active",
-                  "bondedPhones",
-                  "sequence",
-                  "serviceActive"
+                  "limitPerEndpoint",
+                  "replaced",
+                  "stalledClosed",
+                  "status"
                 ],
                 "additionalProperties": false
               },
-              "available": {
-                "type": "boolean"
-              },
-              "clients": {
+              "tcpLimit": {
                 "type": "number"
               }
             },
             "required": [
-              "active",
-              "alarm",
-              "available",
-              "clients"
+              "alpacaRestoredAfterRestart",
+              "liveUpdates",
+              "tcpLimit"
             ],
             "additionalProperties": false
-          },
-          "bootCount": {
-            "type": "number"
           },
           "cpuFreqMHz": {
             "type": "number"
-          },
-          "diagnostics": {
-            "type": "object",
-            "properties": {
-              "light": {
-                "type": "object",
-                "properties": {
-                  "consecutiveLowSamples": {
-                    "type": "number"
-                  },
-                  "consecutiveSaturatedSamples": {
-                    "type": "number"
-                  },
-                  "correctedVisible": {
-                    "type": "number"
-                  },
-                  "darkVisibleOffset": {
-                    "type": "number"
-                  },
-                  "nightMode": {
-                    "type": "boolean"
-                  },
-                  "rejectedSamples": {
-                    "type": "number"
-                  },
-                  "rollingVisible": {
-                    "type": "number"
-                  },
-                  "sampleCount": {
-                    "type": "number"
-                  },
-                  "windowSamples": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "consecutiveLowSamples",
-                  "consecutiveSaturatedSamples",
-                  "correctedVisible",
-                  "darkVisibleOffset",
-                  "nightMode",
-                  "rejectedSamples",
-                  "rollingVisible",
-                  "sampleCount",
-                  "windowSamples"
-                ],
-                "additionalProperties": false
-              },
-              "rain": {
-                "type": "object",
-                "properties": {
-                  "baudRate": {
-                    "type": "number"
-                  },
-                  "lastAck": {
-                    "type": "null"
-                  },
-                  "lastCommand": {
-                    "type": "string"
-                  },
-                  "lastError": {
-                    "type": [
-                      "null",
-                      "string"
-                    ]
-                  },
-                  "lastPollAgeMs": {
-                    "type": "number"
-                  },
-                  "lastRainDetectedAgeMs": {
-                    "type": "number"
-                  },
-                  "lastResponse": {
-                    "type": [
-                      "null",
-                      "string"
-                    ]
-                  },
-                  "lastResponseAgeMs": {
-                    "type": "number"
-                  },
-                  "lastSuccessfulReadAgeMs": {
-                    "type": "number"
-                  },
-                  "parseErrors": {
-                    "type": "number"
-                  },
-                  "resetReason": {
-                    "type": "null"
-                  },
-                  "rxPin": {
-                    "type": "number"
-                  },
-                  "softwareBuildDate": {
-                    "type": "null"
-                  },
-                  "softwareVersion": {
-                    "type": "null"
-                  },
-                  "state": {
-                    "type": "string"
-                  },
-                  "successfulReads": {
-                    "type": "number"
-                  },
-                  "timeouts": {
-                    "type": "number"
-                  },
-                  "txPin": {
-                    "type": "number"
-                  },
-                  "uartOpened": {
-                    "type": "boolean"
-                  },
-                  "uartPort": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "baudRate",
-                  "lastAck",
-                  "lastCommand",
-                  "lastError",
-                  "lastPollAgeMs",
-                  "lastResponse",
-                  "lastResponseAgeMs",
-                  "parseErrors",
-                  "resetReason",
-                  "rxPin",
-                  "softwareBuildDate",
-                  "softwareVersion",
-                  "state",
-                  "successfulReads",
-                  "timeouts",
-                  "txPin",
-                  "uartOpened",
-                  "uartPort"
-                ],
-                "additionalProperties": false
-              },
-              "battery": {
-                "type": "object",
-                "properties": {
-                  "version": {
-                    "type": "string"
-                  },
-                  "vcellRaw": {
-                    "type": "number"
-                  },
-                  "socRaw": {
-                    "type": "number"
-                  },
-                  "crateRaw": {
-                    "type": "number"
-                  },
-                  "statusRaw": {
-                    "type": "number"
-                  },
-                  "resetSeen": {
-                    "type": "boolean"
-                  },
-                  "estimating": {
-                    "type": "boolean"
-                  },
-                  "charger": {
-                    "type": [
-                      "object",
-                      "null"
-                    ],
-                    "properties": {
-                      "stat1": {
-                        "type": "boolean"
-                      },
-                      "stat2": {
-                        "type": "boolean"
-                      },
-                      "pg": {
-                        "type": "boolean"
-                      }
-                    },
-                    "required": [
-                      "stat1",
-                      "stat2",
-                      "pg"
-                    ],
-                    "additionalProperties": false
-                  },
-                  "gaugeAlert": {
-                    "type": [
-                      "boolean",
-                      "null"
-                    ]
-                  },
-                  "policy": {
-                    "type": "string",
-                    "enum": [
-                      "normal",
-                      "saving",
-                      "shutdown"
-                    ]
-                  },
-                  "currentMa": {
-                    "type": [
-                      "number",
-                      "null"
-                    ]
-                  }
-                },
-                "required": [
-                  "version",
-                  "vcellRaw",
-                  "socRaw",
-                  "crateRaw",
-                  "statusRaw",
-                  "resetSeen",
-                  "estimating",
-                  "charger",
-                  "gaugeAlert",
-                  "policy",
-                  "currentMa"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "light"
-            ],
-            "additionalProperties": false
           },
           "firmware": {
             "type": "object",
@@ -6529,14 +2654,15 @@
                 "type": "string",
                 "enum": [
                   "l2",
-                  "legacy"
+                  "other"
                 ]
               },
               "name": {
                 "type": "string"
               },
-              "variant": {
-                "type": "string"
+              "product": {
+                "type": "string",
+                "const": "roofroof"
               },
               "version": {
                 "type": "string"
@@ -6547,7 +2673,7 @@
               "buildTime",
               "layout",
               "name",
-              "variant",
+              "product",
               "version"
             ],
             "additionalProperties": false
@@ -6650,26 +2776,11 @@
           "ntp": {
             "type": "object",
             "properties": {
-              "activeSource": {
-                "type": "number"
-              },
               "drift": {
                 "type": "number"
               },
               "enabled": {
                 "type": "boolean"
-              },
-              "gpsEnabled": {
-                "type": "boolean"
-              },
-              "gpsHasFix": {
-                "type": "boolean"
-              },
-              "gpsSatellites": {
-                "type": "number"
-              },
-              "gpsTimeUTC": {
-                "type": "string"
               },
               "lastSync": {
                 "type": "number"
@@ -6688,13 +2799,8 @@
               }
             },
             "required": [
-              "activeSource",
               "drift",
               "enabled",
-              "gpsEnabled",
-              "gpsHasFix",
-              "gpsSatellites",
-              "gpsTimeUTC",
               "lastSync",
               "nextSync",
               "server",
@@ -6755,277 +2861,14 @@
                 "type": "string"
               }
             },
-            "required": [
-              "bootSlot",
-              "fsAddress",
-              "fsSize",
-              "nextSize",
-              "nextSlot",
-              "nvs",
-              "runningAddress",
-              "runningSize",
-              "runningSlot"
-            ],
+            "required": [],
             "additionalProperties": false
           },
           "resetReason": {
             "type": "number"
           },
-          "sensorSnapshotBytes": {
-            "type": "number"
-          },
-          "sensors": {
-            "type": "object",
-            "properties": {
-              "environment": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "ageMs",
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "gps": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "infrared": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "light": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "ageMs",
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "rain": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "ageMs",
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "wind": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "vaneStatus": {
-                    "type": "string"
-                  },
-                  "vaneMagnet": {
-                    "enum": [
-                      "ok",
-                      "weak",
-                      "strong",
-                      "none",
-                      "noAnswer"
-                    ]
-                  },
-                  "vaneAgc": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "ageMs",
-                  "status",
-                  "vaneStatus"
-                ],
-                "additionalProperties": false
-              },
-              "battery": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "status"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "environment",
-              "infrared",
-              "light"
-            ],
-            "additionalProperties": false
-          },
           "sketchSize": {
             "type": "number"
-          },
-          "sky": {
-            "type": "object",
-            "properties": {
-              "isNight": {
-                "type": "boolean"
-              },
-              "latitude": {
-                "type": "number"
-              },
-              "locationSource": {
-                "type": "string"
-              },
-              "longitude": {
-                "type": "number"
-              },
-              "nightKnown": {
-                "type": "boolean"
-              },
-              "sunAltitudeDeg": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "locationSource",
-              "nightKnown"
-            ],
-            "additionalProperties": false
-          },
-          "skySensors": {
-            "type": "object",
-            "properties": {
-              "sqm": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "darkVisibleOffset": {
-                    "type": "number"
-                  },
-                  "detected": {
-                    "type": "boolean"
-                  },
-                  "gain": {
-                    "type": "string"
-                  },
-                  "integrationMs": {
-                    "type": "number"
-                  },
-                  "nightMode": {
-                    "type": "boolean"
-                  },
-                  "sampleCount": {
-                    "type": "number"
-                  },
-                  "saturated": {
-                    "type": "boolean"
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "windowSamples": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "detected",
-                  "status"
-                ],
-                "additionalProperties": false
-              },
-              "sqml": {
-                "type": "object",
-                "properties": {
-                  "ageMs": {
-                    "type": "number"
-                  },
-                  "darkVisibleOffset": {
-                    "type": "number"
-                  },
-                  "detected": {
-                    "type": "boolean"
-                  },
-                  "gain": {
-                    "type": "string"
-                  },
-                  "integrationMs": {
-                    "type": "number"
-                  },
-                  "nightMode": {
-                    "type": "boolean"
-                  },
-                  "sampleCount": {
-                    "type": "number"
-                  },
-                  "saturated": {
-                    "type": "boolean"
-                  },
-                  "status": {
-                    "type": "string"
-                  },
-                  "windowSamples": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "detected",
-                  "status"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
           },
           "stackFree": {
             "type": "object",
@@ -7086,21 +2929,11 @@
               },
               "ipv6": {
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "addresses",
-                  "enabled"
-                ],
                 "properties": {
                   "addresses": {
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "additionalProperties": false,
-                      "required": [
-                        "address",
-                        "scope"
-                      ],
                       "properties": {
                         "address": {
                           "type": "string"
@@ -7113,13 +2946,23 @@
                             "global"
                           ]
                         }
-                      }
+                      },
+                      "required": [
+                        "address",
+                        "scope"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "enabled": {
                     "type": "boolean"
                   }
-                }
+                },
+                "required": [
+                  "addresses",
+                  "enabled"
+                ],
+                "additionalProperties": false
               },
               "mac": {
                 "type": "string"
@@ -7147,189 +2990,15 @@
               "ssid"
             ],
             "additionalProperties": false
-          },
-          "configRevision": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "connections": {
-            "type": "object",
-            "properties": {
-              "tcpLimit": {
-                "type": "number"
-              },
-              "liveUpdates": {
-                "type": "object",
-                "properties": {
-                  "sensors": {
-                    "type": "number"
-                  },
-                  "status": {
-                    "type": "number"
-                  },
-                  "limitPerEndpoint": {
-                    "type": "number"
-                  },
-                  "replaced": {
-                    "type": "number"
-                  },
-                  "stalledClosed": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "sensors",
-                  "status",
-                  "limitPerEndpoint",
-                  "replaced",
-                  "stalledClosed"
-                ],
-                "additionalProperties": false
-              },
-              "alpacaRestoredAfterRestart": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "tcpLimit",
-              "liveUpdates",
-              "alpacaRestoredAfterRestart"
-            ],
-            "additionalProperties": false
-          },
-          "display": {
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "type": "boolean"
-              },
-              "detected": {
-                "type": "boolean"
-              },
-              "on": {
-                "type": "boolean"
-              },
-              "page": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "sky",
-                  "environment",
-                  "cloud",
-                  "safety",
-                  "gps",
-                  "battery",
-                  "network",
-                  null
-                ]
-              },
-              "nightMode": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "enabled",
-              "detected",
-              "on",
-              "page",
-              "nightMode"
-            ],
-            "additionalProperties": false
-          },
-          "battery": {
-            "type": "object",
-            "properties": {
-              "present": {
-                "type": "boolean"
-              },
-              "status": {
-                "type": "string"
-              },
-              "ageMs": {
-                "type": "number"
-              },
-              "estimating": {
-                "type": "boolean"
-              },
-              "percent": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "voltage": {
-                "type": "number"
-              },
-              "ratePercentPerHour": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "state": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "discharging",
-                  "charging",
-                  "charged",
-                  "fault",
-                  "no-battery",
-                  null
-                ]
-              },
-              "usbPower": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "fault": {
-                "type": [
-                  "string",
-                  "null"
-                ],
-                "enum": [
-                  "temperature",
-                  null
-                ]
-              },
-              "timeToEmptyMinutes": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "timeToFullMinutes": {
-                "type": [
-                  "number",
-                  "null"
-                ]
-              },
-              "powerSaving": {
-                "type": "boolean"
-              },
-              "shutdownInSeconds": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "present"
-            ],
-            "additionalProperties": false
           }
         },
         "required": [
           "alerts",
           "alpaca",
-          "ble",
           "bootCount",
+          "configRevision",
+          "connections",
           "cpuFreqMHz",
-          "diagnostics",
           "firmware",
           "flashSize",
           "freeHeap",
@@ -7340,20 +3009,13 @@
           "heapStages",
           "maxAllocHeap",
           "minFreeHeap",
-          "mqtt",
-          "ntp",
           "partitions",
           "resetReason",
-          "sensorSnapshotBytes",
-          "sensors",
           "sketchSize",
-          "sky",
           "stackFree",
           "time",
           "uptime",
-          "wifi",
-          "configRevision",
-          "connections"
+          "wifi"
         ],
         "additionalProperties": false
       },

@@ -120,7 +120,8 @@ namespace SQM
             }
             if (a.sendMode != AlertsConfig::SendMode::Any && a.sendMode != AlertsConfig::SendMode::WhileConnected)
                 return setError(error, "Alerts: when to send must be any or whileConnected");
-            if (a.clientSilentSeconds < AlertsConfig::MIN_CLIENT_SILENT_SECONDS || a.clientSilentSeconds > AlertsConfig::MAX_CLIENT_SILENT_SECONDS)
+            if (a.clientSilentSeconds < AlertsConfig::MIN_CLIENT_SILENT_SECONDS ||
+                a.clientSilentSeconds > AlertsConfig::MAX_CLIENT_SILENT_SECONDS)
                 return setError(error, "Alerts: silence time must be between 30 and 3600 seconds");
             // NVS strings top out just under 4000 bytes; each stored part has its own key.
             if (c.alertsToJson(false, Config::AlertsPart::Main).size() > Config::MAX_ALERTS_JSON_BYTES ||

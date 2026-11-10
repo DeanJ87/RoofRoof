@@ -1,12 +1,12 @@
 ---
-description: "SQMeter on IPv6: dual-stack addresses, reaching the web UI, API and Alpaca over IPv6, and which requests the device accepts."
+description: "RoofRoof on IPv6: dual-stack addresses, reaching the web UI, API and Alpaca over IPv6, and which requests the device accepts."
 ---
 
 # IPv6
 
-SQMeter works on IPv6 alongside IPv4 ("dual stack"). On a network that offers IPv6 - most home
+RoofRoof works on IPv6 alongside IPv4 ("dual stack"). On a network that offers IPv6 - most home
 routers do - the device gets IPv6 addresses of its own, and you can reach the web UI, the API,
-live updates and N.I.N.A. over either protocol.
+live updates and ASCOM Alpaca clients such as N.I.N.A. over either protocol.
 
 IPv4 always keeps working. A network without IPv4 (IPv6-only) isn't supported yet.
 
@@ -40,7 +40,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 
 ## Reaching the device over IPv6
 
-- **By name**: with mDNS on, `http://sqmeter.local` answers with both the IPv4 and the IPv6
+- **By name**: with mDNS on, `http://roofroof.local` answers with both the IPv4 and the IPv6
   addresses (A and AAAA records), so your computer can use either.
 - **By address**: put IPv6 addresses in brackets in a browser or URL -
   `http://[2a02:8010:abcd:1::9]/`. From a terminal: `curl -g "http://[2a02:8010:abcd:1::9]/api/status"`.
@@ -56,7 +56,7 @@ fingerprint: ef1a1b0660c60a27
 
 ```mermaid
 flowchart LR
-    accTitle: Who can reach SQMeter over IPv6
+    accTitle: Who can reach RoofRoof over IPv6
     accDescr: Requests over IPv6 are accepted from link-local addresses and from the device's own network prefixes; anything else gets 403. IPv4 is unchanged.
     REQ["Request over IPv6"] --> LL{"From fe80::/10<br/>(link-local)?"}
     LL -->|yes| OK["Served"]
@@ -65,7 +65,7 @@ flowchart LR
     PREFIX -->|no| NO["403 - only the<br/>local network"]
 ```
 
-<figcaption>Who can reach SQMeter over IPv6: link-local and the device's own prefixes, nobody else.</figcaption>
+<figcaption>Who can reach RoofRoof over IPv6: link-local and the device's own prefixes, nobody else.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -93,13 +93,13 @@ router's firewall and use a VPN for remote access ([Security](security.md)).
 |---|---|
 | MQTT broker | Yes - an IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port there) or a name that only has an IPv6 address |
 | Webhook (`http://`) | Yes - `http://[fd00::10]:8080/hook` or a name that only has an IPv6 address |
-| Webhook (`https://`), Pushover, ntfy, GitHub update checks and downloads, language downloads, NTP | Yes, by name - a name that only has an IPv6 address is reached over IPv6 (since v0.3) |
+| Webhook (`https://`), Pushover, ntfy, NTP | Yes, by name - a name that only has an IPv6 address is reached over IPv6 |
 
 Names with both kinds of address are reached over IPv4, so a broken IPv6 connection upstream never
-delays MQTT, alerts or updates.
+delays MQTT or alerts.
 
 An IPv6 *address* typed into an `https://` webhook or the NTP server field isn't accepted yet: use a
-host name. (From v0.3 the secure clients and time sync can use IPv6; typed addresses for them
+host name. (The secure clients and time sync can use IPv6 by name; typed addresses for them
 haven't been verified on hardware.)
 
 Settings check IPv6 addresses the same way in the browser and on the device:
@@ -117,5 +117,5 @@ Settings check IPv6 addresses the same way in the browser and on the device:
 
 ## The setup hotspot
 
-The `SQM-Setup` hotspot stays IPv4-only - phones join it with IPv4. IPv6 starts once the device
+The `RoofRoof-Setup` hotspot stays IPv4-only - phones join it with IPv4. IPv6 starts once the device
 is on your network.

@@ -1,23 +1,23 @@
 ---
-description: "SQMeter's security model: built for a trusted LAN, optional HTTP Basic Auth on changes, no TLS, and how to deploy it safely."
+description: "RoofRoof's security model: built for a trusted LAN, optional HTTP Basic Auth on changes, no TLS, and how to deploy it safely."
 ---
 
 # Security
 
-SQMeter is an observatory instrument designed to run on a trusted LAN. This page describes the security model, what HTTP auth protects, and recommended deployment.
+RoofRoof is an observatory roof controller (its roof features come in later specs) designed to run on a trusted LAN. This page describes the security model, what HTTP auth protects, and recommended deployment.
 
 ---
 
 ## Threat model
 
-SQMeter assumes the local network is trusted. The main risks on a typical home or observatory LAN are:
+RoofRoof assumes the local network is trusted. The main risks on a typical home or observatory LAN are:
 
-- **Unauthorised config changes** — any device on the same WiFi segment can call `POST /api/config` and change settings, including WiFi credentials or MQTT broker.
-- **Unauthorised OTA updates** — any device on the LAN can flash new firmware or a new filesystem image via `POST /api/update`.
-- **Credential exposure** — credentials sent over HTTP are visible to passive LAN observers. SQMeter does not support TLS.
+- **Unauthorised config changes** — any device on the same WiFi segment can call `POST /api/config` and change settings, including WiFi credentials or the MQTT broker.
+- **Unauthorised updates** — any device on the LAN can flash new firmware or a new filesystem image via `POST /api/update`.
+- **Credential exposure** — credentials sent over HTTP are visible to passive LAN observers. RoofRoof does not support TLS.
 - **Restart/reboot abuse** — `POST /api/restart` is unauthenticated by default; any LAN device can reboot the device.
 
-SQMeter does **not** defend against:
+RoofRoof does **not** defend against:
 
 - An attacker who already has LAN access and captures HTTP traffic (no TLS).
 - Brute-force attacks; there is no rate limiting or account lockout.
@@ -42,33 +42,25 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/restart` | POST | Reboot device |
 | `/api/update` | POST | Flash firmware OTA |
 | `/api/update/fs` | POST | Flash filesystem OTA |
-| `/api/updates/check` | GET | Check GitHub for updates |
-| `/api/updates/apply` | POST | Install an update from GitHub |
 | `/api/wifi/scan` | GET | Scan for WiFi networks (starts a radio scan) |
 | `/api/wifi/connect` | POST | Change WiFi network |
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
 | `/api/alerts/test` | POST | Send a test alert |
 | `/api/alerts/arm`, `/api/alerts/disarm` | POST | Resume / pause alerts |
 | `/api/alerts/clear` | POST | Clear the recent-alerts list |
-| `/api/ble/ack`, `/api/ble/forget-bonds` | POST | Acknowledge the phone alarm / unpair phones |
-| `/api/sensors/tsl2591/calibrate-dark` | POST | Store the light sensor dark offset |
-| `/api/sensors/rg15/test`, `/reset-total`, `/reboot` | POST | RG-15 commands |
 
 ### Unprotected endpoints (always accessible)
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/sensors` | GET | Current sensor readings |
 | `/api/status` | GET | System status |
 | `/api/config` | GET | Read config (passwords, keys and tokens masked) |
-| `/api/safe`, `/api/safety`, `/api/safety/history` | GET | Safety verdict, reasons and history |
 | `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
 | `/api/settings/effective` | GET | Which settings are in effect, and why not (no secrets) |
-| `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth) |
-| `/ws/sensors` | WS | Live sensor stream |
+| `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth; no device is served yet) |
 | `/ws/status` | WS | Live status stream |
 
-Read-only integrations (Home Assistant, scripts polling sensor data) continue to work without credentials when auth is enabled.
+Read-only integrations (Home Assistant, scripts polling the status) continue to work without credentials when auth is enabled.
 
 Every route and whether it needs the password is listed in `tools/api/routes.json`; CI fails if a new route isn't declared there, so a route can't ship open by accident.
 
@@ -83,7 +75,7 @@ Once saved, the browser will prompt for credentials on the next mutation request
 
 ### Password masking and preservation
 
-`GET /api/config` returns `********` for the auth password (and likewise for the WiFi/MQTT/OTA passwords, Pushover keys, ntfy token, webhook auth header and Bluetooth passkey). When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
+`GET /api/config` returns `********` for the auth password (and likewise for the WiFi/MQTT/OTA passwords, Pushover keys, ntfy token and webhook auth header). When you POST config back, sending `********` or an empty string preserves the stored password unchanged. Send `null` only to intentionally clear the password.
 
 ### Backups
 
@@ -101,13 +93,13 @@ If you forget the HTTP auth credentials:
 2. Factory-reset via NVS clear: flash a sketch that calls `nvs_flash_erase()`, or use `esptool.py` to erase NVS.
 3. The device will start with default config (no auth).
 
-Alternatively, if you have physical access and can reflash, flash the complete image from the latest release.
+Alternatively, if you have physical access and can reflash, flash the release's USB package ([USB flash](../getting-started/usb-flash.md)) after erasing the flash.
 
 ---
 
 ## OTA security
 
-Web OTA (`/api/update`, `/api/update/fs`) does not require authentication by default — any LAN device can push firmware. Enable HTTP auth to gate these endpoints.
+Web upload (`/api/update`, `/api/update/fs`) does not require authentication by default — any LAN device can push firmware. Enable HTTP auth to gate these endpoints.
 
 Command-line ArduinoOTA is separate and controlled by the `ota.enabled` and `ota.password` config fields. It is disabled unless explicitly configured.
 
@@ -120,13 +112,13 @@ Command-line ArduinoOTA is separate and controlled by the `ota.enabled` and `ota
 | Home observatory, trusted LAN | Enable HTTP auth with a strong password |
 | Shared network or observatory with multiple users | Enable HTTP auth; consider VLAN isolation |
 | Public internet exposure | **Do not do this.** Place behind a VPN or firewall. |
-| Sensitive automation (roof safety) | Validate sensor data independently; SQMeter is a monitor, not a safety controller |
+| Roof safety | Keep physical safety interlocks (limit switches, supply cut-outs) independent of the network and of this firmware's web interface |
 
 ---
 
 ## What HTTP auth does not protect
 
-- Traffic confidentiality: credentials and sensor data travel in plaintext over HTTP. Anyone who can observe the LAN can capture them.
+- Traffic confidentiality: credentials and device data travel in plaintext over HTTP. Anyone who can observe the LAN can capture them.
 - Physical access: someone with physical access to the device can reset it.
 - Denial of service: unauthenticated read endpoints remain open and could be flooded.
 - Replay attacks: no session management or CSRF protection.

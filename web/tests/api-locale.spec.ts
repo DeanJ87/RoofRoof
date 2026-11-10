@@ -1,23 +1,29 @@
 import { test, expect, type Page } from '@playwright/test';
+import { installTestLanguage } from './testLanguage';
 
 // Machine-readable output never changes with the UI language (specs/023-i18n
 // FR-015, coding standard I18N-06): with the UI in German (decimal comma) or
 // Arabic (right to left), the API and the WebSocket still send JSON numbers
-// with '.' decimals, under the same field names as in English.
+// with '.' decimals, under the same field names as in English. RoofRoof ships
+// English only, so the test installs a pack of its own (spec 001 research R10).
 
 type Shape = Record<string, string>;
 
-const ENDPOINTS = ['/api/sensors', '/api/status', '/api/safety'];
+const ENDPOINTS = ['/api/status', '/api/config', '/api/settings/effective', '/api/alerts/recent'];
+
+// Values that change between two reads, whatever the language.
+const MOVING = /^(uptime|time\.|freeHeap|minFreeHeap|maxAllocHeap|stackFree\.|connections\.|alerts\.since)/;
 
 const open = async (page: Page, code: string) => {
+  await installTestLanguage(page, code);
   await page.goto('about:blank');
-  await page.goto(`./?lang=${code}#/`);
+  await page.goto('./#/');
   await expect(page.locator('html')).toHaveAttribute('lang', code);
   await expect(page.locator('main')).toBeVisible();
   await page.waitForTimeout(1500); // first ticks of the emulated device
 };
 
-/** What a client sees: each endpoint's JSON, and the first /ws/sensors message. */
+/** What a client sees: each endpoint's JSON, and the first /ws/status message. */
 const capture = (page: Page) =>
   page.evaluate(async (endpoints) => {
     const out: Record<string, { raw: string; json: unknown }> = {};
@@ -26,15 +32,15 @@ const capture = (page: Page) =>
       out[path] = { raw, json: JSON.parse(raw) };
     }
     const raw = await new Promise<string>((resolve, reject) => {
-      const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/sensors`);
-      const timer = setTimeout(() => reject(new Error('no /ws/sensors message')), 10_000);
+      const ws = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws/status`);
+      const timer = setTimeout(() => reject(new Error('no /ws/status message')), 10_000);
       ws.onmessage = (event) => {
         clearTimeout(timer);
         ws.close();
         resolve(String(event.data));
       };
     });
-    out['/ws/sensors'] = { raw, json: JSON.parse(raw) };
+    out['/ws/status'] = { raw, json: JSON.parse(raw) };
     return out;
   }, ENDPOINTS);
 
@@ -47,22 +53,18 @@ const shape = (value: unknown, path = '', into: Shape = {}): Shape => {
   return into;
 };
 
+const stable = (fields: Shape) => Object.fromEntries(Object.entries(fields).filter(([path]) => !MOVING.test(path)));
+
 /** Strings that look like a number written for a language: "12,1", "1.013,4", "-0,5". */
 const LOCALISED_NUMBER = /^[-+]?\d[\d.\s]*,\d+$/;
 const NUMBER_AS_STRING = /^[-+]?\d+(\.\d+)?$/;
 
-const READINGS = [
-  'sky.sqm',
-  'sky.nelm',
-  'light.lux',
-  'environment.temperature',
-  'environment.humidity',
-  'environment.pressure',
-  'environment.dewpoint',
-  'infrared.skyTemperature',
-  'clouds.coverPercent',
-  'timestamp',
-];
+// Numbers a client reads: they stay JSON numbers in every language.
+const NUMBERS: Record<string, string[]> = {
+  '/api/status': ['uptime', 'freeHeap', 'cpuFreqMHz', 'time.epoch'],
+  '/ws/status': ['uptime', 'freeHeap', 'cpuFreqMHz', 'time.epoch'],
+  '/api/config': ['alerts.clientSilentSeconds', 'alerts.cooldownSeconds'],
+};
 
 let english: Awaited<ReturnType<typeof capture>>;
 
@@ -82,8 +84,8 @@ for (const code of ['de', 'ar']) {
       const fields = shape(json);
 
       // Same field names, same JSON types: numbers stay numbers.
-      expect(Object.keys(fields).sort(), `${source}: field names`).toEqual(Object.keys(shape(english[source].json)).sort());
-      expect(fields, `${source}: value types`).toEqual(shape(english[source].json));
+      expect(Object.keys(stable(fields)).sort(), `${source}: field names`).toEqual(Object.keys(stable(shape(english[source].json))).sort());
+      expect(stable(fields), `${source}: value types`).toEqual(stable(shape(english[source].json)));
 
       for (const [path, type] of Object.entries(fields)) {
         if (type !== 'string') continue;
@@ -95,15 +97,11 @@ for (const code of ['de', 'ar']) {
       // No number anywhere in the text is written with a decimal comma.
       expect(raw, `${source}: "12,1"-style value`).not.toMatch(/"[-+]?\d+,\d+"/);
       expect(raw, `${source}: Arabic-Indic digits`).not.toMatch(/[٠-٩۰-۹]/);
-    }
 
-    const readings = [localised['/api/sensors'].json, localised['/ws/sensors'].json];
-    for (const doc of readings)
-      for (const path of READINGS) {
-        const value = path.split('.').reduce<unknown>((node, key) => (node as Record<string, unknown>)?.[key], doc);
-        expect(typeof value, `${path} is a JSON number`).toBe('number');
+      for (const path of NUMBERS[source] ?? []) {
+        const value = path.split('.').reduce<unknown>((node, key) => (node as Record<string, unknown>)?.[key], json);
+        expect(typeof value, `${source} ${path} is a JSON number`).toBe('number');
       }
-    expect(typeof (localised['/api/safety'].json as { reasonFlags: unknown }).reasonFlags).toBe('number');
-    expect(typeof (localised['/api/safety'].json as { safe: unknown }).safe).toBe('boolean');
+    }
   });
 }

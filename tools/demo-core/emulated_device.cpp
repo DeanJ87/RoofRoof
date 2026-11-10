@@ -247,7 +247,8 @@ void EmulatedDevice::runAlerts()
     uint32_t silenceMs[Alpaca::MAX_DEVICES];
     Core::clientSilenceMs(cfg, silenceMs);
     clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
-    Core::addClientInputs(in, clientWatch, devices(), cfg, nowMs, clockTime);
+    const std::vector<Alpaca::DeviceInfo> list = devices();
+    Core::addClientInputs(in, {clientWatch, list, nowMs}, cfg, clockTime);
 
     const Core::AlertSources sources{cfg};
     Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});

@@ -96,7 +96,6 @@ describe('configSchema', () => {
     const cfg = { ...validBase, ota: { enabled: true, password: '' } };
     expect(configSchema.safeParse(cfg).success).toBe(true);
   });
-
 });
 
 describe('frontend settings validation', () => {
@@ -167,7 +166,6 @@ describe('frontend settings validation', () => {
       expect(hasConfigValidationErrors(errors)).toBe(true);
     }
   });
-
 });
 
 describe('authConfigSchema', () => {

@@ -123,22 +123,21 @@ export function highlights(body, count = 3) {
   return items.slice(0, count).map((item) => item.text);
 }
 
-/** The release body: banner, the changelog section, how to upgrade. */
+/** The release body: banner, the changelog section, how to update. */
 export function releaseBody({ tag, section, bannerUrl, docsBase }) {
-  const docs = docsBase.endsWith('/') ? docsBase : `${docsBase}/`;
+  const docs = docsBase === '' || docsBase.endsWith('/') ? docsBase : `${docsBase}/`;
   return [
-    `![SQMeter ${tag}](${bannerUrl})`,
+    `![RoofRoof ${tag}](${bannerUrl})`,
     '',
     publishedBody(section.body),
     '',
-    '## Upgrading',
+    '## Updating',
     '',
-    `- **From v0.3.x**: Updates → Check for updates (${tag.includes('-') ? 'beta' : 'stable'} track) → Update. Settings are kept.`,
-    `- **From v0.2.x**: a one-time USB flash moves the device to the v0.3 layout, keeping its settings: ${docs}getting-started/usb-flash/`,
-    '- **ESP32-S3 boards**: the first install is a USB flash from `sqmeter-<board>-usb-*.zip` (`FLASH.txt` inside); after that, updates as above.',
+    `- **A running device**: download \`roofroof-l2-firmware-${tag}.bin\` and \`roofroof-l2-littlefs-${tag}.bin\` from this release's assets and upload both on the device's Updates page (Manual upload): ${docs}user-guide/ota/. Settings are kept. The device never downloads updates itself.`,
+    `- **A new device, or one you can't reach**: a USB flash of \`roofroof-l2-usb-${tag}.zip\` with esptool (\`FLASH.txt\` inside), keeping settings: ${docs}getting-started/usb-flash/`,
     '',
   ].join('\n');
 }
 
 /** Where the banner lives once attached to the release. */
-export const bannerUrl = (repository, tag) => `https://github.com/${repository}/releases/download/${tag}/sqmeter-release-${tag}.png`;
+export const bannerUrl = (repository, tag) => `https://github.com/${repository}/releases/download/${tag}/roofroof-release-${tag}.png`;

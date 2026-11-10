@@ -25,7 +25,7 @@ What actually happened.
 ## Environment
 
 - **Firmware version:** (shown in web UI System page, or `version.h`)
-- **Sensors connected:** (e.g. TSL2591, BME280, MLX90614, GPS)
+- **Motor driver wiring:** (IBT-2 or other; is the 10 kΩ pull-down on EN fitted? anything else on GPIO32/33/34/35/36/39/4?)
 - **ESP32 board:** (e.g. ESP32 DevKit v1)
 - **Power source:** (USB / 5V supply)
 

@@ -91,14 +91,11 @@ namespace SQM
             }
         } // namespace
 
-        void addClientInputs(
-            Alerts::AlertInputs &inputs,
-            const Alpaca::ClientWatch &watch,
-            const std::vector<Alpaca::DeviceInfo> &devices,
-            const Config &cfg,
-            uint32_t nowMs,
-            const std::string &localTime)
+        void addClientInputs(Alerts::AlertInputs &inputs, const ClientSnapshot &clients, const Config &cfg, const std::string &localTime)
         {
+            const Alpaca::ClientWatch &watch = clients.watch;
+            const std::vector<Alpaca::DeviceInfo> &devices = clients.devices;
+            const uint32_t nowMs = clients.nowMs;
             uint32_t silence[Alpaca::MAX_DEVICES];
             clientSilenceMs(cfg, silence);
             inputs.clientCount = devices.size() < Alerts::MAX_CLIENT_DEVICES ? devices.size() : Alerts::MAX_CLIENT_DEVICES;
@@ -118,7 +115,11 @@ namespace SQM
         }
 
         void writeClientWatch(
-            JsonObject alpaca, const Alpaca::ClientWatch &watch, const std::vector<Alpaca::DeviceInfo> &devices, const Config &cfg, uint32_t nowMs)
+            JsonObject alpaca,
+            const Alpaca::ClientWatch &watch,
+            const std::vector<Alpaca::DeviceInfo> &devices,
+            const Config &cfg,
+            uint32_t nowMs)
         {
             alpaca["enabled"] = cfg.alpaca.enabled;
             JsonObject clients = alpaca.createNestedObject("clients");

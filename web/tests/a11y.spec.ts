@@ -38,10 +38,6 @@ const ready = async (page: Page, url: string) => {
 // Put the page into a state before it is checked.
 const enter: Record<A11yState, (page: Page, entry: InventoryEntry) => Promise<void>> = {
   default: async (page, entry) => ready(page, `./${entry.route}`),
-  unsafe: async (page, entry) => {
-    await ready(page, `./?scenario=rain${entry.route}`);
-    await expect(page.locator('.reason-list').getByText('Rain detected')).toBeVisible({ timeout: 15_000 });
-  },
   dialog: async (page, entry) => {
     await ready(page, `./${entry.route}`);
     await page.getByRole('button', { name: /^Alerts/ }).click();
@@ -80,7 +76,7 @@ const check = async (page: Page, where: string): Promise<Finding[]> => {
       targets: [`page is ${overflow}px wider than the viewport`],
       help: 'Content must reflow without horizontal scrolling',
     });
-  // One h1 per page (A11Y-06): the header's "SQMeter".
+  // One h1 per page (A11Y-06): the header's brand.
   const h1s = await page.locator('h1').count();
   if (h1s !== 1)
     findings.push({ rule: 'single-h1', impact: 'moderate', where, targets: [`${h1s} h1 elements`], help: 'A page has exactly one h1' });

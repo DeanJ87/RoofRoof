@@ -9,9 +9,6 @@
         "armed": {
           "type": "boolean"
         },
-        "armWithAlpaca": {
-          "type": "boolean"
-        },
         "mode": {
           "type": "string",
           "enum": [
@@ -32,6 +29,10 @@
             "migrated"
           ]
         },
+        "recentRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
         "since": {
           "type": [
             "null",
@@ -43,106 +44,60 @@
             "null",
             "number"
           ]
-        },
-        "recentRevision": {
-          "type": "integer",
-          "minimum": 0
         }
       },
       "required": [
-        "armWithAlpaca",
         "armed",
         "mode",
         "reason",
+        "recentRevision",
         "since",
-        "sinceAgeMs",
-        "recentRevision"
+        "sinceAgeMs"
       ],
       "additionalProperties": false
     },
     "alpaca": {
       "type": "object",
       "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
         "clients": {
           "type": "object",
-          "properties": {
-            "safetymonitor": {
-              "type": "object",
-              "properties": {
-                "connected": {
-                  "type": "boolean"
-                },
-                "watching": {
-                  "type": "boolean"
-                },
-                "silent": {
-                  "type": "boolean"
-                },
-                "lastCheckedAgeMs": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "clientId": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                }
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "clientId": {
+                "type": [
+                  "null",
+                  "number"
+                ]
               },
-              "required": [
-                "clientId",
-                "connected",
-                "lastCheckedAgeMs",
-                "silent",
-                "watching"
-              ],
-              "additionalProperties": false
+              "connected": {
+                "type": "boolean"
+              },
+              "lastCheckedAgeMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "silent": {
+                "type": "boolean"
+              },
+              "watching": {
+                "type": "boolean"
+              }
             },
-            "observingconditions": {
-              "type": "object",
-              "properties": {
-                "connected": {
-                  "type": "boolean"
-                },
-                "watching": {
-                  "type": "boolean"
-                },
-                "silent": {
-                  "type": "boolean"
-                },
-                "lastCheckedAgeMs": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                },
-                "clientId": {
-                  "type": [
-                    "null",
-                    "number"
-                  ]
-                }
-              },
-              "required": [
-                "clientId",
-                "connected",
-                "lastCheckedAgeMs",
-                "silent",
-                "watching"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "required": [
-            "observingconditions",
-            "safetymonitor"
-          ],
-          "additionalProperties": false
+            "required": [
+              "clientId",
+              "connected",
+              "lastCheckedAgeMs",
+              "silent",
+              "watching"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "enabled": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -151,288 +106,56 @@
       ],
       "additionalProperties": false
     },
-    "ble": {
+    "bootCount": {
+      "type": "number"
+    },
+    "configRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "connections": {
       "type": "object",
       "properties": {
-        "active": {
+        "alpacaRestoredAfterRestart": {
           "type": "boolean"
         },
-        "alarm": {
+        "liveUpdates": {
           "type": "object",
           "properties": {
-            "acknowledgedSequence": {
+            "limitPerEndpoint": {
               "type": "number"
             },
-            "active": {
-              "type": "boolean"
-            },
-            "bondedPhones": {
+            "replaced": {
               "type": "number"
             },
-            "sequence": {
+            "stalledClosed": {
               "type": "number"
             },
-            "serviceActive": {
-              "type": "boolean"
+            "status": {
+              "type": "number"
             }
           },
           "required": [
-            "acknowledgedSequence",
-            "active",
-            "bondedPhones",
-            "sequence",
-            "serviceActive"
+            "limitPerEndpoint",
+            "replaced",
+            "stalledClosed",
+            "status"
           ],
           "additionalProperties": false
         },
-        "available": {
-          "type": "boolean"
-        },
-        "clients": {
+        "tcpLimit": {
           "type": "number"
         }
       },
       "required": [
-        "active",
-        "alarm",
-        "available",
-        "clients"
+        "alpacaRestoredAfterRestart",
+        "liveUpdates",
+        "tcpLimit"
       ],
       "additionalProperties": false
-    },
-    "bootCount": {
-      "type": "number"
     },
     "cpuFreqMHz": {
       "type": "number"
-    },
-    "diagnostics": {
-      "type": "object",
-      "properties": {
-        "light": {
-          "type": "object",
-          "properties": {
-            "consecutiveLowSamples": {
-              "type": "number"
-            },
-            "consecutiveSaturatedSamples": {
-              "type": "number"
-            },
-            "correctedVisible": {
-              "type": "number"
-            },
-            "darkVisibleOffset": {
-              "type": "number"
-            },
-            "nightMode": {
-              "type": "boolean"
-            },
-            "rejectedSamples": {
-              "type": "number"
-            },
-            "rollingVisible": {
-              "type": "number"
-            },
-            "sampleCount": {
-              "type": "number"
-            },
-            "windowSamples": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "consecutiveLowSamples",
-            "consecutiveSaturatedSamples",
-            "correctedVisible",
-            "darkVisibleOffset",
-            "nightMode",
-            "rejectedSamples",
-            "rollingVisible",
-            "sampleCount",
-            "windowSamples"
-          ],
-          "additionalProperties": false
-        },
-        "rain": {
-          "type": "object",
-          "properties": {
-            "baudRate": {
-              "type": "number"
-            },
-            "lastAck": {
-              "type": "null"
-            },
-            "lastCommand": {
-              "type": "string"
-            },
-            "lastError": {
-              "type": [
-                "null",
-                "string"
-              ]
-            },
-            "lastPollAgeMs": {
-              "type": "number"
-            },
-            "lastRainDetectedAgeMs": {
-              "type": "number"
-            },
-            "lastResponse": {
-              "type": [
-                "null",
-                "string"
-              ]
-            },
-            "lastResponseAgeMs": {
-              "type": "number"
-            },
-            "lastSuccessfulReadAgeMs": {
-              "type": "number"
-            },
-            "parseErrors": {
-              "type": "number"
-            },
-            "resetReason": {
-              "type": "null"
-            },
-            "rxPin": {
-              "type": "number"
-            },
-            "softwareBuildDate": {
-              "type": "null"
-            },
-            "softwareVersion": {
-              "type": "null"
-            },
-            "state": {
-              "type": "string"
-            },
-            "successfulReads": {
-              "type": "number"
-            },
-            "timeouts": {
-              "type": "number"
-            },
-            "txPin": {
-              "type": "number"
-            },
-            "uartOpened": {
-              "type": "boolean"
-            },
-            "uartPort": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "baudRate",
-            "lastAck",
-            "lastCommand",
-            "lastError",
-            "lastPollAgeMs",
-            "lastResponse",
-            "lastResponseAgeMs",
-            "parseErrors",
-            "resetReason",
-            "rxPin",
-            "softwareBuildDate",
-            "softwareVersion",
-            "state",
-            "successfulReads",
-            "timeouts",
-            "txPin",
-            "uartOpened",
-            "uartPort"
-          ],
-          "additionalProperties": false
-        },
-        "battery": {
-          "type": "object",
-          "properties": {
-            "version": {
-              "type": "string"
-            },
-            "vcellRaw": {
-              "type": "number"
-            },
-            "socRaw": {
-              "type": "number"
-            },
-            "crateRaw": {
-              "type": "number"
-            },
-            "statusRaw": {
-              "type": "number"
-            },
-            "resetSeen": {
-              "type": "boolean"
-            },
-            "estimating": {
-              "type": "boolean"
-            },
-            "charger": {
-              "type": [
-                "object",
-                "null"
-              ],
-              "properties": {
-                "stat1": {
-                  "type": "boolean"
-                },
-                "stat2": {
-                  "type": "boolean"
-                },
-                "pg": {
-                  "type": "boolean"
-                }
-              },
-              "required": [
-                "stat1",
-                "stat2",
-                "pg"
-              ],
-              "additionalProperties": false
-            },
-            "gaugeAlert": {
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "policy": {
-              "type": "string",
-              "enum": [
-                "normal",
-                "saving",
-                "shutdown"
-              ]
-            },
-            "currentMa": {
-              "type": [
-                "number",
-                "null"
-              ]
-            }
-          },
-          "required": [
-            "version",
-            "vcellRaw",
-            "socRaw",
-            "crateRaw",
-            "statusRaw",
-            "resetSeen",
-            "estimating",
-            "charger",
-            "gaugeAlert",
-            "policy",
-            "currentMa"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "required": [
-        "light"
-      ],
-      "additionalProperties": false
     },
     "firmware": {
       "type": "object",
@@ -447,14 +170,15 @@
           "type": "string",
           "enum": [
             "l2",
-            "legacy"
+            "other"
           ]
         },
         "name": {
           "type": "string"
         },
-        "variant": {
-          "type": "string"
+        "product": {
+          "type": "string",
+          "const": "roofroof"
         },
         "version": {
           "type": "string"
@@ -465,7 +189,7 @@
         "buildTime",
         "layout",
         "name",
-        "variant",
+        "product",
         "version"
       ],
       "additionalProperties": false
@@ -568,26 +292,11 @@
     "ntp": {
       "type": "object",
       "properties": {
-        "activeSource": {
-          "type": "number"
-        },
         "drift": {
           "type": "number"
         },
         "enabled": {
           "type": "boolean"
-        },
-        "gpsEnabled": {
-          "type": "boolean"
-        },
-        "gpsHasFix": {
-          "type": "boolean"
-        },
-        "gpsSatellites": {
-          "type": "number"
-        },
-        "gpsTimeUTC": {
-          "type": "string"
         },
         "lastSync": {
           "type": "number"
@@ -606,13 +315,8 @@
         }
       },
       "required": [
-        "activeSource",
         "drift",
         "enabled",
-        "gpsEnabled",
-        "gpsHasFix",
-        "gpsSatellites",
-        "gpsTimeUTC",
         "lastSync",
         "nextSync",
         "server",
@@ -673,271 +377,14 @@
           "type": "string"
         }
       },
-      "required": [
-        "bootSlot",
-        "fsAddress",
-        "fsSize",
-        "nextSize",
-        "nextSlot",
-        "nvs",
-        "runningAddress",
-        "runningSize",
-        "runningSlot"
-      ],
+      "required": [],
       "additionalProperties": false
     },
     "resetReason": {
       "type": "number"
     },
-    "sensorSnapshotBytes": {
-      "type": "number"
-    },
-    "sensors": {
-      "type": "object",
-      "properties": {
-        "environment": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "ageMs",
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "gps": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "infrared": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "light": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "ageMs",
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "rain": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "ageMs",
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "wind": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            },
-            "vaneStatus": {
-              "type": "string"
-            },
-            "vaneMagnet": {
-              "enum": ["ok", "weak", "strong", "none", "noAnswer"]
-            },
-            "vaneAgc": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "ageMs",
-            "status",
-            "vaneStatus"
-          ],
-          "additionalProperties": false
-        },
-        "battery": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "status": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "status"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "required": [
-        "environment",
-        "infrared",
-        "light"
-      ],
-      "additionalProperties": false
-    },
     "sketchSize": {
       "type": "number"
-    },
-    "sky": {
-      "type": "object",
-      "properties": {
-        "isNight": {
-          "type": "boolean"
-        },
-        "latitude": {
-          "type": "number"
-        },
-        "locationSource": {
-          "type": "string"
-        },
-        "longitude": {
-          "type": "number"
-        },
-        "nightKnown": {
-          "type": "boolean"
-        },
-        "sunAltitudeDeg": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "locationSource",
-        "nightKnown"
-      ],
-      "additionalProperties": false
-    },
-    "skySensors": {
-      "type": "object",
-      "properties": {
-        "sqm": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "darkVisibleOffset": {
-              "type": "number"
-            },
-            "detected": {
-              "type": "boolean"
-            },
-            "gain": {
-              "type": "string"
-            },
-            "integrationMs": {
-              "type": "number"
-            },
-            "nightMode": {
-              "type": "boolean"
-            },
-            "sampleCount": {
-              "type": "number"
-            },
-            "saturated": {
-              "type": "boolean"
-            },
-            "status": {
-              "type": "string"
-            },
-            "windowSamples": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "detected",
-            "status"
-          ],
-          "additionalProperties": false
-        },
-        "sqml": {
-          "type": "object",
-          "properties": {
-            "ageMs": {
-              "type": "number"
-            },
-            "darkVisibleOffset": {
-              "type": "number"
-            },
-            "detected": {
-              "type": "boolean"
-            },
-            "gain": {
-              "type": "string"
-            },
-            "integrationMs": {
-              "type": "number"
-            },
-            "nightMode": {
-              "type": "boolean"
-            },
-            "sampleCount": {
-              "type": "number"
-            },
-            "saturated": {
-              "type": "boolean"
-            },
-            "status": {
-              "type": "string"
-            },
-            "windowSamples": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "detected",
-            "status"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
     },
     "stackFree": {
       "type": "object",
@@ -998,21 +445,11 @@
         },
         "ipv6": {
           "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "addresses",
-            "enabled"
-          ],
           "properties": {
             "addresses": {
               "type": "array",
               "items": {
                 "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "address",
-                  "scope"
-                ],
                 "properties": {
                   "address": {
                     "type": "string"
@@ -1025,13 +462,23 @@
                       "global"
                     ]
                   }
-                }
+                },
+                "required": [
+                  "address",
+                  "scope"
+                ],
+                "additionalProperties": false
               }
             },
             "enabled": {
               "type": "boolean"
             }
-          }
+          },
+          "required": [
+            "addresses",
+            "enabled"
+          ],
+          "additionalProperties": false
         },
         "mac": {
           "type": "string"
@@ -1059,189 +506,15 @@
         "ssid"
       ],
       "additionalProperties": false
-    },
-    "configRevision": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "connections": {
-      "type": "object",
-      "properties": {
-        "tcpLimit": {
-          "type": "number"
-        },
-        "liveUpdates": {
-          "type": "object",
-          "properties": {
-            "sensors": {
-              "type": "number"
-            },
-            "status": {
-              "type": "number"
-            },
-            "limitPerEndpoint": {
-              "type": "number"
-            },
-            "replaced": {
-              "type": "number"
-            },
-            "stalledClosed": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "sensors",
-            "status",
-            "limitPerEndpoint",
-            "replaced",
-            "stalledClosed"
-          ],
-          "additionalProperties": false
-        },
-        "alpacaRestoredAfterRestart": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "tcpLimit",
-        "liveUpdates",
-        "alpacaRestoredAfterRestart"
-      ],
-      "additionalProperties": false
-    },
-    "display": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "detected": {
-          "type": "boolean"
-        },
-        "on": {
-          "type": "boolean"
-        },
-        "page": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "sky",
-            "environment",
-            "cloud",
-            "safety",
-            "gps",
-            "battery",
-            "network",
-            null
-          ]
-        },
-        "nightMode": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "enabled",
-        "detected",
-        "on",
-        "page",
-        "nightMode"
-      ],
-      "additionalProperties": false
-    },
-    "battery": {
-      "type": "object",
-      "properties": {
-        "present": {
-          "type": "boolean"
-        },
-        "status": {
-          "type": "string"
-        },
-        "ageMs": {
-          "type": "number"
-        },
-        "estimating": {
-          "type": "boolean"
-        },
-        "percent": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "voltage": {
-          "type": "number"
-        },
-        "ratePercentPerHour": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "state": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "discharging",
-            "charging",
-            "charged",
-            "fault",
-            "no-battery",
-            null
-          ]
-        },
-        "usbPower": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "fault": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "temperature",
-            null
-          ]
-        },
-        "timeToEmptyMinutes": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "timeToFullMinutes": {
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "powerSaving": {
-          "type": "boolean"
-        },
-        "shutdownInSeconds": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "present"
-      ],
-      "additionalProperties": false
     }
   },
   "required": [
     "alerts",
     "alpaca",
-    "ble",
     "bootCount",
+    "configRevision",
+    "connections",
     "cpuFreqMHz",
-    "diagnostics",
     "firmware",
     "flashSize",
     "freeHeap",
@@ -1252,20 +525,13 @@
     "heapStages",
     "maxAllocHeap",
     "minFreeHeap",
-    "mqtt",
-    "ntp",
     "partitions",
     "resetReason",
-    "sensorSnapshotBytes",
-    "sensors",
     "sketchSize",
-    "sky",
     "stackFree",
     "time",
     "uptime",
-    "wifi",
-    "configRevision",
-    "connections"
+    "wifi"
   ],
   "additionalProperties": false
 }

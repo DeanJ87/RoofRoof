@@ -288,7 +288,8 @@ namespace SQM
         JsonObject alerts = doc.createNestedObject("alerts");
         Core::writeAlertSchedule(alerts, sharedSchedule(), getConfigCallback(), millis());
         alerts["recentRevision"] = alertDispatcher ? alertDispatcher->recentRevision() : 0;
-        Core::writeClientWatch(doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
+        Core::writeClientWatch(
+            doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
         appendMemory(doc);
         appendPartitions(doc);
         appendTime(doc);

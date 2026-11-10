@@ -16,18 +16,19 @@ describe('Alert levels', () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
 
-    const clearLevel = (await screen.findByLabelText('Skies clear up below: level')) as HTMLSelectElement;
-    expect(clearLevel.value).toBe('2');
-    fireEvent.change(clearLevel, { target: { value: '1' } });
+    const lostLevel = (await screen.findByLabelText('The imaging app stops checking: level')) as HTMLSelectElement;
+    expect(lostLevel.value).toBe('3');
+    fireEvent.change(lostLevel, { target: { value: '1' } });
     // Quiet alerts make no sound, so there's no sound to pick.
-    await waitFor(() => expect(screen.queryByLabelText('Skies clear up below: sound')).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText('The imaging app stops checking: sound')).toBeNull());
 
-    fireEvent.change(screen.getByLabelText('A sensor fails: sound'), { target: { value: 'siren' } });
+    fireEvent.change(screen.getByLabelText('The imaging app is back: level'), { target: { value: '4' } });
+    fireEvent.change(await screen.findByLabelText('The imaging app is back: sound'), { target: { value: 'siren' } });
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(saved).not.toBeNull());
-    expect(saved.alerts.events.clear_sky).toEqual({ level: 1, sound: 'magic' });
-    expect(saved.alerts.events.sensor_fault).toEqual({ level: 4, sound: 'siren' });
+    expect(saved.alerts.events.client_lost).toMatchObject({ level: 1 });
+    expect(saved.alerts.events.client_back).toEqual({ level: 4, sound: 'siren' });
   });
 
   it('tests one event with its unsaved level and sound, and reports every channel', async () => {
@@ -46,8 +47,8 @@ describe('Alert levels', () => {
             : [
                 {
                   id: 9,
-                  event: 'clouded_over',
-                  title: 'Test: Clouded over',
+                  event: 'client_lost',
+                  title: 'Test: Imaging app stopped checking',
                   message: '',
                   level: 'wake',
                   ageSeconds: 1,
@@ -60,12 +61,12 @@ describe('Alert levels', () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
 
-    fireEvent.change(await screen.findByLabelText('Skies cloud over above: sound'), { target: { value: 'siren' } });
-    const row = document.querySelector('[data-event="clouded_over"]')!;
+    fireEvent.change(await screen.findByLabelText('The imaging app stops checking: sound'), { target: { value: 'siren' } });
+    const row = document.querySelector('[data-event="client_lost"]')!;
     fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Test' }));
 
     expect(await screen.findByText('Pushover: Sent', {}, { timeout: 4000 })).toBeInTheDocument();
-    expect(query).toBe('?channel=all&event=clouded_over&level=4&sound=siren&title=&message=');
+    expect(query).toBe('?channel=all&event=client_lost&level=3&sound=siren&title=&message=');
   });
 });
 
@@ -86,22 +87,22 @@ describe('Alert wording', () => {
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
 
-    const row = (await screen.findByLabelText('It turns unsafe: level')).closest('.event-row')!;
+    const row = (await screen.findByLabelText('The imaging app stops checking: level')).closest('.event-row')!;
     fireEvent.click(Array.from(row.querySelectorAll('button')).find((b) => b.textContent === 'Text')!);
 
     const message = screen.getByLabelText('Alert message') as HTMLTextAreaElement;
-    expect(message.placeholder).toBe('{reasons}');
+    expect(message.placeholder).toContain('{silent_for}');
     fireEvent.input(message, { target: { value: 'Unsafe x' } });
     fireEvent.focus(message);
     message.setSelectionRange(8, 8);
-    fireEvent.click(screen.getByRole('button', { name: '{reason_count}' }));
-    await waitFor(() => expect((screen.getByLabelText('Alert message') as HTMLTextAreaElement).value).toBe('Unsafe x{reason_count}'));
+    fireEvent.click(screen.getByRole('button', { name: '{last_checked}' }));
+    await waitFor(() => expect((screen.getByLabelText('Alert message') as HTMLTextAreaElement).value).toBe('Unsafe x{last_checked}'));
 
     fireEvent.click(Array.from(row.querySelectorAll('button')).find((b) => b.textContent === 'Test')!);
-    await waitFor(() => expect(query).toContain('message=Unsafe%20x%7Breason_count%7D'));
+    await waitFor(() => expect(query).toContain('message=Unsafe%20x%7Blast_checked%7D'));
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
-    expect(saved.alerts.events.unsafe.message).toBe('Unsafe x{reason_count}');
+    expect(saved.alerts.events.client_lost.message).toBe('Unsafe x{last_checked}');
   });
 });

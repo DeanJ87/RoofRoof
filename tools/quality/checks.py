@@ -34,11 +34,13 @@ MAX_NESTING = 4
 CPP_FILE_LINES = 600
 PY_FILE_LINES = 400
 
-# STRUCT-01: lib/ is portable - no hardware, RTOS or network headers, no clock reads.
+# STRUCT-01: lib/ is portable - no hardware, RTOS or network headers, no clock reads. These are
+# the headers src/ uses to reach the ESP32, and RoofRoof's pin map and motor driver.
 HARDWARE_INCLUDE = re.compile(
-    r'^\s*#\s*include\s*[<"](Arduino\.h|esp_[^>"]*|freertos/[^>"]*|driver/[^>"]*|WiFi[^>"]*|Wire\.h|SPI\.h|'
-    r"HardwareSerial\.h|Preferences\.h|LittleFS\.h|SPIFFS\.h|FS\.h|AsyncTCP\.h|AsyncUDP\.h|ESPAsyncWebServer\.h|"
-    r'PubSubClient\.h|NimBLE[^>"]*|Adafruit[^>"]*|TinyGPS[^>"]*|DNSServer\.h|HTTPClient\.h|Update\.h)[>"]'
+    r'^\s*#\s*include\s*[<"](Arduino\.h|esp_[^>"]*|esp32-hal[^>"]*|freertos/[^>"]*|driver/[^>"]*|soc/[^>"]*|hal/[^>"]*|'
+    r'nvs[^>"]*|lwip/[^>"]*|mbedtls/[^>"]*|WiFi[^>"]*|Preferences\.h|LittleFS\.h|FS\.h|AsyncTCP\.h|AsyncUDP\.h|'
+    r"ESPAsyncWebServer\.h|AsyncWebSocket\.h|AsyncJson\.h|PubSubClient\.h|DNSServer\.h|HTTPClient\.h|Update\.h|"
+    r"ESPmDNS\.h|ArduinoOTA\.h|RoofPins\.h|MotorDriver\.h)[>\"]"
 )
 CLOCK_CALL = re.compile(r"\b(millis|micros)\s*\(\s*\)|\btime\s*\(\s*(nullptr|NULL|0|&)")
 
@@ -78,8 +80,7 @@ HINTS = {
     "I18N-05": "format with web/src/i18n/format.ts and read typed numbers with web/src/i18n/parse.ts "
     "(SVG geometry: web/src/lib/svg.ts; option values: Number(value))",
     "I18N-01": "move the text to web/src/i18n/en.json and use t() (or `// i18n-ignore: <reason>`)",
-    "I18N-02": "every language file needs exactly the English keys, placeholders and plural forms: "
-    "run `node tools/i18n/check.mjs`, then `python3 tools/i18n/translate.py`",
+    "I18N-02": "every language file needs exactly the English keys, placeholders and plural forms: run `node tools/i18n/check.mjs`",
 }
 
 

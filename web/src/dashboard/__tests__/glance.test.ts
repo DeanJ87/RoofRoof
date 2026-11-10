@@ -51,6 +51,7 @@ describe('glanceItems', () => {
   });
 
   it('says when the data is offline or quiet', () => {
+    // inventory: freshness
     expect(glanceItems(input({ connected: false }))[0]).toMatchObject({ id: 'freshness', severity: 'problem', state: 'Offline' });
     expect(glanceItems(input({ quiet: true }))[0].state).toBe('No updates');
     expect(glanceItems(input()).some((i) => i.id === 'freshness')).toBe(false);

@@ -6,9 +6,6 @@
     "armed": {
       "type": "boolean"
     },
-    "armWithAlpaca": {
-      "type": "boolean"
-    },
     "mode": {
       "type": "string",
       "enum": [
@@ -43,7 +40,6 @@
     }
   },
   "required": [
-    "armWithAlpaca",
     "armed",
     "mode",
     "reason",

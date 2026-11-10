@@ -6,7 +6,7 @@
   var mount = document.getElementById('sqm-api-reference');
   if (!mount || !window.Scalar) return;
 
-  // The docs site's palette and fonts (stylesheets/sqmeter.css).
+  // The docs site's palette and fonts (stylesheets/roofroof.css).
   var theme = [
     '.dark-mode {',
     '  --scalar-background-1: #080d14; --scalar-background-2: #0d141d; --scalar-background-3: #111b27;',

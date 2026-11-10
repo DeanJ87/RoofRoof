@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds and checks the OpenAPI 3.1 description of the device's REST API (spec 028).
+"""Builds and checks the OpenAPI 3.1 description of the device's REST API.
 
 Sources, in order of authority:
   tools/api/routes.json       every route, its methods and auth (checked against src/ by routes.py)
@@ -30,7 +30,7 @@ EXAMPLES = ROOT / "tools" / "api" / "examples"
 OUTPUT = ROOT / "docs" / "api" / "openapi.json"
 VERSION_H = ROOT / "include" / "version.h"
 
-# Registry entries that aren't REST operations, and why (spec 028 edge cases, FR-007).
+# Registry entries that aren't REST operations, and why .
 EXCLUDED = {
     "$probe": "captive-portal probes from phones and laptops, not an API",
     "/setup": "ASCOM Alpaca setup pages (redirect to Settings)",
@@ -38,7 +38,7 @@ EXCLUDED = {
     "/api/v1": "ASCOM Alpaca device API: described by the ASCOM Alpaca standard",
 }
 ALPACA_DOCS = "https://ascom-standards.org/api/"
-DOCS_REFERENCE = "https://sqmeter.dev/api/rest/"
+DOCS_REFERENCE = "https://github.com/DeanJ87/RoofRoof/blob/main/docs/api/rest.md"  # until the docs site is RoofRoof's
 HTTP_STATUS = {
     "200": "OK",
     "202": "Accepted",
@@ -47,7 +47,7 @@ HTTP_STATUS = {
     "409": "Not now",
     "413": "The request body is too large",
     "500": "Device failure",
-    "502": "A sensor, broker or GitHub didn't answer",
+    "502": "The broker didn't answer",
     "503": "Not enough free memory",
 }
 
@@ -189,22 +189,23 @@ def operation(method, path, entry, op, examples):
 
 
 INFO_DESCRIPTION = (
-    "Every `/api/*` route an SQMeter serves on port 80. Generated from the firmware's route "
-    "registry and its contract schemas, so it matches the device.\n\n"
+    "Every `/api/*` route a RoofRoof roll-off-roof controller serves on port 80. Generated from the "
+    "firmware's route registry and its contract schemas, so it matches the device.\n\n"
     "**The same in every language**: numbers are JSON numbers with `.` as the decimal point, "
     "units and field names are never translated, and timestamps are Unix seconds or ISO 8601. "
-    "Text for people (`reasons`, alert `title` and `message`, `error`) may be reworded between "
-    "releases: key on `safe`, `reasonFlags` and the alert `event`.\n\n"
+    "Text for people (alert `title` and `message`, `error`) may be reworded between "
+    "releases: key on the alert `event`, not its text.\n\n"
     "**Password**: when protection is on, routes that change something need HTTP Basic auth "
     "with the device's username and password.\n\n"
     "**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't "
-    f"repeated here: the device is a SafetyMonitor and an ObservingConditions device. See {ALPACA_DOCS}."
+    f"repeated here. The device offers no Alpaca device yet (the Dome comes later): `/api/v1/*` answers "
+    f'"unknown device". See {ALPACA_DOCS}.'
 )
 SERVERS = [
     {
         "url": "http://{device}",
-        "description": "Your SQMeter",
-        "variables": {"device": {"default": "sqmeter.local", "description": "The device's address or .local name"}},
+        "description": "Your RoofRoof",
+        "variables": {"device": {"default": "roofroof.local", "description": "The device's address or .local name"}},
     }
 ]
 SECURITY_SCHEMES = {
@@ -255,13 +256,13 @@ def build(version=None):
     document = {
         "openapi": "3.1.0",
         "info": {
-            "title": "SQMeter REST API",
+            "title": "RoofRoof REST API",
             "version": version or firmware_version(),
-            "summary": "The REST API of an SQMeter sky-quality and safety monitor.",
+            "summary": "The REST API of a RoofRoof roll-off-roof controller.",
             "description": INFO_DESCRIPTION,
             "license": {"name": "MIT", "identifier": "MIT"},
         },
-        "externalDocs": {"description": "SQMeter REST API guide", "url": DOCS_REFERENCE},
+        "externalDocs": {"description": "RoofRoof REST API guide", "url": DOCS_REFERENCE},
         "servers": SERVERS,
         "tags": operations["tags"] + [alpaca_tag],
         "paths": paths,

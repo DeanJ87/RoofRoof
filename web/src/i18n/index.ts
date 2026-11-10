@@ -27,6 +27,13 @@ export function setLanguage(code: LanguageCode, messages: Messages | null) {
   }
 }
 
+// RoofRoof ships English only, so nothing in the app installs another
+// language. Browser tests do, to prove numbers follow the language and the API
+// never does (tests/api-locale, tests/locale-numbers): they set this global
+// before the page loads, with a pack they build from en.json.
+const testLanguage = (globalThis as { __i18nTestLanguage?: { code: LanguageCode; messages: Messages } }).__i18nTestLanguage;
+if (testLanguage) setLanguage(testLanguage.code, testLanguage.messages);
+
 /** The active language, also the locale for number and date formatting. */
 export const currentLanguage = (): LanguageCode => language;
 

@@ -9,9 +9,8 @@ namespace SQM
 {
     void WebServer::setupWebSocket()
     {
-        wsStatus.onEvent(
-            [this](AsyncWebSocket *, AsyncWebSocketClient *client, AwsEventType type, void *, uint8_t *, size_t)
-            { onStatusWebSocketEvent(client, type); });
+        wsStatus.onEvent([this](AsyncWebSocket *, AsyncWebSocketClient *client, AwsEventType type, void *, uint8_t *, size_t)
+                         { onStatusWebSocketEvent(client, type); });
         server.addHandler(&wsStatus);
     }
 

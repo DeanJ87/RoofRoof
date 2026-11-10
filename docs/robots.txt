@@ -1,7 +1,5 @@
-# SQMeter documentation: every crawler is welcome, AI crawlers included.
-# A summary for language models is at https://sqmeter.dev/llms.txt
+# RoofRoof documentation. The repository is private and the docs are a CI
+# artifact with no public address, so keep crawlers out if one is ever served.
 
 User-agent: *
-Allow: /
-
-Sitemap: https://sqmeter.dev/sitemap.xml
+Disallow: /

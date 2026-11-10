@@ -11,7 +11,7 @@ export const healthyFacts: DepFacts = {
   mqttConnected: true,
   clockSet: true,
   alpacaDevices: 1,
-}
+};
 
 /**
  * Serves a device whose settings are `mockConfig` with `config` on top, and

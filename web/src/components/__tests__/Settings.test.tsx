@@ -121,5 +121,4 @@ describe('Settings', () => {
     expect(await screen.findByRole('tab', { name: 'Alerts', selected: true })).toBeInTheDocument();
     expect(screen.getByText('Topic is required')).toBeInTheDocument();
   });
-
 });

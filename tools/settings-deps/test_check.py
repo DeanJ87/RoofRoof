@@ -61,12 +61,12 @@ class WholeRepository(unittest.TestCase):
     def test_a_new_setting_with_an_undeclared_dependency_fails_and_is_named(self):
         path = os.path.join(self.root, "src", "NewFeature.cpp")
         with open(path, "w") as f:
-            f.write("void tick(const Config &cfg)\n{\n    if (cfg.ota.enabled && cfg.wifi.mdns && cfg.rain.enabled)\n        go();\n}\n")
+            f.write("void tick(const Config &cfg)\n{\n    if (cfg.ota.enabled && cfg.wifi.mdns && cfg.mqtt.enabled)\n        go();\n}\n")
         problems = check.check(self.root)
         self.assertTrue(any("src/NewFeature.cpp:3" in p for p in problems), problems)
         # Declaring it with a catalogue ID passes.
         with open(path, "w") as f:
-            f.write("void tick(const Config &cfg)\n{\n    if (cfg.ota.enabled && cfg.rain.enabled) // dep: D-24\n        go();\n}\n")
+            f.write("void tick(const Config &cfg)\n{\n    if (cfg.mqtt.enabled && cfg.alerts.enabled) // dep: D-13\n        go();\n}\n")
         self.assertEqual([], check.check(self.root))
 
     def test_an_entry_without_tests_fails_and_is_named(self):
@@ -99,14 +99,14 @@ class WholeRepository(unittest.TestCase):
         self.assertEqual([], check.check(self.root))
 
     def test_a_ranged_setting_counts_too(self):
-        self._edit_json(check.RANGES, lambda ranges: ranges["ranges"].append({"path": "gps.newRate", "int": True, "min": 1, "max": 2}))
-        self.assertTrue(any(p.startswith("gps.newRate:") for p in check.check(self.root)))
+        self._edit_json(check.RANGES, lambda ranges: ranges["ranges"].append({"path": "motor.newRate", "int": True, "min": 1, "max": 2}))
+        self.assertTrue(any(p.startswith("motor.newRate:") for p in check.check(self.root)))
 
     def test_no_dependency_items_must_name_settings_and_not_overlap(self):
-        self._edit_json(check.CATALOGUE, lambda catalogue: catalogue["noDependency"].extend(["gone.setting", "language"]))
+        self._edit_json(check.CATALOGUE, lambda catalogue: catalogue["noDependency"].extend(["gone.setting", "alerts.mqtt.enabled"]))
         problems = check.check(self.root)
         self.assertIn(f"{check.CATALOGUE}: noDependency item 'gone.setting' matches no setting", problems)
-        self.assertIn(f"{check.CATALOGUE}: language is in an entry and in noDependency", problems)
+        self.assertIn(f"{check.CATALOGUE}: alerts.mqtt.enabled is in an entry and in noDependency", problems)
 
     def test_patterns_match_one_segment(self):
         self.assertTrue(check.matches("alerts.events.*.sound", "alerts.events.unsafe.sound"))

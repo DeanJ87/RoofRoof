@@ -110,18 +110,24 @@ test('the real changelog has highlights for every released 0.3 version', () => {
   }
 });
 
-test('releaseBody has the banner, the section and how to upgrade', () => {
+test('releaseBody has the banner, the section and how to update', () => {
   const section = findSection(CHANGELOG, '0.4.0-beta.2');
-  const url = bannerUrl('DeanJ87/SQMeter', 'v0.4.0-beta.2');
-  assert.equal(url, 'https://github.com/DeanJ87/SQMeter/releases/download/v0.4.0-beta.2/sqmeter-release-v0.4.0-beta.2.png');
+  const url = bannerUrl('DeanJ87/RoofRoof', 'v0.4.0-beta.2');
+  assert.equal(url, 'https://github.com/DeanJ87/RoofRoof/releases/download/v0.4.0-beta.2/roofroof-release-v0.4.0-beta.2.png');
   const body = releaseBody({ tag: 'v0.4.0-beta.2', section, bannerUrl: url, docsBase: 'https://docs.example.dev' });
-  assert.ok(body.startsWith(`![SQMeter v0.4.0-beta.2](${url})`));
+  assert.ok(body.startsWith(`![RoofRoof v0.4.0-beta.2](${url})`));
   assert.match(body, /\*\*Restart history\*\*/);
-  assert.match(body, /beta track/);
+  assert.match(body, /roofroof-l2-firmware-v0\.4\.0-beta\.2\.bin/);
+  assert.match(body, /roofroof-l2-littlefs-v0\.4\.0-beta\.2\.bin/);
+  assert.match(body, /roofroof-l2-usb-v0\.4\.0-beta\.2\.zip/);
+  assert.match(body, /https:\/\/docs\.example\.dev\/user-guide\/ota\//);
   assert.match(body, /https:\/\/docs\.example\.dev\/getting-started\/usb-flash\//);
+  assert.doesNotMatch(body, /SQMeter|Check for updates|ESP32-S3|track\)/);
 });
 
-test('a stable tag points at the stable track', () => {
+test('an empty docs base gives relative docs links', () => {
   const section = findSection(CHANGELOG, '0.4.0-beta.1');
-  assert.match(releaseBody({ tag: 'v1.0.0', section, bannerUrl: 'x', docsBase: 'https://d/' }), /stable track/);
+  const body = releaseBody({ tag: 'v1.0.0', section, bannerUrl: 'x', docsBase: '' });
+  assert.match(body, /: user-guide\/ota\//);
+  assert.match(body, /: getting-started\/usb-flash\//);
 });

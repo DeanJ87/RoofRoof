@@ -57,7 +57,6 @@ describe('settings dependencies in Settings (FR-013b)', () => {
     expect(within(row).getByRole('button', { name: 'Test' })).toBeDisabled();
   });
 
-
   it('D-04: with alerts off the event levels are greyed out', async () => {
     mockDevice({ config: { alerts: { ...alerts, enabled: false } } });
     window.history.replaceState(null, '', '/settings?tab=alerts');

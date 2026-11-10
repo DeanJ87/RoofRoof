@@ -1,5 +1,5 @@
 ---
-description: "SQMeter REST API: conventions, errors, the password, limits and behaviour of every endpoint on the device."
+description: "RoofRoof REST API: conventions, errors, the password, limits and behaviour of every endpoint on the device."
 ---
 
 # REST API
@@ -8,20 +8,20 @@ All endpoints are on port 80. Base URL: `http://<device-ip>/api`
 
 The [API Reference](reference.md) lists every route with its parameters and response schemas, from
 the machine-readable [`openapi.json`](openapi.json) (OpenAPI 3.1). Try any request in the
-[API explorer](https://demo.sqmeter.dev/explorer/), where the demo answers it in your browser. This
+API explorer (in the [live demo](../live-demo.md)), where the demo answers it in your browser. This
 page covers what the reference can't: behaviour, the password and limits.
 
 ---
 
 ## Conventions
 
-- Keys are camelCase. Timestamps are Unix seconds (`timestamp`, `time.epoch`), `0` until the device's clock is set; `iso` strings are for display only. Readings use the same names and units as `/ws/sensors` and MQTT `<base>/state`.
+- Keys are camelCase. Timestamps are Unix seconds (`timestamp`, `time.epoch`), `0` until the device's clock is set; `iso` strings are for display only. 
 - **Success** is a 2xx status. Actions return `{"success": true, ...}`: 200 when done, 202 when queued.
-- **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 404 not found, 409 conflict, 500 device failure, 502 a sensor or broker didn't answer.
+- **Failure** is a 4xx or 5xx status with `{"error": "message"}`: 400 bad request, 401 unauthorised, 404 not found, 409 conflict, 500 device failure, 502 a broker didn't answer.
 - Endpoints that change something need the password when [protection](../user-guide/security.md) is on.
 
 !!! note "The same in every language"
-    The UI language never changes the API. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`). Units (°C, %, hPa, lux, mag/arcsec², m/s, mm, mm/h), field names and values such as `status`, `event` and `reason` are never translated, and timestamps are Unix seconds or ISO 8601. Text for people to read - `reasons`, `rulesNotInEffect`, alert `title` and `message`, `description`, `error` - is English and may be reworded between releases: key on `reasonFlags`, `safe` and the alert `event` instead.
+    The UI language never changes the API. Numbers are JSON numbers with `.` as the decimal point and no thousands separators (`12.1`, never `"12,1"`). Field names and values such as `status`, `event` and `reason` are never translated, and timestamps are Unix seconds or ISO 8601. Text for people to read - alert `title` and `message`, `error` - is English and may be reworded between releases: key on the alert `event` and the other machine fields instead.
 
 ---
 
@@ -29,10 +29,10 @@ page covers what the reference can't: behaviour, the password and limits.
 
 ### `GET /api/status`
 
-Firmware, memory, flash, partitions, time, WiFi, MQTT, Bluetooth, darkness, sensor health and diagnostics.
+Firmware, memory, flash, partitions, time, WiFi, MQTT, NTP, alerts, Alpaca and connections.
 
 ```bash
-curl http://sqmeter.local/api/status
+curl http://roofroof.local/api/status
 ```
 
 ```json
@@ -40,153 +40,34 @@ curl http://sqmeter.local/api/status
   "uptime": 3600,
   "configRevision": 3,
   "freeHeap": 128728,
-  "firmware": { "name": "SQMeter", "version": "0.3.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "variant": "standard", "layout": "l2" },
+  "firmware": { "name": "RoofRoof", "product": "roofroof", "version": "0.1.0", "buildDate": "Oct  8 2026", "buildTime": "12:00:00", "layout": "l2" },
   "time": { "epoch": 1791494565, "iso": "2026-10-08T22:22:45+0100", "timezone": "GMT0BST,M3.5.0/1,M10.5.0" },
-  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "sqmeter", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
-  "sky": { "locationSource": "manual", "nightKnown": true, "latitude": 51.4779, "longitude": -0.0015, "isNight": false, "sunAltitudeDeg": 19.4 },
-  "alerts": { "armed": true, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-connected", "since": "2026-10-08T20:58:02Z", "sinceAgeMs": 412000, "recentRevision": 7 },
-  "alpaca": {
-    "enabled": true,
-    "clients": {
-      "safetymonitor": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 2100, "clientId": 4021 },
-      "observingconditions": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 41000, "clientId": 4021 }
-    }
-  },
-  "sensors": {
-    "light": { "status": "ok", "ageMs": 400 },
-    "environment": { "status": "ok", "ageMs": 3100 },
-    "infrared": { "status": "ok", "ageMs": 3100 },
-    "rain": { "status": "ok", "ageMs": 40 },
-    "wind": { "status": "ok", "ageMs": 900, "vaneStatus": "ok" }
-  },
-  "diagnostics": {
-    "light": { "rollingVisible": 3.1, "correctedVisible": 3.1, "darkVisibleOffset": 0, "sampleCount": 150, "windowSamples": 150, "nightMode": true, "rejectedSamples": 0, "consecutiveSaturatedSamples": 0, "consecutiveLowSamples": 0 },
-    "rain": { "state": "online", "uartOpened": true, "rxPin": 18, "txPin": 19, "baudRate": 9600, "uartPort": 1, "lastCommand": "R", "lastResponse": "Acc 0.01 mm, ...", "timeouts": 0, "parseErrors": 0, "successfulReads": 1424, "lastPollAgeMs": 40, "lastResponseAgeMs": 40, "lastSuccessfulReadAgeMs": 40 }
-  },
-  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "sqmeter", "availabilityTopic": "sqmeter/availability" },
-  "connections": { "tcpLimit": 16, "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
+  "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "roofroof", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
+  "alerts": { "armed": true, "mode": "any", "reason": "none", "since": null, "sinceAgeMs": null, "recentRevision": 7 },
+  "alpaca": { "enabled": false, "clients": {} },
+  "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
+  "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
 }
 ```
 
-`connections` shows who holds the device's TCP connections: the live-update clients per endpoint (`/ws/sensors`, `/ws/status`), the most each takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`). `alpacaRestoredAfterRestart` is `true` when an imaging app's connection was kept across a restart the device caused itself. See [N.I.N.A. loses the Safety Monitor](../reference/troubleshooting.md#nina-loses-the-safety-monitor).
+Shortened above: the document also carries heap and stack figures, `partitions` (running and next slot, web UI partition, NVS usage), `ntp` and the reset reason. The JSON Schema is `status.schema.json` and the [API Reference](reference.md) lists every field.
 
-`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` says, per Alpaca device, whether an imaging app has it `connected`, whether one is `watching` (connected, or polling since the restart), whether it has gone `silent` (no request for the alert's **Silent for** time), how long ago it last checked (`lastCheckedAgeMs`, `null` if never since the restart) and the last Alpaca `clientId` (`null` if none); the web UI's own requests aren't counted ([The imaging app](../user-guide/alerts.md#the-imaging-app)).
+`firmware.product` is `roofroof` and `firmware.layout` is the partition layout (`l2`); an upload made for another product or layout is refused ([Updates](../user-guide/ota.md)).
+
+`connections` shows who holds the device's TCP connections: the live-update clients on `/ws/status`, the most each endpoint takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`).
+
+`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` is empty until an Alpaca device exists (a later spec).
 
 `time.epoch` is Unix seconds like every other timestamp (`0` until the clock is set); `time.iso` is the device's local time with its UTC offset, for display.
 
-`sensors` lists the built-in sensors (`light`, `environment`, `infrared`) and, when enabled, `gps`, `rain` and `wind`. `status` is `ok`, `missing`, `error` or `stale`. `diagnostics.rain` is only present while the rain sensor is enabled. Readings are in `/api/sensors`.
-
-`sensors.light` and `diagnostics.light` are the authoritative sky sensor (`sky.authoritative`). `skySensors` has an entry per sky sensor that is switched on (spec 030), and is left out when neither is:
-
-```json
-"skySensors": {
-  "sqm":  { "status": "ok", "ageMs": 412, "detected": true, "gain": "MAX", "integrationMs": 600,
-            "saturated": false, "nightMode": true, "sampleCount": 150, "windowSamples": 150, "darkVisibleOffset": 0.0 },
-  "sqml": { "status": "missing", "detected": false }
-}
-```
-
-`detected` means found and answering (`ok` or `stale`); the gain and calibration fields are only there while it is. `ageMs` is left out while `missing`.
-
-`display` is the optional [OLED display](../user-guide/display.md), always present:
-
-```json
-"display": { "enabled": true, "detected": true, "on": true, "page": "sky", "nightMode": false }
-```
-
-`battery` is the travel board's pack (spec 032): the same object as in `/api/sensors`, plus `shutdownInSeconds` while the device is about to sleep. With a fuel gauge, `sensors.battery` has its health (`status`, `ageMs`) and `diagnostics.battery` the raw gauge registers (`version`, `vcellRaw`, `socRaw`, `crateRaw`, `statusRaw`), `resetSeen`, `estimating`, the charger pin levels (`charger: {stat1, stat2, pg}`, `true` = high, `null` without the pins), `gaugeAlert`, the power `policy` (`normal`, `saving`, `shutdown`) and `currentMa` (with a pack capacity set). See [Battery](../user-guide/battery.md).
-
-```json
-"battery": { "present": true, "status": "ok", "ageMs": 1200, "estimating": false, "percent": 4.2, "voltage": 3.412,
-             "ratePercentPerHour": -6.2, "state": "discharging", "usbPower": false, "fault": null,
-             "timeToEmptyMinutes": 41, "timeToFullMinutes": null, "powerSaving": true, "shutdownInSeconds": 18 }
-```
-
-`enabled` is the setting; `detected` means a display answered at `0x3C` (always `false` while it is off in settings, since it isn't probed then); `on` means it is lit now; `page` is the page shown (`sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`), `null` while it is off; `nightMode` means the night layout and minimum brightness are in use (at night, or while night can't be worked out).
-
 ---
-
-### `GET /api/sensors`
-
-The current readings plus the safety verdict. The document is the same as `/ws/sensors` and MQTT `<base>/state`; see [MQTT → Readings](../user-guide/mqtt.md#readings-basestate) for every field.
-
-```bash
-curl http://sqmeter.local/api/sensors
-```
-
-```json
-{
-  "timestamp": 1791401772,
-  "timeValid": true,
-  "dataAgeMs": 412,
-  "dataStale": false,
-  "light": { "status": "ok", "ageMs": 400, "lux": 0.0003, "visible": 307, "infrared": 47, "full": 357, "gain": "MAX", "gainFactor": 9876, "integrationMs": 600, "saturated": false, "nightMode": true },
-  "sky": { "status": "ok", "source": "sqm", "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90 },
-  "skySensors": {
-    "sqm": { "status": "ok", "ageMs": 400, "sqm": 21.48, "rawSqm": 21.41, "nelm": 6.2, "bortle": 2, "description": "Typical truly dark site", "calibrated": false, "averagingWindowSeconds": 90, "lux": 0.000301, "gain": "MAX", "integrationMs": 600, "saturated": false, "nightMode": true },
-    "sqml": { "status": "ok", "ageMs": 380, "sqm": 21.73, "...": "the same fields" },
-    "deltaSqm": 0.25
-  },
-  "environment": { "status": "error", "ageMs": 61000 },
-  "infrared": { "status": "ok", "ageMs": 3100, "skyTemperature": -24.7, "ambientTemperature": 12.4 },
-  "clouds": { "status": "ok", "coverPercent": 3, "condition": "clear", "description": "Clear", "temperatureDelta": -37.1, "correctedDelta": -33.0, "humidity": 53, "humiditySource": "assumed" },
-  "battery": { "present": false },
-  "safety": { "safe": true, "rawSafe": true, "reasons": [], "reasonFlags": 0, "secondsUntilSafe": 0, "rulesNotInEffect": [], "alpacaEnabled": true, "evaluatedAgeMs": 412, "changedAgeMs": 3600000 }
-}
-```
-
-`battery` is always there: `{"present": false}` on a board without a fuel gauge (as above), the full group with one ([MQTT → Readings](../user-guide/mqtt.md#readings-basestate), [Battery](../user-guide/battery.md)).
-
-A group whose sensor isn't `ok` carries only `status` and `ageMs` - just `status` when `missing` (like `environment` above).
-
-`light` and `sky` are the authoritative sky sensor; `sky.source` (`sqm` or `sqml`) says which. If it is switched off or not answering they report that sensor's state, never the other sensor's reading. `skySensors` (two sky sensors, spec 030) has each sensor that is switched on under its own name, with the same rules, and `deltaSqm` (SQM-L − SQM) while both are `ok`.
-
----
-
-### `POST /api/sensors/tsl2591/calibrate-dark`
-
-Stores the current rolling TSL2591 visible count as the dark visible offset. Cover the aperture with an opaque cap, wait for the rolling window to fill, then call this endpoint. `?sensor=sqm` (the default) calibrates the SQM and writes `skyCalibration`; `?sensor=sqml` calibrates the SQM-L and writes `skyCalibrationL` only. Any other `sensor` is refused with `400 {"error": "Unknown sky sensor"}`.
-
-```bash
-curl -X POST "http://sqmeter.local/api/sensors/tsl2591/calibrate-dark?sensor=sqml"
-```
-
-```json
-{
-  "success": true,
-  "sensor": "sqml",
-  "darkVisibleOffset": 1.5,
-  "sampleCount": 138,
-  "darkCalibratedAt": 1778171234
-}
-```
-
-It's refused with `409 {"error": "..."}` while it can't give a good offset: the sensor is switched off or not found, no light-sensor readings yet, the sensor isn't in night mode (it's seeing light), or the averaging window isn't full - then the body also has `sampleCount` and `windowSamples`. `/api/status` → `skySensors.<sensor>` (or `diagnostics.light` for the authoritative one) shows `sampleCount`, `windowSamples` and `nightMode` so you can wait for it. `darkCalibratedAt` is Unix seconds, or uptime milliseconds if the clock wasn't set.
-
-### `POST /api/sensors/rg15/test`
-
-Trigger a manual RG-15 read and return communication diagnostics.
-
-When HTTP auth is enabled, this endpoint requires credentials.
-
-```bash
-curl -X POST http://sqmeter.local/api/sensors/rg15/test
-```
-
-Success is 200 `{"success": true, "command": "R", "bytesWritten": 2, "elapsedMs": 140, "rawResponse": "Acc 0.00 mm, ...", "ack": "R", "online": true, "lastSuccessfulReadAgeMs": 40}`. With no valid reply it's 502 with `error` and a wiring `hint`, plus the same diagnostic fields.
-
----
-
-### `POST /api/sensors/rg15/reset-total`, `POST /api/sensors/rg15/reboot`
-
-Send the RG-15 its `O` (reset total accumulation) or `K` (reboot) command. Returns `{"success": true, "command": "O", "message": "..."}`, or 502 with `{"error": "..."}` if the sensor didn't take it. Requires HTTP auth when enabled. See [RG-15](../hardware/rg15.md).
 
 ### `GET /api/config`
 
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
 ```bash
-curl http://sqmeter.local/api/config
+curl http://roofroof.local/api/config
 ```
 
 !!! warning "LAN-sensitive endpoint"
@@ -199,9 +80,9 @@ curl http://sqmeter.local/api/config
 Update configuration. Partial updates are supported — only the fields you send are changed.
 
 ```bash
-curl -X POST http://sqmeter.local/api/config \
+curl -X POST http://roofroof.local/api/config \
   -H "Content-Type: application/json" \
-  -d '{"deviceName": "backyard-sqm", "sensor": {"readIntervalMs": 10000}}'
+  -d '{"deviceName": "observatory-roof", "ntp": {"server1": "time.google.com"}}'
 ```
 
 Masked or empty password fields preserve the existing stored password. Send `null` for `wifi.password`, `mqtt.password`, or `ota.password` only when you intentionally want to clear that password.
@@ -228,7 +109,7 @@ A setting whose dependency is off is saved as sent and reported inactive by `GET
 The settings backup file ([format](../user-guide/configuration.md#backup-restore)): a header and every setting as `GET /api/config` shows it. With `{"passphrase": "..."}` (8 characters or more) the passwords, keys and tokens are added encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256, 20,000 iterations); without one the file holds no secret. An empty body is fine. Needs the password when protection is on.
 
 ```bash
-curl -X POST http://sqmeter.local/api/backup -H "Content-Type: application/json" \
+curl -X POST http://roofroof.local/api/backup -H "Content-Type: application/json" \
   -d '{"passphrase": "correct horse battery"}' -o backup.json
 ```
 
@@ -247,15 +128,15 @@ What restoring a backup would save. Nothing is applied.
 ```json
 {
   "token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5",
-  "backup": { "format": 1, "firmware": "0.3.4-beta.1", "board": "esp32", "build": "ble", "deviceName": "backyard-sqm", "createdAt": "2026-10-18T21:04:05Z" },
-  "settings": { "deviceName": "backyard-sqm", "wifi": { "ssid": "Observatory", "password": "********" } },
+  "backup": { "format": 1, "firmware": "0.1.0", "board": "esp32", "build": "standard", "deviceName": "observatory-roof", "createdAt": "2026-10-18T21:04:05Z" },
+  "settings": { "deviceName": "observatory-roof", "wifi": { "ssid": "Observatory", "password": "********" } },
   "secrets": { "state": "restored", "changed": ["wifi.password"], "unchanged": ["mqtt.password"] },
-  "notApplicable": [ { "path": "gps.rxPin", "value": 44, "reason": "pin" } ],
+  "notApplicable": [],
   "restart": ["wifi"]
 }
 ```
 
-`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings this board can't use (`pin`, `analog`, `bluetooth`, `pushover-keys`); they keep this device's values. `restart` says why applying restarts the device (empty: it doesn't). The web UI works out the per-setting differences from `settings`.
+`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings this board can't use (`pin`, `pushover-keys`); they keep this device's values. `restart` says why applying restarts the device (empty: it doesn't). The web UI works out the per-setting differences from `settings`.
 
 Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` (also when the encrypted part was changed), or `invalid` with the same message a settings save gives. A new preview replaces the previous one.
 
@@ -266,7 +147,7 @@ Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong
 Saves exactly what the preview with this token showed, as one settings save.
 
 ```bash
-curl -X POST http://sqmeter.local/api/backup/apply -H "Content-Type: application/json" \
+curl -X POST http://roofroof.local/api/backup/apply -H "Content-Type: application/json" \
   -d '{"token": "4f1c0d7e9a2b3c4d5e6f708192a3b4c5"}'
 ```
 
@@ -284,12 +165,9 @@ Whether each setting that depends on another setting, on hardware or on the netw
 
 ```json
 {
-  "facts": { "wifiConnected": true, "mqttConnected": false, "clockSet": true, "gpsRunning": false, "gpsFix": false,
-             "bluetoothBuild": false, "bluetoothRunning": false, "pairedPhones": 0,
-             "lightDetected": true, "infraredDetected": true, "environmentDetected": true, "languageInstalled": false },
+  "facts": { "wifiConnected": true, "mqttConnected": false, "clockSet": true },
   "settings": [
     { "id": "D-01", "setting": "alerts.mqtt.enabled", "state": "inactive", "reason": "mqtt-off", "text": "MQTT is off", "fix": "network#mqtt" },
-    { "id": "D-15", "setting": "alpaca.rainUnsafeEnabled", "state": "inactive", "reason": "rain-off", "text": "Rain sensor is off", "fix": "sensors#rain", "unmet": "inactive" },
     { "id": "D-28", "setting": "ntp.enabled", "state": "active" }
   ]
 }
@@ -297,13 +175,11 @@ Whether each setting that depends on another setting, on hardware or on the netw
 
 | Field | Meaning |
 |---|---|
-| `facts` | What the device knows at run time: network, broker, clock, GPS, Bluetooth, and which sky sensors answer |
+| `facts` | What the device knows at run time: network, broker and clock |
 | `id` | [Catalogue](../reference/settings-dependencies.md) entry that decides the state (the first unmet one when inactive) |
-| `setting` | Path of the setting in `/api/config` (a few are derived, e.g. `alerts.wakePhones`: an event at Wake me) |
+| `setting` | Path of the setting in `/api/config` |
 | `state` | `off` (switched off), `active`, or `inactive` (on, but something it needs is missing) |
 | `reason`, `text`, `fix` | Why it's inactive and where it's fixed (`tab#section` in Settings, or `restart`) |
-| `unmet` | Safety rules only: `inactive` (ignored, listed in `rulesNotInEffect`) or `fail-safe` (the verdict reports unsafe) |
-| `neutral` | Inactive by default and harmless (e.g. publishing rain with no rain sensor) |
 
 ---
 
@@ -312,7 +188,7 @@ Whether each setting that depends on another setting, on hardware or on the netw
 Scan for nearby WiFi networks (needs the password when [protection](../user-guide/security.md) is on, like `/api/wifi/connect`). The scan runs in the background: the first call starts it and returns `202` with `"scanning": true`; call again (about once a second) until `"scanning": false` and the list arrives.
 
 ```bash
-curl http://sqmeter.local/api/wifi/scan
+curl http://roofroof.local/api/wifi/scan
 ```
 
 ```json
@@ -333,7 +209,7 @@ curl http://sqmeter.local/api/wifi/scan
 Join a network - what the WiFi setup screen (`/wifi`) uses. Returns `202` at once; the attempt takes up to 10 seconds. Poll [`GET /api/status`](#get-apistatus): `wifi.connectPending` is `true` while it's trying; afterwards `wifi.connected` and `wifi.ssid` tell you whether it worked. On success the credentials are saved and the device restarts onto the network 15 seconds later.
 
 ```bash
-curl -X POST http://sqmeter.local/api/wifi/connect \
+curl -X POST http://roofroof.local/api/wifi/connect \
   -H "Content-Type: application/json" \
   -d '{"ssid": "MyNetwork", "password": "hunter2"}'
 ```
@@ -351,19 +227,7 @@ curl -X POST http://sqmeter.local/api/wifi/connect \
 Restart the device.
 
 ```bash
-curl -X POST http://sqmeter.local/api/restart
-```
-
----
-
-### `POST /api/display/wake`, `POST /api/display/blank`
-
-Wake the [OLED display](../user-guide/display.md) for its switch-off time, or blank it until the next wake (a restart, a wake request or the wake button). No body; answers `200 {"success": true}` and the display follows within one loop pass. Requires HTTP auth when enabled.
-
-`409 {"error": "Display is off in settings"}`, `409 {"error": "Display not detected"}`, or (wake only, with power saving from spec 032) `409 {"error": "Display is off to save power"}`.
-
-```bash
-curl -X POST http://sqmeter.local/api/display/wake
+curl -X POST http://roofroof.local/api/restart
 ```
 
 ---
@@ -373,11 +237,11 @@ curl -X POST http://sqmeter.local/api/display/wake
 OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.
 
 ```bash
-curl -X POST http://sqmeter.local/api/update \
-  -F "firmware=@sqmeter-l2-firmware-v0.3.0.bin"
+curl -X POST http://roofroof.local/api/update \
+  -F "firmware=@roofroof-l2-firmware-v0.1.0.bin"
 ```
 
-Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the file isn't for this device's partition layout or build (spec 027; nothing was changed); or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware.
+Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the file isn't for this device: another product, or another partition layout (nothing was changed); or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware.
 
 ---
 
@@ -386,120 +250,23 @@ Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the fil
 OTA filesystem update. Send a LittleFS image as `multipart/form-data`.
 
 ```bash
-curl -X POST http://sqmeter.local/api/update/fs \
-  -F "filesystem=@sqmeter-l2-littlefs-v0.3.0.bin"
+curl -X POST http://roofroof.local/api/update/fs \
+  -F "filesystem=@roofroof-l2-littlefs-v0.1.0.bin"
 ```
 
 Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. The image must fill the web UI partition exactly; one for a different layout gets 400 before anything is erased. Responses are as for `/api/update`.
 
-Both upload endpoints need the password when protection is on. Keep SQMeter on a trusted network and don't port-forward it.
+Both upload endpoints need the password when protection is on. Keep RoofRoof on a trusted network and don't port-forward it.
 
 ---
 
 ### `POST /api/mqtt/test`
 
-Tries to connect to a broker with the given details, without saving them: `{"broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "SQM-Test"}`. Returns 200 `{"success": true, "message": "Connection successful"}`, or 502 `{"error": "Connection timeout", "state": -4}`.
+Tries to connect to a broker with the given details, without saving them: `{"broker": "192.168.1.10", "port": 1883, "username": "", "password": "", "clientId": "RoofRoof-Test"}`. Returns 200 `{"success": true, "message": "Connection successful"}`, or 502 `{"error": "Connection timeout", "state": -4}`.
 
 A `password` of `********` (what `GET /api/config` returns for a saved password) or an empty one means "the saved password", so testing an unchanged form works. The saved password is only used when `broker`, `port` and `username` match the saved settings; a masked password for any other broker returns 400 `{"error": "Type the MQTT password to test a broker other than the saved one"}`, so a saved secret is never sent to another host.
 
 ---
-
-### `GET /api/updates/check`
-
-Checks GitHub Releases for the given track and returns matched firmware+filesystem asset pairs. See [OTA Updates](../user-guide/ota.md#check-for-updates-recommended) for the full flow.
-
-```bash
-curl "http://sqmeter.local/api/updates/check?track=stable"
-```
-
-```json
-[
-  {
-    "tag": "v0.3.0",
-    "name": "SQMeter v0.3.0",
-    "prerelease": false,
-    "publishedAt": "2026-11-01T17:35:57Z",
-    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-firmware-v0.3.0.bin",
-    "firmwareAssetSize": 1532128,
-    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-littlefs-v0.3.0.bin",
-    "fsAssetSize": 458752
-  }
-]
-```
-
-`track` is `stable` (default) or `beta`, mapped directly from GitHub's `prerelease` flag. A release without both a firmware file for this build (`sqmeter-l2-firmware-*.bin`, or `sqmeter-l2-ble-firmware-*.bin` on the Bluetooth build) and a `sqmeter-l2-littlefs-*.bin` file is omitted entirely - so releases for the old partition layout (v0.2) aren't listed.
-
-Errors: `502 {"error": "..."}` when GitHub can't be reached or its answer can't be read (a dropped
-connection is retried once first), `409` while another check is running.
-
----
-
-### `POST /api/updates/apply`
-
-Starts a self-download-and-flash of a release returned by `check`, using its asset URLs directly.
-
-```bash
-curl -X POST http://sqmeter.local/api/updates/apply \
-  -H "Content-Type: application/json" \
-  -d '{
-    "firmwareAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-firmware-v0.3.0.bin",
-    "firmwareAssetSize": 1532128,
-    "fsAssetUrl": "https://github.com/DeanJ87/SQMeter/releases/download/v0.3.0/sqmeter-l2-littlefs-v0.3.0.bin",
-    "fsAssetSize": 458752
-  }'
-```
-
-Returns immediately with `{"success":true,"message":"Update started"}` - the download and flash happen on a background task. Progress and errors are pushed over `/ws/status` as `{"type":"ota_progress","progress":N}` messages (or `{"error":"..."}` on failure). The device reboots automatically once both assets are flashed successfully.
-
----
-
-## Safety
-
-### `GET /api/safe`
-
-Plain text `1` (safe) or `0` (unsafe) - the SafetyMonitor verdict, for scripts and loggers (`curl -s http://sqmeter.local/api/safe`).
-
-### `GET /api/safety`
-
-The current SafetyMonitor verdict - `safe`, the same value served to Alpaca clients as `IsSafe` - with the reasons behind it. The same object is included as `safety` in every `/ws/sensors` message.
-
-```json
-{
-  "safe": false,
-  "rawSafe": false,
-  "alpacaEnabled": true,
-  "reasonFlags": 512,
-  "reasons": ["Rain detected"],
-  "secondsUntilSafe": 0,
-  "rulesNotInEffect": [],
-  "evaluatedAgeMs": 412,
-  "changedAgeMs": 1260000
-}
-```
-
-| Field | Meaning |
-|---|---|
-| `safe` | Reported verdict, after the safe delay |
-| `rawSafe` | Instantaneous rule evaluation, before the safe delay |
-| `reasons` / `reasonFlags` | Why it's unsafe (bit flags: 0 manual override, 1 no data, 2 stale, 3 sensor fault, 4 cloud, 5 SQM, 6 humidity, 7 dew point, 8 humidity sensor fault, 9 rain, 10 rain sensor fault, 11 wind, 12 gust, 13 wind sensor fault, 14 battery below the limit, 15 battery data missing, 16 shutting down: battery empty) |
-| `secondsUntilSafe` | Remaining safe-delay countdown while `rawSafe` is true but `safe` isn't yet |
-| `rulesNotInEffect` | Rules switched on but ignored because what they need is off, e.g. `"Unsafe while raining"` (they are listed only while the rain sensor is off). Rules that can't measure their limit (wind, cloud, SQM, humidity) report unsafe instead |
-| `changedAgeMs` | Time since `safe` last changed |
-
----
-
-### `GET /api/safety/history`
-
-The last 32 safety changes, device restarts and safe/unsafe alerts sent, newest first. Kept in RTC memory, so it survives software restarts, crashes and OTA updates, not power cuts.
-
-```json
-{"boot":3,"uptime":4000,"entries":[
-  {"kind":"alert","boot":3,"uptime":3900,"timestamp":1759500000,"safe":false},
-  {"kind":"change","boot":3,"uptime":3899,"timestamp":1759499999,"safe":false,"held":false,"reasonFlags":48},
-  {"kind":"boot","boot":3,"uptime":0,"resetReason":3}]}
-```
-
-`held` marks unsafe only because of the safe delay. `resetReason` is ESP-IDF's `esp_reset_reason_t` (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). `timestamp` is missing for entries from before the clock was set.
 
 ## Alerts
 
@@ -509,22 +276,22 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
 
-Add `event=<unsafe|safe|rain_started|rain_stopped|sensor_fault|sensor_recovered|dew_risk|clear_sky|clouded_over|client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Level 4 (wake me) also rings paired Bluetooth phones; with no push channel enabled, it only rings the phones. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`, filled in from current readings.
+Add `event=<client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`.
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 
 Whether alerts are being sent ([When to send](../user-guide/alerts.md#when-to-send)), for automations:
 
 ```json
-{"armed": false, "armWithAlpaca": true, "mode": "whileConnected", "reason": "client-disconnected", "since": "2026-10-08T05:42:10Z", "sinceAgeMs": 734000}
+{"armed": false, "mode": "whileConnected", "reason": "client-disconnected", "since": "2026-10-08T05:42:10Z", "sinceAgeMs": 734000}
 ```
 
 - `armed`: `true` sending, `false` paused.
-- `mode`: `any` or `whileConnected` (the `sendMode` setting); `armWithAlpaca` is its older form.
+- `mode`: `any` or `whileConnected` (the `sendMode` setting).
 - `reason`: why it's sending or paused - `user-ui` (the web UI's Pause/Resume), `user-rest` (`arm`/`disarm`), `user-mqtt` (`<base>/alerts/armed/set`), `client-connected`, `client-disconnected`, `waiting-for-client` (while-connected mode with nothing connected), `migrated` (paused before an update that added reasons) or `none`.
 - `since`: when it changed, ISO 8601 UTC; `null` without a clock. `sinceAgeMs`: milliseconds since, on the uptime clock; `null` if it changed before the last restart.
 
-`arm` (resume) / `disarm` (pause) return 202 `{"success": true, "armed": true|false}`, take effect immediately, and the state survives restarts; while paused nothing is sent and paired phones don't ring. The web UI adds `?source=ui`. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`, and `/api/status` carries the same object as `alerts`.
+`arm` (resume) / `disarm` (pause) return 202 `{"success": true, "armed": true|false}`, take effect immediately, and the state survives restarts; while paused nothing is sent and . The web UI adds `?source=ui`. POSTs require HTTP auth when enabled. `/api/alerts/recent` also carries `armed`, and `/api/status` carries the same object as `alerts`.
 
 ### `POST /api/alerts/clear`
 
@@ -535,7 +302,7 @@ Empties the recent-alerts list. Requires HTTP auth when enabled.
 Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 ```json
-{"enabled":true,"alerts":[{"id":2,"event":"rain_started","title":"Rain detected","message":"The rain sensor reports rain (2.4 mm/h).","level":"wake","ageSeconds":42,"timestamp":1759500000,
+{"enabled":true,"alerts":[{"id":2,"event":"client_lost","title":"Imaging app stopped checking","message":"No request to the device for 2 min.","level":"urgent","ageSeconds":42,"timestamp":1759500000,
   "channels":{"pushover":{"status":"sent","detail":"HTTP 200"},"mqtt":{"status":"failed","detail":"MQTT not connected"}}}]}
 ```
 
@@ -543,68 +310,16 @@ Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 ---
 
-## Language
-
-The device-wide language (Settings → Device → Language, `language` in
-`/api/config`). English is built in; another language's file is downloaded
-from the GitHub release that matches the firmware and stored on the device,
-which serves it at `/lang.json`. See [Languages](../user-guide/languages.md).
-
-### `GET /api/i18n`
-
-```json
-{ "language": "es", "state": "installed", "firmwareVersion": "0.2.1",
-  "pack": { "lang": "es", "version": "0.2.1", "size": 22515 } }
-```
-
-`state` is `idle`, `downloading`, `installed`, `failed` or `restoring` (after a
-firmware update). `pack` is `null` when no file is stored; `error` says why the
-last download failed.
-
-### `POST /api/i18n/install`
-
-Downloads the configured language's file again: `202 {"started": true}`, or
-`409 {"error": "..."}` when the language is English, a firmware update or
-another download is running. Requires the password when protection is on.
-
-### `POST /api/i18n/upload?lang=<code>&version=<version>`
-
-Stores a language file uploaded by hand (multipart, a `sqmeter-i18n-<code>.json.gz`
-from the release page), for devices without internet. Answers with the
-`GET /api/i18n` document, or `400 {"error": "..."}` for a file that isn't
-gzip, is over 64 KB or doesn't fit. Requires the password when protection is on.
-
-## Bluetooth phone alarm
-
-Bluetooth firmware build only. See [Bluetooth](../user-guide/ble.md).
-
-### `POST /api/ble/ack`
-
-Acknowledge the ringing phone alarm from the web UI, as if a phone had. 409 if no alarm is active. Requires HTTP auth when enabled.
-
-### `POST /api/ble/forget-bonds`
-
-Unpair every phone; they need to pair again (with the passkey) to get alarms. 409 if Bluetooth is off. Requires HTTP auth when enabled.
-
 ## ASCOM Alpaca API
 
-SQMeter can emit itself directly as an ASCOM Alpaca **SafetyMonitor** and **ObservingConditions** device - see [ASCOM Alpaca](../user-guide/alpaca.md) for the full setup guide, N.I.N.A. configuration, and safety-rule reference. Summary of the HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
+RoofRoof is an ASCOM Alpaca server - see [ASCOM Alpaca](../user-guide/alpaca.md). No device is served yet (the roof's Dome device *comes in a later spec*). The HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /management/apiversions` | Supported Alpaca API versions |
-| `GET /management/v1/description` | Server description |
-| `GET /management/v1/configureddevices` | Lists the two devices (empty if Alpaca is disabled in settings) |
-| `GET /setup`, `GET /setup/v1/<devicetype>/0/setup` | Redirects to **Settings → ASCOM Alpaca** in the web UI |
-| `GET/PUT /api/v1/<device>/0/connected` | Common ASCOM device API. `PUT` requires a `Connected=true\|false` form parameter |
-| `PUT /api/v1/<device>/0/connect`, `disconnect`; `GET connecting`, `devicestate` | ASCOM Platform 7 members (SafetyMonitor interface v3, ObservingConditions interface v2). `connecting` is always `false` |
-| `GET /api/v1/<device>/0/name`, `description`, `driverinfo`, `driverversion`, `interfaceversion`, `supportedactions` | Common ASCOM device API |
-| `PUT /api/v1/<device>/0/action`, `commandblind`, `commandbool`, `commandstring` | Not supported - Alpaca error `0x400` (NotImplemented) |
-| `GET /api/v1/safetymonitor/0/issafe` | `true`/`false` from the safety-rule evaluation |
-| `GET /api/v1/observingconditions/0/<property>` | One route per Alpaca property: `cloudcover`, `dewpoint`, `humidity`, `pressure`, `rainrate` (RG-15, mm/h), `skybrightness`, `skyquality`, `skytemperature`, `temperature`, `windspeed`/`windgust` (anemometer, m/s), `winddirection` (vane), `averageperiod`. `starfwhm`, and sensors that aren't enabled, return Alpaca error `0x400` (NotImplemented) |
-| `PUT /api/v1/observingconditions/0/averageperiod`, `refresh` | `AveragePeriod` must be `0`; `refresh` is a no-op |
-| `GET /api/v1/observingconditions/0/sensordescription`, `timesincelastupdate` | Require `SensorName` (a property name; empty = any sensor for `timesincelastupdate`) |
+| `GET /management/v1/description` | Server description: `Manufacturer` `RoofRoof`, `ServerName` the device name |
+| `GET /management/v1/configureddevices` | The configured devices: an empty list for now |
+| `GET /setup` | Redirects to **Settings → Network → ASCOM Alpaca** in the web UI |
+| `/api/v1/...` | Any device request: HTTP `400` "Unknown device" |
 
-`<device>` is `safetymonitor` or `observingconditions`. Parameter names (`ClientTransactionID`, `Connected`, ...) are case-insensitive, per the Alpaca spec. Any other path under `/api/v1/` (unknown device type/number, method, or HTTP verb) returns HTTP `400` with a plain-text message.
-
-A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop, unlike the HTTP routes above which reflect the setting live.
+A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop.

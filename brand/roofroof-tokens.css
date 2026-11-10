@@ -1,0 +1,42 @@
+/* RoofRoof design tokens. Dark only. The app palette, shared with SQMeter (--sqm-*) and SubStation (--sst-*). */
+:root {
+  --rr-bg: #080d14;
+  --rr-panel: #0d141d;
+  --rr-panel-2: #111b27;
+  --rr-panel-3: #0a1018;
+  --rr-card-end: #0a1119;
+  --rr-line: #1b2a38;
+  --rr-line-2: #142130;
+  --rr-text: #e7edf3;
+  --rr-muted: #8b9baa;
+  --rr-dim: #768798;
+  --rr-accent: #55c7f2;          /* Cyan: the roof in the mark, and the UI accent */
+  --rr-accent-tint: rgba(85, 199, 242, 0.12);
+  --rr-accent-line: rgba(85, 199, 242, 0.45);
+  --rr-violet: #a78bfa;
+  --rr-ok: #5ee0a0;
+  --rr-warn: #f4c15d;
+  --rr-bad: #f26b62;
+
+  --rr-font-sans: "Inter", system-ui, sans-serif;
+  --rr-font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Logo colours (tools/brand/build.mjs draws the mark with these) */
+  --rr-logo-sky-top: #0d1724;
+  --rr-logo-sky-horizon: #25394d;
+  --rr-logo-ground: #13212f;
+  --rr-logo-wall: #8b9baa;
+  --rr-logo-wall-shade: #5d6e7f;
+  --rr-logo-scope: #e7edf3;
+  --rr-logo-roof: #55c7f2;
+  --rr-logo-roof-core: #d6f3ff;
+  --rr-logo-flat-tile: #1d2f41;
+  --rr-logo-print-ink: #0d141d;
+  --rr-logo-print-roof: #0b78a6;
+  --rr-logo-night: #ff4a3a;
+}
+/* Logo: 24-unit grid (as SQMeter and SubStation). Tile inset 2.25 u, radius 2.75 u.
+   Detailed mark >= 40 px. Flat mark 17-39 px. favicon-16.svg at 16 px.
+   One-colour mark (frame 1.5 u, rx 2.5) for silkscreen, emboss, engraving, single-ink print.
+   Clear space: 1/4 mark height. Lockup gap: 1/3 mark height.
+   Minimums: horizontal lockup 120 px wide; silkscreen 6 mm; emboss 20 mm. */

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Check a real SQMeter against the documented response formats - the same
-JSON Schemas the demo is tested against (specs/001-platform-bootstrap/contracts/schemas/
-contracts/schemas). Standard library only.
+"""Check a real RoofRoof against the documented response formats - the same
+JSON Schemas the demo is tested against (specs/001-platform-bootstrap/contracts/schemas).
+Needs a device on the network. Standard library only.
 
   python3 tools/contract-check.py http://192.168.1.128 [user:password]
 
 Also sends a few actions that change nothing (bad settings, an empty MQTT
-test, an RG-15 read) and checks every action answers in the one shape
-(spec 013 FR-009): 2xx with {"success": true, ...}, or 4xx/5xx with
+test, a test alert to an unknown channel) and checks every action answers in
+the one shape: 2xx with {"success": true, ...}, or 4xx/5xx with
 {"error": "..."}. Pass the login when password protection is on.
 """
 
@@ -22,19 +22,13 @@ import urllib.request
 SCHEMAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "specs", "001-platform-bootstrap", "contracts", "schemas")
 
 ENDPOINTS = [
-    ("/api/sensors", "readings"),
     ("/api/status", "status"),
-    ("/api/safety", "safety"),
     ("/api/settings/effective", "settings-effective"),
     ("/api/config", "config"),
-    ("/api/i18n", "i18n"),
     ("/api/alerts/recent", "alerts-recent"),
     ("/api/alerts/armed", "alerts-armed"),
-    ("/api/safety/history", "safety-history"),
     ("/management/v1/description", "alpaca-description"),
     ("/management/v1/configureddevices", "alpaca-configured-devices"),
-    ("/api/v1/safetymonitor/0/devicestate", "alpaca-devicestate"),
-    ("/api/v1/observingconditions/0/devicestate", "alpaca-devicestate"),
 ]
 
 TYPES = {
@@ -87,7 +81,7 @@ ACTIONS = [
     ("POST", "/api/config", '{"wifi":{"hostname":"-bad-"}}'),
     ("POST", "/api/mqtt/test", "{}"),
     ("POST", "/api/wifi/connect", "{}"),
-    ("POST", "/api/sensors/rg15/test", None),
+    ("POST", "/api/alerts/test?channel=none", None),
 ]
 
 

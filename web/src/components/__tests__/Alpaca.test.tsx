@@ -1,26 +1,49 @@
 import { describe, it, expect } from 'vitest';
+import { http, HttpResponse } from 'msw';
 import { render, screen } from '@testing-library/preact';
+import { server } from '../../test/mswServer';
+import { mockStatus } from '../../mocks/data';
 import Alpaca from '../Alpaca';
 import { describeClient } from '../../lib/alpacaClients';
 
+const dome = {
+  DeviceName: 'RoofRoof Dome',
+  DeviceType: 'Dome',
+  DeviceNumber: 0,
+  UniqueID: 'roofroof-dome-0',
+};
+const envelope = <T,>(Value: T) => ({ Value, ErrorNumber: 0, ErrorMessage: '', ClientTransactionID: 0, ServerTransactionID: 1 });
+
 describe('Alpaca', () => {
-  it('lists configured devices with their setup URLs and live device state', async () => {
+  it('says there is no device yet while none is configured', async () => {
+    render(<Alpaca />);
+    expect(await screen.findByText(/No Alpaca device yet/)).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/management/v1/configureddevices`)).toBeInTheDocument();
+  });
+
+  it('lists a configured device with its setup URL and live device state', async () => {
+    server.use(
+      http.get('/management/v1/configureddevices', () => HttpResponse.json(envelope([dome]))),
+      http.get('/api/v1/dome/0/devicestate', () => HttpResponse.json(envelope([{ Name: 'ShutterStatus', Value: 0 }]))),
+    );
     render(<Alpaca />);
 
-    expect(await screen.findByText('SQMeter SafetyMonitor')).toBeInTheDocument();
-    expect(screen.getByText('SQMeter ObservingConditions')).toBeInTheDocument();
-    expect(screen.getByText(`${window.location.origin}/setup/v1/observingconditions/0/setup`)).toBeInTheDocument();
-    expect(await screen.findByText('IsSafe')).toBeInTheDocument();
-    expect(await screen.findByText('CloudCover')).toBeInTheDocument();
+    expect(await screen.findByText('RoofRoof Dome')).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/setup/v1/dome/0/setup`)).toBeInTheDocument();
+    expect(await screen.findByText('ShutterStatus')).toBeInTheDocument();
   });
 });
 
 describe('Alpaca imaging app state (specs/021, 026 DS-21)', () => {
   it('shows whether an imaging app is checking each device: a pill and when it last checked', async () => {
+    const client = { connected: true, watching: true, silent: false, lastCheckedAgeMs: 2000, clientId: 7 };
+    server.use(
+      http.get('/management/v1/configureddevices', () => HttpResponse.json(envelope([dome]))),
+      http.get('/api/status', () => HttpResponse.json({ ...mockStatus, alpaca: { enabled: true, clients: { dome: client } } })),
+    );
     render(<Alpaca />);
     expect(await screen.findByText('Checked 2 s ago')).toBeInTheDocument();
     expect(screen.getByText('Connected')).toBeInTheDocument();
-    expect(screen.getByText('Waiting')).toBeInTheDocument();
   });
 
   it('describes every state', () => {

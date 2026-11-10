@@ -58,7 +58,7 @@ export default defineConfig({
         copyFileSync(resolve(__dirname, 'dist-demo/index.html'), resolve(__dirname, 'dist-demo/404.html'));
         // Demo-only brand files, kept off the device to save its flash.
         copyFileSync(resolve(__dirname, '../brand/png/apple-touch-icon-180.png'), resolve(__dirname, 'dist-demo/apple-touch-icon.png'));
-        copyFileSync(resolve(__dirname, '../brand/png/sqmeter-social-1280x640.png'), resolve(__dirname, 'dist-demo/og-card.png'));
+        copyFileSync(resolve(__dirname, '../brand/png/roofroof-social-1280x640.png'), resolve(__dirname, 'dist-demo/og-card.png'));
       },
     },
   ],

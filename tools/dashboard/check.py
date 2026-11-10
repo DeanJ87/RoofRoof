@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The dashboard inventory covers every piece of device state (specs/025 FR-002, FR-003).
 
-Every property path of the status, readings, safety and alerts-armed contract
+Every property path of the status and alerts-armed contract
 schemas, and every settings-dependency id, must be mapped by web/src/dashboard/
 inventory.json: shown (with a test naming it in web/tests/dashboard.spec.ts) or
 not shown (with a reason). Fails on an unmapped path or id, a stale mapping, a
@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS = "specs/001-platform-bootstrap/contracts/schemas"
-SCHEMA_NAMES = ["status", "readings", "safety", "alerts-armed"]
+SCHEMA_NAMES = ["status", "alerts-armed"]
 CATALOGUE = "lib/SettingsDeps/catalogue.json"
 INVENTORY = "web/src/dashboard/inventory.json"
 TESTS = "web/tests/dashboard.spec.ts"

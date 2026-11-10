@@ -4,13 +4,12 @@
 Reads tools/i18n/glossary/en.json and fails when:
   - an en.json string listed for a name doesn't say that name (case aside);
   - another name for the same thing (`avoid`, as written) appears in UI text
-    (en.json, including the device's safety reasons and alert titles, which
-    people read; other device text excepted) or in the docs (hardware pages
-    excepted);
+    (en.json, including the device's alert titles, which people read; other
+    device text excepted) or in the docs (hardware pages excepted);
   - a part number (`parts`) names the thing in a card title (en.context.json
-    says "card or section title"), a safety reason or alert title, or a
-    settings-dependency reason (why a setting isn't in effect);
-  - the Home Assistant entity name in lib/Readings doesn't match.
+    says "card or section title"), an alert title, or a settings-dependency
+    reason (why a setting isn't in effect);
+  - the Home Assistant entity name in lib/HaDiscovery doesn't match.
 
   python3 tools/ui/label_check.py          # report; exit 1 on findings
   python3 tools/ui/label_check.py --json   # [{file, line, message}] for tools/quality
@@ -30,10 +29,11 @@ ROOT = Path(__file__).resolve().parents[2]
 GLOSSARY = "tools/i18n/glossary/en.json"
 ENGLISH = "web/src/i18n/en.json"
 CONTEXT = "web/src/i18n/en.context.json"
-# Device text people read as it is (safety reasons, alert titles): generated
-# from the firmware, so this checks the firmware's wording too.
-READ_DEVICE = ("device.safety.", "device.alert.")
-READINGS = "lib/Readings/src/Readings.cpp"
+# Device text people read as it is (alert titles): generated from the
+# firmware, so this checks the firmware's wording too.
+READ_DEVICE = ("device.alert.",)
+# The Home Assistant entities (MQTT discovery) and their names.
+HA_DISCOVERY = "lib/HaDiscovery/src/HaDiscovery.cpp"
 DOCS = "docs"
 
 
@@ -73,13 +73,13 @@ def is_title(note: str) -> bool:
 
 
 def check_parts(entry: dict, ui: dict, context: dict) -> list[tuple[str, str]]:
-    """No part number in a card title, a safety reason, an alert title or a dependency reason: they name the thing, not the part."""
+    """No part number in a card title, an alert title or a dependency reason: they name the thing, not the part."""
     problems = []
     for part in entry.get("parts", []):
         pattern = re.compile(rf"(?<![\w-]){re.escape(part)}(?![\w-])")
         for key, text in ui.items():
             where = (
-                "safety reason or alert"
+                "alert"
                 if key.startswith(READ_DEVICE)
                 else "dependency reason"
                 if key.startswith("settingsDeps.")
@@ -101,14 +101,14 @@ def check(root: Path = ROOT) -> list[tuple[str, str]]:
     # Hardware pages (wiring, parts lists) name the parts themselves.
     pages = [p for p in sorted((root / DOCS).rglob("*.md")) if "hardware" not in p.relative_to(root / DOCS).parts]
     docs = {str(p.relative_to(root)): p.read_text(encoding="utf-8") for p in pages}
-    readings = (root / READINGS).read_text(encoding="utf-8")
+    entities = (root / HA_DISCOVERY).read_text(encoding="utf-8")
     problems = []
     for entry in glossary["names"]:
         problems += check_keys(entry, english)
         problems += check_avoid(entry, ui, docs)
         problems += check_parts(entry, ui, context)
-        if entry.get("ha") and f'"{entry["ha"]}"' not in readings:
-            problems.append((READINGS, f"no Home Assistant entity named '{entry['ha']}' for '{entry['name']}'"))
+        if entry.get("ha") and f'"{entry["ha"]}"' not in entities:
+            problems.append((HA_DISCOVERY, f"no Home Assistant entity named '{entry['ha']}' for '{entry['name']}'"))
     return problems
 
 

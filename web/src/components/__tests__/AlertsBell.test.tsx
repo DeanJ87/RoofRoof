@@ -25,7 +25,7 @@ describe('AlertsBell', () => {
     render(<AlertsBell />);
     const button = await screen.findByRole('button', { name: /Alerts, 2 new/ });
     fireEvent.click(button);
-    expect(screen.getByText('Observatory UNSAFE')).toBeInTheDocument();
+    expect(screen.getByText('Imaging app stopped checking')).toBeInTheDocument();
     expect(screen.getAllByText(/Pushover: Sent/).length).toBe(2);
     expect(screen.getByRole('button', { name: 'Alerts' })).toBeInTheDocument();
   });

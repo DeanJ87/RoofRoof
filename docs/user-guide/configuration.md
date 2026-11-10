@@ -1,41 +1,31 @@
 ---
-description: "Configure SQMeter from the web UI or REST API: network, sensors, calibration, safety rules and alerts. Settings live in NVS."
+description: "Configure RoofRoof from the web UI or REST API: device name, network, MQTT, time, password protection and alerts. Settings live in NVS."
 ---
 
 # Configuration
 
-All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API.
+All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API. Roof settings (travel, speed, safety rules) *come in later specs*.
 
 ## Settings pages
 
-**Settings** has six tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
+**Settings** has four tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
 
-Some settings only work when something else is on - MQTT alerts need MQTT, rain alerts need the rain sensor, night-only alerts need your location. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
+Some settings only work when something else is on - MQTT alerts need MQTT, internet alerts need WiFi. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"
-    Name, password protection, command-line uploads (ArduinoOTA), Bluetooth, the OLED display, the battery.
+    Name, password protection, command-line uploads (ArduinoOTA) and Backup & restore.
 
     ![Device settings](../assets/screenshots/settings-device.png)
 
 === "Network"
-    WiFi, mDNS, and MQTT including what's published and Home Assistant discovery - see [MQTT](mqtt.md).
+    WiFi, mDNS, IPv6, MQTT including Home Assistant discovery - see [MQTT](mqtt.md) - and ASCOM Alpaca - see [ASCOM Alpaca](alpaca.md).
 
     ![Network settings](../assets/screenshots/settings-network.png)
 
-=== "Time & Location"
-    NTP and GPS time, time zone, and the location used for darkness and Sun & Moon.
+=== "Time"
+    NTP and the time zone.
 
     ![Time & Location settings](../assets/screenshots/settings-time.png)
-
-=== "Sensors"
-    I2C, sky quality (averaging, SQM offset, dark calibration), cloud detection, the RG-15 rain sensor and the anemometer.
-
-    ![Sensor settings](../assets/screenshots/settings-sensors.png)
-
-=== "Safety"
-    ASCOM Alpaca and the safety rules - see [ASCOM Alpaca](alpaca.md#safety-rules).
-
-    ![Safety settings](../assets/screenshots/settings-safety.png)
 
 === "Alerts"
     Events, levels, wording and channels - see [Alerts](alerts.md).
@@ -46,23 +36,21 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
 
 ## Full Configuration Reference
 
+`GET /api/config` returns every setting (secrets masked). The fields, with their defaults:
+
 ```json
 {
-  "deviceName": "SQM-ESP32",
-  "primaryTimeSource": 0,
-  "secondaryTimeSource": 1,
-
+  "deviceName": "RoofRoof",
   "wifi": {
     "ssid": "YourWiFiSSID",
     "password": "YourWiFiPassword",
-    "hostname": "sqmeter",
+    "hostname": "roofroof",
     "mdns": true,
     "ipv6": true,
     "autoReconnect": true,
     "reconnectDelayMs": 1000,
     "maxReconnectDelayMs": 300000
   },
-
   "ntp": {
     "enabled": true,
     "server1": "pool.ntp.org",
@@ -70,190 +58,38 @@ Some settings only work when something else is on - MQTT alerts need MQTT, rain 
     "timezone": "UTC0",
     "syncIntervalMs": 600000
   },
-
-  "gps": {
-    "enabled": false,
-    "rxPin": 17,
-    "txPin": 16,
-    "baudRate": 9600
-  },
-
   "mqtt": {
     "enabled": false,
-    "broker": "mqtt.example.com",
+    "broker": "",
     "port": 1883,
     "username": "",
     "password": "",
-    "topic": "sqmeter",
+    "topic": "roofroof",
     "publishIntervalMs": 60000,
-    "publish": { "sky": true, "environment": true, "clouds": true, "gps": true, "rain": true, "wind": true, "safety": true, "diagnostics": false },
     "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" }
   },
-
-  "ota": {
-    "enabled": false,
-    "password": ""
-  },
-
-  "auth": {
-    "enabled": false,
-    "username": "admin",
-    "password": ""
-  },
-
-  "rain": {
-    "enabled": false,
-    "rxPin": 18,
-    "txPin": 19,
-    "baudRate": 9600,
-    "debugUart": false,
-    "mode": "polling",
-    "resolution": "high",
-    "units": "metric",
-    "pollIntervalMs": 5000,
-    "rainClearDelayMs": 900000,
-    "dailyResetEnabled": false,
-    "dailyResetHour": 0,
-    "dailyResetMinute": 0
-  },
-
-  "sensor": {
-    "readIntervalMs": 5000,
-    "i2cSDA": 21,
-    "i2cSCL": 22,
-    "i2cFrequency": 100000,
-    "i2c2SDA": 255,
-    "i2c2SCL": 255
-  },
-
-  "sky": {
-    "sqmEnabled": true,
-    "sqmlEnabled": false,
-    "authoritative": "sqm",
-    "showOther": true
-  },
-
-  "skyAveraging": {
-    "windowSeconds": 90
-  },
-
-  "skyCalibration": {
-    "enabled": false,
-    "sqmOffset": 0,
-    "darkVisibleOffset": 0,
-    "darkFullOffset": 0,
-    "darkIrOffset": 0,
-    "darkSampleCount": 0,
-    "darkCalibratedAt": 0
-  },
-
-  "cloudDetection": {
-    "clearSkyThreshold": -13,
-    "cloudyThreshold": -3,
-    "humidityCorrection": 0.75
-  },
-
-  "location": {
-    "set": false,
-    "latitude": 0,
-    "longitude": 0,
-    "showSunMoon": true
-  },
-
-  "alpaca": {
-    "enabled": false,
-    "manualOverrideUnsafe": false,
-    "staleAfterSeconds": 30,
-    "safeDelaySeconds": 0,
-    "cloudCoverEnabled": true,
-    "cloudCoverUnsafePercent": 90,
-    "sqmMinEnabled": false,
-    "sqmMinSafe": 0,
-    "humidityMaxEnabled": false,
-    "humidityMaxSafe": 100,
-    "dewpointMarginEnabled": false,
-    "dewpointMarginMinC": 0,
-    "rainUnsafeEnabled": true,
-    "rainSensorRequired": true,
-    "windSpeedUnsafeEnabled": false,
-    "windSpeedUnsafeMs": 10,
-    "windGustUnsafeEnabled": false,
-    "windGustUnsafeMs": 15
-  },
-
+  "ota": { "enabled": false, "password": "" },
+  "auth": { "enabled": false, "username": "admin", "password": "" },
+  "alpaca": { "enabled": false },
   "alerts": {
     "enabled": false,
-    "events": {
-      "unsafe": { "level": 3, "sound": "", "title": "", "message": "" },
-      "safe": { "level": 2, "sound": "", "title": "", "message": "" },
-      "rain_started": { "level": 4, "sound": "", "title": "", "message": "" },
-      "rain_stopped": { "level": 2, "sound": "", "title": "", "message": "" },
-      "sensor_fault": { "level": 4, "sound": "", "title": "", "message": "" },
-      "sensor_recovered": { "level": 1, "sound": "", "title": "", "message": "" },
-      "dew_risk": { "level": 0, "sound": "", "title": "", "message": "" },
-      "clear_sky": { "level": 0, "sound": "", "title": "", "message": "" },
-      "clouded_over": { "level": 0, "sound": "", "title": "", "message": "" }
-    },
-    "dewRiskMarginC": 2,
-    "clearSkyCloudPercent": 20,
-    "cloudedOverCloudPercent": 70,
-    "skyNightOnly": true,
-    "safetyNightOnly": true,
-    "nightSunAltitudeDeg": -12,
     "sendMode": "any",
-    "armWithAlpaca": false,
-    "clientSilentSafetySeconds": 120,
-    "clientSilentWeatherSeconds": 600,
     "cooldownSeconds": 300,
+    "clientSilentSeconds": 120,
+    "events": {
+      "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
+      "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
+      "client_disconnected": { "level": 0, "sound": "", "title": "", "message": "" }
+    },
     "pushover": { "enabled": false, "userKey": "", "appToken": "", "sound": "" },
     "ntfy": { "enabled": false, "server": "https://ntfy.sh", "topic": "", "token": "" },
     "webhook": { "enabled": false, "url": "", "authHeader": "", "insecureTls": false },
     "mqtt": { "enabled": false }
-  },
-
-  "ble": {
-    "enabled": false,
-    "passkey": ""
-  },
-
-  "wind": {
-    "enabled": false,
-    "speedPin": 27,
-    "directionEnabled": false,
-    "kmhPerHz": 2.4,
-    "directionOffsetDeg": 0
-  },
-  "display": {
-    "enabled": false,
-    "pages": ["sky"],
-    "cycleSeconds": 5,
-    "brightness": "medium",
-    "timeoutSeconds": 60,
-    "wakeOnBoot": true,
-    "stayOnAtNight": false,
-    "rotate180": false,
-    "buttonPin": 255
-  },
-  "battery": {
-    "enabled": true,
-    "lowPercent": 20,
-    "criticalPercent": 10,
-    "shutdownPercent": 5,
-    "capacityMah": 0,
-    "powerSaving": true,
-    "saveReadIntervalSeconds": 30,
-    "shutdownGraceSeconds": 30,
-    "alertPin": 255,
-    "stat1Pin": 255,
-    "stat2Pin": 255,
-    "pgPin": 255
   }
 }
 ```
 
-In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth, display, battery), Network (WiFi, MQTT), Time & Location, Sensors (sensors, rain, wind, calibration), Safety (`alpaca`) and Alerts.
-
----
+The JSON Schema is `config.schema.json`; the [API Reference](../api/reference.md) links it from `GET /api/config`.
 
 ## Fields
 
@@ -261,9 +97,7 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `deviceName` | string | `"SQM-ESP32"` | Friendly name shown in the web UI |
-| `primaryTimeSource` | int | `0` | Primary time source: `0` = NTP, `1` = GPS |
-| `secondaryTimeSource` | int | `1` | Fallback time source: `0` = NTP, `1` = GPS |
+| `deviceName` | string | `"RoofRoof"` | Friendly name shown in the web UI, in alerts and as the Alpaca server name |
 
 ### WiFi
 
@@ -271,7 +105,7 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
 |-------|------|---------|-------------|
 | `ssid` | string | — | Network name (2.4 GHz only) |
 | `password` | string | — | Network password |
-| `hostname` | string | `"sqmeter"` | Network name: `hostname.local` via mDNS and the DHCP host name. Letters, numbers and hyphens, up to 32 |
+| `hostname` | string | `"roofroof"` | Network name: `hostname.local` via mDNS and the DHCP host name. Letters, numbers and hyphens, up to 32 |
 | `mdns` | bool | `true` | Advertise `hostname.local` and the web service via mDNS |
 | `ipv6` | bool | `true` | IPv6 alongside IPv4 on the joined network; applies after a restart - see [IPv6](ipv6.md) |
 | `autoReconnect` | bool | `true` | Reconnect on WiFi drop |
@@ -292,39 +126,17 @@ In the web UI these live on **Settings** tabs: Device (name, security, Bluetooth
     Examples: `GMT0`, `EST5EDT,M3.2.0,M11.1.0`, `PST8PDT,M3.2.0,M11.1.0`, `CET-1CEST,M3.5.0,M10.5.0/3`.
     A full list is available at [timezonedb.com](https://timezonedb.com).
 
-### GPS
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable GPS module |
-| `rxPin` | int | `17` | ESP32 RX pin (connects to GPS TX) |
-| `txPin` | int | `16` | ESP32 TX pin (connects to GPS RX) |
-| `baudRate` | int | `9600` | GPS module baud rate (typically 9600) |
-
-When GPS is enabled and has a fix, it can serve as the primary time source for accurate timestamps independent of network connectivity.
-
-### Location
-
-| Field | Default | Description |
-|---|---|---|
-| `location.set` | `false` | Whether coordinates have been entered. A GPS fix takes precedence |
-| `location.latitude` / `location.longitude` | `0` | Decimal degrees, used for darkness (sky alerts) and the Sun & Moon card |
-| `location.showSunMoon` | `true` | Show the Sun & Moon card on the dashboard: twilight phase, tonight's astronomical dark, moon phase and illumination, and the next sunrise/sunset and moonrise/moonset. Computed in the browser |
-
 ### MQTT
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable MQTT publishing |
+| `enabled` | bool | `false` | Enable MQTT |
 | `broker` | string | — | Broker hostname, IPv4 address, or IPv6 address (`fd00::10`, or `[fd00::10]:1883` to give the port here) - see [IPv6](ipv6.md) |
 | `port` | int | `1883` | Broker port |
 | `username` | string | `""` | Auth username (leave empty if none) |
 | `password` | string | `""` | Auth password |
-| `topic` | string | `"sqmeter"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
-| `publishIntervalMs` | int | `60000` | How often `<topic>/state` is published (1 s – 24 h) |
-| `publish.sky`, `.environment`, `.clouds`, `.gps`, `.rain`, `.wind`, `.battery` | bool | `true` | Groups included in `<topic>/state` (`battery` only does anything with a fuel gauge, D-49) |
-| `publish.safety` | bool | `true` | Publish `<topic>/safe` and `<topic>/safety` |
-| `publish.diagnostics` | bool | `false` | Publish `<topic>/diagnostics` |
+| `topic` | string | `"roofroof"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
+| `publishIntervalMs` | int | `60000` | Interval for periodic documents (nothing is published periodically yet) |
 | `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
 | `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
 
@@ -335,7 +147,7 @@ When GPS is enabled and has a fix, it can serve as the primary time source for a
 | `enabled` | bool | `false` | Enable command-line ArduinoOTA uploads |
 | `password` | string | `""` | Needed for command-line ArduinoOTA to start |
 
-ArduinoOTA only runs when `ota.enabled` is `true` and `ota.password` is set. Switched on without a password it is saved but inactive ("Set an upload password"). The web UI OTA upload page is separate from command-line ArduinoOTA.
+ArduinoOTA only runs when `ota.enabled` is `true` and `ota.password` is set. Switched on without a password it is saved but inactive ("Set an upload password"). The web UI upload page ([Updates](ota.md)) is separate from command-line ArduinoOTA.
 
 ### HTTP Authentication
 
@@ -345,121 +157,15 @@ ArduinoOTA only runs when `ota.enabled` is `true` and `ota.password` is set. Swi
 | `username` | string | `"admin"` | Username for HTTP Basic Auth |
 | `password` | string | `""` | Password - a save with auth on and no password is refused: "HTTP auth password is required when auth is enabled" |
 
-When `auth.enabled` is `true`, the following endpoints require HTTP Basic Auth credentials:
-
-- `POST /api/config` — save configuration
-- `POST /api/restart` — restart device
-- `POST /api/update` — firmware OTA upload
-- `POST /api/update/fs` — filesystem OTA upload
-- `POST /api/wifi/connect` — change WiFi network
-- `POST /api/mqtt/test` — test MQTT connection
-
-Read-only endpoints remain accessible without credentials:
-
-- `GET /api/sensors`, `GET /api/status`, `GET /api/config`
-- WebSocket streams (`/ws/sensors`, `/ws/status`)
+When `auth.enabled` is `true`, the endpoints marked "required" in the [Security](security.md#protected-endpoints-when-auth-is-enabled) table need HTTP Basic Auth credentials. Read-only endpoints (`GET /api/status`, `GET /api/config`, `/ws/status`, ...) remain accessible without credentials.
 
 The `auth.password` field is masked in `GET /api/config` responses. Send the mask placeholder or an empty string to preserve the stored password; send `null` to clear it.
 
-### Rain Sensor
+### ASCOM Alpaca
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `enabled` | bool | `false` | Enable Hydreon RG-15 rain sensor |
-| `rxPin` | int | `18` | ESP32 RX pin (connects to RG-15 TX) |
-| `txPin` | int | `19` | ESP32 TX pin (connects to RG-15 RX) |
-| `baudRate` | int | `9600` | RG-15 serial baud rate |
-| `debugUart` | bool | `false` | Log RG-15 UART command/response traffic |
-| `mode` | string | `"polling"` | Compatibility field; RG-15 communication is polling-only |
-| `resolution` | string | `"high"` | `"high"`, `"low"`, or `"switch"` |
-| `units` | string | `"metric"` | `"metric"`, `"imperial"`, or `"switch"` |
-| `pollIntervalMs` | int | `5000` | Interval between RG-15 `R` commands in polling mode |
-| `rainClearDelayMs` | int | `900000` | Local rain latch clear delay after intensity returns to zero |
-| `dailyResetEnabled` | bool | `false` | Reset RG-15 total accumulation once per day |
-| `dailyResetHour` | int | `0` | Local hour for scheduled total reset |
-| `dailyResetMinute` | int | `0` | Local minute for scheduled total reset |
-
-### Sensor
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `readIntervalMs` | int | `5000` | How often sensors are polled (ms) |
-| `i2cSDA` | int | `21` | SDA GPIO pin |
-| `i2cSCL` | int | `22` | SCL GPIO pin |
-| `i2cFrequency` | int | `100000` | I2C clock speed (Hz), both buses |
-| `i2c2SDA` | int | `255` | Second I2C bus SDA GPIO pin, for the SQM-L; `255` = not wired |
-| `i2c2SCL` | int | `255` | Second I2C bus SCL GPIO pin; `255` = not wired |
-
-The second bus pins are both `255`, or two different valid GPIOs that no other bus uses (I2C, GPS and the rain sensor when they are on; the anemometer's own check covers its pins, and Settings shows that clash on **I2C-2 SDA** before you save). Changing the I2C pins or turning the SQM-L on or off takes effect after a restart.
-
-The TSL2591 sky sensors are sampled separately at approximately 650 ms cadence, side by side, so dark-sky rolling averages are not limited by `readIntervalMs`; a read never makes the device wait for an integration.
-
-### Sky sensors
-
-Two TSL2591 sky sensors, the wide **SQM** (first I2C bus) and the narrow-lens **SQM-L** (second I2C bus). See [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l).
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `sqmEnabled` | bool | `true` | Read the SQM |
-| `sqmlEnabled` | bool | `false` | Read the SQM-L; needs `sensor.i2c2SDA` and `sensor.i2c2SCL` |
-| `authoritative` | string | `"sqm"` | Whose reading counts: `"sqm"` or `"sqml"`. Only matters with both on. No fallback: if it is off or not answering there is no sky reading |
-| `showOther` | bool | `true` | The dashboard also shows the other sensor's reading and the difference (both on) |
-
-Settings saved before these keys existed load with the defaults above: one sensor, the SQM, exactly as before. In Settings these are **Use SQM**, **Use SQM-L**, **Authoritative reading** and **Show other reading** in **Settings → Sensors → Sky sensors**.
-
-### Sky Averaging
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `windowSeconds` | int | `90` | Rolling raw-count averaging window for night SQM readings. Valid range is 10-300 seconds. |
-
-### Sky Calibration
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Apply `sqmOffset` to the rolling SQM result |
-| `sqmOffset` | float | `0` | Absolute SQM correction after comparison with a reference SQM/SQM-L |
-| `darkVisibleOffset` | float | `0` | Saved dark visible-count floor subtracted before lux/SQM conversion |
-| `darkFullOffset` | float | `0` | Reserved dark full-channel statistic |
-| `darkIrOffset` | float | `0` | Reserved dark IR-channel statistic |
-| `darkSampleCount` | int | `0` | Number of rolling samples used when dark calibration was stored |
-| `darkCalibratedAt` | int | `0` | Epoch timestamp when available, otherwise device milliseconds |
-
-To set the dark floor, cover the lens/baffle aperture with an opaque cap, wait for `skyAveraging.windowSeconds`, then call `POST /api/sensors/tsl2591/calibrate-dark`.
-
-`skyAveraging` and `skyCalibration` are the SQM's. The SQM-L has the same two sections, `skyAveragingL` and `skyCalibrationL`, with the same fields, defaults and ranges (validation messages say "SQM-L ..."). Dark-calibrate it with `POST /api/sensors/tsl2591/calibrate-dark?sensor=sqml`; that writes `skyCalibrationL` only.
-
-### Cloud Detection
-
-Cloud cover comes from the MLX90614: how much colder the sky is than the air (sky minus ambient, °C), corrected for humidity.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `clearSkyThreshold` | float | `-13` | Corrected delta below this is clear (0%) |
-| `cloudyThreshold` | float | `-3` | Corrected delta at or above this is overcast (100%); linear in between |
-| `humidityCorrection` | float | `0.75` | How strongly humidity is corrected for |
-
-### Safety rules (`alpaca`)
-
-The SafetyMonitor verdict served to N.I.N.A., shown on the dashboard and used for alerts. See [ASCOM Alpaca](alpaca.md#safety-rules) for how the rules combine.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Serve the Alpaca SafetyMonitor and ObservingConditions devices |
-| `manualOverrideUnsafe` | bool | `false` | Force unsafe |
-| `staleAfterSeconds` | int | `30` | Sensor data older than this is unsafe (1-3600) |
-| `safeDelaySeconds` | int | `0` | Conditions must stay safe this long before reporting safe; also runs from boot (0-3600) |
-| `cloudCoverEnabled` / `cloudCoverUnsafePercent` | bool / float | `true` / `90` | Unsafe at or above this cloud cover (0-100) |
-| `sqmMinEnabled` / `sqmMinSafe` | bool / float | `false` / `0` | Unsafe below this SQM (0-30) |
-| `humidityMaxEnabled` / `humidityMaxSafe` | bool / float | `false` / `100` | Unsafe above this humidity (0-100) |
-| `dewpointMarginEnabled` / `dewpointMarginMinC` | bool / float | `false` / `0` | Unsafe when temperature minus dew point is below this (0-20 °C) |
-| `rainUnsafeEnabled` | bool | `true` | Unsafe while the RG-15 reports rain, and until `rain.rainClearDelayMs` after it stops |
-| `rainSensorRequired` | bool | `true` | Unsafe if the enabled RG-15 is offline, stale or reports a lens fault |
-| `windSpeedUnsafeEnabled` / `windSpeedUnsafeMs` | bool / float | `false` / `10` | Unsafe at or above this wind speed (m/s, up to 60) |
-| `windGustUnsafeEnabled` / `windGustUnsafeMs` | bool / float | `false` / `15` | Unsafe at or above this gust (m/s, up to 80) |
-| `batteryEnabled` / `batteryMinPercent` | bool / int | `false` / `10` | Unsafe below this battery charge (2-50 %); without a fuel gauge, or with stale or estimating data, unsafe with *Battery data missing* (D-47). See [Battery](battery.md#the-safety-rule) |
-| `batteryAlert` | bool | `true` | Send an Urgent alert when the battery rule trips |
-| `batteryPhoneAlarm` | bool | `true` | Ring paired phones when the battery rule trips (Bluetooth build, D-50) |
+| `alpaca.enabled` | bool | `false` | Serve Alpaca discovery and the management API (a restart starts or stops the discovery listener). See [ASCOM Alpaca](alpaca.md) |
 
 ### Alerts
 
@@ -471,107 +177,24 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me |
 | `events.<event>.sound` | string | `""` | Pushover sound; empty uses `pushover.sound` |
 | `events.<event>.title` / `.message` | string | `""` | Your own wording with `{variables}` (up to 80 / 240 characters); empty uses the default |
-| `dewRiskMarginC` | float | `2` | Dew risk when temperature is within this of the dew point |
-| `clearSkyCloudPercent` / `cloudedOverCloudPercent` | float | `20` / `70` | "Skies clear up" below / "cloud over" above |
-| `skyNightOnly` / `safetyNightOnly` | bool | `true` / `true` | Sky / safe-unsafe alerts only while it's dark |
-| `nightSunAltitudeDeg` | float | `-12` | "Dark" means the sun below this (-0.833 sunset, -12 nautical, -18 astronomical) |
 | `sendMode` | string | `"any"` | When to send: `any` (any time, unless paused) or `whileConnected` (only while an imaging app has an Alpaca device connected) |
-| `armWithAlpaca` | bool | `false` | The older form of `sendMode` (`true` = `whileConnected`): still written for older firmware, and read when `sendMode` is missing |
-| `clientSilentSafetySeconds` / `clientSilentWeatherSeconds` | int | `120` / `600` | "The imaging app stops checking" after this long without a request to the safety monitor / weather device (30-3600) |
+| `clientSilentSeconds` | int | `120` | "The imaging app stops checking" after this long without a request (30-3600) |
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: `unsafe`, `safe`, `rain_started`, `rain_stopped`, `sensor_fault`, `sensor_recovered`, `dew_risk`, `clear_sky`, `clouded_over`, `client_lost`, `client_back`, `client_disconnected`, and the battery events `battery_low`, `battery_critical`, `battery_shutdown`, `power_restored`, `charge_complete`, `charge_fault` (see [Battery](battery.md#alerts)). The imaging-app events and the silence times are stored under their own NVS key, and the battery events under a third, so neither counts towards the 3900-byte limit on the rest of the alert settings.
-
-Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
-
-### Bluetooth (`ble`)
-
-Only used by the Bluetooth firmware build. See [Bluetooth](ble.md).
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Turn on Bluetooth (slows WiFi - one shared radio) |
-| `passkey` | string | `""` | 6-digit pairing passkey for the phone alarm; empty turns the alarm off. Masked in `GET /api/config` |
-
-### Wind
-
-See [Wind (anemometer)](../hardware/wind.md).
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Anemometer fitted |
-| `speedPin` | int | `27` | Anemometer pulse input |
-| `directionEnabled` | bool | `false` | AS5600 wind vane fitted, on the I2C bus at `0x36` |
-| `kmhPerHz` | float | `2.4` | Anemometer calibration (2.4 km/h per Hz for the common Misol/Davis-style cups) |
-| `directionOffsetDeg` | float | `0` | Added to the vane reading, to correct for mounting: north must read 0 |
-
-### Display
-
-The optional OLED display. See [OLED display](display.md). Settings saved before the display
-existed load with it off.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Use the display (**Show on display**); never probed while off |
-| `pages` | array | `["sky"]` | 1 to 7 different pages, in display order: `sky`, `environment`, `cloud`, `safety`, `gps`, `battery`, `network`. An unknown name is refused |
-| `cycleSeconds` | int | `5` | Seconds per page, 2 to 60 |
-| `brightness` | string | `"medium"` | `low`, `medium` or `high` by day; night always uses the lowest |
-| `timeoutSeconds` | int | `60` | Switch-off time, 10 to 1800, or `0` for never (by day only: at night never becomes 60 s) |
-| `wakeOnBoot` | bool | `true` | Light up after a restart |
-| `stayOnAtNight` | bool | `false` | Stay lit at night; needs a location or a GPS fix (D-44) |
-| `rotate180` | bool | `false` | Turn the picture upside down |
-| `buttonPin` | int | `255` | Wake button GPIO, `255` for none. While the display is on it can't be an I2C, I2C-2, GPS, rain sensor or anemometer pin |
-
-Messages when a value is refused: `Display: choose 1 to 7 different pages`, `Display: cycle interval
-must be 2 to 60 seconds`, `Display: brightness must be low, medium or high`, `Display: timeout must be
-10 seconds to 30 minutes, or never`, `Display: wake button pin is not a valid GPIO`, `Display: wake
-button pin is already in use`.
-
-### Battery
-
-The Li-ion pack and its MAX17048 fuel gauge (travel board). See [Battery](battery.md). Settings saved
-before the battery existed load with these defaults; every behaviour needs a detected gauge, so a board
-without one behaves as before. Every field but the pins is muted without a gauge (D-46).
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `true` | Read the gauge and act on it (**Monitor battery**). Off: reported as if no gauge were fitted |
-| `lowPercent` | int | `20` | **Low level** (5-50 %): the Battery low alert |
-| `criticalPercent` | int | `10` | **Critical level** (2-25 %, below the low level): power saving and the Battery critical alert |
-| `shutdownPercent` | int | `5` | **Shutdown level** (2-10 %, below the critical level): warn, then sleep until USB power returns |
-| `capacityMah` | int | `0` | **Pack capacity**, 500-50000 mAh, or `0` if unknown; refines the time to full and shows the current |
-| `powerSaving` | bool | `true` | **Save power when low**: below the critical level, slower readings and the display off; at the shutdown level, deep sleep |
-| `saveReadIntervalSeconds` | int | `30` | **Read sensors every** while saving power (10-300 s) |
-| `shutdownGraceSeconds` | int | `30` | **Warn before sleeping** (10-300 s) |
-| `alertPin` | int | `255` | Gauge ALRT GPIO (diagnostics only), `255` for none |
-| `stat1Pin`, `stat2Pin`, `pgPin` | int | `255` | Charger STAT1, STAT2 and PG (USB power) GPIOs: all three or none. PG must be able to wake the device |
-
-Messages when a value is refused: `Battery: low level must be 5 to 50%`, `Battery: critical level must
-be 2 to 25% and below the low level`, `Battery: shutdown level must be 2 to 10% and below the critical
-level`, `Battery: capacity must be 500 to 50000 mAh, or 0 if unknown`, `Battery: power-saving read
-interval must be 10 to 300 seconds`, `Battery: warning time before sleep must be 10 to 300 seconds`,
-`Battery: pins must be valid and different`, `Battery: set all three charger pins or none`, `Battery:
-pin is already in use` (I2C, I2C-2, GPS, rain sensor, anemometer or display button), `Battery: the
-USB power pin must be able to wake the device`, and for the safety rule `Safety: battery limit must be 2
-to 50%` (D-51).
-
----
+Events: `client_lost`, `client_back`, `client_disconnected`. Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 
-SQMeter is designed for a trusted LAN environment. See the [Security Guide](security.md) for a full threat model and setup recommendations.
+RoofRoof is designed for a trusted LAN environment. See the [Security Guide](security.md) for a full threat model and setup recommendations.
 
 - By default there is no HTTP authentication; read-only and mutation endpoints are both accessible to any LAN device.
-- Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, OTA, restart, WiFi change).
+- Enable `auth.enabled` with a strong password to protect mutation endpoints (config save, uploads, restart, WiFi change).
 - `GET /api/config` redacts stored secrets (WiFi, MQTT, OTA, and auth passwords), but still exposes non-secret settings.
 - HTTP traffic is plaintext, so credentials sent via config updates are visible to LAN observers. TLS is not supported on the ESP32 in this firmware.
 - Command-line ArduinoOTA is disabled unless `ota.enabled` is `true` and `ota.password` is set.
-- `rain.debugUart` only affects serial logging for RG-15 command/response traffic. It does not log WiFi, MQTT, or OTA secrets.
 
 Keep the device on a private network or isolated observatory VLAN. Do not expose port 80 or ArduinoOTA to the public internet.
-
-Some settings are applied immediately, but hardware bus settings such as I2C pins, GPS pins, and RG-15 pins may require a restart because the sensors are initialised during firmware startup.
 
 ---
 
@@ -579,12 +202,12 @@ Some settings are applied immediately, but hardware bus settings such as I2C pin
 
 ```bash
 # Read current config
-curl http://sqmeter.local/api/config
+curl http://roofroof.local/api/config
 
 # Partial update — only the fields you include are changed
-curl -X POST http://sqmeter.local/api/config \
+curl -X POST http://roofroof.local/api/config \
   -H "Content-Type: application/json" \
-  -d '{"deviceName": "backyard-sqm", "ntp": {"server1": "time.google.com"}}'
+  -d '{"deviceName": "observatory-roof", "ntp": {"server1": "time.google.com"}}'
 ```
 
 Password fields returned by `GET /api/config` are masked as `********`. Sending a masked or empty password back to `POST /api/config` preserves the stored value; send `null` for a password field only when you intentionally want to clear it.
@@ -599,12 +222,12 @@ device or on a replacement.
 ### Back up
 
 1. Optionally type a **Passphrase** (8 characters or more), twice.
-2. Press **Back up settings**. The browser saves `sqmeter-<name>-<date>.json`.
+2. Press **Back up settings**. The browser saves `roofroof-<name>-<date>.json`.
 
 The file is readable JSON: a short header (format, firmware version, board, build, device name, when it
 was made) and `settings`, exactly as `GET /api/config` shows them. Without a passphrase it holds **no
-password, key or token** at all. With a passphrase, the nine secrets (WiFi, MQTT, ArduinoOTA and device
-passwords, the Bluetooth passkey, the Pushover keys, the ntfy token and the webhook authorization) are
+password, key or token** at all. With a passphrase, the secrets (WiFi, MQTT, ArduinoOTA and device
+passwords, the Pushover keys, the ntfy token and the webhook authorization) are
 added encrypted: AES-256-GCM under a key derived from the passphrase with PBKDF2-HMAC-SHA256 (20,000
 iterations, random salt). The device makes the file; the secrets never leave it in clear text.
 
@@ -629,16 +252,14 @@ can't join it, use the [WiFi setup hotspot](../getting-started/first-setup.md)),
 (the next page load asks for the backup's), a new local name, or a restart while an imaging app is
 connected. Restore applies exactly what the preview showed, as one settings save with the usual checks.
 
-A wrong passphrase, a damaged file, a file from newer firmware's backup format, or a file that isn't an
-SQMeter backup is refused with the reason, and nothing changes.
+A wrong passphrase, a damaged file, a file from newer firmware's backup format, or a file that isn't a
+RoofRoof backup is refused with the reason, and nothing changes.
 
 ### Across boards and versions
 
-A pin setting whose pin this board doesn't offer (for example a backup from another ESP32 board) isn't
-applied; the board keeps its own value and the preview lists it under **Can't apply here**. So are
-Bluetooth settings on the standard build, and Pushover switched on when its keys weren't restored.
-A plain `GET /api/config` export (the backup this page used to describe) still restores, without
-secrets.
+A setting this device can't use isn't applied; the device keeps its own value and the preview lists it
+under **Can't apply here**. So is Pushover switched on when its keys weren't restored.
+A plain `GET /api/config` export still restores, without secrets.
 
 ### From a script
 
@@ -647,15 +268,15 @@ when protection is on:
 
 ```bash
 # Back up (secrets encrypted with the passphrase)
-curl -u admin:pass -X POST http://sqmeter.local/api/backup \
+curl -u admin:pass -X POST http://roofroof.local/api/backup \
   -H "Content-Type: application/json" -d '{"passphrase": "correct horse battery"}' -o backup.json
 
 # Preview: nothing changes yet; note the token
 jq -n --rawfile f backup.json '{backup: $f, passphrase: "correct horse battery"}' |
-  curl -u admin:pass -X POST http://sqmeter.local/api/backup/preview \
+  curl -u admin:pass -X POST http://roofroof.local/api/backup/preview \
   -H "Content-Type: application/json" -d @-
 
 # Apply exactly that preview
-curl -u admin:pass -X POST http://sqmeter.local/api/backup/apply \
+curl -u admin:pass -X POST http://roofroof.local/api/backup/apply \
   -H "Content-Type: application/json" -d '{"token": "<token from the preview>"}'
 ```

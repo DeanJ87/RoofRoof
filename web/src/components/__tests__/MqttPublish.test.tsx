@@ -6,11 +6,11 @@ import { mockConfig } from '../../mocks/data';
 import { server } from '../../test/mswServer';
 
 describe('MQTT publish settings', () => {
-  it('chooses what is published and turns on Home Assistant discovery', async () => {
+  it('turns on Home Assistant discovery', async () => {
     let saved: any = null;
     server.use(
       http.get('/api/config', () =>
-        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } }),
+        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'roofroof' } }),
       ),
       http.post('/api/config', async ({ request }) => {
         saved = await request.json();
@@ -20,30 +20,23 @@ describe('MQTT publish settings', () => {
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);
 
-    const diagnostics = (await screen.findByLabelText('Diagnostics')) as HTMLInputElement;
-    expect(diagnostics.checked).toBe(false);
-    expect((screen.getByLabelText('Wind') as HTMLInputElement).checked).toBe(true);
-    fireEvent.click(diagnostics);
-    fireEvent.click(screen.getByLabelText('Temperature, humidity, pressure'));
-    fireEvent.click(screen.getByLabelText('MQTT discovery'));
+    fireEvent.click(await screen.findByLabelText('MQTT discovery'));
     expect(await screen.findByPlaceholderText('homeassistant')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
-    expect(saved.mqtt.publish.diagnostics).toBe(true);
-    expect(saved.mqtt.publish.environment).toBe(false);
     expect(saved.mqtt.homeAssistant).toEqual({ enabled: true, discoveryPrefix: 'homeassistant' });
   });
 
   it('rejects a base topic with MQTT wildcards', async () => {
     server.use(
       http.get('/api/config', () =>
-        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'sqmeter' } }),
+        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'roofroof' } }),
       ),
     );
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);
-    const topic = await screen.findByPlaceholderText('sqmeter');
+    const topic = await screen.findByPlaceholderText('roofroof');
     fireEvent.input(topic, { target: { value: 'sqm/#' } });
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(await screen.findByText(/with \/ between levels/)).toBeInTheDocument();

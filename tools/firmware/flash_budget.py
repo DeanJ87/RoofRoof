@@ -44,9 +44,7 @@ FAIL_LEVEL = 0.95
 STALE_TOLERANCE_BYTES = 2 * 1024
 BASELINE_PATH = "tools/firmware/size-baseline.json"
 REASON_KEY = "overBudgetReason"
-ENVS = (
-    "esp32dev",
-)
+ENVS = ("esp32dev",)
 TOP = 10
 
 

@@ -49,17 +49,17 @@ test('MQTT alerts with MQTT off: reported inactive, shown inactive, skipped not 
   expect(recent.alerts[0].channels.mqtt).toEqual({ status: 'skipped', detail: 'MQTT is off' });
 
   // Switching MQTT back on restores it, unchanged (US2).
-  await post(page, '/api/config', { mqtt: { enabled: true, broker: '192.168.1.10', topic: 'sqmeter' } });
+  await post(page, '/api/config', { mqtt: { enabled: true, broker: '192.168.1.10', topic: 'roofroof' } });
   expect(await entry(page, 'alerts.mqtt.enabled')).toMatchObject({ id: 'D-01', state: 'active' });
   expect(JSON.parse((await api(page, '/api/config')).body).alerts.mqtt.enabled).toBe(true);
 });
 
-test('rain rules without the rain sensor are listed as not in effect (D-15)', async ({ page }) => {
+test('send mode "only while an imaging app is connected" with Alpaca off is listed as not in effect (D-12)', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('main')).toBeVisible();
-  await post(page, '/api/config', { rain: { enabled: false }, alpaca: { rainUnsafeEnabled: true } });
+  await post(page, '/api/config', { alerts: { sendMode: 'whileConnected' }, alpaca: { enabled: false } });
   await page.waitForTimeout(1500);
-  const safety = JSON.parse((await api(page, '/api/safety')).body);
-  expect(safety.rulesNotInEffect).toContain('Unsafe while raining');
-  expect(await entry(page, 'alpaca.rainUnsafeEnabled')).toMatchObject({ state: 'inactive', unmet: 'inactive', reason: 'rain-off' });
+  expect(await entry(page, 'alerts.sendMode')).toMatchObject({ id: 'D-12', state: 'inactive' });
+  await post(page, '/api/config', { alpaca: { enabled: true } });
+  expect(await entry(page, 'alerts.sendMode')).toMatchObject({ id: 'D-12', state: 'active' });
 });

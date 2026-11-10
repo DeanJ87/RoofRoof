@@ -200,17 +200,16 @@ jobs:
           python3 tools/settings-deps/test_check.py
           python3 tools/settings-deps/check.py
 
-      # Every language file is complete and the generated i18n files are
-      # current; the language files build within the device's size limit
-      # (specs/023-i18n).
+      # English only (research R10): the catalogue is complete, no string is
+      # left untranslatable in a component, and the generated device catalogue
+      # is current. No language packs are built.
       - name: Translations
         run: |
-          python3 -m unittest discover -s tools/i18n -p 'test_*.py'
+          if ls tools/i18n/test_*.py >/dev/null 2>&1; then python3 -m unittest discover -s tools/i18n -p 'test_*.py'; fi
           node tools/i18n/check.mjs
           node tools/i18n/literals.mjs
           python3 tools/i18n/gen_device_catalog.py --check
           python3 tools/i18n/context.py --check
-          python3 tools/i18n/build_packs.py --version 0.0.0-ci --out "$RUNNER_TEMP/i18n"
 
       # Every device field and settings dependency is on the dashboard
       # inventory, shown with a test or not shown with a reason (specs/025).
@@ -274,15 +273,15 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
 
-      # The one-time USB flash to the whole-chip layout (spec 027 FR-019):
-      # each part at its own offset, so NVS - the device's settings - is kept.
-      - name: Create USB flash packages
+      # The USB flash package: each part at its own offset, so NVS - the
+      # device's settings - is kept.
+      - name: Create USB flash package
         run: |
           VERSION="$(grep -o 'FIRMWARE_VERSION "[^"]*"' include/version.h | cut -d'"' -f2)"
           BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name "boot_app0.bin" | head -1)
-          python3 tools/firmware/usb_package.py --build standard --version "$VERSION" \
+          python3 tools/firmware/usb_package.py --version "$VERSION" \
             --build-dir .pio/build/esp32dev --fs .pio/build/esp32dev/littlefs.bin \
-            --boot-app0 "$BOOT_APP0" --out .pio/build/usb-standard.zip
+            --boot-app0 "$BOOT_APP0" --out .pio/build/usb.zip
 
       # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
       - name: Upload firmware artifact
@@ -301,11 +300,11 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
-      - name: Upload USB flash packages
+      - name: Upload USB flash package
         uses: actions/upload-artifact@v6
         with:
           name: usb-flash
-          path: .pio/build/usb-*.zip
+          path: .pio/build/usb.zip
           if-no-files-found: error
           retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
 
@@ -315,8 +314,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
-      # To start the docs deploy (below).
-      actions: write
 
     steps:
       - uses: actions/checkout@v5
@@ -324,24 +321,17 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v7
 
-      # The language files the device downloads for this firmware version
-      # (specs/023-i18n): sqmeter-i18n-<code>.json.gz, its .sha256 and the manifest.
-      - name: Build language files
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          python3 tools/i18n/build_packs.py --version "${VERSION}" --out i18n
-
-      # The REST API description for this release (spec 028), version stamped.
+      # The REST API description for this release, version stamped.
       - name: Build the OpenAPI description
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           pip install openapi-spec-validator==0.9.0
-          python3 tools/api/openapi.py --version "${VERSION}" --out "sqmeter-openapi-v${VERSION}.json"
+          python3 tools/api/openapi.py --version "${VERSION}" --out "roofroof-openapi-v${VERSION}.json"
 
       # The release body and banner from this version's CHANGELOG.md section
       # (tools/release/notes.mjs): fails here, before anything is published, if
-      # the changelog PR hasn't been merged. The banner is rendered with the
-      # project's own fonts in Chromium (Playwright, already a web dependency).
+      # the changelog PR hasn't been merged. The banner is rendered in
+      # Chromium (Playwright, already a web dependency).
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
@@ -353,31 +343,18 @@ jobs:
           (cd web && npm ci && npx playwright install --with-deps chromium)
           node tools/release/notes.mjs --tag "${GITHUB_REF#refs/tags/}" --out release-notes
 
-      # "l2" names for the whole-chip layout (spec 027): v0.2.x firmware looks
-      # for sqmeter-firmware-*, so it never offers a release it can't install.
+      # "l2" names the whole-chip partition layout (partitions.csv); the
+      # device refuses an update file made for a different layout.
       - name: Rename binaries with version tag
         run: |
           VERSION="${GITHUB_REF#refs/tags/}"
-          mv firmware/firmware.bin         sqmeter-l2-firmware-${VERSION}.bin
-          mv littlefs/littlefs.bin         sqmeter-l2-littlefs-${VERSION}.bin
-          mv firmware-ble/firmware.bin     sqmeter-l2-ble-firmware-${VERSION}.bin
-          mv usb-flash/usb-standard.zip    sqmeter-l2-usb-standard-${VERSION}.zip
-          mv usb-flash/usb-ble.zip         sqmeter-l2-usb-ble-${VERSION}.zip
-          # ESP32-S3 boards (spec 034): sqmeter-<board>-*, which classic
-          # firmware never matches.
-          for board in esp32s3-eth esp32s3-zero esp32s3-zero8; do
-            dir="s3-${board}"
-            mv "${dir}/${board}/firmware.bin"     "sqmeter-${board}-firmware-${VERSION}.bin"
-            mv "${dir}/${board}/littlefs.bin"     "sqmeter-${board}-littlefs-${VERSION}.bin"
-            mv "${dir}/${board}-ble/firmware.bin" "sqmeter-${board}-ble-firmware-${VERSION}.bin"
-            mv "${dir}/usb-standard.zip"          "sqmeter-${board}-usb-standard-${VERSION}.zip"
-            mv "${dir}/usb-ble.zip"               "sqmeter-${board}-usb-ble-${VERSION}.zip"
-          done
+          mv firmware/firmware.bin         roofroof-l2-firmware-${VERSION}.bin
+          mv littlefs/littlefs.bin         roofroof-l2-littlefs-${VERSION}.bin
+          mv usb-flash/usb.zip             roofroof-l2-usb-${VERSION}.zip
 
-      # Any tag with a semver prerelease segment (e.g. v0.1.4-beta.1) is
-      # published as a GitHub prerelease, which is what the device's
-      # "Check for Updates" beta track filters on (GitHub's prerelease flag,
-      # not tag naming - see OtaUpdater::parseGithubReleases).
+      # A tag with a semver prerelease segment (e.g. v0.1.0-beta.1) is
+      # published as a GitHub prerelease. Updates are by manual upload only:
+      # the device never looks at releases.
       - name: Determine prerelease status
         id: prerelease
         run: |
@@ -391,30 +368,16 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          name: SQMeter ${{ github.ref_name }}
+          name: RoofRoof ${{ github.ref_name }}
           # The banner and changelog section first; GitHub's list of merged
           # pull requests is appended after it.
           body_path: release-notes/release-notes.md
           generate_release_notes: true
           prerelease: ${{ steps.prerelease.outputs.value }}
           files: |
-            release-notes/sqmeter-release-${{ github.ref_name }}.png
-            release-notes/sqmeter-release-${{ github.ref_name }}@2x.png
-            sqmeter-l2-firmware-*.bin
-            sqmeter-l2-littlefs-*.bin
-            sqmeter-l2-ble-firmware-*.bin
-            sqmeter-l2-usb-*.zip
-            sqmeter-esp32s3-*.bin
-            sqmeter-esp32s3-*.zip
-            i18n/sqmeter-i18n-*
-            sqmeter-openapi-*.json
-
-      # The docs site serves the newest release's browser-flasher files
-      # (tools/docs/flash_assets.py reads them from the releases API at build
-      # time), so redeploy it now. Started on main, not this tag: the site is
-      # built from main and only main may deploy to the github-pages
-      # environment. A dispatch is the one event GITHUB_TOKEN may start.
-      - name: Redeploy docs and flasher
-        run: gh workflow run docs.yml --ref main --repo "${GITHUB_REPOSITORY}"
-        env:
-          GH_TOKEN: ${{ github.token }}
+            release-notes/roofroof-release-${{ github.ref_name }}.png
+            release-notes/roofroof-release-${{ github.ref_name }}@2x.png
+            roofroof-l2-firmware-*.bin
+            roofroof-l2-littlefs-*.bin
+            roofroof-l2-usb-*.zip
+            roofroof-openapi-*.json

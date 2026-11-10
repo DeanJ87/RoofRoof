@@ -63,7 +63,8 @@ namespace SQM
         uint32_t silenceMs[Alpaca::MAX_DEVICES];
         Core::clientSilenceMs(cfg, silenceMs);
         clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, millis());
-        Core::addClientInputs(in, clientWatch, alpacaBackend.devices(), cfg, millis(), localTime);
+        const std::vector<Alpaca::DeviceInfo> devices = alpacaBackend.devices();
+        Core::addClientInputs(in, {clientWatch, devices, millis()}, cfg, localTime);
     }
 
     // Push channels need the master switch. Paused: state is still tracked,

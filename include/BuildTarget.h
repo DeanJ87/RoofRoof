@@ -5,4 +5,3 @@
 // image built for this device's partition table. RoofRoof has one board
 // (ESP32 DevKit, 4 MB) and one layout.
 #define SQM_LAYOUT_ID "l2"
-

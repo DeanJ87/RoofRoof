@@ -19,19 +19,19 @@ const outsideRequests = (page: Page) => {
 
 const open = async (page: Page) => {
   await page.goto('./explorer/');
-  await expect(page.getByRole('heading', { name: 'SQMeter REST API' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'RoofRoof REST API' })).toBeVisible({ timeout: 15_000 });
 };
 
 test.describe('API explorer', () => {
   test('lists every operation and is themed like the docs site', async ({ page }) => {
     const outside = outsideRequests(page);
     await open(page);
-    for (const tag of ['Readings', 'Safety', 'Settings', 'Alerts', 'Updates']) {
+    for (const tag of ['Status', 'Settings', 'Alerts', 'Updates']) {
       await expect(page.getByRole('link', { name: tag, exact: true }).first()).toBeVisible();
     }
     const body = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(body).toBe('rgb(8, 13, 20)'); // --sqm-bg
-    const font = await page.getByRole('heading', { name: 'SQMeter REST API' }).evaluate((el) => getComputedStyle(el).fontFamily);
+    const font = await page.getByRole('heading', { name: 'RoofRoof REST API' }).evaluate((el) => getComputedStyle(el).fontFamily);
     expect(font).toContain('Inter SQM');
     expect(outside).toEqual([]);
   });
@@ -40,13 +40,13 @@ test.describe('API explorer', () => {
     const outside = outsideRequests(page);
     await open(page);
     await page
-      .getByRole('button', { name: /Test Request.*get \/api\/sensors/i })
+      .getByRole('button', { name: /Test Request.*get \/api\/status/i })
       .first()
       .click();
-    const send = page.getByRole('button', { name: /^Send get request to .*\/api\/sensors$/ });
+    const send = page.getByRole('button', { name: /^Send get request to .*\/api\/status$/ });
     await expect(send).toBeVisible();
     await send.click();
-    await expect(page.getByText(/"timeValid"/).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/"uptime"/).first()).toBeVisible({ timeout: 10_000 });
     expect(outside).toEqual([]);
   });
 
@@ -56,7 +56,7 @@ test.describe('API explorer', () => {
     const gets = Object.entries(openapi.paths)
       .filter(([, ops]) => 'get' in ops)
       .map(([path]) => path);
-    expect(gets.length).toBeGreaterThan(10);
+    expect(gets.length).toBeGreaterThan(4);
     const answers = await page.evaluate(async (paths) => {
       const out: Record<string, number> = {};
       for (const path of paths) out[path] = (await fetch(path)).status;

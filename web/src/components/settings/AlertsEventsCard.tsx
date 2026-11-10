@@ -46,7 +46,11 @@ export const AlertsEventsCard: FunctionalComponent<{ view: AlertsView }> = ({ vi
           <EventRows view={view} />
         </div>
         <div class="form-grid">
-          <Field label={t('settings.alerts.silentFor')} error={err('clientSilentSeconds')} hint={t('settings.alerts.howLongWithoutARequest')}>
+          <Field
+            label={t('settings.alerts.silentFor')}
+            error={err('clientSilentSeconds')}
+            hint={t('settings.alerts.howLongWithoutARequest')}
+          >
             <NumberInput
               min={0.5}
               max={60}

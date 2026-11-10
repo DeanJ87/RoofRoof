@@ -36,8 +36,7 @@ namespace SQM::ConfigDetail
     // JSON key for each configurable event, matching the alert event names.
     template <typename Alerts, typename Setting> std::array<std::pair<const char *, Setting *>, EVENT_COUNT> eventSettingsOf(Alerts &a)
     {
-        return {
-            {{"client_lost", &a.clientLost}, {"client_back", &a.clientBack}, {"client_disconnected", &a.clientDisconnected}}};
+        return {{{"client_lost", &a.clientLost}, {"client_back", &a.clientBack}, {"client_disconnected", &a.clientDisconnected}}};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {

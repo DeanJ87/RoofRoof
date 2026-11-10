@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Generate the device's JSON Schemas (specs/001-platform-bootstrap/contracts/schemas)
-from sample documents captured from a real SQMeter and from the demo's device core.
+"""Generate RoofRoof's JSON Schemas (specs/001-platform-bootstrap/contracts/schemas)
+from sample documents. There is no real RoofRoof device yet, so the samples come
+from the demo's emulated device, which runs the firmware's own logic (the device
+core) and emulates the hardware sections of /api/status. Write them with
 
+  cd web && CONTRACT_SAMPLES=<samples-dir> npx vitest run contracts
   python3 tools/contracts/generate_schemas.py <samples-dir>
+
+Once a real device exists, capture its documents as device-<document>.json too.
 
 Samples are named <source>-<document>.json (source = device | demo). A key is
 required when every sample of that object has it; any key no sample has is
@@ -17,31 +22,77 @@ import sys
 OUT = os.path.join(os.path.dirname(__file__), "..", "..", "specs", "001-platform-bootstrap", "contracts", "schemas")
 
 # document name -> schema file; status is built from device samples only (its
-# hardware sections are emulated by the demo and must match the device).
+# hardware sections are emulated by the demo and must match the firmware).
 DOCUMENTS = {
-    "sensors": "readings",
     "status": "status",
-    # The demo core's decision parts of the status document: they add what
-    # optional fields can hold, but don't make anything required.
-    "status_partial": "status",
-    "safety": "safety",
     "settings_effective": "settings-effective",
     "config": "config",
     "alerts_recent": "alerts-recent",
     "alerts_armed": "alerts-armed",
-    "safety_history": "safety-history",
     "management_v1_description": "alpaca-description",
     "management_v1_configureddevices": "alpaca-configured-devices",
-    "api_v1_safetymonitor_0_devicestate": "alpaca-devicestate",
-    "api_v1_observingconditions_0_devicestate": "alpaca-devicestate",
 }
 
 # Objects keyed by data (a variable set of keys): only their values are described.
-OPEN_MAPS = {("channels",)}
+# "clients": /api/status alpaca.clients, keyed by Alpaca device type.
+OPEN_MAPS = {("channels",), ("clients",)}
 
-# Readings groups carry values only while their sensor is ok (contract
-# specs/013-data-interfaces/contracts/readings.md), so only "status" is required.
-READING_GROUPS = {"light", "sky", "environment", "infrared", "clouds", "gps", "rain", "wind"}
+# Keys the firmware leaves out in some states, so no sample of the demo (which
+# always has them) can show it. Paths in /api/status (src/WebServerStatus.cpp):
+# ntp only with a TimeManager, mqtt only with an MQTT client, each partition
+# field only when esp_ota / the partition table returns it.
+OPTIONAL = {
+    "status": {
+        ("ntp",),
+        ("mqtt",),
+        ("partitions", "runningSlot"),
+        ("partitions", "runningAddress"),
+        ("partitions", "runningSize"),
+        ("partitions", "bootSlot"),
+        ("partitions", "nextSlot"),
+        ("partitions", "nextSize"),
+        ("partitions", "nvs"),
+        ("partitions", "fsAddress"),
+        ("partitions", "fsSize"),
+    },
+}
+current_optional = set()
+
+# Value rules a sample can't show, from the firmware: (schema, path) -> extra
+# schema keys. "[]" is an array's items.
+SCHEDULE_MODES = ["any", "whileConnected"]  # Alerts::sendModeName
+SCHEDULE_REASONS = [  # Alerts::scheduleReasonName (lib/AlertLogic/src/AlertSchedule.cpp)
+    "none",
+    "user-ui",
+    "user-rest",
+    "user-mqtt",
+    "client-connected",
+    "client-disconnected",
+    "waiting-for-client",
+    "migrated",
+]
+CONSTRAINTS = {
+    ("status", ("alerts", "mode")): {"enum": SCHEDULE_MODES},
+    ("status", ("alerts", "reason")): {"enum": SCHEDULE_REASONS},
+    ("status", ("alerts", "recentRevision")): {"type": "integer", "minimum": 0},
+    ("status", ("configRevision",)): {"type": "integer", "minimum": 0},
+    ("status", ("firmware", "product")): {"const": "roofroof"},
+    ("status", ("firmware", "layout")): {"enum": ["l2", "other"]},  # FirmwareImage::layoutOf
+    ("status", ("wifi", "ipv6", "addresses", "[]", "scope")): {"enum": ["link-local", "unique-local", "global"]},
+    ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},
+    ("alerts-armed", ("reason",)): {"enum": SCHEDULE_REASONS},
+    ("config", ("alerts", "sendMode")): {"enum": SCHEDULE_MODES},
+}
+
+
+def constrain(schema_name, schema):
+    for (name, path), extra in CONSTRAINTS.items():
+        if name != schema_name:
+            continue
+        node = schema
+        for key in path:
+            node = node["items"] if key == "[]" else node["properties"][key]
+        node.update(extra)
 
 
 def type_of(value):
@@ -75,8 +126,7 @@ def merge(samples, path=(), partial=()):
             for k in keys
         }
         schema["required"] = [k for k in keys if all(k in o for o in full)]
-        if len(path) == 1 and path[0] in READING_GROUPS and "status" in keys:
-            schema["required"] = ["status"]
+        schema["required"] = [k for k in schema["required"] if path + (k,) not in current_optional]
         schema["additionalProperties"] = False
     arrays = [s for s in samples if isinstance(s, list)]
     items = [i for a in arrays for i in a]
@@ -102,7 +152,10 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     for schema_name, entry in sorted(grouped.items()):
         docs = entry["samples"]
+        current_optional.clear()
+        current_optional.update(OPTIONAL.get(schema_name, ()))
         schema = {"$schema": "http://json-schema.org/draft-07/schema#", "title": schema_name, **merge(docs, (), tuple(entry["partial"]))}
+        constrain(schema_name, schema)
         with open(os.path.join(OUT, schema_name + ".schema.json"), "w") as f:
             json.dump(schema, f, indent=2, sort_keys=False)
             f.write("\n")

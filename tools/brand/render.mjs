@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Renders the brand SVGs that contain text (social cards, banners, stickers) to
+// Renders the RoofRoof brand SVGs that contain text (social cards, banners, stickers) to
 // PNG and print PDF with the project's own fonts, so they look right where
 // Inter / JetBrains Mono aren't installed (GitHub, chat apps, print shops).
 //
+//   node tools/brand/build.mjs                   first, if the mark changed (writes brand/src/)
 //   node tools/brand/render.mjs                  everything into brand/render/
 //   node tools/brand/render.mjs --only social    one group (social | icons | sticker)
 //   node tools/brand/render.mjs --release v0.3.2-beta.1 --date "11 October 2026" \
@@ -84,7 +85,7 @@ function args(name) {
 const RELEASE_FIT = { 'rel-tag': 618, 'rel-date': 618, 'rel-c0': 432, 'rel-c1': 432, 'rel-c2': 432 };
 
 function releaseSvg(tag, date, changes) {
-  let svg = readFileSync(join(SRC, 'social/sqmeter-release-banner-template.svg'), 'utf8');
+  let svg = readFileSync(join(SRC, 'social/roofroof-release-banner-template.svg'), 'utf8');
   const escape = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   svg = svg.replace(/<text([^>]*)>v1\.4\.0</, `<text id="rel-tag"$1>${escape(tag)}<`);
   svg = svg.replace(/<text([^>]*)>Released [^<]*</, `<text id="rel-date"$1>Released ${escape(date)}<`);
@@ -118,13 +119,13 @@ function fitReleaseText(limits) {
 }
 
 /**
- * Renders the release banner for `tag` into `dir` as sqmeter-release-<tag>.png
+ * Renders the release banner for `tag` into `dir` as roofroof-release-<tag>.png
  * (1280×320) and @2x. Returns the two file paths.
  */
 export async function renderReleaseBanner({ tag, date, changes, dir }) {
   mkdirSync(dir, { recursive: true });
   const svg = releaseSvg(tag, date, changes);
-  const files = [join(dir, `sqmeter-release-${tag}.png`), join(dir, `sqmeter-release-${tag}@2x.png`)];
+  const files = [join(dir, `roofroof-release-${tag}.png`), join(dir, `roofroof-release-${tag}@2x.png`)];
   const prepare = `(${fitReleaseText.toString()})(${JSON.stringify(RELEASE_FIT)})`;
   const browser = await chromium.launch();
   try {
@@ -162,7 +163,7 @@ async function main() {
       const dir = join(OUT, 'icons');
       mkdirSync(dir, { recursive: true });
       const icons = [
-        ['app-icon/sqmeter-app-icon-512.svg', 'apple-touch-icon-180.png', 180],
+        ['app-icon/roofroof-app-icon-512.svg', 'apple-touch-icon-180.png', 180],
         ['favicon/favicon-32.svg', 'favicon-32.png', 32],
       ];
       for (const [source, file, pixels] of icons) {

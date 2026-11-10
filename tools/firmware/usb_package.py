@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""One-time USB flash package for the whole-chip layout (spec 027 FR-018, FR-019).
+"""USB flash package for the RoofRoof whole-chip layout (l2).
 
-Builds sqmeter-l2-usb-<build>-<tag>.zip: the bootloader, the partition table,
+Builds roofroof-l2-usb-<tag>.zip: the bootloader, the partition table,
 boot_app0 (otadata), the firmware and the web UI image, each at its own
-offset, plus a manifest for the browser flasher (ESP Web Tools) and the
-equivalent esptool command. NVS (0x9000-0xDFFF) is never written, so a device
+offset, plus a manifest.json (the ESP Web Tools format; RoofRoof ships no
+browser flasher, so it is informational) and the equivalent esptool command. NVS (0x9000-0xDFFF) is never written, so a device
 keeps its settings - WiFi included - across the move to the new layout.
 
-Usage: usb_package.py --build ble --version 0.3.0-beta.1 --build-dir .pio/build/esp32dev-ble
-       --fs .pio/build/esp32dev/littlefs.bin --boot-app0 <path> --out sqmeter-l2-usb-ble-v0.3.0-beta.1.zip
+Usage: usb_package.py --version 0.1.0 --build-dir .pio/build/esp32dev
+       --fs .pio/build/esp32dev/littlefs.bin --boot-app0 <path> --out roofroof-l2-usb-v0.1.0.zip
 
-The ESP32-S3 boards (spec 034) add --chip esp32s3 (the bootloader is at 0x0
-there) and their own --partitions table and --board name.
+RoofRoof has one build for the classic ESP32 only. The --chip/--board options
+are kept so a later board can reuse the script.
 """
 
 from __future__ import annotations
@@ -53,9 +53,8 @@ def parts(csv: Path = ROOT / "partitions.csv", chip: str = "esp32") -> list[dict
 
 
 def manifest(build: str, version: str, csv: Path, chip: str = "esp32", board: str = "") -> dict:
-    kind = "Bluetooth" if build == "ble" else "standard"
     return {
-        "name": f"SQMeter ({board + ', ' if board else ''}{kind} build)",
+        "name": f"RoofRoof{' (' + board + ')' if board else ''}",
         "version": version,
         # Ask, rather than erase by default: leaving "Erase device" unticked
         # keeps NVS and so every setting.
@@ -70,22 +69,22 @@ def esptool_command(csv: Path, chip: str = "esp32") -> str:
 
 
 def readme(build: str, version: str, csv: Path, chip: str = "esp32", board: str = "") -> str:
-    target = f"{board}, {build}" if board else build
+    target = f" ({board})" if board else ""
     return (
-        f"SQMeter {version} ({target} build) - one-time USB flash to the whole-chip layout.\n\n"
+        f"RoofRoof {version}{target} - USB flash to the whole-chip layout (l2).\n\n"
         "Settings (WiFi included) are kept: nothing is written to 0x9000-0xDFFF, where\n"
-        'they are stored. Do not tick "Erase device" in the browser flasher, and never run\n'
-        "erase_flash.\n\n"
+        "they are stored. Never run erase_flash or add --erase-all unless you want to\n"
+        "start again from the setup hotspot.\n\n"
         "From this folder, with the device on USB:\n\n"
         f"  {esptool_command(csv, chip)}\n\n"
-        "Guide: https://sqmeter.dev/getting-started/usb-flash/\n"
+        "Guide: docs/getting-started/usb-flash.md in the repository (or the docs artifact).\n"
     )
 
 
 class Target(NamedTuple):
     """What a package is for: the build, version, partition table, chip and board."""
 
-    build: str
+    build: str  # kept for the call signature; RoofRoof has a single build
     version: str
     csv: Path
     chip: str = "esp32"
@@ -103,7 +102,7 @@ def build(sources: dict[str, Path], target: Target, out: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="One-time USB flash package (spec 027)")
-    parser.add_argument("--build", choices=["standard", "ble"], required=True)
+    parser.add_argument("--build", default="standard", help="unused label; RoofRoof has a single build")
     parser.add_argument("--version", required=True)
     parser.add_argument("--build-dir", type=Path, required=True, help="the env's .pio/build/<env> folder")
     parser.add_argument("--fs", type=Path, required=True, help="littlefs.bin")

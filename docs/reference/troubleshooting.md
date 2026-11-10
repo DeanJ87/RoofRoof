@@ -1,19 +1,8 @@
 ---
-description: "Fix common SQMeter problems: sensors not found, WiFi, OTA updates, N.I.N.A. connections, alerts, MQTT and Bluetooth slowdowns."
+description: "Fix common RoofRoof problems: WiFi, the web UI, IPv6, uploads, Alpaca clients, alerts, MQTT and the motor driver's idle state."
 ---
 
 # Troubleshooting
-
----
-
-## Sensors Not Detected
-
-**Symptoms:** Dashboard shows `--` for all values. Serial log shows `init failed`.
-
-1. Check I2C wiring — SDA/SCL can't be swapped
-2. Confirm 3.3V on sensor VCC (not 5V)
-3. Run an I2C scanner sketch to verify addresses
-4. Check `i2cSDA` and `i2cSCL` in config match your wiring
 
 ---
 
@@ -22,7 +11,9 @@ description: "Fix common SQMeter problems: sensors not found, WiFi, OTA updates,
 1. Confirm the SSID is 2.4 GHz — ESP32 doesn't support 5 GHz
 2. Check password (case-sensitive)
 3. Move the device closer to the router for initial setup
-4. If captive portal never appears, do a full erase and re-flash
+4. If the **RoofRoof-Setup** hotspot never appears, wait 45 seconds after power-on with a saved network that can't be joined, or do a full erase and re-flash ([Resetting everything](#resetting-everything))
+
+See [First Boot](../getting-started/first-setup.md).
 
 ---
 
@@ -30,10 +21,10 @@ description: "Fix common SQMeter problems: sensors not found, WiFi, OTA updates,
 
 **`ERR_CONNECTION_REFUSED` or blank page:**
 
-1. Verify the filesystem was flashed — `pio run --target uploadfs`
+1. Verify the filesystem was flashed — upload the web UI file on **Updates**, or `pio run --target uploadfs`
 2. Check serial logs for `LittleFS mount failed`
-3. Re-upload the filesystem: `pio run --target uploadfs`
-4. If still broken, full erase and re-flash
+3. Re-upload the filesystem (a connection drop during the web UI write leaves it unavailable until a later upload succeeds; the REST API and update endpoints stay reachable)
+4. If still broken, flash the release's USB package ([USB flash](../getting-started/usb-flash.md))
 
 ---
 
@@ -42,54 +33,30 @@ description: "Fix common SQMeter problems: sensors not found, WiFi, OTA updates,
 - **System → WiFi** should list a `link-local` address; if it lists none, check **Settings → Network → IPv6** is on and restart the device.
 - No `global`/`local` address means the router isn't announcing an IPv6 prefix - link-local still works on the local network (`http://[fe80::...%en0]/` - add your computer's interface after `%`).
 - `403 IPv6 requests are only accepted from the local network`: you're coming from outside the device's own network prefix (another VLAN, a VPN, the internet). Use the IPv4 address, or a VPN that puts you on the same network ([IPv6](../user-guide/ipv6.md)).
-- Lookups of `sqmeter.local` slow or IPv4-only: check mDNS is on; with IPv6 on, the device answers AAAA as well as A.
+- Lookups of `roofroof.local` slow or IPv4-only: check mDNS is on; with IPv6 on, the device answers AAAA as well as A.
 
 ---
 
-## OTA Update Fails
+## An Upload Fails
 
 1. Ensure stable power — don't run on a weak USB charger during flash
 2. Check WiFi signal strength (RSSI better than -75 dBm)
-3. Verify the `.bin` file is the right one: `sqmeter-l2-firmware-*` (or `sqmeter-l2-ble-firmware-*` on the Bluetooth build), not the web UI file. The device refuses files for another layout or build and says why.
+3. Verify the `.bin` file is the right one: `roofroof-l2-firmware-*` for **Firmware**, `roofroof-l2-littlefs-*` for **Web UI**. The device refuses files for another product or layout and says why ("Not RoofRoof firmware.", "Wrong partition layout").
 4. Don't navigate away from the update page during upload
 
-If a new firmware doesn't finish starting (WiFi and the web server up), the device falls back to the previous app slot on its next boot. If it still doesn't respond, reflash via USB ([One-time USB flash](../getting-started/usb-flash.md) - settings are kept).
+If a new firmware doesn't finish starting (WiFi and the web server up), the device falls back to the previous app slot on its next boot. If it still doesn't respond, reflash via USB ([USB flash](../getting-started/usb-flash.md) - settings are kept).
 
-"Not firmware for this device" when uploading a v0.3 file: the device is still on v0.2's partition layout and needs the [one-time USB flash](../getting-started/usb-flash.md).
-
-"Could not activate partition" after an upload usually means the transfer was corrupted on a weak link - upload again.
+"Could not activate partition" after an upload usually means the transfer was corrupted on a weak link - upload again. See [Updates](../user-guide/ota.md).
 
 ---
 
 ## N.I.N.A. Can't See the Device
 
-1. **Settings → Safety → ASCOM Alpaca** must be on.
+1. **Settings → Network → ASCOM Alpaca** must be on, and the device restarted since.
 2. Discovery is a UDP broadcast, which doesn't cross subnets or VLANs. If N.I.N.A.'s PC is on another network, add the device manually: its IP, port `80`.
-3. After updating from a release before v0.2.0, re-select the devices in N.I.N.A. once - their unique IDs now include the MAC address.
-4. Test from the PC: `curl http://<device-ip>/management/v1/configureddevices` should list both devices.
+3. Today the Alpaca server lists no devices (`curl http://<device-ip>/management/v1/configureddevices` returns an empty list), so a client finds the server but has nothing to connect to. The roof's device *comes in a later spec*.
 
----
-
-## N.I.N.A. Loses the Safety Monitor
-
-N.I.N.A. shows the SafetyMonitor (or weather device) as disconnected, and connecting again works straight away. Two things cause this:
-
-1. **The SQMeter restarted.** Open `http://<device-ip>/api/status`: if `uptime` (seconds) is shorter than the time since the drop, it restarted, and `resetReason` says why (1 power on, 3 software restart, 4 crash, 5-7 watchdog, 9 brownout). The dashboard's **History** lists restarts too. From v0.3.1 a restart the device causes itself (a crash, the watchdog, an update) keeps N.I.N.A.'s connection: `connections.alpacaRestoredAfterRestart` is `true` after one. A power cut or brownout still starts fresh; check the power supply and cable.
-2. **Other clients held all the connections.** Before v0.3.1 a browser tab left open on a laptop or phone that went to sleep could keep its live-update sockets open forever, and every wake-up added more. Once all 16 were held, N.I.N.A.'s next request couldn't connect. From v0.3.1 each live-update endpoint takes at most 3 clients (a new one replaces the oldest), a client that stops reading is closed after 10 seconds, and quiet ones are pinged so a vanished peer is dropped. On older firmware, close SQMeter tabs on devices that sleep.
-
-`/api/status` → `connections` shows who holds what:
-
-```json
-"connections": {
-  "tcpLimit": 16,
-  "liveUpdates": { "sensors": 1, "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 2 },
-  "alpacaRestoredAfterRestart": false
-}
-```
-
-`replaced` and `stalledClosed` count live-update clients closed since the restart: replaced by a newer one, or closed because they stopped reading.
-
-To be told when it happens rather than the next morning, turn on the **Imaging app stopped checking** alert (Settings → Alerts).
+See [ASCOM Alpaca](../user-guide/alpaca.md).
 
 ---
 
@@ -99,34 +66,26 @@ The ESP32's network stack holds at most **16 TCP connections** at once, includin
 
 What uses connections:
 
-- live updates in open browser tabs: at most 3 per endpoint, 6 in all, however many tabs are open
+- live updates in open browser tabs: at most 3 per endpoint, however many tabs are open
 - MQTT: 1
 - an imaging app: 1-2 per request burst (each Alpaca request is a short connection)
-- update checks and internet alerts: 1 while sending
+- internet alerts: 1 while sending
 
-That leaves at least 8 for imaging apps and page loads.
+`/api/status` → `connections` shows who holds what: `liveUpdates` counts the clients, and `replaced` and `stalledClosed` count live-update clients closed since the restart (replaced by a newer one, or closed because they stopped reading).
 
-A conformance checker such as ASCOM ConformU fires hundreds of requests in quick succession; running it while other clients poll the device can briefly exhaust the connections, and one request is refused. The device doesn't restart and the next request works. Imaging apps retry on their own.
-
-`tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case: it polls like N.I.N.A. while opening live-update sockets nobody reads, and reports every imaging-app request that failed (a timeout, a refused or reset connection, an HTTP error, or an Alpaca error). A property the device doesn't have, such as `cloudcover` without an IR sensor, answers NotImplemented (`0x400`): that is listed once under `notImplemented`, not counted as a failure.
+`tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case against a device and reports every request that failed.
 
 ---
 
-## An Alert Didn't Arrive (or One Did That Shouldn't Have)
+## An Alert Didn't Arrive
 
-Open **History** on the dashboard's Safety card. It lists safety changes, restarts (and why) and every safe/unsafe alert actually sent, and survives restarts. Common reasons for no alert:
+Open the alerts bell. It lists the recent alerts with each channel's result. Common reasons for no alert:
 
 - Alerts are paused (the bell in the header is crossed out) or **Send alerts** is off
-- It isn't dark yet and **Safety alerts only when it's dark** is on
-- The device restarted - start-up and the safe delay aren't announced, see [Alerts](../user-guide/alerts.md#restarts)
+- The event's level is **Off**
 - The cooldown held it back; it's sent when the cooldown ends if things haven't changed back
 - The channel failed - the bell's list shows each channel's result, e.g. Pushover "user identifier is not a valid user" means the user key (not the app token) is wrong
-
----
-
-## Web UI Slow With Bluetooth On
-
-WiFi and Bluetooth share one radio. Expect slower page loads with Bluetooth on; turn it off in **Settings → Device** if you don't use the phone alarm.
+- The roof's own events *come in later specs*; today only the imaging-app events, "Alerts resumed" and tests exist ([Alerts](../user-guide/alerts.md))
 
 ---
 
@@ -137,6 +96,14 @@ WiFi and Bluetooth share one radio. Expect slower page loads with Bluetooth on; 
 3. Verify broker address and port
 4. Check username/password if your broker requires auth
 5. Watch broker logs: `mosquitto_sub -h broker -t "#" -v`
+
+Today the device publishes only `availability`, `alerts` and `alerts/armed` ([MQTT](../user-guide/mqtt.md)).
+
+---
+
+## The Motor Driver Moves Briefly at Power-On
+
+Until the firmware starts, the ESP32's GPIO25, 26 and 27 float, and a floating enable pin can switch the IBT-2 on. Fit the 10 kΩ pull-down from the enable pin to GND ([Wiring](../hardware/wiring.md#the-en-pull-down)). The firmware drives all three pins low as the first thing `setup()` does, but that is roughly 300 ms after reset.
 
 ---
 

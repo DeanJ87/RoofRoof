@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Device message catalogue (specs/023-i18n FR-008, research D4).
 
-Finds the user-facing text the firmware builds (settings errors, safety reasons,
-alert texts, API errors), turns each into a template with {named} placeholders,
-and keeps the `device.*` keys of web/src/i18n/en.json in step. The UI recognises
-device text against these templates (web/src/i18n/deviceMessage.ts) - the key is
-the message's stable ID - and shows the translation (research.md D4).
+Finds the user-facing text the firmware builds (settings errors, alert texts,
+API errors, backup and update refusals), turns each into a template with
+{named} placeholders, and keeps the `device.*` keys of web/src/i18n/en.json in
+step. The UI recognises device text against these templates
+(web/src/i18n/deviceMessage.ts) - the key is the message's stable ID - and
+shows the translation (research.md D4).
 
   python3 tools/i18n/gen_device_catalog.py          update en.json
   python3 tools/i18n/gen_device_catalog.py --check  fail if it is out of date
@@ -27,31 +28,23 @@ CONTEXT = ROOT / "web/src/i18n/en.context.json"
 SOURCES = {
     "lib/ConfigModel/src/ConfigJsonIn.cpp": ("settings", {"setError": [1]}),
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
-    "lib/AlpacaLogic/src/SafetyEvaluator.cpp": ("safety", {"addReason": [2], "addReasonf": "fmt2"}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
-    "lib/AlertLogic/src/AlertBattery.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerApi.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
-    "src/WebServerDisplay.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
     # Settings backup and restore (spec 033): refusals and their reasons.
     "src/WebServerBackup.cpp": ("api", {"createErrorJson": [0]}),
     "lib/ConfigBackup/src/BackupRules.cpp": ("backup", {}),
     "tools/demo-core/emulated_device_backup.cpp": ("api", {"errorJson": [0]}),
-    "src/OtaUpdater.cpp": ("ota", {"errorCb": [0]}),
     # Why an update file is refused (spec 027 FR-020).
     "lib/FirmwareImage/src/FirmwareImage.cpp": ("ota", {}),
     "tools/demo-core/emulated_device.h": ("api", {"errorJson": [0]}),
     "tools/demo-core/emulated_device.cpp": ("api", {"errorJson": [0]}),
     "tools/demo-core/emulated_device_documents.cpp": ("api", {"errorJson": [0]}),
-    "lib/LanguageLogic/src/LanguageLogic.cpp": ("language", {}),
-    "src/LanguagePack.cpp": ("language", {"fail": [0], "sendError": [2]}),
-    "lib/SkyLogic/src/CloudDetection.cpp": ("sky", {}),
-    "lib/SettingsDeps/src/SettingsDeps.cpp": ("safety", {"push_back": [0]}),
-    "lib/SkyLogic/src/SkyQuality.cpp": ("sky", {}),
+    "lib/SettingsDeps/src/SettingsDeps.cpp": ("settings", {"push_back": [0]}),
     # Test alerts ("Test: {title}", "This is how a ... alert arrives.") and
     # what each channel's delivery reports in the recent alerts.
     "lib/DeviceCore/src/DeviceAlerts.cpp": ("alert", {}),
@@ -66,22 +59,16 @@ ASSIGN = {
     "src/WebServerAlpaca.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/WebServerStatus.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "src/WebServerUpdates.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
-    "src/OtaUpdater.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?!=)"),
     "tools/demo-core/emulated_device.h": re.compile(r"\bDEMO_DETAIL\s*=\s*"),
     "tools/demo-core/emulated_device.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "tools/demo-core/emulated_device_documents.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
-    "src/LanguagePack.cpp": re.compile(r"(?<![\w.>])error\s*=\s*(?=\")"),
-    "lib/LanguageLogic/src/LanguageLogic.cpp": re.compile(r"(?<![\w.>])(?:error\s*=|return)\s*(?=\")"),
-    # The cloud condition and Bortle descriptions (/api/sensors).
-    "lib/SkyLogic/src/CloudDetection.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
-    "lib/SkyLogic/src/SkyQuality.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/FirmwareImage/src/FirmwareImage.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/ConfigBackup/src/BackupRules.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
 }
 # Text in tables of literals, per file; each group is one device text. The
-# test-alert table holds every event's title and its "Rain starts" label.
+# test-alert table holds every event's title and its label.
 TABLES = {
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r'\{"\w+",\s*Alerts::AlertType::\w+,\s*"([^"]+)",\s*"([^"]+)"'),
 }

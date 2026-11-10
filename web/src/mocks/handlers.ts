@@ -9,7 +9,7 @@ const mockFacts: DepFacts = {
   mqttConnected: mockStatus.mqtt?.connected ?? false,
   clockSet: true,
   alpacaDevices: 0, // the Dome arrives in spec 006
-}
+};
 
 // Demo-only: alerts switched on/off.
 const mockAlertsArmed: { value: boolean; reason: AlertScheduleReason; since: string | null } = { value: true, reason: 'none', since: null };
@@ -55,9 +55,7 @@ export const handlers = [
   // ASCOM Alpaca — management + device state
   http.get('/management/v1/configureddevices', () => HttpResponse.json(alpacaEnvelope(mockAlpacaDevices))),
   http.get('/management/v1/description', () =>
-    HttpResponse.json(
-      alpacaEnvelope({ ServerName: 'RoofRoof Demo', Manufacturer: 'RoofRoof', ManufacturerVersion: 'demo', Location: '' }),
-    ),
+    HttpResponse.json(alpacaEnvelope({ ServerName: 'RoofRoof Demo', Manufacturer: 'RoofRoof', ManufacturerVersion: 'demo', Location: '' })),
   ),
   // REST — alerts
   http.get('/api/alerts/recent', () => HttpResponse.json({ enabled: true, armed: mockAlertsArmed.value, alerts: mockRecentAlerts })),

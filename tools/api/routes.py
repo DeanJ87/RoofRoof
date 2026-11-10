@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Every HTTP route the device serves is declared, with its auth, and documented.
 
-Reads the route registrations in src/WebServer*.cpp and src/LanguagePack.cpp (``server.on(...)`` and
+Reads the route registrations in src/WebServer*.cpp (``server.on(...)`` and
 ``new AsyncCallbackJsonWebHandler(...)``), works out whether each one calls
 ``requireAuth`` (directly, or in a handler it calls), and compares that with
 tools/api/routes.json. Fails when a route is missing from the registry, the
@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 # Files that register routes: the web server's sources, and the modules it hands the server to.
-SOURCES = [*sorted((ROOT / "src").glob("WebServer*.cpp")), ROOT / "src" / "LanguagePack.cpp"]
+SOURCES = sorted((ROOT / "src").glob("WebServer*.cpp"))
 REGISTRY = ROOT / "tools" / "api" / "routes.json"
 REST_DOCS = ROOT / "docs" / "api" / "rest.md"
 
@@ -58,9 +58,9 @@ def matching_close(text, open_index, open_char="(", close_char=")"):
 
 
 def definitions(text):
-    """Bodies of WebServer/LanguagePack member functions and local `auto name = [...]` lambdas."""
+    """Bodies of WebServer member functions and local `auto name = [...]` lambdas."""
     bodies = {}
-    for m in re.finditer(r"(?:WebServer|LanguagePack)::(\w+)\([^;{]*\)\s*(?:const\s*)?\{", text):
+    for m in re.finditer(r"WebServer::(\w+)\([^;{]*\)\s*(?:const\s*)?\{", text):
         start = m.end() - 1
         bodies[m.group(1)] = text[start : matching_close(text, start, "{", "}") + 1]
     for m in re.finditer(r"auto\s+(\w+)\s*=\s*\[", text):

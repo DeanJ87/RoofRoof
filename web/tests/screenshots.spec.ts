@@ -63,15 +63,15 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('dashboard', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden');
+  await page.goto('./?panel=hidden');
   await waitForDemoApp(page);
-  await expect(page.getByRole('heading', { name: 'Sky Quality' })).toBeVisible();
-  await expect(page.locator('[data-inventory="freshness"]')).toContainText('Live');
+  await expect(page.getByRole('heading', { name: 'Device & Network' })).toBeVisible();
+  await expect(page.locator('[data-inventory="alerts-state"]')).toContainText('Sending');
   await capturePage(page, 'dashboard');
 });
 
 test('status card', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden');
+  await page.goto('./?panel=hidden');
   await waitForDemoApp(page);
   const card = page.locator('[data-inventory="status-card"]');
   await expect(card.locator('[data-inventory="alerts-state"]')).toContainText('Sending');
@@ -80,23 +80,22 @@ test('status card', async ({ page }) => {
 });
 
 test('system', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden#/system');
+  await page.goto('./?panel=hidden#/system');
   await waitForDemoApp(page);
   await expect(page.getByRole('heading', { name: 'Firmware' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sensors' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Runtime Status' })).toBeVisible();
   await capturePage(page, 'system');
 });
 
 test('updates', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden#/updates');
+  await page.goto('./?panel=hidden#/updates');
   await waitForDemoApp(page);
-  await expect(page.getByRole('heading', { name: 'Firmware' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Manual upload' })).toBeVisible();
   await capturePage(page, 'updates');
 });
 
 test('alpaca', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden#/alpaca');
+  await page.goto('./?panel=hidden#/alpaca');
   await waitForDemoApp(page);
   await expect(page.getByRole('heading', { name: 'ASCOM Alpaca' })).toBeVisible();
   await capturePage(page, 'alpaca');
@@ -105,13 +104,11 @@ test('alpaca', async ({ page }) => {
 for (const [id, label] of [
   ['device', 'Device'],
   ['network', 'Network'],
-  ['time', 'Time & Location'],
-  ['sensors', 'Sensors'],
-  ['safety', 'Safety'],
+  ['time', 'Time'],
   ['alerts', 'Alerts'],
 ] as const) {
   test(`settings ${label}`, async ({ page }) => {
-    await page.goto(`./?scenario=night&panel=hidden#/settings?tab=${id}`);
+    await page.goto(`./?panel=hidden#/settings?tab=${id}`);
     await waitForDemoApp(page);
     const tab = page.getByRole('tab', { name: label });
     await tab.click();
@@ -121,7 +118,7 @@ for (const [id, label] of [
 }
 
 test('alerts flyout', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden');
+  await page.goto('./?panel=hidden');
   await waitForDemoApp(page);
   await waitForLayout(page);
   await page.getByRole('button', { name: /^Alerts/ }).click();
@@ -132,14 +129,14 @@ test('alerts flyout', async ({ page }) => {
 });
 
 test('wifi setup', async ({ page }) => {
-  await page.goto('./?scenario=night&panel=hidden#/wifi');
+  await page.goto('./?panel=hidden#/wifi');
   await waitForDemoApp(page);
   await expect(page.getByRole('heading', { name: 'WiFi setup' })).toBeVisible();
   await capturePage(page, 'wifi-setup');
 });
 
 test('demo panel', async ({ page }) => {
-  await page.goto('./?scenario=night');
+  await page.goto('./');
   await waitForDemoApp(page);
   await waitForLayout(page);
   const skip = page.getByRole('button', { name: /^Skip/ });

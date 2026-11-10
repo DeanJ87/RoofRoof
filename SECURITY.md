@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-SQMeter is currently in alpha. Only the latest release is supported.
+RoofRoof is in an early platform stage (spec 001). Only the latest release is supported.
 
 | Version | Supported |
 |---------|-----------|
@@ -11,15 +11,16 @@ SQMeter is currently in alpha. Only the latest release is supported.
 
 ## Scope
 
-SQMeter is a local-network device. It is designed to run on your home or observatory network and is not intended to be directly exposed to the public internet. There is currently no authentication on the web interface or REST API — treat network access as equivalent to physical access.
+RoofRoof is a local-network device. It is designed to run on your home or observatory network and is not intended to be directly exposed to the public internet. By default there is no authentication on the web interface or REST API; **Password-protect changes** (HTTP Basic Auth) can be turned on for everything that changes something, and reads stay open. Treat network access as equivalent to physical access.
 
 Known non-issues (by design):
 
-- No authentication on the web UI or REST API
-- No HTTPS (local network only)
-- Firmware OTA update endpoint is unauthenticated
+- Authentication is off by default, and when on it protects changes only; reads are open
+- No HTTPS (local network only), so a password travels in plain text on the LAN
+- The firmware and web UI upload endpoints are unauthenticated until the password is turned on
+- ASCOM Alpaca has no authentication in its specification
 
-If you intend to expose SQMeter to untrusted networks, place it behind a reverse proxy with authentication.
+If you intend to expose RoofRoof to untrusted networks, place it behind a reverse proxy with authentication, or a VPN. Never rely on the network or this firmware's web interface as the only thing standing between a person and a moving roof: keep physical safety interlocks independent. See [docs/user-guide/security.md](docs/user-guide/security.md).
 
 ## Reporting a vulnerability
 

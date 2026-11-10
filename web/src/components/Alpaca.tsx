@@ -77,6 +77,15 @@ const ImagingAppState: FunctionalComponent<{
   );
 };
 
+const OffNote: FunctionalComponent<{ show: boolean }> = ({ show }) =>
+  show ? (
+    <Note tone="warn" action={{ label: t('alpaca.turnOn'), onClick: () => route('/settings?tab=network') }}>
+      {t('alpaca.alpacaIsOffSoNo')}
+    </Note>
+  ) : null;
+
+const NoDevices: FunctionalComponent<{ show: boolean }> = ({ show }) => (show ? <Note>{t('alpaca.noAlpacaDeviceYet')}</Note> : null);
+
 const Alpaca: FunctionalComponent = () => {
   const { config, devices, deviceStates, lastUpdated } = useAlpacaDevices(POLL_INTERVAL_MS);
   const clients = useAlpacaClients(POLL_INTERVAL_MS);
@@ -96,11 +105,7 @@ const Alpaca: FunctionalComponent = () => {
         actions={<Pill tone={enabled ? 'pill-green' : 'pill-dim'}>{enabled ? t('alpaca.enabled') : t('alpaca.disabled')}</Pill>}
       >
         <div class="card-body">
-          {!enabled && (
-            <Note tone="warn" action={{ label: t('alpaca.turnOn'), onClick: () => route('/settings?tab=network') }}>
-              {t('alpaca.alpacaIsOffSoNo')}
-            </Note>
-          )}
+          <OffNote show={!enabled} />
           <div>
             <ReadingRow label={t('alpaca.host')} value={host || '--'} />
             <ReadingRow label={t('alpaca.port')} value={port} />
@@ -117,7 +122,7 @@ const Alpaca: FunctionalComponent = () => {
         </div>
       </Card>
 
-      {enabled && devices?.length === 0 && <Note>{t('alpaca.noAlpacaDeviceYet')}</Note>}
+      <NoDevices show={enabled && devices?.length === 0} />
 
       {devices?.map((device) => {
         const base = deviceBasePath(device);
@@ -144,12 +149,7 @@ const Alpaca: FunctionalComponent = () => {
                 {state && (
                   <div>
                     {state.map((item) => (
-                      <ReadingRow
-                        key={item.Name}
-                        label={item.Name}
-                        value={formatStateValue(item.Value)}
-                        
-                      />
+                      <ReadingRow key={item.Name} label={item.Name} value={formatStateValue(item.Value)} />
                     ))}
                   </div>
                 )}

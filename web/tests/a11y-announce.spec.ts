@@ -1,8 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Live readings don't flood screen readers (spec 022 SC-003, FR-009): the
-// polite live region stays silent while values update every second, and a
-// verdict change is announced exactly once.
+// Live status don't flood screen readers (spec 022 SC-003, FR-009): the
+// polite live region stays silent while values update every second.
 
 const recordAnnouncements = (page: Page) =>
   page.evaluate(() => {
@@ -17,7 +16,7 @@ const recordAnnouncements = (page: Page) =>
 
 const heard = (page: Page) => page.evaluate(() => (window as unknown as { heard: string[] }).heard);
 
-test('the dashboard is silent while readings update, and announces a verdict change once', async ({ page }) => {
+test('the dashboard is silent while the status updates', async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto('./#/');
   await expect(page.locator('main')).toBeVisible();
@@ -27,13 +26,4 @@ test('the dashboard is silent while readings update, and announces a verdict cha
   // Readings tick every second; nothing should be said.
   await page.waitForTimeout(8000);
   expect(await heard(page)).toEqual([]);
-
-  await page.getByRole('button', { name: /Demo/ }).click();
-  await page.getByRole('button', { name: 'Rain', exact: true }).click();
-  await expect(page.locator('.reason-list').getByText('Rain detected')).toBeVisible({ timeout: 15_000 });
-  await page.waitForTimeout(6000);
-
-  const verdicts = (await heard(page)).filter((text) => text.startsWith('Observatory'));
-  expect(verdicts).toHaveLength(1);
-  expect(verdicts[0]).toMatch(/^Observatory unsafe/);
 });

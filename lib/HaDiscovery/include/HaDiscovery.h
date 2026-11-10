@@ -31,6 +31,8 @@ namespace SQM
         // Calls `publish(topic, payload)` for every entity: its config when its
         // group is enabled, an empty payload (removes the entity) when not.
         void forEach(
-            const Device &device, const Groups &groups, const std::function<void(const std::string &topic, const std::string &payload)> &publish);
+            const Device &device,
+            const Groups &groups,
+            const std::function<void(const std::string &topic, const std::string &payload)> &publish);
     } // namespace HaDiscovery
 } // namespace SQM

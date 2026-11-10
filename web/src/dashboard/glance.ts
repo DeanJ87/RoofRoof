@@ -167,9 +167,14 @@ const clockItem = ({ status }: GlanceInput): GlanceItem | null =>
 
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
-  const items = [freshness(input), alertsItem(input), sendModeItem(input), channelsItem(input), ...imagingAppItems(input), clockItem(input)].filter(
-    (entry): entry is GlanceItem => Boolean(entry),
-  );
+  const items = [
+    freshness(input),
+    alertsItem(input),
+    sendModeItem(input),
+    channelsItem(input),
+    ...imagingAppItems(input),
+    clockItem(input),
+  ].filter((entry): entry is GlanceItem => Boolean(entry));
   const rank = { problem: 0, note: 1, ok: 2, idle: 3 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);
 };

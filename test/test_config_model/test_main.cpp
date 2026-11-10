@@ -88,7 +88,7 @@ void test_constraints_rejected_with_messages()
         const char *message;
     } cases[] = {
         {R"({"mqtt":{"enabled":true,"broker":"","topic":"roofroof"}})", "MQTT broker and topic are required when MQTT is enabled"}, // D-33
-        {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},  // D-34
+        {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},   // D-34
     };
     for (const auto &c : cases)
     {
@@ -160,8 +160,7 @@ void test_send_mode_is_validated_and_stored_with_the_client_part()
 
 void test_client_silence_boundaries()
 {
-    TEST_ASSERT_EQUAL_STRING(
-        "", rejectReason("{\"alerts\":{\"clientSilentSeconds\":30}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"clientSilentSeconds\":30}}").c_str());
     TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"clientSilentSeconds\":3600}}").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "Alerts: silence time must be between 30 and 3600 seconds", rejectReason("{\"alerts\":{\"clientSilentSeconds\":29}}").c_str());

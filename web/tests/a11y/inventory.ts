@@ -5,7 +5,7 @@
 // Add new routes and dialogs here: tests/a11y.spec.ts checks each entry in
 // each of its states, at both viewports, against tests/a11y/baseline.json.
 
-export type A11yState = 'default' | 'dialog' | 'demo-panel' | 'error' | 'unsafe';
+export type A11yState = 'default' | 'dialog' | 'demo-panel' | 'error';
 
 export interface InventoryEntry {
   id: string; // stable key used in the baseline
@@ -27,14 +27,12 @@ const settingsTab = (tab: string, component: string, extra: A11yState[] = []): I
 });
 
 export const INVENTORY: InventoryEntry[] = [
-  { id: 'dashboard', route: '#/', component: 'Dashboard', states: ['default', 'dialog', 'demo-panel', 'unsafe'] },
-  { id: 'alpaca', route: '#/alpaca', component: 'Alpaca', states: ['default', 'unsafe'] },
+  { id: 'dashboard', route: '#/', component: 'Dashboard', states: ['default', 'dialog', 'demo-panel'] },
+  { id: 'alpaca', route: '#/alpaca', component: 'Alpaca', states: ['default'] },
   { id: 'system', route: '#/system', component: 'System', states: ['default'] },
   settingsTab('device', 'settings/DeviceTab', ['error']),
   settingsTab('network', 'settings/NetworkTab'),
   settingsTab('time', 'settings/TimeTab'),
-  settingsTab('sensors', 'settings/SensorsTab'),
-  settingsTab('safety', 'settings/SafetyTab'),
   settingsTab('alerts', 'settings/AlertsTab'),
   { id: 'updates', route: '#/updates', component: 'Updates', states: ['default'] },
   { id: 'wifi', route: '#/wifi', component: 'WifiSetup (captive portal)', states: ['default'] },

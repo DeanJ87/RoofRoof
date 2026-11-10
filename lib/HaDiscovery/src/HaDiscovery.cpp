@@ -76,7 +76,9 @@ namespace SQM
         } // namespace
 
         void forEach(
-            const Device &device, const Groups &groups, const std::function<void(const std::string &topic, const std::string &payload)> &publish)
+            const Device &device,
+            const Groups &groups,
+            const std::function<void(const std::string &topic, const std::string &payload)> &publish)
         {
             for (const Entity &entity : ENTITIES)
             {

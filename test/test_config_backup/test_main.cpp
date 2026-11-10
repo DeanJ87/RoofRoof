@@ -324,11 +324,13 @@ void test_restart_rules_match_the_shared_cases()
 // SQMeter's backups (another product, key "sqmeterBackup") are not RoofRoof's.
 void test_an_sqmeter_backup_is_refused()
 {
-    const std::string sqmeter = edited(backupOf(configured()), [](JsonObject f)
-    {
-        f["sqmeterBackup"] = f["roofroofBackup"];
-        f.remove("roofroofBackup");
-    });
+    const std::string sqmeter = edited(
+        backupOf(configured()),
+        [](JsonObject f)
+        {
+            f["sqmeterBackup"] = f["roofroofBackup"];
+            f.remove("roofroofBackup");
+        });
     Backup::Parsed parsed;
     TEST_ASSERT_EQUAL(Backup::Error::NotBackup, Backup::parseBackup(sqmeter, parsed));
     TEST_ASSERT_EQUAL_STRING("This isn't a RoofRoof backup file", Backup::errorText(Backup::Error::NotBackup));

@@ -163,7 +163,7 @@ namespace SQM
             // Imaging app: notified value = "lost"; disconnects wait out the
             // cooldown like any other change.
             Tracker clients[MAX_CLIENT_DEVICES];
-            std::string clientKeys[MAX_CLIENT_DEVICES]; // for waits()
+            std::string clientKeys[MAX_CLIENT_DEVICES];  // for waits()
             bool lostAnnounced[MAX_CLIENT_DEVICES] = {}; // a "stopped checking" awaiting its "is back"
             bool disconnectPending[MAX_CLIENT_DEVICES] = {};
             bool disconnectSent = false;

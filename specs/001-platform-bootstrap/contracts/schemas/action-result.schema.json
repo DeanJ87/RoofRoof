@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Action result",
-  "description": "What every action endpoint answers (spec 013 FR-009): on a 2xx status, success true plus details; on a 4xx/5xx status, an error message (an action may add its own details, e.g. the RG-15 test's raw response). Hand-written, not generated: tools/contract-check.py checks the device's actions against it.",
+  "description": "What every action endpoint answers on a 2xx status, success true plus details; on a 4xx/5xx status, an error message. Hand-written, not generated: tools/contract-check.py checks the device's actions against it.",
   "oneOf": [
     {
       "type": "object",

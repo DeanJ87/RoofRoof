@@ -328,7 +328,8 @@ namespace SQM
     bool WebServer::requestAuthorised(AsyncWebServerRequest *request) const
     {
         const Config &cfg = getConfigCallback();
-        return !cfg.auth.enabled || cfg.auth.password.empty() || request->authenticate(cfg.auth.username.c_str(), cfg.auth.password.c_str());
+        return !cfg.auth.enabled || cfg.auth.password.empty() ||
+               request->authenticate(cfg.auth.username.c_str(), cfg.auth.password.c_str());
     }
 
     void WebServer::handleFsUploadDone(AsyncWebServerRequest *request)

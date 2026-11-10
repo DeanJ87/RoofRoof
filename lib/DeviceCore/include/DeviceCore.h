@@ -59,17 +59,22 @@ namespace SQM
         // the client state as alert inputs, and the documents that report it.
         // `devices` is the Alpaca device list (Alpaca::Backend::devices).
         void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::MAX_DEVICES]);
+        // What the imaging-app watch saw at `nowMs`, for each of `devices`.
+        struct ClientSnapshot
+        {
+            const Alpaca::ClientWatch &watch;
+            const std::vector<Alpaca::DeviceInfo> &devices;
+            uint32_t nowMs;
+        };
         // `localTime` is "HH:MM" when the clock is set (else anything else).
-        void addClientInputs(
-            Alerts::AlertInputs &inputs,
+        void addClientInputs(Alerts::AlertInputs &inputs, const ClientSnapshot &clients, const Config &cfg, const std::string &localTime);
+        // /api/status "alpaca": {enabled, clients: {<typeKey>: {...}}}.
+        void writeClientWatch(
+            JsonObject alpaca,
             const Alpaca::ClientWatch &watch,
             const std::vector<Alpaca::DeviceInfo> &devices,
             const Config &cfg,
-            uint32_t nowMs,
-            const std::string &localTime);
-        // /api/status "alpaca": {enabled, clients: {<typeKey>: {...}}}.
-        void writeClientWatch(
-            JsonObject alpaca, const Alpaca::ClientWatch &watch, const std::vector<Alpaca::DeviceInfo> &devices, const Config &cfg, uint32_t nowMs);
+            uint32_t nowMs);
 
         // When alerts go out: the setting, and the /api/alerts/armed document
         // (also /api/status "alerts").

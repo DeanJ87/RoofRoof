@@ -1,6 +1,6 @@
 # Contributing
 
-See [CONTRIBUTING.md](https://github.com/DeanJ87/SQMeter/blob/main/CONTRIBUTING.md) in the repo root for the full guide.
+See [CONTRIBUTING.md](https://github.com/DeanJ87/RoofRoof/blob/main/CONTRIBUTING.md) in the repo root for the full guide.
 
 ---
 
@@ -25,18 +25,17 @@ Decision logic lives in `lib/` with a native test suite under `test/`, so it can
 
 | Library | What |
 |---|---|
-| `AlpacaLogic` | Alpaca API router, safety verdict, ObservingConditions mapping |
-| `AlertLogic` | Alert engine, delivery priorities, sun position |
-| `SkyLogic` | Lux → SQM, NELM, Bortle; cloud model; dew point |
-| `RainLogic` | RG-15 line parsing and the rain latch |
-| `SafetyHistoryLogic` | The safety history kept across restarts |
-| `WindLogic`, `BleLogic` | Wind statistics; Bluetooth payloads |
-| `Readings` | The readings document (REST, WebSocket, MQTT) and Home Assistant discovery |
-| `ReleaseLogic` | GitHub release list for updates |
+| `DriverLogic` | The H-bridge's output levels: never RPWM and LPWM together, `Off` means EN low and both PWM at 0 |
+| `AlpacaLogic` | Alpaca API router and discovery (an empty device list for now) |
+| `AlertLogic` | Alert engine (imaging-app events), delivery priorities, the send schedule |
 | `ConfigModel` | Settings: defaults, JSON, validation |
-| `DeviceCore` | Per-reading decisions and documents: readings, safety, darkness, alerts, Alpaca snapshot |
-| `SensorTypes` | The sensor reading structs |
-| `CaptiveDns` | DNS for the setup hotspot |
+| `ConfigBackup` | The settings backup file, its encryption and the restore preview |
+| `DeviceCore` | Documents and decisions: status, alerts, Alpaca clients |
+| `HaDiscovery` | Home Assistant discovery documents |
+| `SettingsDeps` | Which settings depend on others |
+| `ConnectionBudget`, `NetAddress` | TCP connection limits; address parsing and the IPv6 local-network rule |
+| `FirmwareImage` | The firmware marker check for uploads |
+| `CaptiveDns` | DNS and the sign-in checks for the setup hotspot |
 
 **The demo's device core.** The live demo runs the code in `lib/` compiled to WebAssembly (`web/src/demo/core/`, committed). After changing anything in `lib/` or `tools/demo-core/`, rebuild it:
 
@@ -62,10 +61,10 @@ cd web
 ESP32_IP=<device-ip> npm run dev
 ```
 
-**Docs preview:**
+**Docs preview** (CI builds the docs on every pull request and uploads `site/` as an artifact; there is no public docs site):
 ```bash
-pip install mkdocs-material
-mkdocs serve
+python3 -m venv .venv-docs && .venv-docs/bin/pip install -r docs/requirements.txt
+.venv-docs/bin/mkdocs serve
 ```
 
 Open a PR from a branch — one feature or fix per PR. Keep commit messages short and imperative.

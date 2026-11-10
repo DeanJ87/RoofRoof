@@ -16,31 +16,7 @@
       "type": "number"
     },
     "Value": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "DeviceName": {
-            "type": "string"
-          },
-          "DeviceNumber": {
-            "type": "number"
-          },
-          "DeviceType": {
-            "type": "string"
-          },
-          "UniqueID": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "DeviceName",
-          "DeviceNumber",
-          "DeviceType",
-          "UniqueID"
-        ],
-        "additionalProperties": false
-      }
+      "type": "array"
     }
   },
   "required": [
