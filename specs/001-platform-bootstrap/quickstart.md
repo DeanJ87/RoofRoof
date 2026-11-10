@@ -62,6 +62,6 @@ On the device:
 - Set up ntfy and send a test → delivered, with the result shown per channel.
 - Set up MQTT → `roofroof/availability` reads `online`, and Home Assistant shows the device.
 - Back up, erase, restore → every setting comes back.
-- Upload an SQMeter `firmware.bin` → refused with "Not RoofRoof firmware.", and nothing is written.
+- Upload an SQMeter `firmware.bin` → refused with "Not RoofRoof firmware." before the boot partition is switched; the running firmware is untouched.
 - In an Alpaca client (or `curl /management/v1/configureddevices`) → `[]`, with Manufacturer
   "RoofRoof".

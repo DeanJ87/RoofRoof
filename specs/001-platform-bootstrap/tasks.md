@@ -179,3 +179,7 @@ with the local check green (plan, Phases): `pio run -e esp32dev`, `pio test -e n
 
 - [x] T061 Reconcile "refused before anything is written" with the upload path: `src/WebServerUpdates.cpp` streams the whole image into the inactive OTA slot and checks the marker in `firmwareUploadEnd()`, refusing only before the boot partition is switched (the marker can sit anywhere in the image). Either check before writing, or have the owner amend US4/AC2, the Edge Cases line and contracts/firmware-marker.md to "refused before the boot partition is switched" and note that the inactive slot is overwritten, per US4/AC2 (contradicts)
 - [x] T062 Fix the broken sentence in the "A board that ran SQMeter starts as new" note in `docs/getting-started/flashing.md` (line 69 ends "not interchangeable either: X"): say what differs (the backup key and the encryption context), per spec Edge Cases / T058 (partial)
+
+## Phase 12: Convergence
+
+- [x] T063 Update `specs/001-platform-bootstrap/quickstart.md` §5 ("refused with "Not RoofRoof firmware.", and nothing is written") to the amended wording: refused before the boot partition is switched, with the running firmware untouched, per US4/AC2 (partial)
