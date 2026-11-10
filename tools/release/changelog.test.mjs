@@ -101,9 +101,12 @@ test('an empty banner comment falls back to the automatic choice', () => {
   assert.deepEqual(highlights('<!-- banner: -->\n\n### Added\n\n- **A**: b'), ['A']);
 });
 
-test('the real changelog has highlights for every released 0.3 version', () => {
+test('the real changelog has highlights for every released version', () => {
   const changelog = readFileSync(new URL('../../CHANGELOG.md', import.meta.url), 'utf8');
-  for (const version of ['0.3.0-beta.1', '0.3.1-beta.1', '0.3.2-beta.1']) {
+  const released = [...changelog.matchAll(/^## \[(\d+\.\d+\.\d+[^\]]*)\] - /gm)].map((m) => m[1]);
+  assert.ok(released.includes('0.0.0'), 'the import baseline section');
+  // 0.0.0 is the import from SQMeter, not a release: it has no highlights.
+  for (const version of released.filter((v) => v !== '0.0.0')) {
     const section = findSection(changelog, version);
     assert.ok(section.date, version);
     assert.equal(highlights(section.body).length, 3, version);
