@@ -115,7 +115,7 @@ The owner builds a release, opens Updates and uploads the firmware and the web U
 1. **Given** a valid image, **When** uploaded, **Then** it is flashed and the device restarts,
    on the first attempt or the page's one retry (SQMeter spec 012 FR-003, FR-003a).
 2. **Given** an image for another product or layout (e.g. SQMeter firmware), **When** uploaded,
-   **Then** it is refused before anything is written, with a message saying why.
+   **Then** it is refused before the boot partition is switched (the image goes to the inactive slot, so the running firmware is untouched), with a message saying why.
 3. **Given** the Updates page, **When** opened, **Then** it offers only file upload; there is no
    release check.
 
@@ -163,7 +163,7 @@ runs there (compiled from `lib/`), and nothing leaves the browser (SQMeter spec 
 - A board previously running SQMeter: its NVS settings are under another namespace and are
   ignored. The device starts as new; the docs say so.
 - An SQMeter image uploaded to RoofRoof, or the other way round: refused by the image marker
-  (product + layout + build) before writing.
+  (product + layout + build) before the boot partition is switched.
 - Alpaca enabled with no devices yet: management and discovery answer with an empty device list.
   Clients find the server but nothing to connect to until spec 006.
 - An HTTPS alert channel with low heap: the one-TLS-session rule is kept (constitution VI).
@@ -196,7 +196,7 @@ runs there (compiled from `lib/`), and nothing leaves the browser (SQMeter spec 
   with `Manufacturer` "RoofRoof" and no devices. `tools/alpaca-sim` builds from the same code.
 - **FR-009**: Firmware updates MUST be by file upload (Updates page) and USB, with SQMeter's
   stall handling and slot-switch retry. Images carry a marker of product (RoofRoof), layout and
-  build, and the device refuses a mismatch before writing.
+  build, and the device refuses a mismatch before switching the boot partition.
 - **FR-010**: The web UI MUST be SQMeter's stack and design system:
   - Preact, Vite, TypeScript strict and Zod;
   - `ui.tsx` and the settings controls, tokens, the DS rules and the A11Y rules;

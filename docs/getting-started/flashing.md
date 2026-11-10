@@ -66,9 +66,9 @@ The same command is in the package's `FLASH.txt`. Replace `PORT` with your seria
     RoofRoof keeps its settings under its own NVS namespace (`roofroof`), so the settings, WiFi
     credentials and alert state SQMeter left on the board are not read, and RoofRoof starts from the
     setup hotspot like a new device. They are not erased, so the board can go back to SQMeter. A
-    settings backup is not interchangeable either: X
-    derivation context, so a backup made by SQMeter is refused. An SQMeter firmware image is
-    refused by the image marker, and the other way round.
+    settings backup is not interchangeable either: RoofRoof's backups use their own file key
+    (`roofroofBackup`) and encryption derivation context, so a backup made by SQMeter is refused.
+    An SQMeter firmware image is refused by the image marker, and the other way round.
 
 !!! warning "Wire the EN pull-down first"
     Before the roof's motor driver is connected, fit the 10 kΩ pull-down on its enable pin ([Wiring](../hardware/wiring.md#the-en-pull-down)). Until the firmware starts, the driver's pins float.

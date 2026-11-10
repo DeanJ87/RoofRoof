@@ -174,3 +174,8 @@ with the local check green (plan, Phases): `pio run -e esp32dev`, `pio test -e n
 - [x] T058 State in the getting-started docs (`docs/getting-started/flashing.md` or `first-setup.md`) that a board that previously ran SQMeter starts as new: its settings live under another NVS namespace and are ignored per spec Edge Cases (missing)
 - [x] T059 Correct `docs/development/heritage.md`: the WiFi manager (`AP_SSID`) and `MQTTClient` (client id) are adapted, not "Unchanged (code)"; the web UI is Preact + Vite without Tailwind, and its rename is done, not "being renamed" per FR-015, Constitution XI (partial)
 - [x] T060 Rename the alert-pause NVS namespace in `src/WebServerShared.h` from `roofroof-alert` to `roofroof-alerts` (15 characters, within the NVS limit), or record why it differs, per T027 (contradicts)
+
+## Phase 11: Convergence
+
+- [x] T061 Reconcile "refused before anything is written" with the upload path: `src/WebServerUpdates.cpp` streams the whole image into the inactive OTA slot and checks the marker in `firmwareUploadEnd()`, refusing only before the boot partition is switched (the marker can sit anywhere in the image). Either check before writing, or have the owner amend US4/AC2, the Edge Cases line and contracts/firmware-marker.md to "refused before the boot partition is switched" and note that the inactive slot is overwritten, per US4/AC2 (contradicts)
+- [x] T062 Fix the broken sentence in the "A board that ran SQMeter starts as new" note in `docs/getting-started/flashing.md` (line 69 ends "not interchangeable either: X"): say what differs (the backup key and the encryption context), per spec Edge Cases / T058 (partial)

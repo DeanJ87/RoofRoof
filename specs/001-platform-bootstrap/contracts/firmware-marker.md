@@ -1,6 +1,8 @@
 # Contract: Firmware Image Marker
 
-Every firmware image carries one marker, so an upload can be checked before anything is written.
+Every firmware image carries one marker, so an upload can be checked before it is installed. The marker can sit anywhere in the
+image, so it is found while the image streams into the inactive OTA slot; a mismatch aborts the
+update before the boot partition is switched, leaving the running firmware untouched.
 It follows SQMeter spec 027 FR-020/021, with a product field added.
 
 ```
