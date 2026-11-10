@@ -15,7 +15,7 @@ import { statusDocument } from '../handlers';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const examplesDir = join(root, 'tools/api/examples');
-const schemaDir = join(root, 'specs/016-demo-device-emulation/contracts/schemas');
+const schemaDir = join(root, 'specs/001-platform-bootstrap/contracts/schemas');
 const ajv = new Ajv({ allErrors: true, strict: false });
 
 // example name -> contract schema it must satisfy

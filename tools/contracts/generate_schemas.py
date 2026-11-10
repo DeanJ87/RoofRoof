@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the device's JSON Schemas (specs/016-demo-device-emulation/contracts/schemas)
+"""Generate the device's JSON Schemas (specs/001-platform-bootstrap/contracts/schemas)
 from sample documents captured from a real SQMeter and from the demo's device core.
 
   python3 tools/contracts/generate_schemas.py <samples-dir>
@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "..", "specs", "016-demo-device-emulation", "contracts", "schemas")
+OUT = os.path.join(os.path.dirname(__file__), "..", "..", "specs", "001-platform-bootstrap", "contracts", "schemas")
 
 # document name -> schema file; status is built from device samples only (its
 # hardware sections are emulated by the demo and must match the device).

@@ -1,5 +1,5 @@
 {
-  "about": "Details of every /api/* route in routes.json, used by openapi.py to build docs/api/openapi.json (spec 028). Routes, methods and auth come from routes.json; response documents reference the contract schemas in specs/016-demo-device-emulation/contracts/schemas by file name. 'action' means the shared action-result schema.",
+  "about": "Details of every /api/* route in routes.json, used by openapi.py to build docs/api/openapi.json (spec 028). Routes, methods and auth come from routes.json; response documents reference the contract schemas in specs/001-platform-bootstrap/contracts/schemas by file name. 'action' means the shared action-result schema.",
   "tags": [
     { "name": "Readings", "description": "Sensor readings and device status." },
     { "name": "Safety", "description": "The SafetyMonitor verdict and its history." },

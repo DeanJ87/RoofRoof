@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Check a real SQMeter against the documented response formats - the same
-JSON Schemas the demo is tested against (specs/016-demo-device-emulation/
+JSON Schemas the demo is tested against (specs/001-platform-bootstrap/contracts/schemas/
 contracts/schemas). Standard library only.
 
   python3 tools/contract-check.py http://192.168.1.128 [user:password]
@@ -19,7 +19,7 @@ import base64
 import urllib.error
 import urllib.request
 
-SCHEMAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "specs", "016-demo-device-emulation", "contracts", "schemas")
+SCHEMAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "specs", "001-platform-bootstrap", "contracts", "schemas")
 
 ENDPOINTS = [
     ("/api/sensors", "readings"),

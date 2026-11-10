@@ -4,7 +4,7 @@
 Sources, in order of authority:
   tools/api/routes.json       every route, its methods and auth (checked against src/ by routes.py)
   tools/api/operations.json   summary, description, parameters, bodies and responses per operation
-  specs/016-demo-device-emulation/contracts/schemas/   the documents' JSON Schemas
+  specs/001-platform-bootstrap/contracts/schemas/   the documents' JSON Schemas
   tools/api/examples/         examples made by the demo (web/src/demo/__tests__/openapi-examples.test.ts)
 
 Output: docs/api/openapi.json (committed; the docs site and the demo's API explorer read it).
@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = ROOT / "tools" / "api" / "routes.json"
 OPERATIONS = ROOT / "tools" / "api" / "operations.json"
-SCHEMAS = ROOT / "specs" / "016-demo-device-emulation" / "contracts" / "schemas"
+SCHEMAS = ROOT / "specs" / "001-platform-bootstrap" / "contracts" / "schemas"
 EXAMPLES = ROOT / "tools" / "api" / "examples"
 OUTPUT = ROOT / "docs" / "api" / "openapi.json"
 VERSION_H = ROOT / "include" / "version.h"

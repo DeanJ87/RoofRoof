@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMAS = "specs/016-demo-device-emulation/contracts/schemas"
+SCHEMAS = "specs/001-platform-bootstrap/contracts/schemas"
 SCHEMA_NAMES = ["status", "readings", "safety", "alerts-armed"]
 CATALOGUE = "lib/SettingsDeps/catalogue.json"
 INVENTORY = "web/src/dashboard/inventory.json"

@@ -13,10 +13,10 @@ with the local check green (plan, Phases): `pio run -e esp32dev`, `pio test -e n
 
 ## Phase 1: Setup (import)
 
-- [ ] T001 Import SQMeter @ `877208b` with `git archive` into the repo root, excluding `specs/`, `release-notes/`, `site/` and ignored build output; keep RoofRoof's `.specify/memory/constitution.md`, `.specify/` scripts and `README.md`
-- [ ] T002 Move SQMeter spec 016's schemas to `specs/001-platform-bootstrap/contracts/schemas/` and repoint `tools/api/openapi.py`, `tools/contracts/generate_schemas.py`, `tools/dashboard/check.py`, `tools/contract-check.py` and `web/src/demo/__tests__/contracts.test.ts`
-- [ ] T003 Reset `CHANGELOG.md` to an "Unreleased" RoofRoof section (Vitest reads it for the demo version) and set `include/version.h` to `0.1.0-dev`
-- [ ] T004 Confirm the import builds unchanged: `pio run -e esp32dev`, `pio test -e native`, `cd web && npm ci && npm run typecheck && npm test`; commit "Import SQMeter 877208b"
+- [x] T001 Import SQMeter @ `877208b` with `git archive` into the repo root, excluding `specs/`, `release-notes/`, `site/` and ignored build output; keep RoofRoof's `.specify/memory/constitution.md`, `.specify/` scripts and `README.md`
+- [x] T002 Move SQMeter spec 016's schemas to `specs/001-platform-bootstrap/contracts/schemas/` and repoint `tools/api/openapi.py`, `tools/contracts/generate_schemas.py`, `tools/dashboard/check.py`, `tools/contract-check.py` and `web/src/demo/__tests__/contracts.test.ts`
+- [x] T003 Reset `CHANGELOG.md` to an "Unreleased" RoofRoof section (Vitest reads it for the demo version) and set `include/version.h` to `0.1.0+dev`
+- [x] T004 Confirm the import builds unchanged: `pio run -e esp32dev`, `pio test -e native`, `cd web && npm ci && npm run typecheck && npm test`; commit "Import SQMeter 877208b"
 
 ## Phase 2: Foundational (strip and rename)
 

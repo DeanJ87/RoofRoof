@@ -7,10 +7,10 @@ import { i18nDocument } from '../i18n';
 import { mockGithubReleases, mockWifiNetworks } from '../../mocks/data';
 
 // Every document the demo answers must match the device's contract
-// (specs/016-demo-device-emulation/contracts/schemas, generated from a real
+// (specs/001-platform-bootstrap/contracts/schemas, generated from a real
 // SQMeter). A field the device doesn't send, or a missing one, fails here.
 
-const files = import.meta.glob('../../../../specs/016-demo-device-emulation/contracts/schemas/*.schema.json', {
+const files = import.meta.glob('../../../../specs/001-platform-bootstrap/contracts/schemas/*.schema.json', {
   eager: true,
   import: 'default',
 });

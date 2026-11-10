@@ -114,7 +114,7 @@ Every phase is its own commit (or a few commits).
    - Backup AAD and key name, localStorage keys, fonts' family suffix, package name.
    - Brand assets (wordmark and roof icon, SQMeter tokens kept), mkdocs, overrides and templates.
    - The firmware marker product field and new magic (R6).
-   - Version `0.1.0-dev`.
+   - Version `0.1.0+dev`.
 7. **RoofRoof-only.**
    - `include/RoofPins.h`, `lib/DriverLogic` + `test_driver_logic`, `MotorDriver::holdOff()` first
      in `setup()` (R7).
