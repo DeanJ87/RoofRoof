@@ -1,19 +1,14 @@
 // Alpaca simulator: serves the firmware's Alpaca API (Alpaca::Router from
-// lib/AlpacaLogic) on a desktop machine with fixed, healthy sensor readings,
-// so ConformU can test the protocol in CI without an ESP32.
+// lib/AlpacaLogic) on a desktop machine, so the protocol can be tested without
+// an ESP32. Spec 001: discovery and management with no devices; spec 006 adds
+// the simulated Dome and runs ConformU against it in CI.
 //
-//   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [two|battery]     (default 11111)
-//
-// `two` simulates both sky sensors configured with the SQM-L authoritative
-// (spec 030): the sky descriptions name the sensor. `battery` turns on the
-// battery safety rule (spec 032) with a pack at 80%: IsSafe comes from the
-// firmware's safety evaluator.
+//   tools/alpaca-sim/build.sh && ./alpaca-sim [port]     (default 11111)
 //
 // Deliberately tiny: one request per connection, GET query strings and
 // application/x-www-form-urlencoded PUT bodies, nothing else.
 
 #include "AlpacaRouter.h"
-#include "SafetyEvaluator.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -33,52 +28,10 @@ namespace
     class SimBackend : public Backend
     {
     public:
-        SimBackend(bool twoSkySensors, bool batteryRule)
-            : twoSkySensors(twoSkySensors),
-              batteryRule(batteryRule)
-        {
-        }
         bool alpacaEnabled() const override { return true; }
-        bool isSafe() const override
-        {
-            if (!batteryRule)
-                return true;
-            SafetyInputs in;
-            in.hasEverHadGoodData = true;
-            in.secondsSinceLastGoodData = 2;
-            in.cloudCoverPercent = 12.0f;
-            in.batteryValid = true;
-            in.batteryPercent = 80.0f;
-            SafetyThresholds t;
-            t.batteryEnabled = true;
-            return evaluateSafety(in, t).isSafe;
-        }
-        ObservingConditionsSnapshot observingConditions() const override
-        {
-            ObservingConditionsSnapshot s;
-            const SourceState fresh{true, true, 2.0};
-            s.skyLight = s.irSky = s.environment = s.rain = s.wind = s.windVane = fresh;
-            s.cloudCoverPercent = 12.0f;
-            s.dewpointC = 4.5f;
-            s.humidityPercent = 68.0f;
-            s.pressureHPa = 1013.2f;
-            s.rainRateMmPerHour = 0.0f;
-            s.skyBrightnessLux = 0.0003f;
-            s.skyQualityMagArcsec2 = 21.4f;
-            s.skyTemperatureC = -24.5f;
-            s.temperatureC = 10.5f;
-            s.windDirectionDeg = 245.0f;
-            s.windGustMs = 4.1f;
-            s.windSpeedMs = 2.3f;
-            if (twoSkySensors)
-            {
-                s.skyRole = SQM::SkyRole::Sqml;
-                s.skyNamed = true;
-            }
-            return s;
-        }
-        std::string serverName() const override { return "SQMeter simulator"; }
-        std::string location() const override { return SQM::Alpaca::formatLocation(51.4779, -0.0015); }
+        std::vector<DeviceInfo> devices() const override { return {}; }
+        std::string serverName() const override { return "RoofRoof simulator"; }
+        std::string location() const override { return ""; }
         std::string timestampUtc() const override
         {
             const time_t now = time(nullptr);
@@ -88,10 +41,6 @@ namespace
             strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
             return buffer;
         }
-
-    private:
-        bool twoSkySensors;
-        bool batteryRule;
     };
 
     std::string urlDecode(const std::string &in)
@@ -226,9 +175,8 @@ int main(int argc, char **argv)
     std::printf("Alpaca simulator on http://127.0.0.1:%d\n", port);
     std::fflush(stdout);
 
-    const std::string mode = argc > 2 ? argv[2] : "";
-    SimBackend backend(mode == "two", mode == "battery");
-    Router router(backend, {"SQMeter (simulator)", "SQMeter", "sim", 0x0000AABBCCDDEEFFULL});
+    SimBackend backend;
+    Router router(backend, {"RoofRoof (simulator)", "RoofRoof", "sim", 0x0000AABBCCDDEEFFULL});
     for (;;)
     {
         const int client = accept(server, nullptr, nullptr);

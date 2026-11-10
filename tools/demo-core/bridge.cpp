@@ -1,12 +1,12 @@
 // The demo's device core, exported to JavaScript: EmulatedDevice
-// (emulated_device.h) holds what an SQMeter would hold and answers the same
-// requests with the same documents (specs/016-demo-device-emulation).
+// (emulated_device.h) holds what a RoofRoof would hold and answers the same
+// requests with the same documents (SQMeter spec 016).
 
 #include <emscripten/bind.h>
 
 #include "emulated_device.h"
 
-EMSCRIPTEN_BINDINGS(sqmeter_core)
+EMSCRIPTEN_BINDINGS(roofroof_core)
 {
     emscripten::class_<EmulatedDevice>("EmulatedDevice")
         .constructor<std::string>()
@@ -15,12 +15,9 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("loadConfig", &EmulatedDevice::loadConfig)
         .function("restart", &EmulatedDevice::restart)
         .function("tick", &EmulatedDevice::tick)
-        .function("readings", &EmulatedDevice::readings)
         .function("statusParts", &EmulatedDevice::statusParts)
-        .function("safety", &EmulatedDevice::safetyDocument)
         .function("effective", &EmulatedDevice::effective)
         .function("pending", &EmulatedDevice::pending)
-        .function("safetyHistory", &EmulatedDevice::safetyHistory)
         .function("recentAlerts", &EmulatedDevice::recentAlerts)
         .function("clearAlerts", &EmulatedDevice::clearAlerts)
         .function("isArmed", &EmulatedDevice::isArmed)
@@ -29,8 +26,6 @@ EMSCRIPTEN_BINDINGS(sqmeter_core)
         .function("testAlert", &EmulatedDevice::testAlert)
         .function("realTestAlert", &EmulatedDevice::realTestAlert)
         .function("deliveryRequests", &EmulatedDevice::deliveryRequests)
-        .function("calibrateDark", &EmulatedDevice::calibrateDark)
-        .function("displayRequest", &EmulatedDevice::displayRequest)
         .function("alpaca", &EmulatedDevice::alpaca)
         .function("backupRoute", &EmulatedDevice::backupRoute)
         .function("saveState", &EmulatedDevice::saveState)

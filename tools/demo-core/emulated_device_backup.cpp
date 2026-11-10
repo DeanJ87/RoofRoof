@@ -1,4 +1,4 @@
-// Settings backup and restore in the demo (specs/033-config-backup FR-014):
+// Settings backup and restore in the demo (SQMeter spec 033 FR-014):
 // the same lib/ConfigBackup code as the device, with random bytes from the
 // browser (crypto.getRandomValues) and the portable crypto.
 
@@ -29,8 +29,6 @@ Backup::DeviceInfo EmulatedDevice::backupDevice() const
     Backup::DeviceInfo device;
     device.firmware = firmwareVersion;
     device.board = "esp32";
-    device.bluetoothBuild = false; // the demo reports the standard build (Bluetooth unavailable)
-    device.pins = Backup::buildBoardPins();
     return device;
 }
 

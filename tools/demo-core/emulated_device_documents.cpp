@@ -4,32 +4,12 @@
 
 using namespace DemoCore;
 
-std::string EmulatedDevice::readings() const
-{
-    DynamicJsonDocument doc(Readings::DOC_CAPACITY + Readings::SAFETY_CAPACITY);
-    Readings::write(doc.to<JsonObject>(), Core::buildReadings(snapshot, cfg, nowMs, epoch));
-    Core::writeSafety(doc.createNestedObject("safety"), safety, cfg, nowMs);
-    return serialize(doc);
-}
-
 std::string EmulatedDevice::statusParts() const
 {
-    DynamicJsonDocument doc(5120); // +512 for the battery (spec 032)
+    DynamicJsonDocument doc(2048);
     doc["uptime"] = (nowMs - bootMs) / 1000;
-    Core::writeSky(doc.createNestedObject("sky"), Core::night(snapshot, cfg, epoch));
-    const Readings::Snapshot readings = Core::buildReadings(snapshot, cfg, nowMs, epoch);
-    Core::writeSensorHealth(doc.createNestedObject("sensors"), readings, cfg);
-    Core::writeSkySensorStatus(doc.as<JsonObject>(), snapshot, readings);
-    Core::writeBatteryStatus(doc.as<JsonObject>(), snapshot, readings);
-    Core::writeDiagnostics(doc.createNestedObject("diagnostics"), snapshot, cfg, nowMs);
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
-    Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, cfg, nowMs);
-    Core::DisplayStatus display;
-    display.detected = true;
-    display.on = displayOut.on;
-    display.page = displayOut.page;
-    display.nightMode = displayOut.nightMode;
-    Core::writeDisplayStatus(doc.as<JsonObject>(), cfg, display);
+    Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, devices(), cfg, nowMs);
     return serialize(doc);
 }
 
@@ -44,26 +24,7 @@ std::string EmulatedDevice::effective() const
 
 std::string EmulatedDevice::pending() const
 {
-    DynamicJsonDocument doc(2048);
-    JsonObject sky = doc.createNestedObject("skyAveraging");
-    const bool nightMode = snapshot.tsl.nightMode;
-    sky["nightMode"] = nightMode;
-    const uint32_t windowSeconds = feed.lightWindowSeconds();
-    const uint32_t lastStepMs = feed.lastLightStepMs();
-    sky["windowSeconds"] = windowSeconds;
-    uint32_t settlingMs = 0;
-    if (nightMode && lastStepMs != 0 && nowMs - lastStepMs < windowSeconds * 1000UL)
-        settlingMs = windowSeconds * 1000UL - (nowMs - lastStepMs);
-    sky["settlingSeconds"] = (settlingMs + 999) / 1000;
-
-    JsonObject rainClear = doc.createNestedObject("rainClear");
-    const bool rainingNow = snapshot.rg15.online && snapshot.rg15.isRaining;
-    const Rain::Latch &rainLatch = feed.rainLatch();
-    rainClear["latched"] = rainLatch.latched;
-    rainClear["rainingNow"] = rainingNow;
-    if (rainLatch.latched && !rainingNow && rainLatch.lastRainMs != 0)
-        rainClear["remainingSeconds"] = (Rain::clearRemainingMs(rainLatch, nowMs, cfg.rain.rainClearDelayMs) + 999) / 1000;
-
+    DynamicJsonDocument doc(1024);
     JsonArray alerts = doc.createNestedArray("alerts");
     if (cfg.alerts.enabled)
         for (const Alerts::Wait &w : engine.waits(uptimeSeconds(), Core::alertRules(cfg)))
@@ -73,45 +34,6 @@ std::string EmulatedDevice::pending() const
             item["kind"] = Alerts::waitKindName(w.kind);
             item["remainingSeconds"] = w.remainingSeconds;
         }
-    return serialize(doc);
-}
-
-std::string EmulatedDevice::safetyDocument() const
-{
-    DynamicJsonDocument doc(1536);
-    Core::writeSafety(doc.to<JsonObject>(), safety, cfg, nowMs);
-    return serialize(doc);
-}
-
-std::string EmulatedDevice::safetyHistory() const
-{
-    SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
-    const size_t n = SafetyHistory::copy(history, entries, SafetyHistory::CAPACITY);
-    SafetyHistory::backfillEpochs(entries, n, history.boot, static_cast<uint32_t>(epoch > 0 ? epoch : 0), uptimeSeconds());
-    static const char *const KIND[] = {"boot", "change", "alert", "armed"};
-    DynamicJsonDocument doc(256 + n * 160);
-    doc["boot"] = history.boot;
-    doc["uptime"] = uptimeSeconds();
-    JsonArray list = doc.createNestedArray("entries");
-    for (size_t i = n; i-- > 0;) // newest first
-    {
-        const SafetyHistory::Entry &e = entries[i];
-        JsonObject item = list.createNestedObject();
-        item["kind"] = KIND[static_cast<uint8_t>(e.kind) <= 3 ? static_cast<uint8_t>(e.kind) : 1];
-        item["boot"] = e.boot;
-        item["uptime"] = e.uptimeS;
-        if (e.epoch != 0)
-            item["timestamp"] = e.epoch;
-        if (e.kind == SafetyHistory::Kind::Boot)
-            item["resetReason"] = e.resetReason;
-        else
-            item["safe"] = static_cast<bool>(e.safe);
-        if (e.kind == SafetyHistory::Kind::Change)
-        {
-            item["held"] = static_cast<bool>(e.held);
-            item["reasonFlags"] = e.flags;
-        }
-    }
     return serialize(doc);
 }
 
@@ -180,7 +102,7 @@ std::string EmulatedDevice::deliveryRequests(uint32_t id, const std::string &cre
     if (wanted(0x01, "mqtt"))
     {
         JsonObject mqtt = out.createNestedObject("mqtt");
-        mqtt["topic"] = std::string(creds["mqtt"]["topic"] | "sqmeter") + "/alerts";
+        mqtt["topic"] = std::string(creds["mqtt"]["topic"] | "roofroof") + "/alerts";
         mqtt["payload"] = Delivery::alertJson(alert, device, found->epochSeconds);
     }
     if (wanted(0x02, "pushover"))
@@ -197,28 +119,12 @@ std::string EmulatedDevice::deliveryRequests(uint32_t id, const std::string &cre
 
 std::string EmulatedDevice::saveState() const
 {
-    DynamicJsonDocument doc(24576);
+    DynamicJsonDocument doc(8192);
     doc["config"] = serialized(cfg.toJson(false));
     const Alerts::ScheduleState &state = schedule.state();
     doc["armed"] = state.sending;
     doc["armedReason"] = static_cast<uint8_t>(state.reason);
     doc["armedSince"] = static_cast<double>(state.sinceEpoch);
-    JsonArray list = doc.createNestedArray("history");
-    SafetyHistory::Entry entries[SafetyHistory::CAPACITY];
-    const size_t n = SafetyHistory::copy(history, entries, SafetyHistory::CAPACITY);
-    for (size_t i = 0; i < n; ++i)
-    {
-        JsonArray e = list.createNestedArray();
-        e.add(entries[i].epoch);
-        e.add(entries[i].uptimeS);
-        e.add(entries[i].flags);
-        e.add(entries[i].boot);
-        e.add(static_cast<uint8_t>(entries[i].kind));
-        e.add(entries[i].safe);
-        e.add(entries[i].held);
-        e.add(entries[i].resetReason);
-    }
-    doc["boot"] = history.boot;
     return serialize(doc);
 }
 
@@ -234,21 +140,5 @@ bool EmulatedDevice::loadState(const std::string &json)
     schedule = Alerts::AlertSchedule{};
     schedule.restore(
         doc["armed"] | true, doc.containsKey("armedReason"), doc["armedReason"] | 0, static_cast<int64_t>(doc["armedSince"] | 0.0));
-    history = SafetyHistory::Log{};
-    history.magic = SafetyHistory::MAGIC;
-    for (JsonArrayConst e : doc["history"].as<JsonArrayConst>())
-    {
-        SafetyHistory::Entry entry{};
-        entry.epoch = e[0] | 0u;
-        entry.uptimeS = e[1] | 0u;
-        entry.flags = e[2] | 0u;
-        entry.boot = e[3] | 0;
-        entry.kind = static_cast<SafetyHistory::Kind>(e[4] | 0);
-        entry.safe = e[5] | 0;
-        entry.held = e[6] | 0;
-        entry.resetReason = e[7] | 0;
-        SafetyHistory::push(history, entry);
-    }
-    history.boot = doc["boot"] | 1;
     return true;
 }

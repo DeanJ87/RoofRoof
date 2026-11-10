@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the SQMeter device core (lib/ + tools/demo-core/bridge.cpp) to
-# WebAssembly for the demo: web/src/demo/core/sqm-core.mjs (+ .wasm).
+# Builds the RoofRoof device core (lib/ + tools/demo-core/bridge.cpp) to
+# WebAssembly for the demo: web/src/demo/core/rr-core.mjs (+ .wasm).
 # Needs Emscripten (see VERSION). The output is committed, so web
 # contributors don't need it; CI checks SOURCE_HASH is current.
 set -euo pipefail
@@ -17,21 +17,19 @@ if [ -z "$AJ" ]; then
 fi
 
 SOURCES=(tools/demo-core/bridge.cpp tools/demo-core/emulated_device.cpp tools/demo-core/emulated_device_documents.cpp
-  tools/demo-core/sensor_feed.cpp tools/demo-core/emulated_device_backup.cpp
-  lib/DeviceCore/src/*.cpp lib/ConfigModel/src/*.cpp lib/SkyLogic/src/*.cpp lib/RainLogic/src/*.cpp
-  lib/AlertLogic/src/*.cpp lib/AlpacaLogic/src/*.cpp lib/Readings/src/*.cpp lib/SafetyHistoryLogic/src/*.cpp
-  lib/BleLogic/src/*.cpp lib/SettingsDeps/src/*.cpp lib/LanguageLogic/src/*.cpp lib/NetAddress/src/*.cpp
-  lib/DisplayLogic/src/*.cpp lib/BatteryLogic/src/*.cpp lib/ConfigBackup/src/*.cpp)
+  tools/demo-core/emulated_device_backup.cpp
+  lib/DeviceCore/src/*.cpp lib/ConfigModel/src/*.cpp lib/AlertLogic/src/*.cpp lib/AlpacaLogic/src/*.cpp
+  lib/SettingsDeps/src/*.cpp lib/NetAddress/src/*.cpp lib/ConfigBackup/src/*.cpp)
 INCLUDES=()
 for d in lib/*/include; do INCLUDES+=("-I$d"); done
 
 em++ -std=gnu++17 -O2 -Wall -Wextra \
   "${INCLUDES[@]}" "-I$AJ" \
-  -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createSqmCore \
+  -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORT_NAME=createRoofCore \
   -sENVIRONMENT=web,node -sALLOW_MEMORY_GROWTH=1 -sFILESYSTEM=0 \
   -sDYNAMIC_EXECUTION=0 \
-  --bind "${SOURCES[@]}" -o "$OUT/sqm-core.mjs"
+  --bind "${SOURCES[@]}" -o "$OUT/rr-core.mjs"
 
 # Hash of everything that went in, so CI can tell the output is current.
 python3 tools/demo-core/source_hash.py > "$OUT/SOURCE_HASH"
-echo "Built $OUT/sqm-core.mjs ($(wc -c < "$OUT/sqm-core.wasm") bytes wasm)"
+echo "Built $OUT/rr-core.mjs ($(wc -c < "$OUT/rr-core.wasm") bytes wasm)"

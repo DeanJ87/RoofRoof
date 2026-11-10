@@ -1,4 +1,4 @@
-// EmulatedDevice: settings, the sensor cycle, alerts and Alpaca (see emulated_device.h).
+// EmulatedDevice: settings, the loop pass, alerts and Alpaca (see emulated_device.h).
 
 #include "emulated_device.h"
 
@@ -20,7 +20,6 @@ bool EmulatedDevice::loadConfig(const std::string &json)
     if (!next)
         return false;
     cfg = *next;
-    bootConfig = cfg;
     return true;
 }
 
@@ -28,82 +27,25 @@ void EmulatedDevice::restart(double nowMsIn)
 {
     nowMs = static_cast<uint32_t>(nowMsIn);
     bootMs = nowMs;
-    bootConfig = cfg;
-    snapshot = SensorSnapshot{};
-    safety = SafetyStatus{};
-    delayFilter = Alpaca::SafeDelayFilter{};
     engine = Alerts::AlertEngine{};
-    engineSeeded = false;
     records.clear();
     // The device forgets Alpaca connections; the pause state is kept.
     router.resetConnections();
     clientWatch.reset();
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
-    feed.restart();
-    SafetyHistory::startBoot(history, true);
-    pushHistory(SafetyHistory::Kind::Boot, false, false, 0, 3 /* software reset */);
 }
 
-void EmulatedDevice::tick(
-    double nowMsIn, double epochIn, const std::string &inputsJson, const std::string &localTime, const std::string &localDate)
+void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &localTime, const std::string &localDate)
 {
-    // 0 means "never" in reading timestamps; the device's millis() is
-    // never 0 by the time it reads a sensor.
+    // The device's millis() is never 0 by the time its loop runs.
     nowMs = std::max<uint32_t>(1, static_cast<uint32_t>(nowMsIn));
     epoch = static_cast<int64_t>(epochIn);
     clockTime = localTime;
     clockDate = localDate;
     if (bootMs == 0)
-    {
-        bootMs = nowMs == 0 ? 1 : nowMs;
-        pushHistory(SafetyHistory::Kind::Boot, false, false, 0, 1 /* power on */);
-    }
-
-    DynamicJsonDocument in(2048);
-    if (deserializeJson(in, inputsJson))
-        return;
-    feed.read(in.as<JsonObjectConst>());
-    Core::derive(snapshot, cfg);
-
-    const Alpaca::SafetyResult result = Alpaca::evaluateSafety(Core::safetyInputs(snapshot, cfg, nowMs), Core::safetyThresholds(cfg));
-    if (Core::updateSafety(safety, delayFilter, result, cfg, nowMs))
-        pushHistory(SafetyHistory::Kind::Change, safety.isSafe, !safety.isSafe && result.isSafe, result.reasonFlags, 0);
-
+        bootMs = nowMs;
     runAlerts();
-    tickDisplay();
-}
-
-void EmulatedDevice::tickDisplay()
-{
-    Core::DisplayNetwork network;
-    network.connected = true; // the demo's network is simulated
-    network.ip = "192.168.1.42";
-    const Display::View view = Core::displayView(snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch), safety, cfg, network);
-    const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    Display::Inputs in;
-    in.nowMs = nowMs;
-    in.detected = cfg.display.enabled; // the demo board has a display
-    in.night = {night.known, night.isNight};
-    for (size_t i = 0; i < Display::PAGE_COUNT; ++i)
-        if (view.available(static_cast<Display::Page>(i)))
-            in.availableMask = static_cast<uint8_t>(in.availableMask | (1U << i));
-    in.forcedOff = snapshot.battery.power != Battery::PowerState::Normal; // power saving (spec 032)
-    in.wake = displayWake;
-    in.blank = displayBlank;
-    displayWake = displayBlank = false;
-    displayOut = displayController.tick(cfg.display, in);
-}
-
-std::string EmulatedDevice::displayRequest(bool wake)
-{
-    if (!cfg.display.enabled)
-        return response(409, errorJson("Display is off in settings"));
-    if (wake)
-        displayWake = true;
-    else
-        displayBlank = true;
-    return response(200, "{\"success\":true}");
 }
 
 void EmulatedDevice::setArmed(bool on, const std::string &source)
@@ -121,21 +63,14 @@ void EmulatedDevice::scheduleChanged(bool wasSending)
     const bool sending = schedule.state().sending;
     if (sending == wasSending)
         return;
-    pushHistory(SafetyHistory::Kind::Armed, sending, false, 0, 0);
     if (sending && cfg.alerts.enabled)
     {
-        // One quiet line so you know where things stand as you start.
+        // As the device (src/WebServerAlerts.cpp scheduleChanged).
         Alerts::Alert alertsOn;
         alertsOn.type = Alerts::AlertType::AlertsOn;
         alertsOn.level = Alerts::AlertLevel::Quiet;
         alertsOn.title = "Alerts resumed";
-        if (safety.evaluatedAtMs == 0)
-            alertsOn.message = "Safety not evaluated yet.";
-        else if (safety.isSafe)
-            alertsOn.message = "Observatory safe.";
-        else
-            alertsOn.message =
-                "Observatory UNSAFE" + (safety.reasons.empty() ? std::string(".") : ":\n" + Alerts::joinReasons(safety.reasons));
+        alertsOn.message = "Alerts from this device are going out again.";
         record(alertsOn, 0x0F);
     }
 }
@@ -181,60 +116,17 @@ std::string EmulatedDevice::testAlert(const std::string &paramsJson)
     if ((mask & enabledChannels()) == 0)
         return response(400, errorJson("That channel isn't enabled - enable it and save settings first"));
 
-    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
-    const Core::NightState night = Core::night(snapshot, cfg, epoch);
     const Alerts::Alert test = Core::buildTestAlert(
-        sample,
-        Core::TestWording{level, sound, title, message},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
-        Core::LocalClock{clockTime, clockDate});
+        sample, Core::TestWording{level, sound, title, message}, Core::AlertSources{cfg}, Core::LocalClock{clockTime, clockDate});
     record(test, mask);
     return response(202, "{\"success\":true,\"message\":\"Test notification queued\",\"demo\":true}");
 }
 
 void EmulatedDevice::realTestAlert()
 {
-    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
-    const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    const Alerts::Alert test = Core::buildTestAlert(
-        nullptr,
-        Core::TestWording{2, "", "", ""},
-        Core::AlertSources{cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)},
-        Core::LocalClock{clockTime, clockDate});
+    const Alerts::Alert test =
+        Core::buildTestAlert(nullptr, Core::TestWording{2, "", "", ""}, Core::AlertSources{cfg}, Core::LocalClock{clockTime, clockDate});
     record(test, 0x0F);
-}
-
-std::string EmulatedDevice::calibrateDark(const std::string &sensor)
-{
-    // ?sensor=sqm|sqml (spec 030); none = the SQM.
-    SkyRole role = SkyRole::Sqm;
-    if (!sensor.empty() && !parseSkyRole(sensor.c_str(), role))
-        return response(400, errorJson("Unknown sky sensor"));
-    const SkySensorSnapshot &sky = snapshot.skySensors[skyRoleIndex(role)];
-    const TSL2591Diagnostics &d = sky.diagnostics;
-    if (!cfg.skyEnabled(role) || !sky.initialized || d.sampleCount == 0)
-        return response(409, errorJson("No light-sensor readings to calibrate from"));
-    if (!d.nightMode)
-        return response(409, errorJson("The sensor is seeing light. Cover it completely and wait for the averaging window to fill."));
-    const uint16_t needed = Core::windowSamples(d);
-    if (d.sampleCount < needed)
-    {
-        StaticJsonDocument<384> e;
-        e["error"] = "The averaging window isn't full yet (" + std::to_string(d.sampleCount) + " of " + std::to_string(needed) +
-                     " samples). Keep the sensor covered and try again.";
-        e["sampleCount"] = d.sampleCount;
-        e["windowSamples"] = needed;
-        return response(409, serialize(e));
-    }
-    Core::applyDarkCalibration(cfg, role, d, epoch >= Core::CLOCK_VALID_EPOCH ? epoch : nowMs);
-    const SkyCalibrationConfig &cal = cfg.calibration(role);
-    StaticJsonDocument<256> ok;
-    ok["success"] = true;
-    ok["sensor"] = skyRoleName(role);
-    ok["darkVisibleOffset"] = cal.darkVisibleOffset;
-    ok["sampleCount"] = cal.darkSampleCount;
-    ok["darkCalibratedAt"] = cal.darkCalibratedAt;
-    return response(200, serialize(ok));
 }
 
 std::string EmulatedDevice::alpaca(const std::string &method, const std::string &path, const std::string &paramsJson)
@@ -262,8 +154,8 @@ Alpaca::ServerIdentity EmulatedDevice::identity(const std::string &json)
     StaticJsonDocument<256> doc;
     deserializeJson(doc, json);
     Alpaca::ServerIdentity id;
-    id.serverName = "SQMeter";
-    id.manufacturer = "SQMeter";
+    id.serverName = "RoofRoof";
+    id.manufacturer = "RoofRoof";
     id.version = doc["version"] | "demo";
     id.mac = std::strtoull(doc["mac"] | "a1b2c3d4e5f6", nullptr, 16);
     return id;
@@ -301,12 +193,10 @@ void EmulatedDevice::writeRequest(JsonObject target, const Delivery::HttpRequest
 Deps::Facts EmulatedDevice::facts() const
 {
     Deps::Facts f;
-    Core::sensorFacts(f, snapshot, Core::buildReadings(snapshot, cfg, nowMs, epoch));
     f.wifiConnected = true;
     f.mqttConnected = cfg.mqtt.enabled;
     f.clockSet = epoch >= Core::CLOCK_VALID_EPOCH;
-    f.languageInstalled = true; // the demo bundles every language
-    Core::displayFacts(f, cfg, true);
+    f.alpacaDevices = static_cast<uint8_t>(devices().size());
     return f;
 }
 
@@ -345,55 +235,24 @@ void EmulatedDevice::record(const Alerts::Alert &alert, uint8_t mask)
         records.pop_front();
 }
 
-void EmulatedDevice::pushHistory(SafetyHistory::Kind kind, bool safe, bool held, uint32_t flags, uint8_t resetReason)
-{
-    SafetyHistory::Entry e{};
-    e.epoch = epoch >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(epoch) : 0;
-    e.uptimeS = uptimeSeconds();
-    e.flags = flags;
-    e.boot = history.boot;
-    e.kind = kind;
-    e.safe = safe;
-    e.held = held;
-    e.resetReason = resetReason & 0x3F;
-    SafetyHistory::push(history, e);
-}
-
 void EmulatedDevice::runAlerts()
 {
-    if (!engineSeeded)
-    {
-        engineSeeded = true;
-        bool toldSafe = false;
-        if (SafetyHistory::lastAlert(history, toldSafe))
-            engine.seedSafety(!toldSafe);
-    }
-    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(snapshot, cfg, nowMs);
-    const Core::NightState night = Core::night(snapshot, cfg, epoch);
-    const Core::AlertSources sources{
-        cfg, obs, night, safety, Core::skyReadings(snapshot, cfg, nowMs), Core::batteryReadings(snapshot, cfg, nowMs)};
-    Alerts::AlertInputs in = Core::alertInputs(sources, snapshot, nowMs);
+    Alerts::AlertInputs in;
     in.nowSeconds = uptimeSeconds();
-    in.battery.shutdownStarted = feed.takeShutdownStarted();
-    in.battery.powerRestored = feed.takePowerRestored();
-    in.battery.recovered = feed.takeRecovered();
 
     // The imaging app: is each Alpaca device still being checked?
-    const Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT] = {
-        router.activity(Alpaca::Device::SafetyMonitor), router.activity(Alpaca::Device::ObservingConditions)};
-    uint32_t silenceMs[Alpaca::DEVICE_COUNT];
+    Alpaca::DeviceActivity activity[Alpaca::MAX_DEVICES];
+    for (size_t i = 0; i < Alpaca::MAX_DEVICES; ++i)
+        activity[i] = router.activity(i);
+    uint32_t silenceMs[Alpaca::MAX_DEVICES];
     Core::clientSilenceMs(cfg, silenceMs);
     clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
-    Core::addClientInputs(in, clientWatch, cfg, nowMs, clockTime);
+    Core::addClientInputs(in, clientWatch, devices(), cfg, nowMs, clockTime);
 
+    const Core::AlertSources sources{cfg};
     Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});
     if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
-    {
         record(Alerts::stackAlerts(step.outgoing), 0x0F);
-        for (const Alerts::Alert &sent : step.outgoing)
-            if (sent.type == Alerts::AlertType::Unsafe || sent.type == Alerts::AlertType::Safe)
-                pushHistory(SafetyHistory::Kind::Alert, sent.type == Alerts::AlertType::Safe, false, 0, 0);
-    }
 
     // After this pass's alerts: "disconnected" goes out before it pauses.
     const bool wasSending = schedule.state().sending;
