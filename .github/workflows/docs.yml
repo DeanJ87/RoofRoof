@@ -57,12 +57,11 @@ jobs:
         run: npx msw init public/ --save
         working-directory: web
 
-      # Relative asset paths: the demo is opened from the downloaded artifact
-      # (site/demo/), not from a host root.
+      # Built at the root, as a device or a web host serves it, for the
+      # screenshots and checks below (device URLs opened directly rely on
+      # 404.html, which needs root asset paths).
       - name: Build demo site
         run: npm run build:demo
-        env:
-          DEMO_BASE: ./
         working-directory: web
 
       - name: Take screenshots
@@ -102,7 +101,14 @@ jobs:
       - name: Site serves its own mermaid
         run: python3 tools/docs/diagrams.py --site site
 
-      # The demo is part of the docs artifact, under site/demo/.
+      # The demo is part of the docs artifact, under site/demo/. Rebuilt with
+      # relative asset paths: it is opened from the downloaded files, not a host root.
+      - name: Build the demo for the artifact
+        run: npm run build:demo
+        env:
+          DEMO_BASE: ./
+        working-directory: web
+
       - name: Add the demo to the site
         run: |
           rm -rf site/demo
