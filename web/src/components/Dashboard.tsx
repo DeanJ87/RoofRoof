@@ -2,36 +2,26 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useQuiet } from '../hooks/useQuiet';
-import type { Config, SensorData, SkyRole, SystemStatus } from '../types';
+import type { Config, SystemStatus } from '../types';
 import { Button } from './ui';
-import { useAnnounceChange } from '../lib/a11y';
 import { getJson } from '../lib/api';
 import Masonry, { MasonryItem, mergeOrder, moveInOrder } from './Masonry';
 import { t } from '../i18n';
 import StatusCard from '../dashboard/StatusCard';
 import { glanceItems } from '../dashboard/glance';
-import { nextSqmHistory, type SqmHistory } from '../dashboard/skySensors';
 import { useEffectiveReport } from '../dashboard/useGlanceData';
 import { useAlertSchedule } from '../hooks/useAlertSchedule';
-import { acknowledgePhoneAlarm } from '../lib/phoneAlarm';
 import { StatusDot } from './dashboard/MiniSpark';
 import { dashboardCards } from './dashboard/cards';
 import { DEFAULT_ORDER, loadOrder, saveOrder } from './dashboard/order';
 
-// The verdict is the one live value announced on its own, once per change
-// (spec 022 FR-009); readings are read on demand.
-const verdictText = (safe: boolean | undefined, reasons: string[] | undefined) =>
-  safe
-    ? t('dashboard.observatorySafe')
-    : t('dashboard.observatoryUnsafeValue', { value: reasons?.length ? `: ${reasons.join(', ')}` : '' });
-
 // Nothing received yet; once data has arrived, a lost connection keeps the
-// last values on screen, greyed, with the Status card saying so (US2-4).
+// last values on screen, greyed, with the Status card saying so.
 const Waiting: FunctionalComponent<{ connected: boolean }> = ({ connected }) => (
   <div class="empty-state">
     <StatusDot ok={false} />
-    <h2>{connected ? t('dashboard.waitingForSensorData') : t('dashboard.connectingToSqmeter')}</h2>
-    <p>{connected ? t('dashboard.theDashboardWillPopulateWhen') : t('dashboard.openingTheLiveWebsocketStream')}</p>
+    <h2>{connected ? t('dashboard.waitingForTheDevice') : t('dashboard.connecting')}</h2>
+    <p>{t('dashboard.openingTheLiveWebsocketStream')}</p>
   </div>
 );
 
@@ -52,44 +42,31 @@ const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: bool
   </div>
 );
 
-// The last 24 real SQM readings: the trend draws once there are two. It
-// restarts when the authoritative sky sensor changes (spec 030).
-const useSqmHistory = (sqm: number | undefined, source: SkyRole) => {
-  const [history, setHistory] = useState<SqmHistory>({ source, values: [] });
-  useEffect(() => setHistory((previous) => nextSqmHistory(previous, source, sqm)), [sqm, source]);
-  return history.source === source ? history.values : [];
-};
-
 const Dashboard: FunctionalComponent = () => {
   const [savedOrder, setSavedOrder] = useState<string[]>(loadOrder);
   const [arranging, setArranging] = useState(false);
-  const { data: sensors, connected, lastMessageAt } = useWebSocket<SensorData>('/ws/sensors');
+  const { data: status, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
   const quiet = useQuiet(lastMessageAt);
-  const { data: status } = useWebSocket<SystemStatus>('/ws/status');
   const [config, setConfig] = useState<Config | null>(null);
   const configRevision = status?.configRevision;
   const effective = useEffectiveReport(configRevision);
   const { schedule, pauseOrResume } = useAlertSchedule(status?.alerts);
 
-  // Read again whenever the device's settings change, so a new location
-  // reaches Sun & Moon without a reload. A failed read keeps what's shown.
+  // Read again whenever the device's settings change. A failed read keeps
+  // what's shown.
   useEffect(() => {
     getJson<Config>('/api/config')
       .then((data) => data && setConfig(data))
       .catch(() => undefined);
   }, [configRevision]);
 
-  const sqmHistory = useSqmHistory(sensors?.sky?.sqm, sensors?.sky?.source ?? 'sqm');
+  const items = glanceItems({ status, config, effective, connected, quiet, schedule });
+  const onAction = () => void pauseOrResume(true);
 
-  useAnnounceChange(sensors?.safety?.safe, (safe) => verdictText(safe, sensors?.safety?.reasons));
-
-  const items = glanceItems({ sensors, status, config, effective, connected, quiet, schedule });
-  const onAction = (action: 'resume' | 'acknowledge') => void (action === 'resume' ? pauseOrResume(true) : acknowledgePhoneAlarm());
-
-  if (!sensors) return <Waiting connected={connected} />;
+  if (!status) return <Waiting connected={connected} />;
 
   const statusCard: MasonryItem = { id: 'status', title: t('status.title'), node: <StatusCard items={items} onAction={onAction} /> };
-  const visible = [statusCard, ...dashboardCards({ sensors, status, config, quiet, connected, sqmHistory })];
+  const visible = [statusCard, ...dashboardCards({ status })];
   const fullOrder = mergeOrder(savedOrder, DEFAULT_ORDER);
   const ordered = fullOrder.map((id) => visible.find((card) => card.id === id)).filter((card): card is MasonryItem => Boolean(card));
 

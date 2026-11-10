@@ -67,15 +67,8 @@ describe('settings dependencies: same answers as the device', () => {
 
 describe('a fresh device (SC-005)', () => {
   it('shows no inactive warnings with the shipped defaults - only neutral notes', () => {
-    // A standard build that has just joined WiFi: no Bluetooth, GPS off, no location yet.
-    const standard: DepFacts = {
-      ...fixtures.baseFacts,
-      bluetoothBuild: false,
-      bluetoothRunning: false,
-      pairedPhones: 0,
-      gpsRunning: false,
-      gpsFix: false,
-    };
+    // A device that has just joined WiFi, before the Dome (spec 006).
+    const standard: DepFacts = { ...fixtures.baseFacts, alpacaDevices: 0 };
     const warnings = evaluate(defaults, standard).filter((e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off');
     // "Alerts are off" is shown once, by the Send alerts switch, not as a warning per row.
     expect(warnings.map((e) => `${e.setting}: ${e.text}`)).toEqual([]);
@@ -108,10 +101,10 @@ describe('previewing unsaved changes (FR-006)', () => {
     expect(view.get('alerts.pushover.enabled').state).toBe('off'); // local
   });
 
-  it('says what would block a setting that is off (D-16)', () => {
-    const entry = viewOf(evaluate(defaults, fixtures.baseFacts)).get('alpaca.windSpeedUnsafeEnabled');
+  it('says what would block a setting that is off (D-01)', () => {
+    const entry = viewOf(evaluate(defaults, fixtures.baseFacts)).get('alerts.mqtt.enabled');
     expect(entry.state).toBe('off');
-    expect(entry.blockedBy).toMatchObject({ id: 'D-16', reason: 'wind-off', text: 'Anemometer is off' });
+    expect(entry.blockedBy).toMatchObject({ id: 'D-01', reason: 'mqtt-off', text: 'MQTT is off' });
   });
 
   it('lists what saving would make inactive (D-01)', () => {

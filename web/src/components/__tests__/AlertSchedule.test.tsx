@@ -52,7 +52,7 @@ describe('Alert schedule wording (FR-017, SC-004)', () => {
     expect(await screen.findByText(/Alerts start when an imaging app \(e\.g\. N\.I\.N\.A\.\) connects/)).toBeInTheDocument();
   });
 
-  it('saves the mode with armWithAlpaca for older firmware', async () => {
+  it('saves the mode', async () => {
     let saved: any = null;
     server.use(
       http.post('/api/config', async ({ request }) => {
@@ -65,7 +65,7 @@ describe('Alert schedule wording (FR-017, SC-004)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
     expect(saved.alerts.sendMode).toBe('whileConnected');
-    expect(saved.alerts.armWithAlpaca).toBe(true);
+    expect(saved.alerts.armWithAlpaca).toBeUndefined();
   });
 });
 
@@ -101,7 +101,7 @@ describe('Alert schedule status line', () => {
       http.get('/api/status', () =>
         HttpResponse.json({
           ...mockStatus,
-          alerts: { armed: false, armWithAlpaca: false, mode: 'any', reason: 'user-mqtt', since: null, sinceAgeMs: 120000 },
+          alerts: { armed: false, mode: 'any', reason: 'user-mqtt', since: null, sinceAgeMs: 120000 },
         }),
       ),
     );
@@ -114,19 +114,18 @@ describe('Alert schedule status line', () => {
       http.get('/api/status', () =>
         HttpResponse.json({
           ...mockStatus,
-          alerts: { armed: false, armWithAlpaca: false, mode: 'any', reason: 'user-ui', since: null, sinceAgeMs: 60000 },
+          alerts: { armed: false, mode: 'any', reason: 'user-ui', since: null, sinceAgeMs: 60000 },
           alpaca: {
             enabled: true,
             clients: {
-              safetymonitor: { connected: true, watching: true, silent: true, lastCheckedAgeMs: 240000, clientId: 1 },
-              observingconditions: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null },
+              dome: { connected: true, watching: true, silent: true, lastCheckedAgeMs: 240000, clientId: 1 },
             },
           },
         }),
       ),
     );
     await openAlerts();
-    expect(await screen.findByText('The imaging app has gone quiet - safety monitor last checked 4m ago.')).toBeInTheDocument();
+    expect(await screen.findByText('The imaging app has gone quiet - dome last checked 4m ago.')).toBeInTheDocument();
   });
 
   // D-12/D-37 (specs/020-settings-dependencies): the imaging-app mode and events need Alpaca.
@@ -143,7 +142,7 @@ describe('Alert schedule status line', () => {
 });
 
 describe('describeSchedule', () => {
-  const at = (schedule: Partial<AlertSchedule>) => describeSchedule({ armed: false, since: null, sinceAgeMs: null, ...schedule });
+  const at = (schedule: Partial<AlertSchedule>) => describeSchedule({ armed: false, mode: 'any', reason: 'none', since: null, sinceAgeMs: null, ...schedule });
   it('states each reason in words', () => {
     expect(at({ armed: true })).toBe('Sending alerts.');
     expect(at({ armed: true, mode: 'whileConnected', reason: 'client-connected', sinceAgeMs: 60000 })).toBe(
@@ -159,7 +158,6 @@ describe('describeSchedule', () => {
     expect(at({ mode: 'whileConnected', reason: 'user-ui' })).toBe(
       'Paused by you (Pause button). Alerts resume when an imaging app connects, or when you resume them.',
     );
-    expect(at({ reason: 'migrated' })).toBe('Paused (before the update). Alerts resume when you resume them.');
     expect(at({})).toBe('Paused. Alerts resume when you resume them.');
   });
 });

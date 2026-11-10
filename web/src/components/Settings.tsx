@@ -10,11 +10,8 @@ import {
 import AlertsTab from './settings/AlertsTab';
 import type { ConfigPath, SettingsTabProps } from './settings/context';
 import DeviceTab from './settings/DeviceTab';
-import { deriveHardware } from './settings/hardware';
 import NetworkTab from './settings/NetworkTab';
 import { fieldErrorAliases, toConfigPayload } from './settings/payload';
-import SafetyTab from './settings/SafetyTab';
-import SensorsTab from './settings/SensorsTab';
 import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
 import { listReasons, restartReasons } from './settings/restart';
@@ -33,7 +30,6 @@ import {
 } from '../lib/settingsDeps';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
-import { applyLanguage } from '../hooks/useLanguage';
 import { fetchConfig, fetchStatus, restartDevice, saveConfig } from '../lib/settingsApi';
 import { useTabFromUrl } from '../hooks/useTabFromUrl';
 
@@ -77,7 +73,7 @@ const Settings: FunctionalComponent = () => {
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const pendingAnchor = useRef<string | undefined>(initial.anchor);
 
-  // What the device says is in effect (specs/020-settings-dependencies).
+  // What the device says is in effect (SQMeter spec 020).
   const [effective, setEffective] = useState<EffectiveReport | null>(null);
 
   const loadStatus = () => {
@@ -139,13 +135,6 @@ const Settings: FunctionalComponent = () => {
       setValidationErrors(getConfigValidationErrors(next));
       return next;
     });
-  };
-
-  const applyStored = (changes: [ConfigPath, unknown][]) => {
-    applyChanges(changes);
-    setSaved((current) =>
-      current ? toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current)) : current,
-    );
   };
 
   const dirty = useMemo(() => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)), [config, saved]);
@@ -213,7 +202,6 @@ const Settings: FunctionalComponent = () => {
         setConfig(payload);
         setValidationErrors({});
         loadStatus();
-        if ((payload.language ?? 'en') !== (saved.language ?? 'en')) void applyLanguage(payload.language ?? 'en');
       } else {
         showToast({ message: deviceError(body, t('settings.failedToSaveSettings')), tone: 'bad' });
       }
@@ -261,9 +249,7 @@ const Settings: FunctionalComponent = () => {
     config,
     update: (path, value) => applyChanges([[path, value]]),
     updateMany: applyChanges,
-    applyStored,
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
-    hw: deriveHardware(config, status),
     status,
     dirty,
     goTo,
@@ -273,7 +259,7 @@ const Settings: FunctionalComponent = () => {
 
   return (
     <div class="panel-page settings-page page-enter">
-      {/* ARIA tabs: arrows, Home and End move between tabs (spec 022). */}
+      {/* ARIA tabs: arrows, Home and End move between tabs (SQMeter spec 022). */}
       <div class="settings-tabs" role="tablist" aria-label={t('settings.settingsSections')} onKeyDown={onTabKey}>
         {SETTINGS_TABS.map(({ id, label }) => (
           <button
@@ -308,8 +294,6 @@ const Settings: FunctionalComponent = () => {
         {tab === 'device' && <DeviceTab {...props} />}
         {tab === 'network' && <NetworkTab {...props} originalWifiSsid={originalWifiSsid} />}
         {tab === 'time' && <TimeTab {...props} />}
-        {tab === 'sensors' && <SensorsTab {...props} />}
-        {tab === 'safety' && <SafetyTab {...props} />}
         {tab === 'alerts' && <AlertsTab {...props} />}
       </div>
 

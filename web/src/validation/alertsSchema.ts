@@ -19,26 +19,12 @@ export const alertsConfigSchema = z
         message: z.string().max(240, t('validation.configSchema.messagesAreUpTo240')).optional(),
       }),
     ),
-    dewRiskMarginC: z.number().min(0).max(10),
-    clearSkyCloudPercent: z.number().min(0).max(100),
-    cloudedOverCloudPercent: z.number().min(0).max(100),
-    skyNightOnly: z.boolean(),
-    safetyNightOnly: z.boolean().optional(),
-    sendMode: z.enum(['any', 'whileConnected']).optional(),
-    armWithAlpaca: z.boolean().optional(),
-    clientSilentSafetySeconds: z
+    sendMode: z.enum(['any', 'whileConnected']),
+    clientSilentSeconds: z
       .number()
       .int()
       .min(30, t('validation.configSchema.atLeast30Seconds'))
-      .max(3600, t('validation.configSchema.atMost60Minutes'))
-      .optional(),
-    clientSilentWeatherSeconds: z
-      .number()
-      .int()
-      .min(30, t('validation.configSchema.atLeast30Seconds'))
-      .max(3600, t('validation.configSchema.atMost60Minutes'))
-      .optional(),
-    nightSunAltitudeDeg: z.number().min(-20).max(0),
+      .max(3600, t('validation.configSchema.atMost60Minutes')),
     cooldownSeconds: z.number().int().min(0).max(86400, t('validation.configSchema.mustBeAtMost24')),
     pushover: z.object({
       enabled: z.boolean(),
@@ -51,9 +37,6 @@ export const alertsConfigSchema = z
     mqtt: z.object({ enabled: z.boolean() }),
   })
   .superRefine((data, ctx) => {
-    if (data.cloudedOverCloudPercent <= data.clearSkyCloudPercent) {
-      ctx.addIssue({ code: 'custom', path: ['cloudedOverCloudPercent'], message: t('validation.configSchema.mustBeAboveTheClear') });
-    }
     // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
     const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
     if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {

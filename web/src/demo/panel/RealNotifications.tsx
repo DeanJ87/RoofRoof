@@ -126,7 +126,7 @@ const Channels: FunctionalComponent<{ sender: RealSender }> = ({ sender }) => {
         <ChannelForm key={channel} sender={sender} channel={channel} />
       ))}
       <Note>
-        Webhooks and self-hosted ntfy servers need a real SQMeter: this page may only reach ntfy.sh, Pushover and secure MQTT brokers.
+        Webhooks and self-hosted ntfy servers need a real RoofRoof: this page may only reach ntfy.sh, Pushover and secure MQTT brokers.
       </Note>
       <div class="btn-row">
         <Button small onClick={sendTest} disabled={sender.configured().length === 0}>

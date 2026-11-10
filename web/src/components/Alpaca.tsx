@@ -3,8 +3,8 @@ import { useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { CLIENT_PILL, describeClient } from '../lib/alpacaClients';
 import { useAlpacaClients, type AlpacaClients } from '../hooks/useAlpacaClients';
+import type { AlpacaConfiguredDevice } from '../types';
 import { deviceBasePath, useAlpacaDevices } from '../hooks/useAlpacaDevices';
-import SafetyCard from './SafetyCard';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { formatCount, formatNumber, formatTime } from '../i18n/format';
@@ -48,21 +48,24 @@ const CopyableUrl: FunctionalComponent<{ label: string; url: string; open?: bool
   );
 };
 
-// Whether an imaging app is checking each device (specs/021).
-const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enabled: boolean }> = ({ clients, enabled }) =>
-  enabled && clients ? (
+// Whether an imaging app is checking each device (SQMeter spec 021), keyed
+// by device type; labelled with the device's name when it is advertised.
+const ImagingAppState: FunctionalComponent<{
+  clients: AlpacaClients | null;
+  devices: AlpacaConfiguredDevice[] | null;
+  enabled: boolean;
+}> = ({ clients, devices, enabled }) => {
+  const entries = enabled && clients ? Object.entries(clients) : [];
+  if (entries.length === 0) return null;
+  const label = (key: string) => devices?.find((d) => d.DeviceType.toLowerCase() === key)?.DeviceName ?? key;
+  return (
     <div class="card-group">
       <h3 class="card-group-title">{t('alpaca.imagingApp')}</h3>
-      {(
-        [
-          [t('alpaca.safetyMonitor'), clients.safetymonitor],
-          [t('alpaca.weatherDevice'), clients.observingconditions],
-        ] as const
-      ).map(([label, state]) => {
+      {entries.map(([key, state]) => {
         const view = describeClient(state);
         return (
-          <div class="reading-row" key={label}>
-            <span class="reading-label">{label}</span>
+          <div class="reading-row" key={key}>
+            <span class="reading-label">{label(key)}</span>
             <span class="client-state">
               {view.checked && <span class="system-subtle">{view.checked}</span>}
               <Pill tone={CLIENT_PILL[view.tone]}>{view.state}</Pill>
@@ -71,10 +74,11 @@ const ImagingAppState: FunctionalComponent<{ clients: AlpacaClients | null; enab
         );
       })}
     </div>
-  ) : null;
+  );
+};
 
 const Alpaca: FunctionalComponent = () => {
-  const { config, devices, deviceStates, lastUpdated, safety } = useAlpacaDevices(POLL_INTERVAL_MS);
+  const { config, devices, deviceStates, lastUpdated } = useAlpacaDevices(POLL_INTERVAL_MS);
   const clients = useAlpacaClients(POLL_INTERVAL_MS);
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -93,7 +97,7 @@ const Alpaca: FunctionalComponent = () => {
       >
         <div class="card-body">
           {!enabled && (
-            <Note tone="warn" action={{ label: t('alpaca.turnOn'), onClick: () => route('/settings?tab=safety') }}>
+            <Note tone="warn" action={{ label: t('alpaca.turnOn'), onClick: () => route('/settings?tab=network') }}>
               {t('alpaca.alpacaIsOffSoNo')}
             </Note>
           )}
@@ -104,22 +108,22 @@ const Alpaca: FunctionalComponent = () => {
             <CopyableUrl label={t('alpaca.description')} url={`${origin}/management/v1/description`} open />
             <CopyableUrl label={t('alpaca.devices')} url={`${origin}/management/v1/configureddevices`} open />
           </div>
-          <ImagingAppState clients={clients} enabled={enabled} />
+          <ImagingAppState clients={clients} devices={devices} enabled={enabled} />
           <div>
-            <Button variant="link" onClick={() => route('/settings?tab=safety')}>
-              {t('alpaca.alpacaAndSafetySettings')}
+            <Button variant="link" onClick={() => route('/settings?tab=network')}>
+              {t('alpaca.alpacaSettings')}
             </Button>
           </div>
         </div>
       </Card>
 
-      <SafetyCard safety={safety} />
+      {enabled && devices?.length === 0 && <Note>{t('alpaca.noAlpacaDeviceYet')}</Note>}
 
       {devices?.map((device) => {
         const base = deviceBasePath(device);
         const state = deviceStates[device.UniqueID];
         return (
-          <Card key={device.UniqueID} title={device.DeviceName} icon={device.DeviceType === 'SafetyMonitor' ? 'eye' : 'cloud'}>
+          <Card key={device.UniqueID} title={device.DeviceName} icon="star">
             <div class="card-body">
               <div>
                 <ReadingRow label={t('alpaca.type')} value={`${device.DeviceType} #${device.DeviceNumber}`} />
@@ -131,7 +135,6 @@ const Alpaca: FunctionalComponent = () => {
                 />
                 <CopyableUrl label={t('alpaca.apiBase')} url={`${origin}${base}`} />
                 <CopyableUrl label={t('alpaca.deviceState')} url={`${origin}${base}/devicestate`} open />
-                {device.DeviceType === 'SafetyMonitor' && <CopyableUrl label="IsSafe" url={`${origin}${base}/issafe`} open />}
               </div>
               <div class="card-group">
                 <h3 class="card-group-title">{t('alpaca.liveState')}</h3>
@@ -145,7 +148,7 @@ const Alpaca: FunctionalComponent = () => {
                         key={item.Name}
                         label={item.Name}
                         value={formatStateValue(item.Value)}
-                        valueClass={item.Name === 'IsSafe' ? (item.Value ? 'tone-green' : 'tone-red') : ''}
+                        
                       />
                     ))}
                   </div>

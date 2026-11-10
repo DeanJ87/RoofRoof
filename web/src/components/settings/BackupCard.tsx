@@ -10,7 +10,7 @@ import { showToast } from '../toast';
 import { formatDateTime } from '../../i18n/format';
 import { t, type MessageKey } from '../../i18n';
 
-// Settings → Device → Backup & restore (specs/033-config-backup, mockups/).
+// Settings → Device → Backup & restore (SQMeter spec 033).
 // DS-01/DS-03 shared parts, DS-04 explanations in "?", DS-05 one path per row.
 
 // The card each settings section belongs to, by its first path part.
@@ -21,16 +21,7 @@ const SECTION_LABELS: Record<string, () => string> = {
   ota: () => t('settings.device.commandLineUploadsArduinoota'),
   auth: () => t('settings.device.security'),
   ntp: () => 'NTP',
-  gps: () => 'GPS',
-  rain: () => t('settings.sensors.rainSensor'),
-  sensor: () => t('system.sensors'),
-  skyAveraging: () => t('settings.sensors.skyQuality'),
-  skyCalibration: () => t('settings.sensors.skyQuality'),
-  cloudDetection: () => t('settings.sensors.cloudDetection'),
-  alpaca: () => t('settings.tabs.safety'),
-  ble: () => t('settings.device.bluetooth'),
-  location: () => t('settings.time.location'),
-  wind: () => t('settings.sensors.wind'),
+  alpaca: () => 'ASCOM Alpaca',
   alerts: () => t('settings.alerts.alerts'),
 };
 const sectionLabel = (path: string) => SECTION_LABELS[sectionOf(path)]?.() ?? sectionOf(path);
@@ -38,9 +29,6 @@ const sectionLabel = (path: string) => SECTION_LABELS[sectionOf(path)]?.() ?? se
 const shown = (value: unknown) => (value === '' ? t('settings.backup.empty') : typeof value === 'string' ? value : JSON.stringify(value));
 
 const REASONS: Record<RestorePreview['notApplicable'][number]['reason'], MessageKey> = {
-  pin: 'settings.backup.pinNotOnThisBoard',
-  analog: 'settings.backup.notAnAnalogPinHere',
-  bluetooth: 'settings.backup.needsTheBluetoothBuild',
   'pushover-keys': 'settings.backup.needsThePushoverKeys',
 };
 
@@ -127,7 +115,7 @@ const PreviewView: FunctionalComponent<{ restore: Restore & { preview: RestorePr
       <PathGroup title={t('settings.backup.unknownToThisFirmware')} paths={details.ignored} value={t('settings.backup.ignored')} />
       {nothing && <Note>{t('settings.backup.nothingWillChange')}</Note>}
       {preview.restart.length > 0 && (
-        <Note tone="warn">{t('settings.backup.restartsToApply', { listReasons: listReasons(preview.restart.map(restartLabel)) })}</Note>
+        <Note tone="warn">{t('settings.backup.restartsToApply', { listReasons: listReasons(preview.restart.map((code) => restartLabel(code))) })}</Note>
       )}
       {details.warnings.map((warning) => (
         <Note key={warning.code} tone="warn">
@@ -158,12 +146,6 @@ const FileRows: FunctionalComponent<{ restore: Restore }> = ({ restore }) => {
         />
       )}
       {header?.firmware && <ReadingRow label={t('system.firmware')} value={header.firmware} />}
-      {header?.build && (
-        <ReadingRow
-          label={t('system.build')}
-          value={header.build === 'ble' ? t('settings.device.bluetooth') : t('settings.backup.standard')}
-        />
-      )}
     </>
   );
 };

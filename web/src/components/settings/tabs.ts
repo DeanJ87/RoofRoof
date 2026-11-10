@@ -1,12 +1,10 @@
 import { t } from '../../i18n';
-export type SettingsTabId = 'device' | 'network' | 'time' | 'sensors' | 'safety' | 'alerts';
+export type SettingsTabId = 'device' | 'network' | 'time' | 'alerts';
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
   { id: 'device', label: t('settings.tabs.device') },
   { id: 'network', label: t('settings.tabs.network') },
-  { id: 'time', label: t('settings.tabs.timeLocation') },
-  { id: 'sensors', label: t('settings.tabs.sensors') },
-  { id: 'safety', label: t('settings.tabs.safety') },
+  { id: 'time', label: t('settings.tabs.time') },
   { id: 'alerts', label: t('settings.tabs.alerts') },
 ];
 
@@ -14,24 +12,17 @@ export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
 // section anchors used elsewhere in the UI) map onto the tab that now holds
 // that section.
 const SECTION_TO_TAB: Record<string, SettingsTabId> = {
-  alpaca: 'safety',
-  safety: 'safety',
+  alpaca: 'network',
   alerts: 'alerts',
-  ble: 'device',
-  display: 'device',
-  battery: 'device',
-  wind: 'sensors',
-  rain: 'sensors',
   mqtt: 'network',
   wifi: 'network',
-  gps: 'time',
-  location: 'time',
+  security: 'device',
 };
 
 export const isSettingsTab = (value: string | null): value is SettingsTabId => SETTINGS_TABS.some((tab) => tab.id === value);
 
 // The query string, also when it's inside a hash route (the demo uses
-// #/settings?tab=safety).
+// #/settings?tab=network).
 // With hash routing the query is in the hash, and wins over the page's own
 // query (?scenario=, ?lang= in the demo).
 export const locationQuery = (location: Pick<Location, 'search' | 'hash'>) =>
@@ -55,23 +46,9 @@ const ERROR_ROOT_TAB: Record<string, SettingsTabId> = {
   mqttTopic: 'network',
   mqttInterval: 'network',
   ntp: 'time',
-  gps: 'time',
-  location: 'time',
   timezone: 'time',
-  primaryTimeSource: 'time',
-  secondaryTimeSource: 'time',
-  sensor: 'sensors',
-  cloudDetection: 'sensors',
-  rain: 'sensors',
-  wind: 'sensors',
-  sensorInterval: 'sensors',
-  i2cSDA: 'sensors',
-  i2cSCL: 'sensors',
-  i2cPins: 'sensors',
-  i2cFrequency: 'sensors',
-  alpaca: 'safety',
+  alpaca: 'network',
   alerts: 'alerts',
-  ble: 'device',
 };
 
 export const tabForErrorPath = (path: string): SettingsTabId => {

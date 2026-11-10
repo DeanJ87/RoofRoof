@@ -1,17 +1,7 @@
-import type {
-  AlertsConfig,
-  AlpacaConfig,
-  BatteryConfig,
-  BleConfig,
-  Config,
-  DisplayConfig,
-  LocationConfig,
-  WindConfig,
-  MQTTPublishGroups,
-} from '../../types';
+import type { AlertsConfig, AlpacaConfig, Config } from '../../types';
 
-// Defaults for every settings section - used to fill in fields that configs
-// from older firmware don't have yet.
+// Defaults for every settings section, used to fill in fields a config
+// doesn't carry (the same values as Config::createDefault).
 
 export const defaultAuthConfig: NonNullable<Config['auth']> = {
   enabled: false,
@@ -19,117 +9,19 @@ export const defaultAuthConfig: NonNullable<Config['auth']> = {
   password: '',
 };
 
-export const defaultRainConfig: NonNullable<Config['rain']> = {
-  enabled: false,
-  rxPin: 18,
-  txPin: 19,
-  baudRate: 9600,
-  debugUart: false,
-  mode: 'polling',
-  resolution: 'high',
-  units: 'metric',
-  pollIntervalMs: 5000,
-  rainClearDelayMs: 15 * 60 * 1000,
-  dailyResetEnabled: false,
-  dailyResetHour: 0,
-  dailyResetMinute: 0,
-};
-
-export const defaultCloudDetectionConfig: Config['cloudDetection'] = {
-  clearSkyThreshold: -13.0,
-  cloudyThreshold: -3.0,
-  humidityCorrection: 0.75,
-};
-
 export const defaultAlpacaConfig: AlpacaConfig = {
   enabled: false,
-  manualOverrideUnsafe: false,
-  staleAfterSeconds: 30,
-  cloudCoverEnabled: true,
-  cloudCoverUnsafePercent: 90,
-  sqmMinEnabled: false,
-  sqmMinSafe: 0,
-  humidityMaxEnabled: false,
-  humidityMaxSafe: 100,
-  dewpointMarginEnabled: false,
-  dewpointMarginMinC: 0,
-  rainUnsafeEnabled: true,
-  rainSensorRequired: true,
-  safeDelaySeconds: 0,
-  windSpeedUnsafeEnabled: false,
-  windSpeedUnsafeMs: 10,
-  windGustUnsafeEnabled: false,
-  windGustUnsafeMs: 15,
-};
-
-export const defaultWindConfig: WindConfig = {
-  enabled: false,
-  speedPin: 27,
-  directionEnabled: false,
-  kmhPerHz: 2.4,
-  directionOffsetDeg: 0,
-};
-
-export const defaultDisplayConfig: DisplayConfig = {
-  enabled: false,
-  pages: ['sky'],
-  cycleSeconds: 5,
-  brightness: 'medium',
-  timeoutSeconds: 60,
-  wakeOnBoot: true,
-  stayOnAtNight: false,
-  rotate180: false,
-  buttonPin: 255,
-};
-
-// The Li-ion pack (spec 032, contracts/config.md); pins 255 = not wired.
-export const defaultBatteryConfig: BatteryConfig = {
-  enabled: true,
-  lowPercent: 20,
-  criticalPercent: 10,
-  shutdownPercent: 5,
-  capacityMah: 0,
-  powerSaving: true,
-  saveReadIntervalSeconds: 30,
-  shutdownGraceSeconds: 30,
-  alertPin: 255,
-  stat1Pin: 255,
-  stat2Pin: 255,
-  pgPin: 255,
 };
 
 export const defaultAlertsConfig: AlertsConfig = {
   enabled: false,
   events: {
-    unsafe: { level: 3, sound: '' },
-    safe: { level: 2, sound: '' },
-    rain_started: { level: 4, sound: '' },
-    rain_stopped: { level: 2, sound: '' },
-    sensor_fault: { level: 4, sound: '' },
-    sensor_recovered: { level: 1, sound: '' },
-    dew_risk: { level: 0, sound: '' },
-    clear_sky: { level: 0, sound: '' },
-    clouded_over: { level: 0, sound: '' },
     client_lost: { level: 3, sound: '' },
     client_back: { level: 1, sound: '' },
     client_disconnected: { level: 0, sound: '' },
-    battery_low: { level: 2, sound: '' },
-    battery_critical: { level: 4, sound: '' },
-    battery_shutdown: { level: 4, sound: '' },
-    power_restored: { level: 0, sound: '' },
-    charge_complete: { level: 0, sound: '' },
-    charge_fault: { level: 2, sound: '' },
   },
-  dewRiskMarginC: 2,
-  clearSkyCloudPercent: 20,
-  cloudedOverCloudPercent: 70,
-  skyNightOnly: true,
-  safetyNightOnly: true,
   sendMode: 'any',
-  armWithAlpaca: false,
-  clientSilentSafetySeconds: 120,
-  clientSilentWeatherSeconds: 600,
-  nightSunAltitudeDeg: -12,
+  clientSilentSeconds: 120,
   cooldownSeconds: 300,
   pushover: { enabled: false, userKey: '', appToken: '', sound: '' },
   ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
@@ -137,58 +29,15 @@ export const defaultAlertsConfig: AlertsConfig = {
   mqtt: { enabled: false },
 };
 
-// Fill in fields missing from configs saved by older firmware.
+// Fill in fields a config doesn't carry.
 export const mergeAlertsConfig = (source?: Partial<AlertsConfig>): AlertsConfig => ({
   ...defaultAlertsConfig,
   ...source,
-  // Firmware from before sendMode has only armWithAlpaca.
-  sendMode: source?.sendMode ?? (source?.armWithAlpaca ? 'whileConnected' : 'any'),
   events: { ...defaultAlertsConfig.events, ...source?.events },
   pushover: { ...defaultAlertsConfig.pushover, ...source?.pushover },
   ntfy: { ...defaultAlertsConfig.ntfy, ...source?.ntfy },
   webhook: { ...defaultAlertsConfig.webhook, ...source?.webhook },
   mqtt: { ...defaultAlertsConfig.mqtt, ...source?.mqtt },
 });
-
-export const defaultBleConfig: BleConfig = {
-  enabled: false,
-  passkey: '',
-};
-
-export const defaultLocationConfig: LocationConfig = { set: false, latitude: 0, longitude: 0, showSunMoon: true };
-
-export const defaultMqttPublish: MQTTPublishGroups = {
-  sky: true,
-  environment: true,
-  clouds: true,
-  gps: true,
-  rain: true,
-  wind: true,
-  battery: true,
-  safety: true,
-  diagnostics: false,
-};
-
-export const defaultSkyAveraging: NonNullable<Config['skyAveraging']> = { windowSeconds: 90 };
-
-export const defaultSkyCalibration: NonNullable<Config['skyCalibration']> = {
-  enabled: false,
-  sqmOffset: 0,
-  darkVisibleOffset: 0,
-  darkFullOffset: 0,
-  darkIrOffset: 0,
-  darkSampleCount: 0,
-  darkCalibratedAt: 0,
-};
-
-export const defaultSkyConfig: NonNullable<Config['sky']> = {
-  sqmEnabled: true,
-  sqmlEnabled: false,
-  authoritative: 'sqm',
-  showOther: true,
-};
-
-// 255 = the second I2C bus is not wired.
-export const I2C2_PIN_UNSET = 255;
 
 export const defaultHomeAssistant = { enabled: false, discoveryPrefix: 'homeassistant' };

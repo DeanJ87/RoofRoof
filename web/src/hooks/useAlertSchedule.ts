@@ -8,6 +8,9 @@ import type { AlertSchedule } from '../types';
 
 const PREFER_BUTTON_MS = 5000;
 
+// What the page assumes when the device can't say.
+const assumed = (armed: boolean): AlertSchedule => ({ armed, mode: 'any', reason: 'none' });
+
 const fetchSchedule = async (): Promise<AlertSchedule | null> => {
   const response = await fetch('/api/alerts/armed');
   return response.ok ? response.json() : null;
@@ -20,8 +23,8 @@ export const useAlertSchedule = (live: AlertSchedule | undefined) => {
 
   useEffect(() => {
     fetchSchedule()
-      .then((body) => setFetched(body ?? { armed: true }))
-      .catch(() => setFetched({ armed: true }));
+      .then((body) => setFetched(body ?? assumed(true)))
+      .catch(() => setFetched(assumed(true)));
   }, []);
 
   // Pause (false) or resume (true), as the web UI. False if the device couldn't be reached.
@@ -30,7 +33,7 @@ export const useAlertSchedule = (live: AlertSchedule | undefined) => {
     try {
       const response = await fetch(`${resume ? '/api/alerts/arm' : '/api/alerts/disarm'}?source=ui`, { method: 'POST' });
       if (!response.ok) return false;
-      setFetched((await fetchSchedule()) ?? { armed: resume });
+      setFetched((await fetchSchedule()) ?? assumed(resume));
       setPreferFetchedUntil(Date.now() + PREFER_BUTTON_MS);
       return true;
     } catch {

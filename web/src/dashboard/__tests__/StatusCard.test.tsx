@@ -54,23 +54,6 @@ describe('StatusCard', () => {
     expect(within(row).getByRole('button', { name: /More information/i })).toBeTruthy();
   });
 
-  // inventory: phone-alarm - the demo is the standard build, so the ringing
-  // alarm (Bluetooth build) is checked here: a row with Acknowledge, which acts.
-  it('shows a ringing phone alarm with Acknowledge, and hides it otherwise', () => {
-    const onAction = vi.fn();
-    const alarm = item('phone-alarm', 'Phone alarm', 'Ringing', {
-      severity: 'problem',
-      fix: { label: 'Acknowledge', action: 'acknowledge' },
-    });
-    const { unmount } = render(<StatusCard items={[...healthy, alarm]} onAction={onAction} />);
-    expect(screen.getByText('Phone alarm').closest('[data-inventory="phone-alarm"]')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
-    expect(onAction).toHaveBeenCalledWith('acknowledge');
-    unmount();
-    render(<StatusCard items={healthy} onAction={onAction} />);
-    expect(document.querySelector('[data-inventory="phone-alarm"]')).toBeNull();
-  });
-
   it('puts the paused alerts Resume action on the Alerts tile', () => {
     const onAction = vi.fn();
     const paused = item('alerts-state', 'Alerts', 'Paused', {

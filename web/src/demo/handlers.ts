@@ -2,12 +2,12 @@ import { http, HttpResponse, ws } from 'msw';
 import { DEMO_VERSION, demoDevice, type Reply } from './device';
 import { backupReply } from './backup';
 import { existingRealSender, withRealResults } from './realSend';
-import { mockGithubReleases, mockStatus, mockWifiNetworks } from '../mocks/data';
+import { mockStatus, mockWifiNetworks } from '../mocks/data';
 
 // The demo's requests, answered by the emulated device (./device.ts) the way
 // the firmware answers them. Anything a real device would send somewhere
-// (update checks, alerts, MQTT, WiFi) is simulated and marked `demo: true`;
-// nothing leaves the browser (specs/016-demo-device-emulation, FR-006).
+// (alerts, MQTT, WiFi, uploads) is simulated and marked `demo: true`;
+// nothing leaves the browser (SQMeter spec 016, FR-006).
 
 const json = (body: string, status = 200) => new HttpResponse(body, { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -29,8 +29,8 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
   return params;
 }
 
-// GET /api/status: the device core's decisions (sky, sensors, diagnostics,
-// uptime) with the hardware sections a real ESP32 would report.
+// GET /api/status: the device core's state (uptime, alerts, Alpaca
+// clients) with the hardware sections a real ESP32 would report.
 // A dual-stack home network: link-local plus a SLAAC global address
 // (documentation prefix 2001:db8::/32, spec 015). The setting applies at
 // boot: the page load, or a restart.
@@ -97,7 +97,7 @@ export function statusDocument() {
           topic: cfg.mqtt.topic,
           availabilityTopic: `${cfg.mqtt.topic}/availability`,
         }
-      : { ...mockStatus.mqtt, enabled: false, connected: false, availabilityTopic: `${cfg.mqtt?.topic ?? 'sqmeter'}/availability` },
+      : { ...mockStatus.mqtt, enabled: false, connected: false, availabilityTopic: `${cfg.mqtt?.topic ?? 'roofroof'}/availability` },
   };
 }
 
@@ -107,22 +107,15 @@ let joinedSsid: string | null = null;
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
 export const demoHandlers = [
-  // Readings and status
-  http.get('/api/sensors', () => json(demoDevice.readings())),
+  // Status
   http.get('/api/status', () => HttpResponse.json(statusDocument())),
-  http.get(
-    '/api/safe',
-    () => new HttpResponse(JSON.parse(demoDevice.safety()).safe ? '1' : '0', { headers: { 'Content-Type': 'text/plain' } }),
-  ),
-  http.get('/api/safety/history', () => json(demoDevice.safetyHistory())),
-  http.get('/api/safety', () => json(demoDevice.safety())),
   http.get('/api/settings/effective', () => json(demoDevice.effective())),
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),
   http.post('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
   http.put('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
-  // Settings backup and restore (specs/033); a restore that needs it restarts the demo device.
+  // Settings backup and restore (SQMeter spec 033); a restore that needs it restarts the demo device.
   ...(['preview', 'apply', 'backup'] as const).map((route) =>
     http.post(route === 'backup' ? '/api/backup' : `/api/backup/${route}`, async ({ request }) => {
       const answer = backupReply(demoDevice.backupCore(), route, await request.text());
@@ -153,38 +146,9 @@ export const demoHandlers = [
   }),
   http.post('/api/alerts/test', ({ request }) => {
     const result = demoDevice.testAlert(queryParams(request));
-    existingRealSender()?.check(); // opted-in real notifications (specs/018)
+    existingRealSender()?.check(); // opted-in real notifications (SQMeter spec 018)
     return reply(result);
   }),
-  http.post('/api/ble/ack', () => HttpResponse.json({ error: 'No phone alarm is active' }, { status: 409 })),
-  http.post('/api/ble/forget-bonds', () => HttpResponse.json({ error: 'Bluetooth is off' }, { status: 409 })),
-
-  // The OLED display (spec 031)
-  http.post('/api/display/wake', () => reply(demoDevice.displayRequest(true))),
-  http.post('/api/display/blank', () => reply(demoDevice.displayRequest(false))),
-
-  // Sensors
-  http.post('/api/sensors/tsl2591/calibrate-dark', ({ request }) =>
-    reply(demoDevice.calibrateDark(new URL(request.url).searchParams.get('sensor') ?? '')),
-  ),
-  http.post('/api/sensors/rg15/test', () => {
-    if (!demoDevice.rawConfig().rain?.enabled)
-      return HttpResponse.json({ error: 'The rain sensor is switched off (Settings → Sensors → Rain sensor)' }, { status: 409 });
-    const rain = demoDevice.statusParts().diagnostics?.rain ?? {};
-    return HttpResponse.json({
-      success: true,
-      command: 'R',
-      bytesWritten: 2,
-      elapsedMs: 42,
-      rawResponse: rain.lastResponse ?? '',
-      ack: true,
-      online: true,
-      lastSuccessfulReadAgeMs: 0,
-      demo: true,
-    });
-  }),
-  http.post('/api/sensors/rg15/reset-total', () => simulated({ command: 'O', message: 'RG-15 total accumulation reset command sent' })),
-  http.post('/api/sensors/rg15/reboot', () => simulated({ command: 'K', message: 'RG-15 reboot command sent' })),
 
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
@@ -195,14 +159,9 @@ export const demoHandlers = [
     joinedSsid = body.ssid; // nothing is joined: the demo just says it was
     return HttpResponse.json({ success: true, pending: true, message: 'Connection started', demo: true }, { status: 202 });
   }),
-  http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real SQMeter would connect to your broker here' })),
+  http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real RoofRoof would connect to your broker here' })),
 
-  // Updates (simulated: no download, nothing flashed)
-  http.get('/api/updates/check', ({ request }) => {
-    const track = new URL(request.url).searchParams.get('track') === 'beta' ? 'beta' : 'stable';
-    return HttpResponse.json(mockGithubReleases.filter((r) => r.prerelease === (track === 'beta')));
-  }),
-  http.post('/api/updates/apply', () => simulated({ message: 'Update started' })),
+  // Updates (simulated: nothing flashed)
   http.post('/api/update', () => simulated()),
   http.post('/api/update/fs', () => simulated()),
 
@@ -214,12 +173,6 @@ export const demoHandlers = [
   http.put('/api/v1/*', async ({ request }) => reply(demoDevice.alpaca('PUT', new URL(request.url).pathname, await alpacaParams(request)))),
 
   // Live updates, at the device's rates
-  ws.link('*/ws/sensors').addEventListener('connection', ({ client }) => {
-    const send = () => client.send(demoDevice.readings());
-    send();
-    const unsubscribe = demoDevice.onChange(send);
-    client.addEventListener('close', () => unsubscribe());
-  }),
   ws.link('*/ws/status').addEventListener('connection', ({ client }) => {
     const send = () => client.send(JSON.stringify(statusDocument()));
     send();

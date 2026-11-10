@@ -3,7 +3,7 @@ import { route } from 'preact-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { Button } from '../../components/ui';
 import { demoDevice } from '../device';
-import { LINKS, TOUR_STEPS, captureRules, type TourStep } from './steps';
+import { LINKS, TOUR_STEPS, type TourStep } from './steps';
 import { tour } from './tourState';
 
 // The guided tour (specs/018 US1): a non-modal card in the app's own style
@@ -75,7 +75,6 @@ const useRerender = () => {
 const useStepEntry = (index: number, step: TourStep) => {
   useEffect(() => {
     if (step.route) route(step.route);
-    if (step.id === 'change-rule') captureRules();
     if (step.target) document.querySelector(step.target)?.scrollIntoView({ block: 'center', behavior: 'auto' });
   }, [index, step]);
 };
@@ -174,7 +173,7 @@ const TourOffer: FunctionalComponent = () => {
   const dock = useDockSpace(true);
   return (
     <section ref={dock} class="tour-offer card" aria-label="Tour">
-      <p>New here? A short tour shows what SQMeter does - about 2 minutes.</p>
+      <p>New here? A short tour shows what RoofRoof does - about a minute.</p>
       <div class="btn-row">
         <Button small variant="primary" onClick={() => tour.start()}>
           Take the tour

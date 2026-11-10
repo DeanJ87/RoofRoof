@@ -1,15 +1,12 @@
 import { FunctionalComponent } from 'preact';
 import type { SystemStatus } from '../types';
 import { Card, InfoTip, Pill } from '../components/ui';
-import { compareVersions } from '../utils/versionCompare';
-import { lastUpdateCheck } from '../lib/lastUpdateCheck';
 import { formatUptime } from '../i18n/format';
 import { t, type MessageKey } from '../i18n';
-import { appHref } from '../lib/appHref';
 
-// Device & Network (specs/010, 025 FR-015, FR-018, 026 FR-005): WiFi and
-// uptime as tiles; every address, the .local name, MQTT and the firmware as
-// one row each, with "Update available" from the Updates page's last check.
+// Device & Network (SQMeter specs 010, 025 FR-015, FR-018, 026 FR-005): WiFi
+// and uptime as tiles; every address, the .local name, MQTT and the firmware
+// as one row each. Updates are by file (spec 001): there is no release check.
 
 const rssiTone = (rssi?: number) => {
   if (typeof rssi !== 'number') return { tone: 'pill-dim', label: t('dashboard.unknown') };
@@ -120,23 +117,12 @@ const MqttRow: FunctionalComponent<{ mqtt: SystemStatus['mqtt'] }> = ({ mqtt }) 
   );
 };
 
-const FirmwareRow: FunctionalComponent<{ version?: string }> = ({ version }) => {
-  if (!version) return null;
-  const latest = lastUpdateCheck();
-  const newer = latest ? (compareVersions(latest, version) ?? 0) > 0 : false;
-  return (
+const FirmwareRow: FunctionalComponent<{ version?: string }> = ({ version }) =>
+  version ? (
     <Row label={t('dashboard.firmware')}>
-      <span class="device-firmware">
-        {newer && (
-          <a class="status-tile-fix" href={appHref('/updates')} data-inventory="update-available">
-            {t('glance.updateAvailable', { version: latest ?? '' })}
-          </a>
-        )}
-        <Pill>v{version}</Pill>
-      </span>
+      <Pill>v{version}</Pill>
     </Row>
-  );
-};
+  ) : null;
 
 const DeviceCard: FunctionalComponent<{ status: SystemStatus | null }> = ({ status }) => (
   <Card title={t('dashboard.deviceNetwork')} icon="wifi" tone="cyan">

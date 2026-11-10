@@ -8,7 +8,7 @@ import { server } from '../../test/mswServer';
 import { mockDevice } from '../../test/mockDevice';
 import { CASES, alerts, level, mqttOff, mqttOn } from '../../test/settingsDependencyCases';
 
-// Every catalogued dependency, in the UI (specs/020-settings-dependencies,
+// Every catalogued dependency, in the UI (SQMeter spec 020,
 // FR-013b): the note with its reason, the one-click fix, and that a setting
 // can't be switched on while what it needs is off but can always be
 // switched off. The device side is test/test_settings_deps.
@@ -49,44 +49,20 @@ describe('settings dependencies in Settings (FR-013b)', () => {
     }
   });
 
-  it("D-05: an inactive event can't be tested (spec: test sends)", async () => {
-    mockDevice({ config: { rain: { ...mockConfig.rain, enabled: false }, alerts: { ...alerts, events: level('rain_started', 2) } } });
+  it("D-37: an inactive event can't be tested", async () => {
+    mockDevice({ config: { alpaca: { ...mockConfig.alpaca, enabled: false }, alerts: { ...alerts, events: level('client_lost', 2) } } });
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
-    const row = (await screen.findByLabelText('Rain starts: level')).closest('.event-row') as HTMLElement;
+    const row = (await screen.findByLabelText('The imaging app stops checking: level')).closest('.event-row') as HTMLElement;
     expect(within(row).getByRole('button', { name: 'Test' })).toBeDisabled();
-    const unsafe = screen.getByLabelText('It turns unsafe: level').closest('.event-row') as HTMLElement;
-    expect(within(unsafe).getByRole('button', { name: 'Test' })).not.toBeDisabled();
   });
+
 
   it('D-04: with alerts off the event levels are greyed out', async () => {
     mockDevice({ config: { alerts: { ...alerts, enabled: false } } });
     window.history.replaceState(null, '', '/settings?tab=alerts');
     render(<Settings />);
-    expect(await screen.findByLabelText('It turns unsafe: level')).toBeDisabled();
-  });
-
-  it('D-11: "Dark means" is off while both night-only options are off', async () => {
-    mockDevice({ config: { alerts: { ...alerts, skyNightOnly: false, safetyNightOnly: false } } });
-    window.history.replaceState(null, '', '/settings?tab=alerts');
-    render(<Settings />);
-    expect(await screen.findByLabelText('Dark means')).toBeDisabled();
-  });
-
-  it('D-23: the wind vane only shows with the anemometer on', async () => {
-    mockDevice({ config: { wind: { ...mockConfig.wind, enabled: false, directionEnabled: true } } });
-    window.history.replaceState(null, '', '/settings?tab=sensors');
-    render(<Settings />);
-    await screen.findByLabelText('Anemometer');
-    expect(screen.queryByLabelText('Wind vane')).toBeNull();
-  });
-
-  it('D-30/D-31: Bluetooth settings need the Bluetooth build, the phone alarm a passkey', async () => {
-    mockDevice({ facts: { bluetoothBuild: false } });
-    window.history.replaceState(null, '', '/settings?tab=device');
-    render(<Settings />);
-    expect(await screen.findByText('Needs the Bluetooth firmware build, installed over USB.')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Turn on Bluetooth')).toBeNull();
+    expect(await screen.findByLabelText('The imaging app stops checking: level')).toBeDisabled();
   });
 
   it("FR-007: channels that can't deliver are not counted, and alerts reaching nowhere is a warning", async () => {
@@ -136,32 +112,16 @@ describe('settings dependencies in Settings (FR-013b)', () => {
   });
 });
 
-describe('Alpaca page (D-20, D-21, D-22)', () => {
+describe('Alpaca page (D-20)', () => {
   it('D-20: says when Alpaca is off', async () => {
     mockDevice({ config: { alpaca: { ...mockConfig.alpaca, enabled: false } } });
     render(<Alpaca />);
     expect(await screen.findByText('Alpaca is off, so no devices are advertised.')).toBeInTheDocument();
   });
 
-  it('D-21/D-22: shows only the properties the device reports (no rain or wind without the sensors)', async () => {
-    server.use(
-      http.get('/api/v1/observingconditions/0/devicestate', () =>
-        HttpResponse.json({
-          Value: [
-            { Name: 'CloudCover', Value: 3 },
-            { Name: 'TimeStamp', Value: new Date().toISOString() },
-          ],
-          ErrorNumber: 0,
-          ErrorMessage: '',
-          ClientTransactionID: 0,
-          ServerTransactionID: 1,
-        }),
-      ),
-    );
-    mockDevice({ config: { rain: { ...mockConfig.rain, enabled: false }, wind: { ...mockConfig.wind, enabled: false } } });
+  it('says there is no Alpaca device yet (until spec 006)', async () => {
+    mockDevice();
     render(<Alpaca />);
-    expect(await screen.findByText('CloudCover')).toBeInTheDocument();
-    expect(screen.queryByText('RainRate')).toBeNull();
-    expect(screen.queryByText('WindSpeed')).toBeNull();
+    expect(await screen.findByText(/No Alpaca device yet/)).toBeInTheDocument();
   });
 });

@@ -17,7 +17,7 @@ const current: Settings = {
   wifi: { ssid: 'Observatory', password: '********', hostname: 'sqmeter', mdns: true },
   mqtt: { broker: 'broker.lan', port: 1883, password: '', publish: { sky: true, diagnostics: false } },
   auth: { enabled: false, username: 'admin', password: '' },
-  alerts: { sendMode: 'any', armWithAlpaca: false },
+  alerts: { sendMode: 'any' },
   wind: { enabled: false, speedPin: 27 },
 };
 
@@ -41,12 +41,11 @@ describe('restore preview details', () => {
     expect(changesNothing(details, preview(copy()))).toBe(true);
   });
 
-  it('lists exactly the settings that change, never secrets or the derived armWithAlpaca', () => {
+  it('lists exactly the settings that change, never secrets', () => {
     const after = copy();
     (after.mqtt as Settings).broker = '192.168.1.10';
     (after.wifi as Settings).password = 'changed';
     (after.alerts as Settings).sendMode = 'whileConnected';
-    (after.alerts as Settings).armWithAlpaca = true;
     expect(changedSettings(current, after)).toEqual([
       { path: 'mqtt.broker', from: 'broker.lan', to: '192.168.1.10' },
       { path: 'alerts.sendMode', from: 'any', to: 'whileConnected' },

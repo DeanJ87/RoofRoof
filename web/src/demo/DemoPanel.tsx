@@ -2,18 +2,13 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useDialogFocus } from '../lib/a11y';
 import { Button, Note } from '../components/ui';
-import DemoImagingApp from './DemoImagingApp';
 import { demoDevice } from './device';
-import DeviceReadout from './panel/DeviceReadout';
-import SensorInputs from './panel/SensorInputs';
-import Shortcuts from './panel/Shortcuts';
 import RealNotifications from './panel/RealNotifications';
-import TimePlace from './panel/TimePlace';
 import { tour } from './tour/tourState';
 
-// The demo's own controls (spec 019): what each sensor reports, what the
-// device makes of it, shortcuts worked out from its settings, and its date,
-// time and place. Only in the demo build (mounted from main.tsx).
+// The demo's own controls: the device's clock speed, real notifications and
+// the tour. Spec 011 adds the simulated roof. Only in the demo build
+// (mounted from main.tsx).
 
 // The flat SQMeter mark, for 17 to 39 px (brand/README.md), inlined at 18 px.
 // Decorative: the button's name stays "Demo". Source: brand/src/logo/sqmeter-mark-flat.svg.
@@ -46,13 +41,33 @@ const DemoMark: FunctionalComponent = () => (
   </svg>
 );
 
-// The demo device's clock isn't the real time (spec 019): say so where the demo is named (spec 026).
+// The demo device's clock isn't the real time (SQMeter spec 019): say so where the demo is named (spec 026).
 const ClockMoved: FunctionalComponent = () =>
   Math.abs(demoDevice.now.valueOf() - Date.now()) > 60_000 ? (
     <span class="demo-clock-moved" data-inventory="demo-marker">
       Clock moved
     </span>
   ) : null;
+
+// The device's clock at 1x or 10x, to see time-based alerts sooner.
+const ClockSpeed: FunctionalComponent = () => (
+  <div class="card-group" aria-label="Clock">
+    <h3 class="card-group-title">Clock</h3>
+    <div class="btn-row">
+      {[1, 10].map((multiplier) => (
+        <Button
+          key={multiplier}
+          small
+          variant={demoDevice.timeMultiplier === multiplier ? 'primary' : 'ghost'}
+          ariaLabel={`Clock speed ${multiplier}x${demoDevice.timeMultiplier === multiplier ? " (current)" : ""}`}
+          onClick={() => demoDevice.setTimeMultiplier(multiplier)}
+        >
+          {multiplier}x
+        </Button>
+      ))}
+    </div>
+  </div>
+);
 
 const DemoPanel: FunctionalComponent = () => {
   const [open, setOpen] = useState(false);
@@ -82,14 +97,9 @@ const DemoPanel: FunctionalComponent = () => {
             </Button>
           </div>
           <Note>
-            Set what each sensor reports; the device's own code works out the rest. Nothing is sent anywhere unless you turn on Real
-            notifications.
+            The device's own code runs in your browser. Nothing is sent anywhere unless you turn on Real notifications.
           </Note>
-          <DeviceReadout />
-          <Shortcuts />
-          <SensorInputs />
-          <TimePlace />
-          <DemoImagingApp />
+          <ClockSpeed />
           <RealNotifications />
           <div class="btn-row">
             <Button

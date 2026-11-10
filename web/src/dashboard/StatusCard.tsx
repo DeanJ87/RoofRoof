@@ -10,7 +10,7 @@ import { spoken, toCheck, type GlanceItem, type Severity } from './glance';
 // card shows are one row each - name, pill, "?" - and the row goes to where
 // it's fixed. Nothing another card already shows (DS-08).
 
-type Action = 'resume' | 'acknowledge';
+type Action = 'resume';
 
 const TONE: Record<Severity, string> = { ok: 'pill-green', idle: 'pill-dim', note: 'pill-amber', problem: 'pill-red' };
 // Tiles: the imaging app (one per Alpaca device), then whether anyone will be told.

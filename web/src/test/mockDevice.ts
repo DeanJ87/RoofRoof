@@ -4,21 +4,14 @@ import { evaluate, type DepFacts } from '../lib/settingsDeps';
 import type { Config } from '../types';
 import { server } from './mswServer';
 
-// A healthy standard-build device with every sky sensor answering.
+// A healthy device. It offers one Alpaca device, so the imaging-app alerts
+// are live; D-37's case without one sets alpacaDevices: 0.
 export const healthyFacts: DepFacts = {
   wifiConnected: true,
   mqttConnected: true,
   clockSet: true,
-  gpsRunning: true,
-  gpsFix: true,
-  bluetoothBuild: false,
-  bluetoothRunning: false,
-  pairedPhones: 0,
-  lightDetected: true,
-  infraredDetected: true,
-  environmentDetected: true,
-  languageInstalled: true,
-};
+  alpacaDevices: 1,
+}
 
 /**
  * Serves a device whose settings are `mockConfig` with `config` on top, and

@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import Settings from '../Settings';
 import { Toaster } from '../toast';
-import { mockConfig, mockStatus } from '../../mocks/data';
-import { server } from '../../test/mswServer';
+import { mockConfig } from '../../mocks/data';
 import { mockDevice } from '../../test/mockDevice';
 
 const withConfig = (overrides: Record<string, unknown>) => mockDevice({ config: overrides });
@@ -14,26 +12,26 @@ describe('Settings', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('opens the Safety tab from the Alpaca setup link and scrolls to Alpaca', async () => {
+  it('opens the Network tab from the Alpaca setup link and scrolls to Alpaca', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
     window.history.replaceState(null, '', '/settings?section=alpaca');
 
     const { container } = render(<Settings />);
 
-    expect(await screen.findByRole('tab', { name: 'Safety', selected: true })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Network', selected: true })).toBeInTheDocument();
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     expect(scrollIntoView.mock.contexts[0]).toBe(container.querySelector('#alpaca'));
   });
 
-  it('shows the clear-vs-overcast error under Clear below, not Overcast above', async () => {
-    withConfig({ cloudDetection: { clearSkyThreshold: -2, cloudyThreshold: -5, humidityCorrection: 0.75 } });
-    window.history.replaceState(null, '', '/settings?tab=sensors');
+  it('shows an error under its own field', async () => {
+    withConfig({ mqtt: { ...mockConfig.mqtt, enabled: true, topic: 'roofroof', broker: 'mqtt.example.com' } });
+    window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);
-    const [clear] = await screen.findAllByLabelText('Clear below', { selector: 'input' });
-    fireEvent.change(clear, { target: { value: '-1' } });
-    const message = await screen.findByText('Clear sky threshold must be less than cloudy threshold');
-    expect(message.closest('.field')?.querySelector('.field-label')?.textContent).toContain('Clear below');
+    const [broker] = await screen.findAllByLabelText('Broker', { selector: 'input' });
+    fireEvent.input(broker, { target: { value: '' } });
+    const message = await screen.findByText('MQTT broker and topic are required when MQTT is enabled');
+    expect(message.closest('.field')?.querySelector('.field-label')?.textContent).toContain('Broker');
   });
 
   it('switches tabs and records the tab in the URL', async () => {
@@ -42,45 +40,6 @@ describe('Settings', () => {
     expect(screen.getByRole('tab', { name: 'Alerts', selected: true })).toBeInTheDocument();
     expect(window.location.search).toBe('?tab=alerts');
     expect(await screen.findByText('Notify me when')).toBeInTheDocument();
-  });
-
-  it('greys out rain rules when the rain sensor is off, with a link to set it up', async () => {
-    withConfig({ rain: { ...mockConfig.rain, enabled: false }, alpaca: { ...mockConfig.alpaca, rainUnsafeEnabled: false } });
-    window.history.replaceState(null, '', '/settings?tab=safety');
-    render(<Settings />);
-
-    const toggle = await screen.findByLabelText('Unsafe while raining');
-    await waitFor(() => expect(toggle).toBeDisabled());
-    expect(screen.getAllByText(/Rain sensor is off\./).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getAllByText('Turn on')[0]);
-    expect(await screen.findByRole('tab', { name: 'Sensors', selected: true })).toBeInTheDocument();
-  });
-
-  it('lets a rule that is already on be switched off even without its sensor', async () => {
-    withConfig({ rain: { ...mockConfig.rain, enabled: false } }); // rainUnsafeEnabled defaults on
-    window.history.replaceState(null, '', '/settings?tab=safety');
-    render(<Settings />);
-
-    const toggle = await screen.findByLabelText('Unsafe while raining');
-    expect(toggle).not.toBeDisabled();
-    // Rain rules are ignored without the sensor (D-15), not fail-safe.
-    await waitFor(() => expect(screen.getAllByText('Not in effect: Rain sensor is off').length).toBe(2));
-  });
-
-  it('greys out sky rules when the MLX90614 was not detected', async () => {
-    server.use(
-      http.get('/api/status', () =>
-        HttpResponse.json({ ...mockStatus, sensors: { ...mockStatus.sensors, infrared: { status: 'missing', ageMs: 0 } } }),
-      ),
-    );
-    mockDevice({ config: { alpaca: { ...mockConfig.alpaca, cloudCoverEnabled: false } }, facts: { infraredDetected: false } });
-    window.history.replaceState(null, '', '/settings?tab=safety');
-    render(<Settings />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Max cloud cover', { selector: 'input[type=checkbox]' })).toBeDisabled();
-    });
   });
 
   it('shows the save bar only with unsaved changes, and blocks alert tests until saved', async () => {
@@ -100,11 +59,11 @@ describe('Settings', () => {
   });
 
   it('offers a restart when a saved change only applies after one', async () => {
-    window.history.replaceState(null, '', '/settings?tab=safety');
+    window.history.replaceState(null, '', '/settings?tab=network');
     render(<Toaster />);
     render(<Settings />);
 
-    fireEvent.click(await screen.findByLabelText('Serve Alpaca devices'));
+    fireEvent.click(await screen.findByLabelText('Serve Alpaca'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved. Restart to apply Alpaca discovery.')).toBeInTheDocument();
@@ -163,8 +122,4 @@ describe('Settings', () => {
     expect(screen.getByText('Topic is required')).toBeInTheDocument();
   });
 
-  it('explains Bluetooth needs the BLE build on standard firmware', async () => {
-    render(<Settings />);
-    expect(await screen.findByText(/Needs the Bluetooth firmware build/)).toBeInTheDocument();
-  });
 });

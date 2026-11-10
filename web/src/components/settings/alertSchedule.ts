@@ -1,8 +1,8 @@
 import type { AlertSchedule, AlertSendMode, AlpacaClientState } from '../../types';
-import { formatClock, formatDuration } from '../../lib/astro';
+import { formatClock, formatDuration } from '../../lib/clock';
 import { t } from '../../i18n';
 
-// "When to send" (specs/021): the labels and the status sentence. The
+// "When to send" (SQMeter spec 021): the labels and the status sentence. The
 // wording is part of the spec - change it there first.
 
 export const SEND_MODE_OPTIONS: { value: AlertSendMode; label: string; help: string }[] = [
@@ -46,22 +46,16 @@ export const describeSchedule = (schedule: AlertSchedule): string => {
       return t('settings.alertSchedule.pausedByAScriptAt', { at, resume });
     case 'user-mqtt':
       return t('settings.alertSchedule.pausedFromHomeAssistantOr', { at, resume });
-    case 'migrated':
-      return t('settings.alertSchedule.pausedBeforeTheUpdateResume', { resume });
     default:
       return t('settings.alertSchedule.paused', { resume });
   }
 };
 
 // A silent imaging app, shown whether or not alerts are paused, e.g. "The
-// imaging app has gone quiet - safety monitor last checked 4m ago."
-export const describeSilentClients = (clients: { safetymonitor: AlpacaClientState; observingconditions: AlpacaClientState }) => {
-  const silent = (
-    [
-      [t('settings.alertSchedule.safetyMonitor'), clients.safetymonitor],
-      [t('settings.alertSchedule.weatherDevice'), clients.observingconditions],
-    ] as const
-  )
+// imaging app has gone quiet - roof last checked 4m ago." `clients` is keyed by
+// the Alpaca device's type ("dome").
+export const describeSilentClients = (clients: Record<string, AlpacaClientState>) => {
+  const silent = Object.entries(clients)
     .filter(([, state]) => state.silent)
     .map(([name, state]) =>
       state.lastCheckedAgeMs === null

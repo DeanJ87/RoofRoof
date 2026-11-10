@@ -17,7 +17,7 @@ import { t } from '../../i18n';
 // Paused or sending, and Pause/Resume: live device state, not a saved setting.
 type Schedule = ReturnType<typeof useAlertSchedule>;
 
-const ScheduleStatus: FunctionalComponent<{ schedule: Schedule; sendMode: AlertSendMode }> = ({ schedule, sendMode }) => {
+const ScheduleStatus: FunctionalComponent<{ schedule: Schedule }> = ({ schedule }) => {
   const { schedule: shownSchedule, busy: scheduleBusy, pauseOrResume: sendPauseOrResume } = schedule;
   const pauseOrResume = async (resume: boolean) => {
     if (!(await sendPauseOrResume(resume))) showToast({ message: t('settings.alerts.couldNotReachTheDevice'), tone: 'bad' });
@@ -26,7 +26,7 @@ const ScheduleStatus: FunctionalComponent<{ schedule: Schedule; sendMode: AlertS
     <div class="btn-row" data-schedule-status>
       {shownSchedule && (
         <Note tone={shownSchedule.armed ? 'ok' : 'warn'}>
-          {describeSchedule({ ...shownSchedule, mode: shownSchedule.mode ?? sendMode })}
+          {describeSchedule(shownSchedule)}
         </Note>
       )}
       <ActionButton onClick={() => pauseOrResume(!(shownSchedule?.armed ?? true))} disabled={shownSchedule === null || scheduleBusy}>
@@ -44,7 +44,7 @@ const WhenToSend: FunctionalComponent<{ view: AlertsView; status: SystemStatus |
   schedule,
 }) => {
   const { alerts, updateMany, dep, fix } = view;
-  const sendMode: AlertSendMode = alerts.sendMode ?? (alerts.armWithAlpaca ? 'whileConnected' : 'any');
+  const sendMode: AlertSendMode = alerts.sendMode;
   const silentClients = status?.alpaca?.clients && describeSilentClients(status.alpaca.clients);
   return (
     <Group title={t('settings.alerts.whenToSend')}>
@@ -52,16 +52,11 @@ const WhenToSend: FunctionalComponent<{ view: AlertsView; status: SystemStatus |
         value={sendMode}
         ariaLabel={t('settings.alerts.whenToSend')}
         options={SEND_MODE_OPTIONS.map(({ value, label }) => ({ value, label }))}
-        onChange={(v) =>
-          updateMany([
-            [['alerts', 'sendMode'], v],
-            [['alerts', 'armWithAlpaca'], v === 'whileConnected'],
-          ])
-        }
+        onChange={(v) => updateMany([[['alerts', 'sendMode'], v]])}
       />
       <Note>{SEND_MODE_OPTIONS.find((option) => option.value === sendMode)?.help}</Note>
       {dep('alerts.sendMode').state === 'inactive' && <DepNote entry={dep('alerts.sendMode')} onFix={fix} />}
-      <ScheduleStatus schedule={schedule} sendMode={sendMode} />
+      <ScheduleStatus schedule={schedule} />
       {silentClients && <Note tone="warn">{silentClients}</Note>}
     </Group>
   );
@@ -126,7 +121,7 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
   return (
     <>
       <SendAlertsCard view={view} status={status} schedule={schedule} channelsOn={channelsOn} />
-      <AlertsEventsCard view={view} status={status} wakePhones={deps.get('alerts.wakePhones')} />
+      <AlertsEventsCard view={view} />
       <AlertChannelsCard view={view} />
     </>
   );

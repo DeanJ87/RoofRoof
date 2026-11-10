@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config, SafetyStatus } from '../types';
+import type { AlpacaConfiguredDevice, AlpacaDeviceStateItem, AlpacaResponse, Config } from '../types';
 import { getJson } from '../lib/api';
 
 const alpacaGet = async <T>(path: string): Promise<AlpacaResponse<T> | null> => {
@@ -13,13 +13,12 @@ const alpacaGet = async <T>(path: string): Promise<AlpacaResponse<T> | null> => 
 export const deviceBasePath = (device: AlpacaConfiguredDevice) => `/api/v1/${device.DeviceType.toLowerCase()}/${device.DeviceNumber}`;
 
 // What the Alpaca page shows: the config (is Alpaca on), the configured
-// devices and each one's live state, and the safety verdict, polled.
+// devices and each one's live state, polled.
 export const useAlpacaDevices = (intervalMs: number) => {
   const [config, setConfig] = useState<Config | null>(null);
   const [devices, setDevices] = useState<AlpacaConfiguredDevice[] | null>(null);
   const [deviceStates, setDeviceStates] = useState<Record<string, AlpacaDeviceStateItem[] | null>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [safety, setSafety] = useState<SafetyStatus | null>(null);
 
   useEffect(() => {
     getJson<Config>('/api/config')
@@ -28,16 +27,6 @@ export const useAlpacaDevices = (intervalMs: number) => {
 
     alpacaGet<AlpacaConfiguredDevice[]>('/management/v1/configureddevices').then((response) => setDevices(response?.Value ?? []));
   }, []);
-
-  useEffect(() => {
-    const pollSafety = () =>
-      getJson<SafetyStatus>('/api/safety')
-        .then((data) => setSafety(data))
-        .catch(() => setSafety(null));
-    pollSafety();
-    const timer = setInterval(pollSafety, intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
 
   useEffect(() => {
     if (!devices || devices.length === 0) return undefined;
@@ -59,5 +48,5 @@ export const useAlpacaDevices = (intervalMs: number) => {
     return () => clearInterval(timer);
   }, [devices, intervalMs]);
 
-  return { config, devices, deviceStates, lastUpdated, safety };
+  return { config, devices, deviceStates, lastUpdated };
 };

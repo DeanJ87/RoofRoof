@@ -3,12 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import Ajv from 'ajv';
 import { demoDevice } from '../device';
 import { statusDocument } from '../handlers';
-import { i18nDocument } from '../i18n';
-import { mockGithubReleases, mockWifiNetworks } from '../../mocks/data';
+import { mockWifiNetworks } from '../../mocks/data';
 
 // Every document the demo answers must match the device's contract
 // (specs/001-platform-bootstrap/contracts/schemas, generated from a real
-// SQMeter). A field the device doesn't send, or a missing one, fails here.
+// SQMeter, cut down to RoofRoof's documents). A field the device doesn't send, or a missing one, fails here.
 
 const files = import.meta.glob('../../../../specs/001-platform-bootstrap/contracts/schemas/*.schema.json', {
   eager: true,
@@ -34,30 +33,23 @@ describe('demo documents match the device contract', () => {
   });
   afterAll(() => demoDevice.stop());
 
-  it('readings (/api/sensors, /ws/sensors)', () => check('readings', JSON.parse(demoDevice.readings())));
   it('status (/api/status, /ws/status)', () => check('status', statusDocument()));
-  it('safety', () => check('safety', JSON.parse(demoDevice.safety())));
-  it('settings in effect (specs/020-settings-dependencies)', () => check('settings-effective', JSON.parse(demoDevice.effective())));
+  it('settings in effect (SQMeter spec 020)', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
-  it('language (/api/i18n, specs/023-i18n)', () => check('i18n', i18nDocument()));
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
   it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
-  it('safety history', () => check('safety-history', JSON.parse(demoDevice.safetyHistory())));
-  it('WiFi scan and update releases (specs/028-openapi FR-002)', () => {
+  it('WiFi scan (SQMeter spec 028 FR-002)', () => {
     check('wifi-scan', { success: true, scanning: false, networks: mockWifiNetworks });
-    check('releases', mockGithubReleases);
   });
   it('Alpaca management and device state', () => {
     check('alpaca-description', alpaca('/management/v1/description'));
     check('alpaca-configured-devices', alpaca('/management/v1/configureddevices'));
-    check('alpaca-devicestate', alpaca('/api/v1/safetymonitor/0/devicestate'));
-    check('alpaca-devicestate', alpaca('/api/v1/observingconditions/0/devicestate'));
   });
 
   it('a field the device does not send fails the check', () => {
-    const readings = JSON.parse(demoDevice.readings());
-    readings.sky.sqmValue = readings.sky.sqm; // e.g. a rename that drifted
-    const validate = ajv.compile(schemas.readings);
-    expect(validate(readings)).toBe(false);
+    const status = statusDocument() as Record<string, unknown>;
+    status.upTime = status.uptime; // e.g. a rename that drifted
+    const validate = ajv.compile(schemas.status);
+    expect(validate(status)).toBe(false);
   });
 });

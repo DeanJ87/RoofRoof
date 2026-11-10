@@ -1,9 +1,10 @@
 import { FunctionalComponent } from 'preact';
-import type { MQTTPublishGroups } from '../../types';
+import { route } from 'preact-router';
 import { useWifiScan } from '../../hooks/useWifiScan';
 import { useMqttTest } from '../../hooks/useMqttTest';
-import { defaultHomeAssistant, defaultMqttPublish } from './defaults';
+import { defaultAlpacaConfig, defaultHomeAssistant } from './defaults';
 import type { SettingsTabProps } from './context';
+import { Button } from '../ui';
 import {
   ActionButton,
   DepNote,
@@ -19,26 +20,6 @@ import {
   Toggle,
 } from './controls';
 import { t } from '../../i18n';
-
-const PUBLISH_GROUPS: {
-  key: keyof MQTTPublishGroups;
-  label: string;
-  hint?: string;
-}[] = [
-  { key: 'sky', label: t('settings.network.skyQualityAndLight') },
-  { key: 'environment', label: t('settings.network.temperatureHumidityPressure') },
-  { key: 'clouds', label: t('settings.network.irAndCloudCover') },
-  { key: 'gps', label: 'GPS' },
-  { key: 'rain', label: t('settings.network.rain') },
-  { key: 'wind', label: t('settings.network.wind') },
-  { key: 'battery', label: t('settings.network.battery') }, // spec 032; D-49 without a gauge
-  { key: 'safety', label: t('settings.network.safeUnsafe'), hint: t('settings.network.retainedBaseSafe10') },
-  {
-    key: 'diagnostics',
-    label: t('settings.network.diagnostics'),
-    hint: t('settings.network.lightSensorSampleCountsAnd'),
-  },
-];
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
 
@@ -108,7 +89,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
         entry={deps.get('wifi.mdns')}
         onFix={fix}
         label={t('settings.network.advertiseOnTheNetworkMdns')}
-        hint={t('settings.network.reachableAtHttpValueLocal', { value: config.wifi.hostname || 'sqmeter' })}
+        hint={t('settings.network.reachableAtHttpValueLocal', { value: config.wifi.hostname || 'roofroof' })}
         checked={config.wifi.mdns ?? true}
         onChange={(v) => update(['wifi', 'mdns'], v)}
       />
@@ -126,7 +107,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
 
 // Broker, credentials, base topic and interval.
 const MqttFields: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => {
-  const base = config.mqtt.topic || 'sqmeter';
+  const base = config.mqtt.topic || 'roofroof';
   return (
     <div class="form-grid">
       <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
@@ -165,9 +146,9 @@ const MqttFields: FunctionalComponent<SettingsTabProps> = ({ config, update, err
       <Field
         label={t('settings.network.baseTopic')}
         error={error('mqttTopic')}
-        hint={t('settings.network.readingsGoToBaseState', { base, base2: base })}
+        hint={t('settings.network.topicsGoUnderBase', { base })}
       >
-        <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="sqmeter" onInput={(v) => update(['mqtt', 'topic'], v)} />
+        <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="roofroof" onInput={(v) => update(['mqtt', 'topic'], v)} />
       </Field>
       <Field label={t('settings.network.publishEvery')} error={error('mqttInterval')}>
         <NumberInput
@@ -201,27 +182,6 @@ const MqttTest: FunctionalComponent<{ config: SettingsTabProps['config']; test: 
   );
 };
 
-// Which reading groups are published.
-const PublishGroups: FunctionalComponent<SettingsTabProps> = ({ config, update, deps, fix }) => {
-  const publish = { ...defaultMqttPublish, ...config.mqtt.publish };
-  return (
-    <Group title={t('settings.network.publish')}>
-      {PUBLISH_GROUPS.map((item) => (
-        <DepToggle
-          key={item.key}
-          entry={deps.get(`mqtt.publish.${item.key}`)}
-          onFix={fix}
-          prefix={t('settings.network.nothingToPublish')}
-          label={item.label}
-          checked={publish[item.key] ?? true}
-          onChange={(v) => update(['mqtt', 'publish', item.key], v)}
-          hint={item.hint}
-        />
-      ))}
-    </Group>
-  );
-};
-
 // Home Assistant MQTT discovery.
 const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
   const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
@@ -233,7 +193,7 @@ const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, upd
         label={t('settings.network.mqttDiscovery')}
         checked={homeAssistant.enabled}
         onChange={(v) => update(['mqtt', 'homeAssistant', 'enabled'], v)}
-        hint={t('settings.network.announcesTheReadingsTheSafe')}
+        hint={t('settings.network.announcesTheDeviceToHomeAssistant')}
       />
       {homeAssistant.enabled && deps.get('mqtt.homeAssistant.alertsSwitch').state === 'inactive' && (
         <div class="indent">
@@ -259,13 +219,29 @@ const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, upd
   );
 };
 
-const mqttBadge = ({ config, hw }: SettingsTabProps) => {
-  if (!config.mqtt.enabled || hw.mqtt.connected === null) return undefined;
+const mqttBadge = ({ config, status }: SettingsTabProps) => {
+  const connected = status?.mqtt ? status.mqtt.connected : null;
+  if (!config.mqtt.enabled || connected === null) return undefined;
   return (
     <StatusBadge
-      tone={hw.mqtt.connected ? 'ok' : 'bad'}
-      label={hw.mqtt.connected ? t('settings.network.connected') : t('settings.network.notConnected')}
+      tone={connected ? 'ok' : 'bad'}
+      label={connected ? t('settings.network.connected') : t('settings.network.notConnected')}
     />
+  );
+};
+
+// ASCOM Alpaca: discovery and the management API, and the Dome from spec 006.
+const AlpacaCard: FunctionalComponent<SettingsTabProps> = ({ config, update }) => {
+  const alpaca = { ...defaultAlpacaConfig, ...config.alpaca };
+  return (
+    <SettingsCard id="alpaca" title="ASCOM Alpaca" hint={t('settings.network.alpacaHint')}>
+      <Toggle label={t('settings.network.serveAlpaca')} checked={alpaca.enabled} onChange={(v) => update(['alpaca', 'enabled'], v)} />
+      <div>
+        <Button variant="link" onClick={() => route('/alpaca')}>
+          {t('settings.network.alpacaDetails')}
+        </Button>
+      </div>
+    </SettingsCard>
   );
 };
 
@@ -276,7 +252,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
     <>
       <WifiCard {...props} />
 
-      <SettingsCard id="mqtt" title="MQTT" hint={t('settings.network.publishesReadingsToABroker')} badge={mqttBadge(props)}>
+      <SettingsCard id="mqtt" title="MQTT" hint={t('settings.network.mqttHint')} badge={mqttBadge(props)}>
         <Toggle
           label={t('settings.network.publishToABroker')}
           checked={config.mqtt.enabled}
@@ -287,12 +263,12 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
             <MqttFields {...props} />
             <MqttTest config={config} test={mqttTest} />
 
-            <PublishGroups {...props} />
-
             <HomeAssistantGroup {...props} />
           </>
         )}
       </SettingsCard>
+
+      <AlpacaCard {...props} />
     </>
   );
 };

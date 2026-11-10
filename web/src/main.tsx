@@ -1,9 +1,8 @@
 import { render } from 'preact';
-import { loadLanguage } from './i18n/loader';
 import './index.css';
 
-// The app is imported after the language is installed, so labels built when
-// a module loads are translated too (specs/023-i18n research D2).
+// The app is imported after the demo device starts, so its first requests
+// are answered by the emulated device.
 async function init() {
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     try {
@@ -34,7 +33,6 @@ async function init() {
     }
   }
 
-  await loadLanguage();
   const { default: App } = await import('./App');
 
   if (import.meta.env.VITE_DEMO_MODE === 'true') {

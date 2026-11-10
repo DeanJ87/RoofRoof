@@ -1,25 +1,12 @@
-// The languages SQMeter ships (specs/023-i18n). Names are each language's own
-// name for itself, so a user can always find theirs. Keep in step with
-// lib/LanguageLogic (the device validates the same codes).
+// The languages RoofRoof ships: English only for now (spec 001). The i18n
+// framework from SQMeter is kept, so another language is a messages file and
+// an entry here. Names are each language's own name for itself.
 
-export const LANGUAGES = [
-  { code: 'en', name: 'English' },
-  { code: 'id', name: 'Bahasa Indonesia' },
-  { code: 'de', name: 'Deutsch' },
-  { code: 'es', name: 'Español' },
-  { code: 'fr', name: 'Français' },
-  { code: 'it', name: 'Italiano' },
-  { code: 'nl', name: 'Nederlands' },
-  { code: 'pl', name: 'Polski' },
-  { code: 'pt-BR', name: 'Português (Brasil)' },
-  { code: 'tr', name: 'Türkçe' },
-  { code: 'ar', name: 'العربية' },
-  { code: 'ja', name: '日本語' },
-  { code: 'ko', name: '한국어' },
-  { code: 'zh-Hans', name: '简体中文' },
-] as const;
+export const LANGUAGES = [{ code: 'en', name: 'English' }] as const;
 
-export type LanguageCode = (typeof LANGUAGES)[number]['code'];
+// A BCP 47 tag: what setLanguage and the formatters accept (tests use other
+// locales to check number formatting).
+export type LanguageCode = string;
 
 const RTL: readonly string[] = ['ar'];
 

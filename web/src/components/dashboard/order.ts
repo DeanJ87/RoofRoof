@@ -1,20 +1,6 @@
-export const DEFAULT_ORDER = [
-  'status',
-  'safety',
-  'sky',
-  'sky-other',
-  'sunmoon',
-  'cloud',
-  'environment',
-  'gps',
-  'light',
-  'device',
-  'ir',
-  'wind',
-  'rain',
-  'battery',
-];
-const ORDER_KEY = 'sqm.dashboard.order';
+// The dashboard's cards in their default order. Spec 009 adds the roof's.
+export const DEFAULT_ORDER = ['status', 'device'];
+const ORDER_KEY = 'roofroof.dashboard.order';
 
 // Card order is a per-browser preference.
 export const loadOrder = (): string[] => {

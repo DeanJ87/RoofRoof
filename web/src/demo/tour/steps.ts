@@ -1,8 +1,6 @@
-import { demoDevice } from '../device';
-import { imagingApp } from '../imagingApp';
-
-// The demo tour's steps (specs/018 FR-001). Action steps finish when the
-// emulated device reacts (FR-002), never on a timer, and offer "Do it for me".
+// The demo tour's steps (SQMeter spec 018 FR-001). Action steps finish when
+// the emulated device reacts (FR-002), never on a timer, and offer "Do it for
+// me". Spec 011 adds the roof's steps.
 
 export interface TourStep {
   id: string;
@@ -18,125 +16,34 @@ export interface TourStep {
   doItLabel?: string;
 }
 
-interface Safety {
-  safe: boolean;
-  reasons: string[];
-}
-
-const safety = (): Safety => JSON.parse(demoDevice.safety());
-const rainOn = () => demoDevice.rawConfig().rain?.enabled === true;
-// The safety monitor as the device sees the pretend imaging app (its Status card tile).
-const safetyClient = (): { connected?: boolean; silent?: boolean } => demoDevice.statusParts().alpaca?.clients?.safetymonitor ?? {};
-const hasAlerts = () => (JSON.parse(demoDevice.recentAlerts()).alerts as unknown[]).length > 0;
-
-// Settings the "change a rule" step compares against, captured when it starts.
-let rulesAtStart = '';
-const rules = () => JSON.stringify(demoDevice.rawConfig().alpaca ?? {});
-export const captureRules = () => {
-  rulesAtStart = rules();
-};
-
 export const TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: 'This is SQMeter',
+    title: 'This is RoofRoof',
     body: () =>
-      "A sky-quality and weather monitor for observatories: it measures how dark and clear the sky is, decides whether it's safe to open, and tells you and your imaging software. This demo runs the device's own code in your browser.",
+      "A roll-off roof controller for observatories: it opens and closes the roof, asks the imaging app to park the mount first, and closes the roof when the weather turns. This demo runs the device's own code in your browser.",
   },
   {
-    id: 'readings',
-    title: 'Live readings',
+    id: 'status',
+    title: 'Status',
     route: '/',
-    target: '[data-masonry-id="sky"]',
-    body: () => 'Sky quality in mag/arcsec², the Bortle class and naked-eye limit - from a light sensor pointed at the zenith.',
-  },
-  {
-    id: 'verdict',
-    title: 'The safety verdict',
-    route: '/',
-    target: '[data-masonry-id="safety"]',
-    body: () => 'Safe or unsafe, with the reasons. Your rules decide: rain, cloud cover, darkness, wind and sensors that stop answering.',
-  },
-  {
-    id: 'make-unsafe',
-    title: 'Make it unsafe',
-    route: '/',
-    target: '[data-masonry-id="safety"]',
-    body: () =>
-      rainOn()
-        ? 'Open Demo (bottom right) and press Rain under Shortcuts - or let me. Watch this card.'
-        : 'The rain sensor is off in this demo, so try cloud instead: open Demo and press "Cloud just unsafe" - or let me.',
-    done: () => !safety().safe,
-    doIt: () => void demoDevice.applyShortcut(rainOn() ? 'rain' : 'cloudUnsafe'),
-    doItLabel: 'Do it for me',
+    target: '[data-masonry-id="status"]',
+    body: () => 'Whether the imaging app is checking the device, and whether alerts go out.',
   },
   {
     id: 'bell',
-    title: 'An alert',
+    title: 'Alerts',
     route: '/',
     target: '.alerts-bell',
     body: () =>
-      `${hasAlerts() ? 'The device raised an alert - open the bell to read it.' : "The alert lands under the bell. For its first minute after starting, the device doesn't alert, so a restart doesn't announce the start-up weather - give it a moment."} A real SQMeter sends alerts to your phone (Pushover, ntfy, MQTT); turn on Real notifications in the Demo panel to try that here.`,
-  },
-  {
-    id: 'imaging-app',
-    title: 'Is the imaging app checking?',
-    route: '/',
-    target: '[data-masonry-id="status"]',
-    body: () =>
-      'The Status card shows whether your imaging app is checking the device, and whether alerts go out. Connect the pretend imaging app in the Demo panel - or let me.',
-    done: () => safetyClient().connected === true,
-    doIt: () => imagingApp.connect(),
-    doItLabel: 'Connect it for me',
-  },
-  {
-    id: 'imaging-silent',
-    title: 'When it stops checking',
-    route: '/',
-    target: '[data-masonry-id="status"]',
-    body: () =>
-      'If the PC sleeps or the app crashes, it stops asking without disconnecting. After the Silent for time (2 min) the tile turns Gone quiet and you get an alert. Press Go silent in the Demo panel - or let me, at 10x speed.',
-    done: () => safetyClient().silent === true,
-    doIt: () => {
-      if (imagingApp.state === 'off') imagingApp.connect();
-      imagingApp.goSilent();
-      demoDevice.setTimeMultiplier(10);
-    },
-    doItLabel: 'Go silent for me',
-  },
-  {
-    id: 'alpaca',
-    title: 'Your imaging software agrees',
-    route: '/alpaca',
-    body: () =>
-      'N.I.N.A. and other ASCOM Alpaca apps ask the device "is it safe?" - and get the same verdict, with the same reasons. Here is what they see.',
-  },
-  {
-    id: 'change-rule',
-    title: 'Change a rule',
-    route: '/settings?tab=safety',
-    body: () =>
-      'Change any safety rule and save - for example switch off the Rain rule. The verdict re-evaluates with your rule straight away.',
-    done: () => rulesAtStart !== '' && rules() !== rulesAtStart,
-    doIt: () => void demoDevice.applyConfig(JSON.stringify({ alpaca: { rainUnsafeEnabled: false } })),
-    doItLabel: 'Switch off the rain rule for me',
+      'Alerts land under the bell. A real RoofRoof sends them to your phone (Pushover, ntfy, MQTT); turn on Real notifications in the Demo panel to try that here.',
   },
   {
     id: 'demo-panel',
     title: 'The Demo panel',
     target: '.demo-panel-toggle',
-    body: () =>
-      'Set what every sensor reports, jump to tonight or dawn, move the device anywhere on Earth, connect or silence the pretend imaging app - and take this tour again.',
-  },
-  {
-    id: 'next',
-    title: 'Where next',
-    body: () => 'Read the docs at sqmeter.dev, see the parts list to build one, or look at the code on GitHub.',
+    body: () => "Speed up the device's clock, try real notifications, and take this tour again.",
   },
 ];
 
-export const LINKS = [
-  { label: 'Docs', href: 'https://sqmeter.dev/' },
-  { label: 'Build one', href: 'https://sqmeter.dev/getting-started/hardware/' },
-  { label: 'GitHub', href: 'https://github.com/DeanJ87/SQMeter' },
-];
+export const LINKS = [{ label: 'GitHub', href: 'https://github.com/DeanJ87/RoofRoof' }];

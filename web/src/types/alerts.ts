@@ -1,26 +1,8 @@
 // 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
 export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 
-export type AlertEventKey =
-  | 'unsafe'
-  | 'safe'
-  | 'rain_started'
-  | 'rain_stopped'
-  | 'sensor_fault'
-  | 'sensor_recovered'
-  | 'dew_risk'
-  | 'clear_sky'
-  | 'clouded_over'
-  | 'client_lost'
-  | 'client_back'
-  | 'client_disconnected'
-  // The battery (spec 032); older firmware has none.
-  | 'battery_low'
-  | 'battery_critical'
-  | 'battery_shutdown'
-  | 'power_restored'
-  | 'charge_complete'
-  | 'charge_fault';
+// The imaging-app events (SQMeter spec 021). Spec 007 adds the roof's.
+export type AlertEventKey = 'client_lost' | 'client_back' | 'client_disconnected';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {
@@ -34,17 +16,9 @@ export interface AlertEventSetting {
 export interface AlertsConfig {
   enabled: boolean;
   events: Record<AlertEventKey, AlertEventSetting>;
-  dewRiskMarginC: number;
-  clearSkyCloudPercent: number;
-  cloudedOverCloudPercent: number;
-  skyNightOnly: boolean;
-  safetyNightOnly: boolean;
-  // When alerts are sent (specs/021); older firmware has only armWithAlpaca.
-  sendMode?: AlertSendMode;
-  armWithAlpaca?: boolean;
-  clientSilentSafetySeconds?: number;
-  clientSilentWeatherSeconds?: number;
-  nightSunAltitudeDeg: number;
+  // When alerts are sent (SQMeter spec 021).
+  sendMode: AlertSendMode;
+  clientSilentSeconds: number; // 30..3600
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
   ntfy: { enabled: boolean; server: string; topic: string; token: string };
@@ -59,13 +33,11 @@ export type AlertSendMode = 'any' | 'whileConnected';
 export type AlertScheduleReason =
   'none' | 'user-ui' | 'user-rest' | 'user-mqtt' | 'client-connected' | 'client-disconnected' | 'waiting-for-client' | 'migrated';
 
-// GET /api/alerts/armed, and /api/status "alerts". Older firmware sends only
-// armed and armWithAlpaca.
+// GET /api/alerts/armed, and /api/status "alerts".
 export interface AlertSchedule {
   armed: boolean;
-  armWithAlpaca?: boolean;
-  mode?: AlertSendMode;
-  reason?: AlertScheduleReason;
+  mode: AlertSendMode;
+  reason: AlertScheduleReason;
   since?: string | null; // ISO 8601 UTC, null without a clock
   sinceAgeMs?: number | null; // null: before this boot
   recentRevision?: number; // /api/status only: changes whenever /api/alerts/recent would
@@ -93,7 +65,6 @@ export interface AlertRecord {
 
 export interface AlertsRecent {
   enabled: boolean;
-  // Sending (true) or paused; missing from older firmware = sending.
-  armed?: boolean;
+  armed: boolean; // sending, or paused
   alerts: AlertRecord[];
 }

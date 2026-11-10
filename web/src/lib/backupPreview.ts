@@ -1,14 +1,15 @@
 import { compareVersions } from '../utils/versionCompare';
 
 // What a restore changes, worded from the device's preview
-// (specs/033-config-backup contracts/rest-api.md): the device decides what is
+// (SQMeter spec 033 contracts/rest-api.md): the device decides what is
 // applied and returns the candidate's masked settings; the differences, the
 // settings kept or ignored and the cut-off warnings are listed here, so the
 // device image stays small (research R7).
 
 export type SecretsState = 'restored' | 'kept' | 'none';
-export type NotApplicableReason = 'pin' | 'analog' | 'bluetooth' | 'pushover-keys';
-export type RestartCode = 'wifi' | 'ota' | 'gps' | 'i2c' | 'ipv6' | 'alpaca' | 'ble';
+export type NotApplicableReason = 'pushover-keys';
+export type { RestartCode } from '../components/settings/restart';
+import type { RestartCode } from '../components/settings/restart';
 
 export type Settings = { [key: string]: unknown };
 
@@ -53,16 +54,13 @@ export const SECRET_PATHS = [
   'mqtt.password',
   'ota.password',
   'auth.password',
-  'ble.passkey',
   'alerts.pushover.userKey',
   'alerts.pushover.appToken',
   'alerts.ntfy.token',
   'alerts.webhook.authHeader',
 ] as const;
 
-// Written for older firmware only (alerts.sendMode is the setting).
-const DERIVED = 'alerts.armWithAlpaca';
-const reported = (path: string) => path !== DERIVED && !(SECRET_PATHS as readonly string[]).includes(path);
+const reported = (path: string) => !(SECRET_PATHS as readonly string[]).includes(path);
 const isObject = (value: unknown): value is Settings => typeof value === 'object' && value !== null && !Array.isArray(value);
 const join = (base: string, key: string) => (base ? `${base}.${key}` : key);
 

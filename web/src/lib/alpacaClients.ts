@@ -2,8 +2,8 @@ import type { AlpacaClientState } from '../types';
 import { t } from '../i18n';
 import { formatAgo } from '../i18n/format';
 
-// The imaging app as the device sees it (specs/021), as a one- or two-word
-// state for a pill and, separately, when it last checked (specs/026 DS-21):
+// The imaging app as the device sees it (SQMeter spec 021), as a one- or two-word
+// state for a pill and, separately, when it last checked (DS-21):
 // "Connected" + "Checked 3 s ago". Ages come from the device's uptime clock.
 
 export interface ClientView {

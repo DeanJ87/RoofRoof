@@ -7,12 +7,9 @@ export interface Core extends BackupCore {
   applyConfig(json: string): string;
   loadConfig(json: string): boolean;
   restart(nowMs: number): void;
-  tick(nowMs: number, epoch: number, inputs: string, localTime: string, localDate: string): void;
-  readings(): string;
+  tick(nowMs: number, epoch: number, localTime: string, localDate: string): void;
   statusParts(): string;
-  safety(): string;
   effective(): string;
-  safetyHistory(): string;
   recentAlerts(): string;
   clearAlerts(): void;
   isArmed(): boolean;
@@ -21,8 +18,6 @@ export interface Core extends BackupCore {
   testAlert(params: string): string;
   realTestAlert(): void;
   deliveryRequests(id: number, credentials: string): string;
-  calibrateDark(sensor: string): string;
-  displayRequest(wake: boolean): string;
   alpaca(method: string, path: string, params: string): string;
   saveState(): string;
   loadState(json: string): boolean;

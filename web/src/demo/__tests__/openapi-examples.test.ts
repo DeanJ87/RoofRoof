@@ -7,7 +7,7 @@ import Ajv from 'ajv';
 import { demoDevice } from '../device';
 import { statusDocument } from '../handlers';
 
-// The OpenAPI document's examples (specs/028-openapi FR-006) come from the
+// The OpenAPI document's examples (SQMeter spec 028 FR-006) come from the
 // demo's emulated device - the firmware's own code - so they're true answers.
 // This checks the committed examples still match the contract schemas;
 // OPENAPI_EXAMPLES=write refreshes them from the demo, then run
@@ -20,9 +20,7 @@ const ajv = new Ajv({ allErrors: true, strict: false });
 
 // example name -> contract schema it must satisfy
 const EXAMPLES: Record<string, string> = {
-  readings: 'readings',
   status: 'status',
-  safety: 'safety',
   'alerts-armed': 'alerts-armed',
   'config-change': 'action-result',
   'alert-test': 'action-result',
@@ -35,11 +33,9 @@ const asDevice = (document: Record<string, unknown>) => {
 };
 
 const fromDemo = (): Record<string, unknown> => ({
-  readings: JSON.parse(demoDevice.readings()),
   status: statusDocument(),
-  safety: JSON.parse(demoDevice.safety()),
   'alerts-armed': JSON.parse(demoDevice.armedDocument()),
-  'config-change': asDevice(JSON.parse(demoDevice.applyConfig(JSON.stringify({ deviceName: 'backyard-sqm' })).body)),
+  'config-change': asDevice(JSON.parse(demoDevice.applyConfig(JSON.stringify({ deviceName: 'backyard-roof' })).body)),
   'alert-test': asDevice(JSON.parse(demoDevice.testAlert({ channel: 'all' }).body)),
 });
 

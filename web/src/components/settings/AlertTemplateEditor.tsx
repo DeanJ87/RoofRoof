@@ -71,7 +71,7 @@ export const AlertTemplateEditor: FunctionalComponent<{ view: AlertsView; eventK
   const event = alerts.events[key];
   const title = event.title ?? '';
   const message = event.message ?? '';
-  const placeholder = defaultText(key, alerts.skyNightOnly);
+  const placeholder = defaultText(key);
   const track = (field: 'title' | 'message') => (e: Event) => {
     view.lastField.current = { key, field, el: e.currentTarget as HTMLInputElement | HTMLTextAreaElement };
   };

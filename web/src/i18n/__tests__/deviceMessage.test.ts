@@ -1,31 +1,33 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import es from '../locales/es.json';
+import en from '../en.json';
 import { setLanguage, type Messages } from '../index';
 import { deviceText } from '../deviceMessage';
 import { channelLabel, deliveryStatusLabel } from '../../lib/alertDelivery';
 
-const spanish = es as unknown as Messages;
+// RoofRoof ships English only (spec 001); a pseudo-language that brackets
+// every message shows the device's text goes through the message catalogue.
+const pseudo = Object.fromEntries(
+  Object.entries(en as Record<string, unknown>).map(([key, text]) => [key, `⟦${text}⟧`]),
+) as unknown as Messages;
 
 describe('device text in the UI language', () => {
   afterEach(() => setLanguage('en', null));
 
   it('translates a test alert, values included', () => {
-    setLanguage('es', spanish);
-    expect(deviceText('Test: Rain detected')).toBe(`Prueba: ${es['device.safety.rainDetected']}`);
-    expect(deviceText('This is how a "Rain starts" alert arrives.')).toBe(`Así llega una alerta «${es['settings.alerts.rainStarts']}».`);
-    expect(deviceText('Demo: nothing was sent')).toBe('Demo: no se envió nada');
+    setLanguage('xx', pseudo);
+    expect(deviceText('Test: Test notification')).toBe('⟦Test: ⟦Test notification⟧⟧');
   });
 
   it('leaves text it does not know as sent', () => {
-    setLanguage('es', spanish);
+    setLanguage('xx', pseudo);
     expect(deviceText('My own title')).toBe('My own title');
     expect(deviceText('HTTP 401')).toBe('HTTP 401');
   });
 
   it('labels channels and delivery results', () => {
-    setLanguage('es', spanish);
+    setLanguage('xx', pseudo);
     expect(channelLabel('ntfy')).toBe('ntfy');
-    expect(deliveryStatusLabel('sent')).toBe('Enviada');
-    expect(deliveryStatusLabel('pending')).toBe('Enviando');
+    expect(deliveryStatusLabel('sent')).toBe(`⟦${en['alerts.delivery.sent']}⟧`);
+    expect(deliveryStatusLabel('pending')).toBe(`⟦${en['alerts.delivery.sending']}⟧`);
   });
 });

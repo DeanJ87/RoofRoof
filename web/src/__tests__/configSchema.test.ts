@@ -3,24 +3,21 @@ import {
   configSchema,
   authConfigSchema,
   alpacaConfigSchema,
-  alertsConfigSchema,
-  windConfigSchema,
   getConfigValidationErrors,
   getConfigValidationMessage,
   hasConfigValidationErrors,
 } from '../validation/configSchema';
+import { alertsConfigSchema } from '../validation/alertsSchema';
 import { mockConfig } from '../mocks/data';
 import type { Config } from '../types';
 
 // Minimal valid config satisfying all schema rules
 const validBase: Config = {
-  deviceName: 'test-sqm',
-  primaryTimeSource: 0,
-  secondaryTimeSource: 1,
+  deviceName: 'test-roof',
   wifi: {
     ssid: 'TestNet',
     password: '',
-    hostname: 'sqm-test',
+    hostname: 'roof-test',
     autoReconnect: true,
     reconnectDelayMs: 1000,
     maxReconnectDelayMs: 300000,
@@ -31,7 +28,7 @@ const validBase: Config = {
     port: 1883,
     username: '',
     password: '',
-    topic: 'sqm/data',
+    topic: 'roof/test',
     publishIntervalMs: 5000,
   },
   ota: { enabled: false, password: '' },
@@ -43,9 +40,6 @@ const validBase: Config = {
     timezone: 'UTC0',
     syncIntervalMs: 600000,
   },
-  gps: { enabled: false, rxPin: 16, txPin: 17, baudRate: 9600 },
-  sensor: { readIntervalMs: 5000, i2cSDA: 21, i2cSCL: 22, i2cFrequency: 100000 },
-  cloudDetection: { clearSkyThreshold: -13.0, cloudyThreshold: -3.0, humidityCorrection: 0.75 },
 };
 
 describe('configSchema', () => {
@@ -78,21 +72,9 @@ describe('configSchema', () => {
     }
   });
 
-  // D-27 and D-33: the device's own messages, shown before saving (FR-010).
-  it("refuses invalid time sources and MQTT with the device's messages", () => {
-    const sameSource = {
-      ...validBase,
-      ntp: { ...validBase.ntp, enabled: true },
-      gps: { ...validBase.gps, enabled: true },
-      primaryTimeSource: 0,
-      secondaryTimeSource: 0,
-    };
-    const sameResult = configSchema.safeParse(sameSource);
-    expect(sameResult.success).toBe(false);
-    if (!sameResult.success)
-      expect(sameResult.error.issues.map((i) => i.message)).toContain('Time sources must be different when both NTP and GPS are enabled');
-
-    const mqtt = { ...validBase, mqtt: { ...validBase.mqtt, enabled: true, broker: '', topic: 'sqmeter' } };
+  // D-33: the device's own message, shown before saving (FR-010).
+  it("refuses MQTT without a broker with the device's message", () => {
+    const mqtt = { ...validBase, mqtt: { ...validBase.mqtt, enabled: true, broker: '', topic: 'roofroof' } };
     const mqttResult = configSchema.safeParse(mqtt);
     expect(mqttResult.success).toBe(false);
     if (!mqttResult.success)
@@ -115,10 +97,6 @@ describe('configSchema', () => {
     expect(configSchema.safeParse(cfg).success).toBe(true);
   });
 
-  it('rejects I2C SDA and SCL on the same pin', () => {
-    const cfg = { ...validBase, sensor: { ...validBase.sensor, i2cSDA: 21, i2cSCL: 21 } };
-    expect(configSchema.safeParse(cfg).success).toBe(false);
-  });
 });
 
 describe('frontend settings validation', () => {
@@ -135,10 +113,10 @@ describe('frontend settings validation', () => {
   };
 
   const validSettings: Array<[path: string, value: unknown]> = [
-    ['deviceName', 'Back Garden SQMeter'],
+    ['deviceName', 'Back Garden Roof'],
     ['wifi.ssid', 'Observatory'],
     ['wifi.password', 'wifi-secret'],
-    ['wifi.hostname', 'sqmeter-garden'],
+    ['wifi.hostname', 'roofroof-garden'],
     ['wifi.autoReconnect', false],
     ['ota.enabled', false],
     ['ota.password', ''],
@@ -150,38 +128,14 @@ describe('frontend settings validation', () => {
     ['ntp.server1', 'time.cloudflare.com'],
     ['ntp.server2', ''],
     ['ntp.syncIntervalMs', 600000],
-    ['gps.enabled', true],
-    ['gps.rxPin', 16],
-    ['gps.txPin', 17],
-    ['gps.baudRate', 115200],
-    ['primaryTimeSource', 0],
-    ['secondaryTimeSource', 1],
     ['mqtt.enabled', true],
     ['mqtt.broker', 'mqtt.example.com'],
     ['mqtt.port', 8883],
-    ['mqtt.username', 'sqmeter'],
+    ['mqtt.username', 'roofroof'],
     ['mqtt.password', 'mqtt-secret'],
-    ['mqtt.topic', 'observatory/sqmeter'],
+    ['mqtt.topic', 'observatory/roof'],
     ['mqtt.publishIntervalMs', 1000],
-    ['sensor.readIntervalMs', 100],
-    ['sensor.i2cSDA', 21],
-    ['sensor.i2cSCL', 22],
-    ['sensor.i2cFrequency', 400000],
-    ['cloudDetection.clearSkyThreshold', -15],
-    ['cloudDetection.cloudyThreshold', -2],
-    ['cloudDetection.humidityCorrection', 1],
-    ['rain.enabled', true],
-    ['rain.rxPin', 18],
-    ['rain.txPin', 19],
-    ['rain.baudRate', 19200],
-    ['rain.pollIntervalMs', 1000],
-    ['rain.rainClearDelayMs', 60000],
-    ['rain.resolution', 'low'],
-    ['rain.units', 'imperial'],
-    ['rain.debugUart', true],
-    ['rain.dailyResetEnabled', true],
-    ['rain.dailyResetHour', 23],
-    ['rain.dailyResetMinute', 59],
+    ['alpaca.enabled', false],
   ];
 
   it.each(validSettings)('accepts the frontend setting %s', (path, value) => {
@@ -201,6 +155,11 @@ describe('frontend settings validation', () => {
     expect(hasConfigValidationErrors(errors)).toBe(true);
   });
 
+  it('sums up a single error in one line', () => {
+    const errors = getConfigValidationErrors(setPath(mockConfig, 'deviceName', ''));
+    expect(getConfigValidationMessage(errors)).toBe('Please fix 1 validation error: Device name is required');
+  });
+
   it('never sends a blank WiFi network (spec 011 FR-009)', () => {
     for (const ssid of ['', '   ']) {
       const errors = getConfigValidationErrors(setPath(mockConfig, 'wifi.ssid', ssid));
@@ -209,19 +168,6 @@ describe('frontend settings validation', () => {
     }
   });
 
-  it('reports one actionable error when both NTP and GPS are disabled', () => {
-    const candidate = structuredClone(mockConfig);
-    candidate.ntp.enabled = false;
-    candidate.gps.enabled = false;
-
-    const errors = getConfigValidationErrors(candidate);
-
-    expect(errors).toEqual({
-      'ntp.enabled': 'At least one time source must be enabled',
-    });
-    expect(hasConfigValidationErrors(errors)).toBe(true);
-    expect(getConfigValidationMessage(errors)).toBe('Please fix 1 validation error: At least one time source must be enabled');
-  });
 });
 
 describe('authConfigSchema', () => {
@@ -243,62 +189,10 @@ describe('authConfigSchema', () => {
 });
 
 describe('alpacaConfigSchema', () => {
-  const validAlpaca = {
-    enabled: false,
-    manualOverrideUnsafe: false,
-    staleAfterSeconds: 30,
-    cloudCoverEnabled: true,
-    cloudCoverUnsafePercent: 90,
-    sqmMinEnabled: false,
-    sqmMinSafe: 0,
-    humidityMaxEnabled: false,
-    humidityMaxSafe: 100,
-    dewpointMarginEnabled: false,
-    dewpointMarginMinC: 0,
-    rainUnsafeEnabled: true,
-    rainSensorRequired: true,
-    safeDelaySeconds: 0,
-    windSpeedUnsafeEnabled: false,
-    windSpeedUnsafeMs: 10,
-    windGustUnsafeEnabled: false,
-    windGustUnsafeMs: 15,
-  };
-
-  it('rejects a safe delay outside 0-3600 seconds', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: -1 }).success).toBe(false);
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: 3601 }).success).toBe(false);
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, safeDelaySeconds: 600 }).success).toBe(true);
-  });
+  const validAlpaca = { enabled: false };
 
   it('passes with valid defaults', () => {
     expect(alpacaConfigSchema.safeParse(validAlpaca).success).toBe(true);
-  });
-
-  it('fails when staleAfterSeconds is zero', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, staleAfterSeconds: 0 }).success).toBe(false);
-  });
-
-  it('fails when staleAfterSeconds exceeds 1 hour', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, staleAfterSeconds: 3601 }).success).toBe(false);
-  });
-
-  it('fails when cloudCoverUnsafePercent is out of range', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, cloudCoverUnsafePercent: 101 }).success).toBe(false);
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, cloudCoverUnsafePercent: -1 }).success).toBe(false);
-  });
-
-  it('fails when sqmMinSafe is out of range', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, sqmMinSafe: -1 }).success).toBe(false);
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, sqmMinSafe: 31 }).success).toBe(false);
-  });
-
-  it('fails when humidityMaxSafe is out of range', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, humidityMaxSafe: 101 }).success).toBe(false);
-  });
-
-  it('fails when dewpointMarginMinC is out of range', () => {
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, dewpointMarginMinC: -1 }).success).toBe(false);
-    expect(alpacaConfigSchema.safeParse({ ...validAlpaca, dewpointMarginMinC: 21 }).success).toBe(false);
   });
 
   it('is accepted as an optional field on the full config schema', () => {
@@ -344,13 +238,9 @@ describe('mockConfig', () => {
 describe('alertsConfigSchema', () => {
   const validAlerts = {
     enabled: true,
-    events: { unsafe: { level: 3, sound: '' }, rain_started: { level: 4, sound: 'siren' } },
-    dewRiskMarginC: 2,
-    clearSkyCloudPercent: 20,
-    cloudedOverCloudPercent: 70,
-    skyNightOnly: true,
-    safetyNightOnly: true,
-    nightSunAltitudeDeg: -12,
+    events: { client_lost: { level: 3, sound: '' }, client_back: { level: 1, sound: '' } },
+    sendMode: 'any',
+    clientSilentSeconds: 120,
     cooldownSeconds: 300,
     pushover: { enabled: false, userKey: '', appToken: '', sound: '' },
     ntfy: { enabled: false, server: 'https://ntfy.sh', topic: '', token: '' },
@@ -364,7 +254,7 @@ describe('alertsConfigSchema', () => {
 
   it('rejects out-of-range levels and odd sound names', () => {
     const withEvent = (level: number, sound: string) =>
-      alertsConfigSchema.safeParse({ ...validAlerts, events: { unsafe: { level, sound } } }).success;
+      alertsConfigSchema.safeParse({ ...validAlerts, events: { client_lost: { level, sound } } }).success;
     expect(withEvent(5, '')).toBe(false);
     expect(withEvent(2, 'not a sound!')).toBe(false);
     expect(withEvent(4, 'persistent')).toBe(true);
@@ -400,40 +290,12 @@ describe('alertsConfigSchema', () => {
     ).toBe(false);
   });
 
-  it('needs the clouded-over threshold above the clear one', () => {
-    expect(alertsConfigSchema.safeParse({ ...validAlerts, clearSkyCloudPercent: 60, cloudedOverCloudPercent: 50 }).success).toBe(false);
+  it('keeps the silent time within 30 s - 60 min', () => {
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, clientSilentSeconds: 29 }).success).toBe(false);
+    expect(alertsConfigSchema.safeParse({ ...validAlerts, clientSilentSeconds: 3601 }).success).toBe(false);
   });
 
   it('caps the cooldown at 24 hours', () => {
     expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
-  });
-});
-
-describe('windConfigSchema', () => {
-  const validWind = {
-    enabled: true,
-    speedPin: 27,
-    directionEnabled: true,
-    kmhPerHz: 2.4,
-    directionOffsetDeg: 0,
-  };
-
-  it('passes with valid defaults', () => {
-    expect(windConfigSchema.safeParse(validWind).success).toBe(true);
-  });
-
-  it('rejects a north offset beyond a full turn', () => {
-    expect(windConfigSchema.safeParse({ ...validWind, directionOffsetDeg: 361 }).success).toBe(false);
-  });
-});
-
-describe('ble passkey', () => {
-  const base = { enabled: true };
-  const ble = configSchema.shape.ble.unwrap();
-  it('accepts empty, 6 digits, or the stored mask', () => {
-    for (const passkey of ['', '482913', '********']) expect(ble.safeParse({ ...base, passkey }).success).toBe(true);
-  });
-  it('rejects anything else', () => {
-    for (const passkey of ['12345', '1234567', 'abcdef', '000000']) expect(ble.safeParse({ ...base, passkey }).success).toBe(false);
   });
 });

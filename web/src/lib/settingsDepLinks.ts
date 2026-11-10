@@ -29,8 +29,6 @@ export const read = <T>(config: Config, path: string, fallback: T): T => {
 export const on = (config: Config, path: string, fallback = false) => read(config, path, fallback);
 
 export type Shown = { unmet?: Unmet; neutral?: boolean };
-export const NEUTRAL: Shown = { neutral: true };
-export const FAIL_SAFE: Shown = { unmet: 'fail-safe' };
 
 // The first unmet link makes an entry inactive; a link that's unknown makes
 // it unknown unless a later one is unmet.
@@ -48,14 +46,4 @@ export const decide = (entry: DepEntry, chain: Link[]) => {
 export const blocker = (chain: Link[]) => {
   const unmet = chain.find(([, , met]) => met === false);
   return unmet ? { id: unmet[0], reason: unmet[1], ...REASONS[unmet[1]] } : undefined;
-};
-
-// The battery events and their default levels (spec 032); older firmware has none.
-export const BATTERY_EVENT_DEFAULTS: Record<string, number> = {
-  battery_low: 2,
-  battery_critical: 4,
-  battery_shutdown: 4,
-  power_restored: 0,
-  charge_complete: 0,
-  charge_fault: 2,
 };

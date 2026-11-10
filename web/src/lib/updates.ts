@@ -1,31 +1,7 @@
-import type { GithubRelease } from '../types';
 import { deviceError } from '../i18n/deviceMessage';
-import { bodyOf, postJson, request } from './api';
 
-// Firmware updates (OTA): the release list the device fetched from GitHub,
-// starting a device-side update, and uploading an image by hand.
-
-/** The releases on `track`; throws with the device's reason when it can't say. */
-export const fetchReleases = async (track: string): Promise<GithubRelease[]> => {
-  const response = await request(`/api/updates/check?track=${track}`);
-  if (!response.ok) {
-    const body = await bodyOf(response);
-    throw new Error(deviceError(body, `HTTP ${response.status}`));
-  }
-  return response.json();
-};
-
-/** Ask the device to download and install `release`; null when it started, else why not. Rejects when unreachable. */
-export const startReleaseUpdate = async (release: GithubRelease): Promise<string | null> => {
-  const response = await postJson('/api/updates/apply', {
-    firmwareAssetUrl: release.firmwareAssetUrl,
-    firmwareAssetSize: release.firmwareAssetSize,
-    fsAssetUrl: release.fsAssetUrl,
-    fsAssetSize: release.fsAssetSize,
-  });
-  const body = await bodyOf(response);
-  return !response.ok || body.success !== true ? deviceError(body, `HTTP ${response.status}`) : null;
-};
+// Firmware updates (OTA): uploading an image by hand. RoofRoof has no
+// release check; updates are uploaded (spec 001 clarification).
 
 export type UploadHandlers = {
   onProgress: (percent: number) => void;

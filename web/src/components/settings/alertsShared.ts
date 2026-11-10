@@ -79,75 +79,28 @@ export const soundOptions = (current: string, defaultLabel: string) => [
 // The firmware's built-in wording (lib/AlertLogic), written as templates;
 // shown as the placeholder until you write your own.
 const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
-  unsafe: { title: t('settings.alerts.observatoryUnsafe'), message: '{reasons}' },
-  safe: { title: t('settings.alerts.observatorySafe'), message: t('settings.alerts.allEnabledSafetyRulesPass') },
-  rain_started: { title: t('settings.alerts.rainDetected'), message: t('settings.alerts.theRainSensorReportsRain') },
-  rain_stopped: { title: t('settings.alerts.rainCleared'), message: t('settings.alerts.noRainForTheConfigured') },
-  sensor_fault: { title: t('settings.alerts.sensorFaultTitle'), message: t('settings.alerts.sensorFaultMessage') },
-  sensor_recovered: { title: t('settings.alerts.sensorRecoveredTitle'), message: t('settings.alerts.sensorRecoveredMessage') },
-  dew_risk: { title: t('settings.alerts.dewRisk'), message: t('settings.alerts.temperatureTempCIsWithin') },
-  clear_sky: { title: t('settings.alerts.darkAndClear'), message: t('settings.alerts.cloudCoverIsDownTo') },
-  clouded_over: { title: t('settings.alerts.cloudedOver'), message: t('settings.alerts.cloudCoverIsUpTo') },
   client_lost: {
     title: t('settings.alerts.imagingAppStoppedChecking'),
     message: t('settings.alerts.noRequestToTheDevice'),
   },
   client_back: { title: t('settings.alerts.imagingAppIsBack'), message: t('settings.alerts.theDeviceIsBeingChecked') },
   client_disconnected: { title: t('settings.alerts.imagingAppDisconnected'), message: t('settings.alerts.theDeviceWasDisconnected') },
-  battery_low: { title: t('settings.alerts.batteryLowTitle'), message: t('settings.alerts.batteryAtPercent') },
-  battery_critical: { title: t('settings.alerts.batteryCriticalTitle'), message: t('settings.alerts.batteryAtPercent') },
-  battery_shutdown: { title: t('settings.alerts.batteryShutdownTitle'), message: t('settings.alerts.batteryShutdownMessage') },
-  power_restored: { title: t('settings.alerts.powerRestoredTitle'), message: t('settings.alerts.powerRestoredMessage') },
-  charge_complete: { title: t('settings.alerts.chargeCompleteTitle'), message: t('settings.alerts.chargeCompleteMessage') },
-  charge_fault: { title: t('settings.alerts.chargeFaultTitle'), message: t('settings.alerts.chargeFaultMessage') },
 };
 
-// "Dark and clear" only when sky alerts wait for darkness, as on the device.
-export const defaultText = (key: AlertEventKey, skyNightOnly: boolean) =>
-  key === 'clear_sky' && !skyNightOnly ? { ...DEFAULT_TEXT.clear_sky, title: t('settings.alerts.skiesClear') } : DEFAULT_TEXT[key];
+export const defaultText = (key: AlertEventKey) => DEFAULT_TEXT[key];
 
 const VAR_HELP: Record<string, string> = {
   event: t('settings.alerts.varEvent'),
-  reasons: t('settings.alerts.everyFailingRuleWithIts'),
-  reasons_inline: t('settings.alerts.theSameOnOneLine'),
-  reason_count: t('settings.alerts.howManyRulesAreFailing'),
-  sensor: t('settings.alerts.whichSensor'),
-  dew_margin_min: t('settings.alerts.dewRiskMarginSetting'),
   device: t('settings.alerts.deviceName'),
   time: t('settings.alerts.localTime'),
   date: t('settings.alerts.localDate'),
   level: t('settings.alerts.varLevel'),
-  sqm: t('settings.alerts.skyQualityMagArcsec'),
-  sqm_min: t('settings.alerts.sqmSafetyMinimum'),
-  sqm_wide: t('settings.alerts.sqmWideReading'),
-  sqm_l: t('settings.alerts.sqmLNarrowReading'),
-  sqm_delta: t('settings.alerts.sqmLMinusSqm'),
-  sqm_source: t('settings.alerts.skySensorThatCounts'),
-  cloud: t('settings.alerts.cloudCover'),
-  cloud_max: t('settings.alerts.cloudCoverSafetyLimit'),
-  clear_below: t('settings.alerts.clearThreshold'),
-  cloudy_above: t('settings.alerts.cloudedOverThreshold'),
-  sky_temp: t('settings.alerts.skyTemperatureC'),
-  temp: t('settings.alerts.temperatureC'),
-  humidity: t('settings.alerts.humidity'),
-  humidity_max: t('settings.alerts.humiditySafetyLimit'),
-  dewpoint: t('settings.alerts.dewPointC'),
-  dew_margin: t('settings.alerts.temperatureMinusDewPointC'),
-  pressure: t('settings.alerts.pressureHpa'),
-  rain_rate: t('settings.alerts.rainRateMmH'),
-  wind: t('settings.alerts.windMS'),
-  gust: t('settings.alerts.gustMS'),
-  sun_alt: t('settings.alerts.sunAltitude'),
-  battery: t('settings.alerts.varBattery'),
-  battery_voltage: t('settings.alerts.varBatteryVoltage'),
-  battery_state: t('settings.alerts.varBatteryState'),
-  battery_time_left: t('settings.alerts.varBatteryTimeLeft'),
   silent_for: t('settings.alerts.theSilentForTimeE'),
   last_checked: t('settings.alerts.whenTheImagingAppLast'),
   client_id: t('settings.alerts.theAlpacaClientidTheImaging'),
 };
 // For the imaging-app events {device} is the Alpaca device, not the device name.
-const CLIENT_VAR_HELP: Record<string, string> = { device: t('settings.alerts.safetyMonitorOrWeatherDevice') };
+const CLIENT_VAR_HELP: Record<string, string> = { device: t('settings.alerts.theAlpacaDevice') };
 const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
 
 export const varHelp = (key: AlertEventKey, name: string) =>
