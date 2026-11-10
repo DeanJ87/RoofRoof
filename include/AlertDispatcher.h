@@ -90,8 +90,8 @@ namespace SQM
         // Goes up whenever recent() would answer differently (a new alert, a
         // channel's result, a clear), so the UI can fetch the list only then.
         uint32_t recentRevision() const { return revision; }
-        // Nothing queued and no delivery running (spec 032: the device waits
-        // for this before it sleeps for an empty battery). Any task.
+        // Nothing queued and no delivery running (SQMeter's battery sleep waited
+        // for this; RoofRoof has no battery or sleep). Any task.
         bool idle() const;
 
     private:

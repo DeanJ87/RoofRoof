@@ -71,12 +71,12 @@ const Masonry: FunctionalComponent<{
     };
   }, [itemIds, editing]);
 
-  // 1 to 4 columns by width (spec 010 FR-002).
+  // 1 to 4 columns by width (SQMeter spec 010 FR-002).
   const columns = Math.min(MAX_COLUMNS, Math.max(1, Math.floor((width + gap) / (minColumnWidth + gap))));
   const columnWidth = columns > 0 ? (width - gap * (columns - 1)) / columns : width;
   const columnHeights = new Array(columns).fill(0);
   const positions: Record<string, { x: number; y: number }> = {};
-  // Right-to-left (specs/023-i18n FR-019) the first column is on the right.
+  // Right-to-left (SQMeter spec 023-i18n FR-019) the first column is on the right.
   const rtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
   const columnX = (column: number) => (rtl ? width - columnWidth - column * (columnWidth + gap) : column * (columnWidth + gap));
   for (const item of items) {

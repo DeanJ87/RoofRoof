@@ -10,7 +10,7 @@ import { deviceText } from '../i18n/deviceMessage';
 import { formatAgo } from '../i18n/format';
 import { channelLabel, deliveryDetail, deliveryStatusLabel } from '../lib/alertDelivery';
 
-const SEEN_KEY = 'sqm.alerts.lastSeenId';
+const SEEN_KEY = 'roofroof.alerts.lastSeenId';
 
 const readSeen = () => {
   try {
@@ -121,7 +121,7 @@ const AlertsBell: FunctionalComponent = () => {
   const bell = useRef<HTMLButtonElement>(null);
   const flyout = useRef<HTMLDivElement>(null);
   useDialogFocus(open, flyout, bell);
-  // A new alert is announced once (spec 022 FR-009).
+  // A new alert is announced once (SQMeter spec 022 FR-009).
   const newestRecord = data?.alerts[0];
   useAnnounceChange(newestRecord?.id, () =>
     newestRecord ? t('alertsBell.newAlertTitle', { title: deviceText(newestRecord.title) }) : null,

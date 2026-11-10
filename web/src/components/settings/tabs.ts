@@ -24,7 +24,7 @@ export const isSettingsTab = (value: string | null): value is SettingsTabId => S
 // The query string, also when it's inside a hash route (the demo uses
 // #/settings?tab=network).
 // With hash routing the query is in the hash, and wins over the page's own
-// query (?scenario=, ?lang= in the demo).
+// query (the demo's own query parameters, if it adds any).
 export const locationQuery = (location: Pick<Location, 'search' | 'hash'>) =>
   location.hash.includes('?') ? location.hash.slice(location.hash.indexOf('?')) : location.search;
 

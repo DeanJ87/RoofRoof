@@ -7,7 +7,7 @@ import Settings from '../Settings';
 import AlertsBell from '../AlertsBell';
 import { server } from '../../test/mswServer';
 
-// Roles and accessible names of the shared building blocks (spec 022 FR-018).
+// Roles and accessible names of the shared building blocks (SQMeter spec 022 FR-018).
 
 describe('InfoTip', () => {
   it('is a button whose description is the tip', () => {

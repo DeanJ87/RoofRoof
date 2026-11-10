@@ -36,7 +36,7 @@ const PRINT_DPI = 600;
 function fontFaces() {
   const face = (family, file) =>
     `@font-face{font-family:'${family}';src:url(data:font/woff2;base64,${readFileSync(join(FONTS, file)).toString('base64')}) format('woff2');font-weight:100 900;}`;
-  return face('Inter', 'inter-sqm.woff2') + face('JetBrains Mono', 'jetbrains-mono-sqm.woff2');
+  return face('Inter', 'inter-rr.woff2') + face('JetBrains Mono', 'jetbrains-mono-rr.woff2');
 }
 
 function svgSize(svg) {

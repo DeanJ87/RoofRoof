@@ -1,5 +1,5 @@
 {
-  "about": "What the dashboard shows and why (spec 025; the Status card, spec 026). The Status card shows only what no other card shows: the imaging app and whether alerts go out, plus problems nothing else shows (DS-08). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "about": "What the dashboard shows and why (SQMeter spec 025; the Status card, SQMeter spec 026). The Status card shows only what no other card shows: the imaging app and whether alerts go out, plus problems nothing else shows (DS-08). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
   "shown": [
     {
       "id": "status-card",
@@ -266,42 +266,42 @@
     },
     {
       "match": "status.connections",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.tcpLimit",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.liveUpdates",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.liveUpdates.status",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.liveUpdates.limitPerEndpoint",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.liveUpdates.replaced",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.liveUpdates.stalledClosed",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
       "match": "status.connections.alpacaRestoredAfterRestart",
-      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },
     {
@@ -435,12 +435,12 @@
     },
     {
       "match": "deps.D-20",
-      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (SQMeter spec 020)",
       "shownOn": "Settings"
     },
     {
       "match": "deps.D-37",
-      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (SQMeter spec 020)",
       "shownOn": "Settings"
     },
     {

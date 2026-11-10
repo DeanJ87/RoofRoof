@@ -1,6 +1,6 @@
 name: Docs diagrams
 
-# Every docs diagram names the code it reflects (spec 024). When that code
+# Every docs diagram names the code it reflects (SQMeter spec 024). When that code
 # changes, the diagram is flagged for review; for the safety-verdict
 # diagrams the check fails until someone confirms the diagram still matches
 # (python3 tools/docs/diagrams.py --confirm DIA-NN).

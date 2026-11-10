@@ -6,7 +6,7 @@
 
 #include <string>
 
-// Imaging apps keep their connection (SQMeter spec 011 FR-008, spec 013 FR-012): the
+// Imaging apps keep their connection (SQMeter spec 011 FR-008, SQMeter spec 013 FR-012): the
 // live-update sockets leave room for them, and a restart the device caused
 // itself doesn't drop them.
 

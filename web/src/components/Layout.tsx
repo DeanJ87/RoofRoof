@@ -86,8 +86,8 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
           <div class="brand">
             <BrandMark />
             <div>
-              <h1>SQMeter</h1>
-              <p>{t('layout.darkSkyMonitor')}</p>
+              <h1>RoofRoof</h1>
+              <p>{t('layout.rollOffRoofController')}</p>
             </div>
           </div>
 
@@ -120,7 +120,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
         {children}
       </main>
       <Toaster />
-      {/* Verdict changes, new alerts and connection loss (spec 022 FR-009). */}
+      {/* Verdict changes, new alerts and connection loss (SQMeter spec 022 FR-009). */}
       <div id={LIVE_REGION_ID} class="sr-only" role="status" aria-live="polite" />
     </div>
   );

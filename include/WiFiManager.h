@@ -29,7 +29,7 @@ namespace SQM
 
         bool isConnected() const;
         bool isInAPMode() const;
-        // The setup hotspot's name (spec 014), shown on the OLED (spec 031).
+        // The setup hotspot's name (SQMeter spec 014).
         static const char *apName() { return AP_SSID; }
         std::string getIPAddress() const;
         std::string getMACAddress() const;
@@ -54,7 +54,7 @@ namespace SQM
         void startMdns();
         bool isMdnsRunning() const { return mdnsStarted; }
 
-        // IPv6 on the joined network (spec 015): on when the setting is, from
+        // IPv6 on the joined network (SQMeter spec 015): on when the setting is, from
         // the next connection. Addresses are the station's valid ones
         // (link-local, then SLAAC); empty while IPv6 is off or not connected.
         bool isIpv6Enabled() const { return config.ipv6; }
@@ -73,13 +73,14 @@ namespace SQM
         bool retryPaused = false;
         bool mdnsStarted = false;
         uint32_t stationConnectedAt = 0;
-        // Boot fallback (spec 014): when trying started, and whether the saved
+        // Boot fallback (SQMeter spec 014): when trying started, and whether the saved
         // network has been joined since boot.
         uint32_t startedTryingAt = 0;
         bool connectedSinceBoot = false;
 
         // Answers DNS from the network task, so phones get replies at once
-        // even while the main loop is busy (a light-sensor read takes ~0.7 s).
+        // even while the main loop is busy (a slow task in the loop, such as a TLS
+        // alert send).
         std::optional<AsyncUDP> dnsServer;
         OnConnectedCallback onConnectedCallback;
         OnDisconnectedCallback onDisconnectedCallback;

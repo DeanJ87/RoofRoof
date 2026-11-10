@@ -3,7 +3,7 @@
 #include "Logger.h"
 
 // Live updates: /ws/status, kept within the connection budget (SQMeter spec
-// 011 FR-008). Spec 008 adds the roof's live stream.
+// 011 FR-008). RoofRoof spec 008 adds the roof's live stream.
 
 namespace SQM
 {

@@ -7,7 +7,7 @@ import { server } from '../../test/mswServer';
 import { describeSchedule } from '../settings/alertSchedule';
 import type { AlertSchedule } from '../../types';
 
-// When alerts are sent (specs/021): the wording, the status line and
+// When alerts are sent (SQMeter spec 021): the wording, the status line and
 // Pause/Resume.
 
 // A label's own words, without the "?" tooltip's text inside it.
@@ -31,7 +31,7 @@ describe('Alert schedule wording (FR-017, SC-004)', () => {
     const labels = [
       ...Array.from(card.querySelectorAll('label, .card-group-title, option, button')).map(ownText),
       ...Array.from(table.querySelectorAll('[data-event^="client_"] .event-label > span')).map(ownText),
-      ...['Silent for - safety monitor', 'Silent for - weather device'],
+      ...['Silent for - roof'],
     ]
       .map((text) => text.trim())
       .filter(Boolean);
@@ -128,7 +128,7 @@ describe('Alert schedule status line', () => {
     expect(await screen.findByText('The imaging app has gone quiet - dome last checked 4m ago.')).toBeInTheDocument();
   });
 
-  // D-12/D-37 (specs/020-settings-dependencies): the imaging-app mode and events need Alpaca.
+  // D-12/D-37 (SQMeter spec 020-settings-dependencies): the imaging-app mode and events need Alpaca.
   it('warns when imaging-app mode needs Alpaca, which is off', async () => {
     server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { ...mockConfig.alpaca, enabled: false } })));
     await openAlerts();

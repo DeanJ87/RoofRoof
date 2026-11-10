@@ -28,7 +28,7 @@ namespace SQM
             return now >= 1704067200 ? static_cast<int64_t>(now) : 0;
         }
 
-        // Plain http also reaches IPv6 literals and IPv6-only names (spec 015).
+        // Plain http also reaches IPv6 literals and IPv6-only names (SQMeter spec 015).
         std::unique_ptr<WiFiClient> clientFor(const std::string &url, bool insecureTls, const char *rootCa)
         {
             if (url.rfind("https://", 0) != 0)

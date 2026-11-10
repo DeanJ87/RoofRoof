@@ -259,7 +259,7 @@ namespace SQM
 
         // Rules only enforced for changes coming from the UI/API, so a value
         // stored by older firmware never stops the config from loading: host
-        // and URL forms (IPv6 literals, spec 015) and Pushover key format.
+        // and URL forms (IPv6 literals, SQMeter spec 015) and Pushover key format.
         bool validateIncoming(const Config &cfg, std::string *error)
         {
             if (!validateAddresses(cfg, error))

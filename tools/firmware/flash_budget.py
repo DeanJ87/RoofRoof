@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Firmware flash budget (coding standard SIZE-04, spec 027 FR-001..FR-003).
+"""Firmware flash budget (coding standard SIZE-04, SQMeter spec 027 FR-001..FR-003).
 
 For each firmware build (ENVS: the one ESP32 DevKit build), compares
 firmware.bin with the app slot of that build's own partition table (board_build.partitions in platformio.ini):

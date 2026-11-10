@@ -1,8 +1,8 @@
-// The demo tour's state (specs/018 US1): which step is showing, and whether
+// The demo tour's state (SQMeter spec 018 US1): which step is showing, and whether
 // this browser has already been offered the tour (a per-viewer convenience in
 // localStorage; if storage is unavailable the offer simply comes back).
 
-export const TOUR_STORAGE_KEY = 'sqm.demo.tour.v1';
+export const TOUR_STORAGE_KEY = 'roofroof.demo.tour.v1';
 
 export type TourOutcome = 'done' | 'dismissed';
 

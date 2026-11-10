@@ -70,7 +70,7 @@ namespace SQM
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
 
         MQTTConfig config;
-        DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (spec 015)
+        DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (SQMeter spec 015)
         // The broker as PubSubClient needs it: brackets off, a "[v6]:port" port applied.
         std::string brokerHost;
         uint16_t brokerPort = 0;

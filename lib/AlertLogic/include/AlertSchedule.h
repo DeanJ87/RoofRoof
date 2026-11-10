@@ -6,7 +6,7 @@ namespace SQM
 {
     namespace Alerts
     {
-        // When alerts go out (specs/021): any time unless paused, or only
+        // When alerts go out (SQMeter specs/021): any time unless paused, or only
         // while an imaging app has an Alpaca device connected. Pausing and
         // resuming work in both modes; the state says why and since when.
         enum class SendMode : uint8_t

@@ -239,9 +239,9 @@ namespace SQM
     //
     // Extracted from the macOS system trust store and verified against the
     // live chains of api.pushover.net, ntfy.sh, discord.com,
-    // hooks.slack.com, api.github.com and objects.githubusercontent.com with
+    // hooks.slack.com, and (for SQMeter's update check, now removed) api.github.com with
     // `openssl s_client -CAfile <bundle>`. They're long-lived roots
-    // (2035-2038), but intermediates change: if updates or alerts start
+    // (2035-2038), but intermediates change: if alerts start
     // failing with TLS handshake errors, re-verify first.
     //
     // One block, ordered so each smaller set is the tail of the larger one:

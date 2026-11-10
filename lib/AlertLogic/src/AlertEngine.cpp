@@ -210,7 +210,7 @@ namespace SQM
         }
 
         // "Stopped checking" follows the usual cooldown; "is back" answers the
-        // "stopped checking" it pairs with straight away (spec 021 FR-009), so
+        // "stopped checking" it pairs with straight away (SQMeter spec 021 FR-009), so
         // each one gets exactly one "back" and flapping is still limited by
         // the cooldown on "stopped checking".
         AlertEngine::ClientChange AlertEngine::clientSilence(size_t i, bool silent, bool allowed, uint32_t now, uint32_t cooldown)

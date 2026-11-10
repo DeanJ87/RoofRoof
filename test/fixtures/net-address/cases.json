@@ -1,5 +1,5 @@
 {
-  "$comment": "IPv6 addresses, hosts and URLs (specs/015-ipv6-dual-stack). Shared by test/test_net_address (lib/NetAddress) and web/src/lib/__tests__/netAddress.test.ts, so the device and the browser give the same answers.",
+  "$comment": "IPv6 addresses, hosts and URLs (SQMeter specs/015-ipv6-dual-stack). Shared by test/test_net_address (lib/NetAddress) and web/src/lib/__tests__/netAddress.test.ts, so the device and the browser give the same answers.",
   "addresses": [
     { "in": "fd00::10", "out": "fd00::10", "scope": "unique-local" },
     { "in": "FE80::0A00:27FF:FE4E:66A1", "out": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" },

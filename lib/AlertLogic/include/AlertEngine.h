@@ -71,7 +71,7 @@ namespace SQM
             bool onClientDisconnected = false;
         };
 
-        // The most Alpaca devices an imaging app can be watched on. Spec 006
+        // The most Alpaca devices an imaging app can be watched on. RoofRoof spec 006
         // adds the Dome; there are none before it.
         constexpr size_t MAX_CLIENT_DEVICES = 2;
 
@@ -153,7 +153,7 @@ namespace SQM
             // A tracker that follows the condition silently (before its first
             // update, during the startup grace, while its rule is off) takes the
             // current value, or with `announceAtStart` the all-clear value, so a
-            // condition already present then (a battery already low at power-on)
+            // condition already present then (a condition already true at power-on)
             // is announced once announcing is allowed.
             static bool sync(Tracker &tracker, bool current, const Emit &emit, bool announceAtStart = false);
 

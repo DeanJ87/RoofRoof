@@ -50,12 +50,12 @@ describe('nextTabIndex', () => {
 
 describe('summariseSeries', () => {
   it('says there is no data with fewer than two readings', () => {
-    expect(summariseSeries('SQM', [21])).toBe('SQM trend: no data yet');
+    expect(summariseSeries('Temperature', [21])).toBe('Temperature trend: no data yet');
   });
 
   it('describes a rising series with its range', () => {
-    expect(summariseSeries('SQM', [20.9, 21.1, 21.4], (v) => v.toFixed(1))).toBe(
-      'SQM trend: rising, 20.9 to 21.4 (range 20.9 to 21.4) over the last 3 readings',
+    expect(summariseSeries('Temperature', [20.9, 21.1, 21.4], (v) => v.toFixed(1))).toBe(
+      'Temperature trend: rising, 20.9 to 21.4 (range 20.9 to 21.4) over the last 3 readings',
     );
   });
 

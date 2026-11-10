@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Device message catalogue (specs/023-i18n FR-008, research D4).
+"""Device message catalogue (SQMeter specs/023-i18n FR-008, research D4).
 
 Finds the user-facing text the firmware builds (settings errors, alert texts,
 API errors, backup and update refusals), turns each into a template with
@@ -35,11 +35,11 @@ SOURCES = {
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
-    # Settings backup and restore (spec 033): refusals and their reasons.
+    # Settings backup and restore (SQMeter spec 033): refusals and their reasons.
     "src/WebServerBackup.cpp": ("api", {"createErrorJson": [0]}),
     "lib/ConfigBackup/src/BackupRules.cpp": ("backup", {}),
     "tools/demo-core/emulated_device_backup.cpp": ("api", {"errorJson": [0]}),
-    # Why an update file is refused (spec 027 FR-020).
+    # Why an update file is refused (SQMeter spec 027 FR-020).
     "lib/FirmwareImage/src/FirmwareImage.cpp": ("ota", {}),
     "tools/demo-core/emulated_device.h": ("api", {"errorJson": [0]}),
     "tools/demo-core/emulated_device.cpp": ("api", {"errorJson": [0]}),

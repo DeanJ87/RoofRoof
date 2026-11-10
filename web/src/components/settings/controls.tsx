@@ -96,7 +96,7 @@ export const Toggle: FunctionalComponent<{
 };
 
 // Why a dependent setting isn't in effect, with its one-click fix
-// (specs/020-settings-dependencies). Inactive: a warning ("Inactive: MQTT
+// (SQMeter spec 020-settings-dependencies). Inactive: a warning ("Inactive: MQTT
 // is off"), or a muted note for harmless defaults. Off but blocked: what has
 // to change before it can be switched on.
 export const DepNote: FunctionalComponent<{ entry: DepEntry; onFix: (entry: DepEntry) => void; prefix?: string }> = ({
@@ -194,7 +194,7 @@ const numberProblemText = (problem: NumberProblem, integer?: boolean) => {
 
 // Numbers are typed as text so every language's decimal separator works the
 // same in every browser ("21,5" or "21.5" in German); a value that can't be
-// read is kept on screen with a message, never truncated (spec 023 FR-017).
+// read is kept on screen with a message, never truncated (SQMeter spec 023 FR-017).
 export const NumberInput: FunctionalComponent<{
   value: number;
   onChange: (value: number) => void;

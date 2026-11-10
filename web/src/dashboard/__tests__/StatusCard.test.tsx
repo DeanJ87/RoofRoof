@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/preact';
 import StatusCard from '../StatusCard';
 import type { GlanceItem } from '../glance';
 
-// The Status card as rendered (specs/026 FR-001..FR-003, DS-01..DS-08).
+// The Status card as rendered (SQMeter spec 026 FR-001..FR-003, DS-01..DS-08).
 
 const item = (id: string, label: string, state: string, extra: Partial<GlanceItem> = {}): GlanceItem => ({
   id,

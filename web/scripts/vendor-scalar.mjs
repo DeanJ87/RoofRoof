@@ -1,5 +1,5 @@
-// Copies the pinned Scalar build into the docs so sqmeter.dev renders the
-// API reference itself, like mermaid (spec 028 FR-005, spec 024 FR-004).
+// Copies the pinned Scalar build into the docs so the docs render the
+// API reference itself, like mermaid (SQMeter spec 028 FR-005, SQMeter spec 024 FR-004).
 // The copy is generated and git-ignored; CI runs this before `mkdocs build`.
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

@@ -1,4 +1,4 @@
-"""Tests for the firmware flash budget and the USB flash package (spec 027)."""
+"""Tests for the firmware flash budget and the USB flash package (SQMeter spec 027)."""
 
 import importlib.util
 import json

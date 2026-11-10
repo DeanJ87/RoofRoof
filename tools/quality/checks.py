@@ -1,4 +1,4 @@
-"""The coding standard's automatic checks (spec 017), one function per tool.
+"""The coding standard's automatic checks (SQMeter spec 017), one function per tool.
 
 Each returns Findings tagged with the rule ID from
 docs/development/coding-standards.md. check.py runs them and compares the
@@ -212,9 +212,9 @@ def json_tool(rule: str, script: str) -> list[Finding]:
 
 
 def check_dashboard() -> list[Finding]:
-    """DASH-02 dashboard inventory (spec 025); DS-COPY English copy, DS-LABEL one name per thing and
+    """DASH-02 dashboard inventory (SQMeter spec 025); DS-COPY English copy, DS-LABEL one name per thing and
     DS-PATH docs paths that name the UI as it is (spec 026); API-01 the OpenAPI description matches the
-    route registry and schemas (spec 028)."""
+    route registry and schemas (SQMeter spec 028)."""
     return (
         json_tool("DASH-02", "tools/dashboard/check.py")
         + json_tool("DS-COPY", "tools/ui/copy_check.py")
@@ -225,7 +225,7 @@ def check_dashboard() -> list[Finding]:
 
 
 def check_i18n() -> list[Finding]:
-    """I18N-01 hard-coded UI text and I18N-02 incomplete translations (spec 023)."""
+    """I18N-01 hard-coded UI text and I18N-02 incomplete translations (SQMeter spec 023)."""
     findings = []
     out = run(["node", "tools/i18n/literals.mjs", "--json"])
     try:

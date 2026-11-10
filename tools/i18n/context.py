@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Context notes for translators (specs/023-i18n FR-020).
+"""Context notes for translators (SQMeter specs/023-i18n FR-020).
 
 Fills web/src/i18n/en.context.json with a note for every key that has none:
 where the text appears (page and kind of control, found from how the code uses

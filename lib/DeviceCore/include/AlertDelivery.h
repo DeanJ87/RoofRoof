@@ -3,7 +3,7 @@
 // What an alert looks like on each service: the Pushover form, the ntfy
 // request and the JSON published over MQTT and posted to webhooks. The
 // firmware's AlertDispatcher sends these; the browser demo sends the same
-// requests when a visitor opts in (specs/018).
+// requests when a visitor opts in (SQMeter specs/018).
 
 #include <cstdint>
 #include <string>

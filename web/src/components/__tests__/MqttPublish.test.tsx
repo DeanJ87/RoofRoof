@@ -37,7 +37,7 @@ describe('MQTT publish settings', () => {
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Settings />);
     const topic = await screen.findByPlaceholderText('roofroof');
-    fireEvent.input(topic, { target: { value: 'sqm/#' } });
+    fireEvent.input(topic, { target: { value: 'roofroof/#' } });
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(await screen.findByText(/with \/ between levels/)).toBeInTheDocument();
   });

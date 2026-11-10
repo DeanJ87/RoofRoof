@@ -3,7 +3,7 @@ import type { SystemStatus } from '../types';
 
 export type AlpacaClients = NonNullable<SystemStatus['alpaca']>['clients'];
 
-// Whether an imaging app is checking each Alpaca device (specs/021), from
+// Whether an imaging app is checking each Alpaca device (SQMeter spec 021), from
 // /api/status; null until known, and from firmware that doesn't report it.
 export const useAlpacaClients = (intervalMs: number) => {
   const [clients, setClients] = useState<AlpacaClients | null>(null);

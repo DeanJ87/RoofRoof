@@ -1,5 +1,5 @@
 // IPv6 addresses, hosts and URLs as settings accept them
-// (specs/015-ipv6-dual-stack). Mirrors lib/NetAddress on the device; both run
+// (SQMeter spec 015-ipv6-dual-stack). Mirrors lib/NetAddress on the device; both run
 // test/fixtures/net-address/cases.json, so the browser and the device agree.
 
 import { t } from '../i18n';
@@ -105,7 +105,7 @@ export interface Host {
   port: number; // 0: none given
 }
 
-// Getters: translated when read, not when this module loads (specs/023-i18n).
+// Getters: translated when read, not when this module loads (SQMeter spec 023-i18n).
 export const HOST_ERRORS = {
   get empty() {
     return t('netAddress.enterAHostNameOrAddress');
@@ -215,6 +215,6 @@ export const parseHttpUrl = (text: string): UrlResult => {
 
 export const hostForUrl = (host: Host) => (host.ipv6 ? `[${host.name}]` : host.name);
 
-// NTP is IPv4-only on the device's platform (spec 015 research R6).
+// NTP is IPv4-only on the device's platform (SQMeter spec 015 research R6).
 export const ntpIpv6Text = () => t('netAddress.ntpOverIpv6IsnTSupported');
 export const isIpv6Literal = (text: string) => parseHost(text).host?.ipv6 === true;

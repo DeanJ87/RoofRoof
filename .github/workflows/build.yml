@@ -102,7 +102,7 @@ jobs:
           node-version: '24'
 
       # Downloaded packages only. pioarduino rebuilds the framework in place
-      # from custom_sdkconfig (spec 027), so builds always start clean: no
+      # from custom_sdkconfig (SQMeter spec 027), so builds always start clean: no
       # cached .pio/build, and an exact-key package cache (a different
       # platformio.ini never restores another configuration's framework).
       - name: Cache PlatformIO packages
@@ -194,7 +194,7 @@ jobs:
 
       # Every setting that depends on another is catalogued, implemented on the
       # device and in the web UI's preview, tested, and documented
-      # (specs/020-settings-dependencies).
+      # (SQMeter specs/020-settings-dependencies).
       - name: Settings dependencies catalogue
         run: |
           python3 tools/settings-deps/test_check.py
@@ -212,15 +212,15 @@ jobs:
           python3 tools/i18n/context.py --check
 
       # Every device field and settings dependency is on the dashboard
-      # inventory, shown with a test or not shown with a reason (specs/025).
+      # inventory, shown with a test or not shown with a reason (SQMeter specs/025).
       - name: Dashboard inventory
         run: |
           python3 -m unittest discover -s tools/dashboard -p 'test_*.py'
           python3 tools/dashboard/check.py
 
       # Every HTTP route is declared with its auth and documented
-      # (specs 011 FR-006, 014 FR-005), and the OpenAPI description
-      # (docs/api/openapi.json) matches the registry and schemas (spec 028).
+      # (SQMeter specs 011 FR-006, 014 FR-005), and the OpenAPI description
+      # (docs/api/openapi.json) matches the registry and schemas (SQMeter spec 028).
       - name: API routes registry
         run: |
           python3 tools/api/test_routes.py
@@ -237,7 +237,8 @@ jobs:
         run: python3 tools/demo-core/source_hash.py --check
 
       # The UI is stored gzipped; it must fit the LittleFS partition with a
-      # language file and headroom, and grow no more than 10 KB per change
+      # language-file allowance (SQMeter's language packs are removed) and
+      # headroom, and grow no more than 10 KB per change
       # (coding standard SIZE-01, SIZE-02).
       - name: Pack the web UI for LittleFS and check its size
         run: |
@@ -258,7 +259,7 @@ jobs:
       - name: Build LittleFS image
         run: pio run -e esp32dev --target buildfs
 
-      # SIZE-04 (spec 027): each build against its app slot - warn above 90%,
+      # SIZE-04 (SQMeter spec 027): each build against its app slot - warn above 90%,
       # fail above 95% - and the change from the target branch's record.
       - name: Firmware flash budget
         run: |

@@ -4,11 +4,11 @@ import './explorer.css';
 import openapi from '../../../../docs/api/openapi.json';
 import { API_REFERENCE_URL } from '../links';
 
-// The demo site's API explorer (specs/028-openapi FR-010): the REST API's
+// The demo site's API explorer (SQMeter spec 028-openapi FR-010): the REST API's
 // OpenAPI description in Scalar, where "Try it" is answered by the demo's
-// emulated SQMeter - the firmware's own code in this browser - through the
+// emulated RoofRoof - the firmware's own code in this browser - through the
 // same mock service worker the demo app uses. Nothing leaves the browser
-// (spec 016 FR-006): no telemetry, no proxy, no hosted fonts, and the demo's
+// (SQMeter spec 016 FR-006): no telemetry, no proxy, no hosted fonts, and the demo's
 // Content-Security-Policy still applies. Demo build only: never on a device
 // (FR-011).
 
@@ -61,8 +61,8 @@ const theme = `
     min-height: 24px;
   }
   :root {
-    --scalar-font: 'Inter SQM', ui-sans-serif, system-ui, sans-serif;
-    --scalar-font-code: 'JetBrains Mono SQM', ui-monospace, monospace;
+    --scalar-font: 'Inter RR', ui-sans-serif, system-ui, sans-serif;
+    --scalar-font-code: 'JetBrains Mono RR', ui-monospace, monospace;
     --scalar-radius: 8px;
     --scalar-radius-lg: 12px;
   }
@@ -89,7 +89,7 @@ async function init() {
     await startEmulatedDevice();
   } catch (e) {
     const note = document.getElementById('explorer-note');
-    if (note) note.textContent = 'The emulated SQMeter could not start, so "Try it" has nothing to answer it.';
+    if (note) note.textContent = 'The emulated RoofRoof could not start, so "Try it" has nothing to answer it.';
     console.warn('[Explorer] emulated device failed to start:', e);
   }
   createApiReference('#explorer', {
@@ -97,7 +97,7 @@ async function init() {
     agent: { disabled: true },
     mcp: { disabled: true },
     content: openapi,
-    servers: [{ url: window.location.origin, description: 'This demo: the emulated SQMeter in your browser' }, ...openapi.servers],
+    servers: [{ url: window.location.origin, description: 'This demo: the emulated RoofRoof in your browser' }, ...openapi.servers],
     theme: 'none',
     customCss: theme,
     forceDarkModeState: 'dark',
@@ -109,7 +109,7 @@ async function init() {
     documentDownloadType: 'json',
     defaultHttpClient: { targetKey: 'shell', clientKey: 'curl' },
     persistAuth: false,
-    metaData: { title: 'SQMeter API explorer' },
+    metaData: { title: 'RoofRoof API explorer' },
   });
   nameIconButtons(document.body);
 }

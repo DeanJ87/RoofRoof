@@ -6,11 +6,11 @@
 namespace SQM
 {
     // A WiFiClient that also connects to IPv6 literals and IPv6-only names
-    // (specs/015-ipv6-dual-stack). It resolves with getaddrinfo; lwIP returns
+    // (SQMeter specs/015-ipv6-dual-stack). It resolves with getaddrinfo; lwIP returns
     // the IPv4 address when a name has both, so dual-stack servers keep using
-    // IPv4 and broken upstream IPv6 never delays a connection (FR-008). Used
+    // IPv4 and broken upstream IPv6 never delays a connection (SQMeter spec 015 FR-008). Used
     // for plain-TCP outbound connections (MQTT, http webhooks). Since
-    // Arduino-ESP32 3.x (spec 027) the TLS clients and SNTP resolve names the
+    // Arduino-ESP32 3.x (SQMeter spec 027) the TLS clients and SNTP resolve names the
     // same way on their own.
     class DualStackClient : public WiFiClient
     {

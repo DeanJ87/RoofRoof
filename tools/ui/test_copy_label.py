@@ -1,4 +1,4 @@
-"""Tests for the English copy check (DS-COPY) and the one-name check (DS-LABEL), spec 026."""
+"""Tests for the English copy check (DS-COPY) and the one-name check (DS-LABEL), SQMeter spec 026."""
 
 import importlib.util
 import json

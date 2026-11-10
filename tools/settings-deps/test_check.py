@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for check.py (specs/020-settings-dependencies, US4).
+"""Tests for check.py (SQMeter specs/020-settings-dependencies, US4).
 
 python3 tools/settings-deps/test_check.py
 """
@@ -118,7 +118,7 @@ class WholeRepository(unittest.TestCase):
         self.assertTrue(any("D-98, which isn't in" in p for p in check.check(self.root)))
 
     def test_a_constraint_message_the_ui_doesnt_share_fails(self):
-        # The UI's message is its English in web/src/i18n/en.json (specs/023-i18n).
+        # The UI's message is its English in web/src/i18n/en.json (SQMeter specs/023-i18n).
         english = os.path.join(self.root, "web/src/i18n/en.json")
         with open(english) as f:
             text = f.read()

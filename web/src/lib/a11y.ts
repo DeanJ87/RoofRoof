@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import type { RefObject } from 'preact';
 import { t } from '../i18n';
 
-// Accessibility helpers shared by the UI (spec 022). Small on purpose: the
+// Accessibility helpers shared by the UI (SQMeter spec 022). Small on purpose: the
 // device serves the UI from limited flash, so no focus-trap or dialog library.
 
 // --- Announcements (FR-009) --------------------------------------------------
@@ -10,7 +10,7 @@ import { t } from '../i18n';
 // themselves; only a verdict change, a new alert and connection loss/recovery
 // call this, and the same text within 2 s is dropped.
 
-export const LIVE_REGION_ID = 'sqm-live';
+export const LIVE_REGION_ID = 'roofroof-live';
 const DEDUPE_MS = 2000;
 let last = { text: '', at: 0 };
 
@@ -74,7 +74,7 @@ export const useDialogFocus = (open: boolean, container: RefObject<HTMLElement>,
 
 // --- Tabs (FR-013) ---------------------------------------------------------------
 // ARIA tabs keyboard: Left/Right wrap, Home/End jump. Null for other keys.
-// Right-to-left (specs/023-i18n FR-019) the tabs run the other way, so do the arrows.
+// Right-to-left (SQMeter spec 023-i18n FR-019) the tabs run the other way, so do the arrows.
 export const nextTabIndex = (key: string, index: number, count: number, rtl = false): number | null => {
   if (count <= 0) return null;
   const forward = rtl ? 'ArrowLeft' : 'ArrowRight';

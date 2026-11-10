@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Accessibility checks of the built docs site (spec 022 FR-004). Build it
+// Accessibility checks of the built docs site (SQMeter spec 022 FR-004). Build it
 // first: `mkdocs build --strict` at the repo root writes ../site.
 const PORT = Number(process.env.DOCS_PORT ?? 4190);
 

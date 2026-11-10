@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Live status don't flood screen readers (spec 022 SC-003, FR-009): the
+// Live status don't flood screen readers (SQMeter spec 022 SC-003, FR-009): the
 // polite live region stays silent while values update every second.
 
 const recordAnnouncements = (page: Page) =>
   page.evaluate(() => {
-    const region = document.getElementById('sqm-live')!;
+    const region = document.getElementById('roofroof-live')!;
     const heard: string[] = [];
     (window as unknown as { heard: string[] }).heard = heard;
     new MutationObserver(() => {

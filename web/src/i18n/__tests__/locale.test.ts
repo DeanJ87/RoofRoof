@@ -4,7 +4,7 @@ import type { LanguageCode } from '../languages';
 import { decimalSeparator, formatBytes, formatCoordinates, formatCount, formatInputNumber, formatNumber, formatTime } from '../format';
 import { parseCoordinates, parseNumber } from '../parse';
 
-// Spec 023 FR-017: numbers and dates follow the active language, with Latin
+// SQMeter spec 023 FR-017: numbers and dates follow the active language, with Latin
 // digits; typed numbers accept the language's decimal separator and are never
 // truncated.
 

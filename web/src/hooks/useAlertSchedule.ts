@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { AlertSchedule } from '../types';
 
-// Whether alerts are being sent, and Pause/Resume (specs/021). `live` is the
+// Whether alerts are being sent, and Pause/Resume (SQMeter spec 021). `live` is the
 // device's status ("alerts"), which keeps it current when Home Assistant or
 // a script pauses alerts; /api/alerts/armed is fetched once for a quick start
 // and after the button, whose answer wins over an older status for a moment.

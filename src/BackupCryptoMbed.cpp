@@ -6,7 +6,7 @@
 
 // The settings backup's crypto on the device, with ESP-IDF's mbedTLS (already
 // linked for TLS). Native tests and the demo use lib/ConfigBackup/src/PortableCrypto.cpp,
-// which implements the same three functions (specs/033-config-backup, research R2).
+// which implements the same three functions (SQMeter specs/033-config-backup, research R2).
 
 namespace SQM::Backup
 {

@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/preact';
 import { Field, NumberInput } from '../settings/controls';
 import { setLanguage, type Messages } from '../../i18n';
 
-// Typed numbers follow the active language and are never truncated (spec 023 FR-017).
+// Typed numbers follow the active language and are never truncated (SQMeter spec 023 FR-017).
 
 const renderInput = (value: number, onChange = vi.fn()) => {
   render(

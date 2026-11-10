@@ -7,7 +7,7 @@ async function init() {
   if (import.meta.env.VITE_DEMO_MODE === 'true') {
     try {
       // The emulated device (the firmware's own logic in WebAssembly) answers
-      // the UI's requests; see specs/016-demo-device-emulation.
+      // the UI's requests; see SQMeter spec 016-demo-device-emulation.
       const { demoDevice } = await import('./demo/device');
       await demoDevice.start();
       const { worker } = await import('./demo/browser');

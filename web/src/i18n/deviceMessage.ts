@@ -35,7 +35,7 @@ const compile = (): Template[] =>
         .join('');
       return { key: key as MessageKey, pattern: new RegExp(`^${source}$`, 's'), names };
     })
-    // Longer templates first, so "Sensor fault: TSL2591 light and MLX90614 IR"
+    // Longer templates first, so "Test: Test notification"
     // wins over a shorter one that could also match.
     .sort((a, b) => b.pattern.source.length - a.pattern.source.length);
 

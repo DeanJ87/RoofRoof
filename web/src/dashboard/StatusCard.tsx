@@ -4,7 +4,7 @@ import { useAnnounceChange } from '../lib/a11y';
 import { Button, Card, InfoTip, Pill } from '../components/ui';
 import { spoken, toCheck, type GlanceItem, type Severity } from './glance';
 
-// The Status card (specs/025, 026 FR-001..FR-003, DS-01..DS-08): a card like
+// The Status card (SQMeter spec 025, 026 FR-001..FR-003, DS-01..DS-08): a card like
 // the others whose job is the imaging app - is N.I.N.A. (or another Alpaca
 // client) watching each device - and whether alerts go out. Problems no other
 // card shows are one row each - name, pill, "?" - and the row goes to where
@@ -74,7 +74,7 @@ const StatusCard: FunctionalComponent<{ items: GlanceItem[]; onAction: (action: 
   const rows = items.filter((entry) => !TILES.has(entry.id) && (entry.severity === 'note' || entry.severity === 'problem'));
   const open = toCheck(items);
   const worst: Severity = open.some((entry) => entry.severity === 'problem') ? 'problem' : open.length ? 'note' : 'ok';
-  // Announced once when something stops working (spec 022): not every update.
+  // Announced once when something stops working (SQMeter spec 022): not every update.
   const urgent = items.filter((entry) => entry.severity === 'problem').map(spoken);
   useAnnounceChange(urgent.join(' | ') || undefined, (text) => t('glance.announce', { text }));
   const pill = open.length ? t('status.toCheck', { count: open.length }) : t('status.allGood');

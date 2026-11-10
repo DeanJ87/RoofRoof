@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { installTestLanguage } from './testLanguage';
 
-// Machine-readable output never changes with the UI language (specs/023-i18n
+// Machine-readable output never changes with the UI language (SQMeter spec 023-i18n
 // FR-015, coding standard I18N-06): with the UI in German (decimal comma) or
 // Arabic (right to left), the API and the WebSocket still send JSON numbers
 // with '.' decimals, under the same field names as in English. RoofRoof ships

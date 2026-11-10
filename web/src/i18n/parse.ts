@@ -1,6 +1,6 @@
 import { decimalSeparator } from './format';
 
-// Numbers typed by a person, in the active language (spec 023 FR-017).
+// Numbers typed by a person, in the active language (SQMeter spec 023 FR-017).
 //
 // Rules:
 // - The language's decimal separator is accepted ("21,5" in German), and so

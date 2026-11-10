@@ -2,19 +2,19 @@
    (web/src/index.css). Dark only, like the device UI. */
 
 @font-face {
-  font-family: "Inter SQM";
+  font-family: "Inter RR";
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url("../assets/fonts/inter-sqm.woff2") format("woff2");
+  src: url("../assets/fonts/inter-rr.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: "JetBrains Mono SQM";
+  font-family: "JetBrains Mono RR";
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url("../assets/fonts/jetbrains-mono-sqm.woff2") format("woff2");
+  src: url("../assets/fonts/jetbrains-mono-rr.woff2") format("woff2");
 }
 
 :root {
@@ -32,8 +32,8 @@
   --sqm-green: #5ee0a0;
   --sqm-amber: #f4c15d;
   --sqm-red: #f26b62;
-  --md-text-font: "Inter SQM";
-  --md-code-font: "JetBrains Mono SQM";
+  --md-text-font: "Inter RR";
+  --md-code-font: "JetBrains Mono RR";
 }
 
 [data-md-color-scheme="slate"] {

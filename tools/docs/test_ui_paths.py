@@ -1,4 +1,4 @@
-"""Tests for tools/docs/ui_paths.py (spec 026, DS-27 docs drift).
+"""Tests for tools/docs/ui_paths.py (SQMeter spec 026, DS-27 docs drift).
 
 python3 -m unittest discover -s tools/docs -p 'test_*.py'
 """

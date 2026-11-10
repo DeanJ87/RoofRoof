@@ -11,7 +11,7 @@
 
 using namespace SQM;
 
-// IPv6 addresses, hosts and URLs (specs/015-ipv6-dual-stack). The fixture
+// IPv6 addresses, hosts and URLs (SQMeter specs/015-ipv6-dual-stack). The fixture
 // cases are shared with web/src/lib/__tests__/netAddress.test.ts.
 
 namespace

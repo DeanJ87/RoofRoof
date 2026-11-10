@@ -1,4 +1,4 @@
-"""Tests for tools/api/openapi.py: each way the API description can drift fails (spec 028 SC-003)."""
+"""Tests for tools/api/openapi.py: each way the API description can drift fails (SQMeter spec 028 SC-003)."""
 
 import copy
 import sys

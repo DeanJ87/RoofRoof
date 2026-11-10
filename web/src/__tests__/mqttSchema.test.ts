@@ -7,19 +7,19 @@ describe('MQTT config validation', () => {
     getConfigValidationErrors({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', ...mqtt } });
 
   it('rejects wildcards or a trailing slash in the base topic', () => {
-    expect(withMqtt({ topic: 'sqm/#' })['mqtt.topic']).toMatch(/letters, numbers/);
-    expect(withMqtt({ topic: 'sqm/' })['mqtt.topic']).toMatch(/letters, numbers/);
-    expect(withMqtt({ topic: '/sqm' })['mqtt.topic']).toMatch(/letters, numbers/);
-    expect(withMqtt({ topic: 'sqm+x' })['mqtt.topic']).toMatch(/letters, numbers/);
-    expect(withMqtt({ topic: 'sqmeter/roof' })['mqtt.topic']).toBeUndefined();
+    expect(withMqtt({ topic: 'roofroof/#' })['mqtt.topic']).toMatch(/letters, numbers/);
+    expect(withMqtt({ topic: 'roofroof/' })['mqtt.topic']).toMatch(/letters, numbers/);
+    expect(withMqtt({ topic: '/roofroof' })['mqtt.topic']).toMatch(/letters, numbers/);
+    expect(withMqtt({ topic: 'roofroof+x' })['mqtt.topic']).toMatch(/letters, numbers/);
+    expect(withMqtt({ topic: 'roofroof/roof' })['mqtt.topic']).toBeUndefined();
   });
 
   it('checks the discovery prefix only when discovery is on', () => {
     expect(
-      withMqtt({ topic: 'sqmeter', homeAssistant: { enabled: false, discoveryPrefix: '' } })['mqtt.homeAssistant.discoveryPrefix'],
+      withMqtt({ topic: 'roofroof', homeAssistant: { enabled: false, discoveryPrefix: '' } })['mqtt.homeAssistant.discoveryPrefix'],
     ).toBeUndefined();
     expect(
-      withMqtt({ topic: 'sqmeter', homeAssistant: { enabled: true, discoveryPrefix: '' } })['mqtt.homeAssistant.discoveryPrefix'],
+      withMqtt({ topic: 'roofroof', homeAssistant: { enabled: true, discoveryPrefix: '' } })['mqtt.homeAssistant.discoveryPrefix'],
     ).toBeDefined();
   });
 });

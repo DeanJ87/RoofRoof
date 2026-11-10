@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { t, type MessageKey } from './index';
 
-// A whole translated sentence with markup inside it, e.g. "SQMeter joined
+// A whole translated sentence with markup inside it, e.g. "RoofRoof joined
 // <b>{ssid}</b> and is restarting." - translators move {ssid} wherever their
 // grammar needs it, instead of the sentence being split around the markup.
 export function tRich(key: MessageKey, parts: Record<string, ComponentChildren>) {

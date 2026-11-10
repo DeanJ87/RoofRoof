@@ -36,7 +36,7 @@ export const mqttStateText = (mqtt: NonNullable<SystemStatus['mqtt']>): { text: 
     : { text: t('glance.mqttRetrying'), tone: 'pill-amber' };
 };
 
-// One labelled value per row (specs/026 DS-05): long values truncate, the
+// One labelled value per row (SQMeter spec 026 DS-05): long values truncate, the
 // full value is in the tooltip.
 const Row: FunctionalComponent<{ label: string; hint?: string; inventory?: string; value?: string; mono?: boolean }> = ({
   label,

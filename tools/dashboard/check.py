@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The dashboard inventory covers every piece of device state (specs/025 FR-002, FR-003).
+"""The dashboard inventory covers every piece of device state (SQMeter specs/025 FR-002, FR-003).
 
 Every property path of the status and alerts-armed contract
 schemas, and every settings-dependency id, must be mapped by web/src/dashboard/

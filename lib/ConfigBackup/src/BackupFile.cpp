@@ -8,7 +8,7 @@
 #include <string>
 
 // The backup file: making it, reading it and opening its secrets block
-// (specs/033-config-backup/contracts/backup-file.md).
+// (SQMeter specs/033-config-backup/contracts/backup-file.md).
 
 namespace SQM::Backup
 {

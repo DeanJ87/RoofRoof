@@ -16,7 +16,7 @@ const Updates: FunctionalComponent = () => {
   const [updateType, setUpdateType] = useState<UpdateType>('firmware');
   const { file, setFile, uploading, uploadProgress, status, setStatus, waitingForReboot, handleUpload } = useImageUpload();
 
-  // Announce how an update ended, once (spec 022 FR-009 edge case).
+  // Announce how an update ended, once (SQMeter spec 022 FR-009 edge case).
   useAnnounceChange(status, (text) => (/complete|successful|fail|error/i.test(text) ? text : null));
 
   const { data: statusMsg } = useWebSocket<SystemStatus>('/ws/status');

@@ -1,4 +1,4 @@
-"""Tests for the quality gate (spec 017 T010, T014).
+"""Tests for the quality gate (SQMeter spec 017 T010, T014).
 
 The baseline logic is unit-tested, and every automatically enforced rule is
 proved by a deliberately broken sample that must be reported under its rule

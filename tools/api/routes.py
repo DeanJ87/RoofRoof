@@ -6,7 +6,7 @@ Reads the route registrations in src/WebServer*.cpp (``server.on(...)`` and
 ``requireAuth`` (directly, or in a handler it calls), and compares that with
 tools/api/routes.json. Fails when a route is missing from the registry, the
 registry is out of date, the auth differs, or an /api/ route isn't in
-docs/api/rest.md (specs 011 FR-006, 014 FR-005).
+docs/api/rest.md (SQMeter specs 011 FR-006, 014 FR-005).
 
 Usage: python3 tools/api/routes.py [--list]
 """

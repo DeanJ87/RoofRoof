@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join, relative, resolve } from 'path';
 
-// WCAG 2.2 AA checks on every page of the built docs site (spec 022 FR-004),
+// WCAG 2.2 AA checks on every page of the built docs site (SQMeter spec 022 FR-004),
 // against tests/a11y/docs-baseline.json (rule ids per page, may only shrink).
 // Run: mkdocs build --strict && npx playwright test -c playwright.docs.config.ts
 // Refresh: A11Y_UPDATE_BASELINE=1 npx playwright test -c playwright.docs.config.ts
@@ -12,7 +12,7 @@ const SITE = resolve(import.meta.dirname, '../../site');
 const BASELINE_PATH = resolve(import.meta.dirname, 'a11y/docs-baseline.json');
 const UPDATE = process.env.A11Y_UPDATE_BASELINE === '1';
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-// demo/ only redirects to demo.sqmeter.dev; search/ holds the index, not a page.
+// demo/ only redirects to a public demo host; search/ holds the index, not a page.
 const SKIP = ['demo/', 'search/'];
 
 const pages = (dir: string): string[] =>

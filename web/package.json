@@ -1,7 +1,7 @@
 {
-  "name": "sqmeter-web-ui",
+  "name": "roofroof-web-ui",
   "version": "0.0.1",
-  "description": "SQMeter Web Interface",
+  "description": "RoofRoof Web Interface",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "preview:demo": "vite preview --config vite.demo.config.ts",
     "screenshots": "playwright test tests/screenshots.spec.ts",
-    "docs:vendor": "node scripts/vendor-mermaid.mjs && node scripts/vendor-esp-web-tools.mjs && node scripts/vendor-scalar.mjs",
+    "docs:vendor": "node scripts/vendor-mermaid.mjs && node scripts/vendor-scalar.mjs",
     "docs:diagrams": "node scripts/check-diagrams.mjs",
     "lint": "eslint .",
     "test": "vitest run",
@@ -40,7 +40,6 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "esp-web-tools": "10.4.0",
     "globals": "^15.15.0",
     "jsdom": "^30.0.1",
     "mermaid": "11.17.2",

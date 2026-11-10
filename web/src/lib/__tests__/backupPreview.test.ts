@@ -10,11 +10,11 @@ import {
   type Settings,
 } from '../backupPreview';
 
-// What a restore preview lists (specs/033-config-backup FR-007, FR-008).
+// What a restore preview lists (SQMeter spec 033-config-backup FR-007, FR-008).
 
 const current: Settings = {
-  deviceName: 'backyard-sqm',
-  wifi: { ssid: 'Observatory', password: '********', hostname: 'sqmeter', mdns: true },
+  deviceName: 'backyard-roof',
+  wifi: { ssid: 'Observatory', password: '********', hostname: 'roofroof', mdns: true },
   mqtt: { broker: 'broker.lan', port: 1883, password: '', publish: { sky: true, diagnostics: false } },
   auth: { enabled: false, username: 'admin', password: '' },
   alerts: { sendMode: 'any' },

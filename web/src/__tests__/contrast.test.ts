@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const css = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
 
 // Every text colour token meets 4.5:1 and control edges 3:1 against every
-// background token (spec 022 SC-005, A11Y-01). Parsed from index.css so a
+// background token (SQMeter spec 022 SC-005, A11Y-01). Parsed from index.css so a
 // token change can't slip past.
 
 const root = css.slice(css.indexOf(':root'), css.indexOf('}', css.indexOf(':root')));

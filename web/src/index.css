@@ -66,19 +66,19 @@ code {
 }
 
 @font-face {
-  font-family: 'Inter SQM';
+  font-family: 'Inter RR';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url('./assets/fonts/inter-sqm.woff2') format('woff2');
+  src: url('./assets/fonts/inter-rr.woff2') format('woff2');
 }
 
 @font-face {
-  font-family: 'JetBrains Mono SQM';
+  font-family: 'JetBrains Mono RR';
   font-style: normal;
   font-weight: 400 600;
   font-display: swap;
-  src: url('./assets/fonts/jetbrains-mono-sqm.woff2') format('woff2');
+  src: url('./assets/fonts/jetbrains-mono-rr.woff2') format('woff2');
 }
 
 :root {
@@ -99,8 +99,8 @@ code {
   --green: #5ee0a0;
   --amber: #f4c15d;
   --red: #f26b62;
-  --font-ui: 'Inter SQM', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono SQM', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-ui: 'Inter RR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono RR', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 * {
@@ -270,7 +270,7 @@ button {
   filter: grayscale(0.6);
 }
 
-/* Status card (specs/026): tiles, then one row per problem; the row is the link. */
+/* Status card (SQMeter spec 026): tiles, then one row per problem; the row is the link. */
 .status-tile {
   display: grid;
   align-content: start;
@@ -336,7 +336,7 @@ a.status-row-main:focus-visible .status-row-label {
   gap: 0.25rem 0.6rem;
 }
 
-/* Device & Network (specs/026 DS-05): one value per row, truncated. */
+/* Device & Network (SQMeter spec 026 DS-05): one value per row, truncated. */
 .device-rows {
   margin-top: 0.6rem;
 }
@@ -494,7 +494,7 @@ a.status-row-main:focus-visible .status-row-label {
   animation: pulse-dot 2s infinite;
 }
 
-.sqm-display {
+.rr-display {
   position: relative;
   z-index: 1;
   text-align: center;
@@ -510,7 +510,7 @@ a.status-row-main:focus-visible .status-row-label {
   text-transform: uppercase;
 }
 
-.sqm-value {
+.rr-value {
   color: var(--cyan);
   font-family: var(--font-mono);
   font-size: clamp(3.1rem, 12vw, 4.35rem);
@@ -520,14 +520,14 @@ a.status-row-main:focus-visible .status-row-label {
   font-variant-numeric: tabular-nums;
 }
 
-.sqm-unit,
+.rr-unit,
 .metric-unit {
   color: var(--dim);
   font-family: var(--font-mono);
   font-size: 0.68rem;
 }
 
-.sqm-display p {
+.rr-display p {
   margin: 0.7rem 0 0;
   color: var(--muted);
   font-weight: 550;
@@ -851,7 +851,7 @@ a.status-row-main:focus-visible .status-row-label {
   width: min(100%, 42rem);
 }
 
-/* The page's own title is an h2: the header's "SQMeter" is the one h1. */
+/* The page's own title is an h2: the header's "RoofRoof" is the one h1. */
 .panel-page > h1,
 .panel-page > div:first-child h1,
 .page-title {
@@ -1271,7 +1271,7 @@ a.status-row-main:focus-visible .status-row-label {
   }
 }
 
-/* Longer button labels in other languages wrap on phones (specs/023-i18n). */
+/* Longer button labels in other languages wrap on phones (SQMeter spec 023-i18n). */
 @media (max-width: 480px) {
   .btn {
     max-width: 100%;
@@ -1965,7 +1965,7 @@ input[type='file'].input::file-selector-button {
   gap: 1rem;
 }
 
-/* Language change in progress (specs/026 FR-004), inside the Language card. */
+/* Language change in progress (SQMeter spec 026 FR-004), inside the Language card. */
 .language-steps {
   display: grid;
   gap: 0.5rem;
@@ -2383,7 +2383,7 @@ input[type='file'].input::file-selector-button {
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.25rem);
 }
 
-/* A docked tour card or offer (specs/018) reserves its height (--tour-dock,
+/* A docked tour card or offer (SQMeter spec 018) reserves its height (--tour-dock,
    measured from the bottom of the screen to its top edge) the same way. */
 .has-tour-dock .save-bar {
   bottom: calc(var(--tour-dock, 0px) + 0.5rem);
@@ -2445,7 +2445,7 @@ input[type='file'].input::file-selector-button {
   text-transform: uppercase;
 }
 
-/* Demo tour (specs/018): a non-modal card beside the control it explains. */
+/* Demo tour (SQMeter spec 018): a non-modal card beside the control it explains. */
 .tour-outline {
   position: fixed;
   z-index: 40;
@@ -2508,7 +2508,7 @@ input[type='file'].input::file-selector-button {
   }
 }
 
-/* Real notifications (specs/018) */
+/* Real notifications (SQMeter spec 018) */
 .demo-check {
   display: flex;
   gap: 0.5rem;
@@ -2648,7 +2648,7 @@ input[type='file'].input::file-selector-button {
   }
 }
 
-/* --- Accessibility (spec 022) ---------------------------------------------- */
+/* --- Accessibility (SQMeter spec 022) ---------------------------------------------- */
 
 /* One visible focus ring everywhere (WCAG 2.4.7, 2.4.11): cyan is ~9:1 on
    every background. Components must not remove it without an equal one. */
@@ -2717,12 +2717,12 @@ main:focus {
   }
 }
 
-/* Right-to-left languages (specs/023-i18n FR-019). Layout mirrors through the
+/* Right-to-left languages (SQMeter spec 023-i18n FR-019). Layout mirrors through the
    logical properties above; readings, units, coordinates, times and charts
    stay left-to-right inside the page. */
 [dir='rtl'] .metric-value,
 [dir='rtl'] .metric-unit,
-[dir='rtl'] .sqm-unit,
+[dir='rtl'] .rr-unit,
 [dir='rtl'] .input-unit,
 [dir='rtl'] .reading-value,
 [dir='rtl'] .mono,

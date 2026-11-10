@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { installTestLanguage, testPack } from './testLanguage';
 
-// Numbers follow the active language (specs/023-i18n FR-017): typed decimals
+// Numbers follow the active language (SQMeter spec 023-i18n FR-017): typed decimals
 // use the language's separator and reach the device exactly; shown values use
 // it too, with Latin digits in every language. RoofRoof ships English only,
 // so the test installs a pack of its own (spec 001 research R10).

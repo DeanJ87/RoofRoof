@@ -27,8 +27,9 @@
 namespace SQM
 {
     // The device's HTTP server: the REST API, the live-update WebSocket, the
-    // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer,
-    // without the sensors). Spec 002 onwards adds the roof.
+    // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer
+    // with the sensors, safety monitor and display removed). RoofRoof spec 002
+    // onwards adds the roof.
     class WebServer
     {
     public:

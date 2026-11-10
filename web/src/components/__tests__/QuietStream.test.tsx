@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/preact';
 import { QUIET_AFTER_MS, useQuiet } from '../../hooks/useQuiet';
 
 // A socket that stays open but stops sending turns the dashboard Stale
-// (spec 010 US1-AS2).
+// (SQMeter spec 010 US1-AS2).
 describe('useQuiet', () => {
   afterEach(() => vi.useRealTimers());
 

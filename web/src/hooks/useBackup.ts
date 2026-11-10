@@ -16,7 +16,7 @@ import { deviceText } from '../i18n/deviceMessage';
 import { t } from '../i18n';
 import { useWaitForReboot } from './useWaitForReboot';
 
-// The Backup & restore card's state (specs/033-config-backup contracts/ui.md):
+// The Backup & restore card's state (SQMeter spec 033-config-backup contracts/ui.md):
 // backing up (useBackup) and restoring (useRestore).
 
 export interface Outcome {

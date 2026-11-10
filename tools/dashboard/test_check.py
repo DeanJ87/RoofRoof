@@ -1,4 +1,4 @@
-"""Tests for tools/dashboard/check.py (specs/025 FR-002, FR-003).
+"""Tests for tools/dashboard/check.py (SQMeter specs/025 FR-002, FR-003).
 
 python3 -m unittest discover -s tools/dashboard -p 'test_*.py'
 """

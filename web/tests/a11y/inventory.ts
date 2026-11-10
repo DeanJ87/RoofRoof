@@ -1,4 +1,4 @@
-// Every page and state the accessibility checks cover (spec 022 FR-001,
+// Every page and state the accessibility checks cover (SQMeter spec 022 FR-001,
 // FR-003). The demo build runs the device's own components, so a result here
 // holds for the device; the captive-portal setup page is the /wifi route.
 //

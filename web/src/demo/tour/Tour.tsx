@@ -6,7 +6,7 @@ import { demoDevice } from '../device';
 import { LINKS, TOUR_STEPS, type TourStep } from './steps';
 import { tour } from './tourState';
 
-// The guided tour (specs/018 US1): a non-modal card in the app's own style
+// The guided tour (SQMeter spec 018 US1): a non-modal card in the app's own style
 // that outlines the control it talks about, waits for the device on action
 // steps, and ends on Skip or Escape. Keyboard and reduced-motion friendly;
 // docked at the bottom on phones.
@@ -41,7 +41,7 @@ const cardPosition = (box: Box | null): Record<string, string> => {
 
 // A card docked at the bottom of the screen (the offer, and the tour card on
 // phones) reserves its height so the settings save bar and toasts sit above it
-// instead of underneath (specs/019 SC-007, specs/022 A11Y no hidden controls).
+// instead of underneath (SQMeter spec 019 SC-007, SQMeter spec 022 A11Y no hidden controls).
 const DOCK_CLASS = 'has-tour-dock';
 const DOCK_VAR = '--tour-dock';
 

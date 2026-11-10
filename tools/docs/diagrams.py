@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks the docs' Mermaid diagrams (spec 024).
+"""Checks the docs' Mermaid diagrams (SQMeter spec 024).
 
 Every ```mermaid block in docs/**/*.md and README.md must be complete
 (metadata comment, accTitle/accDescr, caption, "Diagram in words", no inline
@@ -12,7 +12,7 @@ code it says it reflects. A stale diagram is a warning, unless it's marked
     python3 tools/docs/diagrams.py --confirm all
     python3 tools/docs/diagrams.py --site site     # built site serves its own mermaid, no CDN
 
-The block format is in specs/024-docs-diagrams/contracts/diagram-block.md.
+The block format is in SQMeter specs/024-docs-diagrams/contracts/diagram-block.md.
 """
 
 from __future__ import annotations

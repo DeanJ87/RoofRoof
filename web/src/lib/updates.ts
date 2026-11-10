@@ -11,7 +11,7 @@ export type UploadHandlers = {
   onStall: () => void;
 };
 
-/** An upload that sends nothing for this long has stalled (spec 012). */
+/** An upload that sends nothing for this long has stalled (SQMeter spec 012). */
 export const UPLOAD_STALL_MS = 20_000;
 
 /** POST `file` as the `update` form field with upload progress (fetch can't report it). */

@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import openapi from '../../docs/api/openapi.json' with { type: 'json' };
 
-// The demo site's API explorer (specs/028-openapi FR-010): the OpenAPI
+// The demo site's API explorer (SQMeter spec 028-openapi FR-010): the OpenAPI
 // description in Scalar, "Try it" answered by the emulated device in the
 // browser, themed like the docs site, and nothing leaves the browser.
 
@@ -30,9 +30,9 @@ test.describe('API explorer', () => {
       await expect(page.getByRole('link', { name: tag, exact: true }).first()).toBeVisible();
     }
     const body = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(body).toBe('rgb(8, 13, 20)'); // --sqm-bg
+    expect(body).toBe('rgb(8, 13, 20)'); // --sqm-bg in docs/stylesheets/roofroof.css
     const font = await page.getByRole('heading', { name: 'RoofRoof REST API' }).evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(font).toContain('Inter SQM');
+    expect(font).toContain('Inter RR');
     expect(outside).toEqual([]);
   });
 

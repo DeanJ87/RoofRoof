@@ -8,7 +8,7 @@
 
 using namespace SQM;
 
-// The portable crypto behind settings backups (specs/033-config-backup,
+// The portable crypto behind settings backups (SQMeter specs/033-config-backup,
 // research R2), held to published vectors: RFC 7914 section 11 and the
 // widely used PBKDF2-HMAC-SHA256 vectors, and NIST GCM test cases 13, 14 and
 // 16 (AES-256). The expected values were also recomputed with OpenSSL.

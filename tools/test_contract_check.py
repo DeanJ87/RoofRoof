@@ -1,4 +1,4 @@
-"""Tests for the action-result check in tools/contract-check.py (spec 013 FR-009)."""
+"""Tests for the action-result check in tools/contract-check.py (SQMeter spec 013 FR-009)."""
 
 import importlib.util
 import unittest

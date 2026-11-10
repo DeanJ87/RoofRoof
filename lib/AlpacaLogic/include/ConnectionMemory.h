@@ -23,7 +23,7 @@ namespace SQM
 
         // The device restarted on its own: an imaging app that had a device
         // connected still wants it, so the connection is restored after the
-        // restart (spec 011 FR-008). A power cut or the reset button starts
+        // restart (SQMeter spec 011 FR-008). A power cut or the reset button starts
         // fresh.
         bool keepsConnections(ResetKind kind);
 

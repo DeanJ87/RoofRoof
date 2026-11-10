@@ -3,7 +3,7 @@ import { demoDevice } from '../device';
 import { backupReply } from '../backup';
 
 // The demo answers backup and restore with the device's own code
-// (lib/ConfigBackup in the WebAssembly core; specs/033-config-backup FR-014).
+// (lib/ConfigBackup in the WebAssembly core; SQMeter spec 033-config-backup FR-014).
 
 const route = (name: 'backup' | 'preview' | 'apply', body: unknown) => {
   const { reply, restarting } = backupReply(demoDevice.backupCore(), name, JSON.stringify(body));

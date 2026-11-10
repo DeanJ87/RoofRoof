@@ -1,6 +1,6 @@
 #pragma once
 
-// The three cryptographic steps a settings backup needs (specs/033-config-backup,
+// The three cryptographic steps a settings backup needs (SQMeter specs/033-config-backup,
 // research R2). The firmware implements them with mbedTLS (src/BackupCryptoMbed.cpp);
 // native tests and the browser demo use the portable code in PortableCrypto.cpp,
 // which is compiled only where ESP_PLATFORM isn't defined.

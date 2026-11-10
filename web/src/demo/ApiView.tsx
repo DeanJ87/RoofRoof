@@ -4,7 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 // Device URLs opened directly in the demo - /management/v1/description,
 // /api/v1/safetymonitor/0/issafe, /api/sensors, ... - arrive at 404.html (the
 // host has no such files). Show what the emulated device answers, like a
-// browser pointed at a real SQMeter would.
+// browser pointed at a real RoofRoof would.
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 

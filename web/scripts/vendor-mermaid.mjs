@@ -1,5 +1,5 @@
-// Copies the pinned mermaid build into the docs so sqmeter.dev serves it
-// itself instead of Material fetching it from a CDN (spec 024 FR-004).
+// Copies the pinned mermaid build into the docs so the docs serve it
+// itself instead of Material fetching it from a CDN (SQMeter spec 024 FR-004).
 // The copy is generated and git-ignored; CI runs this before `mkdocs build`.
 import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';

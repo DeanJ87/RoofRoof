@@ -1,4 +1,4 @@
-"""Tests for tools/i18n/gen_device_catalog.py and context.py (specs/023-i18n).
+"""Tests for tools/i18n/gen_device_catalog.py and context.py (SQMeter specs/023-i18n).
 
 python3 -m unittest discover -s tools/i18n -p 'test_*.py'
 """

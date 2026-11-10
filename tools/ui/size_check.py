@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 
 BLOCK_BYTES = 4096  # LittleFS block size on the ESP32
-LANGUAGE_FILE_MAX_BYTES = 64 * 1024  # lib/LanguageLogic MAX_FILE_BYTES
+LANGUAGE_FILE_MAX_BYTES = 64 * 1024  # SQMeter's lib/LanguageLogic MAX_FILE_BYTES; language packs are removed, the allowance stays
 LANGUAGE_EXTRA_FILES = 2  # /lang.meta and the download marker, one block each
 FILL_LIMIT = 0.75
 GROWTH_LIMIT_BYTES = 10 * 1024

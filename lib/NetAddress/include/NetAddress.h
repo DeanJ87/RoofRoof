@@ -7,7 +7,7 @@
 
 namespace SQM
 {
-    // IPv6 addresses, hosts and URLs (specs/015-ipv6-dual-stack): parsing,
+    // IPv6 addresses, hosts and URLs (SQMeter specs/015-ipv6-dual-stack): parsing,
     // RFC 5952 text, scope, the LAN-only rule for IPv6 peers, and the host and
     // URL forms settings accept. Kept free of Arduino and lwIP so the native
     // tests and the browser (web/src/lib/netAddress.ts, held to the same
@@ -35,7 +35,7 @@ namespace SQM
         const char *scopeName(Scope scope);
         bool isIpv4Mapped(const Ipv6 &address);
 
-        // FR-011: an IPv6 peer is accepted when it's loopback, link-local, an
+        // SQMeter spec 015 FR-011: an IPv6 peer is accepted when it's loopback, link-local, an
         // IPv4-mapped address (IPv4 rules apply), or in the same /64 as one of
         // the device's own unique-local or global addresses.
         bool allowedPeer(const Ipv6 &peer, const std::vector<Ipv6> &own);
@@ -87,7 +87,7 @@ namespace SQM
         UrlError parseHttpUrl(const std::string &text, HttpUrl &out, HostError *hostError = nullptr);
         std::string urlErrorText(UrlError error, HostError hostError);
 
-        // NTP is IPv4-only on this platform (spec 015 research R6): an IPv6
+        // NTP is IPv4-only on this platform (SQMeter spec 015 research R6): an IPv6
         // literal as an NTP server would never answer, so settings refuse it.
         constexpr const char *NTP_IPV6_TEXT = "NTP over IPv6 isn't supported yet - use a host name or an IPv4 address";
         bool isIpv6Literal(const std::string &text);

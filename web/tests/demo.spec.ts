@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// The demo as one emulated device (specs/016-demo-device-emulation).
+// The demo as one emulated device (SQMeter spec 016-demo-device-emulation).
 
 const ready = async (page: Page, hash = '') => {
   await page.goto(`./${hash}`);
@@ -39,7 +39,7 @@ test.describe('demo links (US1, SC-001)', () => {
 
   test("device URLs opened directly show the device's answer", async ({ page }) => {
     await page.goto('./management/v1/description');
-    // ServerName is the device's name (spec 007 FR-008).
+    // ServerName is the device's name (SQMeter spec 007 FR-008).
     await expect(page.getByText('"ServerName": "RoofRoof Demo"')).toBeVisible();
     await expect(page.getByText('"Manufacturer": "RoofRoof"')).toBeVisible();
     await page.goto('./management/v1/configureddevices');
@@ -90,7 +90,7 @@ test('nothing leaves the browser (US3, SC-004)', async ({ page, baseURL }) => {
   for (const hash of ['#/settings?tab=alerts', '#/updates', '#/wifi', '#/system']) await ready(page, hash);
   const recent = JSON.parse((await api(page, '/api/alerts/recent')).body);
   expect(recent.alerts[0].channels.pushover.detail).toBe('Demo: nothing was sent');
-  // The API explorer (specs/028-openapi) too: loading it and trying a request.
+  // The API explorer (SQMeter spec 028-openapi) too: loading it and trying a request.
   await page.goto('./explorer/');
   await page
     .getByRole('button', { name: /Test Request.*get \/api\/status/i })

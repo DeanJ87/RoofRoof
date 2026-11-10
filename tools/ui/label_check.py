@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One name per thing across the UI, Home Assistant and the docs (specs/026 FR-013, DS-27).
+"""One name per thing across the UI, Home Assistant and the docs (SQMeter specs/026 FR-013, DS-27).
 
 Reads tools/i18n/glossary/en.json and fails when:
   - an en.json string listed for a name doesn't say that name (case aside);
@@ -61,7 +61,7 @@ def check_keys(entry: dict, english: dict) -> list[tuple[str, str]]:
 def check_avoid(entry: dict, ui: dict, docs: dict) -> list[tuple[str, str]]:
     problems = []
     for variant in entry.get("avoid", []):
-        # As written: "the TSL2591 light sensor" in prose is the name with its part number, not another name.
+        # As written: a name followed by its part number in prose is still that name, not another one.
         pattern = re.compile(rf"(?<![\w-]){re.escape(variant)}(?![\w-])")
         problems += [(ENGLISH, f"{key} calls '{entry['name']}' {variant!r}") for key, text in ui.items() if pattern.search(text)]
         problems += [(path, f"the docs call '{entry['name']}' {variant!r}") for path, text in docs.items() if pattern.search(text)]

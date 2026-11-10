@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
-// Nothing floating hides a page control on a phone (specs/019 SC-007,
-// specs/022 no obscured controls): the Demo button, the first-visit tour offer
+// Nothing floating hides a page control on a phone (SQMeter spec 019 SC-007,
+// SQMeter spec 022 no obscured controls): the Demo button, the first-visit tour offer
 // and the docked tour card must leave the settings save bar and toasts clear.
 // Starts from a clean browser so the tour offer shows.
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -52,7 +52,7 @@ for (const width of [320, 390]) {
   });
 }
 
-// Nothing sits between the header and the dashboard cards (specs/026 FR-014,
+// Nothing sits between the header and the dashboard cards (SQMeter spec 026 FR-014,
 // DS-01): information lives in cards; the only thing above the grid is the
 // Arrange toolbar.
 for (const width of [1280, 390]) {

@@ -26,7 +26,7 @@ describe('WiFi setup screen', () => {
               connected: true,
               ssid: 'DarkSkyLab',
               ip: '192.168.1.77',
-              hostname: 'sqmeter',
+              hostname: 'roofroof',
               mdns: true,
               apMode: true,
             }),
@@ -40,7 +40,7 @@ describe('WiFi setup screen', () => {
 
     expect(await screen.findByText('Connected')).toBeInTheDocument();
     expect(sent).toEqual({ ssid: 'DarkSkyLab', password: 'hunter22' });
-    expect(screen.getByRole('link', { name: 'http://sqmeter.local' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'http://roofroof.local' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'http://192.168.1.77' })).toBeInTheDocument();
   });
 

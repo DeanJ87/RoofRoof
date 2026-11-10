@@ -1,4 +1,4 @@
-"""Tests for tools/docs/diagrams.py (spec 024).
+"""Tests for tools/docs/diagrams.py (SQMeter spec 024).
 
 python3 -m unittest discover -s tools/docs -p 'test_*.py'
 """

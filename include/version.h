@@ -1,13 +1,13 @@
 #pragma once
 
 // Firmware version information
-// Local builds: the next release plus "+dev", so update checks order them
+// Local builds: the next release plus "+dev", so version comparisons order them
 // correctly. CI stamps the tag (without "v") on release builds; bump this
 // after each release.
 #define FIRMWARE_VERSION "0.1.0+dev"
 #define FIRMWARE_BUILD_DATE __DATE__
 #define FIRMWARE_BUILD_TIME __TIME__
-#define FIRMWARE_NAME "SQMeter"
+#define FIRMWARE_NAME "RoofRoof"
 
 // Helper to get full version string
 inline const char *getFirmwareVersion()

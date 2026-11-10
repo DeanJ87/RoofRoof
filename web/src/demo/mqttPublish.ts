@@ -1,5 +1,5 @@
 // A minimal MQTT 3.1.1 publisher over a secure WebSocket, for the demo's
-// opt-in real notifications (specs/018 research R6): connect, publish one
+// opt-in real notifications (SQMeter spec 018 research R6): connect, publish one
 // QoS 0 message, disconnect. Brokers need MQTT over WebSockets with TLS.
 
 export interface MqttTarget {
@@ -117,7 +117,7 @@ export function mqttPublish(target: MqttTarget, topic: string, payload: string):
       return;
     }
     socket.binaryType = 'arraybuffer';
-    socket.onopen = () => socket.send(connectPacket(`sqmeter-demo-${Math.random().toString(16).slice(2, 8)}`, target));
+    socket.onopen = () => socket.send(connectPacket(`roofroof-demo-${Math.random().toString(16).slice(2, 8)}`, target));
     socket.onmessage = (event) => {
       const bytes = new Uint8Array(event.data as ArrayBuffer);
       if ((bytes[0] & 0xf0) !== PACKET_CONNACK) return;

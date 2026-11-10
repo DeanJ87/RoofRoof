@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Translation checks (specs/023-i18n FR-002..FR-004, FR-020..FR-022).
+// Translation checks (SQMeter specs/023-i18n FR-002..FR-004, FR-020..FR-022).
 //
 //   node tools/i18n/check.mjs            completeness, placeholders, plurals, context, glossaries
 //   node tools/i18n/check.mjs --json     the same as JSON [{file, message}] (tools/quality I18N-02)
@@ -99,7 +99,7 @@ export const usesTerm = (text, term) => {
     .every((word) => lower.includes(word.length > 4 ? word.slice(0, Math.max(4, Math.ceil(word.length * 0.6))) : word));
 };
 
-/** Review flags (FR-022): not failures, a worklist for the review pass. */
+/** Review flags (SQMeter spec 023 FR-022): not failures, a worklist for the review pass. */
 export function reviewLanguage(code, en, messages, context, glossary) {
   const flags = [];
   const keep = Array.isArray(glossary?.keep) ? glossary.keep : SHARED_KEEP;

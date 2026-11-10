@@ -6,7 +6,7 @@ const NTFY_REQUEST = {
     url: 'https://ntfy.sh/topic-1',
     contentType: 'text/plain; charset=utf-8',
     headers: [
-      ['Title', 'SQMeter Demo: Rain detected'],
+      ['Title', 'RoofRoof Demo: Rain detected'],
       ['Priority', 'high'],
     ],
     body: 'Rain',
@@ -127,8 +127,8 @@ describe('validateChannel', () => {
     ['ntfy', { topic: 'has space' }, 'Topic'],
     ['pushover', { userKey: 'u'.repeat(30), appToken: 'a'.repeat(30) }, null],
     ['pushover', { userKey: 'short', appToken: 'a'.repeat(30) }, 'User key'],
-    ['mqtt', { url: 'wss://broker.example:8884/mqtt', topic: 'sqmeter' }, null],
-    ['mqtt', { url: 'ws://broker.example', topic: 'sqmeter' }, 'wss://'],
+    ['mqtt', { url: 'wss://broker.example:8884/mqtt', topic: 'roofroof' }, null],
+    ['mqtt', { url: 'ws://broker.example', topic: 'roofroof' }, 'wss://'],
   ] as const)('%s %o', (channel, creds, problem) => {
     const result = validateChannel(channel, creds as never);
     if (problem === null) expect(result).toBeNull();

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// One test per item of web/src/dashboard/inventory.json (specs/025 FR-003,
+// One test per item of web/src/dashboard/inventory.json (SQMeter spec 025 FR-003,
 // 026 FR-010): drive the demo device into the state, check the item shows,
 // then that it hides when its rule says so. tools/dashboard/check.py fails if
 // a shown entry has no `inventory: <id>` here.

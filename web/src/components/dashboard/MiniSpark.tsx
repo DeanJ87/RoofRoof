@@ -38,7 +38,7 @@ const curveTo = (path: string, point: Point, index: number, points: Point[]) => 
   ].join(' ');
 };
 
-// `label` names the series; screen readers get its trend in words (spec 022).
+// `label` names the series; screen readers get its trend in words (SQMeter spec 022).
 export const MiniSpark: FunctionalComponent<{ values: number[]; tone: string; label: string }> = ({ values, tone, label }) => {
   const summary = summariseSeries(label, values, (value) => formatNumber(value, 2));
   if (values.length < 2) return <div class="sparkline" role="img" aria-label={summary} />;

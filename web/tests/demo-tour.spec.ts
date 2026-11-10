@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-// The demo tour (specs/018 US1). These start from a clean browser, so the
+// The demo tour (SQMeter spec 018 US1). These start from a clean browser, so the
 // first-visit offer shows; other suites preload "dismissed".
 test.use({ storageState: { cookies: [], origins: [] } });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// I18N-01: no hard-coded user-facing text in the web UI (specs/023-i18n FR-001).
+// I18N-01: no hard-coded user-facing text in the web UI (SQMeter specs/023-i18n FR-001).
 // Flags JSX text, user-facing JSX attributes (label, title, hint, ...) and
 // prose-like string literals outside t(). Suppress a line with
 //   // i18n-ignore: <reason>
@@ -21,10 +21,9 @@ const USER_ATTR =
   /^(label|title|hint|placeholder|alt|aria-label|ariaLabel|aria-description|aria-valuetext|busyLabel|message|description|heading|caption|summary|emptyText|fixLabel|confirmLabel|helpText|subtitle|actionLabel|tooltip|legend)$/;
 const SKIP_PROP =
   /^(class|className|id|key|type|href|src|role|variant|tone|icon|name|for|htmlFor|rel|target|method|autocomplete|autoComplete|inputMode|pattern|dataField|size|align|value|step|min|max|d|viewBox|fill|stroke|xmlns|path|route|channel|event|kind|unit|field|setting|code|tab|anchor|mode|level|state|status|testId|style|color|font|format|accept|lang|dir|clientId)$/;
-// Names and units that are the same in every language. SQMeter stays until
-// the web UI is renamed (spec 001 T029).
+// Names and units that are the same in every language.
 const KEEP =
-  /^(RoofRoof|RoofRoof Demo|SQMeter|SQMeter Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|Dome|MQTT|ntfy|Pushover|Home Assistant|NTP|ESP32|GPIO|UTC|SSID|IP|IPv6|OK)$/;
+  /^(RoofRoof|RoofRoof Demo|N\.I\.N\.A\.|ASCOM Alpaca|Alpaca|Dome|MQTT|ntfy|Pushover|Home Assistant|NTP|ESP32|GPIO|UTC|SSID|IP|IPv6|OK)$/;
 // Units are the same in every language (units are their own setting).
 const UNITS = /^(%|dBm|ms|s|min|h|KB|MB|MHz|RSSI)$/;
 const PROTOCOLS = /^(HTTP|HTTPS|TCP|UDP|WebSocket)$/;

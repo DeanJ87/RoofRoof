@@ -5,7 +5,7 @@ import { resolve } from 'path';
 import { INVENTORY, VIEWPORTS, type A11yState, type InventoryEntry } from './a11y/inventory';
 
 // Automated WCAG 2.2 AA checks on every page of the inventory, in each of its
-// states, at desktop and 320 px (spec 022 FR-003, FR-005).
+// states, at desktop and 320 px (SQMeter spec 022 FR-003, FR-005).
 //
 // Known violations are listed per rule x page in tests/a11y/baseline.json.
 // A violation that isn't listed fails the test; a listed one that no longer

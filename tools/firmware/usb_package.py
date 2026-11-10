@@ -28,7 +28,6 @@ ROOT = Path(__file__).resolve().parents[2]
 # Per chip: the bootloader's offset and ESP Web Tools' chip family.
 CHIPS = {
     "esp32": {"bootloader": 0x1000, "family": "ESP32"},
-    "esp32s3": {"bootloader": 0x0, "family": "ESP32-S3"},
 }
 
 
@@ -110,7 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--partitions", type=Path, default=ROOT / "partitions.csv")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--chip", choices=sorted(CHIPS), default="esp32")
-    parser.add_argument("--board", default="", help="board name for the manifest, e.g. esp32s3-zero")
+    parser.add_argument("--board", default="", help="board name for the manifest, e.g. esp32dev")
     args = parser.parse_args(argv)
     sources = {
         "bootloader.bin": args.build_dir / "bootloader.bin",

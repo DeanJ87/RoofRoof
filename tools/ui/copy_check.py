@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""English copy rules for the web UI (specs/026 FR-012, DS-21..DS-25).
+"""English copy rules for the web UI (SQMeter specs/026 FR-012, DS-21..DS-25).
 
 Reads web/src/i18n/en.json with each key's context note (en.context.json) and
 fails on:

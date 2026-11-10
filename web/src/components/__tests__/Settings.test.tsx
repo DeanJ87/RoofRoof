@@ -70,7 +70,7 @@ describe('Settings', () => {
     expect(screen.getByRole('button', { name: 'Restart' })).toBeInTheDocument();
   });
 
-  it('offers a restart after switching IPv6 off (spec 015)', async () => {
+  it('offers a restart after switching IPv6 off (SQMeter spec 015)', async () => {
     window.history.replaceState(null, '', '/settings?tab=network');
     render(<Toaster />);
     render(<Settings />);

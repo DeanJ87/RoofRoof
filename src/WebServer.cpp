@@ -156,7 +156,7 @@ namespace SQM
     void WebServer::startAlpacaDiscovery()
     {
         // With IPv6 on, one dual-stack socket takes IPv4 broadcasts and the
-        // IPv6 discovery group (spec 015, FR-005).
+        // IPv6 discovery group (SQMeter spec 015, FR-005).
         const bool ipv6 = WiFiManager::ipv6Running();
         const bool listening = ipv6 ? alpacaDiscoveryUdp.listen(IP_ANY_TYPE, Alpaca::DISCOVERY_UDP_PORT)
                                     : alpacaDiscoveryUdp.listen(Alpaca::DISCOVERY_UDP_PORT);

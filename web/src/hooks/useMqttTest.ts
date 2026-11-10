@@ -20,7 +20,7 @@ export const useMqttTest = (config: Config) => {
         port: config.mqtt.port,
         username: config.mqtt.username,
         password: config.mqtt.password,
-        clientId: `SQM-${config.deviceName || 'ESP32'}-Test`,
+        clientId: `RoofRoof-${config.deviceName || 'ESP32'}-Test`,
       });
       const result = await response.json();
       setMqttResult(

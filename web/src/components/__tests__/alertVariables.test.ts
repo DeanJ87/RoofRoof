@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import shared from '../../../../lib/AlertLogic/template-variables.json';
 import { COMMON_VARS, EVENT_VARS } from '../settings/alertVariables';
 
-// specs/008 FR-006 / SC-003: the wording editor offers exactly the variables
+// SQMeter spec 008 FR-006 / SC-003: the wording editor offers exactly the variables
 // the device fills - the same list as lib/AlertLogic/template-variables.json,
 // which the device's native tests check from their side.
 const list = shared as { common: string[]; events: Record<string, string[]>; sharesWordingWith: Record<string, string> };

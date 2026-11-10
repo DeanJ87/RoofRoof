@@ -15,7 +15,7 @@ type UploadUi = {
 };
 
 // One upload; a stall is tried once more by itself. The device abandons a
-// stalled upload, so the retry starts clean (spec 012 FR-003a).
+// stalled upload, so the retry starts clean (SQMeter spec 012 FR-003a).
 const sendImage = (endpoint: string, file: File, ui: UploadUi, retriesLeft = 1) => {
   // How far this attempt got: a dropped connection after a complete upload
   // means the device restarted onto the new image.

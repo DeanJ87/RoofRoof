@@ -1,6 +1,6 @@
 import type { Reply } from './device';
 
-// Settings backup and restore in the demo (specs/033-config-backup FR-014):
+// Settings backup and restore in the demo (SQMeter spec 033-config-backup FR-014):
 // the device's own code (lib/ConfigBackup in the WebAssembly core), with the
 // salt, nonce and token from the browser's random numbers.
 

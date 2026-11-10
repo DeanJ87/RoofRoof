@@ -8,7 +8,7 @@ Every failed or slow Alpaca request is counted: a timeout, a refused or reset
 connection, an HTTP error, or an Alpaca error. NotImplemented (ErrorNumber
 0x400, e.g. cloudcover on a device without an IR sensor) is not a failure: the
 device answered, it just has no such value. Those properties are listed once,
-separately. Spec 011 FR-008, 013 FR-012.
+separately. SQMeter spec 011 FR-008, 013 FR-012.
 
     python3 tools/soak/connection_soak.py --host 192.168.1.50 --minutes 30
 

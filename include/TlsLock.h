@@ -6,7 +6,7 @@ namespace SQM
 {
     // One HTTPS session at a time. Each TLS session needs ~45 KB of heap,
     // including two large contiguous buffers; an alert send overlapping the
-    // GitHub update check (separate tasks) could leave neither enough.
+    // another HTTPS client (separate tasks) could leave neither enough.
     namespace TlsLock
     {
         bool acquire(uint32_t timeoutMs);

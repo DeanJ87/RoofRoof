@@ -17,7 +17,7 @@ type Connection = {
   retryCount: number;
   shouldReconnect: boolean;
   // Connection loss and recovery are announced once each, not per retry
-  // (spec 022 FR-009). Two sockets dropping together say it once (dedupe).
+  // (SQMeter spec 022 FR-009). Two sockets dropping together say it once (dedupe).
   open: boolean;
   lost: boolean;
 };

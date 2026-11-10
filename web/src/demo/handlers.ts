@@ -32,7 +32,7 @@ async function alpacaParams(request: Request): Promise<[string, string][]> {
 // GET /api/status: the device core's state (uptime, alerts, Alpaca
 // clients) with the hardware sections a real ESP32 would report.
 // A dual-stack home network: link-local plus a SLAAC global address
-// (documentation prefix 2001:db8::/32, spec 015). The setting applies at
+// (documentation prefix 2001:db8::/32, SQMeter spec 015). The setting applies at
 // boot: the page load, or a restart.
 let ipv6AtBoot: boolean | null = null;
 const demoIpv6 = (cfg: { wifi?: { ipv6?: boolean } }) => {

@@ -14,7 +14,7 @@ import {
 import cases from '../../../../test/fixtures/net-address/cases.json';
 
 // The device (lib/NetAddress) and this mirror must give the same answers:
-// both run test/fixtures/net-address/cases.json (specs/015-ipv6-dual-stack).
+// both run test/fixtures/net-address/cases.json (SQMeter spec 015-ipv6-dual-stack).
 
 const address = (text: string): Ipv6 => {
   const parsed = parseIpv6(text);

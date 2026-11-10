@@ -1,7 +1,7 @@
 #pragma once
 
 // Home Assistant MQTT discovery (SQMeter spec 013 FR-008): the device's
-// entities as retained config messages under the discovery prefix. Spec 008
+// entities as retained config messages under the discovery prefix. RoofRoof spec 008
 // adds the roof's cover and sensors to the entity table.
 
 #include <functional>

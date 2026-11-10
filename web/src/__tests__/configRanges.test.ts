@@ -4,7 +4,7 @@ import { mockConfig } from '../mocks/data';
 import { configSchema } from '../validation/configSchema';
 
 // Setting ranges shared with the device (test/fixtures/config-ranges.json,
-// spec 011 FR-004): the web UI accepts each bound and rejects just outside
+// SQMeter spec 011 FR-004): the web UI accepts each bound and rejects just outside
 // it, exactly as test/test_config_ranges does on the device.
 
 interface Range {

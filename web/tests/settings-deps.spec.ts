@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // Settings dependencies in the demo, which runs the device's own rules
-// (specs/020-settings-dependencies US3, SC-001): the device's report, the
+// (SQMeter spec 020-settings-dependencies US3, SC-001): the device's report, the
 // Settings page and alert delivery agree.
 
 const api = (page: Page, path: string, init?: RequestInit) =>

@@ -6,18 +6,23 @@ import { Toaster } from '../toast';
 import { mockConfig } from '../../mocks/data';
 import { server } from '../../test/mswServer';
 
-// Settings → Device → Backup & restore (specs/033-config-backup contracts/ui.md).
+// Settings → Device → Backup & restore (SQMeter spec 033-config-backup contracts/ui.md).
 
 const fileInput = (container: Element) => container.querySelector('input[type="file"]') as HTMLInputElement;
 const choose = (container: Element, text: string, name = 'backup.json') =>
   fireEvent.change(fileInput(container), { target: { files: [new File([text], name, { type: 'application/json' })] } });
-const encrypted = JSON.stringify({ sqmeterBackup: 1, deviceName: 'backyard-sqm', settings: mockConfig, secrets: { kdf: 'pbkdf2-sha256' } });
-const plain = JSON.stringify({ sqmeterBackup: 1, deviceName: 'backyard-sqm', firmware: '0.3.4-beta.1', settings: mockConfig });
+const encrypted = JSON.stringify({
+  roofroofBackup: 1,
+  deviceName: 'backyard-roof',
+  settings: mockConfig,
+  secrets: { kdf: 'pbkdf2-sha256' },
+});
+const plain = JSON.stringify({ roofroofBackup: 1, deviceName: 'backyard-roof', firmware: '0.3.4-beta.1', settings: mockConfig });
 
 const renderCard = () =>
   render(
     <>
-      <BackupCard deviceName="backyard-sqm" status={null} />
+      <BackupCard deviceName="backyard-roof" status={null} />
       <Toaster />
     </>,
   );
@@ -33,7 +38,7 @@ describe('Backup & restore card', () => {
     server.use(
       http.post('/api/backup', async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json({ sqmeterBackup: 1, settings: mockConfig });
+        return HttpResponse.json({ roofroofBackup: 1, settings: mockConfig });
       }),
     );
     renderCard();
@@ -48,7 +53,7 @@ describe('Backup & restore card', () => {
     server.use(
       http.post('/api/backup', async ({ request }) => {
         sent = await request.json();
-        return HttpResponse.json({ sqmeterBackup: 1, settings: mockConfig, secrets: {} });
+        return HttpResponse.json({ roofroofBackup: 1, settings: mockConfig, secrets: {} });
       }),
     );
     renderCard();
@@ -118,19 +123,19 @@ describe('Backup & restore card', () => {
   it('shows why a file is refused', async () => {
     server.use(
       http.post('/api/backup/preview', () =>
-        HttpResponse.json({ error: "This isn't a SQMeter backup file", code: 'not-backup' }, { status: 400 }),
+        HttpResponse.json({ error: "This isn't a RoofRoof backup file", code: 'not-backup' }, { status: 400 }),
       ),
     );
     const { container } = renderCard();
     choose(container, 'not json', 'notes.txt');
-    expect(await screen.findByText("This isn't a SQMeter backup file")).toBeInTheDocument();
+    expect(await screen.findByText("This isn't a RoofRoof backup file")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Restore' })).not.toBeInTheDocument();
   });
 
   it('refuses a file over 64 KB before reading it', async () => {
     const { container } = renderCard();
     choose(container, 'x'.repeat(65 * 1024));
-    expect(await screen.findByText("The file is over 64 KB, so it isn't a SQMeter backup.")).toBeInTheDocument();
+    expect(await screen.findByText("The file is over 64 KB, so it isn't a RoofRoof backup.")).toBeInTheDocument();
   });
 
   it('says when nothing will change', async () => {

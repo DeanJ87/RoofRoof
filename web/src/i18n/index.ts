@@ -1,7 +1,7 @@
 import en from './en.json';
 import { isRtl, type LanguageCode } from './languages';
 
-// The UI's text, by key (specs/023-i18n). English is built in; another
+// The UI's text, by key (SQMeter spec 023-i18n). English is built in; another
 // language's messages are installed before the app modules load (main.tsx),
 // so module-level labels translate too. A key missing from the installed
 // language falls back to English (FR-013).
@@ -47,7 +47,7 @@ const pick = (value: string | PluralForms | undefined, count: number | undefined
 const fill = (text: string, params?: Params) =>
   params ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match)) : text;
 
-// A run of Latin text: product names (N.I.N.A., MLX90614 IR), units and
+// A run of Latin text: product names (N.I.N.A., ASCOM Alpaca), units and
 // numbers, including inner punctuation and a full stop that belongs to it.
 // Already-isolated segments (a translated param inside another message) match
 // first and are kept as they are.

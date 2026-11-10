@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""SQMeter quality gate: the automatic rules of the coding standard.
+"""RoofRoof quality gate: the automatic rules of the coding standard.
 
-docs/development/coding-standards.md, spec 017. Runs the formatters (check
+docs/development/coding-standards.md, SQMeter spec 017. Runs the formatters (check
 mode), clang-tidy on lib/, ESLint, ruff, the size limits and the structure
 and suppression checks, then compares the findings with the committed
 baseline (tools/quality/baseline.json). Existing findings are tracked per

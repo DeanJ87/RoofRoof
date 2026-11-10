@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 
 // The device pushes /ws/sensors every second. A socket that stays open but
-// sends nothing for this long counts as stale (spec 010 US1-AS2).
+// sends nothing for this long counts as stale (SQMeter spec 010 US1-AS2).
 export const QUIET_AFTER_MS = 5000;
 
 /** True once no message has arrived for `afterMs`, re-checked every second. */

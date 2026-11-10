@@ -4,7 +4,7 @@ import { Button, Note } from '../../components/ui';
 import { demoDevice } from '../device';
 import { realSender, type RealChannel, type RealCredentials, type RealSender } from '../realSend';
 
-// Demo panel section: opt in to real notifications (specs/018 US2/US3).
+// Demo panel section: opt in to real notifications (SQMeter spec 018 US2/US3).
 // Off by default; turning it on needs a confirmation that says where
 // messages go and that the keys stay in this tab (FR-005).
 
@@ -15,7 +15,7 @@ type Fields = Record<string, string>;
 
 const FIELDS: Record<RealChannel, { key: string; label: string; secret?: boolean; optional?: boolean; placeholder?: string }[]> = {
   ntfy: [
-    { key: 'topic', label: 'ntfy.sh topic', placeholder: 'my-sqmeter-demo' },
+    { key: 'topic', label: 'ntfy.sh topic', placeholder: 'my-roofroof-demo' },
     { key: 'token', label: 'Access token', secret: true, optional: true },
   ],
   pushover: [
@@ -24,7 +24,7 @@ const FIELDS: Record<RealChannel, { key: string; label: string; secret?: boolean
   ],
   mqtt: [
     { key: 'url', label: 'Broker (secure WebSocket)', placeholder: 'wss://broker.example:8884/mqtt' },
-    { key: 'topic', label: 'Base topic', placeholder: 'sqmeter' },
+    { key: 'topic', label: 'Base topic', placeholder: 'roofroof' },
     { key: 'username', label: 'Username', optional: true },
     { key: 'password', label: 'Password', secret: true, optional: true },
   ],
@@ -37,7 +37,7 @@ const toCredentials = (channel: RealChannel, fields: Fields): RealCredentials[Re
   if (channel === 'pushover') return { userKey: fields.userKey ?? '', appToken: fields.appToken ?? '' };
   return {
     url: fields.url ?? '',
-    topic: fields.topic || 'sqmeter',
+    topic: fields.topic || 'roofroof',
     username: fields.username || undefined,
     password: fields.password || undefined,
   };

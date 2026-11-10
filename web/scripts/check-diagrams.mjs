@@ -1,6 +1,6 @@
 // Parses and renders every ```mermaid diagram in docs/**/*.md and README.md
 // with the same pinned mermaid the docs site serves, in headless Chromium.
-// Fails naming the file, line and diagram ID (spec 024 FR-006).
+// Fails naming the file, line and diagram ID (SQMeter spec 024 FR-006).
 //
 //   npm run docs:diagrams
 import { chromium } from '@playwright/test';

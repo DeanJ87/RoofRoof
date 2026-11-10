@@ -159,7 +159,7 @@ describe('frontend settings validation', () => {
     expect(getConfigValidationMessage(errors)).toBe('Please fix 1 validation error: Device name is required');
   });
 
-  it('never sends a blank WiFi network (spec 011 FR-009)', () => {
+  it('never sends a blank WiFi network (SQMeter spec 011 FR-009)', () => {
     for (const ssid of ['', '   ']) {
       const errors = getConfigValidationErrors(setPath(mockConfig, 'wifi.ssid', ssid));
       expect(errors['wifi.ssid']).toBe('WiFi SSID is required');

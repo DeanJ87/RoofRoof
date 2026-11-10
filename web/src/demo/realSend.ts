@@ -1,6 +1,6 @@
 import { mqttPublish, type MqttTarget } from './mqttPublish';
 
-// Opt-in real notifications from the demo (specs/018 US2/US3). Off by
+// Opt-in real notifications from the demo (SQMeter spec 018 US2/US3). Off by
 // default; the visitor's keys live only in this object - never in the demo's
 // saved state, URLs or logs (FR-010) - and this is the only demo code that
 // talks to the outside world, only while turned on (FR-011, research R1).

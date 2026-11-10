@@ -34,7 +34,7 @@ describe('Alpaca', () => {
   });
 });
 
-describe('Alpaca imaging app state (specs/021, 026 DS-21)', () => {
+describe('Alpaca imaging app state (SQMeter spec 021, 026 DS-21)', () => {
   it('shows whether an imaging app is checking each device: a pill and when it last checked', async () => {
     const client = { connected: true, watching: true, silent: false, lastCheckedAgeMs: 2000, clientId: 7 };
     server.use(

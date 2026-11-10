@@ -1,5 +1,5 @@
 // Portable SHA-256, HMAC-SHA256, PBKDF2, AES-256 and GCM for the native tests
-// and the browser demo (specs/033-config-backup, research R2). The firmware
+// and the browser demo (SQMeter specs/033-config-backup, research R2). The firmware
 // uses mbedTLS instead (src/BackupCryptoMbed.cpp), so none of this is in the
 // device image. Held to published test vectors in test/test_config_backup.
 

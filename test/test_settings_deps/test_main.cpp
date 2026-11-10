@@ -215,7 +215,7 @@ void test_report_document()
     TEST_ASSERT_EQUAL_STRING("network#mqtt", mqtt["fix"]);
 }
 
-// US2 / FR-008 / SC-003: switching a dependency off, saving, restarting,
+// SQMeter spec 020 US2 / FR-008 / SC-003: switching a dependency off, saving, restarting,
 // switching it on and saving leaves every dependent value unchanged and
 // active again.
 void test_dependents_survive_dependency_round_trip()

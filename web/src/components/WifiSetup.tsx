@@ -8,7 +8,7 @@ import { Field, TextInput } from './settings/controls';
 import { t } from '../i18n';
 import { tRich } from '../i18n/rich';
 
-// Where the "SQM-Setup" hotspot's captive portal lands: pick a network, enter
+// Where the "RoofRoof-Setup" hotspot's captive portal lands: pick a network, enter
 // its password, connect. The device saves it and restarts onto that network.
 
 const POLL_MS = 2000;
@@ -31,7 +31,7 @@ const ConnectedCard: FunctionalComponent<{ phase: Extract<WifiConnectPhase, { ki
               <a href={`http://${phase.ip}`}>{`http://${phase.ip}`}</a>
             </li>
           </ul>
-          <Note>{t('wifiSetup.theSqmSetupHotspotTurns')}</Note>
+          <Note>{t('wifiSetup.theRoofroofSetupHotspotTurns')}</Note>
         </div>
       </Card>
     </div>
@@ -98,7 +98,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
     <div class="panel-page compact-page page-enter">
       <div>
         <h2 class="page-title">{t('wifiSetup.wifiSetup')}</h2>
-        <p class="muted">{t('wifiSetup.chooseTheNetworkSqmeterShould')}</p>
+        <p class="muted">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
       </div>
       <Card
         title={t('wifiSetup.networks')}

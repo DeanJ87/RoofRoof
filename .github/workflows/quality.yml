@@ -1,7 +1,7 @@
 name: Quality
 
 # The coding standard's automatic rules (docs/development/coding-standards.md,
-# spec 017): formatters, linters, limits, structure and suppression checks,
+# SQMeter spec 017): formatters, linters, limits, structure and suppression checks,
 # compared with tools/quality/baseline.json. Runs on every pull request (no
 # path filter) so it can be a required check.
 

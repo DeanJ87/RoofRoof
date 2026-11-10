@@ -6,7 +6,7 @@
 
 namespace SQM
 {
-    // IPv6 on the joined network (specs/015-ipv6-dual-stack): the LAN-only
+    // IPv6 on the joined network (SQMeter specs/015-ipv6-dual-stack): the LAN-only
     // rule for inbound IPv6, Alpaca discovery on the IPv6 group, and the
     // addresses in /api/status. Decisions are in lib/NetAddress.
     namespace Ipv6Network
@@ -16,7 +16,7 @@ namespace SQM
 
         // The web server's listener: one dual-stack socket owned here instead
         // of AsyncWebServer::begin(), so every connection is checked as it is
-        // accepted. FR-011: an IPv6 peer outside link-local and the device's
+        // accepted. SQMeter spec 015 FR-011: an IPv6 peer outside link-local and the device's
         // own /64 prefixes gets a 403 and the connection is closed before any
         // request is read - so not even an upload handler (which writes as
         // data arrives) runs for it. IPv4 peers are always served.
@@ -26,7 +26,7 @@ namespace SQM
         // address; true once joined (call until it is).
         bool joinAlpacaDiscoveryGroup();
 
-        // FR-011 for Alpaca discovery: IPv4 always; IPv6 only from the local network.
+        // SQMeter spec 015 FR-011 for Alpaca discovery: IPv4 always; IPv6 only from the local network.
         bool allowedDiscoveryPeer(AsyncUDPPacket &packet);
 
         // wifi.ipv6 = {enabled, addresses: [{address, scope}]}.

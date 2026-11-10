@@ -7,7 +7,7 @@ import defaultConfigJson from '../../../../test/fixtures/settings-deps/default-c
 
 // The device's rules (lib/SettingsDeps) and this mirror must give the same
 // answers: both run test/fixtures/settings-deps/cases.json
-// (specs/020-settings-dependencies). Catalogue IDs covered: D-01 D-02 D-03
+// (SQMeter spec 020-settings-dependencies). Catalogue IDs covered: D-01 D-02 D-03
 // D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15 D-16 D-17 D-18
 // D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-38 D-39 D-40 D-41 D-42
 // D-43 D-44 D-45 D-46 D-47 D-48 D-49 D-50 D-51.
@@ -90,7 +90,7 @@ describe('before the device has reported', () => {
 describe('previewing unsaved changes (FR-006)', () => {
   const on = merge(defaults as unknown as Json, {
     alerts: { enabled: true, mqtt: { enabled: true } },
-    mqtt: { enabled: true, broker: '192.168.1.10', topic: 'sqmeter' },
+    mqtt: { enabled: true, broker: '192.168.1.10', topic: 'roofroof' },
   }) as unknown as Config;
   const report = { facts: fixtures.baseFacts, settings: evaluate(on, fixtures.baseFacts) };
 

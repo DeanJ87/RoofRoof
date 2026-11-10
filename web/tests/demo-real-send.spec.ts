@@ -1,9 +1,9 @@
 import { test, expect, type BrowserContext, type Page, type Request } from '@playwright/test';
 
-// Opt-in real notifications (specs/018 US2/US3). The services are answered
+// Opt-in real notifications (SQMeter spec 018 US2/US3). The services are answered
 // by the test (context.route), so nothing really leaves CI.
 
-const TOPIC = 'sqm-test-topic-42';
+const TOPIC = 'roofroof-test-topic-42';
 const USER_KEY = 'u'.repeat(30);
 const APP_TOKEN = 'a'.repeat(30);
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'POST, OPTIONS' };

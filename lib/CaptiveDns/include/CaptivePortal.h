@@ -6,7 +6,7 @@
 namespace SQM
 {
     // When the setup hotspot opens, and what an unknown address gets while it
-    // is open (specs/014-wifi-setup). Kept free of Arduino for tests.
+    // is open (SQMeter specs/014-wifi-setup). Kept free of Arduino for tests.
     namespace CaptivePortal
     {
         // With saved credentials the device keeps trying its network this long

@@ -1,7 +1,7 @@
 import { bodyOf, postJson } from './api';
 import type { BackupHeader, RestorePreview, Settings } from './backupPreview';
 
-// Settings backup and restore against the device (specs/033-config-backup,
+// Settings backup and restore against the device (SQMeter spec 033-config-backup,
 // contracts/rest-api.md), and the file in the browser.
 
 /** A file bigger than this isn't read (backups are about 20 KB at most, pretty-printed). */
@@ -33,11 +33,11 @@ export const requestBackup = async (passphrase: string): Promise<Result<Settings
   return { ok: true, value: (await response.json()) as Settings };
 };
 
-/** "sqmeter-<name>-<YYYY-MM-DD>.json" in the browser's date. */
+/** "roofroof-<name>-<YYYY-MM-DD>.json" in the browser's date. */
 export const backupFileName = (deviceName: string, date: Date) => {
   const name = deviceName.replace(/[^A-Za-z0-9_-]/g, '-') || 'device';
   const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  return `sqmeter-${name}-${day}.json`;
+  return `roofroof-${name}-${day}.json`;
 };
 
 /** Saves the backup as a readable (pretty-printed) file. */
@@ -62,10 +62,10 @@ export interface ChosenFile {
 const isObject = (value: unknown): value is Settings => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const headerOf = (file: Settings): BackupHeader | null => {
-  if (typeof file.sqmeterBackup !== 'number') return null;
+  if (typeof file.roofroofBackup !== 'number') return null;
   const text = (key: string) => (typeof file[key] === 'string' ? (file[key] as string) : undefined);
   return {
-    format: file.sqmeterBackup,
+    format: file.roofroofBackup,
     firmware: text('firmware'),
     board: text('board'),
     build: text('build'),

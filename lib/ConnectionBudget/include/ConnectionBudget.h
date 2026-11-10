@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-// How the device's TCP connections are shared (spec 011 FR-008, spec 013
+// How the device's TCP connections are shared (SQMeter spec 011 FR-008, 013
 // FR-012). lwIP allows CONFIG_LWIP_MAX_ACTIVE_TCP (16) at once; every HTTP
 // request uses a fresh one (the server sends Connection: close), so an imaging
 // app polling the device needs free ones all the time. Live-update sockets are
@@ -14,7 +14,7 @@ namespace SQM
     {
         constexpr size_t TCP_CONNECTIONS = 16; // CONFIG_LWIP_MAX_ACTIVE_TCP
 
-        // WebSocket clients per endpoint (/ws/sensors, /ws/status). A new one
+        // WebSocket clients per endpoint (/ws/status; SQMeter also had /ws/sensors). A new one
         // past the limit replaces the oldest.
         constexpr size_t WEBSOCKETS_PER_ENDPOINT = 3;
         constexpr size_t WEBSOCKET_ENDPOINTS = 2;

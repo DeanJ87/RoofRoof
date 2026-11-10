@@ -104,6 +104,7 @@ nav:
     - Translations: development/translations.md
     - Brand: development/brand.md
     - Releasing: development/releasing.md
+    - Heritage: development/heritage.md
   - Reference:
     - Settings Dependencies: reference/settings-dependencies.md
     - Troubleshooting: reference/troubleshooting.md

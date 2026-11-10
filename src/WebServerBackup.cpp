@@ -225,7 +225,7 @@ namespace SQM
             if (stagedRestore && !token.empty() && stagedRestore->token == token)
                 staged = std::move(stagedRestore);
         }
-        // What is applied is exactly what was previewed, against the settings it was previewed on (FR-013).
+        // What is applied is exactly what was previewed, against the settings it was previewed on (SQMeter spec 033 FR-013).
         if (!staged || staged->revision != configRevision.load())
         {
             request->send(409, "application/json", Backup::errorJson(Backup::Error::Stale).c_str());

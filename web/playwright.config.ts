@@ -6,12 +6,12 @@ const PORT = process.env.PW_PORT ?? '4173';
 const BASE_URL = `http://localhost:${PORT}/`;
 
 /** Browser state with the demo tour already dismissed, so the first-visit
- * offer (specs/018) doesn't sit over the page in other tests. Tour tests
+ * offer (SQMeter spec 018) doesn't sit over the page in other tests. Tour tests
  * start from a clean state instead. Built from the base URL, so it holds on
  * any port. */
 export const tourDismissed = (baseURL: string) => ({
   cookies: [],
-  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: 'sqm.demo.tour.v1', value: 'dismissed' }] }],
+  origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: 'roofroof.demo.tour.v1', value: 'dismissed' }] }],
 });
 
 export default defineConfig({

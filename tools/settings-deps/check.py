@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keeps the settings dependency catalogue honest (specs/020-settings-dependencies).
+"""Keeps the settings dependency catalogue honest (SQMeter specs/020-settings-dependencies).
 
 Checks that lib/SettingsDeps/catalogue.json, the code and the tests agree:
 
@@ -70,7 +70,7 @@ def read(root, rel):
 
 def with_english(root, text):
     """The text with each t('key') call followed by its English (web/src/i18n/en.json): the
-    UI's messages are translated, so the shared message lives there (specs/023-i18n)."""
+    UI's messages are translated, so the shared message lives there (SQMeter specs/023-i18n)."""
     english = json.loads(read(root, "web/src/i18n/en.json"))
     return text + "\n" + "\n".join(str(english.get(key, "")) for key in re.findall(r"\bt\('([\w.]+)'", text))
 
