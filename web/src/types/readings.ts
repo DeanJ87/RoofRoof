@@ -1,0 +1,161 @@
+// The readings document: GET /api/sensors, /ws/sensors and MQTT <base>/state
+// (specs/013-data-interfaces/contracts/readings.md). A group whose status
+// isn't "ok" carries only status and ageMs.
+export type SensorHealth = 'ok' | 'missing' | 'error' | 'stale';
+
+interface Group {
+  status: SensorHealth;
+  ageMs?: number;
+}
+
+export interface LightReading extends Group {
+  lux?: number;
+  visible?: number;
+  infrared?: number;
+  full?: number;
+  gain?: string;
+  gainFactor?: number;
+  integrationMs?: number;
+  saturated?: boolean;
+  nightMode?: boolean;
+}
+
+export type SkySource = 'sqm' | 'sqml';
+
+export interface SkyReading extends Group {
+  // The authoritative sky sensor (spec 030); older firmware has none (= sqm).
+  source?: SkySource;
+  sqm?: number;
+  rawSqm?: number;
+  nelm?: number;
+  bortle?: number;
+  description?: string;
+  calibrated?: boolean;
+  averagingWindowSeconds?: number;
+}
+
+// One sky sensor's own reading (spec 030 FR-008).
+export interface SkySensorReading extends Group {
+  sqm?: number;
+  rawSqm?: number;
+  nelm?: number;
+  bortle?: number;
+  description?: string;
+  calibrated?: boolean;
+  averagingWindowSeconds?: number;
+  lux?: number;
+  gain?: string;
+  integrationMs?: number;
+  saturated?: boolean;
+  nightMode?: boolean;
+}
+
+// Each enabled sky sensor; deltaSqm (SQM-L - SQM) when both are ok.
+export interface SkySensorsReading {
+  sqm?: SkySensorReading;
+  sqml?: SkySensorReading;
+  deltaSqm?: number;
+}
+
+export interface EnvironmentReading extends Group {
+  temperature?: number;
+  humidity?: number;
+  pressure?: number;
+  dewpoint?: number;
+}
+
+export interface InfraredReading extends Group {
+  skyTemperature?: number;
+  ambientTemperature?: number;
+}
+
+export interface CloudReading extends Group {
+  coverPercent?: number;
+  condition?: 'clear' | 'cloudy' | 'overcast' | 'unknown';
+  description?: string;
+  temperatureDelta?: number;
+  correctedDelta?: number;
+  humidity?: number;
+  humiditySource?: 'measured' | 'assumed';
+}
+
+export interface GpsReading extends Group {
+  fix?: boolean;
+  satellites?: number;
+  latitude?: number;
+  longitude?: number;
+  altitude?: number;
+  hdop?: number;
+}
+
+// Always metric (mm, mm/h).
+export interface RainReading extends Group {
+  raining?: boolean;
+  rainingNow?: boolean;
+  intensity?: number;
+  eventAccumulation?: number;
+  sensorEventAccumulation?: number;
+  totalAccumulation?: number;
+  lensFault?: boolean;
+  emitterSaturated?: boolean;
+  clearInSeconds?: number; // while the clear delay holds rain that has stopped (spec 025)
+}
+
+export interface WindReading extends Group {
+  speed?: number;
+  gust?: number;
+  direction?: number;
+  vaneFault?: boolean;
+}
+
+// The Li-ion pack (spec 032, contracts/readings.md): `{ present: false }`
+// without a gauge; values only while status is ok (state and usbPower also
+// without the gauge when the charger is wired).
+export type ChargeState = 'discharging' | 'charging' | 'charged' | 'fault' | 'no-battery';
+
+export interface BatteryReading {
+  present: boolean;
+  status?: SensorHealth;
+  ageMs?: number;
+  estimating?: boolean;
+  percent?: number | null;
+  voltage?: number;
+  ratePercentPerHour?: number | null;
+  state?: ChargeState | null;
+  usbPower?: boolean | null;
+  fault?: 'temperature' | null;
+  timeToEmptyMinutes?: number | null;
+  timeToFullMinutes?: number | null;
+  powerSaving?: boolean;
+}
+
+export interface SensorData {
+  timestamp: number;
+  timeValid: boolean;
+  dataAgeMs: number;
+  dataStale: boolean;
+  light: LightReading;
+  sky: SkyReading;
+  skySensors?: SkySensorsReading;
+  environment: EnvironmentReading;
+  infrared: InfraredReading;
+  clouds: CloudReading;
+  gps?: GpsReading;
+  rain?: RainReading;
+  wind?: WindReading;
+  battery?: BatteryReading; // older firmware has none
+  safety?: SafetyStatus;
+}
+
+// Live SafetyMonitor verdict (GET /api/safety, and `safety` on /ws/sensors)
+export interface SafetyStatus {
+  safe: boolean;
+  rawSafe: boolean;
+  alpacaEnabled: boolean;
+  reasonFlags: number;
+  reasons: string[];
+  secondsUntilSafe: number;
+  evaluatedAgeMs: number;
+  changedAgeMs: number;
+  rulesNotInEffect?: string[]; // safety rules on but not evaluated, e.g. rain sensor off (spec 020)
+}

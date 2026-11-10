@@ -1,0 +1,1385 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "config",
+  "type": "object",
+  "properties": {
+    "alerts": {
+      "type": "object",
+      "properties": {
+        "armWithAlpaca": {
+          "type": "boolean"
+        },
+        "clearSkyCloudPercent": {
+          "type": "number"
+        },
+        "clientSilentSafetySeconds": {
+          "type": "number"
+        },
+        "clientSilentWeatherSeconds": {
+          "type": "number"
+        },
+        "cloudedOverCloudPercent": {
+          "type": "number"
+        },
+        "cooldownSeconds": {
+          "type": "number"
+        },
+        "dewRiskMarginC": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "events": {
+          "type": "object",
+          "properties": {
+            "clear_sky": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_back": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_disconnected": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_lost": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "clouded_over": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "dew_risk": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "rain_started": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "rain_stopped": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "safe": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "sensor_fault": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "sensor_recovered": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "unsafe": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "battery_low": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "battery_critical": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "battery_shutdown": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "power_restored": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "charge_complete": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "charge_fault": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "clear_sky",
+            "client_back",
+            "client_disconnected",
+            "client_lost",
+            "clouded_over",
+            "dew_risk",
+            "rain_started",
+            "rain_stopped",
+            "safe",
+            "sensor_fault",
+            "sensor_recovered",
+            "unsafe"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "additionalProperties": false
+        },
+        "nightSunAltitudeDeg": {
+          "type": "number"
+        },
+        "ntfy": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "server": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "topic": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "server",
+            "token",
+            "topic"
+          ],
+          "additionalProperties": false
+        },
+        "pushover": {
+          "type": "object",
+          "properties": {
+            "appToken": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "sound": {
+              "type": "string"
+            },
+            "userKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "appToken",
+            "enabled",
+            "sound",
+            "userKey"
+          ],
+          "additionalProperties": false
+        },
+        "safetyNightOnly": {
+          "type": "boolean"
+        },
+        "sendMode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "whileConnected"
+          ]
+        },
+        "skyNightOnly": {
+          "type": "boolean"
+        },
+        "webhook": {
+          "type": "object",
+          "properties": {
+            "authHeader": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "insecureTls": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "authHeader",
+            "enabled",
+            "insecureTls",
+            "url"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "armWithAlpaca",
+        "clearSkyCloudPercent",
+        "clientSilentSafetySeconds",
+        "clientSilentWeatherSeconds",
+        "cloudedOverCloudPercent",
+        "cooldownSeconds",
+        "dewRiskMarginC",
+        "enabled",
+        "events",
+        "mqtt",
+        "nightSunAltitudeDeg",
+        "ntfy",
+        "pushover",
+        "safetyNightOnly",
+        "sendMode",
+        "skyNightOnly",
+        "webhook"
+      ],
+      "additionalProperties": false
+    },
+    "alpaca": {
+      "type": "object",
+      "properties": {
+        "cloudCoverEnabled": {
+          "type": "boolean"
+        },
+        "cloudCoverUnsafePercent": {
+          "type": "number"
+        },
+        "dewpointMarginEnabled": {
+          "type": "boolean"
+        },
+        "dewpointMarginMinC": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "humidityMaxEnabled": {
+          "type": "boolean"
+        },
+        "humidityMaxSafe": {
+          "type": "number"
+        },
+        "manualOverrideUnsafe": {
+          "type": "boolean"
+        },
+        "rainSensorRequired": {
+          "type": "boolean"
+        },
+        "rainUnsafeEnabled": {
+          "type": "boolean"
+        },
+        "safeDelaySeconds": {
+          "type": "number"
+        },
+        "sqmMinEnabled": {
+          "type": "boolean"
+        },
+        "sqmMinSafe": {
+          "type": "number"
+        },
+        "staleAfterSeconds": {
+          "type": "number"
+        },
+        "windGustUnsafeEnabled": {
+          "type": "boolean"
+        },
+        "windGustUnsafeMs": {
+          "type": "number"
+        },
+        "windSpeedUnsafeEnabled": {
+          "type": "boolean"
+        },
+        "windSpeedUnsafeMs": {
+          "type": "number"
+        },
+        "batteryEnabled": {
+          "type": "boolean"
+        },
+        "batteryAlert": {
+          "type": "boolean"
+        },
+        "batteryPhoneAlarm": {
+          "type": "boolean"
+        },
+        "batteryMinPercent": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "cloudCoverEnabled",
+        "cloudCoverUnsafePercent",
+        "dewpointMarginEnabled",
+        "dewpointMarginMinC",
+        "enabled",
+        "humidityMaxEnabled",
+        "humidityMaxSafe",
+        "manualOverrideUnsafe",
+        "rainSensorRequired",
+        "rainUnsafeEnabled",
+        "safeDelaySeconds",
+        "sqmMinEnabled",
+        "sqmMinSafe",
+        "staleAfterSeconds",
+        "windGustUnsafeEnabled",
+        "windGustUnsafeMs",
+        "windSpeedUnsafeEnabled",
+        "windSpeedUnsafeMs"
+      ],
+      "additionalProperties": false
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "password",
+        "username"
+      ],
+      "additionalProperties": false
+    },
+    "ble": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "passkey": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "passkey"
+      ],
+      "additionalProperties": false
+    },
+    "cloudDetection": {
+      "type": "object",
+      "properties": {
+        "clearSkyThreshold": {
+          "type": "number"
+        },
+        "cloudyThreshold": {
+          "type": "number"
+        },
+        "humidityCorrection": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "clearSkyThreshold",
+        "cloudyThreshold",
+        "humidityCorrection"
+      ],
+      "additionalProperties": false
+    },
+    "deviceName": {
+      "type": "string"
+    },
+    "gps": {
+      "type": "object",
+      "properties": {
+        "baudRate": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "rxPin": {
+          "type": "number"
+        },
+        "txPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "baudRate",
+        "enabled",
+        "rxPin",
+        "txPin"
+      ],
+      "additionalProperties": false
+    },
+    "language": {
+      "type": "string"
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "set": {
+          "type": "boolean"
+        },
+        "showSunMoon": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude",
+        "set",
+        "showSunMoon"
+      ],
+      "additionalProperties": false
+    },
+    "mqtt": {
+      "type": "object",
+      "properties": {
+        "broker": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "homeAssistant": {
+          "type": "object",
+          "properties": {
+            "discoveryPrefix": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "discoveryPrefix",
+            "enabled"
+          ],
+          "additionalProperties": false
+        },
+        "password": {
+          "type": "string"
+        },
+        "port": {
+          "type": "number"
+        },
+        "publish": {
+          "type": "object",
+          "properties": {
+            "clouds": {
+              "type": "boolean"
+            },
+            "diagnostics": {
+              "type": "boolean"
+            },
+            "environment": {
+              "type": "boolean"
+            },
+            "gps": {
+              "type": "boolean"
+            },
+            "rain": {
+              "type": "boolean"
+            },
+            "safety": {
+              "type": "boolean"
+            },
+            "sky": {
+              "type": "boolean"
+            },
+            "wind": {
+              "type": "boolean"
+            },
+            "battery": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "clouds",
+            "diagnostics",
+            "environment",
+            "gps",
+            "rain",
+            "safety",
+            "sky",
+            "wind"
+          ],
+          "additionalProperties": false
+        },
+        "publishIntervalMs": {
+          "type": "number"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "broker",
+        "enabled",
+        "homeAssistant",
+        "password",
+        "port",
+        "publish",
+        "publishIntervalMs",
+        "topic",
+        "username"
+      ],
+      "additionalProperties": false
+    },
+    "ntp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "server1": {
+          "type": "string"
+        },
+        "server2": {
+          "type": "string"
+        },
+        "syncIntervalMs": {
+          "type": "number"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "server1",
+        "server2",
+        "syncIntervalMs",
+        "timezone"
+      ],
+      "additionalProperties": false
+    },
+    "ota": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "password"
+      ],
+      "additionalProperties": false
+    },
+    "primaryTimeSource": {
+      "type": "number"
+    },
+    "rain": {
+      "type": "object",
+      "properties": {
+        "baudRate": {
+          "type": "number"
+        },
+        "dailyResetEnabled": {
+          "type": "boolean"
+        },
+        "dailyResetHour": {
+          "type": "number"
+        },
+        "dailyResetMinute": {
+          "type": "number"
+        },
+        "debugUart": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "pollIntervalMs": {
+          "type": "number"
+        },
+        "rainClearDelayMs": {
+          "type": "number"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "rxPin": {
+          "type": "number"
+        },
+        "txPin": {
+          "type": "number"
+        },
+        "units": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "baudRate",
+        "dailyResetEnabled",
+        "dailyResetHour",
+        "dailyResetMinute",
+        "debugUart",
+        "enabled",
+        "mode",
+        "pollIntervalMs",
+        "rainClearDelayMs",
+        "resolution",
+        "rxPin",
+        "txPin",
+        "units"
+      ],
+      "additionalProperties": false
+    },
+    "secondaryTimeSource": {
+      "type": "number"
+    },
+    "sensor": {
+      "type": "object",
+      "properties": {
+        "i2c2SCL": {
+          "type": "number"
+        },
+        "i2c2SDA": {
+          "type": "number"
+        },
+        "i2cFrequency": {
+          "type": "number"
+        },
+        "i2cSCL": {
+          "type": "number"
+        },
+        "i2cSDA": {
+          "type": "number"
+        },
+        "readIntervalMs": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "i2cFrequency",
+        "i2cSCL",
+        "i2cSDA",
+        "readIntervalMs"
+      ],
+      "additionalProperties": false
+    },
+    "sky": {
+      "type": "object",
+      "properties": {
+        "authoritative": {
+          "type": "string",
+          "enum": [
+            "sqm",
+            "sqml"
+          ]
+        },
+        "showOther": {
+          "type": "boolean"
+        },
+        "sqmEnabled": {
+          "type": "boolean"
+        },
+        "sqmlEnabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "authoritative",
+        "showOther",
+        "sqmEnabled",
+        "sqmlEnabled"
+      ],
+      "additionalProperties": false
+    },
+    "skyAveraging": {
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "windowSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "skyAveragingL": {
+      "type": "object",
+      "properties": {
+        "windowSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "windowSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "skyCalibration": {
+      "type": "object",
+      "properties": {
+        "darkCalibratedAt": {
+          "type": "number"
+        },
+        "darkFullOffset": {
+          "type": "number"
+        },
+        "darkIrOffset": {
+          "type": "number"
+        },
+        "darkSampleCount": {
+          "type": "number"
+        },
+        "darkVisibleOffset": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "sqmOffset": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "darkCalibratedAt",
+        "darkFullOffset",
+        "darkIrOffset",
+        "darkSampleCount",
+        "darkVisibleOffset",
+        "enabled",
+        "sqmOffset"
+      ],
+      "additionalProperties": false
+    },
+    "skyCalibrationL": {
+      "type": "object",
+      "properties": {
+        "darkCalibratedAt": {
+          "type": "number"
+        },
+        "darkFullOffset": {
+          "type": "number"
+        },
+        "darkIrOffset": {
+          "type": "number"
+        },
+        "darkSampleCount": {
+          "type": "number"
+        },
+        "darkVisibleOffset": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "sqmOffset": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "darkCalibratedAt",
+        "darkFullOffset",
+        "darkIrOffset",
+        "darkSampleCount",
+        "darkVisibleOffset",
+        "enabled",
+        "sqmOffset"
+      ],
+      "additionalProperties": false
+    },
+    "wifi": {
+      "type": "object",
+      "properties": {
+        "autoReconnect": {
+          "type": "boolean"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ipv6": {
+          "type": "boolean"
+        },
+        "maxReconnectDelayMs": {
+          "type": "number"
+        },
+        "mdns": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "reconnectDelayMs": {
+          "type": "number"
+        },
+        "ssid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "autoReconnect",
+        "hostname",
+        "ipv6",
+        "maxReconnectDelayMs",
+        "mdns",
+        "password",
+        "reconnectDelayMs",
+        "ssid"
+      ],
+      "additionalProperties": false
+    },
+    "wind": {
+      "type": "object",
+      "properties": {
+        "directionEnabled": {
+          "type": "boolean"
+        },
+        "directionOffsetDeg": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "kmhPerHz": {
+          "type": "number"
+        },
+        "speedPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "directionEnabled",
+        "directionOffsetDeg",
+        "enabled",
+        "kmhPerHz",
+        "speedPin"
+      ],
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "sky",
+              "environment",
+              "cloud",
+              "safety",
+              "gps",
+              "battery",
+              "network"
+            ]
+          }
+        },
+        "cycleSeconds": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 60
+        },
+        "brightness": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "timeoutSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1800
+        },
+        "wakeOnBoot": {
+          "type": "boolean"
+        },
+        "stayOnAtNight": {
+          "type": "boolean"
+        },
+        "rotate180": {
+          "type": "boolean"
+        },
+        "buttonPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "enabled",
+        "pages",
+        "cycleSeconds",
+        "brightness",
+        "timeoutSeconds",
+        "wakeOnBoot",
+        "stayOnAtNight",
+        "rotate180",
+        "buttonPin"
+      ],
+      "additionalProperties": false
+    },
+    "battery": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "lowPercent": {
+          "type": "number"
+        },
+        "criticalPercent": {
+          "type": "number"
+        },
+        "shutdownPercent": {
+          "type": "number"
+        },
+        "capacityMah": {
+          "type": "number"
+        },
+        "powerSaving": {
+          "type": "boolean"
+        },
+        "saveReadIntervalSeconds": {
+          "type": "number"
+        },
+        "shutdownGraceSeconds": {
+          "type": "number"
+        },
+        "alertPin": {
+          "type": "number"
+        },
+        "stat1Pin": {
+          "type": "number"
+        },
+        "stat2Pin": {
+          "type": "number"
+        },
+        "pgPin": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "enabled",
+        "lowPercent",
+        "criticalPercent",
+        "shutdownPercent",
+        "capacityMah",
+        "powerSaving",
+        "saveReadIntervalSeconds",
+        "shutdownGraceSeconds",
+        "alertPin",
+        "stat1Pin",
+        "stat2Pin",
+        "pgPin"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "alerts",
+    "alpaca",
+    "auth",
+    "ble",
+    "cloudDetection",
+    "deviceName",
+    "gps",
+    "location",
+    "mqtt",
+    "ntp",
+    "ota",
+    "primaryTimeSource",
+    "rain",
+    "secondaryTimeSource",
+    "sensor",
+    "skyAveraging",
+    "skyCalibration",
+    "wifi",
+    "wind"
+  ],
+  "additionalProperties": false
+}

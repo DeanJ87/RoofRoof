@@ -1,0 +1,58 @@
+{
+  "deviceName": "SQM-ESP32",
+  "wifi": {
+    "ssid": "YourWiFiSSID",
+    "password": "YourWiFiPassword",
+    "hostname": "sqmeter",
+    "mdns": true,
+    "autoReconnect": true,
+    "reconnectDelayMs": 1000,
+    "maxReconnectDelayMs": 300000
+  },
+  "mqtt": {
+    "enabled": false,
+    "broker": "mqtt.example.com",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "topic": "sqmeter",
+    "publishIntervalMs": 60000
+  },
+  "ota": {
+    "enabled": false,
+    "password": ""
+  },
+  "rain": {
+    "enabled": false,
+    "rxPin": 18,
+    "txPin": 19,
+    "baudRate": 9600,
+    "debugUart": false,
+    "mode": "polling",
+    "resolution": "high",
+    "units": "metric"
+  },
+  "sensor": {
+    "readIntervalMs": 5000,
+    "i2cSDA": 21,
+    "i2cSCL": 22,
+    "i2cFrequency": 100000
+  },
+  "skyAveraging": {
+    "windowSeconds": 90
+  },
+  "skyCalibration": {
+    "enabled": false,
+    "sqmOffset": 0,
+    "darkVisibleOffset": 0,
+    "darkFullOffset": 0,
+    "darkIrOffset": 0,
+    "darkSampleCount": 0,
+    "darkCalibratedAt": 0
+  },
+  "cloudDetection": {
+    "clearSkyThreshold": -13.0,
+    "cloudyThreshold": -3.0,
+    "humidityCorrection": 0.75
+  }
+}

@@ -1,0 +1,1416 @@
+{
+  "about": "What the dashboard shows and why (spec 025; the Status card, spec 026). The Status card shows only what no other card shows: the imaging app and whether alerts go out, plus problems nothing else shows (DS-08). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "shown": [
+    {
+      "id": "status-card",
+      "label": "status.title",
+      "sources": [],
+      "requiredBy": "026 FR-001, FR-003",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 0,
+      "location": "card:status",
+      "test": "status-card"
+    },
+    {
+      "id": "freshness",
+      "label": "dashboard.live",
+      "sources": ["readings.dataStale", "readings.dataAgeMs"],
+      "requiredBy": "025 FR-014, 010, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 1,
+      "location": "card:sky",
+      "test": "freshness",
+      "note": "The Sky Quality pill (Live, Stale, No updates, Offline). A Status row only while the light sensor has failed and the data is not live."
+    },
+    {
+      "id": "safety-verdict",
+      "label": "safetyCard.safe",
+      "sources": [
+        "readings.safety.safe",
+        "readings.safety.rawSafe",
+        "readings.safety.reasons",
+        "readings.safety.secondsUntilSafe",
+        "readings.safety.changedAgeMs",
+        "readings.safety",
+        "safety.safe",
+        "safety.rawSafe",
+        "safety.reasons",
+        "safety.secondsUntilSafe",
+        "safety.changedAgeMs"
+      ],
+      "requiredBy": "025 FR-005, 006, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:safety",
+      "test": "safety-verdict"
+    },
+    {
+      "id": "rain-hold",
+      "label": "glance.rainHeld",
+      "sources": ["readings.rain.clearInSeconds", "readings.rain.rainingNow"],
+      "requiredBy": "025 FR-012, 003",
+      "visibility": {
+        "rule": "when",
+        "when": "rain stopped but the clear delay holds the verdict"
+      },
+      "priority": 2,
+      "location": "card:safety",
+      "test": "rain-hold"
+    },
+    {
+      "id": "alerts-state",
+      "label": "settings.alertSchedule.sendingAlerts",
+      "sources": [
+        "status.alerts.armed",
+        "status.alerts.mode",
+        "status.alerts.reason",
+        "status.alerts.since",
+        "status.alerts.sinceAgeMs",
+        "status.alerts.armWithAlpaca",
+        "status.alerts",
+        "alerts-armed.armed",
+        "alerts-armed.mode",
+        "alerts-armed.reason",
+        "alerts-armed.since",
+        "alerts-armed.sinceAgeMs",
+        "alerts-armed.armWithAlpaca"
+      ],
+      "requiredBy": "025 FR-008, 021, 026 FR-002",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "alerts-state"
+    },
+    {
+      "id": "alerts-mode-not-in-effect",
+      "label": "status.sendMode",
+      "sources": ["deps.D-12", "status.alpaca.enabled", "status.alpaca"],
+      "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "send mode is \"only while an imaging app is connected\" and Alpaca is off"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "alerts-mode-not-in-effect"
+    },
+    {
+      "id": "no-channel",
+      "label": "status.channels",
+      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
+      "requiredBy": "025 FR-011, US1-6, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "alerts are on but no enabled channel can send"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "no-channel"
+    },
+    {
+      "id": "imaging-app",
+      "label": "status.imagingApp",
+      "sources": [
+        "readings.safety.alpacaEnabled",
+        "safety.alpacaEnabled",
+        "status.alpaca.clients",
+        "status.alpaca.clients.observingconditions",
+        "status.alpaca.clients.observingconditions.connected",
+        "status.alpaca.clients.observingconditions.lastCheckedAgeMs",
+        "status.alpaca.clients.observingconditions.silent",
+        "status.alpaca.clients.observingconditions.watching",
+        "status.alpaca.clients.safetymonitor",
+        "status.alpaca.clients.safetymonitor.connected",
+        "status.alpaca.clients.safetymonitor.lastCheckedAgeMs",
+        "status.alpaca.clients.safetymonitor.silent",
+        "status.alpaca.clients.safetymonitor.watching"
+      ],
+      "requiredBy": "025 FR-009, 021, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 4,
+      "location": "card:status",
+      "test": "imaging-app",
+      "note": "One tile per Alpaca device: connected, gone quiet or waiting, and when it last checked; one \"Alpaca off\" tile when Alpaca is switched off."
+    },
+    {
+      "id": "sensor-faults",
+      "label": "sensor.infrared",
+      "sources": [
+        "status.sensors.light.status",
+        "status.sensors.light.ageMs",
+        "status.sensors.infrared.status",
+        "status.sensors.infrared.ageMs",
+        "status.sensors.environment.status",
+        "status.sensors.environment.ageMs",
+        "status.sensors.rain.status",
+        "status.sensors.rain.ageMs",
+        "status.sensors.wind.status",
+        "status.sensors.wind.ageMs",
+        "status.sensors.gps.status",
+        "status.sensors.gps.ageMs",
+        "readings.light.status",
+        "readings.infrared.status",
+        "readings.environment.status",
+        "readings.clouds.status",
+        "readings.rain.status",
+        "readings.wind.status",
+        "readings.gps.status",
+        "readings.sky.status",
+        "readings.light.ageMs",
+        "readings.infrared.ageMs",
+        "readings.environment.ageMs",
+        "readings.rain.ageMs",
+        "readings.wind.ageMs",
+        "readings.gps.ageMs",
+        "status.sensors.wind.vaneStatus",
+        "status.sensors",
+        "status.sensors.light",
+        "status.sensors.infrared",
+        "status.sensors.environment",
+        "status.sensors.rain",
+        "status.sensors.wind",
+        "status.sensors.gps"
+      ],
+      "requiredBy": "025 FR-006, FR-013, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "when",
+        "when": "an expected sensor is not ok"
+      },
+      "priority": 5,
+      "location": "card:sensor",
+      "test": "sensor-faults",
+      "note": "Each sensor's own card in its fault state (title and pill); not repeated in the Status card."
+    },
+    {
+      "id": "language",
+      "label": "status.notLoaded",
+      "sources": [],
+      "requiredBy": "023 FR-024, 026 FR-004",
+      "visibility": {
+        "rule": "when",
+        "when": "the chosen language file is missing, damaged or still downloading after a reload"
+      },
+      "priority": 6,
+      "location": "card:status",
+      "test": "language"
+    },
+    {
+      "id": "clock-location",
+      "label": "status.clock",
+      "sources": [
+        "readings.timeValid",
+        "status.ntp.synced",
+        "status.ntp.activeSource",
+        "status.ntp.status",
+        "status.ntp",
+        "status.time.epoch",
+        "status.time.iso",
+        "status.time.timezone",
+        "status.time"
+      ],
+      "requiredBy": "025 FR-016, 005, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "when",
+        "when": "the clock is not set"
+      },
+      "priority": 7,
+      "location": "card:status",
+      "test": "clock-location"
+    },
+    {
+      "id": "phone-alarm",
+      "label": "status.phoneAlarm",
+      "sources": [
+        "status.ble.alarm.active",
+        "status.ble.alarm.sequence",
+        "status.ble.alarm.acknowledgedSequence",
+        "status.ble.alarm.bondedPhones",
+        "status.ble.alarm.serviceActive",
+        "status.ble.alarm",
+        "status.ble",
+        "status.ble.available",
+        "status.ble.active",
+        "status.ble.clients"
+      ],
+      "requiredBy": "025 FR-017, 009, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "a phone alarm is ringing"
+      },
+      "priority": 8,
+      "location": "card:status",
+      "test": "phone-alarm",
+      "testIn": "unit",
+      "demoCannot": "The phone alarm needs the Bluetooth build; the demo is the standard build."
+    },
+    {
+      "id": "update-available",
+      "label": "glance.updateAvailable",
+      "sources": [],
+      "requiredBy": "025 FR-018, 012",
+      "visibility": {
+        "rule": "when",
+        "when": "the Updates page's last check this session found a newer release"
+      },
+      "priority": 9,
+      "location": "card:device",
+      "test": "update-available"
+    },
+    {
+      "id": "sky-card",
+      "label": "dashboard.skyQuality",
+      "sources": ["readings.sky.sqm", "readings.sky.bortle", "readings.sky.nelm", "readings.sky.description", "readings.sky"],
+      "requiredBy": "001, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-card"
+    },
+    {
+      "id": "sky-source",
+      "label": "sensor.sqml",
+      "sources": ["readings.sky.source"],
+      "requiredBy": "030 FR-007, FR-012",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-source",
+      "note": "The authoritative sensor's name pill (SQM or SQM-L) on the Sky Quality card; none with one sensor."
+    },
+    {
+      "id": "sky-sensors",
+      "label": "dashboard.skyDifference",
+      "sources": [
+        "readings.skySensors",
+        "readings.skySensors.deltaSqm",
+        "readings.skySensors.sqm",
+        "readings.skySensors.sqml",
+        "readings.skySensors.sqm.sqm",
+        "readings.skySensors.sqm.status",
+        "readings.skySensors.sqml.sqm",
+        "readings.skySensors.sqml.status"
+      ],
+      "requiredBy": "030 FR-006, FR-008, FR-012",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on, Show other reading is on and the other sensor is ok"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-sensors",
+      "note": "The other sensor's reading and the Difference (SQM-L - SQM) as two more tiles on the Sky Quality card; the Difference is amber above 1.5 mag/arcsec²."
+    },
+    {
+      "id": "sky-authoritative-missing",
+      "label": "dashboard.useSkySensor",
+      "sources": [],
+      "requiredBy": "030 FR-010",
+      "visibility": {
+        "rule": "when",
+        "when": "the SQM-L is on or chosen and the authoritative sensor is off or not ok"
+      },
+      "priority": 10,
+      "location": "card:sky",
+      "test": "sky-authoritative-missing",
+      "note": "The Sky Quality card names the missing authoritative sensor and offers Use <other>; the device never falls back on its own."
+    },
+    {
+      "id": "sky-other-fault",
+      "label": "sensor.sqml",
+      "sources": [
+        "status.skySensors",
+        "status.skySensors.sqm",
+        "status.skySensors.sqml",
+        "status.skySensors.sqm.status",
+        "status.skySensors.sqm.ageMs",
+        "status.skySensors.sqml.status",
+        "status.skySensors.sqml.ageMs"
+      ],
+      "requiredBy": "030 FR-012, 025 D6",
+      "visibility": {
+        "rule": "when",
+        "when": "both sky sensors are on and the non-authoritative one answered and then failed"
+      },
+      "priority": 5,
+      "location": "card:sensor",
+      "test": "sky-other-fault",
+      "note": "A fault card titled with the sensor's name; none for a sensor that hasn't answered since boot."
+    },
+    {
+      "id": "light-card",
+      "label": "dashboard.lightSensor",
+      "sources": ["readings.light.lux", "readings.light.visible", "readings.light.infrared", "readings.light.full", "readings.light"],
+      "requiredBy": "001, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:light",
+      "test": "light-card"
+    },
+    {
+      "id": "cloud-card",
+      "label": "dashboard.cloudConditions",
+      "sources": [
+        "readings.clouds.condition",
+        "readings.clouds.coverPercent",
+        "readings.clouds.description",
+        "readings.clouds.temperatureDelta",
+        "readings.clouds.correctedDelta",
+        "readings.clouds.humidity",
+        "readings.clouds.humiditySource",
+        "readings.clouds",
+        "readings.infrared.skyTemperature",
+        "readings.infrared.ambientTemperature",
+        "readings.infrared"
+      ],
+      "requiredBy": "002, 010",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:clouds",
+      "test": "cloud-card"
+    },
+    {
+      "id": "environment-card",
+      "label": "dashboard.environment",
+      "sources": [
+        "readings.environment.temperature",
+        "readings.environment.humidity",
+        "readings.environment.pressure",
+        "readings.environment.dewpoint",
+        "readings.environment"
+      ],
+      "requiredBy": "002, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the BME280 is fitted"
+      },
+      "priority": 10,
+      "location": "card:environment",
+      "test": "environment-card"
+    },
+    {
+      "id": "rain-card",
+      "label": "dashboard.rainSensor",
+      "sources": [
+        "readings.rain.raining",
+        "readings.rain.intensity",
+        "readings.rain.eventAccumulation",
+        "readings.rain.totalAccumulation",
+        "readings.rain.lensFault",
+        "readings.rain.emitterSaturated",
+        "readings.rain"
+      ],
+      "requiredBy": "003, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the rain sensor is on"
+      },
+      "priority": 10,
+      "location": "card:rain",
+      "test": "rain-card"
+    },
+    {
+      "id": "wind-card",
+      "label": "dashboard.wind",
+      "sources": ["readings.wind.speed", "readings.wind.gust", "readings.wind.direction", "readings.wind.vaneFault", "readings.wind"],
+      "requiredBy": "004, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "the anemometer is on"
+      },
+      "priority": 10,
+      "location": "card:wind",
+      "test": "wind-card"
+    },
+    {
+      "id": "battery-card",
+      "label": "dashboard.battery",
+      "sources": [
+        "readings.battery",
+        "readings.battery.present",
+        "readings.battery.status",
+        "readings.battery.estimating",
+        "readings.battery.percent",
+        "readings.battery.voltage",
+        "readings.battery.state",
+        "readings.battery.fault",
+        "readings.battery.timeToEmptyMinutes",
+        "readings.battery.timeToFullMinutes",
+        "readings.battery.powerSaving"
+      ],
+      "requiredBy": "032 FR-014",
+      "visibility": {
+        "rule": "when",
+        "when": "a fuel gauge is present (or the charger pins are set)"
+      },
+      "priority": 10,
+      "location": "card:battery",
+      "test": "battery-card",
+      "testIn": "unit",
+      "demoCannot": "Every charge state, the fault, estimating and power saving need a pack at chosen levels; each is tested on the component"
+    },
+    {
+      "id": "battery-glance",
+      "label": "dashboard.battery",
+      "sources": [
+        "readings.battery.percent",
+        "readings.battery.state",
+        "status.battery.shutdownInSeconds",
+        "status.diagnostics.battery.policy"
+      ],
+      "requiredBy": "032 FR-014",
+      "visibility": {
+        "rule": "when",
+        "when": "the pack is below its low or critical level, the charger has a fault, or the device is about to sleep"
+      },
+      "priority": 5,
+      "location": "card:status",
+      "test": "battery-glance",
+      "testIn": "unit",
+      "demoCannot": "The levels and the going-to-sleep countdown need a pack near empty; tested on the glance rules"
+    },
+    {
+      "id": "gps-card",
+      "label": "dashboard.gpsLocation",
+      "sources": [
+        "readings.gps.fix",
+        "readings.gps.latitude",
+        "readings.gps.longitude",
+        "readings.gps.altitude",
+        "readings.gps.satellites",
+        "readings.gps.hdop",
+        "readings.gps"
+      ],
+      "requiredBy": "005, 010",
+      "visibility": {
+        "rule": "when",
+        "when": "GPS is on"
+      },
+      "priority": 10,
+      "location": "card:gps",
+      "test": "gps-card"
+    },
+    {
+      "id": "device-network-card",
+      "label": "dashboard.deviceNetwork",
+      "sources": [
+        "status.wifi.ssid",
+        "status.wifi.rssi",
+        "status.wifi.ip",
+        "status.wifi.connected",
+        "status.wifi",
+        "status.firmware.version",
+        "status.firmware",
+        "status.uptime"
+      ],
+      "requiredBy": "010, 025 FR-015",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "device-network-card"
+    },
+    {
+      "id": "ipv6",
+      "label": "glance.ipv6",
+      "sources": [
+        "status.wifi.ipv6.enabled",
+        "status.wifi.ipv6.addresses",
+        "status.wifi.ipv6",
+        "status.wifi.ipv6.addresses[].address",
+        "status.wifi.ipv6.addresses[].scope"
+      ],
+      "requiredBy": "025 FR-015, 015",
+      "visibility": {
+        "rule": "when",
+        "when": "IPv6 is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "ipv6"
+    },
+    {
+      "id": "mdns",
+      "label": "glance.localName",
+      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "mDNS is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mdns"
+    },
+    {
+      "id": "mqtt-state",
+      "label": "glance.mqtt",
+      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "MQTT is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mqtt-state"
+    }
+  ],
+  "notShown": [
+    {
+      "match": "status.sensors.wind.vaneMagnet",
+      "reason": "Wind vane magnet check: the dashboard shows a vane fault, Settings the magnet warnings",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.sensors.wind.vaneAgc",
+      "reason": "Wind vane magnet gain, for checking the magnet gap",
+      "shownOn": "API only"
+    },
+    {
+      "match": "status.diagnostics.**",
+      "reason": "Sensor troubleshooting counters",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.partitions.**",
+      "reason": "Flash layout",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapStages.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.stackFree.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.maxAllocHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.minFreeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.sketchSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeSketchSpace",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.flashSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsTotal",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsUsed",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.cpuFreqMHz",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.bootCount",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.resetReason",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.connections",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.tcpLimit",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.sensors",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.status",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.limitPerEndpoint",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.replaced",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.stalledClosed",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.alpacaRestoredAfterRestart",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.sensorSnapshotBytes",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.mqtt.availabilityTopic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.broker",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.clientId",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastPublish",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastReconnectAttempt",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.port",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.topic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.ntp.drift",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.lastSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.nextSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.server",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsTimeUTC",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsSatellites",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsHasFix",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.enabled",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.gpsEnabled",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildDate",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildTime",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.name",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.variant",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.layout",
+      "reason": "Only matters when updating: a device still on the old partition layout is told on the Updates page",
+      "shownOn": "Updates"
+    },
+    {
+      "match": "status.wifi.apMode",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.connectPending",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.mac",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.alpaca.clients.safetymonitor.clientId",
+      "reason": "The app's own name for itself; in alert text ({client_id})",
+      "shownOn": "Alpaca"
+    },
+    {
+      "match": "status.alpaca.clients.observingconditions.clientId",
+      "reason": "The app's own name for itself; in alert text ({client_id})",
+      "shownOn": "Alpaca"
+    },
+    {
+      "match": "readings.timestamp",
+      "reason": "Machine timestamp; ages are shown instead"
+    },
+    {
+      "match": "readings.safety.reasonFlags",
+      "reason": "Machine-readable form of the reasons, which are shown"
+    },
+    {
+      "match": "safety.reasonFlags",
+      "reason": "Machine-readable form of the reasons, which are shown"
+    },
+    {
+      "match": "readings.safety.evaluatedAgeMs",
+      "reason": "Internal timing of the evaluation"
+    },
+    {
+      "match": "safety.evaluatedAgeMs",
+      "reason": "Internal timing of the evaluation"
+    },
+    {
+      "match": "readings.rain.sensorEventAccumulation",
+      "reason": "The RG-15's own counter",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.sky.averagingWindowSeconds",
+      "reason": "A setting",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.sky.calibrated",
+      "reason": "Calibration state",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.sky.rawSqm",
+      "reason": "Before the SQM offset; the corrected value is shown",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "readings.light.gain",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.gainFactor",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.integrationMs",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.saturated",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "readings.light.nightMode",
+      "reason": "Light sensor internals",
+      "shownOn": "System"
+    },
+    {
+      "match": "deps.D-13",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-14",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-21",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-22",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-23",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-24",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-25",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-26",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-28",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-29",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-30",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-32",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-36",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-27",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "deps.D-33",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "deps.D-34",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "status.alerts.recentRevision",
+      "reason": "Change counter: tells the page when to fetch the recent alerts",
+      "shownOn": "Alerts bell"
+    },
+    {
+      "match": "status.configRevision",
+      "reason": "Change counter: tells the page when to reload the settings",
+      "shownOn": "Dashboard, Settings"
+    },
+    {
+      "match": "readings.safety.rulesNotInEffect",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "safety.rulesNotInEffect",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-15",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-16",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-17",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-18",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-19",
+      "reason": "Rules that are on but not in effect are shown with each rule (Not in effect, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-05",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-06",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-07",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-08",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-09",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-10",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-11",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-20",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-31",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-35",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-37",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-38",
+      "reason": "Doesn't affect safety or alerts; shown on the Language card in Settings, with the reason and a fix (spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "status.sky.nightKnown",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.locationSource",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.latitude",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.longitude",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.isNight",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky.sunAltitudeDeg",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "status.sky",
+      "reason": "Where the location comes from and whether it is dark: shown with the location setting and by the Sun & Moon card",
+      "shownOn": "Settings → Time & Location; Sun & Moon card"
+    },
+    {
+      "match": "readings.skySensors.sqm.ageMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.averagingWindowSeconds",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.bortle",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.calibrated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.description",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.gain",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.integrationMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.lux",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.nelm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.nightMode",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.rawSqm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqm.saturated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.ageMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.averagingWindowSeconds",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.bortle",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.calibrated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.description",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.gain",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.integrationMs",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.lux",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.nelm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.nightMode",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.rawSqm",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "readings.skySensors.sqml.saturated",
+      "reason": "Each sky sensor's own detail (spec 030); the dashboard shows the authoritative copy in readings.sky and readings.light",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.detected",
+      "reason": "Whether the sky sensor answered (spec 030)",
+      "shownOn": "Settings → Sensors (Sky sensors row)"
+    },
+    {
+      "match": "status.skySensors.sqm.sampleCount",
+      "reason": "Sky sensor averaging-window progress, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqm.windowSamples",
+      "reason": "Sky sensor averaging-window size, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqm.nightMode",
+      "reason": "Whether the sky sensor sees light; shown beside the averaging window",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqm.darkVisibleOffset",
+      "reason": "The same value as the saved skyCalibration(L).darkVisibleOffset, which the sensor's Sky quality card shows",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqm.gain",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.integrationMs",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqm.saturated",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqml.detected",
+      "reason": "Whether the sky sensor answered (spec 030)",
+      "shownOn": "Settings → Sensors (Sky sensors row)"
+    },
+    {
+      "match": "status.skySensors.sqml.sampleCount",
+      "reason": "Sky sensor averaging-window progress, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqml.windowSamples",
+      "reason": "Sky sensor averaging-window size, for dark calibration",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqml.nightMode",
+      "reason": "Whether the sky sensor sees light; shown beside the averaging window",
+      "shownOn": "Settings → Sensors (that sensor's Sky quality card)"
+    },
+    {
+      "match": "status.skySensors.sqml.darkVisibleOffset",
+      "reason": "The same value as the saved skyCalibration(L).darkVisibleOffset, which the sensor's Sky quality card shows",
+      "shownOn": "Settings → Sensors"
+    },
+    {
+      "match": "status.skySensors.sqml.gain",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqml.integrationMs",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.skySensors.sqml.saturated",
+      "reason": "Sky sensor auto-range detail, for troubleshooting",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "deps.D-39",
+      "reason": "Doesn't affect safety or alerts; the SQM-L switch is blocked with its reason on its Settings row"
+    },
+    {
+      "match": "deps.D-42",
+      "reason": "A save the device refuses; shown inline on the I2C-2 pin fields in Settings"
+    },
+    {
+      "match": "deps.D-40",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-41",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-43",
+      "reason": "Doesn't affect safety or alerts; shown on the Display card's rows in Settings"
+    },
+    {
+      "match": "deps.D-44",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-45",
+      "reason": "A save the device refuses; shown inline on the wake button pin field in Settings"
+    },
+    {
+      "match": "status.display",
+      "reason": "The OLED is an output, not a sensor (spec 031): no dashboard card",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.display.**",
+      "reason": "The OLED is an output, not a sensor (spec 031): no dashboard card",
+      "shownOn": "System"
+    },
+    {
+      "match": "deps.D-46",
+      "reason": "Doesn't affect safety or alerts; shown on the Battery card's rows in Settings",
+      "shownOn": "Settings → Device"
+    },
+    {
+      "match": "deps.D-47",
+      "reason": "Rules that are on but not in effect are shown with each rule (Reports unsafe, with the reason)",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-48",
+      "reason": "Shown on each battery event row in Settings",
+      "shownOn": "Settings → Alerts"
+    },
+    {
+      "match": "deps.D-49",
+      "reason": "Shown on its MQTT publish row in Settings",
+      "shownOn": "Settings → Network"
+    },
+    {
+      "match": "deps.D-50",
+      "reason": "Shown on the battery rule's Ring paired phones row in Settings",
+      "shownOn": "Settings → Safety"
+    },
+    {
+      "match": "deps.D-51",
+      "reason": "A save the device refuses; shown inline on the battery pin fields in Settings"
+    },
+    {
+      "match": "status.battery",
+      "reason": "The same object as readings.battery; the dashboard reads the readings (spec 032)"
+    },
+    {
+      "match": "status.battery.**",
+      "reason": "The same object as readings.battery plus the sleep countdown; the dashboard reads the readings (spec 032)"
+    },
+    {
+      "match": "readings.battery.ratePercentPerHour",
+      "reason": "The charge rate feeds the time estimates the Battery card shows; the rate itself is diagnostic (spec 032)"
+    },
+    {
+      "match": "readings.battery.usbPower",
+      "reason": "Said by the charge state pill (Charging, Charged, No battery); the flag itself is for integrations (spec 032)"
+    },
+    {
+      "match": "readings.battery.ageMs",
+      "reason": "The gauge is read every 5 s; a gauge that stops answering turns the Battery card to its fault state (spec 032)"
+    },
+    {
+      "match": "status.sensors.battery",
+      "reason": "The same health as readings.battery.status, which the Battery card's fault state reads (spec 032)",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.sensors.battery.**",
+      "reason": "The same health as readings.battery.status, which the Battery card's fault state reads (spec 032)",
+      "shownOn": "System"
+    }
+  ]
+}

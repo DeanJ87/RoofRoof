@@ -1,0 +1,148 @@
+---
+description: "Wire an SQMeter: ESP32 dev board, TSL2591, MLX90614 and BME280 on I²C, plus optional GPS, RG-15 rain gauge and wind sensors."
+---
+
+# Hardware Setup
+
+SQMeter runs on any standard ESP32 dev board. The three core sensors share the I²C bus; the optional GPS, RG-15 rain gauge and anemometer have their own pins, and the optional wind vane (AS5600) joins the I²C bus.
+
+<!-- diagram: DIA-13
+sources: lib/ConfigModel/src/ConfigModel.cpp src/main.cpp#setupI2C src/sensors/WindSensor.cpp
+blocking: false
+fingerprint: a062d83250f84abd
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart LR
+    accTitle: Wiring overview with default pins
+    accDescr: The TSL2591, BME280 and MLX90614 share the I2C bus on GPIO 21 and 22 and 3.3 V. The optional GPS uses GPIO 17 and 16, the RG-15 GPIO 18 and 19 and the anemometer GPIO 27. The optional AS5600 wind vane joins the I2C bus at 0x36. All pins can be changed in Settings.
+    subgraph i2c["I²C bus, 3.3 V"]
+        direction TB
+        TSL["TSL2591<br/>0x29"]
+        BME["BME280<br/>0x76"]
+        MLX["MLX90614<br/>0x5A"]
+        VANE["AS5600 wind vane - optional<br/>0x36, DIR to GND"]
+    end
+    ESP["<b>ESP32</b><br/>SDA GPIO 21, SCL GPIO 22<br/>GPS: RX 17, TX 16<br/>RG-15: RX 18, TX 19<br/>Anemometer: GPIO 27"]
+    GPS["GPS - optional<br/>its TX to GPIO 17,<br/>its RX to GPIO 16"]
+    RG15["RG-15 - optional<br/>J2 pin 4 to GPIO 18,<br/>J2 pin 5 to GPIO 19,<br/>V+ from 5 V"]
+    ANEMO["Anemometer - optional<br/>reed switch: GPIO 27 and GND,<br/>internal pull-up"]
+    i2c ---|SDA, SCL, 3.3 V, GND| ESP
+    GPS ---|UART| ESP
+    RG15 ---|UART| ESP
+    ANEMO ---|pulses| ESP
+```
+
+<figcaption>Wiring overview with the default pins; every pin can be changed under <b>Settings → Sensors</b> and <b>Time &amp; Location</b>.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    - **I²C bus** (3.3 V, GND, SDA on GPIO 21, SCL on GPIO 22): TSL2591 at `0x29`, BME280 at `0x76`, MLX90614 at `0x5A`, and the optional AS5600 wind vane at `0x36` (its DIR pin to GND), wired in parallel.
+    - **GPS** (optional, UART): the GPS's TX to GPIO 17 (ESP32 RX), its RX to GPIO 16 (ESP32 TX).
+    - **RG-15** (optional, UART): J2 pin 4 (sensor TX) to GPIO 18, J2 pin 5 (sensor RX) to GPIO 19, V+ from 5 V. See [RG-15](../hardware/rg15.md) for its connector and signal levels.
+    - **Anemometer** (optional): the reed switch between GPIO 27 and GND; the internal pull-up is used.
+    - **Wind vane** (optional): an AS5600 on the I²C bus. See [Wind](../hardware/wind.md).
+    - All pins can be changed in settings; settings reject pins that clash.
+
+---
+
+## Wiring
+
+Default I2C pins (configurable in settings):
+
+| ESP32 Pin | Function | Sensor Pins |
+|-----------|----------|-------------|
+| GPIO 21 | SDA | SDA on all sensors |
+| GPIO 22 | SCL | SCL on all sensors |
+| 3.3V | Power | VIN / VCC |
+| GND | Ground | GND |
+
+All sensors share the same two-wire I2C bus. Wire them in parallel.
+
+```
+ESP32          TSL2591     BME280      MLX90614
+ 3V3  ─────────  VIN ──────  VCC ──────  VCC
+ GND  ─────────  GND ──────  GND ──────  GND
+ G21  ─────────  SDA ──────  SDA ──────  SDA
+ G22  ─────────  SCL ──────  SCL ──────  SCL
+```
+
+### OLED display (optional)
+
+A 0.96" **SSD1306 128 × 64 I2C OLED** at `0x3C` goes on the same bus, in parallel with the
+sensors: VCC to 3.3 V, GND, SDA to GPIO 21 and SCL to GPIO 22. On the Rev A boards it plugs into the
+OLED port (J6). An optional **wake button** goes from any free GPIO to GND (the internal pull-up is
+used); the AUX pins on Rev A are free for it. Then turn it on in **Settings → Device → Display**; see
+[OLED display](../user-guide/display.md).
+
+### Battery (travel board, optional)
+
+The travel board's **MAX17048** fuel gauge is on the main I2C bus at `0x36`, so it is found without
+any setting. Its charger's **STAT1**, **STAT2** and **PG** outputs and the gauge's **ALRT** can go to
+free GPIOs (set them in **Settings → Device → Battery**; the three charger pins go together, and PG must
+be a pin that can wake the ESP32: 0, 2, 4, 12-15, 25-27 or 32-39 on the classic board). See
+[Battery](../user-guide/battery.md) and the [travel board](../hardware/overview.md#travel-board-battery).
+
+---
+
+## I2C Addresses
+
+| Sensor | Default Address | Notes |
+|--------|----------------|-------|
+| TSL2591 | `0x29` | Fixed |
+| BME280 | `0x76` | `0x77` if SDO pulled high |
+| MLX90614 | `0x5A` | Fixed |
+| SSD1306 OLED (optional) | `0x3C` | The common 128 × 64 modules; some are `0x3D` and aren't supported |
+| MAX17048 fuel gauge (travel board) | `0x36` | Fixed |
+
+!!! warning "Address conflict"
+    If you have multiple BME280s on the same bus, one must be wired with SDO to 3.3V to use address `0x77`.
+
+## Second sky sensor (SQM-L, optional)
+
+A second TSL2591 behind a narrow lens, the **SQM-L**, can sit beside the wide one. Its address
+is fixed at `0x29` too, so it goes on the ESP32's **second I2C bus**, on two free GPIOs of your
+choice (not used by the first bus, the GPS, the rain sensor or the anemometer):
+
+```
+ESP32          SQM-L (TSL2591)
+ 3V3  ─────────  VIN
+ GND  ─────────  GND
+ SDA2 ─────────  SDA     (second-bus SDA pin, e.g. GPIO 25)
+ SCL2 ─────────  SCL     (second-bus SCL pin, e.g. GPIO 26)
+```
+
+Then, in **Settings → Sensors → Sky sensors**, type the pins into **I2C-2 SDA** and **I2C-2 SCL**
+(`sensor.i2c2SDA`, `sensor.i2c2SCL`), switch on **Use SQM-L** (`sky.sqmlEnabled`), save and
+restart. **Use SQM-L** stays blocked until both pins are set. Choose which sensor's reading counts
+with **Authoritative reading** (`sky.authoritative`);
+see [Two sky sensors](../reference/sky-quality.md#two-sky-sensors-sqm-and-sqm-l) and
+[Configuration → Sky sensors](../user-guide/configuration.md#sky-sensors).
+
+---
+
+## Sensor Placement
+
+For accurate sky readings:
+
+- **TSL2591** should have a clear, unobstructed view of the sky — point it straight up
+- **MLX90614** measures cloud temperature and should also face the sky
+- **BME280** should be shaded from direct sunlight and have airflow — don't enclose it tightly
+- Keep all sensors away from artificial light sources
+
+---
+
+## Verified Hardware
+
+| Component | Notes |
+|-----------|-------|
+| ESP32 DevKit v1 | 30-pin or 38-pin, both work |
+| Adafruit TSL2591 | Breakout board recommended |
+| Adafruit BME280 | Breakout board recommended |
+| Adafruit MLX90614 | Optional — for cloud detection |
+| u-blox NEO-6M GPS | Optional — for location/time sync |
+
+!!! tip "Power"
+    Power the ESP32 via USB or a 5V supply. The 3.3V regulator on most dev boards can comfortably drive all sensors simultaneously.
