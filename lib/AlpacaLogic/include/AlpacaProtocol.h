@@ -7,6 +7,12 @@ namespace SQM
 {
     namespace Alpaca
     {
+        // ASCOM Alpaca standard error numbers (subset actually used here).
+        // See the ASCOM Alpaca API spec / ASCOM.Common.Alpaca.AlpacaErrors.
+        constexpr int ALPACA_ERR_NOT_IMPLEMENTED = 0x400;
+        constexpr int ALPACA_ERR_INVALID_VALUE = 0x401;
+        constexpr int ALPACA_ERR_NOT_CONNECTED = 0x407;
+        constexpr int ALPACA_ERR_DRIVER_BASE = 0x500; // 0x500-0xFFF: custom driver errors
 
         // Case-insensitive ASCII comparison (every Alpaca parameter name is
         // ASCII).
@@ -33,8 +39,8 @@ namespace SQM
         bool parseAlpacaDouble(const std::string &raw, double &out);
 
         // Builds a per-device UniqueID from the chip's 48-bit MAC, e.g.
-        // "sqmeter-a1b2c3d4e5f6-observingconditions-0", so two SQMeters on
-        // the same network don't advertise colliding IDs.
+        // "roofroof-a1b2c3d4e5f6-dome-0", so two devices on the same network
+        // don't advertise colliding IDs.
         std::string buildUniqueId(uint64_t mac48, const std::string &deviceTypeLower, uint32_t deviceNumber);
 
     } // namespace Alpaca

@@ -4,8 +4,8 @@
 
 #include <tuple>
 
-// The small rules behind a backup: refusal codes and texts, the board's pins,
-// which changes need a restart, and version order.
+// The small rules behind a backup: refusal codes and texts, which changes
+// need a restart, and version order.
 
 namespace SQM::Backup
 {
@@ -39,7 +39,7 @@ namespace SQM::Backup
         return "invalid";
     }
 
-    // Device text (specs/023-i18n): the web UI shows these translated.
+    // Device text (SQMeter spec 023): the web UI shows these translated.
     const char *errorText(Error error)
     {
         switch (error)
@@ -49,7 +49,7 @@ namespace SQM::Backup
         case Error::TooLarge:
             return "The backup file is too large";
         case Error::NotBackup:
-            return "This isn't a SQMeter backup file";
+            return "This isn't a RoofRoof backup file";
         case Error::Damaged:
             return "The backup file is damaged";
         case Error::NewerFormat:
@@ -80,21 +80,6 @@ namespace SQM::Backup
         return out;
     }
 
-    BoardPins boardPins(const BoardProfile &board)
-    {
-        BoardPins pins;
-        pins.validPins = board.validGpios;
-        for (int pin = 0; pin < 64; ++pin)
-            if (board.isValidGpio(pin) && board.isAdc1(pin))
-                pins.analogPins |= 1ULL << pin;
-        return pins;
-    }
-
-    BoardPins buildBoardPins()
-    {
-        return boardPins(boardProfile(BUILD_BOARD));
-    }
-
     namespace
     {
         bool wifiChanged(const WiFiConfig &a, const WiFiConfig &b)
@@ -103,21 +88,6 @@ namespace SQM::Backup
                    std::tie(b.ssid, b.password, b.hostname, b.mdns, b.autoReconnect, b.reconnectDelayMs, b.maxReconnectDelayMs);
         }
 
-        bool gpsChanged(const GPSConfig &a, const GPSConfig &b)
-        {
-            return std::tie(a.enabled, a.rxPin, a.txPin, a.baudRate) != std::tie(b.enabled, b.rxPin, b.txPin, b.baudRate);
-        }
-
-        bool i2cChanged(const SensorConfig &a, const SensorConfig &b)
-        {
-            return std::tie(a.i2cSDA, a.i2cSCL, a.i2cFrequency) != std::tie(b.i2cSDA, b.i2cSCL, b.i2cFrequency);
-        }
-
-        bool bleChanged(const Config &before, const Config &after)
-        {
-            return before.ble.enabled != after.ble.enabled || before.ble.passkey != after.ble.passkey ||
-                   (after.ble.enabled && before.deviceName != after.deviceName);
-        }
     } // namespace
 
     // The same rules as restart.ts: settings the firmware only reads at boot.
@@ -128,22 +98,16 @@ namespace SQM::Backup
             reasons |= RESTART_WIFI;
         if (after.ota.enabled && (before.ota.enabled != after.ota.enabled || before.ota.password != after.ota.password))
             reasons |= RESTART_OTA;
-        if (gpsChanged(before.gps, after.gps))
-            reasons |= RESTART_GPS;
-        if (i2cChanged(before.sensor, after.sensor))
-            reasons |= RESTART_I2C;
         if (before.wifi.ipv6 != after.wifi.ipv6)
             reasons |= RESTART_IPV6;
         if (before.alpaca.enabled != after.alpaca.enabled)
             reasons |= RESTART_ALPACA;
-        if (bleChanged(before, after))
-            reasons |= RESTART_BLE;
         return reasons;
     }
 
     const char *restartCode(int index)
     {
-        static const char *const CODES[RESTART_REASON_COUNT] = {"wifi", "ota", "gps", "i2c", "ipv6", "alpaca", "ble"};
+        static const char *const CODES[RESTART_REASON_COUNT] = {"wifi", "ota", "ipv6", "alpaca"};
         return index >= 0 && index < RESTART_REASON_COUNT ? CODES[index] : "";
     }
 
@@ -151,12 +115,6 @@ namespace SQM::Backup
     {
         switch (reason)
         {
-        case NotApplicableReason::Pin:
-            return "pin";
-        case NotApplicableReason::Analog:
-            return "analog";
-        case NotApplicableReason::Bluetooth:
-            return "bluetooth";
         case NotApplicableReason::PushoverKeys:
             break;
         }

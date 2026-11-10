@@ -15,11 +15,10 @@
 
 using namespace SQM;
 
-// Settings dependencies (specs/020-settings-dependencies). The fixture cases
-// are shared with web/src/lib/__tests__/settingsDeps.test.ts, so the device
-// and the web UI's preview give the same answers. Catalogue IDs covered here:
-// D-01 D-02 D-03 D-04 D-05 D-06 D-07 D-08 D-09 D-10 D-11 D-12 D-13 D-14 D-15
-// D-16 D-17 D-18 D-19 D-23 D-24 D-25 D-26 D-28 D-29 D-30 D-31 D-32 D-35 D-36 D-37 D-38 D-39 D-40 D-41 D-42.
+// Settings dependencies (SQMeter spec 020). The fixture cases are shared with
+// web/src/lib/__tests__/settingsDeps.test.ts, so the device and the web UI's
+// preview give the same answers. Catalogue IDs covered here:
+// D-01 D-02 D-03 D-04 D-12 D-13 D-28 D-32 D-33 D-34 D-36 D-37.
 
 namespace
 {
@@ -38,20 +37,8 @@ namespace
         f.wifiConnected = flag("wifiConnected");
         f.mqttConnected = flag("mqttConnected");
         f.clockSet = flag("clockSet");
-        f.gpsRunning = flag("gpsRunning");
-        f.gpsFix = flag("gpsFix");
-        f.bluetoothBuild = flag("bluetoothBuild");
-        f.bluetoothRunning = flag("bluetoothRunning");
-        f.pairedPhones =
-            overrides.containsKey("pairedPhones") ? overrides["pairedPhones"].as<uint8_t>() : base["pairedPhones"].as<uint8_t>();
-        f.lightDetected = flag("lightDetected");
-        f.sqmDetected = flag("sqmDetected");
-        f.sqmlDetected = flag("sqmlDetected");
-        f.infraredDetected = flag("infraredDetected");
-        f.environmentDetected = flag("environmentDetected");
-        f.languageInstalled = flag("languageInstalled");
-        f.displayDetected = flag("displayDetected");
-        f.batteryDetected = flag("batteryDetected");
+        f.alpacaDevices =
+            overrides.containsKey("alpacaDevices") ? overrides["alpacaDevices"].as<uint8_t>() : base["alpacaDevices"].as<uint8_t>();
         return f;
     }
 
@@ -59,13 +46,7 @@ namespace
     {
         Deps::Facts f;
         f.wifiConnected = f.mqttConnected = f.clockSet = true;
-        f.gpsRunning = f.gpsFix = f.bluetoothBuild = f.bluetoothRunning = true;
-        f.pairedPhones = 1;
-        f.lightDetected = f.infraredDetected = f.environmentDetected = true;
-        f.sqmDetected = f.sqmlDetected = true;
-        f.languageInstalled = true;
-        f.displayDetected = true;
-        f.batteryDetected = true;
+        f.alpacaDevices = 1;
         return f;
     }
 
@@ -154,7 +135,7 @@ void test_fixture_cases()
             ++checked;
         }
     }
-    TEST_ASSERT_GREATER_THAN(60, checked);
+    TEST_ASSERT_GREATER_THAN(25, checked);
 }
 
 void test_reasons_and_settings_match_catalogue()
@@ -205,22 +186,6 @@ void test_default_config_fixture_is_current()
     TEST_ASSERT_EQUAL_STRING_MESSAGE(current.c_str(), stored.c_str(), "run UPDATE_FIXTURES=1 pio test -e native -f test_settings_deps");
 }
 
-// D-15: rain rules are ignored (not fail-safe) with the rain sensor off, and
-// the safety document says so.
-void test_rules_not_in_effect()
-{
-    Config cfg = Config::createDefault();
-    cfg.alpaca.rainUnsafeEnabled = true;
-    cfg.alpaca.rainSensorRequired = true;
-    cfg.rain.enabled = false;
-    std::vector<std::string> rules = Deps::rulesNotInEffect(cfg);
-    TEST_ASSERT_EQUAL(2, rules.size());
-    TEST_ASSERT_EQUAL_STRING("Unsafe while raining", rules[0].c_str());
-
-    cfg.rain.enabled = true;
-    TEST_ASSERT_EQUAL(0, Deps::rulesNotInEffect(cfg).size());
-}
-
 void test_report_document()
 {
     Config cfg = Config::createDefault();
@@ -234,10 +199,8 @@ void test_report_document()
     TEST_ASSERT_FALSE(doc.overflowed());
     std::string json;
     serializeJson(doc, json);
-    // Was < 5 KB (spec 020); the display's eight entries (spec 031) add about
-    // 0.3 KB and the battery's eighteen (spec 032) about 1.6 KB.
     printf("settings report %u bytes\n", static_cast<unsigned>(json.size()));
-    TEST_ASSERT_LESS_THAN(7500, json.size());
+    TEST_ASSERT_LESS_THAN(2500, json.size());
 
     TEST_ASSERT_FALSE(doc["facts"]["mqttConnected"].as<bool>());
     JsonObject mqtt;
@@ -260,24 +223,12 @@ void test_dependents_survive_dependency_round_trip()
     const Deps::Facts f = healthy();
     Config cfg = Config::createDefault();
     cfg = saveAndRestart(cfg, R"({"alerts":{"enabled":true,"mqtt":{"enabled":true},"sendMode":"whileConnected",
-        "events":{"rain_started":{"level":4},"rain_stopped":{"level":2}}},
-        "mqtt":{"enabled":true,"broker":"192.168.1.10","topic":"sqmeter","homeAssistant":{"enabled":true},"publish":{"rain":true,"wind":true}},
-        "rain":{"enabled":true,"dailyResetEnabled":true},"wind":{"enabled":true,"directionEnabled":true},"alpaca":{"enabled":true,
-        "rainUnsafeEnabled":true,"rainSensorRequired":true,"windSpeedUnsafeEnabled":true,"windGustUnsafeEnabled":true}})");
+        "events":{"client_lost":{"level":4},"client_back":{"level":2}}},
+        "mqtt":{"enabled":true,"broker":"192.168.1.10","topic":"roofroof","homeAssistant":{"enabled":true}},
+        "alpaca":{"enabled":true}})");
     const std::string before = cfg.toJson(false);
     const char *dependents[] = {
-        "alerts.mqtt.enabled",
-        "alerts.sendMode",
-        "alerts.events.rain_started.level",
-        "mqtt.homeAssistant.alertsSwitch",
-        "mqtt.publish.rain",
-        "mqtt.publish.wind",
-        "rain.dailyResetEnabled",
-        "wind.directionEnabled",
-        "alpaca.rainUnsafeEnabled",
-        "alpaca.rainSensorRequired",
-        "alpaca.windSpeedUnsafeEnabled",
-        "alpaca.windGustUnsafeEnabled"};
+        "alerts.mqtt.enabled", "alerts.sendMode", "alerts.events.client_lost.level", "mqtt.homeAssistant.alertsSwitch"};
     for (const char *setting : dependents)
         TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
 
@@ -289,9 +240,8 @@ void test_dependents_survive_dependency_round_trip()
         const char *reason;
     } trips[] = {
         {R"({"mqtt":{"enabled":false}})", R"({"mqtt":{"enabled":true}})", "alerts.mqtt.enabled", "inactive:mqtt-off"},
-        {R"({"rain":{"enabled":false}})", R"({"rain":{"enabled":true}})", "alerts.events.rain_started.level", "inactive:rain-off"},
-        {R"({"wind":{"enabled":false}})", R"({"wind":{"enabled":true}})", "alpaca.windSpeedUnsafeEnabled", "inactive:wind-off"},
         {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.sendMode", "inactive:alpaca-off"},
+        {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.events.client_lost.level", "inactive:alpaca-off"},
         {R"({"alerts":{"enabled":false}})", R"({"alerts":{"enabled":true}})", "mqtt.homeAssistant.alertsSwitch", "inactive:alerts-off"},
     };
     for (const auto &trip : trips)
@@ -318,138 +268,13 @@ void test_send_mode_needs_alpaca()
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::SendMode::WhileConnected), static_cast<int>(Core::effectiveSendMode(cfg)));
 }
 
-// D-38: a non-English language with no stored file and no WiFi is kept as
-// saved and reported inactive; a stored file or WiFi puts it in effect.
-void test_language_needs_its_file()
-{
-    Config cfg = saveAndRestart(Config::createDefault(), R"({"language":"fr"})");
-    TEST_ASSERT_EQUAL_STRING("fr", cfg.language);
-    Deps::Facts f = healthy();
-    f.wifiConnected = false;
-    f.languageInstalled = false;
-    TEST_ASSERT_EQUAL_STRING("inactive:language-offline", stateOf(cfg, f, "language").c_str());
-    f.languageInstalled = true;
-    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "language").c_str());
-    f.languageInstalled = false;
-    f.wifiConnected = true;
-    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "language").c_str());
-    TEST_ASSERT_EQUAL_STRING("off", stateOf(Config::createDefault(), f, "language").c_str());
-}
-
-// D-43..D-45 (spec 031): the display's settings need a display; staying on
-// at night needs a computable night; the wake button pin is a constraint
-// checked on save.
-void test_display_needs_a_display()
-{
-    Config cfg = saveAndRestart(Config::createDefault(), R"({"display":{"enabled":true,"stayOnAtNight":true,"buttonPin":33}})");
-    Deps::Facts f = healthy();
-    for (const char *setting :
-         {"display.pages",
-          "display.cycleSeconds",
-          "display.brightness",
-          "display.timeoutSeconds",
-          "display.wakeOnBoot",
-          "display.stayOnAtNight",
-          "display.buttonPin"})
-        TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
-    TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "display.rotate180").c_str());
-
-    f.displayDetected = false;
-    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.pages").c_str());
-    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.stayOnAtNight").c_str());
-    TEST_ASSERT_EQUAL_STRING("inactive:display-missing", stateOf(cfg, f, "display.buttonPin").c_str());
-    const Deps::Reason *reason = Deps::reasonFor(Deps::evaluate(cfg, f), "display.cycleSeconds");
-    TEST_ASSERT_NOT_NULL(reason);
-    TEST_ASSERT_EQUAL_STRING("No display detected", reason->text);
-    TEST_ASSERT_EQUAL_STRING("device#display", reason->fix);
-    TEST_ASSERT_TRUE(Deps::find(Deps::evaluate(cfg, f), "display.enabled") == nullptr);
-
-    // D-44: with a display, staying on at night needs the location (or a GPS fix).
-    f.displayDetected = true;
-    f.gpsFix = false;
-    TEST_ASSERT_EQUAL_STRING("inactive:location-unknown", stateOf(cfg, f, "display.stayOnAtNight").c_str());
-    cfg.location.set = true;
-    TEST_ASSERT_EQUAL_STRING("active", stateOf(cfg, f, "display.stayOnAtNight").c_str());
-
-    // Off with the display off, whatever is detected.
-    Config off = saveAndRestart(cfg, R"({"display":{"enabled":false}})");
-    TEST_ASSERT_EQUAL_STRING("off", stateOf(off, f, "display.pages").c_str());
-    TEST_ASSERT_TRUE(off.display.stayOnAtNight);
-
-    // D-45: a clash is refused on save with the shared message.
-    std::string error;
-    TEST_ASSERT_FALSE(Config::fromJson(R"({"display":{"buttonPin":21}})", &cfg, &error).has_value());
-    TEST_ASSERT_EQUAL_STRING("Display: wake button pin is already in use", error.c_str());
-    TEST_ASSERT_FALSE(Config::fromJson(R"({"display":{"buttonPin":7}})", &cfg, &error).has_value());
-    TEST_ASSERT_EQUAL_STRING("Display: wake button pin is not a valid GPIO", error.c_str());
-}
-
-// D-46..D-51 (spec 032): the battery's settings, rule, events and MQTT group
-// need a gauge; the rule is fail-safe without one; the phone alarm needs
-// Bluetooth like D-08; the pins are a constraint checked on save.
-void test_battery_needs_a_gauge()
-{
-    Config cfg = saveAndRestart(Config::createDefault(), R"({"alerts":{"enabled":true},"alpaca":{"batteryEnabled":true}})");
-    Deps::Facts f = healthy();
-    for (const char *setting :
-         {"battery.enabled", "battery.lowPercent", "battery.powerSaving", "alerts.events.battery_low.level", "alpaca.batteryEnabled"})
-        TEST_ASSERT_EQUAL_STRING_MESSAGE("active", stateOf(cfg, f, setting).c_str(), setting);
-    TEST_ASSERT_EQUAL_STRING("off", stateOf(cfg, f, "battery.capacityMah").c_str());
-
-    f.batteryDetected = false;
-    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "battery.enabled").c_str());
-    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "alerts.events.battery_critical.level").c_str());
-    TEST_ASSERT_EQUAL_STRING("inactive:battery-missing", stateOf(cfg, f, "alpaca.batteryEnabled").c_str());
-    const std::vector<Deps::Entry> entries = Deps::evaluate(cfg, f);
-    const Deps::Entry *rule = Deps::find(entries, "alpaca.batteryEnabled");
-    TEST_ASSERT_NOT_NULL(rule);
-    TEST_ASSERT_TRUE(rule->unmet == Deps::Unmet::FailSafe);
-    TEST_ASSERT_EQUAL_STRING("D-47", rule->id);
-    const Deps::Entry *monitor = Deps::find(entries, "battery.enabled");
-    TEST_ASSERT_TRUE(monitor->neutral);
-    TEST_ASSERT_EQUAL_STRING("D-46", monitor->id);
-    TEST_ASSERT_EQUAL_STRING("D-48", Deps::find(entries, "alerts.events.battery_low.level")->id);
-    const Deps::Reason *reason = Deps::reasonFor(entries, "battery.criticalPercent");
-    TEST_ASSERT_NOT_NULL(reason);
-    TEST_ASSERT_EQUAL_STRING("No battery gauge detected", reason->text);
-    TEST_ASSERT_EQUAL_STRING("device#battery", reason->fix);
-    // The fail-safe rule isn't listed as "not in effect": it reports unsafe.
-    for (const std::string &listed : Deps::rulesNotInEffect(cfg))
-        TEST_ASSERT_TRUE_MESSAGE(listed.find("attery") == std::string::npos, listed.c_str());
-
-    // D-49: the MQTT group needs MQTT, then a gauge.
-    TEST_ASSERT_EQUAL_STRING("inactive:mqtt-off", stateOf(cfg, f, "mqtt.publish.battery").c_str());
-    TEST_ASSERT_EQUAL_STRING("D-49", Deps::find(entries, "mqtt.publish.battery")->id);
-
-    // D-50: ringing paired phones needs Bluetooth, as D-08.
-    f.bluetoothBuild = false;
-    TEST_ASSERT_EQUAL_STRING("inactive:ble-build", stateOf(cfg, f, "alpaca.batteryPhoneAlarm").c_str());
-    TEST_ASSERT_EQUAL_STRING("D-50", Deps::find(Deps::evaluate(cfg, f), "alpaca.batteryPhoneAlarm")->id);
-
-    // D-51: pins are checked on save with the shared messages.
-    std::string error;
-    TEST_ASSERT_FALSE(Config::fromJson(R"({"battery":{"alertPin":21}})", &cfg, &error).has_value());
-    TEST_ASSERT_EQUAL_STRING("Battery: pin is already in use", error.c_str());
-    TEST_ASSERT_FALSE(Config::fromJson(R"({"battery":{"stat1Pin":25}})", &cfg, &error).has_value());
-    TEST_ASSERT_EQUAL_STRING("Battery: set all three charger pins or none", error.c_str());
-
-    Deps::Facts facts = healthy();
-    DynamicJsonDocument doc(512);
-    Deps::writeFacts(doc.to<JsonObject>(), facts);
-    TEST_ASSERT_TRUE(doc["batteryDetected"].as<bool>());
-}
-
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_send_mode_needs_alpaca);
-    RUN_TEST(test_language_needs_its_file);
-    RUN_TEST(test_display_needs_a_display);
-    RUN_TEST(test_battery_needs_a_gauge);
     RUN_TEST(test_fixture_cases);
     RUN_TEST(test_reasons_and_settings_match_catalogue);
     RUN_TEST(test_default_config_fixture_is_current);
-    RUN_TEST(test_rules_not_in_effect);
     RUN_TEST(test_report_document);
     RUN_TEST(test_dependents_survive_dependency_round_trip);
     return UNITY_END();

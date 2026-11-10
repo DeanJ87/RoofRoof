@@ -5,9 +5,9 @@ namespace SQM
     namespace Alpaca
     {
         void ClientWatch::update(
-            const DeviceActivity (&activity)[DEVICE_COUNT], const uint32_t (&silenceMs)[DEVICE_COUNT], bool alpacaEnabled, uint32_t nowMs)
+            const DeviceActivity (&activity)[MAX_DEVICES], const uint32_t (&silenceMs)[MAX_DEVICES], bool alpacaEnabled, uint32_t nowMs)
         {
-            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            for (size_t i = 0; i < MAX_DEVICES; ++i)
             {
                 const DeviceActivity &now = activity[i];
                 Seen &last = seen[i];
@@ -56,9 +56,9 @@ namespace SQM
             }
         }
 
-        void ClientWatch::restoreConnections(const bool (&connected)[DEVICE_COUNT], uint32_t nowMs)
+        void ClientWatch::restoreConnections(const bool (&connected)[MAX_DEVICES], uint32_t nowMs)
         {
-            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            for (size_t i = 0; i < MAX_DEVICES; ++i)
             {
                 if (!connected[i])
                     continue;
@@ -69,7 +69,7 @@ namespace SQM
 
         void ClientWatch::reset()
         {
-            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            for (size_t i = 0; i < MAX_DEVICES; ++i)
             {
                 states[i] = ClientState{};
                 seen[i] = Seen{};

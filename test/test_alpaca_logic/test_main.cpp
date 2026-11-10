@@ -1,193 +1,15 @@
-#include "AlpacaRouter.h"
 #include <cstring>
 #include <unity.h>
-#include <cstring>
-#include "SafetyEvaluator.h"
-#include "ObservingConditionsMapper.h"
+
 #include "AlpacaDiscovery.h"
 #include "AlpacaProtocol.h"
+#include "AlpacaRouter.h"
 #include "ClientWatch.h"
 
 using namespace SQM::Alpaca;
 
 void setUp(void) {}
 void tearDown(void) {}
-
-namespace
-{
-    ObservingConditionsSnapshot allValidSnapshot()
-    {
-        ObservingConditionsSnapshot snap;
-        for (SourceState *source : {&snap.skyLight, &snap.irSky, &snap.environment})
-        {
-            source->present = true;
-            source->valid = true;
-        }
-        return snap;
-    }
-} // namespace
-
-void test_observing_conditions_maps_known_property(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.skyQualityMagArcsec2 = 21.3f;
-
-    PropertyResult r = getObservingConditionsProperty("SkyQuality", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(21.3f, r.value);
-}
-
-void test_observing_conditions_case_insensitive(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.temperatureC = 12.5f;
-
-    PropertyResult r = getObservingConditionsProperty("TEMPERATURE", snap);
-    TEST_ASSERT_TRUE(r.ok);
-}
-
-// D-22 (specs/020-settings-dependencies): wind properties need the anemometer.
-void test_observing_conditions_not_implemented_property(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot(); // wind not present
-
-    PropertyResult r = getObservingConditionsProperty("windspeed", snap);
-    TEST_ASSERT_FALSE(r.ok);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
-
-    r = getObservingConditionsProperty("starfwhm", snap);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
-}
-
-void test_observing_conditions_average_period_always_zero(void)
-{
-    ObservingConditionsSnapshot snap; // nothing valid - shouldn't matter
-    PropertyResult r = getObservingConditionsProperty("averageperiod", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(0.0, r.value);
-}
-
-void test_observing_conditions_no_data_error(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.environment.valid = false;
-
-    PropertyResult r = getObservingConditionsProperty("humidity", snap);
-    TEST_ASSERT_FALSE(r.ok);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, r.errorNumber);
-}
-
-void test_observing_conditions_one_sensor_down_others_ok(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.environment.valid = false;
-    snap.skyTemperatureC = -20.0f;
-
-    TEST_ASSERT_FALSE(getObservingConditionsProperty("pressure", snap).ok);
-    PropertyResult r = getObservingConditionsProperty("skytemperature", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(-20.0f, r.value);
-}
-
-void test_observing_conditions_unknown_property(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-
-    PropertyResult r = getObservingConditionsProperty("bogus", snap);
-    TEST_ASSERT_FALSE(r.ok);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, r.errorNumber);
-}
-
-void test_observing_conditions_pressure(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.pressureHPa = 1013.2f;
-
-    PropertyResult r = getObservingConditionsProperty("pressure", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(1013.2f, r.value);
-}
-
-// D-21 (specs/020-settings-dependencies): RainRate needs the rain sensor.
-void test_observing_conditions_rainrate_depends_on_rain_sensor(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.rainRateMmPerHour = 2.5f;
-
-    // Rain sensor disabled -> NotImplemented
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getObservingConditionsProperty("rainrate", snap).errorNumber);
-
-    // Enabled but offline -> driver error
-    snap.rain.present = true;
-    TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, getObservingConditionsProperty("rainrate", snap).errorNumber);
-
-    snap.rain.valid = true;
-    PropertyResult r = getObservingConditionsProperty("rainrate", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(2.5f, r.value);
-}
-
-void test_rain_rate_imperial_conversion(void)
-{
-    TEST_ASSERT_EQUAL_FLOAT(25.4f, rainRateToMmPerHour(1.0f, true));
-    TEST_ASSERT_EQUAL_FLOAT(3.0f, rainRateToMmPerHour(3.0f, false));
-}
-
-void test_wind_direction_zero_when_calm(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.wind.present = true;
-    snap.wind.valid = true;
-    snap.windVane.present = true;
-    snap.windVane.valid = true;
-    snap.windDirectionDeg = 270.0f;
-    snap.windSpeedMs = 0.0f;
-    TEST_ASSERT_EQUAL_FLOAT(0.0f, getObservingConditionsProperty("winddirection", snap).value);
-    snap.windSpeedMs = 3.0f;
-    TEST_ASSERT_EQUAL_FLOAT(270.0f, getObservingConditionsProperty("winddirection", snap).value);
-}
-
-void test_sensor_description(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-
-    StringResult r = getSensorDescription("Pressure", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_TRUE(r.value.find("BME280") != std::string::npos);
-
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription("StarFWHM", snap).errorNumber);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription("RainRate", snap).errorNumber);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, getSensorDescription("bogus", snap).errorNumber);
-}
-
-void test_time_since_last_update(void)
-{
-    ObservingConditionsSnapshot snap = allValidSnapshot();
-    snap.skyLight.ageSeconds = 0.4;
-    snap.irSky.ageSeconds = 3.0;
-    snap.environment.ageSeconds = 2.0;
-
-    PropertyResult r = getTimeSinceLastUpdate("", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(0.4, r.value);
-
-    r = getTimeSinceLastUpdate("humidity", snap);
-    TEST_ASSERT_TRUE(r.ok);
-    TEST_ASSERT_EQUAL_FLOAT(2.0, r.value);
-
-    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_IMPLEMENTED, getTimeSinceLastUpdate("windspeed", snap).errorNumber);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, getTimeSinceLastUpdate("bogus", snap).errorNumber);
-
-    ObservingConditionsSnapshot empty;
-    TEST_ASSERT_EQUAL(ALPACA_ERR_DRIVER_BASE, getTimeSinceLastUpdate("", empty).errorNumber);
-}
-
-void test_average_period_validation(void)
-{
-    TEST_ASSERT_TRUE(validateAveragePeriod(0.0).ok);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, validateAveragePeriod(1.0).errorNumber);
-    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_VALUE, validateAveragePeriod(-1.0).errorNumber);
-}
 
 void test_alpaca_double_parsing(void)
 {
@@ -276,31 +98,35 @@ void test_alpaca_bool_parsing(void)
 
 void test_unique_id_includes_mac(void)
 {
-    TEST_ASSERT_EQUAL_STRING(
-        "sqmeter-a1b2c3d4e5f6-observingconditions-0", buildUniqueId(0xA1B2C3D4E5F6ULL, "observingconditions", 0).c_str());
+    TEST_ASSERT_EQUAL_STRING("roofroof-a1b2c3d4e5f6-dome-0", buildUniqueId(0xA1B2C3D4E5F6ULL, "dome", 0).c_str());
     // Upper 16 bits of the efuse value are ignored; short MACs are zero-padded.
-    TEST_ASSERT_EQUAL_STRING("sqmeter-000000000001-safetymonitor-0", buildUniqueId(0xFFFF000000000001ULL, "safetymonitor", 0).c_str());
+    TEST_ASSERT_EQUAL_STRING("roofroof-000000000001-switch-1", buildUniqueId(0xFFFF000000000001ULL, "switch", 1).c_str());
 }
 
-// --- Rain safety ---
+// --- Router ---
 
 namespace
 {
+    // Two stand-in devices: the router must work for whatever list the
+    // Backend gives (spec 006 adds the real Dome).
     class FakeBackend : public SQM::Alpaca::Backend
     {
     public:
         bool enabled = true;
-        bool safe = true;
-        ObservingConditionsSnapshot snapshot;
+        std::vector<DeviceInfo> list = {
+            {"Dome", "dome", 0, "Test dome", "A dome for the router tests", 3},
+            {"Switch", "switch", 1, "Test switch", "A switch for the router tests", 3},
+        };
         bool alpacaEnabled() const override { return enabled; }
-        bool isSafe() const override { return safe; }
-        ObservingConditionsSnapshot observingConditions() const override { return snapshot; }
+        std::vector<DeviceInfo> devices() const override { return list; }
         std::string name = "Observatory";
-        std::string where = "51.4779, -0.0015";
+        std::string where = "";
         std::string serverName() const override { return name; }
         std::string location() const override { return where; }
         std::string timestampUtc() const override { return ""; }
     };
+
+    const ServerIdentity IDENTITY{"RoofRoof", "RoofRoof", "1.2.3", 0x1234};
 
     SQM::Alpaca::Response route(
         SQM::Alpaca::Router &router, bool put, const std::string &path, std::vector<std::pair<std::string, std::string>> params = {})
@@ -316,32 +142,63 @@ namespace
     }
 } // namespace
 
-void test_router_issafe_and_transaction_ids(void)
+void test_router_common_methods_come_from_the_device_list(void)
 {
     FakeBackend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
-    SQM::Alpaca::Response r = route(router, false, "/api/v1/safetymonitor/0/issafe", {{"clienttransactionid", "7"}});
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    SQM::Alpaca::Response r = route(router, false, "/api/v1/dome/0/name", {{"clienttransactionid", "7"}});
     TEST_ASSERT_EQUAL(200, r.status);
     TEST_ASSERT_EQUAL_STRING(
-        "{\"Value\":true,\"ClientTransactionID\":7,\"ServerTransactionID\":1,\"ErrorNumber\":0,\"ErrorMessage\":\"\"}", r.body.c_str());
-    backend.safe = false;
-    r = route(router, false, "/api/v1/safetymonitor/0/issafe");
-    TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"Value\":false"));
+        "{\"Value\":\"Test dome\",\"ClientTransactionID\":7,\"ServerTransactionID\":1,\"ErrorNumber\":0,\"ErrorMessage\":\"\"}",
+        r.body.c_str());
+    r = route(router, false, "/api/v1/switch/1/interfaceversion");
+    TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"Value\":3"));
     TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"ServerTransactionID\":2"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/dome/0/description").body.c_str(), "A dome for the router tests"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/dome/0/supportedactions").body.c_str(), "\"Value\":[]"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/dome/0/connecting").body.c_str(), "\"Value\":false"));
+}
+
+void test_router_configured_devices_lists_the_backend_devices(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    const std::string body = route(router, false, "/management/v1/configureddevices").body;
+    TEST_ASSERT_NOT_NULL(strstr(body.c_str(), "\"DeviceType\":\"Dome\""));
+    TEST_ASSERT_NOT_NULL(strstr(body.c_str(), "\"UniqueID\":\"roofroof-000000001234-dome-0\""));
+    TEST_ASSERT_NOT_NULL(strstr(body.c_str(), "\"UniqueID\":\"roofroof-000000001234-switch-1\""));
+    backend.list.clear();
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/management/v1/configureddevices").body.c_str(), "\"Value\":[]"));
+}
+
+// spec 001: with no devices, discovery and management still answer, and every
+// device path is a plain 400.
+void test_router_with_no_devices(void)
+{
+    FakeBackend backend;
+    backend.list.clear();
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/management/apiversions").body.c_str(), "\"Value\":[1]"));
+    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/dome/0/name").status);
+    TEST_ASSERT_FALSE(router.anyConnected());
 }
 
 void test_router_bad_requests_are_plain_400(void)
 {
     FakeBackend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    SQM::Alpaca::Router router(backend, IDENTITY);
     TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/telescope/0/name").status);
-    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/safetymonitor/1/name").status);
-    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/safetymonitor/0/issafe").status);
-    const SQM::Alpaca::Response r = route(router, false, "/api/v1/safetymonitor/0/bogus");
+    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/dome/1/name").status);
+    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/dome/0/name").status);
+    TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/dome/0/name/extra").status);
+    // Device-specific methods arrive with the device (spec 006).
+    const SQM::Alpaca::Response r = route(router, false, "/api/v1/dome/0/shutterstatus");
+    TEST_ASSERT_EQUAL(400, r.status);
     TEST_ASSERT_EQUAL_STRING("text/plain", r.contentType);
+    TEST_ASSERT_EQUAL(400, route(router, false, "/management/v1/bogus").status);
     SQM::Alpaca::Request other;
     other.get = true;
-    other.path = "/api/sensors";
+    other.path = "/api/status";
     SQM::Alpaca::Response unused;
     TEST_ASSERT_FALSE(router.handle(other, unused));
 }
@@ -349,54 +206,67 @@ void test_router_bad_requests_are_plain_400(void)
 void test_router_put_parameter_casing(void)
 {
     FakeBackend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
-    TEST_ASSERT_EQUAL(200, route(router, true, "/api/v1/observingconditions/0/averageperiod", {{"AveragePeriod", "0"}}).status);
-    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/observingconditions/0/averageperiod", {{"averageperiod", "0"}}).status);
-    const SQM::Alpaca::Response r = route(router, true, "/api/v1/observingconditions/0/refresh", {{"clienttransactionid", "9"}});
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    TEST_ASSERT_EQUAL(200, route(router, true, "/api/v1/dome/0/connected", {{"Connected", "True"}}).status);
+    TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/dome/0/connected", {{"connected", "True"}}).status);
+    const SQM::Alpaca::Response r = route(router, true, "/api/v1/dome/0/connect", {{"clienttransactionid", "9"}});
     TEST_ASSERT_NOT_NULL(strstr(r.body.c_str(), "\"ClientTransactionID\":0"));
+}
+
+void test_router_custom_actions_are_not_implemented(void)
+{
+    FakeBackend backend;
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    for (const char *method : {"action", "commandblind", "commandbool", "commandstring"})
+    {
+        const SQM::Alpaca::Response r = route(router, true, std::string("/api/v1/dome/0/") + method);
+        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(r.body.c_str(), "\"ErrorNumber\":1024"), method);
+    }
 }
 
 // D-20: with Alpaca off, nothing is served.
 void test_router_connected_and_disabled(void)
 {
     FakeBackend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
-    route(router, true, "/api/v1/observingconditions/0/connected", {{"Connected", "True"}});
-    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/observingconditions/0/connected").body.c_str(), "\"Value\":true"));
-    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/safetymonitor/0/connected").body.c_str(), "\"Value\":false"));
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    route(router, true, "/api/v1/switch/1/connected", {{"Connected", "True"}});
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/switch/1/connected").body.c_str(), "\"Value\":true"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/dome/0/connected").body.c_str(), "\"Value\":false"));
     backend.enabled = false;
-    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/safetymonitor/0/issafe").body.c_str(), "\"ErrorNumber\":1031"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/api/v1/switch/1/connected").body.c_str(), "\"Value\":false"));
+    TEST_ASSERT_NOT_NULL(strstr(route(router, true, "/api/v1/dome/0/connect").body.c_str(), "\"ErrorNumber\":1031"));
     TEST_ASSERT_NOT_NULL(strstr(route(router, false, "/management/v1/configureddevices").body.c_str(), "\"Value\":[]"));
 }
 
-// --- Client activity and ClientWatch (specs/021) ---
+// --- Client activity and ClientWatch (SQMeter spec 021) ---
 
 void test_router_counts_requests_disconnects_and_client_id(void)
 {
     FakeBackend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
-    route(router, true, "/api/v1/safetymonitor/0/connected", {{"Connected", "True"}, {"ClientID", "42"}});
-    route(router, false, "/api/v1/safetymonitor/0/issafe", {{"ClientID", "42"}});
-    route(router, false, "/management/v1/description");                              // management requests don't count
-    route(router, false, "/api/v1/safetymonitor/0/devicestate", {{"source", "ui"}}); // nor the web UI's own
-    DeviceActivity sm = router.activity(Device::SafetyMonitor);
+    SQM::Alpaca::Router router(backend, IDENTITY);
+    route(router, true, "/api/v1/dome/0/connected", {{"Connected", "True"}, {"ClientID", "42"}});
+    route(router, false, "/api/v1/dome/0/name", {{"ClientID", "42"}});
+    route(router, false, "/management/v1/description");                // management requests don't count
+    route(router, false, "/api/v1/dome/0/name", {{"source", "ui"}});   // nor the web UI's own
+    DeviceActivity sm = router.activity(0);
     TEST_ASSERT_TRUE(sm.connected);
     TEST_ASSERT_EQUAL_UINT32(2, sm.requests);
     TEST_ASSERT_EQUAL_UINT32(0, sm.disconnects);
     TEST_ASSERT_TRUE(sm.hasClientId);
     TEST_ASSERT_EQUAL_UINT32(42, sm.clientId);
-    TEST_ASSERT_EQUAL_UINT32(0, router.activity(Device::ObservingConditions).requests);
+    TEST_ASSERT_EQUAL_UINT32(0, router.activity(1).requests);
 
-    route(router, true, "/api/v1/safetymonitor/0/disconnect");
-    route(router, true, "/api/v1/safetymonitor/0/connected", {{"Connected", "False"}}); // already disconnected
-    sm = router.activity(Device::SafetyMonitor);
+    route(router, true, "/api/v1/dome/0/disconnect");
+    route(router, true, "/api/v1/dome/0/connected", {{"Connected", "False"}}); // already disconnected
+    sm = router.activity(0);
     TEST_ASSERT_FALSE(sm.connected);
     TEST_ASSERT_EQUAL_UINT32(1, sm.disconnects);
 
-    route(router, true, "/api/v1/observingconditions/0/connect");
+    route(router, true, "/api/v1/switch/1/connect");
+    TEST_ASSERT_TRUE(router.anyConnected());
     router.resetConnections();
     TEST_ASSERT_FALSE(router.anyConnected());
-    TEST_ASSERT_EQUAL_UINT32(0, router.activity(Device::ObservingConditions).disconnects);
+    TEST_ASSERT_EQUAL_UINT32(0, router.activity(1).disconnects);
 }
 
 namespace
@@ -404,27 +274,26 @@ namespace
     struct WatchRig
     {
         FakeBackend backend;
-        SQM::Alpaca::Router router{backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234}};
+        SQM::Alpaca::Router router{backend, IDENTITY};
         ClientWatch watch;
-        uint32_t silence[DEVICE_COUNT] = {120000, 600000};
+        uint32_t silence[MAX_DEVICES] = {120000, 600000};
         bool enabled = true;
 
         void tick(uint32_t nowMs)
         {
-            const DeviceActivity activity[DEVICE_COUNT] = {
-                router.activity(Device::SafetyMonitor), router.activity(Device::ObservingConditions)};
+            const DeviceActivity activity[MAX_DEVICES] = {router.activity(0), router.activity(1)};
             watch.update(activity, silence, enabled, nowMs);
         }
-        const ClientState &sm() const { return watch.state(Device::SafetyMonitor); }
-        const ClientState &oc() const { return watch.state(Device::ObservingConditions); }
-        void poll(const char *device = "safetymonitor") { route(router, false, std::string("/api/v1/") + device + "/0/issafe"); }
-        void connect(const char *device = "safetymonitor")
+        const ClientState &sm() const { return watch.state(0); }
+        const ClientState &oc() const { return watch.state(1); }
+        void poll(const char *device = "dome/0") { route(router, false, std::string("/api/v1/") + device + "/name"); }
+        void connect(const char *device = "dome/0")
         {
-            route(router, true, std::string("/api/v1/") + device + "/0/connected", {{"Connected", "True"}});
+            route(router, true, std::string("/api/v1/") + device + "/connected", {{"Connected", "True"}});
         }
-        void disconnect(const char *device = "safetymonitor")
+        void disconnect(const char *device = "dome/0")
         {
-            route(router, true, std::string("/api/v1/") + device + "/0/connected", {{"Connected", "False"}});
+            route(router, true, std::string("/api/v1/") + device + "/connected", {{"Connected", "False"}});
         }
     };
 } // namespace
@@ -491,18 +360,18 @@ void test_watch_devices_and_clients_are_separate(void)
 {
     WatchRig rig;
     rig.tick(0);
-    rig.connect("safetymonitor");
-    rig.connect("observingconditions");
+    rig.connect("dome/0");
+    rig.connect("switch/1");
     rig.tick(1000);
-    // Two clients on the safety monitor: one polling is enough.
+    // Only the first device is polled; each has its own silence time.
     for (uint32_t t = 2000; t < 600000; t += 5000)
     {
-        rig.poll("safetymonitor");
+        rig.poll("dome/0");
         rig.tick(t);
     }
     TEST_ASSERT_FALSE(rig.sm().silent);
-    TEST_ASSERT_FALSE(rig.oc().silent); // weather has 10 minutes
-    rig.poll("safetymonitor");
+    TEST_ASSERT_FALSE(rig.oc().silent); // the second has 10 minutes
+    rig.poll("dome/0");
     rig.tick(1000 + 600001);
     TEST_ASSERT_TRUE(rig.oc().silent);
     TEST_ASSERT_FALSE(rig.sm().silent);
@@ -534,26 +403,10 @@ void test_watch_reset_forgets_everything(void)
     TEST_ASSERT_FALSE(rig.sm().silent);
 }
 
-void test_sky_sensor_descriptions();
-
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
 
-    RUN_TEST(test_observing_conditions_maps_known_property);
-    RUN_TEST(test_observing_conditions_case_insensitive);
-    RUN_TEST(test_observing_conditions_not_implemented_property);
-    RUN_TEST(test_observing_conditions_average_period_always_zero);
-    RUN_TEST(test_observing_conditions_no_data_error);
-    RUN_TEST(test_observing_conditions_unknown_property);
-    RUN_TEST(test_observing_conditions_one_sensor_down_others_ok);
-    RUN_TEST(test_observing_conditions_pressure);
-    RUN_TEST(test_observing_conditions_rainrate_depends_on_rain_sensor);
-    RUN_TEST(test_rain_rate_imperial_conversion);
-    RUN_TEST(test_wind_direction_zero_when_calm);
-    RUN_TEST(test_sensor_description);
-    RUN_TEST(test_time_since_last_update);
-    RUN_TEST(test_average_period_validation);
     RUN_TEST(test_alpaca_double_parsing);
 
     RUN_TEST(test_discovery_valid_packet);
@@ -564,13 +417,17 @@ int main(int argc, char **argv)
 
     RUN_TEST(test_param_name_case_insensitive);
     RUN_TEST(test_put_param_names_are_case_sensitive);
-    RUN_TEST(test_router_issafe_and_transaction_ids);
-    RUN_TEST(test_router_bad_requests_are_plain_400);
-    RUN_TEST(test_router_put_parameter_casing);
-    RUN_TEST(test_router_connected_and_disabled);
     RUN_TEST(test_client_transaction_id_parsing);
     RUN_TEST(test_alpaca_bool_parsing);
     RUN_TEST(test_unique_id_includes_mac);
+
+    RUN_TEST(test_router_common_methods_come_from_the_device_list);
+    RUN_TEST(test_router_configured_devices_lists_the_backend_devices);
+    RUN_TEST(test_router_with_no_devices);
+    RUN_TEST(test_router_bad_requests_are_plain_400);
+    RUN_TEST(test_router_put_parameter_casing);
+    RUN_TEST(test_router_custom_actions_are_not_implemented);
+    RUN_TEST(test_router_connected_and_disabled);
 
     RUN_TEST(test_router_counts_requests_disconnects_and_client_id);
     RUN_TEST(test_watch_silence_and_recovery);
@@ -579,7 +436,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_watch_devices_and_clients_are_separate);
     RUN_TEST(test_watch_off_when_alpaca_disabled);
     RUN_TEST(test_watch_reset_forgets_everything);
-    RUN_TEST(test_sky_sensor_descriptions);
 
     return UNITY_END();
 }

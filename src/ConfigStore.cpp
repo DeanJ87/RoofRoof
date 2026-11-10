@@ -10,53 +10,22 @@
 
 namespace SQM
 {
-    static const char *NVS_NAMESPACE = "sqm";
-    static const char *NVS_CONFIG_KEY = "config";
-    static const char *NVS_ALERTS_KEY = "alerts";
-    // The imaging-app alert settings (Config::AlertsPart::Client): their own
-    // key keeps both alerts strings under the NVS limit.
-    static const char *NVS_ALERTS_CLIENT_KEY = "alertclient";
-    // The battery events (Config::AlertsPart::Battery, spec 032).
-    static const char *NVS_ALERTS_BATTERY_KEY = "alertsBatt";
+    static const char *NVS_NAMESPACE = "roofroof";
 
-    // Each document is stored as a blob under these keys. An NVS string must
-    // fit in one 4 KB page, and on a device whose pages are already part used
-    // (any device upgraded from older firmware) there's often no single page
-    // with room for the ~3 KB config, so the save failed; a blob can span
-    // pages. The string keys above are only read, to carry older settings over.
-    struct StoredDoc
-    {
-        const char *blobKey;
-        const char *legacyKey;
-    };
-    static const StoredDoc DOC_CONFIG{"configB", NVS_CONFIG_KEY};
-    static const StoredDoc DOC_ALERTS{"alertsB", NVS_ALERTS_KEY};
-    static const StoredDoc DOC_ALERTS_CLIENT{"alertclientB", NVS_ALERTS_CLIENT_KEY};
-    static const StoredDoc DOC_ALERTS_BATTERY{"alertsBattB", NVS_ALERTS_BATTERY_KEY};
+    // Each document is a blob: an NVS string must fit in one 4 KB page, and on
+    // a device whose pages are part used there's often no single page with
+    // room for the config; a blob can span pages. The imaging-app alert
+    // settings (Config::AlertsPart::Client) have their own key so both alerts
+    // documents stay under the NVS limit.
+    static const char *KEY_CONFIG = "configB";
+    static const char *KEY_ALERTS = "alertsB";
+    static const char *KEY_ALERTS_CLIENT = "alertclientB";
 
     namespace
     {
-        // Reads an NVS string straight into heap memory. Preferences::getString()
-        // copies through a variable-length array on the stack - ~2 KB for the
-        // config JSON, which nearly overflowed the 8 KB loop task during setup().
-        bool readNvsString(const char *key, std::string &out)
-        {
-            nvs_handle_t handle;
-            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
-                return false;
-            size_t length = 0;
-            bool ok = nvs_get_str(handle, key, nullptr, &length) == ESP_OK && length > 0;
-            if (ok)
-            {
-                out.assign(length, '\0');
-                ok = nvs_get_str(handle, key, &out[0], &length) == ESP_OK;
-                out.resize(length > 0 ? length - 1 : 0); // drop the terminator
-            }
-            nvs_close(handle);
-            return ok;
-        }
-
-        // Reads a blob straight into heap memory, like readNvsString.
+        // Reads a blob straight into heap memory. Preferences copies through a
+        // variable-length array on the stack - ~2 KB for the config JSON, which
+        // nearly overflowed the loop task during setup() on SQMeter.
         bool readNvsBlob(const char *key, std::string &out)
         {
             nvs_handle_t handle;
@@ -74,34 +43,22 @@ namespace SQM
             return ok;
         }
 
-        // The stored document: the blob, or the string older firmware wrote.
-        bool readDoc(const StoredDoc &doc, std::string &out)
+        // Writes the document as a blob; an empty document removes it.
+        bool writeDoc(Preferences &prefs, const char *key, const std::string &json)
         {
-            return readNvsBlob(doc.blobKey, out) || readNvsString(doc.legacyKey, out);
-        }
-
-        // Writes the document as a blob and drops the string older firmware
-        // wrote, freeing its page space. An empty document removes both.
-        bool writeDoc(Preferences &prefs, const StoredDoc &doc, const std::string &json)
-        {
-            bool ok;
             if (json.empty())
             {
-                prefs.remove(doc.blobKey);
-                ok = true;
+                prefs.remove(key);
+                return true;
             }
-            else
-                ok = prefs.putBytes(doc.blobKey, json.data(), json.size()) == json.size();
-            if (ok && prefs.isKey(doc.legacyKey))
-                prefs.remove(doc.legacyKey);
-            return ok;
+            return prefs.putBytes(key, json.data(), json.size()) == json.size();
         }
 
         // A stored alerts part, or "" when there is none.
-        std::string readStoredPart(const StoredDoc &doc)
+        std::string readStoredPart(const char *key)
         {
             std::string part;
-            if (!readDoc(doc, part))
+            if (!readNvsBlob(key, part))
                 part.clear();
             return part;
         }
@@ -112,7 +69,7 @@ namespace SQM
         Logger::info(TAG, "Loading configuration from NVS");
 
         std::string json;
-        if (!readDoc(DOC_CONFIG, json) || json.empty())
+        if (!readNvsBlob(KEY_CONFIG, json) || json.empty())
         {
             Logger::warn(TAG, "No config found in NVS, creating default");
             out = createDefault();
@@ -129,11 +86,10 @@ namespace SQM
 
         // Alerts live under their own NVS keys; splice them into the main
         // document and parse once, straight into the caller's Config.
-        const std::string alertsJson = readStoredPart(DOC_ALERTS);
-        const std::string clientJson = readStoredPart(DOC_ALERTS_CLIENT);
-        const std::string batteryJson = readStoredPart(DOC_ALERTS_BATTERY);
-        const bool haveParts = !alertsJson.empty() || !clientJson.empty() || !batteryJson.empty();
-        const std::string spliced = spliceStored(json, alertsJson, clientJson, batteryJson);
+        const std::string alertsJson = readStoredPart(KEY_ALERTS);
+        const std::string clientJson = readStoredPart(KEY_ALERTS_CLIENT);
+        const bool haveParts = !alertsJson.empty() || !clientJson.empty();
+        const std::string spliced = spliceStored(json, alertsJson, clientJson);
 
         out = createDefault();
         std::string reason;
@@ -170,7 +126,6 @@ namespace SQM
         std::string json = toJson(false, false);
         const std::string alertsJson = alertsToJson(false, AlertsPart::Main);
         const std::string clientJson = alertsToJson(false, AlertsPart::Client);
-        const std::string batteryJson = alertsToJson(false, AlertsPart::Battery);
         Logger::info(
             TAG,
             "Config JSON to save (%u bytes, alerts %u bytes)",
@@ -194,9 +149,8 @@ namespace SQM
             return false;
         }
 
-        const bool alertsOk = writeDoc(prefs, DOC_ALERTS, alertsJson) && writeDoc(prefs, DOC_ALERTS_CLIENT, clientJson) &&
-                              writeDoc(prefs, DOC_ALERTS_BATTERY, batteryJson);
-        const bool configOk = writeDoc(prefs, DOC_CONFIG, json);
+        const bool alertsOk = writeDoc(prefs, KEY_ALERTS, alertsJson) && writeDoc(prefs, KEY_ALERTS_CLIENT, clientJson);
+        const bool configOk = writeDoc(prefs, KEY_CONFIG, json);
         prefs.end();
 
         if (!alertsOk)

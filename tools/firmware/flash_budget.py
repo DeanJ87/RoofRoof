@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Firmware flash budget (coding standard SIZE-04, spec 027 FR-001..FR-003).
 
-For each firmware build (ENVS: classic ESP32 and the ESP32-S3 boards, each with
-and without Bluetooth), compares firmware.bin with the app slot of that build's
-own partition table (board_build.partitions in platformio.ini):
+For each firmware build (ENVS: the one ESP32 DevKit build), compares
+firmware.bin with the app slot of that build's own partition table (board_build.partitions in platformio.ini):
 
 - warns (GitHub annotation) above 90% of the slot, fails above 95%, listing
   the largest contributors from the linker map (tools/firmware/size_map.py);
@@ -47,13 +46,6 @@ BASELINE_PATH = "tools/firmware/size-baseline.json"
 REASON_KEY = "overBudgetReason"
 ENVS = (
     "esp32dev",
-    "esp32dev-ble",
-    "esp32s3-eth",
-    "esp32s3-eth-ble",
-    "esp32s3-zero",
-    "esp32s3-zero-ble",
-    "esp32s3-zero8",
-    "esp32s3-zero8-ble",
 )
 TOP = 10
 

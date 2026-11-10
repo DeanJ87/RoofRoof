@@ -33,14 +33,14 @@ namespace SQM
         struct ConnectionMemory
         {
             uint32_t magic = 0;
-            uint8_t connected = 0; // bit per Device
+            uint8_t connected = 0; // bit per device index
             uint8_t check = 0;
         };
 
-        ConnectionMemory rememberConnections(const bool (&connected)[DEVICE_COUNT]);
+        ConnectionMemory rememberConnections(const bool (&connected)[MAX_DEVICES]);
 
         // False when the memory doesn't hold a valid record.
-        bool recallConnections(const ConnectionMemory &memory, bool (&connected)[DEVICE_COUNT]);
+        bool recallConnections(const ConnectionMemory &memory, bool (&connected)[MAX_DEVICES]);
 
     } // namespace Alpaca
 } // namespace SQM

@@ -1,22 +1,12 @@
 #pragma once
 
-#include <string>
-#include <optional>
-#include <cstdint>
 #include <cstddef>
-
-#include "BoardProfile.h"
-#include "DisplayTypes.h"
-#include "SensorTypes.h"
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace SQM
 {
-
-    enum class TimeSource
-    {
-        NTP = 0,
-        GPS = 1
-    };
 
     struct WiFiConfig
     {
@@ -24,7 +14,7 @@ namespace SQM
         std::string password;
         std::string hostname;
         bool mdns = true; // advertise <hostname>.local and the HTTP service
-        bool ipv6 = true; // dual stack on the joined network (spec 015); applies at restart
+        bool ipv6 = true; // dual stack on the joined network (SQMeter spec 015); applies at restart
         bool autoReconnect;
         uint32_t reconnectDelayMs;
         uint32_t maxReconnectDelayMs;
@@ -37,20 +27,12 @@ namespace SQM
         uint16_t port;
         std::string username;
         std::string password;
-        std::string topic; // base topic: <topic>/state, /safe, /alerts, ...
+        std::string topic; // base topic: <topic>/availability, /alerts, ...
         uint32_t publishIntervalMs;
-        // What <topic>/state (and the other topics) carry; see
-        // specs/013-data-interfaces/contracts/mqtt-topics.md.
+        // What the device publishes besides availability and alerts. Spec 008
+        // adds the roof's groups.
         struct Publish
         {
-            bool sky = true; // light + sky quality
-            bool environment = true;
-            bool clouds = true; // IR temperatures + cloud cover
-            bool gps = true;
-            bool rain = true;
-            bool wind = true;
-            bool battery = true;      // battery group (spec 032)
-            bool safety = true;       // <topic>/safe and <topic>/safety
             bool diagnostics = false; // <topic>/diagnostics
         } publish;
         bool homeAssistant = false; // MQTT discovery
@@ -76,136 +58,23 @@ namespace SQM
         std::string server1;     // Primary NTP server (e.g., "pool.ntp.org")
         std::string server2;     // Secondary NTP server (optional fallback)
         std::string timezone;    // POSIX timezone string (e.g., "PST8PDT,M3.2.0,M11.1.0")
-        uint32_t syncIntervalMs; // How often to sync with NTP (default: 1 hour)
+        uint32_t syncIntervalMs; // How often to sync with NTP
     };
 
-    struct GPSConfig
-    {
-        bool enabled;
-        uint8_t rxPin;
-        uint8_t txPin;
-        uint32_t baudRate;
-    };
-
-    struct RainConfig
-    {
-        bool enabled;
-        uint8_t rxPin;
-        uint8_t txPin;
-        uint32_t baudRate;
-        bool debugUart;
-        std::string mode;       // retained for compatibility; RG-15 uses polling only
-        std::string resolution; // "high", "low", or "switch"
-        std::string units;      // "metric", "imperial", or "switch"
-        uint32_t pollIntervalMs;
-        uint32_t rainClearDelayMs;
-        bool dailyResetEnabled;
-        uint8_t dailyResetHour;
-        uint8_t dailyResetMinute;
-    };
-
-    struct SensorConfig
-    {
-        uint32_t readIntervalMs;
-        uint8_t i2cSDA;
-        uint8_t i2cSCL;
-        uint32_t i2cFrequency;
-        // Second I2C bus (Wire1) for the SQM-L (spec 030); 255 = not wired.
-        static constexpr uint8_t PIN_UNSET = 255;
-        uint8_t i2c2SDA = PIN_UNSET;
-        uint8_t i2c2SCL = PIN_UNSET;
-        bool i2c2Configured() const { return i2c2SDA != PIN_UNSET && i2c2SCL != PIN_UNSET; }
-    };
-
-    // Which sky sensors run and which one's reading counts (spec 030). The
-    // authoritative sensor feeds every single-value consumer (readings sky,
-    // safety, Alpaca, BLE, alerts, Home Assistant); there is no fallback.
-    struct SkyConfig
-    {
-        bool sqmEnabled = true;   // wide sensor on I2C-1
-        bool sqmlEnabled = false; // narrow sensor on I2C-2
-        SkyRole authoritative = SkyRole::Sqm;
-        bool showOther = true; // dashboard shows the other reading and the difference
-    };
-
-    struct SkyAveragingConfig
-    {
-        uint16_t windowSeconds;
-    };
-
-    struct SkyCalibrationConfig
-    {
-        bool enabled;
-        float sqmOffset;
-        float darkVisibleOffset;
-        float darkFullOffset;
-        float darkIrOffset;
-        uint32_t darkSampleCount;
-        int64_t darkCalibratedAt;
-    };
-
-    struct CloudDetectionConfig
-    {
-        float clearSkyThreshold;  // °C, corrected delta below which sky is clear (default: -13.0)
-        float cloudyThreshold;    // °C, corrected delta above which sky is overcast (default: -3.0)
-        float humidityCorrection; // k1 factor for humidity correction (default: 0.75)
-    };
-
-    // Thresholds for the native ASCOM Alpaca SafetyMonitor's "is it safe"
-    // evaluation, ported from the SQMeter-ASCOM-Alpaca Go bridge's config.
-    // Each *_enabled flag matches that bridge's "if configured" semantics -
-    // disabled thresholds never contribute to an unsafe verdict.
+    // ASCOM Alpaca: discovery, the management API and (from spec 006) the Dome.
     struct AlpacaConfig
     {
-        bool enabled;               // master switch for the Alpaca HTTP+UDP endpoints
-        bool manualOverrideUnsafe;  // force SafetyMonitor.IsSafe = false regardless of readings
-        uint32_t staleAfterSeconds; // sensor data older than this counts as unsafe
-
-        bool cloudCoverEnabled;
-        float cloudCoverUnsafePercent;
-
-        bool sqmMinEnabled;
-        float sqmMinSafe;
-
-        bool humidityMaxEnabled;
-        float humidityMaxSafe;
-
-        bool dewpointMarginEnabled;
-        float dewpointMarginMinC;
-
-        // Rain (RG-15). Rain is checked even when the other sensors are
-        // stale - nothing should ever mask "it's raining".
-        bool rainUnsafeEnabled;  // raining (incl. the rainClearDelayMs hold-off) => unsafe
-        bool rainSensorRequired; // rain sensor enabled but offline/stale/lens fault => unsafe
-
-        // Wind (anemometer). Like rain, checked regardless of the other
-        // sensors' freshness.
-        bool windSpeedUnsafeEnabled;
-        float windSpeedUnsafeMs; // 2-minute mean wind speed
-        bool windGustUnsafeEnabled;
-        float windGustUnsafeMs; // 10-minute peak gust
-
-        // Battery (spec 032). Like rain and wind, checked regardless of the
-        // other sensors' freshness; missing battery data is unsafe.
-        bool batteryEnabled;
-        uint8_t batteryMinPercent; // unsafe below this charge
-        bool batteryAlert;         // Battery rule alert at Urgent when it trips
-        bool batteryPhoneAlarm;    // ring paired phones when it trips (BLE build)
-
-        // Conditions must stay continuously safe this long before IsSafe
-        // flips back to true (0 = report safe immediately).
-        uint32_t safeDelaySeconds;
+        bool enabled; // master switch for the Alpaca HTTP+UDP endpoints
     };
 
-    // Push notifications for safety/rain/sensor events. Persisted under its
-    // own NVS key (see Config::save) - ESP-IDF caps NVS strings at 4000
-    // bytes, and the main config JSON is already close to that.
+    // Push notifications. Persisted under their own NVS keys (see
+    // src/ConfigStore.cpp): ESP-IDF caps NVS strings at 4000 bytes.
     struct AlertsConfig
     {
         bool enabled; // master switch
 
         // Per event: how loudly to alert (0 off, 1 quiet, 2 normal, 3 urgent,
-        // 4 wake me - also rings paired phones) and an optional Pushover sound.
+        // 4 wake me) and an optional Pushover sound.
         struct EventSetting
         {
             uint8_t level;
@@ -219,33 +88,12 @@ namespace SQM
         // Custom wording within the limits, counted in characters (as the
         // web UI counts them), not UTF-8 bytes.
         static bool templateFits(const std::string &title, const std::string &message);
-        EventSetting unsafe;
-        EventSetting safe;
-        EventSetting rainStarted;
-        EventSetting rainStopped;
-        EventSetting sensorFault; // includes the RG-15 lens fault
-        EventSetting sensorRecovered;
-        EventSetting dewRisk;
-        EventSetting clearSky;
-        EventSetting cloudedOver;
         // The imaging app (any Alpaca client) stops checking a device, comes
-        // back, or disconnects normally. Persisted under their own NVS key.
+        // back, or disconnects normally (SQMeter spec 021).
         EventSetting clientLost;
         EventSetting clientBack;
         EventSetting clientDisconnected;
-        // Battery events (spec 032). Persisted under a third NVS key.
-        EventSetting batteryLow;
-        EventSetting batteryCritical;
-        EventSetting batteryShutdown; // going to sleep: battery empty
-        EventSetting powerRestored;
-        EventSetting chargeComplete;
-        EventSetting chargeFault;
 
-        float dewRiskMarginC;          // temperature within this of the dew point
-        float clearSkyCloudPercent;    // clear below this
-        float cloudedOverCloudPercent; // clouded over above this
-        bool skyNightOnly;             // sky alerts only while the sun is below nightSunAltitudeDeg
-        bool safetyNightOnly;          // safe/unsafe alerts only then too
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
         enum class SendMode : uint8_t
@@ -254,15 +102,12 @@ namespace SQM
             WhileConnected = 1,
         };
         SendMode sendMode;
-        bool armWithAlpaca; // legacy form of sendMode, still written for older firmware
         // How long a device may go without a request before "the imaging app
         // stops checking" (seconds, 30-3600).
-        uint32_t clientSilentSafetySeconds;
-        uint32_t clientSilentWeatherSeconds;
+        uint32_t clientSilentSeconds;
         static constexpr uint32_t MIN_CLIENT_SILENT_SECONDS = 30;
         static constexpr uint32_t MAX_CLIENT_SILENT_SECONDS = 3600;
-        float nightSunAltitudeDeg; // -0.833 sunset, -12 nautical, -18 astronomical
-        uint32_t cooldownSeconds;  // min time between notifications of the same kind
+        uint32_t cooldownSeconds; // min time between notifications of the same kind
 
         // Channels
         bool pushoverEnabled;
@@ -280,63 +125,8 @@ namespace SQM
         std::string webhookAuthHeader; // optional Authorization header value
         bool webhookInsecureTls;       // skip certificate checks (self-signed LAN servers only)
 
-        bool mqttEnabled; // publish to <mqtt topic>/alerts and retained <mqtt topic>/safety
+        bool mqttEnabled; // publish to <mqtt topic>/alerts
     };
-
-    // Cup anemometer + optional wind vane (see docs/hardware/wind.md).
-    struct WindConfig
-    {
-        bool enabled;
-        uint8_t speedPin;         // reed-switch anemometer, internal pull-up
-        bool directionEnabled;    // AS5600 vane on the main I2C bus (0x36)
-        float kmhPerHz;           // 2.4 Misol/Argent/SparkFun, 3.621 Davis 6410
-        float directionOffsetDeg; // added to the vane reading to correct mounting
-    };
-
-    // Observing site, for working out when it's dark. A GPS fix takes
-    // precedence; this is the fallback.
-    struct LocationConfig
-    {
-        bool set;
-        double latitude;
-        double longitude;
-        bool showSunMoon; // Sun & Moon card on the dashboard
-    };
-
-    // Only used by the esp32dev-ble firmware build; ignored elsewhere.
-    struct BleConfig
-    {
-        bool enabled; // advertise the SQMeter GATT service (takes effect after a restart)
-
-        // Phone alarm service (pairing required). Without a passkey the
-        // alarm/ack/heartbeat characteristics aren't offered at all. Events
-        // set to "wake me" in the alert settings ring paired phones.
-        std::string passkey; // 6 digits, entered on the phone when pairing
-    };
-
-    // Li-ion pack with a MAX17048 fuel gauge and an MCP73871 charger (spec 032).
-    // Everything acts only while a gauge is detected.
-    struct BatteryConfig
-    {
-        static constexpr uint8_t PIN_UNSET = 255;
-        bool enabled = true; // monitoring
-        uint8_t lowPercent = 20;
-        uint8_t criticalPercent = 10;
-        uint8_t shutdownPercent = 5;
-        uint16_t capacityMah = 0; // 0 = unknown
-        bool powerSaving = true;
-        uint16_t saveReadIntervalSeconds = 30;
-        uint16_t shutdownGraceSeconds = 30;
-        uint8_t alertPin = PIN_UNSET; // gauge ALRT (diagnostics only)
-        uint8_t stat1Pin = PIN_UNSET; // charger STAT1/STAT2/PG: all set or none
-        uint8_t stat2Pin = PIN_UNSET;
-        uint8_t pgPin = PIN_UNSET; // must be RTC-capable (wakes the device)
-        bool chargerPins() const { return stat1Pin != PIN_UNSET && stat2Pin != PIN_UNSET && pgPin != PIN_UNSET; }
-    };
-
-    // Optional SSD1306 OLED on the main I2C bus (spec 031); the struct lives in
-    // lib/DisplayLogic so the display controller can read it.
-    using DisplayConfig = Display::Settings;
 
     struct Config
     {
@@ -345,36 +135,9 @@ namespace SQM
         OTAConfig ota;
         AuthConfig auth;
         NTPConfig ntp;
-        GPSConfig gps;
-        RainConfig rain;
-        SensorConfig sensor;
-        SkyAveragingConfig skyAveraging;
-        SkyCalibrationConfig skyCalibration;
-        // The SQM-L's own averaging and calibration (skyAveraging /
-        // skyCalibration stay the SQM's).
-        SkyConfig sky;
-        SkyAveragingConfig skyAveragingL;
-        SkyCalibrationConfig skyCalibrationL;
-        CloudDetectionConfig cloudDetection;
         AlpacaConfig alpaca;
         AlertsConfig alerts;
-        BleConfig ble;
-        WindConfig wind;
-        LocationConfig location;
-        DisplayConfig display;
-        BatteryConfig battery;
         std::string deviceName;
-        // "en" or a supported code (specs/023-i18n). A fixed array, not
-        // std::string: Config is copied in many places and this keeps each copy cheap.
-        char language[12] = "en";
-        TimeSource primaryTimeSource;   // Primary time source
-        TimeSource secondaryTimeSource; // Fallback time source
-
-        const SkyAveragingConfig &averaging(SkyRole role) const { return role == SkyRole::Sqml ? skyAveragingL : skyAveraging; }
-        SkyAveragingConfig &averaging(SkyRole role) { return role == SkyRole::Sqml ? skyAveragingL : skyAveraging; }
-        const SkyCalibrationConfig &calibration(SkyRole role) const { return role == SkyRole::Sqml ? skyCalibrationL : skyCalibration; }
-        SkyCalibrationConfig &calibration(SkyRole role) { return role == SkyRole::Sqml ? skyCalibrationL : skyCalibration; }
-        bool skyEnabled(SkyRole role) const { return role == SkyRole::Sqml ? sky.sqmlEnabled : sky.sqmEnabled; }
 
         static constexpr const char *TAG = "Config";
         static constexpr size_t MAX_PERSISTED_JSON_BYTES = 5100;
@@ -384,35 +147,27 @@ namespace SQM
         // if nothing valid is stored.
         static bool load(Config &out);
         bool save() const;
-        // Defaults for the board this firmware is built for (BUILD_BOARD), or
-        // for another board (native tests).
         static Config createDefault();
-        static Config createDefault(Board board);
 
         std::string toJson(bool redactSecrets = false, bool includeAlerts = true) const;
         // The alerts settings as stored: Main under the "alerts" NVS key, Client
-        // (the imaging-app events and silence times) under their own key so
-        // each stays under the NVS string limit; Battery (the battery events,
-        // spec 032) has a third key. All is what the API shows.
+        // (the imaging-app events and silence time) under their own key so
+        // each stays under the NVS string limit. All is what the API shows.
         enum class AlertsPart : uint8_t
         {
             All,
             Main,
             Client,
-            Battery,
         };
         static constexpr size_t MAX_ALERTS_JSON_BYTES = 3900;
         // The stored document: the main JSON with each stored alerts part
-        // spliced in ("alerts", "alertsClient", "alertsBattery"); an empty
-        // part is left out. What load() parses (src/ConfigStore.cpp).
-        static std::string spliceStored(
-            const std::string &main, const std::string &alerts, const std::string &client, const std::string &battery);
+        // spliced in ("alerts", "alertsClient"); an empty part is left out.
+        // What load() parses (src/ConfigStore.cpp).
+        static std::string spliceStored(const std::string &main, const std::string &alerts, const std::string &client);
         std::string alertsToJson(bool redactSecrets = false, AlertsPart part = AlertsPart::All) const;
-        bool validate(std::string *error = nullptr) const;
-        // Same, with another board's GPIO rules (native tests).
-        bool validate(const BoardProfile &board, std::string *error = nullptr) const;
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.
+        bool validate(std::string *error = nullptr) const;
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.

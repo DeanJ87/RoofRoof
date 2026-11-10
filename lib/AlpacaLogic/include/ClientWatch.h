@@ -10,7 +10,7 @@ namespace SQM
     {
         // Whether an imaging app is still checking each Alpaca device. The
         // Router counts requests; this turns the counts into "watching" and
-        // "silent" on the device's uptime clock (specs/021, FR-007/FR-008).
+        // "silent" on the device's uptime clock (SQMeter spec 021, FR-007/FR-008).
         struct ClientState
         {
             bool connected = false;
@@ -30,21 +30,22 @@ namespace SQM
         {
         public:
             // Call regularly (every alert pass). `silenceMs` per device, in
-            // Device order. With Alpaca off nothing is watched.
+            // Backend::devices order. With Alpaca off nothing is watched.
             void update(
-                const DeviceActivity (&activity)[DEVICE_COUNT],
-                const uint32_t (&silenceMs)[DEVICE_COUNT],
+                const DeviceActivity (&activity)[MAX_DEVICES],
+                const uint32_t (&silenceMs)[MAX_DEVICES],
                 bool alpacaEnabled,
                 uint32_t nowMs);
 
-            const ClientState &state(Device device) const { return states[static_cast<size_t>(device)]; }
+            // The state of the device at `index` (Backend::devices order).
+            const ClientState &state(size_t index) const { return states[index < MAX_DEVICES ? index : 0]; }
 
             // Connections kept across a self-caused restart (#136): the device
             // still says Connected, so start each restored device's silence
             // clock now, as if the app had checked at boot. If the app went
             // away during the restart, it is reported silent after the
             // silence time instead of being watched forever.
-            void restoreConnections(const bool (&connected)[DEVICE_COUNT], uint32_t nowMs);
+            void restoreConnections(const bool (&connected)[MAX_DEVICES], uint32_t nowMs);
 
             // As after a restart (the demo's restart).
             void reset();
@@ -57,8 +58,8 @@ namespace SQM
                 uint32_t disconnects = 0;
                 bool endedCleanly = false; // a clean disconnect since the restart
             };
-            ClientState states[DEVICE_COUNT];
-            Seen seen[DEVICE_COUNT];
+            ClientState states[MAX_DEVICES];
+            Seen seen[MAX_DEVICES];
         };
 
     } // namespace Alpaca

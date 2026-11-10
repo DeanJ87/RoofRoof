@@ -79,7 +79,7 @@ namespace SQM
         {
             char macHex[13];
             std::snprintf(macHex, sizeof(macHex), "%012llx", static_cast<unsigned long long>(mac48 & 0xFFFFFFFFFFFFULL));
-            return std::string("sqmeter-") + macHex + "-" + deviceTypeLower + "-" + std::to_string(deviceNumber);
+            return std::string("roofroof-") + macHex + "-" + deviceTypeLower + "-" + std::to_string(deviceNumber);
         }
 
     } // namespace Alpaca

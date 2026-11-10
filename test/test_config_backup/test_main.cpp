@@ -12,7 +12,7 @@
 
 using namespace SQM;
 
-// Settings backup and restore (specs/033-config-backup): the file, its
+// Settings backup and restore (SQMeter spec 033): the file, its
 // secrets, the preview and the rules behind it.
 
 namespace
@@ -25,13 +25,11 @@ namespace
         return text.str();
     }
 
-    Backup::DeviceInfo device(bool bluetooth = true)
+    Backup::DeviceInfo device()
     {
         Backup::DeviceInfo info;
-        info.firmware = "0.3.4-beta.1";
+        info.firmware = "0.1.0";
         info.board = "esp32";
-        info.bluetoothBuild = bluetooth;
-        info.pins = Backup::boardPins(ESP32_DEV_PROFILE);
         return info;
     }
 
@@ -39,7 +37,7 @@ namespace
     Config configured()
     {
         Config cfg = Config::createDefault();
-        cfg.deviceName = "backyard-sqm";
+        cfg.deviceName = "backyard-roof";
         cfg.wifi.ssid = "Observatory";
         cfg.wifi.password = "wifi-secret-1";
         cfg.mqtt.enabled = true;
@@ -47,10 +45,8 @@ namespace
         cfg.mqtt.password = "mqtt-secret-2";
         cfg.auth.enabled = true;
         cfg.auth.password = "admin-secret-3";
-        cfg.ble.passkey = "123456";
         cfg.alerts.ntfyToken = "ntfy-secret-4";
         cfg.alerts.webhookAuthHeader = "Bearer webhook-secret-5";
-        cfg.secondaryTimeSource = TimeSource::NTP; // as any save leaves it with GPS off
         return cfg;
     }
 
@@ -135,7 +131,7 @@ namespace
         return false;
     }
 
-    const char *const SECRET_VALUES[] = {"wifi-secret-1", "mqtt-secret-2", "admin-secret-3", "123456", "ntfy-secret-4", "webhook-secret-5"};
+    const char *const SECRET_VALUES[] = {"wifi-secret-1", "mqtt-secret-2", "admin-secret-3", "ntfy-secret-4", "webhook-secret-5"};
 } // namespace
 
 // --- Backup (US1) -------------------------------------------------------------
@@ -152,29 +148,14 @@ void test_backup_holds_every_section_and_the_header()
 {
     DynamicJsonDocument doc(16384);
     deserializeJson(doc, backupOf(configured()));
-    TEST_ASSERT_EQUAL(1, doc["sqmeterBackup"].as<int>());
-    TEST_ASSERT_EQUAL_STRING("0.3.4-beta.1", doc["firmware"]);
+    TEST_ASSERT_EQUAL(1, doc["roofroofBackup"].as<int>());
+    TEST_ASSERT_TRUE(doc["sqmeterBackup"].isNull());
+    TEST_ASSERT_EQUAL_STRING("0.1.0", doc["firmware"]);
     TEST_ASSERT_EQUAL_STRING("esp32", doc["board"]);
-    TEST_ASSERT_EQUAL_STRING("ble", doc["build"]);
-    TEST_ASSERT_EQUAL_STRING("backyard-sqm", doc["deviceName"]);
+    TEST_ASSERT_EQUAL_STRING("standard", doc["build"]);
+    TEST_ASSERT_EQUAL_STRING("backyard-roof", doc["deviceName"]);
     TEST_ASSERT_EQUAL_STRING("2026-10-18T21:04:05Z", doc["createdAt"]);
-    for (const char *section :
-         {"wifi",
-          "mqtt",
-          "ota",
-          "auth",
-          "ntp",
-          "gps",
-          "rain",
-          "sensor",
-          "skyAveraging",
-          "skyCalibration",
-          "cloudDetection",
-          "alpaca",
-          "ble",
-          "location",
-          "wind",
-          "alerts"})
+    for (const char *section : {"wifi", "mqtt", "ota", "auth", "ntp", "alpaca", "alerts"})
         TEST_ASSERT_TRUE_MESSAGE(doc["settings"][section].is<JsonObject>(), section);
     TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]);
     TEST_ASSERT_EQUAL_STRING("", doc["settings"]["ota"]["password"]);
@@ -283,7 +264,7 @@ void test_a_backup_encrypted_by_webcrypto_opens()
     TEST_ASSERT_EQUAL(Backup::Error::None, Backup::parseBackup(readFile("test/fixtures/backup/webcrypto-backup.json"), parsed));
     Backup::Secrets secrets;
     TEST_ASSERT_EQUAL(Backup::Error::None, Backup::openSecrets(parsed, "correct horse battery", secrets));
-    TEST_ASSERT_EQUAL(9, secrets.size());
+    TEST_ASSERT_EQUAL(8, secrets.size());
     TEST_ASSERT_EQUAL_STRING("observatory-wifi", secrets[0].second.c_str());
     const Restore r = restore(configured(), readFile("test/fixtures/backup/webcrypto-backup.json"), "correct horse battery");
     TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
@@ -340,55 +321,17 @@ void test_restart_rules_match_the_shared_cases()
 
 // --- Boards and versions (US4) ------------------------------------------------
 
-void test_s3_board_pins_from_its_profile()
+// SQMeter's backups (another product, key "sqmeterBackup") are not RoofRoof's.
+void test_an_sqmeter_backup_is_refused()
 {
-    // A classic-ESP32 backup restored on an ESP32-S3-ETH (spec 034): its
-    // GPS pins 16/17 exist there, but the W5500 owns 9-14; an unwired SQM-L
-    // bus (255) is kept as it is.
-    Config other = configured();
-    other.display.buttonPin = 12;
-    Backup::DeviceInfo s3 = device();
-    s3.board = "esp32s3";
-    s3.pins = Backup::boardPins(ESP32S3_ETH_PROFILE);
-    const Restore r = restore(configured(), backupOf(other), nullptr, s3);
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    std::vector<std::string> paths;
-    for (const auto &n : r.preview.notApplicable)
-        paths.push_back(n.path);
-    auto has = [&paths](const char *path) { return std::find(paths.begin(), paths.end(), path) != paths.end(); };
-    TEST_ASSERT_TRUE(has("display.buttonPin"));
-    TEST_ASSERT_TRUE(has("sensor.i2cSDA") == !ESP32S3_ETH_PROFILE.isValidGpio(other.sensor.i2cSDA));
-    TEST_ASSERT_FALSE(has("sensor.i2c2SDA"));
-    TEST_ASSERT_FALSE(has("battery.pgPin"));
-}
-
-void test_pins_this_board_lacks_are_not_applied()
-{
-    Config other = configured();
-    other.gps.rxPin = 25;
-    other.gps.txPin = 26;
-    Backup::DeviceInfo s3 = device();
-    s3.pins.validPins &= ~((1ULL << 25) | (1ULL << 26));
-    const Restore r = restore(configured(), backupOf(other), nullptr, s3);
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(2, r.preview.notApplicable.size());
-    TEST_ASSERT_EQUAL_STRING("gps.rxPin", r.preview.notApplicable[0].path.c_str());
-    TEST_ASSERT_EQUAL_STRING("25", r.preview.notApplicable[0].value.c_str());
-    TEST_ASSERT_EQUAL(17, r.preview.candidate.gps.rxPin); // this board's value
-}
-
-void test_bluetooth_settings_are_not_applied_on_the_standard_build()
-{
-    Config other = configured();
-    other.ble.enabled = true;
-    other.ble.passkey = "654321";
-    const Restore r = restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase", device(false));
-    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
-    TEST_ASSERT_EQUAL(2, r.preview.notApplicable.size());
-    TEST_ASSERT_EQUAL(Backup::NotApplicableReason::Bluetooth, r.preview.notApplicable[0].reason);
-    TEST_ASSERT_TRUE(r.preview.notApplicable[1].value.empty()); // the passkey: no value
-    TEST_ASSERT_FALSE(r.preview.candidate.ble.enabled);
-    TEST_ASSERT_EQUAL_STRING("123456", r.preview.candidate.ble.passkey.c_str());
+    const std::string sqmeter = edited(backupOf(configured()), [](JsonObject f)
+    {
+        f["sqmeterBackup"] = f["roofroofBackup"];
+        f.remove("roofroofBackup");
+    });
+    Backup::Parsed parsed;
+    TEST_ASSERT_EQUAL(Backup::Error::NotBackup, Backup::parseBackup(sqmeter, parsed));
+    TEST_ASSERT_EQUAL_STRING("This isn't a RoofRoof backup file", Backup::errorText(Backup::Error::NotBackup));
 }
 
 void test_pushover_without_its_keys_is_not_applied()
@@ -428,8 +371,8 @@ void test_files_that_arent_backups_or_are_damaged_are_refused()
         {"{\"name\":\"something else\"}", Backup::Error::NotBackup},
         {"[1,2]", Backup::Error::NotBackup},
         {good.substr(0, good.size() / 2), Backup::Error::Damaged},
-        {edited(good, [](JsonObject f) { f["sqmeterBackup"] = "one"; }), Backup::Error::Damaged},
-        {edited(good, [](JsonObject f) { f["sqmeterBackup"] = 2; }), Backup::Error::NewerFormat},
+        {edited(good, [](JsonObject f) { f["roofroofBackup"] = "one"; }), Backup::Error::Damaged},
+        {edited(good, [](JsonObject f) { f["roofroofBackup"] = 2; }), Backup::Error::NewerFormat},
         {edited(good, [](JsonObject f) { f.remove("settings"); }), Backup::Error::Damaged},
         {edited(good, [](JsonObject f) { f["secrets"]["iterations"] = 50; }), Backup::Error::Damaged},
         {edited(good, [](JsonObject f) { f["secrets"]["iterations"] = 5000000; }), Backup::Error::Damaged},
@@ -502,23 +445,19 @@ void test_a_restored_setting_is_saved_and_restart_needs_are_named()
 void test_preview_document_shape()
 {
     Config other = configured();
-    other.wifi.hostname = "roof";
-    other.gps.rxPin = 25;
-    Backup::DeviceInfo board = device();
-    board.pins.validPins &= ~(1ULL << 25);
-    const Restore r = restore(configured(), backupOf(other, "a long passphrase"), "a long passphrase", board);
+    other.wifi.hostname = "roof-east";
+    other.alerts.pushoverEnabled = true;
+    const Restore r = restore(configured(), backupOf(other));
     DynamicJsonDocument doc(16384);
     TEST_ASSERT_FALSE(deserializeJson(doc, Backup::previewJson(r.preview, r.parsed, "00ff")));
     TEST_ASSERT_EQUAL_STRING("00ff", doc["token"]);
     TEST_ASSERT_EQUAL(1, doc["backup"]["format"].as<int>());
-    TEST_ASSERT_EQUAL_STRING("backyard-sqm", doc["backup"]["deviceName"]);
-    TEST_ASSERT_EQUAL_STRING("roof", doc["settings"]["wifi"]["hostname"]);
+    TEST_ASSERT_EQUAL_STRING("backyard-roof", doc["backup"]["deviceName"]);
+    TEST_ASSERT_EQUAL_STRING("roof-east", doc["settings"]["wifi"]["hostname"]);
     TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]); // masked, like GET /api/config
-    TEST_ASSERT_EQUAL_STRING("restored", doc["secrets"]["state"]);
-    TEST_ASSERT_EQUAL(9, doc["secrets"]["unchanged"].size());
-    TEST_ASSERT_EQUAL_STRING("gps.rxPin", doc["notApplicable"][0]["path"]);
-    TEST_ASSERT_EQUAL(25, doc["notApplicable"][0]["value"].as<int>());
-    TEST_ASSERT_EQUAL_STRING("pin", doc["notApplicable"][0]["reason"]);
+    TEST_ASSERT_EQUAL_STRING("none", doc["secrets"]["state"]);
+    TEST_ASSERT_EQUAL_STRING("alerts.pushover.enabled", doc["notApplicable"][0]["path"]);
+    TEST_ASSERT_EQUAL_STRING("pushover-keys", doc["notApplicable"][0]["reason"]);
     TEST_ASSERT_EQUAL_STRING("wifi", doc["restart"][0]);
 }
 
@@ -547,9 +486,7 @@ int main(int, char **)
     RUN_TEST(test_an_unchanged_backup_changes_nothing);
     RUN_TEST(test_settings_the_save_refuses_are_refused_with_its_reason);
     RUN_TEST(test_restart_rules_match_the_shared_cases);
-    RUN_TEST(test_pins_this_board_lacks_are_not_applied);
-    RUN_TEST(test_s3_board_pins_from_its_profile);
-    RUN_TEST(test_bluetooth_settings_are_not_applied_on_the_standard_build);
+    RUN_TEST(test_an_sqmeter_backup_is_refused);
     RUN_TEST(test_pushover_without_its_keys_is_not_applied);
     RUN_TEST(test_a_plain_settings_export_reads_as_format_0);
     RUN_TEST(test_files_that_arent_backups_or_are_damaged_are_refused);

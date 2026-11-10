@@ -6,7 +6,7 @@ namespace SQM
     {
         namespace
         {
-            constexpr uint32_t MAGIC = 0x53514D43; // "SQMC"
+            constexpr uint32_t MAGIC = 0x52524643; // "RRFC": not SQMeter's "SQMC"
 
             uint8_t checkOf(uint8_t connected)
             {
@@ -19,11 +19,11 @@ namespace SQM
             return kind == ResetKind::Software || kind == ResetKind::Panic || kind == ResetKind::Watchdog;
         }
 
-        ConnectionMemory rememberConnections(const bool (&connected)[DEVICE_COUNT])
+        ConnectionMemory rememberConnections(const bool (&connected)[MAX_DEVICES])
         {
             ConnectionMemory memory;
             memory.magic = MAGIC;
-            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            for (size_t i = 0; i < MAX_DEVICES; ++i)
             {
                 if (connected[i])
                     memory.connected = static_cast<uint8_t>(memory.connected | (1U << i));
@@ -32,12 +32,12 @@ namespace SQM
             return memory;
         }
 
-        bool recallConnections(const ConnectionMemory &memory, bool (&connected)[DEVICE_COUNT])
+        bool recallConnections(const ConnectionMemory &memory, bool (&connected)[MAX_DEVICES])
         {
-            const uint8_t validBits = static_cast<uint8_t>((1U << DEVICE_COUNT) - 1U);
+            const uint8_t validBits = static_cast<uint8_t>((1U << MAX_DEVICES) - 1U);
             if (memory.magic != MAGIC || memory.check != checkOf(memory.connected) || (memory.connected & ~validBits) != 0)
                 return false;
-            for (size_t i = 0; i < DEVICE_COUNT; ++i)
+            for (size_t i = 0; i < MAX_DEVICES; ++i)
                 connected[i] = (memory.connected & (1U << i)) != 0;
             return true;
         }

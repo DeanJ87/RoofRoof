@@ -27,13 +27,13 @@ void test_defaults_are_valid_and_round_trip()
     const Config defaults = Config::createDefault();
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(defaults.validate(&error), error.c_str());
-    TEST_ASSERT_EQUAL_STRING("sqmeter", defaults.wifi.hostname.c_str());
+    TEST_ASSERT_EQUAL_STRING("roofroof", defaults.wifi.hostname.c_str());
     TEST_ASSERT_TRUE(defaults.wifi.mdns);
     TEST_ASSERT_TRUE(defaults.wifi.ipv6);
-    TEST_ASSERT_EQUAL_STRING("sqmeter", defaults.mqtt.topic.c_str());
+    TEST_ASSERT_EQUAL_STRING("roofroof", defaults.mqtt.topic.c_str());
+    TEST_ASSERT_EQUAL_STRING("RoofRoof", defaults.deviceName.c_str());
 
-    // Loading normalises (e.g. the backup time source when GPS is off);
-    // after that, a save/load round trip changes nothing.
+    // A save/load round trip changes nothing.
     const auto loaded = Config::fromJson(defaults.toJson());
     TEST_ASSERT_TRUE(loaded.has_value());
     const auto again = Config::fromJson(loaded->toJson());
@@ -60,9 +60,9 @@ void test_partial_json_merges_onto_base()
 {
     Config base = Config::createDefault();
     base.deviceName = "Observatory";
-    const auto cfg = Config::fromJson("{\"gps\":{\"enabled\":true}}", &base);
+    const auto cfg = Config::fromJson("{\"alpaca\":{\"enabled\":true}}", &base);
     TEST_ASSERT_TRUE(cfg.has_value());
-    TEST_ASSERT_TRUE(cfg->gps.enabled);
+    TEST_ASSERT_TRUE(cfg->alpaca.enabled);
     TEST_ASSERT_EQUAL_STRING("Observatory", cfg->deviceName.c_str());
 }
 
@@ -71,14 +71,14 @@ void test_rejections_say_why()
     TEST_ASSERT_EQUAL_STRING("Device name is required", rejectReason("{\"deviceName\":\"\"}").c_str());
     TEST_ASSERT_TRUE(rejectReason("{\"wifi\":{\"hostname\":\"-bad\"}}").find("Hostname") == 0);
     TEST_ASSERT_TRUE(rejectReason("{\"mqtt\":{\"enabled\":true,\"broker\":\"b\",\"topic\":\"a/#\"}}").find("MQTT topic") == 0);
-    TEST_ASSERT_TRUE(rejectReason("{\"sensor\":{\"readIntervalMs\":50}}").size() > 0);
+    TEST_ASSERT_TRUE(rejectReason("{\"ntp\":{\"syncIntervalMs\":599999}}").size() > 0);
     TEST_ASSERT_TRUE(rejectReason("{not json").find("couldn't be read") != std::string::npos);
-    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"sensor\":{\"readIntervalMs\":100}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"ntp\":{\"syncIntervalMs\":600000}}").c_str());
 }
 
-// Constraints (specs/020-settings-dependencies): combinations that can never
-// work stay rejected with the device's message - D-27 time sources, D-33
-// MQTT broker and topic, D-34 HTTP auth password. The web UI shows the same
+// Constraints (SQMeter spec 020): combinations that can never work stay
+// rejected with the device's message - D-33 MQTT broker and topic, D-34 HTTP
+// auth password. The web UI shows the same
 // messages before saving (web/src/__tests__/configSchema.test.ts).
 void test_constraints_rejected_with_messages()
 {
@@ -87,8 +87,7 @@ void test_constraints_rejected_with_messages()
         const char *json;
         const char *message;
     } cases[] = {
-        {R"({"ntp":{"enabled":false},"gps":{"enabled":false}})", "At least one time source must be enabled"},                      // D-27
-        {R"({"mqtt":{"enabled":true,"broker":"","topic":"sqmeter"}})", "MQTT broker and topic are required when MQTT is enabled"}, // D-33
+        {R"({"mqtt":{"enabled":true,"broker":"","topic":"roofroof"}})", "MQTT broker and topic are required when MQTT is enabled"}, // D-33
         {R"({"auth":{"enabled":true,"username":"admin","password":""}})", "HTTP auth password is required when auth is enabled"},  // D-34
     };
     for (const auto &c : cases)
@@ -108,11 +107,13 @@ void test_ota_without_password_is_kept()
     TEST_ASSERT_TRUE(cfg->ota.enabled);
 }
 
-void test_read_interval_boundaries()
+// Without GPS, NTP may be off: the device then has no clock, which nothing
+// in the platform needs (SQMeter's "at least one time source" rule is gone).
+void test_ntp_can_be_switched_off()
 {
-    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"sensor\":{\"readIntervalMs\":3600000}}").c_str());
-    TEST_ASSERT_TRUE(rejectReason("{\"sensor\":{\"readIntervalMs\":99}}").size() > 0);
-    TEST_ASSERT_TRUE(rejectReason("{\"sensor\":{\"readIntervalMs\":3600001}}").size() > 0);
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"ntp\":{\"enabled\":false}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"ntp\":{\"syncIntervalMs\":86400000}}").c_str());
+    TEST_ASSERT_TRUE(rejectReason("{\"ntp\":{\"syncIntervalMs\":86400001}}").size() > 0);
 }
 
 void test_mqtt_interval_and_hostname_boundaries()
@@ -123,44 +124,36 @@ void test_mqtt_interval_and_hostname_boundaries()
     TEST_ASSERT_TRUE(rejectReason("{\"wifi\":{\"hostname\":\"a-33-character-hostname-ok-123456\"}}").size() > 0);
 }
 
-// --- When to send and the imaging-app events (specs/021) ---
+// --- When to send and the imaging-app events (SQMeter spec 021) ---
 
 void test_alert_schedule_defaults()
 {
     const Config cfg = Config::createDefault();
     TEST_ASSERT_TRUE(cfg.alerts.sendMode == AlertsConfig::SendMode::Any);
-    TEST_ASSERT_EQUAL_UINT32(120, cfg.alerts.clientSilentSafetySeconds);
-    TEST_ASSERT_EQUAL_UINT32(600, cfg.alerts.clientSilentWeatherSeconds);
+    TEST_ASSERT_EQUAL_UINT32(120, cfg.alerts.clientSilentSeconds);
     TEST_ASSERT_EQUAL_UINT8(3, cfg.alerts.clientLost.level);
     TEST_ASSERT_EQUAL_UINT8(1, cfg.alerts.clientBack.level);
     TEST_ASSERT_EQUAL_UINT8(0, cfg.alerts.clientDisconnected.level);
     DynamicJsonDocument doc(16384);
     deserializeJson(doc, cfg.toJson());
     TEST_ASSERT_EQUAL_STRING("any", doc["alerts"]["sendMode"]);
-    TEST_ASSERT_FALSE(doc["alerts"]["armWithAlpaca"].as<bool>());
+    TEST_ASSERT_TRUE(doc["alerts"]["armWithAlpaca"].isNull());
     TEST_ASSERT_EQUAL(3, doc["alerts"]["events"]["client_lost"]["level"].as<int>());
 }
 
-void test_arm_with_alpaca_migrates_and_is_still_written()
+void test_send_mode_is_validated_and_stored_with_the_client_part()
 {
     const Config base = Config::createDefault();
-    auto cfg = Config::fromJson("{\"alerts\":{\"armWithAlpaca\":true}}", &base);
+    auto cfg = Config::fromJson("{\"alerts\":{\"sendMode\":\"whileConnected\"}}", &base);
     TEST_ASSERT_TRUE(cfg.has_value());
     TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
-    TEST_ASSERT_TRUE(cfg->alerts.armWithAlpaca);
-    cfg = Config::fromJson("{\"alerts\":{\"armWithAlpaca\":false}}", &*cfg);
-    TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::Any);
-
-    // sendMode wins over a stale armWithAlpaca (the new UI sends both).
-    cfg = Config::fromJson("{\"alerts\":{\"sendMode\":\"whileConnected\",\"armWithAlpaca\":false}}", &base);
-    TEST_ASSERT_TRUE(cfg->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
-    // Older firmware reads armWithAlpaca from the main stored part.
-    DynamicJsonDocument main(8192);
+    DynamicJsonDocument main(4096);
     deserializeJson(main, cfg->alertsToJson(false, Config::AlertsPart::Main));
-    TEST_ASSERT_TRUE(main["armWithAlpaca"].as<bool>());
     TEST_ASSERT_TRUE(main["sendMode"].isNull());
     TEST_ASSERT_TRUE(main["events"]["client_lost"].isNull());
-
+    DynamicJsonDocument client(4096);
+    deserializeJson(client, cfg->alertsToJson(false, Config::AlertsPart::Client));
+    TEST_ASSERT_EQUAL_STRING("whileConnected", client["sendMode"]);
     TEST_ASSERT_EQUAL_STRING(
         "Alerts: when to send must be any or whileConnected", rejectReason("{\"alerts\":{\"sendMode\":\"sometimes\"}}").c_str());
 }
@@ -168,18 +161,18 @@ void test_arm_with_alpaca_migrates_and_is_still_written()
 void test_client_silence_boundaries()
 {
     TEST_ASSERT_EQUAL_STRING(
-        "", rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":30,\"clientSilentWeatherSeconds\":3600}}").c_str());
+        "", rejectReason("{\"alerts\":{\"clientSilentSeconds\":30}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason("{\"alerts\":{\"clientSilentSeconds\":3600}}").c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "Alerts: silence times must be between 30 and 3600 seconds",
-        rejectReason("{\"alerts\":{\"clientSilentSafetySeconds\":29}}").c_str());
-    TEST_ASSERT_TRUE(rejectReason("{\"alerts\":{\"clientSilentWeatherSeconds\":3601}}").size() > 0);
+        "Alerts: silence time must be between 30 and 3600 seconds", rejectReason("{\"alerts\":{\"clientSilentSeconds\":29}}").c_str());
+    TEST_ASSERT_TRUE(rejectReason("{\"alerts\":{\"clientSilentSeconds\":3601}}").size() > 0);
 }
 
 void test_stored_parts_round_trip()
 {
     Config cfg = Config::createDefault();
     cfg.alerts.sendMode = AlertsConfig::SendMode::WhileConnected;
-    cfg.alerts.clientSilentSafetySeconds = 90;
+    cfg.alerts.clientSilentSeconds = 90;
     cfg.alerts.clientLost = {4, "siren", "Lost {device}", "Gone for {silent_for}"};
     // As ConfigStore loads them: the main document with both parts spliced in.
     const std::string stored = std::string("{\"alerts\":") + cfg.alertsToJson(false, Config::AlertsPart::Main) +
@@ -187,13 +180,14 @@ void test_stored_parts_round_trip()
     const auto loaded = Config::fromJson(stored);
     TEST_ASSERT_TRUE(loaded.has_value());
     TEST_ASSERT_TRUE(loaded->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
-    TEST_ASSERT_EQUAL_UINT32(90, loaded->alerts.clientSilentSafetySeconds);
+    TEST_ASSERT_EQUAL_UINT32(90, loaded->alerts.clientSilentSeconds);
     TEST_ASSERT_EQUAL_UINT8(4, loaded->alerts.clientLost.level);
     TEST_ASSERT_EQUAL_STRING("Gone for {silent_for}", loaded->alerts.clientLost.message.c_str());
-    // First boot after the update: no client part yet - armWithAlpaca decides.
-    const auto upgraded = Config::fromJson(std::string("{\"alerts\":") + cfg.alertsToJson(false, Config::AlertsPart::Main) + "}");
-    TEST_ASSERT_TRUE(upgraded->alerts.sendMode == AlertsConfig::SendMode::WhileConnected);
-    TEST_ASSERT_EQUAL_UINT32(120, upgraded->alerts.clientSilentSafetySeconds);
+    // As spliced by Config::spliceStored.
+    const auto spliced = Config::fromJson(Config::spliceStored(
+        cfg.toJson(false, false), cfg.alertsToJson(false, Config::AlertsPart::Main), cfg.alertsToJson(false, Config::AlertsPart::Client)));
+    TEST_ASSERT_TRUE(spliced.has_value());
+    TEST_ASSERT_EQUAL_UINT32(90, spliced->alerts.clientSilentSeconds);
 }
 
 void test_full_client_templates_fit_and_add_nothing_to_main()
@@ -208,13 +202,8 @@ void test_full_client_templates_fit_and_add_nothing_to_main()
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
     TEST_ASSERT_TRUE(cfg.alertsToJson(false, Config::AlertsPart::Client).size() <= Config::MAX_ALERTS_JSON_BYTES);
-    // The main part (what was stored before this feature) only changes by
-    // the armWithAlpaca value it already had.
-    std::string mainAfter = cfg.alertsToJson(false, Config::AlertsPart::Main);
-    const size_t at = mainAfter.find("\"armWithAlpaca\":true");
-    TEST_ASSERT_TRUE(at != std::string::npos);
-    mainAfter.replace(at, std::strlen("\"armWithAlpaca\":true"), "\"armWithAlpaca\":false");
-    TEST_ASSERT_EQUAL_STRING(mainBefore.c_str(), mainAfter.c_str());
+    // The client events and send mode live in their own part only.
+    TEST_ASSERT_EQUAL_STRING(mainBefore.c_str(), cfg.alertsToJson(false, Config::AlertsPart::Main).c_str());
 }
 
 // The limits count characters, like the web UI: 80 Japanese characters are
@@ -227,18 +216,18 @@ void test_alert_wording_limits_count_characters_not_bytes()
     for (size_t i = 0; i < AlertsConfig::MAX_TEMPLATE_TITLE; ++i)
         title += rain;
     Config cfg = Config::createDefault();
-    cfg.alerts.rainStarted.title = title;
+    cfg.alerts.clientLost.title = title;
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
     TEST_ASSERT_TRUE(AlertsConfig::templateFits(title, ""));
-    cfg.alerts.rainStarted.title += rain;
+    cfg.alerts.clientLost.title += rain;
     TEST_ASSERT_FALSE(cfg.validate(&error));
-    TEST_ASSERT_FALSE(AlertsConfig::templateFits(cfg.alerts.rainStarted.title, ""));
+    TEST_ASSERT_FALSE(AlertsConfig::templateFits(cfg.alerts.clientLost.title, ""));
     std::string message;
     for (size_t i = 0; i < AlertsConfig::MAX_TEMPLATE_MESSAGE; ++i)
         message += meem;
-    cfg.alerts.rainStarted.title = "x";
-    cfg.alerts.rainStarted.message = message;
+    cfg.alerts.clientLost.title = "x";
+    cfg.alerts.clientLost.message = message;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
 }
 
@@ -259,15 +248,15 @@ void test_ipv6_setting_defaults_on_and_round_trips()
 void test_ipv6_broker_and_webhook_forms()
 {
     // Accepted: bare and bracketed IPv6, bracketed with a port, http with a bracketed IPv6.
-    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::10","topic":"sqm"}})").c_str());
-    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"[fd00::10]:1883","topic":"sqm"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::10","topic":"roof"}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"mqtt":{"enabled":true,"broker":"[fd00::10]:1883","topic":"roof"}})").c_str());
     TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"http://[fd00::10]:8080/hook"}}})").c_str());
 
     TEST_ASSERT_EQUAL_STRING(
         "MQTT broker: Put the port in the Port field",
-        rejectReason(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"sqm"}})").c_str());
+        rejectReason(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"roof"}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "MQTT broker: Not a valid IPv6 address", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::zz","topic":"sqm"}})").c_str());
+        "MQTT broker: Not a valid IPv6 address", rejectReason(R"({"mqtt":{"enabled":true,"broker":"fd00::zz","topic":"roof"}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "Alerts: webhook URL: https to an IPv6 address isn't supported yet - use a host name, or http",
         rejectReason(R"({"alerts":{"webhook":{"enabled":true,"url":"https://[fd00::10]/hook"}}})").c_str());
@@ -282,18 +271,18 @@ void test_ipv6_broker_and_webhook_forms()
         rejectReason(R"({"ntp":{"server2":"2001:db8::123"}})").c_str());
 
     // Saved config isn't held to the new forms, so it always loads.
-    const auto stored = Config::fromJson(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"sqm"}})");
+    const auto stored = Config::fromJson(R"({"mqtt":{"enabled":true,"broker":"broker.local:1883","topic":"roof"}})");
     TEST_ASSERT_TRUE(stored.has_value());
 }
 
-// A settings save never takes the device off its network (spec 011 FR-009):
+// A settings save never takes the device off its network (SQMeter spec 011 FR-009):
 // an empty WiFi network is refused while one is set; WiFi setup changes it.
 void test_masked_mqtt_password_round_trips_through_a_save()
 {
     // Settings out masks the password; saving the form back unchanged must keep it.
     Config base = Config::createDefault();
     base.mqtt.broker = "broker.local";
-    base.mqtt.username = "sqm";
+    base.mqtt.username = "roof";
     base.mqtt.password = "real-secret";
     const std::string shown = base.toJson(true);
     TEST_ASSERT_TRUE(shown.find("real-secret") == std::string::npos);
@@ -311,21 +300,21 @@ void test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker()
     MQTTConfig saved = Config::createDefault().mqtt;
     saved.broker = "broker.local";
     saved.port = 1883;
-    saved.username = "sqm";
+    saved.username = "roof";
     saved.password = "real-secret";
     const auto tryWith = [&](const char *broker, uint16_t port, const char *user, const char *password)
     { return Config::mqttTestPassword(saved, {broker, port, user, password}); };
 
     // The mask (or a blank field) for the saved broker tests with the saved password.
-    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "********").value().c_str());
-    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "sqm", "").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "roof", "********").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("real-secret", tryWith("broker.local", 1883, "roof", "").value().c_str());
 
     // A typed password is always used as typed.
-    TEST_ASSERT_EQUAL_STRING("typed", tryWith("other.host", 1883, "sqm", "typed").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("typed", tryWith("other.host", 1883, "roof", "typed").value().c_str());
 
     // The mask for another broker, port or user never sends the saved password.
-    TEST_ASSERT_FALSE(tryWith("evil.host", 1883, "sqm", "********").has_value());
-    TEST_ASSERT_FALSE(tryWith("broker.local", 8883, "sqm", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("evil.host", 1883, "roof", "********").has_value());
+    TEST_ASSERT_FALSE(tryWith("broker.local", 8883, "roof", "********").has_value());
     TEST_ASSERT_FALSE(tryWith("broker.local", 1883, "admin", "********").has_value());
 
     // A blank password for another broker is a test without a password, not a refusal.
@@ -333,7 +322,7 @@ void test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker()
 
     // Nothing saved: what was sent is what's tried.
     saved.password.clear();
-    TEST_ASSERT_EQUAL_STRING("********", tryWith("evil.host", 1883, "sqm", "********").value().c_str());
+    TEST_ASSERT_EQUAL_STRING("********", tryWith("evil.host", 1883, "roof", "********").value().c_str());
 }
 
 void test_settings_save_cannot_blank_the_wifi_network()
@@ -378,15 +367,15 @@ void test_wrong_types_are_rejected_not_defaulted()
     TEST_ASSERT_EQUAL_STRING("Settings: deviceName must be a string", reason("{\"deviceName\":7}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: deviceName must be a string", reason("{\"deviceName\":null}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: wifi.mdns must be true or false", reason("{\"wifi\":{\"mdns\":\"yes\"}}").c_str());
-    TEST_ASSERT_EQUAL_STRING("Settings: gps.rxPin must be a whole number in range", reason("{\"gps\":{\"rxPin\":300}}").c_str());
-    TEST_ASSERT_EQUAL_STRING("Settings: location.latitude must be a number", reason("{\"location\":{\"latitude\":\"51\"}}").c_str());
-    TEST_ASSERT_EQUAL_STRING("Settings: mqtt.publish.sky must be true or false", reason("{\"mqtt\":{\"publish\":{\"sky\":1}}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("mqtt.port must be a whole number in range", reason("{\"mqtt\":{\"port\":70000}}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: ota.enabled must be true or false", reason("{\"ota\":{\"enabled\":\"yes\"}}").c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "Settings: alerts.events.unsafe.level must be a whole number in range",
-        reason("{\"alerts\":{\"events\":{\"unsafe\":{\"level\":\"4\"}}}}").c_str());
+        "Settings: mqtt.publish.diagnostics must be true or false", reason("{\"mqtt\":{\"publish\":{\"diagnostics\":1}}}").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Settings: alerts.events.client_lost.level must be a whole number in range",
+        reason("{\"alerts\":{\"events\":{\"client_lost\":{\"level\":\"4\"}}}}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: mqtt.password must be a string", reason("{\"mqtt\":{\"password\":123}}").c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        "Settings: primaryTimeSource must be a whole number in range", reason("{\"primaryTimeSource\":\"gps\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Settings: alpaca.enabled must be true or false", reason("{\"alpaca\":{\"enabled\":\"on\"}}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: wifi must be an object", reason("{\"wifi\":\"HomeNet\"}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings: wifi must be an object", reason("{\"wifi\":null}").c_str());
     TEST_ASSERT_EQUAL_STRING("Settings must be a JSON object", reason("[]").c_str());
@@ -409,27 +398,8 @@ void test_stored_wrong_type_keeps_current_value()
         Config::applyJson("{\"deviceName\":5,\"wifi\":{\"ssid\":\"HomeNet\",\"hostname\":null}}", cfg, false, &error), error.c_str());
     TEST_ASSERT_EQUAL_STRING("HomeNet", cfg.wifi.ssid.c_str());
     TEST_ASSERT_EQUAL_STRING(Config::createDefault().deviceName.c_str(), cfg.deviceName.c_str());
-    TEST_ASSERT_EQUAL_STRING("sqmeter", cfg.wifi.hostname.c_str());
+    TEST_ASSERT_EQUAL_STRING("roofroof", cfg.wifi.hostname.c_str());
 }
-
-void test_sky_defaults();
-void test_sky_json_round_trip();
-void test_sky_validation_messages();
-void test_sky_worst_case_config_fits();
-void test_display_defaults();
-void test_display_json_round_trip();
-void test_display_partial_update_keeps_other_keys();
-void test_display_page_validation();
-void test_display_range_validation();
-void test_display_button_pin_validation();
-void test_display_worst_case_config_fits();
-void test_battery_defaults();
-void test_battery_json_round_trip();
-void test_battery_level_validation();
-void test_battery_pin_validation();
-void test_battery_alerts_part();
-void test_battery_worst_cases_fit();
-void test_battery_rule_limit_follows_critical();
 
 int main()
 {
@@ -438,12 +408,12 @@ int main()
     RUN_TEST(test_secrets_redacted_and_kept);
     RUN_TEST(test_partial_json_merges_onto_base);
     RUN_TEST(test_rejections_say_why);
-    RUN_TEST(test_read_interval_boundaries);
+    RUN_TEST(test_ntp_can_be_switched_off);
     RUN_TEST(test_constraints_rejected_with_messages);
     RUN_TEST(test_ota_without_password_is_kept);
     RUN_TEST(test_mqtt_interval_and_hostname_boundaries);
     RUN_TEST(test_alert_schedule_defaults);
-    RUN_TEST(test_arm_with_alpaca_migrates_and_is_still_written);
+    RUN_TEST(test_send_mode_is_validated_and_stored_with_the_client_part);
     RUN_TEST(test_client_silence_boundaries);
     RUN_TEST(test_stored_parts_round_trip);
     RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
@@ -455,23 +425,5 @@ int main()
     RUN_TEST(test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker);
     RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
     RUN_TEST(test_stored_wrong_type_keeps_current_value);
-    RUN_TEST(test_sky_defaults);
-    RUN_TEST(test_sky_json_round_trip);
-    RUN_TEST(test_sky_validation_messages);
-    RUN_TEST(test_sky_worst_case_config_fits);
-    RUN_TEST(test_display_defaults);
-    RUN_TEST(test_display_json_round_trip);
-    RUN_TEST(test_display_partial_update_keeps_other_keys);
-    RUN_TEST(test_display_page_validation);
-    RUN_TEST(test_display_range_validation);
-    RUN_TEST(test_display_button_pin_validation);
-    RUN_TEST(test_display_worst_case_config_fits);
-    RUN_TEST(test_battery_defaults);
-    RUN_TEST(test_battery_json_round_trip);
-    RUN_TEST(test_battery_level_validation);
-    RUN_TEST(test_battery_pin_validation);
-    RUN_TEST(test_battery_alerts_part);
-    RUN_TEST(test_battery_worst_cases_fit);
-    RUN_TEST(test_battery_rule_limit_follows_critical);
     return UNITY_END();
 }

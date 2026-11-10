@@ -31,13 +31,6 @@ class FlashBudgetTest(unittest.TestCase):
     def test_each_build_has_its_own_slot(self):
         slots = {env: flash_budget.app_slot_bytes(flash_budget.partitions_for(env)) for env in flash_budget.ENVS}
         self.assertEqual(slots["esp32dev"], SLOT)
-        self.assertEqual(slots["esp32dev-ble"], SLOT)
-        self.assertEqual(slots["esp32s3-zero"], SLOT)
-        self.assertEqual(slots["esp32s3-zero-ble"], SLOT)
-        self.assertEqual(slots["esp32s3-zero8"], 0x380000)
-        self.assertEqual(slots["esp32s3-zero8-ble"], 0x380000)
-        self.assertEqual(slots["esp32s3-eth"], 0x600000)
-        self.assertEqual(slots["esp32s3-eth-ble"], 0x600000)
 
     def test_every_build_is_recorded(self):
         record = json.loads((ROOT / flash_budget.BASELINE_PATH).read_text())
@@ -119,18 +112,6 @@ class UsbPackageTest(unittest.TestCase):
             self.assertIn("0x390000 littlefs.bin", readme)
             command = next(line for line in readme.splitlines() if "write_flash" in line)
             self.assertNotIn("erase", command)
-
-    def test_s3_package(self):
-        csv = ROOT / "partitions_16MB.csv"
-        offsets = {part["path"]: part["offset"] for part in usb_package.parts(csv, "esp32s3")}
-        self.assertEqual(offsets["bootloader.bin"], 0x0)  # S3 bootloader at 0
-        self.assertEqual(offsets["littlefs.bin"], 0xC10000)
-        for offset in offsets.values():
-            self.assertFalse(0x9000 <= offset < 0xE000)
-        manifest = usb_package.manifest("standard", "0.4.0-alpha.1", csv, "esp32s3", "esp32s3-eth")
-        self.assertEqual(manifest["builds"][0]["chipFamily"], "ESP32-S3")
-        self.assertIn("esp32s3-eth", manifest["name"])
-        self.assertIn("--chip esp32s3", usb_package.esptool_command(csv, "esp32s3"))
 
 
 if __name__ == "__main__":

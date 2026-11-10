@@ -1,6 +1,6 @@
 // Makes webcrypto-backup.json: a backup whose secrets were encrypted by Node's
 // WebCrypto, an implementation independent of lib/ConfigBackup, so the native
-// tests prove the device reads files made elsewhere (specs/033-config-backup,
+// tests prove the device reads files made elsewhere (SQMeter spec 033,
 // research R2). Run: node test/fixtures/backup/make-webcrypto-fixture.mjs
 import { webcrypto as crypto } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
@@ -14,7 +14,6 @@ const SECRETS = {
   'mqtt.password': 'broker-secret',
   'ota.password': '',
   'auth.password': 'admin-pass',
-  'ble.passkey': '123456',
   'alerts.pushover.userKey': '',
   'alerts.pushover.appToken': '',
   'alerts.ntfy.token': 'tk_ntfy',
@@ -33,23 +32,23 @@ const key = await crypto.subtle.deriveKey(
   ['encrypt'],
 );
 const sealed = await crypto.subtle.encrypt(
-  { name: 'AES-GCM', iv: nonce, additionalData: encoder.encode('sqmeter-backup/1'), tagLength: 128 },
+  { name: 'AES-GCM', iv: nonce, additionalData: encoder.encode('roofroof-backup/1'), tagLength: 128 },
   key,
   encoder.encode(JSON.stringify(SECRETS)),
 );
 const b64 = (bytes) => Buffer.from(bytes).toString('base64');
 
 const file = {
-  sqmeterBackup: 1,
-  firmware: '0.3.4-beta.1',
+  roofroofBackup: 1,
+  firmware: '0.1.0',
   board: 'esp32',
-  build: 'ble',
+  build: 'standard',
   deviceName: 'webcrypto-fixture',
   createdAt: '2026-10-18T21:04:05Z',
   settings: {
     deviceName: 'webcrypto-fixture',
     wifi: { ssid: 'Observatory', password: '********' },
-    mqtt: { enabled: true, broker: 'broker.lan', port: 1883, username: 'sqm', password: '********', topic: 'sqmeter' },
+    mqtt: { enabled: true, broker: 'broker.lan', port: 1883, username: 'roof', password: '********', topic: 'roofroof' },
     auth: { enabled: true, username: 'admin', password: '********' },
   },
   secrets: { kdf: 'pbkdf2-sha256', iterations: ITERATIONS, salt: b64(salt), cipher: 'aes-256-gcm', nonce: b64(nonce), data: b64(new Uint8Array(sealed)) },

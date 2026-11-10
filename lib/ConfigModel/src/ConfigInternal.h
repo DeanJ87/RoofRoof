@@ -16,11 +16,10 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 18;
-    // Events from here on are the imaging-app events, persisted separately.
-    constexpr size_t FIRST_CLIENT_EVENT = 9;
-    // And from here on the battery events (spec 032), under a third key.
-    constexpr size_t FIRST_BATTERY_EVENT = 12;
+    constexpr size_t EVENT_COUNT = 3;
+    // Events from here on are the imaging-app events, persisted under their own
+    // key. Spec 007 adds the roof's events before them, in the main part.
+    constexpr size_t FIRST_CLIENT_EVENT = 0;
 
     inline bool setError(std::string *error, const std::string &message)
     {
@@ -34,42 +33,11 @@ namespace SQM::ConfigDetail
         return std::isfinite(value) && value >= min && value <= max;
     }
 
-    inline bool isValidBaudRate(uint32_t baudRate)
-    {
-        constexpr uint32_t RATES[] = {2400, 4800, 9600, 19200, 38400, 57600, 115200};
-        for (uint32_t rate : RATES)
-            if (baudRate == rate)
-                return true;
-        return false;
-    }
-
-    inline bool isTimeSourceEnabled(const Config &cfg, TimeSource source)
-    {
-        return source == TimeSource::NTP ? cfg.ntp.enabled : cfg.gps.enabled;
-    }
-
     // JSON key for each configurable event, matching the alert event names.
     template <typename Alerts, typename Setting> std::array<std::pair<const char *, Setting *>, EVENT_COUNT> eventSettingsOf(Alerts &a)
     {
         return {
-            {{"unsafe", &a.unsafe},
-             {"safe", &a.safe},
-             {"rain_started", &a.rainStarted},
-             {"rain_stopped", &a.rainStopped},
-             {"sensor_fault", &a.sensorFault},
-             {"sensor_recovered", &a.sensorRecovered},
-             {"dew_risk", &a.dewRisk},
-             {"clear_sky", &a.clearSky},
-             {"clouded_over", &a.cloudedOver},
-             {"client_lost", &a.clientLost},
-             {"client_back", &a.clientBack},
-             {"client_disconnected", &a.clientDisconnected},
-             {"battery_low", &a.batteryLow},
-             {"battery_critical", &a.batteryCritical},
-             {"battery_shutdown", &a.batteryShutdown},
-             {"power_restored", &a.powerRestored},
-             {"charge_complete", &a.chargeComplete},
-             {"charge_fault", &a.chargeFault}}};
+            {{"client_lost", &a.clientLost}, {"client_back", &a.clientBack}, {"client_disconnected", &a.clientDisconnected}}};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {
@@ -213,7 +181,4 @@ namespace SQM::ConfigDetail
         std::string sectionPath;
     };
 
-    // The optional devices' sections (ConfigJsonInDevices.cpp).
-    bool applyDisplay(const Section &display, DisplayConfig &d, std::string *error);
-    void applyBattery(const Section &battery, BatteryConfig &b);
 } // namespace SQM::ConfigDetail

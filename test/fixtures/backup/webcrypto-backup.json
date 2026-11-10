@@ -1,8 +1,8 @@
 {
-  "sqmeterBackup": 1,
-  "firmware": "0.3.4-beta.1",
+  "roofroofBackup": 1,
+  "firmware": "0.1.0",
   "board": "esp32",
-  "build": "ble",
+  "build": "standard",
   "deviceName": "webcrypto-fixture",
   "createdAt": "2026-10-18T21:04:05Z",
   "settings": {
@@ -15,9 +15,9 @@
       "enabled": true,
       "broker": "broker.lan",
       "port": 1883,
-      "username": "sqm",
+      "username": "roof",
       "password": "********",
-      "topic": "sqmeter"
+      "topic": "roofroof"
     },
     "auth": {
       "enabled": true,
@@ -31,6 +31,6 @@
     "salt": "AwoRGB8mLTQ7QklQV15lbA==",
     "cipher": "aes-256-gcm",
     "nonce": "yMO+ubSvqqWgm5aR",
-    "data": "Nif7ALxmHs7ia2fUIfrIfWNa4DmQNSxsNOgEL1W6uqW264w37pAzGfjg0Hywqpe3T9YXtlEt/IAJ81gWyOfRvNSecy2Lv9D1hXt1jKUkuT9ejYBeu1ExFFDOhNAbqpVybE+wfEanRI9NS4R7Xp6c1JCvaCxth8aPOiwigY1OBXugvXQvavHSBTqN+laVcpV6lvRo+tN16bR+doe6Ll3tPswUi3XFu5Au/qoayU8g3f3ILfnRVNQuWoXgrHCduarW2q2wlZy7d87qeMq0tWH7Fa6aiU2nyyj+8pGqUVYidgoyP/icIrL0Xevd3fmBA0jj42rTYtEDDzEaDAvLPhqERH4ish7EnfDg2iaX3Loie6huinHorR/IkWA5YaQ="
+    "data": "Nif7ALxmHs7ia2fUIfrIfWNa4DmQNSxsNOgEL1W6uqW264w37pAzGfjg0Hywqpe3T9YXtlEt/IAJ81gWyOfRvNSecy2Lv9D1hXt1jKUkuT9ejYBeu1ExFFDOhNAbqpVybE+wfEanRI9NS4R7Xp6c1JCvaCxuh8bTPj5/gpNYFDbs+jczLLaCQVPEoRXDNcUix7t06tJp9exrcdqnMk76B4cM2T+z9tdp8eRFmRl/0ezRO+PKUZ8yAILp8lCduarW2q2ww9vGeNbpc5zruW7jFqXAjgy7yyS0p9y1FGg5dgQDeLXaJqyzFb3slu+WBFKs7WOeIdmO0cCMYWaWrETjCeOxQ4fP"
   }
 }

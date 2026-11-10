@@ -8,7 +8,7 @@
 
 using namespace SQM::Alerts;
 
-// When alerts are sent (specs/021): the send mode, pause/resume and why.
+// When alerts are sent (SQMeter spec 021): the send mode, pause/resume and why.
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -130,39 +130,6 @@ void test_restore_migrated_and_bad_reason(void)
     TEST_ASSERT_EQUAL_STRING("whileConnected", sendModeName(SendMode::WhileConnected));
 }
 
-// SC-005: an update from v0.2.0-beta.3 keeps behaviour for every combination
-// of the old "armWithAlpaca" setting and the saved armed flag.
-void test_upgrade_combinations(void)
-{
-    for (int arm = 0; arm < 2; ++arm)
-    {
-        for (int armed = 0; armed < 2; ++armed)
-        {
-            const std::string old = std::string("{\"alerts\":{\"enabled\":true,\"armWithAlpaca\":") + (arm ? "true" : "false") + "}}";
-            auto cfg = SQM::Config::fromJson(old);
-            TEST_ASSERT_TRUE(cfg.has_value());
-            const SendMode mode = SQM::Core::sendMode(*cfg);
-            TEST_ASSERT_EQUAL(arm ? SendMode::WhileConnected : SendMode::Any, mode);
-
-            AlertSchedule schedule;
-            schedule.restore(armed != 0, false, 0, 0); // old firmware saved no reason
-            schedule.update(mode, false, 1000, 0);
-            TEST_ASSERT_EQUAL(armed != 0, schedule.state().sending);
-            TEST_ASSERT_EQUAL(armed ? ScheduleReason::None : ScheduleReason::Migrated, schedule.state().reason);
-            // The HA/MQTT switch still works.
-            schedule.command(armed == 0, ScheduleReason::UserMqtt, 2000, 0);
-            TEST_ASSERT_EQUAL(armed == 0, schedule.state().sending);
-            // In while-connected mode a connect still resumes.
-            if (arm)
-            {
-                schedule.command(false, ScheduleReason::UserMqtt, 3000, 0);
-                schedule.update(mode, true, 4000, 0);
-                TEST_ASSERT_TRUE(schedule.state().sending);
-            }
-        }
-    }
-}
-
 // "since" moves with every change of state or reason, through client
 // sessions; a repeated identical command keeps it (the state began then).
 void test_since_follows_every_change(void)
@@ -194,7 +161,7 @@ void test_armed_document(void)
     DynamicJsonDocument doc(512);
     SQM::Core::writeAlertSchedule(doc.to<JsonObject>(), schedule.state(), cfg, 65000);
     TEST_ASSERT_FALSE(doc["armed"].as<bool>());
-    TEST_ASSERT_TRUE(doc["armWithAlpaca"].as<bool>());
+    TEST_ASSERT_TRUE(doc["armWithAlpaca"].isNull()); // SQMeter's legacy field is gone
     TEST_ASSERT_EQUAL_STRING("whileConnected", doc["mode"]);
     TEST_ASSERT_EQUAL_STRING("client-disconnected", doc["reason"]);
     TEST_ASSERT_EQUAL_STRING("2026-10-08T22:53:20Z", doc["since"]);
@@ -218,7 +185,6 @@ int main(int argc, char **argv)
     RUN_TEST(test_mode_changes);
     RUN_TEST(test_first_update_keeps_saved_state);
     RUN_TEST(test_restore_migrated_and_bad_reason);
-    RUN_TEST(test_upgrade_combinations);
     RUN_TEST(test_since_follows_every_change);
     RUN_TEST(test_armed_document);
     return UNITY_END();

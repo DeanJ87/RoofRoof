@@ -6,7 +6,7 @@
 
 #include <string>
 
-// Imaging apps keep their connection (spec 011 FR-008, spec 013 FR-012): the
+// Imaging apps keep their connection (SQMeter spec 011 FR-008, spec 013 FR-012): the
 // live-update sockets leave room for them, and a restart the device caused
 // itself doesn't drop them.
 
@@ -20,9 +20,11 @@ namespace
     {
     public:
         bool alpacaEnabled() const override { return true; }
-        bool isSafe() const override { return true; }
-        SQM::Alpaca::ObservingConditionsSnapshot observingConditions() const override { return {}; }
-        std::string serverName() const override { return "SQMeter"; }
+        std::vector<SQM::Alpaca::DeviceInfo> devices() const override
+        {
+            return {{"Dome", "dome", 0, "Test dome", "", 3}, {"Switch", "switch", 0, "Test switch", "", 3}};
+        }
+        std::string serverName() const override { return "RoofRoof"; }
         std::string location() const override { return ""; }
         std::string timestampUtc() const override { return ""; }
     };
@@ -41,7 +43,7 @@ namespace
     {
         SQM::Alpaca::Request request;
         request.put = true;
-        request.path = "/api/v1/safetymonitor/0/connected";
+        request.path = "/api/v1/dome/0/connected";
         request.params = {{"Connected", value ? "True" : "False"}, {"ClientID", "7"}};
         SQM::Alpaca::Response response;
         router.handle(request, response);
@@ -82,8 +84,8 @@ void test_only_restarts_the_device_caused_keep_connections()
 
 void test_memory_round_trips()
 {
-    const bool in[SQM::Alpaca::DEVICE_COUNT] = {true, false};
-    bool out[SQM::Alpaca::DEVICE_COUNT] = {false, true};
+    const bool in[SQM::Alpaca::MAX_DEVICES] = {true, false};
+    bool out[SQM::Alpaca::MAX_DEVICES] = {false, true};
     TEST_ASSERT_TRUE(SQM::Alpaca::recallConnections(SQM::Alpaca::rememberConnections(in), out));
     TEST_ASSERT_TRUE(out[0]);
     TEST_ASSERT_FALSE(out[1]);
@@ -91,14 +93,14 @@ void test_memory_round_trips()
 
 void test_random_power_on_memory_is_ignored()
 {
-    bool out[SQM::Alpaca::DEVICE_COUNT] = {};
+    bool out[SQM::Alpaca::MAX_DEVICES] = {};
     ConnectionMemory garbage;
     garbage.magic = 0xDEADBEEF;
     garbage.connected = 3;
     garbage.check = 0;
     TEST_ASSERT_FALSE(SQM::Alpaca::recallConnections(garbage, out));
 
-    const bool both[SQM::Alpaca::DEVICE_COUNT] = {true, true};
+    const bool both[SQM::Alpaca::MAX_DEVICES] = {true, true};
     ConnectionMemory tampered = SQM::Alpaca::rememberConnections(both);
     tampered.connected = 0x7; // a bit for a device that doesn't exist
     TEST_ASSERT_FALSE(SQM::Alpaca::recallConnections(tampered, out));
@@ -107,15 +109,15 @@ void test_random_power_on_memory_is_ignored()
 void test_restored_connection_reads_connected_without_a_disconnect()
 {
     Backend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
-    const bool connected[SQM::Alpaca::DEVICE_COUNT] = {true, false};
+    SQM::Alpaca::Router router(backend, {"RoofRoof", "RoofRoof", "1.2.3", 0x1234});
+    const bool connected[SQM::Alpaca::MAX_DEVICES] = {true, false};
     router.restoreConnections(connected);
 
     TEST_ASSERT_TRUE(router.anyConnected());
-    TEST_ASSERT_NOT_EQUAL(std::string::npos, get(router, "/api/v1/safetymonitor/0/connected").find("\"Value\":true"));
-    TEST_ASSERT_EQUAL(0, router.activity(SQM::Alpaca::Device::SafetyMonitor).disconnects);
+    TEST_ASSERT_NOT_EQUAL(std::string::npos, get(router, "/api/v1/dome/0/connected").find("\"Value\":true"));
+    TEST_ASSERT_EQUAL(0, router.activity(0).disconnects);
 
-    bool now[SQM::Alpaca::DEVICE_COUNT] = {};
+    bool now[SQM::Alpaca::MAX_DEVICES] = {};
     router.connectedDevices(now);
     TEST_ASSERT_TRUE(now[0]);
     TEST_ASSERT_FALSE(now[1]);
@@ -124,12 +126,12 @@ void test_restored_connection_reads_connected_without_a_disconnect()
 void test_a_clean_disconnect_is_remembered_as_disconnected()
 {
     Backend backend;
-    SQM::Alpaca::Router router(backend, {"SQMeter", "SQMeter", "1.2.3", 0x1234});
+    SQM::Alpaca::Router router(backend, {"RoofRoof", "RoofRoof", "1.2.3", 0x1234});
     putConnected(router, true);
     putConnected(router, false);
-    bool now[SQM::Alpaca::DEVICE_COUNT] = {true, true};
+    bool now[SQM::Alpaca::MAX_DEVICES] = {true, true};
     router.connectedDevices(now);
-    bool recalled[SQM::Alpaca::DEVICE_COUNT] = {true, true};
+    bool recalled[SQM::Alpaca::MAX_DEVICES] = {true, true};
     TEST_ASSERT_TRUE(SQM::Alpaca::recallConnections(SQM::Alpaca::rememberConnections(now), recalled));
     TEST_ASSERT_FALSE(recalled[0]);
     TEST_ASSERT_FALSE(recalled[1]);

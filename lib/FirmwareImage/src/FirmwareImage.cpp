@@ -9,26 +9,16 @@ namespace SQM
             // The magic XOR SCRAMBLE. Unscrambled only into a local copy, so the
             // magic bytes appear exactly once in an image: in its marker.
             constexpr uint8_t SCRAMBLE = 0xA5;
+            // RoofRoof's own magic, not SQMeter's: neither product's scanner
+            // finds the other's marker. No byte repeats, so a mismatch can only
+            // restart the match at the current byte (Scanner::feed).
             constexpr std::array<uint8_t, MAGIC_SIZE> SCRAMBLED = {
-                0xE6, 0xB4, 0x1D, 0x92, 0x5F, 0x0B, 0xC8, 0x37, 0x71, 0xAE, 0x24, 0xD9, 0x6C, 0x83, 0x3A, 0xF0};
-
-            const char *LEGACY = LEGACY_LAYOUT;
+                0x1E, 0x75, 0xF0, 0x95, 0xD2, 0x78, 0xBA, 0x01, 0x42, 0xF8, 0x3B, 0x17, 0x87, 0xA9, 0xFB, 0x39};
         } // namespace
-
-        const char *buildName(Build build)
-        {
-            return build == Build::Ble ? "ble" : "standard";
-        }
 
         std::string layoutOf(uint32_t appSlotSize, uint32_t fsSize)
         {
-            if (appSlotSize == APP_SLOT_SIZE && fsSize == FS_SIZE)
-                return LAYOUT;
-            if (appSlotSize == S8_APP_SLOT_SIZE && fsSize == S8_FS_SIZE)
-                return LAYOUT_S8;
-            if (appSlotSize == S16_APP_SLOT_SIZE && fsSize == S16_FS_SIZE)
-                return LAYOUT_S16;
-            return LEGACY;
+            return appSlotSize == APP_SLOT_SIZE && fsSize == FS_SIZE ? LAYOUT : OTHER_LAYOUT;
         }
 
         std::array<uint8_t, MAGIC_SIZE> magic()
@@ -39,11 +29,11 @@ namespace SQM
             return out;
         }
 
-        std::string marker(Build build, const char *layout)
+        std::string marker(const char *product, const char *layout)
         {
             const auto bytes = magic();
             std::string out(bytes.begin(), bytes.end());
-            out += std::string("layout=") + layout + ";build=" + buildName(build) + ";";
+            out += std::string("product=") + product + ";layout=" + layout + ";build=" + BUILD + ";";
             out.push_back('\0');
             return out;
         }
@@ -71,7 +61,7 @@ namespace SQM
                     }
                     continue;
                 }
-                // The magic has no repeated prefix, so on a mismatch the only
+                // No byte of the magic repeats, so on a mismatch the only
                 // possible restart is at this byte.
                 if (byte == pattern[matched])
                     ++matched;
@@ -88,6 +78,7 @@ namespace SQM
 
         void Scanner::parseFields()
         {
+            std::string product;
             std::string layout;
             std::string build;
             size_t start = 0;
@@ -102,7 +93,9 @@ namespace SQM
                 {
                     const std::string key = pair.substr(0, eq);
                     const std::string value = pair.substr(eq + 1);
-                    if (key == "layout")
+                    if (key == "product")
+                        product = value;
+                    else if (key == "layout")
                         layout = value;
                     else if (key == "build")
                         build = value;
@@ -110,40 +103,41 @@ namespace SQM
                 start = end + 1;
             }
             // A stray copy of the magic without fields isn't a marker; keep looking.
-            if (layout.empty())
+            if (product.empty() || layout.empty())
                 return;
+            productField = product;
             layoutField = layout;
-            buildField = (build == "standard" || build == "ble") ? build : "";
+            buildField = build;
             complete = true;
         }
 
-        Verdict check(const Scanner &scanner, const std::string &deviceLayout, Build deviceBuild)
+        Verdict check(const Scanner &scanner, const std::string &deviceLayout)
         {
             if (!scanner.found())
                 return Verdict::NoMarker;
+            if (scanner.product() != PRODUCT)
+                return Verdict::OtherProduct;
             if (scanner.layout() != deviceLayout)
-                return deviceLayout == LEGACY && scanner.layout() == LAYOUT ? Verdict::NeedsUsbFlash : Verdict::OtherLayout;
-            if (scanner.build() != buildName(deviceBuild))
+                return Verdict::OtherLayout;
+            if (scanner.build() != BUILD)
                 return Verdict::OtherBuild;
             return Verdict::Ok;
         }
 
-        const char *verdictMessage(Verdict verdict, Build deviceBuild)
+        const char *verdictMessage(Verdict verdict)
         {
             switch (verdict)
             {
             case Verdict::Ok:
                 return "";
             case Verdict::NoMarker:
-                return "Not firmware for this device. Use a v0.3 or later release file.";
-            case Verdict::NeedsUsbFlash:
-                return "This device needs the one-time USB flash first.";
+                return "Not RoofRoof firmware.";
+            case Verdict::OtherProduct:
+                return "This firmware is for another product.";
             case Verdict::OtherLayout:
-                return "Built for a different partition layout.";
+                return "Built for a different partition layout: flash it over USB.";
             case Verdict::OtherBuild:
-                if (deviceBuild == Build::Ble)
-                    return "Wrong build: this device needs the Bluetooth build.";
-                return "Wrong build: this device needs the standard build.";
+                return "Not a RoofRoof build.";
             }
             return "";
         }

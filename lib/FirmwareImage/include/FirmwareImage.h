@@ -7,40 +7,25 @@
 
 namespace SQM
 {
-    // Which partition layout and build a firmware image is for, and whether
-    // this device may install it (specs/027-firmware-platform-and-space,
-    // FR-020). Every image carries a marker: a fixed 16-byte magic followed by
-    // "layout=<id>;build=<standard|ble>;" and a NUL. OTA scans the image as it
-    // is written and refuses it before the boot partition is switched.
+    // Which product, partition layout and build a firmware image is for, and
+    // whether this device may install it (SQMeter spec 027 FR-020, with a
+    // product field added: specs/001-platform-bootstrap/contracts/firmware-marker.md).
+    // Every image carries a marker: a fixed 16-byte magic followed by
+    // "product=roofroof;layout=<id>;build=standard;" and a NUL. OTA scans the
+    // image as it is written and refuses it before the boot partition is switched.
     namespace FirmwareImage
     {
-        // The whole-chip layout of partitions.csv (spec 027): the 4 MB boards,
-        // classic ESP32 and ESP32-S3-Zero.
+        constexpr const char *PRODUCT = "roofroof";
+        // The 4 MB layout of partitions.csv (SQMeter's "l2").
         constexpr const char *LAYOUT = "l2";
         // Its app slot and LittleFS sizes, to recognise it at run time.
         constexpr uint32_t APP_SLOT_SIZE = 0x1C0000;
         constexpr uint32_t FS_SIZE = 0x70000;
-        // The ESP32-S3 layouts (spec 034): partitions_8MB.csv (S3-Zero-N8R8)
-        // and partitions_16MB.csv (S3-ETH).
-        constexpr const char *LAYOUT_S8 = "s8";
-        constexpr uint32_t S8_APP_SLOT_SIZE = 0x380000;
-        constexpr uint32_t S8_FS_SIZE = 0xF0000;
-        constexpr const char *LAYOUT_S16 = "s16";
-        constexpr uint32_t S16_APP_SLOT_SIZE = 0x600000;
-        constexpr uint32_t S16_FS_SIZE = 0x3F0000;
-        // Any other partition table: a device still on the 2.x layout.
-        constexpr const char *LEGACY_LAYOUT = "legacy";
+        // Any other partition table.
+        constexpr const char *OTHER_LAYOUT = "other";
+        constexpr const char *BUILD = "standard";
 
-        enum class Build
-        {
-            Standard,
-            Ble,
-        };
-
-        const char *buildName(Build build);
-
-        // "l2", "s8" or "s16" for the running partition table, otherwise
-        // "legacy" (a device moved to 3.x firmware without the USB flash).
+        // "l2" for the running partition table, otherwise "other".
         std::string layoutOf(uint32_t appSlotSize, uint32_t fsSize);
 
         constexpr size_t MAGIC_SIZE = 16;
@@ -50,9 +35,9 @@ namespace SQM
         // matches when an image is scanned.
         std::array<uint8_t, MAGIC_SIZE> magic();
 
-        // The full marker for an image of this build (magic + fields + NUL),
-        // as embedded by the firmware (src/FirmwareMarker.cpp).
-        std::string marker(Build build, const char *layout = LAYOUT);
+        // The full marker for an image (magic + fields + NUL), as embedded by
+        // the firmware (src/FirmwareMarker.cpp).
+        std::string marker(const char *product = PRODUCT, const char *layout = LAYOUT);
 
         // Finds the marker in an image fed in chunks of any size.
         class Scanner
@@ -61,8 +46,8 @@ namespace SQM
             Scanner();
             void feed(const uint8_t *data, size_t len);
             bool found() const { return complete; }
+            const std::string &product() const { return productField; }
             const std::string &layout() const { return layoutField; }
-            // Empty when the marker had no (or an unknown) build.
             const std::string &build() const { return buildField; }
 
         private:
@@ -73,6 +58,7 @@ namespace SQM
             bool readingFields = false;
             bool complete = false;
             std::string fields;
+            std::string productField;
             std::string layoutField;
             std::string buildField;
         };
@@ -80,17 +66,18 @@ namespace SQM
         enum class Verdict
         {
             Ok,
-            NoMarker,      // a 2.x image, or not SQMeter firmware
-            NeedsUsbFlash, // this device is still on the old layout
-            OtherLayout,   // built for a layout this device doesn't have
-            OtherBuild,    // standard image on a BLE device, or the reverse
+            NoMarker,     // not RoofRoof firmware (SQMeter's included: another magic)
+            OtherProduct, // a marker naming another product
+            OtherLayout,  // built for a layout this device doesn't have
+            OtherBuild,   // a build this product doesn't make
         };
 
-        Verdict check(const Scanner &scanner, const std::string &deviceLayout, Build deviceBuild);
+        // Checks product, then layout, then build; the first mismatch decides.
+        Verdict check(const Scanner &scanner, const std::string &deviceLayout);
 
         // One line for the person updating (DS-22), English; the UI
         // translates it through the device-message templates.
-        const char *verdictMessage(Verdict verdict, Build deviceBuild);
+        const char *verdictMessage(Verdict verdict);
 
         // A LittleFS image must fill this device's partition exactly.
         // `uploadBytes` is a multipart body's length: the image plus up to

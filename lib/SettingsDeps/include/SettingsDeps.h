@@ -2,8 +2,7 @@
 
 // Whether each setting that depends on another setting (or on hardware, or
 // on the network) is actually in effect - decided once, here, for the
-// firmware, the native tests and the browser demo
-// (specs/020-settings-dependencies). The catalogue it implements is
+// firmware, the native tests and the browser demo (SQMeter spec 020). The catalogue it implements is
 // lib/SettingsDeps/catalogue.json; web/src/lib/settingsDeps.ts mirrors it for
 // previews of unsaved changes, held to the same answers by
 // test/fixtures/settings-deps/cases.json.
@@ -38,26 +37,13 @@ namespace SQM
             FailSafe, // the verdict reports unsafe
         };
 
-        // What the device knows at run time. Rain and wind apply as soon as
-        // settings are saved; GPS and Bluetooth only start at boot.
+        // What the device knows at run time.
         struct Facts
         {
             bool wifiConnected = false; // joined a network (not the setup hotspot)
             bool mqttConnected = false;
-            bool clockSet = false; // NTP or GPS time
-            bool gpsRunning = false;
-            bool gpsFix = false;
-            bool bluetoothBuild = false;
-            bool bluetoothRunning = false;
-            uint8_t pairedPhones = 0;
-            bool lightDetected = false;       // the authoritative sky sensor (TSL2591)
-            bool sqmDetected = false;         // SQM, TSL2591 on I2C-1 (spec 030)
-            bool sqmlDetected = false;        // SQM-L, TSL2591 on I2C-2 (spec 030)
-            bool infraredDetected = false;    // MLX90614
-            bool environmentDetected = false; // BME280
-            bool languageInstalled = false;   // the chosen language's file is stored for this firmware
-            bool displayDetected = false;     // an OLED answered at 0x3C (spec 031; never probed while off)
-            bool batteryDetected = false;     // a MAX17048 fuel gauge answered at 0x36 (spec 032)
+            bool clockSet = false;     // NTP time
+            uint8_t alpacaDevices = 0; // Alpaca devices offered (spec 006 adds the Dome)
         };
 
         struct Reason
@@ -87,11 +73,6 @@ namespace SQM
 
         // Every reason the catalogue can give (for tests and the checker).
         const std::vector<Reason> &reasons();
-
-        // Safety rules that are on but ignored because what they need is off
-        // (unmet behaviour "inactive"), e.g. "Unsafe while raining - rain
-        // sensor is off". Config-only, so the safety document can list them.
-        std::vector<std::string> rulesNotInEffect(const Config &cfg);
 
         const char *stateName(State state);
         const char *unmetName(Unmet unmet);

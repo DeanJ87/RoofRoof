@@ -1,6 +1,6 @@
 #pragma once
 
-// Settings backup and restore (specs/033-config-backup): the backup file, the
+// Settings backup and restore (SQMeter spec 033): the backup file, the
 // restore preview and the rules behind it, shared by the firmware
 // (src/WebServerBackup.cpp), the native tests and the browser demo. No I/O:
 // random bytes, the time and the device's facts come in as parameters.
@@ -22,7 +22,7 @@ namespace SQM::Backup
     constexpr size_t MAX_BODY_BYTES = 20480;    // request body, checked before parsing
     constexpr size_t MIN_PASSPHRASE_CHARS = 8;
     constexpr size_t TOKEN_BYTES = 16;
-    constexpr const char *AAD = "sqmeter-backup/1"; // GCM associated data
+    constexpr const char *AAD = "roofroof-backup/1"; // GCM associated data
 
     // Why a request was refused; codes and English texts in errorCode()/errorText().
     enum class Error : uint8_t
@@ -42,27 +42,11 @@ namespace SQM::Backup
     const char *errorCode(Error error);
     const char *errorText(Error error);
 
-    // GPIOs a board offers: any pin setting, and the wind vane's analog pin.
-    struct BoardPins
-    {
-        uint64_t validPins = 0;
-        uint64_t analogPins = 0;
-        bool valid(int pin) const { return pin >= 0 && pin < 64 && ((validPins >> pin) & 1ULL) != 0; }
-        bool analog(int pin) const { return pin >= 0 && pin < 64 && ((analogPins >> pin) & 1ULL) != 0; }
-    };
-    // A board's pins from its profile (lib/ConfigModel BoardProfile.h, spec
-    // 034): its usable GPIOs, and its ADC1 range for the vane.
-    BoardPins boardPins(const BoardProfile &board);
-    // The pins of the board this firmware is built for.
-    BoardPins buildBoardPins();
-
     // What the device restoring or backing up is.
     struct DeviceInfo
     {
         std::string firmware; // FIRMWARE_VERSION
         std::string board;    // "esp32"
-        bool bluetoothBuild = false;
-        BoardPins pins;
     };
 
     // A passphrase and the random salt and nonce to encrypt the secrets with.
@@ -106,7 +90,7 @@ namespace SQM::Backup
 
     // Secret path ("wifi.password") and value pairs.
     using Secrets = std::vector<std::pair<std::string, std::string>>;
-    // The nine secret paths, in file order.
+    // The secret paths, in file order.
     const std::vector<const char *> &secretPaths();
 
     // Derives the key and decrypts the secrets (the slow step).
@@ -120,21 +104,15 @@ namespace SQM::Backup
     // Settings that need a restart to take effect, as bits (web/src/components/settings/restart.ts).
     constexpr uint8_t RESTART_WIFI = 1U << 0;
     constexpr uint8_t RESTART_OTA = 1U << 1;
-    constexpr uint8_t RESTART_GPS = 1U << 2;
-    constexpr uint8_t RESTART_I2C = 1U << 3;
-    constexpr uint8_t RESTART_IPV6 = 1U << 4;
-    constexpr uint8_t RESTART_ALPACA = 1U << 5;
-    constexpr uint8_t RESTART_BLE = 1U << 6;
-    constexpr int RESTART_REASON_COUNT = 7;
+    constexpr uint8_t RESTART_IPV6 = 1U << 2;
+    constexpr uint8_t RESTART_ALPACA = 1U << 3;
+    constexpr int RESTART_REASON_COUNT = 4;
     uint8_t restartReasons(const Config &before, const Config &after);
-    // "wifi", "ota", "gps", "i2c", "ipv6", "alpaca", "ble" for bit `index`.
+    // "wifi", "ota", "ipv6", "alpaca" for bit `index`.
     const char *restartCode(int index);
 
     enum class NotApplicableReason : uint8_t
     {
-        Pin,          // not a usable GPIO on this board
-        Analog,       // not an analog (ADC1) pin on this board
-        Bluetooth,    // needs the Bluetooth firmware build
         PushoverKeys, // Pushover on, but its keys are neither restored nor set here
     };
     const char *reasonCode(NotApplicableReason reason);

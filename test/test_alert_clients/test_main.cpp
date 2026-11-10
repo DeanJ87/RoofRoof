@@ -7,7 +7,7 @@
 
 using namespace SQM::Alerts;
 
-// The imaging-app events (specs/021): an Alpaca client that stops checking a
+// The imaging-app events (SQMeter spec 021): an Alpaca client that stops checking a
 // device, comes back, or disconnects.
 
 void setUp(void) {}
@@ -20,18 +20,14 @@ namespace
         AlertRules rules;
         rules.startupGraceSeconds = 0;
         rules.cooldownSeconds = 60;
-        rules.sensorSettleSeconds = 0;
-        rules.skySettleSeconds = 0;
-        rules.skyNightOnly = false;
         return rules;
     }
 
-    AlertInputs safeInputs(uint32_t now)
+    AlertInputs baseInputs(uint32_t now)
     {
         AlertInputs in;
         in.nowSeconds = now;
-        in.safetyKnown = true;
-        in.isSafe = true;
+        in.clientCount = 2;
         return in;
     }
 
@@ -48,14 +44,16 @@ namespace
 {
     AlertInputs clientInputs(uint32_t now, bool watching, bool silent, bool disconnectedNow = false)
     {
-        AlertInputs in = safeInputs(now);
-        in.clients[0].device = "safety monitor";
+        AlertInputs in = baseInputs(now);
+        in.clients[0].key = "dome";
+        in.clients[0].device = "roof";
         in.clients[0].watching = watching;
         in.clients[0].silent = silent;
         in.clients[0].disconnectedNow = disconnectedNow;
         in.clients[0].silentFor = "2 min";
         in.clients[0].lastChecked = "21:04";
-        in.clients[1].device = "weather device";
+        in.clients[1].key = "switch";
+        in.clients[1].device = "switch";
         return in;
     }
 
@@ -94,14 +92,14 @@ void test_client_lost_and_back(void)
     const Alert *lost = find(alerts, AlertType::ClientLost);
     TEST_ASSERT_NOT_NULL(lost);
     TEST_ASSERT_EQUAL_STRING("Imaging app stopped checking", lost->title.c_str());
-    TEST_ASSERT_EQUAL_STRING("No request to the safety monitor for 2 min - last checked 21:04.", lost->message.c_str());
-    TEST_ASSERT_EQUAL_STRING("safety monitor", var(*lost, "device").c_str());
+    TEST_ASSERT_EQUAL_STRING("No request to the roof for 2 min - last checked 21:04.", lost->message.c_str());
+    TEST_ASSERT_EQUAL_STRING("roof", var(*lost, "device").c_str());
     TEST_ASSERT_EQUAL_STRING("2 min", var(*lost, "silent_for").c_str());
     // Once per loss.
     TEST_ASSERT_FALSE(hasType(engine.update(clientInputs(140, true, true), rules), AlertType::ClientLost));
     alerts = engine.update(clientInputs(200, true, false), rules);
     TEST_ASSERT_NOT_NULL(find(alerts, AlertType::ClientBack));
-    TEST_ASSERT_EQUAL_STRING("The safety monitor is being checked again.", find(alerts, AlertType::ClientBack)->message.c_str());
+    TEST_ASSERT_EQUAL_STRING("The roof is being checked again.", find(alerts, AlertType::ClientBack)->message.c_str());
 }
 
 void test_client_disconnect_is_not_lost(void)
@@ -111,7 +109,7 @@ void test_client_disconnect_is_not_lost(void)
     engine.update(clientInputs(0, true, false), rules);
     std::vector<Alert> alerts = engine.update(clientInputs(10, false, false, true), rules);
     TEST_ASSERT_NOT_NULL(find(alerts, AlertType::ClientDisconnected));
-    TEST_ASSERT_EQUAL_STRING("The safety monitor was disconnected.", find(alerts, AlertType::ClientDisconnected)->message.c_str());
+    TEST_ASSERT_EQUAL_STRING("The roof was disconnected.", find(alerts, AlertType::ClientDisconnected)->message.c_str());
     for (uint32_t t = 20; t < 2000; t += 10)
         TEST_ASSERT_EQUAL(0, engine.update(clientInputs(t, false, false), rules).size());
 }
@@ -167,21 +165,13 @@ void test_client_back_only_answers_a_sent_loss(void)
     TEST_ASSERT_FALSE(hasType(engine.update(clientInputs(200, true, false), rules), AlertType::ClientBack));
 }
 
-void test_client_events_ignore_grace_and_darkness(void)
+void test_client_events_ignore_the_startup_grace(void)
 {
     AlertEngine engine;
     AlertRules rules = clientRules();
     rules.startupGraceSeconds = 600;
-    rules.safetyNightOnly = true;
-    rules.skyNightOnly = true;
-    AlertInputs in = clientInputs(0, true, false);
-    in.nightKnown = true;
-    in.isNight = false;
-    engine.update(in, rules);
-    in = clientInputs(130, true, true);
-    in.nightKnown = true;
-    in.isNight = false;
-    TEST_ASSERT_TRUE(hasType(engine.update(in, rules), AlertType::ClientLost));
+    engine.update(clientInputs(0, true, false), rules);
+    TEST_ASSERT_TRUE(hasType(engine.update(clientInputs(130, true, true), rules), AlertType::ClientLost));
 }
 
 void test_client_events_off(void)
@@ -225,11 +215,11 @@ namespace
     namespace Alpaca = SQM::Alpaca;
 
     // The device side: ClientWatch on the Router's counters, feeding the
-    // engine the safety monitor's state the way the firmware does.
+    // engine the first device's state the way the firmware does.
     struct Restarted
     {
-        Alpaca::DeviceActivity activity[Alpaca::DEVICE_COUNT];
-        uint32_t silence[Alpaca::DEVICE_COUNT] = {120000, 600000};
+        Alpaca::DeviceActivity activity[Alpaca::MAX_DEVICES];
+        uint32_t silence[Alpaca::MAX_DEVICES] = {120000, 600000};
         Alpaca::ClientWatch watch;
         AlertEngine engine;
         AlertRules rules = clientRules();
@@ -239,7 +229,7 @@ namespace
             if (restored)
             {
                 activity[0].connected = true;
-                const bool connected[Alpaca::DEVICE_COUNT] = {true, false};
+                const bool connected[Alpaca::MAX_DEVICES] = {true, false};
                 watch.restoreConnections(connected, 0);
             }
         }
@@ -247,7 +237,7 @@ namespace
         std::vector<Alert> at(uint32_t seconds)
         {
             watch.update(activity, silence, true, seconds * 1000);
-            const Alpaca::ClientState &sm = watch.state(Alpaca::Device::SafetyMonitor);
+            const Alpaca::ClientState &sm = watch.state(0);
             return engine.update(clientInputs(seconds, sm.watching, sm.silent, sm.disconnectedNow), rules);
         }
     };
@@ -256,14 +246,14 @@ namespace
 void test_restored_connection_silent_after_restart_is_lost(void)
 {
     Restarted device(true);
-    TEST_ASSERT_TRUE(device.watch.state(Alpaca::Device::SafetyMonitor).everRequested);
+    TEST_ASSERT_TRUE(device.watch.state(0).everRequested);
     for (uint32_t t = 0; t <= 120; t += 10)
         TEST_ASSERT_FALSE(hasType(device.at(t), AlertType::ClientLost));
     TEST_ASSERT_TRUE(hasType(device.at(130), AlertType::ClientLost));
     // The app comes back: one request answers the loss.
     device.activity[0].requests++;
     TEST_ASSERT_TRUE(hasType(device.at(140), AlertType::ClientBack));
-    TEST_ASSERT_FALSE(device.watch.state(Alpaca::Device::SafetyMonitor).silent);
+    TEST_ASSERT_FALSE(device.watch.state(0).silent);
 }
 
 void test_restored_connection_still_polled_is_not_lost(void)
@@ -279,7 +269,7 @@ void test_restored_connection_still_polled_is_not_lost(void)
 void test_normal_boot_without_restore_is_unchanged(void)
 {
     Restarted device(false);
-    const Alpaca::ClientState &sm = device.watch.state(Alpaca::Device::SafetyMonitor);
+    const Alpaca::ClientState &sm = device.watch.state(0);
     for (uint32_t t = 0; t < 600; t += 10)
         TEST_ASSERT_EQUAL(0, device.at(t).size());
     TEST_ASSERT_FALSE(sm.watching);
@@ -291,7 +281,7 @@ void test_normal_boot_without_restore_is_unchanged(void)
     TEST_ASSERT_FALSE(hasType(device.at(700), AlertType::ClientLost));
     TEST_ASSERT_TRUE(hasType(device.at(730), AlertType::ClientLost));
     // The restore only touches the devices that were connected.
-    TEST_ASSERT_FALSE(device.watch.state(Alpaca::Device::ObservingConditions).everRequested);
+    TEST_ASSERT_FALSE(device.watch.state(1).everRequested);
 }
 
 int main(int argc, char **argv)
@@ -303,7 +293,7 @@ int main(int argc, char **argv)
     RUN_TEST(test_client_never_watched_never_alerts);
     RUN_TEST(test_client_flapping_respects_cooldown);
     RUN_TEST(test_client_back_only_answers_a_sent_loss);
-    RUN_TEST(test_client_events_ignore_grace_and_darkness);
+    RUN_TEST(test_client_events_ignore_the_startup_grace);
     RUN_TEST(test_client_events_off);
     RUN_TEST(test_client_default_wording_names_no_product);
     RUN_TEST(test_restored_connection_silent_after_restart_is_lost);

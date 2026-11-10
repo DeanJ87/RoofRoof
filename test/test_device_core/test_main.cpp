@@ -3,430 +3,74 @@
 #include <ArduinoJson.h>
 
 #include "DeviceCore.h"
-#include "ObservingConditionsMapper.h"
 
 #include <fstream>
 #include <set>
 #include <sstream>
 
+// The device core: alert wording and levels from settings, the imaging-app
+// watch documents, the send schedule and test alerts.
+
 using namespace SQM;
 
 namespace
 {
-    constexpr int64_t NIGHT_EPOCH = 1791417600;  // 2026-10-08 00:00 UTC (dark over London)
-    constexpr int64_t MIDDAY_EPOCH = 1791460800; // 2026-10-08 12:00 UTC
+    const std::vector<Alpaca::DeviceInfo> ONE_DOME = {{"Dome", "dome", 0, "RoofRoof Dome", "Roll-off roof", 3}};
 
-    // A healthy reading set: all three sky sensors fresh at `now`.
-    SensorSnapshot healthy(uint32_t now)
+    // The firmware's path: the Router's counters through a ClientWatch into
+    // the alert inputs.
+    struct Rig
     {
-        SensorSnapshot s;
-        s.skySensors[0].initialized = s.bmeInitialized = s.mlxInitialized = true;
-        s.skySensors[0].reading.status = s.bme.status = s.mlx.status = SensorStatus::Ok;
-        s.skySensors[0].reading.timestamp = s.bme.timestamp = s.mlx.timestamp = now - 500;
-        s.skySensors[0].lastUpdate = s.bmeLastUpdate = s.mlxLastUpdate = now - 500;
-        s.dataTimestamp = now - 500;
-        s.skySensors[0].reading.lux = 0.0003f;
-        s.bme.temperature = 12.0f;
-        s.bme.humidity = 60.0f;
-        s.bme.pressure = 1013.0f;
-        s.bme.dewpoint = 4.5f;
-        s.mlx.objectTemp = -25.0f;
-        s.mlx.ambientTemp = 12.0f;
-        s.skySensors[0].diagnostics.integrationMs = 600;
-        s.skySensors[0].diagnostics.averagingWindowSeconds = 90;
-        return s;
-    }
+        const Config &cfg;
+        Alpaca::ClientWatch watch;
+        Alpaca::DeviceActivity activity[Alpaca::MAX_DEVICES];
 
-    Config defaults()
-    {
-        Config c = Config::createDefault();
-        c.location.set = true;
-        c.location.latitude = 51.48;
-        c.location.longitude = 0.0;
-        return c;
-    }
+        Alerts::AlertInputs at(uint32_t nowMs, bool poll)
+        {
+            if (poll)
+                ++activity[0].requests;
+            uint32_t silence[Alpaca::MAX_DEVICES];
+            Core::clientSilenceMs(cfg, silence);
+            watch.update(activity, silence, true, nowMs);
+            Alerts::AlertInputs in;
+            in.nowSeconds = nowMs / 1000;
+            Core::addClientInputs(in, watch, ONE_DOME, cfg, nowMs, "23:01");
+            return in;
+        }
+    };
 } // namespace
-
-// Spec 007 FR-004: a sensor that isn't there is NotImplemented; one that
-// answered and then failed is a driver error.
-void test_observing_conditions_missing_vs_failed_sensors()
-{
-    using namespace SQM::Alpaca;
-    const uint32_t now = 100000;
-    Config cfg = defaults();
-    cfg.rain.enabled = true;
-
-    // IR sky sensor not detected at boot, RG-15 switched on but never answered.
-    SensorSnapshot s = healthy(now);
-    s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NotInitialized;
-    s.mlxLastUpdate = 0;
-    Core::derive(s, cfg);
-    ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
-    for (const char *name : {"skytemperature", "cloudcover", "rainrate"})
-    {
-        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getObservingConditionsProperty(name, obs).errorNumber, name);
-        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getTimeSinceLastUpdate(name, obs).errorNumber, name);
-        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_IMPLEMENTED, getSensorDescription(name, obs).errorNumber, name);
-    }
-    TEST_ASSERT_TRUE(getObservingConditionsProperty("temperature", obs).ok);
-
-    // Both answered once, then failed / went stale: a driver error, still described.
-    s.mlxInitialized = true;
-    s.mlx.status = SensorStatus::ReadError;
-    s.mlxLastUpdate = now - 500;
-    s.rg15.timestamp = now - 120000;
-    s.rg15.online = false;
-    s.rg15.stale = true;
-    Core::derive(s, cfg);
-    obs = Core::observingConditions(s, cfg, now);
-    for (const char *name : {"skytemperature", "cloudcover", "rainrate"})
-    {
-        TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_DRIVER_BASE, getObservingConditionsProperty(name, obs).errorNumber, name);
-        TEST_ASSERT_TRUE_MESSAGE(getSensorDescription(name, obs).ok, name);
-    }
-}
 
 void setUp() {}
 void tearDown() {}
 
-void test_derive_and_readings()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    const Config cfg = defaults();
-    Core::derive(s, cfg);
-    TEST_ASSERT_TRUE(s.humidityMeasured);
-    TEST_ASSERT_TRUE(s.sky.sqm > 21.0f);
-
-    const Readings::Snapshot r = Core::buildReadings(s, cfg, now, NIGHT_EPOCH);
-    TEST_ASSERT_EQUAL(static_cast<int>(Readings::Status::Ok), static_cast<int>(r.light.status));
-    TEST_ASSERT_EQUAL(static_cast<int>(Readings::Status::Ok), static_cast<int>(r.infrared.status));
-    TEST_ASSERT_TRUE(r.timeValid);
-    TEST_ASSERT_EQUAL(NIGHT_EPOCH, r.timestamp);
-    TEST_ASSERT_EQUAL_STRING("clear", r.clouds.condition);
-    TEST_ASSERT_FALSE(r.gps.present); // GPS off by default
-    TEST_ASSERT_FALSE(r.rain.present);
-}
-
-// The cloud delta uses the BME280's air temperature; the MLX's own (case)
-// temperature only when the BME280 isn't working.
-void test_cloud_delta_uses_air_temperature()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    s.bme.temperature = 9.4f;
-    s.mlx.objectTemp = 7.5f;
-    s.mlx.ambientTemp = 16.1f;
-    Core::derive(s, defaults());
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, -1.9f, s.cloud.temperatureDelta);
-
-    s.bme.status = SensorStatus::ReadError;
-    Core::derive(s, defaults());
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, -8.6f, s.cloud.temperatureDelta);
-}
-
-void test_missing_stale_and_clock()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NotInitialized;
-    s.bmeLastUpdate = now - 20000; // older than read interval + grace
-    const Config cfg = defaults();
-    Core::derive(s, cfg);
-    const Readings::Snapshot r = Core::buildReadings(s, cfg, now, 0);
-    TEST_ASSERT_EQUAL(static_cast<int>(Readings::Status::Missing), static_cast<int>(r.infrared.status));
-    TEST_ASSERT_EQUAL(static_cast<int>(Readings::Status::Stale), static_cast<int>(r.environment.status));
-    TEST_ASSERT_FALSE(r.timeValid);
-    TEST_ASSERT_EQUAL(0, r.timestamp);
-
-    StaticJsonDocument<512> doc;
-    Core::writeSensorHealth(doc.to<JsonObject>(), r, cfg);
-    TEST_ASSERT_EQUAL_STRING("missing", doc["infrared"]["status"]);
-    TEST_ASSERT_FALSE(doc["infrared"].containsKey("ageMs"));
-    TEST_ASSERT_TRUE(doc["environment"].containsKey("ageMs"));
-}
-
-void test_safety_with_safe_delay()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    Config cfg = defaults();
-    cfg.alpaca.safeDelaySeconds = 60;
-    Core::derive(s, cfg);
-
-    SafetyStatus status;
-    Alpaca::SafeDelayFilter filter;
-    const auto safeResult = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
-    TEST_ASSERT_TRUE(safeResult.isSafe);
-    // First evaluation: reported unsafe while the safe delay runs.
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, safeResult, cfg, now));
-    TEST_ASSERT_FALSE(status.isSafe);
-    TEST_ASSERT_TRUE(status.rawSafe);
-    TEST_ASSERT_TRUE(status.secondsUntilSafe > 0);
-    // After the delay it's safe.
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, safeResult, cfg, now + 61000));
-    TEST_ASSERT_TRUE(status.isSafe);
-
-    // Tighten cloud cover below the reading: unsafe at once, with a reason.
-    s.mlx.objectTemp = 8.0f; // overcast
-    Core::derive(s, cfg);
-    const auto cloudy = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now + 62000), Core::safetyThresholds(cfg));
-    TEST_ASSERT_FALSE(cloudy.isSafe);
-    TEST_ASSERT_TRUE(Core::updateSafety(status, filter, cloudy, cfg, now + 62000));
-    TEST_ASSERT_FALSE(status.isSafe);
-
-    StaticJsonDocument<512> doc;
-    Core::writeSafety(doc.to<JsonObject>(), status, cfg, now + 63000);
-    TEST_ASSERT_FALSE(doc["safe"].as<bool>());
-    TEST_ASSERT_TRUE(doc["reasons"].size() >= 1);
-    TEST_ASSERT_EQUAL(1000, doc["evaluatedAgeMs"].as<int>());
-}
-
-// D-15 (specs/020-settings-dependencies): rain rules switched on without the
-// rain sensor are ignored, and the safety document says so.
-void test_safety_lists_rules_not_in_effect()
-{
-    Config cfg = defaults();
-    cfg.rain.enabled = false;
-    cfg.alpaca.rainUnsafeEnabled = true;
-    cfg.alpaca.rainSensorRequired = false;
-    SafetyStatus status;
-    DynamicJsonDocument doc(1536);
-    Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);
-    TEST_ASSERT_EQUAL(1, doc["rulesNotInEffect"].size());
-    TEST_ASSERT_EQUAL_STRING("Unsafe while raining", doc["rulesNotInEffect"][0]);
-
-    cfg.rain.enabled = true;
-    Core::writeSafety(doc.to<JsonObject>(), status, cfg, 1000);
-    TEST_ASSERT_EQUAL(0, doc["rulesNotInEffect"].size());
-}
-
-void test_rain_makes_unsafe_even_when_stale()
-{
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    Config cfg = defaults();
-    cfg.rain.enabled = true;
-    s.rg15Initialized = true;
-    s.rg15.online = true;
-    s.rg15.stale = false;
-    s.rg15.status = SensorStatus::Ok;
-    s.rg15.timestamp = now - 100;
-    s.rg15.isRaining = true;
-    s.rg15.rInt = 2.0f;
-    s.dataTimestamp = now - 600000; // everything else stale
-    s.skySensors[0].lastUpdate = s.mlxLastUpdate = now - 600000;
-    Core::derive(s, cfg);
-    const auto result = Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
-    TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRain);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeStaleData);
-}
-
-namespace
-{
-    // A rain sensor that is answering and dry.
-    void dryRain(SensorSnapshot &s, Config &cfg, uint32_t now)
-    {
-        cfg.rain.enabled = true;
-        s.rg15Initialized = true;
-        s.rg15.online = true;
-        s.rg15.stale = false;
-        s.rg15.status = SensorStatus::Ok;
-        s.rg15.timestamp = now - 100;
-    }
-
-    Alpaca::SafetyResult verdict(SensorSnapshot &s, const Config &cfg, uint32_t now)
-    {
-        Core::derive(s, cfg);
-        return Alpaca::evaluateSafety(Core::safetyInputs(s, cfg, now), Core::safetyThresholds(cfg));
-    }
-} // namespace
-
-// specs/006 US1/AC4: "stale" means the sensors stopped giving fresh reads,
-// not that the read loop stopped - a sensor still reporting OK with an old
-// reading makes the verdict unsafe.
-void test_stale_when_a_required_sensor_stops_refreshing()
-{
-    const uint32_t now = 1000000;
-    SensorSnapshot s = healthy(now);
-    const Config cfg = defaults();
-    s.dataTimestamp = now - 100;               // the loop is running
-    s.skySensors[0].lastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
-    const auto result = verdict(s, cfg, now);
-    TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeStaleData);
-
-    SensorSnapshot fresh = healthy(now);
-    TEST_ASSERT_TRUE(verdict(fresh, cfg, now).isSafe);
-}
-
-// specs/006 SC-002: the readings' stale flag follows the same per-sensor age
-// as the verdict, so the dashboard never reads "Live" while the verdict is
-// unsafe because a sensor stopped refreshing.
-void test_readings_stale_matches_the_verdict()
-{
-    const uint32_t now = 1000000;
-    const Config cfg = defaults();
-
-    SensorSnapshot fresh = healthy(now);
-    Core::derive(fresh, cfg);
-    TEST_ASSERT_FALSE(Core::buildReadings(fresh, cfg, now, NIGHT_EPOCH).dataStale);
-
-    SensorSnapshot s = healthy(now);
-    s.dataTimestamp = now - 100;               // the loop is running
-    s.skySensors[0].lastUpdate = now - 600000; // but the TSL2591 hasn't read for 10 min
-    Core::derive(s, cfg);
-    TEST_ASSERT_TRUE(Core::buildReadings(s, cfg, now, NIGHT_EPOCH).dataStale);
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeStaleData);
-
-    // A sensor that isn't fitted doesn't make the data stale.
-    SensorSnapshot noIr = healthy(now);
-    noIr.mlxInitialized = false;
-    noIr.mlx.status = SensorStatus::NotInitialized;
-    noIr.mlxLastUpdate = 0;
-    Core::derive(noIr, cfg);
-    TEST_ASSERT_FALSE(Core::buildReadings(noIr, cfg, now, NIGHT_EPOCH).dataStale);
-}
-
-// A sensor that never answered is a fault, not "no data" or "stale".
-void test_missing_sensor_is_a_fault_not_stale()
-{
-    const uint32_t now = 1000000;
-    SensorSnapshot s = healthy(now);
-    const Config cfg = defaults();
-    s.mlxInitialized = false;
-    s.mlx.status = SensorStatus::NotInitialized;
-    s.mlxLastUpdate = 0;
-    const auto result = verdict(s, cfg, now);
-    TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeSensorFault);
-    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeStaleData);
-    TEST_ASSERT_FALSE(result.reasonFlags & Alpaca::UnsafeNoData);
-
-    s.skySensors[0].lastUpdate = 0;
-    s.skySensors[0].reading.status = SensorStatus::ReadError;
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeNoData);
-}
-
-// specs/006: the rain sensor's health feeds the verdict - a dirty lens or a
-// sensor that stopped answering is unsafe when the rain sensor is required.
-void test_rain_sensor_lens_fault_and_stale_are_unsafe()
-{
-    const uint32_t now = 1000000;
-    Config cfg = defaults();
-    cfg.alpaca.rainUnsafeEnabled = true;
-    cfg.alpaca.rainSensorRequired = true;
-
-    SensorSnapshot s = healthy(now);
-    dryRain(s, cfg, now);
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).isSafe);
-
-    s.rg15.lensBad = true;
-    auto result = verdict(s, cfg, now);
-    TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRainSensorFault);
-
-    s.rg15.lensBad = false;
-    s.rg15.stale = true;
-    result = verdict(s, cfg, now);
-    TEST_ASSERT_FALSE(result.isSafe);
-    TEST_ASSERT_TRUE(result.reasonFlags & Alpaca::UnsafeRainSensorFault);
-
-    s.rg15.stale = false;
-    s.rg15.online = false;
-    TEST_ASSERT_TRUE(verdict(s, cfg, now).reasonFlags & Alpaca::UnsafeRainSensorFault);
-}
-
-void test_night_from_location_and_clock()
-{
-    SensorSnapshot s;
-    Config cfg = defaults();
-    const Core::NightState night = Core::night(s, cfg, NIGHT_EPOCH);
-    TEST_ASSERT_TRUE(night.known);
-    TEST_ASSERT_TRUE(night.isNight);
-    TEST_ASSERT_EQUAL_STRING("manual", night.source);
-    TEST_ASSERT_FALSE(Core::night(s, cfg, MIDDAY_EPOCH).isNight);
-    TEST_ASSERT_FALSE(Core::night(s, cfg, 0).known); // no clock
-
-    s.gps.hasFix = true; // a GPS fix wins over settings
-    s.gps.latitude = -33.9;
-    s.gps.longitude = 151.2;
-    TEST_ASSERT_EQUAL_STRING("gps", Core::night(s, cfg, NIGHT_EPOCH).source);
-
-    cfg.location.set = false;
-    s.gps.hasFix = false;
-    const Core::NightState none = Core::night(s, cfg, NIGHT_EPOCH);
-    StaticJsonDocument<256> doc;
-    Core::writeSky(doc.to<JsonObject>(), none);
-    TEST_ASSERT_EQUAL_STRING("none", doc["locationSource"]);
-    TEST_ASSERT_FALSE(doc["nightKnown"].as<bool>());
-    TEST_ASSERT_FALSE(doc.containsKey("sunAltitudeDeg"));
-}
-
-// Alpaca's Location (spec 007): the location in use, whatever the clock.
-void test_alpaca_location()
-{
-    SensorSnapshot s;
-    Config cfg = defaults();
-    cfg.location.set = true;
-    cfg.location.latitude = 51.47789;
-    cfg.location.longitude = -0.00149;
-    TEST_ASSERT_EQUAL_STRING("51.4779, -0.0015", Core::alpacaLocation(s, cfg).c_str());
-    s.gps.hasFix = true; // a GPS fix wins over settings
-    s.gps.latitude = -33.86;
-    s.gps.longitude = 151.21;
-    TEST_ASSERT_EQUAL_STRING("-33.8600, 151.2100", Core::alpacaLocation(s, cfg).c_str());
-    s.gps.hasFix = false;
-    cfg.location.set = false;
-    TEST_ASSERT_EQUAL_STRING("", Core::alpacaLocation(s, cfg).c_str());
-}
-
 void test_alert_wording_and_levels()
 {
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    Config cfg = defaults();
-    cfg.alerts.safetyNightOnly = false;
-    cfg.alerts.unsafe.title = "{device}: {event} at {time}";
-    cfg.alerts.unsafe.message = "SQM {sqm}, cloud {cloud}%";
-    Core::derive(s, cfg);
-    const auto obs = Core::observingConditions(s, cfg, now);
-    const auto night = Core::night(s, cfg, NIGHT_EPOCH);
-
+    Config cfg = Config::createDefault();
+    cfg.alerts.clientLost.title = "{device}: {event} at {time}";
+    cfg.alerts.clientLost.message = "Quiet for {silent_for}, last {last_checked}";
+    const Core::AlertSources sources{cfg};
     Alerts::AlertEngine engine;
-    SafetyStatus status;
-    status.evaluatedAtMs = now;
-    status.isSafe = true;
-    status.rawSafe = true;
-    // Baseline pass, then unsafe after the engine's 60 s start-up grace.
-    const Core::AlertSources sources{cfg, obs, night, status};
-    Core::runAlerts(engine, Core::alertInputs(sources, s, now), Core::alertRules(cfg), sources, Core::LocalClock{"23:00", "2026-10-07"});
-    status.isSafe = false;
-    status.rawSafe = false;
-    status.reasons = {"Cloud 96% >= 90%"};
-    const Core::AlertStep step = Core::runAlerts(
-        engine, Core::alertInputs(sources, s, now + 70000), Core::alertRules(cfg), sources, Core::LocalClock{"23:01", "2026-10-07"});
+    Rig rig{cfg, {}, {}};
+    rig.activity[0].connected = true;
+    rig.at(0, false);
+    Core::runAlerts(engine, rig.at(1000, true), Core::alertRules(cfg), sources, {"23:00", "2026-10-07"});
+    const Core::AlertStep step = Core::runAlerts(engine, rig.at(131000, false), Core::alertRules(cfg), sources, {"23:01", "2026-10-07"});
     TEST_ASSERT_EQUAL(1, step.outgoing.size());
     const Alerts::Alert &alert = step.outgoing[0];
     TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Urgent), static_cast<int>(alert.level));
-    TEST_ASSERT_EQUAL_STRING("SQM-ESP32: unsafe at 23:01", alert.title.c_str());
-    TEST_ASSERT_EQUAL_STRING_MESSAGE("SQM 21.41, cloud 0%", alert.message.c_str(), alert.message.c_str());
+    // {device} is the Alpaca device here: the event's own value wins.
+    TEST_ASSERT_EQUAL_STRING("RoofRoof Dome: client_lost at 23:01", alert.title.c_str());
+    TEST_ASSERT_EQUAL_STRING("Quiet for 2 min, last 22:59", alert.message.c_str());
     TEST_ASSERT_TRUE(alert.vars.empty()); // cleared once applied
 
     // An event switched Off never goes out.
-    cfg.alerts.safe.level = 0;
-    status.isSafe = status.rawSafe = true;
-    status.reasons.clear();
-    const Core::AlertStep quiet = Core::runAlerts(
-        engine, Core::alertInputs(sources, s, now + 600000), Core::alertRules(cfg), sources, Core::LocalClock{"23:11", "2026-10-07"});
+    cfg.alerts.clientBack.level = 0;
+    const Core::AlertStep quiet = Core::runAlerts(engine, rig.at(140000, true), Core::alertRules(cfg), sources, {"23:02", "2026-10-07"});
     TEST_ASSERT_EQUAL(0, quiet.outgoing.size());
 }
 
-// specs/008 FR-006: the device fills exactly the common variables the web UI
-// offers (lib/AlertLogic/template-variables.json).
+// SQMeter spec 008 FR-006: the device fills exactly the common variables the
+// web UI offers (lib/AlertLogic/template-variables.json).
 void test_alert_vars_match_the_shared_list()
 {
     std::ifstream in("lib/AlertLogic/template-variables.json");
@@ -438,137 +82,79 @@ void test_alert_vars_match_the_shared_list()
     for (JsonVariantConst name : doc["common"].as<JsonArrayConst>())
         shared.insert(name.as<std::string>());
 
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    const Config cfg = defaults();
-    Core::derive(s, cfg);
+    const Config cfg = Config::createDefault();
     Alerts::Alert alert; // no event values of its own
     std::set<std::string> filled;
-    const Alpaca::ObservingConditionsSnapshot obs = Core::observingConditions(s, cfg, now);
-    const Core::NightState night = Core::night(s, cfg, NIGHT_EPOCH);
-    const SafetyStatus status{};
-    for (const auto &v : Core::alertVars(Core::AlertSources{cfg, obs, night, status}, alert, Core::LocalClock{"23:00", "2026-10-07"}))
+    for (const auto &v : Core::alertVars(Core::AlertSources{cfg}, alert, Core::LocalClock{"23:00", "2026-10-07"}))
         filled.insert(v.first);
     TEST_ASSERT_TRUE_MESSAGE(filled == shared, "Core::alertVars and template-variables.json \"common\" differ");
 }
 
-void test_iso_utc_and_window()
+void test_iso_utc_and_durations()
 {
-    TEST_ASSERT_EQUAL_STRING("2026-10-08T00:00:00Z", Core::isoUtc(NIGHT_EPOCH).c_str());
+    TEST_ASSERT_EQUAL_STRING("2026-10-08T00:00:00Z", Core::isoUtc(1791417600).c_str());
     TEST_ASSERT_EQUAL_STRING("", Core::isoUtc(1000).c_str());
-    TSL2591Diagnostics diag;
-    diag.integrationMs = 600;
-    diag.averagingWindowSeconds = 90;
-    TEST_ASSERT_EQUAL(150, Core::windowSamples(diag));
-    diag.averagingWindowSeconds = 600;
-    TEST_ASSERT_EQUAL(512, Core::windowSamples(diag)); // buffer cap
+    TEST_ASSERT_EQUAL_STRING("45 s", Core::formatDuration(45).c_str());
+    TEST_ASSERT_EQUAL_STRING("2 min", Core::formatDuration(120).c_str());
+    TEST_ASSERT_EQUAL_STRING("1 h", Core::formatDuration(3600).c_str());
+    TEST_ASSERT_EQUAL_STRING("1 h 5 min", Core::formatDuration(3900).c_str());
 }
 
-// Spec 003 edge case: rain switched off in settings -> Alpaca RainRate is
-// NotImplemented end to end, even with a stale reading still in the snapshot.
-void test_rainrate_not_implemented_when_rain_disabled()
+// /api/status "alpaca": one entry per Alpaca device, keyed by its type.
+void test_client_watch_document()
 {
-    const uint32_t now = 100000;
-    SensorSnapshot s = healthy(now);
-    s.rg15.online = true;
-    s.rg15.rInt = 3.0f;
-    s.rg15.timestamp = now - 500;
-    Config cfg = defaults();
-    cfg.rain.enabled = false;
-    Core::derive(s, cfg);
-    const auto off = Core::observingConditions(s, cfg, now);
-    TEST_ASSERT_EQUAL(Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, Alpaca::getObservingConditionsProperty("rainrate", off).errorNumber);
+    Config cfg = Config::createDefault();
+    cfg.alpaca.enabled = true;
+    DynamicJsonDocument doc(1024);
+    Core::writeClientWatch(doc.to<JsonObject>(), Alpaca::ClientWatch{}, ONE_DOME, cfg, 1000);
+    TEST_ASSERT_TRUE(doc["enabled"].as<bool>());
+    TEST_ASSERT_EQUAL(1, doc["clients"].size());
+    TEST_ASSERT_FALSE(doc["clients"]["dome"]["watching"].as<bool>());
+    TEST_ASSERT_TRUE(doc["clients"]["dome"]["lastCheckedAgeMs"].isNull());
 
-    cfg.rain.enabled = true;
-    const auto on = Core::observingConditions(s, cfg, now);
-    TEST_ASSERT_NOT_EQUAL(Alpaca::ALPACA_ERR_NOT_IMPLEMENTED, Alpaca::getObservingConditionsProperty("rainrate", on).errorNumber);
+    DynamicJsonDocument none(256);
+    Core::writeClientWatch(none.to<JsonObject>(), Alpaca::ClientWatch{}, {}, cfg, 1000);
+    TEST_ASSERT_EQUAL(0, none["clients"].size());
 }
 
-void test_sky_copy_follows_the_authoritative_role();
-void test_sky_copy_never_falls_back();
-void test_sky_copy_one_sensor_is_unchanged();
-void test_sky_readings_per_role_status();
-void test_sky_status_documents();
-void test_sky_safety_uses_the_authoritative_sensor_only();
-void test_sky_alpaca_follows_the_authoritative_sensor();
-void test_sky_dark_calibration_writes_one_role();
-void test_sky_alert_variables();
-void test_sky_alert_sensor_slots();
+// D-12: "only while an imaging app is connected" needs Alpaca.
+void test_send_mode_needs_alpaca()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.sendMode = AlertsConfig::SendMode::WhileConnected;
+    TEST_ASSERT_EQUAL(Alerts::SendMode::Any, Core::effectiveSendMode(cfg));
+    cfg.alpaca.enabled = true;
+    TEST_ASSERT_EQUAL(Alerts::SendMode::WhileConnected, Core::effectiveSendMode(cfg));
+}
+
+void test_test_alerts()
+{
+    const Config cfg = Config::createDefault();
+    const Core::AlertSources sources{cfg};
+    const Alerts::Alert generic = Core::buildTestAlert(nullptr, {}, sources, {"23:00", "2026-10-07"});
+    TEST_ASSERT_EQUAL_STRING("Test notification", generic.title.c_str());
+    TEST_ASSERT_EQUAL_STRING("Alerts from this RoofRoof are working.", generic.message.c_str());
+
+    const Core::SampleAlert *sample = Core::sampleAlert("client_lost");
+    TEST_ASSERT_NOT_NULL(sample);
+    TEST_ASSERT_NULL(Core::sampleAlert("rain_started"));
+    const Alerts::Alert lost = Core::buildTestAlert(sample, {4, "siren", "{device} quiet", ""}, sources, {"23:00", "2026-10-07"});
+    TEST_ASSERT_EQUAL_STRING("Test: RoofRoof Dome (example) quiet", lost.title.c_str());
+    TEST_ASSERT_EQUAL(static_cast<int>(Alerts::AlertLevel::Wake), static_cast<int>(lost.level));
+    TEST_ASSERT_EQUAL_STRING("siren", lost.sound.c_str());
+}
+
 void test_status_document_fits();
-void test_one_sensor_device_readings_document();
 
-void test_display_view_sky_follows_the_authoritative_reading(void);
-void test_display_view_stale_or_missing_sky_is_invalid(void);
-void test_display_view_groups_and_availability(void);
-void test_display_view_missing_sensors_and_network_modes(void);
-void test_display_status_document(void);
-void test_battery_readings_with_a_gauge();
-void test_battery_status_missing_error_stale();
-void test_battery_monitoring_off_or_no_gauge_reports_absent();
-void test_battery_charger_without_a_gauge();
-void test_battery_status_health_and_diagnostics();
-void test_display_battery_page();
-void test_battery_safety_mapping();
-void test_battery_events_take_their_levels_and_ring_phones();
-void test_battery_rule_alert_and_phone_alarm();
-void test_battery_event_settings_and_samples();
-void test_going_to_sleep_rings_with_the_shutdown_bit();
-void test_power_saving_interval_keeps_readings_fresh();
-void test_power_saving_keeps_the_verdict_fresh();
-void test_battery_alert_variables();
-void test_ble_summary_battery_fields_fit();
-
-int main()
+int main(int, char **)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_derive_and_readings);
-    RUN_TEST(test_cloud_delta_uses_air_temperature);
-    RUN_TEST(test_missing_stale_and_clock);
-    RUN_TEST(test_safety_with_safe_delay);
-    RUN_TEST(test_safety_lists_rules_not_in_effect);
-    RUN_TEST(test_rain_makes_unsafe_even_when_stale);
-    RUN_TEST(test_stale_when_a_required_sensor_stops_refreshing);
-    RUN_TEST(test_readings_stale_matches_the_verdict);
-    RUN_TEST(test_missing_sensor_is_a_fault_not_stale);
-    RUN_TEST(test_rain_sensor_lens_fault_and_stale_are_unsafe);
-    RUN_TEST(test_night_from_location_and_clock);
-    RUN_TEST(test_alpaca_location);
     RUN_TEST(test_alert_wording_and_levels);
-    RUN_TEST(test_observing_conditions_missing_vs_failed_sensors);
     RUN_TEST(test_alert_vars_match_the_shared_list);
-    RUN_TEST(test_iso_utc_and_window);
-    RUN_TEST(test_rainrate_not_implemented_when_rain_disabled);
-    RUN_TEST(test_sky_copy_follows_the_authoritative_role);
-    RUN_TEST(test_sky_copy_never_falls_back);
-    RUN_TEST(test_sky_copy_one_sensor_is_unchanged);
-    RUN_TEST(test_sky_readings_per_role_status);
-    RUN_TEST(test_sky_status_documents);
-    RUN_TEST(test_sky_safety_uses_the_authoritative_sensor_only);
-    RUN_TEST(test_sky_alpaca_follows_the_authoritative_sensor);
-    RUN_TEST(test_sky_dark_calibration_writes_one_role);
-    RUN_TEST(test_sky_alert_variables);
-    RUN_TEST(test_sky_alert_sensor_slots);
+    RUN_TEST(test_iso_utc_and_durations);
+    RUN_TEST(test_client_watch_document);
+    RUN_TEST(test_send_mode_needs_alpaca);
+    RUN_TEST(test_test_alerts);
     RUN_TEST(test_status_document_fits);
-    RUN_TEST(test_one_sensor_device_readings_document);
-    RUN_TEST(test_display_view_sky_follows_the_authoritative_reading);
-    RUN_TEST(test_display_view_stale_or_missing_sky_is_invalid);
-    RUN_TEST(test_display_view_groups_and_availability);
-    RUN_TEST(test_display_view_missing_sensors_and_network_modes);
-    RUN_TEST(test_display_status_document);
-    RUN_TEST(test_battery_readings_with_a_gauge);
-    RUN_TEST(test_battery_status_missing_error_stale);
-    RUN_TEST(test_battery_monitoring_off_or_no_gauge_reports_absent);
-    RUN_TEST(test_battery_charger_without_a_gauge);
-    RUN_TEST(test_battery_status_health_and_diagnostics);
-    RUN_TEST(test_display_battery_page);
-    RUN_TEST(test_battery_safety_mapping);
-    RUN_TEST(test_battery_events_take_their_levels_and_ring_phones);
-    RUN_TEST(test_battery_rule_alert_and_phone_alarm);
-    RUN_TEST(test_battery_event_settings_and_samples);
-    RUN_TEST(test_going_to_sleep_rings_with_the_shutdown_bit);
-    RUN_TEST(test_power_saving_interval_keeps_readings_fresh);
-    RUN_TEST(test_power_saving_keeps_the_verdict_fresh);
-    RUN_TEST(test_battery_alert_variables);
-    RUN_TEST(test_ble_summary_battery_fields_fit);
     return UNITY_END();
 }

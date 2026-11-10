@@ -11,7 +11,7 @@
 using namespace SQM;
 
 // Setting ranges shared with the web UI (test/fixtures/config-ranges.json,
-// spec 011 FR-004): the device accepts each bound and rejects just outside it.
+// SQMeter spec 011 FR-004): the device accepts each bound and rejects just outside it.
 
 namespace
 {
@@ -76,7 +76,7 @@ void test_every_shared_range_matches_the_device()
     DynamicJsonDocument fixture(16384);
     TEST_ASSERT_FALSE(deserializeJson(fixture, readFile("test/fixtures/config-ranges.json")));
     JsonArrayConst ranges = fixture["ranges"];
-    TEST_ASSERT_TRUE(ranges.size() > 30);
+    TEST_ASSERT_TRUE(ranges.size() >= 7);
     for (JsonObjectConst range : ranges)
     {
         const double step = (range["int"] | false) ? 1.0 : 0.1;

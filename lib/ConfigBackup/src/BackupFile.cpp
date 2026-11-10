@@ -144,7 +144,7 @@ namespace SQM::Backup
         Error parseObject(JsonObjectConst obj, Parsed &out)
         {
             out = Parsed{};
-            JsonVariantConst version = obj["sqmeterBackup"];
+            JsonVariantConst version = obj["roofroofBackup"];
             if (version.isNull())
             {
                 // Format 0: a plain GET /api/config export, the documented backup before this one.
@@ -225,10 +225,10 @@ namespace SQM::Backup
     {
         const std::string settings = cfg.toJson(true);
         DynamicJsonDocument doc(settings.size() + 2048);
-        doc["sqmeterBackup"] = FORMAT_VERSION;
+        doc["roofroofBackup"] = FORMAT_VERSION;
         doc["firmware"] = device.firmware.c_str();
         doc["board"] = device.board.c_str();
-        doc["build"] = device.bluetoothBuild ? "ble" : "standard";
+        doc["build"] = "standard";
         doc["deviceName"] = cfg.deviceName.c_str();
         if (!createdAt.empty())
             doc["createdAt"] = createdAt.c_str();
@@ -247,7 +247,7 @@ namespace SQM::Backup
             return Error::TooLarge;
         DynamicJsonDocument doc(jsonCapacity(text, 0));
         if (!parseCopy(text, doc))
-            return text.find("\"sqmeterBackup\"") != std::string::npos ? Error::Damaged : Error::NotBackup;
+            return text.find("\"roofroofBackup\"") != std::string::npos ? Error::Damaged : Error::NotBackup;
         if (!doc.is<JsonObject>())
             return Error::NotBackup;
         return parseObject(doc.as<JsonObjectConst>(), out);

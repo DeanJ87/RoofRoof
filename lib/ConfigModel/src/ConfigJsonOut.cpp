@@ -33,8 +33,7 @@ namespace SQM
         void appendClientSilence(JsonObject alerts, const AlertsConfig &a)
         {
             alerts["sendMode"] = sendModeName(a.sendMode);
-            alerts["clientSilentSafetySeconds"] = a.clientSilentSafetySeconds;
-            alerts["clientSilentWeatherSeconds"] = a.clientSilentWeatherSeconds;
+            alerts["clientSilentSeconds"] = a.clientSilentSeconds;
         }
 
         void appendAlertChannels(JsonObject alerts, const AlertsConfig &a, bool redact)
@@ -63,19 +62,10 @@ namespace SQM
 
         void appendAlerts(JsonObject alerts, const AlertsConfig &a, bool redactSecrets, Config::AlertsPart part)
         {
-            if (part == Config::AlertsPart::Battery)
-            {
-                appendEvents(alerts, a, FIRST_BATTERY_EVENT, EVENT_COUNT);
-                return;
-            }
             if (part == Config::AlertsPart::Client)
             {
-                // sendMode is stored here too, so it adds nothing to the main
-                // part (which older firmware reads; it has armWithAlpaca).
-                alerts["sendMode"] = sendModeName(a.sendMode);
-                appendEvents(alerts, a, FIRST_CLIENT_EVENT, FIRST_BATTERY_EVENT);
-                alerts["clientSilentSafetySeconds"] = a.clientSilentSafetySeconds;
-                alerts["clientSilentWeatherSeconds"] = a.clientSilentWeatherSeconds;
+                appendEvents(alerts, a, FIRST_CLIENT_EVENT, EVENT_COUNT);
+                appendClientSilence(alerts, a);
                 return;
             }
 
@@ -83,14 +73,6 @@ namespace SQM
             appendEvents(alerts, a, 0, part == Config::AlertsPart::All ? EVENT_COUNT : FIRST_CLIENT_EVENT);
             if (part == Config::AlertsPart::All)
                 appendClientSilence(alerts, a);
-            alerts["dewRiskMarginC"] = a.dewRiskMarginC;
-            alerts["clearSkyCloudPercent"] = a.clearSkyCloudPercent;
-            alerts["cloudedOverCloudPercent"] = a.cloudedOverCloudPercent;
-            alerts["skyNightOnly"] = a.skyNightOnly;
-            alerts["safetyNightOnly"] = a.safetyNightOnly;
-            // Older firmware reads this instead of sendMode.
-            alerts["armWithAlpaca"] = a.sendMode == AlertsConfig::SendMode::WhileConnected;
-            alerts["nightSunAltitudeDeg"] = a.nightSunAltitudeDeg;
             alerts["cooldownSeconds"] = a.cooldownSeconds;
             appendAlertChannels(alerts, a, redactSecrets);
         }
@@ -116,14 +98,6 @@ namespace SQM
             mqtt["topic"] = c.mqtt.topic;
             mqtt["publishIntervalMs"] = c.mqtt.publishIntervalMs;
             JsonObject publish = mqtt.createNestedObject("publish");
-            publish["sky"] = c.mqtt.publish.sky;
-            publish["environment"] = c.mqtt.publish.environment;
-            publish["clouds"] = c.mqtt.publish.clouds;
-            publish["gps"] = c.mqtt.publish.gps;
-            publish["rain"] = c.mqtt.publish.rain;
-            publish["wind"] = c.mqtt.publish.wind;
-            publish["battery"] = c.mqtt.publish.battery;
-            publish["safety"] = c.mqtt.publish.safety;
             publish["diagnostics"] = c.mqtt.publish.diagnostics;
             JsonObject homeAssistant = mqtt.createNestedObject("homeAssistant");
             homeAssistant["enabled"] = c.mqtt.homeAssistant;
@@ -139,7 +113,7 @@ namespace SQM
             auth["password"] = secretOut(c.auth.password, redact);
         }
 
-        void appendTimeAndSerial(JsonDocument &doc, const Config &c)
+        void appendTime(JsonDocument &doc, const Config &c)
         {
             JsonObject ntp = doc.createNestedObject("ntp");
             ntp["enabled"] = c.ntp.enabled;
@@ -147,159 +121,12 @@ namespace SQM
             ntp["server2"] = c.ntp.server2;
             ntp["timezone"] = c.ntp.timezone;
             ntp["syncIntervalMs"] = c.ntp.syncIntervalMs;
-
-            JsonObject gps = doc.createNestedObject("gps");
-            gps["enabled"] = c.gps.enabled;
-            gps["rxPin"] = c.gps.rxPin;
-            gps["txPin"] = c.gps.txPin;
-            gps["baudRate"] = c.gps.baudRate;
-
-            JsonObject rain = doc.createNestedObject("rain");
-            rain["enabled"] = c.rain.enabled;
-            rain["rxPin"] = c.rain.rxPin;
-            rain["txPin"] = c.rain.txPin;
-            rain["baudRate"] = c.rain.baudRate;
-            rain["debugUart"] = c.rain.debugUart;
-            rain["mode"] = c.rain.mode;
-            rain["resolution"] = c.rain.resolution;
-            rain["units"] = c.rain.units;
-            rain["pollIntervalMs"] = c.rain.pollIntervalMs;
-            rain["rainClearDelayMs"] = c.rain.rainClearDelayMs;
-            rain["dailyResetEnabled"] = c.rain.dailyResetEnabled;
-            rain["dailyResetHour"] = c.rain.dailyResetHour;
-            rain["dailyResetMinute"] = c.rain.dailyResetMinute;
-        }
-
-        // One sky sensor's averaging and calibration sections (same shape for both).
-        void writeSkySections(
-            JsonDocument &doc,
-            const char *averagingKey,
-            const char *calibrationKey,
-            const SkyAveragingConfig &averaging,
-            const SkyCalibrationConfig &cal)
-        {
-            JsonObject avg = doc.createNestedObject(averagingKey);
-            avg["windowSeconds"] = averaging.windowSeconds;
-
-            JsonObject out = doc.createNestedObject(calibrationKey);
-            out["enabled"] = cal.enabled;
-            out["sqmOffset"] = cal.sqmOffset;
-            out["darkVisibleOffset"] = cal.darkVisibleOffset;
-            out["darkFullOffset"] = cal.darkFullOffset;
-            out["darkIrOffset"] = cal.darkIrOffset;
-            out["darkSampleCount"] = cal.darkSampleCount;
-            out["darkCalibratedAt"] = cal.darkCalibratedAt;
-        }
-
-        void appendSky(JsonDocument &doc, const Config &c)
-        {
-            JsonObject sensor = doc.createNestedObject("sensor");
-            sensor["readIntervalMs"] = c.sensor.readIntervalMs;
-            sensor["i2cSDA"] = c.sensor.i2cSDA;
-            sensor["i2cSCL"] = c.sensor.i2cSCL;
-            sensor["i2cFrequency"] = c.sensor.i2cFrequency;
-            sensor["i2c2SDA"] = c.sensor.i2c2SDA;
-            sensor["i2c2SCL"] = c.sensor.i2c2SCL;
-
-            JsonObject sky = doc.createNestedObject("sky");
-            sky["sqmEnabled"] = c.sky.sqmEnabled;
-            sky["sqmlEnabled"] = c.sky.sqmlEnabled;
-            sky["authoritative"] = skyRoleName(c.sky.authoritative);
-            sky["showOther"] = c.sky.showOther;
-
-            writeSkySections(doc, "skyAveraging", "skyCalibration", c.skyAveraging, c.skyCalibration);
-            writeSkySections(doc, "skyAveragingL", "skyCalibrationL", c.skyAveragingL, c.skyCalibrationL);
-
-            JsonObject cloudDetection = doc.createNestedObject("cloudDetection");
-            cloudDetection["clearSkyThreshold"] = c.cloudDetection.clearSkyThreshold;
-            cloudDetection["cloudyThreshold"] = c.cloudDetection.cloudyThreshold;
-            cloudDetection["humidityCorrection"] = c.cloudDetection.humidityCorrection;
-        }
-
-        void appendAlpaca(JsonDocument &doc, const AlpacaConfig &a)
-        {
-            JsonObject alpaca = doc.createNestedObject("alpaca");
-            alpaca["enabled"] = a.enabled;
-            alpaca["manualOverrideUnsafe"] = a.manualOverrideUnsafe;
-            alpaca["staleAfterSeconds"] = a.staleAfterSeconds;
-            alpaca["cloudCoverEnabled"] = a.cloudCoverEnabled;
-            alpaca["cloudCoverUnsafePercent"] = a.cloudCoverUnsafePercent;
-            alpaca["sqmMinEnabled"] = a.sqmMinEnabled;
-            alpaca["sqmMinSafe"] = a.sqmMinSafe;
-            alpaca["humidityMaxEnabled"] = a.humidityMaxEnabled;
-            alpaca["humidityMaxSafe"] = a.humidityMaxSafe;
-            alpaca["dewpointMarginEnabled"] = a.dewpointMarginEnabled;
-            alpaca["dewpointMarginMinC"] = a.dewpointMarginMinC;
-            alpaca["rainUnsafeEnabled"] = a.rainUnsafeEnabled;
-            alpaca["rainSensorRequired"] = a.rainSensorRequired;
-            alpaca["safeDelaySeconds"] = a.safeDelaySeconds;
-            alpaca["windSpeedUnsafeEnabled"] = a.windSpeedUnsafeEnabled;
-            alpaca["windSpeedUnsafeMs"] = a.windSpeedUnsafeMs;
-            alpaca["windGustUnsafeEnabled"] = a.windGustUnsafeEnabled;
-            alpaca["windGustUnsafeMs"] = a.windGustUnsafeMs;
-            alpaca["batteryEnabled"] = a.batteryEnabled;
-            alpaca["batteryMinPercent"] = a.batteryMinPercent;
-            alpaca["batteryAlert"] = a.batteryAlert;
-            alpaca["batteryPhoneAlarm"] = a.batteryPhoneAlarm;
-        }
-
-        void appendPlace(JsonDocument &doc, const Config &c, bool redact)
-        {
-            JsonObject ble = doc.createNestedObject("ble");
-            ble["enabled"] = c.ble.enabled;
-            ble["passkey"] = secretOut(c.ble.passkey, redact);
-
-            JsonObject location = doc.createNestedObject("location");
-            location["set"] = c.location.set;
-            location["latitude"] = c.location.latitude;
-            location["longitude"] = c.location.longitude;
-            location["showSunMoon"] = c.location.showSunMoon;
-
-            JsonObject wind = doc.createNestedObject("wind");
-            wind["enabled"] = c.wind.enabled;
-            wind["speedPin"] = c.wind.speedPin;
-            wind["directionEnabled"] = c.wind.directionEnabled;
-            wind["kmhPerHz"] = c.wind.kmhPerHz;
-            wind["directionOffsetDeg"] = c.wind.directionOffsetDeg;
-        }
-
-        void appendDisplay(JsonDocument &doc, const DisplayConfig &d)
-        {
-            JsonObject display = doc.createNestedObject("display");
-            display["enabled"] = d.enabled;
-            JsonArray pages = display.createNestedArray("pages");
-            for (uint8_t i = 0; i < d.pageCount && i < Display::PAGE_COUNT; ++i)
-                pages.add(Display::pageName(d.pages[i])); // static strings, not copied
-            display["cycleSeconds"] = d.cycleSeconds;
-            display["brightness"] = Display::brightnessName(d.brightness);
-            display["timeoutSeconds"] = d.timeoutSeconds;
-            display["wakeOnBoot"] = d.wakeOnBoot;
-            display["stayOnAtNight"] = d.stayOnAtNight;
-            display["rotate180"] = d.rotate180;
-            display["buttonPin"] = d.buttonPin;
-        }
-
-        void appendBattery(JsonDocument &doc, const BatteryConfig &b)
-        {
-            JsonObject battery = doc.createNestedObject("battery");
-            battery["enabled"] = b.enabled;
-            battery["lowPercent"] = b.lowPercent;
-            battery["criticalPercent"] = b.criticalPercent;
-            battery["shutdownPercent"] = b.shutdownPercent;
-            battery["capacityMah"] = b.capacityMah;
-            battery["powerSaving"] = b.powerSaving;
-            battery["saveReadIntervalSeconds"] = b.saveReadIntervalSeconds;
-            battery["shutdownGraceSeconds"] = b.shutdownGraceSeconds;
-            battery["alertPin"] = b.alertPin;
-            battery["stat1Pin"] = b.stat1Pin;
-            battery["stat2Pin"] = b.stat2Pin;
-            battery["pgPin"] = b.pgPin;
         }
     } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
     {
-        DynamicJsonDocument doc(4096); // strings are referenced, not copied; +1 KB for the battery events (spec 032)
+        DynamicJsonDocument doc(3072); // strings are referenced, not copied
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets, part);
         std::string json;
         serializeJson(doc, json);
@@ -308,20 +135,11 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        // +512 for the second sky sensor's sections (spec 030), +512 for the
-        // display (spec 031), +512 for the battery (spec 032)
-        DynamicJsonDocument doc(9728);
+        DynamicJsonDocument doc(4096);
         doc["deviceName"] = deviceName;
-        doc["language"] = language;
-        doc["primaryTimeSource"] = static_cast<int>(primaryTimeSource);
-        doc["secondaryTimeSource"] = static_cast<int>(secondaryTimeSource);
         appendNetwork(doc, *this, redactSecrets);
-        appendTimeAndSerial(doc, *this);
-        appendSky(doc, *this);
-        appendAlpaca(doc, alpaca);
-        appendPlace(doc, *this, redactSecrets);
-        appendDisplay(doc, display);
-        appendBattery(doc, battery);
+        appendTime(doc, *this);
+        doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

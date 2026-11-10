@@ -1,7 +1,5 @@
 #pragma once
 
-#include "ObservingConditionsMapper.h"
-
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -11,15 +9,15 @@ namespace SQM
 {
     namespace Alpaca
     {
-        // The Alpaca HTTP API (management + SafetyMonitor/ObservingConditions
-        // device routes) independent of any web server, so the firmware and
-        // the native simulator that ConformU tests in CI run the same code.
+        // The Alpaca HTTP API (management + device routes) independent of any
+        // web server, so the firmware and the native simulator that ConformU
+        // tests in CI run the same code. The devices come from the Backend.
 
         struct Request
         {
             bool get = false;
             bool put = false;
-            std::string path; // e.g. /api/v1/safetymonitor/0/issafe
+            std::string path; // e.g. /api/v1/dome/0/shutterstatus
             // Query string (GET) or form body (PUT) parameters, URL-decoded.
             std::vector<std::pair<std::string, std::string>> params;
         };
@@ -31,16 +29,32 @@ namespace SQM
             std::string body;
         };
 
+        // The most Alpaca devices one server offers (fixed arrays: activity,
+        // client watch, connection memory). Spec 006 adds the Dome.
+        constexpr size_t MAX_DEVICES = 2;
+
+        // One Alpaca device as the management API lists it.
+        struct DeviceInfo
+        {
+            std::string type;    // Alpaca DeviceType, e.g. "Dome"
+            std::string typeKey; // lowercase, as in routes and UniqueIDs, e.g. "dome"
+            uint32_t number = 0;
+            std::string name;
+            std::string description;
+            int interfaceVersion = 1;
+        };
+
         // What the router needs from the device.
         class Backend
         {
         public:
             virtual ~Backend() = default;
             virtual bool alpacaEnabled() const = 0;
-            virtual bool isSafe() const = 0;
-            virtual ObservingConditionsSnapshot observingConditions() const = 0;
+            // The devices offered, at most MAX_DEVICES, in a fixed order: a
+            // device's index is its slot in DeviceActivity and ClientWatch.
+            virtual std::vector<DeviceInfo> devices() const = 0;
             virtual std::string serverName() const = 0;   // the device's name (Settings → Device → Name)
-            virtual std::string location() const = 0;     // "lat, lon" of the location in use, or "" (formatLocation)
+            virtual std::string location() const = 0;     // "lat, lon" of the site, or "" (formatLocation)
             virtual std::string timestampUtc() const = 0; // ISO 8601, or "" if the clock isn't set
         };
 
@@ -55,14 +69,6 @@ namespace SQM
         // The management description's Location: where the device is, as
         // "lat, lon" in machine format ('.' decimals, 4 places).
         std::string formatLocation(double latitude, double longitude);
-
-        // The two Alpaca devices, in Router order.
-        enum class Device : uint8_t
-        {
-            SafetyMonitor = 0,
-            ObservingConditions = 1,
-        };
-        constexpr size_t DEVICE_COUNT = 2;
 
         // What clients did with one device since the Router started. The
         // counters only ever grow; ClientWatch compares them between passes,
@@ -84,10 +90,11 @@ namespace SQM
             // Handles /management/... and /api/v1/...; false for any other path.
             bool handle(const Request &request, Response &response);
 
-            // A client (N.I.N.A.) currently has either device connected.
-            bool anyConnected() const { return devices[0].connected || devices[1].connected; }
+            // A client (N.I.N.A.) currently has any device connected.
+            bool anyConnected() const;
 
-            DeviceActivity activity(Device device) const { return devices[static_cast<size_t>(device)]; }
+            // Activity of the device at `index` (Backend::devices order).
+            DeviceActivity activity(size_t index) const { return index < MAX_DEVICES ? activityByDevice[index] : DeviceActivity{}; }
 
             // As after a restart: no device connected (the demo's restart).
             void resetConnections();
@@ -95,17 +102,17 @@ namespace SQM
             // After a restart the device caused itself (ConnectionMemory): the
             // imaging app's connections as they were, without counting a
             // disconnect.
-            void restoreConnections(const bool (&connected)[DEVICE_COUNT]);
+            void restoreConnections(const bool (&connected)[MAX_DEVICES]);
 
-            // Which devices a client has connected, in Device order.
-            void connectedDevices(bool (&connected)[DEVICE_COUNT]) const;
+            // Which devices a client has connected, in Backend::devices order.
+            void connectedDevices(bool (&connected)[MAX_DEVICES]) const;
 
         private:
             Response device(const Request &request);
 
             Backend &backend;
             ServerIdentity identity;
-            DeviceActivity devices[DEVICE_COUNT];
+            DeviceActivity activityByDevice[MAX_DEVICES];
             uint32_t serverTransactionId = 0;
         };
 

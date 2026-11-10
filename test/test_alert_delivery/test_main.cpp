@@ -9,13 +9,13 @@ using namespace SQM;
 
 namespace
 {
-    Alerts::Alert rainAlert(Alerts::AlertLevel level = Alerts::AlertLevel::Urgent)
+    Alerts::Alert lostAlert(Alerts::AlertLevel level = Alerts::AlertLevel::Urgent)
     {
         Alerts::Alert alert;
-        alert.type = Alerts::AlertType::RainStarted;
+        alert.type = Alerts::AlertType::ClientLost;
         alert.level = level;
-        alert.title = "Rain detected";
-        alert.message = "Rain & wind: 2.4 mm/h";
+        alert.title = "Imaging app stopped checking";
+        alert.message = "No request to the Dome & roof for 2 min";
         return alert;
     }
 
@@ -45,17 +45,17 @@ void test_full_title_prefixes_the_device_name()
 
 void test_pushover_form_body()
 {
-    const Delivery::HttpRequest r = Delivery::pushoverRequest(rainAlert(), {"user1", "tok1", "siren"}, "Obs");
+    const Delivery::HttpRequest r = Delivery::pushoverRequest(lostAlert(), {"user1", "tok1", "siren"}, "Obs");
     TEST_ASSERT_EQUAL_STRING("https://api.pushover.net/1/messages.json", r.url.c_str());
     TEST_ASSERT_EQUAL_STRING("application/x-www-form-urlencoded", r.contentType.c_str());
     TEST_ASSERT_EQUAL_STRING(
-        "token=tok1&user=user1&title=Obs%3A%20Rain%20detected&message=Rain%20%26%20wind%3A%202.4%20mm%2Fh&priority=1&sound=siren",
+        "token=tok1&user=user1&title=Obs%3A%20Imaging%20app%20stopped%20checking&message=No%20request%20to%20the%20Dome%20%26%20roof%20for%202%20min&priority=1&sound=siren",
         r.body.c_str());
 }
 
 void test_pushover_alert_sound_wins_and_emergency_repeats()
 {
-    Alerts::Alert alert = rainAlert(Alerts::AlertLevel::Wake);
+    Alerts::Alert alert = lostAlert(Alerts::AlertLevel::Wake);
     alert.sound = "alien";
     const Delivery::HttpRequest r = Delivery::pushoverRequest(alert, {"u", "t", "siren"}, "");
     TEST_ASSERT_NOT_EQUAL(std::string::npos, r.body.find("&priority=2&retry=60&expire=3600&sound=alien"));
@@ -63,21 +63,21 @@ void test_pushover_alert_sound_wins_and_emergency_repeats()
 
 void test_ntfy_request_headers_and_token()
 {
-    const Delivery::HttpRequest r = Delivery::ntfyRequest(rainAlert(), {"https://ntfy.sh//", "my topic", "tk"}, "Obs");
+    const Delivery::HttpRequest r = Delivery::ntfyRequest(lostAlert(), {"https://ntfy.sh//", "my topic", "tk"}, "Obs");
     TEST_ASSERT_EQUAL_STRING("https://ntfy.sh/my%20topic", r.url.c_str());
     TEST_ASSERT_EQUAL_STRING("text/plain; charset=utf-8", r.contentType.c_str());
-    TEST_ASSERT_EQUAL_STRING("Obs: Rain detected", header(r, "Title").c_str());
+    TEST_ASSERT_EQUAL_STRING("Obs: Imaging app stopped checking", header(r, "Title").c_str());
     TEST_ASSERT_EQUAL_STRING("high", header(r, "Priority").c_str());
-    TEST_ASSERT_EQUAL_STRING("cloud_with_rain", header(r, "Tags").c_str());
+    TEST_ASSERT_EQUAL_STRING("satellite", header(r, "Tags").c_str());
     TEST_ASSERT_EQUAL_STRING("Bearer tk", header(r, "Authorization").c_str());
-    TEST_ASSERT_EQUAL_STRING("Rain & wind: 2.4 mm/h", r.body.c_str());
+    TEST_ASSERT_EQUAL_STRING("No request to the Dome & roof for 2 min", r.body.c_str());
 }
 
 void test_ntfy_without_token_has_no_authorization()
 {
-    const Delivery::HttpRequest r = Delivery::ntfyRequest(rainAlert(), {"https://ntfy.sh", "t", ""}, "");
+    const Delivery::HttpRequest r = Delivery::ntfyRequest(lostAlert(), {"https://ntfy.sh", "t", ""}, "");
     TEST_ASSERT_EQUAL_STRING("", header(r, "Authorization").c_str());
-    TEST_ASSERT_EQUAL_STRING("Rain detected", header(r, "Title").c_str());
+    TEST_ASSERT_EQUAL_STRING("Imaging app stopped checking", header(r, "Title").c_str());
 }
 
 void test_every_alert_type_has_a_tag()
@@ -88,13 +88,13 @@ void test_every_alert_type_has_a_tag()
 
 void test_alert_json_lists_stacked_events_and_timestamp()
 {
-    Alerts::Alert alert = rainAlert();
-    alert.stacked = {Alerts::AlertType::Unsafe};
+    Alerts::Alert alert = lostAlert();
+    alert.stacked = {Alerts::AlertType::ClientDisconnected};
     StaticJsonDocument<512> doc;
     deserializeJson(doc, Delivery::alertJson(alert, "Obs", 1791417600));
-    TEST_ASSERT_EQUAL_STRING("rain_started", doc["event"] | "");
-    TEST_ASSERT_EQUAL_STRING("rain_started", doc["events"][0] | "");
-    TEST_ASSERT_EQUAL_STRING("unsafe", doc["events"][1] | "");
+    TEST_ASSERT_EQUAL_STRING("client_lost", doc["event"] | "");
+    TEST_ASSERT_EQUAL_STRING("client_lost", doc["events"][0] | "");
+    TEST_ASSERT_EQUAL_STRING("client_disconnected", doc["events"][1] | "");
     TEST_ASSERT_EQUAL_STRING("urgent", doc["level"] | "");
     TEST_ASSERT_EQUAL_STRING("Obs", doc["device"] | "");
     TEST_ASSERT_EQUAL(1791417600, doc["timestamp"].as<int64_t>());
@@ -103,7 +103,7 @@ void test_alert_json_lists_stacked_events_and_timestamp()
 void test_alert_json_without_clock_or_stack()
 {
     StaticJsonDocument<512> doc;
-    deserializeJson(doc, Delivery::alertJson(rainAlert(), "Obs", 0));
+    deserializeJson(doc, Delivery::alertJson(lostAlert(), "Obs", 0));
     TEST_ASSERT_FALSE(doc.containsKey("timestamp"));
     TEST_ASSERT_FALSE(doc.containsKey("events"));
 }

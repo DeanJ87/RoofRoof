@@ -7,14 +7,10 @@
 // The marker every image carries (lib/FirmwareImage). The magic is spelled out
 // here and nowhere else, so an image contains it exactly once; the native test
 // test_firmware_image checks it matches FirmwareImage::marker().
-#define SQM_MARKER_MAGIC "\x43\x11\xB8\x37\xFA\xAE\x6D\x92\xD4\x0B\x81\x7C\xC9\x26\x9F\x55"
-#if SQM_ENABLE_BLE
-#define SQM_MARKER_FIELDS "layout=" SQM_LAYOUT_ID ";build=ble;"
-#else
-#define SQM_MARKER_FIELDS "layout=" SQM_LAYOUT_ID ";build=standard;"
-#endif
+#define RR_MARKER_MAGIC "\xBB\xD0\x55\x30\x77\xDD\x1F\xA4\xE7\x5D\x9E\xB2\x22\x0C\x5E\x9C"
+#define RR_MARKER_FIELDS "product=roofroof;layout=" SQM_LAYOUT_ID ";build=standard;"
 
-extern "C" __attribute__((used)) const char SQM_FIRMWARE_MARKER[] = SQM_MARKER_MAGIC SQM_MARKER_FIELDS;
+extern "C" __attribute__((used)) const char RR_FIRMWARE_MARKER[] = RR_MARKER_MAGIC RR_MARKER_FIELDS;
 
 namespace SQM
 {
@@ -22,16 +18,7 @@ namespace SQM
     {
         const char *fields()
         {
-            return SQM_FIRMWARE_MARKER + FirmwareImage::MAGIC_SIZE;
-        }
-
-        FirmwareImage::Build build()
-        {
-#if SQM_ENABLE_BLE
-            return FirmwareImage::Build::Ble;
-#else
-            return FirmwareImage::Build::Standard;
-#endif
+            return RR_FIRMWARE_MARKER + FirmwareImage::MAGIC_SIZE;
         }
 
         const std::string &layout()
