@@ -43,7 +43,7 @@ in `RoofIo::checkCommand`: no stop while a close runs or waits and the weather i
   | Case | run | reason | text |
   |---|---|---|---|
   | setting off | no | `switchedOff` | Roof commands over MQTT are switched off (Settings > Network > MQTT) |
-  | retained or unknown flag | no | `retained` | A retained roof command is never acted on: publish it without the retain flag |
+  | retained or unknown flag | no | `retained` | A retained roof command replayed by the broker is never acted on: publish it without the retain flag |
   | not OPEN/CLOSE/STOP | no | `notACommand` | Not a roof command: send OPEN, CLOSE or STOP |
   | OPEN / CLOSE / STOP | yes | | |
 
@@ -52,10 +52,13 @@ in `RoofIo::checkCommand`: no stop while a close runs or waits and the weather i
   (`command` null when not a command; `reason` and `text` empty strings when accepted).
 - `writeState(out, snapshot, epoch, clockValid)`: `{timestamp, timeValid, roof: writeStatus(...)}`.
 - `StateKey` (state, fault kind, position known, close pending, close phase, weather, park
-  confirmed, supply low) and `keyOf(snapshot)`.
-- `StateSchedule::due(key, moving, connection, nowMs, intervalMs)` and `published(key, connection, nowMs)`:
-  due when never published or a new connection; when the key changed and 250 ms have passed since
-  the last publish; when not moving and `intervalMs` has passed.
+  confirmed) and `keyOf(snapshot)`.
+- `StateSchedule::due(key, connection, nowMs, intervalMs)` and `published(key, connection, nowMs, ok)`:
+  due when never published or a new connection; at rest when the key changed and 1 s has passed since
+  the last publish, or `intervalMs` has passed; while moving or a close waits, only on a change of
+  state, fault or waiting close, `BUSY_MIN_MS` (5 s) after the last publish, at most
+  `BUSY_MAX_PUBLISHES` (2) times until at rest, and never after a failed publish on the connection.
+- `Request::origin` is always `Origin::Mqtt`; the firmware passes it to `RoofControl::command`.
 
 ## MQTTConfig (lib/ConfigModel, extended)
 

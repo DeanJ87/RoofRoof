@@ -73,6 +73,12 @@ namespace SQM
                 {
                     return key.state == Roof::State::Opening || key.state == Roof::State::Closing || key.closePending;
                 }
+
+                // What a publish while busy waits for.
+                bool busyChange(const StateKey &a, const StateKey &b)
+                {
+                    return a.state != b.state || a.fault != b.fault || a.closePending != b.closePending;
+                }
             } // namespace
 
             Delivery deliveryOf(const uint8_t *topic, size_t topicLength, const uint8_t *payload, size_t payloadLength)
@@ -113,7 +119,7 @@ namespace SQM
                 else if (delivery != Delivery::Live)
                 {
                     r.reason = "retained";
-                    r.text = "A retained roof command is never acted on: publish it without the retain flag";
+                    r.text = "A retained roof command replayed by the broker is never acted on: publish it without the retain flag";
                 }
                 else if (!r.isCommand)
                 {
@@ -147,7 +153,7 @@ namespace SQM
             bool StateKey::operator==(const StateKey &o) const
             {
                 return state == o.state && fault == o.fault && positionKnown == o.positionKnown && closePending == o.closePending &&
-                       closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed && supplyLow == o.supplyLow;
+                       closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed;
             }
 
             StateKey keyOf(const Snapshot &snapshot)
@@ -160,7 +166,6 @@ namespace SQM
                 key.closePhase = snapshot.closePhase != nullptr ? snapshot.closePhase : "";
                 key.weather = snapshot.weather;
                 key.parkConfirmed = snapshot.parkConfirmed;
-                key.supplyLow = supplyLow(snapshot);
                 return key;
             }
 
@@ -169,14 +174,20 @@ namespace SQM
                 if (!any || connection != lastConnection)
                     return true;
                 const uint32_t since = nowMs - lastMs;
+                if (movingOrWaiting(key))
+                    return !failed && busyPublishes < BUSY_MAX_PUBLISHES && busyChange(key, last) && since >= BUSY_MIN_MS;
                 if (key != last)
                     return since >= CHANGE_MIN_MS;
-                return !movingOrWaiting(key) && since >= intervalMs;
+                return since >= intervalMs;
             }
 
-            void StateSchedule::published(const StateKey &key, uint32_t connection, uint32_t nowMs)
+            void StateSchedule::published(const StateKey &key, uint32_t connection, uint32_t nowMs, bool ok)
             {
+                const bool sameConnection = any && connection == lastConnection;
+                failed = (sameConnection && failed) || !ok;
                 any = true;
+                const uint8_t before = sameConnection ? busyPublishes : 0;
+                busyPublishes = movingOrWaiting(key) ? static_cast<uint8_t>(before + 1) : 0;
                 last = key;
                 lastConnection = connection;
                 lastMs = nowMs;

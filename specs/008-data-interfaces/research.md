@@ -22,7 +22,9 @@
   remaining-length field. `RoofIo::Mqtt::deliveryOf` works out the QoS from the gap between topic
   and payload (topic length + 1 for QoS 0, + 3 for QoS 1), recomputes the remaining length, and
   checks the packet type, the QoS bits, the remaining-length bytes and the topic length's high byte
-  before trusting the retain bit. Any mismatch is `Unknown`, which the command gate treats as
+  before trusting the retain bit. A message published with the retain flag still reaches current
+  subscribers live (the broker clears the flag for them), so it runs once if the device is
+  connected; only its replays are refused. Any mismatch is `Unknown`, which the command gate treats as
   retained. PubSubClient is pinned to 2.8.0 in `platformio.ini`.
 - **Rationale**: an MQTT 3.1.1 broker sets RETAIN on a delivery only when it is sent because of a new
   subscription (§3.3.1.3), i.e. a message left on the broker. Acting on it would replay an old OPEN
@@ -45,15 +47,18 @@
 
 ## R4. Publish cadence and the main loop
 
-- **Decision**: publish at once after a connect; on a change of the state key (state, fault kind,
-  position known, waiting close, close phase, weather verdict, park confirmed, supply low), at most
-  every 250 ms; otherwise every `mqtt.publishIntervalMs`. While the roof moves: changes only, no
-  periodic publish, and discovery is held until it stops.
+- **Decision**: publish at once after a connect. At rest: on a change of the state key (state,
+  fault kind, position known, waiting close, close phase, weather verdict, park confirmed), at most
+  once a second, otherwise every `mqtt.publishIntervalMs`. While the roof moves or a close waits:
+  only on a change of state, fault or waiting close, at most every 5 s, at most twice until it is
+  at rest, and nothing once a publish on the connection has failed; discovery is held until it
+  stops. The supply-low flag isn't in the key: it is one unfiltered reading and flaps under load.
 - **Rationale**: PubSubClient writes on the main loop, and Arduino-ESP32's `NetworkClient::write`
   can wait up to ten 1 s selects for a socket whose send buffer is full (a half-open link). The
   roof's gates count the weather unsafe and the park lost when the main loop hasn't handed them
   over for 5 s, which stops a close as a motion fault. Periodic ~1 KB documents during a move would
-  fill a dead link's buffer; one document per state change doesn't. The live position is in
+  fill a dead link's 5.7 KB send buffer; two documents can't, whatever flaps, and a failed write
+  stops further ones. The live position is in
   `/ws/status` (async task). Spec 010 owns the network under motion as a whole.
 - **Alternatives**: every 2 s while moving (SQMeter's interval idea; rejected for the risk above);
   a separate MQTT task (a second owner of PubSubClient, which isn't thread-safe).

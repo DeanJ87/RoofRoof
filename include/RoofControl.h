@@ -105,6 +105,9 @@ namespace SQM
         bool running() const { return started.load(); }
         // Any task.
         RoofIo::Snapshot snapshot() const;
+        // Any task: the snapshot plus the weather and park as a command's checks
+        // see them now (spec 008: the status and MQTT documents).
+        RoofIo::Snapshot snapshotWithChecks() const;
         uint32_t revision() const { return revisionCount.load(); }
         // The control task's unused stack, bytes (0 before it starts).
         uint32_t stackFreeBytes() const;
