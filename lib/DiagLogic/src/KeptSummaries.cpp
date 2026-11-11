@@ -74,14 +74,16 @@ namespace SQM
                 at[52] = static_cast<uint8_t>(s.origin);
                 at[53] = static_cast<uint8_t>(s.target);
                 at[54] = static_cast<uint8_t>(s.endState);
-                at[55] =
-                    static_cast<uint8_t>(static_cast<uint8_t>(s.result) | (s.fromUnknown ? 4 : 0) | (static_cast<uint8_t>(s.fault) << 3));
+                // Bits 0-1 result, 2 from unknown, 3-6 fault kind, 7 calibration leg.
+                at[55] = static_cast<uint8_t>(
+                    static_cast<uint8_t>(s.result) | (s.fromUnknown ? 4 : 0) | (static_cast<uint8_t>(s.fault) << 3) |
+                    (s.calibration ? 0x80 : 0));
             }
 
             bool decodeRecord(const uint8_t *at, Summary &s)
             {
                 const uint8_t result = at[55] & 3;
-                const uint8_t fault = static_cast<uint8_t>(at[55] >> 3);
+                const uint8_t fault = static_cast<uint8_t>((at[55] >> 3) & 0x0F);
                 if (at[52] > static_cast<uint8_t>(Roof::Origin::Mqtt) || at[53] > 1 || at[54] > static_cast<uint8_t>(Roof::State::Error) ||
                     result > static_cast<uint8_t>(Result::Fault) || fault > static_cast<uint8_t>(Roof::FaultKind::External))
                     return false;
@@ -102,6 +104,7 @@ namespace SQM
                 s.endState = static_cast<Roof::State>(at[54]);
                 s.result = static_cast<Result>(result);
                 s.fromUnknown = (at[55] & 4) != 0;
+                s.calibration = (at[55] & 0x80) != 0;
                 s.fault = static_cast<Roof::FaultKind>(fault);
                 return true;
             }

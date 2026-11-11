@@ -24,6 +24,9 @@
         "averageAmps": {
           "type": "number"
         },
+        "calibration": {
+          "type": "boolean"
+        },
         "drivenMs": {
           "type": "number"
         },
@@ -94,6 +97,7 @@
       "required": [
         "active",
         "averageAmps",
+        "calibration",
         "drivenMs",
         "durationMs",
         "endEpoch",

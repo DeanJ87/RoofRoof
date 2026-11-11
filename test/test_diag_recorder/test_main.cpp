@@ -354,6 +354,17 @@ void test_the_log_keeps_the_last_five_moves()
     TEST_ASSERT_TRUE(feed.log.copy(3, move));
 }
 
+void test_a_calibration_leg_is_tagged()
+{
+    Feed feed;
+    feed.s.status.calibrating = true;
+    feed.move(500);
+    feed.s.status.calibrating = false;
+    feed.move(500);
+    TEST_ASSERT_TRUE(copyOf(feed.log, 1).summary.calibration);
+    TEST_ASSERT_FALSE(copyOf(feed.log, 2).summary.calibration);
+}
+
 void test_ids_continue_from_set_next_id()
 {
     Feed feed;
@@ -506,6 +517,7 @@ int main(int, char **)
     RUN_TEST(test_a_move_under_way_when_attached_is_not_recorded);
     RUN_TEST(test_a_reversal_gives_two_moves);
     RUN_TEST(test_the_log_keeps_the_last_five_moves);
+    RUN_TEST(test_a_calibration_leg_is_tagged);
     RUN_TEST(test_ids_continue_from_set_next_id);
     RUN_TEST(test_a_move_in_progress_is_readable);
     RUN_TEST(test_a_long_move_still_fits);

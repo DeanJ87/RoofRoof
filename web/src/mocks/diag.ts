@@ -70,6 +70,7 @@ export const mockDiagSummary: DiagSummary = {
   durationMs: 50500,
   drivenMs: 49900,
   fromUnknown: false,
+  calibration: false,
   peakAmps: 6.1,
   averageAmps: 3.3,
   stallAmps: null,

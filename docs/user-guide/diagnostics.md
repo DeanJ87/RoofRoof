@@ -74,6 +74,7 @@ A summary has:
 
 - when it started and ended (as clock time when the clock is set), who asked (a person, the automatic close, an imaging app or MQTT) and where it was going;
 - the result: `arrived` (the target magnet was reached), `stopped`, or `fault` with the fault and its measured value and limit;
+- whether it was a leg of the [calibration run](calibration-run.md), marked "Calibration" in the list;
 - the duration and the time the motor was driven, and whether it began from an unknown position;
 - the peak and average current, the supply at rest, the lowest supply and the sag;
 - the stall current: only for a fault while driving, the average of the last 260 ms of current readings;

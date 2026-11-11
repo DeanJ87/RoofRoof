@@ -237,6 +237,7 @@ void test_the_list_names_and_nulls()
     JsonObjectConst fault = moves[1];
     TEST_ASSERT_TRUE(fault["profile"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("client", fault["origin"]);
+    TEST_ASSERT_FALSE(fault["calibration"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("fault", fault["result"]);
     TEST_ASSERT_EQUAL_STRING("timeout", fault["fault"]["kind"]);
     TEST_ASSERT_EQUAL_UINT32(1762900000 - 60, fault["startEpoch"]);

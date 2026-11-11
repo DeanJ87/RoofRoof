@@ -337,6 +337,7 @@
   "device.settings.wifiNetworkCanTBeBlank": "WiFi network can't be blank; use WiFi setup to change networks",
   "device.settings.wifiReconnectDelaysAreInvalid": "WiFi reconnect delays are invalid",
   "diagnostics.average": "Average current",
+  "diagnostics.calibrationLeg": "Calibration",
   "diagnostics.chart.average": "Average",
   "diagnostics.chart.current": "Current",
   "diagnostics.chart.duty": "Duty",

@@ -75,7 +75,7 @@ A summary:
   "startMs": 1203400, "endMs": 1253900, "startEpoch": 1762898400, "endEpoch": 1762898450,
   "origin": "person", "target": "open", "endState": "open", "result": "arrived",
   "fault": null,
-  "durationMs": 50500, "drivenMs": 49900, "fromUnknown": false,
+  "durationMs": 50500, "drivenMs": 49900, "fromUnknown": false, "calibration": false,
   "peakAmps": 6.10, "averageAmps": 3.30, "stallAmps": null,
   "restVolts": 12.62, "minVolts": 12.01, "sagVolts": 0.61,
   "hallStart": 1020, "hallEnd": 3120
@@ -85,6 +85,7 @@ A summary:
 - `origin`: `person`, `automatic`, `client`, `mqtt` (`Roof::Origin`).
 - `result`: `arrived`, `stopped`, `fault`; `fault` is `{"kind", "measured", "limit"}` for `fault`
   (`Roof::faultName`; units as in the status document), else null.
+- `calibration`: the move was a leg of spec 016's calibration run.
 - `kept`: loaded from the kept file: `startMs` and `endMs` are null, `profile` is false.
 - `profile`: the move is still held with its profile (`GET /api/diag/moves/{id}`).
 - Epochs are 0 when the clock wasn't set.

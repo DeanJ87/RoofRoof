@@ -1589,10 +1589,10 @@
                       "active": false,
                       "kept": false,
                       "profile": true,
-                      "startMs": 124020,
-                      "endMs": 172460,
-                      "startEpoch": 1794428474,
-                      "endEpoch": 1794428523,
+                      "startMs": 124260,
+                      "endMs": 172700,
+                      "startEpoch": 1794432779,
+                      "endEpoch": 1794432827,
                       "origin": "person",
                       "target": "closed",
                       "endState": "closed",
@@ -1601,6 +1601,7 @@
                       "durationMs": 48440,
                       "drivenMs": 48440,
                       "fromUnknown": false,
+                      "calibration": false,
                       "peakAmps": 3,
                       "averageAmps": 3,
                       "stallAmps": null,
@@ -1617,8 +1618,8 @@
                       "profile": true,
                       "startMs": 4020,
                       "endMs": 53520,
-                      "startEpoch": 1794428354,
-                      "endEpoch": 1794428404,
+                      "startEpoch": 1794432658,
+                      "endEpoch": 1794432708,
                       "origin": "person",
                       "target": "open",
                       "endState": "open",
@@ -1627,6 +1628,7 @@
                       "durationMs": 49500,
                       "drivenMs": 49500,
                       "fromUnknown": false,
+                      "calibration": false,
                       "peakAmps": 3,
                       "averageAmps": 3,
                       "stallAmps": null,
@@ -5536,6 +5538,9 @@
               "averageAmps": {
                 "type": "number"
               },
+              "calibration": {
+                "type": "boolean"
+              },
               "drivenMs": {
                 "type": "number"
               },
@@ -5606,6 +5611,7 @@
             "required": [
               "active",
               "averageAmps",
+              "calibration",
               "drivenMs",
               "durationMs",
               "endEpoch",
@@ -5676,6 +5682,9 @@
                 },
                 "averageAmps": {
                   "type": "number"
+                },
+                "calibration": {
+                  "type": "boolean"
                 },
                 "drivenMs": {
                   "type": "number"
@@ -5759,6 +5768,7 @@
               "required": [
                 "active",
                 "averageAmps",
+                "calibration",
                 "drivenMs",
                 "durationMs",
                 "endEpoch",

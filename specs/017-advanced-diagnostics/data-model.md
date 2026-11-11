@@ -69,6 +69,7 @@ Accessors give physical units (`pointAmpsAvg(p)` → float or NaN, and so on).
 | `result` | `Result` | `arrived` (target magnet), `stopped`, `fault` |
 | `fault` | `Roof::Fault` | kind, measured, limit (kind None unless `fault`) |
 | `fromUnknown` | bool | |
+| `calibration` | bool | a leg of spec 016's calibration run (`Roof::Status::calibrating` at its start) |
 | `peakAmps`, `averageAmps`, `stallAmps` | float | NaN when none |
 | `restVolts`, `minVolts` | float | NaN when none; sag = rest − min |
 | `hallStart`, `hallEnd` | uint16 | raw counts |

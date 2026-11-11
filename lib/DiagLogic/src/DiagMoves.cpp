@@ -123,6 +123,7 @@ namespace SQM
             out["durationMs"] = s.durationMs();
             out["drivenMs"] = s.drivenMs;
             out["fromUnknown"] = s.fromUnknown;
+            out["calibration"] = s.calibration;
             putReading(out, "peakAmps", s.peakAmps, 2);
             putReading(out, "averageAmps", s.averageAmps, 2);
             putReading(out, "stallAmps", s.stallAmps, 2);

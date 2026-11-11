@@ -92,6 +92,8 @@ export interface DiagSummary {
   durationMs: number;
   drivenMs: number;
   fromUnknown: boolean;
+  /** A leg of the calibration run (spec 016). */
+  calibration: boolean;
   peakAmps: number | null;
   averageAmps: number | null;
   stallAmps: number | null;

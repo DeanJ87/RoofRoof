@@ -255,9 +255,9 @@ namespace SQM
         float motorAmps = 0.0f;
         uint32_t watchdogTrips = 0;
         uint32_t maxStepGapMs = 0;
-        uint32_t maxBeatAgeMs = 0; // the oldest watchdog heartbeat a step has seen
-        std::string notice;        // logged by the control task outside the lock
-        Calib::Run calibration;    // spec 016: the attended calibration run
+        uint32_t maxBeatAgeMs = 0;                      // the oldest watchdog heartbeat a step has seen
+        std::string notice;                             // logged by the control task outside the lock
+        Calib::Run calibration;                         // spec 016: the attended calibration run
         Diag::MoveLog *diagLog = nullptr;               // spec 017: owned by the main loop's Diagnostics
         Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
 

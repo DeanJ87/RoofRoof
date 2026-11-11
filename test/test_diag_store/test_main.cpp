@@ -41,6 +41,7 @@ namespace
         s.hallStart = 700;
         s.hallEnd = 2050;
         s.fromUnknown = true;
+        s.calibration = id % 2 == 0;
         return s;
     }
 
@@ -96,6 +97,8 @@ void test_a_kept_file_round_trips_every_field()
     TEST_ASSERT_EQUAL(want.result, s.result);
     TEST_ASSERT_EQUAL(want.fault, s.fault);
     TEST_ASSERT_TRUE(s.fromUnknown);
+    TEST_ASSERT_TRUE(s.calibration);
+    TEST_ASSERT_FALSE(back.at(1).calibration);
     TEST_ASSERT_EQUAL_FLOAT(want.faultMeasured, s.faultMeasured);
     TEST_ASSERT_EQUAL_FLOAT(want.stallAmps, s.stallAmps);
     TEST_ASSERT_EQUAL_FLOAT(want.restVolts, s.restVolts);

@@ -120,7 +120,9 @@ export const MoveList: FunctionalComponent<{
                   </Button>
                 ) : (
                   <>
-                    {formatCount(move.id)} {move.kept && <span class="system-subtle">{t('diagnostics.kept')}</span>}
+                    {formatCount(move.id)} {move.kept && <span class="system-subtle">{t('diagnostics.kept')}</span>}{' '}
+                    {move.calibration && <span class="system-subtle">{t('diagnostics.calibrationLeg')}</span>}{' '}
+                    {move.calibration && <span class="system-subtle">{t('diagnostics.calibrationLeg')}</span>}
                   </>
                 )}
               </td>

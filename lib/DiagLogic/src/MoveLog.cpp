@@ -101,6 +101,7 @@ namespace SQM
             s.origin = sample.origin;
             s.target = sample.status.target;
             s.fromUnknown = sample.status.fromUnknown;
+            s.calibration = sample.status.calibrating;
             s.hallStart = sample.status.hallCounts;
             s.hallEnd = sample.status.hallCounts;
             s.endState = sample.status.state;
