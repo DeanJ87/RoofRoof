@@ -204,6 +204,8 @@ namespace SQM
 
             Decision decide(const Inputs &in, bool personStopped);
             void trackEpisode(const Inputs &given, bool personStopped);
+            bool personWaitOver(uint64_t nowMs, bool unsafeLong, bool personStopped);
+            void clearAlertThrottle();
             Decision remindIfDue(Decision decision);
             Decision halt(uint64_t limitMs);
             Decision resume(const Inputs &in);

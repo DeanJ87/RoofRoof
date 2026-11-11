@@ -58,11 +58,7 @@ namespace SQM
             // so a new failure on the next spell alerts at once. A reading that
             // flickers back to closed at rest doesn't count: no alert storm.
             if (lastRoof == Roof::State::Closing && in.roof == Roof::State::Closed)
-            {
-                for (auto &row : alertedEver)
-                    for (bool &ever : row)
-                        ever = false;
-            }
+                clearAlertThrottle();
             lastRoof = in.roof;
 
             Decision out = withAlert(remindIfDue(decide(in, personStopped)));
@@ -92,17 +88,29 @@ namespace SQM
             }
             if (given.weatherSafe || !daylightOnly)
                 return;
-            if (current == Phase::HeldByPerson && personStopped)
-                weatherUnsafe.sinceMs = given.nowMs; // the wait starts again from this stop
-            if (current == Phase::HeldByPerson && (!unsafeLong || personStopped))
+            if (current == Phase::HeldByPerson && !personWaitOver(given.nowMs, unsafeLong, personStopped))
                 return;
             daylightOnly = false;
-            for (auto &row : alertedEver)
-                for (bool &ever : row)
-                    ever = false;
+            clearAlertThrottle();
             const bool heldBack = current == Phase::HeldByPerson || current == Phase::Halted || current == Phase::RetryWait;
             if (heldBack && !personStopped)
                 enter(Phase::Idle);
+        }
+
+        // A person's daylight stand-down: the weather has been not safe for
+        // WEATHER_REARM_CONFIRM_MS, and no new stop (which restarts the wait).
+        bool Sequence::personWaitOver(uint64_t nowMs, bool unsafeLong, bool personStopped)
+        {
+            if (personStopped)
+                weatherUnsafe.sinceMs = nowMs;
+            return unsafeLong && !personStopped;
+        }
+
+        void Sequence::clearAlertThrottle()
+        {
+            for (auto &row : alertedEver)
+                for (bool &ever : row)
+                    ever = false;
         }
 
         Decision Sequence::decide(const Inputs &in, bool personStopped)

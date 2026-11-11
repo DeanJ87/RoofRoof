@@ -414,7 +414,11 @@ void test_client_part_fits_with_the_daylight_events(void)
     const std::string title(AlertsConfig::MAX_TEMPLATE_TITLE, 'T');
     const std::string message(AlertsConfig::MAX_TEMPLATE_MESSAGE, 'M');
     for (AlertsConfig::EventSetting *e :
-         {&c.alerts.clientLost, &c.alerts.clientBack, &c.alerts.clientDisconnected, &c.alerts.daylightOpen, &c.alerts.daylightClosed,
+         {&c.alerts.clientLost,
+          &c.alerts.clientBack,
+          &c.alerts.clientDisconnected,
+          &c.alerts.daylightOpen,
+          &c.alerts.daylightClosed,
           &c.alerts.daylightUnknown})
         *e = {3, "siren", title, message};
     std::string error;
