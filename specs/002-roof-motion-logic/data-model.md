@@ -66,7 +66,7 @@ The drive budget is `driveBudgetMs(settings)`, equal to the unknown-position mov
   0 closed or 1 open / the target), HallRail (`hallRail`; counts / the rail it passed),
   OverCurrent (`overCurrent`; A / limit A), CurrentUnreadable (`currentUnreadable`; NaN / limit A),
   SupplyLow (`supplyLow`; V or NaN / minimum V), LateStep (`lateStep`; gap ms / 100 ms), DriveBudget (`driveBudget`;
-  driven ms since a magnet / budget ms), External
+  driven ms toward the target end since a magnet / budget ms), External
   (`external`; caller's values).
 - `Refusal` (measured / limit): None, FaultLatched (`faultLatched`), HallNotSettled
   (`hallNotSettled`), PositionUnknown (`positionUnknown`), SupplyLow

@@ -62,8 +62,11 @@ Output output() const;
    the step its target magnet is confirmed.
 6. Every fault switches the output off on the step it is detected and makes the position unknown.
 7. Three rail readings among the last eight latch `hallRail` on that step, consecutive or not.
-8. The total driven time since a magnet was last confirmed (or a person cleared a fault) never
-   reaches `driveBudgetMs(settings)`; reaching it latches `driveBudget`.
+8. The time driven toward each end since a magnet was last confirmed (or a person cleared a fault)
+   never reaches `driveBudgetMs(settings)`; reaching it latches `driveBudget`. One reversal
+   part-way never trips it. New settings at rest can shrink the budget below what is already used:
+   the next drive then faults on its first step.
+9. A step clock that goes backwards keeps the driver off (the dead time reads as not yet over).
 
 ## What the caller must do (spec 003)
 

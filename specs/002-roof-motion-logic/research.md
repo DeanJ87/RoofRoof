@@ -148,3 +148,14 @@ fault; current, supply → fault; else the profile's duty. 5. Idle: follow the H
 - **Reading sanity.** Supply readings above 16 V or not finite, and current readings below -0.5 A
   or not finite, are unreadable: a 12 V system can't read 16 V, and the IBT-2's sense outputs can't
   go negative beyond ADC offset noise.
+
+### R11a. From the re-review
+
+- **The budget is per direction.** A single budget false-tripped on one legitimate reversal near an
+  end: the open leg and the close leg together can need nearly two travels of driving between
+  magnets (reproduced with top 60 / slow 40, top 50 / slow 40, slow = top = 100, slow 80). That
+  would have blocked the close on rain (constitution III). Counting each direction separately keeps
+  the jam protection for restarts in one direction and bounds alternating restarts at twice the
+  budget.
+- **The dead time is compared signed.** An unsigned difference made a step clock that went
+  backwards look like a long-finished pause; a negative difference now counts as still waiting.

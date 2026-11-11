@@ -260,7 +260,7 @@ JSON on the device and in the web schema, with the shared range fixture.
 - **FR-008**: Before the driver turns on after any stop, and after start-up, it MUST stay off for
   a dead time of at least 500 ms, including when a move is reversed. The dead time MUST be timed by
   control steps only, from the first step after the driver went off, so no caller's clock can
-  shorten it.
+  shorten it, and a step clock that goes backwards MUST count as still inside the dead time.
 - **FR-009**: The duty MUST never exceed the top duty setting; during a move from an unknown
   position it MUST never exceed the slow duty setting.
 - **FR-010**: A move from a known position MUST start at the slow duty and rise linearly to the
@@ -321,10 +321,13 @@ JSON on the device and in the web schema, with the shared range fixture.
 
 **Added after the safety review**
 
-- **FR-025**: The total time driven since a magnet was last read (or a person last cleared a
-  fault) MUST NOT reach the drive budget: the longest single move, a whole travel at the slow duty
-  plus the margin. Stopping and restarting doesn't reset it, so repeated restarts of a jammed roof
-  with current sense off still latch a fault.
+- **FR-025**: The time driven toward each end since a magnet was last read (or a person last
+  cleared a fault) MUST NOT reach the drive budget: the longest single move, a whole travel at the
+  slow duty plus the margin. The budget is kept per direction, so one reversal part-way (nearly two
+  travels of driving between magnets) never trips it, while repeated restarts of a jammed roof in
+  one direction with current sense off still latch a fault; alternating directions is bounded at
+  twice the budget. Settings taken at rest can make the budget smaller than what is already used;
+  the next drive then faults on its first step (fail-safe, accepted).
 - **FR-026**: A supply reading that is not finite or is above 16 V MUST count as unreadable, like
   NaN. With current sense on, a current reading that is not finite or is below -0.5 A MUST count as
   unreadable.
@@ -385,8 +388,9 @@ Each is the safest option the constitution allows; the owner can change any of t
 - **Commands carry no time.** The dead time, timeouts and estimate use only the control steps'
   clock, so a command from another task (web server, MQTT, Alpaca) with a skewed timestamp can't
   shorten the dead time. Start-up counts as a stop, so the first drive also waits the dead time.
-- **The drive budget is the longest single move** (a whole travel at the slow duty plus the
-  margin) and is reset by reading any magnet or by a person clearing a fault. A roof that is stopped
+- **The drive budget is the longest single move, per direction** (a whole travel at the slow duty
+  plus the margin) and is reset by reading any magnet or by a person clearing a fault. A single
+  shared budget would trip on a legitimate reversal near an end and block the close on rain. A roof that is stopped
   and restarted part-way many times without reaching a magnet latches `driveBudget` rather than
   getting a fresh timeout each time.
 - **Abort with no move under way keeps the position.** Nothing moved, so Alpaca's AbortSlew on a
