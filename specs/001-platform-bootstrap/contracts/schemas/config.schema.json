@@ -335,82 +335,71 @@
       ],
       "additionalProperties": false
     },
-    "park": {
+    "roof": {
       "type": "object",
       "properties": {
-        "nina": {
-          "type": "object",
-          "properties": {
-            "api": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "api",
-            "url"
-          ],
-          "additionalProperties": false
-        },
-        "switches": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "nina",
-        "switches"
-      ],
-      "additionalProperties": false
-    },
-    "safety": {
-      "type": "object",
-      "properties": {
-        "http": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "enabled",
-            "url"
-          ],
-          "additionalProperties": false
-        },
-        "mqtt": {
-          "type": "object",
-          "properties": {
-            "enabled": {
-              "type": "boolean"
-            },
-            "topic": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "enabled",
-            "topic"
-          ],
-          "additionalProperties": false
-        },
-        "rainContact": {
+        "currentSenseEnabled": {
           "type": "boolean"
         },
-        "staleSeconds": {
+        "hallHighCounts": {
+          "type": "number"
+        },
+        "hallHighEnd": {
+          "type": "string"
+        },
+        "hallLowCounts": {
+          "type": "number"
+        },
+        "leaveMagnetSeconds": {
+          "type": "number"
+        },
+        "maxCurrentAmps": {
+          "type": "number"
+        },
+        "minSupplyVolts": {
+          "type": "number"
+        },
+        "openDirection": {
+          "type": "string"
+        },
+        "rampDownMs": {
+          "type": "number"
+        },
+        "rampUpMs": {
+          "type": "number"
+        },
+        "slowDutyPercent": {
+          "type": "number"
+        },
+        "speedMmPerSecond": {
+          "type": "number"
+        },
+        "timeoutMarginSeconds": {
+          "type": "number"
+        },
+        "topDutyPercent": {
+          "type": "number"
+        },
+        "travelMm": {
           "type": "number"
         }
       },
       "required": [
-        "http",
-        "mqtt",
-        "rainContact",
-        "staleSeconds"
+        "currentSenseEnabled",
+        "hallHighCounts",
+        "hallHighEnd",
+        "hallLowCounts",
+        "leaveMagnetSeconds",
+        "maxCurrentAmps",
+        "minSupplyVolts",
+        "openDirection",
+        "rampDownMs",
+        "rampUpMs",
+        "slowDutyPercent",
+        "speedMmPerSecond",
+        "timeoutMarginSeconds",
+        "topDutyPercent",
+        "travelMm"
       ],
       "additionalProperties": false
     },
@@ -463,8 +452,7 @@
     "mqtt",
     "ntp",
     "ota",
-    "park",
-    "safety",
+    "roof",
     "wifi"
   ],
   "additionalProperties": false

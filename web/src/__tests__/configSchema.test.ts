@@ -8,6 +8,7 @@ import {
   hasConfigValidationErrors,
 } from '../validation/configSchema';
 import { alertsConfigSchema } from '../validation/alertsSchema';
+import { roofConfigSchema } from '../validation/roofSchema';
 import { mockConfig } from '../mocks/data';
 import type { Config } from '../types';
 
@@ -295,5 +296,36 @@ describe('alertsConfigSchema', () => {
 
   it('caps the cooldown at 24 hours', () => {
     expect(alertsConfigSchema.safeParse({ ...validAlerts, cooldownSeconds: 86401 }).success).toBe(false);
+  });
+});
+
+describe('roofConfigSchema', () => {
+  const roof = mockConfig.roof!;
+  const messages = (candidate: unknown) => {
+    const result = roofConfigSchema.safeParse(candidate);
+    return result.success ? [] : result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
+  };
+
+  it('passes with the defaults', () => {
+    expect(roofConfigSchema.safeParse(roof).success).toBe(true);
+  });
+
+  it('accepts slow duty equal to top duty and rejects it above', () => {
+    expect(messages({ ...roof, topDutyPercent: 50, slowDutyPercent: 50 })).toEqual([]);
+    expect(messages({ ...roof, topDutyPercent: 50, slowDutyPercent: 51 })).toEqual([
+      "slowDutyPercent: Roof: slow duty can't be above the top duty",
+    ]);
+  });
+
+  it('accepts a Hall gap of 80 counts and rejects 79', () => {
+    expect(messages({ ...roof, hallHighCounts: 1180, hallLowCounts: 1100 })).toEqual([]);
+    expect(messages({ ...roof, hallHighCounts: 1179, hallLowCounts: 1100 })).toEqual([
+      'hallHighCounts: Roof: the Hall high threshold must be at least 80 counts above the low threshold',
+    ]);
+  });
+
+  it('rejects an unknown direction or Hall end', () => {
+    expect(roofConfigSchema.safeParse({ ...roof, openDirection: 'sideways' }).success).toBe(false);
+    expect(roofConfigSchema.safeParse({ ...roof, hallHighEnd: 'middle' }).success).toBe(false);
   });
 });

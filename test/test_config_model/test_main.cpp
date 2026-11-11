@@ -400,6 +400,125 @@ void test_stored_wrong_type_keeps_current_value()
     TEST_ASSERT_EQUAL_STRING("roofroof", cfg.wifi.hostname.c_str());
 }
 
+namespace
+{
+    std::string roofReason(const std::string &roofJson)
+    {
+        return rejectReason("{\"roof\":" + roofJson + "}");
+    }
+} // namespace
+
+void test_roof_every_field_round_trips()
+{
+    Config cfg = Config::createDefault();
+    cfg.roof.travelMm = 4200;
+    cfg.roof.speedMmPerSecond = 61.5f;
+    cfg.roof.timeoutMarginSeconds = 44;
+    cfg.roof.leaveMagnetSeconds = 33;
+    cfg.roof.rampUpMs = 1234;
+    cfg.roof.rampDownMs = 4321;
+    cfg.roof.topDutyPercent = 90;
+    cfg.roof.slowDutyPercent = 35;
+    cfg.roof.openDirection = RoofConfig::Direction::Reverse;
+    cfg.roof.hallHighEnd = RoofConfig::HallEnd::Closed;
+    cfg.roof.hallHighCounts = 2800;
+    cfg.roof.hallLowCounts = 900;
+    cfg.roof.currentSenseEnabled = true;
+    cfg.roof.maxCurrentAmps = 12.5f;
+    cfg.roof.minSupplyVolts = 10.5f;
+    const std::string json = cfg.toJson(false);
+    TEST_ASSERT_TRUE(json.find("\"openDirection\":\"reverse\"") != std::string::npos);
+    TEST_ASSERT_TRUE(json.find("\"hallHighEnd\":\"closed\"") != std::string::npos);
+    const auto loaded = Config::fromJson(json);
+    TEST_ASSERT_TRUE(loaded.has_value());
+    const RoofConfig &r = loaded->roof;
+    TEST_ASSERT_EQUAL_UINT32(4200, r.travelMm);
+    TEST_ASSERT_EQUAL_FLOAT(61.5f, r.speedMmPerSecond);
+    TEST_ASSERT_EQUAL_UINT32(44, r.timeoutMarginSeconds);
+    TEST_ASSERT_EQUAL_UINT32(33, r.leaveMagnetSeconds);
+    TEST_ASSERT_EQUAL_UINT32(1234, r.rampUpMs);
+    TEST_ASSERT_EQUAL_UINT32(4321, r.rampDownMs);
+    TEST_ASSERT_EQUAL_UINT32(90, r.topDutyPercent);
+    TEST_ASSERT_EQUAL_UINT32(35, r.slowDutyPercent);
+    TEST_ASSERT_TRUE(r.openDirection == RoofConfig::Direction::Reverse);
+    TEST_ASSERT_TRUE(r.hallHighEnd == RoofConfig::HallEnd::Closed);
+    TEST_ASSERT_EQUAL_UINT32(2800, r.hallHighCounts);
+    TEST_ASSERT_EQUAL_UINT32(900, r.hallLowCounts);
+    TEST_ASSERT_TRUE(r.currentSenseEnabled);
+    TEST_ASSERT_EQUAL_FLOAT(12.5f, r.maxCurrentAmps);
+    TEST_ASSERT_EQUAL_FLOAT(10.5f, r.minSupplyVolts);
+    TEST_ASSERT_EQUAL_STRING(json.c_str(), loaded->toJson(false).c_str());
+}
+
+void test_roof_defaults_match_the_spec_and_are_valid()
+{
+    const RoofConfig r = Config::createDefault().roof;
+    TEST_ASSERT_EQUAL_UINT32(1850, r.travelMm);
+    TEST_ASSERT_EQUAL_UINT32(40, r.slowDutyPercent);
+    TEST_ASSERT_FALSE(r.currentSenseEnabled);
+    TEST_ASSERT_TRUE(r.openDirection == RoofConfig::Direction::Forward);
+    TEST_ASSERT_TRUE(r.hallHighEnd == RoofConfig::HallEnd::Open);
+}
+
+void test_roof_bad_enum_string_is_rejected()
+{
+    TEST_ASSERT_EQUAL_STRING("Roof: open direction must be forward or reverse", roofReason("{\"openDirection\":\"sideways\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Roof: Hall high end must be open or closed", roofReason("{\"hallHighEnd\":\"middle\"}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Roof: open direction must be forward or reverse", roofReason("{\"openDirection\":1}").c_str());
+}
+
+void test_roof_slow_duty_above_top_duty_is_rejected()
+{
+    const char *message = "Roof: slow duty can't be above the top duty";
+    TEST_ASSERT_EQUAL_STRING(message, roofReason("{\"topDutyPercent\":50,\"slowDutyPercent\":51}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", roofReason("{\"topDutyPercent\":50,\"slowDutyPercent\":50}").c_str());
+}
+
+void test_roof_hall_gap_of_80_is_accepted_and_79_rejected()
+{
+    const char *message = "Roof: the Hall high threshold must be at least 80 counts above the low threshold";
+    TEST_ASSERT_EQUAL_STRING("", roofReason("{\"hallHighCounts\":1180,\"hallLowCounts\":1100}").c_str());
+    TEST_ASSERT_EQUAL_STRING(message, roofReason("{\"hallHighCounts\":1179,\"hallLowCounts\":1100}").c_str());
+}
+
+void test_roof_out_of_range_says_which_setting()
+{
+    TEST_ASSERT_EQUAL_STRING("Roof: travel must be between 100 and 20000 mm", roofReason("{\"travelMm\":99}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Roof: speed must be between 1 and 500 mm/s", roofReason("{\"speedMmPerSecond\":501}").c_str());
+    TEST_ASSERT_EQUAL_STRING("Roof: ramp down must be between 0 and 30000 ms", roofReason("{\"rampDownMs\":30001}").c_str());
+}
+
+void test_roof_at_every_maximum_fits_the_persisted_size()
+{
+    Config cfg = Config::createDefault();
+    cfg.roof.travelMm = 20000;
+    cfg.roof.speedMmPerSecond = 500.0f;
+    cfg.roof.timeoutMarginSeconds = 300;
+    cfg.roof.leaveMagnetSeconds = 120;
+    cfg.roof.rampUpMs = 30000;
+    cfg.roof.rampDownMs = 30000;
+    cfg.roof.topDutyPercent = 100;
+    cfg.roof.slowDutyPercent = 100;
+    cfg.roof.openDirection = RoofConfig::Direction::Reverse;
+    cfg.roof.hallHighEnd = RoofConfig::HallEnd::Closed;
+    cfg.roof.hallHighCounts = 3995;
+    cfg.roof.hallLowCounts = 3915;
+    cfg.roof.currentSenseEnabled = true;
+    cfg.roof.maxCurrentAmps = 40.0f;
+    cfg.roof.minSupplyVolts = 15.0f;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
+    TEST_ASSERT_TRUE(cfg.toJson(false, false).size() < Config::MAX_PERSISTED_JSON_BYTES);
+}
+
+void test_roof_missing_section_keeps_defaults()
+{
+    const auto cfg = Config::fromJson("{\"deviceName\":\"x\"}");
+    TEST_ASSERT_TRUE(cfg.has_value());
+    TEST_ASSERT_EQUAL_UINT32(1850, cfg->roof.travelMm);
+    TEST_ASSERT_FALSE(cfg->roof.currentSenseEnabled);
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -424,5 +543,13 @@ int main()
     RUN_TEST(test_mqtt_test_uses_the_saved_password_only_for_the_saved_broker);
     RUN_TEST(test_wrong_types_are_rejected_not_defaulted);
     RUN_TEST(test_stored_wrong_type_keeps_current_value);
+    RUN_TEST(test_roof_every_field_round_trips);
+    RUN_TEST(test_roof_defaults_match_the_spec_and_are_valid);
+    RUN_TEST(test_roof_bad_enum_string_is_rejected);
+    RUN_TEST(test_roof_slow_duty_above_top_duty_is_rejected);
+    RUN_TEST(test_roof_hall_gap_of_80_is_accepted_and_79_rejected);
+    RUN_TEST(test_roof_out_of_range_says_which_setting);
+    RUN_TEST(test_roof_at_every_maximum_fits_the_persisted_size);
+    RUN_TEST(test_roof_missing_section_keeps_defaults);
     return UNITY_END();
 }

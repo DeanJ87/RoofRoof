@@ -155,7 +155,7 @@ void test_backup_holds_every_section_and_the_header()
     TEST_ASSERT_EQUAL_STRING("standard", doc["build"]);
     TEST_ASSERT_EQUAL_STRING("backyard-roof", doc["deviceName"]);
     TEST_ASSERT_EQUAL_STRING("2026-10-18T21:04:05Z", doc["createdAt"]);
-    for (const char *section : {"wifi", "mqtt", "ota", "auth", "ntp", "alpaca", "alerts"})
+    for (const char *section : {"wifi", "mqtt", "ota", "auth", "ntp", "alpaca", "roof", "alerts"})
         TEST_ASSERT_TRUE_MESSAGE(doc["settings"][section].is<JsonObject>(), section);
     TEST_ASSERT_EQUAL_STRING("********", doc["settings"]["wifi"]["password"]);
     TEST_ASSERT_EQUAL_STRING("", doc["settings"]["ota"]["password"]);

@@ -158,6 +158,67 @@ namespace SQM
         bool mqttEnabled; // publish to <mqtt topic>/alerts
     };
 
+    // How the roof moves (spec 002, data-model.md). The roof's measured facts and the
+    // motion profile; lib/RoofLogic turns them into Roof::Settings. The defaults
+    // are conservative until the roof is measured (hardware facts are
+    // settings), and current sense starts off (constitution: a migration never
+    // turns a motion feature on).
+    struct RoofConfig
+    {
+        // Which driver direction (RPWM = forward, LPWM = reverse) opens the roof.
+        enum class Direction : uint8_t
+        {
+            Forward = 0,
+            Reverse = 1,
+        };
+        // Which end's magnet reads high on the Hall sensor (the magnets have opposite poles).
+        enum class HallEnd : uint8_t
+        {
+            Open = 0,
+            Closed = 1,
+        };
+
+        uint32_t travelMm = 1850;
+        float speedMmPerSecond = 38.0f; // at 100% duty
+        uint32_t timeoutMarginSeconds = 15;
+        uint32_t leaveMagnetSeconds = 10;
+        uint32_t rampUpMs = 2000;
+        uint32_t rampDownMs = 3000;
+        uint32_t topDutyPercent = 100;
+        uint32_t slowDutyPercent = 40; // the ends, and every move from an unknown position
+        Direction openDirection = Direction::Forward;
+        HallEnd hallHighEnd = HallEnd::Open;
+        uint32_t hallHighCounts = 3000; // raw ADC counts: at or above is the high end's magnet
+        uint32_t hallLowCounts = 1100;  // at or below is the other end's magnet
+        bool currentSenseEnabled = false;
+        float maxCurrentAmps = 10.0f;
+        float minSupplyVolts = 11.0f;
+
+        // The ranges, shared with the web UI (test/fixtures/config-ranges.json) and
+        // checked again by Roof::validSettings.
+        static constexpr uint32_t MIN_TRAVEL_MM = 100;
+        static constexpr uint32_t MAX_TRAVEL_MM = 20000;
+        static constexpr float MIN_SPEED_MM_PER_SECOND = 1.0f;
+        static constexpr float MAX_SPEED_MM_PER_SECOND = 500.0f;
+        static constexpr uint32_t MIN_TIMEOUT_MARGIN_SECONDS = 3;
+        static constexpr uint32_t MAX_TIMEOUT_MARGIN_SECONDS = 300;
+        static constexpr uint32_t MIN_LEAVE_MAGNET_SECONDS = 2;
+        static constexpr uint32_t MAX_LEAVE_MAGNET_SECONDS = 120;
+        static constexpr uint32_t MAX_RAMP_MS = 30000;
+        static constexpr uint32_t MIN_TOP_DUTY_PERCENT = 20;
+        static constexpr uint32_t MIN_SLOW_DUTY_PERCENT = 10;
+        static constexpr uint32_t MAX_DUTY_PERCENT = 100;
+        static constexpr uint32_t MIN_HALL_COUNTS = 100;
+        static constexpr uint32_t MAX_HALL_COUNTS = 3995;
+        // Two hysteresis bands (Roof::HALL_HYSTERESIS_COUNTS), so leaving one
+        // magnet's zone can never land in the other's.
+        static constexpr uint32_t MIN_HALL_GAP_COUNTS = 80;
+        static constexpr float MIN_CURRENT_AMPS = 0.5f;
+        static constexpr float MAX_CURRENT_AMPS = 40.0f;
+        static constexpr float MIN_SUPPLY_VOLTS = 6.0f;
+        static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -169,6 +230,7 @@ namespace SQM
         AlertsConfig alerts;
         SafetyConfig safety;
         ParkConfig park;
+        RoofConfig roof;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
