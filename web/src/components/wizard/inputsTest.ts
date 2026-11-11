@@ -1,4 +1,4 @@
-import type { RoofInputs } from '../../types';
+import type { Config, RoofInputs } from '../../types';
 
 // Whether a Test on the weather or N.I.N.A. page has its answer (spec 015
 // FR-009, research R4). The device polls SQMeter and N.I.N.A. anyway; a saved
@@ -18,9 +18,22 @@ const generations = (doc: RoofInputs, part: TestPart): number[] =>
 const waiting = (doc: RoofInputs, part: TestPart): boolean =>
   part === 'weather' ? [doc.weather.http, doc.weather.mqtt].some((source) => source.state === 'waiting') : doc.nina.state === 'waiting';
 
-/** `before`: the document read before the save (null if it couldn't be read); `changed`: the save changed this part. */
-export const testAnswered = (doc: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean): boolean => {
-  if (waiting(doc, part)) return false;
+// The reading is of the saved settings: each source the settings switch on is
+// being read, and each they switch off isn't (a reading taken as the device
+// starts, before its first evaluation, says every source is off).
+const matchesSettings = (doc: RoofInputs, part: TestPart, config: Config): boolean => {
+  if (part === 'nina') return (doc.nina.state === 'notConfigured') === !config.park?.nina.url;
+  const http = Boolean(config.safety?.http.enabled);
+  const mqtt = Boolean(config.safety?.mqtt.enabled);
+  return doc.weather.http.enabled === http && doc.weather.mqtt.enabled === mqtt;
+};
+
+/**
+ * `before`: the document read before the save (null if it couldn't be read); `changed`: the save
+ * changed this part; `config`: the settings as saved.
+ */
+export const testAnswered = (doc: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean, config: Config): boolean => {
+  if (waiting(doc, part) || !matchesSettings(doc, part, config)) return false;
   if (!changed) return true;
   if (!before) return false; // can't tell an old reading from a new one
   const was = generations(before, part);

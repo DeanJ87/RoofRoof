@@ -391,6 +391,20 @@
       "priority": 10,
       "location": "card:device",
       "test": "mqtt-state"
+    },
+    {
+      "id": "setup-banner",
+      "label": "setup.notFinished",
+      "sources": [],
+      "requiredBy": "015 FR-003, FR-004",
+      "visibility": {
+        "rule": "when",
+        "when": "the setup state is new (after the wizard has opened once in this page load) or offered (after an upgrade)"
+      },
+      "priority": 0,
+      "location": "above:cards",
+      "test": "setup-banner",
+      "note": "From the settings (setup.state), not the status: outside the card grid, in the bench banner's slot."
     }
   ],
   "notShown": [

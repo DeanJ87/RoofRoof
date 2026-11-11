@@ -302,3 +302,26 @@ test('Device & Network: one address per row, local name and MQTT', async ({ page
   await expect(item(page, 'mdns')).toHaveCount(0);
   await expect(item(page, 'mqtt-state')).toHaveCount(0);
 });
+
+// Spec 015: an upgraded device (setup offered) shows the setup banner above the cards; Dismiss hides it for good.
+test('setup banner: offered after an upgrade, dismissed for good', async ({ page }) => {
+  // inventory: setup-banner
+  await open(page);
+  await expect(item(page, 'setup-banner')).toHaveCount(0); // the demo starts set up
+  await page.evaluate(() =>
+    fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setup: { state: 'offered', step: 0 } }),
+    }),
+  );
+  await page.reload();
+  const banner = item(page, 'setup-banner');
+  await expect(banner).toContainText('A setup wizard can check', { timeout: 15_000 });
+  await expect(banner.getByRole('button', { name: 'Run setup wizard' })).toBeVisible();
+  await banner.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(banner).toHaveCount(0);
+  await page.reload();
+  await expect(item(page, 'roof-card')).toBeVisible({ timeout: 15_000 });
+  await expect(item(page, 'setup-banner')).toHaveCount(0);
+});

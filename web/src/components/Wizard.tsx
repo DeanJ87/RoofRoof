@@ -229,9 +229,9 @@ const Wizard: FunctionalComponent = () => {
   const saveForTest =
     (fields: string[]): TestSave =>
     async () => {
-      if (!dirty) return { ok: true, changed: false };
+      if (!dirty) return { ok: true, changed: false, config };
       const changed = fields.some((field) => valueAt(saved, field) !== valueAt(config, field));
-      return (await save(undefined)) ? { ok: true, changed } : { ok: false, message: t('wizard.test.notSaved') };
+      return (await save(undefined)) ? { ok: true, changed, config } : { ok: false, message: t('wizard.test.notSaved') };
     };
 
   const next = async () => {

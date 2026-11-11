@@ -22,10 +22,15 @@ const LABEL: Record<CheckState, string> = {
 };
 const NOTE_TONE: Record<CheckState, 'ok' | 'warn' | 'bad' | 'muted'> = { ok: 'ok', warn: 'warn', bad: 'bad', unknown: 'muted' };
 
+// The device's latest reading of the sources, every 2 s while the page is open.
+const INPUTS_EVERY_MS = 2000;
 const useInputs = () => {
   const [inputs, setInputs] = useState<RoofInputs | null>(null);
   useEffect(() => {
-    void fetchInputs().then(setInputs);
+    const read = () => void fetchInputs().then((doc) => doc && setInputs(doc));
+    read();
+    const timer = setInterval(read, INPUTS_EVERY_MS);
+    return () => clearInterval(timer);
   }, []);
   return inputs;
 };

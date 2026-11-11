@@ -156,3 +156,33 @@ test('demo panel', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Demo controls' })).toBeVisible();
   await page.screenshot({ path: save('demo-panel') });
 });
+
+// Spec 015: the setup wizard (the demo device is set up already; these open its pages directly).
+for (const [step, name] of [
+  [3, 'wizard-hardware'],
+  [4, 'wizard-hall'],
+  [7, 'wizard-nina'],
+  [10, 'wizard-review'],
+] as const) {
+  test(`setup wizard page ${step}`, async ({ page }) => {
+    await page.goto(`./?panel=hidden#/wizard?step=${step}`);
+    await waitForDemoApp(page);
+    await expect(page.locator('.wizard-heading')).toContainText(`Step ${step} of 10`);
+    if (step === 7) {
+      await page.getByRole('button', { name: 'Test', exact: true }).click();
+      await expect(page.locator('[data-test-result="nina"]')).toBeVisible({ timeout: 20_000 });
+    }
+    await page.waitForTimeout(1500); // the live readings
+    await page.screenshot({ path: save(name), fullPage: true });
+  });
+}
+
+test('setup wizard at phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./?panel=hidden#/wizard?step=6');
+  await waitForDemoApp(page);
+  await expect(page.locator('.wizard-heading')).toContainText('Step 6 of 10');
+  await page.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(page.locator('[data-test-result="weather"]')).toBeVisible({ timeout: 20_000 });
+  await page.screenshot({ path: save('wizard-weather-phone'), fullPage: true });
+});

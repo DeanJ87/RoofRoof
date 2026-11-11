@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/preact';
+import { mockDevice } from '../../test/mockDevice';
 import System from '../System';
 import type { SystemStatus } from '../../types';
 import { mockStatus } from '../../mocks/data';
@@ -56,5 +57,13 @@ describe('System', () => {
     expect(screen.getByText('fe80::a00:27ff:fe4e:66a1')).toBeInTheDocument();
     expect(screen.getByText('IPv6 (global)')).toBeInTheDocument();
     expect(screen.getByText('2a02:8010:abcd:1::9')).toBeInTheDocument();
+  });
+
+  it('runs the setup wizard again from the Setup card (spec 015 FR-006)', async () => {
+    mockDevice({ config: { setup: { state: 'done', step: 0 } } });
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data: mockStatus, connected: true, lastMessageAt: Date.now() });
+    render(<System />);
+    expect(screen.getByRole('button', { name: 'Run setup wizard' })).toBeInTheDocument();
+    expect(await screen.findByText('Done')).toBeInTheDocument();
   });
 });

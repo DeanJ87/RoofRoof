@@ -44,6 +44,10 @@ namespace DemoRoof
         personStops = 0;
         http = Safety::SourceRecord();
         mqtt = Safety::SourceRecord();
+        // As SafetyPoller::configure and SafetyInputs::apply set them: a source
+        // switched on is waiting at boot, never "off".
+        http.enabled = safetyCfg.httpEnabled;
+        mqtt.enabled = safetyCfg.mqttEnabled;
         verdict = Safety::WeatherVerdict();
         park = Safety::ParkResult();
         sequence = CloseSeq::Sequence();
@@ -83,12 +87,14 @@ namespace DemoRoof
         if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl)
         {
             http = Safety::SourceRecord();
+            http.enabled = nextSafety.httpEnabled;
             ++httpGeneration;
             repoll = true;
         }
         if (nextSafety.mqttEnabled != safetyCfg.mqttEnabled || nextSafety.mqttTopic != safetyCfg.mqttTopic)
         {
             mqtt = Safety::SourceRecord();
+            mqtt.enabled = nextSafety.mqttEnabled;
             ++mqttGeneration;
             repoll = true;
         }

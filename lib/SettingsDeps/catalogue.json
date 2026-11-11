@@ -2,6 +2,8 @@
   "$comment": "Settings dependency catalogue (SQMeter spec 020). Source of truth for tools/settings-deps/check.py and docs/reference/settings-dependencies.md. lib/SettingsDeps and web/src/lib/settingsDeps.ts implement every reported entry; test/fixtures/settings-deps/cases.json holds them to the same answers. Every setting (test/fixtures/settings-deps/default-config.json and config-ranges.json) is either in an entry or in noDependency: its effect needs nothing outside its own section (a section's own switch and the toggle a value belongs to don't count). Patterns use * for one path segment.",
   "noDependency": [
     "deviceName",
+    "setup.state",
+    "setup.step",
     "wifi.ssid",
     "wifi.password",
     "wifi.hostname",

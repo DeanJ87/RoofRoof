@@ -105,7 +105,13 @@ function writeSamples(dir: string) {
     weather: {
       verdict: 'unsafe',
       text: 'unsafe: SQMeter HTTP unreachable: connection refused (no good reply for 35 s)',
-      http: { ...inputs.weather.http, state: 'unreachable', safe: false, flags: 0, text: 'SQMeter HTTP unreachable: connection refused (no good reply for 35 s)' },
+      http: {
+        ...inputs.weather.http,
+        state: 'unreachable',
+        safe: false,
+        flags: 0,
+        text: 'SQMeter HTTP unreachable: connection refused (no good reply for 35 s)',
+      },
       mqtt: { ...inputs.weather.mqtt, enabled: true, state: 'good', safe: true },
       rainContact: 'dry',
     },

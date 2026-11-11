@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { RoofInputs } from '../types';
+import type { Config, RoofInputs } from '../types';
 import { fetchInputs } from '../lib/setupApi';
 import { TEST_LIMIT_MS, TEST_POLL_MS, testAnswered, type TestPart } from '../components/wizard/inputsTest';
 
@@ -15,7 +15,7 @@ export type TestState =
   | { phase: 'timeout'; doc: RoofInputs | null }
   | { phase: 'failed'; message: string };
 
-export type TestSave = () => Promise<{ ok: true; changed: boolean } | { ok: false; message: string }>;
+export type TestSave = () => Promise<{ ok: true; changed: boolean; config: Config } | { ok: false; message: string }>;
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -29,13 +29,13 @@ export const useInputsTest = (part: TestPart) => {
     [],
   );
 
-  const follow = async (before: RoofInputs | null, changed: boolean) => {
+  const follow = async (before: RoofInputs | null, changed: boolean, config: Config) => {
     const deadline = Date.now() + TEST_LIMIT_MS;
     let last: RoofInputs | null = null;
     while (live.current && Date.now() < deadline) {
       const doc = await fetchInputs();
       if (doc) last = doc;
-      if (doc && testAnswered(doc, part, before, changed)) return setState({ phase: 'done', doc });
+      if (doc && testAnswered(doc, part, before, changed, config)) return setState({ phase: 'done', doc });
       await pause(TEST_POLL_MS);
     }
     if (live.current) setState({ phase: 'timeout', doc: last });
@@ -47,7 +47,7 @@ export const useInputsTest = (part: TestPart) => {
     const saved = await save();
     if (!live.current) return;
     if (!saved.ok) return setState({ phase: 'failed', message: saved.message });
-    await follow(before, saved.changed);
+    await follow(before, saved.changed, saved.config);
   };
 
   return { state, run };
