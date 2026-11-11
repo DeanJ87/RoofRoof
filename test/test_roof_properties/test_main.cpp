@@ -343,7 +343,7 @@ namespace
             s.travelMm = obs.settings.travelMm;
             s.hallHighCounts = obs.settings.hallHighCounts;
             s.hallLowCounts = obs.settings.hallLowCounts;
-            if (roof.applySettings(s))
+            if (roof.applySettings(s).accepted)
                 obs.settings = s;
             return;
         }

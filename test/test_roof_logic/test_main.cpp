@@ -457,19 +457,50 @@ void test_stop_during_the_dead_time_returns_to_the_previous_state(void)
     TEST_ASSERT_TRUE(c.state() == State::Closed);
 }
 
+void test_abort_during_the_dead_time_part_way_makes_the_position_unknown(void)
+{
+    Bench b;
+    openFor(b, 3000);
+    b.command(Command::Stop);
+    TEST_ASSERT_TRUE(b.command(Command::Close).accepted);
+    b.step();
+    TEST_ASSERT_TRUE(b.command(Command::Abort).accepted);
+    TEST_ASSERT_TRUE(b.state() == State::Unknown);
+    TEST_ASSERT_FALSE(b.roof.status().positionKnown);
+}
+
+// Current is only checked while the driver is on: not during the dead time.
+void test_current_is_not_checked_during_the_dead_time(void)
+{
+    Settings s;
+    s.currentSenseEnabled = true;
+    Bench b(s);
+    openFor(b, 3000);
+    b.command(Command::Stop);
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    Readings r = b.sim.readings(b.nowMs);
+    r.motorAmps = 50.0f;
+    for (int i = 0; i < 24; ++i) // 480 ms, all inside the dead time
+    {
+        r.nowMs += 20;
+        TEST_ASSERT_TRUE(b.roof.tick(r).command == Driver::Command::Off);
+    }
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
+}
+
 void test_settings_refused_while_moving(void)
 {
     Bench b;
     openFor(b, 3000);
     Settings changed;
     changed.travelMm = 1000;
-    TEST_ASSERT_FALSE(b.roof.applySettings(changed));
+    TEST_ASSERT_TRUE(b.roof.applySettings(changed).reason == Refusal::Moving);
     TEST_ASSERT_EQUAL_UINT32(1850, b.roof.settings().travelMm);
     // Even while waiting out the dead time a move is active.
     b.command(Command::Close);
-    TEST_ASSERT_FALSE(b.roof.applySettings(changed));
+    TEST_ASSERT_TRUE(b.roof.applySettings(changed).reason == Refusal::Moving);
     b.command(Command::Stop);
-    TEST_ASSERT_TRUE(b.roof.applySettings(changed));
+    TEST_ASSERT_TRUE(b.roof.applySettings(changed).accepted);
     TEST_ASSERT_EQUAL_UINT32(1000, b.roof.settings().travelMm);
     // The estimate was made with the old settings.
     TEST_ASSERT_TRUE(b.state() == State::Unknown);
@@ -480,7 +511,7 @@ void test_new_settings_at_an_end_keep_it_known(void)
     Bench b(Settings(), 1850.0f);
     Settings changed;
     changed.travelMm = 1700;
-    TEST_ASSERT_TRUE(b.roof.applySettings(changed));
+    TEST_ASSERT_TRUE(b.roof.applySettings(changed).accepted);
     TEST_ASSERT_TRUE(b.state() == State::Open);
     TEST_ASSERT_EQUAL_FLOAT(1700.0f, b.roof.status().positionMm);
 }
@@ -492,7 +523,7 @@ void test_invalid_settings_refuse_every_move(void)
     Bench b(bad);
     TEST_ASSERT_TRUE(b.state() == State::Closed);
     TEST_ASSERT_TRUE(b.command(Command::Open).reason == Refusal::SettingsInvalid);
-    TEST_ASSERT_TRUE(b.roof.applySettings(Settings()));
+    TEST_ASSERT_TRUE(b.roof.applySettings(Settings()).accepted);
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
 }
 
@@ -540,6 +571,8 @@ int main(int, char **)
     RUN_TEST(test_reversal_waits_the_dead_time_off);
     RUN_TEST(test_a_restart_after_stop_waits_the_dead_time);
     RUN_TEST(test_stop_during_the_dead_time_returns_to_the_previous_state);
+    RUN_TEST(test_abort_during_the_dead_time_part_way_makes_the_position_unknown);
+    RUN_TEST(test_current_is_not_checked_during_the_dead_time);
     RUN_TEST(test_settings_refused_while_moving);
     RUN_TEST(test_new_settings_at_an_end_keep_it_known);
     RUN_TEST(test_invalid_settings_refuse_every_move);
