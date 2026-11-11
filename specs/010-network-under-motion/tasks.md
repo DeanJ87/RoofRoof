@@ -95,3 +95,10 @@ The rules and the shared lock (Phases 1-3) are the core; everything after uses t
 
 - [x] T039 The close sequence holds platform actions only while it works (waiting for the park, or closing); a person's stand-down holds only a firmware upload; a back-off or other stand-down holds nothing, so a broken network or device can be put right remotely. Pure `CloseSeq::platformState` and the hold table per state, with tests
 - [x] T040 Command blockers set under the roof's lock; uploads refused and chunks stopped under a committed restart; command-line OTA chunks stamped under the roof's lock
+
+## Phase 14: Review round 5
+
+- [x] T041 A restart between the Close action and the roof's answer is saved as the step before (no failed close); test in `test_close_restart`
+- [x] T042 A working close sequence doesn't hold a restart or a WiFi fix while the home network is down or the hotspot is on; the refusal text names Stop as the way out; tests
+- [x] T043 The hotspot open refusal is a command blocker decided under the roof's lock; tests
+- [x] T044 A command-line filesystem OTA stopped part-way schedules the mandatory restart; a held restart is logged once

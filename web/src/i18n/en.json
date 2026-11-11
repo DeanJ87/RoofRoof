@@ -180,7 +180,7 @@
   "device.roof.stillOnTheStartMagnetAfter": "Still on the start magnet after {measured} s >= {limit} s",
   "device.roof.supplyMeasuredVLimitV": "Supply {measured} V < {limit} V",
   "device.roof.supplyUnreadableMinimumLimitV": "Supply unreadable (minimum {limit} V)",
-  "device.roof.theAutomaticCloseIsUnderWay": "The automatic close is under way: try again once the roof has closed or the weather is safe",
+  "device.roof.theAutomaticCloseIsUnderWay": "The automatic close is under way: try again once the roof has closed or the weather is safe, or press Stop to stand it down",
   "device.roof.watchdogTimerStoppedLastCheckMeasured": "Watchdog timer stopped: last check {measured} ms ago > {limit} ms",
   "device.roof.wrongMagnetReadTheMeasuredMagnet": "Wrong magnet: read the {measured} magnet moving to {limit}",
   "device.settings.alertsCooldownMustBeBetween0": "Alerts: cooldown must be between 0 and 86400 seconds",

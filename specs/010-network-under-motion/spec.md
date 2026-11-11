@@ -297,7 +297,13 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
   while a person has stood the sequence down (409 with the reason).
 - **FR-011**: A change of Wi-Fi network (`POST /api/wifi/connect`) and a Wi-Fi scan MUST be refused
   while the roof moves, a close waits or the close sequence is working. Backing off or stood down,
-  the sequence holds none of these, so the network or the device can be put right remotely.
+  the sequence holds none of these, so the network or the device can be put right remotely; nor
+  does a working sequence while the home network is down or the setup hotspot is on (it can't
+  reach N.I.N.A. then). The refusal names the way out: Stop stands the automatic close down.
+- **FR-011a**: A restart between the close sequence's Close action and the roof's answer MUST
+  carry on from the step before (no failed close, no back-off).
+- **FR-012a**: The hotspot refusal MUST be decided with the other command blockers under the roof's
+  lock, so every route that opens the roof meets it.
 
 **Setup hotspot**
 
@@ -361,7 +367,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 - **SC-004**: On the bench, saving MQTT settings answers within 1 s even with the broker
   unreachable (bench check).
 - **SC-005**: The full local check (firmware build with zero warnings, native tests, web tests,
-  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 8 KB.
+  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 9 KB.
 
 ## Assumptions decided for the owner
 
@@ -409,6 +415,9 @@ Each was an open choice; the safest option the constitution allows was taken.
      it, so an action can still begin in the instant the sequence leaves idle; a close refused for
      a committed restart is answered as "not run";
    - a fault record that can't be saved holds restarts until it is (the device keeps retrying);
+   - a web UI upload erases its whole partition in its first chunk (SQMeter heritage); if that
+     takes longer than 5 s the upload stops counting as busy and a close could start during the
+     erase; sector-by-sector erasing is a later fix;
    - a fault latched in the few milliseconds between a restart's commit and the reset isn't
      saved (no write is started under a committed restart); an RTC copy of the fault is a later
      fix, as for any crash in that window;

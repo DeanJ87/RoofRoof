@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include <WiFi.h>
+
 #include "FlashGuard.h"
 #include "RoofControl.h"
 
@@ -21,6 +23,13 @@ namespace SQM
                 return sequenceProbe ? sequenceProbe() : RoofIo::SequenceState::Idle;
             }
 
+            // The home network joined and the setup hotspot off: only then can
+            // a working close sequence reach N.I.N.A. (spec 010).
+            bool networkUp()
+            {
+                return WiFi.status() == WL_CONNECTED && (WiFi.getMode() & WIFI_AP) == 0;
+            }
+
             RoofIo::PlatformState latest()
             {
                 RoofIo::PlatformState state;
@@ -34,6 +43,7 @@ namespace SQM
                     state.roof = Roof::State::Closed; // no roof: nothing moves
                 }
                 state.sequence = sequenceNow();
+                state.networkUp = networkUp();
                 return state;
             }
 
@@ -43,6 +53,7 @@ namespace SQM
                 RoofIo::PlatformState state;
                 state.roof = Roof::State::Closed;
                 state.sequence = sequenceNow();
+                state.networkUp = networkUp();
                 return RoofIo::platformHold(action, state);
             }
 
@@ -171,7 +182,7 @@ namespace SQM
                     ran = true;
                     RoofIo::RestartInputs in;
                     in.mandatory = mandatory;
-                    in.sequenceWorking = sequenceNow() == RoofIo::SequenceState::Working;
+                    in.sequenceWorking = sequenceNow() == RoofIo::SequenceState::Working && networkUp();
                     in.uploadBusy = FlashGuard::busy();
                     in.shortWrite = FlashGuard::writing();
                     in.faultUnsaved = theRoof != nullptr && theRoof->faultUnsavedHeld();

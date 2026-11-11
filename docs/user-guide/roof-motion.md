@@ -200,7 +200,10 @@ rest of the device waits for the roof, and some actions also wait for the
 [automatic close](close-on-unsafe.md) while it is working: waiting for the park it asked for, or
 closing. Backing off after a failed attempt, or stood down (position unknown, a fault, a halted
 close), it holds nothing, so a broken network or device can still be put right remotely; stopped by
-a person, it only holds a firmware upload (a new firmware might not read that stand-down back):
+a person, it only holds a firmware upload (a new firmware might not read that stand-down back).
+While the home network is down or the setup hotspot is on, a working sequence can't reach N.I.N.A.
+anyway, so it holds only uploads, not a restart or a WiFi fix. Stop always stands the automatic
+close down, which lifts its hold:
 
 | Action | Roof opening or closing | A close waiting to start | Automatic close working |
 |---|---|---|---|

@@ -107,6 +107,7 @@ namespace SQM
             bool flashWriting = false;     // a short flash write (a settings save) is running (spec 010)
             bool restartCommitted = false; // a restart passed its last check: the reset is moments away
             bool networkChanging = false;  // trying another WiFi network or scanning: N.I.N.A. may drop (spec 010)
+            bool hotspotOn = false;        // the setup hotspot (no password) is on: open refused (spec 010)
         };
 
         enum class BlockerAction : uint8_t
@@ -131,7 +132,7 @@ namespace SQM
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &blockers);
         // The refusal's reason name: "restarting" for a committed restart (the
         // automatic close then waits rather than counting a failed close),
-        // else "busy".
+        // "hotspot" for an open while the setup hotspot is on, else "busy".
         constexpr const char *RESTARTING_REASON = "restarting";
         const char *blockerReason(const Blockers &blockers);
         // "The device is restarting", "An upload is being written", "A settings

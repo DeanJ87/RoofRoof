@@ -224,6 +224,10 @@ namespace SQM
             Phase beforeClose = Phase::WaitPark;
             uint64_t beforeCloseSinceMs = 0;
             uint64_t beforeCloseWallStartMs = 0;
+            // The Close action went out and the roof hasn't answered yet: a
+            // restart in between (spec 010) is saved as the step before, not
+            // as a close under way, so it doesn't count as a failed close.
+            bool closeUnanswered = false;
             bool closingSeen = false; // the roof has read Closing since the close
             bool sawPending = false;  // the close waited (spec 003 closePending) first
             uint64_t closingSinceMs = 0;

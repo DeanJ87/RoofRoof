@@ -4,6 +4,7 @@
 #include <cstring>
 #include <limits>
 
+#include "PlatformHold.h"
 #include "StepWatchdog.h"
 
 namespace SQM
@@ -116,7 +117,7 @@ namespace SQM
             const bool flash = b.flashBusy || b.flashWriting || b.networkChanging;
             if (command == Roof::Command::Open)
             {
-                if (flash || b.mqttConnecting || b.restartScheduled || b.restartCommitted)
+                if (flash || b.mqttConnecting || b.restartScheduled || b.restartCommitted || b.hotspotOn)
                     d.action = BlockerAction::Refuse;
             }
             else if (command == Roof::Command::Close)
@@ -138,6 +139,8 @@ namespace SQM
         {
             if (b.restartCommitted)
                 return "The device is restarting";
+            if (b.hotspotOn)
+                return HOTSPOT_TEXT;
             if (b.flashBusy)
                 return "An upload is being written";
             if (b.flashWriting)
@@ -153,7 +156,9 @@ namespace SQM
 
         const char *blockerReason(const Blockers &b)
         {
-            return b.restartCommitted ? RESTARTING_REASON : "busy";
+            if (b.restartCommitted)
+                return RESTARTING_REASON;
+            return b.hotspotOn ? HOTSPOT_REASON : "busy";
         }
 
         bool commandHeaderValid(const char *value)

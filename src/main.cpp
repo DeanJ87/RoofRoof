@@ -204,13 +204,17 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
         Logger::info("OTA", "Progress: %u%%", percent);
         lastPercent = percent;
     }
-    // Stamped under the roof's lock (spec 010); if the roof moved or a close
-    // waits after a stall, or the token was stopped, the rest is not written.
+    // Stamped under the roof's lock after each chunk (spec 010; ArduinoOTA
+    // calls this once the chunk is written). If the roof moved or a close
+    // waits after a stall, or the activity was stopped, nothing more is
+    // written. A filesystem stopped part-way was unmounted: it must restart.
     if (arduinoOtaToken != 0 &&
         (PlatformGuard::keepUpload(arduinoOtaToken) != RoofIo::HoldReason::None || FlashGuard::shouldStop(arduinoOtaToken)))
     {
         Logger::warn("OTA", "Command-line OTA stopped part-way: the roof needs the flash");
         Update.abort();
+        if (!arduinoOtaFirmware)
+            WebServer::scheduleMandatoryRestart(1000);
         FlashGuard::end(arduinoOtaToken);
         arduinoOtaToken = 0;
     }

@@ -282,6 +282,7 @@ namespace SQM
         {
             if (current != Phase::Closing)
                 return Decision{};
+            closeUnanswered = false;
             if (answer == CloseAnswer::Started)
                 return Decision{};
             // The gate keeps disagreeing with the park result: a refusal like any other.
@@ -308,24 +309,30 @@ namespace SQM
             // The park request spacing is kept in any phase, while it matters.
             out.requested = requested && elapsed(lastRequestMs, lastNowMs) < PARK_REQUEST_GAP_MS;
             out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
-            const bool standDown = current == Phase::HeldByPerson || current == Phase::Halted;
-            const bool waitingNow = current == Phase::WaitPark || current == Phase::RetryWait;
+            // Asked to close but not yet answered: nothing has moved, so a
+            // restart now carries on from the step before (spec 010).
+            const bool unanswered = current == Phase::Closing && closeUnanswered;
+            const Phase phase = unanswered ? beforeClose : current;
+            const uint64_t sinceMs = unanswered ? beforeCloseSinceMs : phaseSinceMs;
+            const uint64_t wallStartMs = unanswered ? beforeCloseWallStartMs : phaseWallStartMs;
+            const bool standDown = phase == Phase::HeldByPerson || phase == Phase::Halted;
+            const bool waitingNow = phase == Phase::WaitPark || phase == Phase::RetryWait;
             // A close under way: a restart ends it part-way (a brown-out at the
             // motor's start, say), which restore() turns into a failed close.
-            if (current == Phase::Closing)
+            if (phase == Phase::Closing)
             {
                 out.phase = Phase::Closing;
                 return out;
             }
             if (!standDown && !waitingNow)
                 return out;
-            out.phase = current;
+            out.phase = phase;
             out.event = lastCritical.has ? lastCritical.event : Event::None;
             out.cause = lastCritical.has ? lastCritical.cause : Cause::None;
             if (waitingNow)
             {
-                out.unsafeMs = elapsed(phaseSinceMs, lastNowMs);
-                out.wallMs = elapsed(phaseWallStartMs, lastNowMs);
+                out.unsafeMs = elapsed(sinceMs, lastNowMs);
+                out.wallMs = elapsed(wallStartMs, lastNowMs);
                 out.limitMs = attemptLimitMs;
             }
             return out;
@@ -425,6 +432,7 @@ namespace SQM
             beforeCloseWallStartMs = phaseWallStartMs;
             Decision out = enter(Phase::Closing);
             out.action = Action::Close;
+            closeUnanswered = true;
             return out;
         }
 
@@ -443,6 +451,7 @@ namespace SQM
         Decision Sequence::enter(Phase next, Event event, Cause cause)
         {
             current = next;
+            closeUnanswered = false;
             phaseSinceMs = lastNowMs;
             phaseWallStartMs = lastNowMs;
             closingSeen = false;

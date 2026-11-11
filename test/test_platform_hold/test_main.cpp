@@ -111,6 +111,38 @@ void test_stand_downs_leave_the_way_out_open(void)
         TEST_ASSERT_EQUAL(HoldReason::None, platformHold(action, in(SequenceState::Idle)));
 }
 
+void test_working_sequence_without_network_leaves_the_way_out_open(void)
+{
+    // With the home network gone (or the setup hotspot on), waiting for the
+    // park can't succeed: a restart or a WiFi fix must not wait for it. Only
+    // uploads (a new firmware, a restart nothing cancels) still wait.
+    PlatformState s = in(SequenceState::Working);
+    s.networkUp = false;
+    for (PlatformAction action : ALL_ACTIONS)
+    {
+        const bool upload = action == PlatformAction::FirmwareUpload || action == PlatformAction::FilesystemUpload;
+        TEST_ASSERT_EQUAL_MESSAGE(
+            upload ? HoldReason::CloseSequence : HoldReason::None, platformHold(action, s), platformActionName(action));
+    }
+    // The roof still holds everything.
+    s.roof = Roof::State::Closing;
+    TEST_ASSERT_EQUAL(HoldReason::Moving, platformHold(PlatformAction::Restart, s));
+}
+
+void test_hotspot_refuses_open_under_the_lock(void)
+{
+    Blockers b;
+    b.hotspotOn = true;
+    TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Open, b).action);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Close, b).action);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Stop, b).action);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
+    TEST_ASSERT_EQUAL_STRING("hotspot", blockerReason(b));
+    TEST_ASSERT_EQUAL_STRING(HOTSPOT_TEXT, blockerText(b));
+    b.restartCommitted = true; // the reset comes first
+    TEST_ASSERT_EQUAL_STRING("restarting", blockerReason(b));
+}
+
 void test_mandatory_restart_ignores_sequence(void)
 {
     // The restart after a web UI upload remounts the filesystem; the same
@@ -136,7 +168,8 @@ void test_hold_texts_and_names(void)
     TEST_ASSERT_EQUAL_STRING("The roof is moving: stop it first, then try again", holdText(HoldReason::Moving));
     TEST_ASSERT_EQUAL_STRING("A close is waiting to start: try again once the roof has closed", holdText(HoldReason::CloseWaiting));
     TEST_ASSERT_EQUAL_STRING(
-        "The automatic close is under way: try again once the roof has closed or the weather is safe", holdText(HoldReason::CloseSequence));
+        "The automatic close is under way: try again once the roof has closed or the weather is safe, or press Stop to stand it down",
+        holdText(HoldReason::CloseSequence));
     TEST_ASSERT_EQUAL_STRING("none", holdName(HoldReason::None));
     TEST_ASSERT_EQUAL_STRING("moving", holdName(HoldReason::Moving));
     TEST_ASSERT_EQUAL_STRING("closeWaiting", holdName(HoldReason::CloseWaiting));
@@ -320,6 +353,10 @@ void test_network_hold_is_bounded_inside_the_close_start_limit(void)
     TEST_ASSERT_TRUE(networkHoldsClose(true, NETWORK_HOLD_MAX_MS));
     TEST_ASSERT_FALSE(networkHoldsClose(true, NETWORK_HOLD_MAX_MS + 1));
     TEST_ASSERT_FALSE(networkHoldsClose(false, 0));
+    // Ages are unsigned differences of millis(): across the wrap they stay small.
+    const uint32_t startedAt = 0xFFFFFFFFu - 1000;
+    TEST_ASSERT_TRUE(networkHoldsClose(true, static_cast<uint32_t>(startedAt + 5000) - startedAt));
+    TEST_ASSERT_FALSE(networkHoldsClose(true, static_cast<uint32_t>(startedAt + NETWORK_HOLD_MAX_MS + 1) - startedAt));
 }
 
 int main(int, char **)
@@ -329,6 +366,8 @@ int main(int, char **)
     RUN_TEST(test_close_waiting_holds_every_action);
     RUN_TEST(test_sequence_busy_holds_restart_firmware_and_wifi);
     RUN_TEST(test_stand_downs_leave_the_way_out_open);
+    RUN_TEST(test_working_sequence_without_network_leaves_the_way_out_open);
+    RUN_TEST(test_hotspot_refuses_open_under_the_lock);
     RUN_TEST(test_mandatory_restart_ignores_sequence);
     RUN_TEST(test_nothing_held_at_rest);
     RUN_TEST(test_hold_texts_and_names);
