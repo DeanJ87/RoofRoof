@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{#- RoofRoof's repository is private and its docs are a CI artifact, so there is
+    no public address: no link-preview or search-engine metadata, and site_url
+    stays empty. -#}
+
+{#- Diagrams (spec 024): Material fetches mermaid from unpkg unless a global
+    `mermaid` already exists when its bundle runs, so load the pinned copy the
+    site serves itself (web/scripts/vendor-mermaid.mjs) just before the
+    bundle - and only on pages that have a diagram. -#}
+{% block scripts %}
+  {%- if page and page.content and 'class="mermaid"' in page.content %}
+  <script src="{{ 'assets/javascripts/vendor/mermaid.min.js' | url }}"></script>
+  {%- endif %}
+  {{ super() }}
+  {#- The API reference (spec 028 FR-005): the pinned Scalar build the site
+      serves itself (web/scripts/vendor-scalar.mjs), only on that page. -#}
+  {%- if page and page.content and 'id="sqm-api-reference"' in page.content %}
+  <script src="{{ 'assets/javascripts/vendor/scalar.js' | url }}"></script>
+  <script src="{{ 'assets/javascripts/api-reference.js' | url }}"></script>
+  {%- endif %}
+{% endblock %}

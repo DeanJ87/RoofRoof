@@ -1,0 +1,384 @@
+name: Build Firmware & LittleFS
+
+
+on:
+  pull_request:
+    branches: [ master, main ]
+  push:
+    tags: [ 'v*' ]
+
+# Cancel in-progress PR builds when new commits are pushed.
+# Tag builds are never cancelled — releases must complete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # `build` is a required check, so it must report on every pull request.
+  # This cheap job decides whether the full build has anything to do; when
+  # nothing it covers changed (docs, changelog), `build` is skipped, and a
+  # skipped required check counts as passed. Tag builds always run.
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: diff
+        name: Did anything the build covers change?
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          base="${{ github.event.pull_request.base.sha }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+          echo "$changed"
+          patterns=$(cat <<'EOF'
+            src/**
+            include/**
+            lib/**
+            test/**
+            tools/settings-deps/**
+            tools/api/**
+            tools/dashboard/**
+            docs/api/rest.md
+            docs/api/openapi.json
+            web/explorer/**
+            web/vite.demo.config.ts
+            docs/reference/settings-dependencies.md
+            web/src/**
+            web/package.json
+            web/package-lock.json
+            web/tsconfig.json
+            web/vite.config.ts
+            web/vitest.config.ts
+            web/index.html
+            web/public/**
+            platformio.ini
+            partitions.csv
+            scripts/**
+            tools/ui/**
+            tools/firmware/**
+            .github/workflows/build.yml
+            specs/**
+            .specify/**
+          EOF
+          )
+          code=false
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            while IFS= read -r pat; do
+              pat="${pat#"${pat%%[![:space:]]*}"}"
+              [ -z "$pat" ] && continue
+              case "$file" in
+                $pat) code=true; break 2;;  # case globs: * also matches "/", so src/** covers src/a/b
+              esac
+            done <<< "$patterns"
+          done <<< "$changed"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      # Downloaded packages only. pioarduino rebuilds the framework in place
+      # from custom_sdkconfig (SQMeter spec 027), so builds always start clean: no
+      # cached .pio/build, and an exact-key package cache (a different
+      # platformio.ini never restores another configuration's framework).
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio3-${{ hashFiles('platformio.ini') }}
+
+      - name: Cache node_modules
+        uses: actions/cache@v5
+        with:
+          path: web/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('web/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # pioarduino (Arduino-ESP32 3.x) needs PlatformIO Core 6.2 or newer.
+      - name: Install PlatformIO and esptool
+        run: |
+          pip install "platformio==6.2.0" esptool
+          # pioarduino builds in its own venv with the "pioarduino" core fork; 6.2.0.post1
+          # fails its own ">=6.2.0" check, so seed the venv with 6.2.0 (the builder keeps it).
+          python -m venv ~/.platformio/penv
+          ~/.platformio/penv/bin/pip install "pioarduino==6.2.0" uv
+
+      # Stamp version.h with the git tag so the firmware reports its release version
+      - name: Inject release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          sed -i "s/#define FIRMWARE_VERSION \".*\"/#define FIRMWARE_VERSION \"${VERSION}\"/" include/version.h
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+
+      - name: Typecheck web UI
+        run: npm run typecheck
+        working-directory: web
+
+      - name: Run web unit tests with coverage
+        run: npm run test:coverage
+        working-directory: web
+
+      - name: Upload web coverage report
+        uses: actions/upload-artifact@v6
+        with:
+          name: web-coverage
+          path: web/coverage/
+          retention-days: 14
+
+      - name: Build web UI
+        run: npm run build
+        working-directory: web
+
+      - name: Integrity checks
+        run: |
+          # The owner's prompts stay out of the repository (constitution, Development Workflow)
+          # (the constitution states the rule, so it names the pattern)
+          if grep -rn --exclude=constitution.md "User description" specs/ .specify/ 2>/dev/null; then
+            echo "ERROR: a spec quotes the owner's prompt (**Input**: User description) - describe the feature in the spec's own words"
+            exit 1
+          fi
+          echo "No prompts in specs check passed"
+
+          # No active TCPServer code references (firmware source and UI code only)
+          if grep -rn "TCPServer\|WiFiServer.*2020" src/ include/ web/src/ 2>/dev/null; then
+            echo "ERROR: TCPServer / port 2020 server reference found in firmware or UI code"
+            exit 1
+          fi
+          echo "TCPServer code check passed"
+
+          # No user-guide or getting-started docs advertising port 2020 as active
+          if grep -rn "port 2020" docs/user-guide/ docs/getting-started/ docs/hardware/ docs/reference/ README.md 2>/dev/null; then
+            echo "ERROR: port 2020 referenced as active functionality in product docs"
+            exit 1
+          fi
+          echo "Port 2020 docs check passed"
+
+          # No serializeJsonPretty in config persistence
+          if grep -rn "serializeJsonPretty" src/ include/ lib/ 2>/dev/null; then
+            echo "ERROR: serializeJsonPretty found in firmware (config persistence must use compact JSON)"
+            exit 1
+          fi
+          echo "serializeJsonPretty check passed"
+
+      - name: Run native unit tests
+        run: pio test -e native
+
+      # Every setting that depends on another is catalogued, implemented on the
+      # device and in the web UI's preview, tested, and documented
+      # (SQMeter specs/020-settings-dependencies).
+      - name: Settings dependencies catalogue
+        run: |
+          python3 tools/settings-deps/test_check.py
+          python3 tools/settings-deps/check.py
+
+      # English only (research R10): the catalogue is complete, no string is
+      # left untranslatable in a component, and the generated device catalogue
+      # is current. No language packs are built.
+      - name: Translations
+        run: |
+          if ls tools/i18n/test_*.py >/dev/null 2>&1; then python3 -m unittest discover -s tools/i18n -p 'test_*.py'; fi
+          node tools/i18n/check.mjs
+          node tools/i18n/literals.mjs
+          python3 tools/i18n/gen_device_catalog.py --check
+          python3 tools/i18n/context.py --check
+
+      # Every device field and settings dependency is on the dashboard
+      # inventory, shown with a test or not shown with a reason (SQMeter specs/025).
+      - name: Dashboard inventory
+        run: |
+          python3 -m unittest discover -s tools/dashboard -p 'test_*.py'
+          python3 tools/dashboard/check.py
+
+      # Every HTTP route is declared with its auth and documented
+      # (SQMeter specs 011 FR-006, 014 FR-005), and the OpenAPI description
+      # (docs/api/openapi.json) matches the registry and schemas (SQMeter spec 028).
+      - name: API routes registry
+        run: |
+          python3 tools/api/test_routes.py
+          python3 tools/api/routes.py
+          pip install openapi-spec-validator==0.9.0
+          python3 tools/api/test_openapi.py
+          python3 tools/api/openapi.py --check
+          python3 tools/test_contract_check.py
+          python3 tools/soak/test_connection_soak.py
+
+      # The demo runs this firmware code in the browser (web/src/demo/core);
+      # a change to lib/ must ship with a rebuilt core.
+      - name: Demo device core is current
+        run: python3 tools/demo-core/source_hash.py --check
+
+      # The UI is stored gzipped; it must fit the LittleFS partition with a
+      # language-file allowance (SQMeter's language packs are removed) and
+      # headroom, and grow no more than 10 KB per change
+      # (coding standard SIZE-01, SIZE-02).
+      - name: Pack the web UI for LittleFS and check its size
+        run: |
+          python3 -m unittest tools/ui/test_ui_size.py tools/ui/test_copy_label.py
+          python3 tools/ui/pack_data.py --dist web/dist --out data
+          if [ -n "${BASE_REF}" ]; then
+            git fetch --depth=1 origin "${BASE_REF}"
+            python3 tools/ui/size_check.py --data data --base-ref FETCH_HEAD
+          else
+            python3 tools/ui/size_check.py --data data
+          fi
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - name: Build firmware
+        run: pio run -e esp32dev
+
+      - name: Build LittleFS image
+        run: pio run -e esp32dev --target buildfs
+
+      # SIZE-04 (SQMeter spec 027): each build against its app slot - warn above 90%,
+      # fail above 95% - and the change from the target branch's record.
+      - name: Firmware flash budget
+        run: |
+          python3 -m unittest tools/firmware/test_firmware_tools.py
+          if [ -n "${BASE_REF}" ]; then
+            git fetch --depth=1 origin "${BASE_REF}"
+            python3 tools/firmware/flash_budget.py --envs esp32dev --base-ref FETCH_HEAD | tee "$RUNNER_TEMP/flash.txt"
+          else
+            python3 tools/firmware/flash_budget.py --envs esp32dev | tee "$RUNNER_TEMP/flash.txt"
+          fi
+          { echo '### Firmware size'; echo '```'; cat "$RUNNER_TEMP/flash.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      # The USB flash package: each part at its own offset, so NVS - the
+      # device's settings - is kept.
+      - name: Create USB flash package
+        run: |
+          VERSION="$(grep -o 'FIRMWARE_VERSION "[^"]*"' include/version.h | cut -d'"' -f2)"
+          BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name "boot_app0.bin" | head -1)
+          python3 tools/firmware/usb_package.py --version "$VERSION" \
+            --build-dir .pio/build/esp32dev --fs .pio/build/esp32dev/littlefs.bin \
+            --boot-app0 "$BOOT_APP0" --out .pio/build/usb.zip
+
+      # PR builds: keep 5 days (inspection only). Tag builds go into GitHub Releases permanently.
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: firmware
+          path: .pio/build/esp32dev/firmware.bin
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
+
+      - name: Upload LittleFS artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: littlefs
+          path: .pio/build/esp32dev/littlefs.bin
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
+
+      - name: Upload USB flash package
+        uses: actions/upload-artifact@v6
+        with:
+          name: usb-flash
+          path: .pio/build/usb.zip
+          if-no-files-found: error
+          retention-days: ${{ startsWith(github.ref, 'refs/tags/') && 90 || 5 }}
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+
+      # The REST API description for this release, version stamped.
+      - name: Build the OpenAPI description
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          pip install openapi-spec-validator==0.9.0
+          python3 tools/api/openapi.py --version "${VERSION}" --out "roofroof-openapi-v${VERSION}.json"
+
+      # The release body and banner from this version's CHANGELOG.md section
+      # (tools/release/notes.mjs): fails here, before anything is published, if
+      # the changelog PR hasn't been merged. The banner is rendered in
+      # Chromium (Playwright, already a web dependency).
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Release notes and banner
+        run: |
+          (cd web && npm ci && npx playwright install --with-deps chromium)
+          node tools/release/notes.mjs --tag "${GITHUB_REF#refs/tags/}" --out release-notes
+
+      # "l2" names the whole-chip partition layout (partitions.csv); the
+      # device refuses an update file made for a different layout.
+      - name: Rename binaries with version tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          mv firmware/firmware.bin         roofroof-l2-firmware-${VERSION}.bin
+          mv littlefs/littlefs.bin         roofroof-l2-littlefs-${VERSION}.bin
+          mv usb-flash/usb.zip             roofroof-l2-usb-${VERSION}.zip
+
+      # A tag with a semver prerelease segment (e.g. v0.1.0-beta.1) is
+      # published as a GitHub prerelease. Updates are by manual upload only:
+      # the device never looks at releases.
+      - name: Determine prerelease status
+        id: prerelease
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: RoofRoof ${{ github.ref_name }}
+          # The banner and changelog section first; GitHub's list of merged
+          # pull requests is appended after it.
+          body_path: release-notes/release-notes.md
+          generate_release_notes: true
+          prerelease: ${{ steps.prerelease.outputs.value }}
+          files: |
+            release-notes/roofroof-release-${{ github.ref_name }}.png
+            release-notes/roofroof-release-${{ github.ref_name }}@2x.png
+            roofroof-l2-firmware-*.bin
+            roofroof-l2-littlefs-*.bin
+            roofroof-l2-usb-*.zip
+            roofroof-openapi-*.json

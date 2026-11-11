@@ -1,0 +1,53 @@
+{
+  "about": "Numeric setting ranges, shared by the device (test/test_config_ranges) and the web UI (web/src/__tests__/configRanges.test.ts) so they can't drift (SQMeter spec 011 FR-004 / SC-001). Each range is checked at min and max (accepted) and just outside (rejected). `gt` / `lt` mean strictly greater / less than the bound. `with` sets companion settings so a cross-field rule doesn't interfere.",
+  "ranges": [
+    {
+      "path": "wifi.reconnectDelayMs",
+      "int": true,
+      "min": 1,
+      "max": 86400000,
+      "with": {
+        "wifi.maxReconnectDelayMs": 86400000
+      }
+    },
+    {
+      "path": "wifi.maxReconnectDelayMs",
+      "int": true,
+      "min": 1,
+      "max": 86400000,
+      "with": {
+        "wifi.reconnectDelayMs": 1
+      }
+    },
+    {
+      "path": "mqtt.port",
+      "int": true,
+      "min": 1,
+      "max": 65535
+    },
+    {
+      "path": "mqtt.publishIntervalMs",
+      "int": true,
+      "min": 1000,
+      "max": 86400000
+    },
+    {
+      "path": "ntp.syncIntervalMs",
+      "int": true,
+      "min": 600000,
+      "max": 86400000
+    },
+    {
+      "path": "alerts.cooldownSeconds",
+      "int": true,
+      "min": 0,
+      "max": 86400
+    },
+    {
+      "path": "alerts.clientSilentSeconds",
+      "int": true,
+      "min": 30,
+      "max": 3600
+    }
+  ]
+}

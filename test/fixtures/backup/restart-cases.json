@@ -1,0 +1,108 @@
+{
+  "about": "Which setting changes need a restart (SQMeter spec 033 research R5). Run by test/test_config_backup (Backup::restartReasons) and web/src/components/settings/__tests__/restart.test.ts (restart.ts), so the device and the web UI agree. before/after are applied on top of the same defaults.",
+  "cases": [
+    {
+      "name": "nothing changes",
+      "before": {},
+      "after": {},
+      "reasons": []
+    },
+    {
+      "name": "WiFi network",
+      "before": {
+        "wifi": {
+          "ssid": "Home"
+        }
+      },
+      "after": {
+        "wifi": {
+          "ssid": "Observatory"
+        }
+      },
+      "reasons": [
+        "wifi"
+      ]
+    },
+    {
+      "name": "WiFi password",
+      "before": {
+        "wifi": {
+          "password": "one"
+        }
+      },
+      "after": {
+        "wifi": {
+          "password": "two"
+        }
+      },
+      "reasons": [
+        "wifi"
+      ]
+    },
+    {
+      "name": "local name",
+      "before": {
+        "wifi": {
+          "hostname": "roof"
+        }
+      },
+      "after": {
+        "wifi": {
+          "hostname": "roof-east"
+        }
+      },
+      "reasons": [
+        "wifi"
+      ]
+    },
+    {
+      "name": "IPv6 off",
+      "before": {
+        "wifi": {
+          "ipv6": true
+        }
+      },
+      "after": {
+        "wifi": {
+          "ipv6": false
+        }
+      },
+      "reasons": [
+        "ipv6"
+      ]
+    },
+    {
+      "name": "MQTT broker",
+      "before": {
+        "mqtt": {
+          "broker": "a.lan"
+        }
+      },
+      "after": {
+        "mqtt": {
+          "broker": "b.lan"
+        }
+      },
+      "reasons": []
+    },
+    {
+      "name": "local name and IPv6",
+      "before": {
+        "wifi": {
+          "hostname": "roof",
+          "ipv6": true
+        }
+      },
+      "after": {
+        "wifi": {
+          "hostname": "roof-east",
+          "ipv6": false
+        }
+      },
+      "reasons": [
+        "wifi",
+        "ipv6"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,374 @@
+{
+  "$comment": "Shared by test/test_settings_deps (lib/SettingsDeps) and web/src/lib/__tests__/settingsDeps.test.ts (web/src/lib/settingsDeps.ts): the same config and facts must give the same answers. `config` is applied on top of the device defaults (default-config.json); `facts` on top of `baseFacts`. `expect` lists only the settings a case is about. `draft: true` marks a form state the device refuses to save: the device test checks the refusal, the web preview the answers.",
+  "baseFacts": {
+    "wifiConnected": true,
+    "mqttConnected": true,
+    "clockSet": true,
+    "alpacaDevices": 1
+  },
+  "cases": [
+    {
+      "name": "fresh device: alert settings wait for alerts, MQTT channel waits for MQTT",
+      "config": {},
+      "facts": {},
+      "expect": {
+        "alerts.pushover.enabled": {
+          "state": "off",
+          "id": "D-03"
+        },
+        "alerts.mqtt.enabled": {
+          "state": "off",
+          "id": "D-01"
+        },
+        "alerts.events.client_lost.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.client_disconnected.level": {
+          "state": "off",
+          "id": "D-37"
+        },
+        "alerts.sendMode": {
+          "state": "off",
+          "id": "D-12"
+        },
+        "mqtt.homeAssistant.enabled": {
+          "state": "off",
+          "id": "D-13"
+        },
+        "ntp.enabled": {
+          "state": "active",
+          "id": "D-28"
+        },
+        "ota.enabled": {
+          "state": "off",
+          "id": "D-32"
+        },
+        "wifi.mdns": {
+          "state": "active",
+          "id": "D-36"
+        },
+        "wifi.ipv6": {
+          "state": "active",
+          "id": "D-36"
+        }
+      }
+    },
+    {
+      "name": "push channels need WiFi before alerts on (D-03 before D-04)",
+      "config": {
+        "alerts": {
+          "ntfy": {
+            "enabled": true,
+            "server": "https://ntfy.sh",
+            "topic": "roof"
+          }
+        }
+      },
+      "facts": {
+        "wifiConnected": false
+      },
+      "expect": {
+        "alerts.ntfy.enabled": {
+          "state": "inactive",
+          "id": "D-03",
+          "reason": "wifi-disconnected",
+          "text": "Not connected to WiFi",
+          "fix": "network#wifi"
+        },
+        "ntp.enabled": {
+          "state": "inactive",
+          "id": "D-28",
+          "reason": "wifi-disconnected"
+        },
+        "wifi.mdns": {
+          "state": "inactive",
+          "id": "D-36",
+          "reason": "wifi-disconnected"
+        }
+      }
+    },
+    {
+      "name": "channels on with WiFi wait for alerts on",
+      "config": {
+        "alerts": {
+          "webhook": {
+            "enabled": true,
+            "url": "http://hooks.local/roof"
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.webhook.enabled": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off",
+          "text": "Alerts are off",
+          "fix": "alerts#alerts"
+        }
+      }
+    },
+    {
+      "name": "MQTT alerts: MQTT off, then broker down (D-01, D-02)",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "mqtt": {
+            "enabled": true
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-01",
+          "reason": "mqtt-off",
+          "fix": "network#mqtt"
+        }
+      }
+    },
+    {
+      "name": "MQTT alerts with MQTT on but the broker down",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "mqtt": {
+            "enabled": true
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {
+        "mqttConnected": false
+      },
+      "expect": {
+        "alerts.mqtt.enabled": {
+          "state": "inactive",
+          "id": "D-02",
+          "reason": "mqtt-disconnected",
+          "text": "Broker not connected"
+        }
+      }
+    },
+    {
+      "name": "everything on and connected: all active",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "sendMode": "whileConnected",
+          "pushover": {
+            "enabled": true,
+            "userKey": "uQiRzpo4DXghDmr9QzzfQu27cmVRsG",
+            "appToken": "azGDORePK8gMaC0QOYAMyEEuzJnyUi"
+          },
+          "mqtt": {
+            "enabled": true
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "roofroof",
+          "homeAssistant": {
+            "enabled": true
+          }
+        },
+        "alpaca": {
+          "enabled": true
+        },
+        "ota": {
+          "enabled": true,
+          "password": "upload"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.pushover.enabled": {
+          "state": "active",
+          "id": "D-03"
+        },
+        "alerts.mqtt.enabled": {
+          "state": "active",
+          "id": "D-01"
+        },
+        "alerts.events.client_lost.level": {
+          "state": "active",
+          "id": "D-37"
+        },
+        "alerts.sendMode": {
+          "state": "active",
+          "id": "D-12"
+        },
+        "mqtt.homeAssistant.enabled": {
+          "state": "active",
+          "id": "D-13"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "active",
+          "id": "D-13"
+        },
+        "ota.enabled": {
+          "state": "active",
+          "id": "D-32"
+        }
+      }
+    },
+    {
+      "name": "imaging-app events and the send mode need Alpaca (D-37, D-12)",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "sendMode": "whileConnected"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.events.client_lost.level": {
+          "state": "inactive",
+          "id": "D-37",
+          "reason": "alpaca-off",
+          "text": "Alpaca is off",
+          "fix": "network#alpaca"
+        },
+        "alerts.events.client_back.level": {
+          "state": "inactive",
+          "id": "D-37",
+          "reason": "alpaca-off"
+        },
+        "alerts.sendMode": {
+          "state": "inactive",
+          "id": "D-12",
+          "reason": "alpaca-off"
+        }
+      }
+    },
+    {
+      "name": "imaging-app events with Alpaca on but no Alpaca device yet (spec 001)",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "alpaca": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "alpacaDevices": 0
+      },
+      "expect": {
+        "alerts.events.client_lost.level": {
+          "state": "inactive",
+          "id": "D-37",
+          "reason": "no-alpaca-device",
+          "text": "No Alpaca device yet",
+          "fix": "network#alpaca"
+        },
+        "alerts.events.client_back.level": {
+          "state": "inactive",
+          "id": "D-37",
+          "reason": "no-alpaca-device"
+        }
+      }
+    },
+    {
+      "name": "Home Assistant: MQTT off, then the Alerts switch waits for alerts (D-13)",
+      "config": {
+        "mqtt": {
+          "homeAssistant": {
+            "enabled": true
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "mqtt.homeAssistant.enabled": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "mqtt-off"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "mqtt-off"
+        }
+      }
+    },
+    {
+      "name": "Home Assistant on, alerts off: the Alerts switch is not announced",
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "roofroof",
+          "homeAssistant": {
+            "enabled": true
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "mqtt.homeAssistant.enabled": {
+          "state": "active",
+          "id": "D-13"
+        },
+        "mqtt.homeAssistant.alertsSwitch": {
+          "state": "inactive",
+          "id": "D-13",
+          "reason": "alerts-off"
+        }
+      }
+    },
+    {
+      "name": "command-line uploads need a password (D-32)",
+      "config": {
+        "ota": {
+          "enabled": true,
+          "password": ""
+        }
+      },
+      "facts": {},
+      "expect": {
+        "ota.enabled": {
+          "state": "inactive",
+          "id": "D-32",
+          "reason": "ota-no-password",
+          "text": "Set an upload password",
+          "fix": "device#security"
+        }
+      }
+    },
+    {
+      "name": "MQTT on without a broker is refused (D-33)",
+      "draft": true,
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {},
+      "expect": {}
+    },
+    {
+      "name": "HTTP auth on without a password is refused (D-34)",
+      "draft": true,
+      "config": {
+        "auth": {
+          "enabled": true,
+          "username": "admin",
+          "password": ""
+        }
+      },
+      "facts": {},
+      "expect": {}
+    }
+  ]
+}
