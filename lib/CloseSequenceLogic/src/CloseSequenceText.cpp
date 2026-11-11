@@ -31,7 +31,8 @@ namespace SQM
                 case Cause::TooLong:
                     return withWhy(
                         "The close didn't finish within " + seconds(decision.limitMs) +
-                            " and was stopped where it is; it won't close by itself until a person has closed it. Roof:",
+                            " and was stopped where it is; it won't close by itself until the roof has been closed or the weather has been "
+                            "safe for 10 minutes. Roof:",
                         why);
                 default:
                     break;
@@ -71,7 +72,8 @@ namespace SQM
                 case Event::StoppedByPerson:
                     return {
                         "Automatic close stopped",
-                        "A person stopped the roof during the automatic close. It stays open while unsafe until someone closes it."};
+                        "A person stopped the roof during the automatic close. It stays open while unsafe until someone closes it or the "
+                        "weather has been safe for 10 minutes."};
                 default:
                     break;
                 }

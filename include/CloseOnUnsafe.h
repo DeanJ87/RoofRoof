@@ -27,8 +27,9 @@ namespace SQM
     public:
         using AlertSink = std::function<void(const Alerts::Alert &)>;
 
-        // setup(), before the main loop runs.
-        void begin(const Config &config) { updateConfig(config); }
+        // setup(), before the main loop runs. Restores a stand-down (a
+        // person's stop, a halted close) kept across a restart.
+        void begin(const Config &config);
         // Any task (a settings save runs on the web server's task).
         void updateConfig(const Config &config) { parkTimeoutMs.store(config.park.timeoutSeconds * 1000u); }
         // Main loop, before handle() first runs.
@@ -41,6 +42,7 @@ namespace SQM
         static constexpr uint64_t STEP_EVERY_MS = 100;
 
         CloseSeq::Decision carryOut(const CloseSeq::Decision &decision, SafetyInputs &safety, RoofControl &roof, std::string &refusal);
+        void keepPhase();
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather);
 
         CloseSeq::Sequence sequence;

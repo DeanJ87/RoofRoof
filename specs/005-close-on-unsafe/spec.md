@@ -334,7 +334,9 @@ before the close without a command, or lets a commanded close finish.
   move, MUST stand the sequence down: no park request and no close until the roof reads closed or
   the verdict has been "safe" without a break for 10 minutes. Standing down raises "automatic close
   stopped by a person". An automatic close MUST be refused if a person's stop was accepted after the
-  roof state the decision was based on.
+  roof state the decision was based on. The 10 minutes count from standing down. A stand-down (a
+  person's stop, or a halted close) MUST survive a restart of the device short of a power cut, and
+  its alert is raised again after the restart.
 - **FR-010**: While the roof's position is unknown (for 2 s without a break) or a fault is latched,
   the sequence MUST send no park request and command nothing, and raise "roof can't close by itself"
   with the reason once. When the position is known again and no fault is latched, the sequence MUST
@@ -344,7 +346,9 @@ before the close without a command, or lets a commanded close finish.
 **Weather clearing**
 
 - **FR-011**: A "safe" verdict before the close is commanded MUST end the sequence: no close and no
-  further park request. A close already commanded MUST be left to finish.
+  further park request. A close already commanded MUST be left to finish. If the verdict turns
+  unsafe again within 10 minutes, the attempt (or its back-off) MUST carry on with its clock still
+  running, so a flapping verdict can't postpone "mount not parked" for ever.
 
 **Never open**
 
@@ -456,6 +460,18 @@ Each was an open choice; the safest option the constitution allows was taken.
     has been closed or the weather has been safe for 10 minutes.
 11c. **A parked mount held back only by the back-off is not a park failure**: no "mount not parked"
     alert; the close goes ahead when the back-off ends.
+11d. **A safe spell shorter than 10 minutes doesn't restart an attempt's clock** (a flapping verdict
+    still ends in "mount not parked" in time).
+11e. **A stand-down survives a restart** (kept in memory that survives a reset, a crash or an
+    update, but not a power cut): after a power cut with the roof at the open magnet, the sequence
+    starts afresh and may close the roof once the mount is confirmed parked.
+11f. **Alerts are throttled per event and cause**, so a new cause (a fault after a refusal) alerts at
+    once. **Three gate refusals in a row** for the park count as a refused close (alert and back-off).
+11g. **A waiting close that hasn't started within 30 s halts the sequence** like a close that took
+    too long, although nothing moved: the constitution's "a timed-out step stops where it is" taken
+    literally. The owner may prefer a retry after the back-off.
+11h. **An alert raised before a channel can deliver it** (just after a start, before WiFi or MQTT is
+    up) is not resent until the 30-minute reminder.
 12. **The sequence runs on the main loop**: its timing is limited by the loop (a blocked loop delays
     it; spec 003's gates still refuse a close on a park result older than 5 s).
 

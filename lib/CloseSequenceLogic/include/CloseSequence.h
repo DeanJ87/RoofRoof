@@ -42,6 +42,9 @@ namespace SQM
         // RoofControl's refusal reason when a person stopped the roof since
         // the sequence decided to close.
         constexpr const char *PERSON_STOP_REASON = "personStop";
+        // The gate refusing the close for the park this many times in a row
+        // counts as a refusal (back-off and alert).
+        constexpr uint8_t MAX_PARK_REFUSALS = 3;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -144,6 +147,13 @@ namespace SQM
             // The roof's answer to the Close action of the last step.
             Decision closeAnswered(CloseAnswer answer);
             Phase phase() const { return current; }
+            // After a restart: a stand-down that must outlive it (a person's
+            // stop, a halted close), with its event, raised again on the first
+            // step. Only HeldByPerson and Halted are restored; anything else is ignored.
+            void restore(Phase phase, Event event, Cause cause);
+            // The event and cause that put the sequence in its phase (for restore()).
+            Event lastEvent() const { return lastCritical.has ? lastCritical.event : Event::None; }
+            Cause lastCause() const { return lastCritical.has ? lastCritical.cause : Cause::None; }
 
         private:
             // A condition that must hold without a break for some time.
@@ -156,8 +166,9 @@ namespace SQM
             };
 
             Decision decide(const Inputs &in, bool personStopped);
-            Decision remindIfDue(Decision decision) const;
+            Decision remindIfDue(Decision decision);
             Decision halt(uint64_t limitMs);
+            Decision resume(const Inputs &in);
             Decision idle(const Inputs &in);
             Decision waiting(const Inputs &in, bool personStopped);
             Decision attempt(const Inputs &in);
@@ -191,11 +202,23 @@ namespace SQM
             bool closingSeen = false; // the roof has read Closing since the close
             bool sawPending = false;  // the close waited (spec 003 closePending) first
             uint64_t closingSinceMs = 0;
+            // An attempt ended by a safe verdict, kept so a short safe spell
+            // doesn't restart its clock (resume()).
+            struct Pause
+            {
+                bool has = false;
+                Phase phase = Phase::WaitPark;
+                uint64_t sinceMs = 0;
+                uint64_t limitMs = 0;
+                uint64_t endedAtMs = 0;
+            } paused;
+            uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
-            // When each event last alerted (index: Event).
-            bool alertedEver[8] = {};
-            uint64_t alertedAtMs[8] = {};
+            // When each event and cause last alerted (index: Event, Cause).
+            bool alertedEver[8][9] = {};
+            uint64_t alertedAtMs[8][9] = {};
+            bool remindNow = false; // restored after a restart: remind on the first step
             // The episode's last critical event, for the reminder.
             struct LastCritical
             {

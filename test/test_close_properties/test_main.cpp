@@ -23,7 +23,10 @@
 //
 //   P9  after a close outlasted its guard, nothing until the roof reads closed
 //       or the verdict has been safe for 10 minutes;
-//   P10 no close within 5 minutes of a refused or interrupted close.
+//   P10 no close within 5 minutes of a refused or interrupted close;
+//   P11 unsafe with the roof open never goes quiet (no close, no critical
+//       event, not stood down) for longer than an attempt and its back-off,
+//       however the verdict flaps.
 //
 // A failure names the seed and the step, so it can be replayed.
 
@@ -92,10 +95,12 @@ namespace
         uint32_t attemptLimitMs = DEFAULT_PARK_TIMEOUT_MS;
         bool closingRun = false;
         uint64_t closingSinceMs = 0;
-        bool alertedEver[8] = {};
-        uint64_t alertedAtMs[8] = {};
+        bool alertedEver[8][9] = {};
+        uint64_t alertedAtMs[8][9] = {};
         bool halted = false;          // a close outlasted its guard
         uint64_t closeBarUntilMs = 0; // a refused or interrupted close: no close before this
+        uint64_t quietUnsafeMs = 0;   // unsafe and not closed, with nothing done or raised
+        uint64_t lastStepMs = 0;
     };
 
     struct Failure
@@ -245,7 +250,12 @@ namespace
             watch.parkedSinceMs = in.nowMs;
         }
         if (!in.weatherSafe)
+        {
+            // A safe spell of 10 min or more (seen only when it ends, between steps) starts afresh.
+            if (watch.safeRun && in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS)
+                watch.quietUnsafeMs = 0;
             watch.safeRun = false;
+        }
         else if (!watch.safeRun)
         {
             watch.safeRun = true;
@@ -333,7 +343,10 @@ namespace
             watch.attemptOn = false;
         // A parked mount held back only by the back-off after a failed close isn't a park failure.
         const bool heldBack = watch.parkedRun && in.nowMs - watch.parkedSinceMs >= PARK_SETTLE_MS && in.nowMs < watch.closeBarUntilMs;
-        if (seen.after == Phase::WaitPark && watch.attemptOn && !heldBack && in.nowMs - watch.attemptSinceMs > watch.attemptLimitMs)
+        // An unknown position pauses the attempt for up to 2 s before it stands down.
+        const bool pausedUnknown = in.roof == State::Unknown;
+        if (seen.after == Phase::WaitPark && watch.attemptOn && !heldBack && !pausedUnknown &&
+            in.nowMs - watch.attemptSinceMs > watch.attemptLimitMs)
             return "P6 waited past the park limit without failing the attempt";
         return nullptr;
     }
@@ -344,12 +357,13 @@ namespace
         if (seen.decision.alert)
         {
             const uint8_t bit = static_cast<uint8_t>(1u << static_cast<uint8_t>(seen.decision.event));
-            const size_t i = static_cast<size_t>(seen.decision.event);
+            const size_t e = static_cast<size_t>(seen.decision.event);
+            const size_t c = static_cast<size_t>(seen.decision.cause);
             (void)bit;
-            if (watch.alertedEver[i] && in.nowMs - watch.alertedAtMs[i] < REMIND_MS)
-                return "P7 a critical event alerted twice within 30 minutes";
-            watch.alertedEver[i] = true;
-            watch.alertedAtMs[i] = in.nowMs;
+            if (watch.alertedEver[e][c] && in.nowMs - watch.alertedAtMs[e][c] < REMIND_MS)
+                return "P7 a critical event and cause alerted twice within 30 minutes";
+            watch.alertedEver[e][c] = true;
+            watch.alertedAtMs[e][c] = in.nowMs;
         }
         const bool failed = seen.decision.event == Event::CloseFailed && !seen.decision.reminder;
         if (failed && seen.decision.cause == Cause::TooLong)
@@ -388,50 +402,90 @@ namespace
         return broken;
     }
 
-    bool runOne(uint32_t seed, Failure &f)
+    bool standingDown(Phase phase)
     {
-        Random rnd(seed);
-        Sequence seq;
-        Watch watch;
+        return phase == Phase::HeldByPerson || phase == Phase::CannotMove || phase == Phase::Halted;
+    }
+
+    // P11: unsafe with the roof open never goes quiet for longer than an
+    // attempt and its back-off: something is closed, raised or stood down.
+    const char *checkLiveness(const Decision &d, const Decision &answer, const Inputs &in, Phase after, Watch &watch)
+    {
+        const uint64_t stepMs = in.nowMs - watch.lastStepMs;
+        watch.lastStepMs = in.nowMs;
+        const bool acted = d.action == Action::Close || isCritical(d.event) || isCritical(answer.event);
+        const bool safeLong = watch.safeRun && in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS;
+        if (acted || safeLong || in.roof == State::Closed || in.roof == State::Closing || in.closePending || standingDown(after))
+        {
+            watch.quietUnsafeMs = 0;
+            return nullptr;
+        }
+        if (!in.weatherSafe)
+            watch.quietUnsafeMs += stepMs;
+        if (watch.quietUnsafeMs > watch.attemptLimitMs + RETRY_AFTER_MS + 200000)
+            return "P11 unsafe and open with no close, alert or stand-down for longer than an attempt and its back-off";
+        return nullptr;
+    }
+
+    // A random starting world and, sometimes, a park time limit other than the default.
+    void startWorld(World &w, Watch &watch, Sequence &seq, Random &rnd)
+    {
         if (rnd.chance(300))
         {
             watch.attemptLimitMs = 30000 + rnd.below(240000);
             seq.setParkTimeoutMs(watch.attemptLimitMs);
         }
-        World w;
-        uint32_t lastStops = 0;
         w.in.nowMs = rnd.below(100000);
         w.in.weatherSafe = rnd.chance(500);
         const State starts[] = {State::Open, State::Closed, State::Unknown, State::Stopped, State::Error};
         w.in.roof = starts[rnd.below(5)];
         w.in.parked = rnd.chance(300);
         w.in.ninaConfigured = !rnd.chance(50);
+    }
+
+    // One step of the sequence, the roof's answer and every check. nullptr when all hold.
+    const char *stepOnce(World &w, Watch &watch, Sequence &seq, Random &rnd, uint32_t &lastStops)
+    {
+        w.in.nowMs += rnd.chance(20) ? 30000 + rnd.below(120000) : 10 + rnd.below(1500);
+        worldChanges(w, rnd);
+        observeInputs(watch, w.in);
+        const Phase before = seq.phase();
+        // A person's stop seen while the sequence runs stands it down (P4),
+        // unless the roof reads closed, which ends it.
+        const bool safeLong = watch.safeRun && w.in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS;
+        const bool watching = running(before) || (before == Phase::CannotMove && !safeLong);
+        const bool stopped = w.in.personStops != lastStops && watching && w.in.roof != State::Closed;
+        lastStops = w.in.personStops;
+        const Decision d = seq.step(w.in);
+        if (stopped && d.event != Event::StoppedByPerson)
+            return "P4 a person's stop didn't stand the sequence down";
+        if (stopped)
+            watch.held = true;
+        const Seen seen{d, before, seq.phase()};
+        const char *broken = checkAction(seen, w.in, watch);
+        if (broken == nullptr)
+            broken = checkAfter(seen, w.in, watch);
+        if (broken != nullptr)
+            return broken;
+        Decision answer;
+        carryOut(w, d.action, seq, rnd, answer);
+        broken = checkAfter(Seen{answer, Phase::Closing, seq.phase()}, w.in, watch);
+        if (broken == nullptr)
+            broken = checkLiveness(d, answer, w.in, seq.phase(), watch);
+        return broken;
+    }
+
+    bool runOne(uint32_t seed, Failure &f)
+    {
+        Random rnd(seed);
+        Sequence seq;
+        Watch watch;
+        World w;
+        uint32_t lastStops = 0;
+        startWorld(w, watch, seq, rnd);
         for (int step = 0; step < STEPS_PER_SEQUENCE; ++step)
         {
-            w.in.nowMs += rnd.chance(20) ? 30000 + rnd.below(120000) : 10 + rnd.below(1500);
-            worldChanges(w, rnd);
-            observeInputs(watch, w.in);
-            const Phase before = seq.phase();
-            // A person's stop seen while the sequence runs stands it down (P4),
-            // unless the roof reads closed, which ends it.
-            const bool safeLong = watch.safeRun && w.in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS;
-            const bool watching = running(before) || (before == Phase::CannotMove && !safeLong);
-            const bool stopped = w.in.personStops != lastStops && watching && w.in.roof != State::Closed;
-            lastStops = w.in.personStops;
-            const Decision d = seq.step(w.in);
-            if (stopped && d.event != Event::StoppedByPerson)
-                return fail(f, seed, step, "P4 a person's stop didn't stand the sequence down");
-            if (stopped)
-                watch.held = true;
-            Seen seen{d, before, seq.phase()};
-            const char *broken = checkAction(seen, w.in, watch);
-            if (broken == nullptr)
-                broken = checkAfter(seen, w.in, watch);
-            if (broken != nullptr)
-                return fail(f, seed, step, broken);
-            Decision answer;
-            carryOut(w, d.action, seq, rnd, answer);
-            broken = checkAfter(Seen{answer, Phase::Closing, seq.phase()}, w.in, watch);
+            const char *broken = stepOnce(w, watch, seq, rnd, lastStops);
             if (broken != nullptr)
                 return fail(f, seed, step, broken);
         }
