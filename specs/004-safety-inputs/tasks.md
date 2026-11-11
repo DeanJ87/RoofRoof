@@ -91,3 +91,12 @@ and constitution).
 - [x] T029 [LOW, F9] Restart a source's records and window only when its own settings change; tests via the poller targets comparison
 - [x] T030 [LOW, F10] Log changes by comparing the verdict fields directly, without building key strings each second
 - [ ] T031 [LOW, F11] T019-T020: quickstart §1, quality gate, docs build; bench figures go in the PR's pending bench checks
+
+## Phase 9: Convergence
+
+Second convergence pass, on the Phase 8 fixes.
+
+- [x] T032 [HIGH, N1, constitution VI] An empty reply leaves HTTPClient without a stream: treat it as an empty body (unreadable), never dereference it (`src/SafetyPoller.cpp`)
+- [x] T033 [MEDIUM, N2, FR-010] State the real bound in FR-010, the plan and the code: the body by 6 s, header lines 3 s each, DNS unbounded; fail-safe because readings go stale
+- [x] T034 [LOW, N3, T029] Move "which records a save restarts" into `lib/SafetyInputLogic` (`settingsChange`) with native tests (`test_safety_settings`); the poller and SafetyInputs only apply it
+- [x] T035 [LOW, N4, FR-011a] Record the known limit (an MQTT settings save reconnects on the web task) in the spec and the PR

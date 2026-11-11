@@ -20,15 +20,18 @@ namespace SQM
             return targets;
         }
 
-        bool sameMqttSource(const SafetyConfig &a, const SafetyConfig &b)
+        Safety::SourceSettings sourceSettingsOf(const SafetyConfig &safety, const ParkConfig &park)
         {
-            return a.mqttEnabled == b.mqttEnabled && a.mqttTopic == b.mqttTopic;
-        }
-
-        bool sameSources(const SafetyConfig &a, const SafetyConfig &b)
-        {
-            return sameMqttSource(a, b) && a.httpEnabled == b.httpEnabled && a.httpUrl == b.httpUrl && a.staleSeconds == b.staleSeconds &&
-                   a.rainContact == b.rainContact;
+            Safety::SourceSettings s;
+            s.httpEnabled = safety.httpEnabled;
+            s.httpUrl = safety.httpUrl;
+            s.mqttEnabled = safety.mqttEnabled;
+            s.mqttTopic = safety.mqttTopic;
+            s.staleSeconds = safety.staleSeconds;
+            s.rainContact = safety.rainContact;
+            s.ninaUrl = park.ninaUrl;
+            s.ninaApi = static_cast<uint8_t>(park.ninaApi);
+            return s;
         }
 
         // A change worth a log line: not the ages, which tick every second.
@@ -75,17 +78,17 @@ namespace SQM
     // On the main loop. Only a change to the weather sources starts the
     // weather window again (a source just switched on is unknown, never safe,
     // until it answers or its stale time passes); an unrelated save keeps
-    // every reading. The poller does the same for its own parts.
+    // every reading (Safety::settingsChange decides).
     void SafetyInputs::apply(const Settings &next, uint64_t nowMs)
     {
+        const Safety::SourceSettings before = sourceSettingsOf(settings.safety, settings.park);
+        const Safety::SettingsChange change = Safety::settingsChange(started ? &before : nullptr, sourceSettingsOf(next.safety, next.park));
         const bool first = !started;
-        const bool sourcesChanged = first || !sameSources(settings.safety, next.safety);
-        const bool mqttChanged = first || !sameMqttSource(settings.safety, next.safety);
         settings = next;
         started = true;
-        if (sourcesChanged)
+        if (change.window)
             startedAtMs = nowMs;
-        if (mqttChanged)
+        if (change.sqmeterMqtt)
         {
             mqttRecord = Safety::SourceRecord{};
             // dep: D-40 - the topics are read from RoofRoof's own broker, so with
@@ -95,7 +98,7 @@ namespace SQM
             watchTopics();
         }
         if (!first)
-            poller.configure(targetsFor(settings.safety, settings.park));
+            poller.configure(targetsFor(settings.safety, settings.park), change);
         evaluated = false;
     }
 

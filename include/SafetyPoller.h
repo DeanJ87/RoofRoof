@@ -2,6 +2,7 @@
 
 #include "NinaApi.h"
 #include "SafetyInput.h"
+#include "SafetySettings.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -53,9 +54,9 @@ namespace SQM
         SafetyPoller &operator=(const SafetyPoller &) = delete;
 
         void begin(const Targets &targets);
-        // New settings. Only the part whose settings changed starts again from
-        // nothing; an unrelated save keeps every reading. Any task.
-        void configure(const Targets &targets);
+        // New settings. Only the parts `change` names start again from nothing
+        // (Safety::settingsChange decides); an unrelated save keeps every reading.
+        void configure(const Targets &targets, const Safety::SettingsChange &change);
         // Ask N.I.N.A. to park the mount (spec 005 calls this). Any task; the
         // poller sends it before its next mount-info poll.
         void requestPark();
@@ -78,7 +79,6 @@ namespace SQM
         TaskHandle_t task = nullptr;
         Targets targets;
         Snapshot state;
-        bool configured = false;
         std::atomic<bool> parkRequested{false};
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).

@@ -226,8 +226,10 @@ survive a restart and a backup/restore, and an older saved config loads with eve
 
 **SQMeter sources (parsing pure, transport in firmware)**
 
-- **FR-010**: HTTP: GET the configured URL every 5 s with 3 s connect and reply timeouts, every
-  request ending within 6 s and its body capped at 8 KB. A reply is good only if
+- **FR-010**: HTTP: GET the configured URL every 5 s with 3 s connect and reply timeouts; the body
+  is read until 6 s after the request started and capped at 8 KB. (Header lines each have the 3 s
+  timeout and the DNS lookup none, so a broken server can hold a poll longer; its readings then go
+  stale, which is unsafe.) A reply is good only if
   the status is 200 and the body is a JSON object with a boolean `safe` and a non-negative integer
   `reasonFlags`; `evaluatedAgeMs`, if present, MUST be a non-negative integer.
 - **FR-011**: MQTT: subscribe to `<base>/safe` (`1` or `0`), `<base>/safety` (the same JSON as
@@ -237,6 +239,10 @@ survive a restart and a backup/restore, and an older saved config loads with eve
 - **FR-011a**: After each MQTT (re)subscription, the first message on `<base>/safe` and on
   `<base>/safety` MUST only be used when it says unsafe (it is usually the broker's retained copy,
   of unknown age).
+  Known limit: an MQTT settings save reconnects from the web server's task (platform code from
+  spec 001), and then a retained copy can arrive before the reconnect is noticed and count as
+  live. It needs the broker to still say SQMeter is `online`; moving that reconnect onto the main
+  loop (a platform change) removes it.
 - **FR-012**: The rain contact, when fitted, is an input value from spec 003: raining, dry or
   unreadable.
 
