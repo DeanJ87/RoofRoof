@@ -1,0 +1,8 @@
+{
+  "name": "NinaLogic",
+  "version": "0.1.0",
+  "description": "N.I.N.A. Advanced API requests and replies (pure logic, spec 004)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}
