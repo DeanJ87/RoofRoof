@@ -42,7 +42,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | Idle | roof unknown for 2 s | CannotMove | - | CannotClose (PositionUnknown) |
 | Idle | roof unknown < 2 s | Idle | - | - |
 | Idle | roof closing or close waiting | Closing | - | Started |
-| Idle | an attempt ended by a safe verdict less than 10 min ago | the paused phase, its clock still running (a limit that ran out fails at once) | as that phase decides | Started |
+| Idle | an attempt ended by a safe verdict less than 10 min ago | the paused phase, its clock counting unsafe time only | as that phase decides | Started |
 | Idle | otherwise | WaitPark | RequestPark if due | Started |
 | WaitPark, RetryWait, Closing | roof closed | Idle | - | Closed |
 | WaitPark, RetryWait, Closing | a person's stop since the last step | HeldByPerson | - | StoppedByPerson |

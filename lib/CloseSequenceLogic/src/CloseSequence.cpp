@@ -113,7 +113,8 @@ namespace SQM
         Decision Sequence::resume(const Inputs &in)
         {
             enter(paused.phase);
-            phaseSinceMs = paused.sinceMs;
+            // Only unsafe time counts against the limit: the safe spell is left out.
+            phaseSinceMs = paused.sinceMs + elapsed(paused.endedAtMs, in.nowMs);
             attemptLimitMs = paused.limitMs;
             paused.has = false;
             // Straight on with the paused phase: a limit that ran out during
@@ -249,7 +250,10 @@ namespace SQM
             // A person made the position known or cleared the fault: resume
             // without a new park request until the back-off ends.
             if (current == Phase::CannotMove && in.roof != Roof::State::Unknown && in.roof != Roof::State::Error)
+            {
+                lastCritical.has = false; // "can't close by itself" no longer holds: nothing to remind of
                 return enter(Phase::RetryWait);
+            }
             return Decision{};
         }
 
@@ -279,6 +283,9 @@ namespace SQM
         void Sequence::restore(Phase phase, Event event, Cause cause)
         {
             if (phase != Phase::HeldByPerson && phase != Phase::Halted)
+                return;
+            // Read back from memory that outlived a restart: only sane values.
+            if (!isCritical(event) || static_cast<size_t>(cause) > static_cast<size_t>(Cause::FaultLatched))
                 return;
             current = phase;
             phaseSinceMs = lastNowMs;
@@ -327,6 +334,14 @@ namespace SQM
             phaseSinceMs = lastNowMs;
             closingSeen = false;
             sawPending = false;
+            if (next == Phase::Idle && event == Event::Closed)
+            {
+                // The roof closed: the trouble is over, so a new failure on
+                // the next spell alerts at once.
+                for (auto &row : alertedEver)
+                    for (bool &ever : row)
+                        ever = false;
+            }
             if (next == Phase::Idle)
             {
                 lastCritical.has = false; // the episode is over: nothing to remind of

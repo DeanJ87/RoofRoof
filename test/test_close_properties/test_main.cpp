@@ -101,6 +101,7 @@ namespace
         uint64_t closeBarUntilMs = 0; // a refused or interrupted close: no close before this
         uint64_t quietUnsafeMs = 0;   // unsafe and not closed, with nothing done or raised
         uint64_t lastStepMs = 0;
+        bool prevUnsafe = false;
     };
 
     struct Failure
@@ -354,6 +355,13 @@ namespace
     // P7: each critical event alerts once per episode.
     const char *checkAlert(const Seen &seen, const Inputs &in, Watch &watch)
     {
+        // A closed roof ends the trouble: the throttle starts afresh.
+        if (seen.decision.event == Event::Closed && seen.after == Phase::Idle)
+        {
+            for (auto &row : watch.alertedEver)
+                for (bool &ever : row)
+                    ever = false;
+        }
         if (seen.decision.alert)
         {
             const uint8_t bit = static_cast<uint8_t>(1u << static_cast<uint8_t>(seen.decision.event));
@@ -412,6 +420,8 @@ namespace
     const char *checkLiveness(const Decision &d, const Decision &answer, const Inputs &in, Phase after, Watch &watch)
     {
         const uint64_t stepMs = in.nowMs - watch.lastStepMs;
+        const bool prevUnsafe = watch.prevUnsafe;
+        watch.prevUnsafe = !in.weatherSafe;
         watch.lastStepMs = in.nowMs;
         const bool acted = d.action == Action::Close || isCritical(d.event) || isCritical(answer.event);
         const bool safeLong = watch.safeRun && in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS;
@@ -420,7 +430,8 @@ namespace
             watch.quietUnsafeMs = 0;
             return nullptr;
         }
-        if (!in.weatherSafe)
+        // Only time between two unsafe samples counts (a step can straddle a safe spell).
+        if (!in.weatherSafe && prevUnsafe)
             watch.quietUnsafeMs += stepMs;
         if (watch.quietUnsafeMs > watch.attemptLimitMs + RETRY_AFTER_MS + 200000)
             return "P11 unsafe and open with no close, alert or stand-down for longer than an attempt and its back-off";

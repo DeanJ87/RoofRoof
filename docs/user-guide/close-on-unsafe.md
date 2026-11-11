@@ -25,7 +25,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 35b469e2a212b876
+fingerprint: 4ef2480146e05e9c
 -->
 <figure class="diagram" markdown>
 
@@ -113,7 +113,8 @@ until then these four use fixed wording.
 
 !!! warning "A stop is respected"
     The automatic close never overrides a person's stop: whoever pressed it may be at the roof.
-    The stand-down survives a restart of the device (a crash, an update), but not a power cut.
+    The stand-down survives a restart of the device (a crash, a reset), but not a power cut, and not
+    reliably a firmware update.
     A stop pressed by mistake leaves the roof open in the rain until someone acts on the alert.
 
 ## In the log

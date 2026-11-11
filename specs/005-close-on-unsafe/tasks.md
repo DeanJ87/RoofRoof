@@ -15,7 +15,7 @@ the logic is implemented once; the settings, firmware and docs phases follow. Ev
 
 ## Phase 2: Tests of the sequence (write first)
 
-- [x] T002 [US1] `test/test_close_sequence/test_main.cpp` (US1-US3) and `test/test_close_standdown/test_main.cpp` (US4-US6, wording), sharing `test/close_rig/CloseRig.h`: start on unsafe and on unknown verdict; nothing when closed or safe; park request at start; close only after 4 s of parked (3999 / 4000 ms); a running close watched without a request; closed ends the sequence
+- [x] T002 [US1] `test/test_close_sequence/test_main.cpp` (US1-US3) and `test/test_close_standdown/test_main.cpp` (US4-US6) and `test/test_close_text/test_main.cpp` (wording, mapping), sharing `test/close_rig/CloseRig.h`: start on unsafe and on unknown verdict; nothing when closed or safe; park request at start; close only after 4 s of parked (3999 / 4000 ms); a running close watched without a request; closed ends the sequence
 - [x] T003 [US2] Same file: park timeout at limit-1 / limit; N.I.N.A. not configured fails at once; 5-minute back-off with no requests (299 999 / 300 000 ms); closing during the back-off when parked; park confirmed then lost restarts the 4 s; gate refusal back to waiting within the same limit; request spacing 29 999 / 30 000 ms; the timeout setting
 - [x] T004 [US3] Same file: fault while closing; motion refusal; interrupted close; waiting close guard 30 s; moving close guard (move timeout + 30 s) with a stop; repeated alerts suppressed within an episode
 - [x] T005 [US4] Same file: a person's stop in each phase stands down; no actions while stood down; 10 min safe re-arms (9:59 / 10:00); a broken safe run doesn't; a person's close while stood down ends it; stops before the episode ignored

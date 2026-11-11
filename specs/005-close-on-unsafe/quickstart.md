@@ -5,7 +5,7 @@
 Run spec 001's [quickstart §1](../001-platform-bootstrap/quickstart.md) in full. New native suites:
 
 ```bash
-~/.platformio/penv/bin/pio test -e native -f test_close_sequence -f test_close_standdown -f test_close_properties
+~/.platformio/penv/bin/pio test -e native -f test_close_sequence -f test_close_standdown -f test_close_text -f test_close_properties
 ```
 
 Expected: all pass; zero warnings; the flash budget check passes.
