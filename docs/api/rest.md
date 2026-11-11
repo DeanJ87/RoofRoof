@@ -44,7 +44,7 @@ curl http://roofroof.local/api/status
   "time": { "epoch": 1791494565, "iso": "2026-10-08T22:22:45+0100", "timezone": "GMT0BST,M3.5.0/1,M10.5.0" },
   "wifi": { "connected": true, "ssid": "MyNetwork", "ip": "192.168.1.42", "rssi": -62, "mac": "AA:BB:CC:DD:EE:FF", "connectPending": false, "apMode": false, "hostname": "roofroof", "mdns": true, "ipv6": { "enabled": true, "addresses": [{ "address": "fe80::a00:27ff:fe4e:66a1", "scope": "link-local" }, { "address": "2a02:8010:abcd:1:a00:27ff:fe4e:66a1", "scope": "global" }] } },
   "alerts": { "armed": true, "mode": "any", "reason": "none", "since": null, "sinceAgeMs": null, "recentRevision": 7 },
-  "alpaca": { "enabled": false, "clients": {} },
+  "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
   "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12 }
@@ -57,7 +57,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 `connections` shows who holds the device's TCP connections: the live-update clients on `/ws/status`, the most each endpoint takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`).
 
-`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` is empty until an Alpaca device exists (a later spec).
+`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` has one entry per Alpaca device, keyed by its type: `dome`.
 
 `time.epoch` is Unix seconds like every other timestamp (`0` until the clock is set); `time.iso` is the device's local time with its UTC offset, for display.
 
@@ -381,14 +381,14 @@ Whether alerts are on, and the last 20 alerts since boot, newest first:
 
 ## ASCOM Alpaca API
 
-RoofRoof is an ASCOM Alpaca server - see [ASCOM Alpaca](../user-guide/alpaca.md). No device is served yet (the roof's Dome device *comes in a later spec*). The HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
+RoofRoof is an ASCOM Alpaca server with one device, the roof as a Dome - see [ASCOM Alpaca](../user-guide/alpaca.md) for each member and its refusals. Alpaca has no password (the ASCOM design); its open and close go through the same safety checks as the REST commands. The HTTP surface (all under the same port-80 server as the rest of the API, response envelope per the [ASCOM Alpaca API spec](https://ascom-standards.org/api/)):
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /management/apiversions` | Supported Alpaca API versions |
 | `GET /management/v1/description` | Server description: `Manufacturer` `RoofRoof`, `ServerName` the device name |
-| `GET /management/v1/configureddevices` | The configured devices: an empty list for now |
+| `GET /management/v1/configureddevices` | The configured devices: the Dome (`DeviceType` `Dome`, number 0, `UniqueID` `roofroof-<MAC>-dome-0`) while Alpaca is on, else an empty list |
 | `GET /setup` | Redirects to **Settings → Network → ASCOM Alpaca** in the web UI |
-| `/api/v1/...` | Any device request: HTTP `400` "Unknown device" |
+| `/api/v1/dome/0/...` | The Dome's members ([ASCOM Alpaca](../user-guide/alpaca.md#what-the-dome-does)); any other device: HTTP `400` |
 
 A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop.

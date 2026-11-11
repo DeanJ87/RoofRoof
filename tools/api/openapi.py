@@ -199,8 +199,9 @@ INFO_DESCRIPTION = (
     "**Password**: when protection is on, routes that change something need HTTP Basic auth "
     "with the device's username and password.\n\n"
     "**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't "
-    f"repeated here. The device offers no Alpaca device yet (the Dome comes later): `/api/v1/*` answers "
-    f'"unknown device". See {ALPACA_DOCS}.'
+    "repeated here. The device offers one Alpaca device, the roof as a Dome (`/api/v1/dome/0/*`); it has "
+    "no password (the Alpaca design), and its open and close pass the same safety checks as the REST "
+    f"commands. See {ALPACA_DOCS}."
 )
 SERVERS = [
     {

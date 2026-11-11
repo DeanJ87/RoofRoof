@@ -1,11 +1,11 @@
 # RoofRoof
 
-> RoofRoof is ESP32 firmware and a web UI for an observatory roll-off-roof controller, in an early platform-only stage (spec 001). It was started as a copy of the author's SQMeter project with the sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check removed. The device serves its own browser UI, a REST API described by OpenAPI 3.1, live WebSocket status, MQTT with Home Assistant discovery, an ASCOM Alpaca server (no device yet), and push alerts (ntfy, Pushover, webhook, MQTT). The motor, roof and safety features come in later specs; this release only holds the motor driver off at boot.
+> RoofRoof is ESP32 firmware and a web UI for an observatory roll-off-roof controller, in development. It was started as a copy of the author's SQMeter project with the sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check removed. The device serves its own browser UI, a REST API described by OpenAPI 3.1, live WebSocket status, MQTT with Home Assistant discovery, the roof as an ASCOM Alpaca Dome, and push alerts (ntfy, Pushover, webhook, MQTT). It opens and closes the roof on a person's or an Alpaca client's command within its safety rules, and closes it by itself onto a parked mount when the weather turns unsafe.
 
 Other facts, to avoid common mistakes:
 
 - The target is a classic ESP32 driving an IBT-2 (BTS7960) H-bridge. Pins are fixed by the hardware (GPIO25 RPWM, GPIO26 LPWM, GPIO27 EN with a 10 kΩ pull-down); see the wiring page.
-- There is no roof movement, no sensors and no safety verdict in this release. The Alpaca server lists no devices (the roof's Dome device comes in a later spec), so N.I.N.A. finds the server but has nothing to connect to.
+- The Alpaca server offers one device, a Dome (shutter only: OpenShutter, CloseShutter, AbortSlew, ShutterStatus, Slewing). An Alpaca client can't move a roof whose position is unknown or clear a fault; opening needs a safe weather verdict and closing a confirmed park, as for the web UI.
 - Settings are stored in the ESP32's NVS. LittleFS holds only the web UI. The UI is English only.
 - Updates are by manual file upload (Updates page) or USB. The device never contacts GitHub.
 - There is no public docs site or demo. The docs and the demo are CI artifacts.
