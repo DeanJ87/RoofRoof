@@ -50,7 +50,7 @@ void test_defaults_are_off()
 
 void test_settings_json_shape()
 {
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(8192);
     TEST_ASSERT_FALSE(deserializeJson(doc, Config::createDefault().toJson()));
     TEST_ASSERT_FALSE(doc["safety"]["http"]["enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("", doc["safety"]["http"]["url"].as<const char *>());
