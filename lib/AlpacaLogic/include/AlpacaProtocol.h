@@ -12,7 +12,8 @@ namespace SQM
         constexpr int ALPACA_ERR_NOT_IMPLEMENTED = 0x400;
         constexpr int ALPACA_ERR_INVALID_VALUE = 0x401;
         constexpr int ALPACA_ERR_NOT_CONNECTED = 0x407;
-        constexpr int ALPACA_ERR_DRIVER_BASE = 0x500; // 0x500-0xFFF: custom driver errors
+        constexpr int ALPACA_ERR_INVALID_OPERATION = 0x40B; // valid, but not possible now (a safety refusal)
+        constexpr int ALPACA_ERR_DRIVER_BASE = 0x500;       // 0x500-0xFFF: custom driver errors
 
         // Case-insensitive ASCII comparison (every Alpaca parameter name is
         // ASCII).

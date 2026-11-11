@@ -1,6 +1,7 @@
 #include "AlpacaRouter.h"
 
 #include "AlpacaProtocol.h"
+#include "RouterInternal.h"
 
 #include <ArduinoJson.h>
 #include <cstdio>
@@ -12,61 +13,7 @@ namespace SQM
     {
         namespace
         {
-            const char *const DRIVER_INFO = "RoofRoof ESP32 firmware, native Alpaca";
-            const char *const DISABLED_MESSAGE = "Alpaca support is disabled in device settings";
-            const char *const BAD_REQUEST = "Invalid Alpaca device type, device number, method or HTTP verb";
-
-            // Alpaca parameter names are case-insensitive in a GET query
-            // string, case-sensitive in a PUT form body.
-            const std::string *findParam(const Request &request, const char *name)
-            {
-                for (const auto &param : request.params)
-                    if (paramNameMatches(param.first, name, request.put))
-                        return &param.second;
-                return nullptr;
-            }
-
-            Response badRequest(const char *message)
-            {
-                Response response;
-                response.status = 400;
-                response.contentType = "text/plain";
-                response.body = message;
-                return response;
-            }
-
-            // Every Alpaca reply carries the same transaction/error fields.
-            class Envelope
-            {
-            public:
-                Envelope(const Request &request, uint32_t &serverTransactionId, size_t capacity = 384)
-                    : doc(capacity),
-                      request(request),
-                      serverTransactionId(serverTransactionId)
-                {
-                }
-
-                template <typename T> void setValue(const T &value) { doc["Value"] = value; }
-                JsonArray valueArray() { return doc.createNestedArray("Value"); }
-                JsonObject valueObject() { return doc.createNestedObject("Value"); }
-
-                Response finish(int errorNumber = 0, const std::string &errorMessage = "")
-                {
-                    const std::string *txn = findParam(request, "ClientTransactionID");
-                    doc["ClientTransactionID"] = txn != nullptr ? parseClientTransactionId(*txn) : 0;
-                    doc["ServerTransactionID"] = ++serverTransactionId;
-                    doc["ErrorNumber"] = errorNumber;
-                    doc["ErrorMessage"] = errorMessage;
-                    Response response;
-                    serializeJson(doc, response.body);
-                    return response;
-                }
-
-            private:
-                DynamicJsonDocument doc;
-                const Request &request;
-                uint32_t &serverTransactionId;
-            };
+            using namespace Internal;
 
             struct DevicePath
             {
@@ -119,25 +66,6 @@ namespace SQM
                     ++activity.disconnects;
                 activity.connected = value;
             }
-
-            // One device request: what was asked, of which device, and the
-            // router state it can change.
-            struct DeviceCall
-            {
-                const Request &request;
-                Backend &backend;
-                const ServerIdentity &identity;
-                uint32_t &serverTransactionId;
-                DeviceActivity &activity;
-                const DeviceInfo &info;
-                std::string method;
-                bool get;
-                bool put;
-                bool enabled;
-
-                Envelope reply(size_t capacity = 384) const { return Envelope(request, serverTransactionId, capacity); }
-                bool is(const char *name) const { return method == name; }
-            };
 
             // --- Common ASCOM device API ---
 
@@ -327,7 +255,9 @@ namespace SQM
             recordActivity(request, call.activity);
             if (std::optional<Response> common = commonMethod(call))
                 return *common;
-            // Device-specific methods arrive with the device (spec 006).
+            if (call.info.typeKey == "dome")
+                if (std::optional<Response> dome = domeMethod(call))
+                    return *dome;
             return badRequest(BAD_REQUEST);
         }
 

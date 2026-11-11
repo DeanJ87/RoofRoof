@@ -1,0 +1,8 @@
+{
+  "name": "AlpacaLogic",
+  "version": "0.1.0",
+  "description": "The ASCOM Alpaca API: discovery, management, the device router and the Dome (pure logic, copied from SQMeter; spec 006)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}
