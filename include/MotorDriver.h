@@ -36,6 +36,15 @@ namespace SQM
         // The control task, once the watchdog's fault is latched and the output is off.
         void clearTrip();
 
+        // Lets EN go high: called once the control task and the watchdog both
+        // run. Until then (and for good, if either failed to start) EN stays low.
+        void arm();
+
+        // A trip happened and its fault may not be saved yet (kept across a
+        // reset that isn't a power cut). Cleared once the fault is in NVS.
+        bool tripMarked();
+        void clearTripMark();
+
         // EN is high (the driver is on).
         bool enabled();
     } // namespace MotorDriver
