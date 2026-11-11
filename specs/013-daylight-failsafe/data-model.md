@@ -42,6 +42,7 @@ State transitions of `Watch::update` (once a second):
 
 | Condition (in order) | State |
 |---|---|
+| mode or threshold changed since the last pass | band reset, then the rows below |
 | mode Off | Off (band reset) |
 | forced | Day, altitude = limit + 10° |
 | location not set | Unknown / Location (band reset) |
