@@ -13,7 +13,8 @@ When the weather is not safe and the roof is not closed, RoofRoof closes it by i
    start and on every control step while closing), and watches it reach the closed magnet.
 
 The roof **never opens by itself**, and you can't open it while the weather isn't safe: there is
-no override.
+no override. An open already under way stops as soon as the weather isn't safe, so the roof opens
+no further; the sequence then parks and closes from there.
 
 "Not safe" means unsafe *or unknown*: doubt counts as unsafe. After a restart with the roof open,
 the device asks for a park until a weather source has said safe.
@@ -25,7 +26,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 279a9f11e60f717d
+fingerprint: cbbff5348691182c
 -->
 <figure class="diagram" markdown>
 
@@ -72,6 +73,7 @@ stateDiagram-v2
     8. A person's stop or abort during the sequence, or while it can't move, stands it down (`HeldByPerson`) with a critical alert: nothing more is sent or moved.
     9. `CannotMove`, `HeldByPerson` and `Halted` end when the roof reads closed, or the weather has been safe for 10 minutes without a break.
     10. A safe verdict while waiting ends the sequence. A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
+    11. A restart of the device (not a power cut) keeps a stand-down, and an attempt or back-off with the time it has run (plus 10 s for the restart), so a board that keeps restarting still reaches its limits.
 
 ## Time limits
 
@@ -96,7 +98,8 @@ position; see [Configuration](configuration.md#safety-and-park).
 
 The four critical events go out at the **Wake** level (Pushover emergency, ntfy `max`) to every
 alert channel that is switched on, as event `roof`, even while alerts are paused or switched off as a whole: only the channels you have switched on are
-used, so set at least one up. Each kind is sent at most every 30 minutes; while the roof stays open
+used, so set at least one up. An alert no channel took (WiFi down just after a start, a failed send)
+is sent again every minute until one does. Each kind is sent at most every 30 minutes; while the roof stays open
 after one, it is sent again every 30 minutes with "Still:" in front of the title. Everything else is
 written to the log. None of them goes through N.I.N.A. or SQMeter, so losing either doesn't lose the
 alert.
@@ -105,7 +108,7 @@ alert.
 |---|---|---|
 | **Mount didn't park** | The park wasn't confirmed in time; the message gives the park result's reasons (`N.I.N.A. unreachable`, `park switch 1 open`, `sources disagree`...). The roof is open. | Park the mount (N.I.N.A., or by hand). Once the park is confirmed, the roof closes by itself. Or close it yourself once parked. |
 | **Roof didn't close** | The close faulted, was refused (with the reason), stopped part-way, or took too long (then it stays stopped and isn't tried again until the roof has been closed or the weather has been safe for 10 minutes; after that, a later unsafe spell starts a new automatic close). | Look at the roof. After a fault, fix the cause and clear the fault; the close resumes once the mount is confirmed parked. After "took too long", close it yourself once you've checked it. |
-| **Roof can't close by itself** | A fault is latched, or the roof's position is unknown (after a restart between the magnets, or an abort). Nothing is sent or moved. | Move the roof to a magnet, or clear the fault. If it is still unsafe, the roof closes once the mount is confirmed parked. |
+| **Roof can't close by itself** | A fault is latched, the roof's position is unknown (after a restart between the magnets, or an abort), or the roof controller didn't start. Nothing is sent or moved. | Move the roof to a magnet, or clear the fault. If it is still unsafe, the roof closes once the mount is confirmed parked. |
 | **Automatic close stopped** | A person stopped or aborted the roof during the sequence (or while it couldn't move). Nothing more happens while it is unsafe. | Close the roof yourself when it is safe to, or wait for 10 minutes of safe weather. |
 
 The roof's own alert events, with their levels, wording and settings, arrive in a later release;
@@ -113,7 +116,9 @@ until then these four use fixed wording.
 
 !!! warning "A stop is respected"
     The automatic close never overrides a person's stop: whoever pressed it may be at the roof.
-    The stand-down survives a restart of the device (a crash, a reset), but not a power cut, and not
+    The stand-down, and an attempt's running time, survive a restart of the device (a crash, a
+    reset, a brown-out), so a board that keeps restarting in the rain still alerts in time; not a
+    power cut, and not
     reliably a firmware update.
     A stop pressed by mistake leaves the roof open in the rain until someone acts on the alert.
 

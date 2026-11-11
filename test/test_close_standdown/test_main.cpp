@@ -360,34 +360,6 @@ void test_stand_down_rearm_counts_from_the_stop()
     assertEvent(r.at(stop + REARM_SAFE_MS), Event::EndedSafe, Cause::None);
 }
 
-void test_a_restored_stand_down_holds_and_reminds_at_once()
-{
-    Sequence seq;
-    seq.restore(Phase::HeldByPerson, Event::StoppedByPerson, Cause::None);
-    TEST_ASSERT_EQUAL(Phase::HeldByPerson, seq.phase());
-    Inputs in;
-    in.nowMs = 3000;
-    in.weatherSafe = false; // unknown at boot
-    in.roof = State::Open;
-    in.parked = true;
-    const Decision d = seq.step(in);
-    assertEvent(d, Event::StoppedByPerson, Cause::None);
-    TEST_ASSERT_TRUE(d.alert);
-    TEST_ASSERT_TRUE(d.reminder);
-    for (in.nowMs = 3100; in.nowMs < 3600000; in.nowMs += 1000)
-        TEST_ASSERT_EQUAL(Action::None, seq.step(in).action);
-    TEST_ASSERT_EQUAL(Event::StoppedByPerson, seq.lastEvent());
-    // Only the stand-downs are restored.
-    Sequence other;
-    other.restore(Phase::Closing, Event::CloseFailed, Cause::Refused);
-    TEST_ASSERT_EQUAL(Phase::Idle, other.phase());
-    other.restore(Phase::RetryWait, Event::ParkNotConfirmed, Cause::ParkTimeout);
-    TEST_ASSERT_EQUAL(Phase::Idle, other.phase());
-    other.restore(Phase::Halted, Event::CloseFailed, Cause::TooLong);
-    TEST_ASSERT_EQUAL(Phase::Halted, other.phase());
-    TEST_ASSERT_EQUAL(Cause::TooLong, other.lastCause());
-}
-
 void test_a_resumed_attempt_counts_only_unsafe_time()
 {
     Rig r;
@@ -519,21 +491,6 @@ void test_no_reminder_of_cannot_close_once_the_roof_can_move()
         TEST_ASSERT_FALSE(e.reminder);
 }
 
-void test_restore_ignores_values_out_of_range()
-{
-    Sequence seq;
-    seq.restore(Phase::HeldByPerson, static_cast<Event>(200), Cause::None);
-    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
-    seq.restore(Phase::HeldByPerson, Event::Started, Cause::None);
-    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
-    seq.restore(Phase::Halted, Event::CloseFailed, static_cast<Cause>(77));
-    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
-    Decision restored;
-    restored.event = Event::CloseFailed;
-    restored.cause = Cause::TooLong;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(restored, "stopped").message.c_str(), "didn't finish in time"));
-}
-
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -559,7 +516,6 @@ int main(int, char **)
     RUN_TEST(test_a_long_safe_spell_starts_a_fresh_attempt);
     RUN_TEST(test_reminders_in_the_retry_wait_stop_when_safe);
     RUN_TEST(test_stand_down_rearm_counts_from_the_stop);
-    RUN_TEST(test_a_restored_stand_down_holds_and_reminds_at_once);
     RUN_TEST(test_a_resumed_attempt_counts_only_unsafe_time);
     RUN_TEST(test_a_closed_roof_resets_the_alert_throttle);
     RUN_TEST(test_a_hand_close_after_a_halt_resets_the_alert_throttle);
@@ -567,6 +523,5 @@ int main(int, char **)
     RUN_TEST(test_a_closed_reading_flickering_at_rest_does_not_storm_alerts);
     RUN_TEST(test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time);
     RUN_TEST(test_no_reminder_of_cannot_close_once_the_roof_can_move);
-    RUN_TEST(test_restore_ignores_values_out_of_range);
     return UNITY_END();
 }

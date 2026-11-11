@@ -12,51 +12,90 @@ namespace SQM
 {
     namespace
     {
-        // A stand-down that must outlive a restart (a crash, the watchdog, an
-        // update): a person's stop is never overridden because the device
-        // restarted. RTC memory survives a reset but not a power cut.
+        // What must outlive a restart (a crash, the watchdog, a brown-out): a
+        // stand-down, so a person's stop is never overridden because the
+        // device restarted, and an attempt or back-off with the time it has
+        // run, so a board that keeps restarting in the rain still reaches its
+        // time limits and alerts. RTC memory survives a reset, not a power cut.
         struct Kept
         {
             uint32_t magic;
             uint8_t phase;
             uint8_t event;
             uint8_t cause;
-            uint8_t check;
+            uint8_t requested;
+            uint32_t unsafeMs;
+            uint32_t wallMs;
+            uint32_t limitMs;
+            uint32_t requestAgeMs;
+            uint32_t check;
         };
         // Bump the low byte whenever Kept or the enums it holds change.
-        constexpr uint32_t KEPT_MAGIC = 0x5EC00501u;
+        constexpr uint32_t KEPT_MAGIC = 0x5EC00503u;
         RTC_NOINIT_ATTR Kept kept;
 
-        uint8_t checkOf(uint8_t phase, uint8_t event, uint8_t cause)
+        uint32_t checkOf(const Kept &k)
         {
-            return static_cast<uint8_t>(phase ^ (event << 3) ^ (cause << 5) ^ 0xA5u);
+            uint32_t sum = 0x9E3779B9u ^ (k.phase | (k.event << 8) | (k.cause << 16) | (static_cast<uint32_t>(k.requested) << 24));
+            for (uint32_t value : {k.unsafeMs, k.wallMs, k.limitMs, k.requestAgeMs})
+                sum = (sum ^ value) * 16777619u;
+            return sum;
+        }
+
+        uint32_t clampMs(uint64_t ms)
+        {
+            return ms > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(ms);
+        }
+
+        CloseSeq::Delivery deliveryOf(uint32_t id, const CloseOnUnsafe::DeliveryProbe &probe)
+        {
+            return id == 0 || !probe ? CloseSeq::Delivery::Failed : probe(id);
         }
     } // namespace
 
     void CloseOnUnsafe::begin(const Config &config)
     {
         updateConfig(config);
-        if (kept.magic != KEPT_MAGIC || kept.check != checkOf(kept.phase, kept.event, kept.cause))
+        if (kept.magic != KEPT_MAGIC || kept.check != checkOf(kept))
             return;
-        sequence.restore(
-            static_cast<CloseSeq::Phase>(kept.phase), static_cast<CloseSeq::Event>(kept.event), static_cast<CloseSeq::Cause>(kept.cause));
+        CloseSeq::Sequence::Saved saved;
+        saved.phase = static_cast<CloseSeq::Phase>(kept.phase);
+        saved.event = static_cast<CloseSeq::Event>(kept.event);
+        saved.cause = static_cast<CloseSeq::Cause>(kept.cause);
+        saved.unsafeMs = kept.unsafeMs;
+        saved.wallMs = kept.wallMs;
+        saved.limitMs = kept.limitMs;
+        saved.requested = kept.requested != 0;
+        saved.requestAgeMs = kept.requestAgeMs;
+        sequence.restore(saved);
         loggedPhase = sequence.phase();
         if (loggedPhase != CloseSeq::Phase::Idle)
-            Logger::warn(TAG, "Close sequence still stood down after the restart (%s)", CloseSeq::phaseName(loggedPhase));
+            Logger::warn(
+                TAG,
+                "Close sequence carries on after the restart (%s, %u s)",
+                CloseSeq::phaseName(loggedPhase),
+                static_cast<unsigned>(kept.unsafeMs / 1000));
     }
 
-    void CloseOnUnsafe::keepPhase()
+    // Every step: RTC memory is plain RAM, so keeping the running time costs nothing.
+    void CloseOnUnsafe::keep()
     {
-        const CloseSeq::Phase phase = sequence.phase();
-        if (phase != CloseSeq::Phase::HeldByPerson && phase != CloseSeq::Phase::Halted)
+        const CloseSeq::Sequence::Saved saved = sequence.saved();
+        if (saved.phase == CloseSeq::Phase::Idle && !saved.requested)
         {
             kept.magic = 0;
             return;
         }
-        kept.phase = static_cast<uint8_t>(phase);
-        kept.event = static_cast<uint8_t>(sequence.lastEvent());
-        kept.cause = static_cast<uint8_t>(sequence.lastCause());
-        kept.check = checkOf(kept.phase, kept.event, kept.cause);
+        kept.magic = 0; // invalid while it changes
+        kept.phase = static_cast<uint8_t>(saved.phase);
+        kept.event = static_cast<uint8_t>(saved.event);
+        kept.cause = static_cast<uint8_t>(saved.cause);
+        kept.requested = saved.requested ? 1 : 0;
+        kept.requestAgeMs = clampMs(saved.requestAgeMs);
+        kept.unsafeMs = clampMs(saved.unsafeMs);
+        kept.wallMs = clampMs(saved.wallMs);
+        kept.limitMs = clampMs(saved.limitMs);
+        kept.check = checkOf(kept);
         kept.magic = KEPT_MAGIC;
     }
 
@@ -64,11 +103,12 @@ namespace SQM
     {
         // Ten steps a second: well inside every limit of the sequence, and the
         // roof's lock isn't taken on every loop pass.
-        const uint64_t now = SafetyPoller::nowMs();
+        const uint64_t now = SafetyPoller::nowMs() + TIME_BASE_MS;
         if (stepped && now - lastStepMs < STEP_EVERY_MS)
             return;
         stepped = true;
         lastStepMs = now;
+        stepNowMs = now;
         // One consistent copy of the roof: its state, a waiting close and a
         // person's stops come from the same moment (spec 003's lock).
         const RoofIo::Snapshot snap = roof.snapshot();
@@ -77,9 +117,12 @@ namespace SQM
         CloseSeq::applySafety(in, safety.weather().verdict, safety.park());
         CloseSeq::applyRoof(in, snap.status, snap.closePending);
         in.personStops = snap.personStops;
+        in.roofStarted = roof.running();
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
 
         const CloseSeq::Decision decision = sequence.step(in);
+        keep();
+        retryAlert(now);
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 
@@ -92,12 +135,36 @@ namespace SQM
         const CloseSeq::Decision answer = carryOut(decision, safety, roof, reasons.refusal);
         report(decision, reasons, weather);
         report(answer, reasons, weather);
+        keep();
         if (sequence.phase() != loggedPhase)
         {
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
-            keepPhase();
         }
+    }
+
+    // A critical alert no channel took is sent again, at most every minute,
+    // until one does or the sequence is idle (constitution III).
+    void CloseOnUnsafe::retryAlert(uint64_t nowMs)
+    {
+        if (sequence.phase() == CloseSeq::Phase::Idle)
+            retry.clear();
+        if (!retry.active() || nowMs - lastProbeMs < PROBE_EVERY_MS)
+            return;
+        lastProbeMs = nowMs;
+        if (!retry.resendDue(deliveryOf(lastAlertId, deliveryProbe), nowMs))
+            return;
+        Logger::warn(TAG, "No channel took the alert \"%s\": sending it again", lastAlert.title.c_str());
+        send(lastAlert, nowMs);
+    }
+
+    void CloseOnUnsafe::send(const Alerts::Alert &alert, uint64_t nowMs)
+    {
+        if (!alertSink)
+            return;
+        lastAlert = alert;
+        lastAlertId = alertSink(alert);
+        retry.sent(nowMs);
     }
 
     CloseSeq::Decision CloseOnUnsafe::carryOut(
@@ -148,6 +215,6 @@ namespace SQM
         alert.level = Alerts::AlertLevel::Wake;
         alert.title = text.title;
         alert.message = text.message;
-        alertSink(alert);
+        send(alert, stepNowMs);
     }
 } // namespace SQM

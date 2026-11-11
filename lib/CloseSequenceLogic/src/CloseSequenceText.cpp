@@ -65,6 +65,10 @@ namespace SQM
                 case Event::CloseFailed:
                     return {"Roof didn't close", closeFailedMessage(decision, why)};
                 case Event::CannotClose:
+                    if (decision.cause == Cause::RoofNotStarted)
+                        return {
+                            "Roof can't close by itself",
+                            "The weather is unsafe and the roof controller didn't start, so the motor stays off. Restart the device."};
                     if (decision.cause == Cause::PositionUnknown)
                         return {
                             "Roof can't close by itself",
@@ -137,7 +141,8 @@ namespace SQM
                 "interrupted",
                 "tooLong",
                 "positionUnknown",
-                "faultLatched"};
+                "faultLatched",
+                "roofNotStarted"};
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }

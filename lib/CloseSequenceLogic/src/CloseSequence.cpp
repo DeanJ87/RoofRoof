@@ -15,7 +15,7 @@ namespace SQM
                 return nowMs > sinceMs ? nowMs - sinceMs : 0;
             }
             static_assert(static_cast<size_t>(Event::StoppedByPerson) < 8, "alertedAtMs has a row for every event");
-            static_assert(static_cast<size_t>(Cause::FaultLatched) < 9, "alertedAtMs has a column for every cause");
+            static_assert(static_cast<size_t>(Cause::RoofNotStarted) < 10, "alertedAtMs has a column for every cause");
         } // namespace
 
         bool Sequence::Run::lasted(bool holds, uint64_t nowMs, uint64_t ms)
@@ -36,6 +36,8 @@ namespace SQM
         Decision Sequence::step(const Inputs &in)
         {
             lastNowMs = in.nowMs;
+            if (restorePending)
+                applyRestore();
             // A change since the last step. Only the running phases act on it,
             // so stops while idle (and the count at start-up) are history.
             const bool personStopped = in.personStops != seenStops;
@@ -108,7 +110,7 @@ namespace SQM
                 // Just after a restart the Hall reading hasn't settled yet.
                 if (!unknownConfirmed)
                     return Decision{};
-                return enter(Phase::CannotMove, Event::CannotClose, Cause::PositionUnknown);
+                return enter(Phase::CannotMove, Event::CannotClose, in.roofStarted ? Cause::PositionUnknown : Cause::RoofNotStarted);
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
@@ -157,7 +159,9 @@ namespace SQM
             else if (in.roof == Roof::State::Error)
                 out = enter(Phase::CannotMove, Event::CannotClose, Cause::FaultLatched);
             else if (in.roof == Roof::State::Unknown)
-                out = unknownConfirmed ? enter(Phase::CannotMove, Event::CannotClose, Cause::PositionUnknown) : Decision{};
+                out = unknownConfirmed
+                          ? enter(Phase::CannotMove, Event::CannotClose, in.roofStarted ? Cause::PositionUnknown : Cause::RoofNotStarted)
+                          : Decision{};
             else
                 return false;
             return true;
@@ -296,20 +300,65 @@ namespace SQM
             return withAlert(failAttempt(Event::CloseFailed, Cause::Refused, Action::None));
         }
 
-        void Sequence::restore(Phase phase, Event event, Cause cause)
+        Sequence::Saved Sequence::saved() const
         {
-            if (phase != Phase::HeldByPerson && phase != Phase::Halted)
-                return;
+            Saved out;
+            // The park request spacing is kept in any phase, while it matters.
+            out.requested = requested && elapsed(lastRequestMs, lastNowMs) < PARK_REQUEST_GAP_MS;
+            out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
+            const bool standDown = current == Phase::HeldByPerson || current == Phase::Halted;
+            const bool waitingNow = current == Phase::WaitPark || current == Phase::RetryWait;
+            if (!standDown && !waitingNow)
+                return out;
+            out.phase = current;
+            out.event = lastCritical.has ? lastCritical.event : Event::None;
+            out.cause = lastCritical.has ? lastCritical.cause : Cause::None;
+            if (waitingNow)
+            {
+                out.unsafeMs = elapsed(phaseSinceMs, lastNowMs);
+                out.wallMs = elapsed(phaseWallStartMs, lastNowMs);
+                out.limitMs = attemptLimitMs;
+            }
+            return out;
+        }
+
+        void Sequence::restore(const Saved &saved)
+        {
             // Read back from memory that outlived a restart: only sane values.
-            if (!isCritical(event) || static_cast<size_t>(cause) > static_cast<size_t>(Cause::FaultLatched))
+            const bool standDown = saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted;
+            const bool waitingThen = saved.phase == Phase::WaitPark || saved.phase == Phase::RetryWait;
+            const bool idleThen = saved.phase == Phase::Idle; // only the request spacing
+            const bool eventOk = isCritical(saved.event) || (!standDown && saved.event == Event::None);
+            if ((!standDown && !waitingThen && !idleThen) || !eventOk ||
+                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::RoofNotStarted))
                 return;
-            current = phase;
-            phaseSinceMs = lastNowMs;
+            restoring = saved;
+            if (idleThen)
+                restoring.event = Event::None;
+            restorePending = true;
+            current = saved.phase;
+        }
+
+        // On the first step, once the time is known.
+        void Sequence::applyRestore()
+        {
+            restorePending = false;
+            current = restoring.phase;
+            // Counted back from now, with the restart's own time added; a time
+            // base too young to hold it is clamped (the caller offsets it).
+            const uint64_t extra = restoring.phase == Phase::WaitPark || restoring.phase == Phase::RetryWait ? RESTART_ALLOWANCE_MS : 0;
+            const uint64_t unsafeMs = restoring.unsafeMs + extra;
+            const uint64_t wallMs = restoring.wallMs + extra;
+            phaseSinceMs = lastNowMs - (unsafeMs < lastNowMs ? unsafeMs : lastNowMs);
+            phaseWallStartMs = lastNowMs - (wallMs < lastNowMs ? wallMs : lastNowMs);
+            attemptLimitMs = restoring.limitMs != 0 ? restoring.limitMs : parkTimeoutMs;
+            requested = restoring.requested;
+            lastRequestMs = lastNowMs - (restoring.requestAgeMs < lastNowMs ? restoring.requestAgeMs : lastNowMs);
             lastCritical = LastCritical{};
-            lastCritical.has = true;
-            lastCritical.event = event;
-            lastCritical.cause = cause;
-            remindNow = true;
+            lastCritical.has = isCritical(restoring.event);
+            lastCritical.event = restoring.event;
+            lastCritical.cause = restoring.cause;
+            remindNow = current == Phase::HeldByPerson || current == Phase::Halted;
         }
 
         CloseAnswer answerFor(bool accepted, const std::string &reason)

@@ -336,7 +336,8 @@ before the close without a command, or lets a commanded close finish.
   stopped by a person". An automatic close MUST be refused if a person's stop was accepted after the
   roof state the decision was based on. The 10 minutes count from standing down. A stand-down (a
   person's stop, or a halted close) MUST survive a restart of the device short of a power cut, and
-  its alert is raised again after the restart.
+  its alert is raised again after the restart. An attempt or back-off MUST keep its running time
+  across such a restart, so repeated restarts can't postpone its time limit.
 - **FR-010**: While the roof's position is unknown (for 2 s without a break) or a fault is latched,
   the sequence MUST send no park request and command nothing, and raise "roof can't close by itself"
   with the reason once. When the position is known again and no fault is latched, the sequence MUST
@@ -364,7 +365,8 @@ before the close without a command, or lets a commanded close finish.
   the alerts master switch. Each event MUST alert at most once every 30 minutes, and while the roof
   stays open after one (waiting to retry, stood down, halted) it MUST be raised again every 30
   minutes. The alert MUST NOT depend on N.I.N.A. or SQMeter being reachable. Spec 007 replaces the
-  fixed wording with its own events, levels and settings through the same hook.
+  fixed wording with its own events, levels and settings through the same hook. An alert that no
+  channel took MUST be sent again, at most every minute, until one does or the sequence is idle.
 - **FR-015**: Every alert and log line MUST state why: the park result's reasons with their values
   (e.g. `N.I.N.A. not responding`), the fault with its value and limit, the refusal's text, or the
   time limit that ran out.
@@ -477,8 +479,21 @@ Each was an open choice; the safest option the constitution allows was taken.
 11g. **A waiting close that hasn't started within 30 s halts the sequence** like a close that took
     too long, although nothing moved: the constitution's "a timed-out step stops where it is" taken
     literally. The owner may prefer a retry after the back-off.
-11h. **An alert raised before a channel can deliver it** (just after a start, before WiFi or MQTT is
-    up) is not resent until the 30-minute reminder.
+11h. **A critical alert counts as sent only once a channel has taken it.** One that no channel took
+    (WiFi down just after a start, a full queue, a failed send) is sent again every minute until one
+    does, no channel is switched on, or the sequence is idle.
+11j. **An attempt or back-off keeps its running time across a restart** (RTC memory, protected like
+    the stand-down; not across a power cut), with 10 s added per restart for the restart itself, so
+    a board that keeps resetting in the rain still reaches the park limit and alerts. It is cleared
+    when the sequence is idle (the roof closed, or the weather safe). The park request spacing is
+    kept too. The alert throttle and the close back-off are not kept: a restart loop may alert
+    again sooner than 30 minutes.
+11k. **A roof controller that didn't start** is named as the cause ("the roof controller didn't
+    start"), not an unknown position.
+11l. **An open in progress stops as soon as the verdict isn't safe** (spec 003's rule, any origin, a
+    person's included): the roof opens no further, the stop keeps its position estimate, and the
+    sequence parks and closes from there. The stop is the controller's, not a person's, so it
+    doesn't stand the sequence down.
 12. **The sequence runs on the main loop**: its timing is limited by the loop (a blocked loop delays
     it; spec 003's gates still refuse a close on a park result older than 5 s).
 

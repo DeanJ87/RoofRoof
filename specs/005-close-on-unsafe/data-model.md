@@ -14,6 +14,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | `parked` | `bool` | `SafetyInputs::park().parked` |
 | `ninaConfigured` | `bool` | the park result has no `ParkNinaNotConfigured` reason |
 | `personStops` | `uint32_t` | `snapshot().personStops`: a person's stops and aborts since start (counted before the stop is applied) |
+| `roofStarted` | `bool` | `RoofControl::running()`: else the cause is `RoofNotStarted`, not `PositionUnknown` |
 
 ## Settings
 
@@ -106,3 +107,20 @@ from leaving `Idle` to returning to it; reminders stop when it ends.
 limit that ran out (`Decision::limitMs`); `why` comes from `reasonFor`: the park result's text,
 the fault text, the refusal text, or the roof's state (constitution III: the value and the limit,
 or the input that failed).
+
+## Kept across a restart
+
+`Sequence::saved()` / `restore(saved)`: the phase (WaitPark, RetryWait, HeldByPerson, Halted), the
+episode's last critical event and cause, the time the phase has run (unsafe and wall), the
+attempt's park limit, and how long ago the last park request went out. The glue keeps it in RTC
+memory with a versioned magic and a checksum, every step; Idle clears it (except the request
+spacing, kept while it matters). On restore, a WaitPark or RetryWait gets 10 s more
+(`RESTART_ALLOWANCE_MS`) for the restart itself; times too long for the new time base are clamped
+(the glue adds a week to its time base).
+
+## Alert delivery
+
+`AlertRetry`: after a critical alert is handed to the dispatcher, the dispatcher's view of its
+record (`Pending`, `Delivered`, `Failed`, `NoChannel`) is checked every second; a `Failed` one is
+sent again `ALERT_RETRY_MS` (60 s) after the last send. `Delivered`, `NoChannel` or an idle
+sequence ends it.
