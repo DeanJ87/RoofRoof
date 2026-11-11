@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-016
+# RoofRoof roadmap: specs 002-017
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -243,6 +243,25 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** a per-move telemetry log (spec 017); proposing current limits; any run
   started by Alpaca, MQTT, the close sequence or a schedule.
 
+### 017 Advanced diagnostics (base: 015)
+
+- **Scope:**
+  - An opt-in mode (`diag.enabled`, off by default) that exposes what the controller measures:
+    a live document (`GET /api/diag`) and stream (`/ws/diag`, 4 a second while moving) with the
+    supply and its sag, current and power, duty, direction and ramp phase, the driver's EN and
+    PWM, the Hall reading, the position estimate and times, the drive budget, the control task's
+    step time and gap, the watchdog margin, the loop pass, memory, stacks, Wi-Fi, uptime and reset
+    reason.
+  - A log of the last 5 moves with summaries (peak, average and stall current, lowest supply,
+    sag, Hall at each end, result) and downsampled profiles; 32 summaries, optionally kept across
+    restarts (spec 010's flash-write rules); CSV and JSON export; clearing by a person.
+  - Optional MQTT (`<base>/diag`, `<base>/diag/move`), never while the roof is busy.
+  - A Diagnostics page reached from the System page; the demo's simulated roof feeds it.
+  - Recording runs in the control step after the output is applied, bounded and allocation-free;
+    with the mode off nothing is computed, sent or stored.
+- **Out of scope:** any decision from diagnostics (wear alerts, limits); Home Assistant entities;
+  the calibration run itself (spec 016); its legs are recorded and tagged as calibration moves.
+
 ## Merge order
 
 ```text
@@ -250,7 +269,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
-                                                                  └─ 015 ── 016
+                                                                  └─ 015 ─┬─ 016
+                                                                          └─ 017
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.
