@@ -45,7 +45,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: c122ef8949293cee
+fingerprint: 5bec16c416b628f5
 -->
 <figure class="diagram" markdown>
 
@@ -85,7 +85,7 @@ stateDiagram-v2
 
     1. At start-up the roof is `closed` or `open` if a magnet is read, otherwise `unknown`.
     2. Open and close start `opening` or `closing`. Reading the target magnet ends the move at that end.
-    3. A command for the other direction during a move switches the motor off for half a second, then turns it the other way.
+    3. A command for the other direction during a move switches the motor off for half a second, then turns it the other way. The same half-second pause comes before the first drive after start-up.
     4. Stop part-way gives `stopped`, with the estimated position; open or close carries on from there.
     5. Abort part-way gives `unknown`. From `unknown`, only a person's open or close moves the roof, at the slow duty, stopping at the first magnet.
     6. A magnet lost while the roof is at rest makes it `unknown`; a magnet read at rest makes it that end. New settings while `stopped` make it `unknown`, since the estimate used the old ones.
@@ -97,7 +97,7 @@ stateDiagram-v2
 |---|---|
 | Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked. Asking for the end the roof is already at, or the move already under way, changes nothing. |
 | Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted. |
-| Abort | Motor off at once; part-way, the position becomes unknown. Always accepted. |
+| Abort | Motor off at once; part-way, the position becomes unknown. With no move under way it changes nothing. Always accepted. |
 | Clear fault | Only a person can clear a fault. A restart never clears one. |
 
 ## The speed profile
@@ -110,7 +110,8 @@ the magnet is read. A move from an unknown position runs at the slow duty all th
 
 The duty never goes above the top duty, and never above the slow duty when the position is unknown.
 Between any stop and the next start the motor stays off for half a second, so a change of direction
-always goes through stop.
+always goes through stop. The pause is timed by the controller's own control loop, never by the
+time a command arrived, and it also applies after start-up.
 
 ## Timeouts and faults
 
@@ -126,14 +127,17 @@ person clears it. Each records what was measured and the limit it broke.
 | `timeout` | No target magnet within the move's timeout (with current sense off, this is how a jam is caught) |
 | `didNotLeave` | A move from a magnet still on it after the **leave time** (jammed at the end, or the motor wired backwards) |
 | `wrongMagnet` | The other end's magnet is read, or the start magnet again after leaving it |
-| `hallRail` | The Hall reading sits at either end of its range (sensor disconnected or shorted), moving or not |
+| `hallRail` | Three of the last eight Hall readings at either end of its range (sensor disconnected, shorted or an intermittent connector), moving or not |
 | `overCurrent` | Current sense on, and the motor current at or above its limit for a quarter of a second |
 | `currentUnreadable` | Current sense on, and no current reading for a quarter of a second during a move |
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
+| `driveBudget` | The motor has run, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times |
 | `external` | Raised by another part of the firmware (for example a watchdog) |
 
-A low supply at rest does not latch a fault: open and close are refused until it recovers.
+A low supply at rest does not latch a fault: open and close are refused until it recovers. A
+supply reading above 16 V, or a current reading below -0.5 A, can't be right on this hardware and
+is treated as unreadable.
 
 ## Settings
 

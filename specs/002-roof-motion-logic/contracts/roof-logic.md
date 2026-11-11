@@ -23,8 +23,11 @@ explicit Controller(const Settings &settings = Settings());
 Output tick(const Readings &readings);
 
 // Open, close, stop or abort, between steps. Stop and abort always succeed and switch the output
-// off at once; open and close may be refused (CommandResult::reason, measured, limit).
-CommandResult command(Command command, Origin origin, uint32_t nowMs);
+// off at once; open and close may be refused (CommandResult::reason, measured, limit). Commands
+// carry no time: the dead time, timeouts and estimate use only tick() times, so a command from
+// another task with a skewed clock can't shorten the dead time. Abort with no move under way
+// changes nothing (a stopped roof keeps its estimate: Alpaca AbortSlew on a stopped roof).
+CommandResult command(Command command, Origin origin);
 
 // A person clears the latched fault; Origin::Automatic is refused (notAPerson).
 CommandResult clearFault(Origin origin);
@@ -32,7 +35,7 @@ CommandResult clearFault(Origin origin);
 // Latches `fault` and switches the output off at once. Spec 003 calls it at start-up with the
 // fault it saved (a restart never clears a fault) and from its watchdog; spec 005 calls it when the
 // park interlock drops during a close (Principle II).
-void raiseFault(const Fault &fault, uint32_t nowMs);
+void raiseFault(const Fault &fault);
 
 // New settings, taken only while no move is active (else refused: Refusal::Moving). Invalid
 // settings are taken but refuse every move (settingsInvalid) until valid ones arrive. Taking new
@@ -46,8 +49,9 @@ Output output() const;
 ## Guarantees (each proven by a native test)
 
 1. `output()` is Off (EN low, both PWM 0) unless a move is being driven. It is never a direction
-   other than the one the move needs, and it is Off for at least `DEAD_TIME_MS` between any two
-   driven periods.
+   other than the one the move needs, and it is Off for at least `DEAD_TIME_MS` of step time
+   between any two driven periods and after construction, counted from the first step after the
+   driver went off.
 2. `output().duty ≤ toDuty(topDutyPercent)`, and `≤ toDuty(slowDutyPercent)` while
    `status().fromUnknown`.
 3. While `status().fault.kind != None`, `output()` is Off and every open and close is refused with
@@ -57,6 +61,9 @@ Output output() const;
 5. A move is driven for at most its `moveTimeoutMs` (plus one step) and ends with the driver off on
    the step its target magnet is confirmed.
 6. Every fault switches the output off on the step it is detected and makes the position unknown.
+7. Three rail readings among the last eight latch `hallRail` on that step, consecutive or not.
+8. The total driven time since a magnet was last confirmed (or a person cleared a fault) never
+   reaches `driveBudgetMs(settings)`; reaching it latches `driveBudget`.
 
 ## What the caller must do (spec 003)
 

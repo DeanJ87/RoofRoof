@@ -36,7 +36,9 @@ divide by zero or overflow). `Roof::settingsFromConfig(const RoofConfig &)` conv
 
 Fixed values (`RoofSettings.h`): `DEAD_TIME_MS = 500`, `HALL_CONFIRM_READINGS = 3`,
 `HALL_HYSTERESIS_COUNTS = 40`, `HALL_RAIL_LOW_COUNTS = 30`, `HALL_RAIL_HIGH_COUNTS = 4065`,
-`CONFIRM_MS = 250`, `MAX_STEP_GAP_MS = 100`.
+`CONFIRM_MS = 250`, `MAX_STEP_GAP_MS = 100`, `HALL_RAIL_LATCH_READINGS = 3` in
+`HALL_RAIL_WINDOW_READINGS = 8`, `MAX_SUPPLY_READING_VOLTS = 16`, `MIN_CURRENT_READING_AMPS = -0.5`.
+The drive budget is `driveBudgetMs(settings)`, equal to the unknown-position move timeout.
 
 ## Inputs: `Readings`
 
@@ -44,8 +46,8 @@ Fixed values (`RoofSettings.h`): `DEAD_TIME_MS = 500`, `HALL_CONFIRM_READINGS = 
 |---|---|---|
 | `nowMs` | uint32 | monotonic milliseconds (wraps) |
 | `hallCounts` | uint16 | raw ADC counts 0-4095 |
-| `supplyVolts` | float | supply voltage; NaN when unreadable |
-| `motorAmps` | float | motor current; NaN when not fitted or unreadable |
+| `supplyVolts` | float | supply voltage; NaN when unreadable (non-finite or above 16 V also counts as unreadable) |
+| `motorAmps` | float | motor current; NaN when not fitted or unreadable (non-finite or below -0.5 A also counts as unreadable) |
 
 ## Output: `Output`
 
@@ -63,7 +65,8 @@ Fixed values (`RoofSettings.h`): `DEAD_TIME_MS = 500`, `HALL_CONFIRM_READINGS = 
   DidNotLeave (`didNotLeave`; elapsed ms / leave ms), WrongMagnet (`wrongMagnet`; the end read as
   0 closed or 1 open / the target), HallRail (`hallRail`; counts / the rail it passed),
   OverCurrent (`overCurrent`; A / limit A), CurrentUnreadable (`currentUnreadable`; NaN / limit A),
-  SupplyLow (`supplyLow`; V or NaN / minimum V), LateStep (`lateStep`; gap ms / 100 ms), External
+  SupplyLow (`supplyLow`; V or NaN / minimum V), LateStep (`lateStep`; gap ms / 100 ms), DriveBudget (`driveBudget`;
+  driven ms since a magnet / budget ms), External
   (`external`; caller's values).
 - `Refusal` (measured / limit): None, FaultLatched (`faultLatched`), HallNotSettled
   (`hallNotSettled`), PositionUnknown (`positionUnknown`), SupplyLow
