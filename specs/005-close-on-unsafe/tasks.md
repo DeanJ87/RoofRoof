@@ -50,4 +50,4 @@ the logic is implemented once; the settings, firmware and docs phases follow. Ev
 ## Phase 7: Verify
 
 - [x] T021 Demo core rebuild; spec 001 quickstart §1 (firmware, native, web typecheck/test/build, Playwright, quality gate, docs build, flash)
-- [ ] T022 `/speckit-converge` until converged; independent safety review until it reports safe to merge
+- [x] T022 `/speckit-converge` until converged; independent safety review until it reports safe to merge
