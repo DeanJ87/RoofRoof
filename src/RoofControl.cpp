@@ -418,6 +418,19 @@ namespace SQM
         return reason;
     }
 
+    void RoofControl::setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose)
+    {
+        if (lock == nullptr)
+        {
+            blockers = std::move(probe);
+            closeHook = std::move(onClose);
+            return;
+        }
+        RoofLocked held(lock);
+        blockers = std::move(probe);
+        closeHook = std::move(onClose);
+    }
+
     bool RoofControl::faultUnsavedHeld() const
     {
         return fault.fault.kind != Roof::FaultKind::None && !sameFault(fault, savedFault);

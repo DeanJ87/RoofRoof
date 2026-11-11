@@ -44,12 +44,21 @@ namespace
                action == PlatformAction::FilesystemUpload || action == PlatformAction::WifiChange || action == PlatformAction::WifiScan;
     }
 
-    PlatformState with(Roof::State roof, bool closeWaiting = false, bool sequenceBusy = false)
+    // `sequenceWorking`: the sequence waits for the park it asked for, or closes.
+    PlatformState with(Roof::State roof, bool closeWaiting = false, bool sequenceWorking = false)
     {
         PlatformState s;
         s.roof = roof;
         s.closeWaiting = closeWaiting;
-        s.sequenceBusy = sequenceBusy;
+        s.sequence = sequenceWorking ? SequenceState::Working : SequenceState::Idle;
+        return s;
+    }
+
+    PlatformState in(SequenceState sequence)
+    {
+        PlatformState s;
+        s.roof = Roof::State::Open;
+        s.sequence = sequence;
         return s;
     }
 } // namespace
@@ -83,6 +92,23 @@ void test_sequence_busy_holds_restart_firmware_and_wifi(void)
             const HoldReason expected = sequenceHolds(action) ? HoldReason::CloseSequence : HoldReason::None;
             TEST_ASSERT_EQUAL_MESSAGE(expected, platformHold(action, with(rest, false, true)), platformActionName(action));
         }
+}
+
+void test_stand_downs_leave_the_way_out_open(void)
+{
+    // Backing off or stood down (unknown, fault, halted), the sequence may
+    // wait for hours, often because the network is broken: a WiFi fix, a
+    // restart or an update must stay possible.
+    for (PlatformAction action : ALL_ACTIONS)
+        TEST_ASSERT_EQUAL_MESSAGE(HoldReason::None, platformHold(action, in(SequenceState::Waiting)), platformActionName(action));
+    // A person's stand-down only holds a new firmware (it might lose the stand-down).
+    for (PlatformAction action : ALL_ACTIONS)
+    {
+        const HoldReason expected = action == PlatformAction::FirmwareUpload ? HoldReason::CloseSequence : HoldReason::None;
+        TEST_ASSERT_EQUAL_MESSAGE(expected, platformHold(action, in(SequenceState::HeldByPerson)), platformActionName(action));
+    }
+    for (PlatformAction action : ALL_ACTIONS)
+        TEST_ASSERT_EQUAL(HoldReason::None, platformHold(action, in(SequenceState::Idle)));
 }
 
 void test_mandatory_restart_ignores_sequence(void)
@@ -262,7 +288,7 @@ void test_restart_may_commit(void)
 {
     RestartInputs in;
     TEST_ASSERT_TRUE(restartMayCommit(in));
-    in.sequenceBusy = true;
+    in.sequenceWorking = true;
     TEST_ASSERT_FALSE(restartMayCommit(in));
     in.mandatory = true; // the mandatory one doesn't wait for the sequence
     TEST_ASSERT_TRUE(restartMayCommit(in));
@@ -302,6 +328,7 @@ int main(int, char **)
     RUN_TEST(test_every_action_held_while_moving);
     RUN_TEST(test_close_waiting_holds_every_action);
     RUN_TEST(test_sequence_busy_holds_restart_firmware_and_wifi);
+    RUN_TEST(test_stand_downs_leave_the_way_out_open);
     RUN_TEST(test_mandatory_restart_ignores_sequence);
     RUN_TEST(test_nothing_held_at_rest);
     RUN_TEST(test_hold_texts_and_names);

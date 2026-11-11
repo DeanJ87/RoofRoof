@@ -90,3 +90,8 @@ The rules and the shared lock (Phases 1-3) are the core; everything after uses t
 - [x] T036 WiFi change: pending strings cleared before the flag; the change flag dropped when its hold ends
 - [x] T037 The close sequence's record restored before the web server starts
 - [x] T038 Test: a committed restart is never cancelled by a close, even when reported cancellable
+
+## Phase 13: Review round 4
+
+- [x] T039 The close sequence holds platform actions only while it works (waiting for the park, or closing); a person's stand-down holds only a firmware upload; a back-off or other stand-down holds nothing, so a broken network or device can be put right remotely. Pure `CloseSeq::platformState` and the hold table per state, with tests
+- [x] T040 Command blockers set under the roof's lock; uploads refused and chunks stopped under a committed restart; command-line OTA chunks stamped under the roof's lock

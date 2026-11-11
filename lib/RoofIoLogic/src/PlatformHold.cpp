@@ -8,12 +8,23 @@ namespace SQM
     {
         namespace
         {
-            // The actions that also wait for the close sequence.
-            bool waitsForSequence(PlatformAction action)
+            // Whether the close sequence in this state holds the action. While
+            // it works (park requested, or closing) nothing may cut it off or
+            // drop N.I.N.A.; a stand-down by a person only holds a new firmware
+            // (it might not read the stand-down back); a back-off or another
+            // stand-down holds nothing, so the network or the device can be
+            // put right remotely.
+            bool waitsForSequence(PlatformAction action, SequenceState sequence)
             {
-                return action == PlatformAction::Restart || action == PlatformAction::FirmwareUpload ||
-                       action == PlatformAction::FilesystemUpload || action == PlatformAction::WifiChange ||
-                       action == PlatformAction::WifiScan;
+                switch (sequence)
+                {
+                case SequenceState::Working:
+                    return action != PlatformAction::FlashWrite && action != PlatformAction::MandatoryRestart;
+                case SequenceState::HeldByPerson:
+                    return action == PlatformAction::FirmwareUpload;
+                default:
+                    return false;
+                }
             }
         } // namespace
 
@@ -23,7 +34,7 @@ namespace SQM
                 return HoldReason::Moving;
             if (state.closeWaiting)
                 return HoldReason::CloseWaiting;
-            if (state.sequenceBusy && waitsForSequence(action))
+            if (waitsForSequence(action, state.sequence))
                 return HoldReason::CloseSequence;
             return HoldReason::None;
         }
@@ -83,7 +94,7 @@ namespace SQM
         {
             if (in.faultUnsaved || in.shortWrite)
                 return false;
-            return in.mandatory || (!in.sequenceBusy && !in.uploadBusy);
+            return in.mandatory || (!in.sequenceWorking && !in.uploadBusy);
         }
 
         bool networkHoldsClose(bool changing, uint32_t ageMs)

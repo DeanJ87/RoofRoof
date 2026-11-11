@@ -124,7 +124,7 @@ Successful saves return:
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
 
-While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. A save is also refused while a close is waiting to start (`"A close is waiting to start: try again once the roof has closed"`), and while it is being written an open is refused (`busy`) and a close waits for it. Restores, uploads, WiFi changes and restarts are refused the same way; restarts, firmware uploads and WiFi changes also while the automatic close is under way (`"The automatic close is under way: try again once the roof has closed or the weather is safe"`). The full table is in [Roof motion](../user-guide/roof-motion.md#while-the-roof-moves). Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
+While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. A save is also refused while a close is waiting to start (`"A close is waiting to start: try again once the roof has closed"`), and while it is being written an open is refused (`busy`) and a close waits for it. Restores, uploads, WiFi changes and restarts are refused the same way; restarts, uploads, WiFi changes and scans also while the automatic close is waiting for the park or closing (`"The automatic close is under way: try again once the roof has closed or the weather is safe"`); a firmware upload also while a person has stopped the automatic close. The full table is in [Roof motion](../user-guide/roof-motion.md#while-the-roof-moves). Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
 
@@ -181,7 +181,7 @@ curl -X POST http://roofroof.local/api/backup/apply -H "Content-Type: applicatio
 { "success": true, "restarting": true }
 ```
 
-With `restarting`, the device restarts about 2 s later. While the roof is opening or closing or a close is waiting to start, a restore is refused with `409`, as a settings save is; one that would restart also while the automatic close is under way. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
+With `restarting`, the device restarts about 2 s later. While the roof is opening or closing or a close is waiting to start, a restore is refused with `409`, as a settings save is; one that would restart also while the automatic close is waiting for the park or closing. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
 
 ---
 
@@ -244,13 +244,13 @@ curl -X POST http://roofroof.local/api/wifi/connect \
 { "success": true, "pending": true, "message": "Connection started" }
 ```
 
-`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is under way: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused the same way. While either runs, an open is refused (`busy`) and a close waits for it.
+`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is waiting for the park or closing: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused the same way. While either runs (at most 15 s), an open is refused (`busy`) and a close waits for it.
 
 ---
 
 ### `POST /api/restart`
 
-Restart the device. Refused with `409` and the reason while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle.
+Restart the device. Refused with `409` and the reason while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing.
 
 ```bash
 curl -X POST http://roofroof.local/api/restart
@@ -310,7 +310,7 @@ curl -X POST http://roofroof.local/api/update \
   -F "firmware=@roofroof-l2-firmware-v0.1.0.bin"
 ```
 
-Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the file isn't for this device: another product, or another partition layout (nothing was changed); or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware. `409` with the reason, before anything is written, while the roof is opening or closing, a close is waiting to start or the automatic close is under way; the restart after a successful upload waits for the same.
+Returns 200 `{"success": true}` and reboots; 400 `{"error": "..."}` when the file isn't for this device: another product, or another partition layout (nothing was changed); or 500 `{"error": "..."}` (for example "Could not activate partition") and keeps the running firmware. `409` with the reason, before anything is written, while the roof is opening or closing, a close is waiting to start or the automatic close is waiting for the park or closing (or a person has stopped it); the restart after a successful upload waits for the roof and the close.
 
 ---
 

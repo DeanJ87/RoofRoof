@@ -388,6 +388,22 @@ namespace SQM
             }
         }
 
+        RoofIo::SequenceState platformState(Phase phase)
+        {
+            switch (phase)
+            {
+            case Phase::WaitPark:
+            case Phase::Closing:
+                return RoofIo::SequenceState::Working;
+            case Phase::HeldByPerson:
+                return RoofIo::SequenceState::HeldByPerson;
+            case Phase::Idle:
+                return RoofIo::SequenceState::Idle;
+            default:
+                return RoofIo::SequenceState::Waiting;
+            }
+        }
+
         CloseAnswer answerFor(bool accepted, const std::string &reason)
         {
             if (accepted)

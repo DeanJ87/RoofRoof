@@ -204,7 +204,16 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
         Logger::info("OTA", "Progress: %u%%", percent);
         lastPercent = percent;
     }
-    FlashGuard::progress(arduinoOtaToken);
+    // Stamped under the roof's lock (spec 010); if the roof moved or a close
+    // waits after a stall, or the token was stopped, the rest is not written.
+    if (arduinoOtaToken != 0 &&
+        (PlatformGuard::keepUpload(arduinoOtaToken) != RoofIo::HoldReason::None || FlashGuard::shouldStop(arduinoOtaToken)))
+    {
+        Logger::warn("OTA", "Command-line OTA stopped part-way: the roof needs the flash");
+        Update.abort();
+        FlashGuard::end(arduinoOtaToken);
+        arduinoOtaToken = 0;
+    }
 }
 
 void onArduinoOtaError(ota_error_t error)
@@ -356,7 +365,7 @@ void setup()
     // The close sequence's record (spec 005) is restored first, so its busy
     // flag is right before any request can ask.
     closeOnUnsafe.begin(config);
-    PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.busy(); }, []() { return WebServer::restartCommitted(); });
+    PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.platformState(); }, []() { return WebServer::restartCommitted(); });
     HeapTrace::mark("roof");
     mountFilesystem();
     startWifi();

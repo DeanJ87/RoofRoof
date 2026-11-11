@@ -35,11 +35,21 @@ namespace SQM
             CloseSequence, // spec 005's sequence is in any phase but idle
         };
 
+        // Spec 005's close sequence, as the hold rules see it.
+        enum class SequenceState : uint8_t
+        {
+            Idle,         // nothing to do
+            Working,      // waiting for the park it asked for, or closing: not to be interrupted
+            Waiting,      // backing off after a failed attempt, or stood down (unknown, fault,
+                          // halted): a restart or a WiFi fix may be the way out, so nothing waits
+            HeldByPerson, // a person stopped it: a new firmware might lose that stand-down
+        };
+
         struct PlatformState
         {
             Roof::State roof = Roof::State::Unknown;
             bool closeWaiting = false;
-            bool sequenceBusy = false;
+            SequenceState sequence = SequenceState::Idle;
         };
 
         HoldReason platformHold(PlatformAction action, const PlatformState &state);
@@ -52,11 +62,11 @@ namespace SQM
         // roof itself (spec 010).
         struct RestartInputs
         {
-            bool mandatory = false;    // after a web UI upload: never cancelled
-            bool sequenceBusy = false; // spec 005's sequence is not idle
-            bool uploadBusy = false;   // an upload or command-line OTA writes the flash
-            bool shortWrite = false;   // a settings save, an NVS value, the fault record
-            bool faultUnsaved = false; // a latched fault isn't in NVS yet
+            bool mandatory = false;       // after a web UI upload: never cancelled
+            bool sequenceWorking = false; // spec 005's sequence waits for the park or closes
+            bool uploadBusy = false;      // an upload or command-line OTA writes the flash
+            bool shortWrite = false;      // a settings save, an NVS value, the fault record
+            bool faultUnsaved = false;    // a latched fault isn't in NVS yet
         };
         // True when the restart may commit now. A latched fault not yet saved
         // holds every restart (a restart never clears the lockout); so does a

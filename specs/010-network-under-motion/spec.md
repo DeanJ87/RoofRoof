@@ -68,15 +68,17 @@ decided for the owner".
 
 - Q: Should a restart, an upload or a Wi-Fi change be allowed while the automatic close is running
   but the roof isn't moving (waiting for the park, or backing off after a failed attempt)? → A:
-  Firmware uploads, restarts other than the one after a web UI upload, and Wi-Fi changes are
-  refused (409) while the close sequence is in any phase other than idle, and a restart already
-  scheduled waits. Settings saves and restores without a restart, and web UI uploads, still work:
-  they don't change the firmware or the network, and they are refused while the roof moves or a
-  close waits.
+  Firmware and web UI uploads, restarts other than the one after a web UI upload, Wi-Fi changes
+  and scans are refused (409) while the close sequence is working: waiting for the park it asked
+  for, or closing; a restart already scheduled waits. A firmware upload is also refused while a
+  person has stood the sequence down. Backing off after a failed attempt, or stood down for an
+  unknown position, a fault or a halted close, the sequence holds nothing: it can stay there for
+  hours, often because the network is broken, and a Wi-Fi fix, a restart or an update must stay
+  possible. Settings saves and restores without a restart still work.
 - Q: Should spec 005's stand-down and attempt state move from RTC memory to NVS? → A: No. Keeping
   the running time in NVS would mean writing the flash every few seconds, which the roof forbids
   while it moves. RTC memory survives every reset of the same firmware; the one case it may not
-  survive, a new firmware, is now refused while the sequence is not idle. A power cut loses it,
+  survive, a new firmware, is now refused while the sequence works or a person has stood it down. A power cut loses it,
   as spec 005 accepted.
 - Q: What may be done while the setup hotspot is on? → A: Everything except opening the roof, from
   any network (a client on the hotspot can reach the device's other addresses too). Stop is never
@@ -131,7 +133,7 @@ needs.
 
 **Why this priority**: constitution III, unsafe ends closed.
 
-**Independent Test**: native tests of the hold rules with the sequence busy; on the board, with the
+**Independent Test**: native tests of the hold rules in each sequence state; on the board, with the
 sequence waiting for the park, `POST /api/restart`, a firmware upload and `POST /api/wifi/connect`
 each answer 409 naming the close sequence.
 
@@ -139,16 +141,18 @@ each answer 409 naming the close sequence.
 
 1. **Given** the close sequence is waiting for the park, **When** a person asks for a restart,
    **Then** it is refused (409, "The automatic close is under way: …").
-2. **Given** the close sequence is in any phase other than idle, **When** a firmware upload starts,
+2. **Given** the close sequence is working or a person has stood it down, **When** a firmware upload starts,
    **Then** it is refused before anything is written; command-line OTA likewise.
-3. **Given** a firmware upload finished just before the sequence became busy, **When** its restart
-   comes due, **Then** it waits until the sequence is idle (or a close cancels it, as before).
-4. **Given** the sequence is busy, **When** a web UI upload finishes, **Then** its restart (which
-   remounts the filesystem) still runs once the roof is at rest and no close waits: the RTC record
-   survives a restart of the same firmware.
-5. **Given** the sequence is busy, **When** someone tries a new Wi-Fi network from the setup screen,
+3. **Given** a firmware upload finished just before the sequence started working, **When** its
+   restart comes due, **Then** it waits until the sequence stops working (or a close cancels it).
+4. **Given** the sequence is working, **When** a web UI upload starts, **Then** it is refused (its
+   restart could not be cancelled).
+5. **Given** the sequence is working, **When** someone tries a new Wi-Fi network or a scan,
    **Then** it is refused (409) and the current connection is kept.
-6. **Given** the sequence is busy, **When** a settings save or a restore without restart arrives,
+6. **Given** the sequence is backing off or stood down for an unknown position, a fault or a halted
+   close, **When** a restart, a Wi-Fi change or an update arrives, **Then** it is not refused for
+   the sequence (the way out stays open).
+7. **Given** the sequence is working, **When** a settings save or a restore without restart arrives,
    **Then** it is accepted (subject to story 1).
 
 ---
@@ -229,7 +233,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
   tries again 100 ms later.
 - A restart was committed but the device didn't reset (impossible in practice): open and close
   stay refused until the device resets; stop always works.
-- The close sequence turns busy during a firmware upload: the upload completes; its restart waits
+- The close sequence starts working during a firmware upload: the upload completes; its restart waits
   until the sequence is idle or a close cancels it.
 - The hotspot and station are both up and a request's local address is the station's: it counts as
   the home network.
@@ -271,7 +275,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 
 - **FR-006**: An ordinary restart (a person's, after a restore, after a firmware upload, after
   joining a network from the hotspot) MUST wait while the roof moves, a close waits, the close
-  sequence is not idle, or a flash write runs. Every restart, the mandatory one included, MUST wait
+  sequence is working, or a flash write runs. Every restart, the mandatory one included, MUST wait
   while a short flash write runs or a latched fault isn't saved yet (a restart never clears the
   lockout). A person's restart request MUST be refused (409) in those cases with the
   reason; a restore that needs a restart likewise.
@@ -289,9 +293,11 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 
 - **FR-010**: A firmware upload and a web UI upload (web and command-line; the web UI upload always
   ends in a restart nothing may cancel) MUST be refused before anything is written
-  while the roof moves, a close waits or the close sequence is not idle (409 with the reason).
+  while the roof moves, a close waits or the close sequence is working, and a firmware upload also
+  while a person has stood the sequence down (409 with the reason).
 - **FR-011**: A change of Wi-Fi network (`POST /api/wifi/connect`) and a Wi-Fi scan MUST be refused
-  while the roof moves, a close waits or the close sequence is not idle.
+  while the roof moves, a close waits or the close sequence is working. Backing off or stood down,
+  the sequence holds none of these, so the network or the device can be put right remotely.
 
 **Setup hotspot**
 
@@ -315,7 +321,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 **Docs**
 
 - **FR-016**: The roof-motion page MUST describe the platform hold rules in one table (action ×
-  roof moving / close waiting / close sequence busy); the OTA, first-setup, MQTT and REST pages MUST
+  roof moving / close waiting / close sequence working); the OTA, first-setup, MQTT and REST pages MUST
   describe the new refusals; the spec 003 and 004 known limits that this spec removes MUST be
   marked as resolved where the docs repeat them.
 
@@ -361,20 +367,22 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 
 Each was an open choice; the safest option the constitution allows was taken.
 
-1. **Firmware and web UI uploads, ordinary restarts, Wi-Fi changes and scans are refused while the automatic close is
-   in any phase other than idle**, including the stand-down phases (a person stopped it, the
-   position is unknown, a close was halted). Those can last until the roof is closed or the weather
-   has been safe for 10 minutes; closing the roof, or a power cycle at the device, ends them.
-   Settings saves without a restart are not affected.
+1. **Firmware and web UI uploads, ordinary restarts, Wi-Fi changes and scans are refused while the
+   automatic close is working** (waiting for the park it asked for, or closing), and a firmware
+   upload also while a person has stood it down. Backing off or stood down otherwise, the
+   sequence holds nothing: it may stay there for hours because the network is broken, and the
+   remote way out must stay open. A new firmware during such a stand-down may restart the
+   sequence from scratch (its RTC record may not be read); that only repeats an attempt to park
+   and close, which is the direction constitution III asks for.
 2. **Spec 005's RTC record stays in RTC memory** (not NVS). Writing the attempt's running time to
    flash would mean frequent writes, some during moves; refusing a new firmware while the sequence
-   is busy covers the one case RTC memory may not.
+   works or a person has stood it down covers the cases that matter.
 3. **Opening is refused while the setup hotspot is on; closing, stopping and clearing a fault are
    not.**
    The hotspot has no password. An open needs a safe weather verdict, which needs the home network,
    so nothing useful is lost; closing helps the roof end closed.
 4. **A committed restart refuses close as well as open.** It lasts milliseconds, ordinary restarts
-   are held while the sequence is busy, and a refused close is retried by the sequence (or the
+   are held while the sequence is working, and a refused close is retried by the sequence (or the
    person) after the restart. Letting the close start would only have it cut off by the reset.
 5. **Wi-Fi loss mid-move adds no new behaviour.** The control task carries the move to its magnet
    or timeout; a stale hand-over or a failed N.I.N.A. poll stops it as before.
@@ -387,17 +395,17 @@ Each was an open choice; the safest option the constitution allows was taken.
      loop (platform code from SQMeter). Saves are refused while the roof moves and now count as
      flash activity, so a save can't overlap a move; moving every apply onto the loop is a platform
      change for later (upstream candidate);
-   - the close sequence's busy state is read without the roof's lock; a sequence that turns busy
+   - the close sequence's state is read without the roof's lock; a sequence that starts working
      during a firmware upload is covered by holding the restart (FR-006);
-   - a firmware upload finished just before the sequence turned busy, whose restart a close then
-     cancels, activates at the next restart; if that restart happens while the sequence is busy
+   - a firmware upload finished just before the sequence started working, whose restart a close then
+     cancels, activates at the next restart; if that restart happens while the sequence is working
      (a crash), the RTC record may not be read and the sequence starts over;
    - the setup hotspot itself still opens while the roof is open: it is how the device is reached
      when the home network is gone; while it is on, the roof can't be opened from any network;
    - a Wi-Fi change or scan holds a close for at most 15 s; a close after that, with the network
      still not back, meets the park gate as usual (refused, or stopped with `parkInterlock` if
      N.I.N.A. drops part-way);
-   - the close sequence's busy flag is checked again under the roof's lock but is not changed under
+   - the close sequence's state is checked again under the roof's lock but is not changed under
      it, so an action can still begin in the instant the sequence leaves idle; a close refused for
      a committed restart is answered as "not run";
    - a fault record that can't be saved holds restarts until it is (the device keeps retrying);

@@ -14,6 +14,7 @@
 #include <string>
 
 #include "ParkRule.h"
+#include "PlatformHold.h"
 #include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SafetyInput.h"
@@ -130,6 +131,9 @@ namespace SQM
             Withdrawn,   // a person stopped the roof since the decision: not run
             Refused,     // any other refusal (fault, supply, settings, not started)
         };
+
+        // The sequence as spec 010's platform hold rules see it.
+        RoofIo::SequenceState platformState(Phase phase);
 
         // The answer for RoofControl's outcome (its accepted flag and reason name).
         CloseAnswer answerFor(bool accepted, const std::string &reason);
