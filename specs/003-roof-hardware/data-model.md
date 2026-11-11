@@ -18,6 +18,7 @@ The pure types live in `namespace SQM::RoofIo` (`lib/RoofIoLogic`); the firmware
 | `INPUT_CONFIRM_READINGS` | 3 | equal readings in a row before a switch level counts |
 | `INPUT_CHATTER_MS` | 1000 | no three equal readings for this long: unreadable |
 | `STATUS_BROADCAST_MIN_MS` | 250 | live update after a change, at most this often |
+| `SAFETY_HANDOVER_STALE_MS` | 5000 | verdict and park result older than this: not safe, not parked |
 | `PWM_FREQUENCY_HZ`, `PWM_RESOLUTION_BITS` | 20000, 8 | firmware only (`MotorDriver`) |
 
 ## Readings
@@ -64,6 +65,7 @@ switch count (0-2) and the control task's switch readings.
 
 | Function | Rule |
 |---|---|
+| `currentGates(in, handedOver, ageMs)` | `in`, or weather Unknown and not parked when never handed over or older than 5 s |
 | `switchesClosed(fitted, s1, s2)` | every fitted switch reads `Closed` |
 | `parkHolds(in)` | `parked` AND `switchesClosed` |
 | `gateCommand(Open, in)` | `WeatherNotSafe` unless the verdict is `Safe` |

@@ -38,7 +38,7 @@ wiring page, a new calibration page, the REST and WebSocket references. Decision
 | III. Unsafe ends closed | Open refused unless the verdict is safe, and an open stops when it stops being safe. Faults and refusals state the value and the limit (`RoofText`). The rain contact feeds 004's verdict. The automatic close is 005. |
 | IV. Alpaca | Untouched (006). |
 | V. Pure logic | `lib/RoofIoLogic` has no Arduino headers; times and readings are parameters; every boundary tested. Glue verified on the bench (PR checklist). |
-| VI. Budgets | One 4 KB task, one timer; stack headroom logged and shown (`stackFree.roof`). Status document capacity re-measured. Flash budget checked. Handlers on the async task only take the mutex (no network, no flash). |
+| VI. Budgets | One 6 KB task, one timer; stack headroom logged and shown (`stackFree.roof`). Status document capacity re-measured. Flash budget checked. Handlers on the async task only take the mutex (no network, no flash). |
 | VII. UI | No new screen (009). The zod schema gains one roof field. |
 | VIII. Security | All four roof routes call `requireAuth`; no secret is added. |
 | IX. Docs | Wiring page updated, calibration page added, REST/WebSocket/configuration references, roof-motion user guide, heritage, DIA-11 re-confirmed against the new lib. |

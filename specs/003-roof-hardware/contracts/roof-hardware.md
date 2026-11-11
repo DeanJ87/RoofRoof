@@ -63,7 +63,7 @@ uint32_t revision() const;
 | `SwitchInput.h` | `Contact`, `SwitchInput`, `parkReading`, `rainReading`, `contactName` |
 | `StepWatchdog.h` | `watchdogExpired`, `stepGapMs` |
 | `FaultRecord.h` | `FaultCause`, `FaultRecord`, `encodeFault`, `decodeFault`, `causeName` |
-| `RoofGates.h` | `GateInputs`, `GateRefusal`, `switchesClosed`, `parkHolds`, `gateCommand`, `interlockLost`, `interlockBits`, `openMustStop`, `gateRefusalName` |
+| `RoofGates.h` | `SAFETY_HANDOVER_STALE_MS`, `currentGates`, `GateInputs`, `GateRefusal`, `switchesClosed`, `parkHolds`, `gateCommand`, `interlockLost`, `interlockBits`, `openMustStop`, `gateRefusalName` |
 | `SettingsGuard.h` | `motionSettingsChanged`, `settingsSaveRefused` |
 | `RoofText.h` | `describeFault`, `describeRefusal`, `describeGate` |
 | `RoofStatus.h` | `Snapshot`, `writeStatus` |

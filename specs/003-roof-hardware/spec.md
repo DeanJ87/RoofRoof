@@ -246,7 +246,7 @@ and `include/RoofPins.h`.
 - Current sense enabled in the settings but not wired: the reading is near 0 A, which is not a
   fault; the bench check confirms the reading before enabling it.
 - Saving the fault record fails (NVS full or worn): the failure is logged as an error and the fault
-  stays latched in memory; the save is retried on the next change.
+  stays latched in memory; the save is retried every 5 s.
 - A clear-fault while the fault record save is pending: the latest state wins.
 
 ## Requirements *(mandatory)*
@@ -325,6 +325,9 @@ and `include/RoofPins.h`.
   longer holds, a fault (cause: park interlock) MUST be latched on that step.
 - **FR-019**: An open from any origin MUST be refused unless the weather verdict is "safe". While
   the roof is opening, a verdict that is not safe MUST stop the move (stop, not a fault).
+- **FR-019a**: If the weather verdict and park result haven't been handed to the roof for more
+  than 5 s (a stalled main loop), the gates MUST treat the weather as not safe and the park as not
+  confirmed, saying so.
 - **FR-020**: Stop MUST always be accepted. Every roof command route MUST require authentication
   (constitution VIII).
 

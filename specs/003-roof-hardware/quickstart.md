@@ -15,7 +15,7 @@ settings-save guard, every fault and refusal text, the status section.
 ```bash
 ~/.platformio/penv/bin/pio test -e native -f test_config_model -f test_config_ranges -f test_config_migration
 (cd web && npx vitest run src/__tests__/configRanges.test.ts src/__tests__/configSchema.test.ts src/demo/__tests__/contracts.test.ts)
-python3 tools/settings-deps/check.py && python3 tools/api/routes.py --check
+python3 tools/settings-deps/check.py && python3 tools/api/routes.py
 ```
 
 Expected: `roof.currentAmpsPerVolt` accepted at 0.5 and 100, rejected just outside; an old config

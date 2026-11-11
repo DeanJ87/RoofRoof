@@ -111,6 +111,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "hallLowCounts": 1100,
     "currentSenseEnabled": false,
     "maxCurrentAmps": 10,
+    "currentAmpsPerVolt": 8.5,
     "minSupplyVolts": 11
   }
 }
@@ -232,6 +233,7 @@ sense off.
 | `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (100-3995, at least 80 below the high threshold) |
 | `roof.currentSenseEnabled` | bool | `false` | Use the IBT-2's current outputs for over-current detection; off until they are wired |
 | `roof.maxCurrentAmps` | number | `10` | Motor current that stops the roof as a fault, with current sense on (0.5-40) |
+| `roof.currentAmpsPerVolt` | number | `8.5` | Motor amps per volt at the IBT-2's current-sense output, before the divider (0.5-100); set it by [calibration](../hardware/calibration.md#current-sense) |
 | `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
 
 ### Alerts
