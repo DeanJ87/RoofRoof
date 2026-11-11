@@ -156,6 +156,11 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
 - **A latched fault survives a restart.** It is saved within one step of being latched and latched
   again at start-up before the first step. A saved record that can't be read back latches a fault
   of its own. Clearing the fault removes it.
+- **If the control task or the watchdog can't start**, the motor driver is never switched on until
+  a restart, and every command answers that the controller didn't start.
+- **A watchdog trip survives a crash.** If the device restarts before the trip's fault was saved
+  (a hung task restarted by the system watchdog), the fault is latched again at start-up. A power
+  cut at that moment loses it; so does an NVS partition the system has to reformat at start-up.
 - **After a start-up** the roof is at the end whose magnet it reads, or `unknown` between the
   magnets. Nothing moves until a command.
 

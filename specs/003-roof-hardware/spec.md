@@ -410,7 +410,18 @@ Each was an open choice; the safest option the constitution allows was taken.
 12. **A damaged stored fault record latches a fault** rather than being ignored.
 13. **The PWM frequency is 20 kHz** (inaudible, within the IBT-2's rating) with 8-bit duty, matching
     the logic's 0-255 duty.
-14. **The roof status section is emulated by the demo as a closed roof** with fixed readings; the
+14. **If the control task or the watchdog can't start, the motor can never be switched on** until a
+    restart: commands and clear-fault answer "not started", and the driver isn't armed.
+15. **A watchdog trip survives a crash restart.** The trip leaves a marker in memory that survives a
+    reset (not a power cut); if the device restarts before the trip's fault reached NVS (the task
+    hung and the system watchdog restarted it), the fault is latched at start-up.
+16. **Known limits, accepted for now:** an NVS partition that ESP-IDF erases and reformats at boot
+    (no free pages, or a newer NVS format) loses a stored fault, as it loses the settings; flash
+    writes from other parts of the firmware while the roof moves (other settings saves, uploads) can
+    stall the control task long enough to fault the move, which stops the motor (fail-safe; spec
+    010 refuses them while moving); the park result from N.I.N.A. may be up to 5 s old during a
+    close, while the fitted park switches are checked every 20 ms.
+17. **The roof status section is emulated by the demo as a closed roof** with fixed readings; the
     simulated roof is spec 011.
 
 ## Out of scope

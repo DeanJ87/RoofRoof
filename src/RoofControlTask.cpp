@@ -74,6 +74,7 @@ namespace SQM
             return false;
         }
         started.store(true);
+        MotorDriver::arm();
         Logger::info(
             TAG,
             "Roof control task started (%u ms steps, watchdog %u ms)",

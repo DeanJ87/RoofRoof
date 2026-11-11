@@ -8,6 +8,7 @@
 #include "MotorDriver.h"
 #include "RoofFaultStore.h"
 #include "RoofLocked.h"
+#include "RoofReadings.h"
 #include "RoofSettings.h"
 #include "RoofText.h"
 #include "SettingsGuard.h"
@@ -60,9 +61,22 @@ namespace SQM
     void RoofControl::restoreFault()
     {
         RoofIo::FaultRecord stored;
-        const RoofIo::Decoded found = RoofFaultStore::load(stored);
-        if (found == RoofIo::Decoded::None)
+        RoofIo::Decoded found = RoofFaultStore::load(stored);
+        if (found != RoofIo::Decoded::None)
+        {
+            MotorDriver::clearTripMark(); // the lockout is already in NVS
+        }
+        else if (MotorDriver::tripMarked())
+        {
+            // The watchdog tripped and the device restarted before its fault
+            // was saved (a hung control task): latch it now, save it on the first step.
+            stored = RoofIo::externalRecord(RoofIo::FaultCause::Watchdog, 0.0f, static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS));
+            found = RoofIo::Decoded::Unreadable; // latched, not yet in NVS
+        }
+        else
+        {
             return;
+        }
         controller.raiseFault(stored.fault);
         fault = stored;
         // A damaged record is replaced by a readable one on the first step.
@@ -86,8 +100,8 @@ namespace SQM
 
     RoofControl::Outcome RoofControl::command(Roof::Command command, Roof::Origin origin)
     {
-        if (lock == nullptr)
-            return Outcome{false, "notStarted", "The roof controller didn't start", Roof::State::Unknown};
+        if (lock == nullptr || !started.load())
+            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
         Outcome outcome;
         {
             RoofLocked held(lock);
@@ -112,14 +126,18 @@ namespace SQM
 
     RoofControl::Outcome RoofControl::clearFault(Roof::Origin origin)
     {
-        if (lock == nullptr)
-            return Outcome{false, "notStarted", "The roof controller didn't start", Roof::State::Unknown};
-        RoofLocked held(lock);
-        const bool hadFault = controller.status().fault.kind != Roof::FaultKind::None;
-        Outcome outcome = outcomeOf(controller.clearFault(origin));
-        applyOutput();
-        syncFault(RoofIo::FaultCause::Logic);
-        refreshSnapshot();
+        if (lock == nullptr || !started.load())
+            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+        bool hadFault = false;
+        Outcome outcome;
+        {
+            RoofLocked held(lock);
+            hadFault = controller.status().fault.kind != Roof::FaultKind::None;
+            outcome = outcomeOf(controller.clearFault(origin));
+            applyOutput();
+            syncFault(RoofIo::FaultCause::Logic);
+            refreshSnapshot();
+        }
         if (outcome.accepted && hadFault)
             Logger::info(TAG, "Fault cleared by a person");
         return outcome;
@@ -290,5 +308,9 @@ namespace SQM
         saveFailedAtMs = 0;
         RoofLocked held(lock);
         savedFault = wanted;
+        // A trip's fault is in NVS now (or a person cleared it): the restart
+        // marker isn't needed. A trip still waiting for its step keeps it.
+        if (!MotorDriver::tripped())
+            MotorDriver::clearTripMark();
     }
 } // namespace SQM
