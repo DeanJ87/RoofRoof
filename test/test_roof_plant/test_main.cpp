@@ -197,6 +197,40 @@ void test_full_open_and_close_with_the_motion_logic(void)
     }
 }
 
+// The thresholds at their closest legal gap (80 counts): no single value is
+// clear of both hysteresis bands, so the roof still leaves each magnet and
+// reaches the other (review of spec 011).
+void test_full_move_at_the_minimum_hall_gap(void)
+{
+    for (bool highClosed : {false, true})
+    {
+        Settings settings;
+        settings.hallLowCounts = 2000;
+        settings.hallHighCounts = 2080;
+        settings.hallHighEnd = highClosed ? End::Closed : End::Open;
+        TEST_ASSERT_TRUE(validSettings(settings));
+        Rig rig(settings, 0.0f);
+        TEST_ASSERT_EQUAL(State::Closed, rig.roof.status().state);
+        rig.roof.command(Roof::Command::Open, Origin::Person);
+        rig.runToRest(400000);
+        TEST_ASSERT_EQUAL(State::Open, rig.roof.status().state);
+        rig.roof.command(Roof::Command::Close, Origin::Person);
+        rig.runToRest(400000);
+        TEST_ASSERT_EQUAL(State::Closed, rig.roof.status().state);
+    }
+}
+
+// The running current stays above the "motor not drawing" limit for any legal setting.
+void test_running_current_clears_the_minimum(void)
+{
+    Settings settings;
+    settings.maxCurrentAmps = 10.0f;
+    settings.currentSenseEnabled = true;
+    TEST_ASSERT_EQUAL_FLOAT(3.0f, RoofPlant::forSettings(settings, 0.0f).runningAmps);
+    TEST_ASSERT_EQUAL_FLOAT(6.0f, RoofPlant::forSettings(settings, 0.0f, 5.0f).runningAmps);
+    TEST_ASSERT_EQUAL_FLOAT(9.0f, RoofPlant::forSettings(settings, 0.0f, 20.0f).runningAmps); // capped under the limit
+}
+
 // A jam with current sense on is an over-current fault; without, the move times out.
 void test_jam_faults_the_move(void)
 {
@@ -245,6 +279,8 @@ int main(int, char **)
     RUN_TEST(test_supply_sags_only_while_driving);
     RUN_TEST(test_output_of_pin_levels);
     RUN_TEST(test_full_open_and_close_with_the_motion_logic);
+    RUN_TEST(test_full_move_at_the_minimum_hall_gap);
+    RUN_TEST(test_running_current_clears_the_minimum);
     RUN_TEST(test_jam_faults_the_move);
     RUN_TEST(test_low_supply_refuses_and_stops);
     return UNITY_END();

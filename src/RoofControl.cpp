@@ -267,6 +267,10 @@ namespace SQM
             RoofLocked held(lock);
             hadFault = controller.status().fault.kind != Roof::FaultKind::None;
             outcome = outcomeOf(controller.clearFault(origin));
+#if ROOFROOF_BENCH
+            if (benchGuard.tripped())
+                benchLatch(); // spec 011: on a powered board, the fault comes straight back
+#endif
             applyOutput();
             syncFault(RoofIo::FaultCause::Logic);
             refreshSnapshot();

@@ -41,7 +41,11 @@ namespace SQM
                 return openCounts;
             if (atClosedMagnet())
                 return closedCounts;
-            return restingCounts;
+            const bool nearClosed = positionMm < travelMm / 2.0f;
+            const bool lowAtClosed = !highEndClosed;
+            const bool nearLow = nearClosed == lowAtClosed;
+            const uint16_t edge = nearLow ? restingNearLow : restingNearHigh;
+            return edge != 0 ? edge : restingCounts;
         }
 
         float Plant::motorAmps() const
@@ -79,7 +83,7 @@ namespace SQM
             return r;
         }
 
-        void applySettings(Plant &plant, const Roof::Settings &settings)
+        void applySettings(Plant &plant, const Roof::Settings &settings, float minRunningAmps)
         {
             plant.travelMm = static_cast<float>(settings.travelMm);
             plant.speedMmPerSecond = settings.speedMmPerSecond;
@@ -89,19 +93,25 @@ namespace SQM
             plant.lowMagnetCounts = static_cast<uint16_t>((low + Roof::HALL_RAIL_LOW_COUNTS) / 2);
             plant.highMagnetCounts = static_cast<uint16_t>((high + Roof::HALL_RAIL_HIGH_COUNTS) / 2);
             plant.restingCounts = static_cast<uint16_t>((low + high) / 2);
+            // A value Between must be past the band of the magnet just left
+            // (HallFilter: a magnet is kept within HALL_HYSTERESIS_COUNTS).
+            const uint32_t hyst = Roof::HALL_HYSTERESIS_COUNTS;
+            const bool midClear = plant.restingCounts > low + hyst && plant.restingCounts + hyst < high;
+            plant.restingNearLow = midClear ? 0 : static_cast<uint16_t>(std::min(high - 1, low + hyst + 1));
+            plant.restingNearHigh = midClear ? 0 : static_cast<uint16_t>(std::max(low + 1, high - hyst - 1));
             plant.highEndClosed = settings.hallHighEnd == Roof::End::Closed;
             plant.reversedWiring = settings.openDirection == Driver::Command::Reverse;
             plant.currentFitted = settings.currentSenseEnabled;
-            plant.runningAmps = settings.maxCurrentAmps * 0.3f;
+            plant.runningAmps = std::min(settings.maxCurrentAmps * 0.9f, std::max(settings.maxCurrentAmps * 0.3f, minRunningAmps * 1.2f));
             plant.stallAmps = settings.maxCurrentAmps * 1.5f;
             plant.sagVolts = SETTINGS_SAG_VOLTS;
         }
 
-        Plant forSettings(const Roof::Settings &settings, float startMm)
+        Plant forSettings(const Roof::Settings &settings, float startMm, float minRunningAmps)
         {
             Plant plant;
             plant.positionMm = startMm;
-            applySettings(plant, settings);
+            applySettings(plant, settings, minRunningAmps);
             return plant;
         }
 

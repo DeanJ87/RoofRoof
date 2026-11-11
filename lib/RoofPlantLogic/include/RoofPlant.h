@@ -26,6 +26,11 @@ namespace SQM
             float positionMm = 0.0f;        // 0 closed
             float magnetZoneMm = 25.0f;     // the Hall sees a magnet this close to an end
             uint16_t restingCounts = 2050;
+            // Between the magnets, near the low magnet's end and near the high
+            // magnet's end: 0 uses restingCounts. Set when the thresholds are so
+            // close that no single value is clear of both hysteresis bands.
+            uint16_t restingNearLow = 0;
+            uint16_t restingNearHigh = 0;
             uint16_t highMagnetCounts = 3400; // the open end's magnet unless highEndClosed
             uint16_t lowMagnetCounts = 700;
             bool highEndClosed = false;
@@ -67,11 +72,14 @@ namespace SQM
         // between the thresholds in between; which end is high; the open
         // direction; current sense, with running 30% and stall 150% of the
         // current limit. At `startMm`.
-        Plant forSettings(const Roof::Settings &settings, float startMm);
+        Plant forSettings(const Roof::Settings &settings, float startMm, float minRunningAmps = 0.0f);
 
         // Sets `plant` up for new `settings`, keeping its position (clamped
-        // to the new travel) and its injected faults.
-        void applySettings(Plant &plant, const Roof::Settings &settings);
+        // to the new travel) and its injected jam, missing magnets, rail and
+        // supply. The wiring follows the open-direction setting. Running
+        // current is at least 1.2 x `minRunningAmps` (the "motor not drawing"
+        // limit), so a legal setting never reads as no current.
+        void applySettings(Plant &plant, const Roof::Settings &settings, float minRunningAmps = 0.0f);
 
         // The driver command a set of pin levels drives the motor with (what
         // the bridge would do): Off unless EN is high and exactly one PWM is

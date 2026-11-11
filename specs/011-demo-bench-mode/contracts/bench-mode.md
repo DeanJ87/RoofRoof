@@ -15,6 +15,11 @@
 - `MotorDriver::logicalOutputs()` (bench only): what the driver would apply (EN as decided with the
   trip, arming and heartbeat rules; the duties).
 
+## Start
+
+The simulated roof starts half-way after every restart: unknown, the Dome reports an error,
+until a person moves it.
+
 ## Readings
 
 - Bench: each control step, under the roof's lock, the plant is driven by
@@ -24,7 +29,7 @@
 
 ## Guard
 
-- `RoofControl::begin()` (bench): 50 readings of the real supply, 20 ms apart, before the task
+- `RoofControl::begin()` (bench): about 1 s of real supply readings, 20 ms apart, before the task
   starts. Then every step.
 - Tripped: `raiseFault(FaultCause::BenchSupply, measured, 6.0)`, every step for the rest of the
   boot.
@@ -33,14 +38,15 @@
 
 | Running \ image | standard | bench |
 |---|---|---|
-| standard | Ok | refused: `BenchImage` (web upload: 400 with the message; command-line OTA: not booted, logged) |
+| standard | Ok | refused: `BenchImage` (web upload: 400 with the message, before `Update.end()`; command-line OTA: the running firmware is made the boot partition again before the check, the image is checked over its own length, and a refused image's first sector is erased so no rollback can boot it; logged) |
 | bench | Ok | Ok |
 
 ## Visible
 
 | Where | Standard | Bench |
 |---|---|---|
-| `/api/status`, `/ws/status` `roof.simulation` | `"off"` | `"bench"` |
+| `/api/status`, `/ws/status`, MQTT `<base>/state` `roof.simulation` | `"off"` | `"bench"` |
+| Home Assistant device `sw_version` | the version | the version + " (bench)" |
 | Web UI | - | a warning banner on every page |
 | Alpaca Dome Description | "Roll-off roof: shutter open, close and stop only" | "BENCH MODE (simulated roof, no motor): Roll-off roof: ..." |
 | Alert titles | unchanged | "Bench: " + title |

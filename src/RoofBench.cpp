@@ -23,10 +23,6 @@ namespace SQM
 {
     namespace
     {
-        // The longest step the simulated roof takes at once: a late step is
-        // the motion logic's to fault on, not a teleport.
-        constexpr uint32_t MAX_PLANT_STEP_MS = 100;
-
         float realSupplyVolts()
         {
             uint32_t samples[RoofIo::ANALOG_SAMPLES];
@@ -36,12 +32,15 @@ namespace SQM
         }
     } // namespace
 
-    // Before the control task starts: the roof starts closed, and the guard
-    // has a second of real supply readings, so no command can arrive before it
-    // has decided.
+    // Before the control task starts: the guard has a second of real supply
+    // readings, so no command can arrive before it has decided. The roof
+    // starts half-way, so it reads unknown (the Dome: an error) until a person
+    // moves it: a bench board that somehow ends up on a roof never starts by
+    // reporting a closed roof.
     void RoofControl::benchStart()
     {
-        benchPlant = RoofPlant::forSettings(Roof::settingsFromConfig(settings.roof), 0.0f);
+        const Roof::Settings roof = Roof::settingsFromConfig(settings.roof);
+        benchPlant = RoofPlant::forSettings(roof, static_cast<float>(roof.travelMm) / 2.0f, settings.roof.minRunningAmps);
         Logger::warn(TAG, "BENCH MODE: the roof is simulated and the motor is never driven (EN, RPWM and LPWM held low)");
         uint32_t now = millis();
         for (uint32_t waited = 0; waited <= RoofPlant::BenchSupplyGuard::CONFIRM_MS; waited += RoofIo::CONTROL_PERIOD_MS)
@@ -58,20 +57,27 @@ namespace SQM
 
     void RoofControl::benchStep(StepInputs &in)
     {
-        if (benchGuard.update(in.readings.supplyVolts, in.readings.nowMs))
-            latchExternal(
-                RoofIo::externalRecord(RoofIo::FaultCause::BenchSupply, benchGuard.measured(), RoofPlant::BenchSupplyGuard::LIMIT_VOLTS));
-        const uint32_t elapsed = in.gapMs < MAX_PLANT_STEP_MS ? in.gapMs : MAX_PLANT_STEP_MS;
-        benchPlant.drive(RoofPlant::outputOf(MotorDriver::logicalOutputs()), elapsed);
-        in.readings.hallCounts = benchPlant.hallCounts();
-        in.readings.supplyVolts = benchPlant.supplyNow();
-        in.readings.motorAmps = settings.roof.currentSenseEnabled ? benchPlant.senseAmps() : NAN;
+        RoofPlant::BenchStepIn step;
+        step.real = in.readings;
+        step.gapMs = in.gapMs;
+        step.logical = MotorDriver::logicalOutputs();
+        step.currentSense = settings.roof.currentSenseEnabled;
+        const RoofPlant::BenchStepOut out = RoofPlant::benchStep(benchGuard, benchPlant, step);
+        if (out.latch)
+            benchLatch();
+        in.readings = out.readings;
+    }
+
+    void RoofControl::benchLatch()
+    {
+        latchExternal(
+            RoofIo::externalRecord(RoofIo::FaultCause::BenchSupply, benchGuard.measured(), RoofPlant::BenchSupplyGuard::LIMIT_VOLTS));
     }
 
     // New settings taken by the logic: the simulated roof follows them.
     void RoofControl::benchSettings()
     {
-        RoofPlant::applySettings(benchPlant, Roof::settingsFromConfig(settings.roof));
+        RoofPlant::applySettings(benchPlant, Roof::settingsFromConfig(settings.roof), settings.roof.minRunningAmps);
     }
 } // namespace SQM
 

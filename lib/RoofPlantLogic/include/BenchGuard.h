@@ -9,6 +9,10 @@
 
 #include <cstdint>
 
+#include "DriverLogic.h"
+#include "RoofPlant.h"
+#include "RoofTypes.h"
+
 namespace SQM
 {
     namespace RoofPlant
@@ -34,5 +38,36 @@ namespace SQM
 
         // A reading that counts as a powered roof: NaN, or LIMIT_VOLTS or more.
         bool supplyPresent(float volts);
+
+        // The longest step the simulated roof takes at once: a late step is
+        // the motion logic's to fault on, not a jump across the travel.
+        constexpr uint32_t MAX_PLANT_STEP_MS = 100;
+
+        // One bench control step's inputs: what the ADC read (its supply is
+        // the real supply input), the time since the last step, what the
+        // motor driver would apply (MotorDriver::logicalOutputs) and whether
+        // current sense is on.
+        struct BenchStepIn
+        {
+            Roof::Readings real;
+            uint32_t gapMs = 0;
+            Driver::Outputs logical;
+            bool currentSense = false;
+        };
+
+        struct BenchStepOut
+        {
+            Roof::Readings readings; // the simulated roof's, for the motion logic
+            bool latch = false;      // the guard is tripped: latch the benchSupply fault now
+            float measured = 0.0f;   // its measured value (BenchSupplyGuard::measured)
+        };
+
+        // The bench build's step (spec 011, contracts/bench-mode.md): the guard
+        // sees the real supply first; the roof moves under the logical driver
+        // for the step's time (at most MAX_PLANT_STEP_MS); its Hall, supply and
+        // current sense (NaN with current sense off) replace the ADC's.
+        // `latch` stays true for every step after a trip, so a cleared fault
+        // comes straight back.
+        BenchStepOut benchStep(BenchSupplyGuard &guard, Plant &plant, const BenchStepIn &in);
     } // namespace RoofPlant
 } // namespace SQM

@@ -154,6 +154,7 @@ namespace SQM
         void benchStart();
         void benchStep(StepInputs &in);
         void benchSettings();
+        void benchLatch();
 #endif
 
         // Under the lock.

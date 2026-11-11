@@ -71,8 +71,9 @@ decided for the owner".
 - Q: Should bench mode publish releases? → A: No. The bench image is built by CI to prove it
   compiles, never published as a release asset; it is built locally with its own build
   environment.
-- Q: Where does the bench roof start after a restart? → A: Closed, on its closed magnet: a
-  simulated roof has nothing to remember. The demo is different: it keeps the simulated roof's
+- Q: Where does the bench roof start after a restart? → A: Half-way, so it reads unknown and the
+  Dome reports a shutter error until a person moves it (slowly, to the first magnet). Safest: a
+  bench board can never start by reporting a closed roof. The demo is different: it keeps the simulated roof's
   position in the tab, so a page reload works like the device's restart (unknown between the
   magnets).
 - Q: Can bench mode inject faults like the demo? → A: Not in this spec. Bench mode exists to try
@@ -266,7 +267,7 @@ updating the demo; the contract tests fail.
 - Rain and unsafe weather together: rain is named first; removing one leaves the other.
 - The bench board's supply input floats (no divider fitted): it may read high, and the
   bench-supply fault latches. The fix is to tie the input to ground; the docs say so.
-- A restart of the bench board mid-move: the simulated roof starts closed again; the real fault
+- A restart of the bench board mid-move: the simulated roof starts half-way (unknown) again; the real fault
   store still keeps any latched fault.
 - The demo's simulated N.I.N.A. is asked to park while "park fails" is on: it answers that it's
   parking and never gets there.
@@ -392,7 +393,7 @@ updating the demo; the contract tests fail.
 - **A bench board refuses to simulate while it sees a 12 V supply** (6.0 V or more, or
   unreadable, for 1 s) and latches a fault that a person must clear. A bare board whose supply
   input floats may trip it; tying the input to ground is the documented fix.
-- **The bench roof starts closed** after every restart; the demo keeps its roof's position across a
+- **The bench roof starts half-way (unknown)** after every restart; the demo keeps its roof's position across a
   reload and treats the reload as a restart.
 - **No fault injection on the bench board** in this spec; the demo and the native tests cover the
   fault paths.
