@@ -262,7 +262,9 @@ namespace
                 ever = false;
         watch.closeBarUntilMs = 0;
         watch.closingRun = false;
-        watch.unsafeRun = false; // the sequence's own run starts again too
+        watch.heldPrevUnsafe = false; // the sequence's own sum starts again too
+        watch.justRestarted = true;
+        watch.heldUnsafeMs = 0;
         // The time the board was down (since the last step) doesn't count: it
         // ran no clock. (On the bench a restart takes a few seconds.)
         const uint64_t downMs = w.in.nowMs - watch.lastStepMs;
@@ -282,15 +284,18 @@ namespace
                 ever = false;
     }
 
-    void trackUnsafe(Watch &watch, const Inputs &in)
+    // Unsafe weather added up during a person's stand-down: from one step to
+    // the next, both not safe; a stop (or another phase) starts it again.
+    bool personWaitOver(Watch &watch, const Inputs &in, Phase before, bool anyStop)
     {
-        if (in.weatherSafe)
-            watch.unsafeRun = false;
-        else if (!watch.unsafeRun)
-        {
-            watch.unsafeRun = true;
-            watch.unsafeSinceMs = in.nowMs;
-        }
+        const bool unsafe = !in.weatherSafe;
+        if (before != Phase::HeldByPerson || anyStop)
+            watch.heldUnsafeMs = 0;
+        else if (unsafe && watch.heldPrevUnsafe)
+            watch.heldUnsafeMs += in.nowMs - watch.heldPrevMs;
+        watch.heldPrevUnsafe = unsafe;
+        watch.heldPrevMs = in.nowMs;
+        return watch.heldUnsafeMs >= WEATHER_REARM_CONFIRM_MS && !anyStop;
     }
 
     // The episode as spec 013 defines it: daylight-only from the idle step
@@ -299,21 +304,23 @@ namespace
     void observeEpisode(Watch &watch, const Inputs &in, Phase before, bool anyStop)
     {
         watch.expectRearm = false;
-        trackUnsafe(watch, in);
+        const bool waitOver = personWaitOver(watch, in, before, anyStop);
+        const bool restarted = watch.justRestarted;
+        watch.justRestarted = false;
         if (before == Phase::Idle)
         {
-            // A paused daylight attempt resumed by the weather alerts afresh.
-            if (watch.pausedDaylight && !in.weatherSafe)
+            // After a daylight-only episode the weather's alerts go out afresh.
+            if (watch.afterDaylight && !in.weatherSafe)
+            {
                 clearAlerted(watch);
+                watch.afterDaylight = false;
+            }
             watch.daylightOnly = in.daylight && in.weatherSafe;
             return;
         }
-        if (in.weatherSafe || !watch.daylightOnly)
+        if (in.weatherSafe || !watch.daylightOnly || restarted)
             return;
-        // A person's stand-down waits for 30 s of weather not safe; a new stop restarts the wait.
-        if (before == Phase::HeldByPerson && anyStop)
-            watch.unsafeSinceMs = in.nowMs;
-        if (before == Phase::HeldByPerson && (anyStop || in.nowMs - watch.unsafeSinceMs < WEATHER_REARM_CONFIRM_MS))
+        if (before == Phase::HeldByPerson && !waitOver)
             return;
         watch.daylightOnly = false;
         // The weather episode's critical alerts are announced afresh.
@@ -328,8 +335,8 @@ namespace
     // D1 and D2.
     const char *checkEpisode(Watch &watch, const Decision &d, Phase after)
     {
-        if (d.event == Event::EndedSafe)
-            watch.pausedDaylight = d.daylight;
+        if (after == Phase::Idle && d.daylight)
+            watch.afterDaylight = true;
         if (watch.expectRearm && heldBack(after))
             return "D1 the weather turned unsafe and a daylight-only stand-down or back-off held it back";
         if (d.daylight != watch.daylightOnly)

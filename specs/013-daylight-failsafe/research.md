@@ -46,7 +46,7 @@ every place it used "weather not safe": starting an attempt, ending one (`EndedS
 weather stops being safe during a daylight-only episode, the episode becomes a weather episode;
 if the sequence is then halted, in its back-off or unable to move, it re-arms first (goes to
 Idle without an event) so the weather attempt starts on the same step, unless a person's stop is
-seen on that same step; a person's stand-down waits until the weather has been not safe for 30 s
+seen on that same step; a person's stand-down waits until the weather has been not safe for 30 s in all (added up over spells)
 (one stale poll can't act against the stop). The critical alert throttle starts afresh then. Every decision carries the episode (`Decision::daylight`), so alert
 wording and the alert events can say which.
 

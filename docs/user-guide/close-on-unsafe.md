@@ -24,16 +24,16 @@ critical alert naming the step. The roof is never closed onto a mount that isn't
 a wet telescope can be dried, a crushed one can't be fixed.
 
 <!-- diagram: DIA-22
-sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
+sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 82846f3f16546090
+fingerprint: 44ed94ab81609d9a
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The close on unsafe weather
-    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park; a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a halted, waiting or can't-move sequence starts again at once, a sequence a person stood down after 30 s of unsafe weather.
+    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park; a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a halted, waiting or can't-move sequence starts again at once, a sequence a person stood down after 30 s of unsafe weather in all.
     [*] --> Idle
     Idle --> WaitPark: not safe, roof not closed (park request)
     Idle --> Closing: not safe, a close already running
@@ -57,7 +57,7 @@ stateDiagram-v2
     CannotMove --> Idle: closed, or safe for 10 min
     HeldByPerson --> Idle: closed, or safe for 10 min
     Halted --> Idle: closed, or safe for 10 min
-    HeldByPerson --> Idle: weather unsafe 30 s, daylight-only attempt (starts again)
+    HeldByPerson --> Idle: weather unsafe 30 s in all, daylight-only attempt (starts again)
     Halted --> Idle: weather unsafe, daylight-only attempt (starts again)
     RetryWait --> Idle: weather unsafe, daylight-only attempt (starts again)
     CannotMove --> Idle: weather unsafe, daylight-only attempt (starts again)
@@ -78,7 +78,7 @@ stateDiagram-v2
     8. A person's stop or abort during the sequence, or while it can't move, stands it down (`HeldByPerson`) with a critical alert: nothing more is sent or moved.
     9. `CannotMove`, `HeldByPerson` and `Halted` end when the roof reads closed, or the weather has been safe for 10 minutes without a break.
     10. A safe verdict while waiting ends the sequence (with the daylight close on, only when the sun isn't up either). A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
-    11. An attempt that began only because of daylight is a daylight attempt until the weather first turns unsafe. Then a halted, waiting or stood-down (can't move) daylight attempt ends at once (`Idle`) and the weather attempt starts on the same pass; one a person stood down ends once the weather has been not safe for 30 s without a break (a new stop restarts the wait); a person's stop on that very pass still stands it down.
+    11. An attempt that began only because of daylight is a daylight attempt until the weather first turns unsafe. Then a halted, waiting or stood-down (can't move) daylight attempt ends at once (`Idle`) and the weather attempt starts on the same pass; one a person stood down ends once the weather has been not safe for 30 s in all since the stop, added up over unsafe spells (a new stop starts the count again); a person's stop on that very pass still stands it down.
 12. A restart of the device (not a power cut) keeps a stand-down, and an attempt or back-off with the time it has run (plus 10 s for the restart), so a board that keeps restarting still reaches its limits. A restart after the close was asked for but before the roof took it carries on from the park wait; it isn't a failed close.
 
 ## Time limits
@@ -187,7 +187,7 @@ does a weather close. An Alpaca or MQTT client's stop of a close in daylight is 
 has been down, or the mode has not been **Alert and close**, for 10 minutes, or when the roof reads
 closed. A halted close stays halted the same way. Daylight never ends a stand-down or a halt.
 **Automatic close stopped** goes out once when you stop a daylight close, with no 30-minute
-"Still:" reminders: you stopped it on purpose. Set the mode to **Alert** if you want the roof open
+"Still:" reminders while the weather is safe: you stopped it on purpose. Set the mode to **Alert** if you want the roof open
 for the rest of the day.
 
 **Unsafe weather comes first** and is unchanged:
@@ -195,8 +195,10 @@ for the rest of the day.
 - If the weather turns unsafe while a daylight-only attempt is halted, backing off after a
   failure or unable to move, the weather close starts at once (a roof that can't move raises
   **Roof can't close by itself** again, worded for the weather). If a person stood the daylight close down, the weather
-  close starts once the weather has been not safe for 30 s without a break (a single missed SQMeter
-  poll doesn't send a park request against your stop; a new Stop restarts the 30 s). A person can
+  close starts once the weather has been not safe for 30 s in all since your stop, added up over
+  the unsafe spells (a single missed SQMeter poll doesn't send a park request against your stop,
+  and a flapping verdict still gets there; a new Stop starts the count again). While the weather
+  is unsafe, the stand-down's 30-minute reminder comes back. A person can
   stop the weather close with Stop too. The critical alerts start afresh, so a weather close that
   fails the same way as the daylight one just did is still announced. An
   attempt already waiting for the park, or a close under way, carries on, and its alerts are worded

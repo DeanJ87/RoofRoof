@@ -50,8 +50,9 @@ namespace SQM
         // the restart itself took time no clock ran through (start-up, WiFi).
         constexpr uint64_t RESTART_ALLOWANCE_MS = 10000;
         // Spec 013: a person's stop of a daylight-only close is ended by the
-        // weather only once it has been not safe this long without a break
-        // (one stale poll can't send a park request against the person's stop).
+        // weather once it has been not safe this long in all since the stop
+        // (added up over the spells, so a flapping verdict still gets there;
+        // one stale poll can't send a park request against the person's stop).
         constexpr uint64_t WEATHER_REARM_CONFIRM_MS = 30000;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
@@ -203,8 +204,8 @@ namespace SQM
             };
 
             Decision decide(const Inputs &in, bool personStopped);
-            void trackEpisode(const Inputs &given, bool personStopped);
-            bool personWaitOver(uint64_t nowMs, bool unsafeLong, bool personStopped);
+            void trackEpisode(const Inputs &given, bool personStopped, bool restoredNow);
+            bool personWaitOver(const Inputs &given, bool personStopped);
             void clearAlertThrottle();
             Decision remindIfDue(Decision decision);
             Decision halt(uint64_t limitMs);
@@ -234,7 +235,14 @@ namespace SQM
             Run parkHeld;           // the park result says parked
             Run unknown;            // the roof's position is unknown
             Run safe;               // the verdict is safe
-            Run weatherUnsafe;      // spec 013: the weather itself isn't safe (daylight left out)
+            // Spec 013: unsafe weather added up while a person's daylight
+            // stand-down holds (from one step to the next, both not safe).
+            uint64_t heldUnsafeMs = 0;
+            bool lastWeatherUnsafe = false;
+            uint64_t lastWeatherMs = 0;
+            // A daylight-only episode ended: the next weather episode's
+            // critical alerts go out in their own words (the throttle starts afresh).
+            bool afterDaylightEpisode = false;
             // This step's results of the three runs.
             bool parkConfirmed = false;    // parked for PARK_SETTLE_MS
             bool unknownConfirmed = false; // unknown for UNKNOWN_CONFIRM_MS
@@ -271,7 +279,6 @@ namespace SQM
                 uint64_t limitMs = 0;
                 uint64_t endedAtMs = 0;
                 LastCritical critical;
-                bool daylight = false; // spec 013: a daylight-only attempt
             } paused;
             uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...

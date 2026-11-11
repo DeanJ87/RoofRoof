@@ -84,9 +84,11 @@ namespace
         bool closedByMove = false;   // the roof went from closing to closed this step
         bool daylightOnly = false;   // the episode is daylight-only (the observer's own tracking)
         bool expectRearm = false;    // D1: this step must leave a stand-down, halt or back-off
-        bool pausedDaylight = false; // a daylight attempt ended by daylight going (it may resume)
-        bool unsafeRun = false;      // the weather itself not safe, since unsafeSinceMs
-        uint64_t unsafeSinceMs = 0;
+        bool afterDaylight = false;  // a daylight-only episode ended (the next weather one alerts afresh)
+        uint64_t heldUnsafeMs = 0;   // unsafe weather added up during a person's daylight stand-down
+        bool heldPrevUnsafe = false; // the previous step's weather (for the sum)
+        uint64_t heldPrevMs = 0;
+        bool justRestarted = false; // the first step after a restart raises its reminder first
     };
 
     struct Failure

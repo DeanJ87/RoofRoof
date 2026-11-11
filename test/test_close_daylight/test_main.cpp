@@ -215,25 +215,100 @@ void test_weather_rearms_a_daylight_back_off_and_halt()
     }
 }
 
-// A short unsafe spell, then safe again: the stand-down stays; a new stop restarts the wait.
-void test_short_unsafe_spell_keeps_the_stand_down()
+// The 30 s are added up over unsafe spells since the stop, so a flapping
+// verdict still ends the stand-down; a new stop starts the count again.
+void test_unsafe_spells_add_up_to_end_the_stand_down()
 {
     Rig r;
     startDaylight(r);
     standDownByPerson(r, T0 + 1000);
     r.in.weatherSafe = false;
-    r.runTo(T0 + 20000, 1000);
+    r.at(T0 + 2000);
+    r.runTo(T0 + 22000, 1000); // 20 s unsafe
     r.in.weatherSafe = true;
-    r.at(T0 + 21000);
+    r.runTo(T0 + 27000, 1000); // 5 s safe
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
     r.in.weatherSafe = false;
-    r.runTo(T0 + 45000, 1000); // 24 s unsafe since the break
+    r.at(T0 + 28000);
+    r.runTo(T0 + 37000, 1000); // 29 s unsafe in all
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
-    r.in.personStops++;
-    r.at(T0 + 46000);
-    r.runTo(T0 + 75000, 1000); // 29 s since the new stop
-    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
-    r.at(T0 + 76000);
+    r.at(T0 + 38000); // 30 s
     TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+}
+
+void test_new_stop_starts_the_count_again()
+{
+    Rig r;
+    startDaylight(r);
+    standDownByPerson(r, T0 + 1000);
+    r.in.weatherSafe = false;
+    r.at(T0 + 2000);
+    r.runTo(T0 + 25000, 1000);
+    r.in.personStops++;
+    r.at(T0 + 26000);
+    r.runTo(T0 + 55000, 1000); // 29 s since the new stop
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.at(T0 + 56000);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+}
+
+// Review round 3: unsafe 20 s, safe 5 s, for hours: the weather close starts.
+void test_flapping_weather_ends_a_daylight_stand_down()
+{
+    Rig r;
+    startDaylight(r);
+    standDownByPerson(r, T0 + 6000);
+    uint64_t t = T0 + 60000;
+    bool started = false;
+    for (int cycle = 0; cycle < 20 && !started; ++cycle)
+    {
+        r.in.weatherSafe = false;
+        for (uint64_t end = t + 20000; t < end; t += 1000)
+            started = started || r.at(t).event == Event::Started;
+        r.in.weatherSafe = true;
+        for (uint64_t end = t + 5000; t < end; t += 1000)
+            r.at(t);
+    }
+    TEST_ASSERT_TRUE(started);
+}
+
+// A person's daylight stand-down reminds again while the weather itself is unsafe.
+void test_daylight_stand_down_reminds_while_unsafe()
+{
+    Rig r;
+    startDaylight(r);
+    standDownByPerson(r, T0 + 1000);
+    r.in.weatherSafe = false;
+    r.in.personStops++; // stopped again every 20 s: the stand-down holds
+    Counts c;
+    for (uint64_t t = T0 + 2000; t < T0 + REMIND_MS + 60000; t += 1000)
+    {
+        if ((t / 1000) % 20 == 0)
+            r.in.personStops++;
+        Rig::note(c, r.at(t));
+    }
+    bool reminded = false;
+    for (const Decision &d : c.events)
+        reminded = reminded || (d.event == Event::StoppedByPerson && d.reminder);
+    TEST_ASSERT_TRUE(reminded);
+}
+
+// Review round 3: after a daylight episode ended by 10 minutes without a
+// reason, the next weather episode's identical alert isn't throttled.
+void test_weather_alerts_after_a_daylight_episode_ended()
+{
+    Rig r;
+    r.in.roof = State::Error;
+    const Decision daylight = startDaylight(r);
+    TEST_ASSERT_TRUE(daylight.alert);
+    r.in.daylight = false;
+    r.runTo(T0 + 2000 + REARM_SAFE_MS + 5000, 1000);
+    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+    r.in.weatherSafe = false;
+    const Decision d = r.at(r.in.nowMs + 1000);
+    assertEvent(d, Event::CannotClose, Cause::FaultLatched);
+    TEST_ASSERT_TRUE(d.alert);
+    TEST_ASSERT_FALSE(d.daylight);
 }
 
 // Review: the weather close's critical alert isn't swallowed by the daylight
@@ -497,7 +572,11 @@ int main(int, char **)
     RUN_TEST(test_halt_holds_while_the_sun_is_up);
     RUN_TEST(test_weather_rearms_a_daylight_stand_down);
     RUN_TEST(test_weather_rearms_a_daylight_back_off_and_halt);
-    RUN_TEST(test_short_unsafe_spell_keeps_the_stand_down);
+    RUN_TEST(test_unsafe_spells_add_up_to_end_the_stand_down);
+    RUN_TEST(test_new_stop_starts_the_count_again);
+    RUN_TEST(test_flapping_weather_ends_a_daylight_stand_down);
+    RUN_TEST(test_daylight_stand_down_reminds_while_unsafe);
+    RUN_TEST(test_weather_alerts_after_a_daylight_episode_ended);
     RUN_TEST(test_weather_failure_alerts_after_a_daylight_failure);
     RUN_TEST(test_flipped_episode_closes_as_weather);
     RUN_TEST(test_weather_alerts_at_once_after_a_daylight_cannot_move);

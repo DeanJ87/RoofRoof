@@ -323,9 +323,9 @@ reason.
   the sequence is halted, backing off after a failure or unable to move, the sequence MUST re-arm
   and start the weather close at once (an unable-to-move sequence raises its critical alert again,
   in the weather's words) (as if the daylight episode had not happened); when it is stood down by a
-  person, once the weather has been not safe for 30 s without a break (a new stop restarts the
-  wait). The critical alerts' throttle starts afresh at that moment, and also when unsafe weather
-  resumes a daylight attempt that was paused because daylight ended. An
+  person, once the weather has been not safe for 30 s in all since the stop, added up over unsafe
+  spells (a new stop starts the count again). The critical alerts' throttle starts afresh at that
+  moment, and also when a weather episode starts after a daylight-only episode ended. An
   attempt waiting for the park or a close under way carries on. From then on the episode is a
   weather episode (its alerts are worded for the weather).
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
@@ -428,7 +428,8 @@ possible was taken.
 5. **Unsafe weather re-arms a daylight-only stand-down, halt or back-off.** The constitution
    requires unsafe weather to end closed; a person's stop of a daylight close is not a stop of a
    weather close that hadn't started. The person can stop the weather close too. A person's
-   stand-down waits for 30 s of unsafe weather first, so one stale or missed SQMeter poll can't
+   stand-down waits for 30 s of unsafe weather in all (added up over spells, so a flapping verdict
+   still ends it) first, so one stale or missed SQMeter poll can't
    send a park request against the person's stop; halts and back-offs re-arm at once. The
    critical alerts start afresh then, so a weather failure isn't hidden by the same daylight
    failure minutes before.
@@ -448,8 +449,8 @@ possible was taken.
     in the demo build before merging.
 12. **No 30-minute reminders for a person's stop of a daylight close.** The first "Automatic
     close stopped" goes out; a person who stopped it meant it, and a wake-me reminder every 30
-    minutes all day would be noise. Reminders stay for halts, park failures and "can't close by
-    itself", and for every weather episode.
+    minutes all day would be noise. The reminders come back while the weather itself is unsafe,
+    and stay for halts, park failures and "can't close by itself", and for every weather episode.
 13. **The daylight events follow the alert pause, including "only while an imaging app is
     connected".** A crashed imaging PC disconnects, so that setting also silences "Roof open in
     daylight"; the docs say to use "Any time" when relying on it. Exempting one non-critical event
