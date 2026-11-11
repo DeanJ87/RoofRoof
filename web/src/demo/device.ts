@@ -200,6 +200,16 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** The calibration run (spec 016): `start` and `confirm` with their JSON bodies, `abort`, `status`. */
+  calibration(action: 'start' | 'abort' | 'confirm' | 'status', body = ''): Reply {
+    const reply = JSON.parse(this.core.calibration(action, body));
+    if (action !== 'status') {
+      this.persist();
+      this.notify();
+    }
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** Why `action` (flashWrite, firmwareUpload, filesystemUpload, restart) is refused now, or "" (spec 010's rule). */
   platformHold = (action: string): string => this.core.platformHold(action);
 

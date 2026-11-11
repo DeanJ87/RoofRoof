@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-015
+# RoofRoof roadmap: specs 002-016
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -223,6 +223,26 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** any motion test, Open or Close (they stay in the commissioning guide); the
   advanced settings, which stay in Settings.
 
+### 016 Calibration run (base: 015)
+
+- **Scope:**
+  - An attended calibration run, started only by a person from the web UI who confirms they are
+    at the roof: from the closed end, a slow open and a slow close (and, if asked, an open and a
+    close at the top duty), each leg bounded by its own time limit (a setting), the existing jam,
+    over-current and supply checks and the drive budget, stopping at the first magnet.
+  - What it measures: each leg's time at a known duty, the Hall reading at rest at each end, the
+    in-between level and its noise, and the current and supply while driving.
+  - What it proposes: the speed (from the owner's measured travel), the timeout margin, which end
+    reads high and the Hall thresholds, each beside the value it would replace. Nothing is saved
+    until the owner accepts, and then only through the settings save path.
+  - Refused while the weather isn't safe, daylight wants the roof closed, the mount isn't parked,
+    the close sequence is busy, a fault is latched, or anything that already blocks an open.
+  - The pure run in `lib/`, a firmware route (start, abort, status), a Calibrate card in Settings
+    → Roof, a wizard page after the Hall page that links to the attended run page, the demo, and
+    the commissioning guide's stages 3 and 8.
+- **Out of scope:** a per-move telemetry log (spec 017); proposing current limits; any run
+  started by Alpaca, MQTT, the close sequence or a schedule.
+
 ## Merge order
 
 ```text
@@ -230,7 +250,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
-                                                                  └─ 015
+                                                                  └─ 015 ── 016
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

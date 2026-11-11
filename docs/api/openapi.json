@@ -92,7 +92,15 @@
                   },
                   "alpaca": {
                     "enabled": true,
-                    "clients": {}
+                    "clients": {
+                      "dome": {
+                        "connected": false,
+                        "watching": false,
+                        "silent": false,
+                        "lastCheckedAgeMs": null,
+                        "clientId": null
+                      }
+                    }
                   },
                   "firmware": {
                     "name": "RoofRoof",
@@ -164,16 +172,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794367229,
-                    "iso": "2026-11-11T03:20:29+0000",
+                    "epoch": 1794427152,
+                    "iso": "2026-11-11T19:59:12+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794363627173,
-                    "nextSync": 1794370827173,
+                    "lastSync": 1794423550410,
+                    "nextSync": 1794430750410,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -205,7 +213,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794367167173,
+                    "lastPublish": 1794427090410,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -225,9 +233,9 @@
                     "moveTimeoutMs": 0,
                     "hall": {
                       "level": "low",
-                      "counts": 712
+                      "counts": 565
                     },
-                    "supplyVolts": 12.46,
+                    "supplyVolts": 12.6,
                     "supplyLow": false,
                     "minSupplyVolts": 11,
                     "currentSense": false,
@@ -240,26 +248,27 @@
                     },
                     "rainContact": "notFitted",
                     "closePending": false,
+                    "calibrating": false,
                     "closePhase": "idle",
                     "weather": "safe",
                     "weatherText": "safe",
                     "parkConfirmed": true,
-                    "parkText": "parked (N.I.N.A. AtPark)",
+                    "parkText": "parked",
                     "fault": null,
                     "watchdogTrips": 0,
-                    "maxStepGapMs": 21,
-                    "maxWatchdogBeatAgeMs": 12,
-                    "simulation": "off",
+                    "maxStepGapMs": 20,
+                    "maxWatchdogBeatAgeMs": 0,
+                    "simulation": "demo",
                     "daylight": {
                       "mode": "alert",
-                      "state": "night",
-                      "sunAltitudeDeg": -14.2,
+                      "state": "unknown",
+                      "sunAltitudeDeg": null,
                       "limitDeg": 0,
-                      "text": "Sun -14.2° < 0.0°",
+                      "text": "Location not set",
                       "closes": false
                     }
                   },
-                  "configRevision": 3751871155
+                  "configRevision": 388206608
                 }
               }
             }
@@ -940,6 +949,451 @@
             "$ref": "#/components/parameters/roofCommand"
           }
         ]
+      }
+    },
+    "/api/roof/calibration/start": {
+      "post": {
+        "operationId": "post_roof_calibration_start",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Start a calibration run",
+        "description": "Spec 016: an attended run, started only by a person at the roof. From where the roof is, a slow close to the closed end (unless `at` is `closed`), a slow open and a slow close, and with `topPass` an open and a close at the top duty; each leg stops at the first magnet and is bounded by `roof.calibrationLimitSeconds` (later legs by the measured ones), the existing faults and the drive budget. Refused (409, with `reason` and `error`) unless `attended` is true, the weather is safe, daylight doesn't want the roof closed, the mount is confirmed parked, the automatic close is idle, no fault is latched, the roof is at rest, nothing blocks an open and the Hall reading agrees with `at`. Reasons: `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's (`supplyLow`, `supplyUnreadable`, `currentUnreadable`, `hallNotSettled`, `settingsInvalid`). Read the run with `GET /api/roof/calibration`. Nothing is saved: the proposal is accepted with `POST /api/config`. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "description": "`running` when accepted; the roof's state when refused."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "description": "`running` when accepted; the roof's state when refused."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attended": {
+                    "type": "boolean",
+                    "description": "The person confirms they are at the roof and can see it; must be true."
+                  },
+                  "at": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "partWay"
+                    ],
+                    "description": "Where the roof is now, as the person sees it."
+                  },
+                  "travelMm": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 20000,
+                    "description": "The travel between the magnets' trigger points, measured with a tape."
+                  },
+                  "topPass": {
+                    "type": "boolean",
+                    "description": "Also open and close at the top duty (default false)."
+                  }
+                },
+                "required": [
+                  "attended",
+                  "at",
+                  "travelMm"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "attended": true,
+                "at": "closed",
+                "travelMm": 1850,
+                "topPass": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roof/calibration/abort": {
+      "post": {
+        "operationId": "post_roof_calibration_abort",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Stop the calibration run",
+        "description": "Stops the roof as a person's stop (the motor off at once) and ends any calibration run, with no proposal and every setting unchanged. Always accepted. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
+      }
+    },
+    "/api/roof/calibration/confirm": {
+      "post": {
+        "operationId": "post_roof_calibration_confirm",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Confirm the open end",
+        "description": "After the slow open the run waits (phase `confirm`, at most 5 minutes) for the person at the roof to say whether the roof is now at its open end: the one check of the motor's direction the run can't make itself. `true` carries on with the slow close; `false` ends the run (`wrongEnd`) with nothing proposed. 409 `notWaiting` when the run isn't waiting for it. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "atOpenEnd": {
+                    "type": "boolean",
+                    "description": "The roof is now fully open."
+                  }
+                },
+                "required": [
+                  "atOpenEnd"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "atOpenEnd": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roof/calibration": {
+      "get": {
+        "operationId": "get_roof_calibration",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "The calibration run",
+        "description": "Spec 016: the last calibration run since start-up (`idle` before any): its state, the leg under way with its limit, how it ended, each measured leg (time, duty, end level, speed at 100 % duty, current and supply), the Hall readings (in between, and at rest at each end) and, for a finished run, the proposal with the value at the start beside each proposed one (`null` where withheld, with the reason). Read-only, kept in memory only.\n\nOpen: Read-only: the calibration run's readings and proposal; no address or secret; changes nothing.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Calibration"
+                },
+                "example": {
+                  "state": "idle",
+                  "active": false,
+                  "request": null,
+                  "leg": null,
+                  "ending": null,
+                  "legs": [],
+                  "hall": {
+                    "between": null,
+                    "closed": null,
+                    "open": null
+                  },
+                  "currentSense": false,
+                  "maxCurrentAmps": 0,
+                  "proposal": null
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/roof/inputs": {
@@ -2435,6 +2889,454 @@
         ],
         "additionalProperties": false
       },
+      "Calibration": {
+        "title": "calibration",
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "currentSense": {
+            "type": "boolean"
+          },
+          "ending": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "hall": {
+            "type": "object",
+            "properties": {
+              "between": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "noise": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "max",
+                  "mean",
+                  "min",
+                  "noise"
+                ],
+                "additionalProperties": false
+              },
+              "closed": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "level": {
+                    "type": "string"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "level",
+                  "max",
+                  "mean",
+                  "min"
+                ],
+                "additionalProperties": false
+              },
+              "open": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "level": {
+                    "type": "string"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "level",
+                  "max",
+                  "mean",
+                  "min"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "between",
+              "closed",
+              "open"
+            ],
+            "additionalProperties": false
+          },
+          "leg": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "count": {
+                "type": "number"
+              },
+              "elapsedMs": {
+                "type": "number"
+              },
+              "index": {
+                "type": "number"
+              },
+              "limitMs": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "count",
+              "elapsedMs",
+              "index",
+              "limitMs",
+              "name",
+              "phase"
+            ],
+            "additionalProperties": false
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ampsMean": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "ampsPeak": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "drivenMs": {
+                  "type": "number"
+                },
+                "dutyPercent": {
+                  "type": "number"
+                },
+                "level": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "speedMmPerSecond": {
+                  "type": "number"
+                },
+                "supplyMinVolts": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "target": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ampsMean",
+                "ampsPeak",
+                "drivenMs",
+                "dutyPercent",
+                "level",
+                "name",
+                "speedMmPerSecond",
+                "supplyMinVolts",
+                "target"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "maxCurrentAmps": {
+            "type": "number"
+          },
+          "proposal": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "hallHighCounts": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "hallHighEnd": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "string"
+                  },
+                  "old": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "hallLowCounts": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "hallProblem": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "speedMmPerSecond": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "speedProblem": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "reason": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "reason",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "timeoutMarginSeconds": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "travelMm": {
+                "type": "object",
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "reason": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "reason",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "hallHighCounts",
+              "hallHighEnd",
+              "hallLowCounts",
+              "hallProblem",
+              "speedMmPerSecond",
+              "speedProblem",
+              "timeoutMarginSeconds",
+              "travelMm",
+              "warnings"
+            ],
+            "additionalProperties": false
+          },
+          "request": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "limitSeconds": {
+                "type": "number"
+              },
+              "topPass": {
+                "type": "boolean"
+              },
+              "travelMm": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "at",
+              "limitSeconds",
+              "topPass",
+              "travelMm"
+            ],
+            "additionalProperties": false
+          },
+          "state": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "active",
+          "currentSense",
+          "ending",
+          "hall",
+          "leg",
+          "legs",
+          "maxCurrentAmps",
+          "proposal",
+          "request",
+          "state"
+        ],
+        "additionalProperties": false
+      },
       "Config": {
         "title": "config",
         "type": "object",
@@ -3149,6 +4051,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "calibrationLimitSeconds": {
+                "type": "number"
+              },
               "currentAmpsPerVolt": {
                 "type": "number"
               },
@@ -3202,6 +4107,7 @@
               }
             },
             "required": [
+              "calibrationLimitSeconds",
               "currentAmpsPerVolt",
               "currentSenseEnabled",
               "hallHighCounts",
@@ -3892,6 +4798,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "calibrationLimitSeconds": {
+                "type": "number"
+              },
               "currentAmpsPerVolt": {
                 "type": "number"
               },
@@ -4713,6 +5622,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "calibrating": {
+                "type": "boolean"
+              },
               "closePending": {
                 "type": "boolean"
               },
@@ -4974,6 +5886,7 @@
               }
             },
             "required": [
+              "calibrating",
               "closePending",
               "closePhase",
               "currentSense",

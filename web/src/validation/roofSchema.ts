@@ -12,6 +12,7 @@ export const roofConfigSchema = z
     speedMmPerSecond: z.number().min(1).max(500),
     timeoutMarginSeconds: z.number().int().min(3).max(300),
     leaveMagnetSeconds: z.number().int().min(2).max(120),
+    calibrationLimitSeconds: z.number().int().min(30).max(600),
     rampUpMs: z.number().int().min(0).max(30000),
     rampDownMs: z.number().int().min(0).max(30000),
     topDutyPercent: z.number().int().min(20).max(100),

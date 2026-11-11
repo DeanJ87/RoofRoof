@@ -28,7 +28,7 @@ namespace SQM
 
         HoldReason platformHold(PlatformAction action, const PlatformState &state)
         {
-            if (roofMoving(state.roof))
+            if (roofMoving(state.roof) || state.calibrating)
                 return HoldReason::Moving;
             if (state.closeWaiting)
                 return HoldReason::CloseWaiting;

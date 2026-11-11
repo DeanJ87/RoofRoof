@@ -57,4 +57,4 @@ The firmware divides the reading by the PWM duty that was applied (the sense out
 
 ## Travel and speed
 
-Measure the travel between the two magnets' trigger points and set `roof.travelMm`; time a full move at 100% duty and set `roof.speedMmPerSecond` (travel ÷ seconds). The [Roof motion](../user-guide/roof-motion.md#settings) page explains how the timeouts and the slow-down come from them.
+The [calibration run](../user-guide/calibration-run.md) measures them with the motor connected: it times a slow open and close (and optionally a pair at the top duty) and proposes the speed for the travel you measured, the timeout margin, which end reads high and thresholds clear of the in-between noise. By hand: measure the travel between the two magnets' trigger points and set `roof.travelMm`; time a full move at 100% duty and set `roof.speedMmPerSecond` (travel ÷ seconds). The [Roof motion](../user-guide/roof-motion.md#settings) page explains how the timeouts and the slow-down come from them.

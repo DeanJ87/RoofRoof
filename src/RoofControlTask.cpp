@@ -186,6 +186,7 @@ namespace SQM
         controller.tick(readings);
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
+        stepCalibration(readings); // spec 016: after the tick, under the same lock
         refreshSnapshot();
     }
 

@@ -386,6 +386,9 @@
     "roof": {
       "type": "object",
       "properties": {
+        "calibrating": {
+          "type": "boolean"
+        },
         "closePending": {
           "type": "boolean"
         },
@@ -647,6 +650,7 @@
         }
       },
       "required": [
+        "calibrating",
         "closePending",
         "closePhase",
         "currentSense",

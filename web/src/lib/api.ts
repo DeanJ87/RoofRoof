@@ -31,7 +31,7 @@ export type RoofCommand = 'open' | 'close' | 'stop' | 'clear-fault';
 export const ROOF_COMMAND_TIMEOUT_MS = 5000;
 
 // AbortSignal.timeout where the browser has it, else the same from a controller.
-const timeoutSignal = (ms: number): AbortSignal => {
+export const timeoutSignal = (ms: number): AbortSignal => {
   if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
   const controller = new AbortController();
   setTimeout(() => controller.abort(), ms);

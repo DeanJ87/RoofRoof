@@ -26,6 +26,8 @@ export interface Core extends BackupCore {
   pending(): string;
   // The simulated roof (spec 011, tools/demo-core/emulated_device_roof.cpp).
   roofCommand(name: string): string;
+  // Spec 016: start (with the body), abort, status.
+  calibration(action: string, body: string): string;
   roofInject(json: string): string;
   roofPanel(): string;
   platformHold(action: string): string;

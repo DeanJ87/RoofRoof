@@ -32,6 +32,7 @@ describe('RoofStopBar', () => {
     ['opening', { state: 'opening' }],
     ['closing', { state: 'closing' }],
     ['a close waiting', { state: 'open', closePending: true }],
+    ['a calibration run pauses at an end', { state: 'open', calibrating: true }],
   ] as [string, Partial<RoofStatus>][])('shows Stop while %s', (_, roof) => {
     current = withRoof(roof);
     render(<RoofStopBar />);

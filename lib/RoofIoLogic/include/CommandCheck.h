@@ -34,7 +34,13 @@ namespace SQM
             // in weather that isn't safe (or in daylight) is accepted and counts
             // as a person's stop, instead of being refused. Off by default.
             bool remoteStopsClose = false;
+            // Spec 016: a calibration run is under way. Open and close are
+            // refused (`calibrating`) for every origin but the automatic close,
+            // which ends the run first (RoofControl::automaticClose).
+            bool calibrating = false;
         };
+
+        constexpr const char *CALIBRATING_REASON = "calibrating";
 
         // An origin with no login that isn't the controller: an Alpaca client
         // (spec 006) or MQTT (spec 008). Each gets every rule below that

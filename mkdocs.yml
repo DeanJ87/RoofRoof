@@ -85,6 +85,7 @@ nav:
     - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
     - Roof motion: user-guide/roof-motion.md
+    - Calibration run: user-guide/calibration-run.md
     - Safety inputs: user-guide/safety-inputs.md
     - Close on unsafe weather: user-guide/close-on-unsafe.md
     - Security: user-guide/security.md

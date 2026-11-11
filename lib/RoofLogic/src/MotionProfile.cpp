@@ -94,6 +94,26 @@ namespace SQM
             return std::max(slow, std::min(up, down));
         }
 
+        float legFraction(const Settings &settings, const CalibrationLeg &leg, uint32_t drivenMs)
+        {
+            const float slow = dutyFraction(settings.slowDutyPercent);
+            const float cruise = dutyFraction(leg.dutyPercent);
+            if (cruise <= slow)
+                return cruise;
+            float up = cruise;
+            if (drivenMs < settings.rampUpMs)
+                up = slow + (cruise - slow) * static_cast<float>(drivenMs) / static_cast<float>(settings.rampUpMs);
+            float down = cruise;
+            if (leg.slowAfterMs > 0 && drivenMs >= leg.slowAfterMs)
+            {
+                const uint32_t intoMs = drivenMs - leg.slowAfterMs;
+                down = intoMs >= settings.rampDownMs
+                           ? slow
+                           : cruise - (cruise - slow) * static_cast<float>(intoMs) / static_cast<float>(settings.rampDownMs);
+            }
+            return std::max(slow, std::min(up, down));
+        }
+
         float advanceMm(const Settings &settings, uint8_t duty, uint32_t elapsedMs)
         {
             return static_cast<float>(fullSpeedMmPerMs(settings) * (duty / MAX_DUTY) * elapsedMs);

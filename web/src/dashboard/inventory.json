@@ -364,6 +364,11 @@
   ],
   "notShown": [
     {
+      "match": "status.roof.calibrating",
+      "reason": "Spec 016: keeps the Stop bar shown for the whole calibration run; the run itself is on its page",
+      "shownOn": "Calibration run"
+    },
+    {
       "match": "status.partitions.**",
       "reason": "Flash layout",
       "shownOn": "System"

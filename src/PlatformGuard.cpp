@@ -37,6 +37,7 @@ namespace SQM
                 {
                     state.roof = theRoof->state();
                     state.closeWaiting = theRoof->closeWaiting();
+                    state.calibrating = theRoof->calibrating(); // spec 016: refused up front too
                 }
                 else
                 {
@@ -91,6 +92,11 @@ namespace SQM
             theRoof = roof;
             sequenceProbe = std::move(busy);
             committedProbe = std::move(restartCommitted);
+        }
+
+        RoofIo::SequenceState sequence()
+        {
+            return sequenceNow();
         }
 
         RoofIo::HoldReason hold(RoofIo::PlatformAction action)

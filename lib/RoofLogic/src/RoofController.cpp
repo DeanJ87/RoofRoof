@@ -40,11 +40,7 @@ namespace SQM
             const uint32_t gapMs = readings.nowMs - lastStepMs;
             const bool late = stepped && move.driving && gapMs > MAX_STEP_GAP_MS;
             if (move.driving && stepped)
-            {
-                advanceEstimate(gapMs);
-                uint32_t &used = driveBudgetUsedMs[static_cast<int>(move.target)];
-                used = gapMs > UINT32_MAX - used ? UINT32_MAX : used + gapMs;
-            }
+                accountDrive(gapMs);
             stepped = true;
             lastStepMs = readings.nowMs;
             last = readings;
@@ -71,7 +67,19 @@ namespace SQM
             }
             current.driving = move.driving;
             current.moveElapsedMs = move.driving ? readings.nowMs - move.driveStartMs : 0;
+            current.calibrating = move.active && move.calibration;
             return out;
+        }
+
+        // The gap just driven: the estimate, the drive budget and (spec 016) the
+        // duty a calibration leg applied over it, for its speed.
+        void Controller::accountDrive(uint32_t gapMs)
+        {
+            advanceEstimate(gapMs);
+            uint32_t &used = driveBudgetUsedMs[static_cast<int>(move.target)];
+            used = gapMs > UINT32_MAX - used ? UINT32_MAX : used + gapMs;
+            if (move.calibration)
+                move.dutyMs += static_cast<float>(out.duty) / 255.0f * static_cast<float>(gapMs);
         }
 
         CommandResult Controller::command(Command command, Origin origin)
@@ -144,6 +152,8 @@ namespace SQM
                 return refused(Refusal::PositionUnknown);
 
             // A reversal stops first; the dead time runs before the new drive.
+            // A calibration leg replaced by a normal move ends there (spec 016).
+            endLeg(false);
             stopDriving();
             move = Move{};
             move.active = true;
@@ -160,6 +170,7 @@ namespace SQM
         {
             if (!move.active)
                 return;
+            endLeg(false);
             stopDriving();
             // constitution I: an abort part-way leaves the position unknown.
             if (!keepEstimate || move.fromUnknown)
@@ -184,6 +195,7 @@ namespace SQM
 
         void Controller::latch(const Fault &fault)
         {
+            endLeg(false);
             stopDriving();
             move = Move{};
             current.positionKnown = false;
@@ -194,6 +206,7 @@ namespace SQM
             current.fault = fault;
             if (current.fault.kind == FaultKind::None)
                 current.fault.kind = FaultKind::External;
+            ++faultsLatched;
         }
 
         void Controller::raiseFault(const Fault &fault)

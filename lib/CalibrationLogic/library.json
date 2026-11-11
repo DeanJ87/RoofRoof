@@ -1,0 +1,8 @@
+{
+  "name": "CalibrationLogic",
+  "version": "0.1.0",
+  "description": "The attended calibration run: its legs, statistics, proposal and status document (pure logic, spec 016)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}

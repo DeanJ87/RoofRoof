@@ -96,8 +96,9 @@ namespace SQM
             SupplyUnreadable,  // limit: minimum volts
             CurrentUnreadable, // current sense on, no reading; limit: max amps
             SettingsInvalid,
-            NotAPerson, // clearing a fault needs a person
-            Moving,     // new settings while a move is active
+            NotAPerson, // clearing a fault (or a calibration leg) needs a person
+            Moving,     // new settings, or a calibration leg, while a move is active
+            LegInvalid, // spec 016: a calibration leg outside its ranges
         };
 
         // The answer to a command.
@@ -139,6 +140,37 @@ namespace SQM
             Fault fault;
             HallLevel hall = HallLevel::Unsettled;
             uint16_t hallCounts = 0;
+            bool calibrating = false; // spec 016: the active move is a calibration leg
+        };
+
+        // Spec 016: one leg of an attended calibration run (Controller::calibrate).
+        // A person's move toward `target` at a fixed duty profile, bounded by its
+        // own limit, that stops at the first magnet after leaving the one it
+        // started on: the ends are told apart by the direction driven, not by
+        // the polarity setting (which the run is measuring).
+        struct CalibrationLeg
+        {
+            End target = End::Closed; // drive toward this end (the open direction setting maps it)
+            uint8_t dutyPercent = 0;  // the cruise duty: the slow duty up to the top duty
+            // Above the slow duty: ramp back down to it after this much driving
+            // (over the ramp-down time); 0 never does.
+            uint32_t slowAfterMs = 0;
+            uint32_t limitMs = 0; // the leg's hard timeout and drive budget
+            // Low or High: the leg must end on that level (the other is a wrong
+            // magnet); Unsettled: any magnet.
+            HallLevel expect = HallLevel::Unsettled;
+        };
+
+        // How the last calibration leg ended (Controller::calibrationReport).
+        struct CalibrationReport
+        {
+            uint32_t ended = 0;   // calibration legs ended since construction
+            bool arrived = false; // stopped at a magnet; false: stopped, replaced or faulted
+            End target = End::Closed;
+            HallLevel startLevel = HallLevel::Unsettled; // when the driver turned on
+            HallLevel level = HallLevel::Unsettled;      // where it stopped
+            uint32_t drivenMs = 0;                       // from the driver on to the stop
+            float dutyMs = 0.0f;                         // the duty fraction integrated over drivenMs
         };
 
         // Stable machine names for status documents, logs and MQTT (never translated).

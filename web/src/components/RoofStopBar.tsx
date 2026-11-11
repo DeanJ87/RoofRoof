@@ -19,6 +19,7 @@ const barLabel = (status: SystemStatus | null) => {
   if (!status) return t('roof.stopBarNoData');
   if (state === 'opening') return t('roof.state.opening');
   if (state === 'closing') return t('roof.state.closing');
+  if (status.roof?.calibrating) return t('calibrate.stopBar');
   return t('roof.closeWaiting');
 };
 

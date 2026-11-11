@@ -140,6 +140,7 @@ namespace SQM
         RoofIo::CommandContext context;
         context.closePending = closePending;
         context.remoteStopsClose = remoteStopsClose.load();
+        context.calibrating = calibration.active(); // spec 016: open and close wait for the run
         return RoofIo::checkCommand(command, origin, currentGates(), controller, context);
     }
 
@@ -160,6 +161,9 @@ namespace SQM
             personStops++;
         if (check.standsDown)
             remoteStops++; // spec 014: the stand-down's alert names a remote stop
+        // Spec 016: any accepted stop ends a calibration run.
+        if (calibration.active())
+            endCalibrationFor(false, origin == Roof::Origin::Person ? "Stopped by a person" : "Stopped by a stop command");
         // Applied on this one check: a settings save between two checks can't
         // count a stop that then isn't run.
         return runChecked(command, origin);
@@ -244,7 +248,12 @@ namespace SQM
                     "A person stopped the roof: the automatic close is withdrawn",
                     controller.status().state};
             else
+            {
+                // Spec 016: the automatic close always wins; a closing leg carries on as its close.
+                if (calibration.active())
+                    endCalibrationFor(true, "");
                 outcome = commandLocked(Roof::Command::Close, Roof::Origin::Automatic, now);
+            }
         }
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
@@ -375,6 +384,7 @@ namespace SQM
         s.rainFitted = settings.rainFitted;
         s.rain = static_cast<RoofIo::Contact>(rainReading.load());
         s.closePending = closePending;
+        s.calibrating = calibration.active();
         s.personStops = personStops;
         s.remoteStops = remoteStops;
         closeWaitingNow.store(closePending);
@@ -382,8 +392,8 @@ namespace SQM
         s.watchdogTrips = watchdogTrips;
         s.maxStepGapMs = maxStepGapMs;
         s.simulation = Bench::SIMULATION;
-        const bool changed =
-            s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind || s.closePending != snap.closePending;
+        const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind ||
+                             s.closePending != snap.closePending || s.calibrating != snap.calibrating;
         snap = s;
         stateNow.store(static_cast<uint8_t>(s.status.state));
         if (changed)
@@ -396,7 +406,7 @@ namespace SQM
             return false;
         const bool changed = RoofIo::motionSettingsChanged(current, next);
         RoofLocked held(lock);
-        return RoofIo::settingsSaveRefused(controller.status().state, changed);
+        return RoofIo::settingsSaveRefused(controller.status().state, changed, calibration.active());
     }
 
     void RoofControl::updateConfig(const Config &config)
@@ -458,6 +468,7 @@ namespace SQM
         RoofIo::PlatformState state;
         state.roof = controller.status().state;
         state.closeWaiting = closePending;
+        state.calibrating = calibration.active(); // spec 016: held for the whole run
         // Roof and close only: the close sequence's part is the caller's (PlatformGuard).
         const RoofIo::HoldReason reason = RoofIo::platformHold(RoofIo::PlatformAction::FlashWrite, state);
         if (reason == RoofIo::HoldReason::None && action)
@@ -486,7 +497,7 @@ namespace SQM
 
     bool RoofControl::moving() const
     {
-        return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load()));
+        return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load())) || calibratingNow.load();
     }
 
     RoofIo::GateInputs RoofControl::currentGates() const

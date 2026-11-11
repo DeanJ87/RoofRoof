@@ -178,6 +178,7 @@ namespace SQM
             roof["speedMmPerSecond"] = r.speedMmPerSecond;
             roof["timeoutMarginSeconds"] = r.timeoutMarginSeconds;
             roof["leaveMagnetSeconds"] = r.leaveMagnetSeconds;
+            roof["calibrationLimitSeconds"] = r.calibrationLimitSeconds;
             roof["rampUpMs"] = r.rampUpMs;
             roof["rampDownMs"] = r.rampDownMs;
             roof["topDutyPercent"] = r.topDutyPercent;

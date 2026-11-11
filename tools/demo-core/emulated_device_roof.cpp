@@ -3,6 +3,7 @@
 
 #include "emulated_device.h"
 
+#include "CalibrationDocument.h"
 #include "PlatformHold.h"
 #include "RoofStatus.h"
 
@@ -45,6 +46,47 @@ std::string EmulatedDevice::roofCommand(const std::string &name)
     return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
 }
 
+std::string EmulatedDevice::calibration(const std::string &action, const std::string &body)
+{
+    runRoof();
+    if (action == "status")
+    {
+        DynamicJsonDocument doc(Calib::DOCUMENT_CAPACITY);
+        Calib::writeDocument(doc.to<JsonObject>(), roof.calibrationReport(), roof.clockMs());
+        return response(200, serialize(doc));
+    }
+    if (action == "abort")
+    {
+        const DemoRoof::Outcome outcome = roof.command(Roof::Command::Stop, Roof::Origin::Person);
+        return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
+    }
+    if (action == "confirm")
+    {
+        StaticJsonDocument<128> in;
+        if (deserializeJson(in, body) || !in["atOpenEnd"].is<bool>())
+            return response(400, errorJson("atOpenEnd must be true or false"));
+        const DemoRoof::Outcome outcome = roof.confirmCalibration(in["atOpenEnd"].as<bool>());
+        return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
+    }
+    if (action != "start")
+        return response(404, errorJson("Not found"));
+    StaticJsonDocument<512> in;
+    Calib::Request wanted;
+    const char *error = "The body must be JSON";
+    if (deserializeJson(in, body) || !Calib::parseRequest(in.as<JsonVariantConst>(), wanted, error))
+        return response(400, errorJson(error));
+    const DemoRoof::Outcome outcome = roof.startCalibration(wanted);
+    StaticJsonDocument<512> doc;
+    doc["success"] = outcome.accepted;
+    doc["state"] = outcome.accepted ? "running" : Roof::stateName(outcome.state);
+    if (!outcome.accepted)
+    {
+        doc["reason"] = outcome.reason;
+        doc["error"] = outcome.text;
+    }
+    return response(outcome.accepted ? 200 : 409, serialize(doc));
+}
+
 std::string EmulatedDevice::roofInject(const std::string &json)
 {
     StaticJsonDocument<512> p;
@@ -79,6 +121,7 @@ std::string EmulatedDevice::platformHold(const std::string &action) const
     RoofIo::PlatformState state;
     state.roof = roof.snapshot().status.state;
     state.sequence = CloseSeq::platformState(roof.phase());
+    state.calibrating = roof.calibrating();
     const RoofIo::HoldReason reason = RoofIo::platformHold(which, state);
     return reason == RoofIo::HoldReason::None ? std::string() : RoofIo::holdText(reason);
 }

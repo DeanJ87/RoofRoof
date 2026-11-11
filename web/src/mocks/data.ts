@@ -1,4 +1,4 @@
-import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, RoofInputs, WiFiNetwork } from '../types';
+import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, CalibrationStatus, RoofInputs, WiFiNetwork } from '../types';
 
 export { mockConfig } from './config';
 
@@ -123,6 +123,7 @@ export const mockStatus: SystemStatus = {
     parkSwitches: { fitted: 0, switch1: 'notFitted', switch2: 'notFitted' },
     rainContact: 'notFitted',
     closePending: false,
+    calibrating: false,
     closePhase: 'idle',
     weather: 'safe',
     weatherText: 'safe',
@@ -181,4 +182,55 @@ export const mockInputs: RoofInputs = {
   },
   park: { parked: true, text: 'parked' },
   nina: { state: 'good', generation: 1, connected: true, atPark: true, slewing: false, ageMs: 900, text: '' },
+};
+
+// GET /api/roof/calibration (spec 016): a finished run that proposes a faster speed.
+export const mockCalibration: CalibrationStatus = {
+  state: 'done',
+  active: false,
+  request: { at: 'closed', travelMm: 1850, topPass: false, limitSeconds: 180 },
+  leg: null,
+  ending: { reason: 'done', text: 'Calibration finished' },
+  legs: [
+    {
+      name: 'slowOpen',
+      target: 'open',
+      dutyPercent: 40,
+      drivenMs: 112800,
+      level: 'high',
+      speedMmPerSecond: 41.0,
+      ampsMean: null,
+      ampsPeak: null,
+      supplyMinVolts: 12.3,
+    },
+    {
+      name: 'slowClose',
+      target: 'closed',
+      dutyPercent: 40,
+      drivenMs: 113100,
+      level: 'low',
+      speedMmPerSecond: 40.9,
+      ampsMean: null,
+      ampsPeak: null,
+      supplyMinVolts: 12.3,
+    },
+  ],
+  hall: {
+    between: { mean: 2050, min: 2041, max: 2060, noise: 4.2 },
+    closed: { mean: 702, min: 699, max: 705, level: 'low' },
+    open: { mean: 3398, min: 3395, max: 3401, level: 'high' },
+  },
+  currentSense: false,
+  maxCurrentAmps: 10,
+  proposal: {
+    travelMm: { old: 1850, new: 1850 },
+    speedMmPerSecond: { old: 38, new: 41 },
+    timeoutMarginSeconds: { old: 15, new: 10 },
+    hallHighEnd: { old: 'open', new: 'open' },
+    hallHighCounts: { old: 3000, new: 3000 },
+    hallLowCounts: { old: 1100, new: 1100 },
+    speedProblem: null,
+    hallProblem: null,
+    warnings: [],
+  },
 };

@@ -54,6 +54,7 @@ export const mockConfig: Config = {
     speedMmPerSecond: 38,
     timeoutMarginSeconds: 15,
     leaveMagnetSeconds: 10,
+    calibrationLimitSeconds: 180,
     rampUpMs: 2000,
     rampDownMs: 3000,
     topDutyPercent: 100,

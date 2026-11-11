@@ -25,6 +25,12 @@ namespace SQM
         // slow and the top duty.
         float profileFraction(const Settings &settings, uint32_t drivenMs, float remainingMm);
 
+        // Spec 016: the duty fraction of a calibration leg `drivenMs` after the
+        // driver turned on: the leg's duty (at or below the slow duty), or a
+        // ramp from the slow duty up to it over the ramp-up time and, from
+        // `leg.slowAfterMs`, back down to the slow duty over the ramp-down time.
+        float legFraction(const Settings &settings, const CalibrationLeg &leg, uint32_t drivenMs);
+
         // Distance covered in `elapsedMs` at `duty` (0-255).
         float advanceMm(const Settings &settings, uint8_t duty, uint32_t elapsedMs);
 

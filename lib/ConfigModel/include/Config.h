@@ -237,6 +237,8 @@ namespace SQM
         // from a bench measurement, the ADC can't resolve the lowest currents).
         float minRunningAmps = 0.0f;
         float minSupplyVolts = 11.0f;
+        // Spec 016: the longest a calibration leg may drive (its hard timeout).
+        uint32_t calibrationLimitSeconds = 180;
 
         // The ranges, shared with the web UI (test/fixtures/config-ranges.json) and
         // checked again by Roof::validSettings.
@@ -248,6 +250,8 @@ namespace SQM
         static constexpr uint32_t MAX_TIMEOUT_MARGIN_SECONDS = 300;
         static constexpr uint32_t MIN_LEAVE_MAGNET_SECONDS = 2;
         static constexpr uint32_t MAX_LEAVE_MAGNET_SECONDS = 120;
+        static constexpr uint32_t MIN_CALIBRATION_LIMIT_SECONDS = 30;
+        static constexpr uint32_t MAX_CALIBRATION_LIMIT_SECONDS = 600;
         static constexpr uint32_t MAX_RAMP_MS = 30000;
         static constexpr uint32_t MIN_TOP_DUTY_PERCENT = 20;
         static constexpr uint32_t MIN_SLOW_DUTY_PERCENT = 10;
@@ -354,8 +358,8 @@ namespace SQM
             Done = 2,
         };
         State state = State::New;
-        uint8_t step = 0; // 0 to STEP_COUNT - 1
-        static constexpr uint8_t STEP_COUNT = 10;
+        uint8_t step = 0;                         // 0 to STEP_COUNT - 1
+        static constexpr uint8_t STEP_COUNT = 11; // spec 016 added the calibration run page
     };
 
     struct Config

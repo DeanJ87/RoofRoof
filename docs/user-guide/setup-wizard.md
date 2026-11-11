@@ -1,5 +1,5 @@
 ---
-description: "The setup wizard: once RoofRoof has joined your WiFi, ten short pages walk through the essential settings with live readings, test SQMeter and N.I.N.A., and end with a review of every check. It never moves the roof."
+description: "The setup wizard: once RoofRoof has joined your WiFi, eleven short pages walk through the essential settings with live readings, test SQMeter and N.I.N.A., and end with a review of every check. It never moves the roof."
 ---
 
 # Setup wizard
@@ -50,19 +50,22 @@ save keeps the page open with the device's reason.
    the thresholds as they are and says what that means: without the sensor the roof finds neither
    end, so the automatic close can't work. The
    [quick bench test](../hardware/quick-bench-test.md) shows how to try the controller without it.
-5. **Roof motion**: travel, speed and top duty. While they are still the factory values,
+5. **Calibration run**: what the [calibration run](calibration-run.md) does and what it needs,
+   with **Open the calibration page**. The run is attended and has its own page with Stop; this
+   page itself moves nothing. Skip it until the motor is connected and its direction checked.
+6. **Roof motion**: travel, speed and top duty. While they are still the factory values,
    **Use first-run values** sets the top duty to 40 %, the commissioning guide's first-move duty.
    Travel and speed are measured during commissioning (stage 8).
-6. **Weather**: SQMeter over HTTP and over MQTT, with **Test**.
-7. **N.I.N.A.**: the Advanced API address, with **Test**, and the Alpaca Dome switch. N.I.N.A.'s
+7. **Weather**: SQMeter over HTTP and over MQTT, with **Test**.
+8. **N.I.N.A.**: the Advanced API address, with **Test**, and the Alpaca Dome switch. N.I.N.A.'s
    sequence opens and closes the roof through the Alpaca Dome; RoofRoof is the failsafe behind it.
    Changing Alpaca needs a restart, which the last page offers.
-8. **Alerts**: the master switch and the channels, with **Send test** per channel once saved. With
+9. **Alerts**: the master switch and the channels, with **Send test** per channel once saved. With
    no channel the page warns that critical alerts (the roof didn't close, the mount didn't park)
    would reach no one.
-9. **Daylight**: **Off**, **Alert** or **Alert and close**, and the sun altitude threshold
+10. **Daylight**: **Off**, **Alert** or **Alert and close**, and the sun altitude threshold
    ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)).
-10. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
+11. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
     reading yet), with what to do and **Change**, which opens its page. **Finish** ends setup.
 
 ![The setup wizard's hardware page](../assets/screenshots/wizard-hardware.png)
@@ -107,7 +110,7 @@ MQTT and Home Assistant) stay in **Settings**.
 
 ## The setup state
 
-`setup.state` (`new`, `offered` or `done`) and `setup.step` (the page to resume at, 0 to 9) are
+`setup.state` (`new`, `offered` or `done`) and `setup.step` (the page to resume at, 0 to 10) are
 ordinary settings ([Configuration](configuration.md#setup-wizard)). They move nothing and need no
 restart. **Settings** never sends them, so a save there leaves them as they are.
 

@@ -133,6 +133,22 @@ void test_interlock_lost_only_while_closing(void)
     TEST_ASSERT_TRUE(interlockLost(inState(Roof::State::Closing), notParked));
 }
 
+// Spec 016: any calibration leg is interlocked like a close, whatever its state.
+void test_interlock_lost_during_any_calibration_leg(void)
+{
+    GateInputs lost = parkedWith(1);
+    lost.switch1 = Contact::Open;
+    for (Roof::State state : ALL_STATES)
+    {
+        Roof::Status leg = inState(state);
+        leg.calibrating = true;
+        TEST_ASSERT_TRUE_MESSAGE(interlockLost(leg, lost), Roof::stateName(state));
+        TEST_ASSERT_FALSE(interlockLost(leg, parkedWith(1)));
+        leg.calibrating = false;
+        TEST_ASSERT_EQUAL(state == Roof::State::Closing, interlockLost(leg, lost));
+    }
+}
+
 void test_interlock_bits_name_the_input(void)
 {
     TEST_ASSERT_EQUAL_UINT32(0, interlockBits(parkedWith(2)));
@@ -483,6 +499,7 @@ int main(int, char **)
     RUN_TEST(test_close_ignores_the_weather);
     RUN_TEST(test_stop_and_abort_are_never_gated);
     RUN_TEST(test_interlock_lost_only_while_closing);
+    RUN_TEST(test_interlock_lost_during_any_calibration_leg);
     RUN_TEST(test_interlock_bits_name_the_input);
     RUN_TEST(test_open_stops_when_not_safe);
     RUN_TEST(test_stale_safety_handover_is_not_safe_and_not_parked);

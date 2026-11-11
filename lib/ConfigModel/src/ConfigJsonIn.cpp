@@ -72,6 +72,7 @@ namespace SQM
                 {"roof", "travelMm"},
                 {"roof", "timeoutMarginSeconds"},
                 {"roof", "leaveMagnetSeconds"},
+                {"roof", "calibrationLimitSeconds"},
                 {"roof", "rampUpMs"},
                 {"roof", "rampDownMs"},
                 {"roof", "topDutyPercent"},
@@ -286,6 +287,7 @@ namespace SQM
             roof.take("speedMmPerSecond", r.speedMmPerSecond);
             roof.take("timeoutMarginSeconds", r.timeoutMarginSeconds);
             roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
+            roof.take("calibrationLimitSeconds", r.calibrationLimitSeconds);
             roof.take("rampUpMs", r.rampUpMs);
             roof.take("rampDownMs", r.rampDownMs);
             roof.take("topDutyPercent", r.topDutyPercent);
@@ -392,7 +394,7 @@ namespace SQM
             if (step < SetupConfig::STEP_COUNT)
                 s.step = static_cast<uint8_t>(step);
             else if (strict)
-                return setError(error, "Setup: step must be between 0 and 9");
+                return setError(error, "Setup: step must be between 0 and 10");
             if (!setup.has("state"))
                 return true;
             const std::string state = setup["state"].is<const char *>() ? setup["state"].as<const char *>() : "";

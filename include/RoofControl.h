@@ -17,6 +17,7 @@
 #include <string>
 
 #include "BenchMode.h"
+#include "CalibrationRun.h"
 #include "CommandCheck.h"
 #include "Config.h"
 #include "FaultRecord.h"
@@ -68,6 +69,18 @@ namespace SQM
         // the close can never start after a person's stop it hasn't seen.
         Outcome automaticClose(uint32_t personStopsSeen);
         Outcome clearFault(Roof::Origin origin);
+        // Spec 016 (src/RoofCalibration.cpp): a person starts a calibration run
+        // (refused unless every check passes; `sequenceIdle` is spec 005's
+        // sequence as PlatformGuard sees it), stops it (a person's stop, which
+        // ends any run), and reads a copy of its report.
+        Outcome startCalibration(const Calib::Request &request, const std::function<bool()> &sequenceIdle);
+        Outcome stopCalibration();
+        // The person confirms (or denies) that the slow open reached the open end.
+        Outcome confirmCalibration(bool atOpenEnd);
+        Calib::Report calibrationReport(uint32_t &nowMs) const;
+        // Any task: a run is under way (pauses included).
+        bool calibrating() const { return calibratingNow.load(); }
+
         // Any task: latch an External fault with this cause (the output goes off).
         void raiseFault(RoofIo::FaultCause cause, float measured, float limit);
 
@@ -181,6 +194,8 @@ namespace SQM
         Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
         Outcome stopLocked(Roof::Command command, Roof::Origin origin);
         void runPendingClose();
+        void stepCalibration(const Roof::Readings &readings);
+        void endCalibrationFor(bool yieldToClose, const std::string &text);
 
         // Outside the lock, in the control task.
         void persistFault();
@@ -212,6 +227,7 @@ namespace SQM
         uint32_t maxStepGapMs = 0;
         uint32_t maxBeatAgeMs = 0; // the oldest watchdog heartbeat a step has seen
         std::string notice;        // logged by the control task outside the lock
+        Calib::Run calibration;    // spec 016: the attended calibration run
 
 #if ROOFROOF_BENCH
         // Guarded by `lock`.
@@ -237,6 +253,7 @@ namespace SQM
         std::atomic<bool> remoteStopsClose{false}; // spec 014: autoClose.remoteStop
         std::atomic<uint8_t> stateNow{0};          // Roof::State, as of the last snapshot
         std::atomic<bool> closeWaitingNow{false};
+        std::atomic<bool> calibratingNow{false}; // spec 016: calibration.active(), for moving()
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;
     };

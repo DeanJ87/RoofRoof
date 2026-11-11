@@ -72,7 +72,8 @@ namespace SQM
         // wanting the roof closed (Daylight; the weather is named first).
         // Close: only while the park holds. Stop and abort are never gated.
         GateRefusal gateCommand(Roof::Command command, const GateInputs &in);
-        // A close is under way (including its dead time) and the park no longer holds.
+        // A close (or, spec 016, any calibration leg) is under way, including its
+        // dead time, and the park no longer holds.
         bool interlockLost(const Roof::Status &status, const GateInputs &in);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);

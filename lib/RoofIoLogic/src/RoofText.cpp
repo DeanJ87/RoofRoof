@@ -156,6 +156,8 @@ namespace SQM
                 return "Only a person can clear a fault";
             case Roof::Refusal::Moving:
                 return "The roof is moving";
+            case Roof::Refusal::LegInvalid:
+                return "Calibration leg outside its ranges";
             }
             return "Refused";
         }

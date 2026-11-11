@@ -17,7 +17,7 @@ import type { SettingsTabProps } from './settings/context';
 import type { WizardPageProps } from './wizard/context';
 import { WIZARD_PAGES, clampStep, type WizardPageId } from './wizard/pages';
 import { DevicePage, SitePage } from './wizard/DevicePages';
-import { HallPage, HardwarePage, MotionPage } from './wizard/HardwarePages';
+import { CalibrationPage, HallPage, HardwarePage, MotionPage } from './wizard/HardwarePages';
 import { AlertsPage, DaylightPage, NinaPage, WeatherPage } from './wizard/SourcePages';
 import { ReviewPage } from './wizard/ReviewPage';
 import { showToast } from './toast';
@@ -35,6 +35,7 @@ const PAGES: Record<WizardPageId, FunctionalComponent<WizardPageProps>> = {
   site: SitePage,
   hardware: HardwarePage,
   hall: HallPage,
+  calibrate: CalibrationPage,
   motion: MotionPage,
   weather: WeatherPage,
   nina: NinaPage,

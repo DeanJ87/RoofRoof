@@ -74,6 +74,20 @@ void test_every_action_held_while_moving(void)
         }
 }
 
+// Spec 016: a calibration run holds everything a move does, at an end between legs too.
+void test_every_action_held_during_a_calibration_run(void)
+{
+    for (PlatformAction action : ALL_ACTIONS)
+        for (Roof::State rest : AT_REST)
+        {
+            PlatformState s = with(rest);
+            s.calibrating = true;
+            TEST_ASSERT_EQUAL_MESSAGE(HoldReason::Moving, platformHold(action, s), platformActionName(action));
+            s.calibrating = false;
+            TEST_ASSERT_EQUAL(HoldReason::None, platformHold(action, s));
+        }
+}
+
 void test_close_waiting_holds_every_action(void)
 {
     for (PlatformAction action : ALL_ACTIONS)
@@ -365,6 +379,7 @@ int main(int, char **)
     RUN_TEST(test_committed_restart_refuses_moves);
     RUN_TEST(test_network_change_waited_for_like_a_write);
     RUN_TEST(test_restart_may_commit);
+    RUN_TEST(test_every_action_held_during_a_calibration_run);
     RUN_TEST(test_network_hold_is_bounded_inside_the_close_start_limit);
     return UNITY_END();
 }

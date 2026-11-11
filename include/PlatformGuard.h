@@ -23,6 +23,10 @@ namespace SQM
         // (the reset would cut it off).
         void begin(RoofControl *roof, std::function<RoofIo::SequenceState()> sequence, std::function<bool()> restartCommitted);
 
+        // Spec 005's close sequence as the hold rules see it (Idle without a probe):
+        // a calibration run starts only while it is idle (spec 016).
+        RoofIo::SequenceState sequence();
+
         // Why `action` must wait now, from the latest state (no lock): for
         // refusing a request up front. Use FlashWrite/beginUpload/commitRestart to act.
         RoofIo::HoldReason hold(RoofIo::PlatformAction action);

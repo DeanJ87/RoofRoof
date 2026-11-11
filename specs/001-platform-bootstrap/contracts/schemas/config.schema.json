@@ -713,6 +713,9 @@
     "roof": {
       "type": "object",
       "properties": {
+        "calibrationLimitSeconds": {
+          "type": "number"
+        },
         "currentAmpsPerVolt": {
           "type": "number"
         },
@@ -766,6 +769,7 @@
         }
       },
       "required": [
+        "calibrationLimitSeconds",
         "currentAmpsPerVolt",
         "currentSenseEnabled",
         "hallHighCounts",

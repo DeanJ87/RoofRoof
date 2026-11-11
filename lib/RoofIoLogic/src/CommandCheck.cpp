@@ -83,6 +83,8 @@ namespace SQM
                 return client ? checkClientStop(command, origin, gates, status, context) : CommandCheck{};
             if (command != Roof::Command::Open && command != Roof::Command::Close)
                 return CommandCheck{};
+            if (context.calibrating && origin != Roof::Origin::Automatic)
+                return CommandCheck{false, CALIBRATING_REASON, "A calibration run is under way: stop it first"};
             const GateRefusal gate = gateCommand(command, gates);
             if (gate != GateRefusal::None)
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};

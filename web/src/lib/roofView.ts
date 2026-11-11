@@ -238,7 +238,7 @@ export const STOP_BAR_NO_STATUS_MS = 5000;
 export const stopBarShown = (status: SystemStatus | null, waitedMs = 0) => {
   if (!status) return waitedMs >= STOP_BAR_NO_STATUS_MS;
   const roof = status.roof;
-  return Boolean(roof && (moving(roof) || roof.closePending));
+  return Boolean(roof && (moving(roof) || roof.closePending || roof.calibrating)); // spec 016: the whole run
 };
 
 /** Clear fault needs live data: the person must see the fault they clear. */

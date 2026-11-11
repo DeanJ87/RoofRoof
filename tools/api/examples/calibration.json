@@ -1,0 +1,16 @@
+{
+  "state": "idle",
+  "active": false,
+  "request": null,
+  "leg": null,
+  "ending": null,
+  "legs": [],
+  "hall": {
+    "between": null,
+    "closed": null,
+    "open": null
+  },
+  "currentSense": false,
+  "maxCurrentAmps": 0,
+  "proposal": null
+}

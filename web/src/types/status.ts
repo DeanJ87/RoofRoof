@@ -145,6 +145,7 @@ export interface RoofStatus {
   parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
   rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
   closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
+  calibrating?: boolean; // spec 016: a calibration run is under way (pauses included)
   // Spec 008: the automatic close's phase, and the weather and park as the roof's command checks see them now.
   closePhase: RoofClosePhase;
   weather: 'safe' | 'unsafe' | 'unknown';

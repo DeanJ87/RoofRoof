@@ -106,3 +106,7 @@ Without N.I.N.A. the park is never confirmed. With `park.nina.url` empty it fail
 2. Press **Open**. The motor runs slowly. With Option A turn the pot to the high end and the roof reads Open; with Option B wait for the timeout fault, then **Clear fault**.
 3. With Option A, press **Close**, turn the pot off the high end within 10 s and then to the low end. Press **Stop** once mid-move to see the motor stop.
 4. Try the weather and park cases above.
+
+## The calibration run
+
+The [calibration run](../user-guide/calibration-run.md) needs real magnets, or the potentiometer of Option A: each leg ends only at a magnet reading, and the run needs both ends and the level between them. With Option B (a fixed mid-point) every leg runs to its time limit and faults `timeout`. With the pot, start a run with the pot at the low end and **Closed**, then turn it through the middle to the high end once the motor runs, and back for the close; set `roof.calibrationLimitSeconds` to `30` first so a slow hand faults quickly. The times and the proposed speed then only measure your hand.

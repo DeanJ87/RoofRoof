@@ -16,7 +16,10 @@ namespace SQM
             if (reversedWiring)
                 direction = -direction;
             const float before = positionMm;
-            const float step = speedMmPerSecond / 1000.0f * (output.duty / 255.0f) * static_cast<float>(elapsedMs);
+            const float duty = output.duty / 255.0f;
+            const float d = deadbandFraction;
+            const float effective = d > 0.0f ? (duty <= d ? 0.0f : (duty - d) / (1.0f - d)) : duty;
+            const float step = speedMmPerSecond / 1000.0f * effective * static_cast<float>(elapsedMs);
             positionMm = std::min(travelMm, std::max(0.0f, positionMm + direction * step));
             return positionMm - before;
         }

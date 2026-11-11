@@ -152,6 +152,7 @@ namespace DemoRoof
         checkGates();
         controller.tick(in);
         syncFault();
+        stepCalibration(in);
         stepMount();
         stepSafety();
         stepDaylight(false);
@@ -184,6 +185,32 @@ namespace DemoRoof
                 RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f));
         else if (RoofIo::openMustStop(status, gates))
             controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
+    }
+
+    // RoofControl::stepCalibration: after the tick (the demo has no blockers).
+    void EmulatedRoof::stepCalibration(const Roof::Readings &in)
+    {
+        if (!calibration.active())
+            return;
+        Calib::StepInputs step;
+        step.readings = in;
+        step.gates = gates;
+        step.faultText = RoofIo::describeFault(fault);
+        calibration.step(controller, step);
+        syncFault();
+    }
+
+    Outcome EmulatedRoof::startCalibration(const Calib::Request &request)
+    {
+        Calib::StartInputs in;
+        in.nowMs = static_cast<uint32_t>(nowMs);
+        in.limitMs = roofCfg.calibrationLimitSeconds * 1000;
+        in.sequenceIdle = CloseSeq::platformState(sequence.phase()) == RoofIo::SequenceState::Idle;
+        in.settingsPending = settingsPending;
+        in.gates = gates;
+        in.faultText = RoofIo::describeFault(fault);
+        const Calib::Answer answer = calibration.start(controller, request, in);
+        return Outcome{answer.accepted, answer.reason, answer.text, controller.status().state};
     }
 
     void EmulatedRoof::latchExternal(const RoofIo::FaultRecord &record)
@@ -422,6 +449,7 @@ namespace DemoRoof
     {
         RoofIo::CommandContext context;
         context.remoteStopsClose = remoteStopsClose;
+        context.calibrating = calibration.active();
         const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, controller, context);
         if (!check.accepted)
             return Outcome{false, check.reason, check.text, controller.status().state};
@@ -432,6 +460,8 @@ namespace DemoRoof
             personStops++;
         if (stopping && check.standsDown)
             remoteStops++;
+        if (stopping)
+            calibration.stopped(origin == Roof::Origin::Person ? "Stopped by a person" : "Stopped by a stop command");
         const Outcome outcome = outcomeOf(controller.command(command, origin));
         syncFault();
         return outcome;
@@ -451,6 +481,7 @@ namespace DemoRoof
                 CloseSeq::PERSON_STOP_REASON,
                 "A person stopped the roof: the automatic close is withdrawn",
                 controller.status().state};
+        calibration.yieldToClose(controller); // spec 016: the automatic close always wins
         return runChecked(Roof::Command::Close, Roof::Origin::Automatic);
     }
 
@@ -502,6 +533,7 @@ namespace DemoRoof
         s.rainFitted = safetyCfg.rainContact;
         s.rain = inject.rain ? RoofIo::Contact::Closed : RoofIo::Contact::Open;
         s.personStops = personStops;
+        s.calibrating = calibration.active();
         s.maxStepGapMs = STEP_MS;
         s.simulation = "demo";
         RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
