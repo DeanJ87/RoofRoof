@@ -173,7 +173,7 @@
   "device.settings.alertsEventLevelsAre0Off": "Sent by the device and shown in the UI: an error the device returns when it refuses a settings change.",
   "device.settings.alertsPushoverNeedsBothAUser": "Sent by the device and shown in the UI: an error the device returns when it refuses a settings change. Pushover and ntfy are push-notification services - keep the names.",
   "device.settings.alertsSilenceTimeMustBeBetween": "Sent by the device (lib/ConfigModel/src/ConfigValidate.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
-  "device.settings.alertsTheCustomAlertTextsAre": "Sent by the device and shown in the UI: an error the device returns when it refuses a settings change.",
+  "device.settings.alertsTheAlertSettingsAreToo": "Sent by the device (lib/ConfigModel/src/ConfigValidate.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.settings.alertsTheRoofSCriticalAlerts": "Sent by the device (lib/ConfigModel/src/ConfigValidate.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.settings.alertsTheRoofSCriticalAlerts2": "Sent by the device (lib/ConfigModel/src/ConfigValidate.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.settings.alertsWhenToSendMustBe": "Sent by the device and shown in the UI: an error the device returns when it refuses a settings change.",

@@ -143,7 +143,10 @@ namespace SQM
         {
             if (c.alertsToJson(false, Config::AlertsPart::Main).size() > Config::MAX_ALERTS_JSON_BYTES ||
                 c.alertsToJson(false, Config::AlertsPart::Client).size() > Config::MAX_ALERTS_JSON_BYTES)
-                return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
+                return setError(
+                    error,
+                    "Alerts: the alert settings are too long to store - shorten custom alert texts or long channel settings (webhook URL "
+                    "or header, tokens)");
             return true;
         }
 

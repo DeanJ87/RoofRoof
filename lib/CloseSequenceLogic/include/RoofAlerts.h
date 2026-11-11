@@ -34,10 +34,10 @@ namespace SQM
         // or waiting to try again (not when it can't move or is stood down).
         bool attempting(Phase phase);
 
-        // Whether a step's event is the roof closing after an attempt (the
-        // phase before the step was attempting): the "roof closed after unsafe
+        // Whether a step's event is the roof closing after an attempt, a
+        // person's stop or a halted close: the "roof closed after unsafe
         // weather" alert. A magnet that flickers back to closed while the
-        // sequence can't move or is stood down doesn't count.
+        // sequence can't move (CannotMove) doesn't count.
         bool closedAfterAttempt(Phase before, Event event);
 
         // Whether every weather source that is on has answered since the start
