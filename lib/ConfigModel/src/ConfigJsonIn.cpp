@@ -68,6 +68,15 @@ namespace SQM
                 {"alerts", "cooldownSeconds"},
                 {"alerts", "clientSilentSeconds"},
                 {"safety", "staleSeconds"},
+                {"roof", "travelMm"},
+                {"roof", "timeoutMarginSeconds"},
+                {"roof", "leaveMagnetSeconds"},
+                {"roof", "rampUpMs"},
+                {"roof", "rampDownMs"},
+                {"roof", "topDutyPercent"},
+                {"roof", "slowDutyPercent"},
+                {"roof", "hallHighCounts"},
+                {"roof", "hallLowCounts"},
             };
             for (const auto &field : FIELDS)
             {
@@ -233,6 +242,51 @@ namespace SQM
             return true;
         }
 
+        bool applyRoofEnums(const Section &roof, RoofConfig &r, std::string *error)
+        {
+            if (roof.has("openDirection"))
+            {
+                const std::string value = roof["openDirection"].is<const char *>() ? roof["openDirection"].as<const char *>() : "";
+                if (value == "forward")
+                    r.openDirection = RoofConfig::Direction::Forward;
+                else if (value == "reverse")
+                    r.openDirection = RoofConfig::Direction::Reverse;
+                else
+                    return setError(error, "Roof: open direction must be forward or reverse");
+            }
+            if (roof.has("hallHighEnd"))
+            {
+                const std::string value = roof["hallHighEnd"].is<const char *>() ? roof["hallHighEnd"].as<const char *>() : "";
+                if (value == "open")
+                    r.hallHighEnd = RoofConfig::HallEnd::Open;
+                else if (value == "closed")
+                    r.hallHighEnd = RoofConfig::HallEnd::Closed;
+                else
+                    return setError(error, "Roof: Hall high end must be open or closed");
+            }
+            return true;
+        }
+
+        bool applyRoof(const Section &roof, RoofConfig &r, std::string *error)
+        {
+            if (roof.isNull())
+                return true;
+            roof.take("travelMm", r.travelMm);
+            roof.take("speedMmPerSecond", r.speedMmPerSecond);
+            roof.take("timeoutMarginSeconds", r.timeoutMarginSeconds);
+            roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
+            roof.take("rampUpMs", r.rampUpMs);
+            roof.take("rampDownMs", r.rampDownMs);
+            roof.take("topDutyPercent", r.topDutyPercent);
+            roof.take("slowDutyPercent", r.slowDutyPercent);
+            roof.take("hallHighCounts", r.hallHighCounts);
+            roof.take("hallLowCounts", r.hallLowCounts);
+            roof.take("currentSenseEnabled", r.currentSenseEnabled);
+            roof.take("maxCurrentAmps", r.maxCurrentAmps);
+            roof.take("minSupplyVolts", r.minSupplyVolts);
+            return applyRoofEnums(roof, r, error);
+        }
+
         // The imaging-app alert settings as stored under their own NVS key
         // (ConfigStore splices them in as "alertsClient").
         bool applyAlertsClient(const Section &client, AlertsConfig &a, std::string *error)
@@ -326,7 +380,7 @@ namespace SQM
             applySafety(root.child("safety"), cfg.safety);
             if (!applyPark(root.child("park"), cfg.park, error))
                 return false;
-            return applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
+            return applyRoof(root.child("roof"), cfg.roof, error) && applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
                    applyAlertsClient(root.child("alertsClient"), cfg.alerts, error);
         }
     } // namespace

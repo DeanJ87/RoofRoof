@@ -54,6 +54,87 @@
       "int": true,
       "min": 10,
       "max": 600
+    },
+    {
+      "path": "roof.travelMm",
+      "int": true,
+      "min": 100,
+      "max": 20000
+    },
+    {
+      "path": "roof.speedMmPerSecond",
+      "min": 1,
+      "max": 500
+    },
+    {
+      "path": "roof.timeoutMarginSeconds",
+      "int": true,
+      "min": 3,
+      "max": 300
+    },
+    {
+      "path": "roof.leaveMagnetSeconds",
+      "int": true,
+      "min": 2,
+      "max": 120
+    },
+    {
+      "path": "roof.rampUpMs",
+      "int": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "path": "roof.rampDownMs",
+      "int": true,
+      "min": 0,
+      "max": 30000
+    },
+    {
+      "path": "roof.topDutyPercent",
+      "int": true,
+      "min": 20,
+      "max": 100,
+      "with": {
+        "roof.slowDutyPercent": 10
+      }
+    },
+    {
+      "path": "roof.slowDutyPercent",
+      "int": true,
+      "min": 10,
+      "max": 100,
+      "with": {
+        "roof.topDutyPercent": 100
+      }
+    },
+    {
+      "path": "roof.hallHighCounts",
+      "int": true,
+      "min": 180,
+      "max": 3995,
+      "with": {
+        "roof.hallLowCounts": 100
+      }
+    },
+    {
+      "path": "roof.hallLowCounts",
+      "int": true,
+      "min": 100,
+      "max": 3915,
+      "with": {
+        "roof.hallHighCounts": 3995
+      }
+    },
+    {
+      "path": "roof.maxCurrentAmps",
+      "min": 0.5,
+      "max": 40
+    },
+    {
+      "path": "roof.minSupplyVolts",
+      "min": 6,
+      "max": 15
     }
   ]
 }

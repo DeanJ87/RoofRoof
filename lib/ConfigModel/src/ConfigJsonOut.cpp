@@ -139,6 +139,26 @@ namespace SQM
             nina["api"] = "v2";
             park["switches"] = switchesName(c.park.switches);
         }
+
+        void appendRoof(JsonDocument &doc, const RoofConfig &r)
+        {
+            JsonObject roof = doc.createNestedObject("roof");
+            roof["travelMm"] = r.travelMm;
+            roof["speedMmPerSecond"] = r.speedMmPerSecond;
+            roof["timeoutMarginSeconds"] = r.timeoutMarginSeconds;
+            roof["leaveMagnetSeconds"] = r.leaveMagnetSeconds;
+            roof["rampUpMs"] = r.rampUpMs;
+            roof["rampDownMs"] = r.rampDownMs;
+            roof["topDutyPercent"] = r.topDutyPercent;
+            roof["slowDutyPercent"] = r.slowDutyPercent;
+            roof["openDirection"] = r.openDirection == RoofConfig::Direction::Reverse ? "reverse" : "forward";
+            roof["hallHighEnd"] = r.hallHighEnd == RoofConfig::HallEnd::Closed ? "closed" : "open";
+            roof["hallHighCounts"] = r.hallHighCounts;
+            roof["hallLowCounts"] = r.hallLowCounts;
+            roof["currentSenseEnabled"] = r.currentSenseEnabled;
+            roof["maxCurrentAmps"] = r.maxCurrentAmps;
+            roof["minSupplyVolts"] = r.minSupplyVolts;
+        }
     } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
@@ -152,12 +172,13 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(4096);
+        DynamicJsonDocument doc(4608);
         doc["deviceName"] = deviceName;
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
         appendSafety(doc, *this);
+        appendRoof(doc, roof);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

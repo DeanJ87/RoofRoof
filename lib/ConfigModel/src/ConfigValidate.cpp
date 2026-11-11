@@ -156,6 +156,55 @@ namespace SQM
                 return setError(error, "Alerts: webhook URL must start with http:// or https://");
             return true;
         }
+
+        bool validateRoofTiming(const RoofConfig &r, std::string *error)
+        {
+            if (r.travelMm < RoofConfig::MIN_TRAVEL_MM || r.travelMm > RoofConfig::MAX_TRAVEL_MM)
+                return setError(error, "Roof: travel must be between 100 and 20000 mm");
+            if (!inRange(r.speedMmPerSecond, RoofConfig::MIN_SPEED_MM_PER_SECOND, RoofConfig::MAX_SPEED_MM_PER_SECOND))
+                return setError(error, "Roof: speed must be between 1 and 500 mm/s");
+            if (r.timeoutMarginSeconds < RoofConfig::MIN_TIMEOUT_MARGIN_SECONDS ||
+                r.timeoutMarginSeconds > RoofConfig::MAX_TIMEOUT_MARGIN_SECONDS)
+                return setError(error, "Roof: timeout margin must be between 3 and 300 seconds");
+            if (r.leaveMagnetSeconds < RoofConfig::MIN_LEAVE_MAGNET_SECONDS || r.leaveMagnetSeconds > RoofConfig::MAX_LEAVE_MAGNET_SECONDS)
+                return setError(error, "Roof: leave-magnet time must be between 2 and 120 seconds");
+            if (r.rampUpMs > RoofConfig::MAX_RAMP_MS)
+                return setError(error, "Roof: ramp up must be between 0 and 30000 ms");
+            if (r.rampDownMs > RoofConfig::MAX_RAMP_MS)
+                return setError(error, "Roof: ramp down must be between 0 and 30000 ms");
+            return true;
+        }
+
+        bool validateRoofDuty(const RoofConfig &r, std::string *error)
+        {
+            if (r.topDutyPercent < RoofConfig::MIN_TOP_DUTY_PERCENT || r.topDutyPercent > RoofConfig::MAX_DUTY_PERCENT)
+                return setError(error, "Roof: top duty must be between 20 and 100 percent");
+            if (r.slowDutyPercent < RoofConfig::MIN_SLOW_DUTY_PERCENT || r.slowDutyPercent > RoofConfig::MAX_DUTY_PERCENT)
+                return setError(error, "Roof: slow duty must be between 10 and 100 percent");
+            if (r.slowDutyPercent > r.topDutyPercent)
+                return setError(error, "Roof: slow duty can't be above the top duty");
+            return true;
+        }
+
+        bool validateRoofSensing(const RoofConfig &r, std::string *error)
+        {
+            if (r.hallHighCounts < RoofConfig::MIN_HALL_COUNTS || r.hallHighCounts > RoofConfig::MAX_HALL_COUNTS)
+                return setError(error, "Roof: Hall high threshold must be between 100 and 3995 counts");
+            if (r.hallLowCounts < RoofConfig::MIN_HALL_COUNTS || r.hallLowCounts > RoofConfig::MAX_HALL_COUNTS)
+                return setError(error, "Roof: Hall low threshold must be between 100 and 3995 counts");
+            if (r.hallHighCounts < r.hallLowCounts + RoofConfig::MIN_HALL_GAP_COUNTS)
+                return setError(error, "Roof: the Hall high threshold must be at least 80 counts above the low threshold");
+            if (!inRange(r.maxCurrentAmps, RoofConfig::MIN_CURRENT_AMPS, RoofConfig::MAX_CURRENT_AMPS))
+                return setError(error, "Roof: current limit must be between 0.5 and 40 amps");
+            if (!inRange(r.minSupplyVolts, RoofConfig::MIN_SUPPLY_VOLTS, RoofConfig::MAX_SUPPLY_VOLTS))
+                return setError(error, "Roof: minimum supply must be between 6 and 15 volts");
+            return true;
+        }
+
+        bool validateRoof(const Config &c, std::string *error)
+        {
+            return validateRoofTiming(c.roof, error) && validateRoofDuty(c.roof, error) && validateRoofSensing(c.roof, error);
+        }
     } // namespace
 
     bool AlertsConfig::templateFits(const std::string &title, const std::string &message)
@@ -207,6 +256,7 @@ namespace SQM
             validateWifiAndMqtt,
             validateAuthAndNtp,
             validateAlertThresholds,
+            validateRoof,
             validateAlertEvents,
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
             validateSafety,
