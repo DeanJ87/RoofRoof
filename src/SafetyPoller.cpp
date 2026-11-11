@@ -16,10 +16,10 @@ namespace SQM
         constexpr const char *TAG = "Safety";
         // Connect and wait-for-reply timeouts (spec 004 FR-010, FR-018).
         constexpr uint16_t HTTP_TIMEOUT_MS = 3000;
-        // Every request ends within this, body included, so a slow SQMeter
-        // delays the next N.I.N.A. poll by at most this much: 2 s + 6 s stays
-        // inside N.I.N.A.'s 10 s freshness. (A DNS lookup isn't bounded: use
-        // IP addresses or mDNS names that resolve quickly.)
+        // The body is read until this long after the request started. Connecting
+        // (3 s) and each header line (3 s) have their own timeouts, and the DNS
+        // lookup none, so a broken server can hold the poller longer; its
+        // readings then go stale, which is unsafe (spec 004 FR-010).
         constexpr uint32_t HTTP_TOTAL_MS = 6000;
         // N.I.N.A.'s full mount info is about 4 KB; SQMeter's safety document under 1 KB.
         constexpr size_t MAX_BODY_BYTES = 8192;
@@ -63,6 +63,17 @@ namespace SQM
             return false;
         }
 
+        // The body after the headers. HTTPClient has no stream once the server
+        // has closed with nothing left to read (an empty reply): that is an
+        // empty body, which then parses as unreadable.
+        bool readReply(HTTPClient &http, std::string &out, uint64_t deadlineMs)
+        {
+            WiFiClient *stream = http.getStreamPtr();
+            if (stream == nullptr)
+                return true;
+            return readBody(*stream, http.getSize(), out, deadlineMs);
+        }
+
         Safety::HttpOutcome httpGet(const std::string &url)
         {
             Safety::HttpOutcome reply;
@@ -86,7 +97,7 @@ namespace SQM
             const int code = http.GET();
             if (code <= 0)
                 reply.error = HTTPClient::errorToString(code).c_str();
-            else if (!readBody(*http.getStreamPtr(), http.getSize(), reply.body, deadline))
+            else if (!readReply(http, reply.body, deadline))
                 reply.error = "reply too slow or too long";
             else
                 reply.status = code;
@@ -112,16 +123,6 @@ namespace SQM
             }
             return httpGet(joinUrl(base, request.path));
         }
-
-        bool sameSqmeter(const SafetyPoller::Targets &a, const SafetyPoller::Targets &b)
-        {
-            return a.sqmeterEnabled == b.sqmeterEnabled && a.sqmeterUrl == b.sqmeterUrl;
-        }
-
-        bool sameNina(const SafetyPoller::Targets &a, const SafetyPoller::Targets &b)
-        {
-            return a.ninaUrl == b.ninaUrl && a.ninaApi == b.ninaApi;
-        }
     } // namespace
 
     uint64_t SafetyPoller::nowMs()
@@ -144,7 +145,7 @@ namespace SQM
 
     void SafetyPoller::begin(const Targets &newTargets)
     {
-        configure(newTargets);
+        configure(newTargets, Safety::SettingsChange{});
         if (task != nullptr || mutex == nullptr)
             return;
         // Core 0 at low priority: the Wi-Fi core, away from the web server and the loop.
@@ -155,19 +156,19 @@ namespace SQM
         }
     }
 
-    void SafetyPoller::configure(const Targets &newTargets)
+    void SafetyPoller::configure(const Targets &newTargets, const Safety::SettingsChange &change)
     {
         if (mutex == nullptr)
             return;
         xSemaphoreTake(mutex, portMAX_DELAY);
         const uint64_t now = nowMs();
-        if (!configured || !sameSqmeter(targets, newTargets))
+        if (change.sqmeterHttp)
         {
             state.sqmeter = Safety::SourceRecord{};
             state.sqmeter.enabled = newTargets.sqmeterEnabled;
             ++state.sqmeterGeneration;
         }
-        if (!configured || !sameNina(targets, newTargets))
+        if (change.nina)
         {
             const auto status = newTargets.ninaUrl.empty() ? Nina::ReadingStatus::NotConfigured : Nina::ReadingStatus::Waiting;
             state.nina = Nina::failedReading(status, "", now);
@@ -177,7 +178,6 @@ namespace SQM
             parkRequested = false;
         }
         targets = newTargets;
-        configured = true;
         xSemaphoreGive(mutex);
     }
 

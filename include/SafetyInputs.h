@@ -4,6 +4,7 @@
 #include "ParkRule.h"
 #include "SafetyInput.h"
 #include "SafetyPoller.h"
+#include "SafetySettings.h"
 #include "SqmeterSource.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
