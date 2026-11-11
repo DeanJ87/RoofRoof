@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstdio>
 
+#include "RoofSettings.h"
+
 namespace SQM
 {
     namespace RoofIo
@@ -103,6 +105,11 @@ namespace SQM
                 }
             }
         } // namespace
+
+        std::string describeSupply(float volts, float minimum)
+        {
+            return supplyText(Roof::supplyReadable(volts) ? volts : NAN, minimum);
+        }
 
         std::string describeFault(const FaultRecord &record)
         {

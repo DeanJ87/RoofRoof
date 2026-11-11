@@ -123,6 +123,16 @@ namespace SQM
         // Custom wording within the limits, counted in characters (as the
         // web UI counts them), not UTF-8 bytes.
         static bool templateFits(const std::string &title, const std::string &message);
+        // The roof (spec 007). The first two are critical: their level is 3
+        // (urgent) or 4 (wake me), never lower.
+        static constexpr uint8_t MIN_CRITICAL_LEVEL = 3;
+        EventSetting mountNotParked;
+        EventSetting roofNotClosed;
+        EventSetting moveFault;
+        EventSetting supplyLow;
+        EventSetting unsafeClosing;
+        EventSetting roofClosed;
+        EventSetting safetyLost;
         // The imaging app (any Alpaca client) stops checking a device, comes
         // back, or disconnects normally (SQMeter spec 021).
         EventSetting clientLost;

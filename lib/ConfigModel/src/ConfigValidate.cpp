@@ -111,7 +111,13 @@ namespace SQM
         bool validateAlertEvents(const Config &c, std::string *error)
         {
             const AlertsConfig &a = c.alerts;
-            for (const auto &entry : eventSettings(a))
+            const auto settings = eventSettings(a);
+            // Constitution II and III: the roof's critical alerts can't be
+            // switched off or quietened (spec 007 FR-003).
+            for (size_t i = 0; i < CRITICAL_EVENT_COUNT; ++i)
+                if (settings[i].second->level < AlertsConfig::MIN_CRITICAL_LEVEL || settings[i].second->level > 4)
+                    return setError(error, "Alerts: the roof's critical alerts are urgent or wake me");
+            for (const auto &entry : settings)
             {
                 if (entry.second->level > 4)
                     return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");

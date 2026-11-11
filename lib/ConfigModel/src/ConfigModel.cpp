@@ -49,6 +49,13 @@ namespace SQM
         void defaultAlerts(AlertsConfig &a)
         {
             a.enabled = false;
+            a.mountNotParked = {4, "", "", ""};
+            a.roofNotClosed = {4, "", "", ""};
+            a.moveFault = {3, "", "", ""};
+            a.supplyLow = {2, "", "", ""};
+            a.unsafeClosing = {2, "", "", ""};
+            a.roofClosed = {2, "", "", ""};
+            a.safetyLost = {2, "", "", ""};
             a.clientLost = {3, "", "", ""};
             a.clientBack = {1, "", "", ""};
             a.clientDisconnected = {0, "", "", ""};

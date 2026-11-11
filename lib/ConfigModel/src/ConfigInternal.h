@@ -16,10 +16,12 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 3;
+    constexpr size_t EVENT_COUNT = 10;
     // Events from here on are the imaging-app events, persisted under their own
-    // key. Spec 007 adds the roof's events before them, in the main part.
-    constexpr size_t FIRST_CLIENT_EVENT = 0;
+    // key; the roof's (spec 007) come first, in the main part.
+    constexpr size_t FIRST_CLIENT_EVENT = 7;
+    // The roof's critical events (spec 007): the first two.
+    constexpr size_t CRITICAL_EVENT_COUNT = 2;
 
     inline bool setError(std::string *error, const std::string &message)
     {
@@ -36,7 +38,18 @@ namespace SQM::ConfigDetail
     // JSON key for each configurable event, matching the alert event names.
     template <typename Alerts, typename Setting> std::array<std::pair<const char *, Setting *>, EVENT_COUNT> eventSettingsOf(Alerts &a)
     {
-        return {{{"client_lost", &a.clientLost}, {"client_back", &a.clientBack}, {"client_disconnected", &a.clientDisconnected}}};
+        return {{
+            {"mount_not_parked", &a.mountNotParked},
+            {"roof_not_closed", &a.roofNotClosed},
+            {"move_fault", &a.moveFault},
+            {"supply_low", &a.supplyLow},
+            {"unsafe_closing", &a.unsafeClosing},
+            {"roof_closed", &a.roofClosed},
+            {"safety_lost", &a.safetyLost},
+            {"client_lost", &a.clientLost},
+            {"client_back", &a.clientBack},
+            {"client_disconnected", &a.clientDisconnected},
+        }};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
     {
