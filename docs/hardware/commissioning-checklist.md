@@ -60,6 +60,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 4.6 | N.I.N.A. 2.2.15+ Advanced API: `Park: parked`; unparked and slewing correct; closing N.I.N.A. gives `not responding` in about 4 s | |
 | ☐ 4.7 | Park switches vs N.I.N.A.: one switch open gives "disagree" | |
 | ☐ 4.8 | An unrelated settings save doesn't reset the verdict or the park result | |
+| ☐ 4.9 | **Automatic close** settings left at their defaults (10 min, 30 min, Halt, Remote Stop off, Advanced untouched) until stage 11 | |
 | ☐ 4.9 | Site set (lat, lon); NTP synced; the Roof card's Daylight sun altitude within 0.5° of an almanac | ° vs ° |
 | ☐ 4.10 | Daylight mode left on Alert or Off until stage 11 | |
 
@@ -143,7 +144,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 9.2 | Open and close from N.I.N.A.; ShutterStatus runs opening, open, closing, closed | |
 | ☐ 9.3 | Unsafe: Open shows the weather reason, nothing moves | |
 | ☐ 9.4 | Unparked: Close shows the park reason | |
-| ☐ 9.5 | N.I.N.A. Stop works in safe weather; in an unsafe close it shows an error and the close continues; web UI Stop still stops it; no **Automatic close stopped** alert | |
+| ☐ 9.5 | N.I.N.A. Stop works in safe weather; with Remote Stop off, in an unsafe close it shows an error and the close continues; web UI Stop still stops it; no **Automatic close stopped** alert | |
 | ☐ 9.6 | After a boot between the magnets, Open and Close say only a person can move the roof | |
 | ☐ 9.7 | Alpaca off: every Dome command, Stop included, says "disabled" | |
 | ☐ 9.8 | ConformU (bench-build board with GPIO36 to GND, or the roof's board with the motor disconnected or attended) passes with no errors | |
@@ -167,7 +168,8 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 11.3 | Password protection on; settings backed up; values recorded below | |
 | ☐ 11.4 | After an hour or more: `maxWatchdogBeatAgeMs` under 50, `maxStepGapMs` near 20, `watchdogTrips` 0, `stackFree.roof` above 2048 | / / / |
 | ☐ 11.5 | Daylight mode chosen (Alert and close, Alert or Off), site set, daylight dry run passed | mode: |
-| ☐ 11.6 | First unattended spell short, phone alerts on | |
+| ☐ 11.6 | Automatic close settings chosen; any changed one re-tested in a dry run; with Remote Stop on, N.I.N.A.'s Stop in the attended unsafe close gave **Automatic close stopped** | |
+| ☐ 11.7 | First unattended spell short, phone alerts on | |
 
 ## Values to record
 
@@ -183,7 +185,9 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | `roof.minSupplyVolts` | |
 | `park.switches` / `park.timeoutSeconds` | |
 | `safety.staleSeconds` | |
-| `daylight.mode` / `daylight.sunAltitudeDeg` | |
+| `daylight.mode` / `daylight.sunAltitudeDeg` / `daylight.bandDeg` | |
+| `autoClose.rearmMinutes` / `remindMinutes` / `notStarted` / `remoteStop` | |
+| `autoClose.parkRequestSeconds` / `parkHoldSeconds` / `retryMinutes` / `closeStartSeconds` / `closeGuardSeconds` | |
 | `location.latitude` / `location.longitude` | |
 
 Signed off by ______________________ on ______________

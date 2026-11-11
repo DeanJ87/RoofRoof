@@ -101,6 +101,7 @@ namespace SQM
             homeAssistant["enabled"] = c.mqtt.homeAssistant;
             homeAssistant["discoveryPrefix"] = c.mqtt.discoveryPrefix;
             mqtt["roofCommands"] = c.mqtt.roofCommands;
+            mqtt["changeMinSeconds"] = c.mqtt.changeMinSeconds;
 
             JsonObject ota = doc.createNestedObject("ota");
             ota["enabled"] = c.ota.enabled;
@@ -147,10 +148,27 @@ namespace SQM
             JsonObject daylight = doc.createNestedObject("daylight");
             daylight["mode"] = daylightModeName(c.daylight.mode);
             daylight["sunAltitudeDeg"] = c.daylight.sunAltitudeDeg;
+            daylight["bandDeg"] = c.daylight.bandDeg;
             JsonObject location = doc.createNestedObject("location");
             location["set"] = c.location.set;
             location["latitude"] = c.location.latitude;
             location["longitude"] = c.location.longitude;
+        }
+
+        void appendAutoClose(JsonDocument &doc, const Config &c)
+        {
+            const AutoCloseConfig &a = c.autoClose;
+            JsonObject out = doc.createNestedObject("autoClose");
+            out["rearmMinutes"] = a.rearmMinutes;
+            out["parkRequestSeconds"] = a.parkRequestSeconds;
+            out["parkHoldSeconds"] = a.parkHoldSeconds;
+            out["retryMinutes"] = a.retryMinutes;
+            out["closeStartSeconds"] = a.closeStartSeconds;
+            out["closeGuardSeconds"] = a.closeGuardSeconds;
+            out["notStarted"] = a.notStarted == AutoCloseConfig::NotStarted::Retry ? "retry" : "halt";
+            out["remindMinutes"] = a.remindMinutes;
+            out["remoteStop"] = a.remoteStop;
+            doc.createNestedObject("ui")["confirmOpenClose"] = c.ui.confirmOpenClose;
         }
 
         void appendRoof(JsonDocument &doc, const RoofConfig &r)
@@ -189,7 +207,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(6144); // see alertsToJson
+        DynamicJsonDocument doc(7168); // see alertsToJson
         doc["deviceName"] = deviceName;
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
@@ -200,6 +218,7 @@ namespace SQM
         JsonObject setupOut = doc.createNestedObject("setup");
         setupOut["state"] = setupStateName(setup.state);
         setupOut["step"] = setup.step;
+        appendAutoClose(doc, *this);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

@@ -16,7 +16,7 @@ namespace SQM
     {
         // The first gap before an undelivered alert is sent again; it doubles after each resend...
         constexpr uint64_t ALERT_RETRY_MS = 60000;
-        // ...up to the reminder interval.
+        // ...up to the reminder interval (spec 014: the policy's remindMs, see setMaxGap).
         constexpr uint64_t ALERT_RETRY_MAX_MS = 1800000;
         // A send still pending this long counts as failed.
         constexpr uint64_t ALERT_PENDING_STALE_MS = 120000;
@@ -43,11 +43,15 @@ namespace SQM
             void clear() { waiting = false; }
             bool active() const { return waiting; }
             uint64_t gapMs() const { return gap; }
+            // Spec 014: the longest gap, the policy's reminder interval (never
+            // below the first gap); applies from the next resend.
+            void setMaxGap(uint64_t ms) { maxGap = ms < ALERT_RETRY_MS ? ALERT_RETRY_MS : ms; }
 
         private:
             bool waiting = false;
             uint64_t lastSendMs = 0;
             uint64_t gap = ALERT_RETRY_MS;
+            uint64_t maxGap = ALERT_RETRY_MAX_MS;
         };
     } // namespace CloseSeq
 } // namespace SQM

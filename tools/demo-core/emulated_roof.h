@@ -150,6 +150,7 @@ namespace DemoRoof
         RoofIo::FaultRecord fault;
         RoofIo::GateInputs gates;
         uint32_t personStops = 0;
+        uint32_t remoteStops = 0; // spec 014: of personStops, the honoured remote stops
         float motorAmps = 0.0f;
 
         Safety::SourceRecord http;
@@ -170,6 +171,8 @@ namespace DemoRoof
         uint32_t closedCount = 0;
         // Spec 013: CloseOnUnsafe::updateDaylight.
         Daylight::Settings daylightCfg;
+        CloseSeq::Policy policy;       // spec 014: autoClose.*
+        bool remoteStopsClose = false; // spec 014: autoClose.remoteStop
         Daylight::Watch daylightWatch;
         Daylight::View daylightView;
         uint32_t daylightClosedCount = 0;

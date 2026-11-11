@@ -28,10 +28,25 @@ namespace SQM
 
             // A client's stop of a close while the weather isn't safe, or (spec
             // 013) while daylight wants the roof closed: refused, a person's isn't.
+            // Spec 014: with the owner's remoteStopsClose it is accepted and
+            // counts as a person's stop (the stand-down's critical alert follows).
             CommandCheck checkClientStop(
-                Roof::Origin origin, const GateInputs &gates, const Roof::Status &status, const CommandContext &context)
+                Roof::Command command,
+                Roof::Origin origin,
+                const GateInputs &gates,
+                const Roof::Status &status,
+                const CommandContext &context)
             {
                 const bool closing = status.state == Roof::State::Closing || context.closePending;
+                const bool wanted = gates.weather != Safety::Verdict::Safe || gates.daylightCloses;
+                // Only a Stop (it keeps the position estimate): an abort would make
+                // the position unknown, and the automatic close couldn't move again.
+                if (closing && wanted && context.remoteStopsClose && command == Roof::Command::Stop)
+                {
+                    CommandCheck honoured;
+                    honoured.standsDown = true;
+                    return honoured;
+                }
                 if (closing && gates.weather != Safety::Verdict::Safe)
                     return CommandCheck{
                         false,
@@ -65,7 +80,7 @@ namespace SQM
             const Roof::Status &status = controller.status();
             const bool client = remoteOrigin(origin);
             if (isStop(command))
-                return client ? checkClientStop(origin, gates, status, context) : CommandCheck{};
+                return client ? checkClientStop(command, origin, gates, status, context) : CommandCheck{};
             if (command != Roof::Command::Open && command != Roof::Command::Close)
                 return CommandCheck{};
             const GateRefusal gate = gateCommand(command, gates);

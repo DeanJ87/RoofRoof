@@ -332,3 +332,13 @@ export const ActionButton: FunctionalComponent<{
 
 export const ResultNote: FunctionalComponent<{ result: { type: 'success' | 'error'; text: string } | null }> = ({ result }) =>
   result ? <Note tone={result.type === 'success' ? 'ok' : 'bad'}>{result.text}</Note> : null;
+
+// Rarely changed rows folded away (spec 014), so a card shows what most owners
+// set and the rest is one tap away. The native <details> gives keyboard and
+// screen-reader support; it opens by itself while a row inside has an error.
+export const Fold: FunctionalComponent<{ label: string; open?: boolean; dataField?: string }> = ({ label, open, dataField, children }) => (
+  <details class="fold" open={open} data-field={dataField}>
+    <summary class="fold-summary">{label}</summary>
+    <div class="fold-body">{children}</div>
+  </details>
+);

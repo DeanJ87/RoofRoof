@@ -20,17 +20,29 @@ namespace SQM
                 return decision.daylight ? "It is daylight" : "The weather is unsafe";
             }
 
-            // What re-arms a stood-down sequence besides a person's close.
-            const char *rearmText(const Decision &decision)
-            {
-                return decision.daylight
-                           ? "the sun has been down (or the daylight close off) for 10 minutes, or the weather has been unsafe for 30 s"
-                           : "the weather has been safe for 10 minutes";
-            }
-
             std::string seconds(uint64_t ms)
             {
                 return std::to_string((ms + 999) / 1000) + " s";
+            }
+
+            // Spec 014: the policy's times in whole minutes (the settings are minutes).
+            std::string minutes(uint64_t ms)
+            {
+                const uint64_t whole = (ms + 59999) / 60000;
+                return std::to_string(whole) + (whole == 1 ? " minute" : " minutes");
+            }
+
+            // What re-arms a stood-down sequence besides a person's close.
+            std::string rearmText(const Decision &decision)
+            {
+                return decision.daylight ? "the sun has been down (or the daylight close off) for " + minutes(decision.rearmMs) +
+                                               ", or the weather has been unsafe for 30 s"
+                                         : "the weather has been safe for " + minutes(decision.rearmMs);
+            }
+
+            std::string triesAgain(const Decision &decision)
+            {
+                return "it tries again in " + minutes(decision.retryMs);
             }
 
             std::string closeFailedMessage(const Decision &decision, const std::string &why)
@@ -41,7 +53,12 @@ namespace SQM
                     return withWhy(
                         "The roof faulted while closing and stays where it stopped until a person clears the fault. Fault:", why);
                 case Cause::Refused:
-                    return withWhy("The roof refused to close; it tries again in 5 minutes. Refused:", why);
+                    return withWhy("The roof refused to close; " + triesAgain(decision) + ". Refused:", why);
+                case Cause::NotStarted:
+                    return withWhy(
+                        "The close didn't start within " + seconds(decision.limitMs) + " and was called off; " + triesAgain(decision) +
+                            ". Roof:",
+                        why);
                 case Cause::TooLong:
                     return withWhy(
                         "The close didn't finish " +
@@ -52,7 +69,7 @@ namespace SQM
                 default:
                     break;
                 }
-                return withWhy("The close stopped before the roof was closed; it tries again in 5 minutes. Roof:", why);
+                return withWhy("The close stopped before the roof was closed; " + triesAgain(decision) + ". Roof:", why);
             }
 
             AlertText parkMessage(const Decision &decision, const std::string &why)
@@ -93,7 +110,8 @@ namespace SQM
                 case Event::StoppedByPerson:
                     return {
                         "Automatic close stopped",
-                        std::string("A person stopped the roof during the automatic close. It stays open ") +
+                        std::string(decision.remoteStop ? "An imaging app or MQTT" : "A person") +
+                            " stopped the roof during the automatic close. It stays open " +
                             (decision.daylight ? "in daylight" : "while unsafe") + " until someone closes it or " + rearmText(decision) +
                             "."};
                 default:
@@ -117,6 +135,7 @@ namespace SQM
                 return reasons.refusal;
             case Cause::Interrupted:
             case Cause::TooLong:
+            case Cause::NotStarted:
                 return Roof::stateName(reasons.roof);
             default:
                 break;
@@ -159,7 +178,8 @@ namespace SQM
                 "tooLong",
                 "positionUnknown",
                 "faultLatched",
-                "roofNotStarted"};
+                "roofNotStarted",
+                "closeNotStarted"};
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }

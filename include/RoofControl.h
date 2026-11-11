@@ -17,6 +17,7 @@
 #include <string>
 
 #include "BenchMode.h"
+#include "CommandCheck.h"
 #include "Config.h"
 #include "FaultRecord.h"
 #include "MotionGuards.h"
@@ -174,6 +175,8 @@ namespace SQM
         Outcome outcomeOf(const Roof::CommandResult &result);
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
         Outcome precheck(Roof::Command command, Roof::Origin origin) const;
+        RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin) const;
+        Outcome runChecked(Roof::Command command, Roof::Origin origin);
         static Outcome blockedOutcome(const RoofIo::Blockers &now, Roof::State state);
         Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
         Outcome stopLocked(Roof::Command command, Roof::Origin origin);
@@ -194,7 +197,9 @@ namespace SQM
         HardwareSettings pendingSettings;
         RoofIo::GateInputs gates;
         bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
-        uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005; never an Alpaca client's, spec 006)
+        // A person's stops and aborts since start (spec 005; never an Alpaca client's, spec 006, unless autoClose.remoteStop, spec 014).
+        uint32_t personStops = 0;
+        uint32_t remoteStops = 0; // spec 014: those of personStops that were a remote stop honoured by autoClose.remoteStop
         Roof::Origin closeOrigin = Roof::Origin::Person;
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
@@ -229,7 +234,8 @@ namespace SQM
         std::atomic<uint8_t> park2Reading{0};
         std::atomic<uint8_t> rainReading{0};
         std::atomic<bool> started{false};
-        std::atomic<uint8_t> stateNow{0}; // Roof::State, as of the last snapshot
+        std::atomic<bool> remoteStopsClose{false}; // spec 014: autoClose.remoteStop
+        std::atomic<uint8_t> stateNow{0};          // Roof::State, as of the last snapshot
         std::atomic<bool> closeWaitingNow{false};
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;

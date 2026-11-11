@@ -26,6 +26,8 @@ namespace SQM
             constexpr const char *RESULT_SUBTOPIC = "roof/result";
             // At rest, a change of the state key is published at most this often.
             constexpr uint32_t CHANGE_MIN_MS = 1000;
+            // The longest at-rest change gap the setting allows (spec 014).
+            constexpr uint32_t MAX_CHANGE_MIN_MS = 60000;
             // While the roof moves or a close waits, only a change of its state,
             // fault or waiting close, at most this often and at most
             // BUSY_MAX_PUBLISHES times until it is at rest again (research R4:
@@ -146,7 +148,7 @@ namespace SQM
             bool busy(const StateKey &key);
 
             // When the document is due: never published, or a new connection; at
-            // rest, the key changed and CHANGE_MIN_MS has passed, or the interval
+            // rest, the key changed and the change gap (CHANGE_MIN_MS by default) has passed, or the interval
             // has passed. While busy (research R4: the roof moves, a close waits,
             // or the automatic close is attempting):
             // only a change of state, fault or waiting close, BUSY_MIN_MS after
@@ -157,8 +159,15 @@ namespace SQM
             public:
                 bool due(const StateKey &key, uint32_t connection, uint32_t nowMs, uint32_t intervalMs) const;
                 void published(const StateKey &key, uint32_t connection, uint32_t nowMs, bool ok);
+                // Spec 014 (mqtt.changeMinSeconds): the at-rest change gap, clamped to
+                // CHANGE_MIN_MS..MAX_CHANGE_MIN_MS. The busy cadence never changes.
+                void setChangeMinMs(uint32_t ms)
+                {
+                    changeMinMs = ms < CHANGE_MIN_MS ? CHANGE_MIN_MS : ms > MAX_CHANGE_MIN_MS ? MAX_CHANGE_MIN_MS : ms;
+                }
 
             private:
+                uint32_t changeMinMs = CHANGE_MIN_MS;
                 bool any = false;
                 StateKey last;
                 uint32_t lastConnection = 0;

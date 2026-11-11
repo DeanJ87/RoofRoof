@@ -695,6 +695,10 @@
     {
       "match": "deps.D-44",
       "reason": "Shown on its Settings row (Roof, Daylight); the Roof card's daylight line says when the check can't run"
+    },
+    {
+      "match": "deps.D-45",
+      "reason": "Shown on its Settings row (Roof, Automatic close); a setting, not state the dashboard reports"
     }
   ]
 }

@@ -15,7 +15,7 @@ namespace SQM
         {
             waiting = true;
             lastSendMs = nowMs;
-            gap = gap * 2 > ALERT_RETRY_MAX_MS ? ALERT_RETRY_MAX_MS : gap * 2;
+            gap = gap * 2 > maxGap ? maxGap : gap * 2;
         }
 
         bool AlertRetry::resendDue(Delivery delivery, uint64_t nowMs)

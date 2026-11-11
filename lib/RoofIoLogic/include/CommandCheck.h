@@ -20,12 +20,20 @@ namespace SQM
             bool accepted = true;
             std::string reason; // machine name: a gate's, "closing", or the motion logic's refusal
             std::string text;   // why, with the value and the limit or the input that failed
+            // Spec 014: an accepted remote stop that counts as a person's (the
+            // owner's autoClose.remoteStop setting): the automatic close stands
+            // down and raises its critical alert, as for a person's stop.
+            bool standsDown = false;
         };
 
         // What else the decision needs from the roof's owner (RoofControl).
         struct CommandContext
         {
             bool closePending = false; // a close is waiting for an upload or MQTT connect to stop
+            // Spec 014 (autoClose.remoteStop): a remote client's stop of a close
+            // in weather that isn't safe (or in daylight) is accepted and counts
+            // as a person's stop, instead of being refused. Off by default.
+            bool remoteStopsClose = false;
         };
 
         // An origin with no login that isn't the controller: an Alpaca client
@@ -37,7 +45,9 @@ namespace SQM
         // under way or waiting and the weather isn't safe, whoever started the
         // close (constitution III: nothing unauthenticated may call off or
         // delay the roof closing in bad weather; a person's stop from the web
-        // UI and the controller's own stops still work). Open and close: the weather and park gates
+        // UI and the controller's own stops still work). With the context's
+        // remoteStopsClose such a stop is accepted with standsDown, so it is
+        // never silent (spec 014). Open and close: the weather and park gates
         // (constitution II, III); then, for a remote client, no open while the roof
         // is closing, a close waits, or a close was stopped part-way (a client
         // never reverses a close); then the motion logic's dry run (position

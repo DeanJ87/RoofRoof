@@ -100,6 +100,7 @@ namespace SQM
         static constexpr uint32_t DAYLIGHT_EVERY_MS = 1000;
         mutable std::mutex daylightLock; // the settings (any task) and the status copy
         Daylight::Settings daylightSettings;
+        CloseSeq::Policy policy; // spec 014: autoClose.*, under daylightLock
         RoofIo::DaylightStatus daylightShown;
         Daylight::Watch daylightWatch;
         Daylight::View daylightView;

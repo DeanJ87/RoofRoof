@@ -21,6 +21,7 @@ export interface MQTTConfig {
   publishIntervalMs: number;
   homeAssistant?: { enabled: boolean; discoveryPrefix: string };
   roofCommands?: boolean; // open, close and stop from <topic>/roof/set (spec 008), default off
+  changeMinSeconds?: number; // spec 014: at rest, a change is published at most this often (1..60 s)
 }
 
 export interface OTAConfig {
@@ -90,6 +91,7 @@ export type DaylightMode = 'off' | 'alert' | 'close';
 export interface DaylightConfig {
   mode: DaylightMode;
   sunAltitudeDeg: number; // -18..30
+  bandDeg?: number; // spec 014: night again only this far below the threshold (0.1..2)
 }
 export interface LocationConfig {
   set: boolean;
@@ -103,6 +105,22 @@ export type SetupState = 'new' | 'offered' | 'done';
 export interface SetupConfig {
   state: SetupState;
   step: number;
+}
+// The automatic close's policy (spec 014): specs 005 and 013's fixed values as settings.
+export type NotStartedPolicy = 'halt' | 'retry';
+export interface AutoCloseConfig {
+  rearmMinutes: number; // 5..60
+  parkRequestSeconds: number; // 10..120
+  parkHoldSeconds: number; // 4..30
+  retryMinutes: number; // 1..30
+  closeStartSeconds: number; // 25..120
+  closeGuardSeconds: number; // 10..120
+  notStarted: NotStartedPolicy;
+  remindMinutes: number; // 10..120
+  remoteStop: boolean;
+}
+export interface UiConfig {
+  confirmOpenClose: boolean; // Open and Close ask first; Stop never does
 }
 
 export interface Config {
@@ -118,6 +136,8 @@ export interface Config {
   roof?: RoofConfig;
   daylight?: DaylightConfig;
   location?: LocationConfig;
+  autoClose?: AutoCloseConfig;
+  ui?: UiConfig;
   alerts?: AlertsConfig;
   // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
   setup?: SetupConfig;

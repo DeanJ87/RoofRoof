@@ -30,6 +30,7 @@ export const mockConfig: Config = {
     publishIntervalMs: 60000,
     homeAssistant: { enabled: false, discoveryPrefix: 'homeassistant' },
     roofCommands: false,
+    changeMinSeconds: 1,
   },
   ota: {
     enabled: false,
@@ -67,8 +68,20 @@ export const mockConfig: Config = {
     minRunningAmps: 0,
     minSupplyVolts: 11,
   },
-  daylight: { mode: 'alert', sunAltitudeDeg: 0 },
+  daylight: { mode: 'alert', sunAltitudeDeg: 0, bandDeg: 0.5 },
   location: { set: false, latitude: 0, longitude: 0 },
+  autoClose: {
+    rearmMinutes: 10,
+    parkRequestSeconds: 30,
+    parkHoldSeconds: 4,
+    retryMinutes: 5,
+    closeStartSeconds: 30,
+    closeGuardSeconds: 30,
+    notStarted: 'halt',
+    remindMinutes: 30,
+    remoteStop: false,
+  },
+  ui: { confirmOpenClose: false },
   alerts: {
     enabled: true,
     events: {

@@ -22,6 +22,7 @@ namespace SQM
                 {"daylight-off", "Daylight is off", "roof#daylight"},
                 {"location-unknown", "Location not set", "roof#daylight"},
                 {"clock-not-set", "Clock not set", "time#ntp"},
+                {"remote-off", "Alpaca and MQTT roof commands are off", "network#alpaca"},
             };
 
             const Reason *reason(const char *code)
@@ -133,6 +134,10 @@ namespace SQM
                     "daylight.mode", "D-42", on, {{"D-42", "location-unknown", cfg.location.set}, {"D-43", "clock-not-set", c.f.clockSet}});
                 const Link daylightOn{"D-44", "daylight-off", on};
                 c.add("daylight.sunAltitudeDeg", "D-44", true, {daylightOn});
+                c.add("daylight.bandDeg", "D-44", true, {daylightOn});
+                // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
+                const bool remote = cfg.alpaca.enabled || (cfg.mqtt.enabled && cfg.mqtt.roofCommands);
+                c.add("autoClose.remoteStop", "D-45", cfg.autoClose.remoteStop, {{"D-45", "remote-off", remote}});
                 c.add("location.set", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.latitude", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.longitude", "D-44", cfg.location.set, {daylightOn});

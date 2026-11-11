@@ -37,6 +37,11 @@ const FIELDS = [
   'daylight.mode',
   'daylight.sunAltitudeDeg',
   'location.set',
+  'autoClose.rearmMinutes',
+  'autoClose.remindMinutes',
+  'autoClose.notStarted',
+  'autoClose.remoteStop',
+  'ui.confirmOpenClose',
 ];
 
 const openRoofTab = async () => {
@@ -168,7 +173,7 @@ describe('Roof tab', () => {
     fireEvent.change(field('location.longitude')!, { target: { value: '-0.12' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(sent).not.toBeNull());
-    expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6 });
+    expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6, bandDeg: 0.5 });
     expect(sent!.location).toEqual({ set: true, latitude: 51.5, longitude: -0.12 });
   });
 
@@ -203,6 +208,72 @@ describe('Roof tab', () => {
     fireEvent.change(await findField('roof.hallLowCounts'), { target: { value: '900' } });
     expect(await screen.findByRole('img', { name: /low threshold 900, high threshold 3,000/ })).toBeInTheDocument();
   });
+  // Spec 014: the automatic close's policy, the Advanced folds and the Alpaca note.
+  it('shows the automatic close settings with the rest under Advanced, and saves them', async () => {
+    mockDevice();
+    let sent: Config | null = null;
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        sent = (await request.json()) as Config;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    expect(await screen.findByRole('heading', { name: 'Automatic close' })).toBeInTheDocument();
+    const fold = (await findField('autoClose.advanced')) as unknown as HTMLDetailsElement;
+    expect(fold.tagName).toBe('DETAILS');
+    expect(fold.open).toBe(false);
+    for (const path of [
+      'autoClose.parkRequestSeconds',
+      'autoClose.parkHoldSeconds',
+      'autoClose.retryMinutes',
+      'autoClose.closeStartSeconds',
+      'autoClose.closeGuardSeconds',
+      'mqtt.changeMinSeconds',
+    ])
+      expect(fold.querySelector(`[data-field="${path}"]`)).not.toBeNull();
+    fireEvent.change(field('autoClose.rearmMinutes')!, { target: { value: '60' } });
+    fireEvent.change(field('autoClose.notStarted')!, { target: { value: 'retry' } });
+    fireEvent.change(field('autoClose.parkHoldSeconds')!, { target: { value: '30' } });
+    fireEvent.click(screen.getByLabelText('Ask before Open and Close'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(sent!.autoClose).toEqual({ ...mockConfig.autoClose, rearmMinutes: 60, notStarted: 'retry', parkHoldSeconds: 30 });
+    expect(sent!.ui).toEqual({ confirmOpenClose: true });
+  });
+
+  it('opens the fold on an out-of-range value and refuses the save', async () => {
+    mockDevice();
+    await openRoofTab();
+    const hold = await findField('autoClose.parkHoldSeconds');
+    fireEvent.change(hold, { target: { value: '3' } });
+    expect(await screen.findByText('Park hold must be between 4 and 30 s')).toBeInTheDocument();
+    expect((field('autoClose.advanced') as unknown as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it('says imaging apps cannot open or close the roof while Alpaca is off', async () => {
+    mockDevice();
+    server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { enabled: false } })));
+    await openRoofTab();
+    expect(await screen.findByText(/Alpaca is off: imaging apps can't open or close the roof/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alpaca settings' })).toBeInTheDocument();
+  });
+
+  it('shows no Alpaca note while Alpaca is on', async () => {
+    mockDevice();
+    server.use(http.get('/api/config', () => HttpResponse.json({ ...mockConfig, alpaca: { enabled: true } })));
+    await openRoofTab();
+    expect(await screen.findByRole('heading', { name: 'Automatic close' })).toBeInTheDocument();
+    expect(screen.queryByText(/Alpaca is off: imaging apps can't open or close the roof/)).toBeNull();
+  });
+
+  it('keeps the daylight band under Advanced in the Daylight card', async () => {
+    mockDevice();
+    await openRoofTab();
+    const fold = (await findField('daylight.advanced')) as unknown as HTMLDetailsElement;
+    expect(fold.querySelector('[data-field="daylight.bandDeg"]')).not.toBeNull();
+    expect(fold.open).toBe(false);
+  });
 });
 
 describe('toConfigPayload', () => {
@@ -213,6 +284,8 @@ describe('toConfigPayload', () => {
     expect(full.park).toEqual(mockConfig.park);
     expect(full.daylight).toEqual(mockConfig.daylight);
     expect(full.location).toEqual(mockConfig.location);
+    expect(full.autoClose).toEqual(mockConfig.autoClose);
+    expect(full.ui).toEqual(mockConfig.ui);
     const { roof: _roof, safety: _safety, park: _park, daylight: _daylight, location: _location, ...older } = mockConfig;
     const payload = toConfigPayload(older as Config);
     expect('roof' in payload || 'safety' in payload || 'park' in payload || 'daylight' in payload || 'location' in payload).toBe(false);

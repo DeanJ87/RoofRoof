@@ -36,7 +36,10 @@ namespace SQM
 
         // Once day, night again only this far below the threshold, so a sun
         // that lingers at the threshold can't flicker the state (research R2).
+        // Spec 014: the default of daylight.bandDeg, within MIN_BAND_DEG to MAX_BAND_DEG.
         constexpr double BAND_DEG = 0.5;
+        constexpr float MIN_BAND_DEG = 0.1f;
+        constexpr float MAX_BAND_DEG = 2.0f;
         // The demo's "Sun up": the sun this far above the threshold.
         constexpr double FORCED_ABOVE_DEG = 10.0;
 
@@ -47,6 +50,7 @@ namespace SQM
             bool locationSet = false;
             double latitude = 0.0;
             double longitude = 0.0;
+            float bandDeg = static_cast<float>(BAND_DEG);
         };
 
         struct View
@@ -57,6 +61,7 @@ namespace SQM
             bool known = false;       // altitudeDeg holds a value (night or day)
             double altitudeDeg = 0.0; // meaningful only when known
             float limitDeg = 0.0f;
+            float bandDeg = static_cast<float>(BAND_DEG);
             // Daylight wants the roof closed now: mode "alert and close" and day.
             bool closes() const { return mode == Mode::Close && state == State::Day; }
             // The mode is on (alert or alert and close).

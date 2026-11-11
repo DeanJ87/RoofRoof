@@ -1,6 +1,7 @@
 #include "CloseOnUnsafe.h"
 
 #include <Arduino.h>
+#include <algorithm>
 #include <atomic>
 #include <ctime>
 #include <esp_attr.h>
@@ -85,6 +86,7 @@ namespace SQM
         parkTimeoutMs.store(config.park.timeoutSeconds * 1000u);
         std::lock_guard<std::mutex> held(daylightLock);
         daylightSettings = Daylight::settingsFrom(config);
+        policy = CloseSeq::policyFrom(config);
     }
 
     void CloseOnUnsafe::updateDaylight()
@@ -190,9 +192,16 @@ namespace SQM
         CloseSeq::applySafety(in, safety.weather().verdict, safety.park());
         CloseSeq::applyRoof(in, snap.status, snap.closePending);
         in.personStops = snap.personStops;
+        in.remoteStops = snap.remoteStops;
         in.roofStarted = roof.running();
         in.daylight = daylightView.closes(); // spec 013
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
+        {
+            std::lock_guard<std::mutex> held(daylightLock);
+            sequence.setPolicy(policy);
+            // Spec 005: resends up to the reminder interval, and never further apart than its 30 minutes.
+            retry.setMaxGap(std::min<uint64_t>(policy.remindMs, CloseSeq::ALERT_RETRY_MAX_MS));
+        }
 
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);

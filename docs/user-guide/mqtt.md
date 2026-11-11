@@ -27,7 +27,7 @@ In **Settings → Network → MQTT**, turn on **Publish to a broker** and set th
 }
 ```
 
-The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `publishIntervalMs` (default 60000) is how often the roof's state document is republished while nothing changes. `roofCommands` (default `false`) lets MQTT open, close and stop the roof ([Roof commands](#roof-commands)).
+The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `publishIntervalMs` (default 60000) is how often the roof's state document is republished while nothing changes. `roofCommands` (default `false`) lets MQTT open, close and stop the roof ([Roof commands](#roof-commands)). `changeMinSeconds` (default 1, 1-60; **Settings → Roof → Automatic close → Advanced → MQTT change gap**) is the shortest time between two publishes of a change at rest.
 
 !!! warning "Telemetry, not an interlock"
     MQTT is a plaintext LAN integration. Use it for telemetry and automation; keep physical safety interlocks independent.
@@ -42,7 +42,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 | Topic | Retained | Payload | When |
 |---|---|---|---|
 | `<base>/availability` | Yes | `online` / `offline` (last will) | On connect / disconnect |
-| `<base>/state` | Yes | The roof document (below) | On connect; at rest, within a second of a change of the roof's state, fault, known position, automatic-close phase, or weather or park check, and every publish interval; while the roof moves or the automatic close is under way, only when it starts, reverses, ends or faults (at most twice, 5 s apart) |
+| `<base>/state` | Yes | The roof document (below) | On connect; at rest, within the MQTT change gap (a second by default) of a change of the roof's state, fault, known position, automatic-close phase, or weather or park check, and every publish interval; while the roof moves or the automatic close is under way, only when it starts, reverses, ends or faults (at most twice, 5 s apart) |
 | `<base>/roof/set` | - | Subscribed: `OPEN`, `CLOSE`, `STOP` (any case) | Command ([Roof commands](#roof-commands)) |
 | `<base>/roof/result` | No | `{"command","accepted","reason","text","state"}` | One per message on `roof/set` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
@@ -94,7 +94,7 @@ MQTT has no login of its own, so these commands have the same limits as an ASCOM
 
 - **Open** only while the weather is safe and, with the daylight failsafe on "Alert and close", the sun is down; **close** only onto a confirmed park, re-checked throughout the close ([Roof motion](roof-motion.md#weather-and-park-checks)).
 - Neither while the position is unknown or a fault is latched: a person moves the roof from an unknown position and clears faults in the web UI. There is no MQTT command to clear a fault, abort or set a position.
-- **Stop** stops the roof, except while a close runs or waits and the weather isn't safe, or the sun is up with the daylight failsafe on "Alert and close": then it is refused and the roof keeps closing (Stop in the web UI still works). An MQTT stop never counts as a person's, so it never stands the [automatic close](close-on-unsafe.md) down.
+- **Stop** stops the roof, except while a close runs or waits and the weather isn't safe, or the sun is up with the daylight failsafe on "Alert and close": then it is refused and the roof keeps closing (Stop in the web UI still works). An MQTT stop never counts as a person's, so it never stands the [automatic close](close-on-unsafe.md) down. With **Settings → Roof → Automatic close → Remote Stop calls off a close** on, that one stop is accepted instead and counts as a person's: the automatic close stands down and raises its critical alert ([Settings of the automatic close](close-on-unsafe.md#settings-of-the-automatic-close)).
 - **Open** is refused while a close runs or waits, or after a close was stopped part-way: MQTT can't reverse a close.
 - A **retained** message on `roof/set` is never acted on when the broker replays it (on every reconnect). Send commands without the retain flag: one sent with it still runs once if the device is connected at that moment, then stays on the broker and is refused on every replay. To clear one left there: `mosquitto_pub -r -n -t roofroof/roof/set`. The same goes for `alerts/armed/set`: a retained pause isn't replayed. A broker *bridged* to another broker can pass on a message retained there as a live one, so keep no retained message on `roof/set` on any broker.
 - Commands sent while the device is offline are not queued.

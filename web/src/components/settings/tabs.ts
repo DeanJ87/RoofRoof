@@ -23,6 +23,7 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   safety: 'roof',
   park: 'roof',
   daylight: 'roof',
+  autoClose: 'roof',
 };
 
 export const isSettingsTab = (value: string | null): value is SettingsTabId => SETTINGS_TABS.some((tab) => tab.id === value);

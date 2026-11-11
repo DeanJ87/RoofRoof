@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <string>
 
+#include "ClosePolicy.h"
 #include "ParkRule.h"
 #include "PlatformHold.h"
 #include "RoofGates.h"
@@ -23,23 +24,11 @@ namespace SQM
 {
     namespace CloseSeq
     {
-        // Two park requests never closer than this (research R5).
-        constexpr uint64_t PARK_REQUEST_GAP_MS = 30000;
-        // The park result must say parked this long without a break (R4).
-        constexpr uint64_t PARK_SETTLE_MS = 4000;
-        // After a failed attempt, the wait before the next park request (R6).
-        constexpr uint64_t RETRY_AFTER_MS = 300000;
-        // A stood-down sequence re-arms after this long safe without a break (R7).
-        constexpr uint64_t REARM_SAFE_MS = 600000;
+        // The policy's defaults (PARK_REQUEST_GAP_MS, PARK_SETTLE_MS,
+        // RETRY_AFTER_MS, REARM_SAFE_MS, CLOSE_START_MS, CLOSE_GUARD_SLACK_MS,
+        // REMIND_MS) are in ClosePolicy.h (spec 014).
         // The position must be unknown this long before standing down (R8).
         constexpr uint64_t UNKNOWN_CONFIRM_MS = 2000;
-        // A waiting close (spec 003 closePending) must start within this (R6).
-        constexpr uint64_t CLOSE_START_MS = 30000;
-        // A moving close may take its own timeout plus this (R6).
-        constexpr uint64_t CLOSE_GUARD_SLACK_MS = 30000;
-        // A critical event alerts at most this often, and is raised again this
-        // often while the roof stays open after it (research R10).
-        constexpr uint64_t REMIND_MS = 1800000;
         // RoofControl's refusal reason when a person stopped the roof since
         // the sequence decided to close.
         constexpr const char *PERSON_STOP_REASON = "personStop";
@@ -70,7 +59,10 @@ namespace SQM
             bool parked = false;        // spec 004's park result
             bool ninaConfigured = true; // the park result doesn't say "N.I.N.A. not configured"
             uint32_t personStops = 0;   // a person's accepted stops and aborts since start
-            bool roofStarted = true;    // the roof's control task runs (else it reads Unknown for ever)
+            // Spec 014: of personStops, the remote (Alpaca, MQTT) stops counted
+            // as a person's by autoClose.remoteStop; only for the alert's wording.
+            uint32_t remoteStops = 0;
+            bool roofStarted = true; // the roof's control task runs (else it reads Unknown for ever)
             // Spec 013: daylight wants the roof closed (Daylight::View::closes()).
             // The sequence then acts as for unsafe weather; the verdict itself is
             // never changed (weatherSafe stays the weather's).
@@ -121,6 +113,7 @@ namespace SQM
             PositionUnknown,
             FaultLatched,
             RoofNotStarted, // the roof controller didn't start: nothing can move
+            NotStarted,     // spec 014: a waiting close didn't start in time and was called off (policy retry)
         };
 
         // What one step decided.
@@ -135,6 +128,11 @@ namespace SQM
             // Spec 013: the decision belongs to an episode daylight alone started,
             // the weather safe throughout (alert wording and events).
             bool daylight = false;
+            // Spec 014: the policy's back-off and re-arm spell, for the wording.
+            uint64_t retryMs = RETRY_AFTER_MS;
+            uint64_t rearmMs = REARM_SAFE_MS;
+            // Spec 014: a StoppedByPerson whose stop came from an imaging app or MQTT.
+            bool remoteStop = false;
         };
 
         // The roof's answer to the Close action.
@@ -165,6 +163,10 @@ namespace SQM
         public:
             // park.timeoutSeconds in ms; applies from the next attempt.
             void setParkTimeoutMs(uint32_t ms) { parkTimeoutMs = ms; }
+            // Spec 014: the timings and choices, clamped to their ranges;
+            // applies from the next step.
+            void setPolicy(const Policy &next) { policy = clamp(next); }
+            const Policy &currentPolicy() const { return policy; }
             // One step: at most one action and one event.
             Decision step(const Inputs &in);
             // The roof's answer to the Close action of the last step.
@@ -211,6 +213,7 @@ namespace SQM
             void clearAlertThrottle();
             Decision remindIfDue(Decision decision);
             Decision halt(uint64_t limitMs);
+            Decision notStarted();
             Decision resume(const Inputs &in);
             Decision idle(const Inputs &in);
             Decision waiting(const Inputs &in, bool personStopped);
@@ -226,6 +229,7 @@ namespace SQM
 
             Phase current = Phase::Idle;
             uint32_t parkTimeoutMs = DEFAULT_PARK_TIMEOUT_MS;
+            Policy policy;
             uint64_t lastNowMs = 0;
             uint64_t phaseSinceMs = 0;                   // when the current phase (or attempt) began
             uint64_t attemptLimitMs = 0;                 // the park time limit taken when the attempt began
@@ -233,10 +237,12 @@ namespace SQM
             Roof::State lastRoof = Roof::State::Unknown; // the previous step's roof state
             bool requested = false;                      // a park request was ever sent
             uint64_t lastRequestMs = 0;
-            uint32_t seenStops = 0; // personStops at the last step
-            Run parkHeld;           // the park result says parked
-            Run unknown;            // the roof's position is unknown
-            Run safe;               // the verdict is safe
+            uint32_t seenStops = 0;     // personStops at the last step
+            uint32_t seenRemote = 0;    // remoteStops at the last step
+            bool stopWasRemote = false; // the latest counted stop was a remote one (spec 014)
+            Run parkHeld;               // the park result says parked
+            Run unknown;                // the roof's position is unknown
+            Run safe;                   // the verdict is safe
             // Spec 013: unsafe weather added up while a person's daylight
             // stand-down holds (from one step to the next, both not safe).
             uint64_t heldUnsafeMs = 0;
@@ -253,9 +259,9 @@ namespace SQM
             static bool heldBack(Phase phase); // what the weather re-arms after a daylight-only episode
             uint64_t daylightCount() const;
             // This step's results of the three runs.
-            bool parkConfirmed = false;    // parked for PARK_SETTLE_MS
+            bool parkConfirmed = false;    // parked for the policy's park hold
             bool unknownConfirmed = false; // unknown for UNKNOWN_CONFIRM_MS
-            bool safeLong = false;         // safe for REARM_SAFE_MS
+            bool safeLong = false;         // safe for the policy's re-arm spell
             // Where the close came from, to go back to if the gate refuses it.
             Phase beforeClose = Phase::WaitPark;
             uint64_t beforeCloseSinceMs = 0;
@@ -275,6 +281,9 @@ namespace SQM
                 Cause cause = Cause::None;
                 uint64_t limitMs = 0;
                 uint64_t alertedAtMs = 0;
+                // Spec 014: its latest occurrence was throttled (not sent): the
+                // reminder for it comes at the throttle's time, not the interval's.
+                bool unsent = false;
             };
             LastCritical lastCritical;
             // An attempt ended by a safe verdict, kept so a short safe spell
@@ -292,9 +301,9 @@ namespace SQM
             } paused;
             // Spec 013: the weather's attempt as spec 005 pauses it when the
             // weather turns safe, kept while daylight runs its own attempt,
-            // and resumed if the weather turns unsafe within REARM_SAFE_MS.
+            // and resumed if the weather turns unsafe within the re-arm spell.
             Pause weatherPaused;
-            bool weatherPauseValid() const { return weatherPaused.has && lastNowMs - weatherPaused.endedAtMs < REARM_SAFE_MS; }
+            bool weatherPauseValid() const { return weatherPaused.has && lastNowMs - weatherPaused.endedAtMs < policy.rearmSafeMs; }
             bool pauseForDaylight(const Inputs &given, bool personStopped);
             void weatherTakesOver();
             bool keptByDaylight(bool weatherSafeLong);
@@ -302,8 +311,8 @@ namespace SQM
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
             // When each event and cause last alerted (index: Event, Cause).
-            bool alertedEver[8][10] = {};
-            uint64_t alertedAtMs[8][10] = {};
+            bool alertedEver[8][11] = {};
+            uint64_t alertedAtMs[8][11] = {};
             bool remindNow = false; // restored after a restart: remind on the first step
             bool restorePending = false;
             // Spec 013: the episode was started by daylight with the weather safe.

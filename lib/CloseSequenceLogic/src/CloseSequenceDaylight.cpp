@@ -32,14 +32,14 @@ namespace SQM
         void Sequence::trackEpisode(const Inputs &given, bool personStopped, bool restoredNow)
         {
             const bool waitOver = personWaitOver(given, personStopped);
-            const bool weatherSafeLong = weatherSafeRun.lasted(given.weatherSafe, given.nowMs, REARM_SAFE_MS);
+            const bool weatherSafeLong = weatherSafeRun.lasted(given.weatherSafe, given.nowMs, policy.rearmSafeMs);
             daylightInSafeSpell = given.weatherSafe && (daylightInSafeSpell || given.daylight);
             if (current == Phase::Idle)
             {
                 trackIdle(given);
                 return;
             }
-            // A weather episode the weather has left for REARM_SAFE_MS, kept
+            // A weather episode the weather has left for the re-arm spell, kept
             // going only by daylight: from here on it is daylight's (spec 005
             // would have ended it), so new unsafe weather is a new weather
             // episode with its own alerts and re-arm (as below).
