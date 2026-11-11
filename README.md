@@ -8,8 +8,9 @@ Built on the SQMeter platform. The rules every change is checked against are in
 
 **Status:** in development. The device serves its web UI, REST API, live status, MQTT with Home Assistant
 discovery, the roof as an ASCOM Alpaca Dome and push alerts, and it holds the motor driver off from boot. The
-roof opens and closes on a person's or an imaging app's command, within the safety rules, and closes by itself
-onto a parked mount when the weather turns unsafe.
+roof opens and closes on a person's or an imaging app's command (and, when switched on, an MQTT or Home
+Assistant command), within the safety rules, and closes by itself onto a parked mount when the weather turns
+unsafe. Its state goes out over MQTT, with a Home Assistant roof cover.
 
 ## Where to look
 
