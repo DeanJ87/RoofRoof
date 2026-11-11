@@ -106,6 +106,9 @@ void mountFilesystem()
 // Join the saved network, or open the setup hotspot (captive portal).
 void startWifi()
 {
+    // The network is RoofRoof's own setting (config.wifi): the WiFi driver
+    // keeps no copy in NVS, so a reconnect while the roof moves writes no flash.
+    WiFi.persistent(false);
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
     wifiManager->begin();
 
@@ -265,6 +268,14 @@ void loop()
 {
     esp_task_wdt_reset();
 
+    // While the roof opens or closes (spec 003): no restart, no command-line
+    // OTA (flash writes stall its control task and watchdog) and no MQTT
+    // reconnect (it could hold this loop past the safety hand-over limit).
+    const bool roofMoving = roofControl.moving();
+    WebServer::holdRestarts(roofMoving);
+    if (mqttClient)
+        mqttClient->holdReconnects(roofMoving);
+
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
 
@@ -278,7 +289,7 @@ void loop()
         restartingFromHotspot = WebServer::scheduleRestart(1000);
     }
 
-    if (arduinoOTAEnabled)
+    if (arduinoOTAEnabled && !roofMoving)
         ArduinoOTA.handle();
     if (timeManager)
         timeManager->handle();

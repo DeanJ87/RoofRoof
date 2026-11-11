@@ -5,14 +5,17 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 ## R1. A dedicated FreeRTOS task, `vTaskDelayUntil` at 20 ms
 
 - **Decision**: `roof_motion`, pinned to core 1, priority 5 (above the Arduino loop at 1 and
-  AsyncTCP at 3), stack 6 KB (the step's wording and logging keep more than 2 KB spare), released by `vTaskDelayUntil` every 20 ms. Each step: read the
+  AsyncTCP), stack 6 KB (the step's wording and logging keep more than 2 KB spare), released by `vTaskDelayUntil` every 20 ms. Each step: read the
   inputs (outside the lock), then under one mutex: hand over pending settings, the watchdog and
   interlock checks, `tick`, apply the output, copy the snapshot. The fault record is saved after the
   lock is released.
 - **Rationale**: constitution I asks for a task of its own at a fixed rate; spec 002's Hall
   confirmation (three readings) and step-gap limit (100 ms) assume 50 Hz. Core 1 keeps it away from
   the Wi-Fi stack on core 0; priority 5 preempts the web server and the loop, so they can delay a
-  command but never a step.
+  command but never a step. AsyncTCP 3.5.0 defaults to priority 10 on core 1, which would outrank
+  the step, so `platformio.ini` sets `CONFIG_ASYNC_TCP_PRIORITY=3`: above the loop (1), below the
+  roof (5), which stays below the esp_timer task (22) that runs the watchdog. (The first version of
+  this decision assumed AsyncTCP ran at 3 without setting it; the PR review caught it.)
 - **Alternatives**: a hardware timer ISR stepping the logic (ADC reads and a mutex aren't ISR-safe,
   and the logic's floating point would run in the ISR); stepping from `loop()` (shares the loop
   with Wi-Fi, MQTT and alert work, which the constitution rules out); 10 ms (no benefit: the logic's
@@ -106,6 +109,17 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 - **Rationale**: constitution II and III apply to every path, and this spec adds the first one
   (REST). Spec 005 builds the automatic sequence on top and reuses the gates.
 - **Alternatives**: leaving the checks to spec 005 (would ship a close that skips the park check).
+- **The hand-over limit (5 s)**, derived from what can hold up one main-loop pass while the roof
+  moves: MQTT reads (and the CONNACK wait) give up after 3 s (`SOCKET_TIMEOUT_S`, was 10 s); no MQTT
+  reconnect is tried while the roof moves (a reconnect to a dead broker is DNS + a 3 s TCP connect +
+  the CONNACK wait); the web server's work is short, alert delivery has its own task, settings
+  saves and command-line OTA are refused or wait while the roof moves, and the WiFi driver keeps no
+  NVS copy (`WiFi.persistent(false)`). The worst pass is therefore about 3 s, under 5 s.
+  SafetyInputs evaluates once a second, so a park result is at most about 6 s old at the gate,
+  plus N.I.N.A.'s own 10 s freshness rule inside it.
+- **Residual, by the owner's decision (spec 004)**: the park rule uses only the latest N.I.N.A.
+  poll, so one failed poll during a close latches `parkInterlock`; this fails safe (the roof stops
+  where it is, a person decides).
 
 ## R9. Settings save guard
 
@@ -116,6 +130,47 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
   while it answers `Moving`.
 - **Rationale**: the contract's "refuse roof.* saves while opening or closing"; park settings
   change the close interlock, so they are refused too.
+
+## R12. Nothing writes the flash while the roof moves (added after the PR review)
+
+- **Decision**: while the state is opening or closing, settings saves, restores, firmware and web
+  UI uploads (refused on the first chunk, before anything is erased), WiFi changes and restarts
+  answer 409; a scheduled restart waits; command-line OTA isn't serviced; the alerts pause state is
+  saved once the roof stops; MQTT reconnects wait. While an upload is being written, open and close
+  are refused (`flashBusy`).
+- **Rationale**: a flash erase or write disables the code cache on both cores. The control task
+  and the esp_timer watchdog both stall (a sector erase is about 45 ms, worst case a few hundred),
+  while EN stays as it was: the watchdog can't drop it during the stall.
+- **Residual**: the watchdog shares the stall, so a flash write that slipped through (a race
+  between a save and an automatic command from spec 005, or the roof's own fault record, which is
+  only written with the driver off) would let the motor run unsupervised for its duration. A later
+  hardware timeout (a monostable or RC on EN refreshed by the PWM task) would close it.
+- **Alternatives**: IRAM-resident watchdog ISR (a GPTimer ISR in IRAM survives a cache stall, but
+  `gpio_set_level` and the step's data would need to be in IRAM too; kept for later with the
+  hardware timeout).
+
+## R13. Current sense under PWM (added after the PR review)
+
+- **Decision**: the BTS7960's IS output follows the motor only while its side is on, so the
+  reading averaged over 8 samples (several PWM periods) is about duty × the motor current. It is
+  scaled back by the duty applied while it was read (`RoofIo::runningAmps`). Driving at 25% duty or
+  more for a second, a reading under 0.2 A is a broken sense wire: NaN, which spec 002 latches as
+  `currentUnreadable`. The wiring page recommends a capacitor across each divider's lower resistor
+  so the ADC sees the averaged value.
+- **Rationale**: without the scaling, the over-current limit would be 2.5× higher at 40% duty; a
+  broken IS wire read 0 A, which looked valid.
+
+## R14. Roof commands need a header (added after the PR review)
+
+- **Decision**: the four roof routes need `X-RoofRoof: 1` (403 without it); the web UI's
+  `roofCommand()` sends it. A cross-site form or simple cross-origin request can't set a custom
+  header, so a page in the owner's browser can't move the roof (with or without stored Basic auth).
+
+## R15. The watchdog is itself watched (added after the PR review)
+
+- **Decision**: the watchdog timer stamps a heartbeat on every check; `MotorDriver` sets EN high only
+  while it is at most 30 ms old, and the control task latches `watchdogStopped` if it is more than
+  100 ms old with the driver on.
 
 ## R10. The status section and live updates
 

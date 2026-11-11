@@ -231,7 +231,7 @@ namespace SQM
             request->send(409, "application/json", Backup::errorJson(Backup::Error::Stale).c_str());
             return;
         }
-        if (refuseWhileMoving(request, staged->preview.candidate))
+        if (refuseWhileMoving(request))
             return;
         if (!saveAndApply(staged->preview.candidate))
         {

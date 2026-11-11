@@ -123,7 +123,7 @@ Successful saves return:
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
 
-While the roof is opening or closing, a save that changes any `roof` or `park` setting is refused with `409` and `{"error": "The roof is moving: roof and park settings can't change until it stops"}`. Other settings save normally. Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
+While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. Restores, uploads, WiFi changes and restarts are refused the same way. Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
 
@@ -180,7 +180,7 @@ curl -X POST http://roofroof.local/api/backup/apply -H "Content-Type: applicatio
 { "success": true, "restarting": true }
 ```
 
-With `restarting`, the device restarts about 2 s later. A restore that changes `roof` or `park` settings while the roof is opening or closing is refused with `409`, as a settings save is. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
+With `restarting`, the device restarts about 2 s later. While the roof is opening or closing, a restore is refused with `409`, as a settings save is. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
 
 ---
 
@@ -249,7 +249,7 @@ curl -X POST http://roofroof.local/api/wifi/connect \
 
 ### `POST /api/restart`
 
-Restart the device.
+Restart the device. Refused with `409` while the roof is opening or closing.
 
 ```bash
 curl -X POST http://roofroof.local/api/restart
@@ -259,7 +259,11 @@ curl -X POST http://roofroof.local/api/restart
 
 ## Roof
 
-Each of these needs the password when protection is on, and counts as a person's command (a person may move a roof whose position is unknown, slowly, to the first magnet). The answer comes after the command has reached the motor driver.
+Each of these needs the password when protection is on and the header `X-RoofRoof: 1` (without it: `403`), and counts as a person's command (a person may move a roof whose position is unknown, slowly, to the first magnet). The header stops another web page open in your browser from moving the roof with a cross-site request: a plain form or simple cross-origin request can't send it. The answer comes after the command has reached the motor driver.
+
+```bash
+curl -X POST -H "X-RoofRoof: 1" http://roofroof.local/api/roof/open
+```
 
 ```json
 { "success": true, "state": "opening" }
@@ -273,11 +277,8 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`flashBusy`) while a firmware or web UI upload is being written, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
 
-```bash
-curl -X POST http://roofroof.local/api/roof/open
-```
 
 ### `POST /api/roof/close`
 

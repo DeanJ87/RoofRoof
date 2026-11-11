@@ -80,7 +80,7 @@ namespace SQM
         mqttClient->setServer(brokerHost.c_str(), brokerPort);
         mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
-        mqttClient->setSocketTimeout(10);
+        mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
 
         connect();
     }
@@ -103,7 +103,8 @@ namespace SQM
 
         if (!mqttClient->connected())
         {
-            reconnect();
+            if (!reconnectHeld)
+                reconnect();
         }
         else
         {

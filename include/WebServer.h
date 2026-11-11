@@ -45,8 +45,11 @@ namespace SQM
         WebServer(const WebServer &) = delete;
         WebServer &operator=(const WebServer &) = delete;
 
-        // The roof (spec 003); before begin(). Without it the roof routes answer 503.
-        void setRoof(RoofControl *control) { roof = control; }
+        // The roof (spec 003); before begin(). Without it the roof routes refuse.
+        void setRoof(RoofControl *control);
+        // Main loop, every pass: while the roof moves a scheduled restart waits.
+        static void holdRestarts(bool hold) { restartHold = hold; }
+        static inline std::atomic<bool> restartHold{false};
         void begin();
         void handle();
         // No alert queued or being delivered.
@@ -228,8 +231,20 @@ namespace SQM
         void setupRoofRoutes();
         void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
         void handleRoofClearFault(AsyncWebServerRequest *request);
-        // Answers 409 and returns true when `next` changes motion settings while the roof moves.
-        bool refuseWhileMoving(AsyncWebServerRequest *request, const Config &next);
+        // Answers 409 and returns true while the roof moves: settings saves,
+        // restores, uploads, WiFi changes and restarts wait (flash writes stall
+        // the control task and its watchdog).
+        bool refuseWhileMoving(AsyncWebServerRequest *request);
+        // Roof commands need the X-RoofRoof: 1 header (answers 403 without it).
+        bool requireCommandHeader(AsyncWebServerRequest *request);
+        bool roofMoving() const;
+        // An upload refused because the roof was moving (answered when it ends).
+        bool uploadRefusedMoving = false;
+        bool uploadRefused(size_t index);
+        bool answerRefusedUpload(AsyncWebServerRequest *request);
+        // The alerts pause state waits for the roof to stop before it is saved.
+        bool armedSavePending = false;
+        void saveArmedState();
         void appendRoof(JsonDocument &doc) const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).

@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstdint>
 #include <esp_timer.h>
+#include <functional>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -67,6 +68,13 @@ namespace SQM
         Safety::SwitchReading parkSwitch(uint8_t index) const;
         Safety::RainContact rainContact() const;
 
+        // Any task: the roof is opening or closing. Flash writes (settings,
+        // uploads, NVS) and restarts wait while it is (RoofIo::platformActionRefused).
+        bool moving() const;
+        // Whether a flash write is under way elsewhere (an upload): open and
+        // close are refused meanwhile. Set once, before any command can arrive.
+        void setFlashBusy(std::function<bool()> check) { flashBusy = std::move(check); }
+
         // Any task.
         RoofIo::Snapshot snapshot() const;
         uint32_t revision() const { return revisionCount.load(); }
@@ -76,7 +84,7 @@ namespace SQM
     private:
         static constexpr const char *TAG = "Roof";
         static constexpr uint32_t TASK_STACK_BYTES = 6144;
-        static constexpr UBaseType_t TASK_PRIORITY = 5; // above the loop (1) and AsyncTCP (3)
+        static constexpr UBaseType_t TASK_PRIORITY = 5; // above the loop (1) and AsyncTCP (3, set in platformio.ini), below esp_timer (22)
         static constexpr BaseType_t TASK_CORE = 1;
 
         // The settings this layer uses, as handed between tasks.
@@ -155,5 +163,7 @@ namespace SQM
         std::atomic<uint8_t> park2Reading{0};
         std::atomic<uint8_t> rainReading{0};
         std::atomic<bool> started{false};
+        std::atomic<uint8_t> stateNow{0}; // Roof::State, as of the last snapshot
+        std::function<bool()> flashBusy;
     };
 } // namespace SQM

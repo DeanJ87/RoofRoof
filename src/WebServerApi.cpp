@@ -77,7 +77,7 @@ namespace SQM
             return;
         }
 
-        if (refuseWhileMoving(request, *configOpt))
+        if (refuseWhileMoving(request))
             return;
         if (!saveAndApply(*configOpt))
         {
@@ -89,7 +89,7 @@ namespace SQM
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || refuseWhileMoving(request))
             return;
 
         JsonObject jsonObj = json.as<JsonObject>();
@@ -135,7 +135,7 @@ namespace SQM
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || refuseWhileMoving(request))
             return;
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
         scheduleRestart(500);
@@ -199,6 +199,9 @@ namespace SQM
         const wl_status_t status = WiFi.status();
         if (status == WL_CONNECTED)
         {
+            // The save writes the flash: never while the roof moves (try again next pass).
+            if (!wifiConnectConfigSaved && roofMoving())
+                return;
             if (!wifiConnectConfigSaved)
             {
                 Config config = getConfigCallback();

@@ -3,9 +3,11 @@
 // opening unless the weather is safe) and the motion-settings save guard
 // (constitution I). Spec 003 FR-016 to FR-020.
 
+#include <cmath>
 #include <unity.h>
 
 #include "Config.h"
+#include "MotionGuards.h"
 #include "RoofGates.h"
 #include "SettingsGuard.h"
 
@@ -240,6 +242,95 @@ void test_other_sections_are_not_motion_settings(void)
     TEST_ASSERT_FALSE(motionSettingsChanged(base, next));
 }
 
+// --- Motion guards (added after the PR review) ------------------------------
+
+void test_platform_actions_refused_only_while_moving(void)
+{
+    for (Roof::State state : ALL_STATES)
+    {
+        const bool moving = state == Roof::State::Opening || state == Roof::State::Closing;
+        TEST_ASSERT_EQUAL_MESSAGE(moving, platformActionRefused(state), Roof::stateName(state));
+        TEST_ASSERT_EQUAL(moving, roofMoving(state));
+    }
+}
+
+void test_flash_busy_refuses_open_and_close_never_stop(void)
+{
+    TEST_ASSERT_TRUE(flashBusyRefuses(Roof::Command::Open, true));
+    TEST_ASSERT_TRUE(flashBusyRefuses(Roof::Command::Close, true));
+    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Stop, true));
+    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Abort, true));
+    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Open, false));
+}
+
+void test_command_header_must_be_one(void)
+{
+    TEST_ASSERT_TRUE(commandHeaderValid("1"));
+    TEST_ASSERT_FALSE(commandHeaderValid(nullptr));
+    TEST_ASSERT_FALSE(commandHeaderValid(""));
+    TEST_ASSERT_FALSE(commandHeaderValid("0"));
+    TEST_ASSERT_FALSE(commandHeaderValid("true"));
+    TEST_ASSERT_FALSE(commandHeaderValid("11"));
+    TEST_ASSERT_EQUAL_STRING("X-RoofRoof", COMMAND_HEADER);
+}
+
+void test_watchdog_alive_boundary_and_wrap(void)
+{
+    TEST_ASSERT_TRUE(watchdogAlive(1030, 1000));
+    TEST_ASSERT_FALSE(watchdogAlive(1031, 1000));
+    TEST_ASSERT_TRUE(watchdogAlive(1000, 1005)); // stamped between the reads
+    const uint32_t beat = 0xFFFFFFFFu - 10;
+    TEST_ASSERT_TRUE(watchdogAlive(beat + 30, beat));
+    TEST_ASSERT_FALSE(watchdogAlive(beat + 31, beat));
+    TEST_ASSERT_TRUE(watchdogAlive(1100, 1000, 100));
+}
+
+namespace
+{
+    Roof::Status drivingFor(uint32_t ms)
+    {
+        Roof::Status s;
+        s.state = Roof::State::Opening;
+        s.driving = true;
+        s.moveElapsedMs = ms;
+        return s;
+    }
+
+    Roof::Output forwardAt(uint8_t duty)
+    {
+        Roof::Output o;
+        o.command = Driver::Command::Forward;
+        o.duty = duty;
+        return o;
+    }
+} // namespace
+
+void test_running_amps_scaled_by_the_duty(void)
+{
+    // 2 A read at 40% duty (102/255) is 5 A in the motor.
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(2.0f, drivingFor(5000), forwardAt(102)));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(5.0f, drivingFor(5000), forwardAt(255)));
+    // Motor off: no scaling.
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.05f, runningAmps(0.05f, Roof::Status(), Roof::Output()));
+    TEST_ASSERT_TRUE(std::isnan(runningAmps(NAN, drivingFor(5000), forwardAt(255))));
+}
+
+void test_running_amps_near_zero_after_settling_is_unreadable(void)
+{
+    // A broken sense wire reads 0 A: unreadable once settled at a real duty.
+    TEST_ASSERT_TRUE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS), forwardAt(CURRENT_CHECK_MIN_DUTY))));
+    // Not yet settled, or too slow to judge: kept as read.
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS - 1), forwardAt(255))));
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(5000), forwardAt(CURRENT_CHECK_MIN_DUTY - 1))));
+    // At the minimum running current it counts.
+    const float atMin = MIN_RUNNING_AMPS * CURRENT_CHECK_MIN_DUTY / 255.0f;
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(atMin + 0.001f, drivingFor(5000), forwardAt(CURRENT_CHECK_MIN_DUTY))));
+    // Dead time (not driving): never judged.
+    Roof::Status waiting = drivingFor(5000);
+    waiting.driving = false;
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, waiting, forwardAt(255))));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -257,5 +348,11 @@ int main(int, char **)
     RUN_TEST(test_settings_save_refused_only_while_moving);
     RUN_TEST(test_every_roof_and_park_field_counts_as_a_change);
     RUN_TEST(test_other_sections_are_not_motion_settings);
+    RUN_TEST(test_platform_actions_refused_only_while_moving);
+    RUN_TEST(test_flash_busy_refuses_open_and_close_never_stop);
+    RUN_TEST(test_command_header_must_be_one);
+    RUN_TEST(test_watchdog_alive_boundary_and_wrap);
+    RUN_TEST(test_running_amps_scaled_by_the_duty);
+    RUN_TEST(test_running_amps_near_zero_after_settling_is_unreadable);
     return UNITY_END();
 }

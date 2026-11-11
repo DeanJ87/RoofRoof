@@ -4,6 +4,7 @@
 #include <atomic>
 #include <driver/gpio.h>
 
+#include "MotionGuards.h"
 #include "RoofPins.h"
 
 namespace SQM
@@ -27,10 +28,16 @@ namespace SQM
             constexpr uint32_t TRIP_MARK = 0x52574454; // "RWDT"
             RTC_NOINIT_ATTR uint32_t tripMark;
 
+            // The watchdog's heartbeat: EN can't go high unless it is fresh.
+            std::atomic<uint32_t> beatMs{0};
+
             void setEnable(bool on)
             {
+                // Read before the clock: a beat stamped in between counts as fresh.
+                const uint32_t beat = beatMs.load();
+                const bool alive = RoofIo::watchdogAlive(millis(), beat);
                 portENTER_CRITICAL(&enableLock);
-                const bool level = on && !tripSet && armed;
+                const bool level = on && !tripSet && armed && alive;
                 gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), level ? 1 : 0);
                 enOn.store(level);
                 portEXIT_CRITICAL(&enableLock);
@@ -116,6 +123,16 @@ namespace SQM
             portENTER_CRITICAL(&enableLock);
             tripSet = false;
             portEXIT_CRITICAL(&enableLock);
+        }
+
+        void watchdogBeat()
+        {
+            beatMs.store(millis());
+        }
+
+        uint32_t watchdogBeatMs()
+        {
+            return beatMs.load();
         }
 
         void arm()

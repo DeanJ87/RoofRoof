@@ -36,6 +36,12 @@ namespace SQM
         // The control task, once the watchdog's fault is latched and the output is off.
         void clearTrip();
 
+        // The watchdog timer, every check: EN can only go high while the last
+        // beat is at most RoofIo::WATCHDOG_BEAT_LIMIT_MS old, so a stopped
+        // watchdog keeps the driver off.
+        void watchdogBeat();
+        uint32_t watchdogBeatMs();
+
         // Lets EN go high: called once the control task and the watchdog both
         // run. Until then (and for good, if either failed to start) EN stays low.
         void arm();

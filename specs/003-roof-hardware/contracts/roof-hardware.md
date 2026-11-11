@@ -3,7 +3,7 @@
 What this spec offers the specs that build on it (005 close on unsafe, 006 Alpaca Dome, 008 MQTT
 and Home Assistant, 009 dashboard, 011 demo). Types are in [data-model.md](../data-model.md).
 
-## REST (all `requireAuth`)
+## REST (all `requireAuth`, plus the header `X-RoofRoof: 1`; 403 without it)
 
 | Route | Accepted | Refused |
 |---|---|---|
@@ -11,9 +11,9 @@ and Home Assistant, 009 dashboard, 011 demo). Types are in [data-model.md](../da
 | `POST /api/roof/close` | 200 `{"success":true,"state":"closing"}` | 409 `reason` `mountNotParked` or a motion refusal |
 | `POST /api/roof/stop` | 200 always (after auth) | - |
 | `POST /api/roof/clear-fault` | 200 `{"success":true,"state":...}` | - (REST is a person) |
-| `POST/PUT /api/config`, `POST /api/backup/apply` | as before | 409 `{"error":"The roof is moving: roof and park settings can't change until it stops"}` when `roof.*` or `park.*` changes while opening or closing |
+| `POST/PUT /api/config`, `POST /api/backup/apply`, `POST /api/update`, `POST /api/update/fs`, `POST /api/wifi/connect`, `POST /api/restart` | as before | 409 `{"error":"The roof is moving: stop it first, then try again"}` while opening or closing |
 
-`reason` is `weatherNotSafe`, `mountNotParked` or a `Roof::refusalName` (`faultLatched`,
+`reason` is `weatherNotSafe`, `mountNotParked`, `flashBusy` (an upload is being written), `notStarted` or a `Roof::refusalName` (`faultLatched`,
 `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`,
 `settingsInvalid`). `error` states the measured value and the limit or the failed input.
 REST commands use `Roof::Origin::Person`.
@@ -48,6 +48,11 @@ void setSafety(const Safety::WeatherVerdict &weather, const Safety::ParkResult &
 Safety::SwitchReading parkSwitch(uint8_t index) const; // 0 or 1
 Safety::RainContact rainContact() const;
 
+// Any task: opening or closing (flash writes and restarts wait). The flash-busy check refuses open
+// and close while an upload is written.
+bool moving() const;
+void setFlashBusy(std::function<bool()> check);
+
 // Any task: a copy of everything the status section shows; revision() bumps on a state or fault change.
 RoofIo::Snapshot snapshot() const;
 uint32_t revision() const;
@@ -65,6 +70,7 @@ uint32_t revision() const;
 | `FaultRecord.h` | `FaultCause`, `FaultRecord`, `encodeFault`, `decodeFault`, `causeName` |
 | `RoofGates.h` | `SAFETY_HANDOVER_STALE_MS`, `currentGates`, `GateInputs`, `GateRefusal`, `switchesClosed`, `parkHolds`, `gateCommand`, `interlockLost`, `interlockBits`, `openMustStop`, `gateRefusalName` |
 | `SettingsGuard.h` | `motionSettingsChanged`, `settingsSaveRefused` |
+| `MotionGuards.h` | `roofMoving`, `platformActionRefused`, `flashBusyRefuses`, `COMMAND_HEADER`, `commandHeaderValid`, `watchdogAlive`, `runningAmps` |
 | `RoofText.h` | `describeFault`, `describeRefusal`, `describeGate` |
 | `RoofStatus.h` | `Snapshot`, `writeStatus` |
 

@@ -343,6 +343,22 @@ and `include/RoofPins.h`.
   that failed (constitution III), e.g. `Supply 10.9 V < 11.0 V`, `Mount not parked: park switch 1
   open`, `Control step 140 ms late > 100 ms`.
 
+**Added after the PR review**
+
+- **FR-024**: While the roof is opening or closing, settings saves, restores, firmware and web UI
+  uploads, WiFi changes and restarts MUST be refused (409); a scheduled restart, command-line OTA,
+  the alerts pause state's NVS write and MQTT reconnects MUST wait until it stops. Open and close
+  MUST be refused while an upload is being written; stop never is.
+- **FR-025**: The web server MUST run below the control task's priority.
+- **FR-026**: With current sense on, the reading MUST be scaled back by the PWM duty applied while it
+  was read, and a reading under 0.2 A after a second of driving at 25% duty or more MUST count as
+  unreadable.
+- **FR-027**: Roof commands MUST carry the header `X-RoofRoof: 1` (403 without it), and the web UI
+  MUST send it.
+- **FR-028**: EN MUST only go high while the watchdog's last check is at most 30 ms old, and the
+  control task MUST latch a fault (`watchdogStopped`) if it is more than 100 ms old with the driver
+  on.
+
 **Docs**
 
 - **FR-023**: The wiring page MUST describe what the firmware now reads on every pin, the polarity
@@ -415,12 +431,26 @@ Each was an open choice; the safest option the constitution allows was taken.
 15. **A watchdog trip survives a crash restart.** The trip leaves a marker in memory that survives a
     reset (not a power cut); if the device restarts before the trip's fault reached NVS (the task
     hung and the system watchdog restarted it), the fault is latched at start-up.
-16. **Known limits, accepted for now:** an NVS partition that ESP-IDF erases and reformats at boot
-    (no free pages, or a newer NVS format) loses a stored fault, as it loses the settings; flash
-    writes from other parts of the firmware while the roof moves (other settings saves, uploads) can
-    stall the control task long enough to fault the move, which stops the motor (fail-safe; spec
-    010 refuses them while moving); the park result from N.I.N.A. may be up to 5 s old during a
-    close, while the fitted park switches are checked every 20 ms.
+16. **Known limits, accepted for now:**
+    - an NVS partition that ESP-IDF erases and reformats at boot (no free pages, or a newer NVS
+      format) loses a stored fault, as it loses the settings;
+    - the watchdog (an esp_timer) stalls with the control task while the flash cache is off. This
+      spec refuses or defers every flash write while the roof moves (FR-024), but one that slips
+      through (a race between a save and spec 005's automatic close) leaves EN as it was for the
+      write's duration (about 45 ms, worst case a few hundred). A hardware timeout on EN is the
+      later fix (research R12);
+    - the park result may be up to about 6 s old at the gate during a close (5 s hand-over limit
+      plus SafetyInputs' 1 s evaluation), while the fitted park switches are checked every 20 ms;
+    - the park rule uses only the latest N.I.N.A. poll (the owner's decision in spec 004), so one
+      failed poll during a close stops it with `parkInterlock`;
+    - an intermittent park switch wire that settles closed reads closed until it has chattered for
+      a second (three equal readings confirm a level);
+    - spec 010 builds on FR-024 (OTA, restarts and WiFi under motion).
+16a. **AsyncTCP runs at priority 3** (`CONFIG_ASYNC_TCP_PRIORITY`), below the roof's 5; its default
+    of 10 would outrank the control step.
+16b. **Roof commands need `X-RoofRoof: 1`** against cross-site requests.
+16c. **Current sense under PWM** is scaled by the duty; under 0.2 A after a second at 25% duty or more
+    is a broken wire. A capacitor across each sense divider's lower resistor is recommended.
 17. **The roof status section is emulated by the demo as a closed roof** with fixed readings; the
     simulated roof is spec 011.
 

@@ -26,6 +26,9 @@ namespace SQM
         // Samples per control step: the Hall's median, the averaged supply and current.
         constexpr uint8_t HALL_SAMPLES = 5;
         constexpr uint8_t ANALOG_SAMPLES = 4;
+        // The current senses are chopped by the 20 kHz PWM: more samples,
+        // spread over several PWM periods, average them (MotionGuards.h).
+        constexpr uint8_t CURRENT_SAMPLES = 8;
         // The most samples the helpers below take.
         constexpr uint8_t MAX_SAMPLES = 9;
 

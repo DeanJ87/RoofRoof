@@ -404,7 +404,8 @@
                 "logic",
                 "watchdog",
                 "parkInterlock",
-                "storedUnreadable"
+                "storedUnreadable",
+                "watchdogStopped"
               ]
             },
             "kind": {

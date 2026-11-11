@@ -135,7 +135,7 @@ person clears it. Each records what was measured and the limit it broke.
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
 | `driveBudget` | The motor has run toward one end, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times. Each direction is counted separately, so reversing once part-way never trips it. |
-| `external` | Raised by the hardware layer; its `cause` says which: `watchdog` (the control task stopped stepping with the motor on), `parkInterlock` (the park confirmation was lost during a close) or `storedUnreadable` (the fault saved before a restart couldn't be read back) |
+| `external` | Raised by the hardware layer; its `cause` says which: `watchdog` (the control task stopped stepping with the motor on), `watchdogStopped` (the watchdog timer itself stopped with the motor on), `parkInterlock` (the park confirmation was lost during a close) or `storedUnreadable` (the fault saved before a restart couldn't be read back) |
 
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A
 supply reading above 16 V, or a current reading below -0.5 A, can't be right on this hardware and
@@ -148,11 +148,17 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
 - **Every 20 ms** it reads the Hall sensor (the median of five readings), the 12 V supply and,
   with current sense on, the motor current, plus the park switches and the rain contact. It steps
   the motion logic and sets the motor driver at once. A busy network can delay a command; it can
-  never prolong a move.
+  never prolong a move. The web server runs below it (priority 3 against the task's 5), so a
+  burst of requests can't starve a step.
+- **With current sense on**, the reading is taken under the 20 kHz PWM, so it is scaled back by
+  the duty that was applied. Once the motor has run at a quarter duty or more for a second, a
+  reading below 0.2 A means a broken sense wire: `currentUnreadable`.
 - **A watchdog** on the other processor core looks every 10 ms. If the motor is on and the task
   hasn't stepped for more than 100 ms, it switches the driver off itself and keeps it off until the
   task has latched an `external` fault with the cause `watchdog`. If the task hangs outright, the
-  system watchdog restarts the device, and the EN pull-down holds the driver off meanwhile.
+  system watchdog restarts the device, and the EN pull-down holds the driver off meanwhile. The
+  watchdog is itself watched: the driver can only switch on while its last check is at most 30 ms
+  old, and the task latches `watchdogStopped` if it stops for 100 ms with the motor on.
 - **A latched fault survives a restart.** It is saved within one step of being latched and latched
   again at start-up before the first step. A saved record that can't be read back latches a fault
   of its own. Clearing the fault removes it.
@@ -177,11 +183,22 @@ Before the motion logic sees a command:
 - **Stop** is always accepted.
 
 If the safety inputs haven't been handed to the controller for 5 s (a stalled main loop), the
-weather counts as not safe and the park as not confirmed.
+weather counts as not safe and the park as not confirmed. While the roof moves, the main loop
+tries no MQTT reconnect, and MQTT reads give up after 3 s, so a dead broker can't stall it that
+long.
 
-While the roof is opening or closing, a settings save that changes a `roof` or `park` setting is
-refused. Settings saved at rest are taken at once; saved while stopped part-way, they make the
-position unknown.
+### While the roof moves
+
+Writing the flash pauses the processor's code cache, and with it the control task and the
+watchdog, so nothing writes the flash while the roof is opening or closing:
+
+- settings saves, restores, firmware and web UI uploads, WiFi changes and restarts are refused
+  (`409`, "stop it first"); a restart already scheduled waits until the roof stops;
+- command-line OTA waits, and the alerts pause state is saved once the roof stops;
+- while an upload is being written, open and close are refused (`flashBusy`); stop never is.
+
+Settings saved at rest are taken at once; saved while stopped part-way, they make the position
+unknown.
 
 ## Settings
 
