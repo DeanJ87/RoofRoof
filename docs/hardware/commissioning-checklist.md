@@ -13,14 +13,14 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | Firmware version | |
 
 !!! danger "Order matters"
-    Motor **disconnected** through stage 7. Nobody leaves the roof running unattended until stage 11 is ticked: an alert has reached your phone, and the close-on-unsafe dry run has passed on the real roof.
+    Motor **disconnected** through stage 7. Nobody leaves the roof running unattended until stage 11 is ticked: an alert has reached your phone, and the close-on-unsafe dry run has passed, first with the motor disconnected and then attended on the real roof.
 
 ## Stage 1: Wiring and the EN pull-down (everything off, motor leads off)
 
 | | Check | Result |
 |---|---|---|
 | ☐ 1.1 | Wiring continuity against the pin table (GPIO25, 26, 27, 34, 35, 36, 39, 32, 33, 4) | |
-| ☐ 1.2 | **EN pull-down**: about 10 kΩ from R_EN/L_EN to GND at the IBT-2, and at GPIO27 | kΩ |
+| ☐ 1.2 | **EN pull-down**: 8 to 11 kΩ from R_EN/L_EN to GND at the IBT-2, and at GPIO27 | kΩ |
 | ☐ 1.3 | Optional 10 kΩ pull-downs on GPIO25, 26 (if fitted) | |
 | ☐ 1.4 | Dividers: 100k/22k supply, 10k/20k current sense and Hall; Hall at 5 V, output through its divider | |
 | ☐ 1.5 | Park switches close when parked; rain contact closes when it rains | |
@@ -30,11 +30,11 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 2.1 | GPIO25, 26, 27 read 0 V before, during and after start-up, and while held in reset | |
-| ☐ 2.2 | Flashed, on WiFi, address noted | |
+| ☐ 2.1 | Flashed from USB, 12 V off: GPIO27 reads 0 V throughout; on WiFi, address noted | |
+| ☐ 2.2 | GPIO25, 26, 27 read 0 V before, during and after start-up, and while held in reset | |
 | ☐ 2.3 | Password protection on | |
 | ☐ 2.4 | Boot between the magnets: `unknown`, EN low. At a magnet after a restart: that end | |
-| ☐ 2.5 | `supplyVolts` within 0.2 V of the meter; sense wire unplugged reads 0 and open and close are refused | V / V |
+| ☐ 2.5 | `supplyVolts` within 0.2 V of the meter | V / V |
 | ☐ 2.6 | Park switches and rain contact read `closed`/`open` and `raining`/`dry` over the real cable (external pull-up if not) | |
 
 ## Stage 3: Hall calibration (motor disconnected)
@@ -82,7 +82,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 6.6 | Fault stays latched across 5 power cycles; only `roofclear` clears it; a restart right after a fault keeps it | |
 | ☐ 6.7 | During a move: settings save, upload and restart answer `409` | |
 | ☐ 6.8 | Hall unplugged mid-move: `hallRail`, **Roof fault** alert arrives | |
-| ☐ 6.9 | `roof.minSupplyVolts` 15: refused, **12 V supply low** after about 30 s; value restored | |
+| ☐ 6.9 | `roof.minSupplyVolts` 15: refused, **12 V supply low** after about 30 s; value restored; sense wire unplugged reads 0 and open and close are refused | |
 | ☐ 6.10 | SQMeter off past stale time plus 30 s: **Weather source lost** arrives | |
 | ☐ 6.11 | Power pulled mid-move: reset reason logged, `unknown`, no motion | |
 | ☐ 6.12 | Reset with a fault latched: no repeat alert; after a power cut one alert after 60 s | |
@@ -105,23 +105,26 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 7.10 | WiFi change with the roof open: a close waits, then starts (15 s at most); MQTT save with broker down answers in 1 s | |
 | ☐ 7.11 | Close during a web upload stops it (`409`) and closes; pulled cable doesn't block a close more than 5 s | |
 | ☐ 7.12 | Command-line OTA (if used): restarts through the plan; open during upload refused | |
+| ☐ 7.13 | N.I.N.A. over Alpaca with the motor disconnected: steps 9.1 to 9.7 below | |
 
-**Second gate:** ☐ Stage 7 passed, with its alerts on the phone. Now switch off, connect the motor, park the mount, second person at the supply switch.
+Between steps: park, close, present the closed magnet, so the stand-down and the alert limit are cleared. **Send alerts** back on: ☐
+
+**Second gate:** ☐ Stage 7 passed, with its alerts on the phone and the close sequence idle. Now switch off, connect the motor, park the mount, second person at the supply switch.
 
 ## Stage 8: First attended moves (motor connected)
 
 | | Check | Result |
 |---|---|---|
-| ☐ 8.1 | `roof.topDutyPercent` 40 for the first moves | |
+| ☐ 8.1 | `roof.topDutyPercent` 40 and `roof.leaveMagnetSeconds` 3 for the first moves | |
 | ☐ 8.2 | First move leaves the closed end the right way; `roof.openDirection` | |
 | ☐ 8.3 | Stop at once; carries on from `stopped` | |
 | ☐ 8.4 | Full open and close at 40%: ends at the magnet within the timeout, not hard on the stops | s / s |
-| ☐ 8.5 | Travel (tape) and 100% time; `travelMm`, `speedMmPerSecond` set; 40% time about 2.5 times the 100% time, margin raised if not | mm / s / mm/s |
+| ☐ 8.5 | Travel (tape) and speed set from the 40% time before any faster move, refined at 70% then 100%; 40% time about 2.5 times the 100% time, margin raised if not; leave time back to 10 | mm / s / mm/s |
 | ☐ 8.6 | No `supplyLow` at start; lowest supply during a move | V |
 | ☐ 8.7 | Timeout test mid-travel stops the roof, values restored; motor and IBT-2 cool enough after the longest run | |
 | ☐ 8.8 | Current sense (if fitted): `currentAmpsPerVolt`, `maxCurrentAmps`, `minRunningAmps`; `overCurrent` test; surge under 250 ms | / / |
 | ☐ 8.9 | Power cut mid-move: roof held, `unknown`, only a person moves it, slowly | |
-| ☐ 8.10 | First full-speed open and close, attended | |
+| ☐ 8.10 | Full run at the settled values, attended | |
 | ☐ 8.11 | **Attended dry run on the real roof**: park, close, **Unsafe: closing**, **Roof closed after unsafe weather**; a stop during the close works | |
 
 **Third gate:** ☐ Stage 8 passed.
@@ -130,7 +133,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 9.1 | Alpaca on, restarted; N.I.N.A. discovers **RoofRoof roof** and connects | |
+| ☐ 9.1 | (steps 9.1 to 9.7 first with the motor disconnected, see 7.13; 9.2 and 9.5 again on the real roof) Alpaca on, restarted; N.I.N.A. discovers **RoofRoof roof** and connects | |
 | ☐ 9.2 | Open and close from N.I.N.A.; ShutterStatus runs opening, open, closing, closed | |
 | ☐ 9.3 | Unsafe: Open shows the weather reason, nothing moves | |
 | ☐ 9.4 | Unparked: Close shows the park reason | |
@@ -151,8 +154,8 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 11.1 | An alert reached the phone (stage 5), and the critical events in the dry runs (stages 7 and 8), also with **Send alerts** off | |
-| ☐ 11.2 | The attended dry run passed on the real roof; `park.timeoutSeconds` a little above the mount's longest park | s |
+| ☐ 11.1 | An alert reached the phone (stage 5), and the critical events in the dry runs (stages 7 and 8); critical alerts arrived with **Send alerts** off, which is now back on | |
+| ☐ 11.2 | The dry run passed with the motor disconnected (stage 7) and attended on the real roof (8.11); `park.timeoutSeconds` a little above the mount's longest park | s |
 | ☐ 11.3 | Password protection on; settings backed up; values recorded below | |
 | ☐ 11.4 | After an hour or more: `maxWatchdogBeatAgeMs` under 50, `maxStepGapMs` near 20, `watchdogTrips` 0, `stackFree.roof` above 2048 | / / / |
 | ☐ 11.5 | First unattended spell short, phone alerts on | |

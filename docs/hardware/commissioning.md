@@ -88,22 +88,22 @@ roofclear()  { curl -s -X POST -H "X-RoofRoof: 1" $ROOF/api/roof/clear-fault; ec
 Power is off, the USB cable is out, and **both motor leads are disconnected from the IBT-2's motor terminals and insulated**. Nothing in stages 1 to 7 needs the motor.
 
 1. **Wiring against the pin table.** Check every wire against [Wiring](wiring.md#pin-table) with the meter on continuity: RPWM to GPIO25, LPWM to GPIO26, R_EN and L_EN joined to GPIO27, the supply sense to GPIO36, the Hall output (through its divider) to GPIO39, the optional current-sense outputs to GPIO34 and GPIO35, park switches to GPIO32 and GPIO33, the rain contact to GPIO4.
-2. **The EN pull-down.** With the ESP32 unpowered, measure from the joined R_EN/L_EN pins at the IBT-2 to GND: about 10 kΩ (a bit less if the IBT-2's own parts are in parallel, never open circuit). Measure again at the ESP32's GPIO27 pin. This is the part that holds the driver off during a reset, a crash, a brown-out and flashing, so do not go on without it. See [The EN pull-down](wiring.md#the-en-pull-down).
+2. **The EN pull-down.** With the ESP32 unpowered, measure from the joined R_EN/L_EN pins at the IBT-2 to GND: between 8 and 11 kΩ (never open circuit). Measure again at the ESP32's GPIO27 pin. This is the part that holds the driver off during a reset, a crash, a brown-out and flashing, so do not go on without it. See [The EN pull-down](wiring.md#the-en-pull-down).
 3. **Optional pull-downs** of 10 kΩ on GPIO25 and GPIO26, if you fitted them: same measurement.
 4. **The dividers.** Measure each resistor in place: 100 kΩ over 22 kΩ on the 12 V sense; 10 kΩ over 20 kΩ on each current-sense line and on the Hall output. Confirm the Hall sensor has its 5 V supply and that its output goes through the divider and never straight to GPIO39 ([Hall sensor](wiring.md#hall-sensor-ss49e)).
 5. **Polarity of the switches.** Each park switch must **close when the mount is parked**; the rain contact closes when it rains. Confirm with the meter on the cable at the ESP32 end.
-6. **Motor supply.** Fuse or switch in the 12 V feed within reach of where you will stand at the roof. The motor leads stay off the driver.
+6. **Motor supply.** A switch (and a fuse) in the 12 V feed, the switch within reach of where you will stand at the roof. The motor leads stay off the driver.
 
 !!! warning "Stop here if the pull-down is missing"
     Do not power the board with the driver connected until step 2 reads about 10 kΩ. Without it a reset can start the motor.
 
 ## Stage 2: First power-up (motor still disconnected)
 
-1. **Power from USB only**, with the 12 V motor supply off. With a meter on GPIO27, then GPIO25 and GPIO26, read 0 V before you plug in, while the board starts, and after it has started (the log shows the start-up; give it a minute). While the board is held in reset (hold the EN button on the DevKit), GPIO27 must still read 0 V: that is the pull-down at work. *Analyser:* capture GPIO25, 26 and 27 through a power-on and a reset; all three stay low.
-2. **Flash and join WiFi** if you have not: [Flashing](../getting-started/flashing.md), then [First Boot](../getting-started/first-setup.md). Note the device's address.
+1. **Flash and join WiFi** if you have not: [Flashing](../getting-started/flashing.md), then [First Boot](../getting-started/first-setup.md). Do it from USB only, with the 12 V motor supply **off**, and with a meter on GPIO27: it reads 0 V throughout the flash (a floating EN during flashing is a hazard [Wiring](wiring.md#the-en-pull-down) names). Note the device's address.
+2. **EN, RPWM and LPWM through a start.** With a meter on GPIO27, then GPIO25 and GPIO26, read 0 V before you plug in, while the board starts, and after it has started (the log shows the start-up; give it a minute). While the board is held in reset (hold the EN button on the DevKit), GPIO27 must still read 0 V: that is the pull-down at work. *Analyser:* capture GPIO25, 26 and 27 through a power-on and a reset; all three stay low.
 3. **Turn on password protection** now: **Settings → Device → Security → Password-protect changes** ([Security](../user-guide/security.md)). Roof commands need it, and a person's command is the one the roof obeys from an unknown position. Add `-u` to the commands above.
 4. **Boot between the magnets.** With no magnet near the sensor, `roofstatus` shows `state: unknown`, `hall.level` between, and `driving: false`. EN (GPIO27) stays low; nothing moves by itself. Hold a magnet at the Hall sensor, restart from **System → Restart device**, and the state is that end after the restart. (This is stage 3's check too; do it again there once the thresholds are set.)
-5. **Supply reading.** Switch the 12 V supply on (the motor is still disconnected). Compare `supplyVolts` with a meter at the IBT-2's input: within about 0.2 V. Then, with the 12 V supply on, unplug the supply-sense wire at the ESP32: `supplyVolts` reads 0 and `roofopen` and `roofclose` are refused with the supply as the reason. Plug it back in.
+5. **Supply reading.** Switch the 12 V supply on (the motor is still disconnected). Compare `supplyVolts` with a meter at the IBT-2's input: within about 0.2 V. (The unplugged-sense check is in stage 6, once the weather and park sources are set up.)
 6. **Park switches and the rain contact.** If fitted, set `park.switches` (`one` or `two`) and `safety.rainContact`:
    ```bash
    curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"park":{"switches":"two"},"safety":{"rainContact":true}}'
@@ -124,6 +124,9 @@ Follow [Calibration](calibration.md#hall-sensor): note `hall.counts` between the
 ## Stage 4: Weather and park sources (motor disconnected)
 
 The roof opens only on a safe weather verdict and closes only onto a confirmed park, so these inputs are tested with the real sources, one at a time. Details: [Safety inputs](../user-guide/safety-inputs.md). Keep a log window open: each result is a line with the `Safety` tag.
+
+!!! warning "Unsafe weather starts the automatic close"
+    Whenever you make the weather unsafe in stages 4 and 6, **hold the closed magnet at the Hall sensor** (roof `closed`), so the automatic close has nothing to do. With the roof open or stopped and the mount parked, an unsafe verdict would ask the real mount to park and command a close that times out and latches a fault. Before stage 7 check that the close sequence is idle (no `Close` lines in the log and `roof.closePhase`, where shown, idle).
 
 1. **SQMeter over HTTP.** Set it up:
    ```bash
@@ -162,7 +165,7 @@ A roof left open in the rain is only caught if the alert reaches you. Set this u
 
 With the motor leads off, the controller still runs its whole drive logic. A hand-held magnet stands in for the roof: the roof reads `open` when you hold the open end's magnet at the sensor, and starts "moving" when you take it away.
 
-**Setup:** SQMeter safe, N.I.N.A. connected with the mount parked (and every park switch closed), so the checks pass.
+**Setup:** the closed magnet held at the sensor except where a step says otherwise, SQMeter safe, N.I.N.A. connected with the mount parked (and every park switch closed), so the checks pass.
 
 1. **Refusals first.**
    - No weather source (set `safety.http.enabled` off for a moment): `roofopen` is refused, `weatherNotSafe`. Turn it back on.
@@ -171,12 +174,12 @@ With the motor leads off, the controller still runs its whole drive logic. A han
    - Between the magnets (`state: unknown`): a person's `roofclose` or `roofopen` is allowed (slowly, to the first magnet); N.I.N.A. and MQTT cannot do it.
 2. **The drive pattern.** Hold the closed magnet (state `closed`) and run `roofopen`. Take the magnet away. For the length of the move watch GPIO25, 26 and 27: EN goes high only while driving; RPWM and LPWM are never both high; the PWM runs at 20 kHz. *Analyser:* capture a full open, a close, a stop and a reversal (open then close at once); RPWM and LPWM are never both high and EN drops before the stop is reported. With a meter, GPIO27 reads about 3.3 V only while driving and returns to 0 V on `roofstop`.
 3. **Stop.** `roofstop` during the move: EN falls at once (GPIO27 to 0 V) and `state` becomes `stopped`. A new start waits half a second (the dead time).
-4. **The timeout.** Start `roofopen` again and present no magnet. With the default settings the roof faults on `timeout` after the move's expected time plus `roof.timeoutMarginSeconds` (about 65 s at the defaults: 1850 mm at 38 mm/s is about 49 s, plus the 15 s margin and the ramp). EN drops, `state` is `error`, `fault` names the cause, the measured value and the limit.
+4. **The timeout.** Start `roofopen` again and present no magnet. With the default settings the roof faults on `timeout` after the move's expected time plus `roof.timeoutMarginSeconds` (from the closed magnet, about 65 s at the defaults: 1850 mm at 38 mm/s is about 49 s, plus the 15 s margin and the ramp). EN drops, `state` is `error`, `fault` names the cause, the measured value and the limit.
 5. **Leave-time fault.** Hold the closed magnet at the sensor, run `roofopen` and keep the magnet there: after `roof.leaveMagnetSeconds` (10 s) the fault is `didNotLeave`. This is what a motor wired backwards looks like on the real roof (stage 8).
 6. **A fault stays latched.** With a fault latched: `roofopen` and `roofclose` are refused (`faultLatched`). Press the board's reset, then power-cycle it five times: the fault is still latched each time, and only `roofclear` clears it. A restart request made right after a fault waits until the fault is saved, and the fault is still latched after the restart.
 7. **Settings and uploads are refused during a move.** While a move is running (magnet away), save any `roof.*` setting, start a web UI upload and press **Restart**: each answers `409` and the move continues.
 8. **The Hall sensor lost mid-move.** Start a move, unplug the Hall sensor: `hallRail` fault, EN drops, and a **Roof fault** alert arrives on your phone with the reading. Plug it back in and clear the fault.
-9. **A low supply.** The supply minimum is a setting, so raise it above your supply instead of lowering the supply: set `roof.minSupplyVolts` to `15` and `supplyLow` goes true; `roofopen` and `roofclose` are refused with the voltage and the limit, and after about 30 s a **12 V supply low** alert arrives. Put `roof.minSupplyVolts` back (default 11), and the alert is over. (With an adjustable bench supply you can also take the real supply below the limit.)
+9. **A low supply.** The supply minimum is a setting, so raise it above your supply instead of lowering the supply: set `roof.minSupplyVolts` to `15` and `supplyLow` goes true; `roofopen` and `roofclose` are refused with the voltage and the limit, and after about 30 s a **12 V supply low** alert arrives. Put `roof.minSupplyVolts` back (default 11), and the alert is over. Then, with the 12 V supply on, unplug the supply-sense wire at the ESP32: `supplyVolts` reads 0 and `roofopen` and `roofclose` are refused for the supply (once the weather and park checks pass). Plug it back in. (With an adjustable bench supply you can also take the real supply below the limit.)
 10. **A lost weather source.** Switch SQMeter off for longer than `safety.staleSeconds` (30 s) plus 30 s: **Weather source lost** arrives.
 11. **Power pulled mid-move.** Start a move (magnet away), pull the board's power, restore it: the log names the reset reason (power-on or brown-out), `state` is `unknown`, and the roof does not move by itself.
 12. **A power-cycled fault does not repeat its alert.** With a fault latched, reset the board (not a power cut): no new fault alert. After a power cut one alert arrives after the 60 s start-up grace.
@@ -185,8 +188,10 @@ With the motor leads off, the controller still runs its whole drive logic. A han
 
 This is the whole safety function, run end to end with nothing to move. Read [Close on unsafe weather](../user-guide/close-on-unsafe.md) first. **Setup:** the roof "open" (hold the open magnet at the sensor, or use the firmware's bench mode once it is available), N.I.N.A. connected, the mount **unparked**, SQMeter safe, alerts on, the log open. Set `park.timeoutSeconds` to 30 for the test and back to your mount's real value after (a little above the longest time it takes to park).
 
+**Reset between steps.** A critical alert for the same cause is sent at most once every 30 minutes, and a person's stop stands the sequence down (also across a restart). Between the steps below, **end the sequence and rearm the alerts**: park the mount, run `roofclose`, present the closed magnet so the roof reads `closed`, then set up the next step. (A restart also clears the alert limit, not the stand-down.)
+
 1. **The normal run.** Make SQMeter unsafe. Within 1 s the log shows `Close sequence started: unsafe: ...` and `Asking N.I.N.A. to park the mount`; N.I.N.A.'s mount parks. 4 to 5 s after the mount reports parked (and every park switch closes) the log shows `Closing the roof: the mount is parked`. Bring the closed magnet to the sensor: `Roof closed after unsafe weather`. On your phone, **Unsafe: closing** (with the weather's reasons) and then **Roof closed after unsafe weather** arrive.
-2. **The mount doesn't park.** Reset to "open" and unparked, close N.I.N.A. (or disable its park), make SQMeter unsafe. At `park.timeoutSeconds` (plus a few seconds) **Mount didn't park** arrives as a critical alert on your phone; no new park request is sent for 5 minutes; the roof stays open. Do it again with **Send alerts** off and one channel on: it still arrives.
+2. **The mount doesn't park.** Reset to "open" and unparked, close N.I.N.A. (or disable its park), make SQMeter unsafe. At `park.timeoutSeconds` (plus a few seconds) **Mount didn't park** arrives as a critical alert on your phone; no new park request is sent for 5 minutes; the roof stays open. Do it again with **Send alerts** off and one channel on: it still arrives. Then **turn Send alerts back on**.
 3. **A person's stop is respected.** Start a normal run, and press Stop (`roofstop`, or the web UI) while the roof "closes": the roof stops, **Automatic close stopped** arrives, and nothing more happens while it stays unsafe. Do it again, pressing Stop in the 4 s between "mount parked" and the close starting: no close starts.
 4. **The stand-down survives a restart.** After step 3's stop, restart from **System → Restart device**: the sequence is still stood down, and a **Still:** alert arrives.
 5. **Position unknown.** With the roof between the magnets (magnet away) and the verdict unsafe, restart the board: no park request is sent, and after 2 s **Roof can't close by itself: position unknown** arrives. Hold a magnet at the sensor to make the position known.
@@ -197,9 +202,10 @@ This is the whole safety function, run end to end with nothing to move. Read [Cl
 10. **A WiFi change with the roof open.** Request a close during the change: it waits (`closePending`) and starts once the WiFi has joined, or after 15 s at most. Saving MQTT settings with the broker unreachable answers within 1 s.
 11. **A close wins over an upload.** Start a web UI upload with the roof open and request a close: the upload stops (`409`) and the close is under way within a few seconds. Pull the network cable mid-upload: a close is not blocked for more than 5 s.
 12. **Command-line OTA** (only if you use it, roof closed): the device restarts through the plan, and an open during the upload is refused.
+13. **N.I.N.A. over Alpaca, motor still disconnected.** Do [stage 9](#stage-9-nina-over-ascom-alpaca-and-conformu) steps 1 to 7 now, with the hand-held magnet standing in for the roof and N.I.N.A.'s dome driving it.
 
 !!! warning "Second gate"
-    All of stage 7 passes, with its alerts on your phone, before the motor is connected.
+    All of stage 7 passes, with its alerts on your phone and **Send alerts** back on, and the close sequence idle, before the motor is connected.
 
 ---
 
@@ -211,24 +217,24 @@ Switch off the 12 V supply. Reconnect the motor leads to the IBT-2. Park the mou
 
 At the roof, the roof at its closed end (state `closed`), the 12 V switch in reach, SQMeter safe, the mount parked. Do these in order: each one prepares the next.
 
-1. **Go slowly first.** Set `roof.topDutyPercent` to `40` (the slow duty) for the first moves so the roof never goes faster than the slow duty:
+1. **Go slowly first, and fail fast.** For the first moves set `roof.topDutyPercent` to `40` (the slow duty) so the roof never goes faster than the slow duty, and `roof.leaveMagnetSeconds` to `3`, so a motor wired backwards (which would push the closed end stop) faults within 3 s instead of 10:
    ```bash
-   curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"roof":{"topDutyPercent":40}}'
+   curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"roof":{"topDutyPercent":40,"leaveMagnetSeconds":3}}'
    ```
-2. **The first move: a short one, with a finger on Stop.** `roofopen`. Watch the roof leave the closed end. If it moves toward closed instead, stop it (`roofstop`; if it doesn't leave in time it faults `didNotLeave` after 10 s): set `roof.openDirection` to the other value (`forward` or `reverse`), `roofclear`, and try again. **The slow duty moves the roof, under load, in both directions.** If the roof doesn't move at 40%, raise `roof.slowDutyPercent` and the top duty together.
+2. **The first move: a short one, with a finger on Stop.** `roofopen`. Watch the roof leave the closed end. If it moves toward closed instead, stop it (`roofstop`; it faults `didNotLeave` after the 3 s leave time): set `roof.openDirection` to the other value (`forward` or `reverse`), `roofclear`, and try again. **The slow duty moves the roof, under load, in both directions.** If the roof doesn't move at 40%, raise `roof.slowDutyPercent` and the top duty together.
 3. **Stop is instant.** `roofstop` part-way: the roof stops at once and `state` is `stopped`, and `roofopen` carries on from there.
 4. **A full open and close at 40%.** Let it run end to end and note the time. It must end at its magnet, within the timeout with the default margin, and not drive hard into the rubber stops. The roof slows near each end by the ramp-down setting; adjust `roof.rampDownMs` if it arrives too fast.
-5. **Speed at 100% and proportionality.** Set `roof.topDutyPercent` back to `100`. Time a full open (stopwatch: `opening` to the magnet), and measure the travel between the two magnets' trigger points with the tape. Set `roof.travelMm`, and `roof.speedMmPerSecond` (travel divided by the seconds at 100%). Then time a move at the 40% duty: the firmware assumes the speed is proportional to the duty, so if the 40% time is clearly not about 2.5 times the 100% time, increase `roof.timeoutMarginSeconds` to cover the difference.
+5. **Travel and speed, before any move above 40%.** Measure the travel between the two magnets' trigger points with the tape and set `roof.travelMm`. From the 40% time in step 4, set `roof.speedMmPerSecond` = travel ÷ (that time × 0.4), so the slow-down near each end starts in the right place. Then set `roof.topDutyPercent` to `70`, run an open and close, time them and refine the speed. Only then set `roof.topDutyPercent` to `100`, time a full open (stopwatch: `opening` to the magnet) and settle `roof.speedMmPerSecond` (travel ÷ seconds). The firmware assumes the speed is proportional to the duty: if the 40% time is clearly not about 2.5 times the 100% time, increase `roof.timeoutMarginSeconds` to cover the difference. Set `roof.leaveMagnetSeconds` back to `10` (or a value you have measured the leave time for).
 6. **The supply under the motor's start.** During each start `supplyLow` must stay false and `supplyVolts` stay above `roof.minSupplyVolts`; a dip over 250 ms would fault `supplyLow`. If it does, check the supply and wiring, not the limit.
 7. **The jam stop, without a jam.** Don't jam the roof. With current sense off, a jam is caught as "no magnet before the timeout" and the roof stops with a `timeout` fault. Test that the timeout stops a moving roof: set `roof.speedMmPerSecond` to twice its real value and `roof.timeoutMarginSeconds` to `3`, run `roofopen` and let it fault **part-way** (the second person ready at the supply switch). The roof stops where it is, EN drops, `fault` is `timeout`. Restore both values, `roofclear`, and finish the move. Then feel the motor housing and the IBT-2 heatsink: warm is fine. If either is too hot to hold after the longest run, shorten `roof.timeoutMarginSeconds` and `roof.leaveMagnetSeconds` or cool the driver, since that is the longest time the motor can be left on a jam.
 8. **Current sense, if fitted.** Turn `roof.currentSenseEnabled` on and follow [Calibration](calibration.md#current-sense): with a clamp meter on one motor lead, compare `motorAmps` at 40% and at 100% duty and set `roof.currentAmpsPerVolt`; the start-up surge ends well under 250 ms; set `roof.maxCurrentAmps` above the steady running current and the surge and below the stall current. Test it: set `roof.maxCurrentAmps` just under the running current, run a move, and the roof stops on `overCurrent` within about a quarter of a second; restore it. With the motor running, unplug one sense wire at the ESP32: the reading must change visibly, and the lowest steady running current at the slow duty must be clearly different. If they are clearly apart set `roof.minRunningAmps` between them (or fit the 47 kΩ pull-up instead); then unplugging a sense wire while running latches `currentUnreadable`.
 9. **Position after a power cut.** Start a move, cut the 12 V and the board's power part-way. The worm gear holds the roof. Restore power: the roof is `unknown`, nothing moves by itself, and a person's `roofopen` or `roofclose` moves it slowly to the first magnet.
-10. **The first full-speed run.** Open and close at the real settings, once each, attended.
+10. **A full run at the real settings.** Open and close once each, attended, to confirm the settled values.
 11. **The attended dry run of close-on-unsafe on the real roof.** Open the roof. With the mount unparked, N.I.N.A. connected and the second person at the supply switch, make SQMeter unsafe (manual override) and watch stage 7 step 1 happen with the real roof: the park request, the mount parking, the close, **Unsafe: closing** and **Roof closed after unsafe weather** on your phone. Then repeat stage 7 step 3 with a stop while the real roof closes (the roof stops; **Automatic close stopped** arrives), and close the roof yourself. **Third gate.**
 
 ## Stage 9: N.I.N.A. over ASCOM Alpaca, and ConformU
 
-Details: [ASCOM Alpaca](../user-guide/alpaca.md). Alpaca is off by default and an Alpaca client is not a person: it can't move a roof whose position is unknown, clear a fault or stop a close in bad weather. Do stage 9 once with the motor disconnected (hand-held magnets, back in stage 6's setup) if you have not used N.I.N.A.'s dome before, then again on the real roof.
+Details: [ASCOM Alpaca](../user-guide/alpaca.md). Alpaca is off by default and an Alpaca client is not a person: it can't move a roof whose position is unknown, clear a fault or stop a close in bad weather. Do steps 1 to 7 first **with the motor still disconnected** (hand-held magnets, as in stage 6), before "Connect the motor" below; steps 2 and 5 are then repeated on the real roof, attended, after stage 8.
 
 1. **Switch Alpaca on** (**Settings → Network → ASCOM Alpaca**) and restart. In N.I.N.A.'s dome equipment, discover **RoofRoof roof** and connect (add it by IP and port 80 if discovery doesn't cross your network).
 2. **Open and close from N.I.N.A.** with the weather safe and the mount parked. ShutterStatus runs through opening, open, closing and closed.
@@ -251,8 +257,8 @@ Skip this stage if you don't use MQTT. Details: [MQTT](../user-guide/mqtt.md).
 
 The roof may run unattended only when every line here is ticked on the [checklist](commissioning-checklist.md#stage-11-the-gate-for-unattended-use):
 
-1. The alert channel delivered a test on your phone (stage 5), and the critical events delivered in the dry runs (stages 7 and 8), including with **Send alerts** off.
-2. The close-on-unsafe dry run passed on the real roof (stage 8 step 11), with `park.timeoutSeconds` set a little above your mount's longest park time.
+1. The alert channel delivered a test on your phone (stage 5), and the critical events delivered in the dry runs (stages 7 and 8). With **Send alerts** off they still arrived (stage 7 step 2); **Send alerts** is switched back **on**.
+2. The close-on-unsafe dry run passed with the motor disconnected (stage 7) **and** attended on the real roof (stage 8 step 11), with `park.timeoutSeconds` set a little above your mount's longest park time.
 3. Password protection is on, the settings are backed up (**Settings → Backup**, kept off the device) and the commissioned values are written on the checklist.
 4. **Health after a long session.** After an hour or more with the dashboard open, MQTT and a few uploads at rest, `roofstatus` shows `maxWatchdogBeatAgeMs` well under 50 and `maxStepGapMs` near 20, `watchdogTrips` is 0, and `stackFree.roof` in `/api/status` is above 2048 bytes.
 5. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
