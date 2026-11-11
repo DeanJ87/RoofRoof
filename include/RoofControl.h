@@ -74,6 +74,8 @@ namespace SQM
         // uploads, NVS) and restarts wait while it is (RoofIo::platformActionRefused).
         bool moving() const;
         Roof::State state() const { return static_cast<Roof::State>(stateNow.load()); }
+        // A close is waiting for an upload or MQTT connect (MQTT reconnects wait meanwhile).
+        bool closeWaiting() const { return closeWaitingNow.load(); }
         // What else is going on (uploads, an MQTT connect, a scheduled
         // restart), and what a close does about it (cancel the restart, stop
         // the upload). Set once, before any command can arrive.
@@ -131,7 +133,8 @@ namespace SQM
         void refreshSnapshot();
         Outcome outcomeOf(const Roof::CommandResult &result);
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
-        RoofIo::BlockerDecision decide(Roof::Command command, const RoofIo::Blockers &now);
+        Outcome precheck(Roof::Command command, Roof::Origin origin) const;
+        Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
         void runPendingClose();
 
         // Outside the lock, in the control task.
@@ -159,7 +162,8 @@ namespace SQM
         float motorAmps = 0.0f;
         uint32_t watchdogTrips = 0;
         uint32_t maxStepGapMs = 0;
-        std::string notice; // logged by the control task outside the lock
+        uint32_t maxBeatAgeMs = 0; // the oldest watchdog heartbeat a step has seen
+        std::string notice;        // logged by the control task outside the lock
 
         // The control task only.
         RoofIo::SwitchInput park1;
@@ -177,6 +181,7 @@ namespace SQM
         std::atomic<uint8_t> rainReading{0};
         std::atomic<bool> started{false};
         std::atomic<uint8_t> stateNow{0}; // Roof::State, as of the last snapshot
+        std::atomic<bool> closeWaitingNow{false};
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;
     };

@@ -49,9 +49,16 @@ namespace SQM
         void setRoof(RoofControl *control);
         // Main loop, every pass: while the roof moves a scheduled restart waits.
         static void holdRestarts(bool hold) { restartHold = hold; }
-        // A restart is due (the roof refuses to open meanwhile); a close cancels it.
+        // A restart is due (the roof refuses to open meanwhile); a close cancels
+        // it unless it can't be cancelled (after a filesystem upload stopped
+        // part-way, the filesystem is half erased: it runs once the roof stops).
         static bool restartScheduled();
+        static bool restartCancellable() { return restartIsCancellable; }
         static void cancelRestart();
+        static bool scheduleMandatoryRestart(uint32_t delayMs);
+        static inline std::atomic<bool> restartIsCancellable{true};
+        // The roof, for the restart timer: it never fires while the roof moves or a close waits.
+        static inline std::atomic<RoofControl *> roofForRestart{nullptr};
         static inline std::atomic<bool> restartHold{false};
         void begin();
         void handle();

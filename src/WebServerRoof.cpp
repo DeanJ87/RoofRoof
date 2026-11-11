@@ -91,6 +91,7 @@ namespace SQM
     void WebServer::setRoof(RoofControl *control)
     {
         roof = control;
+        roofForRestart = control;
         if (roof == nullptr)
             return;
         roof->setBlockers(
@@ -100,6 +101,7 @@ namespace SQM
                 b.flashBusy = FlashGuard::busy();
                 b.mqttConnecting = mqttClient != nullptr && mqttClient->connecting();
                 b.restartScheduled = restartScheduled();
+                b.restartCancellable = restartCancellable();
                 return b;
             },
             [](const RoofIo::BlockerDecision &decision)

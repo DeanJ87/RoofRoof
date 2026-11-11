@@ -93,3 +93,12 @@ Docs (T024-T026) any time after Phase 2.
 - [x] T041 Command-line OTA only while closed, counted as a flash write (FR-030)
 - [x] T042 `MotorDriver::apply` reports a held EN; `applyOutput` latches `watchdogStopped` (FR-028)
 - [x] T043 `roof.minRunningAmps` setting (model, schema, fixture, catalogue, tests, docs); wiring pull-up option; status contract, OpenAPI and docs
+
+## Phase 12: Third review fixes
+
+- [x] T044 Tests then `Roof::Controller::check()` (dry run of `command()`), used so a close's side effects and deferral happen only for a close that would run, never when closed or closing (FR-029)
+- [x] T045 A refused open keeps a waiting close; a fault ends it (FR-029)
+- [x] T046 MQTT connects held while a close waits, asked inside `MQTTClient::connect()` (FR-029)
+- [x] T047 Watchdog beat limit 50 ms with tests; `maxWatchdogBeatAgeMs` in the status (FR-028)
+- [x] T048 Command-line OTA re-checks the roof in its start callback (FR-030)
+- [x] T049 Filesystem-upload restarts are mandatory (never cancelled by a close), and the restart timer waits while a close waits (FR-029)

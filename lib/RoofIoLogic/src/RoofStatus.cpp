@@ -114,6 +114,7 @@ namespace SQM
             writeFault(out, s);
             out["watchdogTrips"] = s.watchdogTrips;
             out["maxStepGapMs"] = s.maxStepGapMs;
+            out["maxWatchdogBeatAgeMs"] = s.maxWatchdogBeatAgeMs;
         }
     } // namespace RoofIo
 } // namespace SQM

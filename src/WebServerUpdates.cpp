@@ -387,9 +387,10 @@ namespace SQM
                 uploadActive = false;
                 if (answerStoppedUpload(request))
                 {
-                    // Stopped part-way after the filesystem was erased: it must restart (held while the roof moves).
+                    // Stopped part-way after the filesystem was erased: it must
+                    // restart. Held while the roof moves or a close waits, never cancelled.
                     if (fsUpload.touched)
-                        WebServer::scheduleRestart(1000);
+                        WebServer::scheduleMandatoryRestart(1000);
                     fsUpload = FsUpload{};
                     return;
                 }
@@ -449,8 +450,10 @@ namespace SQM
             fsFailed ? String(createErrorJson(fsUpload.errorMessage.c_str()).c_str()) : String("{\"success\":true}");
         fsUpload = FsUpload{}; // reset for the next upload
         sendClosing(request, fsFailed ? (restart ? 500 : 400) : 200, responseJson);
+        // The filesystem was unmounted and rewritten: only a restart remounts it,
+        // so a close never cancels this one (it waits while the roof moves).
         if (restart)
-            WebServer::scheduleRestart(1000);
+            WebServer::scheduleMandatoryRestart(1000);
     }
 
     void WebServer::handleFirmwareUploadDone(AsyncWebServerRequest *request)

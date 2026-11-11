@@ -164,16 +164,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794366127,
-                    "iso": "2026-11-11T03:02:07+0000",
+                    "epoch": 1794367229,
+                    "iso": "2026-11-11T03:20:29+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794362525890,
-                    "nextSync": 1794369725890,
+                    "lastSync": 1794363627173,
+                    "nextSync": 1794370827173,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -205,7 +205,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794366065890,
+                    "lastPublish": 1794367167173,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -242,7 +242,8 @@
                     "closePending": false,
                     "fault": null,
                     "watchdogTrips": 0,
-                    "maxStepGapMs": 21
+                    "maxStepGapMs": 21,
+                    "maxWatchdogBeatAgeMs": 12
                   },
                   "configRevision": 3751871155
                 }
@@ -3806,6 +3807,9 @@
               "maxStepGapMs": {
                 "type": "number"
               },
+              "maxWatchdogBeatAgeMs": {
+                "type": "number"
+              },
               "minSupplyVolts": {
                 "type": "number"
               },
@@ -3922,6 +3926,7 @@
               "hall",
               "maxCurrentAmps",
               "maxStepGapMs",
+              "maxWatchdogBeatAgeMs",
               "minSupplyVolts",
               "motorAmps",
               "moveElapsedMs",

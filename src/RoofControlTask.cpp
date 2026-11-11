@@ -157,6 +157,10 @@ namespace SQM
     {
         if (in.gapMs > maxStepGapMs)
             maxStepGapMs = in.gapMs;
+        // Only once the watchdog timer runs (it starts just after the task).
+        const uint32_t beatAge = started.load() ? RoofIo::stepGapMs(in.readings.nowMs, MotorDriver::watchdogBeatMs()) : 0;
+        if (beatAge > maxBeatAgeMs)
+            maxBeatAgeMs = beatAge;
         supplyVolts = in.readings.supplyVolts;
         // Read under the output applied since the last step: scaled back by its duty.
         Roof::Readings readings = in.readings;

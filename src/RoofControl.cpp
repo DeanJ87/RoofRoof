@@ -100,25 +100,73 @@ namespace SQM
         return outcome;
     }
 
-    RoofIo::BlockerDecision RoofControl::decide(Roof::Command command, const RoofIo::Blockers &now)
+    RoofControl::Outcome RoofControl::runLocked(Roof::Command command, Roof::Origin origin)
     {
-        const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
-        // A close always wins: the restart is cancelled and the upload stopped.
-        if ((decision.cancelRestart || decision.stopFlash) && closeHook)
-            closeHook(decision);
-        return decision;
+        const Outcome pre = precheck(command, origin);
+        if (!pre.accepted)
+            return pre;
+        Outcome outcome = outcomeOf(controller.command(command, origin));
+        applyOutput();
+        syncFault(RoofIo::FaultCause::Logic);
+        refreshSnapshot();
+        return outcome;
     }
 
-    RoofControl::Outcome RoofControl::runLocked(Roof::Command command, Roof::Origin origin)
+    // Why an open or close can't run now: the park and weather gates, then the
+    // motion logic's own checks (without changing anything). Accepted when it can.
+    RoofControl::Outcome RoofControl::precheck(Roof::Command command, Roof::Origin origin) const
     {
         const RoofIo::GateInputs now = currentGates();
         const RoofIo::GateRefusal gate = RoofIo::gateCommand(command, now);
         if (gate != RoofIo::GateRefusal::None)
             return Outcome{false, RoofIo::gateRefusalName(gate), RoofIo::describeGate(gate, now), controller.status().state};
-        Outcome outcome = outcomeOf(controller.command(command, origin));
-        applyOutput();
-        syncFault(RoofIo::FaultCause::Logic);
-        refreshSnapshot();
+        const Roof::CommandResult result = controller.check(command, origin);
+        Outcome outcome;
+        outcome.accepted = result.accepted;
+        if (!result.accepted)
+        {
+            outcome.reason = Roof::refusalName(result.reason);
+            outcome.text = RoofIo::describeRefusal(result);
+        }
+        outcome.state = controller.status().state;
+        return outcome;
+    }
+
+    // Under the lock. A close's side effects (cancelling a restart, stopping an
+    // upload) and its deferral happen only once it would run: past the gates
+    // and the motion logic's checks, and not when the roof is already closed
+    // or closing (spec 003 FR-029).
+    RoofControl::Outcome RoofControl::commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now)
+    {
+        if (command == Roof::Command::Stop || command == Roof::Command::Abort)
+        {
+            closePending = false; // a stop replaces a waiting close
+            return runLocked(command, origin);
+        }
+        const Outcome pre = precheck(command, origin);
+        if (!pre.accepted)
+            return pre;
+        const Roof::State state = controller.status().state;
+        if (command == Roof::Command::Close && (state == Roof::State::Closed || state == Roof::State::Closing))
+            return runLocked(command, origin); // nothing to win
+        const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
+        if (decision.action == RoofIo::BlockerAction::Refuse)
+            return Outcome{false, "busy", std::string(RoofIo::blockerText(now)) + ": try again in a moment", state};
+        if ((decision.cancelRestart || decision.stopFlash) && closeHook)
+            closeHook(decision); // a close always wins
+        if (decision.action == RoofIo::BlockerAction::DeferClose)
+        {
+            closePending = true;
+            closeOrigin = origin;
+            refreshSnapshot();
+            return Outcome{true, "", std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now), state, true};
+        }
+        const Outcome outcome = runLocked(command, origin);
+        if (command == Roof::Command::Open && outcome.accepted)
+        {
+            closePending = false; // an open that runs replaces a waiting close
+            refreshSnapshot();
+        }
         return outcome;
     }
 
@@ -127,35 +175,10 @@ namespace SQM
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
         const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
-        const RoofIo::BlockerDecision decision = decide(command, now);
         Outcome outcome;
         {
             RoofLocked held(lock);
-            if (command != Roof::Command::Close)
-                closePending = false; // stop, abort or open replace a waiting close
-            const RoofIo::GateInputs gates = currentGates();
-            if (decision.action == RoofIo::BlockerAction::Refuse)
-            {
-                outcome =
-                    Outcome{false, "busy", std::string(RoofIo::blockerText(now)) + ": try again in a moment", controller.status().state};
-            }
-            else if (
-                decision.action == RoofIo::BlockerAction::DeferClose && RoofIo::gateCommand(command, gates) == RoofIo::GateRefusal::None)
-            {
-                closePending = true;
-                closeOrigin = origin;
-                outcome = Outcome{
-                    true,
-                    "",
-                    std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now),
-                    controller.status().state,
-                    true};
-                refreshSnapshot();
-            }
-            else
-            {
-                outcome = runLocked(command, origin);
-            }
+            outcome = commandLocked(command, origin, now);
         }
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
@@ -168,8 +191,18 @@ namespace SQM
     {
         if (!closePending)
             return;
+        const Outcome pre = precheck(Roof::Command::Close, closeOrigin);
+        if (!pre.accepted)
+        {
+            closePending = false;
+            notice = "Waiting close dropped: " + pre.text;
+            return;
+        }
         const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
-        if (decide(Roof::Command::Close, now).action != RoofIo::BlockerAction::Proceed)
+        const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(Roof::Command::Close, now);
+        if ((decision.cancelRestart || decision.stopFlash) && closeHook)
+            closeHook(decision);
+        if (decision.action != RoofIo::BlockerAction::Proceed)
             return;
         closePending = false;
         const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin);
@@ -245,6 +278,9 @@ namespace SQM
         {
             fault.fault = now;
             fault.cause = causeIfNew;
+            // A fault ends a waiting close: clearing the fault later must not
+            // run it without a fresh command.
+            closePending = false;
         }
     }
 
@@ -265,6 +301,8 @@ namespace SQM
         s.rainFitted = settings.rainFitted;
         s.rain = static_cast<RoofIo::Contact>(rainReading.load());
         s.closePending = closePending;
+        closeWaitingNow.store(closePending);
+        s.maxWatchdogBeatAgeMs = maxBeatAgeMs;
         s.watchdogTrips = watchdogTrips;
         s.maxStepGapMs = maxStepGapMs;
         const bool changed =

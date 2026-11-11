@@ -122,6 +122,7 @@ export const mockStatus: SystemStatus = {
     fault: null,
     watchdogTrips: 0,
     maxStepGapMs: 21,
+    maxWatchdogBeatAgeMs: 12,
   },
 };
 

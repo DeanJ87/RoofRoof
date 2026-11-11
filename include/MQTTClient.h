@@ -39,10 +39,11 @@ namespace SQM
 
         void begin();
         void handle();
-        // While the roof moves (spec 003), no reconnect is tried: a reconnect
-        // to a dead broker (DNS, TCP connect, CONNACK) would hold up the main
-        // loop, and with it the safety hand-over to the roof. Main loop.
-        void holdReconnects(bool hold) { reconnectHeld = hold; }
+        // While the roof moves or a close waits (spec 003), no connect is
+        // tried: a connect to a dead broker (DNS, TCP connect, CONNACK) would
+        // hold up the main loop, and with it the safety hand-over to the roof.
+        // Asked right before every connect. Set once, before begin().
+        void setConnectHold(std::function<bool()> hold) { connectHold = std::move(hold); }
 
         bool isConnected() const;
         bool isEnabled() const { return config.enabled; }
@@ -91,7 +92,7 @@ namespace SQM
         // Reads (and the CONNACK wait) give up after this many seconds: well
         // under the roof's 5 s safety hand-over limit (spec 003 research R8).
         static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
-        bool reconnectHeld = false;
+        std::function<bool()> connectHold;
         std::atomic<bool> connectInFlight{false};
 
         MQTTConfig config;

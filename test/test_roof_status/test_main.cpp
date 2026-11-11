@@ -169,6 +169,7 @@ void test_status_closed_roof(void)
     TEST_ASSERT_TRUE(roof.containsKey("closePending"));
     TEST_ASSERT_EQUAL(0, roof["watchdogTrips"].as<int>());
     TEST_ASSERT_TRUE(roof.containsKey("maxStepGapMs"));
+    TEST_ASSERT_TRUE(roof.containsKey("maxWatchdogBeatAgeMs"));
 }
 
 void test_status_opening_part_way(void)
