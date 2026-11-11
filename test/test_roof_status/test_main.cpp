@@ -73,6 +73,8 @@ void test_external_fault_texts_by_cause(void)
         describeFault(externalRecord(FaultCause::ParkInterlock, InterlockParkResult | InterlockSwitch2, 0)));
     assertText(
         "Stored fault unreadable: the fault saved before the restart couldn't be read back", describeFault(storedUnreadableRecord()));
+    assertText(
+        "Watchdog timer stopped: last check 120 ms ago > 100 ms", describeFault(externalRecord(FaultCause::WatchdogStopped, 120, 100)));
     assertText("Fault raised: 3 (limit 2)", describeFault(externalRecord(FaultCause::Logic, 3, 2)));
 }
 

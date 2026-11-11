@@ -21,6 +21,7 @@ namespace SQM
             Watchdog,         // the control task stopped stepping with the driver on (gap ms / limit ms)
             ParkInterlock,    // the park confirmation was lost during a close (interlock bits / 0)
             StoredUnreadable, // the saved record couldn't be read back
+            WatchdogStopped,  // the watchdog timer itself stopped with the driver on (beat age ms / limit ms)
         };
 
         struct FaultRecord

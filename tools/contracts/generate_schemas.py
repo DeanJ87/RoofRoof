@@ -86,7 +86,7 @@ CONSTRAINTS = {
     ("status", ("roof", "parkSwitches", "switch1")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
     ("status", ("roof", "parkSwitches", "switch2")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
     ("status", ("roof", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
-    ("status", ("roof", "fault", "cause")): {"enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable"]},
+    ("status", ("roof", "fault", "cause")): {"enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped"]},
     ("status", ("roof", "fault", "kind")): {
         "enum": [
             "timeout",

@@ -21,3 +21,12 @@ export const postJson = (path: string, body: unknown): Promise<Response> =>
 
 /** A response body as JSON, or {} when it isn't JSON (error bodies, empty replies). */
 export const bodyOf = (response: Response): Promise<Record<string, unknown>> => response.json().catch(() => ({}));
+
+/** The header every roof command carries: a cross-site form can't set it, so another page can't move the roof. */
+export const ROOF_COMMAND_HEADER = 'X-RoofRoof';
+
+export type RoofCommand = 'open' | 'close' | 'stop' | 'clear-fault';
+
+/** POST a roof command (spec 003). 409 answers say why it was refused (`reason`, `error`). */
+export const roofCommand = (command: RoofCommand): Promise<Response> =>
+  fetch(`/api/roof/${command}`, { method: 'POST', headers: { [ROOF_COMMAND_HEADER]: '1' } });

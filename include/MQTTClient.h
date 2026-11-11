@@ -37,6 +37,10 @@ namespace SQM
 
         void begin();
         void handle();
+        // While the roof moves (spec 003), no reconnect is tried: a reconnect
+        // to a dead broker (DNS, TCP connect, CONNACK) would hold up the main
+        // loop, and with it the safety hand-over to the roof. Main loop.
+        void holdReconnects(bool hold) { reconnectHeld = hold; }
 
         bool isConnected() const;
         bool isEnabled() const { return config.enabled; }
@@ -79,6 +83,10 @@ namespace SQM
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
+        // Reads (and the CONNACK wait) give up after this many seconds: well
+        // under the roof's 5 s safety hand-over limit (spec 003 research R8).
+        static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
+        bool reconnectHeld = false;
 
         MQTTConfig config;
         DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (SQMeter spec 015)

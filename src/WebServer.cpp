@@ -61,6 +61,12 @@ namespace SQM
 
         void restartTimerCallback(void *)
         {
+            // Never while the roof moves: try again in a second.
+            if (WebServer::restartHold.load() && restartTimer != nullptr)
+            {
+                esp_timer_start_once(restartTimer, 1000ULL * 1000ULL);
+                return;
+            }
             ESP.restart();
         }
 
@@ -250,6 +256,8 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
+        if (armedSavePending && !roofMoving())
+            saveArmedState();
         retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();

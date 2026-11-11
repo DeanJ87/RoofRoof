@@ -269,6 +269,25 @@ namespace SQM
         }
     } // namespace
 
+    // Nothing is written while the roof moves: flash writes stall its control
+    // task and watchdog (spec 003 FR-024). Decided on the first chunk.
+    bool WebServer::uploadRefused(size_t index)
+    {
+        if (index == 0)
+            uploadRefusedMoving = roofMoving();
+        return uploadRefusedMoving;
+    }
+
+    bool WebServer::answerRefusedUpload(AsyncWebServerRequest *request)
+    {
+        if (!uploadRefusedMoving)
+            return false;
+        uploadRefusedMoving = false;
+        if (requireAuth(request))
+            sendClosing(request, 409, createErrorJson("The roof is moving: stop it first, then try again").c_str());
+        return true;
+    }
+
     void WebServer::setupOTA()
     {
         // The password is checked on the first chunk, before anything is
@@ -283,10 +302,14 @@ namespace SQM
             [this](AsyncWebServerRequest *request)
             {
                 uploadActive = false;
+                if (answerRefusedUpload(request))
+                    return;
                 handleFsUploadDone(request);
             },
             [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
+                if (uploadRefused(index))
+                    return;
                 if (!index)
                     uploadActive = true;
                 if (!requestAuthorised(request))
@@ -303,10 +326,14 @@ namespace SQM
             [this](AsyncWebServerRequest *request)
             {
                 uploadActive = false;
+                if (answerRefusedUpload(request))
+                    return;
                 handleFirmwareUploadDone(request);
             },
             [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
+                if (uploadRefused(index))
+                    return;
                 if (!index)
                 {
                     uploadActive = true;

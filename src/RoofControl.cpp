@@ -5,6 +5,7 @@
 
 #include "DriverLogic.h"
 #include "Logger.h"
+#include "MotionGuards.h"
 #include "MotorDriver.h"
 #include "RoofFaultStore.h"
 #include "RoofLocked.h"
@@ -107,7 +108,11 @@ namespace SQM
             RoofLocked held(lock);
             const RoofIo::GateInputs now = currentGates();
             const RoofIo::GateRefusal gate = RoofIo::gateCommand(command, now);
-            if (gate != RoofIo::GateRefusal::None)
+            if (RoofIo::flashBusyRefuses(command, flashBusy && flashBusy()))
+            {
+                outcome = Outcome{false, "flashBusy", RoofIo::FLASH_BUSY_TEXT, controller.status().state};
+            }
+            else if (gate != RoofIo::GateRefusal::None)
             {
                 outcome = Outcome{false, RoofIo::gateRefusalName(gate), RoofIo::describeGate(gate, now), controller.status().state};
             }
@@ -203,6 +208,7 @@ namespace SQM
         s.maxStepGapMs = maxStepGapMs;
         const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind;
         snap = s;
+        stateNow.store(static_cast<uint8_t>(s.status.state));
         if (changed)
             revisionCount.fetch_add(1);
     }
@@ -252,6 +258,11 @@ namespace SQM
         gates.parkText = parkText;
         safetyHandedOver = true;
         safetyAtMs = millis();
+    }
+
+    bool RoofControl::moving() const
+    {
+        return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load()));
     }
 
     RoofIo::GateInputs RoofControl::currentGates() const

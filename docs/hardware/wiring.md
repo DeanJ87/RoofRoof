@@ -11,7 +11,7 @@ This page is the wiring reference for the roof controller's ESP32: which pin doe
 
     - GPIO39 (Hall): the raw 12-bit reading, the median of five per step, compared with the Hall thresholds you set ([Calibration](calibration.md)).
     - GPIO36 (supply): calibrated millivolts × 122 / 22.
-    - GPIO34 and GPIO35 (current): read only with current sense on; the larger of the two, × 30 / 20, × the current scale setting.
+    - GPIO34 and GPIO35 (current): read only with current sense on; the larger of the two (eight samples each), × 30 / 20, × the current scale setting, then divided by the PWM duty (the sense output only follows the motor while its side is on).
     - GPIO32, GPIO33 (park switches) and GPIO4 (rain contact): internal pull-ups on; a closed contact reads low.
     - GPIO25 and GPIO26: 20 kHz PWM, never both at once; GPIO27: high only while a move is driven.
 
@@ -76,6 +76,8 @@ The ESP32's inputs must never see more than 3.3 V. Every analog signal that can 
 ### Current sense (GPIO34, GPIO35)
 
 R_IS and L_IS are the BTS7960's current-sense outputs. If fitted, each goes through a **10 kΩ (top) / 20 kΩ (bottom)** divider to GPIO34 and GPIO35, which scales the signal by two thirds. They are optional: the firmware must work without them.
+
+Under the 20 kHz PWM the sense output is chopped: it follows the motor current only while its side of the bridge is on. Fit a capacitor of about **1 µF across each 20 kΩ lower resistor** (a time constant of about 7 ms) so the ADC reads a steady average; the firmware scales that average back by the duty. Without the capacitor the eight samples per step still average over a few PWM periods, more noisily.
 
 ### Hall sensor (SS49E)
 

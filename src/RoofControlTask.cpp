@@ -2,6 +2,7 @@
 #include <esp_task_wdt.h>
 
 #include "Logger.h"
+#include "MotionGuards.h"
 #include "MotorDriver.h"
 #include "RoofControl.h"
 #include "RoofLocked.h"
@@ -25,12 +26,12 @@ namespace SQM
             return RoofIo::medianCounts(samples, RoofIo::HALL_SAMPLES);
         }
 
-        float pinMillivolts(uint8_t pin)
+        float pinMillivolts(uint8_t pin, uint8_t count = RoofIo::ANALOG_SAMPLES)
         {
-            uint32_t samples[RoofIo::ANALOG_SAMPLES];
-            for (uint32_t &sample : samples)
-                sample = analogReadMilliVolts(pin);
-            return RoofIo::averageMillivolts(samples, RoofIo::ANALOG_SAMPLES);
+            uint32_t samples[RoofIo::MAX_SAMPLES];
+            for (uint8_t i = 0; i < count; ++i)
+                samples[i] = analogReadMilliVolts(pin);
+            return RoofIo::averageMillivolts(samples, count);
         }
 
         bool levelLow(uint8_t pin)
@@ -86,6 +87,7 @@ namespace SQM
     void RoofControl::watchdogEntry(void *self)
     {
         RoofControl &roof = *static_cast<RoofControl *>(self);
+        MotorDriver::watchdogBeat();
         // The step time first, then the clock: a step stamped in between reads
         // as no gap, never as a huge one.
         const uint32_t last = roof.lastStepMs.load();
@@ -131,8 +133,10 @@ namespace SQM
         in.readings.supplyVolts = RoofIo::supplyVolts(pinMillivolts(Pins::SUPPLY_SENSE));
         in.readings.motorAmps = NAN; // "no reading" while current sense is off (spec 002 contract)
         if (now.roof.currentSenseEnabled)
-            in.readings.motorAmps =
-                RoofIo::motorAmps(pinMillivolts(Pins::CURRENT_R), pinMillivolts(Pins::CURRENT_L), now.roof.currentAmpsPerVolt);
+            in.readings.motorAmps = RoofIo::motorAmps(
+                pinMillivolts(Pins::CURRENT_R, RoofIo::CURRENT_SAMPLES),
+                pinMillivolts(Pins::CURRENT_L, RoofIo::CURRENT_SAMPLES),
+                now.roof.currentAmpsPerVolt);
         park1Reading.store(static_cast<uint8_t>(park1.update(levelLow(Pins::PARK_A), nowMs)));
         park2Reading.store(static_cast<uint8_t>(park2.update(levelLow(Pins::PARK_B), nowMs)));
         rainReading.store(static_cast<uint8_t>(rain.update(levelLow(Pins::RAIN), nowMs)));
@@ -154,7 +158,10 @@ namespace SQM
         if (in.gapMs > maxStepGapMs)
             maxStepGapMs = in.gapMs;
         supplyVolts = in.readings.supplyVolts;
-        motorAmps = in.readings.motorAmps;
+        // Read under the output applied since the last step: scaled back by its duty.
+        Roof::Readings readings = in.readings;
+        readings.motorAmps = RoofIo::runningAmps(in.readings.motorAmps, controller.status(), controller.output());
+        motorAmps = readings.motorAmps;
         if (MotorDriver::tripped())
         {
             // The watchdog dropped EN: latch it (output off), then let EN be used again.
@@ -163,11 +170,17 @@ namespace SQM
                 RoofIo::FaultCause::Watchdog, static_cast<float>(in.gapMs), static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
             MotorDriver::clearTrip();
         }
+        // The watchdog itself stopped while the driver is on: nothing would
+        // catch a stalled step any more.
+        const uint32_t beatAge = RoofIo::stepGapMs(in.readings.nowMs, MotorDriver::watchdogBeatMs());
+        if (MotorDriver::enabled() && beatAge > RoofIo::WATCHDOG_LIMIT_MS)
+            latchExternal(RoofIo::externalRecord(
+                RoofIo::FaultCause::WatchdogStopped, static_cast<float>(beatAge), static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
         takePendingSettings();
         gates.switch1 = static_cast<RoofIo::Contact>(park1Reading.load());
         gates.switch2 = static_cast<RoofIo::Contact>(park2Reading.load());
         checkGates();
-        controller.tick(in.readings);
+        controller.tick(readings);
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
         refreshSnapshot();

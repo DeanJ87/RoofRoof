@@ -73,3 +73,14 @@ build.
 
 Phase 2 before everything else. T012-T014 before T015-T018. T019 before T020. T021 before T022.
 Docs (T024-T026) any time after Phase 2.
+
+## Phase 10: Review fixes
+
+- [x] T030 Tests then `lib/RoofIoLogic/include/MotionGuards.h`, `src/MotionGuards.cpp`: `platformActionRefused`, `flashBusyRefuses`, `commandHeaderValid`, `watchdogAlive`, `runningAmps` (duty scaling, broken-wire NaN) in `test/test_roof_gates`; `FaultCause::WatchdogStopped` in `FaultRecord` and `RoofText` (FR-024 to FR-028)
+- [x] T031 `CONFIG_ASYNC_TCP_PRIORITY=3` in `platformio.ini`; the comment in `include/RoofControl.h` and research R1 corrected (FR-025)
+- [x] T032 Refuse settings saves, restores, uploads, WiFi changes and restarts while moving; hold scheduled restarts, command-line OTA, MQTT reconnects and the alerts pause NVS write; `flashBusy` refusal; `WiFi.persistent(false)` (FR-024)
+- [x] T033 MQTT socket timeout 3 s and no reconnect while moving; hand-over limit re-derived in research R8
+- [x] T034 Current read with 8 samples and scaled by the applied duty in the control step (FR-026)
+- [x] T035 `X-RoofRoof: 1` on the roof routes (403), `roofCommand()` in `web/src/lib/api.ts` with a Vitest test, OpenAPI header parameter, REST and security docs (FR-027)
+- [x] T036 Watchdog heartbeat: `MotorDriver::watchdogBeat()`, EN only with a fresh beat, `watchdogStopped` latched by the step (FR-028)
+- [x] T037 Known limits in spec.md; roof-motion, wiring and calibration docs; status contract regenerated

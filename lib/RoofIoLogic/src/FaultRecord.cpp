@@ -12,7 +12,7 @@ namespace SQM
             constexpr uint8_t MAGIC_1 = 'F';
             constexpr size_t CHECKED_BYTES = 14; // the checksum covers bytes 0-13
             constexpr uint8_t LAST_KIND = static_cast<uint8_t>(Roof::FaultKind::External);
-            constexpr uint8_t LAST_CAUSE = static_cast<uint8_t>(FaultCause::StoredUnreadable);
+            constexpr uint8_t LAST_CAUSE = static_cast<uint8_t>(FaultCause::WatchdogStopped);
 
             uint16_t checksum(const uint8_t *data)
             {
@@ -103,6 +103,8 @@ namespace SQM
                 return "parkInterlock";
             case FaultCause::StoredUnreadable:
                 return "storedUnreadable";
+            case FaultCause::WatchdogStopped:
+                return "watchdogStopped";
             }
             return "unknown";
         }

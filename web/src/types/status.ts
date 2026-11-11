@@ -106,7 +106,7 @@ export type RoofSwitch = 'closed' | 'open' | 'unreadable' | 'notFitted';
 
 export interface RoofFault {
   kind: string; // Roof::faultName
-  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable';
+  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped';
   measured: number | null;
   limit: number | null;
   text: string; // with the measured value and the limit

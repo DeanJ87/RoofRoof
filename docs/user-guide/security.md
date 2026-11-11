@@ -48,6 +48,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/alerts/test` | POST | Send a test alert |
 | `/api/alerts/arm`, `/api/alerts/disarm` | POST | Resume / pause alerts |
 | `/api/alerts/clear` | POST | Clear the recent-alerts list |
+| `/api/roof/open`, `/api/roof/close`, `/api/roof/stop`, `/api/roof/clear-fault` | POST | Move the roof, clear a fault (also need the header `X-RoofRoof: 1`) |
 
 ### Unprotected endpoints (always accessible)
 
@@ -121,4 +122,4 @@ Command-line ArduinoOTA is separate and controlled by the `ota.enabled` and `ota
 - Traffic confidentiality: credentials and device data travel in plaintext over HTTP. Anyone who can observe the LAN can capture them.
 - Physical access: someone with physical access to the device can reset it.
 - Denial of service: unauthenticated read endpoints remain open and could be flooded.
-- Replay attacks: no session management or CSRF protection.
+- Replay attacks: no session management. Cross-site requests: the roof commands need the header `X-RoofRoof: 1`, which another web page can't make your browser send in a cross-site request, so a malicious page can't move the roof. Other protected routes rely on HTTP auth alone.

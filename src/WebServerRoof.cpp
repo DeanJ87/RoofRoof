@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "MotionGuards.h"
 #include "RoofControl.h"
 #include "RoofStatus.h"
 #include "WebServer.h"
@@ -56,7 +57,7 @@ namespace SQM
 
     void WebServer::handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || !requireCommandHeader(request))
             return;
         if (roof == nullptr)
         {
@@ -70,7 +71,7 @@ namespace SQM
 
     void WebServer::handleRoofClearFault(AsyncWebServerRequest *request)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || !requireCommandHeader(request))
             return;
         if (roof == nullptr)
         {
@@ -80,13 +81,33 @@ namespace SQM
         sendOutcome(request, roof->clearFault(Roof::Origin::Person));
     }
 
-    bool WebServer::refuseWhileMoving(AsyncWebServerRequest *request, const Config &next)
+    void WebServer::setRoof(RoofControl *control)
     {
-        if (roof == nullptr || !roof->settingsSaveRefused(getConfigCallback(), next))
+        roof = control;
+        if (roof != nullptr)
+            roof->setFlashBusy([]() { return uploadActive.load(); });
+    }
+
+    bool WebServer::roofMoving() const
+    {
+        return roof != nullptr && roof->moving();
+    }
+
+    bool WebServer::refuseWhileMoving(AsyncWebServerRequest *request)
+    {
+        if (!roofMoving())
             return false;
-        request->send(
-            409, "application/json", createErrorJson("The roof is moving: roof and park settings can't change until it stops").c_str());
+        request->send(409, "application/json", createErrorJson("The roof is moving: stop it first, then try again").c_str());
         return true;
+    }
+
+    bool WebServer::requireCommandHeader(AsyncWebServerRequest *request)
+    {
+        const AsyncWebHeader *header = request->getHeader(RoofIo::COMMAND_HEADER);
+        if (RoofIo::commandHeaderValid(header != nullptr ? header->value().c_str() : nullptr))
+            return true;
+        request->send(403, "application/json", createErrorJson("Roof commands need the header X-RoofRoof: 1").c_str());
+        return false;
     }
 
     void WebServer::appendRoof(JsonDocument &doc) const
