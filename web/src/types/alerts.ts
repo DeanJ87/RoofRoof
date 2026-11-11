@@ -1,8 +1,12 @@
 // 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
 export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 
-// The imaging-app events (SQMeter spec 021). Spec 007 adds the roof's.
-export type AlertEventKey = 'client_lost' | 'client_back' | 'client_disconnected';
+// The roof's events (spec 007; the first two critical: never off, never held
+// back by the pause or the master switch), then the imaging-app events
+// (SQMeter spec 021).
+export type RoofCriticalEventKey = 'mount_not_parked' | 'roof_not_closed';
+export type RoofEventKey = RoofCriticalEventKey | 'move_fault' | 'supply_low' | 'unsafe_closing' | 'roof_closed' | 'safety_lost';
+export type AlertEventKey = RoofEventKey | 'client_lost' | 'client_back' | 'client_disconnected';
 
 // sound: Pushover sound name; empty uses the Pushover default.
 export interface AlertEventSetting {
