@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "Config.h"
 #include <PubSubClient.h>
 #include <functional>
@@ -37,6 +39,11 @@ namespace SQM
 
         void begin();
         void handle();
+        // While the roof moves or a close waits (spec 003), no connect is
+        // tried: a connect to a dead broker (DNS, TCP connect, CONNACK) would
+        // hold up the main loop, and with it the safety hand-over to the roof.
+        // Asked right before every connect. Set once, before begin().
+        void setConnectHold(std::function<bool()> hold) { connectHold = std::move(hold); }
 
         bool isConnected() const;
         bool isEnabled() const { return config.enabled; }
@@ -68,6 +75,9 @@ namespace SQM
         // Bumped on every successful connect, so retained state can be
         // republished after the broker comes back.
         uint32_t connectionCount() const { return connections; }
+        // Any task: a connect attempt is under way (it blocks the task that
+        // runs it for up to about 3 s plus DNS). The roof refuses to open meanwhile.
+        bool connecting() const { return connectInFlight.load(); }
 
     private:
         std::string commandSubtopic;
@@ -79,6 +89,11 @@ namespace SQM
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
+        // Reads (and the CONNACK wait) give up after this many seconds: well
+        // under the roof's 5 s safety hand-over limit (spec 003 research R8).
+        static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
+        std::function<bool()> connectHold;
+        std::atomic<bool> connectInFlight{false};
 
         MQTTConfig config;
         DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (SQMeter spec 015)

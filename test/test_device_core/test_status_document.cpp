@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include "DeviceCore.h"
+#include "RoofStatus.h"
 
 #include <cstdio>
 #include <string>
@@ -42,7 +43,7 @@ namespace
         for (const char *key : {"uptime", "configRevision", "freeHeap"})
             doc[key] = 4294967295U;
         JsonObject stacks = doc.createNestedObject("stackFree");
-        stacks["asyncTcp"] = stacks["loop"] = 4096;
+        stacks["asyncTcp"] = stacks["loop"] = stacks["roof"] = 4096;
 
         JsonArray heapStages = doc.createNestedArray("heapStages");
         for (int i = 0; i < 16; ++i) // HeapTrace::MAX_CHECKPOINTS
@@ -114,6 +115,20 @@ namespace
         for (const char *key : {"status", "limitPerEndpoint", "replaced", "stalledClosed"})
             live[key] = 4294967295U;
         connections["alpacaRestoredAfterRestart"] = true;
+
+        // appendRoof (spec 003): every key filled, a fault with its longest text.
+        RoofIo::Snapshot roof;
+        roof.status.state = Roof::State::Error;
+        roof.status.fault.kind = Roof::FaultKind::External;
+        roof.status.fault.measured = 7.0f;
+        roof.fault = RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, 7.0f, 0.0f);
+        roof.currentSense = true;
+        roof.motorAmps = 12.34f;
+        roof.supplyVolts = 12.34f;
+        roof.fittedSwitches = 2;
+        roof.rainFitted = true;
+        roof.maxWatchdogBeatAgeMs = 4294967295U;
+        RoofIo::writeStatus(doc.createNestedObject("roof"), roof);
     }
 
     // Every member and element takes one slot.

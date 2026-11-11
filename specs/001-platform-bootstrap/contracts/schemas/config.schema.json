@@ -367,6 +367,9 @@
     "roof": {
       "type": "object",
       "properties": {
+        "currentAmpsPerVolt": {
+          "type": "number"
+        },
         "currentSenseEnabled": {
           "type": "boolean"
         },
@@ -383,6 +386,9 @@
           "type": "number"
         },
         "maxCurrentAmps": {
+          "type": "number"
+        },
+        "minRunningAmps": {
           "type": "number"
         },
         "minSupplyVolts": {
@@ -414,12 +420,14 @@
         }
       },
       "required": [
+        "currentAmpsPerVolt",
         "currentSenseEnabled",
         "hallHighCounts",
         "hallHighEnd",
         "hallLowCounts",
         "leaveMagnetSeconds",
         "maxCurrentAmps",
+        "minRunningAmps",
         "minSupplyVolts",
         "openDirection",
         "rampDownMs",

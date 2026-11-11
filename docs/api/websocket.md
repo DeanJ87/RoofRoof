@@ -30,7 +30,7 @@ ws.onclose = () => {
 
 ## Message Format
 
-Each message is the status document - the same as [`GET /api/status`](rest.md#get-apistatus): firmware, memory, flash partitions, time, WiFi, MQTT, NTP, alerts, Alpaca and connections. See the [API Reference](reference.md) for every field.
+Each message is the status document - the same as [`GET /api/status`](rest.md#get-apistatus): firmware, memory, flash partitions, time, WiFi, MQTT, NTP, alerts, Alpaca, connections and the roof. See the [API Reference](reference.md) for every field.
 
 !!! note "The same in every language"
     Messages never change with the UI language. Numbers are JSON numbers with `.` as the decimal point and no thousands separators; field names are never translated.
@@ -58,6 +58,7 @@ asyncio.run(stream())
 ## Notes
 
 - `/ws/status` is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then.
+- `/ws/status` is also sent within 250 ms when the roof's state or fault changes (`roof` in the status), not only on the regular 2 s broadcast.
 - The server broadcasts to all connected clients simultaneously, and limits how many it keeps per endpoint (`connections` in the status).
 - There is no authentication on the WebSocket endpoint.
 - The WebSocket at `/ws/sensors` no longer exists.

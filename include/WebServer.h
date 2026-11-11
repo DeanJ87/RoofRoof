@@ -9,6 +9,7 @@
 #include "DeviceCore.h"
 #include "HaDiscovery.h"
 #include "MQTTClient.h"
+#include "RoofTypes.h"
 #include "SettingsDeps.h"
 #include "TimeManager.h"
 #include <ArduinoJson.h>
@@ -26,6 +27,8 @@
 
 namespace SQM
 {
+    class RoofControl;
+
     // The device's HTTP server: the REST API, the live-update WebSocket, the
     // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer
     // with the sensors, safety monitor and display removed). RoofRoof spec 002
@@ -42,6 +45,20 @@ namespace SQM
         WebServer(const WebServer &) = delete;
         WebServer &operator=(const WebServer &) = delete;
 
+        // The roof (spec 003); before begin(). Without it the roof routes refuse.
+        void setRoof(RoofControl *control);
+        // Main loop, every pass: while the roof moves a scheduled restart waits.
+        static void holdRestarts(bool hold) { restartHold = hold; }
+        // A restart is due (the roof refuses to open meanwhile); a close cancels
+        // it unless it can't be cancelled (after a filesystem upload stopped
+        // part-way, the filesystem is half erased: it runs once the roof stops).
+        static bool restartScheduled();
+        static bool restartCancellable();
+        static void cancelRestart();
+        static bool scheduleMandatoryRestart(uint32_t delayMs) { return scheduleRestart(delayMs, true); }
+        // The roof, for the restart timer: it never fires while the roof moves or a close waits.
+        static inline std::atomic<RoofControl *> roofForRestart{nullptr};
+        static inline std::atomic<bool> restartHold{false};
         void begin();
         void handle();
         // No alert queued or being delivered.
@@ -52,7 +69,8 @@ namespace SQM
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
-        static bool scheduleRestart(uint32_t delayMs);
+        // `mandatory`: a close may not cancel it (RoofIo::RestartPlan).
+        static bool scheduleRestart(uint32_t delayMs, bool mandatory = false);
 
     private:
         static constexpr const char *TAG = "WebServer";
@@ -77,6 +95,9 @@ namespace SQM
 
         TimeManager *timeManager;
         MQTTClient *mqttClient;
+        RoofControl *roof = nullptr;
+        uint32_t lastRoofRevision = 0;
+        uint32_t lastRoofBroadcast = 0;
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;
 
@@ -215,6 +236,25 @@ namespace SQM
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
         // Saves settings and applies what takes effect at once (a settings save and a restore).
         bool saveAndApply(const Config &next);
+
+        // The roof (src/WebServerRoof.cpp).
+        void setupRoofRoutes();
+        void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
+        void handleRoofClearFault(AsyncWebServerRequest *request);
+        // Answers 409 and returns true while the roof moves: settings saves,
+        // restores, uploads, WiFi changes and restarts wait (flash writes stall
+        // the control task and its watchdog).
+        bool refuseWhileMoving(AsyncWebServerRequest *request);
+        // Roof commands need the X-RoofRoof: 1 header (answers 403 without it).
+        bool requireCommandHeader(AsyncWebServerRequest *request);
+        bool roofMoving() const;
+        // Uploads and the roof (src/WebServerUpdates.cpp): per-request state in _tempObject.
+        bool uploadMayWrite(AsyncWebServerRequest *request, size_t index, bool firmware);
+        bool answerStoppedUpload(AsyncWebServerRequest *request);
+        // The alerts pause state waits for the roof to stop before it is saved.
+        bool armedSavePending = false;
+        void saveArmedState();
+        void appendRoof(JsonDocument &doc) const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;

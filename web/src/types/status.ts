@@ -25,7 +25,7 @@ export interface SystemStatus {
   minFreeHeap?: number;
   maxAllocHeap?: number;
   heapSize: number;
-  stackFree?: { asyncTcp: number; loop: number };
+  stackFree?: { asyncTcp: number; loop: number; roof: number };
   heapStages?: { stage: string; free: number; largest: number }[];
   cpuFreqMHz: number;
   flashSize: number;
@@ -97,4 +97,43 @@ export interface SystemStatus {
     enabled: boolean;
     clients: Record<string, AlpacaClientState>;
   };
+  // The roof as its control task last saw it (spec 003, docs/api/rest.md).
+  roof?: RoofStatus;
+}
+
+export type RoofState = 'unknown' | 'closed' | 'open' | 'opening' | 'closing' | 'stopped' | 'error';
+export type RoofSwitch = 'closed' | 'open' | 'unreadable' | 'notFitted';
+
+export interface RoofFault {
+  kind: string; // Roof::faultName
+  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped';
+  measured: number | null;
+  limit: number | null;
+  text: string; // with the measured value and the limit
+}
+
+export interface RoofStatus {
+  state: RoofState;
+  positionKnown: boolean;
+  positionMm: number | null;
+  positionPercent: number | null;
+  target: 'open' | 'closed' | null;
+  driving: boolean;
+  fromUnknown: boolean;
+  moveElapsedMs: number;
+  moveTimeoutMs: number;
+  hall: { level: 'unsettled' | 'low' | 'between' | 'high' | 'rail'; counts: number };
+  supplyVolts: number | null;
+  supplyLow: boolean;
+  minSupplyVolts: number;
+  currentSense: boolean;
+  motorAmps: number | null;
+  maxCurrentAmps: number;
+  parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
+  rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
+  closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
+  fault: RoofFault | null;
+  watchdogTrips: number;
+  maxStepGapMs: number;
+  maxWatchdogBeatAgeMs: number; // the oldest watchdog heartbeat a step saw since start (EN needs it <= 50 ms)
 }

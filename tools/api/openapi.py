@@ -44,6 +44,7 @@ HTTP_STATUS = {
     "202": "Accepted",
     "400": "Bad request",
     "401": "The password is needed",
+    "403": "Refused: a required header is missing",
     "409": "Not now",
     "413": "The request body is too large",
     "500": "Device failure",
@@ -216,12 +217,19 @@ SECURITY_SCHEMES = {
     }
 }
 PARAMETERS = {
+    "roofCommand": {
+        "name": "X-RoofRoof",
+        "in": "header",
+        "required": True,
+        "description": "Must be `1`. A cross-site form or simple cross-origin request can't send it, so another site in a browser can't move the roof (403 without it).",
+        "schema": {"type": "string", "const": "1"},
+    },
     "source": {
         "name": "source",
         "in": "query",
         "description": "`ui` when the web UI sends it; shown as the reason.",
         "schema": {"type": "string"},
-    }
+    },
 }
 ERROR_SCHEMA = {
     "title": "Error",

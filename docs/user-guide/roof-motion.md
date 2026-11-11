@@ -5,9 +5,11 @@ description: "How RoofRoof decides when and how the roof moves: its states, the 
 # Roof motion
 
 This page explains how the controller decides when and how the roof moves. The decisions live in
-one place, `lib/RoofLogic`, and are covered by tests. The board wiring that feeds it readings and
-drives the motor comes in a later release. Until then nothing in the firmware moves the roof: the
-motor driver stays off.
+`lib/RoofLogic` (the motion) and `lib/RoofIoLogic` (the hardware layer), and are covered by tests.
+The roof moves on a person's command through the [REST API](../api/rest.md#roof); the automatic
+close on bad weather, Alpaca, MQTT and the dashboard's roof card come in later releases. Wire the
+board from [Wiring](../hardware/wiring.md) and set the Hall thresholds with
+[Calibration](../hardware/calibration.md) before the first move.
 
 !!! warning "Motion safety"
     The roof is moved by a motor strong enough to damage a telescope. The rules below are the
@@ -45,7 +47,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: a17b5f73f98847c4
+fingerprint: b339770b89790e0c
 -->
 <figure class="diagram" markdown>
 
@@ -133,11 +135,89 @@ person clears it. Each records what was measured and the limit it broke.
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
 | `driveBudget` | The motor has run toward one end, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times. Each direction is counted separately, so reversing once part-way never trips it. |
-| `external` | Raised by another part of the firmware (for example a watchdog) |
+| `external` | Raised by the hardware layer; its `cause` says which: `watchdog` (the control task stopped stepping with the motor on), `watchdogStopped` (the watchdog timer itself stopped with the motor on), `parkInterlock` (the park confirmation was lost during a close) or `storedUnreadable` (the fault saved before a restart couldn't be read back) |
 
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A
 supply reading above 16 V, or a current reading below -0.5 A, can't be right on this hardware and
 is treated as unreadable.
+
+## On the board
+
+The controller runs in its own task on the ESP32, apart from WiFi, the web server and MQTT:
+
+- **Every 20 ms** it reads the Hall sensor (the median of five readings), the 12 V supply and,
+  with current sense on, the motor current, plus the park switches and the rain contact. It steps
+  the motion logic and sets the motor driver at once. A busy network can delay a command; it can
+  never prolong a move. The web server runs below it (priority 3 against the task's 5), so a
+  burst of requests can't starve a step.
+- **With current sense on**, the reading is taken under the 20 kHz PWM, so it is scaled back by
+  the duty that was applied. A broken sense wire is caught only if you set `roof.minRunningAmps`
+  from a bench measurement (a running current below it after a second is `currentUnreadable`);
+  the ADC can't tell the lowest currents from a broken wire, so it is off by default
+  ([Calibration](../hardware/calibration.md#current-sense)).
+- **A watchdog** on the other processor core looks every 10 ms. If the motor is on and the task
+  hasn't stepped for more than 100 ms, it switches the driver off itself and keeps it off until the
+  task has latched an `external` fault with the cause `watchdog`. If the task hangs outright, the
+  system watchdog restarts the device, and the EN pull-down holds the driver off meanwhile. The
+  watchdog is itself watched: the driver can only switch on while its last check is at most 50 ms
+  old (a late check or two under WiFi load is fine), and if the controller wants the motor on when
+  it isn't, it latches `watchdogStopped` rather than wait silently. `roof.maxWatchdogBeatAgeMs`
+  shows the worst age seen.
+- **A latched fault survives a restart.** It is saved within one step of being latched and latched
+  again at start-up before the first step. A saved record that can't be read back latches a fault
+  of its own. Clearing the fault removes it.
+- **If the control task or the watchdog can't start**, the motor driver is never switched on until
+  a restart, and every command answers that the controller didn't start.
+- **A watchdog trip survives a crash.** If the device restarts before the trip's fault was saved
+  (a hung task restarted by the system watchdog), the fault is latched again at start-up. A power
+  cut at that moment loses it; so does an NVS partition the system has to reformat at start-up.
+- **After a start-up** the roof is at the end whose magnet it reads, or `unknown` between the
+  magnets. Nothing moves until a command.
+
+### Weather and park checks
+
+Before the motion logic sees a command:
+
+- **Open** is refused unless the [weather verdict](safety-inputs.md) is safe. An open in progress
+  stops (no fault, the estimate kept) as soon as the verdict is no longer safe.
+- **Close** is refused unless the mount is confirmed parked: N.I.N.A. reports it at park AND every
+  fitted park switch reads closed. During the close this is checked every step; if it no longer
+  holds, the motor stops with an `external` fault, cause `parkInterlock`, naming the input that
+  failed. The weather never blocks a close.
+- **Stop** is always accepted.
+
+If the safety inputs haven't been handed to the controller for 5 s (a stalled main loop), the
+weather counts as not safe and the park as not confirmed. While the roof moves, the main loop
+tries no MQTT reconnect, and MQTT reads give up after 3 s, so a dead broker can't stall it that
+long.
+
+### While the roof moves
+
+Writing the flash pauses the processor's code cache, and with it the control task and the
+watchdog, so nothing writes the flash while the roof is opening or closing:
+
+- settings saves, restores, firmware and web UI uploads, WiFi changes and restarts are refused
+  (`409`, "stop it first"); a restart already scheduled waits until the roof stops;
+- the alerts pause state is saved once the roof stops; command-line OTA is only serviced while the
+  roof is closed (it can't be stopped part-way), and is refused when it starts if the roof has
+  moved since.
+
+And before a move starts, **a close always wins**:
+
+- open is refused (`busy`) while an upload or command-line OTA writes the flash, an MQTT connect is
+  under way or a restart is scheduled;
+- a close that would run (the park is confirmed and the motion checks pass, and the roof isn't
+  already closed or closing) cancels a scheduled restart and stops an upload at its next chunk; if
+  an upload or MQTT connect is still finishing, the close waits (`roof.closePending`) and starts as
+  soon as it is done, and no MQTT connect or restart starts meanwhile. An upload that stops sending
+  counts as finished after 5 s, so a dropped connection never blocks a close. The restart after a
+  web UI upload is never cancelled (the filesystem must be remounted); it waits until the roof
+  stops;
+- stop is never refused, and cancels a waiting close; so does an open that runs, and so does any
+  fault (clearing it never starts the old close).
+
+Settings saved at rest are taken at once; saved while stopped part-way, they make the position
+unknown.
 
 ## Settings
 

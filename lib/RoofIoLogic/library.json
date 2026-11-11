@@ -1,0 +1,8 @@
+{
+  "name": "RoofIoLogic",
+  "version": "0.1.0",
+  "description": "The roof hardware layer's decisions: reading scaling, switch inputs, watchdog, stored fault, gates, status (pure logic, spec 003)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}

@@ -29,7 +29,7 @@ page covers what the reference can't: behaviour, the password and limits.
 
 ### `GET /api/status`
 
-Firmware, memory, flash, partitions, time, WiFi, MQTT, NTP, alerts, Alpaca and connections.
+Firmware, memory, flash, partitions, time, WiFi, MQTT, NTP, alerts, Alpaca, connections and the roof.
 
 ```bash
 curl http://roofroof.local/api/status
@@ -46,7 +46,8 @@ curl http://roofroof.local/api/status
   "alerts": { "armed": true, "mode": "any", "reason": "none", "since": null, "sinceAgeMs": null, "recentRevision": 7 },
   "alpaca": { "enabled": false, "clients": {} },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
-  "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false }
+  "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12 }
 }
 ```
 
@@ -59,6 +60,27 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 `alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` is empty until an Alpaca device exists (a later spec).
 
 `time.epoch` is Unix seconds like every other timestamp (`0` until the clock is set); `time.iso` is the device's local time with its UTC offset, for display.
+
+`roof` is the roof as its control task last saw it ([Roof motion](../user-guide/roof-motion.md)):
+
+| Field | Meaning |
+|---|---|
+| `state` | `unknown`, `closed`, `open`, `opening`, `closing`, `stopped` or `error` |
+| `positionKnown`, `positionMm`, `positionPercent` | 0 is closed; `null` while the position is unknown |
+| `target` | `open` or `closed` while opening or closing, else `null` |
+| `driving` | the motor driver is on (false during the 500 ms dead time) |
+| `fromUnknown` | the move started from an unknown position (slow, to the first magnet) |
+| `moveElapsedMs`, `moveTimeoutMs` | time driven in this move and its limit |
+| `hall.level`, `hall.counts` | `unsettled`, `low`, `between`, `high` or `rail`, and the raw 12-bit reading ([calibration](../hardware/calibration.md)) |
+| `supplyVolts`, `supplyLow`, `minSupplyVolts` | the 12 V supply (`null` when unreadable), whether it is unreadable or below the minimum, and the minimum |
+| `currentSense`, `motorAmps`, `maxCurrentAmps` | current sense on, the motor current (`null` while off or unreadable) and its limit |
+| `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted` |
+| `rainContact` | `notFitted`, `dry`, `raining` or `unreadable` |
+| `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
+| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`), `measured`, `limit` and `text` |
+| `watchdogTrips`, `maxStepGapMs`, `maxWatchdogBeatAgeMs` | since the restart: how often the watchdog switched the driver off, the longest gap between control steps, and the oldest watchdog heartbeat a step saw (the driver needs it at most 50 ms old) |
+
+`stackFree.roof` is the roof control task's unused stack in bytes.
 
 ---
 
@@ -101,6 +123,8 @@ Successful saves return:
 
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.
+
+While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. Restores, uploads, WiFi changes and restarts are refused the same way. Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
 
@@ -157,7 +181,7 @@ curl -X POST http://roofroof.local/api/backup/apply -H "Content-Type: applicatio
 { "success": true, "restarting": true }
 ```
 
-With `restarting`, the device restarts about 2 s later. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
+With `restarting`, the device restarts about 2 s later. While the roof is opening or closing, a restore is refused with `409`, as a settings save is. `409` with `"code": "stale"` when the token was already used or replaced, is more than 10 minutes old, or the settings changed after the preview: preview again.
 
 ---
 
@@ -226,11 +250,54 @@ curl -X POST http://roofroof.local/api/wifi/connect \
 
 ### `POST /api/restart`
 
-Restart the device.
+Restart the device. Refused with `409` while the roof is opening or closing.
 
 ```bash
 curl -X POST http://roofroof.local/api/restart
 ```
+
+---
+
+## Roof
+
+Each of these needs the password when protection is on and the header `X-RoofRoof: 1` (without it: `403`), and counts as a person's command (a person may move a roof whose position is unknown, slowly, to the first magnet). The header stops another web page open in your browser from moving the roof with a cross-site request: a plain form or simple cross-origin request can't send it. The answer comes after the command has reached the motor driver.
+
+```bash
+curl -X POST -H "X-RoofRoof: 1" http://roofroof.local/api/roof/open
+```
+
+```json
+{ "success": true, "state": "opening" }
+```
+
+A refusal is `409` with the reason and a text that states the measured value and the limit, or the input that failed:
+
+```json
+{ "success": false, "state": "open", "reason": "mountNotParked", "error": "Mount not parked: park switch 1 not closed" }
+```
+
+### `POST /api/roof/open`
+
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`busy`) while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
+
+
+### `POST /api/roof/close`
+
+Close. Refused (`mountNotParked`) unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed, as the [safety inputs](../user-guide/safety-inputs.md) decide. During the close the park is checked every 20 ms; if it is lost the motor stops with a `parkInterlock` fault. The weather never blocks a close.
+
+A close always wins, as long as it would run (past the park check and the motion checks, and not already closed or closing): it cancels a scheduled restart (except the one that remounts a rewritten web UI) and stops an upload in progress (that upload fails with `409` "Upload stopped: the roof is closing"). If an upload or an MQTT connect is still finishing, the close is accepted as waiting and starts as soon as it is done, within a few seconds (`roof.closePending` in the status); stop or open cancels it:
+
+```json
+{ "success": true, "state": "open", "pending": true, "message": "Close starts once this has stopped: An upload is being written" }
+```
+
+### `POST /api/roof/stop`
+
+Stop at once, keeping the position estimate (`stopped`). Always accepted.
+
+### `POST /api/roof/clear-fault`
+
+Clear a latched fault after fixing its cause. The fault is removed from storage too; the position is known again only at a magnet. Accepted with no fault.
 
 ---
 

@@ -137,10 +137,26 @@ void test_stored_config_without_roof_loads_with_roof_defaults()
     TEST_ASSERT_EQUAL_STRING("HomeNet", loaded.wifi.ssid.c_str());
 }
 
+// A stored roof section from before the current-sense scale existed (spec 002)
+// loads with its default, and current sensing stays as it was (off).
+void test_stored_roof_without_current_scale_loads_with_its_default()
+{
+    Config loaded = Config::createDefault();
+    std::string reason;
+    const std::string stored = "{\"roof\":{\"travelMm\":2000,\"currentSenseEnabled\":false,\"maxCurrentAmps\":12}}";
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+    TEST_ASSERT_EQUAL_UINT32(2000, loaded.roof.travelMm);
+    TEST_ASSERT_EQUAL_FLOAT(RoofConfig().currentAmpsPerVolt, loaded.roof.currentAmpsPerVolt);
+    TEST_ASSERT_EQUAL_FLOAT(8.5f, loaded.roof.currentAmpsPerVolt);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, loaded.roof.minRunningAmps); // the broken-wire check stays off
+    TEST_ASSERT_FALSE(loaded.roof.currentSenseEnabled);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_every_release_loads_without_loss);
     RUN_TEST(test_stored_config_without_roof_loads_with_roof_defaults);
+    RUN_TEST(test_stored_roof_without_current_scale_loads_with_its_default);
     return UNITY_END();
 }

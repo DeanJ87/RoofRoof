@@ -26,9 +26,9 @@ namespace SQM
         constexpr int64_t CLOCK_VALID_EPOCH = 1704067200;
         // ArduinoJson pool for /api/status (src/WebServerStatus.cpp): the
         // sections this library writes plus the device's own (firmware,
-        // memory, partitions, time, WiFi, MQTT, connections), pinned by
+        // memory, partitions, time, WiFi, MQTT, connections, roof), pinned by
         // test/test_device_core (test_status_document_fits).
-        constexpr size_t STATUS_DOC_CAPACITY = 4096;
+        constexpr size_t STATUS_DOC_CAPACITY = 5120; // 4096 until spec 003 added the roof section
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

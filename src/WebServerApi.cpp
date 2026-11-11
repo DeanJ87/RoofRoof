@@ -18,6 +18,7 @@ namespace SQM
     void WebServer::setupAPIRoutes()
     {
         setupBackupRoutes();
+        setupRoofRoutes();
         server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
         // What's actually in effect (SQMeter spec 020).
         server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });
@@ -76,6 +77,8 @@ namespace SQM
             return;
         }
 
+        if (refuseWhileMoving(request))
+            return;
         if (!saveAndApply(*configOpt))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
@@ -86,7 +89,7 @@ namespace SQM
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || refuseWhileMoving(request))
             return;
 
         JsonObject jsonObj = json.as<JsonObject>();
@@ -132,7 +135,7 @@ namespace SQM
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
-        if (!requireAuth(request))
+        if (!requireAuth(request) || refuseWhileMoving(request))
             return;
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
         scheduleRestart(500);
@@ -196,6 +199,9 @@ namespace SQM
         const wl_status_t status = WiFi.status();
         if (status == WL_CONNECTED)
         {
+            // The save writes the flash: never while the roof moves (try again next pass).
+            if (!wifiConnectConfigSaved && roofMoving())
+                return;
             if (!wifiConnectConfigSaved)
             {
                 Config config = getConfigCallback();
