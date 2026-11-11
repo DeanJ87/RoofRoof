@@ -13,8 +13,9 @@
 //   P5  no driven period outlasts its timeout or (from a magnet) the leave time;
 //   P7  three rail readings among the last eight, consecutive or not, latch a
 //       fault on that step;
-//   P8  the total driving since a magnet was last read (or a person cleared a
-//       fault) never reaches the drive budget;
+//   P8  the driving toward each end since a magnet was last read (or a person
+//       cleared a fault) never reaches the drive budget, and a free roof
+//       reversed once part-way never trips it (P8b);
 //   P6  the target magnet ends the move, at that end, on the step it is
 //       confirmed.
 //
@@ -113,7 +114,8 @@ namespace
         bool everOn = true;     // start-up counts as a stop (constitution I)
         bool pendingOff = true; // the off time starts at the next step
         uint8_t railHistory = 0;
-        uint32_t drivenSinceMagnetMs = 0;
+        uint32_t drivenSinceMagnetMs[2] = {0, 0}; // toward each end (index: End)
+        End onTarget = End::Closed;
         Driver::Command lastDirection = Driver::Command::Off;
         uint32_t offSinceMs = 0;
         uint32_t onSinceMs = 0;
@@ -175,6 +177,8 @@ namespace
             if (!on && wasOn)
                 pendingOff = true;
             wasOn = on;
+            if (on)
+                onTarget = st.target;
             if (!on)
                 return;
             End at = End::Closed;
@@ -251,7 +255,7 @@ namespace
         void beforeStep(uint32_t gapMs)
         {
             if (wasOn)
-                drivenSinceMagnetMs += gapMs;
+                drivenSinceMagnetMs[static_cast<int>(onTarget)] += gapMs;
         }
 
         // P7, P8 after a step, with the Hall reading that was fed to it.
@@ -271,8 +275,9 @@ namespace
             if (rails >= 3 && st.fault.kind == FaultKind::None)
                 fail("P7 three rail readings in eight latch a fault");
             if (st.hall == HallLevel::High || st.hall == HallLevel::Low)
-                drivenSinceMagnetMs = 0;
-            if (roof.output().command != Driver::Command::Off && drivenSinceMagnetMs >= driveBudgetMs(settings))
+                drivenSinceMagnetMs[0] = drivenSinceMagnetMs[1] = 0;
+            const bool on = roof.output().command != Driver::Command::Off;
+            if (on && drivenSinceMagnetMs[static_cast<int>(st.target)] >= driveBudgetMs(settings))
                 fail("P8 total driving without a magnet stays under the budget");
         }
 
@@ -299,7 +304,7 @@ namespace
             if (origin != Origin::Person && faultSeen)
                 fail("P3 only a person clears a fault");
             if (faultSeen)
-                drivenSinceMagnetMs = 0;
+                drivenSinceMagnetMs[0] = drivenSinceMagnetMs[1] = 0;
             faultSeen = false;
         }
     };
@@ -516,10 +521,56 @@ void test_property_sequences_reach_every_fault_and_both_ends(void)
     }
 }
 
+// P8b: a free roof (no jam, both magnets, real speed as set) opened or closed
+// part-way for a random time and reversed once to its start magnet ends there
+// with no fault, for random settings including slow = top and the tightest margin.
+void test_property_one_reversal_never_trips_the_drive_budget(void)
+{
+    uint32_t reversals = 0;
+    for (uint32_t seed = 1; seed <= 400; ++seed)
+    {
+        Random rng(seed + 900000);
+        Settings s = randomSettings(rng);
+        s.travelMm = rng.between(300, 1500);
+        if (rng.chance(3000))
+            s.slowDutyPercent = s.topDutyPercent;
+        if (rng.chance(3000))
+            s.timeoutMarginMs = 3000;
+        RoofTest::Bench b(s, rng.chance(5000) ? 0.0f : static_cast<float>(s.travelMm));
+        b.sim.reversedWiring = s.openDirection == Driver::Command::Reverse;
+        b.sim.highEndClosed = s.hallHighEnd == End::Closed;
+        b.sim.highMagnetCounts = static_cast<uint16_t>(s.hallHighCounts + 300);
+        b.sim.lowMagnetCounts = static_cast<uint16_t>(s.hallLowCounts - 300);
+        b.settleHall();
+        const bool fromClosed = b.state() == State::Closed;
+        b.command(fromClosed ? Command::Open : Command::Close);
+        const uint32_t legMs = rng.between(1000, moveTimeoutMs(s, static_cast<float>(s.travelMm)));
+        const State moving = fromClosed ? State::Opening : State::Closing;
+        for (uint32_t t = 0; t < legMs && b.state() == moving; t += b.stepMs)
+            b.step();
+        if (b.state() != moving)
+            continue; // reached the far end: no reversal part-way
+        b.command(fromClosed ? Command::Close : Command::Open);
+        ++reversals;
+        b.runToRest(3000000);
+        char message[96];
+        snprintf(
+            message,
+            sizeof(message),
+            "seed %u: ended %s with fault %s",
+            static_cast<unsigned>(seed),
+            stateName(b.state()),
+            faultName(b.roof.status().fault.kind));
+        TEST_ASSERT_TRUE_MESSAGE(b.state() == (fromClosed ? State::Closed : State::Open), message);
+    }
+    TEST_ASSERT_TRUE(reversals > 200); // most sequences really reverse part-way
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_property_every_sequence_keeps_the_safety_rules);
     RUN_TEST(test_property_sequences_reach_every_fault_and_both_ends);
+    RUN_TEST(test_property_one_reversal_never_trips_the_drive_budget);
     return UNITY_END();
 }

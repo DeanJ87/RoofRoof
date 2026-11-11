@@ -106,8 +106,11 @@ namespace SQM
             // construction counts as such a stop (constitution I: off after boot).
             bool driveEndPending = true;
             uint32_t driveEndMs = 0;
-            // Driven time since a magnet was last confirmed (FR-025).
-            uint32_t driveBudgetUsedMs = 0;
+            // Driven time toward each end (index: End) since a magnet was last
+            // confirmed (FR-025). Per direction, so one reversal part-way (nearly
+            // two travels between magnets) never trips it, while restarts in one
+            // direction still do.
+            uint32_t driveBudgetUsedMs[2] = {0, 0};
             Pending supplyLow;
             Pending overCurrent;
             Pending currentUnreadable;

@@ -4,6 +4,7 @@
 // rest, and readings too implausible to believe.
 
 #include <cmath>
+#include <cstdio>
 #include <unity.h>
 
 #include "../roof_sim/RoofSim.h"
@@ -127,6 +128,90 @@ void test_repeated_restarts_hit_the_drive_budget(void)
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
 }
 
+namespace
+{
+    // Opens a closed roof for `openMs` (stopping short of the open magnet), then
+    // reverses to close; true if it ends closed with no fault.
+    bool reversalCompletes(const Settings &s, uint32_t openMs)
+    {
+        Bench b(s);
+        b.command(Command::Open);
+        for (uint32_t t = 0; t < openMs && b.state() == State::Opening; t += b.stepMs)
+            b.step();
+        if (b.state() != State::Opening)
+            return true; // reached the end first: not a reversal part-way
+        if (!b.command(Command::Close).accepted)
+            return false;
+        b.runToRest(2000000);
+        return b.state() == State::Closed && b.roof.status().fault.kind == FaultKind::None;
+    }
+} // namespace
+
+// Review finding: one legitimate reversal part-way can need nearly two travels of
+// driving between magnets. The budget is per direction, so it never trips on it,
+// whatever the duties (the cases the review reproduced, and the extremes).
+void test_a_reversal_near_the_end_never_trips_the_drive_budget(void)
+{
+    struct Case
+    {
+        uint8_t top;
+        uint8_t slow;
+        uint32_t openMs;
+    };
+    const Case cases[] = {
+        {60, 40, 75000},
+        {50, 40, 90000},
+        {100, 100, 45000},
+        {100, 80, 45000},
+        {20, 20, 240000},
+        {20, 10, 240000},
+        {100, 10, 48000},
+    };
+    for (const Case &c : cases)
+    {
+        Settings s;
+        s.topDutyPercent = c.top;
+        s.slowDutyPercent = c.slow;
+        s.timeoutMarginMs = 3000; // the tightest margin
+        char message[64];
+        snprintf(message, sizeof(message), "top %u slow %u open %u ms", c.top, c.slow, static_cast<unsigned>(c.openMs));
+        TEST_ASSERT_TRUE_MESSAGE(reversalCompletes(s, c.openMs), message);
+    }
+}
+
+// Cycling one way still trips: the per-direction budget keeps the jam protection.
+void test_the_budget_still_trips_restarts_in_one_direction(void)
+{
+    Bench b;
+    openFor(b, 2000);
+    b.sim.jammed = true;
+    b.command(Command::Stop);
+    for (int i = 0; i < 100 && b.roof.status().fault.kind == FaultKind::None; ++i)
+    {
+        b.command(Command::Open, Origin::Automatic);
+        b.steps(5000 / 20);
+        b.command(Command::Stop, Origin::Automatic);
+        b.steps(30);
+    }
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::DriveBudget);
+}
+
+// Hardening: a step clock that goes backwards (an integration bug) counts as still
+// inside the dead time, never as past it.
+void test_a_step_clock_going_backwards_keeps_the_driver_off(void)
+{
+    Bench b;
+    openFor(b, 3000);
+    b.command(Command::Close);
+    b.step();                                    // the dead time starts here
+    Readings r = b.sim.readings(b.nowMs - 1000); // 1 s back
+    for (int i = 0; i < 10; ++i)
+    {
+        r.nowMs += 20;
+        TEST_ASSERT_TRUE(b.roof.tick(r).command == Driver::Command::Off);
+    }
+}
+
 // Reaching a magnet resets the budget, so a working roof can open and close forever.
 void test_reaching_a_magnet_resets_the_drive_budget(void)
 {
@@ -195,6 +280,9 @@ int main(int, char **)
     RUN_TEST(test_the_first_drive_after_start_up_waits_the_dead_time);
     RUN_TEST(test_repeated_restarts_hit_the_drive_budget);
     RUN_TEST(test_reaching_a_magnet_resets_the_drive_budget);
+    RUN_TEST(test_a_reversal_near_the_end_never_trips_the_drive_budget);
+    RUN_TEST(test_the_budget_still_trips_restarts_in_one_direction);
+    RUN_TEST(test_a_step_clock_going_backwards_keeps_the_driver_off);
     RUN_TEST(test_abort_at_rest_keeps_a_known_position);
     RUN_TEST(test_implausible_supply_readings_are_unreadable);
     RUN_TEST(test_negative_current_is_unreadable_with_current_sense_on);

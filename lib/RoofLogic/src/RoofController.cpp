@@ -42,7 +42,8 @@ namespace SQM
             if (move.driving && stepped)
             {
                 advanceEstimate(gapMs);
-                driveBudgetUsedMs = gapMs > UINT32_MAX - driveBudgetUsedMs ? UINT32_MAX : driveBudgetUsedMs + gapMs;
+                uint32_t &used = driveBudgetUsedMs[static_cast<int>(move.target)];
+                used = gapMs > UINT32_MAX - used ? UINT32_MAX : used + gapMs;
             }
             stepped = true;
             lastStepMs = readings.nowMs;
@@ -55,7 +56,7 @@ namespace SQM
                 driveEndPending = false;
             }
             if (current.hall == HallLevel::High || current.hall == HallLevel::Low)
-                driveBudgetUsedMs = 0;
+                driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0;
 
             // constitution I: a late step means the motor ran unsupervised.
             if (late)
@@ -190,7 +191,7 @@ namespace SQM
             if (current.fault.kind == FaultKind::None)
                 return CommandResult{};
             current.fault = Fault{};
-            driveBudgetUsedMs = 0; // a person has looked at the roof
+            driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0; // a person has looked at the roof
             current.positionKnown = false;
             current.state = State::Unknown;
             followHall();
