@@ -68,8 +68,6 @@ void test_restore_ignores_values_that_make_no_sense()
     TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
     seq.restore(standDown(Phase::Halted, Event::CloseFailed, static_cast<Cause>(77)));
     TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
-    seq.restore(standDown(Phase::Closing, Event::CloseFailed, Cause::Refused));
-    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
     seq.restore(standDown(Phase::CannotMove, Event::CannotClose, Cause::FaultLatched));
     TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
     seq.restore(standDown(static_cast<Phase>(99), Event::None, Cause::None));
@@ -80,13 +78,51 @@ void test_restore_ignores_values_that_make_no_sense()
     TEST_ASSERT_NOT_NULL(strstr(alertFor(restored, "stopped").message.c_str(), "didn't finish in time"));
 }
 
-void test_nothing_is_kept_while_idle_or_closing()
+void test_nothing_is_kept_while_idle_and_a_close_is_kept()
 {
     Rig r;
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.saved().phase);
     r.startAndClose();
     TEST_ASSERT_EQUAL(Phase::Closing, r.seq.phase());
-    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.saved().phase); // a restart mid-close reads unknown anyway
+    TEST_ASSERT_EQUAL(Phase::Closing, r.seq.saved().phase);
+}
+
+void test_a_restart_during_a_close_is_a_failed_close()
+{
+    // A brown-out as the motor starts, every time: the close fails and alerts,
+    // and isn't tried again for 5 minutes.
+    Sequence::Saved closing;
+    closing.phase = Phase::Closing;
+    Sequence seq;
+    Inputs in;
+    in.weatherSafe = false;
+    in.roof = State::Open; // still at the open magnet
+    in.parked = true;
+    const Decision d = restart(seq, closing, in, BASE + 3000);
+    assertEvent(d, Event::CloseFailed, Cause::Interrupted);
+    TEST_ASSERT_TRUE(d.alert);
+    TEST_ASSERT_EQUAL(Phase::RetryWait, seq.phase());
+    for (in.nowMs = BASE + 3100; in.nowMs < BASE + 3000 + RETRY_AFTER_MS; in.nowMs += 1000)
+        TEST_ASSERT_EQUAL(Action::None, seq.step(in).action);
+    in.nowMs = BASE + 3000 + RETRY_AFTER_MS;
+    TEST_ASSERT_EQUAL(Action::Close, seq.step(in).action); // the park has held: one more try
+}
+
+void test_a_restored_limit_out_of_range_is_ignored()
+{
+    Sequence::Saved saved;
+    saved.phase = Phase::WaitPark;
+    saved.limitMs = 40ull * 24 * 3600 * 1000; // garbage that passed the check
+    Sequence seq;
+    Inputs in;
+    in.weatherSafe = false;
+    in.roof = State::Open;
+    restart(seq, saved, in, BASE + 1000);
+    TEST_ASSERT_EQUAL_UINT64(DEFAULT_PARK_TIMEOUT_MS, seq.saved().limitMs);
+    Decision park;
+    park.event = Event::ParkNotConfirmed;
+    park.cause = Cause::ParkTimeout;
+    TEST_ASSERT_NOT_NULL(strstr(alertFor(park, "").message.c_str(), "wasn't confirmed in time"));
 }
 
 void test_an_attempt_keeps_its_time_across_restarts()
@@ -228,7 +264,9 @@ int main(int, char **)
     UNITY_BEGIN();
     RUN_TEST(test_a_restored_stand_down_holds_and_reminds_at_once);
     RUN_TEST(test_restore_ignores_values_that_make_no_sense);
-    RUN_TEST(test_nothing_is_kept_while_idle_or_closing);
+    RUN_TEST(test_nothing_is_kept_while_idle_and_a_close_is_kept);
+    RUN_TEST(test_a_restart_during_a_close_is_a_failed_close);
+    RUN_TEST(test_a_restored_limit_out_of_range_is_ignored);
     RUN_TEST(test_an_attempt_keeps_its_time_across_restarts);
     RUN_TEST(test_a_restart_loop_still_raises_mount_not_parked);
     RUN_TEST(test_a_restored_time_too_long_for_the_new_time_base_is_clamped);

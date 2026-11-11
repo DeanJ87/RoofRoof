@@ -110,10 +110,10 @@ or the input that failed).
 
 ## Kept across a restart
 
-`Sequence::saved()` / `restore(saved)`: the phase (WaitPark, RetryWait, HeldByPerson, Halted), the
+`Sequence::saved()` / `restore(saved)`: the phase (WaitPark, RetryWait, HeldByPerson, Halted, or Closing, which restores as RetryWait after a CloseFailed (Interrupted) with the close back-off), the
 episode's last critical event and cause, the time the phase has run (unsafe and wall), the
 attempt's park limit, and how long ago the last park request went out. The glue keeps it in RTC
-memory with a versioned magic and a checksum, every step; Idle clears it (except the request
+memory with a versioned magic and a checksum, every step, in two slots written in turn; Idle clears it (except the request
 spacing, kept while it matters). On restore, a WaitPark or RetryWait gets 10 s more
 (`RESTART_ALLOWANCE_MS`) for the restart itself; times too long for the new time base are clamped
 (the glue adds a week to its time base).

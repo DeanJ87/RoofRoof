@@ -486,7 +486,9 @@ Each was an open choice; the safest option the constitution allows was taken.
     the stand-down; not across a power cut), with 10 s added per restart for the restart itself, so
     a board that keeps resetting in the rain still reaches the park limit and alerts. It is cleared
     when the sequence is idle (the roof closed, or the weather safe). The park request spacing is
-    kept too. The alert throttle and the close back-off are not kept: a restart loop may alert
+    kept too. A restart during a close counts as a close that failed part-way: "roof didn't close"
+    and the 5-minute back-off, so a reset at every motor start isn't silent. The record is written
+    to two slots in turn, so a reset in the middle of a write keeps the previous one. The alert throttle and the close back-off are not kept: a restart loop may alert
     again sooner than 30 minutes.
 11k. **A roof controller that didn't start** is named as the cause ("the roof controller didn't
     start"), not an unknown position.

@@ -308,6 +308,13 @@ namespace SQM
             out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
             const bool standDown = current == Phase::HeldByPerson || current == Phase::Halted;
             const bool waitingNow = current == Phase::WaitPark || current == Phase::RetryWait;
+            // A close under way: a restart ends it part-way (a brown-out at the
+            // motor's start, say), which restore() turns into a failed close.
+            if (current == Phase::Closing)
+            {
+                out.phase = Phase::Closing;
+                return out;
+            }
             if (!standDown && !waitingNow)
                 return out;
             out.phase = current;
@@ -328,8 +335,9 @@ namespace SQM
             const bool standDown = saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted;
             const bool waitingThen = saved.phase == Phase::WaitPark || saved.phase == Phase::RetryWait;
             const bool idleThen = saved.phase == Phase::Idle; // only the request spacing
+            const bool closingThen = saved.phase == Phase::Closing;
             const bool eventOk = isCritical(saved.event) || (!standDown && saved.event == Event::None);
-            if ((!standDown && !waitingThen && !idleThen) || !eventOk ||
+            if ((!standDown && !waitingThen && !idleThen && !closingThen) || !eventOk ||
                 static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::RoofNotStarted))
                 return;
             restoring = saved;
@@ -351,14 +359,31 @@ namespace SQM
             const uint64_t wallMs = restoring.wallMs + extra;
             phaseSinceMs = lastNowMs - (unsafeMs < lastNowMs ? unsafeMs : lastNowMs);
             phaseWallStartMs = lastNowMs - (wallMs < lastNowMs ? wallMs : lastNowMs);
-            attemptLimitMs = restoring.limitMs != 0 ? restoring.limitMs : parkTimeoutMs;
+            // Never longer than the longest limit the settings allow.
+            const uint64_t longestMs = 1800000;
+            attemptLimitMs = restoring.limitMs != 0 && restoring.limitMs <= longestMs ? restoring.limitMs : parkTimeoutMs;
             requested = restoring.requested;
             lastRequestMs = lastNowMs - (restoring.requestAgeMs < lastNowMs ? restoring.requestAgeMs : lastNowMs);
             lastCritical = LastCritical{};
             lastCritical.has = isCritical(restoring.event);
             lastCritical.event = restoring.event;
             lastCritical.cause = restoring.cause;
+            lastCritical.limitMs = restoring.event == Event::ParkNotConfirmed ? attemptLimitMs : 0;
             remindNow = current == Phase::HeldByPerson || current == Phase::Halted;
+            if (current == Phase::Closing)
+            {
+                // A restart during a close: the close failed part-way. Back off
+                // and alert, so a restart loop at every close start isn't silent.
+                current = Phase::RetryWait;
+                phaseSinceMs = lastNowMs;
+                phaseWallStartMs = lastNowMs;
+                closeFailedOnce = true;
+                closeFailedAtMs = lastNowMs;
+                lastCritical.has = true;
+                lastCritical.event = Event::CloseFailed;
+                lastCritical.cause = Cause::Interrupted;
+                remindNow = true;
+            }
         }
 
         CloseAnswer answerFor(bool accepted, const std::string &reason)
