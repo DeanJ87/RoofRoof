@@ -29,6 +29,9 @@ namespace SQM
                     return false;
                 if (leg.dutyPercent < settings.slowDutyPercent || leg.dutyPercent > settings.topDutyPercent)
                     return false;
+                // Faster than the slow duty only with a point to slow down at.
+                if (leg.dutyPercent > settings.slowDutyPercent && leg.slowAfterMs == 0)
+                    return false;
                 return leg.expect == HallLevel::Unsettled || leg.expect == HallLevel::Low || leg.expect == HallLevel::High;
             }
         } // namespace

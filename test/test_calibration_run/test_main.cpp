@@ -112,7 +112,8 @@ void test_later_legs_are_bounded_by_the_measured_ones(void)
     TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
     TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
     TEST_ASSERT_EQUAL_UINT32(LIMIT_MS, r.rep().legLimitMs);
-    TEST_ASSERT_EQUAL_UINT32(LIMIT_MS, r.roof.status().moveTimeoutMs == 0 ? LIMIT_MS : r.roof.status().moveTimeoutMs);
+    r.steps(100);
+    TEST_ASSERT_EQUAL_UINT32(LIMIT_MS, r.roof.status().moveTimeoutMs); // the controller's own timeout
     TEST_ASSERT_TRUE(r.until(LegKind::SlowClose));
     const uint32_t open = r.rep().measured.legs[0].drivenMs;
     TEST_ASSERT_EQUAL_UINT32(
@@ -331,16 +332,31 @@ void test_daylight_in_a_pause_ends_the_run(void)
     TEST_ASSERT_TRUE(r.roof.status().state == State::Closed);
 }
 
-void test_the_park_lost_while_opening_stops_the_roof(void)
+void test_the_park_lost_while_opening_is_the_interlock_fault(void)
 {
+    // Any calibration leg is interlocked like a close: before the open end is
+    // confirmed, an "opening" leg may be closing the roof (a backwards motor).
     Rig r;
     TEST_ASSERT_TRUE(r.start().accepted);
     TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
     r.steps(3000);
     r.gates.parked = false;
     r.step();
-    TEST_ASSERT_TRUE(r.rep().ending == Ending::Park);
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::External);
+    TEST_ASSERT_TRUE(r.rep().ending == Ending::Fault);
     TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+}
+
+void test_disagreeing_slow_legs_skip_the_top_pass(void)
+{
+    Rig r;
+    TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
+    TEST_ASSERT_TRUE(r.until(LegKind::SlowClose));
+    r.plant.speedMmPerSecond = 27.0f; // the slow close drags (a stall that doesn't fault)
+    TEST_ASSERT_TRUE(r.finish());
+    TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
+    TEST_ASSERT_EQUAL_UINT8(2, r.rep().measured.legCount);
+    TEST_ASSERT_EQUAL_STRING("legsDisagree", r.rep().proposal.speedProblem.reason.c_str());
 }
 
 void test_the_park_lost_in_a_pause_ends_the_run(void)
@@ -506,7 +522,8 @@ int main(int, char **)
     RUN_TEST(test_unsafe_weather_while_opening_stops_the_roof);
     RUN_TEST(test_unsafe_weather_while_closing_lets_the_close_finish);
     RUN_TEST(test_daylight_in_a_pause_ends_the_run);
-    RUN_TEST(test_the_park_lost_while_opening_stops_the_roof);
+    RUN_TEST(test_the_park_lost_while_opening_is_the_interlock_fault);
+    RUN_TEST(test_disagreeing_slow_legs_skip_the_top_pass);
     RUN_TEST(test_the_park_lost_in_a_pause_ends_the_run);
     RUN_TEST(test_the_park_lost_while_closing_is_the_interlock_fault);
     RUN_TEST(test_a_blocked_leg_waits_then_fails);

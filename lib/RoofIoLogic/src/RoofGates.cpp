@@ -58,7 +58,9 @@ namespace SQM
 
         bool interlockLost(const Roof::Status &status, const GateInputs &in)
         {
-            return status.state == Roof::State::Closing && !parkHolds(in);
+            // Spec 016: any calibration leg too. Until the person confirms the open
+            // end, a leg may drive the roof the other way (a motor wired backwards).
+            return (status.state == Roof::State::Closing || status.calibrating) && !parkHolds(in);
         }
 
         uint32_t interlockBits(const GateInputs &in)

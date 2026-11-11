@@ -1,6 +1,7 @@
 #include "CalibrationRun.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "MotionGuards.h"
 #include "RoofText.h"
@@ -167,6 +168,16 @@ namespace SQM
                 m.openLevel = report.level;
                 if (m.openLevel == m.closedLevel)
                     legCount = std::min<uint8_t>(legCount, rep.legIndex + 2);
+            }
+            // Disagreeing slow legs (a stall, a slip) make the top legs' slow-down
+            // point untrustworthy: no top-duty pass (the proposal says why).
+            const MeasuredLeg *open = measuredLeg(LegKind::SlowOpen);
+            if (rep.leg == LegKind::SlowClose && open != nullptr && m.legCount > 0)
+            {
+                const double a = legSpeed(*open, m.travelMm);
+                const double b = legSpeed(m.legs[m.legCount - 1], m.travelMm);
+                if (a + b > 0.0 && std::fabs(a - b) / ((a + b) / 2.0) > MAX_LEG_DISAGREEMENT)
+                    legCount = std::min<uint8_t>(legCount, rep.legIndex + 1);
             }
             restAtEnd = onMagnet(report.level);
             restEnd = report.target;

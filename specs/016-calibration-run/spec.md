@@ -381,9 +381,12 @@ Playwright walk-through starts a run, waits for the result and accepts it.
 - **FR-010**: Between legs the run MUST wait at the end for 1 s (longer than the dead time), taking
   the Hall reading at rest, before the next leg starts. A leg that can't start because something
   blocks it MUST wait up to 15 s, then the run fails as busy.
-- **FR-011**: Every close leg MUST pass the close gate (the park confirmed) when it starts, and the
-  existing interlock MUST stop it as a motion fault if the park is lost while it closes. If the
-  park stops holding at any other time, the run MUST end (an opening leg stopped).
+- **FR-011**: Every close leg MUST pass the close gate (the park confirmed) when it starts. The
+  park interlock MUST watch every calibration leg, not only closing ones (until the open end is
+  confirmed an "opening" leg may be closing the roof): the park lost while a leg drives is a motion
+  fault. If the park stops holding during a pause, the run MUST end.
+- **FR-011a**: The top-duty pass MUST be skipped when the slow open and slow close disagree by more
+  than 30 %; a leg above the slow duty MUST have a point to slow down at.
 - **FR-012**: Every open leg MUST pass the open gate (weather safe, no daylight close) when it
   starts. If the weather stops being safe or daylight wants the roof closed during a run, an
   opening leg MUST stop at once, a closing leg MUST finish, and the run MUST end with no proposal

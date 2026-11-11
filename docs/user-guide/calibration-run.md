@@ -80,8 +80,9 @@ While the run is under way:
 - If the weather stops being safe (or daylight wants the roof closed), an opening leg stops at
   once, a closing leg finishes its close, and the run ends. The automatic close always wins: it
   ends the run and closes as usual.
-- If the mount stops being confirmed parked, the run ends; a closing leg trips the park interlock
-  as any close does.
+- If the mount stops being confirmed parked, the run ends; during any leg it is the park
+  interlock's fault, as for a close (until you confirm the open end, the run can't be sure which
+  way the roof is going).
 - After a restart or power cut, no run is active and nothing moves; the roof is unknown between
   the magnets as after any restart.
 

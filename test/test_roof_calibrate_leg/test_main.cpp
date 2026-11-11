@@ -29,6 +29,7 @@ namespace
         l.dutyPercent = duty;
         l.limitMs = limitMs;
         l.expect = expect;
+        l.slowAfterMs = duty > 40 ? 60000 : 0; // a fast leg needs its slow-down point
         return l;
     }
 
@@ -90,6 +91,9 @@ void test_a_leg_outside_its_ranges_is_refused(void)
     s.topDutyPercent = 80;
     b.roof.applySettings(s);
     assertRefused(Refusal::LegInvalid, b.roof.checkCalibrate(leg(End::Open, 81), Origin::Person));
+    CalibrationLeg neverSlows = leg(End::Open, 80);
+    neverSlows.slowAfterMs = 0;
+    assertRefused(Refusal::LegInvalid, b.roof.checkCalibrate(neverSlows, Origin::Person));
     TEST_ASSERT_TRUE(b.roof.checkCalibrate(leg(End::Open, 80), Origin::Person).accepted);
     assertRefused(Refusal::LegInvalid, b.roof.checkCalibrate(leg(End::Open, 40, 180000, HallLevel::Rail), Origin::Person));
     assertRefused(Refusal::LegInvalid, b.roof.checkCalibrate(leg(End::Open, 40, 180000, HallLevel::Between), Origin::Person));
