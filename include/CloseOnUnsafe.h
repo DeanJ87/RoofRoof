@@ -18,6 +18,7 @@
 #include "AlertRetry.h"
 #include "CloseSequence.h"
 #include "Config.h"
+#include "RoofAlerts.h"
 
 namespace SQM
 {
@@ -45,6 +46,9 @@ namespace SQM
         }
         // Main loop, every pass, after the safety inputs were handled.
         void handle(SafetyInputs &safety, RoofControl &roof);
+        // Main loop: the roof as the alert engine sees it (spec 007), as of
+        // the last step.
+        const Alerts::RoofInputs &conditions() const { return roofConditions; }
 
     private:
         static constexpr const char *TAG = "Close";
@@ -74,5 +78,7 @@ namespace SQM
         uint64_t stepNowMs = 0;       // the time base of the last step
         uint32_t personStopsSeen = 0; // in the snapshot the decision was taken from
         uint32_t keptSeq = 0;         // the sequence number of the newest record kept
+        uint32_t closedCount = 0;     // Event::Closed seen since start (spec 007)
+        Alerts::RoofInputs roofConditions;
     };
 } // namespace SQM
