@@ -154,6 +154,9 @@ describe('RoofCard', () => {
       ),
     );
     expect(screen.getByText('3.2 A')).toBeInTheDocument();
+    // The limits are behind "?" (FR-011).
+    expect(screen.getByText("Minimum 11.5 V: below it the roof won't start, and a move stops with a fault.")).toBeInTheDocument();
+    expect(screen.getByText('Limit 10.0 A: above it a move stops with a fault.')).toBeInTheDocument();
     expect(screen.getByText('Park switch 2')).toBeInTheDocument();
     expect(screen.getByText('Dry')).toBeInTheDocument();
     expect(screen.getByText('Open: Supply 10.9 V is below 11.5 V')).toBeInTheDocument();
