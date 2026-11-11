@@ -17,7 +17,7 @@ RoofRoof is firmware for an ESP32 that will drive an observatory roll-off roof t
 !!! note "Platform stage"
     This release is the platform only. The device serves its web UI, a REST API, live status, MQTT with Home Assistant discovery, an ASCOM Alpaca server and push alerts, and it holds the motor driver off from the first instruction of `setup()`. **It does not move a roof yet.** The motor, roof position, safety rules and the Alpaca Dome device come in later specs, and pages that will describe them say so.
 
-The repository is private, so there is no public site: these docs and the [live demo](live-demo.md) are built by CI and downloaded as an artifact.
+There is no public docs site: these docs and the [live demo](live-demo.md) are built by CI and downloaded as an artifact.
 
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h

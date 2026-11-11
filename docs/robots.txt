@@ -1,5 +1,5 @@
-# RoofRoof documentation. The repository is private and the docs are a CI
-# artifact with no public address, so keep crawlers out if one is ever served.
+# RoofRoof documentation. The docs are a CI artifact
+# with no public address, so keep crawlers out if one is ever served.
 
 User-agent: *
 Disallow: /

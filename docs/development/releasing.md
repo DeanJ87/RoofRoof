@@ -2,7 +2,7 @@
 
 Releases are made from tags. Until the first stable release, every tag is a beta: `vX.Y.Z-beta.N`. GitHub publishes it as a pre-release. An early build for testers is an alpha: `vX.Y.Z-alpha.N`, also a pre-release.
 
-The repository is private and the device never looks for updates: a release is a set of files you download and upload to the device yourself ([Updates](../user-guide/ota.md)).
+The device never looks for updates: a release is a set of files you download and upload to the device yourself ([Updates](../user-guide/ota.md)).
 
 ## 1. Changelog pull request
 
