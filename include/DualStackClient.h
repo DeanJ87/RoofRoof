@@ -2,6 +2,7 @@
 
 #include <WiFiClient.h>
 #include <functional>
+#include <vector>
 #include <lwip/sockets.h>
 
 namespace SQM
@@ -25,15 +26,33 @@ namespace SQM
         // NetworkClient's up to ten 1 s waits for a full send buffer (a
         // half-open link). The MQTT client runs on the main loop, which hands
         // the weather and park checks to the roof and must never stall for
-        // seconds. Asked at every write; 0 (the default) keeps NetworkClient's
-        // behaviour.
+        // seconds. Asked at every write; 0 means no time left: the
+        // connection is dropped at once. Without one (the default) writes and
+        // reads are NetworkClient's.
         void setWriteBudget(std::function<uint32_t()> budgetMs) { writeBudget = std::move(budgetMs); }
         using WiFiClient::write;
         size_t write(const uint8_t *buf, size_t size) override;
         size_t write(uint8_t data) override { return write(&data, 1); }
 
+        // With a budget set, reads come from this class's own buffer, filled
+        // without waiting. While held, available() only counts what is already
+        // buffered, so a reader never starts on a packet that isn't all here.
+        void holdReads(bool hold) { readsHeld = hold; }
+        // A whole MQTT packet is buffered (RoofIo::Mqtt::packetComplete), or nothing is.
+        bool readReady();
+        int available() override;
+        int read() override;
+        int read(uint8_t *buf, size_t size) override;
+        int peek() override;
+        void stop() override;
+
     private:
         std::function<uint32_t()> writeBudget;
+        static constexpr size_t RX_LIMIT = 4096;
+        std::vector<uint8_t> rx;
+        size_t rxPos = 0;
+        bool readsHeld = false;
+        void fillRx();
         static constexpr int32_t DEFAULT_TIMEOUT_MS = 3000;
         int connectIpv6(const ::sockaddr_in6 &address, int32_t timeoutMs);
     };

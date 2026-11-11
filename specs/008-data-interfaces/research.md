@@ -65,7 +65,11 @@
   through a slow link: a write
   that can't finish in time closes the connection, and later writes fail at once. The reconnect
   is held while the roof is busy (spec 010). A main-loop pass can then lose at most about 250 ms to
-  MQTT writes, far inside the 5 s hand-over limit. The live position is in
+  MQTT writes, far inside the 5 s hand-over limit. Reads were the other wait: PubSubClient waits up
+  to its 3 s socket timeout for the rest of a message. So while busy the whole pass shares 500 ms
+  (`RoofIo::Mqtt::PassBudget`, started at the top of the main loop), the socket reads into its own
+  buffer without waiting, and PubSubClient's loop runs only when nothing or a whole message is
+  buffered (`packetComplete`), with its reads held to that buffer. The live position is in
   `/ws/status` (async task). Spec 010 owns the network under motion as a whole.
 - **Alternatives**: every 2 s while moving (SQMeter's interval idea; rejected for the risk above);
   a separate MQTT task (a second owner of PubSubClient, which isn't thread-safe).

@@ -57,3 +57,7 @@ with `pio test -e native` green; firmware tasks also with `pio run -e esp32dev`.
 
 - [x] T027 Spec 001 quickstart §1 in full; record the numbers
 - [x] T028 Independent safety reviews until one says safe to merge; fix and re-test each finding (three rounds: the first two found the main loop could be held by MQTT writes on a half-open link during a close; fixed with the busy publish limits and a bounded socket write; the third said safe to merge)
+
+## Phase 8: Follow-up
+
+- [x] T029 One MQTT time budget per main-loop pass while the roof is busy (500 ms of writes and reads in all; a write with none left drops the connection), reads only when a whole message is buffered; `RoofIo::Mqtt::PassBudget` and `packetComplete` with native tests

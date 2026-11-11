@@ -103,7 +103,7 @@ namespace SQM
         // roof's checks need it every 5 s): 250 ms while the roof is busy (the
         // reconnect hold applies), 1 s at rest so the burst after a connect
         // (discovery, the state document) gets through a slow link.
-        wifiClient.setWriteBudget([this]() { return connectHold && connectHold() ? BUSY_WRITE_BUDGET_MS : WRITE_BUDGET_MS; });
+        wifiClient.setWriteBudget([this]() { return passBudget.writeBudgetMs(millis(), busy()); });
     }
 
     void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
@@ -132,9 +132,32 @@ namespace SQM
             if (!mqttClient->connected())
                 reconnect();
             else
-                mqttClient->loop();
+                runLoop();
         }
         publishState();
+    }
+
+    bool MQTTClient::busy() const
+    {
+        return connectHold && connectHold();
+    }
+
+    // PubSubClient's loop (reads, keepalive, PUBACKs). While the roof is busy
+    // it runs only with pass time left and with nothing or a whole packet
+    // buffered, reads held to that, so it never waits for the rest of a
+    // packet (spec 008: the whole MQTT pass stays within its budget).
+    void MQTTClient::runLoop()
+    {
+        if (!busy())
+        {
+            mqttClient->loop();
+            return;
+        }
+        if (!passBudget.mayRead(millis(), true) || !wifiClient.readReady())
+            return;
+        wifiClient.holdReads(true);
+        mqttClient->loop();
+        wifiClient.holdReads(false);
     }
 
     void MQTTClient::publishState()

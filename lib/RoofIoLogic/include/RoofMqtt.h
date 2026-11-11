@@ -35,6 +35,35 @@ namespace SQM
             constexpr uint8_t BUSY_MAX_PUBLISHES = 2;
             // A payload longer than this (after trimming) is never a command.
             constexpr size_t MAX_COMMAND_PAYLOAD = 16;
+            // The MQTT socket's time on the main loop (research R4): a write may
+            // take REST_WRITE_BUDGET_MS at rest; while the roof is busy, all of
+            // MQTT's writes and reads in one main-loop pass share
+            // BUSY_PASS_BUDGET_MS, one write at most BUSY_WRITE_BUDGET_MS. A
+            // write with no time left drops the connection instead of waiting.
+            constexpr uint32_t REST_WRITE_BUDGET_MS = 1000;
+            constexpr uint32_t BUSY_WRITE_BUDGET_MS = 250;
+            constexpr uint32_t BUSY_PASS_BUDGET_MS = 500;
+
+            // One main-loop pass's MQTT time.
+            class PassBudget
+            {
+            public:
+                void start(uint32_t nowMs) { startMs = nowMs; }
+                // How long the next write may take; 0: none left (drop the connection).
+                uint32_t writeBudgetMs(uint32_t nowMs, bool busy) const;
+                // Whether MQTT may read (run PubSubClient's loop) now.
+                bool mayRead(uint32_t nowMs, bool busy) const;
+
+            private:
+                uint32_t startMs = 0;
+            };
+
+            // `bytes` starts with a whole MQTT packet (fixed header, remaining
+            // length and that many bytes), so PubSubClient can read it without
+            // waiting for more. False while the length field is incomplete or
+            // malformed.
+            bool packetComplete(const uint8_t *bytes, size_t size);
+
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
             constexpr size_t STATE_DOC_CAPACITY = 2048;

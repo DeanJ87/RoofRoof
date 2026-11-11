@@ -391,6 +391,8 @@ void setup()
 void loop()
 {
     esp_task_wdt_reset();
+    if (mqttClient)
+        mqttClient->startPass(); // spec 008: MQTT's time in this pass
 
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
