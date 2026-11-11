@@ -89,15 +89,15 @@ namespace SQM
         struct StartInputs
         {
             uint32_t nowMs = 0;
-            uint32_t limitMs = 0;       // roof.calibrationLimitSeconds in ms
-            bool sequenceIdle = true;   // spec 005's sequence is idle
-            bool closePending = false;  // a close waits for an upload or MQTT connect
+            uint32_t limitMs = 0;      // roof.calibrationLimitSeconds in ms
+            bool sequenceIdle = true;  // spec 005's sequence is idle
+            bool closePending = false; // a close waits for an upload or MQTT connect
             bool settingsPending = false;
-            RoofIo::GateInputs gates;   // as a command's checks see them now
-            bool busy = false;          // something blocks an open (RoofIo::blockerDecision)
-            std::string busyReason;     // "busy", "hotspot", "restarting"
+            RoofIo::GateInputs gates; // as a command's checks see them now
+            bool busy = false;        // something blocks an open (RoofIo::blockerDecision)
+            std::string busyReason;   // "busy", "hotspot", "restarting"
             std::string busyText;
-            std::string faultText;      // the latched fault, worded
+            std::string faultText; // the latched fault, worded
         };
 
         // One control step's view, after the controller's tick.

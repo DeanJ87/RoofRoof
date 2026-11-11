@@ -373,7 +373,11 @@ export const CalibrateCard: FunctionalComponent<RoofProps> = (props) => (
     <div class="btn-row">
       <Button onClick={() => route('/calibrate')}>{t('calibrate.open')}</Button>
     </div>
-    <Fold label={t('settings.roof.advanced')} open={props.error('roof.calibrationLimitSeconds') !== undefined} dataField="calibrate.advanced">
+    <Fold
+      label={t('settings.roof.advanced')}
+      open={props.error('roof.calibrationLimitSeconds') !== undefined}
+      dataField="calibrate.advanced"
+    >
       <div class="form-grid">
         {roofNum(props, 'calibrationLimitSeconds', t('calibrate.limit'), { unit: 's', integer: true, hint: t('calibrate.limitHint') })}
       </div>

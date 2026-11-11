@@ -78,7 +78,10 @@ namespace SQM
                         b,
                         d * 100.0);
                     if (d > MAX_LEG_DISAGREEMENT)
-                        return Problem{"legsDisagree", text + format(", more than %.0f %%: something slipped or a magnet was read early", MAX_LEG_DISAGREEMENT * 100.0)};
+                        return Problem{
+                            "legsDisagree",
+                            text +
+                                format(", more than %.0f %%: something slipped or a magnet was read early", MAX_LEG_DISAGREEMENT * 100.0)};
                     if (d > WARN_LEG_DISAGREEMENT)
                         warnings.push_back(Problem{"directionsDiffer", text});
                 }
@@ -173,7 +176,8 @@ namespace SQM
                 return Problem{
                     "samePole",
                     format(
-                        "Both ends read %s (closed %.0f, open %.0f counts; in between %.0f): the magnets face the sensor with the same pole",
+                        "Both ends read %s (closed %.0f, open %.0f counts; in between %.0f): the magnets face the sensor with the same "
+                        "pole",
                         high ? "high" : "low",
                         m.closedRest.mean(),
                         m.openRest.mean(),
@@ -192,7 +196,8 @@ namespace SQM
                         return Problem{
                             "weakEnd",
                             format(
-                                "The %s end reads %.0f counts, %.0f from the in-between level %.0f (at least %.0f needed): the magnet is too weak or too far from the sensor",
+                                "The %s end reads %.0f counts, %.0f from the in-between level %.0f (at least %.0f needed): the magnet is "
+                                "too weak or too far from the sensor",
                                 endText(end),
                                 rest.mean(),
                                 separation,
@@ -207,7 +212,8 @@ namespace SQM
                 return Problem{
                     "noRoom",
                     format(
-                        "No %s threshold is both clear of the in-between readings and read at rest at its end (it would need %.0f to %.0f counts)",
+                        "No %s threshold is both clear of the in-between readings and read at rest at its end (it would need %.0f to %.0f "
+                        "counts)",
                         level,
                         w.lo,
                         w.hi)};

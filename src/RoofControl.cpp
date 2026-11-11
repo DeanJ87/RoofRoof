@@ -392,9 +392,8 @@ namespace SQM
         s.watchdogTrips = watchdogTrips;
         s.maxStepGapMs = maxStepGapMs;
         s.simulation = Bench::SIMULATION;
-        const bool changed =
-            s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind || s.closePending != snap.closePending ||
-            s.calibrating != snap.calibrating;
+        const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind ||
+                             s.closePending != snap.closePending || s.calibrating != snap.calibrating;
         snap = s;
         stateNow.store(static_cast<uint8_t>(s.status.state));
         if (changed)

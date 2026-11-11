@@ -7,13 +7,16 @@
 #include <cmath>
 #include <unity.h>
 
-#include "CalibrationDocument.h"
 #include "CalibrationRun.h"
 #include "MotionProfile.h"
 #include "RoofController.h"
 #include "RoofGates.h"
 #include "RoofPlant.h"
 #include "RoofText.h"
+
+#include "../calibration_rig/CalibrationRig.h"
+
+using namespace CalibTest;
 
 using namespace SQM;
 using namespace SQM::Calib;
@@ -24,127 +27,6 @@ using Roof::State;
 
 void setUp(void) {}
 void tearDown(void) {}
-
-namespace
-{
-    constexpr uint32_t STEP_MS = 20;
-    constexpr uint32_t LIMIT_MS = 180000;
-
-    struct Rig
-    {
-        Roof::Settings settings;
-        Roof::Controller roof;
-        RoofPlant::Plant plant;
-        Run run;
-        RoofIo::GateInputs gates;
-        bool busy = false;
-        uint32_t nowMs = 1000;
-
-        explicit Rig(float startMm = 0.0f, const Roof::Settings &s = Roof::Settings())
-            : settings(s),
-              roof(s)
-        {
-            plant.travelMm = static_cast<float>(s.travelMm);
-            plant.positionMm = startMm;
-            gates.weather = Safety::Verdict::Safe;
-            gates.weatherText = "safe";
-            gates.parked = true;
-            gates.parkText = "parked";
-            for (int i = 0; i < 30; ++i)
-                step();
-        }
-
-        // RoofControl::stepLocked's order: the gates, the tick, the run.
-        void step()
-        {
-            plant.drive(roof.output(), STEP_MS);
-            nowMs += STEP_MS;
-            const Roof::Status &st = roof.status();
-            if (RoofIo::interlockLost(st, gates))
-                roof.raiseFault(Roof::Fault{FaultKind::External, 1.0f, 0.0f});
-            if (RoofIo::openMustStop(roof.status(), gates))
-                roof.command(Roof::Command::Stop, Roof::Origin::Automatic);
-            const Roof::Readings r = plant.readings(nowMs);
-            roof.tick(r);
-            StepInputs in;
-            in.readings = r;
-            in.gates = gates;
-            in.busy = busy && run.wantsLeg(nowMs);
-            in.busyText = "MQTT is connecting";
-            in.faultText = RoofIo::describeFault(RoofIo::FaultRecord{roof.status().fault, RoofIo::FaultCause::Logic});
-            run.step(roof, in);
-        }
-
-        StartInputs startInputs() const
-        {
-            StartInputs in;
-            in.nowMs = nowMs;
-            in.limitMs = LIMIT_MS;
-            in.gates = gates;
-            in.busy = busy;
-            in.busyReason = "busy";
-            in.busyText = "MQTT is connecting";
-            return in;
-        }
-
-        Answer start(Where at = Where::Closed, bool topPass = false, uint32_t travelMm = 1800)
-        {
-            Request req;
-            req.attended = true;
-            req.at = at;
-            req.travelMm = travelMm;
-            req.topPass = topPass;
-            return run.start(roof, req, startInputs());
-        }
-
-        // Steps until the run ends or `maxMs` passes.
-        bool finish(uint32_t maxMs = 900000)
-        {
-            for (uint32_t t = 0; t < maxMs; t += STEP_MS)
-            {
-                step();
-                if (!run.active())
-                    return true;
-            }
-            return false;
-        }
-
-        // Steps until the run is driving leg `kind`.
-        bool until(LegKind kind, Phase phase = Phase::Drive, uint32_t maxMs = 600000)
-        {
-            for (uint32_t t = 0; t < maxMs; t += STEP_MS)
-            {
-                step();
-                if (run.report().leg == kind && run.report().phase == phase)
-                    return true;
-                if (!run.active())
-                    return false;
-            }
-            return false;
-        }
-
-        void steps(uint32_t ms)
-        {
-            for (uint32_t t = 0; t < ms; t += STEP_MS)
-                step();
-        }
-
-        const Report &rep() const { return run.report(); }
-    };
-
-    void assertRefused(const char *reason, const Answer &answer)
-    {
-        TEST_ASSERT_FALSE(answer.accepted);
-        TEST_ASSERT_EQUAL_STRING(reason, answer.reason.c_str());
-        TEST_ASSERT_FALSE(answer.text.empty());
-    }
-
-    bool sameSettings(const Roof::Settings &a, const Roof::Settings &b)
-    {
-        return a.travelMm == b.travelMm && a.speedMmPerSecond == b.speedMmPerSecond && a.timeoutMarginMs == b.timeoutMarginMs &&
-               a.hallHighEnd == b.hallHighEnd && a.hallHighCounts == b.hallHighCounts && a.hallLowCounts == b.hallLowCounts;
-    }
-} // namespace
 
 // --- Full runs ------------------------------------------------------------------------
 
@@ -233,7 +115,8 @@ void test_later_legs_are_bounded_by_the_measured_ones(void)
     TEST_ASSERT_EQUAL_UINT32(LIMIT_MS, r.roof.status().moveTimeoutMs == 0 ? LIMIT_MS : r.roof.status().moveTimeoutMs);
     TEST_ASSERT_TRUE(r.until(LegKind::SlowClose));
     const uint32_t open = r.rep().measured.legs[0].drivenMs;
-    TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(open * 1.5 + 5000) < LIMIT_MS ? static_cast<uint32_t>(open * 1.5 + 5000) : LIMIT_MS, r.rep().legLimitMs);
+    TEST_ASSERT_EQUAL_UINT32(
+        static_cast<uint32_t>(open * 1.5 + 5000) < LIMIT_MS ? static_cast<uint32_t>(open * 1.5 + 5000) : LIMIT_MS, r.rep().legLimitMs);
     TEST_ASSERT_TRUE(r.until(LegKind::TopOpen));
     TEST_ASSERT_EQUAL_UINT32(static_cast<uint32_t>(open * 1.25 + 5000), r.rep().legLimitMs);
     TEST_ASSERT_TRUE(r.until(LegKind::TopClose));
@@ -635,75 +518,6 @@ void test_a_weak_magnet_withholds_the_thresholds(void)
     TEST_ASSERT_EQUAL_STRING("weakEnd", r.rep().proposal.hallProblem.reason.c_str());
 }
 
-// --- The document -------------------------------------------------------------------------
-
-void test_the_document_of_a_finished_run(void)
-{
-    Rig r;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.finish());
-    DynamicJsonDocument doc(DOCUMENT_CAPACITY);
-    writeDocument(doc.to<JsonObject>(), r.rep(), r.nowMs);
-    TEST_ASSERT_FALSE(doc.overflowed());
-    TEST_ASSERT_EQUAL_STRING("done", doc["state"]);
-    TEST_ASSERT_FALSE(doc["active"].as<bool>());
-    TEST_ASSERT_TRUE(doc["leg"].isNull());
-    TEST_ASSERT_EQUAL_STRING("closed", doc["request"]["at"]);
-    TEST_ASSERT_EQUAL_UINT32(180, doc["request"]["limitSeconds"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("done", doc["ending"]["reason"]);
-    TEST_ASSERT_EQUAL(2, doc["legs"].size());
-    TEST_ASSERT_EQUAL_STRING("slowOpen", doc["legs"][0]["name"]);
-    TEST_ASSERT_TRUE(doc["legs"][0]["ampsMean"].isNull());
-    TEST_ASSERT_EQUAL_STRING("low", doc["hall"]["closed"]["level"]);
-    TEST_ASSERT_EQUAL_UINT32(1850, doc["proposal"]["travelMm"]["old"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_UINT32(1800, doc["proposal"]["travelMm"]["new"].as<uint32_t>());
-    TEST_ASSERT_EQUAL_STRING("open", doc["proposal"]["hallHighEnd"]["new"]);
-    TEST_ASSERT_TRUE(doc["proposal"]["hallProblem"].isNull());
-    TEST_ASSERT_TRUE(doc["proposal"]["warnings"].is<JsonArray>());
-}
-
-void test_the_document_while_running_and_idle(void)
-{
-    Rig r;
-    DynamicJsonDocument doc(DOCUMENT_CAPACITY);
-    writeDocument(doc.to<JsonObject>(), r.rep(), r.nowMs);
-    TEST_ASSERT_EQUAL_STRING("idle", doc["state"]);
-    TEST_ASSERT_TRUE(doc["proposal"].isNull());
-    TEST_ASSERT_TRUE(doc["request"].isNull());
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
-    r.steps(2000);
-    writeDocument(doc.to<JsonObject>(), r.rep(), r.nowMs);
-    TEST_ASSERT_EQUAL_STRING("running", doc["state"]);
-    TEST_ASSERT_EQUAL_STRING("slowOpen", doc["leg"]["name"]);
-    TEST_ASSERT_EQUAL_STRING("drive", doc["leg"]["phase"]);
-    TEST_ASSERT_EQUAL(1, doc["leg"]["index"].as<int>());
-    TEST_ASSERT_EQUAL(2, doc["leg"]["count"].as<int>());
-    TEST_ASSERT_EQUAL_UINT32(LIMIT_MS, doc["leg"]["limitMs"].as<uint32_t>());
-    TEST_ASSERT_TRUE(doc["proposal"].isNull());
-}
-
-void test_the_start_request_is_parsed(void)
-{
-    StaticJsonDocument<256> doc;
-    Request req;
-    const char *error = nullptr;
-    deserializeJson(doc, "{\"attended\":true,\"at\":\"partWay\",\"travelMm\":1800,\"topPass\":true}");
-    TEST_ASSERT_TRUE(parseRequest(doc.as<JsonVariantConst>(), req, error));
-    TEST_ASSERT_TRUE(req.attended && req.topPass && req.at == Where::PartWay && req.travelMm == 1800);
-    deserializeJson(doc, "{\"attended\":false,\"at\":\"open\",\"travelMm\":900}");
-    TEST_ASSERT_TRUE(parseRequest(doc.as<JsonVariantConst>(), req, error));
-    TEST_ASSERT_FALSE(req.attended || req.topPass);
-    for (const char *bad : {"[]", "{\"at\":\"open\",\"travelMm\":900}", "{\"attended\":true,\"at\":\"middle\",\"travelMm\":900}",
-                            "{\"attended\":true,\"at\":\"open\",\"travelMm\":-1}", "{\"attended\":true,\"at\":\"open\",\"travelMm\":\"9\"}",
-                            "{\"attended\":true,\"at\":\"open\",\"travelMm\":900,\"topPass\":1}"})
-    {
-        deserializeJson(doc, bad);
-        TEST_ASSERT_FALSE_MESSAGE(parseRequest(doc.as<JsonVariantConst>(), req, error), bad);
-        TEST_ASSERT_NOT_NULL(error);
-    }
-}
-
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -742,8 +556,5 @@ int main(int, char **)
     RUN_TEST(test_the_opposite_polarity_is_proposed);
     RUN_TEST(test_same_pole_magnets_return_to_closed_and_withhold_the_thresholds);
     RUN_TEST(test_a_weak_magnet_withholds_the_thresholds);
-    RUN_TEST(test_the_document_of_a_finished_run);
-    RUN_TEST(test_the_document_while_running_and_idle);
-    RUN_TEST(test_the_start_request_is_parsed);
     return UNITY_END();
 }

@@ -269,7 +269,7 @@ void test_a_threshold_too_close_to_the_noise_moves_out(void)
 void test_a_threshold_not_read_at_rest_moves_in(void)
 {
     Measurements m = good();
-    m.openRest = constant(3010);  // the roof stops just past 3000
+    m.openRest = constant(3010);    // the roof stops just past 3000
     m.closedRest = spread(1095, 3); // 1092-1098, sigma 3: margin 10
     const Proposal p = propose(m, Roof::Settings());
     TEST_ASSERT_TRUE(p.hall);
@@ -283,7 +283,7 @@ void test_noisy_rest_readings_widen_the_rest_margin(void)
     m.openRest = spread(3100, 20); // 3080-3120, sigma 20: margin 60
     const Proposal p = propose(m, Roof::Settings());
     TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts); // 3080 - 60 = 3020 >= 3000: kept
-    m.openRest = spread(3050, 20); // 3030-3070: up to 2970
+    m.openRest = spread(3050, 20);                    // 3030-3070: up to 2970
     TEST_ASSERT_EQUAL_UINT16(2970, propose(m, Roof::Settings()).hallHighCounts);
 }
 

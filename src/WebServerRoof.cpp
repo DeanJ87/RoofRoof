@@ -55,8 +55,7 @@ namespace SQM
             512);
         calibrate->setMethod(HTTP_POST);
         server.addHandler(calibrate);
-        server.on(
-            "/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
+        server.on("/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
         server.on("/api/roof/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCalibrationStatus(request); });
         server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
         server.on(

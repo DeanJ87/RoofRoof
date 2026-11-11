@@ -144,7 +144,10 @@ function writeCalibrationSamples(put: (name: string, document: unknown) => void)
     ...mockCalibration,
     currentSense: true,
     legs: mockCalibration.legs.map((leg) => ({ ...leg, ...amps })),
-    proposal: { ...mockCalibration.proposal, warnings: [{ reason: 'currentNearLimit', text: 'The running current peaked at 8.1 A, 81 % of the 10.0 A limit' }] },
+    proposal: {
+      ...mockCalibration.proposal,
+      warnings: [{ reason: 'currentNearLimit', text: 'The running current peaked at 8.1 A, 81 % of the 10.0 A limit' }],
+    },
   });
   put('device3-calibration', {
     ...mockCalibration,

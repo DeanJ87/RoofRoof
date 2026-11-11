@@ -1,7 +1,8 @@
 import { t } from '../../i18n';
 
 // The wizard's pages in order (spec 015). `setup.step` is an index into this list.
-export type WizardPageId = 'device' | 'site' | 'hardware' | 'hall' | 'calibrate' | 'motion' | 'weather' | 'nina' | 'alerts' | 'daylight' | 'review';
+export type WizardPageId =
+  'device' | 'site' | 'hardware' | 'hall' | 'calibrate' | 'motion' | 'weather' | 'nina' | 'alerts' | 'daylight' | 'review';
 
 export const WIZARD_PAGES: { id: WizardPageId; title: string }[] = [
   { id: 'device', title: t('wizard.pages.device') },

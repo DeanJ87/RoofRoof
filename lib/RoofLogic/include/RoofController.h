@@ -106,6 +106,7 @@ namespace SQM
             bool confirmed(Pending &pending, bool condition, uint32_t nowMs) const;
             void driveProfile(uint32_t nowMs);
             void advanceEstimate(uint32_t elapsedMs);
+            void accountDrive(uint32_t gapMs);
             void arrive();
 
             // Commands, idle and the latch (RoofController.cpp).

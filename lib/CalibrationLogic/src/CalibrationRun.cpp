@@ -128,7 +128,7 @@ namespace SQM
 
         Answer Run::start(Roof::Controller &controller, const Request &request, const StartInputs &in)
         {
-            const Answer refused = startRefusal(controller, request, in);
+            Answer refused = startRefusal(controller, request, in);
             if (!refused.accepted)
                 return refused;
             rep = Report();

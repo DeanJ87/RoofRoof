@@ -358,7 +358,7 @@ namespace SQM
             Done = 2,
         };
         State state = State::New;
-        uint8_t step = 0; // 0 to STEP_COUNT - 1
+        uint8_t step = 0;                         // 0 to STEP_COUNT - 1
         static constexpr uint8_t STEP_COUNT = 11; // spec 016 added the calibration run page
     };
 

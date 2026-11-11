@@ -143,7 +143,8 @@ namespace SQM
                 MeasuredLeg &leg = m.legs[m.legCount++];
                 leg.kind = rep.leg;
                 leg.target = report.target;
-                leg.dutyPercent = rep.leg == LegKind::TopOpen || rep.leg == LegKind::TopClose ? rep.old.topDutyPercent : rep.old.slowDutyPercent;
+                leg.dutyPercent =
+                    rep.leg == LegKind::TopOpen || rep.leg == LegKind::TopClose ? rep.old.topDutyPercent : rep.old.slowDutyPercent;
                 leg.drivenMs = report.drivenMs;
                 leg.dutyMs = report.dutyMs;
                 leg.level = report.level;

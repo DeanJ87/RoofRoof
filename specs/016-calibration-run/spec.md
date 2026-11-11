@@ -481,7 +481,7 @@ Playwright walk-through starts a run, waits for the result and accepts it.
 ### Measurable Outcomes
 
 - **SC-001**: In the demo, a run from the closed end with the default settings finishes in under
-  5 minutes of device time and proposes a speed within 2 % of the simulated roof's.
+  5 minutes of device time and, with the travel entered as the distance between the magnets' trigger points, proposes a speed within 2 % of the simulated roof's.
 - **SC-002**: In the native tests, every leg of every simulated run stops within its limit, and
   each plant fault (missing magnet, jam, backwards motor, low supply, over-current, rail, park
   lost, weather turned) ends the run with no proposal and the existing fault or reason.

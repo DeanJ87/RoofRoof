@@ -81,7 +81,10 @@ describe('Calibrate', () => {
   it('shows the device refusal', async () => {
     server.use(
       http.post('/api/roof/calibration/start', () =>
-        HttpResponse.json({ success: false, reason: 'mountNotParked', error: 'Mount not parked: N.I.N.A. not responding' }, { status: 409 }),
+        HttpResponse.json(
+          { success: false, reason: 'mountNotParked', error: 'Mount not parked: N.I.N.A. not responding' },
+          { status: 409 },
+        ),
       ),
     );
     render(<Calibrate />);
