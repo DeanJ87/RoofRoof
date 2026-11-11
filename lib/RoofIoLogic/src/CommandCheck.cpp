@@ -37,7 +37,9 @@ namespace SQM
                     return CommandCheck{
                         false,
                         "unsafeClose",
-                        "The roof is closing and the weather isn't safe: an imaging app can't stop it (Stop in the web UI can)"};
+                        "The roof is closing and the weather isn't safe (" +
+                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) +
+                            "): an imaging app can't stop it (Stop in the web UI can)"};
                 return CommandCheck{};
             }
             if (command != Roof::Command::Open && command != Roof::Command::Close)

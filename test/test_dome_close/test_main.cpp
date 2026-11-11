@@ -126,12 +126,17 @@ void test_close_then_stop_loop_still_ends_closed(void)
             if (t % 20000 == 1000)
                 roof.command(Command::Close, Origin::Client);
             if (t % 20000 == 1300 || t % 7000 == 0)
-                stopsAccepted += roof.command(Command::Stop, Origin::Client) ? 1 : 0;
+            {
+                const bool closing = roof.bench.state() == State::Closing || roof.closePending;
+                const bool accepted = roof.command(Command::Stop, Origin::Client);
+                TEST_ASSERT_FALSE(accepted && closing); // only a stop with nothing closing gets through
+                stopsAccepted += accepted ? 1 : 0;
+            }
         });
     TEST_ASSERT_TRUE(roof.bench.state() == State::Closed);
     // Only stops while nothing was closing got through, and none counted as a person's.
     TEST_ASSERT_EQUAL_UINT32(0, roof.personStops);
-    (void)stopsAccepted;
+    TEST_ASSERT_TRUE(stopsAccepted > 0); // the client was active throughout
 }
 
 // A client's close while spec 005's close waits behind an upload: the client

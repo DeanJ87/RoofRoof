@@ -53,6 +53,10 @@ green; firmware tasks also with `pio run -e esp32dev`.
 
 ## Phase 8: Check and review
 
-- [ ] T022 Full local check (spec 001 quickstart §1), flash budget, docs build
-- [ ] T023 Independent safety reviews until one reports safe to merge; fixes with tests
-- [ ] T024 Converge
+- [x] T022 Full local check (spec 001 quickstart §1), flash budget, docs build
+- [x] T023 Independent safety reviews until one reports safe to merge; fixes with tests
+- [x] T024 Converge
+
+## Phase 9: Convergence
+
+- [x] T025 List `test_dome_close` with the new native suites in `quickstart.md` and `docs/development/heritage.md` per plan: Project Structure (partial)

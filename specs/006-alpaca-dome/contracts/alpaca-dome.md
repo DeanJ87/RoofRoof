@@ -53,5 +53,5 @@ Empty while Alpaca is off.
 | supply low | `Supply 10.9 V < 11.5 V` |
 | controller not started | `The roof controller didn't start: the motor stays off` |
 | a client's open while closing | `The roof is closing or was stopped while closing: an imaging app can't reverse a close` |
-| a client's abort of a close while the weather isn't safe | `The roof is closing and the weather isn't safe: an imaging app can't stop it (Stop in the web UI can)` |
+| a client's abort of a close while the weather isn't safe | `The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)` |
 | upload or restart in progress (open) | `<what is busy>: try again in a moment` |
