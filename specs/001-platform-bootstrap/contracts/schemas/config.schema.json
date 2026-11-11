@@ -335,6 +335,35 @@
       ],
       "additionalProperties": false
     },
+    "park": {
+      "type": "object",
+      "properties": {
+        "nina": {
+          "type": "object",
+          "properties": {
+            "api": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "api",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        "switches": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nina",
+        "switches"
+      ],
+      "additionalProperties": false
+    },
     "roof": {
       "type": "object",
       "properties": {
@@ -403,6 +432,56 @@
       ],
       "additionalProperties": false
     },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "http": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "topic": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "topic"
+          ],
+          "additionalProperties": false
+        },
+        "rainContact": {
+          "type": "boolean"
+        },
+        "staleSeconds": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "http",
+        "mqtt",
+        "rainContact",
+        "staleSeconds"
+      ],
+      "additionalProperties": false
+    },
     "wifi": {
       "type": "object",
       "properties": {
@@ -452,7 +531,9 @@
     "mqtt",
     "ntp",
     "ota",
+    "park",
     "roof",
+    "safety",
     "wifi"
   ],
   "additionalProperties": false
