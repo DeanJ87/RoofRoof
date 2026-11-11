@@ -69,7 +69,11 @@ const soundLabel = (sound: string) =>
     : sound === 'vibrate'
       ? t('settings.alerts.vibrateOnly')
       : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
-export const soundOptions = (current: string, defaultLabel: string) => [
+// The critical roof events can't be silent or vibrate only (spec 007).
+export const SILENT_SOUNDS = ['none', 'vibrate'];
+export const soundOptions = (current: string, defaultLabel: string, audibleOnly = false) =>
+  allSoundOptions(current, defaultLabel).filter((option) => !audibleOnly || !SILENT_SOUNDS.includes(option.value));
+const allSoundOptions = (current: string, defaultLabel: string) => [
   { value: '', label: defaultLabel },
   ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : [])
     .concat(PUSHOVER_SOUNDS)

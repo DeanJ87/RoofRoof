@@ -88,6 +88,16 @@ namespace SQM
             return alert;
         }
 
+        bool closedAfterAttempt(Phase before, Event event)
+        {
+            return event == Event::Closed && attempting(before);
+        }
+
+        bool sourcesKnown(const Safety::WeatherVerdict &weather)
+        {
+            return weather.http.state != Safety::SourceState::Waiting && weather.mqtt.state != Safety::SourceState::Waiting;
+        }
+
         bool attempting(Phase phase)
         {
             return phase == Phase::WaitPark || phase == Phase::Closing || phase == Phase::RetryWait;
@@ -115,6 +125,7 @@ namespace SQM
             roof.supply = roof.supplyLow ? RoofIo::describeSupply(snapshot.supplyVolts, snapshot.minSupplyVolts) : std::string();
             roof.source = lostSources(weather);
             roof.sourceLost = !roof.source.empty();
+            roof.sourceKnown = sourcesKnown(weather) || roof.sourceLost;
             roof.closing = attempting(sequence.phase);
             if (sequence.phase != Phase::Idle)
                 roof.weather = Safety::describe(weather);

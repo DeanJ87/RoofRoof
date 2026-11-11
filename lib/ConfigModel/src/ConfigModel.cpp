@@ -71,6 +71,19 @@ namespace SQM
         }
     } // namespace
 
+    void AlertsConfig::raiseCriticalToMinimum()
+    {
+        for (EventSetting *event : {&mountNotParked, &roofNotClosed})
+        {
+            if (event->level > 4)
+                event->level = 4;
+            else if (event->level < MIN_CRITICAL_LEVEL)
+                event->level = MIN_CRITICAL_LEVEL;
+            if (!audibleSound(event->sound))
+                event->sound.clear();
+        }
+    }
+
     Config Config::createDefault()
     {
         Config cfg;

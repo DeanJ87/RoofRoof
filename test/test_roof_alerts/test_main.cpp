@@ -280,6 +280,73 @@ void test_conditions_closing_and_the_weather_kept_for_the_close(void)
     }
 }
 
+void test_closed_counts_only_after_an_attempt(void)
+{
+    for (Phase phase : {Phase::WaitPark, Phase::Closing, Phase::RetryWait})
+        TEST_ASSERT_TRUE(closedAfterAttempt(phase, Event::Closed));
+    for (Phase phase : {Phase::Idle, Phase::HeldByPerson, Phase::CannotMove, Phase::Halted})
+        TEST_ASSERT_FALSE(closedAfterAttempt(phase, Event::Closed));
+    TEST_ASSERT_FALSE(closedAfterAttempt(Phase::Closing, Event::EndedSafe));
+}
+
+void test_sources_known_after_a_first_reply(void)
+{
+    Safety::WeatherVerdict weather = safeWeather();
+    TEST_ASSERT_TRUE(sourcesKnown(weather));
+    weather.mqtt.state = Safety::SourceState::Waiting;
+    TEST_ASSERT_FALSE(sourcesKnown(weather));
+    Alerts::RoofInputs roof;
+    updateConditions(roof, healthy(), weather, SequenceView{});
+    TEST_ASSERT_FALSE(roof.sourceKnown);
+    weather.http.state = Safety::SourceState::Unreachable; // one lost: known
+    updateConditions(roof, healthy(), weather, SequenceView{});
+    TEST_ASSERT_TRUE(roof.sourceKnown && roof.sourceLost);
+}
+
+// The real sequence and engine together: a closed magnet that flickers to
+// unknown for 3 s every 20 s, unsafe, for an hour. The roof was closed by an
+// attempt once; the flicker must not send "roof closed" again and again.
+void test_flickering_closed_magnet_sends_no_storm(void)
+{
+    Sequence seq;
+    Alerts::AlertEngine engine;
+    Alerts::AlertRules rules;
+    Alerts::RoofInputs roof;
+    Inputs in;
+    in.weatherSafe = false;
+    in.roof = Roof::State::Open;
+    in.parked = true;
+    uint32_t closedCount = 0;
+    int closedAlerts = 0;
+    for (uint64_t ms = 10000; ms < 10000 + 3600000ull; ms += 100)
+    {
+        in.nowMs = ms;
+        const uint64_t t = ms - 10000;
+        if (t > 60000) // closed by then; then the flicker
+            in.roof = (t % 20000) < 3000 ? Roof::State::Unknown : Roof::State::Closed;
+        else if (t > 30000)
+            in.roof = Roof::State::Closed;
+        const Phase before = seq.phase();
+        const Decision d = seq.step(in);
+        if (d.action == Action::Close)
+            seq.closeAnswered(CloseAnswer::Started);
+        if (closedAfterAttempt(before, d.event))
+            ++closedCount;
+        if (ms % 1000 == 0)
+        {
+            roof.known = true;
+            roof.closing = attempting(seq.phase());
+            roof.closedCount = closedCount;
+            Alerts::AlertInputs ai;
+            ai.nowSeconds = static_cast<uint32_t>(ms / 1000);
+            ai.roof = roof;
+            for (const Alerts::Alert &a : engine.update(ai, rules))
+                closedAlerts += a.type == Alerts::AlertType::RoofClosed ? 1 : 0;
+        }
+    }
+    TEST_ASSERT_TRUE_MESSAGE(closedAlerts <= 1, std::to_string(closedAlerts).c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -295,5 +362,8 @@ int main(int, char **)
     RUN_TEST(test_conditions_lost_sources);
     RUN_TEST(test_conditions_no_source_on_is_not_lost);
     RUN_TEST(test_conditions_closing_and_the_weather_kept_for_the_close);
+    RUN_TEST(test_closed_counts_only_after_an_attempt);
+    RUN_TEST(test_sources_known_after_a_first_reply);
+    RUN_TEST(test_flickering_closed_magnet_sends_no_storm);
     return UNITY_END();
 }

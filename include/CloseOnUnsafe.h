@@ -78,7 +78,7 @@ namespace SQM
         uint64_t stepNowMs = 0;       // the time base of the last step
         uint32_t personStopsSeen = 0; // in the snapshot the decision was taken from
         uint32_t keptSeq = 0;         // the sequence number of the newest record kept
-        uint32_t closedCount = 0;     // Event::Closed seen since start (spec 007)
+        uint32_t closedCount = 0;     // closes after an attempt since start (spec 007)
         Alerts::RoofInputs roofConditions;
     };
 } // namespace SQM

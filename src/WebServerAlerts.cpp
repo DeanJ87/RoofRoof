@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <ctime>
 #include <esp_attr.h>
+#include <esp_timer.h>
 
 // Alerts (engine, schedule, dispatch) and the /api/alerts routes.
 
@@ -25,11 +26,6 @@ namespace SQM
         };
         constexpr uint32_t KEPT_ANNOUNCED_MAGIC = 0x5EC00701u;
         RTC_NOINIT_ATTR KeptAnnounced keptAnnounced;
-
-        uint32_t announcedCheck(uint32_t bits)
-        {
-            return (bits ^ 0xA5A5F00Du) * 2654435761u;
-        }
     } // namespace
 
     void WebServer::keepRoofAnnounced()
@@ -38,16 +34,17 @@ namespace SQM
         {
             // Before the engine's first pass after a start.
             roofAnnouncedRestored = true;
-            if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && keptAnnounced.check == announcedCheck(keptAnnounced.bits))
+            if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && Alerts::announcedValid(keptAnnounced.bits, keptAnnounced.check))
                 alertEngine.restoreAnnouncedRoof(static_cast<uint8_t>(keptAnnounced.bits));
             return;
         }
         const uint32_t bits = alertEngine.announcedRoof();
-        if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && keptAnnounced.bits == bits && keptAnnounced.check == announcedCheck(bits))
+        if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && keptAnnounced.bits == bits &&
+            keptAnnounced.check == Alerts::announcedCheck(bits))
             return;
         keptAnnounced.magic = 0;
         keptAnnounced.bits = bits;
-        keptAnnounced.check = announcedCheck(bits);
+        keptAnnounced.check = Alerts::announcedCheck(bits);
         keptAnnounced.magic = KEPT_ANNOUNCED_MAGIC;
     }
 
@@ -71,7 +68,8 @@ namespace SQM
     {
         const Config &cfg = getConfigCallback();
         Alerts::AlertInputs in;
-        in.nowSeconds = millis() / 1000;
+        // 64-bit microseconds: seconds that don't wrap after 49.7 days.
+        in.nowSeconds = static_cast<uint32_t>(esp_timer_get_time() / 1000000);
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         watchClients(in, cfg, clock.time);
@@ -115,9 +113,12 @@ namespace SQM
     // nothing goes out.
     void WebServer::sendAlerts(const Core::AlertStep &step, const Config &cfg)
     {
-        if (!alertSchedule.state().sending || step.outgoing.empty() || !cfg.alerts.enabled)
+        if (step.outgoing.empty())
             return;
-        alertDispatcher->dispatch(Alerts::stackAlerts(step.outgoing), cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+        const Alerts::Alert stacked = Alerts::stackAlerts(step.outgoing);
+        if (!Core::alertGoesOut(stacked.type, cfg.alerts, alertSchedule.state().sending))
+            return;
+        alertDispatcher->dispatch(stacked, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
     uint32_t WebServer::raiseRoofAlert(const Alerts::Alert &alert)
@@ -132,6 +133,8 @@ namespace SQM
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         const Alerts::Alert finished = Core::finishCriticalAlert(alert, Core::AlertSources{cfg}, clock);
+        if (!Core::alertGoesOut(finished.type, cfg.alerts, alertSchedule.state().sending))
+            return 0; // not reached: only critical alerts come here
         return alertDispatcher->dispatch(finished, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 

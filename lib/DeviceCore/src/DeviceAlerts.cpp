@@ -98,6 +98,23 @@ namespace SQM
             }
         } // namespace
 
+        namespace
+        {
+            // Whether rendering `text` fills in {reason} or {details}: rendered
+            // with markers in their place, as renderTemplate() reads it (so
+            // "{{reason}" or a typo doesn't count).
+            bool usesReason(const std::string &text, std::vector<std::pair<std::string, std::string>> vars)
+            {
+                static const std::string MARK = "\x01\x02";
+                for (auto &var : vars)
+                    if (var.first == "reason" || var.first == "details")
+                        var.second = MARK;
+                vars.push_back({"reason", MARK});
+                vars.push_back({"details", MARK});
+                return Alerts::renderTemplate(text, vars).find(MARK) != std::string::npos;
+            }
+        } // namespace
+
         void applyCriticalTemplate(
             Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars)
         {
@@ -112,11 +129,22 @@ namespace SQM
             {
                 alert.message = Alerts::renderTemplate(setting.message, vars);
                 // The reason is never lost (constitution III; spec 007 FR-005).
-                if (setting.message.find("{reason}") == std::string::npos && setting.message.find("{details}") == std::string::npos)
+                if (!usesReason(setting.message, vars))
                     alert.message += "\n\n" + builtIn;
+                // Pushover refuses more than 1024 characters, and the resend
+                // would retry for ever: too long falls back to the built-in text.
+                if (alert.message.size() > MAX_CRITICAL_MESSAGE_BYTES)
+                    alert.message = builtIn;
             }
             alert.vars.clear();
             alert.vars.shrink_to_fit();
+        }
+
+        bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending)
+        {
+            // The roof's critical alerts: past the master switch, the pause,
+            // the send mode and the grace (spec 005 FR-014, spec 007 FR-004).
+            return Alerts::isCritical(type) || (alerts.enabled && sending);
         }
 
         Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)
@@ -125,7 +153,8 @@ namespace SQM
             alert.level = criticalLevel(setting != nullptr ? setting->level : 4);
             if (setting == nullptr)
                 return alert;
-            alert.sound = setting->sound;
+            // Never silent (spec 007): a silent or vibrate-only sound uses the default.
+            alert.sound = AlertsConfig::audibleSound(setting->sound) ? setting->sound : std::string();
             applyCriticalTemplate(alert, *setting, alertVars(sources, alert, clock));
             return alert;
         }

@@ -118,6 +118,10 @@ namespace SQM
             bool supplyLow = false;
             std::string supply; // "Supply 10.9 V < 11.0 V"
             bool sourceLost = false;
+            // false while a weather source that is on still waits for its first
+            // reply (after a start): whether it is lost isn't known yet, so
+            // the source event is left as it was.
+            bool sourceKnown = true;
             std::string source;       // each lost source and why
             bool closing = false;     // the automatic close is attempting a close
             std::string weather;      // the verdict that started it
@@ -182,8 +186,8 @@ namespace SQM
             std::vector<Wait> waits(uint32_t nowSeconds, const AlertRules &rules) const;
 
             // The roof conditions announced and still present (bit 0 fault, 1
-            // supply, 2 source), kept across a reset so it doesn't repeat them;
-            // restored before the first update().
+            // supply, 2 source, 3 closing), kept across a reset so it doesn't
+            // repeat them; restored before the first update().
             uint8_t announcedRoof() const;
             void restoreAnnouncedRoof(uint8_t bits);
 
@@ -242,14 +246,20 @@ namespace SQM
             // edge only, once it has held for its settle time, outside the
             // grace and the cooldown; its end resets it silently.
             Tracker roofFault, roofSupply, roofSource, roofClosing;
-            bool closedKnown = false;
             uint32_t closedSeen = 0;
             bool closedPending = false;
+            bool closedSent = false;
+            uint32_t closedSentAt = 0;
             std::string closedWeather;
             static bool rise(Tracker &tracker, bool current, const Emit &emit, bool inGrace);
             void updateRoof(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
             void addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const;
         };
+
+        // The announced bits as kept in RTC memory across a reset: a check
+        // word so random memory after a power cut isn't taken for a record.
+        uint32_t announcedCheck(uint32_t bits);
+        bool announcedValid(uint32_t bits, uint32_t check);
 
         // Formatting helpers shared with the dispatcher's test alerts.
         // One reason per line, bulleted.
