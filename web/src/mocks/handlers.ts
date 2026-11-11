@@ -8,7 +8,7 @@ const mockFacts: DepFacts = {
   wifiConnected: true,
   mqttConnected: mockStatus.mqtt?.connected ?? false,
   clockSet: true,
-  alpacaDevices: 0, // the Dome arrives in spec 006
+  alpacaDevices: 1, // the roof's Dome (spec 006)
 };
 
 // Demo-only: alerts switched on/off.
@@ -54,6 +54,16 @@ export const handlers = [
 
   // ASCOM Alpaca — management + device state
   http.get('/management/v1/configureddevices', () => HttpResponse.json(alpacaEnvelope(mockAlpacaDevices))),
+  // The Dome closed and still (ShutterStatus 1 = closed).
+  http.get('/api/v1/dome/0/devicestate', () =>
+    HttpResponse.json(
+      alpacaEnvelope([
+        { Name: 'ShutterStatus', Value: 1 },
+        { Name: 'Slewing', Value: false },
+        { Name: 'TimeStamp', Value: new Date().toISOString() },
+      ]),
+    ),
+  ),
   http.get('/management/v1/description', () =>
     HttpResponse.json(alpacaEnvelope({ ServerName: 'RoofRoof Demo', Manufacturer: 'RoofRoof', ManufacturerVersion: 'demo', Location: '' })),
   ),

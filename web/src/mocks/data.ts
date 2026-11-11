@@ -4,7 +4,11 @@ export { mockConfig } from './config';
 
 export const mockStatus: SystemStatus = {
   alerts: { armed: true, mode: 'any', reason: 'none', since: null, sinceAgeMs: null },
-  alpaca: { enabled: true, clients: {} },
+  alpaca: {
+    enabled: true,
+    // The roof's Dome (spec 006), no imaging app yet.
+    clients: { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } },
+  },
   firmware: {
     name: 'RoofRoof',
     product: 'roofroof',
@@ -133,8 +137,10 @@ export const mockWifiNetworks: WiFiNetwork[] = [
   { ssid: 'TeleCom_5G', rssi: -85, encryption: 'secured' },
 ];
 
-// No Alpaca devices until spec 006 adds the Dome.
-export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [];
+// The roof's Dome (spec 006), as /management/v1/configureddevices lists it.
+export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [
+  { DeviceName: 'RoofRoof roof', DeviceType: 'Dome', DeviceNumber: 0, UniqueID: 'roofroof-a1b2c3d4e5f6-dome-0' },
+];
 
 export const mockRecentAlerts: AlertRecord[] = [
   {

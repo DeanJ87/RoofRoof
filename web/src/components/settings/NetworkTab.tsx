@@ -223,7 +223,7 @@ const mqttBadge = ({ config, status }: SettingsTabProps) => {
   );
 };
 
-// ASCOM Alpaca: discovery and the management API, and the Dome from spec 006.
+// ASCOM Alpaca: discovery, the management API and the roof's Dome (spec 006).
 const AlpacaCard: FunctionalComponent<SettingsTabProps> = ({ config, update }) => {
   const alpaca = { ...defaultAlpacaConfig, ...config.alpaca };
   return (

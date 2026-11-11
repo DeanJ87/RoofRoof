@@ -52,7 +52,7 @@ test('healthy: the Status card is the alerts state, All good', async ({ page }) 
   await open(page);
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveText('All good');
-  // No Alpaca device until spec 006, so no imaging-app tile yet; Alerts is the one tile.
+  // The demo has no roof, so no Dome and no imaging-app tile (spec 011); Alerts is the one tile.
   await expect(tile(page, 'imaging-app')).toHaveCount(0);
   await expect(tile(page, 'alerts-state')).toContainText('Sending');
   await expect(statusCard(page).locator('.status-row')).toHaveCount(0);
