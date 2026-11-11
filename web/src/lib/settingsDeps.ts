@@ -92,6 +92,14 @@ const addMqtt = (c: Context) => {
   c.add('mqtt.homeAssistant.alertsSwitch', 'D-13', homeAssistant, [mqttOn, ['D-13', 'alerts-off', on(c.config, 'alerts.enabled')]]);
 };
 
+// The SQMeter MQTT safety source is read from RoofRoof's own broker (spec 004).
+const addSafety = (c: Context) => {
+  c.add('safety.mqtt.enabled', 'D-40', on(c.config, 'safety.mqtt.enabled'), [
+    ['D-40', 'mqtt-off', on(c.config, 'mqtt.enabled')],
+    ['D-41', 'mqtt-disconnected', c.fact('mqttConnected')],
+  ]);
+};
+
 const addDevice = (c: Context) => {
   const wifi: Link = ['D-28', 'wifi-disconnected', c.fact('wifiConnected')];
   c.add('ntp.enabled', 'D-28', on(c.config, 'ntp.enabled'), [wifi]);
@@ -119,7 +127,7 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addDevice].forEach((section) => section(context));
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDevice].forEach((section) => section(context));
   return out;
 }
 

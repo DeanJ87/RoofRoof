@@ -6,6 +6,7 @@
 #include "DualStackClient.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace SQM
 {
@@ -58,6 +59,12 @@ namespace SQM
         // (re)connect.
         using CommandHandler = std::function<void(const std::string &payload)>;
         void onCommand(const std::string &subtopic, CommandHandler handler);
+        // Messages on other devices' topics (absolute, e.g. SQMeter's
+        // `sqmeter/safe`, spec 004): `handler` gets (topic, payload) on the task
+        // that runs handle(). Replaces any earlier watch; subscribed now if
+        // connected and again on every (re)connect.
+        using TopicHandler = std::function<void(const std::string &topic, const std::string &payload)>;
+        void watch(const std::vector<std::string> &topics, TopicHandler handler);
         // Bumped on every successful connect, so retained state can be
         // republished after the broker comes back.
         uint32_t connectionCount() const { return connections; }
@@ -65,6 +72,10 @@ namespace SQM
     private:
         std::string commandSubtopic;
         CommandHandler commandHandler;
+        std::vector<std::string> watchedTopics;
+        TopicHandler watchHandler;
+        void dispatch(const char *topic, const uint8_t *payload, unsigned int length);
+        void subscribeAll();
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;

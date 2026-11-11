@@ -120,6 +120,25 @@ namespace SQM
             ntp["timezone"] = c.ntp.timezone;
             ntp["syncIntervalMs"] = c.ntp.syncIntervalMs;
         }
+
+        void appendSafety(JsonDocument &doc, const Config &c)
+        {
+            JsonObject safety = doc.createNestedObject("safety");
+            JsonObject http = safety.createNestedObject("http");
+            http["enabled"] = c.safety.httpEnabled;
+            http["url"] = c.safety.httpUrl;
+            JsonObject mqtt = safety.createNestedObject("mqtt");
+            mqtt["enabled"] = c.safety.mqttEnabled;
+            mqtt["topic"] = c.safety.mqttTopic;
+            safety["staleSeconds"] = c.safety.staleSeconds;
+            safety["rainContact"] = c.safety.rainContact;
+
+            JsonObject park = doc.createNestedObject("park");
+            JsonObject nina = park.createNestedObject("nina");
+            nina["url"] = c.park.ninaUrl;
+            nina["api"] = "v2";
+            park["switches"] = switchesName(c.park.switches);
+        }
     } // namespace
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
@@ -138,6 +157,7 @@ namespace SQM
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
+        appendSafety(doc, *this);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

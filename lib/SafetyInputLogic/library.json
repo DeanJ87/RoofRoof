@@ -1,0 +1,8 @@
+{
+  "name": "SafetyInputLogic",
+  "version": "0.1.0",
+  "description": "The weather verdict and the park rule (pure logic, spec 004)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}

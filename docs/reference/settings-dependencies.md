@@ -23,3 +23,5 @@ Some settings only work when something else is on: MQTT alerts need MQTT, Home A
 | D-34 | `auth.password` | HTTP auth on needs a password | Constraint | - |
 | D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on, with a device to connect to - imaging apps connect over Alpaca (SQMeter spec 021); RoofRoof has none until the Dome (spec 006) | Dependency | Alpaca is off (alpaca-off); No Alpaca device yet (no-alpaca-device) |
 | D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
+| D-40 | `safety.mqtt.enabled` | MQTT on - SQMeter's safe topics are read from RoofRoof's own broker (spec 004) | Dependency | MQTT is off (mqtt-off) |
+| D-41 | `safety.mqtt.enabled` | MQTT broker connected; while it isn't, the SQMeter MQTT source goes stale and counts as unsafe | Dependency, runtime | Broker not connected (mqtt-disconnected) |

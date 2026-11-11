@@ -4,7 +4,7 @@ description: "Configure RoofRoof from the web UI or REST API: device name, netwo
 
 # Configuration
 
-All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API. Roof settings (travel, speed, safety rules) *come in later specs*.
+All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API. Roof settings (travel, speed) *come in later specs*; the safety sources are [below](#safety-and-park).
 
 ## Settings pages
 
@@ -71,6 +71,16 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "ota": { "enabled": false, "password": "" },
   "auth": { "enabled": false, "username": "admin", "password": "" },
   "alpaca": { "enabled": false },
+  "safety": {
+    "http": { "enabled": false, "url": "" },
+    "mqtt": { "enabled": false, "topic": "sqmeter" },
+    "staleSeconds": 30,
+    "rainContact": false
+  },
+  "park": {
+    "nina": { "url": "", "api": "v2" },
+    "switches": "none"
+  },
   "alerts": {
     "enabled": false,
     "sendMode": "any",
@@ -166,6 +176,22 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `alpaca.enabled` | bool | `false` | Serve Alpaca discovery and the management API (a restart starts or stops the discovery listener). See [ASCOM Alpaca](alpaca.md) |
+
+### Safety and park
+
+Where the weather verdict and the park confirmation come from. See [Safety inputs](safety-inputs.md) for how they are combined. There is no settings page for these yet (it comes with the roof settings); set them through `POST /api/config` or a restored backup.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `safety.http.enabled` | bool | `false` | Poll SQMeter's `GET /api/safety` every 5 s |
+| `safety.http.url` | string | `""` | Its full URL, `http://` only, e.g. `http://sqmeter.local/api/safety` |
+| `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
+| `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
+| `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
+| `safety.rainContact` | bool | `false` | A rain contact is fitted on GPIO4 |
+| `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` only, e.g. `http://192.168.1.20:1888`; empty means not configured, so the mount never counts as parked |
+| `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
+| `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (GPIO32) or `two` (GPIO32 and GPIO33) |
 
 ### Alerts
 

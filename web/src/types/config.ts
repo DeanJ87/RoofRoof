@@ -46,6 +46,22 @@ export interface AlpacaConfig {
   enabled: boolean;
 }
 
+// Where the weather verdict comes from (spec 004).
+export interface SafetyConfig {
+  http: { enabled: boolean; url: string };
+  mqtt: { enabled: boolean; topic: string };
+  staleSeconds: number;
+  rainContact: boolean;
+}
+
+export type ParkSwitches = 'none' | 'one' | 'two';
+
+// How the park is confirmed: N.I.N.A. AND the fitted switches (spec 004).
+export interface ParkConfig {
+  nina: { url: string; api: 'v2' };
+  switches: ParkSwitches;
+}
+
 export interface Config {
   deviceName: string;
   wifi: WiFiConfig;
@@ -54,5 +70,7 @@ export interface Config {
   auth: AuthConfig;
   ntp: NTPConfig;
   alpaca?: AlpacaConfig;
+  safety?: SafetyConfig;
+  park?: ParkConfig;
   alerts?: AlertsConfig;
 }
