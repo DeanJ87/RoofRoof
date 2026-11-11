@@ -47,6 +47,8 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 | `<base>/roof/result` | No | `{"command","accepted","reason","text","state"}` | One per message on `roof/set` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
+| `<base>/diag` | No | The [diagnostics](diagnostics.md) live document (the same as [`GET /api/diag`](../api/rest.md#get-apidiag)) | With **Diagnostics over MQTT** on: every 60 s at rest; nothing while the roof is busy |
+| `<base>/diag/move` | No | One finished move's summary | With **Diagnostics over MQTT** on: once per finished move, once the roof is at rest |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 
 With **SQMeter over MQTT** switched on as a weather source (see [Safety inputs](safety-inputs.md)), RoofRoof also listens to SQMeter's own topics on the same broker, under SQMeter's base topic (`safety.mqtt.topic`, default `sqmeter`):
@@ -81,6 +83,10 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 `timestamp` is Unix seconds (`0`, with `timeValid` false, until the clock is set). Values that can't be read are `null`, never a made-up number: the position while unknown, the supply when unreadable, the motor current while current sense is off. `closePhase` is the [automatic close](close-on-unsafe.md)'s phase; `weather` and `parkConfirmed` are what the roof's command checks use at that moment, with their reasons.
 
 ---
+
+## Diagnostics
+
+With [advanced diagnostics](diagnostics.md) and **Settings → Device → Diagnostics → Diagnostics over MQTT** on, the device publishes `<base>/diag` (the live document) every 60 seconds and `<base>/diag/move` (one move summary) once for each finished move. Both wait until the roof is at rest: not moving, no close waiting and the automatic close not attempting. Neither is retained. They use none of the budget of the roof's state document.
 
 ## Roof commands
 

@@ -105,7 +105,7 @@ namespace SQM
     {
         // The more specific paths first: handlers match by prefix.
         server.on("/api/diag/moves/clear", HTTP_POST, [this](AsyncWebServerRequest *request) { handleDiagClear(request); });
-        server.on(MOVES_PATH, HTTP_GET, [this](AsyncWebServerRequest *request) { handleDiagMoves(request); });
+        server.on("/api/diag/moves", HTTP_GET, [this](AsyncWebServerRequest *request) { handleDiagMoves(request); });
         server.on("/api/diag", HTTP_GET, [this](AsyncWebServerRequest *request) { handleDiagLive(request); });
         wsDiag.onEvent([this](AsyncWebSocket *, AsyncWebSocketClient *client, AwsEventType type, void *, uint8_t *, size_t)
                        { onDiagWebSocketEvent(client, type); });
@@ -184,14 +184,14 @@ namespace SQM
         {
             auto summaries = std::make_shared<Diag::SummaryList>();
             diagnostics->copySummaries(*summaries);
-            Diag::HeldIds held;
-            held.count = roof->diagIds(held.ids);
-            const bool keep = diagnostics->keepSummaries();
+            Diag::ListView view;
+            view.held.count = roof->diagIds(view.held.ids);
+            view.keep = diagnostics->keepSummaries();
+            view.clock = clock;
             sendChunked(
                 request,
                 "application/json",
-                [summaries, held, keep, clock](size_t index, std::string &out)
-                { return Diag::listPart(*summaries, held, keep, clock, index, out); });
+                [summaries, view](size_t index, std::string &out) { return Diag::listPart(*summaries, view, index, out); });
             return;
         }
         auto move = std::make_shared<Diag::Move>();

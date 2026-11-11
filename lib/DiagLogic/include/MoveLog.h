@@ -71,6 +71,7 @@ namespace SQM
             void mergePoints();
             void updateRest(const Sample &sample);
             void updatePhase(const Sample &sample);
+            Phase drivenPhase(const Sample &sample);
             float stallAverage() const;
             Move &current() { return moves[newest]; }
             const Move &current() const { return moves[newest]; }

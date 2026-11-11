@@ -10,6 +10,8 @@ There is **no public demo site**. The demo is built by CI and shipped inside the
 
 The demo has a **simulated roof**: the firmware's own motion logic, command checks, close-on-unsafe sequence and roof alerts, driving a simulated motor, magnets and Hall sensor. See [The roof](#the-roof).
 
+With **Settings → Device → Diagnostics → Advanced diagnostics** on, the simulated roof feeds the [diagnostics](user-guide/diagnostics.md) page and move log. Device-only values such as heap and step time show as not available.
+
 ![Dashboard](assets/screenshots/dashboard.png)
 
 ---

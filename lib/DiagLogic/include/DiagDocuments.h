@@ -86,8 +86,16 @@ namespace SQM
         void writeSummary(JsonObject out, const Summary &summary, const Clock &clock, bool held);
         std::string summaryJson(const Summary &summary, const Clock &clock, bool held);
 
+        // What the list document shows besides the summaries.
+        struct ListView
+        {
+            HeldIds held;       // the moves still held with their profiles
+            bool keep = false;  // diag.keepSummaries
+            Clock clock;
+        };
+
         // Part `index` (from 0) of a document into `out`; false past the last part.
-        bool listPart(const SummaryList &list, const HeldIds &held, bool keep, const Clock &clock, size_t index, std::string &out);
+        bool listPart(const SummaryList &list, const ListView &view, size_t index, std::string &out);
         bool movePart(const Move &move, const Clock &clock, size_t index, std::string &out);
         bool csvPart(const Move &move, size_t index, std::string &out);
     } // namespace Diag

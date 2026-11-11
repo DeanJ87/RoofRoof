@@ -142,7 +142,7 @@ namespace SQM
             return text;
         }
 
-        bool listPart(const SummaryList &list, const HeldIds &held, bool keep, const Clock &clock, size_t index, std::string &out)
+        bool listPart(const SummaryList &list, const ListView &view, size_t index, std::string &out)
         {
             out.clear();
             if (index == 0)
@@ -152,7 +152,7 @@ namespace SQM
                     head,
                     sizeof(head),
                     "{\"enabled\":true,\"keep\":%s,\"maxMoves\":%u,\"maxSummaries\":%u,\"moves\":[",
-                    keep ? "true" : "false",
+                    view.keep ? "true" : "false",
                     static_cast<unsigned>(MAX_MOVES),
                     static_cast<unsigned>(MAX_SUMMARIES));
                 out = head;
@@ -161,7 +161,7 @@ namespace SQM
             if (index <= list.size())
             {
                 const Summary &s = list.at(static_cast<uint8_t>(index - 1));
-                out = (index > 1 ? "," : "") + summaryJson(s, clock, held.holds(s.id));
+                out = (index > 1 ? "," : "") + summaryJson(s, view.clock, view.held.holds(s.id));
                 return true;
             }
             if (index == list.size() + 1u)

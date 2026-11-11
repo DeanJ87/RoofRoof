@@ -288,31 +288,35 @@ namespace SQM
             }
         }
 
+        // While driven from a known position: the profile's rise, top and fall.
+        Phase MoveLog::drivenPhase(const Sample &sample)
+        {
+            const uint8_t duty = sample.output.duty;
+            if (duty >= sample.topDuty)
+            {
+                reachedTop = true;
+                return Phase::Cruise;
+            }
+            if (reachedTop || (lastDrivenDuty > 0 && duty < lastDrivenDuty))
+                slowingSeen = true;
+            if (!slowingSeen)
+                return Phase::SoftStart;
+            return duty <= sample.slowDuty ? Phase::Creep : Phase::Slowing;
+        }
+
         void MoveLog::updatePhase(const Sample &sample)
         {
             const Roof::Status &st = sample.status;
-            const uint8_t duty = sample.output.duty;
             Phase phase = Phase::Idle;
-            if (moving(st.state) && !st.driving)
-                phase = Phase::DeadTime;
-            else if (moving(st.state) && st.fromUnknown)
-                phase = Phase::Slow;
-            else if (moving(st.state) && duty >= sample.topDuty)
+            if (moving(st.state))
             {
-                reachedTop = true;
-                phase = Phase::Cruise;
-            }
-            else if (moving(st.state))
-            {
-                if (reachedTop || (lastDrivenDuty > 0 && duty < lastDrivenDuty))
-                    slowingSeen = true;
-                if (!slowingSeen)
-                    phase = Phase::SoftStart;
+                if (!st.driving)
+                    phase = Phase::DeadTime;
                 else
-                    phase = duty <= sample.slowDuty ? Phase::Creep : Phase::Slowing;
+                    phase = st.fromUnknown ? Phase::Slow : drivenPhase(sample);
             }
             if (st.driving)
-                lastDrivenDuty = duty;
+                lastDrivenDuty = sample.output.duty;
             liveState.phase = phase;
             const bool sagKnown = st.driving && Roof::supplyReadable(sample.supplyVolts);
             liveState.sagVolts = sagKnown ? liveState.restVolts - sample.supplyVolts : NAN;

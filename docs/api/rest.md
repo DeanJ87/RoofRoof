@@ -400,6 +400,126 @@ The status document's `roof.calibrating` is `true` for the whole run, pauses inc
 
 ---
 
+## Diagnostics
+
+The [advanced diagnostics](../user-guide/diagnostics.md) routes. They are open (readings only, no password), like `/api/status`, except clearing the log. With `diag.enabled` off, each read answers `200 {"enabled": false}` (a move by id answers `404`) and records nothing. A value the device can't read is `null`.
+
+### `GET /api/diag`
+
+The live document: the roof, the control task, the main loop, memory and WiFi at this moment. The same document is streamed on [`/ws/diag`](websocket.md#diagnostics-stream) and published on `<base>/diag` ([MQTT](../user-guide/mqtt.md#diagnostics)).
+
+```json
+{
+  "enabled": true,
+  "log": "ready",
+  "simulation": "off",
+  "roof": {
+    "state": "opening", "target": "open", "phase": "cruise",
+    "driving": true, "direction": "forward", "duty": 255, "dutyPercent": 100,
+    "en": true, "rpwm": 255, "lpwm": 0,
+    "supplyVolts": 12.31, "restVolts": 12.62, "sagVolts": 0.31,
+    "currentSense": true, "motorAmps": 3.42, "powerWatts": 42.1,
+    "hallCounts": 2050, "hall": "between",
+    "positionKnown": true, "positionMm": 812.5,
+    "elapsedMs": 21400, "remainingMs": 27300, "timeoutMs": 63700,
+    "driveBudgetUsedMs": 20900, "driveBudgetMs": 177000
+  },
+  "control": {
+    "periodMs": 20, "stepUs": 412, "maxStepUs": 980, "maxGapMs": 21,
+    "watchdogLimitMs": 100, "watchdogMarginMs": 79, "maxBeatAgeMs": 11, "watchdogTrips": 0
+  },
+  "loop": { "passMs": 3, "maxPassMs": 41 },
+  "memory": {
+    "freeHeap": 101234, "minFreeHeap": 84512, "largestBlock": 65524,
+    "stackFree": { "control": 3120, "loop": 6044, "network": 4380 }
+  },
+  "wifi": { "rssi": -61 },
+  "uptimeS": 12345,
+  "resetReason": "power-on",
+  "move": { "id": 12, "active": true }
+}
+```
+
+| Field | |
+|---|---|
+| `log` | `ready`, or `unavailable` when the log's memory couldn't be allocated (then `move` is `null`) |
+| `simulation` | `off`, `bench` or `demo`, as in the status |
+| `roof.phase` | `idle`, `deadTime`, `slow`, `softStart`, `cruise`, `slowing` or `creep` |
+| `roof.direction` | `off`, `forward` or `reverse`: the driver's command. Which one is open is the `openDirection` setting |
+| `roof.restVolts`, `roof.sagVolts` | The supply averaged over a full second with the motor off before the move; and that minus the supply now while driven, else `null` |
+| `roof.powerWatts` | Supply times current; `null` without either |
+| `roof.remainingMs` | `null` unless the roof moves with its position known |
+| `roof.driveBudgetUsedMs` | Toward the move's target while moving; at rest the larger of the two ends |
+| `control.watchdogMarginMs` | The watchdog limit minus the longest gap between steps since start |
+| `move` | The move in progress or the last one; `null` before the first |
+
+In the [demo](../live-demo.md) `control.stepUs`, `control.maxStepUs`, `loop`, `memory`, `wifi.rssi` and `resetReason` are `null`.
+
+### `GET /api/diag/moves`
+
+The move summaries, newest first: up to `maxSummaries` (32).
+
+```json
+{
+  "enabled": true,
+  "keep": false,
+  "maxMoves": 5,
+  "maxSummaries": 32,
+  "moves": [
+    {
+      "id": 12, "active": false, "kept": false, "profile": true,
+      "startMs": 1203400, "endMs": 1253900, "startEpoch": 1762898400, "endEpoch": 1762898450,
+      "origin": "person", "target": "open", "endState": "open", "result": "arrived",
+      "fault": null,
+      "durationMs": 50500, "drivenMs": 49900, "fromUnknown": false,
+      "peakAmps": 6.10, "averageAmps": 3.30, "stallAmps": null,
+      "restVolts": 12.62, "minVolts": 12.01, "sagVolts": 0.61,
+      "hallStart": 1020, "hallEnd": 3120
+    }
+  ]
+}
+```
+
+| Field | |
+|---|---|
+| `keep` | `diag.keepSummaries` |
+| `origin` | `person`, `automatic`, `client` (an Alpaca client) or `mqtt` |
+| `result` | `arrived`, `stopped` or `fault`. For `fault`, `fault` is `{"kind", "measured", "limit"}` as in the status, else `null` |
+| `stallAmps` | Only for a fault while driving; else `null` |
+| `kept` | Loaded from the kept file: `startMs` and `endMs` are `null` and `profile` is `false` |
+| `profile` | The move is still held with its profile, so `GET /api/diag/moves/{id}` answers |
+| `startEpoch`, `endEpoch` | Unix seconds; `0` when the clock wasn't set |
+
+### `GET /api/diag/moves/{id}`
+
+One move's summary and profile. `404 {"error": "..."}` when the move isn't held (only the last 5 are, and none after a restart).
+
+```json
+{
+  "enabled": true,
+  "move": { "id": 12, "result": "arrived" },
+  "intervalMs": 500,
+  "columns": ["tMs", "ampsAvg", "ampsMax", "voltsMin", "dutyPercent"],
+  "points": [[0, 1.20, 4.80, 12.55, 40], [500, 2.95, 3.10, 12.20, 62]]
+}
+```
+
+`move` is the whole summary, shortened here. Point *i* covers `i × intervalMs` up to the next point from the move's start; the interval starts at 250 ms and doubles each time the 120 points are full, so a move always fits.
+
+`GET /api/diag/moves/12?format=csv` answers `text/csv` as a download named `roofroof-move-12.csv`, with the header `t_ms,amps_avg,amps_max,volts_min,duty_percent` and one row per point. A value that can't be read is an empty field.
+
+### `POST /api/diag/moves/clear`
+
+Empty the move log and the summary list. Needs the password when protection is on and the header `X-RoofRoof: 1` (without it: `403`).
+
+```bash
+curl -X POST -H "X-RoofRoof: 1" http://roofroof.local/api/diag/moves/clear
+```
+
+Answers `200 {"success": true}`. `409 {"error": "..."}` while the roof moves or a close is waiting. The kept file is emptied afterwards (removed while "Keep move summaries" is off), by the main loop, at its next chance to write flash.
+
+---
+
 ### `POST /api/update`
 
 OTA firmware update. Send a raw `.bin` file as `multipart/form-data`.

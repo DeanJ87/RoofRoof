@@ -119,11 +119,25 @@ namespace
             s.status.target = Roof::End::Open;
             s.slowDuty = 102;
             s.topDuty = 255;
-            run(Roof::State::Closed, false, 0, NAN, 12.6f, 1); // primes
+            run({Roof::State::Closed, false, 0, NAN, 12.6f}, 1); // primes
         }
 
-        void run(Roof::State state, bool driving, uint8_t duty, float amps, float volts, int steps)
+        struct Step
         {
+            Roof::State state;
+            bool driving;
+            uint8_t duty;
+            float amps;
+            float volts;
+        };
+
+        void run(const Step &step, int steps)
+        {
+            const Roof::State state = step.state;
+            const bool driving = step.driving;
+            const uint8_t duty = step.duty;
+            const float amps = step.amps;
+            const float volts = step.volts;
             for (int i = 0; i < steps; ++i)
             {
                 s.nowMs = now;
@@ -141,8 +155,8 @@ namespace
         // A whole move: `ms` driving at `duty`, then arrived open.
         void move(uint32_t ms, float amps = 3.0f, float volts = 12.0f)
         {
-            run(Roof::State::Opening, true, 200, amps, volts, static_cast<int>(ms / 20));
-            run(Roof::State::Open, false, 0, NAN, 12.6f, 1);
+            run({Roof::State::Opening, true, 200, amps, volts}, static_cast<int>(ms / 20));
+            run({Roof::State::Open, false, 0, NAN, 12.6f}, 1);
         }
     };
 
@@ -215,17 +229,17 @@ void test_the_phases_follow_the_profile()
 void test_the_dead_time_reads_dead_time()
 {
     Feed feed;
-    feed.run(Roof::State::Opening, false, 0, NAN, 12.6f, 3);
+    feed.run({Roof::State::Opening, false, 0, NAN, 12.6f}, 3);
     TEST_ASSERT_EQUAL(Phase::DeadTime, feed.log.live().phase);
-    feed.run(Roof::State::Opening, true, 102, 1.0f, 12.0f, 1);
+    feed.run({Roof::State::Opening, true, 102, 1.0f, 12.0f}, 1);
     TEST_ASSERT_EQUAL(Phase::SoftStart, feed.log.live().phase);
-    feed.run(Roof::State::Opening, true, 255, 1.0f, 12.0f, 1);
+    feed.run({Roof::State::Opening, true, 255, 1.0f, 12.0f}, 1);
     TEST_ASSERT_EQUAL(Phase::Cruise, feed.log.live().phase);
-    feed.run(Roof::State::Opening, true, 180, 1.0f, 12.0f, 1);
+    feed.run({Roof::State::Opening, true, 180, 1.0f, 12.0f}, 1);
     TEST_ASSERT_EQUAL(Phase::Slowing, feed.log.live().phase);
-    feed.run(Roof::State::Opening, true, 102, 1.0f, 12.0f, 1);
+    feed.run({Roof::State::Opening, true, 102, 1.0f, 12.0f}, 1);
     TEST_ASSERT_EQUAL(Phase::Creep, feed.log.live().phase);
-    feed.run(Roof::State::Open, false, 0, NAN, 12.6f, 1);
+    feed.run({Roof::State::Open, false, 0, NAN, 12.6f}, 1);
     TEST_ASSERT_EQUAL(Phase::Idle, feed.log.live().phase);
 }
 
@@ -319,9 +333,9 @@ void test_a_move_under_way_when_attached_is_not_recorded()
 void test_a_reversal_gives_two_moves()
 {
     Feed feed;
-    feed.run(Roof::State::Opening, true, 200, 3.0f, 12.0f, 50);
-    feed.run(Roof::State::Closing, true, 200, 3.0f, 12.0f, 50);
-    feed.run(Roof::State::Closed, false, 0, NAN, 12.6f, 1);
+    feed.run({Roof::State::Opening, true, 200, 3.0f, 12.0f}, 50);
+    feed.run({Roof::State::Closing, true, 200, 3.0f, 12.0f}, 50);
+    feed.run({Roof::State::Closed, false, 0, NAN, 12.6f}, 1);
     TEST_ASSERT_EQUAL_UINT32(2, feed.log.finished());
     TEST_ASSERT_EQUAL(Result::Stopped, copyOf(feed.log, 1).summary.result);
 }
@@ -354,7 +368,7 @@ void test_ids_continue_from_set_next_id()
 void test_a_move_in_progress_is_readable()
 {
     Feed feed;
-    feed.run(Roof::State::Opening, true, 200, 3.0f, 12.0f, 60);
+    feed.run({Roof::State::Opening, true, 200, 3.0f, 12.0f}, 60);
     Summary s;
     TEST_ASSERT_TRUE(feed.log.latest(s));
     TEST_ASSERT_TRUE(s.active);
@@ -378,11 +392,11 @@ void test_merged_points_follow_the_rules()
 {
     Feed feed;
     // Interval 0: 1 A, 12 V; interval 1: 3 A, 11 V; then constant to fill 120 points.
-    feed.run(Roof::State::Opening, true, 100, 1.0f, 12.0f, 13); // 0-240 ms (and the start step)
-    feed.run(Roof::State::Opening, true, 200, 3.0f, 11.0f, 12);
-    feed.run(Roof::State::Opening, true, 200, NAN, 12.0f, 12);  // interval 2: no current
-    feed.run(Roof::State::Opening, true, 200, 2.0f, 12.0f, 12); // interval 3
-    feed.run(Roof::State::Opening, true, 200, 2.0f, 12.0f, 1500);
+    feed.run({Roof::State::Opening, true, 100, 1.0f, 12.0f}, 13); // 0-240 ms (and the start step)
+    feed.run({Roof::State::Opening, true, 200, 3.0f, 11.0f}, 12);
+    feed.run({Roof::State::Opening, true, 200, NAN, 12.0f}, 12);  // interval 2: no current
+    feed.run({Roof::State::Opening, true, 200, 2.0f, 12.0f}, 12); // interval 3
+    feed.run({Roof::State::Opening, true, 200, 2.0f, 12.0f}, 1500);
     const Move move = copyOf(feed.log, 1);
     TEST_ASSERT_EQUAL_UINT32(500, move.intervalMs);
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.0f, pointAmpsAvg(move.points[0]));
@@ -395,9 +409,9 @@ void test_merged_points_follow_the_rules()
 void test_a_late_step_leaves_an_empty_point()
 {
     Feed feed;
-    feed.run(Roof::State::Opening, true, 200, 3.0f, 12.0f, 5);
+    feed.run({Roof::State::Opening, true, 200, 3.0f, 12.0f}, 5);
     feed.now += 600;
-    feed.run(Roof::State::Opening, true, 200, 3.0f, 12.0f, 20);
+    feed.run({Roof::State::Opening, true, 200, 3.0f, 12.0f}, 20);
     const Move move = copyOf(feed.log, 1);
     TEST_ASSERT_TRUE(move.count >= 3);
     TEST_ASSERT_EQUAL_UINT16(NONE, move.points[1].ampsAvg);
@@ -467,7 +481,7 @@ void test_step_work_is_bounded_and_allocates_nothing()
         worstUs = std::max(worstUs, std::chrono::duration<double, std::micro>(end - start).count());
         feed.now += 20;
     }
-    feed.run(Roof::State::Open, false, 0, NAN, 12.6f, 1);
+    feed.run({Roof::State::Open, false, 0, NAN, 12.6f}, 1);
     TEST_ASSERT_EQUAL_size_t(before, allocations.load());
     TEST_ASSERT_TRUE_MESSAGE(worstUs < 50.0, "a step took over 50 us on the host");
 }

@@ -157,7 +157,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "remindMinutes": 30,
     "remoteStop": false
   },
-  "ui": { "confirmOpenClose": false }
+  "ui": { "confirmOpenClose": false },
+  "diag": { "enabled": false, "keepSummaries": false, "mqtt": false }
 }
 ```
 
@@ -329,6 +330,16 @@ How the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-c
 The last five `autoClose` fields are under **Settings → Roof → Automatic close → Advanced**. A value out of range is refused with the range.
 
 Some choices stay fixed whatever the settings, because the safety rules need them: opening is refused while the setup hotspot is on (it has no password, and Alpaca has no login); a close is refused in the moment before a restart (the reset would cut it off part-way and leave the position unknown); the roof never moves by itself from an unknown position or with a fault latched; and a person's Stop always works.
+
+### Diagnostics
+
+[Advanced diagnostics](diagnostics.md) (spec 017), edited in **Settings → Device → Diagnostics**. All three are off by default, move nothing and need no restart. A configuration saved by an earlier release loads with them off.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `diag.enabled` | bool | `false` | **Advanced diagnostics**: the Diagnostics page, `/ws/diag`, `/api/diag` and the move log. Off, the device records nothing and its diagnostics routes answer `{"enabled": false}` |
+| `diag.keepSummaries` | bool | `false` | **Keep move summaries**: keeps the last 32 move summaries across restarts. Needs `diag.enabled` |
+| `diag.mqtt` | bool | `false` | **Diagnostics over MQTT**: publishes `<base>/diag` and `<base>/diag/move`. Needs `diag.enabled` and MQTT on |
 
 ### Alerts
 

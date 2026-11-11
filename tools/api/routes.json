@@ -16,6 +16,23 @@
     { "path": "/api/roof/calibration/confirm", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration", "method": "GET", "auth": "open", "why": "Read-only: the calibration run's readings and proposal; no address or secret; changes nothing" },
     { "path": "/api/roof/inputs", "method": "GET", "auth": "open", "why": "Read-only: the weather sources, the park and N.I.N.A. as the device last polled them; no address or secret; sends nothing" },
+    {
+      "path": "/api/diag",
+      "method": "GET",
+      "auth": "open",
+      "why": "Read-only: the live diagnostics readings (spec 017), like /api/status; no address or secret; {\"enabled\": false} while diagnostics are off"
+    },
+    {
+      "path": "/api/diag/moves",
+      "method": "GET",
+      "auth": "open",
+      "why": "Read-only: the move log's summaries and one move's profile (/api/diag/moves/{id}, JSON or CSV); readings only, changes nothing"
+    },
+    {
+      "path": "/api/diag/moves/clear",
+      "method": "POST",
+      "auth": "required"
+    },
     { "path": "/api/backup/preview", "method": "POST", "auth": "required" },
     { "path": "/api/backup/apply", "method": "POST", "auth": "required" },
     { "path": "/api/backup", "method": "POST", "auth": "required" },

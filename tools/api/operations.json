@@ -28,6 +28,10 @@
     {
       "name": "Device",
       "description": "Restart."
+    },
+    {
+      "name": "Diagnostics",
+      "description": "Advanced diagnostics (off by default): live readings and the move log."
     }
   ],
   "operations": {
@@ -1092,6 +1096,40 @@
       "description": "Empties the recent-alerts list.",
       "responses": {
         "200": "action"
+      }
+    },
+    "GET /api/diag": {
+      "tag": "Diagnostics",
+      "summary": "Live diagnostics",
+      "description": "Everything the controller measures now: the supply and its sag, the motor current and power, the duty, direction and ramp phase, the driver's EN and PWM levels, the Hall reading, the position estimate with the elapsed and remaining time and the timeout, the drive budget, the control task's step time and gap, the watchdog margin, the main loop's pass time, memory, stacks, Wi-Fi signal, uptime and reset reason. The same document streams on /ws/diag. With advanced diagnostics off it is {\"enabled\": false}.",
+      "responses": {
+        "200": "diag"
+      },
+      "example": "diag"
+    },
+    "GET /api/diag/moves": {
+      "tag": "Diagnostics",
+      "summary": "Move log",
+      "description": "The last 32 move summaries, newest first, each saying whether its profile is still held (the last 5 moves). The same handler serves /api/diag/moves/{id}: one move with its summary and downsampled profile (404 when it isn't held), or with ?format=csv the profile as a CSV download. With advanced diagnostics off the list is {\"enabled\": false}.",
+      "responses": {
+        "200": "diag-moves",
+        "404": "error"
+      },
+      "example": "diag-moves"
+    },
+    "POST /api/diag/moves/clear": {
+      "tag": "Diagnostics",
+      "summary": "Clear the move log",
+      "description": "Empties the move log and the summary list, and the kept summaries at the next flash write the device allows. Needs the X-RoofRoof: 1 header. Refused while the roof moves or a close waits, so the move in progress isn't lost.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "responses": {
+        "200": "action",
+        "403": "error",
+        "409": "error"
       }
     }
   }

@@ -220,7 +220,7 @@ void test_the_list_names_and_nulls()
     held.ids[0] = 2;
     held.count = 1;
     const Clock clock{70500, 1762900000};
-    const std::string text = whole([&](size_t i, std::string &out) { return listPart(list, held, true, clock, i, out); });
+    const std::string text = whole([&](size_t i, std::string &out) { return listPart(list, ListView{held, true, clock}, i, out); });
     DynamicJsonDocument doc(8192);
     TEST_ASSERT_FALSE_MESSAGE(deserializeJson(doc, text), text.c_str());
     TEST_ASSERT_TRUE(doc["keep"].as<bool>());
@@ -248,7 +248,7 @@ void test_the_list_names_and_nulls()
 void test_an_empty_list_is_valid_json()
 {
     SummaryList list;
-    const std::string text = whole([&](size_t i, std::string &out) { return listPart(list, HeldIds(), false, Clock{}, i, out); });
+    const std::string text = whole([&](size_t i, std::string &out) { return listPart(list, ListView{}, i, out); });
     DynamicJsonDocument doc(1024);
     TEST_ASSERT_FALSE(deserializeJson(doc, text));
     TEST_ASSERT_EQUAL_size_t(0, doc["moves"].size());

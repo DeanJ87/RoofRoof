@@ -63,11 +63,13 @@ std::string EmulatedDevice::diagMoves() const
 {
     if (!diagLog || !diagList)
         return "{\"enabled\":false}";
-    Diag::HeldIds held;
-    held.count = diagLog->ids(held.ids);
+    Diag::ListView view;
+    view.held.count = diagLog->ids(view.held.ids);
+    view.keep = cfg.diag.keepSummaries;
+    view.clock = diagClock();
     std::string all;
     std::string part;
-    for (size_t i = 0; Diag::listPart(*diagList, held, cfg.diag.keepSummaries, diagClock(), i, part); ++i)
+    for (size_t i = 0; Diag::listPart(*diagList, view, i, part); ++i)
         all += part;
     return all;
 }
