@@ -199,8 +199,8 @@ watchdog; a restart cuts the driver; a change of WiFi network drops the link to 
 rest of the device waits for the roof, and some actions also wait for the
 [automatic close](close-on-unsafe.md) while it is working: waiting for the park it asked for, or
 closing. Backing off after a failed attempt, or stood down (position unknown, a fault, a halted
-close), it holds nothing, so a broken network or device can still be put right remotely; stopped by
-a person, it only holds a firmware upload (a new firmware might not read that stand-down back).
+close, or stopped by a person), it holds nothing, so a broken network or device can still be put
+right remotely.
 While the home network is down or the setup hotspot is on, a working sequence can't reach N.I.N.A.
 anyway, so it holds only uploads, not a restart or a WiFi fix. Stop always stands the automatic
 close down, which lifts its hold:
@@ -211,7 +211,7 @@ close down, which lifts its hold:
 | Web UI upload | refused | refused | refused |
 | Restart (from the Restart button, after a restore, a firmware upload or joining a network from the hotspot) | refused / waits | refused / waits | refused / waits |
 | Restart after a web UI upload (remounts the web UI) | waits | waits | runs |
-| Firmware upload (web or command line) | refused | refused | refused (also while stopped by a person) |
+| Firmware upload (web or command line) | refused | refused | refused |
 | Change of WiFi network | refused | refused | refused |
 | WiFi scan | refused | refused | refused |
 

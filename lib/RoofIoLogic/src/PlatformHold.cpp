@@ -10,10 +10,8 @@ namespace SQM
         {
             // Whether the close sequence in this state holds the action. While
             // it works (park requested, or closing) nothing may cut it off or
-            // drop N.I.N.A.; a stand-down by a person only holds a new firmware
-            // (it might not read the stand-down back); a back-off or another
-            // stand-down holds nothing, so the network or the device can be
-            // put right remotely.
+            // drop N.I.N.A.; backing off or stood down it holds nothing, so the
+            // network or the device can be put right remotely.
             bool waitsForSequence(PlatformAction action, SequenceState sequence, bool networkUp)
             {
                 switch (sequence)
@@ -22,8 +20,6 @@ namespace SQM
                     if (!networkUp)
                         return action == PlatformAction::FirmwareUpload || action == PlatformAction::FilesystemUpload;
                     return action != PlatformAction::FlashWrite && action != PlatformAction::MandatoryRestart;
-                case SequenceState::HeldByPerson:
-                    return action == PlatformAction::FirmwareUpload;
                 default:
                     return false;
                 }
@@ -105,9 +101,5 @@ namespace SQM
             return changing && ageMs <= NETWORK_HOLD_MAX_MS;
         }
 
-        bool hotspotRefuses(Roof::Command command, bool hotspotOn)
-        {
-            return hotspotOn && command == Roof::Command::Open;
-        }
     } // namespace RoofIo
 } // namespace SQM
