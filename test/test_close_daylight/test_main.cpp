@@ -257,6 +257,43 @@ void test_weather_failure_alerts_after_a_daylight_failure()
     TEST_ASSERT_TRUE(alerted);
 }
 
+// Review round 2: a daylight "can't close by itself", then rain: the weather's
+// own alert goes out at once, not with the next 30-minute reminder.
+void test_weather_alerts_at_once_after_a_daylight_cannot_move()
+{
+    Rig r;
+    r.in.roof = State::Error;
+    assertEvent(startDaylight(r), Event::CannotClose, Cause::FaultLatched);
+    r.runTo(T0 + 20000, 1000);
+    r.in.weatherSafe = false;
+    const Decision d = r.at(T0 + 21000);
+    assertEvent(d, Event::CannotClose, Cause::FaultLatched);
+    TEST_ASSERT_TRUE(d.alert);
+    TEST_ASSERT_FALSE(d.daylight);
+    TEST_ASSERT_EQUAL_STRING("The weather is unsafe and a fault is latched. Fault: jam", alertFor(d, "jam").message.c_str());
+}
+
+// Review round 2: a daylight attempt that failed, paused when daylight ended,
+// resumed by rain: the weather's failure alerts.
+void test_weather_alerts_after_a_paused_daylight_failure()
+{
+    Rig r;
+    r.seq.setParkTimeoutMs(60000);
+    startDaylight(r);
+    const Decision failed = r.at(T0 + 60000);
+    assertEvent(failed, Event::ParkNotConfirmed, Cause::ParkTimeout);
+    TEST_ASSERT_TRUE(failed.alert);
+    r.in.daylight = false; // the mode set to alert
+    assertEvent(r.at(T0 + 61000), Event::EndedSafe, Cause::None);
+    r.in.weatherSafe = false; // rain a minute later
+    Counts c = r.runTo(T0 + 61000 + RETRY_AFTER_MS + 120000, 1000);
+    bool alerted = false;
+    for (const Decision &d : c.events)
+        if (d.event == Event::ParkNotConfirmed && d.alert && !d.reminder && !d.daylight)
+            alerted = true;
+    TEST_ASSERT_TRUE(alerted);
+}
+
 // Review: a daylight episode that became a weather one closes as a weather one.
 void test_flipped_episode_closes_as_weather()
 {
@@ -463,6 +500,8 @@ int main(int, char **)
     RUN_TEST(test_short_unsafe_spell_keeps_the_stand_down);
     RUN_TEST(test_weather_failure_alerts_after_a_daylight_failure);
     RUN_TEST(test_flipped_episode_closes_as_weather);
+    RUN_TEST(test_weather_alerts_at_once_after_a_daylight_cannot_move);
+    RUN_TEST(test_weather_alerts_after_a_paused_daylight_failure);
     RUN_TEST(test_persons_stop_on_the_same_step_wins);
     RUN_TEST(test_weather_during_a_daylight_attempt_carries_on);
     RUN_TEST(test_weather_stand_down_stays_while_the_sun_is_up);

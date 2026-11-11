@@ -129,7 +129,7 @@ namespace SQM
             roof.sourceLost = !roof.source.empty();
             roof.sourceKnown = sourcesKnown(weather) || roof.sourceLost;
             roof.closing = attempting(sequence.phase) && !sequence.daylight;
-            if (sequence.phase != Phase::Idle && !sequence.daylight && !weather.safe())
+            if (sequence.phase != Phase::Idle && !sequence.daylight)
                 roof.weather = Safety::describe(weather);
             roof.closedCount = sequence.closedCount;
         }
