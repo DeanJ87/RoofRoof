@@ -21,7 +21,7 @@ namespace SQM
     {
         // 200 with the new state, or 409 with the refusal's reason and text
         // (constitution III: the measured value and the limit, or the failed input).
-// And the roof over MQTT (spec 008, contracts/mqtt.md).
+        // And the roof over MQTT (spec 008, contracts/mqtt.md).
         void sendOutcome(AsyncWebServerRequest *request, const RoofControl::Outcome &outcome)
         {
             StaticJsonDocument<512> doc;

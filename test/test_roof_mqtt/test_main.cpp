@@ -200,7 +200,18 @@ void test_the_three_commands(void)
 void test_only_three_commands(void)
 {
     for (const char *payload :
-         {"ABORT", "CLEAR", "CLEAR-FAULT", "clearFault", "50", "SET_POSITION", "", "   ", "OPEN_NOW", "OPENCLOSE", "{\"command\":\"open\"}", "ON"})
+         {"ABORT",
+          "CLEAR",
+          "CLEAR-FAULT",
+          "clearFault",
+          "50",
+          "SET_POSITION",
+          "",
+          "   ",
+          "OPEN_NOW",
+          "OPENCLOSE",
+          "{\"command\":\"open\"}",
+          "ON"})
     {
         const Mqtt::Request r = Mqtt::parseCommand(payload, Delivery::Live, true);
         TEST_ASSERT_FALSE_MESSAGE(r.run, payload);

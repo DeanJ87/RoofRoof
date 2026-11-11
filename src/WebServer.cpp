@@ -321,8 +321,8 @@ namespace SQM
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
         const uint32_t roofRevision = roof != nullptr ? roof->revision() : 0;
         const char *phase = closePhase ? closePhase() : nullptr;
-        const bool roofChanged = (roofRevision != lastRoofRevision || phase != lastClosePhase) &&
-                                 now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
+        const bool roofChanged =
+            (roofRevision != lastRoofRevision || phase != lastClosePhase) && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
         const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
         if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
         {

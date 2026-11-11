@@ -49,8 +49,8 @@ namespace SQM
                         false,
                         "unsafeClose",
                         "The roof is closing and the weather isn't safe (" +
-                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) + "): " +
-                            remoteName(origin) + " can't stop it (Stop in the web UI can)"};
+                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) + "): " + remoteName(origin) +
+                            " can't stop it (Stop in the web UI can)"};
                 return CommandCheck{};
             }
             if (command != Roof::Command::Open && command != Roof::Command::Close)

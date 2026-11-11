@@ -354,7 +354,8 @@ void test_client_cannot_reverse_a_close(void)
     const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, remote, gates, b.roof, ctx());
     TEST_ASSERT_FALSE(check.accepted);
     TEST_ASSERT_EQUAL_STRING("closing", check.reason.c_str());
-    const std::string expected = std::string("The roof is closing or was stopped while closing: ") + remoteName() + " can't reverse a close";
+    const std::string expected =
+        std::string("The roof is closing or was stopped while closing: ") + remoteName() + " can't reverse a close";
     TEST_ASSERT_EQUAL_STRING(expected.c_str(), check.text.c_str());
     TEST_ASSERT_TRUE(b.state() == State::Closing);
     // ...nor replace a waiting close.

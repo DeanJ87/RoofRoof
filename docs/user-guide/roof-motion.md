@@ -50,7 +50,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 7503d78fc2861ac1
+fingerprint: db8fd4dfa687b2f1
 -->
 <figure class="diagram" markdown>
 
