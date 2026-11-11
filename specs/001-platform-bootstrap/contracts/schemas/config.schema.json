@@ -367,6 +367,9 @@
     "roof": {
       "type": "object",
       "properties": {
+        "currentAmpsPerVolt": {
+          "type": "number"
+        },
         "currentSenseEnabled": {
           "type": "boolean"
         },
@@ -414,6 +417,7 @@
         }
       },
       "required": [
+        "currentAmpsPerVolt",
         "currentSenseEnabled",
         "hallHighCounts",
         "hallHighEnd",

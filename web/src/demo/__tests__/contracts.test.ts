@@ -39,9 +39,14 @@ const alpaca = (path: string) => JSON.parse(demoDevice.alpaca('GET', path, []).b
 function writeSamples(dir: string) {
   mkdirSync(dir, { recursive: true });
   const put = (name: string, document: unknown) => writeFileSync(join(dir, `${name}.json`), JSON.stringify(document, null, 2) + '\n');
-  const status = (alerts?: object, clients?: Record<string, object>) => {
-    const s = statusDocument() as unknown as { alerts: object; alpaca: { clients: object } };
-    return { ...s, alerts: { ...s.alerts, ...alerts }, alpaca: { ...s.alpaca, clients: clients ?? s.alpaca.clients } };
+  const status = (alerts?: object, clients?: Record<string, object>, roof?: object) => {
+    const s = statusDocument() as unknown as { alerts: object; alpaca: { clients: object }; roof: object };
+    return {
+      ...s,
+      alerts: { ...s.alerts, ...alerts },
+      alpaca: { ...s.alpaca, clients: clients ?? s.alpaca.clients },
+      roof: { ...s.roof, ...roof },
+    };
   };
   const base = status();
   put('device-status', base);
@@ -50,11 +55,43 @@ function writeSamples(dir: string) {
     status(
       { since: '2026-11-10T12:00:00Z', sinceAgeMs: 1000 },
       { dome: { connected: true, watching: true, silent: false, lastCheckedAgeMs: 1500, clientId: 1234 } },
+      // The roof opening part-way with current sense on (src/RoofControl, lib/RoofIoLogic writeStatus).
+      {
+        state: 'opening',
+        positionMm: 463,
+        positionPercent: 25,
+        target: 'open',
+        driving: true,
+        moveElapsedMs: 12000,
+        moveTimeoutMs: 66000,
+        hall: { level: 'between', counts: 2010 },
+        currentSense: true,
+        motorAmps: 4.26,
+        parkSwitches: { fitted: 2, switch1: 'open', switch2: 'unreadable' },
+        rainContact: 'dry',
+      },
     ),
   );
   put(
     'device3-status',
-    status(undefined, { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } }),
+    status(
+      undefined,
+      { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } },
+      // A latched fault: position unknown, the supply unreadable.
+      {
+        state: 'error',
+        positionKnown: false,
+        positionMm: null,
+        positionPercent: null,
+        hall: { level: 'unsettled', counts: 0 },
+        supplyVolts: null,
+        supplyLow: true,
+        parkSwitches: { fitted: 1, switch1: 'closed', switch2: 'notFitted' },
+        rainContact: 'raining',
+        fault: { kind: 'external', cause: 'watchdog', measured: 140, limit: 100, text: 'Control step 140 ms late > 100 ms (watchdog)' },
+        watchdogTrips: 1,
+      },
+    ),
   );
   put('demo-settings_effective', JSON.parse(demoDevice.effective()));
   put('demo-config', JSON.parse(demoDevice.getConfig()));

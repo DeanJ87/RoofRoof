@@ -60,7 +60,7 @@ namespace SQM
             return;
         if (roof == nullptr)
         {
-            request->send(503, "application/json", createErrorJson("Roof controller not running").c_str());
+            sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
         const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person);
@@ -74,7 +74,7 @@ namespace SQM
             return;
         if (roof == nullptr)
         {
-            request->send(503, "application/json", createErrorJson("Roof controller not running").c_str());
+            sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
         sendOutcome(request, roof->clearFault(Roof::Origin::Person));

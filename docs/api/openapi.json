@@ -32,6 +32,10 @@
       "description": "Device status."
     },
     {
+      "name": "Roof",
+      "description": "Move the roof and clear a fault."
+    },
+    {
       "name": "Settings",
       "description": "Read and change the device's settings."
     },
@@ -117,7 +121,8 @@
                   "heapSize": 327680,
                   "stackFree": {
                     "asyncTcp": 3360,
-                    "loop": 3612
+                    "loop": 3612,
+                    "roof": 3480
                   },
                   "heapStages": [
                     {
@@ -159,16 +164,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794350418,
-                    "iso": "2026-11-10T22:40:18+0000",
+                    "epoch": 1794362525,
+                    "iso": "2026-11-11T02:02:05+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794346816480,
-                    "nextSync": 1794354016480,
+                    "lastSync": 1794358923404,
+                    "nextSync": 1794366123404,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -200,7 +205,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794350356480,
+                    "lastPublish": 1794362463404,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -208,7 +213,37 @@
                     "availabilityTopic": "roofroof/availability",
                     "clientId": "RoofRoof-D4E5F6"
                   },
-                  "configRevision": 887913319
+                  "roof": {
+                    "state": "closed",
+                    "positionKnown": true,
+                    "positionMm": 0,
+                    "positionPercent": 0,
+                    "target": null,
+                    "driving": false,
+                    "fromUnknown": false,
+                    "moveElapsedMs": 0,
+                    "moveTimeoutMs": 0,
+                    "hall": {
+                      "level": "low",
+                      "counts": 712
+                    },
+                    "supplyVolts": 12.46,
+                    "supplyLow": false,
+                    "minSupplyVolts": 11,
+                    "currentSense": false,
+                    "motorAmps": null,
+                    "maxCurrentAmps": 10,
+                    "parkSwitches": {
+                      "fitted": 0,
+                      "switch1": "notFitted",
+                      "switch2": "notFitted"
+                    },
+                    "rainContact": "notFitted",
+                    "fault": null,
+                    "watchdogTrips": 0,
+                    "maxStepGapMs": 21
+                  },
+                  "configRevision": 3721057171
                 }
               }
             }
@@ -384,6 +419,332 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/roof/open": {
+      "post": {
+        "operationId": "post_roof_open",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Open the roof",
+        "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings). An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/roof/close": {
+      "post": {
+        "operationId": "post_roof_close",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Close the roof",
+        "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/roof/stop": {
+      "post": {
+        "operationId": "post_roof_stop",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Stop the roof",
+        "description": "Switches the motor off at once and keeps the position estimate. Always accepted.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/roof/clear-fault": {
+      "post": {
+        "operationId": "post_roof_clear_fault",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Clear the roof's fault",
+        "description": "Clears a latched motion fault, as a person, and removes it from storage. The position is known again only at a magnet. Accepted with no fault too.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -2101,6 +2462,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "currentAmpsPerVolt": {
+                "type": "number"
+              },
               "currentSenseEnabled": {
                 "type": "boolean"
               },
@@ -2148,6 +2512,7 @@
               }
             },
             "required": [
+              "currentAmpsPerVolt",
               "currentSenseEnabled",
               "hallHighCounts",
               "hallHighEnd",
@@ -2544,6 +2909,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "currentAmpsPerVolt": {
+                "type": "number"
+              },
               "currentSenseEnabled": {
                 "type": "boolean"
               },
@@ -3125,6 +3493,228 @@
           "resetReason": {
             "type": "number"
           },
+          "roof": {
+            "type": "object",
+            "properties": {
+              "currentSense": {
+                "type": "boolean"
+              },
+              "driving": {
+                "type": "boolean"
+              },
+              "fault": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "logic",
+                      "watchdog",
+                      "parkInterlock",
+                      "storedUnreadable"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "timeout",
+                      "didNotLeave",
+                      "wrongMagnet",
+                      "hallRail",
+                      "overCurrent",
+                      "currentUnreadable",
+                      "supplyLow",
+                      "lateStep",
+                      "driveBudget",
+                      "external"
+                    ]
+                  },
+                  "limit": {
+                    "type": "number"
+                  },
+                  "measured": {
+                    "type": "number"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause",
+                  "kind",
+                  "limit",
+                  "measured",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "fromUnknown": {
+                "type": "boolean"
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "counts": {
+                    "type": "number"
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "unsettled",
+                      "low",
+                      "between",
+                      "high",
+                      "rail"
+                    ]
+                  }
+                },
+                "required": [
+                  "counts",
+                  "level"
+                ],
+                "additionalProperties": false
+              },
+              "maxCurrentAmps": {
+                "type": "number"
+              },
+              "maxStepGapMs": {
+                "type": "number"
+              },
+              "minSupplyVolts": {
+                "type": "number"
+              },
+              "motorAmps": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "moveElapsedMs": {
+                "type": "number"
+              },
+              "moveTimeoutMs": {
+                "type": "number"
+              },
+              "parkSwitches": {
+                "type": "object",
+                "properties": {
+                  "fitted": {
+                    "type": "number"
+                  },
+                  "switch1": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "unreadable",
+                      "notFitted"
+                    ]
+                  },
+                  "switch2": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "unreadable",
+                      "notFitted"
+                    ]
+                  }
+                },
+                "required": [
+                  "fitted",
+                  "switch1",
+                  "switch2"
+                ],
+                "additionalProperties": false
+              },
+              "positionKnown": {
+                "type": "boolean"
+              },
+              "positionMm": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "positionPercent": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "rainContact": {
+                "type": "string",
+                "enum": [
+                  "notFitted",
+                  "dry",
+                  "raining",
+                  "unreadable"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ]
+              },
+              "supplyLow": {
+                "type": "boolean"
+              },
+              "supplyVolts": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "target": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "enum": [
+                  "open",
+                  "closed",
+                  null
+                ]
+              },
+              "watchdogTrips": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "currentSense",
+              "driving",
+              "fault",
+              "fromUnknown",
+              "hall",
+              "maxCurrentAmps",
+              "maxStepGapMs",
+              "minSupplyVolts",
+              "motorAmps",
+              "moveElapsedMs",
+              "moveTimeoutMs",
+              "parkSwitches",
+              "positionKnown",
+              "positionMm",
+              "positionPercent",
+              "rainContact",
+              "state",
+              "supplyLow",
+              "supplyVolts",
+              "target",
+              "watchdogTrips"
+            ],
+            "additionalProperties": false
+          },
           "sketchSize": {
             "type": "number"
           },
@@ -3136,11 +3726,15 @@
               },
               "loop": {
                 "type": "number"
+              },
+              "roof": {
+                "type": "number"
               }
             },
             "required": [
               "asyncTcp",
-              "loop"
+              "loop",
+              "roof"
             ],
             "additionalProperties": false
           },
@@ -3269,6 +3863,7 @@
           "minFreeHeap",
           "partitions",
           "resetReason",
+          "roof",
           "sketchSize",
           "stackFree",
           "time",
