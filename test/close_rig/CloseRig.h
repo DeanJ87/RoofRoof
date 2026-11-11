@@ -94,6 +94,19 @@ namespace CloseTest
         }
     };
 
+    // A stood-down sequence only repeats its critical event, as an alert, every REMIND_MS.
+    inline void assertOnlyReminders(const Counts &counts, Event event, size_t expected)
+    {
+        TEST_ASSERT_EQUAL(0, counts.requests + counts.closes + counts.stops);
+        TEST_ASSERT_EQUAL(expected, counts.events.size());
+        for (const Decision &d : counts.events)
+        {
+            TEST_ASSERT_EQUAL_STRING(eventName(event), eventName(d.event));
+            TEST_ASSERT_TRUE(d.alert);
+            TEST_ASSERT_TRUE(d.reminder);
+        }
+    }
+
     inline void assertEvent(const Decision &d, Event event, Cause cause)
     {
         TEST_ASSERT_EQUAL_STRING(eventName(event), eventName(d.event));

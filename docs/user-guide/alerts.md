@@ -72,7 +72,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
 | Alerts resumed | Alerts went from paused to sending (always Quiet, not a setting) | Quiet |
 
-| Roof (close on unsafe weather) | The mount didn't park, the roof didn't close, the roof can't close by itself, or a person stopped the automatic close. See [Close on unsafe weather](close-on-unsafe.md#alerts) | Wake (fixed; sent even while paused) |
+| Roof (close on unsafe weather) | The mount didn't park, the roof didn't close, the roof can't close by itself, or a person stopped the automatic close. See [Close on unsafe weather](close-on-unsafe.md#alerts) | Wake (fixed; sent even while paused or switched off, to the channels that are on) |
 
 *The roof's own events, with their settings, come in a later spec.*
 

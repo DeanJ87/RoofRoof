@@ -38,6 +38,7 @@ namespace SQM
 
     private:
         static constexpr const char *TAG = "Close";
+        static constexpr uint64_t STEP_EVERY_MS = 100;
 
         CloseSeq::Decision carryOut(const CloseSeq::Decision &decision, SafetyInputs &safety, RoofControl &roof, std::string &refusal);
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather);
@@ -46,5 +47,8 @@ namespace SQM
         std::atomic<uint32_t> parkTimeoutMs{CloseSeq::DEFAULT_PARK_TIMEOUT_MS};
         AlertSink alertSink;
         CloseSeq::Phase loggedPhase = CloseSeq::Phase::Idle;
+        bool stepped = false;
+        uint64_t lastStepMs = 0;
+        uint32_t personStopsSeen = 0; // in the snapshot the decision was taken from
     };
 } // namespace SQM

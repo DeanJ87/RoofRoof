@@ -72,9 +72,26 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: Where do the alerts go, and are they held back by the alert pause? → A: The four critical events
   (mount not parked, roof didn't close, roof can't close by itself, automatic close stopped by a
   person) go through the existing dispatcher at the "wake" level, to every channel that is on,
-  ignoring the alert pause and the start-up grace, but only when alerts are switched on. The other
-  events (sequence started, ended because safe, roof closed) are logged only; spec 007 decides
-  whether they alert.
+  ignoring the alert pause, the start-up grace and the alerts master switch (only the channels that
+  are switched on are used). Each event alerts at most once every 30 minutes, and while the roof
+  stays open after one, it is raised again every 30 minutes ("Still: ..."), so a lost or missed
+  alert isn't the last word and a flapping verdict can't cause an alert storm. The other events
+  (sequence started, ended because safe, roof closed) are logged only; spec 007 decides whether
+  they alert.
+
+### Session 2026-11-11 (safety review)
+
+- Q: What happens after the outer close guard stops a close? → A: The sequence halts where it is: no
+  park request and no close until the roof reads closed or the verdict has been safe for 10 minutes
+  without a break. A close that the motion logic failed to end is not retried automatically.
+- Q: After a refused or interrupted close, may the sequence close again at once if the park still
+  holds? → A: No: no close for 5 minutes after it, even across a brief safe spell, so a lasting
+  refusal (supply low, say) can't turn into a close command every step.
+- Q: A person's stop arrives between the sequence's decision to close and the close command. → A:
+  The roof refuses the automatic close if a person's stop has been counted since the snapshot the
+  decision came from, under the same lock as the command; the sequence then stands down.
+- Q: A person presses stop while the roof can't move (a fault latched), then clears the fault. → A:
+  The stop stands the sequence down: no automatic close after the clear.
 - Q: Does this spec add the sequence to `/api/status`, MQTT or the UI? → A: No. The log and the
   alerts report it; the status document, MQTT and the dashboard are specs 008 and 009, which add
   the sequence state together with the other roof fields.
@@ -179,7 +196,8 @@ commands a stop.
    **Then** a critical alert gives the refusal's text and the sequence tries again after 5 minutes.
 3. **Given** the close accepted, **When** the roof hasn't read closed within the move's own timeout
    plus 30 s (or hasn't started within 30 s of being accepted as waiting), **Then** the sequence
-   commands a stop and alerts.
+   commands a stop, alerts and halts: no further close until the roof reads closed or it has been
+   safe for 10 minutes.
 4. **Given** the close accepted, **When** the roof ends neither closed nor in error (a waiting close
    dropped), **Then** a critical alert says so and the sequence tries again after 5 minutes.
 
@@ -304,14 +322,19 @@ before the close without a command, or lets a commanded close finish.
   - the motion logic refuses the close (then it waits 5 minutes as FR-006);
   - the roof stops neither closed nor in error (then it waits 5 minutes);
   - the close hasn't reached the closed magnet within the move's own timeout plus 30 s, or a waiting
-    close hasn't started within 30 s: the sequence MUST then command a stop, and wait 5 minutes.
+    close hasn't started within 30 s: the sequence MUST then command a stop and halt, sending nothing
+    until the roof reads closed or the verdict has been safe for 10 minutes without a break.
+
+  After a refused or interrupted close, no close MUST be commanded for 5 minutes, even if the
+  sequence ends and starts again in between.
 
 **Standing down**
 
-- **FR-009**: A person's stop or abort, accepted while the sequence is running or waiting, MUST stand
-  the sequence down: no park request and no close until the roof reads closed or the verdict has
-  been "safe" without a break for 10 minutes. Standing down raises "automatic close stopped by a
-  person" once.
+- **FR-009**: A person's stop or abort, accepted while the sequence is running, waiting or unable to
+  move, MUST stand the sequence down: no park request and no close until the roof reads closed or
+  the verdict has been "safe" without a break for 10 minutes. Standing down raises "automatic close
+  stopped by a person". An automatic close MUST be refused if a person's stop was accepted after the
+  roof state the decision was based on.
 - **FR-010**: While the roof's position is unknown (for 2 s without a break) or a fault is latched,
   the sequence MUST send no park request and command nothing, and raise "roof can't close by itself"
   with the reason once. When the position is known again and no fault is latched, the sequence MUST
@@ -333,9 +356,11 @@ before the close without a command, or lets a commanded close finish.
 - **FR-013**: Every start, end, attempt and event of the sequence MUST be logged with its reason.
 - **FR-014**: The four critical events (mount not parked, roof didn't close, roof can't close by
   itself, automatic close stopped by a person) MUST go out through the alert dispatcher at the
-  "wake" level to every channel that is on, ignoring the alert pause and the start-up grace, when
-  alerts are switched on. The alert MUST NOT depend on N.I.N.A. or SQMeter being reachable. Spec 007
-  replaces the fixed wording with its own events, levels and settings through the same hook.
+  "wake" level to every channel that is switched on, ignoring the alert pause, the start-up grace and
+  the alerts master switch. Each event MUST alert at most once every 30 minutes, and while the roof
+  stays open after one (waiting to retry, stood down, halted) it MUST be raised again every 30
+  minutes. The alert MUST NOT depend on N.I.N.A. or SQMeter being reachable. Spec 007 replaces the
+  fixed wording with its own events, levels and settings through the same hook.
 - **FR-015**: Every alert and log line MUST state why: the park result's reasons with their values
   (e.g. `N.I.N.A. not responding`), the fault with its value and limit, the refusal's text, or the
   time limit that ran out.
@@ -414,10 +439,14 @@ Each was an open choice; the safest option the constitution allows was taken.
    clears a fault while it is unsafe should expect the roof to close once the mount is confirmed
    parked.
 9. **Outer close guard: the move's own timeout plus 30 s** (30 s for a waiting close to start); on it
-   the sequence commands a stop and alerts. The motion logic's own timeout should always fault first.
-10. **Critical alerts at the "wake" level, past the alert pause and the start-up grace**, only when
-    alerts are switched on; the other events are logged only. Spec 007 adds the events, levels and
-    settings.
+   the sequence commands a stop, alerts and halts until the roof is closed or it has been safe for
+   10 minutes. The motion logic's own timeout should always fault first. After a refused or
+   interrupted close, no close for 5 minutes.
+10. **Critical alerts at the "wake" level, past the alert pause, the start-up grace and the alerts
+    master switch**, to the channels that are switched on; each event at most every 30 minutes, and
+    repeated every 30 minutes while the roof stays open after it. The other events are logged only.
+    Spec 007 adds the events, levels and settings. With no channel configured (the default), the
+    serial log is the only report until specs 008 and 009 add the status and dashboard output.
 11. **No status, MQTT or UI output for the sequence in this spec** (specs 008 and 009).
 12. **The sequence runs on the main loop**: its timing is limited by the loop (a blocked loop delays
     it; spec 003's gates still refuse a close on a park result older than 5 s).

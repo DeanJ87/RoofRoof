@@ -54,6 +54,11 @@ namespace SQM
         // Any task. Open and close pass the weather and park gates first; stop
         // is never refused. The output is applied before this returns.
         Outcome command(Roof::Command command, Roof::Origin origin);
+        // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
+        // if a person has stopped the roof since the snapshot that showed
+        // `personStopsSeen`, checked under the same lock as the command, so
+        // the close can never start after a person's stop it hasn't seen.
+        Outcome automaticClose(uint32_t personStopsSeen);
         Outcome clearFault(Roof::Origin origin);
         // Any task: latch an External fault with this cause (the output goes off).
         void raiseFault(RoofIo::FaultCause cause, float measured, float limit);
