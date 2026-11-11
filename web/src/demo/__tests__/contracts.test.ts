@@ -33,7 +33,7 @@ const alpaca = (path: string) => JSON.parse(demoDevice.alpaca('GET', path, []).b
 
 // The samples the schema generator reads (<source>-<document>.json). Several
 // states of the one emulated device, so optional values (a set "since", alerts
-// in the list) show up. There is no Alpaca device yet, so the client-state
+// in the list) show up. The demo has no Alpaca device (no roof), so the client-state
 // sample is the firmware's writeClientWatch (lib/DeviceCore/src/DeviceAlerts.cpp)
 // applied by hand to a "dome" device.
 function writeSamples(dir: string) {

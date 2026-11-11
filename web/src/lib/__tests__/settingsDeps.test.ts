@@ -67,7 +67,7 @@ describe('settings dependencies: same answers as the device', () => {
 
 describe('a fresh device (SC-005)', () => {
   it('shows no inactive warnings with the shipped defaults - only neutral notes', () => {
-    // A device that has just joined WiFi, before the Dome (spec 006).
+    // A device that has just joined WiFi, with no Alpaca device (as the demo).
     const standard: DepFacts = { ...fixtures.baseFacts, alpacaDevices: 0 };
     const warnings = evaluate(defaults, standard).filter((e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off');
     // "Alerts are off" is shown once, by the Send alerts switch, not as a warning per row.

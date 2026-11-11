@@ -130,7 +130,8 @@ const SEVERITY: Record<ClientView['tone'], Severity> = { ok: 'ok', warn: 'proble
 // device, including when Alpaca is off (FR-016).
 const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
   const clients = status?.alpaca?.clients;
-  if (!clients) return [];
+  // The device lists its Dome's client state even with Alpaca off: no tile then.
+  if (!clients || status?.alpaca?.enabled === false) return [];
   // Not connected only needs a look when alerts wait for an imaging app.
   const needed = config?.alerts?.enabled && config.alerts.sendMode === 'whileConnected';
   return Object.entries(clients).map(([device, state]) => {

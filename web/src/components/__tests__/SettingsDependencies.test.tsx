@@ -118,9 +118,14 @@ describe('Alpaca page (D-20)', () => {
     expect(await screen.findByText('Alpaca is off, so no devices are advertised.')).toBeInTheDocument();
   });
 
-  it('says there is no Alpaca device yet (until spec 006)', async () => {
-    mockDevice();
+  it('says when there is no Alpaca device (the demo, which has no roof)', async () => {
+    mockDevice({ facts: { alpacaDevices: 0 } });
+    server.use(
+      http.get('/management/v1/configureddevices', () =>
+        HttpResponse.json({ Value: [], ErrorNumber: 0, ErrorMessage: '', ClientTransactionID: 0, ServerTransactionID: 1 }),
+      ),
+    );
     render(<Alpaca />);
-    expect(await screen.findByText(/No Alpaca device yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/No Alpaca device: the demo has no roof/)).toBeInTheDocument();
   });
 });

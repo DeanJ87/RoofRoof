@@ -254,7 +254,7 @@
       }
     },
     {
-      "name": "imaging-app events with Alpaca on but no Alpaca device yet (spec 001)",
+      "name": "imaging-app events with Alpaca on but no Alpaca device (the demo)",
       "config": {
         "alerts": {
           "enabled": true
@@ -271,13 +271,37 @@
           "state": "inactive",
           "id": "D-37",
           "reason": "no-alpaca-device",
-          "text": "No Alpaca device yet",
+          "text": "No Alpaca device",
           "fix": "network#alpaca"
         },
         "alerts.events.client_back.level": {
           "state": "inactive",
           "id": "D-37",
           "reason": "no-alpaca-device"
+        }
+      }
+    },
+    {
+      "name": "imaging-app events with Alpaca on and the Dome (spec 006)",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "alpaca": {
+          "enabled": true
+        }
+      },
+      "facts": {
+        "alpacaDevices": 1
+      },
+      "expect": {
+        "alerts.events.client_lost.level": {
+          "state": "active",
+          "id": "D-37"
+        },
+        "alerts.events.client_back.level": {
+          "state": "active",
+          "id": "D-37"
         }
       }
     },
