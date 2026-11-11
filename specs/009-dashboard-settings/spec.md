@@ -225,6 +225,10 @@ weather is the most important thing to notice.
 
 ### Edge Cases
 
+- No status at all (the live connection can't be opened): the dashboard still shows the Roof card
+  under its waiting note, with Stop enabled, and every page shows the Stop bar after 5 s.
+- A command with no answer within 5 s counts as unreachable; a Stop that wasn't confirmed stays on
+  screen until the roof is seen not moving.
 - No `roof` section in the status (an older firmware, or the controller didn't start): the Roof card
   says the roof isn't reporting, Open and Close are disabled with that reason, and Stop stays.
 - Position unknown: the bar shows no fill and "Unknown"; Open and Close stay usable for the person
@@ -276,7 +280,7 @@ weather is the most important thing to notice.
 - **FR-009**: Every roof command from the UI MUST go through the one helper that adds the
   `X-RoofRoof: 1` header, as a `POST` with no body; the browser's login applies.
 - **FR-010**: With a latched fault, the card MUST show the fault's text and a Clear fault button that
-  sends the clear-fault command.
+  sends the clear-fault command. Clear fault is disabled, with its reason, without live data.
 - **FR-011**: The card MUST show, read-only: the weather verdict (pill, reason behind "?"), the park
   check (pill, reason behind "?"), the automatic close phase when it isn't idle, the supply voltage
   and its minimum, the motor current and its limit while current sense is on, the park switches
@@ -291,7 +295,8 @@ weather is the most important thing to notice.
 
 - **FR-014**: Every page MUST show a bar pinned to the bottom with a Stop button while the last live
   data says the roof is opening or closing, or a close is waiting to start, including while that
-  data has gone stale. The bar MUST NOT be in the header or between the header and the dashboard
+  data has gone stale, and while no status has arrived for 5 s (the roof's state is unknown). Toasts
+  and the save bar move above it. The bar MUST NOT be in the header or between the header and the dashboard
   cards, and MUST NOT cover the settings save bar or be covered by the demo panel button.
 
 **Status card**
