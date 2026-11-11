@@ -45,7 +45,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 5bec16c416b628f5
+fingerprint: a18101b71ee94cd8
 -->
 <figure class="diagram" markdown>
 
@@ -132,7 +132,7 @@ person clears it. Each records what was measured and the limit it broke.
 | `currentUnreadable` | Current sense on, and no current reading for a quarter of a second during a move |
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
-| `driveBudget` | The motor has run, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times |
+| `driveBudget` | The motor has run toward one end, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times. Each direction is counted separately, so reversing once part-way never trips it. |
 | `external` | Raised by another part of the firmware (for example a watchdog) |
 
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A

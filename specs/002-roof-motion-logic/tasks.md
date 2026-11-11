@@ -102,3 +102,9 @@ US4 and US5 complete the scope; Phase 8 is the evidence for SC-001.
 - [x] T033 Abort at rest keeps a known position: `test_abort_at_rest_keeps_a_known_position`; stated in the spec (FR-002) and the contract
 - [x] T034 Spec, research (R11), data model, contract, `docs/user-guide/roof-motion.md` updated; DIA-21 re-checked against the sources and re-confirmed; the deliberate-breakage run extended to the new rules
 
+## Phase 11: Re-review fixes
+
+- [x] T035 Tests first in `test/test_roof_timing/test_main.cpp`: `test_a_reversal_near_the_end_never_trips_the_drive_budget` (the four reproduced cases plus duty extremes, tightest margin), `test_the_budget_still_trips_restarts_in_one_direction`, `test_a_step_clock_going_backwards_keeps_the_driver_off`; property P8 per direction and P8b `test_property_one_reversal_never_trips_the_drive_budget` in `test/test_roof_properties/test_main.cpp`
+- [x] T036 Drive budget per direction in `lib/RoofLogic/src/RoofController.cpp` and `src/RoofControllerStep.cpp`; signed dead-time comparison in `waitingDeadTime` (FR-025, FR-008)
+- [x] T037 Spec (FR-008, FR-025, assumptions), contract (guarantees 8, 9), research (R11a), data model and user guide updated; breakages for a shared budget and an unsigned dead time added to the run
+
