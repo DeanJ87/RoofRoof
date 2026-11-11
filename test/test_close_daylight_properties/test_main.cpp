@@ -270,6 +270,8 @@ namespace
         watch.heldPrevUnsafe = false; // the sequence's own sum starts again too
         watch.justRestarted = true;
         watch.weatherSafeRun = false;
+        watch.daylightInSafeSpell = false;
+        watch.weatherPause = false;
         // A daylight stand-down or halt keeps the weather's count in the record.
         const bool kept = saved.daylight && (saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted);
         watch.heldUnsafeMs = kept ? (saved.unsafeMs < WEATHER_REARM_CONFIRM_MS ? saved.unsafeMs : WEATHER_REARM_CONFIRM_MS) : 0;
@@ -314,6 +316,17 @@ namespace
         return watch.weatherSafeRun && in.nowMs - watch.weatherSafeSinceMs >= REARM_SAFE_MS;
     }
 
+    // A weather episode the weather has left for 10 minutes, with daylight
+    // wanting a close in that spell, becomes daylight's.
+    bool relabel(Watch &watch, bool weatherSafeLong)
+    {
+        if (watch.daylightOnly || !weatherSafeLong || !watch.daylightInSafeSpell)
+            return false;
+        watch.daylightOnly = true;
+        watch.heldUnsafeMs = 0;
+        return true;
+    }
+
     // After a daylight-only episode the weather's alerts go out afresh.
     void observeIdle(Watch &watch, const Inputs &in)
     {
@@ -322,7 +335,8 @@ namespace
             handToWeather(watch);
             watch.afterDaylight = false;
         }
-        watch.daylightOnly = in.daylight && in.weatherSafe;
+        const bool pause = watch.weatherPause && in.nowMs - watch.weatherPauseAtMs < REARM_SAFE_MS;
+        watch.daylightOnly = in.daylight && in.weatherSafe && !pause;
     }
 
     // Unsafe weather added up during a person's stand-down: from one step to
@@ -349,18 +363,14 @@ namespace
         const bool restarted = watch.justRestarted;
         watch.justRestarted = false;
         const bool weatherSafeLong = trackWeatherSafe(watch, in);
+        watch.daylightInSafeSpell = in.weatherSafe && (watch.daylightInSafeSpell || in.daylight);
         if (before == Phase::Idle)
         {
             observeIdle(watch, in);
             return;
         }
-        // A weather episode kept going only by daylight for 10 minutes becomes daylight's.
-        if (!watch.daylightOnly && weatherSafeLong && in.daylight)
-        {
-            watch.daylightOnly = true;
-            watch.heldUnsafeMs = 0;
+        if (relabel(watch, weatherSafeLong))
             return;
-        }
         // A stop on this very step stands it down as daylight's.
         if (in.weatherSafe || !watch.daylightOnly || restarted || anyStop)
             return;
@@ -383,10 +393,19 @@ namespace
     }
 
     // D1 and D2.
-    const char *checkEpisode(Watch &watch, const Decision &d, Phase after)
+    const char *checkEpisode(Watch &watch, const Decision &d, Phase before, Phase after, uint64_t nowMs)
     {
         if (after == Phase::Idle && d.daylight)
             watch.afterDaylight = true;
+        // A weather attempt paused by a safe spell (waiting()'s EndedSafe);
+        // gone once the sequence leaves Idle or comes back to it another way.
+        if (after == Phase::Idle && (before == Phase::WaitPark || before == Phase::RetryWait) && d.event == Event::EndedSafe)
+        {
+            watch.weatherPause = !d.daylight;
+            watch.weatherPauseAtMs = nowMs;
+        }
+        else if (before != after)
+            watch.weatherPause = false;
         if (watch.expectRearm && heldBack(after))
             return "D1 the weather turned unsafe and a daylight-only stand-down or back-off held it back";
         if (d.daylight != watch.daylightOnly)
@@ -412,7 +431,7 @@ namespace
         lastStops = w.in.personStops;
         observeEpisode(watch, w.in, before, anyStop);
         const Decision d = seq.step(w.in);
-        const char *episode = checkEpisode(watch, d, seq.phase());
+        const char *episode = checkEpisode(watch, d, before, seq.phase(), w.in.nowMs);
         if (episode != nullptr)
             return episode;
         if (stopped && d.event != Event::StoppedByPerson)

@@ -95,4 +95,4 @@ Trackers: `daylightOpen` settle 30 s; `daylightUnknown` settle 600 s; `daylightC
 
 `sunAltitudeDeg` is null when the state is off or unknown.
 
-A daylight-only HeldByPerson raises no 30-minute reminders while the weather is safe. A weather episode whose weather has been safe for `REARM_SAFE_MS` while daylight still wants a close becomes daylight-only. A step adds at most `MAX_COUNT_STEP_MS` (1 s) to the 30 s count.
+A daylight-only HeldByPerson raises no 30-minute reminders while the weather is safe. A weather episode whose weather has been safe for `REARM_SAFE_MS`, with daylight wanting a close at some time in that spell, becomes daylight-only; a weather attempt paused by a short safe spell resumes as the weather's. A step adds at most `MAX_COUNT_STEP_MS` (1 s) to the 30 s count.

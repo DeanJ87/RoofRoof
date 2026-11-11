@@ -188,7 +188,7 @@ namespace SQM
                 return out;
             if (in.weatherSafe)
             {
-                const Pause keep{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, in.nowMs, lastCritical};
+                const Pause keep{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, in.nowMs, lastCritical, daylightOnly};
                 out = enter(Phase::Idle, Event::EndedSafe);
                 paused = keep;
                 return out;

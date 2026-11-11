@@ -26,7 +26,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 8313b0fa9e57c925
+fingerprint: d9cfad71223a7375
 -->
 <figure class="diagram" markdown>
 
@@ -210,7 +210,7 @@ for the rest of the day.
   for the weather from then on.
 - A weather close stood down by a person stays stood down while the sun is up in **Alert and
   close**, even after the weather clears. It re-arms once the sun has been down for 10 minutes.
-  After 10 minutes of safe weather it counts as daylight's stand-down (a halt or a failing attempt
+  After 10 minutes of safe weather (with the sun up at some time in them) it counts as daylight's stand-down (a halt or a failing attempt
   the same way), so rain later that day is a new weather close, with its own alerts, after 30 s of
   unsafe weather.
 - With the mode **Off** or **Alert**, the sequence is exactly the one described above.

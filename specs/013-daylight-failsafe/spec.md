@@ -335,7 +335,9 @@ reason.
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
   (neither the weather nor daylight) for 10 minutes, or the roof reads closed, or as FR-013 says.
   Daylight never ends a stand-down or a halt. A weather episode the weather itself has left for
-  10 minutes while daylight still wants a close becomes a daylight-only episode. A step adds at
+  10 minutes, with daylight wanting a close at some time in that spell, becomes a daylight-only
+  episode. A weather attempt paused by a short safe spell resumes as the weather's, with the time
+  it has run, even if daylight came on meanwhile. A step adds at
   most 1 s to FR-013's 30 s count.
 
 **Alerts**
@@ -442,8 +444,8 @@ possible was taken.
    failure minutes before.
 6. **A weather stand-down stays while the sun is up with "alert and close".** It re-arms once the
    sun has been down for 10 minutes. Once the weather itself has been safe for 10 minutes (when
-   spec 005 would have ended the episode), the stand-down, a halt or a still-running attempt kept
-   going only by daylight becomes daylight's: new rain is then a new weather episode, with its
+   spec 005 would have ended the episode) and daylight wanted a close at some time in that spell,
+   the stand-down, a halt or a still-running attempt becomes daylight's: new rain is then a new weather episode, with its
    own alerts and the 30 s count of assumption 5, so a morning stop never holds back an
    afternoon's rain.
 7. **"Roof open in daylight" is not critical** and defaults to urgent. The constitution's critical
