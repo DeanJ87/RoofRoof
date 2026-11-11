@@ -74,3 +74,20 @@ Every task ends with `pio test -e native` green; firmware tasks also with `pio r
 
 MVP = the three pure libraries with their tests (the contract spec 005 builds on), then settings,
 then the firmware glue, then docs. Each phase is a commit `004: …`.
+
+## Phase 8: Convergence
+
+Findings from the first convergence pass (independent review of the code against the spec, plan
+and constitution).
+
+- [ ] T021 [CRITICAL, F1, constitution III] Times in `lib/SafetyInputLogic` become 64-bit milliseconds that never wrap (firmware: `esp_timer_get_time() / 1000`); a timestamp after `now` still reads age 0; native tests for ages past 2^31 and 2^32 ms in the weather and park rules
+- [ ] T022 [HIGH, F2, constitution VI] `SafetyInputs::updateConfig` (called from the web server's task) only hands the new settings over under a lock; the main loop applies them, so `MQTTClient::watch` and every record change run on the loop
+- [ ] T023 [HIGH, F3, constitution V] Move "apply an MQTT message to the record" and "record an HTTP reply" into `lib/SafetyInputLogic` (`applyMqttMessage`, `recordHttpReply`) with native tests (rain JSON then `safe` 1 keeps rain; unknown topic; bad payloads; status classes)
+- [ ] T024 [MEDIUM, F4, FR-011] After each (re)subscription, the first `safe`/`safety` message of each topic (the broker's retained copy) may only make the source less safe: a retained "safe" is ignored until a live one arrives; tests in lib
+- [ ] T025 [MEDIUM, F5, FR-012] `setRainContact` / `setParkSwitches` take `Safety::RainContact` / `Safety::SwitchReading`, so spec 003 can report "unreadable"
+- [ ] T026 [MEDIUM, F6, FR-010/FR-018] Bound every poll: a total deadline per request and a body cap (8 KB), read straight into `std::string`; document the worst case
+- [ ] T027 [LOW, F7] A good reply already older than the limit is stale even inside the start-up window; test
+- [ ] T028 [LOW, F8, US3/AC3] Align the spec with the parser: `Success: false` is refused with N.I.N.A.'s text; any other unexpected answer is unreadable
+- [ ] T029 [LOW, F9] Restart a source's records and window only when its own settings change; tests via the poller targets comparison
+- [ ] T030 [LOW, F10] Log changes by comparing the verdict fields directly, without building key strings each second
+- [ ] T031 [LOW, F11] T019-T020: quickstart §1, quality gate, docs build; bench figures go in the PR's pending bench checks
