@@ -122,5 +122,5 @@ spacing, kept while it matters). On restore, a WaitPark or RetryWait gets 10 s m
 
 `AlertRetry`: after a critical alert is handed to the dispatcher, the dispatcher's view of its
 record (`Pending`, `Delivered`, `Failed`, `NoChannel`) is checked every second; a `Failed` one is
-sent again `ALERT_RETRY_MS` (60 s) after the last send. `Delivered`, `NoChannel` or an idle
+sent again `ALERT_RETRY_MS` (60 s) after the first send, then at doubling gaps up to 30 minutes; one still `Pending` after 2 minutes counts as `Failed`; a record whose channels were only skipped (on but blocked) is `NoChannel`. `Delivered`, `NoChannel` or an idle
 sequence ends it.

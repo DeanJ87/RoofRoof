@@ -99,7 +99,7 @@ position; see [Configuration](configuration.md#safety-and-park).
 The four critical events go out at the **Wake** level (Pushover emergency, ntfy `max`) to every
 alert channel that is switched on, as event `roof`, even while alerts are paused or switched off as a whole: only the channels you have switched on are
 used, so set at least one up. An alert no channel took (WiFi down just after a start, a failed send)
-is sent again every minute until one does. Each kind is sent at most every 30 minutes; while the roof stays open
+is sent again after a minute, then at doubling gaps up to 30 minutes, until one does. Each kind is sent at most every 30 minutes; while the roof stays open
 after one, it is sent again every 30 minutes with "Still:" in front of the title. Everything else is
 written to the log. None of them goes through N.I.N.A. or SQMeter, so losing either doesn't lose the
 alert.

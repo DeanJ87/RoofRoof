@@ -93,8 +93,8 @@ namespace SQM
         {
             Pending,   // a channel is still trying
             Delivered, // at least one channel sent it
-            Failed,    // every channel that was on failed or was skipped; or the record is gone
-            NoChannel, // no channel was on
+            Failed,    // a channel tried and failed (none sent); or the record is gone
+            NoChannel, // no channel was on and able to send (off, or blocked and skipped)
         };
         Outcome outcome(uint32_t id) const;
         void clearRecent();

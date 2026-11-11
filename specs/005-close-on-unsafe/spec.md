@@ -366,7 +366,8 @@ before the close without a command, or lets a commanded close finish.
   stays open after one (waiting to retry, stood down, halted) it MUST be raised again every 30
   minutes. The alert MUST NOT depend on N.I.N.A. or SQMeter being reachable. Spec 007 replaces the
   fixed wording with its own events, levels and settings through the same hook. An alert that no
-  channel took MUST be sent again, at most every minute, until one does or the sequence is idle.
+  channel took MUST be sent again (after 1 minute, then doubling up to 30 minutes) until one does or
+  the sequence is idle.
 - **FR-015**: Every alert and log line MUST state why: the park result's reasons with their values
   (e.g. `N.I.N.A. not responding`), the fault with its value and limit, the refusal's text, or the
   time limit that ran out.
@@ -480,8 +481,10 @@ Each was an open choice; the safest option the constitution allows was taken.
     too long, although nothing moved: the constitution's "a timed-out step stops where it is" taken
     literally. The owner may prefer a retry after the back-off.
 11h. **A critical alert counts as sent only once a channel has taken it.** One that no channel took
-    (WiFi down just after a start, a full queue, a failed send) is sent again every minute until one
-    does, no channel is switched on, or the sequence is idle.
+    (WiFi down just after a start, a full queue, a failed send, or a send still pending after 2
+    minutes) is sent again after a minute, then at doubling gaps up to 30 minutes, until one does,
+    no channel is switched on and able to send (a channel that is on but blocked, like MQTT alerts
+    with MQTT off, counts as none), or the sequence is idle.
 11j. **An attempt or back-off keeps its running time across a restart** (RTC memory, protected like
     the stand-down; not across a power cut), with 10 s added per restart for the restart itself, so
     a board that keeps resetting in the rain still reaches the park limit and alerts. It is cleared
