@@ -6,6 +6,10 @@
       "description": "Device status."
     },
     {
+      "name": "Roof",
+      "description": "Move the roof and clear a fault."
+    },
+    {
       "name": "Settings",
       "description": "Read and change the device's settings."
     },
@@ -187,6 +191,250 @@
       "description": "Restarts the device after answering.",
       "responses": {
         "200": "action"
+      }
+    },
+    "POST /api/roof/open": {
+      "tag": "Roof",
+      "summary": "Open the roof",
+      "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings). An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "POST /api/roof/close": {
+      "tag": "Roof",
+      "summary": "Close the roof",
+      "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "POST /api/roof/stop": {
+      "tag": "Roof",
+      "summary": "Stop the roof",
+      "description": "Switches the motor off at once and keeps the position estimate. Always accepted.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "POST /api/roof/clear-fault": {
+      "tag": "Roof",
+      "summary": "Clear the roof's fault",
+      "description": "Clears a latched motion fault, as a person, and removes it from storage. The position is known again only at a magnet. Accepted with no fault too.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
       }
     },
     "GET /api/wifi/scan": {

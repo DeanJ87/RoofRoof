@@ -11,6 +11,7 @@
 #include "Logger.h"
 #include "MQTTClient.h"
 #include "MotorDriver.h"
+#include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
 #include "TimeManager.h"
@@ -27,6 +28,7 @@ static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static SafetyPoller safetyPoller;
 static std::unique_ptr<SafetyInputs> safetyInputs;
+static RoofControl roofControl;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -54,6 +56,7 @@ bool saveConfigCallback(const Config &newConfig)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
         safetyInputs->updateConfig(config);
+    roofControl.updateConfig(config); // taken by the roof once no move is active
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
@@ -196,8 +199,27 @@ void startServices()
     HeapTrace::mark("safety inputs");
 
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
+    webServer->setRoof(&roofControl);
     webServer->begin();
     HeapTrace::mark("setup complete");
+}
+
+// The roof's switch readings into the safety inputs (spec 004), and their
+// verdict and park result back to the roof's gates (spec 003), every 250 ms.
+void handleSafety()
+{
+    if (!safetyInputs)
+        return;
+    safetyInputs->setParkSwitches(roofControl.parkSwitch(0), roofControl.parkSwitch(1));
+    safetyInputs->setRainContact(roofControl.rainContact());
+    safetyInputs->handle();
+    static uint32_t lastHandOver = 0;
+    const uint32_t now = millis();
+    if (now - lastHandOver >= 250)
+    {
+        roofControl.setSafety(safetyInputs->weather(), safetyInputs->park());
+        lastHandOver = now;
+    }
 }
 
 void setup()
@@ -219,6 +241,11 @@ void setup()
 
     setupWatchdog();
     loadConfig();
+    // Spec 003: the roof's control task, independent of WiFi and the web
+    // server. Any fault saved before the restart is latched before its first
+    // step; between the magnets the position is unknown and nothing moves.
+    roofControl.begin(config);
+    HeapTrace::mark("roof");
     mountFilesystem();
     startWifi();
     startArduinoOta();
@@ -269,8 +296,7 @@ void loop()
 
     if (mqttClient)
         mqttClient->handle();
-    if (safetyInputs)
-        safetyInputs->handle();
+    handleSafety();
 
     // Small delay to prevent a tight loop.
     delay(10);

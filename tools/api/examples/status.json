@@ -38,7 +38,8 @@
   "heapSize": 327680,
   "stackFree": {
     "asyncTcp": 3360,
-    "loop": 3612
+    "loop": 3612,
+    "roof": 3480
   },
   "heapStages": [
     {
@@ -80,16 +81,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1794350418,
-    "iso": "2026-11-10T22:40:18+0000",
+    "epoch": 1794362525,
+    "iso": "2026-11-11T02:02:05+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1794346816480,
-    "nextSync": 1794354016480,
+    "lastSync": 1794358923404,
+    "nextSync": 1794366123404,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -121,7 +122,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1794350356480,
+    "lastPublish": 1794362463404,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -129,5 +130,35 @@
     "availabilityTopic": "roofroof/availability",
     "clientId": "RoofRoof-D4E5F6"
   },
-  "configRevision": 887913319
+  "roof": {
+    "state": "closed",
+    "positionKnown": true,
+    "positionMm": 0,
+    "positionPercent": 0,
+    "target": null,
+    "driving": false,
+    "fromUnknown": false,
+    "moveElapsedMs": 0,
+    "moveTimeoutMs": 0,
+    "hall": {
+      "level": "low",
+      "counts": 712
+    },
+    "supplyVolts": 12.46,
+    "supplyLow": false,
+    "minSupplyVolts": 11,
+    "currentSense": false,
+    "motorAmps": null,
+    "maxCurrentAmps": 10,
+    "parkSwitches": {
+      "fitted": 0,
+      "switch1": "notFitted",
+      "switch2": "notFitted"
+    },
+    "rainContact": "notFitted",
+    "fault": null,
+    "watchdogTrips": 0,
+    "maxStepGapMs": 21
+  },
+  "configRevision": 3721057171
 }

@@ -460,6 +460,10 @@
       "match": "deps.D-41",
       "reason": "Shown with the safety settings, which arrive with the roof settings page (spec 009)",
       "shownOn": "Settings"
+    },
+    {
+      "match": "status.roof.**",
+      "reason": "The roof card (state, position, readings, fault, clear fault) is spec 009; until then the roof section is read through the API"
     }
   ]
 }
