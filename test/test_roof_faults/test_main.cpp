@@ -194,10 +194,58 @@ void test_a_rail_relatches_after_clear_while_it_lasts(void)
     b.step();
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::HallRail);
     b.sim.railCounts = -1;
-    b.steps(3);
+    b.steps(8); // the rail readings leave the window of the last eight
     TEST_ASSERT_TRUE(b.roof.clearFault(Origin::Person).accepted);
     b.steps(3);
     TEST_ASSERT_TRUE(b.state() == State::Closed);
+}
+
+// Review finding: an intermittent connector alternating good readings and a rail
+// must still latch the rail fault (3 rail readings among the last 8), even while
+// a move from an unknown position is pinned on an end stop.
+void test_fault_hall_rail_alternating_with_good_readings(void)
+{
+    Bench b(Settings(), 900.0f);
+    TEST_ASSERT_TRUE(b.command(Command::Close).accepted);
+    b.steps(50);
+    int steps = 0;
+    while (b.roof.status().fault.kind == FaultKind::None && steps < 20)
+    {
+        b.sim.railCounts = steps % 2 == 0 ? 4095 : -1;
+        b.step();
+        ++steps;
+    }
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::HallRail);
+    TEST_ASSERT_EQUAL_INT(5, steps); // rail, good, rail, good, rail
+    TEST_ASSERT_TRUE(isOff(b.roof.output()));
+}
+
+// Two rail readings in eight are a glitch, not a fault, and don't stop a magnet
+// from being confirmed.
+void test_two_rail_readings_in_eight_are_a_glitch(void)
+{
+    Bench b(Settings(), 900.0f);
+    b.sim.positionMm = 0.0f;
+    const int pattern[] = {0, -1, -1, -1, 0, -1, -1, -1};
+    for (int counts : pattern)
+    {
+        b.sim.railCounts = counts;
+        b.step();
+    }
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
+    TEST_ASSERT_TRUE(b.state() == State::Closed);
+}
+
+// Supply readings that can't be believed during a move count as low.
+void test_fault_supply_implausibly_high_during_a_move(void)
+{
+    Bench b;
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    b.steps(100);
+    b.sim.supplyVolts = 24.0f; // not a 12 V system's reading
+    const Status fault = runToFault(b, 400);
+    TEST_ASSERT_TRUE(fault.fault.kind == FaultKind::SupplyLow);
+    TEST_ASSERT_EQUAL_FLOAT(24.0f, fault.fault.measured);
 }
 
 // --- Current (FR-016) -----------------------------------------------------------
@@ -344,7 +392,7 @@ void test_raise_fault_stops_at_once(void)
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
     b.steps(200);
     TEST_ASSERT_FALSE(isOff(b.roof.output()));
-    b.roof.raiseFault(Fault{FaultKind::External, 1.0f, 2.0f}, b.nowMs);
+    b.roof.raiseFault(Fault{FaultKind::External, 1.0f, 2.0f});
     TEST_ASSERT_TRUE(isOff(b.roof.output()));
     TEST_ASSERT_TRUE(b.state() == State::Error);
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::External);
@@ -354,7 +402,7 @@ void test_raise_fault_stops_at_once(void)
 void test_a_fault_kind_none_still_latches(void)
 {
     Bench b;
-    b.roof.raiseFault(Fault{}, b.nowMs);
+    b.roof.raiseFault(Fault{});
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::External);
     TEST_ASSERT_TRUE(b.state() == State::Error);
 }
@@ -362,7 +410,7 @@ void test_a_fault_kind_none_still_latches(void)
 void test_a_fault_refuses_every_move_until_a_person_clears_it(void)
 {
     Bench b;
-    b.roof.raiseFault(Fault{FaultKind::External, 0.0f, 0.0f}, b.nowMs);
+    b.roof.raiseFault(Fault{FaultKind::External, 0.0f, 0.0f});
     for (Origin origin : {Origin::Person, Origin::Automatic})
         for (Command c : {Command::Open, Command::Close})
         {
@@ -404,7 +452,7 @@ void test_clearing_between_the_magnets_leaves_the_position_unknown(void)
 void test_a_restored_fault_latches_before_the_first_step(void)
 {
     Controller roof;
-    roof.raiseFault(Fault{FaultKind::Timeout, 70000.0f, 65000.0f}, 0);
+    roof.raiseFault(Fault{FaultKind::Timeout, 70000.0f, 65000.0f});
     Readings readings;
     readings.hallCounts = 700; // at the closed magnet
     readings.supplyVolts = 12.6f;
@@ -415,7 +463,7 @@ void test_a_restored_fault_latches_before_the_first_step(void)
     }
     TEST_ASSERT_TRUE(roof.status().state == State::Error);
     TEST_ASSERT_TRUE(roof.status().fault.kind == FaultKind::Timeout);
-    TEST_ASSERT_TRUE(roof.command(Command::Open, Origin::Person, 220).reason == Refusal::FaultLatched);
+    TEST_ASSERT_TRUE(roof.command(Command::Open, Origin::Person).reason == Refusal::FaultLatched);
     TEST_ASSERT_TRUE(roof.clearFault(Origin::Person).accepted);
     TEST_ASSERT_TRUE(roof.status().state == State::Closed);
 }
@@ -423,7 +471,7 @@ void test_a_restored_fault_latches_before_the_first_step(void)
 void test_the_first_fault_is_the_one_kept(void)
 {
     Bench b;
-    b.roof.raiseFault(Fault{FaultKind::Timeout, 1.0f, 2.0f}, b.nowMs);
+    b.roof.raiseFault(Fault{FaultKind::Timeout, 1.0f, 2.0f});
     b.sim.railCounts = 0;
     b.steps(5);
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::Timeout);
@@ -442,6 +490,9 @@ int main(int, char **)
     RUN_TEST(test_hall_just_inside_the_rails_is_no_fault);
     RUN_TEST(test_fault_hall_rail_while_moving);
     RUN_TEST(test_a_rail_relatches_after_clear_while_it_lasts);
+    RUN_TEST(test_fault_hall_rail_alternating_with_good_readings);
+    RUN_TEST(test_two_rail_readings_in_eight_are_a_glitch);
+    RUN_TEST(test_fault_supply_implausibly_high_during_a_move);
     RUN_TEST(test_fault_over_current_after_the_confirm_time);
     RUN_TEST(test_current_just_under_the_limit_is_no_fault);
     RUN_TEST(test_a_current_spike_shorter_than_the_confirm_time_is_ignored);

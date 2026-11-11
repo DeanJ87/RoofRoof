@@ -27,12 +27,29 @@ namespace SQM
         // disconnected or shorted sensor.
         constexpr uint16_t HALL_RAIL_LOW_COUNTS = 30;
         constexpr uint16_t HALL_RAIL_HIGH_COUNTS = 4065;
+        // A rail is confirmed by HALL_RAIL_LATCH_READINGS rail readings among the
+        // last HALL_RAIL_WINDOW_READINGS, consecutive or not: an intermittent
+        // connector that alternates good and rail readings still faults, while a
+        // single ADC spike doesn't.
+        constexpr uint8_t HALL_RAIL_LATCH_READINGS = 3;
+        constexpr uint8_t HALL_RAIL_WINDOW_READINGS = 8;
         // Over-current and a low supply must last this long while driving: longer
         // than the motor's start-up surge, far shorter than a stall that heats it.
         constexpr uint32_t CONFIRM_MS = 250;
         // The longest gap between control steps while driving (spec 003 steps every
         // 20 ms or faster); longer means the motor ran unsupervised.
         constexpr uint32_t MAX_STEP_GAP_MS = 100;
+        // A supply reading above this is not a 12 V system's: a wiring or ADC fault,
+        // treated as unreadable (the supply minimum setting tops out at 15 V).
+        constexpr float MAX_SUPPLY_READING_VOLTS = 16.0f;
+        // The IBT-2's current outputs can't go negative; below this (beyond ADC
+        // offset noise) the reading is broken, treated as unreadable.
+        constexpr float MIN_CURRENT_READING_AMPS = -0.5f;
+
+        // Whether a supply reading can be believed: finite and at most MAX_SUPPLY_READING_VOLTS.
+        bool supplyReadable(float volts);
+        // Whether a current reading can be believed: finite and at least MIN_CURRENT_READING_AMPS.
+        bool currentReadable(float amps);
 
         // How the roof moves. Defaults match RoofConfig's.
         struct Settings

@@ -26,8 +26,11 @@ namespace SQM
             Output tick(const Readings &readings);
 
             // Open, close, stop or abort between steps. Stop and abort always
-            // succeed and switch the output off at once.
-            CommandResult command(Command command, Origin origin, uint32_t nowMs);
+            // succeed and switch the output off at once. Commands carry no time:
+            // every time the logic uses (the dead time, timeouts, the estimate)
+            // comes from tick() readings, so a command from another task with a
+            // skewed clock can't shorten the dead time.
+            CommandResult command(Command command, Origin origin);
 
             // A person clears the latched fault; automatic origins are refused.
             CommandResult clearFault(Origin origin);
@@ -35,7 +38,7 @@ namespace SQM
             // Latches `fault` and switches the output off: a fault restored at
             // start-up, the watchdog (spec 003) or the park interlock (spec 005).
             // The first fault latched is kept until cleared.
-            void raiseFault(const Fault &fault, uint32_t nowMs);
+            void raiseFault(const Fault &fault);
 
             // New settings, refused (Refusal::Moving) while a move is active. Invalid
             // settings are taken but refuse every move until valid ones arrive.
@@ -69,20 +72,21 @@ namespace SQM
             // Move decisions (RoofControllerStep.cpp).
             void stepMove(const Readings &readings);
             void startDriving(uint32_t nowMs);
+            bool waitingDeadTime(uint32_t nowMs) const;
             bool checkMagnets();
             bool checkTimes(uint32_t nowMs);
             bool checkElectrical(const Readings &readings);
             bool confirmed(Pending &pending, bool condition, uint32_t nowMs) const;
             void driveProfile(uint32_t nowMs);
             void advanceEstimate(uint32_t elapsedMs);
-            void arrive(uint32_t nowMs);
+            void arrive();
 
             // Commands, idle and the latch (RoofController.cpp).
-            CommandResult requestMove(End target, Origin origin, uint32_t nowMs);
+            CommandResult requestMove(End target, Origin origin);
             CommandResult readinessRefusal() const;
-            void stopMove(uint32_t nowMs, bool keepEstimate);
-            void stopDriving(uint32_t nowMs);
-            void latch(const Fault &fault, uint32_t nowMs);
+            void stopMove(bool keepEstimate);
+            void stopDriving();
+            void latch(const Fault &fault);
             void followHall();
             void settleIdle();
             bool magnetEnd(End &end) const;
@@ -98,8 +102,12 @@ namespace SQM
             Readings last;
             bool stepped = false;
             uint32_t lastStepMs = 0;
-            bool everDriven = false;
+            // The dead time runs from the first step after the driver went off;
+            // construction counts as such a stop (constitution I: off after boot).
+            bool driveEndPending = true;
             uint32_t driveEndMs = 0;
+            // Driven time since a magnet was last confirmed (FR-025).
+            uint32_t driveBudgetUsedMs = 0;
             Pending supplyLow;
             Pending overCurrent;
             Pending currentUnreadable;

@@ -38,5 +38,10 @@ namespace SQM
         // The hard timeout for a move from an unknown position: the whole travel at
         // the slow duty plus the margin.
         uint32_t unknownMoveTimeoutMs(const Settings &settings);
+
+        // The most driving allowed in total since a magnet was last confirmed (or a
+        // person cleared a fault): the longest single move, a whole travel at the
+        // slow duty plus the margin. Stops and restarts don't reset it.
+        uint32_t driveBudgetMs(const Settings &settings);
     } // namespace Roof
 } // namespace SQM

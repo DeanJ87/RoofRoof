@@ -129,5 +129,10 @@ namespace SQM
             const double slowSpeed = fullSpeedMmPerMs(settings) * dutyFraction(settings.slowDutyPercent);
             return plusMargin(clampMs(settings.travelMm / slowSpeed), settings.timeoutMarginMs);
         }
+
+        uint32_t driveBudgetMs(const Settings &settings)
+        {
+            return unknownMoveTimeoutMs(settings);
+        }
     } // namespace Roof
 } // namespace SQM

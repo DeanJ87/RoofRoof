@@ -61,6 +61,16 @@ namespace SQM
             }
         } // namespace
 
+        bool supplyReadable(float volts)
+        {
+            return std::isfinite(volts) && volts <= MAX_SUPPLY_READING_VOLTS;
+        }
+
+        bool currentReadable(float amps)
+        {
+            return std::isfinite(amps) && amps >= MIN_CURRENT_READING_AMPS;
+        }
+
         bool validSettings(const Settings &settings)
         {
             return validMotion(settings) && validSensing(settings);

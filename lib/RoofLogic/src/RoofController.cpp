@@ -40,20 +40,30 @@ namespace SQM
             const uint32_t gapMs = readings.nowMs - lastStepMs;
             const bool late = stepped && move.driving && gapMs > MAX_STEP_GAP_MS;
             if (move.driving && stepped)
+            {
                 advanceEstimate(gapMs);
+                driveBudgetUsedMs = gapMs > UINT32_MAX - driveBudgetUsedMs ? UINT32_MAX : driveBudgetUsedMs + gapMs;
+            }
             stepped = true;
             lastStepMs = readings.nowMs;
             last = readings;
             current.hallCounts = readings.hallCounts;
             current.hall = hall.update(readings.hallCounts, HallThresholds{config.hallHighCounts, config.hallLowCounts});
+            if (driveEndPending)
+            {
+                driveEndMs = readings.nowMs;
+                driveEndPending = false;
+            }
+            if (current.hall == HallLevel::High || current.hall == HallLevel::Low)
+                driveBudgetUsedMs = 0;
 
             // constitution I: a late step means the motor ran unsupervised.
             if (late)
-                latch(Fault{FaultKind::LateStep, static_cast<float>(gapMs), static_cast<float>(MAX_STEP_GAP_MS)}, readings.nowMs);
+                latch(Fault{FaultKind::LateStep, static_cast<float>(gapMs), static_cast<float>(MAX_STEP_GAP_MS)});
             if (current.hall == HallLevel::Rail)
             {
                 const float rail = readings.hallCounts <= HALL_RAIL_LOW_COUNTS ? HALL_RAIL_LOW_COUNTS : HALL_RAIL_HIGH_COUNTS;
-                latch(Fault{FaultKind::HallRail, static_cast<float>(readings.hallCounts), rail}, readings.nowMs);
+                latch(Fault{FaultKind::HallRail, static_cast<float>(readings.hallCounts), rail});
             }
             if (current.fault.kind == FaultKind::None)
             {
@@ -67,21 +77,21 @@ namespace SQM
             return out;
         }
 
-        CommandResult Controller::command(Command command, Origin origin, uint32_t nowMs)
+        CommandResult Controller::command(Command command, Origin origin)
         {
             switch (command)
             {
             case Command::Open:
-                return requestMove(End::Open, origin, nowMs);
+                return requestMove(End::Open, origin);
             case Command::Close:
-                return requestMove(End::Closed, origin, nowMs);
+                return requestMove(End::Closed, origin);
             case Command::Abort:
-                stopMove(nowMs, false);
+                stopMove(false);
                 return CommandResult{};
             case Command::Stop:
             default:
                 // Anything unrecognised stops: the safe reading of a bad command.
-                stopMove(nowMs, true);
+                stopMove(true);
                 return CommandResult{};
             }
         }
@@ -95,16 +105,16 @@ namespace SQM
                 return refused(Refusal::SettingsInvalid);
             if (current.hall == HallLevel::Unsettled || current.hall == HallLevel::Rail)
                 return refused(Refusal::HallNotSettled);
-            if (std::isnan(last.supplyVolts))
+            if (!supplyReadable(last.supplyVolts))
                 return refused(Refusal::SupplyUnreadable, last.supplyVolts, config.minSupplyVolts);
             if (!(last.supplyVolts >= config.minSupplyVolts))
                 return refused(Refusal::SupplyLow, last.supplyVolts, config.minSupplyVolts);
-            if (config.currentSenseEnabled && !std::isfinite(last.motorAmps))
+            if (config.currentSenseEnabled && !currentReadable(last.motorAmps))
                 return refused(Refusal::CurrentUnreadable, last.motorAmps, config.maxCurrentAmps);
             return CommandResult{};
         }
 
-        CommandResult Controller::requestMove(End target, Origin origin, uint32_t nowMs)
+        CommandResult Controller::requestMove(End target, Origin origin)
         {
             if (current.fault.kind != FaultKind::None)
                 return refused(Refusal::FaultLatched);
@@ -119,7 +129,7 @@ namespace SQM
                 return refused(Refusal::PositionUnknown);
 
             // A reversal stops first; the dead time runs before the new drive.
-            stopDriving(nowMs);
+            stopDriving();
             move = Move{};
             move.active = true;
             move.target = target;
@@ -131,11 +141,11 @@ namespace SQM
             return CommandResult{};
         }
 
-        void Controller::stopMove(uint32_t nowMs, bool keepEstimate)
+        void Controller::stopMove(bool keepEstimate)
         {
             if (!move.active)
                 return;
-            stopDriving(nowMs);
+            stopDriving();
             // constitution I: an abort part-way leaves the position unknown.
             if (!keepEstimate || move.fromUnknown)
                 current.positionKnown = false;
@@ -143,13 +153,10 @@ namespace SQM
             settleIdle();
         }
 
-        void Controller::stopDriving(uint32_t nowMs)
+        void Controller::stopDriving()
         {
             if (move.driving)
-            {
-                driveEndMs = nowMs;
-                everDriven = true;
-            }
+                driveEndPending = true; // timed from the next step, never from a caller's clock
             move.driving = false;
             current.driving = false;
             current.moveElapsedMs = 0;
@@ -157,9 +164,9 @@ namespace SQM
             resetPending();
         }
 
-        void Controller::latch(const Fault &fault, uint32_t nowMs)
+        void Controller::latch(const Fault &fault)
         {
-            stopDriving(nowMs);
+            stopDriving();
             move = Move{};
             current.positionKnown = false;
             current.fromUnknown = false;
@@ -171,9 +178,9 @@ namespace SQM
                 current.fault.kind = FaultKind::External;
         }
 
-        void Controller::raiseFault(const Fault &fault, uint32_t nowMs)
+        void Controller::raiseFault(const Fault &fault)
         {
-            latch(fault, nowMs);
+            latch(fault);
         }
 
         CommandResult Controller::clearFault(Origin origin)
@@ -183,6 +190,7 @@ namespace SQM
             if (current.fault.kind == FaultKind::None)
                 return CommandResult{};
             current.fault = Fault{};
+            driveBudgetUsedMs = 0; // a person has looked at the roof
             current.positionKnown = false;
             current.state = State::Unknown;
             followHall();

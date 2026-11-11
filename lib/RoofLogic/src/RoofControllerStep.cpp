@@ -20,11 +20,10 @@ namespace SQM
                 End at = End::Closed;
                 if (magnetEnd(at) && at == move.target)
                 {
-                    arrive(readings.nowMs);
+                    arrive();
                     return;
                 }
-                // constitution I: off for the dead time between any two drives.
-                if (everDriven && readings.nowMs - driveEndMs < DEAD_TIME_MS)
+                if (waitingDeadTime(readings.nowMs))
                     return;
                 startDriving(readings.nowMs);
             }
@@ -44,8 +43,15 @@ namespace SQM
             move.leftStart = false;
             move.timeoutMs = move.fromUnknown ? unknownMoveTimeoutMs(config) : moveTimeoutMs(config, remainingMm());
             current.moveTimeoutMs = move.timeoutMs;
-            everDriven = true;
             resetPending();
+        }
+
+        // constitution I: off for the dead time between any two drives, and after
+        // start-up. Both ends of the interval are step times (driveEndMs is the
+        // first step after the driver went off), so no caller's clock is involved.
+        bool Controller::waitingDeadTime(uint32_t nowMs) const
+        {
+            return nowMs - driveEndMs < DEAD_TIME_MS;
         }
 
         // True when the move ended: at its magnet, or on a wrong one (a fault).
@@ -60,14 +66,14 @@ namespace SQM
             }
             if (at == move.target)
             {
-                arrive(lastStepMs);
+                arrive();
                 return true;
             }
             // Still on the start magnet is expected; the other end's magnet, or the
             // start magnet again after leaving it, means the roof runs backwards.
             if (move.startedAtMagnet && !move.leftStart)
                 return false;
-            latch(Fault{FaultKind::WrongMagnet, static_cast<float>(at), static_cast<float>(move.target)}, lastStepMs);
+            latch(Fault{FaultKind::WrongMagnet, static_cast<float>(at), static_cast<float>(move.target)});
             return true;
         }
 
@@ -77,12 +83,20 @@ namespace SQM
             const uint32_t elapsedMs = nowMs - move.driveStartMs;
             if (move.startedAtMagnet && !move.leftStart && elapsedMs >= config.leaveMagnetMs)
             {
-                latch(Fault{FaultKind::DidNotLeave, static_cast<float>(elapsedMs), static_cast<float>(config.leaveMagnetMs)}, nowMs);
+                latch(Fault{FaultKind::DidNotLeave, static_cast<float>(elapsedMs), static_cast<float>(config.leaveMagnetMs)});
                 return true;
             }
             if (elapsedMs >= move.timeoutMs)
             {
-                latch(Fault{FaultKind::Timeout, static_cast<float>(elapsedMs), static_cast<float>(move.timeoutMs)}, nowMs);
+                latch(Fault{FaultKind::Timeout, static_cast<float>(elapsedMs), static_cast<float>(move.timeoutMs)});
+                return true;
+            }
+            // Repeated short moves that never reach a magnet (a jam, with current
+            // sense off) can't each restart the clock forever (FR-025).
+            const uint32_t budgetMs = driveBudgetMs(config);
+            if (driveBudgetUsedMs >= budgetMs)
+            {
+                latch(Fault{FaultKind::DriveBudget, static_cast<float>(driveBudgetUsedMs), static_cast<float>(budgetMs)});
                 return true;
             }
             return false;
@@ -92,23 +106,24 @@ namespace SQM
         bool Controller::checkElectrical(const Readings &readings)
         {
             const uint32_t nowMs = readings.nowMs;
-            // A NaN supply fails `>=` too: unreadable counts as low (ERR-04).
-            if (confirmed(supplyLow, !(readings.supplyVolts >= config.minSupplyVolts), nowMs))
+            // Unreadable (NaN, infinite, implausibly high) counts as low (ERR-04).
+            const bool supplyBad = !supplyReadable(readings.supplyVolts) || readings.supplyVolts < config.minSupplyVolts;
+            if (confirmed(supplyLow, supplyBad, nowMs))
             {
-                latch(Fault{FaultKind::SupplyLow, readings.supplyVolts, config.minSupplyVolts}, nowMs);
+                latch(Fault{FaultKind::SupplyLow, readings.supplyVolts, config.minSupplyVolts});
                 return true;
             }
             if (!config.currentSenseEnabled)
                 return false;
-            const bool unreadable = !std::isfinite(readings.motorAmps);
+            const bool unreadable = !currentReadable(readings.motorAmps);
             if (confirmed(currentUnreadable, unreadable, nowMs))
             {
-                latch(Fault{FaultKind::CurrentUnreadable, readings.motorAmps, config.maxCurrentAmps}, nowMs);
+                latch(Fault{FaultKind::CurrentUnreadable, readings.motorAmps, config.maxCurrentAmps});
                 return true;
             }
             if (confirmed(overCurrent, !unreadable && readings.motorAmps >= config.maxCurrentAmps, nowMs))
             {
-                latch(Fault{FaultKind::OverCurrent, readings.motorAmps, config.maxCurrentAmps}, nowMs);
+                latch(Fault{FaultKind::OverCurrent, readings.motorAmps, config.maxCurrentAmps});
                 return true;
             }
             return false;
@@ -151,9 +166,9 @@ namespace SQM
             current.positionMm = std::min(travel, std::max(0.0f, next));
         }
 
-        void Controller::arrive(uint32_t nowMs)
+        void Controller::arrive()
         {
-            stopDriving(nowMs);
+            stopDriving();
             move = Move{};
             current.fromUnknown = false;
             current.moveTimeoutMs = 0;
