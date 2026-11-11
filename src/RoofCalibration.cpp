@@ -68,10 +68,11 @@ namespace SQM
     void RoofControl::endCalibrationFor(bool yieldToClose, const std::string &text)
     {
         if (yieldToClose)
-            calibration.yieldToClose();
+            calibration.yieldToClose(controller);
         else
             calibration.stopped(text);
         calibratingNow.store(false);
+        applyOutput(); // an opening leg the close took over is stopped now
         notice = "Calibration run ended: " + calibration.report().endingText;
     }
 

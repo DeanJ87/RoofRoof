@@ -44,6 +44,9 @@ namespace SQM
             float runningAmps = 3.0f;
             float stallAmps = 18.0f;
             bool currentFitted = true;
+            // Spec 016: a motor that needs this fraction of full duty before it
+            // moves (speed affine, not proportional, in the duty). 0: proportional.
+            float deadbandFraction = 0.0f;
 
             // Moves the roof for `elapsedMs` under `output`; returns the distance moved.
             float drive(const Roof::Output &output, uint32_t elapsedMs);

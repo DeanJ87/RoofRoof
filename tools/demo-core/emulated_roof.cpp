@@ -481,7 +481,7 @@ namespace DemoRoof
                 CloseSeq::PERSON_STOP_REASON,
                 "A person stopped the roof: the automatic close is withdrawn",
                 controller.status().state};
-        calibration.yieldToClose(); // spec 016: the automatic close always wins
+        calibration.yieldToClose(controller); // spec 016: the automatic close always wins
         return runChecked(Roof::Command::Close, Roof::Origin::Automatic);
     }
 

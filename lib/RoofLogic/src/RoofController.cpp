@@ -206,6 +206,7 @@ namespace SQM
             current.fault = fault;
             if (current.fault.kind == FaultKind::None)
                 current.fault.kind = FaultKind::External;
+            ++faultsLatched;
         }
 
         void Controller::raiseFault(const Fault &fault)

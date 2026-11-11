@@ -144,6 +144,7 @@ namespace SQM
             endAfterText.clear();
             plan(controller, request);
             legsEnded = controller.calibrationReport().ended;
+            faultsSeen = controller.faultCount();
             pause(in.nowMs);
             return Answer{};
         }
@@ -176,10 +177,14 @@ namespace SQM
                 finish(Ending::Stopped, text);
         }
 
-        void Run::yieldToClose()
+        void Run::yieldToClose(Roof::Controller &controller)
         {
-            if (active())
-                finish(Ending::CloseSequence, "The automatic close took over");
+            if (!active())
+                return;
+            const bool opening = controller.status().calibrating && controller.status().target == Roof::End::Open;
+            if (opening)
+                controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
+            finish(Ending::CloseSequence, "The automatic close took over");
         }
 
         void Run::finish(Ending ending, const std::string &text)

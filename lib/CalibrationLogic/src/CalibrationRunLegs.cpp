@@ -67,7 +67,8 @@ namespace SQM
                 leg.dutyPercent = rep.old.topDutyPercent;
                 leg.limitMs = boundedBy(rep.limitMs, slow->drivenMs, TOP_LEG_FACTOR);
                 const double atTopMs = static_cast<double>(slow->drivenMs) * rep.old.slowDutyPercent / rep.old.topDutyPercent;
-                leg.slowAfterMs = std::max<uint32_t>(1, static_cast<uint32_t>(atTopMs * SLOW_AFTER_FRACTION));
+                const double slowAfter = atTopMs * SLOW_AFTER_FRACTION - rep.old.rampDownMs;
+                leg.slowAfterMs = slowAfter >= 1.0 ? static_cast<uint32_t>(slowAfter) : 1;
                 leg.expect = kind == LegKind::TopOpen ? open : closed;
             }
             return leg;
@@ -83,8 +84,13 @@ namespace SQM
             if (!active())
                 return;
             rep.nowMs = in.readings.nowMs;
-            if (controller.status().fault.kind != Roof::FaultKind::None)
-                return finish(Ending::Fault, "Fault on the " + legText(rep.leg) + ": " + in.faultText);
+            // A fault ends the run, even one a person cleared before this step.
+            const bool faulted = controller.status().fault.kind != Roof::FaultKind::None;
+            if (faulted || controller.faultCount() != faultsSeen)
+                return finish(
+                    Ending::Fault,
+                    "Fault on the " + legText(rep.leg) + ": " +
+                        (faulted ? in.faultText : std::string("latched and cleared during the run")));
             if (rep.phase == Phase::Drive)
                 stepDrive(controller, in);
             else

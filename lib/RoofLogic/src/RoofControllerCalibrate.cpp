@@ -72,6 +72,23 @@ namespace SQM
             return CommandResult{};
         }
 
+        // At the drive's start (after the dead time). The estimate is kept only
+        // when the saved polarity agrees with the direction (the leg leaves the
+        // other end's magnet): otherwise a stop part-way leaves the position
+        // unknown, never a confident wrong one. Faster than the slow duty only
+        // still on a magnet (constitution I), else capped at it.
+        void Controller::startLeg(bool leavesOtherEnd, bool onMagnet)
+        {
+            move.timeoutMs = move.leg.limitMs;
+            if (!leavesOtherEnd)
+            {
+                move.fromUnknown = true;
+                current.fromUnknown = true;
+            }
+            if (!onMagnet && move.leg.dutyPercent > config.slowDutyPercent)
+                move.leg.dutyPercent = config.slowDutyPercent;
+        }
+
         // The leg's end: any magnet once the start magnet is left, or the
         // expected level only (the other is the wrong magnet, constitution I).
         bool Controller::checkLegMagnets()

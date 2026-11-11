@@ -47,7 +47,7 @@ namespace SQM
             move.leftStart = false;
             move.startLevel = current.hall;
             if (move.calibration)
-                move.timeoutMs = move.leg.limitMs;
+                startLeg(onMagnet && at != move.target, onMagnet);
             else
                 move.timeoutMs = move.fromUnknown ? unknownMoveTimeoutMs(config) : moveTimeoutMs(config, remainingMm());
             current.moveTimeoutMs = move.timeoutMs;

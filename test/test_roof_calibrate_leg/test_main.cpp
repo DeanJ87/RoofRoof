@@ -416,6 +416,48 @@ void test_settings_are_refused_during_a_leg(void)
     assertRefused(Refusal::Moving, b.roof.applySettings(Settings()));
 }
 
+void test_a_leg_against_the_polarity_setting_keeps_no_estimate(void)
+{
+    // The setting says the open end reads high; the roof's closed end does: at
+    // the closed end the controller calls it open, so an open leg's estimate
+    // would be wrong. A stop part-way leaves the position unknown.
+    Bench b;
+    b.sim.highEndClosed = true;
+    b.steps(10);
+    TEST_ASSERT_TRUE(b.state() == State::Open);
+    TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
+    b.steps(1 + 5000 / 20);
+    TEST_ASSERT_TRUE(b.roof.status().fromUnknown);
+    b.command(Command::Stop);
+    TEST_ASSERT_TRUE(b.state() == State::Unknown);
+    TEST_ASSERT_FALSE(b.roof.status().positionKnown);
+}
+
+void test_a_fast_leg_off_its_magnet_at_drive_start_runs_slow(void)
+{
+    Bench b;
+    TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open, 100), Origin::Person).accepted);
+    b.steps(3); // driving, still on the closed magnet
+    b.roof.command(Command::Stop, Origin::Person);
+    TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open, 100), Origin::Person).accepted);
+    b.sim.positionMm = 900.0f; // the magnet is gone before the dead time ends
+    b.steps(300);
+    TEST_ASSERT_TRUE(b.roof.status().driving);
+    TEST_ASSERT_EQUAL_UINT8(SLOW_DUTY, b.roof.output().duty);
+}
+
+void test_the_fault_count_goes_up_once_per_latched_fault(void)
+{
+    Bench b;
+    TEST_ASSERT_EQUAL_UINT32(0, b.roof.faultCount());
+    b.roof.raiseFault(Fault{FaultKind::External, 0, 0});
+    b.roof.raiseFault(Fault{FaultKind::External, 0, 0});
+    TEST_ASSERT_EQUAL_UINT32(1, b.roof.faultCount());
+    b.roof.clearFault(Origin::Person);
+    b.roof.raiseFault(Fault{FaultKind::External, 0, 0});
+    TEST_ASSERT_EQUAL_UINT32(2, b.roof.faultCount());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -448,5 +490,8 @@ int main(int, char **)
     RUN_TEST(test_a_command_to_the_same_end_leaves_the_leg_running);
     RUN_TEST(test_a_reversal_replaces_the_leg_and_ends_it);
     RUN_TEST(test_settings_are_refused_during_a_leg);
+    RUN_TEST(test_a_leg_against_the_polarity_setting_keeps_no_estimate);
+    RUN_TEST(test_a_fast_leg_off_its_magnet_at_drive_start_runs_slow);
+    RUN_TEST(test_the_fault_count_goes_up_once_per_latched_fault);
     return UNITY_END();
 }

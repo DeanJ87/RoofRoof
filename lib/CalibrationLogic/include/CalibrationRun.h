@@ -70,8 +70,9 @@ namespace SQM
         constexpr double SLOW_CLOSE_FACTOR = 1.5;
         constexpr double TOP_LEG_FACTOR = 1.25;
         constexpr uint32_t LEG_EXTRA_MS = 5000;
-        // A top-duty leg slows down after this fraction of the time the slow leg predicts (R4).
-        constexpr double SLOW_AFTER_FRACTION = 0.6;
+        // A top-duty leg starts slowing down after this fraction of the time the
+        // slow leg predicts at the top duty, less the ramp-down time (R4).
+        constexpr double SLOW_AFTER_FRACTION = 0.5;
         // The run's limit setting (roof.calibrationLimitSeconds).
         constexpr uint32_t MIN_LIMIT_MS = 30000;
         constexpr uint32_t MAX_LIMIT_MS = 600000;
@@ -147,8 +148,9 @@ namespace SQM
             void step(Roof::Controller &controller, const StepInputs &in);
             // An accepted stop or abort from anyone (the roof is being stopped): the run ends.
             void stopped(const std::string &text);
-            // The automatic close takes over: the run ends, its move is left to the close.
-            void yieldToClose();
+            // The automatic close takes over: the run ends; a closing leg is left
+            // to the close, an opening leg is stopped (Origin::Automatic).
+            void yieldToClose(Roof::Controller &controller);
             bool active() const { return rep.state == RunState::Running; }
             const Report &report() const { return rep; }
 
@@ -170,7 +172,8 @@ namespace SQM
             Report rep;
             LegKind legs[MAX_PLANNED_LEGS] = {};
             uint8_t legCount = 0;
-            uint32_t legsEnded = 0; // the controller's count when the current leg started
+            uint32_t legsEnded = 0;  // the controller's count when the current leg started
+            uint32_t faultsSeen = 0; // the controller's fault count at the start
             LegSamples samples;
             Electrical electrical;
             bool restAtEnd = false; // the pause is at a magnet: its readings are the end's at rest

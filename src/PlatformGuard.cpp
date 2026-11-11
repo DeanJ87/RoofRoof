@@ -37,6 +37,7 @@ namespace SQM
                 {
                     state.roof = theRoof->state();
                     state.closeWaiting = theRoof->closeWaiting();
+                    state.calibrating = theRoof->calibrating(); // spec 016: refused up front too
                 }
                 else
                 {

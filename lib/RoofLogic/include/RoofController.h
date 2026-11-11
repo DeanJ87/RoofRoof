@@ -50,6 +50,9 @@ namespace SQM
             CommandResult checkCalibrate(const CalibrationLeg &leg, Origin origin) const;
             // How the last calibration leg ended.
             const CalibrationReport &calibrationReport() const { return legReport; }
+            // Faults latched since construction: a run notices one even if a
+            // person cleared it before the run's next step (spec 016).
+            uint32_t faultCount() const { return faultsLatched; }
 
             // A person clears the latched fault; automatic origins are refused.
             CommandResult clearFault(Origin origin);
@@ -99,6 +102,7 @@ namespace SQM
             void updateDeadTime(uint32_t nowMs);
             bool checkMagnets();
             bool checkLegMagnets();
+            void startLeg(bool leavesOtherEnd, bool onMagnet);
             uint32_t budgetLimitMs() const;
             void endLeg(bool arrived);
             bool checkTimes(uint32_t nowMs);
@@ -147,6 +151,7 @@ namespace SQM
             Pending overCurrent;
             Pending currentUnreadable;
             CalibrationReport legReport;
+            uint32_t faultsLatched = 0;
         };
     } // namespace Roof
 } // namespace SQM

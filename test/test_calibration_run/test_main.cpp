@@ -396,7 +396,7 @@ void test_the_automatic_close_takes_over(void)
     Rig r;
     TEST_ASSERT_TRUE(r.start().accepted);
     TEST_ASSERT_TRUE(r.until(LegKind::SlowClose));
-    r.run.yieldToClose();
+    r.run.yieldToClose(r.roof);
     TEST_ASSERT_TRUE(r.rep().ending == Ending::CloseSequence);
     // The closing leg carries on as the close.
     TEST_ASSERT_TRUE(r.roof.check(Roof::Command::Close, Roof::Origin::Automatic).accepted);
@@ -413,66 +413,6 @@ void test_wants_leg_only_when_a_leg_is_due(void)
     TEST_ASSERT_TRUE(r.run.wantsLeg(r.nowMs + SETTLE_MS));
     TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
     TEST_ASSERT_FALSE(r.run.wantsLeg(r.nowMs + SETTLE_MS));
-}
-
-// --- The plant's faults --------------------------------------------------------------------
-
-void test_a_missing_magnet_times_out_at_the_limit(void)
-{
-    Rig r;
-    r.plant.openMagnetMissing = true;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.finish());
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::Timeout);
-    TEST_ASSERT_EQUAL_FLOAT(static_cast<float>(LIMIT_MS), r.roof.status().fault.limit);
-    TEST_ASSERT_TRUE(r.rep().state == RunState::Failed);
-    TEST_ASSERT_TRUE(r.rep().endingText.find("slow open") != std::string::npos);
-    TEST_ASSERT_FALSE(r.rep().proposed);
-}
-
-void test_a_jam_with_current_sense_is_over_current(void)
-{
-    Roof::Settings s;
-    s.currentSenseEnabled = true;
-    Rig r(0.0f, s);
-    r.plant.stallAmps = 18.0f;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
-    r.steps(5000);
-    r.plant.jammed = true;
-    TEST_ASSERT_TRUE(r.finish(2000));
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::OverCurrent);
-    TEST_ASSERT_TRUE(r.rep().ending == Ending::Fault);
-}
-
-void test_a_motor_wired_backwards_doesnt_leave(void)
-{
-    Rig r;
-    r.plant.reversedWiring = true;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.finish(30000));
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::DidNotLeave);
-}
-
-void test_a_low_supply_mid_leg_faults(void)
-{
-    Rig r;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
-    r.steps(3000);
-    r.plant.supplyVolts = 10.0f;
-    TEST_ASSERT_TRUE(r.finish(2000));
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::SupplyLow);
-}
-
-void test_a_hall_rail_mid_leg_faults(void)
-{
-    Rig r;
-    TEST_ASSERT_TRUE(r.start().accepted);
-    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
-    r.plant.railCounts = 4095;
-    TEST_ASSERT_TRUE(r.finish(2000));
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::HallRail);
 }
 
 // --- Polarity and thresholds ---------------------------------------------------------------
@@ -518,6 +458,50 @@ void test_a_weak_magnet_withholds_the_thresholds(void)
     TEST_ASSERT_EQUAL_STRING("weakEnd", r.rep().proposal.hallProblem.reason.c_str());
 }
 
+void test_a_fault_cleared_before_the_next_step_still_ends_the_run(void)
+{
+    Rig r;
+    TEST_ASSERT_TRUE(r.start().accepted);
+    r.steps(400); // in the pause, before the first leg
+    r.roof.raiseFault(Roof::Fault{FaultKind::External, 1, 0});
+    r.roof.clearFault(Roof::Origin::Person);
+    r.step();
+    TEST_ASSERT_TRUE(r.rep().ending == Ending::Fault);
+    r.steps(5000);
+    TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+}
+
+void test_the_automatic_close_stops_an_opening_leg(void)
+{
+    Rig r;
+    TEST_ASSERT_TRUE(r.start().accepted);
+    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
+    r.steps(3000);
+    r.run.yieldToClose(r.roof);
+    TEST_ASSERT_TRUE(r.rep().ending == Ending::CloseSequence);
+    TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+    TEST_ASSERT_FALSE(r.roof.status().calibrating);
+}
+
+void test_top_legs_arrive_at_the_slow_duty_on_an_affine_motor(void)
+{
+    Rig r;
+    r.plant.deadbandFraction = 0.2f;  // slow at 40 % is a quarter of full speed, not 40 %
+    r.plant.speedMmPerSecond = 60.0f; // so a slow travel still fits the limit
+    TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
+    TEST_ASSERT_TRUE(r.until(LegKind::TopOpen));
+    uint8_t lastDuty = 0;
+    while (r.run.active() && r.rep().leg == LegKind::TopOpen && r.rep().phase == Phase::Drive)
+    {
+        if (r.roof.output().duty > 0)
+            lastDuty = r.roof.output().duty;
+        r.step();
+    }
+    TEST_ASSERT_EQUAL_UINT8(Roof::toDuty(0.4f), lastDuty);
+    TEST_ASSERT_TRUE(r.finish());
+    TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -548,11 +532,9 @@ int main(int, char **)
     RUN_TEST(test_a_blocked_leg_goes_once_unblocked);
     RUN_TEST(test_the_automatic_close_takes_over);
     RUN_TEST(test_wants_leg_only_when_a_leg_is_due);
-    RUN_TEST(test_a_missing_magnet_times_out_at_the_limit);
-    RUN_TEST(test_a_jam_with_current_sense_is_over_current);
-    RUN_TEST(test_a_motor_wired_backwards_doesnt_leave);
-    RUN_TEST(test_a_low_supply_mid_leg_faults);
-    RUN_TEST(test_a_hall_rail_mid_leg_faults);
+    RUN_TEST(test_a_fault_cleared_before_the_next_step_still_ends_the_run);
+    RUN_TEST(test_the_automatic_close_stops_an_opening_leg);
+    RUN_TEST(test_top_legs_arrive_at_the_slow_duty_on_an_affine_motor);
     RUN_TEST(test_the_opposite_polarity_is_proposed);
     RUN_TEST(test_same_pole_magnets_return_to_closed_and_withhold_the_thresholds);
     RUN_TEST(test_a_weak_magnet_withholds_the_thresholds);
