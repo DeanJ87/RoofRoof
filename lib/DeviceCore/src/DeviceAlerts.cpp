@@ -164,6 +164,13 @@ namespace SQM
             return alert;
         }
 
+        Alerts::Alert benchLabelled(Alerts::Alert alert, bool bench)
+        {
+            if (bench && alert.title.rfind(BENCH_ALERT_PREFIX, 0) != 0)
+                alert.title = BENCH_ALERT_PREFIX + alert.title;
+            return alert;
+        }
+
         void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::MAX_DEVICES])
         {
             for (uint32_t &silence : out)

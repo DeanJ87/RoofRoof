@@ -118,6 +118,27 @@ void test_name_description_and_interface_version(void)
     TEST_ASSERT_TRUE(has(rig.get("interfaceversion"), "\"Value\":3"));
 }
 
+// Spec 011 FR-026: bench and demo say so in the description; the name and
+// the UniqueID's parts never change.
+void test_simulated_roofs_say_so_in_the_description(void)
+{
+    const DeviceInfo standard = domeDeviceInfo();
+    const DeviceInfo bench = domeDeviceInfo("bench");
+    const DeviceInfo demo = domeDeviceInfo("demo");
+    TEST_ASSERT_EQUAL_STRING("Roll-off roof: shutter open, close and stop only", standard.description.c_str());
+    TEST_ASSERT_EQUAL_STRING(standard.description.c_str(), domeDeviceInfo("off").description.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "BENCH MODE (simulated roof, no motor): Roll-off roof: shutter open, close and stop only", bench.description.c_str());
+    TEST_ASSERT_EQUAL_STRING("Demo (simulated roof): Roll-off roof: shutter open, close and stop only", demo.description.c_str());
+    for (const DeviceInfo &info : {bench, demo})
+    {
+        TEST_ASSERT_EQUAL_STRING(standard.name.c_str(), info.name.c_str());
+        TEST_ASSERT_EQUAL_STRING(standard.typeKey.c_str(), info.typeKey.c_str());
+        TEST_ASSERT_EQUAL_UINT32(standard.number, info.number);
+        TEST_ASSERT_EQUAL(standard.interfaceVersion, info.interfaceVersion);
+    }
+}
+
 void test_only_cansetshutter_is_true(void)
 {
     Rig rig;
@@ -359,6 +380,7 @@ int main(int, char **)
     RUN_TEST(test_lists_one_dome_with_a_stable_unique_id);
     RUN_TEST(test_lists_nothing_while_alpaca_is_off);
     RUN_TEST(test_name_description_and_interface_version);
+    RUN_TEST(test_simulated_roofs_say_so_in_the_description);
     RUN_TEST(test_only_cansetshutter_is_true);
     RUN_TEST(test_missing_properties_are_not_implemented);
     RUN_TEST(test_missing_methods_are_not_implemented_and_reach_nothing);

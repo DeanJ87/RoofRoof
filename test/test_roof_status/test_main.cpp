@@ -76,6 +76,12 @@ void test_external_fault_texts_by_cause(void)
     assertText(
         "Watchdog timer stopped: last check 120 ms ago > 100 ms", describeFault(externalRecord(FaultCause::WatchdogStopped, 120, 100)));
     assertText("Fault raised: 3 (limit 2)", describeFault(externalRecord(FaultCause::Logic, 3, 2)));
+    // Spec 011: the measured supply and the limit, or the unreadable input.
+    assertText(
+        "Bench firmware on a powered roof: supply 12.4 V >= 6.0 V", describeFault(externalRecord(FaultCause::BenchSupply, 12.4f, 6.0f)));
+    assertText(
+        "Bench firmware on a powered roof? Supply input unreadable (limit 6.0 V)",
+        describeFault(externalRecord(FaultCause::BenchSupply, NAN, 6.0f)));
 }
 
 void test_refusal_texts(void)
@@ -170,6 +176,19 @@ void test_status_closed_roof(void)
     TEST_ASSERT_EQUAL(0, roof["watchdogTrips"].as<int>());
     TEST_ASSERT_TRUE(roof.containsKey("maxStepGapMs"));
     TEST_ASSERT_TRUE(roof.containsKey("maxWatchdogBeatAgeMs"));
+    TEST_ASSERT_EQUAL_STRING("off", roof["simulation"]); // spec 011: the real roof
+}
+
+// Spec 011 FR-013, FR-026: a simulated roof says which.
+void test_status_simulation(void)
+{
+    RoofIo::Snapshot snap = closedRoof();
+    snap.simulation = "bench";
+    TEST_ASSERT_EQUAL_STRING("bench", write(snap)["roof"]["simulation"]);
+    snap.simulation = "demo";
+    TEST_ASSERT_EQUAL_STRING("demo", write(snap)["roof"]["simulation"]);
+    snap.simulation = nullptr;
+    TEST_ASSERT_EQUAL_STRING("off", write(snap)["roof"]["simulation"]);
 }
 
 void test_status_opening_part_way(void)
@@ -363,6 +382,7 @@ int main(int, char **)
     RUN_TEST(test_refusal_texts);
     RUN_TEST(test_gate_texts_name_the_failed_input);
     RUN_TEST(test_status_closed_roof);
+    RUN_TEST(test_status_simulation);
     RUN_TEST(test_status_opening_part_way);
     RUN_TEST(test_status_unknown_and_unreadable_are_null);
     RUN_TEST(test_status_supply_low_boundary);

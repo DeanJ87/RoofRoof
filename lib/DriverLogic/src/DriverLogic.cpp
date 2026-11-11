@@ -23,5 +23,12 @@ namespace SQM
             }
             return out;
         }
+
+        Outputs physicalOutputs(const Outputs &logical, bool benchBuild)
+        {
+            if (benchBuild)
+                return Outputs();
+            return logical;
+        }
     } // namespace Driver
 } // namespace SQM

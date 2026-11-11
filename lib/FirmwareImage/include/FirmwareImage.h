@@ -23,7 +23,10 @@ namespace SQM
         constexpr uint32_t FS_SIZE = 0x70000;
         // Any other partition table.
         constexpr const char *OTHER_LAYOUT = "other";
+        // The marker's build field (spec 011): the standard firmware, or a
+        // bench-mode image (simulated roof, motor never driven).
         constexpr const char *BUILD = "standard";
+        constexpr const char *BUILD_BENCH = "bench";
 
         // "l2" for the running partition table, otherwise "other".
         std::string layoutOf(uint32_t appSlotSize, uint32_t fsSize);
@@ -37,7 +40,7 @@ namespace SQM
 
         // The full marker for an image (magic + fields + NUL), as embedded by
         // the firmware (src/FirmwareMarker.cpp).
-        std::string marker(const char *product = PRODUCT, const char *layout = LAYOUT);
+        std::string marker(const char *product = PRODUCT, const char *layout = LAYOUT, const char *build = BUILD);
 
         // Finds the marker in an image fed in chunks of any size.
         class Scanner
@@ -70,10 +73,15 @@ namespace SQM
             OtherProduct, // a marker naming another product
             OtherLayout,  // built for a layout this device doesn't have
             OtherBuild,   // a build this product doesn't make
+            BenchImage,   // a bench-mode image, offered to a standard board (spec 011)
         };
 
         // Checks product, then layout, then build; the first mismatch decides.
-        Verdict check(const Scanner &scanner, const std::string &deviceLayout);
+        // The build: an image of the running build is fine; a bench board
+        // also takes a standard image (leaving bench mode is always allowed);
+        // a standard board never takes a bench image, so a roof controller
+        // can't be put into bench mode over the network (spec 011 FR-024).
+        Verdict check(const Scanner &scanner, const std::string &deviceLayout, const std::string &runningBuild = BUILD);
 
         // One line for the person updating (DS-22), English; the UI
         // translates it through the device-message templates. `product` is the
