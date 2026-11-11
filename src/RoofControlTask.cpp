@@ -74,8 +74,11 @@ namespace SQM
             return false;
         }
         started.store(true);
-        Logger::info(TAG, "Roof control task started (%u ms steps, watchdog %u ms)", static_cast<unsigned>(RoofIo::CONTROL_PERIOD_MS),
-                     static_cast<unsigned>(RoofIo::WATCHDOG_LIMIT_MS));
+        Logger::info(
+            TAG,
+            "Roof control task started (%u ms steps, watchdog %u ms)",
+            static_cast<unsigned>(RoofIo::CONTROL_PERIOD_MS),
+            static_cast<unsigned>(RoofIo::WATCHDOG_LIMIT_MS));
         return true;
     }
 
@@ -155,8 +158,8 @@ namespace SQM
         {
             // The watchdog dropped EN: latch it (output off), then let EN be used again.
             ++watchdogTrips;
-            latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::Watchdog, static_cast<float>(in.gapMs),
-                                                 static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
+            latchExternal(RoofIo::externalRecord(
+                RoofIo::FaultCause::Watchdog, static_cast<float>(in.gapMs), static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
             MotorDriver::clearTrip();
         }
         takePendingSettings();

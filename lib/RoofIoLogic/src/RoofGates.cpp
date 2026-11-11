@@ -13,8 +13,13 @@ namespace SQM
             GateInputs stale = in;
             char text[96];
             if (handedOver)
-                std::snprintf(text, sizeof(text), "safety inputs not updated for %u.%u s > %u s", static_cast<unsigned>(ageMs / 1000),
-                              static_cast<unsigned>(ageMs % 1000 / 100), static_cast<unsigned>(SAFETY_HANDOVER_STALE_MS / 1000));
+                std::snprintf(
+                    text,
+                    sizeof(text),
+                    "safety inputs not updated for %u.%u s > %u s",
+                    static_cast<unsigned>(ageMs / 1000),
+                    static_cast<unsigned>(ageMs % 1000 / 100),
+                    static_cast<unsigned>(SAFETY_HANDOVER_STALE_MS / 1000));
             else
                 std::snprintf(text, sizeof(text), "safety inputs not evaluated yet");
             stale.weather = Safety::Verdict::Unknown;

@@ -35,8 +35,14 @@ namespace
         return s;
     }
 
-    const Roof::State ALL_STATES[] = {Roof::State::Unknown, Roof::State::Closed,  Roof::State::Open,  Roof::State::Opening,
-                                      Roof::State::Closing, Roof::State::Stopped, Roof::State::Error};
+    const Roof::State ALL_STATES[] = {
+        Roof::State::Unknown,
+        Roof::State::Closed,
+        Roof::State::Open,
+        Roof::State::Opening,
+        Roof::State::Closing,
+        Roof::State::Stopped,
+        Roof::State::Error};
 } // namespace
 
 void test_open_needs_a_safe_verdict(void)
