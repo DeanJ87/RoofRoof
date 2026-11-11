@@ -1,0 +1,3070 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RoofRoof REST API",
+    "version": "0.1.0+dev",
+    "summary": "The REST API of a RoofRoof roll-off-roof controller.",
+    "description": "Every `/api/*` route a RoofRoof roll-off-roof controller serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (alert `title` and `message`, `error`) may be reworded between releases: key on the alert `event`, not its text.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here. The device offers no Alpaca device yet (the Dome comes later): `/api/v1/*` answers \"unknown device\". See https://ascom-standards.org/api/.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "externalDocs": {
+    "description": "RoofRoof REST API guide",
+    "url": "https://github.com/DeanJ87/RoofRoof/blob/main/docs/api/rest.md"
+  },
+  "servers": [
+    {
+      "url": "http://{device}",
+      "description": "Your RoofRoof",
+      "variables": {
+        "device": {
+          "default": "roofroof.local",
+          "description": "The device's address or .local name"
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "name": "Status",
+      "description": "Device status."
+    },
+    {
+      "name": "Settings",
+      "description": "Read and change the device's settings."
+    },
+    {
+      "name": "Alerts",
+      "description": "Alerts: whether they're sent, recent ones, tests."
+    },
+    {
+      "name": "Network",
+      "description": "WiFi and MQTT."
+    },
+    {
+      "name": "Updates",
+      "description": "Firmware and web UI updates."
+    },
+    {
+      "name": "Device",
+      "description": "Restart."
+    },
+    {
+      "name": "Alpaca",
+      "description": "ASCOM Alpaca: see the standard.",
+      "externalDocs": {
+        "url": "https://ascom-standards.org/api/"
+      }
+    }
+  ],
+  "paths": {
+    "/api/status": {
+      "get": {
+        "operationId": "get_status",
+        "tags": [
+          "Status"
+        ],
+        "summary": "Device status",
+        "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, alerts, Alpaca clients and connections. Also pushed over `/ws/status`.\n\nOpen: Read-only status for integrations.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                },
+                "example": {
+                  "alerts": {
+                    "armed": true,
+                    "mode": "any",
+                    "reason": "none",
+                    "since": null,
+                    "sinceAgeMs": null,
+                    "recentRevision": 0
+                  },
+                  "alpaca": {
+                    "enabled": true,
+                    "clients": {}
+                  },
+                  "firmware": {
+                    "name": "RoofRoof",
+                    "product": "roofroof",
+                    "version": "0.0.0",
+                    "buildDate": "Nov 10 2026",
+                    "buildTime": "12:00:00",
+                    "layout": "l2"
+                  },
+                  "uptime": 2,
+                  "bootCount": 3,
+                  "resetReason": 3,
+                  "connections": {
+                    "tcpLimit": 16,
+                    "liveUpdates": {
+                      "status": 1,
+                      "limitPerEndpoint": 3,
+                      "replaced": 0,
+                      "stalledClosed": 0
+                    },
+                    "alpacaRestoredAfterRestart": false
+                  },
+                  "freeHeap": 214320,
+                  "minFreeHeap": 156056,
+                  "maxAllocHeap": 110580,
+                  "heapSize": 327680,
+                  "stackFree": {
+                    "asyncTcp": 3360,
+                    "loop": 3612
+                  },
+                  "heapStages": [
+                    {
+                      "stage": "boot",
+                      "free": 279836,
+                      "largest": 110580
+                    },
+                    {
+                      "stage": "wifi",
+                      "free": 214276,
+                      "largest": 110580
+                    },
+                    {
+                      "stage": "setup complete",
+                      "free": 190660,
+                      "largest": 110580
+                    }
+                  ],
+                  "cpuFreqMHz": 240,
+                  "flashSize": 4194304,
+                  "sketchSize": 1529280,
+                  "freeSketchSpace": 305728,
+                  "fsTotal": 458752,
+                  "fsUsed": 184320,
+                  "partitions": {
+                    "runningSlot": "app0",
+                    "runningAddress": 65536,
+                    "runningSize": 1835008,
+                    "bootSlot": "app0",
+                    "nextSlot": "app1",
+                    "nextSize": 1835008,
+                    "nvs": {
+                      "usedEntries": 12,
+                      "freeEntries": 488,
+                      "totalEntries": 500,
+                      "namespaceCount": 1
+                    },
+                    "fsAddress": 3735552,
+                    "fsSize": 458752
+                  },
+                  "time": {
+                    "epoch": 1794350418,
+                    "iso": "2026-11-10T22:40:18+0000",
+                    "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
+                  },
+                  "ntp": {
+                    "enabled": true,
+                    "synced": true,
+                    "status": 1,
+                    "lastSync": 1794346816480,
+                    "nextSync": 1794354016480,
+                    "drift": 0.003,
+                    "server": "pool.ntp.org"
+                  },
+                  "wifi": {
+                    "connected": true,
+                    "ssid": "DarkSkyLab",
+                    "ip": "192.168.1.42",
+                    "rssi": -58,
+                    "mac": "AA:BB:CC:DD:EE:FF",
+                    "connectPending": false,
+                    "apMode": false,
+                    "hostname": "roofroof",
+                    "mdns": true,
+                    "ipv6": {
+                      "enabled": true,
+                      "addresses": [
+                        {
+                          "address": "fe80::a3b2:c3ff:fed4:e5f6",
+                          "scope": "link-local"
+                        },
+                        {
+                          "address": "2001:db8:4a2c:1:a3b2:c3ff:fed4:e5f6",
+                          "scope": "global"
+                        }
+                      ]
+                    }
+                  },
+                  "mqtt": {
+                    "enabled": true,
+                    "connected": true,
+                    "state": 0,
+                    "lastPublish": 1794350356480,
+                    "lastReconnectAttempt": 0,
+                    "broker": "192.168.1.10",
+                    "port": 1883,
+                    "topic": "roofroof",
+                    "availabilityTopic": "roofroof/availability",
+                    "clientId": "RoofRoof-D4E5F6"
+                  },
+                  "configRevision": 887913319
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/effective": {
+      "get": {
+        "operationId": "get_settings_effective",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Settings in effect",
+        "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason.\n\nOpen: Read-only effective-settings report (no secrets).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsEffective"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "operationId": "get_config",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Settings",
+        "description": "Every setting. Passwords and keys are masked.\n\nOpen: Read-only, every secret masked.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_config",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Change settings",
+        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdate"
+              },
+              "example": {
+                "deviceName": "backyard-roof"
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "put_config",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Change settings (PUT)",
+        "description": "The same as `POST /api/config`, for clients that use PUT.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/restart": {
+      "post": {
+        "operationId": "post_restart",
+        "tags": [
+          "Device"
+        ],
+        "summary": "Restart",
+        "description": "Restarts the device after answering.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/backup/preview": {
+      "post": {
+        "operationId": "post_backup_preview",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Preview a restore",
+        "description": "Reads a backup file (`backup`, its text or its JSON) and, with its `passphrase`, its secrets, and answers what applying would save: the settings (masked), which secrets change, settings this board can't use and why it would restart. Nothing is applied; the `token` binds this preview to `POST /api/backup/apply`. Refused with `code` `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` or `invalid` (the save's own reason in `error`).\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "backup": {
+                    "description": "The backup file's text, or its JSON."
+                  },
+                  "passphrase": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "backup"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "backup": "{\"roofroofBackup\":1,\"firmware\":\"0.1.0\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-roof\",\"settings\":{\"deviceName\":\"backyard-roof\"}}"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup/apply": {
+      "post": {
+        "operationId": "post_backup_apply",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Apply a previewed restore",
+        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "restarting": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "restarting"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "token": "00112233445566778899aabbccddeeff"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backup": {
+      "post": {
+        "operationId": "post_backup",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Back up the settings",
+        "description": "The backup file: every setting as `GET /api/config` shows it, with a header. With a `passphrase` (8 characters or more) the passwords, keys and tokens are included encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256); without one the file holds no secret. Answered from a background task: a second or two with a passphrase. Refusals carry a `code`: 400 `passphrase-short`, 409 `busy` while another backup or preview runs, 413 `too-large`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Backup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "passphrase": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "passphrase": "correct horse battery"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wifi/scan": {
+      "get": {
+        "operationId": "get_wifi_scan",
+        "tags": [
+          "Network"
+        ],
+        "summary": "Scan for WiFi networks",
+        "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WifiScan"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WifiScan"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/mqtt/test": {
+      "post": {
+        "operationId": "post_mqtt_test",
+        "tags": [
+          "Network"
+        ],
+        "summary": "Test an MQTT broker",
+        "description": "Tries to connect with the given details without saving them. A `password` of `********` (the mask settings return) or empty means the saved password, which is only used when broker, port and username match the saved ones; for any other broker a masked password is refused with 400.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The broker didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "broker": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "integer"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "clientId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "broker"
+                ]
+              },
+              "example": {
+                "broker": "192.168.1.10",
+                "port": 1883,
+                "username": "",
+                "password": "",
+                "clientId": "RoofRoof-Test"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wifi/connect": {
+      "post": {
+        "operationId": "post_wifi_connect",
+        "tags": [
+          "Network"
+        ],
+        "summary": "Join a WiFi network",
+        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ssid": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ssid",
+                  "password"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "ssid": "MyNetwork",
+                "password": "hunter2"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/update/fs": {
+      "post": {
+        "operationId": "post_update_fs",
+        "tags": [
+          "Updates"
+        ],
+        "summary": "Upload the web UI",
+        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filesystem": {
+                    "type": "string",
+                    "contentMediaType": "application/octet-stream",
+                    "description": "roofroof-l2-littlefs-<version>.bin"
+                  }
+                },
+                "required": [
+                  "filesystem"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/update": {
+      "post": {
+        "operationId": "post_update",
+        "tags": [
+          "Updates"
+        ],
+        "summary": "Upload firmware",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "firmware": {
+                    "type": "string",
+                    "contentMediaType": "application/octet-stream",
+                    "description": "roofroof-l2-firmware-<version>.bin"
+                  }
+                },
+                "required": [
+                  "firmware"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/test": {
+      "post": {
+        "operationId": "post_alerts_test",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Send a test alert",
+        "description": "Queues a test on the given saved, switched-on channel(s); see `/api/alerts/recent` for the result. A channel that can't deliver right now is recorded as `skipped`. Add `event`, `level` and `sound` for a sample of that event, or `title`/`message` to try custom wording with `{variables}`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Test notification queued"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mqtt",
+                "pushover",
+                "ntfy",
+                "webhook",
+                "all"
+              ]
+            },
+            "description": "Defaults to `all`."
+          },
+          {
+            "name": "event",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "client_lost",
+                "client_back",
+                "client_disconnected"
+              ]
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "description": "1 quiet, 2 normal, 3 urgent, 4 wake me.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            }
+          },
+          {
+            "name": "sound",
+            "in": "query",
+            "description": "Pushover sound.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "description": "Custom title, up to 80 characters.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "message",
+            "in": "query",
+            "description": "Custom message, up to 240 characters.",
+            "schema": {
+              "type": "string",
+              "maxLength": 240
+            }
+          }
+        ]
+      }
+    },
+    "/api/alerts/clear": {
+      "post": {
+        "operationId": "post_alerts_clear",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Clear recent alerts",
+        "description": "Empties the recent-alerts list.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      }
+    },
+    "/api/alerts/arm": {
+      "post": {
+        "operationId": "post_alerts_arm",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Resume alerts",
+        "description": "Takes effect at once and survives restarts.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/source"
+          }
+        ]
+      }
+    },
+    "/api/alerts/disarm": {
+      "post": {
+        "operationId": "post_alerts_disarm",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Pause alerts",
+        "description": "While paused nothing is sent. Takes effect at once and survives restarts.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/source"
+          }
+        ]
+      }
+    },
+    "/api/alerts/armed": {
+      "get": {
+        "operationId": "get_alerts_armed",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Sending or paused",
+        "description": "Whether alerts are being sent, the send mode and why it's sending or paused.\n\nOpen: Read-only: sending or paused, and why.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsArmed"
+                },
+                "example": {
+                  "armed": true,
+                  "mode": "any",
+                  "reason": "none",
+                  "since": null,
+                  "sinceAgeMs": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/alerts/recent": {
+      "get": {
+        "operationId": "get_alerts_recent",
+        "tags": [
+          "Alerts"
+        ],
+        "summary": "Recent alerts",
+        "description": "Whether alerts are on, and the last 20 since boot, newest first, with each channel's delivery result (`pending`, `sent`, `failed`, `skipped`).\n\nOpen: Read-only recent alerts (no secrets).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsRecent"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "deviceLogin": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "The device's username and password, when protection is on."
+      }
+    },
+    "parameters": {
+      "source": {
+        "name": "source",
+        "in": "query",
+        "description": "`ui` when the web UI sends it; shown as the reason.",
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "ActionResult": {
+        "title": "Action result",
+        "description": "What every action endpoint answers on a 2xx status, success true plus details; on a 4xx/5xx status, an error message. Hand-written, not generated: tools/contract-check.py checks the device's actions against it.",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "success": {
+                "const": true
+              }
+            },
+            "required": [
+              "success"
+            ],
+            "not": {
+              "required": [
+                "error"
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "error"
+            ],
+            "not": {
+              "required": [
+                "success"
+              ]
+            }
+          }
+        ]
+      },
+      "AlertsArmed": {
+        "title": "alerts-armed",
+        "type": "object",
+        "properties": {
+          "armed": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "any",
+              "whileConnected"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "none",
+              "user-ui",
+              "user-rest",
+              "user-mqtt",
+              "client-connected",
+              "client-disconnected",
+              "waiting-for-client",
+              "migrated"
+            ]
+          },
+          "since": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sinceAgeMs": {
+            "type": [
+              "null",
+              "number"
+            ]
+          }
+        },
+        "required": [
+          "armed",
+          "mode",
+          "reason",
+          "since",
+          "sinceAgeMs"
+        ],
+        "additionalProperties": false
+      },
+      "AlertsRecent": {
+        "title": "alerts-recent",
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ageSeconds": {
+                  "type": "number"
+                },
+                "channels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "detail": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "detail",
+                      "status"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "event": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "number"
+                },
+                "level": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ageSeconds",
+                "channels",
+                "event",
+                "id",
+                "level",
+                "message",
+                "timestamp",
+                "title"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "armed": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "alerts",
+          "armed",
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "AlpacaConfiguredDevices": {
+        "title": "alpaca-configured-devices",
+        "type": "object",
+        "properties": {
+          "ClientTransactionID": {
+            "type": "number"
+          },
+          "ErrorMessage": {
+            "type": "string"
+          },
+          "ErrorNumber": {
+            "type": "number"
+          },
+          "ServerTransactionID": {
+            "type": "number"
+          },
+          "Value": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "ClientTransactionID",
+          "ErrorMessage",
+          "ErrorNumber",
+          "ServerTransactionID",
+          "Value"
+        ],
+        "additionalProperties": false
+      },
+      "AlpacaDescription": {
+        "title": "alpaca-description",
+        "type": "object",
+        "properties": {
+          "ClientTransactionID": {
+            "type": "number"
+          },
+          "ErrorMessage": {
+            "type": "string"
+          },
+          "ErrorNumber": {
+            "type": "number"
+          },
+          "ServerTransactionID": {
+            "type": "number"
+          },
+          "Value": {
+            "type": "object",
+            "properties": {
+              "Location": {
+                "type": "string"
+              },
+              "Manufacturer": {
+                "type": "string"
+              },
+              "ManufacturerVersion": {
+                "type": "string"
+              },
+              "ServerName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "Location",
+              "Manufacturer",
+              "ManufacturerVersion",
+              "ServerName"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ClientTransactionID",
+          "ErrorMessage",
+          "ErrorNumber",
+          "ServerTransactionID",
+          "Value"
+        ],
+        "additionalProperties": false
+      },
+      "Backup": {
+        "title": "Backup",
+        "description": "POST /api/backup (src/WebServerBackup.cpp, lib/ConfigBackup): the settings backup file, format 1. Hand-written, not generated.",
+        "type": "object",
+        "properties": {
+          "roofroofBackup": {
+            "type": "integer",
+            "const": 1,
+            "description": "Format version."
+          },
+          "firmware": {
+            "type": "string",
+            "description": "Firmware version that made it."
+          },
+          "board": {
+            "type": "string",
+            "description": "Chip, e.g. esp32."
+          },
+          "build": {
+            "type": "string",
+            "enum": [
+              "standard"
+            ]
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC; left out when the device clock wasn't set."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Every setting as GET /api/config shows it: a set secret is \"********\", an empty one \"\"."
+          },
+          "secrets": {
+            "type": "object",
+            "description": "Only with a passphrase: the eight secrets, encrypted with AES-256-GCM under a PBKDF2-HMAC-SHA256 key.",
+            "properties": {
+              "kdf": {
+                "type": "string",
+                "const": "pbkdf2-sha256"
+              },
+              "iterations": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 100000
+              },
+              "salt": {
+                "type": "string",
+                "description": "Base64, 16 bytes."
+              },
+              "cipher": {
+                "type": "string",
+                "const": "aes-256-gcm"
+              },
+              "nonce": {
+                "type": "string",
+                "description": "Base64, 12 bytes."
+              },
+              "data": {
+                "type": "string",
+                "description": "Base64 ciphertext followed by the 16-byte tag; associated data \"roofroof-backup/1\"."
+              }
+            },
+            "required": [
+              "kdf",
+              "iterations",
+              "salt",
+              "cipher",
+              "nonce",
+              "data"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "roofroofBackup",
+          "firmware",
+          "board",
+          "build",
+          "deviceName",
+          "settings"
+        ],
+        "additionalProperties": false
+      },
+      "BackupPreview": {
+        "title": "BackupPreview",
+        "description": "POST /api/backup/preview (src/WebServerBackup.cpp, lib/ConfigBackup): what restoring a backup would save, before anything is applied. Hand-written, not generated.",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "32 hex characters; send it to POST /api/backup/apply."
+          },
+          "backup": {
+            "type": "object",
+            "description": "The file's header, as far as it has one (format 0 is a plain settings export).",
+            "properties": {
+              "format": {
+                "type": "integer"
+              },
+              "firmware": {
+                "type": "string"
+              },
+              "board": {
+                "type": "string"
+              },
+              "build": {
+                "type": "string"
+              },
+              "deviceName": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "format"
+            ],
+            "additionalProperties": false
+          },
+          "settings": {
+            "type": "object",
+            "description": "The settings applying would save, secrets masked as in GET /api/config."
+          },
+          "secrets": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "restored",
+                  "kept",
+                  "none"
+                ],
+                "description": "restored: decrypted with the passphrase; kept: the file has secrets but no passphrase was given; none: the file has none."
+              },
+              "changed": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Secret paths that will change (never values)."
+              },
+              "unchanged": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "state",
+              "changed",
+              "unchanged"
+            ],
+            "additionalProperties": false
+          },
+          "notApplicable": {
+            "type": "array",
+            "description": "Settings in the backup this board can't use: not applied, this board's value is kept.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {
+                  "description": "The backup's value (left out for a secret)."
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "pushover-keys"
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "restart": {
+            "type": "array",
+            "description": "Why applying restarts the device; empty: no restart.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "wifi",
+                "ota",
+                "ipv6",
+                "alpaca"
+              ]
+            }
+          }
+        },
+        "required": [
+          "token",
+          "backup",
+          "settings",
+          "secrets",
+          "notApplicable",
+          "restart"
+        ],
+        "additionalProperties": false
+      },
+      "Config": {
+        "title": "config",
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "object",
+            "properties": {
+              "clientSilentSeconds": {
+                "type": "number"
+              },
+              "cooldownSeconds": {
+                "type": "number"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "client_back": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "client_disconnected": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "client_lost": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "client_back",
+                  "client_disconnected",
+                  "client_lost"
+                ],
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "additionalProperties": false
+              },
+              "ntfy": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "server": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "server",
+                  "token",
+                  "topic"
+                ],
+                "additionalProperties": false
+              },
+              "pushover": {
+                "type": "object",
+                "properties": {
+                  "appToken": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "sound": {
+                    "type": "string"
+                  },
+                  "userKey": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "appToken",
+                  "enabled",
+                  "sound",
+                  "userKey"
+                ],
+                "additionalProperties": false
+              },
+              "sendMode": {
+                "type": "string",
+                "enum": [
+                  "any",
+                  "whileConnected"
+                ]
+              },
+              "webhook": {
+                "type": "object",
+                "properties": {
+                  "authHeader": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "insecureTls": {
+                    "type": "boolean"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "authHeader",
+                  "enabled",
+                  "insecureTls",
+                  "url"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "clientSilentSeconds",
+              "cooldownSeconds",
+              "enabled",
+              "events",
+              "mqtt",
+              "ntfy",
+              "pushover",
+              "sendMode",
+              "webhook"
+            ],
+            "additionalProperties": false
+          },
+          "alpaca": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "enabled"
+            ],
+            "additionalProperties": false
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "enabled",
+              "password",
+              "username"
+            ],
+            "additionalProperties": false
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "mqtt": {
+            "type": "object",
+            "properties": {
+              "broker": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "homeAssistant": {
+                "type": "object",
+                "properties": {
+                  "discoveryPrefix": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "discoveryPrefix",
+                  "enabled"
+                ],
+                "additionalProperties": false
+              },
+              "password": {
+                "type": "string"
+              },
+              "port": {
+                "type": "number"
+              },
+              "publishIntervalMs": {
+                "type": "number"
+              },
+              "topic": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "broker",
+              "enabled",
+              "homeAssistant",
+              "password",
+              "port",
+              "publishIntervalMs",
+              "topic",
+              "username"
+            ],
+            "additionalProperties": false
+          },
+          "ntp": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "server1": {
+                "type": "string"
+              },
+              "server2": {
+                "type": "string"
+              },
+              "syncIntervalMs": {
+                "type": "number"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "enabled",
+              "server1",
+              "server2",
+              "syncIntervalMs",
+              "timezone"
+            ],
+            "additionalProperties": false
+          },
+          "ota": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "enabled",
+              "password"
+            ],
+            "additionalProperties": false
+          },
+          "wifi": {
+            "type": "object",
+            "properties": {
+              "autoReconnect": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string"
+              },
+              "ipv6": {
+                "type": "boolean"
+              },
+              "maxReconnectDelayMs": {
+                "type": "number"
+              },
+              "mdns": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              },
+              "reconnectDelayMs": {
+                "type": "number"
+              },
+              "ssid": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "autoReconnect",
+              "hostname",
+              "ipv6",
+              "maxReconnectDelayMs",
+              "mdns",
+              "password",
+              "reconnectDelayMs",
+              "ssid"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "alerts",
+          "alpaca",
+          "auth",
+          "deviceName",
+          "mqtt",
+          "ntp",
+          "ota",
+          "wifi"
+        ],
+        "additionalProperties": false
+      },
+      "ConfigUpdate": {
+        "title": "Settings (partial update)",
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "object",
+            "properties": {
+              "clientSilentSeconds": {
+                "type": "number"
+              },
+              "cooldownSeconds": {
+                "type": "number"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "client_back": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "client_disconnected": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "client_lost": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "ntfy": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "server": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "pushover": {
+                "type": "object",
+                "properties": {
+                  "appToken": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "sound": {
+                    "type": "string"
+                  },
+                  "userKey": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "sendMode": {
+                "type": "string",
+                "enum": [
+                  "any",
+                  "whileConnected"
+                ]
+              },
+              "webhook": {
+                "type": "object",
+                "properties": {
+                  "authHeader": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "insecureTls": {
+                    "type": "boolean"
+                  },
+                  "url": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "alpaca": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "mqtt": {
+            "type": "object",
+            "properties": {
+              "broker": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "homeAssistant": {
+                "type": "object",
+                "properties": {
+                  "discoveryPrefix": {
+                    "type": "string"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "password": {
+                "type": "string"
+              },
+              "port": {
+                "type": "number"
+              },
+              "publishIntervalMs": {
+                "type": "number"
+              },
+              "topic": {
+                "type": "string"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "ntp": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "server1": {
+                "type": "string"
+              },
+              "server2": {
+                "type": "string"
+              },
+              "syncIntervalMs": {
+                "type": "number"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "ota": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "wifi": {
+            "type": "object",
+            "properties": {
+              "autoReconnect": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string"
+              },
+              "ipv6": {
+                "type": "boolean"
+              },
+              "maxReconnectDelayMs": {
+                "type": "number"
+              },
+              "mdns": {
+                "type": "boolean"
+              },
+              "password": {
+                "type": "string"
+              },
+              "reconnectDelayMs": {
+                "type": "number"
+              },
+              "ssid": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "Error": {
+        "title": "Error",
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "What went wrong, in English."
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "SettingsEffective": {
+        "title": "settings-effective",
+        "type": "object",
+        "properties": {
+          "facts": {
+            "type": "object",
+            "properties": {
+              "alpacaDevices": {
+                "type": "number"
+              },
+              "clockSet": {
+                "type": "boolean"
+              },
+              "mqttConnected": {
+                "type": "boolean"
+              },
+              "wifiConnected": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "alpacaDevices",
+              "clockSet",
+              "mqttConnected",
+              "wifiConnected"
+            ],
+            "additionalProperties": false
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fix": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "setting": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "setting",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "facts",
+          "settings"
+        ],
+        "additionalProperties": false
+      },
+      "Status": {
+        "title": "status",
+        "type": "object",
+        "properties": {
+          "alerts": {
+            "type": "object",
+            "properties": {
+              "armed": {
+                "type": "boolean"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "any",
+                  "whileConnected"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "user-ui",
+                  "user-rest",
+                  "user-mqtt",
+                  "client-connected",
+                  "client-disconnected",
+                  "waiting-for-client",
+                  "migrated"
+                ]
+              },
+              "recentRevision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "since": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "sinceAgeMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              }
+            },
+            "required": [
+              "armed",
+              "mode",
+              "reason",
+              "recentRevision",
+              "since",
+              "sinceAgeMs"
+            ],
+            "additionalProperties": false
+          },
+          "alpaca": {
+            "type": "object",
+            "properties": {
+              "clients": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "clientId": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "connected": {
+                      "type": "boolean"
+                    },
+                    "lastCheckedAgeMs": {
+                      "type": [
+                        "null",
+                        "number"
+                      ]
+                    },
+                    "silent": {
+                      "type": "boolean"
+                    },
+                    "watching": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "clientId",
+                    "connected",
+                    "lastCheckedAgeMs",
+                    "silent",
+                    "watching"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "clients",
+              "enabled"
+            ],
+            "additionalProperties": false
+          },
+          "bootCount": {
+            "type": "number"
+          },
+          "configRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "connections": {
+            "type": "object",
+            "properties": {
+              "alpacaRestoredAfterRestart": {
+                "type": "boolean"
+              },
+              "liveUpdates": {
+                "type": "object",
+                "properties": {
+                  "limitPerEndpoint": {
+                    "type": "number"
+                  },
+                  "replaced": {
+                    "type": "number"
+                  },
+                  "stalledClosed": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "limitPerEndpoint",
+                  "replaced",
+                  "stalledClosed",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "tcpLimit": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "alpacaRestoredAfterRestart",
+              "liveUpdates",
+              "tcpLimit"
+            ],
+            "additionalProperties": false
+          },
+          "cpuFreqMHz": {
+            "type": "number"
+          },
+          "firmware": {
+            "type": "object",
+            "properties": {
+              "buildDate": {
+                "type": "string"
+              },
+              "buildTime": {
+                "type": "string"
+              },
+              "layout": {
+                "type": "string",
+                "enum": [
+                  "l2",
+                  "other"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "product": {
+                "type": "string",
+                "const": "roofroof"
+              },
+              "version": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "buildDate",
+              "buildTime",
+              "layout",
+              "name",
+              "product",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          "flashSize": {
+            "type": "number"
+          },
+          "freeHeap": {
+            "type": "number"
+          },
+          "freeSketchSpace": {
+            "type": "number"
+          },
+          "fsTotal": {
+            "type": "number"
+          },
+          "fsUsed": {
+            "type": "number"
+          },
+          "heapSize": {
+            "type": "number"
+          },
+          "heapStages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "free": {
+                  "type": "number"
+                },
+                "largest": {
+                  "type": "number"
+                },
+                "stage": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "free",
+                "largest",
+                "stage"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "maxAllocHeap": {
+            "type": "number"
+          },
+          "minFreeHeap": {
+            "type": "number"
+          },
+          "mqtt": {
+            "type": "object",
+            "properties": {
+              "availabilityTopic": {
+                "type": "string"
+              },
+              "broker": {
+                "type": "string"
+              },
+              "clientId": {
+                "type": "string"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "lastPublish": {
+                "type": "number"
+              },
+              "lastReconnectAttempt": {
+                "type": "number"
+              },
+              "port": {
+                "type": "number"
+              },
+              "state": {
+                "type": "number"
+              },
+              "topic": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "availabilityTopic",
+              "broker",
+              "clientId",
+              "connected",
+              "enabled",
+              "lastPublish",
+              "lastReconnectAttempt",
+              "port",
+              "state",
+              "topic"
+            ],
+            "additionalProperties": false
+          },
+          "ntp": {
+            "type": "object",
+            "properties": {
+              "drift": {
+                "type": "number"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "lastSync": {
+                "type": "number"
+              },
+              "nextSync": {
+                "type": "number"
+              },
+              "server": {
+                "type": "string"
+              },
+              "status": {
+                "type": "number"
+              },
+              "synced": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "drift",
+              "enabled",
+              "lastSync",
+              "nextSync",
+              "server",
+              "status",
+              "synced"
+            ],
+            "additionalProperties": false
+          },
+          "partitions": {
+            "type": "object",
+            "properties": {
+              "bootSlot": {
+                "type": "string"
+              },
+              "fsAddress": {
+                "type": "number"
+              },
+              "fsSize": {
+                "type": "number"
+              },
+              "nextSize": {
+                "type": "number"
+              },
+              "nextSlot": {
+                "type": "string"
+              },
+              "nvs": {
+                "type": "object",
+                "properties": {
+                  "freeEntries": {
+                    "type": "number"
+                  },
+                  "namespaceCount": {
+                    "type": "number"
+                  },
+                  "totalEntries": {
+                    "type": "number"
+                  },
+                  "usedEntries": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "freeEntries",
+                  "namespaceCount",
+                  "totalEntries",
+                  "usedEntries"
+                ],
+                "additionalProperties": false
+              },
+              "runningAddress": {
+                "type": "number"
+              },
+              "runningSize": {
+                "type": "number"
+              },
+              "runningSlot": {
+                "type": "string"
+              }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "resetReason": {
+            "type": "number"
+          },
+          "sketchSize": {
+            "type": "number"
+          },
+          "stackFree": {
+            "type": "object",
+            "properties": {
+              "asyncTcp": {
+                "type": "number"
+              },
+              "loop": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "asyncTcp",
+              "loop"
+            ],
+            "additionalProperties": false
+          },
+          "time": {
+            "type": "object",
+            "properties": {
+              "epoch": {
+                "type": "number"
+              },
+              "iso": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "epoch",
+              "iso",
+              "timezone"
+            ],
+            "additionalProperties": false
+          },
+          "uptime": {
+            "type": "number"
+          },
+          "wifi": {
+            "type": "object",
+            "properties": {
+              "apMode": {
+                "type": "boolean"
+              },
+              "connectPending": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "hostname": {
+                "type": "string"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "ipv6": {
+                "type": "object",
+                "properties": {
+                  "addresses": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "address": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "link-local",
+                            "unique-local",
+                            "global"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "address",
+                        "scope"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "addresses",
+                  "enabled"
+                ],
+                "additionalProperties": false
+              },
+              "mac": {
+                "type": "string"
+              },
+              "mdns": {
+                "type": "boolean"
+              },
+              "rssi": {
+                "type": "number"
+              },
+              "ssid": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "apMode",
+              "connectPending",
+              "connected",
+              "hostname",
+              "ip",
+              "ipv6",
+              "mac",
+              "mdns",
+              "rssi",
+              "ssid"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "alerts",
+          "alpaca",
+          "bootCount",
+          "configRevision",
+          "connections",
+          "cpuFreqMHz",
+          "firmware",
+          "flashSize",
+          "freeHeap",
+          "freeSketchSpace",
+          "fsTotal",
+          "fsUsed",
+          "heapSize",
+          "heapStages",
+          "maxAllocHeap",
+          "minFreeHeap",
+          "partitions",
+          "resetReason",
+          "sketchSize",
+          "stackFree",
+          "time",
+          "uptime",
+          "wifi"
+        ],
+        "additionalProperties": false
+      },
+      "WifiScan": {
+        "title": "WiFi scan",
+        "description": "GET /api/wifi/scan (src/WebServerApi.cpp handleWiFiScan). The scan runs in the background: 202 with scanning true and no networks while it runs, then 200 with the list. Hand-written, not generated.",
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "scanning": {
+            "type": "boolean"
+          },
+          "networks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "ssid": {
+                  "type": "string"
+                },
+                "rssi": {
+                  "type": "integer"
+                },
+                "encryption": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "secured"
+                  ]
+                }
+              },
+              "required": [
+                "ssid",
+                "rssi",
+                "encryption"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "success",
+          "scanning",
+          "networks"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

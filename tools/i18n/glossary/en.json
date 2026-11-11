@@ -1,0 +1,32 @@
+{
+  "about": "The English names of things the UI, alerts, Home Assistant and the docs share (specs/026 DS-27). One name per thing: `keys` are the en.json strings that must say it (case aside: card titles are shown in capitals); `avoid` are other names for it that must not appear in UI text, the device's alert titles, or the docs; `parts` are part numbers, which name the hardware (System page, hardware docs) but never the thing in a card title or an alert; `ha` is the Home Assistant entity name (lib/HaDiscovery) that must match. Checked by tools/ui/label_check.py.",
+  "names": [
+    {
+      "name": "Imaging app",
+      "keys": [
+        "status.imagingApp"
+      ],
+      "avoid": [
+        "imaging software",
+        "Alpaca client app"
+      ]
+    },
+    {
+      "name": "Alerts",
+      "keys": [
+        "status.alerts"
+      ],
+      "avoid": [],
+      "ha": "Alerts"
+    },
+    {
+      "name": "WiFi",
+      "keys": [
+        "dashboard.wifi"
+      ],
+      "avoid": [
+        "Wi-Fi"
+      ]
+    }
+  ]
+}

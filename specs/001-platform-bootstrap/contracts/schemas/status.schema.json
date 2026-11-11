@@ -1,0 +1,537 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "status",
+  "type": "object",
+  "properties": {
+    "alerts": {
+      "type": "object",
+      "properties": {
+        "armed": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "whileConnected"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "none",
+            "user-ui",
+            "user-rest",
+            "user-mqtt",
+            "client-connected",
+            "client-disconnected",
+            "waiting-for-client",
+            "migrated"
+          ]
+        },
+        "recentRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "since": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "sinceAgeMs": {
+          "type": [
+            "null",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "armed",
+        "mode",
+        "reason",
+        "recentRevision",
+        "since",
+        "sinceAgeMs"
+      ],
+      "additionalProperties": false
+    },
+    "alpaca": {
+      "type": "object",
+      "properties": {
+        "clients": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "clientId": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "lastCheckedAgeMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "silent": {
+                "type": "boolean"
+              },
+              "watching": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "clientId",
+              "connected",
+              "lastCheckedAgeMs",
+              "silent",
+              "watching"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "clients",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "bootCount": {
+      "type": "number"
+    },
+    "configRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "connections": {
+      "type": "object",
+      "properties": {
+        "alpacaRestoredAfterRestart": {
+          "type": "boolean"
+        },
+        "liveUpdates": {
+          "type": "object",
+          "properties": {
+            "limitPerEndpoint": {
+              "type": "number"
+            },
+            "replaced": {
+              "type": "number"
+            },
+            "stalledClosed": {
+              "type": "number"
+            },
+            "status": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "limitPerEndpoint",
+            "replaced",
+            "stalledClosed",
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "tcpLimit": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "alpacaRestoredAfterRestart",
+        "liveUpdates",
+        "tcpLimit"
+      ],
+      "additionalProperties": false
+    },
+    "cpuFreqMHz": {
+      "type": "number"
+    },
+    "firmware": {
+      "type": "object",
+      "properties": {
+        "buildDate": {
+          "type": "string"
+        },
+        "buildTime": {
+          "type": "string"
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "l2",
+            "other"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "product": {
+          "type": "string",
+          "const": "roofroof"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "buildDate",
+        "buildTime",
+        "layout",
+        "name",
+        "product",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "flashSize": {
+      "type": "number"
+    },
+    "freeHeap": {
+      "type": "number"
+    },
+    "freeSketchSpace": {
+      "type": "number"
+    },
+    "fsTotal": {
+      "type": "number"
+    },
+    "fsUsed": {
+      "type": "number"
+    },
+    "heapSize": {
+      "type": "number"
+    },
+    "heapStages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "free": {
+            "type": "number"
+          },
+          "largest": {
+            "type": "number"
+          },
+          "stage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "free",
+          "largest",
+          "stage"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "maxAllocHeap": {
+      "type": "number"
+    },
+    "minFreeHeap": {
+      "type": "number"
+    },
+    "mqtt": {
+      "type": "object",
+      "properties": {
+        "availabilityTopic": {
+          "type": "string"
+        },
+        "broker": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "lastPublish": {
+          "type": "number"
+        },
+        "lastReconnectAttempt": {
+          "type": "number"
+        },
+        "port": {
+          "type": "number"
+        },
+        "state": {
+          "type": "number"
+        },
+        "topic": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "availabilityTopic",
+        "broker",
+        "clientId",
+        "connected",
+        "enabled",
+        "lastPublish",
+        "lastReconnectAttempt",
+        "port",
+        "state",
+        "topic"
+      ],
+      "additionalProperties": false
+    },
+    "ntp": {
+      "type": "object",
+      "properties": {
+        "drift": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "lastSync": {
+          "type": "number"
+        },
+        "nextSync": {
+          "type": "number"
+        },
+        "server": {
+          "type": "string"
+        },
+        "status": {
+          "type": "number"
+        },
+        "synced": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "drift",
+        "enabled",
+        "lastSync",
+        "nextSync",
+        "server",
+        "status",
+        "synced"
+      ],
+      "additionalProperties": false
+    },
+    "partitions": {
+      "type": "object",
+      "properties": {
+        "bootSlot": {
+          "type": "string"
+        },
+        "fsAddress": {
+          "type": "number"
+        },
+        "fsSize": {
+          "type": "number"
+        },
+        "nextSize": {
+          "type": "number"
+        },
+        "nextSlot": {
+          "type": "string"
+        },
+        "nvs": {
+          "type": "object",
+          "properties": {
+            "freeEntries": {
+              "type": "number"
+            },
+            "namespaceCount": {
+              "type": "number"
+            },
+            "totalEntries": {
+              "type": "number"
+            },
+            "usedEntries": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "freeEntries",
+            "namespaceCount",
+            "totalEntries",
+            "usedEntries"
+          ],
+          "additionalProperties": false
+        },
+        "runningAddress": {
+          "type": "number"
+        },
+        "runningSize": {
+          "type": "number"
+        },
+        "runningSlot": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "resetReason": {
+      "type": "number"
+    },
+    "sketchSize": {
+      "type": "number"
+    },
+    "stackFree": {
+      "type": "object",
+      "properties": {
+        "asyncTcp": {
+          "type": "number"
+        },
+        "loop": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "asyncTcp",
+        "loop"
+      ],
+      "additionalProperties": false
+    },
+    "time": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "number"
+        },
+        "iso": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "epoch",
+        "iso",
+        "timezone"
+      ],
+      "additionalProperties": false
+    },
+    "uptime": {
+      "type": "number"
+    },
+    "wifi": {
+      "type": "object",
+      "properties": {
+        "apMode": {
+          "type": "boolean"
+        },
+        "connectPending": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "ipv6": {
+          "type": "object",
+          "properties": {
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "address": {
+                    "type": "string"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "link-local",
+                      "unique-local",
+                      "global"
+                    ]
+                  }
+                },
+                "required": [
+                  "address",
+                  "scope"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "addresses",
+            "enabled"
+          ],
+          "additionalProperties": false
+        },
+        "mac": {
+          "type": "string"
+        },
+        "mdns": {
+          "type": "boolean"
+        },
+        "rssi": {
+          "type": "number"
+        },
+        "ssid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "apMode",
+        "connectPending",
+        "connected",
+        "hostname",
+        "ip",
+        "ipv6",
+        "mac",
+        "mdns",
+        "rssi",
+        "ssid"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "alerts",
+    "alpaca",
+    "bootCount",
+    "configRevision",
+    "connections",
+    "cpuFreqMHz",
+    "firmware",
+    "flashSize",
+    "freeHeap",
+    "freeSketchSpace",
+    "fsTotal",
+    "fsUsed",
+    "heapSize",
+    "heapStages",
+    "maxAllocHeap",
+    "minFreeHeap",
+    "partitions",
+    "resetReason",
+    "sketchSize",
+    "stackFree",
+    "time",
+    "uptime",
+    "wifi"
+  ],
+  "additionalProperties": false
+}

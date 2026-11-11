@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "settings-effective",
+  "type": "object",
+  "properties": {
+    "facts": {
+      "type": "object",
+      "properties": {
+        "alpacaDevices": {
+          "type": "number"
+        },
+        "clockSet": {
+          "type": "boolean"
+        },
+        "mqttConnected": {
+          "type": "boolean"
+        },
+        "wifiConnected": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "alpacaDevices",
+        "clockSet",
+        "mqttConnected",
+        "wifiConnected"
+      ],
+      "additionalProperties": false
+    },
+    "settings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fix": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "setting",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "facts",
+    "settings"
+  ],
+  "additionalProperties": false
+}

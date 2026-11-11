@@ -1,0 +1,133 @@
+{
+  "alerts": {
+    "armed": true,
+    "mode": "any",
+    "reason": "none",
+    "since": null,
+    "sinceAgeMs": null,
+    "recentRevision": 0
+  },
+  "alpaca": {
+    "enabled": true,
+    "clients": {}
+  },
+  "firmware": {
+    "name": "RoofRoof",
+    "product": "roofroof",
+    "version": "0.0.0",
+    "buildDate": "Nov 10 2026",
+    "buildTime": "12:00:00",
+    "layout": "l2"
+  },
+  "uptime": 2,
+  "bootCount": 3,
+  "resetReason": 3,
+  "connections": {
+    "tcpLimit": 16,
+    "liveUpdates": {
+      "status": 1,
+      "limitPerEndpoint": 3,
+      "replaced": 0,
+      "stalledClosed": 0
+    },
+    "alpacaRestoredAfterRestart": false
+  },
+  "freeHeap": 214320,
+  "minFreeHeap": 156056,
+  "maxAllocHeap": 110580,
+  "heapSize": 327680,
+  "stackFree": {
+    "asyncTcp": 3360,
+    "loop": 3612
+  },
+  "heapStages": [
+    {
+      "stage": "boot",
+      "free": 279836,
+      "largest": 110580
+    },
+    {
+      "stage": "wifi",
+      "free": 214276,
+      "largest": 110580
+    },
+    {
+      "stage": "setup complete",
+      "free": 190660,
+      "largest": 110580
+    }
+  ],
+  "cpuFreqMHz": 240,
+  "flashSize": 4194304,
+  "sketchSize": 1529280,
+  "freeSketchSpace": 305728,
+  "fsTotal": 458752,
+  "fsUsed": 184320,
+  "partitions": {
+    "runningSlot": "app0",
+    "runningAddress": 65536,
+    "runningSize": 1835008,
+    "bootSlot": "app0",
+    "nextSlot": "app1",
+    "nextSize": 1835008,
+    "nvs": {
+      "usedEntries": 12,
+      "freeEntries": 488,
+      "totalEntries": 500,
+      "namespaceCount": 1
+    },
+    "fsAddress": 3735552,
+    "fsSize": 458752
+  },
+  "time": {
+    "epoch": 1794350418,
+    "iso": "2026-11-10T22:40:18+0000",
+    "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
+  },
+  "ntp": {
+    "enabled": true,
+    "synced": true,
+    "status": 1,
+    "lastSync": 1794346816480,
+    "nextSync": 1794354016480,
+    "drift": 0.003,
+    "server": "pool.ntp.org"
+  },
+  "wifi": {
+    "connected": true,
+    "ssid": "DarkSkyLab",
+    "ip": "192.168.1.42",
+    "rssi": -58,
+    "mac": "AA:BB:CC:DD:EE:FF",
+    "connectPending": false,
+    "apMode": false,
+    "hostname": "roofroof",
+    "mdns": true,
+    "ipv6": {
+      "enabled": true,
+      "addresses": [
+        {
+          "address": "fe80::a3b2:c3ff:fed4:e5f6",
+          "scope": "link-local"
+        },
+        {
+          "address": "2001:db8:4a2c:1:a3b2:c3ff:fed4:e5f6",
+          "scope": "global"
+        }
+      ]
+    }
+  },
+  "mqtt": {
+    "enabled": true,
+    "connected": true,
+    "state": 0,
+    "lastPublish": 1794350356480,
+    "lastReconnectAttempt": 0,
+    "broker": "192.168.1.10",
+    "port": 1883,
+    "topic": "roofroof",
+    "availabilityTopic": "roofroof/availability",
+    "clientId": "RoofRoof-D4E5F6"
+  },
+  "configRevision": 887913319
+}

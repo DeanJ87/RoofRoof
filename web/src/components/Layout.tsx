@@ -1,0 +1,129 @@
+import { FunctionalComponent } from 'preact';
+import { route, useRouter } from 'preact-router';
+import { Toaster } from './toast';
+import AlertsBell from './AlertsBell';
+import { LIVE_REGION_ID } from '../lib/a11y';
+import { t } from '../i18n';
+import BrandMark from './BrandMark';
+
+interface LayoutProps {
+  path?: string;
+  default?: boolean;
+}
+
+const navItems: { path: string; label: string; short?: string; icon: string }[] = [
+  { path: '/', label: t('layout.dashboard'), short: t('layout.home'), icon: 'chart' },
+  { path: '/alpaca', label: 'Alpaca', icon: 'scope' },
+  { path: '/system', label: t('layout.system'), icon: 'cpu' },
+  { path: '/settings', label: t('layout.settings'), icon: 'gear' },
+  { path: '/updates', label: t('layout.updates'), icon: 'upload' },
+];
+
+const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
+  const common = {
+    stroke: 'currentColor',
+    strokeWidth: 1.7,
+    fill: 'none',
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  const paths = {
+    chart: <path {...common} d="M4 17 9 11l4 4 7-8M15 7h5v5" />,
+    cpu: (
+      <>
+        <rect {...common} x="5" y="5" width="14" height="14" rx="2" />
+        <path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" />
+      </>
+    ),
+    gear: (
+      <>
+        <circle {...common} cx="12" cy="12" r="3" />
+        <path
+          {...common}
+          d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.6a7.8 7.8 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.8 7.8 0 0 0 2 1.2l.4 2.6h4.4l.4-2.6a7.8 7.8 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5A7 7 0 0 0 19 12Z"
+        />
+      </>
+    ),
+    upload: (
+      <>
+        <path {...common} d="M12 16V4M7 9l5-5 5 5" />
+        <path {...common} d="M5 18v2h14v-2" />
+      </>
+    ),
+    scope: (
+      <>
+        <path {...common} d="m3 14 13-7 2 4-13 7-2-4Z" />
+        <path {...common} d="m16 7 3-1.5 2 4L18 11M10 14.5 8 21M10 14.5l4 6.5" />
+      </>
+    ),
+  };
+
+  return (
+    <svg class="nav-icon-svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name as keyof typeof paths]}
+    </svg>
+  );
+};
+
+const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
+  const [router] = useRouter();
+
+  return (
+    <div class="app-shell">
+      <a
+        class="skip-link"
+        href="#main"
+        onClick={(event) => {
+          // Hash routing (demo) would treat #main as a route: move focus instead.
+          event.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
+        {t('layout.skipToMainContent')}
+      </a>
+      <header class="app-header">
+        <div class="app-header-inner">
+          <div class="brand">
+            <BrandMark />
+            <div>
+              <h1>RoofRoof</h1>
+              <p>{t('layout.rollOffRoofController')}</p>
+            </div>
+          </div>
+
+          <nav class="top-nav" aria-label={t('layout.primary')}>
+            {navItems.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                onClick={() => route(item.path)}
+                aria-current={router.url.split('?')[0] === item.path ? 'page' : undefined}
+                class={`nav-button ${router.url.split('?')[0] === item.path ? 'is-active' : ''}`}
+              >
+                <TinyIcon name={item.icon} />
+                {item.short ? (
+                  <>
+                    <span class="nav-label-full">{item.label}</span>
+                    <span class="nav-label-short">{item.short}</span>
+                  </>
+                ) : (
+                  <span>{item.label}</span>
+                )}
+              </button>
+            ))}
+            <AlertsBell />
+          </nav>
+        </div>
+      </header>
+
+      <main class="app-main" id="main" tabIndex={-1}>
+        {children}
+      </main>
+      <Toaster />
+      {/* Verdict changes, new alerts and connection loss (SQMeter spec 022 FR-009). */}
+      <div id={LIVE_REGION_ID} class="sr-only" role="status" aria-live="polite" />
+    </div>
+  );
+};
+
+export default Layout;

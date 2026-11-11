@@ -1,0 +1,111 @@
+site_name: RoofRoof
+site_description: "ESP32 firmware and web UI for an observatory roll-off-roof controller: ASCOM Alpaca for N.I.N.A., MQTT, Home Assistant and alerts."
+# Empty on purpose: the repository is private and the docs are a CI artifact,
+# so links are relative and there is no public address.
+site_url: ""
+repo_url: https://github.com/DeanJ87/RoofRoof
+repo_name: DeanJ87/RoofRoof
+edit_uri: edit/main/docs/
+# Every page's footer links the accessibility statement (spec 022 FR-016):
+# overrides/partials/copyright.html, with a relative link.
+
+# site/llms-full.txt: every page's Markdown as one file for language models
+# (docs/llms.txt is the short summary).
+hooks:
+  - tools/docs/llms_full.py
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DeanJ87/RoofRoof
+      name: GitHub
+
+theme:
+  name: material
+  custom_dir: overrides
+  # Dark only, in the device UI's colours (docs/stylesheets/roofroof.css).
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
+  font: false # Inter and JetBrains Mono ship with the site, like the device UI
+  logo: assets/logo.svg
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+  favicon: assets/favicon.svg
+
+extra_css:
+  - stylesheets/roofroof.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  # Diagrams (spec 024): ```mermaid fences, rendered by Material with a
+  # self-hosted mermaid (overrides/main.html, web/scripts/vendor-mermaid.mjs).
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Live Demo: live-demo.md
+  - Getting Started:
+    - Flashing Your Device: getting-started/flashing.md
+    - USB flash: getting-started/usb-flash.md
+    - First Boot: getting-started/first-setup.md
+  - User Guide:
+    - Dashboard: user-guide/dashboard.md
+    - Configuration: user-guide/configuration.md
+    - Security: user-guide/security.md
+    - IPv6: user-guide/ipv6.md
+    - MQTT Integration: user-guide/mqtt.md
+    - Updates: user-guide/ota.md
+    - ASCOM Alpaca: user-guide/alpaca.md
+    - Alerts: user-guide/alerts.md
+  - Hardware:
+    - Wiring: hardware/wiring.md
+  - API Reference:
+    - REST API: api/rest.md
+    - API Reference: api/reference.md
+    - WebSocket: api/websocket.md
+    - Integrations: api/integrations.md
+  - Development:
+    - Dev Workflow: development/workflow.md
+    - Contributing: development/contributing.md
+    - Coding Standards: development/coding-standards.md
+    - Accessibility: development/accessibility.md
+    - Translations: development/translations.md
+    - Brand: development/brand.md
+    - Releasing: development/releasing.md
+    - Heritage: development/heritage.md
+  - Reference:
+    - Settings Dependencies: reference/settings-dependencies.md
+    - Troubleshooting: reference/troubleshooting.md
+    - Accessibility: accessibility.md

@@ -1,0 +1,74 @@
+---
+description: "Every way to get data out of RoofRoof today: REST, WebSocket, MQTT with Home Assistant, ASCOM Alpaca and alerts."
+---
+
+# Integrations
+
+RoofRoof exposes the device's data through these integration paths. This release is the platform only; the roof's own data and controls *come in later specs* and will use the same paths.
+
+## Supported integration paths
+
+<!-- diagram: DIA-15
+sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
+blocking: false
+fingerprint: 13646463bfad16eb
+-->
+<figure class="diagram" markdown>
+
+```mermaid
+flowchart LR
+    accTitle: Integration paths
+    accDescr: The device status feeds four paths. REST is pulled by scripts; WebSocket pushes the status live to the dashboard and apps; MQTT publishes availability and alerts to a broker for Home Assistant; Alpaca answers discovery and the management API for N.I.N.A. and other clients; alerts are pushed to phones and services.
+    DATA["Device status<br/>and alerts"]
+    DATA --> REST["REST API<br/>pull, any time"]
+    DATA --> WS["WebSocket<br/>push: status every 2 s"]
+    DATA --> MQTT["MQTT<br/>publish: availability, alerts,<br/>alerts/armed"]
+    DATA --> ALPACA["ASCOM Alpaca<br/>discovery and management API"]
+    DATA --> ALERTS["Alerts<br/>pushed on events"]
+    REST --> SCRIPTS["Scripts, Home Assistant REST"]
+    WS --> UI["Dashboard and apps"]
+    MQTT --> HA["Home Assistant,<br/>Node-RED"]
+    ALPACA --> NINA["N.I.N.A. and other<br/>Alpaca clients"]
+    ALERTS --> PHONES["Pushover, ntfy,<br/>webhook, MQTT"]
+```
+
+<figcaption>Integration paths: which way the data flows on each, and who typically uses it.</figcaption>
+</figure>
+
+??? info "Diagram in words"
+
+    The device status and alerts feed every path:
+
+    - **REST API**: pulled any time, by scripts and Home Assistant's REST integrations.
+    - **WebSocket**: pushed live, the status every 2 seconds, to the dashboard and apps.
+    - **MQTT**: published to your broker - availability, alerts and the alerts pause switch - for Home Assistant or Node-RED.
+    - **ASCOM Alpaca**: answers discovery and the management API for N.I.N.A. and other Alpaca clients. No device is served yet.
+    - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook or MQTT.
+
+### REST API
+
+Pull the status and configuration over plain HTTP. See [REST API](rest.md) for behaviour and the password, and the [API Reference](reference.md) for every route's parameters and schemas - also as [`openapi.json`](openapi.json) for Postman and client generators.
+
+```bash
+# System status
+curl http://roofroof.local/api/status
+
+# Configuration
+curl http://roofroof.local/api/config
+```
+
+### WebSocket
+
+Real-time streaming over a persistent connection. Connect to `/ws/status` for the device status (2 second cadence). See [WebSocket](websocket.md) for details.
+
+### MQTT
+
+Configure RoofRoof to publish to an MQTT broker: availability, alerts and an alerts pause/resume switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+
+### ASCOM Alpaca
+
+An Alpaca server for N.I.N.A. and other Alpaca clients, found by Alpaca discovery - no driver or bridge. It serves no device yet. See [ASCOM Alpaca](../user-guide/alpaca.md).
+
+### Alerts
+
+The device sends its own notifications via Pushover, ntfy, a webhook or MQTT. See [Alerts](../user-guide/alerts.md).

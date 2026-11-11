@@ -1,0 +1,75 @@
+import en from './en.json';
+import { isRtl, type LanguageCode } from './languages';
+
+// The UI's text, by key (SQMeter spec 023-i18n). English is built in; another
+// language's messages are installed before the app modules load (main.tsx),
+// so module-level labels translate too. A key missing from the installed
+// language falls back to English (FR-013).
+
+export type MessageKey = keyof typeof en;
+type PluralForms = Partial<Record<Intl.LDMLPluralRule, string>>;
+export type Messages = Record<string, string | PluralForms>;
+export type Params = Record<string, unknown>;
+
+const english = en as Messages;
+let active: Messages = english;
+let language: LanguageCode = 'en';
+let pluralRules = new Intl.PluralRules('en');
+
+/** Installs a language's messages (English when `messages` is null). */
+export function setLanguage(code: LanguageCode, messages: Messages | null) {
+  language = messages ? code : 'en';
+  active = messages ?? english;
+  pluralRules = new Intl.PluralRules(language);
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = language;
+    document.documentElement.dir = isRtl(language) ? 'rtl' : 'ltr';
+  }
+}
+
+// RoofRoof ships English only, so nothing in the app installs another
+// language. Browser tests do, to prove numbers follow the language and the API
+// never does (tests/api-locale, tests/locale-numbers): they set this global
+// before the page loads, with a pack they build from en.json.
+const testLanguage = (globalThis as { __i18nTestLanguage?: { code: LanguageCode; messages: Messages } }).__i18nTestLanguage;
+if (testLanguage) setLanguage(testLanguage.code, testLanguage.messages);
+
+/** The active language, also the locale for number and date formatting. */
+export const currentLanguage = (): LanguageCode => language;
+
+const pick = (value: string | PluralForms | undefined, count: number | undefined): string | undefined => {
+  if (value === undefined || typeof value === 'string') return value;
+  if (count === 0 && value.zero !== undefined) return value.zero; // an explicit zero form wins in every language
+  const category = count === undefined ? 'other' : pluralRules.select(count);
+  return value[category] ?? value.other;
+};
+
+const fill = (text: string, params?: Params) =>
+  params ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match)) : text;
+
+// A run of Latin text: product names (N.I.N.A., ASCOM Alpaca), units and
+// numbers, including inner punctuation and a full stop that belongs to it.
+// Already-isolated segments (a translated param inside another message) match
+// first and are kept as they are.
+const LATIN_RUN = /⁨[^⁩]*⁩|[A-Za-z0-9](?:[A-Za-z0-9.,:/\-+_°%]|\s(?=[A-Za-z0-9]))*/g;
+const FSI = '⁨'; // first strong isolate
+const PDI = '⁩'; // pop directional isolate
+
+/**
+ * In a right-to-left language, isolates each Latin run so it keeps its own
+ * order: without this the bidi algorithm moves edge punctuation, so
+ * "N.I.N.A." reads ".N.I.N.A" in Arabic.
+ */
+export const isolateLatin = (text: string) => text.replace(LATIN_RUN, (run) => (run.startsWith(FSI) ? run : `${FSI}${run}${PDI}`));
+
+/** The message for `key` in the active language, with `{name}` placeholders filled. */
+export function t(key: MessageKey, params?: Params): string {
+  const count = typeof params?.count === 'number' ? params.count : undefined;
+  const text = fill(pick(active[key], count) ?? pick(english[key], count) ?? key, params);
+  return isRtl(language) ? isolateLatin(text) : text;
+}
+
+/** Like t() for a key that comes from data (device message IDs); null when unknown. */
+export function tMaybe(key: string, params?: Params): string | null {
+  return key in english ? t(key as MessageKey, params) : null;
+}

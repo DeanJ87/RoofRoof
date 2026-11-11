@@ -1,0 +1,390 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "config",
+  "type": "object",
+  "properties": {
+    "alerts": {
+      "type": "object",
+      "properties": {
+        "clientSilentSeconds": {
+          "type": "number"
+        },
+        "cooldownSeconds": {
+          "type": "number"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "events": {
+          "type": "object",
+          "properties": {
+            "client_back": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_disconnected": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "client_lost": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "client_back",
+            "client_disconnected",
+            "client_lost"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "additionalProperties": false
+        },
+        "ntfy": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "server": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "topic": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled",
+            "server",
+            "token",
+            "topic"
+          ],
+          "additionalProperties": false
+        },
+        "pushover": {
+          "type": "object",
+          "properties": {
+            "appToken": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "sound": {
+              "type": "string"
+            },
+            "userKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "appToken",
+            "enabled",
+            "sound",
+            "userKey"
+          ],
+          "additionalProperties": false
+        },
+        "sendMode": {
+          "type": "string",
+          "enum": [
+            "any",
+            "whileConnected"
+          ]
+        },
+        "webhook": {
+          "type": "object",
+          "properties": {
+            "authHeader": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "insecureTls": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "authHeader",
+            "enabled",
+            "insecureTls",
+            "url"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "clientSilentSeconds",
+        "cooldownSeconds",
+        "enabled",
+        "events",
+        "mqtt",
+        "ntfy",
+        "pushover",
+        "sendMode",
+        "webhook"
+      ],
+      "additionalProperties": false
+    },
+    "alpaca": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "password",
+        "username"
+      ],
+      "additionalProperties": false
+    },
+    "deviceName": {
+      "type": "string"
+    },
+    "mqtt": {
+      "type": "object",
+      "properties": {
+        "broker": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "homeAssistant": {
+          "type": "object",
+          "properties": {
+            "discoveryPrefix": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "discoveryPrefix",
+            "enabled"
+          ],
+          "additionalProperties": false
+        },
+        "password": {
+          "type": "string"
+        },
+        "port": {
+          "type": "number"
+        },
+        "publishIntervalMs": {
+          "type": "number"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "broker",
+        "enabled",
+        "homeAssistant",
+        "password",
+        "port",
+        "publishIntervalMs",
+        "topic",
+        "username"
+      ],
+      "additionalProperties": false
+    },
+    "ntp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "server1": {
+          "type": "string"
+        },
+        "server2": {
+          "type": "string"
+        },
+        "syncIntervalMs": {
+          "type": "number"
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "server1",
+        "server2",
+        "syncIntervalMs",
+        "timezone"
+      ],
+      "additionalProperties": false
+    },
+    "ota": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "enabled",
+        "password"
+      ],
+      "additionalProperties": false
+    },
+    "wifi": {
+      "type": "object",
+      "properties": {
+        "autoReconnect": {
+          "type": "boolean"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ipv6": {
+          "type": "boolean"
+        },
+        "maxReconnectDelayMs": {
+          "type": "number"
+        },
+        "mdns": {
+          "type": "boolean"
+        },
+        "password": {
+          "type": "string"
+        },
+        "reconnectDelayMs": {
+          "type": "number"
+        },
+        "ssid": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "autoReconnect",
+        "hostname",
+        "ipv6",
+        "maxReconnectDelayMs",
+        "mdns",
+        "password",
+        "reconnectDelayMs",
+        "ssid"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "alerts",
+    "alpaca",
+    "auth",
+    "deviceName",
+    "mqtt",
+    "ntp",
+    "ota",
+    "wifi"
+  ],
+  "additionalProperties": false
+}

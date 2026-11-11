@@ -1,0 +1,248 @@
+{
+  "$comment": "Settings dependency catalogue (SQMeter spec 020). Source of truth for tools/settings-deps/check.py and docs/reference/settings-dependencies.md. lib/SettingsDeps and web/src/lib/settingsDeps.ts implement every reported entry; test/fixtures/settings-deps/cases.json holds them to the same answers. Every setting (test/fixtures/settings-deps/default-config.json and config-ranges.json) is either in an entry or in noDependency: its effect needs nothing outside its own section (a section's own switch and the toggle a value belongs to don't count). Patterns use * for one path segment.",
+  "noDependency": [
+    "deviceName",
+    "wifi.ssid",
+    "wifi.password",
+    "wifi.hostname",
+    "wifi.autoReconnect",
+    "wifi.reconnectDelayMs",
+    "wifi.maxReconnectDelayMs",
+    "mqtt.enabled",
+    "mqtt.port",
+    "mqtt.username",
+    "mqtt.password",
+    "mqtt.publishIntervalMs",
+    "mqtt.homeAssistant.discoveryPrefix",
+    "ota.password",
+    "auth.enabled",
+    "auth.username",
+    "ntp.server1",
+    "ntp.server2",
+    "ntp.timezone",
+    "ntp.syncIntervalMs",
+    "alerts.enabled",
+    "alerts.clientSilentSeconds",
+    "alerts.cooldownSeconds",
+    "alerts.pushover.userKey",
+    "alerts.pushover.appToken",
+    "alerts.pushover.sound",
+    "alerts.ntfy.server",
+    "alerts.ntfy.topic",
+    "alerts.ntfy.token",
+    "alerts.webhook.url",
+    "alerts.webhook.authHeader",
+    "alerts.webhook.insecureTls",
+    "alerts.events.*.sound",
+    "alerts.events.*.title",
+    "alerts.events.*.message"
+  ],
+  "reasons": {
+    "alerts-off": {
+      "text": "Alerts are off",
+      "fix": "alerts#alerts"
+    },
+    "mqtt-off": {
+      "text": "MQTT is off",
+      "fix": "network#mqtt"
+    },
+    "mqtt-disconnected": {
+      "text": "Broker not connected",
+      "fix": "network#mqtt"
+    },
+    "wifi-disconnected": {
+      "text": "Not connected to WiFi",
+      "fix": "network#wifi"
+    },
+    "alpaca-off": {
+      "text": "Alpaca is off",
+      "fix": "network#alpaca"
+    },
+    "no-alpaca-device": {
+      "text": "No Alpaca device yet",
+      "fix": "network#alpaca"
+    },
+    "ota-no-password": {
+      "text": "Set an upload password",
+      "fix": "device#security"
+    }
+  },
+  "entries": [
+    {
+      "id": "D-01",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "alerts.mqtt.enabled"
+      ],
+      "dependsOn": "MQTT on",
+      "reasons": [
+        "mqtt-off"
+      ]
+    },
+    {
+      "id": "D-02",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "alerts.mqtt.enabled"
+      ],
+      "dependsOn": "MQTT broker connected",
+      "reasons": [
+        "mqtt-disconnected"
+      ]
+    },
+    {
+      "id": "D-03",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "alerts.pushover.enabled",
+        "alerts.ntfy.enabled",
+        "alerts.webhook.enabled"
+      ],
+      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "reasons": [
+        "wifi-disconnected"
+      ]
+    },
+    {
+      "id": "D-04",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "alerts.pushover.enabled",
+        "alerts.ntfy.enabled",
+        "alerts.webhook.enabled",
+        "alerts.mqtt.enabled",
+        "alerts.events.client_lost.level",
+        "alerts.events.client_back.level",
+        "alerts.events.client_disconnected.level",
+        "alerts.sendMode"
+      ],
+      "dependsOn": "Alerts on (Send alerts); channels are push only",
+      "reasons": [
+        "alerts-off"
+      ]
+    },
+    {
+      "id": "D-12",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "alerts.sendMode"
+      ],
+      "dependsOn": "Alpaca on - \"Only while an imaging app is connected\" (SQMeter spec 021); while Alpaca is off, alerts go out any time",
+      "reasons": [
+        "alpaca-off"
+      ]
+    },
+    {
+      "id": "D-13",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "mqtt.homeAssistant.enabled",
+        "mqtt.homeAssistant.alertsSwitch"
+      ],
+      "dependsOn": "MQTT on; the Alerts switch also needs alerts on",
+      "reasons": [
+        "mqtt-off",
+        "alerts-off"
+      ]
+    },
+    {
+      "id": "D-20",
+      "class": "dependency",
+      "kind": "feature",
+      "settings": [
+        "alpaca.enabled"
+      ],
+      "dependsOn": "Alpaca on - discovery and the devices are served; the Alpaca page explains when it is off",
+      "reasons": []
+    },
+    {
+      "id": "D-28",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "ntp.enabled"
+      ],
+      "dependsOn": "WiFi connected to a network",
+      "reasons": [
+        "wifi-disconnected"
+      ]
+    },
+    {
+      "id": "D-32",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "ota.enabled"
+      ],
+      "dependsOn": "An OTA upload password set",
+      "reasons": [
+        "ota-no-password"
+      ]
+    },
+    {
+      "id": "D-33",
+      "class": "constraint",
+      "kind": "feature",
+      "settings": [
+        "mqtt.broker",
+        "mqtt.topic"
+      ],
+      "dependsOn": "MQTT on needs a broker and a topic",
+      "reasons": [],
+      "messages": [
+        "MQTT broker and topic are required when MQTT is enabled"
+      ]
+    },
+    {
+      "id": "D-34",
+      "class": "constraint",
+      "kind": "feature",
+      "settings": [
+        "auth.password"
+      ],
+      "dependsOn": "HTTP auth on needs a password",
+      "reasons": [],
+      "messages": [
+        "HTTP auth password is required when auth is enabled"
+      ]
+    },
+    {
+      "id": "D-37",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "alerts.events.client_lost.level",
+        "alerts.events.client_back.level",
+        "alerts.events.client_disconnected.level"
+      ],
+      "dependsOn": "Alpaca on, with a device to connect to - imaging apps connect over Alpaca (SQMeter spec 021); RoofRoof has none until the Dome (spec 006)",
+      "reasons": [
+        "alpaca-off",
+        "no-alpaca-device"
+      ]
+    },
+    {
+      "id": "D-36",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "wifi.mdns",
+        "wifi.ipv6"
+      ],
+      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "reasons": [
+        "wifi-disconnected"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,430 @@
+{
+  "about": "Details of every /api/* route in routes.json, used by openapi.py to build docs/api/openapi.json. Routes, methods and auth come from routes.json; response documents reference the contract schemas in specs/001-platform-bootstrap/contracts/schemas by file name. 'action' means the shared action-result schema.",
+  "tags": [
+    {
+      "name": "Status",
+      "description": "Device status."
+    },
+    {
+      "name": "Settings",
+      "description": "Read and change the device's settings."
+    },
+    {
+      "name": "Alerts",
+      "description": "Alerts: whether they're sent, recent ones, tests."
+    },
+    {
+      "name": "Network",
+      "description": "WiFi and MQTT."
+    },
+    {
+      "name": "Updates",
+      "description": "Firmware and web UI updates."
+    },
+    {
+      "name": "Device",
+      "description": "Restart."
+    }
+  ],
+  "operations": {
+    "GET /api/status": {
+      "tag": "Status",
+      "summary": "Device status",
+      "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, alerts, Alpaca clients and connections. Also pushed over `/ws/status`.",
+      "responses": {
+        "200": "status"
+      },
+      "example": "status"
+    },
+    "GET /api/settings/effective": {
+      "tag": "Settings",
+      "summary": "Settings in effect",
+      "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason.",
+      "responses": {
+        "200": "settings-effective"
+      }
+    },
+    "GET /api/config": {
+      "tag": "Settings",
+      "summary": "Settings",
+      "description": "Every setting. Passwords and keys are masked.",
+      "responses": {
+        "200": "config"
+      }
+    },
+    "POST /api/config": {
+      "tag": "Settings",
+      "summary": "Change settings",
+      "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`.",
+      "requestBody": {
+        "schema": "config-update",
+        "example": {
+          "deviceName": "backyard-roof"
+        }
+      },
+      "responses": {
+        "200": "action",
+        "400": "error"
+      },
+      "example": "config-change"
+    },
+    "PUT /api/config": {
+      "tag": "Settings",
+      "summary": "Change settings (PUT)",
+      "description": "The same as `POST /api/config`, for clients that use PUT.",
+      "requestBody": {
+        "schema": "config-update"
+      },
+      "responses": {
+        "200": "action",
+        "400": "error"
+      }
+    },
+    "POST /api/backup": {
+      "tag": "Settings",
+      "summary": "Back up the settings",
+      "description": "The backup file: every setting as `GET /api/config` shows it, with a header. With a `passphrase` (8 characters or more) the passwords, keys and tokens are included encrypted (AES-256-GCM, PBKDF2-HMAC-SHA256); without one the file holds no secret. Answered from a background task: a second or two with a passphrase. Refusals carry a `code`: 400 `passphrase-short`, 409 `busy` while another backup or preview runs, 413 `too-large`.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "passphrase": {
+              "type": "string",
+              "minLength": 8
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "passphrase": "correct horse battery"
+        }
+      },
+      "responses": {
+        "200": "backup",
+        "400": "error",
+        "409": "error",
+        "413": "error",
+        "503": "error"
+      }
+    },
+    "POST /api/backup/preview": {
+      "tag": "Settings",
+      "summary": "Preview a restore",
+      "description": "Reads a backup file (`backup`, its text or its JSON) and, with its `passphrase`, its secrets, and answers what applying would save: the settings (masked), which secrets change, settings this board can't use and why it would restart. Nothing is applied; the `token` binds this preview to `POST /api/backup/apply`. Refused with `code` `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` or `invalid` (the save's own reason in `error`).",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "backup": {
+              "description": "The backup file's text, or its JSON."
+            },
+            "passphrase": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "backup"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "backup": "{\"roofroofBackup\":1,\"firmware\":\"0.1.0\",\"board\":\"esp32\",\"build\":\"standard\",\"deviceName\":\"backyard-roof\",\"settings\":{\"deviceName\":\"backyard-roof\"}}"
+        }
+      },
+      "responses": {
+        "200": "backup-preview",
+        "400": "error",
+        "409": "error",
+        "413": "error"
+      }
+    },
+    "POST /api/backup/apply": {
+      "tag": "Settings",
+      "summary": "Apply a previewed restore",
+      "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "token": "00112233445566778899aabbccddeeff"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "restarting": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "success",
+              "restarting"
+            ]
+          }
+        },
+        "409": "error",
+        "500": "error"
+      }
+    },
+    "POST /api/restart": {
+      "tag": "Device",
+      "summary": "Restart",
+      "description": "Restarts the device after answering.",
+      "responses": {
+        "200": "action"
+      }
+    },
+    "GET /api/wifi/scan": {
+      "tag": "Network",
+      "summary": "Scan for WiFi networks",
+      "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives.",
+      "responses": {
+        "200": "wifi-scan",
+        "202": "wifi-scan",
+        "500": "error"
+      }
+    },
+    "POST /api/wifi/connect": {
+      "tag": "Network",
+      "summary": "Join a WiFi network",
+      "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "ssid": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ssid",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "ssid": "MyNetwork",
+          "password": "hunter2"
+        }
+      },
+      "responses": {
+        "202": "action",
+        "400": "error"
+      }
+    },
+    "POST /api/mqtt/test": {
+      "tag": "Network",
+      "summary": "Test an MQTT broker",
+      "description": "Tries to connect with the given details without saving them. A `password` of `********` (the mask settings return) or empty means the saved password, which is only used when broker, port and username match the saved ones; for any other broker a masked password is refused with 400.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "broker": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "clientId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "broker"
+          ]
+        },
+        "example": {
+          "broker": "192.168.1.10",
+          "port": 1883,
+          "username": "",
+          "password": "",
+          "clientId": "RoofRoof-Test"
+        }
+      },
+      "responses": {
+        "200": "action",
+        "400": "error",
+        "502": "error"
+      }
+    },
+    "POST /api/update": {
+      "tag": "Updates",
+      "summary": "Upload firmware",
+      "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success.",
+      "upload": {
+        "field": "firmware",
+        "about": "roofroof-l2-firmware-<version>.bin"
+      },
+      "responses": {
+        "200": "action",
+        "400": "error",
+        "500": "error"
+      }
+    },
+    "POST /api/update/fs": {
+      "tag": "Updates",
+      "summary": "Upload the web UI",
+      "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept.",
+      "upload": {
+        "field": "filesystem",
+        "about": "roofroof-l2-littlefs-<version>.bin"
+      },
+      "responses": {
+        "200": "action",
+        "400": "error",
+        "500": "error"
+      }
+    },
+    "GET /api/alerts/armed": {
+      "tag": "Alerts",
+      "summary": "Sending or paused",
+      "description": "Whether alerts are being sent, the send mode and why it's sending or paused.",
+      "responses": {
+        "200": "alerts-armed"
+      },
+      "example": "alerts-armed"
+    },
+    "POST /api/alerts/arm": {
+      "tag": "Alerts",
+      "summary": "Resume alerts",
+      "description": "Takes effect at once and survives restarts.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/source"
+        }
+      ],
+      "responses": {
+        "202": "action"
+      }
+    },
+    "POST /api/alerts/disarm": {
+      "tag": "Alerts",
+      "summary": "Pause alerts",
+      "description": "While paused nothing is sent. Takes effect at once and survives restarts.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/source"
+        }
+      ],
+      "responses": {
+        "202": "action"
+      }
+    },
+    "GET /api/alerts/recent": {
+      "tag": "Alerts",
+      "summary": "Recent alerts",
+      "description": "Whether alerts are on, and the last 20 since boot, newest first, with each channel's delivery result (`pending`, `sent`, `failed`, `skipped`).",
+      "responses": {
+        "200": "alerts-recent"
+      }
+    },
+    "POST /api/alerts/test": {
+      "tag": "Alerts",
+      "summary": "Send a test alert",
+      "description": "Queues a test on the given saved, switched-on channel(s); see `/api/alerts/recent` for the result. A channel that can't deliver right now is recorded as `skipped`. Add `event`, `level` and `sound` for a sample of that event, or `title`/`message` to try custom wording with `{variables}`.",
+      "parameters": [
+        {
+          "name": "channel",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "mqtt",
+              "pushover",
+              "ntfy",
+              "webhook",
+              "all"
+            ]
+          },
+          "description": "Defaults to `all`."
+        },
+        {
+          "name": "event",
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "client_lost",
+              "client_back",
+              "client_disconnected"
+            ]
+          }
+        },
+        {
+          "name": "level",
+          "in": "query",
+          "description": "1 quiet, 2 normal, 3 urgent, 4 wake me.",
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          }
+        },
+        {
+          "name": "sound",
+          "in": "query",
+          "description": "Pushover sound.",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "title",
+          "in": "query",
+          "description": "Custom title, up to 80 characters.",
+          "schema": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        {
+          "name": "message",
+          "in": "query",
+          "description": "Custom message, up to 240 characters.",
+          "schema": {
+            "type": "string",
+            "maxLength": 240
+          }
+        }
+      ],
+      "responses": {
+        "202": "action",
+        "400": "error"
+      },
+      "example": "alert-test"
+    },
+    "POST /api/alerts/clear": {
+      "tag": "Alerts",
+      "summary": "Clear recent alerts",
+      "description": "Empties the recent-alerts list.",
+      "responses": {
+        "200": "action"
+      }
+    }
+  }
+}

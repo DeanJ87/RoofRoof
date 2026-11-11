@@ -1,0 +1,102 @@
+#include "Config.h"
+#include "ConfigInternal.h"
+
+// The defaults. JSON is in ConfigJsonOut.cpp and ConfigJsonIn.cpp, validation in
+// ConfigValidate.cpp.
+
+namespace SQM
+{
+    namespace
+    {
+        void defaultNetwork(Config &cfg)
+        {
+            cfg.wifi.ssid = "";
+            cfg.wifi.password = "";
+            cfg.wifi.hostname = "roofroof";
+            cfg.wifi.mdns = true;
+            cfg.wifi.ipv6 = true;
+            cfg.wifi.autoReconnect = true;
+            cfg.wifi.reconnectDelayMs = 1000;
+            cfg.wifi.maxReconnectDelayMs = 300000; // 5 minutes
+
+            cfg.mqtt.enabled = false;
+            cfg.mqtt.broker = "";
+            cfg.mqtt.port = 1883;
+            cfg.mqtt.username = "";
+            cfg.mqtt.password = "";
+            cfg.mqtt.topic = "roofroof";
+            cfg.mqtt.homeAssistant = false;
+            cfg.mqtt.discoveryPrefix = "homeassistant";
+            cfg.mqtt.publishIntervalMs = 60000; // 1 minute
+
+            cfg.ota.enabled = false;
+            cfg.ota.password = "";
+
+            cfg.auth.enabled = false;
+            cfg.auth.username = "admin";
+            cfg.auth.password = "";
+        }
+
+        void defaultTime(Config &cfg)
+        {
+            cfg.ntp.enabled = true;
+            cfg.ntp.server1 = "pool.ntp.org";
+            cfg.ntp.server2 = "time.nist.gov";
+            cfg.ntp.timezone = "UTC0";       // POSIX format
+            cfg.ntp.syncIntervalMs = 600000; // 10 minutes
+        }
+
+        void defaultAlerts(AlertsConfig &a)
+        {
+            a.enabled = false;
+            a.clientLost = {3, "", "", ""};
+            a.clientBack = {1, "", "", ""};
+            a.clientDisconnected = {0, "", "", ""};
+            a.sendMode = AlertsConfig::SendMode::Any;
+            a.clientSilentSeconds = 120;
+            a.cooldownSeconds = 300;
+            a.pushoverEnabled = false;
+            a.ntfyEnabled = false;
+            a.ntfyServer = "https://ntfy.sh";
+            a.webhookEnabled = false;
+            a.webhookInsecureTls = false;
+            a.mqttEnabled = false;
+        }
+    } // namespace
+
+    Config Config::createDefault()
+    {
+        Config cfg;
+        cfg.deviceName = "RoofRoof";
+        defaultNetwork(cfg);
+        defaultTime(cfg);
+        cfg.alpaca.enabled = false;
+        defaultAlerts(cfg.alerts);
+        return cfg;
+    }
+
+    std::string Config::spliceStored(const std::string &main, const std::string &alerts, const std::string &client)
+    {
+        std::string spliced = main;
+        const std::pair<const char *, const std::string *> parts[] = {
+            {"alerts", &alerts},
+            {"alertsClient", &client},
+        };
+        for (const auto &part : parts)
+        {
+            const size_t close = spliced.rfind('}');
+            if (part.second->empty() || close == std::string::npos)
+                continue;
+            spliced.insert(close, std::string(",\"") + part.first + "\":" + *part.second);
+        }
+        return spliced;
+    }
+
+    std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)
+    {
+        std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
+        if (!applyJson(json, *cfg, baseConfig != nullptr, error))
+            return std::nullopt;
+        return cfg;
+    }
+} // namespace SQM

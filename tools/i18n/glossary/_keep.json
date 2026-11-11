@@ -1,0 +1,32 @@
+{
+  "about": "Terms that stay as they are in every language (product names, protocols, chips, units). Each language glossary repeats them under keep so translators see one list.",
+  "keep": [
+    "RoofRoof",
+    "Alpaca",
+    "ASCOM",
+    "Dome",
+    "N.I.N.A.",
+    "MQTT",
+    "Home Assistant",
+    "Pushover",
+    "ntfy",
+    "GPIO",
+    "WiFi",
+    "Wi-Fi",
+    "NTP",
+    "UDP",
+    "mDNS",
+    "REST",
+    "JSON",
+    "URL",
+    "HTTP",
+    "HTTPS",
+    "ESP32",
+    "ArduinoOTA",
+    "LittleFS",
+    "ClientID",
+    "MHz",
+    "dBm",
+    "KB"
+  ]
+}

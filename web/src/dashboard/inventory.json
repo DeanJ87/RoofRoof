@@ -1,0 +1,455 @@
+{
+  "about": "What the dashboard shows and why (SQMeter spec 025; the Status card, SQMeter spec 026). The Status card shows only what no other card shows: the imaging app and whether alerts go out, plus problems nothing else shows (DS-08). Every field of the status, readings, safety and alerts-armed schemas and every settings-dependency id is mapped here: shown (with a test in web/tests/dashboard.spec.ts) or not shown (with a reason). Checked by tools/dashboard/check.py (DASH-02).",
+  "shown": [
+    {
+      "id": "status-card",
+      "label": "status.title",
+      "sources": [],
+      "requiredBy": "026 FR-001, FR-003",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 0,
+      "location": "card:status",
+      "test": "status-card"
+    },
+    {
+      "id": "freshness",
+      "label": "status.data",
+      "sources": [],
+      "requiredBy": "025 FR-014, 010, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "the live connection to the device is down or has gone quiet"
+      },
+      "priority": 1,
+      "location": "card:status",
+      "test": "freshness",
+      "note": "A Status row (Offline, No updates) only while the live connection is not working.",
+      "testIn": "unit",
+      "demoCannot": "The demo's live stream never drops"
+    },
+    {
+      "id": "alerts-state",
+      "label": "settings.alertSchedule.sendingAlerts",
+      "sources": [
+        "status.alerts.armed",
+        "status.alerts.mode",
+        "status.alerts.reason",
+        "status.alerts.since",
+        "status.alerts.sinceAgeMs",
+        "status.alerts",
+        "alerts-armed.armed",
+        "alerts-armed.mode",
+        "alerts-armed.reason",
+        "alerts-armed.since",
+        "alerts-armed.sinceAgeMs"
+      ],
+      "requiredBy": "025 FR-008, 021, 026 FR-002",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "alerts-state"
+    },
+    {
+      "id": "alerts-mode-not-in-effect",
+      "label": "status.sendMode",
+      "sources": ["deps.D-12"],
+      "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "send mode is \"only while an imaging app is connected\" and Alpaca is off"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "alerts-mode-not-in-effect"
+    },
+    {
+      "id": "no-channel",
+      "label": "status.channels",
+      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
+      "requiredBy": "025 FR-011, US1-6, 026 FR-002",
+      "visibility": {
+        "rule": "when",
+        "when": "alerts are on but no enabled channel can send"
+      },
+      "priority": 3,
+      "location": "card:status",
+      "test": "no-channel"
+    },
+    {
+      "id": "imaging-app",
+      "label": "status.imagingApp",
+      "sources": [
+        "status.alpaca.clients",
+        "status.alpaca.enabled",
+        "status.alpaca.clients.*.connected",
+        "status.alpaca.clients.*.lastCheckedAgeMs",
+        "status.alpaca.clients.*.silent",
+        "status.alpaca.clients.*.watching",
+        "status.alpaca"
+      ],
+      "requiredBy": "025 FR-009, 021, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 4,
+      "location": "card:status",
+      "test": "imaging-app",
+      "note": "One tile per Alpaca device once there is one (spec 006): connected, gone quiet or waiting, and when it last checked. No tile while there is no Alpaca device, including when Alpaca is off."
+    },
+    {
+      "id": "clock-location",
+      "label": "status.clock",
+      "sources": [
+        "status.ntp.synced",
+        "status.ntp.status",
+        "status.ntp",
+        "status.time.epoch",
+        "status.time.iso",
+        "status.time.timezone",
+        "status.time"
+      ],
+      "requiredBy": "025 FR-016, 005, 026 FR-002 (amended: Status card shows only what no other card does)",
+      "visibility": {
+        "rule": "when",
+        "when": "the clock is not set"
+      },
+      "priority": 7,
+      "location": "card:status",
+      "test": "clock-location"
+    },
+    {
+      "id": "device-network-card",
+      "label": "dashboard.deviceNetwork",
+      "sources": [
+        "status.wifi.ssid",
+        "status.wifi.rssi",
+        "status.wifi.ip",
+        "status.wifi.connected",
+        "status.wifi",
+        "status.firmware.version",
+        "status.firmware",
+        "status.uptime"
+      ],
+      "requiredBy": "010, 025 FR-015",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "device-network-card"
+    },
+    {
+      "id": "ipv6",
+      "label": "glance.ipv6",
+      "sources": [
+        "status.wifi.ipv6.enabled",
+        "status.wifi.ipv6.addresses",
+        "status.wifi.ipv6",
+        "status.wifi.ipv6.addresses[].address",
+        "status.wifi.ipv6.addresses[].scope"
+      ],
+      "requiredBy": "025 FR-015, 015",
+      "visibility": {
+        "rule": "when",
+        "when": "IPv6 is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "ipv6"
+    },
+    {
+      "id": "mdns",
+      "label": "glance.localName",
+      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "mDNS is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mdns"
+    },
+    {
+      "id": "mqtt-state",
+      "label": "glance.mqtt",
+      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
+      "requiredBy": "025 FR-015, 013",
+      "visibility": {
+        "rule": "when",
+        "when": "MQTT is on"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "mqtt-state"
+    }
+  ],
+  "notShown": [
+    {
+      "match": "status.partitions.**",
+      "reason": "Flash layout",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapStages.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.stackFree.**",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.heapSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.maxAllocHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.minFreeHeap",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.sketchSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.freeSketchSpace",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.flashSize",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsTotal",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.fsUsed",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.cpuFreqMHz",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.bootCount",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.resetReason",
+      "reason": "Device internals for troubleshooting",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.connections",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.tcpLimit",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.status",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.limitPerEndpoint",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.replaced",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.liveUpdates.stalledClosed",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.alpacaRestoredAfterRestart",
+      "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.mqtt.availabilityTopic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.broker",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.clientId",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastPublish",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.lastReconnectAttempt",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.port",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.mqtt.topic",
+      "reason": "MQTT connection details",
+      "shownOn": "System, Settings → Network"
+    },
+    {
+      "match": "status.ntp.drift",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.lastSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.nextSync",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.server",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.ntp.enabled",
+      "reason": "Time sync details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildDate",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.buildTime",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.name",
+      "reason": "Build details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.firmware.layout",
+      "reason": "Only matters when updating: a device still on the old partition layout is told on the Updates page",
+      "shownOn": "Updates"
+    },
+    {
+      "match": "status.wifi.apMode",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.connectPending",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "status.wifi.mac",
+      "reason": "Setup and hardware details",
+      "shownOn": "System"
+    },
+    {
+      "match": "deps.D-13",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-28",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-32",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-36",
+      "reason": "Doesn't affect safety or alerts; shown on its Settings row"
+    },
+    {
+      "match": "deps.D-33",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "deps.D-34",
+      "reason": "A constraint: the save is refused, so it is never saved and inactive"
+    },
+    {
+      "match": "status.alerts.recentRevision",
+      "reason": "Change counter: tells the page when to fetch the recent alerts",
+      "shownOn": "Alerts bell"
+    },
+    {
+      "match": "status.configRevision",
+      "reason": "Change counter: tells the page when to reload the settings",
+      "shownOn": "Dashboard, Settings"
+    },
+    {
+      "match": "deps.D-20",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (SQMeter spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-37",
+      "reason": "A setting that is on but not in effect is shown where it is set, with the reason and a fix (SQMeter spec 020)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "status.alpaca.clients.*.clientId",
+      "reason": "The app's own name for itself; in alert text ({client_id})"
+    },
+    {
+      "match": "status.firmware.product",
+      "reason": "Build details"
+    }
+  ]
+}
