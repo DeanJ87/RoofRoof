@@ -286,6 +286,8 @@ void startServices()
 
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setRoof(&roofControl);
+    // Spec 008: the automatic close's phase in the status and the MQTT document.
+    webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out

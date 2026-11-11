@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <cstring>
 #include <time.h>
 
 namespace SQM
@@ -21,9 +22,15 @@ namespace SQM
     void MQTTClient::dispatch(const char *topic, const uint8_t *payload, unsigned int length)
     {
         const std::string text(reinterpret_cast<const char *>(payload), length);
-        if (commandHandler && config.topic + "/" + commandSubtopic == topic)
+        for (const auto &command : commands)
         {
-            commandHandler(text);
+            if (config.topic + "/" + command.first != topic)
+                continue;
+            // PubSubClient doesn't pass the retained flag: read it from where
+            // `topic` and `payload` sit in its buffer (spec 008 research R2).
+            const RoofIo::Mqtt::Delivery delivery =
+                RoofIo::Mqtt::deliveryOf(reinterpret_cast<const uint8_t *>(topic), std::strlen(topic), payload, length);
+            command.second(text, delivery);
             return;
         }
         if (watchHandler)
@@ -33,9 +40,9 @@ namespace SQM
     // The command topic and every watched topic, after a connect.
     void MQTTClient::subscribeAll()
     {
-        if (commandHandler)
+        for (const auto &command : commands)
         {
-            const std::string topic = config.topic + "/" + commandSubtopic;
+            const std::string topic = config.topic + "/" + command.first;
             mqttClient->subscribe(topic.c_str(), 1);
         }
         for (const std::string &topic : watchedTopics)
@@ -95,11 +102,18 @@ namespace SQM
 
     void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
     {
-        commandSubtopic = subtopic;
-        commandHandler = std::move(handler);
+        bool replaced = false;
+        for (auto &command : commands)
+            if (command.first == subtopic)
+            {
+                command.second = std::move(handler);
+                replaced = true;
+            }
+        if (!replaced)
+            commands.emplace_back(subtopic, std::move(handler));
         if (config.enabled && mqttClient->connected())
         {
-            const std::string topic = config.topic + "/" + commandSubtopic;
+            const std::string topic = config.topic + "/" + subtopic;
             mqttClient->subscribe(topic.c_str(), 1);
         }
     }

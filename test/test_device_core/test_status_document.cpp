@@ -128,6 +128,10 @@ namespace
         roof.fittedSwitches = 2;
         roof.rainFitted = true;
         roof.maxWatchdogBeatAgeMs = 4294967295U;
+        // Spec 008: the longest phase name and the capped check texts.
+        roof.closePhase = "heldByPerson";
+        roof.weatherText = std::string(RoofIo::MAX_CHECK_TEXT, 'w');
+        roof.parkText = std::string(RoofIo::MAX_CHECK_TEXT, 'p');
         RoofIo::writeStatus(doc.createNestedObject("roof"), roof);
     }
 

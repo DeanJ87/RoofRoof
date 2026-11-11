@@ -28,10 +28,16 @@ namespace SQM
     {
         if (mqttClient == nullptr || !mqttClient->isConnected())
             return;
+        // Not while the roof moves or a close waits: a burst of retained
+        // configs must not hold the main loop then (spec 008 research R4).
+        if (roof != nullptr && (roof->moving() || roof->closeWaiting()))
+            return;
         const Config &cfg = getConfigCallback();
         const MQTTConfig &mqtt = cfg.mqtt;
         HaDiscovery::Groups groups;
         groups.alertsSwitch = cfg.alerts.enabled; // dep: D-13
+        groups.roofCommands = mqtt.roofCommands;
+        groups.currentSense = cfg.roof.currentSenseEnabled;
 
         // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
@@ -39,6 +45,8 @@ namespace SQM
         HaDiscovery::Device device{std::string("roofroof_") + mac, cfg.deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
         std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
         key += groups.alertsSwitch ? '1' : '0';
+        key += groups.roofCommands ? '1' : '0';
+        key += groups.currentSense ? '1' : '0';
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
 

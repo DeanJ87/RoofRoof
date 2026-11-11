@@ -43,6 +43,17 @@ namespace SQM
                 }
             }
 
+            // `text` cut to MAX_CHECK_TEXT bytes, never inside a UTF-8 character.
+            std::string capped(const std::string &text)
+            {
+                if (text.size() <= MAX_CHECK_TEXT)
+                    return text;
+                size_t cut = MAX_CHECK_TEXT - 3;
+                while (cut > 0 && (static_cast<unsigned char>(text[cut]) & 0xC0) == 0x80)
+                    --cut;
+                return text.substr(0, cut) + "...";
+            }
+
             void writePosition(JsonObject out, const Snapshot &s)
             {
                 const Roof::Status &st = s.status;
@@ -82,6 +93,14 @@ namespace SQM
             }
         } // namespace
 
+        void applyChecks(Snapshot &snapshot, const GateInputs &gates)
+        {
+            snapshot.weather = gates.weather;
+            snapshot.weatherText = gates.weatherText.empty() ? std::string("no verdict yet") : capped(gates.weatherText);
+            snapshot.parkConfirmed = parkHolds(gates);
+            snapshot.parkText = capped(snapshot.parkConfirmed ? gates.parkText : describeGate(GateRefusal::MountNotParked, gates));
+        }
+
         bool supplyLow(const Snapshot &snapshot)
         {
             return !Roof::supplyReadable(snapshot.supplyVolts) || snapshot.supplyVolts < snapshot.minSupplyVolts;
@@ -111,6 +130,11 @@ namespace SQM
             park["switch2"] = switchName(s.fittedSwitches, 1, s.switch2);
             out["rainContact"] = rainName(s);
             out["closePending"] = s.closePending;
+            out["closePhase"] = s.closePhase != nullptr ? s.closePhase : "idle";
+            out["weather"] = Safety::verdictName(s.weather);
+            out["weatherText"] = s.weatherText;
+            out["parkConfirmed"] = s.parkConfirmed;
+            out["parkText"] = s.parkText;
             writeFault(out, s);
             out["watchdogTrips"] = s.watchdogTrips;
             out["maxStepGapMs"] = s.maxStepGapMs;

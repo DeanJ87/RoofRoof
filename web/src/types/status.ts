@@ -103,6 +103,8 @@ export interface SystemStatus {
 
 export type RoofState = 'unknown' | 'closed' | 'open' | 'opening' | 'closing' | 'stopped' | 'error';
 export type RoofSwitch = 'closed' | 'open' | 'unreadable' | 'notFitted';
+// The automatic close on unsafe weather (spec 005's CloseSeq::Phase).
+export type RoofClosePhase = 'idle' | 'waitPark' | 'closing' | 'retryWait' | 'heldByPerson' | 'cannotMove' | 'halted';
 
 export interface RoofFault {
   kind: string; // Roof::faultName
@@ -132,6 +134,12 @@ export interface RoofStatus {
   parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
   rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
   closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
+  // Spec 008: the automatic close's phase, and the weather and park as the roof's command checks see them now.
+  closePhase: RoofClosePhase;
+  weather: 'safe' | 'unsafe' | 'unknown';
+  weatherText: string;
+  parkConfirmed: boolean;
+  parkText: string;
   fault: RoofFault | null;
   watchdogTrips: number;
   maxStepGapMs: number;

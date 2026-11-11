@@ -52,6 +52,9 @@ namespace SQM
         // Any task: the sequence as spec 010's hold rules see it (restarts,
         // uploads and WiFi changes wait while it works; see PlatformHold.h).
         RoofIo::SequenceState platformState() const { return CloseSeq::platformState(static_cast<CloseSeq::Phase>(phaseNow.load())); }
+        // Any task: the sequence's phase as of its last step (spec 008: the
+        // status document and MQTT).
+        CloseSeq::Phase phase() const { return static_cast<CloseSeq::Phase>(phaseNow.load()); }
 
     private:
         static constexpr const char *TAG = "Close";

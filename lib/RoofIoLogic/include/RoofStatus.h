@@ -6,8 +6,10 @@
 
 #include <ArduinoJson.h>
 #include <cstdint>
+#include <string>
 
 #include "FaultRecord.h"
+#include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SwitchInput.h"
 
@@ -37,7 +39,25 @@ namespace SQM
             uint32_t watchdogTrips = 0;
             uint32_t maxStepGapMs = 0;
             uint32_t maxWatchdogBeatAgeMs = 0; // the oldest watchdog heartbeat a step saw (limit 50 ms)
+            // The weather and park as the command checks see them now (spec 008;
+            // applyChecks), and the automatic close's phase (CloseSeq::phaseName,
+            // filled in by the status writer's caller).
+            Safety::Verdict weather = Safety::Verdict::Unknown;
+            std::string weatherText;
+            bool parkConfirmed = false;
+            std::string parkText;
+            const char *closePhase = "idle";
         };
+
+        // The weather and park texts in the documents are cut to this many bytes
+        // (with "..." at the end): they can carry N.I.N.A.'s and SQMeter's own
+        // error details, and the status and MQTT documents have fixed pools.
+        constexpr size_t MAX_CHECK_TEXT = 200;
+
+        // Fills the snapshot's weather and park from the gates the checks use
+        // (RoofIo::currentGates): the verdict and its reason; whether a close
+        // would pass the park gate now, and why (constitution III's wording).
+        void applyChecks(Snapshot &snapshot, const GateInputs &gates);
 
         // The supply is unreadable or below its minimum.
         bool supplyLow(const Snapshot &snapshot);

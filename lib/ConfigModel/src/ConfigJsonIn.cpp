@@ -140,6 +140,7 @@ namespace SQM
             homeAssistant.take("enabled", m.homeAssistant);
             homeAssistant.take("discoveryPrefix", m.discoveryPrefix);
             mqtt.take("publishIntervalMs", m.publishIntervalMs);
+            mqtt.take("roofCommands", m.roofCommands);
         }
 
         void applyAccess(const Section &doc, Config &cfg, bool keepSecrets)
