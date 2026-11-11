@@ -128,7 +128,10 @@ namespace SQM
             append(text, b & ParkNinaUnreachable, ninaFailure(r, "not responding"));
             append(text, b & ParkNinaUnreadable, ninaFailure(r, "reply unreadable"));
             append(text, b & ParkNinaApiError, ninaFailure(r, "error"));
-            append(text, b & ParkNinaStale, "N.I.N.A. stale: reading " + formatSeconds(r.ninaAgeMs) + " old > " + formatSeconds(r.ninaMaxAgeMs));
+            append(
+                text,
+                b & ParkNinaStale,
+                "N.I.N.A. stale: reading " + formatSeconds(r.ninaAgeMs) + " old > " + formatSeconds(r.ninaMaxAgeMs));
             append(text, b & ParkMountNotConnected, "Mount not connected in N.I.N.A.");
             append(text, b & ParkMountNotAtPark, "N.I.N.A. says mount not at park");
             append(text, b & ParkMountSlewing, "Mount slewing");

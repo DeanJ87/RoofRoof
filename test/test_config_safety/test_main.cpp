@@ -91,7 +91,8 @@ void test_switch_choices()
 void test_rejections_say_why()
 {
     TEST_ASSERT_EQUAL_STRING(
-        "SQMeter safety URL must start with http://", rejectReason(R"({"safety":{"http":{"enabled":true,"url":"https://sqm/api/safety"}}})").c_str());
+        "SQMeter safety URL must start with http://",
+        rejectReason(R"({"safety":{"http":{"enabled":true,"url":"https://sqm/api/safety"}}})").c_str());
     TEST_ASSERT_EQUAL_STRING("SQMeter safety URL must start with http://", rejectReason(R"({"safety":{"http":{"enabled":true}}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels",

@@ -29,7 +29,7 @@ unreadable makes the weather "unsafe" and the mount "not parked".
 
 ### Session 2026-11-11
 
-Answered under the autonomy rules in `specs/ROADMAP.md` (safest option the constitution allows);
+Each open question took the safest option the constitution allows;
 each is also listed under "Assumptions decided for the owner".
 
 - Q: Does 004 report the verdicts in `/api/status`, MQTT or the UI? → A: No. The verdicts are
@@ -326,7 +326,7 @@ any of them by editing the settings defaults or this spec.
 1. **No status document, MQTT or UI output in 004.** Verdicts are logged and kept for spec 005;
    spec 008 adds them to `/api/status` and MQTT, spec 009 to the dashboard and settings page.
 2. **Park switches: none / one (GPIO32) / two (GPIO32 + GPIO33)**, every fitted switch must be
-   closed. Default none (the owner said they're optional).
+   closed. Default none (they are optional, an owner decision).
 3. **Stale times**: SQMeter HTTP default 30 s (setting, 10-600 s); SQMeter MQTT fixed at 150 s
    (2.5 × SQMeter's fixed 60 s republish); N.I.N.A. fixed at 10 s (5 polls).
 4. **Poll periods**: SQMeter HTTP every 5 s, N.I.N.A. every 2 s, each with a 3 s timeout. Not

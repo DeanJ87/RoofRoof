@@ -112,7 +112,8 @@ namespace SQM
         {
             DynamicJsonDocument doc(PARSE_DOC_BYTES);
             if (!readEnvelope(body, ResponseKind::Mount, doc) || !doc["Success"].is<bool>())
-                return failedReading(ReadingStatus::Unreadable, httpStatus == HTTP_OK ? "not a N.I.N.A. reply" : httpText(httpStatus), nowMs);
+                return failedReading(
+                    ReadingStatus::Unreadable, httpStatus == HTTP_OK ? "not a N.I.N.A. reply" : httpText(httpStatus), nowMs);
             if (!doc["Success"].as<bool>())
                 return failedReading(ReadingStatus::ApiError, errorText(doc.as<JsonVariantConst>(), httpStatus), nowMs);
             // Success with another status: the reply contradicts itself.
