@@ -33,11 +33,11 @@ namespace SQM
             if (isStop(command))
             {
                 const bool closing = status.state == Roof::State::Closing || context.closePending;
-                if (client && context.automaticClose && closing)
+                if (client && closing && gates.weather != Safety::Verdict::Safe)
                     return CommandCheck{
                         false,
-                        "automaticClose",
-                        "The roof is closing on unsafe weather: an imaging app can't stop it (Stop in the web UI can)"};
+                        "unsafeClose",
+                        "The roof is closing and the weather isn't safe: an imaging app can't stop it (Stop in the web UI can)"};
                 return CommandCheck{};
             }
             if (command != Roof::Command::Open && command != Roof::Command::Close)

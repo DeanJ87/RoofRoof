@@ -88,8 +88,8 @@
 ## R9. A client's stop and the automatic close (safety reviews)
 
 - **Decision**: `AbortSlew` is the roof's Stop (estimate kept) and never a person's stop. A client's
-  stop is refused while spec 005's close on unsafe weather is under way or waiting (RoofControl
-  records which origin started the move under way and the waiting close's origin). With Alpaca off
+  stop is refused while a close is under way or waiting and the weather verdict isn't safe, whoever
+  started the close. With Alpaca off
   the Dome changes nothing, `AbortSlew` included. A client's open is refused while the roof is
   closing, a close waits, or a close was stopped part-way.
 - **Rationale**: Alpaca has no login. First review: counting a client's stop as a person's let one
@@ -97,7 +97,10 @@
   and spec 005 backs off for 5 minutes, so repeated stops could hold the roof open indefinitely;
   and stop-then-open let a client reverse a person's close. The roof's Abort would make the
   position unknown, which also stops the automatic close (spec 005 FR-010). The web UI's Stop
-  (authenticated) always works, so a person can still stop any move.
+  (authenticated) always works, so a person can still stop any move. Third review: a rule keyed on
+  who started the close was defeated by a client starting its own close (which the sequence then
+  only watches) and stopping it; keying the rule on the verdict and the roof's state alone closes
+  that, and leaves no origin bookkeeping in the untested glue.
 - **Alternatives considered**: let the client stop it and retry without the back-off: rejected, a
   stream of stops still delays the close indefinitely; count only a stop that interrupted a move:
   rejected, it stands the close down mid-close.

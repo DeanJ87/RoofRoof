@@ -33,4 +33,4 @@ Expected: `ErrorNumber` 1035 (0x40B) and `ErrorMessage` starting `Weather not sa
 2. Weather safe: Open; the dashboard and N.I.N.A. show opening. Stop from N.I.N.A.'s dome panel stops it.
 3. Unsafe: Open shows N.I.N.A.'s error with the reason.
 4. Mount not parked: Close shows the park reason.
-5. With the automatic close running, Stop from N.I.N.A. stands it down and the critical alert goes out.
+5. With a close running and the weather unsafe, Stop from N.I.N.A. shows an error and the roof keeps closing; Stop in the web UI stops it and stands the automatic close down.
