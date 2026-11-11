@@ -6,8 +6,14 @@ description: "RoofRoof wiring: the ESP32 pin table, the 10 kΩ pull-down on the 
 
 This page is the wiring reference for the roof controller's ESP32: which pin does what, and the passive parts that make the hardware safe before any software runs. The pins are fixed by the hardware design (the project's constitution), not settings, and `include/RoofPins.h` is the one place in the firmware that names them.
 
-!!! note "What the firmware does today"
-    This release is the platform only. The one thing it does with these pins is hold the motor driver off: as the first statement of `setup()` it sets GPIO27 (EN), GPIO25 (RPWM) and GPIO26 (LPWM) as outputs, all low. It does not yet read the current senses, the supply sense, the Hall sensor, the park switches or the rain contact, and it does not drive the motor. Those come in later specs; wire them as described here so they are ready.
+!!! note "What the firmware does with these pins"
+    As the first statement of `setup()` it sets GPIO27 (EN), GPIO25 (RPWM) and GPIO26 (LPWM) as outputs, all low. Then the roof's control task reads every input below every 20 ms and drives the motor on a person's command ([Roof motion](../user-guide/roof-motion.md#on-the-board)):
+
+    - GPIO39 (Hall): the raw 12-bit reading, the median of five per step, compared with the Hall thresholds you set ([Calibration](calibration.md)).
+    - GPIO36 (supply): calibrated millivolts × 122 / 22.
+    - GPIO34 and GPIO35 (current): read only with current sense on; the larger of the two, × 30 / 20, × the current scale setting.
+    - GPIO32, GPIO33 (park switches) and GPIO4 (rain contact): internal pull-ups on; a closed contact reads low.
+    - GPIO25 and GPIO26: 20 kHz PWM, never both at once; GPIO27: high only while a move is driven.
 
 !!! danger "Fit the EN pull-down before connecting the motor driver"
     Until the firmware starts, the driver's inputs float. Without the pull-down on EN described [below](#the-en-pull-down) a reset, a crash, a brown-out or flashing can switch the motor on.
@@ -25,9 +31,9 @@ This page is the wiring reference for the roof controller's ESP32: which pin doe
 | 35 | `CURRENT_L` | IBT-2 L_IS current sense | Input only, ADC1. Through a 10k/20k divider. Optional |
 | 36 | `SUPPLY_SENSE` | 12 V supply sense | Input only, ADC1. Through a 100k/22k divider |
 | 39 | `HALL_SENSOR` | SS49E linear Hall sensor output | Input only, ADC1. Needs a divider, see [below](#hall-sensor-ss49e) |
-| 32 | `PARK_A` | Park switch A | Input, internal pull-up. Closed = parked |
-| 33 | `PARK_B` | Park switch B | Input, internal pull-up |
-| 4 | `RAIN` | Rain contact | Input, internal pull-up. Optional |
+| 32 | `PARK_A` | Park switch 1 | Input, internal pull-up. Closed (low) = parked. Optional |
+| 33 | `PARK_B` | Park switch 2 | Input, internal pull-up. Closed (low) = parked. Optional |
+| 4 | `RAIN` | Rain contact | Input, internal pull-up. Closed (low) = raining. Optional |
 
 All analog inputs are on ADC1, so they keep working while WiFi is on (ADC2 does not). GPIO25, 26 and 27 are not strapping pins, so the pull-down on 27 does not affect boot.
 
@@ -40,6 +46,8 @@ Travel length, speed and the Hall thresholds are settings, never constants in th
 The IBT-2 is a BTS7960 H-bridge. The firmware's output rules, enforced in one module (`lib/DriverLogic` decides the levels; `src/MotorDriver.cpp` is the only code that writes the pins) and proved by native tests:
 
 - **EN low means the driver is off.** With EN low the bridge ignores RPWM and LPWM.
+- **PWM at 20 kHz**, 8-bit duty, on the one direction's input; the other stays at 0. When the motor starts, the other input is set to 0 first and EN goes high last; when it stops, EN goes low first.
+- **A watchdog drops EN** if the control task hasn't stepped for more than 100 ms while the motor is on, without waiting for the task.
 - **Both PWM inputs low means stop.**
 - **RPWM and LPWM are never both non-zero.** A change of direction goes through stop first.
 
@@ -86,7 +94,17 @@ That is why the digital inputs are on pins that do have pull-ups:
 - **PARK_A and PARK_B on GPIO32 and GPIO33** are bidirectional pins with internal pull-ups. A closed park switch to GND reads low.
 - **RAIN on GPIO4** is the same: a rain contact to GND, internal pull-up.
 
-Internal pull-ups are weak (tens of kΩ). Over a long cable in a noisy place, such as the run to a roof, add an external pull-up of about 10 kΩ to 3.3 V at the ESP32 end, and put a small capacitor and series resistor on the line if it picks up noise. The firmware does not configure these inputs yet; a later spec enables the pull-ups when it starts reading the switches.
+Internal pull-ups are weak (tens of kΩ). Over a long cable in a noisy place, such as the run to a roof, add an external pull-up of about 10 kΩ to 3.3 V at the ESP32 end, and put a small capacitor and series resistor on the line if it picks up noise. The firmware turns the internal pull-ups on at start-up.
+
+### Which way round the switches read
+
+The polarity is fixed, not a setting:
+
+- **Park switch**: wire a contact that **closes when the mount is parked**. Closed (low) = parked. A broken wire or an open contact reads "not parked", which is the safe way round: the roof then won't close. The opposite wiring would read a broken wire as parked, so it isn't offered.
+- **Rain contact**: closed (low) = raining. A broken wire reads dry; the rain contact only ever adds to SQMeter's weather verdict, which stays the weather source.
+- A level counts once it has been read three times in a row (40 ms). Before that, and if the input chatters for more than a second without three equal readings in a row, it reads `unreadable`: not parked, and unsafe.
+
+Which switches are fitted is a setting (`park.switches`: none, one on GPIO32, or two), and so is whether the rain contact is fitted (`safety.rainContact`). The live readings are `roof.parkSwitches` and `roof.rainContact` in the [status](../api/rest.md#get-apistatus).
 
 ---
 

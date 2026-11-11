@@ -5,9 +5,11 @@ description: "How RoofRoof decides when and how the roof moves: its states, the 
 # Roof motion
 
 This page explains how the controller decides when and how the roof moves. The decisions live in
-one place, `lib/RoofLogic`, and are covered by tests. The board wiring that feeds it readings and
-drives the motor comes in a later release. Until then nothing in the firmware moves the roof: the
-motor driver stays off.
+`lib/RoofLogic` (the motion) and `lib/RoofIoLogic` (the hardware layer), and are covered by tests.
+The roof moves on a person's command through the [REST API](../api/rest.md#roof); the automatic
+close on bad weather, Alpaca, MQTT and the dashboard's roof card come in later releases. Wire the
+board from [Wiring](../hardware/wiring.md) and set the Hall thresholds with
+[Calibration](../hardware/calibration.md) before the first move.
 
 !!! warning "Motion safety"
     The roof is moved by a motor strong enough to damage a telescope. The rules below are the
@@ -133,11 +135,48 @@ person clears it. Each records what was measured and the limit it broke.
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
 | `driveBudget` | The motor has run toward one end, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times. Each direction is counted separately, so reversing once part-way never trips it. |
-| `external` | Raised by another part of the firmware (for example a watchdog) |
+| `external` | Raised by the hardware layer; its `cause` says which: `watchdog` (the control task stopped stepping with the motor on), `parkInterlock` (the park confirmation was lost during a close) or `storedUnreadable` (the fault saved before a restart couldn't be read back) |
 
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A
 supply reading above 16 V, or a current reading below -0.5 A, can't be right on this hardware and
 is treated as unreadable.
+
+## On the board
+
+The controller runs in its own task on the ESP32, apart from WiFi, the web server and MQTT:
+
+- **Every 20 ms** it reads the Hall sensor (the median of five readings), the 12 V supply and,
+  with current sense on, the motor current, plus the park switches and the rain contact. It steps
+  the motion logic and sets the motor driver at once. A busy network can delay a command; it can
+  never prolong a move.
+- **A watchdog** on the other processor core looks every 10 ms. If the motor is on and the task
+  hasn't stepped for more than 100 ms, it switches the driver off itself and keeps it off until the
+  task has latched an `external` fault with the cause `watchdog`. If the task hangs outright, the
+  system watchdog restarts the device, and the EN pull-down holds the driver off meanwhile.
+- **A latched fault survives a restart.** It is saved within one step of being latched and latched
+  again at start-up before the first step. A saved record that can't be read back latches a fault
+  of its own. Clearing the fault removes it.
+- **After a start-up** the roof is at the end whose magnet it reads, or `unknown` between the
+  magnets. Nothing moves until a command.
+
+### Weather and park checks
+
+Before the motion logic sees a command:
+
+- **Open** is refused unless the [weather verdict](safety-inputs.md) is safe. An open in progress
+  stops (no fault, the estimate kept) as soon as the verdict is no longer safe.
+- **Close** is refused unless the mount is confirmed parked: N.I.N.A. reports it at park AND every
+  fitted park switch reads closed. During the close this is checked every step; if it no longer
+  holds, the motor stops with an `external` fault, cause `parkInterlock`, naming the input that
+  failed. The weather never blocks a close.
+- **Stop** is always accepted.
+
+If the safety inputs haven't been handed to the controller for 5 s (a stalled main loop), the
+weather counts as not safe and the park as not confirmed.
+
+While the roof is opening or closing, a settings save that changes a `roof` or `park` setting is
+refused. Settings saved at rest are taken at once; saved while stopped part-way, they make the
+position unknown.
 
 ## Settings
 

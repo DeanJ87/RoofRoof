@@ -5,7 +5,7 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 ## R1. A dedicated FreeRTOS task, `vTaskDelayUntil` at 20 ms
 
 - **Decision**: `roof_motion`, pinned to core 1, priority 5 (above the Arduino loop at 1 and
-  AsyncTCP at 3), stack 4 KB, released by `vTaskDelayUntil` every 20 ms. Each step: read the
+  AsyncTCP at 3), stack 6 KB (the step's wording and logging keep more than 2 KB spare), released by `vTaskDelayUntil` every 20 ms. Each step: read the
   inputs (outside the lock), then under one mutex: hand over pending settings, the watchdog and
   interlock checks, `tick`, apply the output, copy the snapshot. The fault record is saved after the
   lock is released.
