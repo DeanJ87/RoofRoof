@@ -127,6 +127,7 @@ namespace
         roof.supplyVolts = 12.34f;
         roof.fittedSwitches = 2;
         roof.rainFitted = true;
+        roof.maxWatchdogBeatAgeMs = 4294967295U;
         RoofIo::writeStatus(doc.createNestedObject("roof"), roof);
     }
 

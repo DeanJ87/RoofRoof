@@ -74,7 +74,7 @@ namespace SQM
             }
             else if (command == Roof::Command::Close)
             {
-                d.cancelRestart = b.restartScheduled;
+                d.cancelRestart = b.restartScheduled && b.restartCancellable;
                 d.stopFlash = b.flashBusy;
                 if (b.flashBusy || b.mqttConnecting)
                     d.action = BlockerAction::DeferClose;

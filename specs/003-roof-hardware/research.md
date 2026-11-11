@@ -173,10 +173,17 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 ## R15. The watchdog is itself watched (added after the PR review)
 
 - **Decision**: the watchdog timer stamps a heartbeat on every check; `MotorDriver::apply` sets EN
-  high only while it is at most 30 ms old (three missed checks) and reports when it held EN low for
+  high only while it is at most 50 ms old and reports when it held EN low for
   that reason; `RoofControl::applyOutput` then latches `watchdogStopped` (the beat's age / 30 ms)
   in the same call, so a stopped watchdog is never silent. (The first version latched only when EN
   was already high, which could never happen.)
+- **Why 50 ms** (the third review found 30 ms tripped on one late beat): the esp_timer task runs at
+  priority 22 on core 0, beside the WiFi stack; under WiFi load a callback can be late by about a
+  period, so the step can see an age of 20-30 ms with nothing wrong. 50 ms tolerates two or three
+  consecutive late or missed checks, yet a watchdog that has really stopped is caught within 50 ms
+  plus one 20 ms step, inside the 100 ms unsupervised limit the watchdog itself enforces.
+  `roof.maxWatchdogBeatAgeMs` in the status shows the worst age seen, and the bench check confirms
+  the margin under WiFi load.
 
 ## R16. A close always wins over a flash write (added after the second review)
 
@@ -194,6 +201,14 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
   write (open refused). A closed roof never needs a close.
 - **Rationale**: constitution II/III: a part-open roof must close in rain whatever else the device
   is doing.
+- **Only a close that would run wins** (third review): the hook (cancel the restart, stop the upload)
+  and the deferral run after the park gate and `Roof::Controller::check()` (a dry run of the motion
+  logic's own refusals), and not when the roof is already closed or closing. A fault ends a waiting
+  close. Restarts that remount a rewritten filesystem are mandatory (`scheduleMandatoryRestart`):
+  never cancelled, held while the roof moves or a close waits. MQTT connects are held while a close
+  waits too, and the hold is asked inside `MQTTClient::connect()`.
+- **Command-line OTA** re-checks the roof in its start callback and calls `Update.abort()` before the
+  first write if the roof is no longer closed.
 
 ## R10. The status section and live updates
 

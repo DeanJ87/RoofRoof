@@ -93,6 +93,24 @@ namespace SQM
             }
         }
 
+        CommandResult Controller::check(Command command, Origin origin) const
+        {
+            if (command != Command::Open && command != Command::Close)
+                return CommandResult{};
+            if (current.fault.kind != FaultKind::None)
+                return refused(Refusal::FaultLatched);
+            const End target = command == Command::Open ? End::Open : End::Closed;
+            End at = End::Closed;
+            if (move.active ? move.target == target : (magnetEnd(at) && at == target))
+                return CommandResult{};
+            const CommandResult notReady = readinessRefusal();
+            if (!notReady.accepted)
+                return notReady;
+            if (!current.positionKnown && origin != Origin::Person)
+                return refused(Refusal::PositionUnknown);
+            return CommandResult{};
+        }
+
         // Why an open or close can't start now, whatever its origin (FR-004).
         CommandResult Controller::readinessRefusal() const
         {

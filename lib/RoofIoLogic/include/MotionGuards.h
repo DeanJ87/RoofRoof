@@ -65,6 +65,10 @@ namespace SQM
             bool flashBusy = false;        // an upload or command-line OTA is writing the flash
             bool mqttConnecting = false;   // the main loop is inside an MQTT connect (bounded, about 3 s plus DNS)
             bool restartScheduled = false; // a restart is due
+            // ...and a close may cancel it. A restart after a filesystem upload
+            // stopped part-way can't be cancelled (the filesystem is half
+            // erased): it is held while the roof moves and runs once it stops.
+            bool restartCancellable = true;
         };
 
         enum class BlockerAction : uint8_t
@@ -96,9 +100,11 @@ namespace SQM
         bool commandHeaderValid(const char *value);
 
         // The watchdog timer stamps a heartbeat every WATCHDOG_CHECK_MS. EN may
-        // only go high while it is at most WATCHDOG_BEAT_LIMIT_MS old (three
-        // missed checks).
-        constexpr uint32_t WATCHDOG_BEAT_LIMIT_MS = 30;
+        // only go high while it is at most WATCHDOG_BEAT_LIMIT_MS old: four
+        // missed checks in a row, so one or two late esp_timer callbacks under
+        // WiFi load never fault a move, while a stopped watchdog is still
+        // caught well inside the 100 ms step-gap limit (research R15).
+        constexpr uint32_t WATCHDOG_BEAT_LIMIT_MS = 50;
         bool watchdogAlive(uint32_t nowMs, uint32_t beatMs, uint32_t limitMs = WATCHDOG_BEAT_LIMIT_MS);
         // The logic wants the driver on but the watchdog is not alive: latch a
         // watchdogStopped fault rather than hold EN low silently.

@@ -13,7 +13,7 @@ and Home Assistant, 009 dashboard, 011 demo). Types are in [data-model.md](../da
 | `POST /api/roof/clear-fault` | 200 `{"success":true,"state":...}` | - (REST is a person) |
 | `POST/PUT /api/config`, `POST /api/backup/apply`, `POST /api/update`, `POST /api/update/fs`, `POST /api/wifi/connect`, `POST /api/restart` | as before | 409 `{"error":"The roof is moving: stop it first, then try again"}` while opening or closing |
 
-A close while an upload or MQTT connect is finishing answers 202 `{"success":true,"state":...,"pending":true,"message":...}` and starts as soon as it is done (`roof.closePending`); it also cancels a scheduled restart and stops an upload (which answers 409 "Upload stopped: the roof is closing").
+Only a close that would run (past the park gate and the motion logic's checks, and not already closed or closing) has these effects. A close while an upload or MQTT connect is finishing answers 202 `{"success":true,"state":...,"pending":true,"message":...}` and starts as soon as it is done (`roof.closePending`); it also cancels a scheduled restart and stops an upload (which answers 409 "Upload stopped: the roof is closing").
 `reason` is `weatherNotSafe`, `mountNotParked`, `busy` (open only: an upload, MQTT connect or scheduled restart), `notStarted` or a `Roof::refusalName` (`faultLatched`,
 `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`,
 `settingsInvalid`). `error` states the measured value and the limit or the failed input.
@@ -53,6 +53,7 @@ Safety::RainContact rainContact() const;
 // and close while an upload is written.
 bool moving() const;
 Roof::State state() const;
+bool closeWaiting() const; // a close is waiting (MQTT connects and restarts wait too)
 // What else is going on, and what a close does about it (cancel the restart, stop the upload).
 void setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose);
 

@@ -103,8 +103,7 @@ namespace SQM
 
         if (!mqttClient->connected())
         {
-            if (!reconnectHeld)
-                reconnect();
+            reconnect();
         }
         else
         {
@@ -161,6 +160,9 @@ namespace SQM
     void MQTTClient::connect()
     {
         if (!config.enabled)
+            return;
+        // Re-checked right before connecting: never while the roof moves or a close waits.
+        if (connectHold && connectHold())
             return;
 
         Logger::info(TAG, "Connecting to MQTT broker: %s port %d", config.broker.c_str(), brokerPort);

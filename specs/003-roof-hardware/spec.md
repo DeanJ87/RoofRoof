@@ -355,7 +355,8 @@ and `include/RoofPins.h`.
   0 V, so detection of a broken sense wire is only what the owner's bench measurement supports.
 - **FR-027**: Roof commands MUST carry the header `X-RoofRoof: 1` (403 without it), and the web UI
   MUST send it.
-- **FR-028**: EN MUST only go high while the watchdog's last check is at most 30 ms old. When the
+- **FR-028**: EN MUST only go high while the watchdog's last check is at most 50 ms old (research
+  R15); the oldest heartbeat a step has seen is shown in the status (`maxWatchdogBeatAgeMs`). When the
   logic wants the driver on and the check is older, the roof MUST latch a fault (`watchdogStopped`)
   rather than hold EN low silently.
 - **FR-029**: A close always wins over a flash write. An upload in progress counts as busy only while
@@ -363,10 +364,17 @@ and `include/RoofPins.h`.
   upload or command-line OTA writes the flash, an MQTT connect is under way or a restart is
   scheduled. A close (any origin) cancels a scheduled restart, stops an upload at its next chunk
   (the upload fails with 409) and, if an upload or MQTT connect is still finishing, is accepted as
-  waiting (202, `roof.closePending`) and starts as soon as it is done. Stop and open cancel a waiting
-  close.
+  waiting (202, `roof.closePending`) and starts as soon as it is done. These side effects and the
+  wait happen only for a close that would run: past the park gate and the motion logic's own checks,
+  and never when the roof is already closed or closing. Stop, and an open that runs, cancel a
+  waiting close; a refused open doesn't. A fault ends a waiting close (clearing the fault never
+  runs it). A restart after a filesystem upload (finished or stopped part-way) is never cancelled:
+  it waits while the roof moves or a close waits. No MQTT connect is tried while the roof moves or a
+  close waits; the check is repeated right before every connect.
 - **FR-030**: Command-line OTA MUST only be serviced while the roof is closed (it blocks the main loop
-  for the whole upload and can't be stopped part-way); it counts as a flash write while it runs.
+  for the whole upload and can't be stopped part-way), the roof state MUST be re-checked when the
+  upload starts (refused before the first write if it isn't closed), and it counts as a flash write
+  while it runs.
 - **FR-031**: Each upload request MUST keep its own state (its flash activity and why it stopped), so
   one request's refusal or disconnect never affects another's.
 

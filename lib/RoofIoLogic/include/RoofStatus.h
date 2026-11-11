@@ -35,6 +35,7 @@ namespace SQM
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
             uint32_t watchdogTrips = 0;
             uint32_t maxStepGapMs = 0;
+            uint32_t maxWatchdogBeatAgeMs = 0; // the oldest watchdog heartbeat a step saw (limit 50 ms)
         };
 
         // The supply is unreadable or below its minimum.

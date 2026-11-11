@@ -135,4 +135,5 @@ export interface RoofStatus {
   fault: RoofFault | null;
   watchdogTrips: number;
   maxStepGapMs: number;
+  maxWatchdogBeatAgeMs: number; // the oldest watchdog heartbeat a step saw since start (EN needs it <= 50 ms)
 }

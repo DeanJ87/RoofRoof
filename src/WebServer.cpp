@@ -61,8 +61,10 @@ namespace SQM
 
         void restartTimerCallback(void *)
         {
-            // Never while the roof moves: try again in a second.
-            if (WebServer::restartHold.load() && restartTimer != nullptr)
+            // Never while the roof moves or a close waits: try again in a second.
+            RoofControl *roof = WebServer::roofForRestart.load();
+            const bool roofBusy = roof != nullptr && (roof->moving() || roof->closeWaiting());
+            if ((WebServer::restartHold.load() || roofBusy) && restartTimer != nullptr)
             {
                 esp_timer_start_once(restartTimer, 1000ULL * 1000ULL);
                 return;
@@ -335,12 +337,21 @@ namespace SQM
 
     void WebServer::cancelRestart()
     {
-        if (restartScheduled() && esp_timer_stop(restartTimer) == ESP_OK)
+        if (restartScheduled() && restartIsCancellable && esp_timer_stop(restartTimer) == ESP_OK)
             Logger::warn(TAG, "Scheduled restart cancelled: the roof is closing; restart it later");
+    }
+
+    bool WebServer::scheduleMandatoryRestart(uint32_t delayMs)
+    {
+        restartIsCancellable = false;
+        return scheduleRestart(delayMs);
     }
 
     bool WebServer::scheduleRestart(uint32_t delayMs)
     {
+        // A mandatory restart still due stays mandatory.
+        if (!restartScheduled())
+            restartIsCancellable = true;
         if (!restartTimer)
         {
             esp_timer_create_args_t restartTimerArgs = {};

@@ -20,7 +20,7 @@ The pure types live in `namespace SQM::RoofIo` (`lib/RoofIoLogic`); the firmware
 | `STATUS_BROADCAST_MIN_MS` | 250 | live update after a change, at most this often |
 | `SAFETY_HANDOVER_STALE_MS` | 5000 | verdict and park result older than this: not safe, not parked |
 | `CURRENT_SAMPLES` | 8 | current samples per step, spread over several PWM periods |
-| `WATCHDOG_BEAT_LIMIT_MS` | 30 | EN may only go high while the watchdog's last check is this fresh |
+| `WATCHDOG_BEAT_LIMIT_MS` | 50 | EN may only go high while the watchdog's last check is this fresh |
 | `CURRENT_SETTLE_MS` | 1000 | driving this long before `roof.minRunningAmps` is checked |
 | `FLASH_STALE_MS` | 5000 | a flash writer with no progress for this long no longer blocks |
 | `COMMAND_HEADER` | `X-RoofRoof` | must be `1` on every roof command |
@@ -50,7 +50,7 @@ Unreadable → `Unreadable`.
 
 `FaultCause`: `Logic` (`logic`: spec 002 decided it), `Watchdog` (`watchdog`), `ParkInterlock`
 (`parkInterlock`), `StoredUnreadable` (`storedUnreadable`), `WatchdogStopped` (`watchdogStopped`:
-the watchdog's heartbeat age in ms / 30 ms). The three non-logic causes are latched
+the watchdog's heartbeat age in ms / 50 ms). The three non-logic causes are latched
 as `Roof::FaultKind::External`.
 
 | Cause | measured | limit |
@@ -119,6 +119,7 @@ A config without them loads with 8.5 and 0. Message: `Roof: current scale must b
 | `closePending` | boolean | a close accepted, waiting for an upload or MQTT connect to finish |
 | `fault` | `{kind, cause, measured, limit, text}` or null | null when clear |
 | `watchdogTrips` | integer | since start |
+| `maxWatchdogBeatAgeMs` | integer | the oldest watchdog heartbeat a step has seen since start (EN needs ≤ 50 ms) |
 | `maxStepGapMs` | integer | the longest gap between steps since start |
 
 Text from `describeFault(record)` and `describeRefusal(result)` (contract).

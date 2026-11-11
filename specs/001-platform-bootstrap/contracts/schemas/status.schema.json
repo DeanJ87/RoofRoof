@@ -477,6 +477,9 @@
         "maxStepGapMs": {
           "type": "number"
         },
+        "maxWatchdogBeatAgeMs": {
+          "type": "number"
+        },
         "minSupplyVolts": {
           "type": "number"
         },
@@ -593,6 +596,7 @@
         "hall",
         "maxCurrentAmps",
         "maxStepGapMs",
+        "maxWatchdogBeatAgeMs",
         "minSupplyVolts",
         "motorAmps",
         "moveElapsedMs",

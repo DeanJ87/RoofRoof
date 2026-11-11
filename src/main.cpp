@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <Update.h>
 #include <ESPmDNS.h>
 #include <LittleFS.h>
 #include <esp_ota_ops.h>
@@ -141,6 +142,15 @@ static uint32_t arduinoOtaToken = 0;
 
 void onArduinoOtaStart()
 {
+    // The roof may have moved since handle() was let through: refuse unless it
+    // is still closed. Aborted before the first write; ArduinoOTA then reports an error.
+    if (!RoofIo::commandLineOtaAllowed(roofControl.state()))
+    {
+        arduinoOtaToken = 0;
+        Update.abort();
+        Logger::warn("OTA", "Command-line OTA refused: the roof isn't closed");
+        return;
+    }
     arduinoOtaToken = FlashGuard::begin();
     const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
     if (!firmware)
@@ -206,6 +216,8 @@ void startServices()
     HeapTrace::mark("ota + time");
 
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
+    // Spec 003: no MQTT connect while the roof moves or a close waits.
+    mqttClient->setConnectHold([]() { return roofControl.moving() || roofControl.closeWaiting(); });
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
@@ -284,10 +296,7 @@ void loop()
     // While the roof opens or closes (spec 003): no restart, no command-line
     // OTA (flash writes stall its control task and watchdog) and no MQTT
     // reconnect (it could hold this loop past the safety hand-over limit).
-    const bool roofMoving = roofControl.moving();
-    WebServer::holdRestarts(roofMoving);
-    if (mqttClient)
-        mqttClient->holdReconnects(roofMoving);
+    WebServer::holdRestarts(roofControl.moving() || roofControl.closeWaiting());
 
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();

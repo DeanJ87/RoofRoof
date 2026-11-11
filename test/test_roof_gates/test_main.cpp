@@ -344,6 +344,13 @@ void test_blockers_open_refused_close_wins(void)
     const BlockerDecision r = blockerDecision(Roof::Command::Close, restart);
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, r.action); // the restart is cancelled instead
     TEST_ASSERT_TRUE(r.cancelRestart);
+    // A restart a stopped filesystem upload needs is never cancelled; the close still goes.
+    Blockers fsRestart = restart;
+    fsRestart.restartCancellable = false;
+    const BlockerDecision keep = blockerDecision(Roof::Command::Close, fsRestart);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, keep.action);
+    TEST_ASSERT_FALSE(keep.cancelRestart);
+    TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Open, fsRestart).action);
     TEST_ASSERT_EQUAL_STRING("An upload is being written", blockerText(flash));
     TEST_ASSERT_EQUAL_STRING("MQTT is connecting", blockerText(mqtt));
     TEST_ASSERT_EQUAL_STRING("A restart is scheduled", blockerText(restart));
@@ -362,12 +369,13 @@ void test_command_header_must_be_one(void)
 
 void test_watchdog_alive_boundary_and_wrap(void)
 {
-    TEST_ASSERT_TRUE(watchdogAlive(1030, 1000));
-    TEST_ASSERT_FALSE(watchdogAlive(1031, 1000));
+    TEST_ASSERT_EQUAL_UINT32(50, WATCHDOG_BEAT_LIMIT_MS);
+    TEST_ASSERT_TRUE(watchdogAlive(1050, 1000)); // two (and three, four) late checks are tolerated
+    TEST_ASSERT_FALSE(watchdogAlive(1051, 1000));
     TEST_ASSERT_TRUE(watchdogAlive(1000, 1005)); // stamped between the reads
     const uint32_t beat = 0xFFFFFFFFu - 10;
-    TEST_ASSERT_TRUE(watchdogAlive(beat + 30, beat));
-    TEST_ASSERT_FALSE(watchdogAlive(beat + 31, beat));
+    TEST_ASSERT_TRUE(watchdogAlive(beat + 50, beat));
+    TEST_ASSERT_FALSE(watchdogAlive(beat + 51, beat));
     TEST_ASSERT_TRUE(watchdogAlive(1100, 1000, 100));
 }
 
@@ -393,8 +401,9 @@ namespace
 
 void test_watchdog_stopped_latches_instead_of_holding_silently(void)
 {
-    TEST_ASSERT_FALSE(watchdogStoppedFault(true, 1030, 1000));
-    TEST_ASSERT_TRUE(watchdogStoppedFault(true, 1031, 1000));
+    TEST_ASSERT_FALSE(watchdogStoppedFault(true, 1030, 1000)); // one or two late beats: no fault
+    TEST_ASSERT_FALSE(watchdogStoppedFault(true, 1050, 1000));
+    TEST_ASSERT_TRUE(watchdogStoppedFault(true, 1051, 1000));
     TEST_ASSERT_FALSE(watchdogStoppedFault(false, 5000, 1000)); // driver off: nothing to hold
 }
 
