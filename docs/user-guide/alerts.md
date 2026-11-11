@@ -165,10 +165,10 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **The roof faults**: any motion fault, whoever moved the roof, with its value and limit. Not again until the fault has been cleared and another one latches. A fault during the automatic close also raises "The roof doesn't close".
 - **The 12 V supply is low**: below **Minimum supply** (`roof.minSupplyVolts`) or unreadable for 30 seconds without a break, so a motor's start doesn't alert. Not again until it has been back above the minimum.
 - **The weather closes the roof**: the automatic close began (waiting for the park, closing, or waiting to try again), with the weather's reasons. A verdict that flips between safe and unsafe sends at most one per cooldown. Nothing more is sent if the weather clears before the close.
-- **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, whoever closed it; at most once per cooldown.
+- **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, or after a stop or a halted close, whoever closed it; at most once per cooldown.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, or the rain contact unreadable, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 
-A custom message that comes out longer than Pushover's 1,024 characters is replaced by the built-in one.
+A custom title or message that comes out longer than Pushover allows (200 / 1,024 characters) is replaced by the built-in one.
 
 These four wait at least a minute between two alerts of the same event, even with **Cooldown** set to 0.
 

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <string>
 
+#include "AlertDelivery.h"
 #include "DeviceCore.h"
 
 // The roof's alert settings (spec 007): defaults, the settings round trip and
@@ -391,6 +392,27 @@ void test_critical_alerts_go_out_in_every_state()
             }
 }
 
+// A critical message at the 1024-byte cap keeps its text in the MQTT and
+// webhook payload (the JSON has room for it).
+void test_long_critical_message_survives_the_payload()
+{
+    Alerts::Alert alert = fromSequence(Alerts::AlertType::RoofNotClosed);
+    alert.title = std::string(Core::MAX_CRITICAL_TITLE_BYTES, 'T');
+    alert.message = std::string(Core::MAX_CRITICAL_MESSAGE_BYTES, 'M');
+    DynamicJsonDocument doc(8192);
+    TEST_ASSERT_FALSE(deserializeJson(doc, Delivery::alertJson(alert, std::string(32, 'D'), 1794470400)));
+    TEST_ASSERT_EQUAL_STRING(alert.message.c_str(), doc["message"] | "");
+    TEST_ASSERT_EQUAL_STRING(alert.title.c_str(), doc["title"] | "");
+}
+
+void test_overlong_critical_title_uses_the_built_in_one()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.mountNotParked.title = "{details}{details}";
+    Alerts::Alert out = Core::finishCriticalAlert(fromSequence(Alerts::AlertType::MountNotParked, true), Core::AlertSources{cfg}, CLOCK);
+    TEST_ASSERT_EQUAL_STRING("Still: Mount didn't park", out.title.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -412,5 +434,7 @@ int main(int, char **)
     RUN_TEST(test_overlong_critical_message_uses_the_built_in_text);
     RUN_TEST(test_silent_stored_sound_is_sent_audible);
     RUN_TEST(test_critical_alerts_go_out_in_every_state);
+    RUN_TEST(test_long_critical_message_survives_the_payload);
+    RUN_TEST(test_overlong_critical_title_uses_the_built_in_one);
     return UNITY_END();
 }

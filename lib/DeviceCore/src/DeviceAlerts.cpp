@@ -119,11 +119,16 @@ namespace SQM
             Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars)
         {
             const std::string builtIn = alert.message;
+            const std::string builtInTitle = alert.title;
             if (!setting.title.empty())
             {
                 alert.title = Alerts::renderTemplate(setting.title, vars);
                 if (varOf(vars, "reminder") == "yes" && alert.title.rfind("Still: ", 0) != 0)
                     alert.title = "Still: " + alert.title;
+                // Pushover refuses titles over 250 characters: too long falls
+                // back to the built-in title (which carries "Still: " itself).
+                if (alert.title.size() > MAX_CRITICAL_TITLE_BYTES)
+                    alert.title = builtInTitle;
             }
             if (!setting.message.empty())
             {

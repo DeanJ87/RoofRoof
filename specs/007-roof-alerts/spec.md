@@ -299,8 +299,8 @@ the test send of each event.
   park, closing, or waiting to retry), with the weather verdict's reasons; not while the sequence
   can't move the roof or is stood down.
 - **FR-010**: `roof_closed` MUST fire when the roof reaches closed while the automatic close is
-  attempting a close, held through the start-up grace and the cooldown; a closed reading that returns
-  while the sequence can't move or is stood down MUST NOT fire it.
+  attempting a close, or after a person's stop or a halted close, held through the start-up grace
+  and the cooldown; a closed reading that returns while the sequence can't move MUST NOT fire it.
 - **FR-011**: `safety_lost` MUST fire when any weather source that is switched on has been stale,
   unreachable, unreadable or offline (the rain contact: unreadable) for 30 s without a break, naming
   each lost source and why; not when no source is switched on and not during the start-up wait for a
@@ -391,8 +391,11 @@ Each was an open choice; the safest option the constitution allows was taken.
     with the cooldown set to 0 (which the imaging-app events honour as SQMeter does).
 10. **"Unsafe: closing" covers the attempt phases only**, at most once per cooldown; nothing extra
     when the weather clears before the close (logged only), and no "weather safe again" event.
-11. **"Roof closed after unsafe weather" counts only a close after an attempt**, at most once per
-    cooldown, so a marginal closed magnet can't send one per flicker.
+11. **"Roof closed after unsafe weather" counts a close after an attempt, a person's stop or a
+    halted close** (not one while the sequence can't move), at most once per cooldown, so a marginal
+    closed magnet can't send one per flicker.
+11c. **A critical title over 200 bytes or message over 1,024 bytes** falls back to the built-in
+    wording (Pushover's limits), and the MQTT and webhook payloads have room for both.
 11a. **Critical alerts can't be silent**: "none" and "vibrate" aren't offered and are refused; a
     stored one is sent with the default sound.
 11b. **Stored settings with a critical level below urgent load with urgent**, rather than being

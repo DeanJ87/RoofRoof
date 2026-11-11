@@ -184,7 +184,7 @@
   "device.settings.alertsEventLevelsAre0Off": "Alerts: event levels are 0 (off) to 4 (wake me)",
   "device.settings.alertsPushoverNeedsBothAUser": "Alerts: Pushover needs both a user key and an application token",
   "device.settings.alertsSilenceTimeMustBeBetween": "Alerts: silence time must be between 30 and 3600 seconds",
-  "device.settings.alertsTheCustomAlertTextsAre": "Alerts: the custom alert texts are too long in total - shorten some",
+  "device.settings.alertsTheAlertSettingsAreToo": "Alerts: the alert settings are too long to store - shorten custom alert texts or long channel settings (webhook URL or header, tokens)",
   "device.settings.alertsTheRoofSCriticalAlerts": "Alerts: the roof's critical alerts are urgent or wake me",
   "device.settings.alertsTheRoofSCriticalAlerts2": "Alerts: the roof's critical alerts can't be silent or vibrate only",
   "device.settings.alertsWhenToSendMustBe": "Alerts: when to send must be any or whileConnected",

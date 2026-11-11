@@ -112,7 +112,7 @@ sequence (every 100 ms) and hands to the web server, which runs the engine once 
   main alerts part (the imaging-app events keep their own part). `EVENT_COUNT` 10,
   `FIRST_CLIENT_EVENT` 7. The existing 3,900-byte check per stored part still applies: seven events
   with defaults add about 430 bytes; long custom wording on all of them is refused with the existing
-  "too long in total" message.
+  "too long to store" message, which now also names the long channel settings.
 
 ## R8. Where the code lives (parallel specs)
 

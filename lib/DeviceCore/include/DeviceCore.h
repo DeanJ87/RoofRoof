@@ -65,6 +65,8 @@ namespace SQM
         Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock);
         // Pushover's limit on a message; a longer critical one uses the built-in text.
         constexpr size_t MAX_CRITICAL_MESSAGE_BYTES = 1024;
+        // ...and its titles; a longer critical title uses the built-in one.
+        constexpr size_t MAX_CRITICAL_TITLE_BYTES = 200;
         // Whether an alert of `type` goes out at all now: the critical roof
         // alerts always; the rest with the master switch on and while sending
         // (not paused, the send mode allows it). Used by the firmware's alert

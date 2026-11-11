@@ -101,7 +101,9 @@ namespace SQM
 
         std::string alertJson(const Alerts::Alert &alert, const std::string &deviceName, int64_t epochSeconds)
         {
-            DynamicJsonDocument doc(ALERT_JSON_CAPACITY);
+            // The texts are copied into the document: room for them whatever
+            // their length (a long critical message must keep its reason, spec 007).
+            DynamicJsonDocument doc(ALERT_JSON_CAPACITY + alert.title.size() + alert.message.size() + deviceName.size());
             doc["event"] = Alerts::alertTypeName(alert.type);
             if (!alert.stacked.empty())
             {

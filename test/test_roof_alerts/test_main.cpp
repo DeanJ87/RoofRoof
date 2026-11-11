@@ -282,9 +282,9 @@ void test_conditions_closing_and_the_weather_kept_for_the_close(void)
 
 void test_closed_counts_only_after_an_attempt(void)
 {
-    for (Phase phase : {Phase::WaitPark, Phase::Closing, Phase::RetryWait})
+    for (Phase phase : {Phase::WaitPark, Phase::Closing, Phase::RetryWait, Phase::HeldByPerson, Phase::Halted})
         TEST_ASSERT_TRUE(closedAfterAttempt(phase, Event::Closed));
-    for (Phase phase : {Phase::Idle, Phase::HeldByPerson, Phase::CannotMove, Phase::Halted})
+    for (Phase phase : {Phase::Idle, Phase::CannotMove})
         TEST_ASSERT_FALSE(closedAfterAttempt(phase, Event::Closed));
     TEST_ASSERT_FALSE(closedAfterAttempt(Phase::Closing, Event::EndedSafe));
 }

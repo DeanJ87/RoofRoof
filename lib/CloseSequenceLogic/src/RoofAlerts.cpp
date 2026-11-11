@@ -90,7 +90,9 @@ namespace SQM
 
         bool closedAfterAttempt(Phase before, Event event)
         {
-            return event == Event::Closed && attempting(before);
+            // A person closing the roof after a stop or a halted close counts
+            // too; CannotMove doesn't (a flickering closed magnet passes there).
+            return event == Event::Closed && (attempting(before) || before == Phase::HeldByPerson || before == Phase::Halted);
         }
 
         bool sourcesKnown(const Safety::WeatherVerdict &weather)
