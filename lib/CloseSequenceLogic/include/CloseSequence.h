@@ -185,7 +185,7 @@ namespace SQM
                 uint64_t limitMs = 0;      // the attempt's park limit
                 bool requested = false;    // a park request was sent...
                 uint64_t requestAgeMs = 0; // ...this long ago (kept spacing across a restart)
-                bool daylight = false;     // a daylight-only episode (spec 013)
+                bool daylight = false;     // a daylight-only episode (spec 013); a stand-down's unsafeMs is the weather's count
             };
             Saved saved() const;
             // After a restart, before the first step: puts `saved` back, applied
@@ -243,6 +243,10 @@ namespace SQM
             // A daylight-only episode ended: the next weather episode's
             // critical alerts go out in their own words (the throttle starts afresh).
             bool afterDaylightEpisode = false;
+            bool closeFailedInDaylight = false; // the back-off's close failure was a daylight close's
+            void handToWeather();
+            static bool heldBack(Phase phase); // what the weather re-arms after a daylight-only episode
+            uint64_t daylightCount() const;
             // This step's results of the three runs.
             bool parkConfirmed = false;    // parked for PARK_SETTLE_MS
             bool unknownConfirmed = false; // unknown for UNKNOWN_CONFIRM_MS

@@ -320,12 +320,14 @@ reason.
 - **FR-012**: With mode off or alert, or the state not `day`, the close sequence MUST behave
   exactly as spec 005 specifies, step for step.
 - **FR-013**: When the weather stops being safe during an episode the daylight close started and
-  the sequence is halted, backing off after a failure or unable to move, the sequence MUST re-arm
-  and start the weather close at once (an unable-to-move sequence raises its critical alert again,
-  in the weather's words) (as if the daylight episode had not happened); when it is stood down by a
-  person, once the weather has been not safe for 30 s in all since the stop, added up over unsafe
-  spells (a new stop starts the count again). The critical alerts' throttle starts afresh at that
-  moment, and also when a weather episode starts after a daylight-only episode ended. An
+  the sequence is backing off after a failure or unable to move, the sequence MUST re-arm and
+  start a fresh weather attempt at once (an unable-to-move sequence raises its critical alert
+  again, in the weather's words; a daylight close's failure doesn't hold the weather's close back;
+  as if the daylight episode had not happened); when it is stood down by a person or halted,
+  once the weather has been not safe for 30 s in all since the stop, added up over unsafe
+  spells (a new stop starts the count again; the count is kept across a restart). The critical
+  alerts' throttle starts afresh at that moment, and a weather episode that starts after a
+  daylight-only episode ended is a fresh attempt with fresh alerts. An
   attempt waiting for the park or a close under way carries on. From then on the episode is a
   weather episode (its alerts are worded for the weather).
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
@@ -429,8 +431,9 @@ possible was taken.
    requires unsafe weather to end closed; a person's stop of a daylight close is not a stop of a
    weather close that hadn't started. The person can stop the weather close too. A person's
    stand-down waits for 30 s of unsafe weather in all (added up over spells, so a flapping verdict
-   still ends it) first, so one stale or missed SQMeter poll can't
-   send a park request against the person's stop; halts and back-offs re-arm at once. The
+   still ends it) first, so one stale or missed SQMeter poll can't send a park request against the
+   person's stop; a halted close waits the same way (one stale poll doesn't re-drive a close
+   that ran out of time); back-offs and can't-move re-arm at once. The
    critical alerts start afresh then, so a weather failure isn't hidden by the same daylight
    failure minutes before.
 6. **A weather stand-down stays while the sun is up with "alert and close".** It re-arms once the

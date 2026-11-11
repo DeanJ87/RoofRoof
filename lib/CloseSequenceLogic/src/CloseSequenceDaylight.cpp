@@ -22,9 +22,9 @@ namespace SQM
         // weather close back: the sequence re-arms and the weather attempt
         // starts on this same step, as if the daylight episode hadn't been.
         // A person's stop seen on this very step wins (it stands down below).
-        // A person's stand-down waits for the weather to have been not safe
-        // for WEATHER_REARM_CONFIRM_MS (a new stop restarts the wait); a halt
-        // or a back-off re-arms at once. The critical alerts' throttle starts
+        // A person's stand-down and a halt wait for the weather to have been
+        // not safe for WEATHER_REARM_CONFIRM_MS in all (a new stop restarts
+        // the count); a back-off or a can't-move re-arms at once. The critical alerts' throttle starts
         // afresh, so the weather close's failures are announced in their own
         // words even when the daylight close failed the same way just before.
         void Sequence::trackEpisode(const Inputs &given, bool personStopped, bool restoredNow)
@@ -37,7 +37,8 @@ namespace SQM
                 // own critical alerts go out in their own words.
                 if (afterDaylightEpisode && !given.weatherSafe)
                 {
-                    clearAlertThrottle();
+                    handToWeather();
+                    paused.has = false; // a fresh weather attempt, not the daylight one's back-off
                     afterDaylightEpisode = false;
                 }
                 daylightOnly = given.daylight && given.weatherSafe;
@@ -47,27 +48,46 @@ namespace SQM
             // first (a restart during a close): the weather re-arms next step.
             if (given.weatherSafe || !daylightOnly || restoredNow)
                 return;
-            if (current == Phase::HeldByPerson && !waitOver)
+            if ((current == Phase::HeldByPerson || current == Phase::Halted) && !waitOver)
                 return;
             daylightOnly = false;
-            clearAlertThrottle();
+            handToWeather();
             // CannotMove too: its "can't close by itself" is raised again at
             // once, in the weather's words, with the fresh throttle.
-            const bool heldBack =
-                current == Phase::HeldByPerson || current == Phase::Halted || current == Phase::RetryWait || current == Phase::CannotMove;
-            if (heldBack && !personStopped)
+            if (heldBack(current) && !personStopped)
                 enter(Phase::Idle);
         }
 
-        // A person's daylight stand-down: the weather has been not safe for
-        // WEATHER_REARM_CONFIRM_MS in all since the stand-down began, and no
-        // new stop (which starts the count again).
+        // As if the daylight episode hadn't been: the weather's critical
+        // alerts go out in their own words, and a daylight close's failure
+        // doesn't hold the weather's close back.
+        bool Sequence::heldBack(Phase phase)
+        {
+            return phase == Phase::HeldByPerson || phase == Phase::Halted || phase == Phase::RetryWait || phase == Phase::CannotMove;
+        }
+
+        uint64_t Sequence::daylightCount() const
+        {
+            return daylightOnly ? heldUnsafeMs : 0;
+        }
+
+        void Sequence::handToWeather()
+        {
+            clearAlertThrottle();
+            if (closeFailedInDaylight)
+                closeFailedOnce = false;
+        }
+
+        // A person's daylight stand-down or a halt: the weather has been not
+        // safe for WEATHER_REARM_CONFIRM_MS in all since it began (each step
+        // that follows an unsafe one counts), and no new stop (which starts
+        // the count again).
         bool Sequence::personWaitOver(const Inputs &given, bool personStopped)
         {
             const bool unsafe = !given.weatherSafe;
-            if (current != Phase::HeldByPerson || personStopped)
+            if ((current != Phase::HeldByPerson && current != Phase::Halted) || personStopped)
                 heldUnsafeMs = 0;
-            else if (unsafe && lastWeatherUnsafe)
+            else if (lastWeatherUnsafe)
                 heldUnsafeMs += elapsed(lastWeatherMs, given.nowMs);
             lastWeatherUnsafe = unsafe;
             lastWeatherMs = given.nowMs;
