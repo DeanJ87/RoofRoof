@@ -45,6 +45,7 @@ HTTP_STATUS = {
     "400": "Bad request",
     "401": "The password is needed",
     "403": "Refused: a required header is missing",
+    "404": "Not found",
     "409": "Not now",
     "413": "The request body is too large",
     "500": "Device failure",

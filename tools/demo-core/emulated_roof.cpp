@@ -4,6 +4,8 @@
 
 #include "emulated_roof.h"
 
+#include "MotionProfile.h"
+
 #include <cmath>
 
 #include "CommandCheck.h"
@@ -153,6 +155,8 @@ namespace DemoRoof
         controller.tick(in);
         syncFault();
         stepCalibration(in);
+        if (diagLog != nullptr)
+            recordDiag(in); // spec 017: after the output, as RoofControl::stepLocked
         stepMount();
         stepSafety();
         stepDaylight(false);
@@ -463,6 +467,8 @@ namespace DemoRoof
         if (stopping)
             calibration.stopped(origin == Roof::Origin::Person ? "Stopped by a person" : "Stopped by a stop command");
         const Outcome outcome = outcomeOf(controller.command(command, origin));
+        if (outcome.accepted && (command == Roof::Command::Open || command == Roof::Command::Close))
+            moveOrigin = origin;
         syncFault();
         return outcome;
     }

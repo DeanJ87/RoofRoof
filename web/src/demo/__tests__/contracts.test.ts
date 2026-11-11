@@ -31,6 +31,32 @@ const check = (schemaName: string, document: unknown) => {
 
 const alpaca = (path: string) => JSON.parse(demoDevice.alpaca('GET', path, []).body);
 
+// Spec 017: the diagnostics documents, captured while the simulated roof moves
+// and after a move (see beforeAll).
+const diag: { moving?: unknown; rest?: unknown; moves?: unknown; move?: unknown } = {};
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+async function captureDiagnostics() {
+  // Current sense on, so the current and power show; everything is put back
+  // afterwards (the roof closed again, diagnostics off) for the other samples.
+  demoDevice.applyConfig(JSON.stringify({ diag: { enabled: true }, roof: { currentSenseEnabled: true } }));
+  await wait(1100);
+  demoDevice.roofCommand('open');
+  demoDevice.timeMultiplier = 120; // the whole move in one tick
+  await wait(1100);
+  demoDevice.timeMultiplier = 1;
+  diag.rest = JSON.parse(demoDevice.diagDocument());
+  demoDevice.roofCommand('close');
+  await wait(1100);
+  diag.moving = JSON.parse(demoDevice.diagDocument());
+  demoDevice.timeMultiplier = 120;
+  await wait(1100);
+  demoDevice.timeMultiplier = 1;
+  diag.moves = JSON.parse(demoDevice.diagMoves());
+  diag.move = JSON.parse(demoDevice.diagMove(1, false));
+  demoDevice.applyConfig(JSON.stringify({ diag: { enabled: false }, roof: { currentSenseEnabled: false } }));
+  await wait(1100);
+}
+
 // The samples the schema generator reads (<source>-<document>.json). Several
 // states of the one emulated device, so optional values (a set "since", alerts
 // in the list) show up. The roof section is the firmware's own writer on the
@@ -135,6 +161,14 @@ function writeSamples(dir: string) {
   demoDevice.setArmed(true, 'ui');
   put('demo-management_v1_description', alpaca('/management/v1/description'));
   put('demo-management_v1_configureddevices', alpaca('/management/v1/configureddevices'));
+  put('demo-diag', diag.moving);
+  put('demo2-diag', diag.rest);
+  put('demo-diag_moves', diag.moves);
+  // A summary kept across a restart (diag.keepSummaries): no uptime, no profile.
+  const list = diag.moves as { moves: Record<string, unknown>[] };
+  const kept = { ...list.moves[list.moves.length - 1], id: 99, kept: true, profile: false, startMs: null, endMs: null };
+  put('demo2-diag_moves', { ...list, keep: true, moves: [...list.moves, kept] });
+  put('demo-diag_move', diag.move);
 }
 
 function writeCalibrationSamples(put: (name: string, document: unknown) => void) {
@@ -179,7 +213,8 @@ describe('demo documents match the device contract', () => {
   beforeAll(async () => {
     await demoDevice.start();
     await new Promise((resolve) => setTimeout(resolve, 2100)); // a couple of ticks
-  });
+    await captureDiagnostics();
+  }, 30000);
   afterAll(() => demoDevice.stop());
 
   it.runIf(process.env.CONTRACT_SAMPLES)('writes the schema generator samples', () => writeSamples(process.env.CONTRACT_SAMPLES!));
@@ -189,6 +224,16 @@ describe('demo documents match the device contract', () => {
   it('roof inputs (/api/roof/inputs)', () => check('roof-inputs', JSON.parse(demoDevice.inputsDocument())));
   it('settings in effect', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
+  it('diagnostics (/api/diag, /ws/diag) while moving and at rest', () => {
+    expect((diag.moving as { roof: { state: string } }).roof.state).toBe('closing');
+    check('diag', diag.moving);
+    check('diag', diag.rest);
+  });
+  it('the move log and one move (/api/diag/moves)', () => {
+    expect((diag.moves as { moves: unknown[] }).moves.length).toBeGreaterThan(0);
+    check('diag-moves', diag.moves);
+    check('diag-move', diag.move);
+  });
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));
   it('alerts sending or paused (/api/alerts/armed)', () => check('alerts-armed', JSON.parse(demoDevice.armedDocument())));
   it('WiFi scan', () => {

@@ -8,6 +8,7 @@
 #include <esp_task_wdt.h>
 
 #include "CloseOnUnsafe.h"
+#include "Diagnostics.h"
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
@@ -18,6 +19,7 @@
 #include "MotorDriver.h"
 #include "OtaImageCheck.h"
 #include "PlatformGuard.h"
+#include "ResetReason.h"
 #include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
@@ -37,6 +39,7 @@ static SafetyPoller safetyPoller;
 static std::unique_ptr<SafetyInputs> safetyInputs;
 static RoofControl roofControl;
 static CloseOnUnsafe closeOnUnsafe;
+static Diagnostics diagnostics; // spec 017: off unless diag.enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -66,38 +69,13 @@ bool saveConfigCallback(const Config &newConfig)
         safetyInputs->updateConfig(config);
     roofControl.updateConfig(config); // taken by the roof once no move is active
     closeOnUnsafe.updateConfig(config);
+    diagnostics.updateConfig(config.diag); // applied by the main loop
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
     else if (!arduinoOTAEnabled)
         Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
     return true;
-}
-
-const char *resetReasonText(esp_reset_reason_t reason)
-{
-    switch (reason)
-    {
-    case ESP_RST_POWERON:
-        return "power-on";
-    case ESP_RST_BROWNOUT:
-        return "brown-out";
-    case ESP_RST_SW:
-        return "software restart";
-    case ESP_RST_PANIC:
-        return "crash (panic)";
-    case ESP_RST_INT_WDT:
-        return "interrupt watchdog";
-    case ESP_RST_TASK_WDT:
-    case ESP_RST_WDT:
-        return "task watchdog";
-    case ESP_RST_EXT:
-        return "reset pin";
-    case ESP_RST_DEEPSLEEP:
-        return "deep sleep";
-    default:
-        return "other";
-    }
 }
 
 // SQMeter spec 027 FR-021: tell the Arduino core not to mark a new firmware
@@ -310,6 +288,7 @@ void startServices()
 
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setRoof(&roofControl);
+    webServer->setDiagnostics(&diagnostics);
     // Spec 008: the automatic close's phase in the status and the MQTT document.
     webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
@@ -408,6 +387,8 @@ void setup()
     PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.platformState(); }, []() { return WebServer::restartCommitted(); });
     HeapTrace::mark("roof");
     mountFilesystem();
+    // Spec 017: the diagnostics log (only while on) and its kept summaries.
+    diagnostics.begin(config, &roofControl);
     startWifi();
     startArduinoOta();
     startServices();
@@ -425,6 +406,7 @@ void setup()
 void loop()
 {
     esp_task_wdt_reset();
+    diagnostics.passStarted(); // spec 017: timed only while diagnostics are on
     if (mqttClient)
         mqttClient->startPass(); // spec 008: MQTT's time in this pass
 
@@ -464,6 +446,8 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     handleSafety();
+    diagnostics.handle();
+    diagnostics.passEnded();
 
     // Small delay to prevent a tight loop.
     delay(10);

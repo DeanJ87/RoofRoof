@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1491520,
-  "overBudgetReason": "spec 016: calibration leg in the controller, the calibration run, statistics, proposal and status document, three routes"
+  "esp32dev": 1517024,
+  "overBudgetReason": "spec 017: advanced diagnostics (move recorder, documents, kept summaries, /api/diag routes, /ws/diag, MQTT)"
 }

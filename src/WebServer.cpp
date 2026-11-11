@@ -137,6 +137,7 @@ namespace SQM
     WebServer::~WebServer()
     {
         wsStatus.closeAll();
+        wsDiag.closeAll();
     }
 
     void WebServer::begin()
@@ -313,6 +314,8 @@ namespace SQM
         publishDiscovery();
         publishRoofResults();
         publishRoofState();
+        broadcastDiag(now); // spec 017: nothing while diagnostics are off
+        publishDiag(now);
 
         if (now - lastAlertPass >= ALERT_PASS_INTERVAL_MS)
         {

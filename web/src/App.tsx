@@ -11,6 +11,7 @@ import NotFound from './components/NotFound';
 import WifiSetup from './components/WifiSetup';
 import Wizard from './components/Wizard';
 import Calibrate from './components/Calibrate';
+import Diagnostics from './components/Diagnostics';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -55,6 +56,10 @@ const App: FunctionalComponent = () => (
     </Layout>
     <Layout path="/calibrate">
       <Calibrate />
+    </Layout>
+    {/* Advanced diagnostics (spec 017): from System and Settings, not the main nav. */}
+    <Layout path="/diagnostics">
+      <Diagnostics />
     </Layout>
     <Layout path="/wifi">
       <WifiSetup />

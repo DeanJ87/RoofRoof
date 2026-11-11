@@ -10,6 +10,8 @@ There is **no public demo site**. The demo is built by CI and shipped inside the
 
 The demo has a **simulated roof**: the firmware's own motion logic, command checks, close-on-unsafe sequence and roof alerts, driving a simulated motor, magnets and Hall sensor. See [The roof](#the-roof).
 
+With **Settings → Device → Diagnostics → Advanced diagnostics** on, the simulated roof feeds the [diagnostics](user-guide/diagnostics.md) page and move log. Device-only values such as heap and step time show as not available.
+
 ![Dashboard](assets/screenshots/dashboard.png)
 
 ---
@@ -141,7 +143,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: b4fb822276985bbd
+fingerprint: 6b9a9eaae9a20ff9
 -->
 <figure class="diagram" markdown>
 

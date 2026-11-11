@@ -1,0 +1,65 @@
+{
+  "enabled": true,
+  "log": "ready",
+  "simulation": "demo",
+  "roof": {
+    "state": "closing",
+    "target": "closed",
+    "phase": "softStart",
+    "driving": true,
+    "direction": "reverse",
+    "duty": 177,
+    "dutyPercent": 69,
+    "en": true,
+    "rpwm": 0,
+    "lpwm": 177,
+    "supplyVolts": 12.39,
+    "restVolts": 12.6,
+    "sagVolts": 0.21,
+    "currentSense": true,
+    "motorAmps": 3,
+    "powerWatts": 37.2,
+    "hallCounts": 2050,
+    "hall": "between",
+    "positionKnown": true,
+    "positionMm": 1829.7,
+    "elapsedMs": 980,
+    "remainingMs": 50336,
+    "timeoutMs": 65869,
+    "driveBudgetUsedMs": 880,
+    "driveBudgetMs": 136711
+  },
+  "control": {
+    "periodMs": 20,
+    "stepUs": null,
+    "maxStepUs": null,
+    "maxGapMs": 0,
+    "watchdogLimitMs": 100,
+    "watchdogMarginMs": 100,
+    "maxBeatAgeMs": 0,
+    "watchdogTrips": 0
+  },
+  "loop": {
+    "passMs": null,
+    "maxPassMs": null
+  },
+  "memory": {
+    "freeHeap": null,
+    "minFreeHeap": null,
+    "largestBlock": null,
+    "stackFree": {
+      "control": null,
+      "loop": null,
+      "network": null
+    }
+  },
+  "wifi": {
+    "rssi": null
+  },
+  "uptimeS": 124,
+  "resetReason": null,
+  "move": {
+    "id": 2,
+    "active": true
+  }
+}

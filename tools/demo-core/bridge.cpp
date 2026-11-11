@@ -35,5 +35,9 @@ EMSCRIPTEN_BINDINGS(roofroof_core)
         .function("calibration", &EmulatedDevice::calibration)
         .function("roofInject", &EmulatedDevice::roofInject)
         .function("roofPanel", &EmulatedDevice::roofPanel)
-        .function("platformHold", &EmulatedDevice::platformHold);
+        .function("platformHold", &EmulatedDevice::platformHold)
+        .function("diagDocument", &EmulatedDevice::diagDocument)
+        .function("diagMoves", &EmulatedDevice::diagMoves)
+        .function("diagMove", &EmulatedDevice::diagMove)
+        .function("diagClear", &EmulatedDevice::diagClear);
 }

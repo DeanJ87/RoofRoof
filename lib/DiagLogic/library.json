@@ -1,0 +1,8 @@
+{
+  "name": "DiagLogic",
+  "version": "0.1.0",
+  "description": "Advanced diagnostics: the per-step move recorder, the summary list and its kept file, the MQTT schedule and the documents (pure logic, spec 017)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}

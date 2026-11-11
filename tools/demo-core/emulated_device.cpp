@@ -38,6 +38,11 @@ void EmulatedDevice::restart(double nowMsIn)
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
     roofBooted = false; // boots on the next tick: unknown between the magnets
+    // Spec 017: a restart loses the log; only kept summaries stay.
+    roof.attachDiag(nullptr);
+    diagLog.reset();
+    if (!cfg.diag.keepSummaries)
+        diagList.reset();
 }
 
 void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &localTime, const std::string &localDate)
@@ -64,7 +69,9 @@ void EmulatedDevice::runRoof()
         roof.boot(cfg, nowMs);
         roofBooted = true;
     }
+    syncDiag();
     roof.advance(nowMs);
+    collectDiag();
     const Core::AlertSources sources{cfg};
     for (const Alerts::Alert &alert : roof.takeCritical())
     {

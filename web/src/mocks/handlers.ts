@@ -2,6 +2,7 @@ import { http, HttpResponse, ws } from 'msw';
 import type { AlertScheduleReason } from '../types';
 import { mockStatus, mockConfig, mockInputs, mockWifiNetworks, mockAlpacaDevices, mockRecentAlerts, mockCalibration } from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
+import { mockDiagLive, mockDiagMove, mockDiagMoves } from './diag';
 
 // What a healthy device would report as its facts.
 const mockFacts: DepFacts = {
@@ -40,6 +41,11 @@ const demoStartedAt = Date.now();
 const demoUptime = () => mockStatus.uptime + Math.floor((Date.now() - demoStartedAt) / 1000);
 
 const statusSocket = ws.link('*/ws/status');
+
+// Advanced diagnostics (spec 017): off, as on a new device; tests switch it on.
+export const mockDiag = { enabled: false };
+const diagOff = () => HttpResponse.json({ enabled: false });
+const diagSocket = ws.link('*/ws/diag');
 
 export const handlers = [
   // REST — system status (refresh uptime each call)
@@ -120,6 +126,20 @@ export const handlers = [
     }),
   ),
 
+  // REST — advanced diagnostics (spec 017)
+  http.get('/api/diag', () => (mockDiag.enabled ? HttpResponse.json(mockDiagLive) : diagOff())),
+  http.get('/api/diag/moves', () => (mockDiag.enabled ? HttpResponse.json(mockDiagMoves) : diagOff())),
+  http.get('/api/diag/moves/:id', ({ params, request }) => {
+    if (!mockDiag.enabled || Number(params.id) !== mockDiagMove.move.id)
+      return HttpResponse.json({ error: "That move isn't held any more" }, { status: 404 });
+    if (new URL(request.url).searchParams.get('format') !== 'csv') return HttpResponse.json(mockDiagMove);
+    const rows = mockDiagMove.points.map((point) => point.map((value) => value ?? '').join(','));
+    return new HttpResponse(['t_ms,amps_avg,amps_max,volts_min,duty_percent', ...rows, ''].join('\r\n'), {
+      headers: { 'Content-Type': 'text/csv', 'Content-Disposition': `attachment; filename="roofroof-move-${params.id}.csv"` },
+    });
+  }),
+  http.post('/api/diag/moves/clear', () => (mockDiag.enabled ? HttpResponse.json({ success: true }) : diagOff())),
+
   // REST — wifi (returns { networks: [...] } to match firmware API shape)
   http.get('/api/wifi/scan', () => HttpResponse.json({ networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', () => HttpResponse.json({ success: true, pending: true, message: 'Connection started' }, { status: 202 })),
@@ -145,6 +165,16 @@ export const handlers = [
 
     send();
     const interval = setInterval(send, 2000);
+    client.addEventListener('close', () => clearInterval(interval));
+  }),
+  // Closed at once while off, like the device.
+  diagSocket.addEventListener('connection', ({ client }) => {
+    if (!mockDiag.enabled) {
+      client.close();
+      return;
+    }
+    client.send(JSON.stringify(mockDiagLive));
+    const interval = setInterval(() => client.send(JSON.stringify(mockDiagLive)), 2000);
     client.addEventListener('close', () => clearInterval(interval));
   }),
 ];

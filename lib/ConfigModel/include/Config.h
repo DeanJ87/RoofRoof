@@ -362,6 +362,16 @@ namespace SQM
         static constexpr uint8_t STEP_COUNT = 11; // spec 016 added the calibration run page
     };
 
+    // Advanced diagnostics (spec 017): the live document, the stream and the
+    // move log. Off by default; the other two do nothing while it is off.
+    // They observe only: nothing here changes how the roof moves.
+    struct DiagConfig
+    {
+        bool enabled = false;
+        bool keepSummaries = false; // the last 32 move summaries across restarts
+        bool mqtt = false;          // <base>/diag and <base>/diag/move, at rest only
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -377,6 +387,7 @@ namespace SQM
         DaylightConfig daylight;
         LocationConfig location;
         SetupConfig setup;
+        DiagConfig diag;
         AutoCloseConfig autoClose;
         UiConfig ui;
         std::string deviceName;

@@ -552,6 +552,26 @@
     "deviceName": {
       "type": "string"
     },
+    "diag": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "keepSummaries": {
+          "type": "boolean"
+        },
+        "mqtt": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "keepSummaries",
+        "mqtt"
+      ],
+      "additionalProperties": false
+    },
     "location": {
       "type": "object",
       "properties": {
@@ -923,6 +943,7 @@
     "autoClose",
     "daylight",
     "deviceName",
+    "diag",
     "location",
     "mqtt",
     "ntp",

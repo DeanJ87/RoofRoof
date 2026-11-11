@@ -704,6 +704,10 @@
     {
       "match": "deps.D-45",
       "reason": "Shown on its Settings row (Roof, Automatic close); a setting, not state the dashboard reports"
+    },
+    {
+      "match": "deps.D-46",
+      "reason": "Shown on its Settings rows (Device, Diagnostics); a setting, not state the dashboard reports"
     }
   ]
 }

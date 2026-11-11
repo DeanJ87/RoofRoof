@@ -30,6 +30,8 @@ export const INVENTORY: InventoryEntry[] = [
   { id: 'dashboard', route: '#/', component: 'Dashboard', states: ['default', 'dialog', 'demo-panel'] },
   { id: 'alpaca', route: '#/alpaca', component: 'Alpaca', states: ['default'] },
   { id: 'system', route: '#/system', component: 'System', states: ['default'] },
+  // Spec 017: off in the demo by default; tests/diagnostics.spec.ts checks it on.
+  { id: 'diagnostics', route: '#/diagnostics', component: 'Diagnostics', states: ['default'] },
   settingsTab('device', 'settings/DeviceTab', ['error']),
   settingsTab('roof', 'settings/RoofTab'),
   settingsTab('network', 'settings/NetworkTab'),

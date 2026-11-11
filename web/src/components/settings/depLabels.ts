@@ -31,4 +31,6 @@ export const DEP_LABELS: Record<string, string> = {
   'ota.enabled': t('settings.depLabels.commandLineUploads'),
   'wifi.mdns': 'mDNS',
   'wifi.ipv6': 'IPv6',
+  'diag.keepSummaries': t('settings.depLabels.keepMoveSummaries'),
+  'diag.mqtt': t('settings.depLabels.diagnosticsOverMqtt'),
 };

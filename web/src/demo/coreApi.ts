@@ -31,4 +31,9 @@ export interface Core extends BackupCore {
   roofInject(json: string): string;
   roofPanel(): string;
   platformHold(action: string): string;
+  // Advanced diagnostics (spec 017, tools/demo-core/emulated_device_diag.cpp).
+  diagDocument(): string;
+  diagMoves(): string;
+  diagMove(id: number, csv: boolean): string; // "" when the move isn't held
+  diagClear(): string;
 }

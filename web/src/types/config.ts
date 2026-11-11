@@ -123,6 +123,12 @@ export interface AutoCloseConfig {
 export interface UiConfig {
   confirmOpenClose: boolean; // Open and Close ask first; Stop never does
 }
+// Advanced diagnostics (spec 017): all off by default; the other two need `enabled`.
+export interface DiagConfig {
+  enabled: boolean;
+  keepSummaries: boolean; // move summaries kept across restarts
+  mqtt: boolean; // <base>/diag and <base>/diag/move, at rest only
+}
 
 export interface Config {
   deviceName: string;
@@ -140,6 +146,7 @@ export interface Config {
   autoClose?: AutoCloseConfig;
   ui?: UiConfig;
   alerts?: AlertsConfig;
+  diag?: DiagConfig; // absent on firmware before spec 017
   // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
   setup?: SetupConfig;
 }

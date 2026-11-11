@@ -1,5 +1,7 @@
 import { FunctionalComponent } from 'preact';
+import { route } from 'preact-router';
 import type { SettingsTabProps } from './context';
+import { Button } from '../ui';
 import { DepToggle, Field, SettingsCard, TextInput, Toggle } from './controls';
 import { t } from '../../i18n';
 import BackupCard from './BackupCard';
@@ -66,6 +68,50 @@ const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, e
   );
 };
 
+// Advanced diagnostics (spec 017 FR-030): the mode and its two options, which
+// have no effect while it is off (settings dependency D-46).
+export const DiagnosticsCard: FunctionalComponent<SettingsTabProps> = ({ config, update, deps, fix, dirty }) => {
+  const diag = config.diag;
+  if (!diag) return null; // firmware before spec 017
+  return (
+    <SettingsCard id="diagnostics" title={t('settings.device.diagnostics')} hint={t('settings.device.diagnosticsHint')}>
+      <Toggle
+        dataField="diag.enabled"
+        label={t('settings.device.advancedDiagnostics')}
+        checked={diag.enabled}
+        onChange={(v) => update(['diag', 'enabled'], v)}
+        hint={t('settings.device.advancedDiagnosticsHint')}
+      />
+      <DepToggle
+        entry={deps.get('diag.keepSummaries')}
+        onFix={fix}
+        dataField="diag.keepSummaries"
+        label={t('settings.device.keepMoveSummaries')}
+        checked={diag.keepSummaries}
+        onChange={(v) => update(['diag', 'keepSummaries'], v)}
+        hint={t('settings.device.keepMoveSummariesHint')}
+      />
+      <DepToggle
+        entry={deps.get('diag.mqtt')}
+        onFix={fix}
+        dataField="diag.mqtt"
+        label={t('settings.device.diagnosticsOverMqtt')}
+        checked={diag.mqtt}
+        onChange={(v) => update(['diag', 'mqtt'], v)}
+        hint={t('settings.device.diagnosticsOverMqttHint')}
+      />
+      {/* Saved and on: the page has something to show. */}
+      {diag.enabled && !dirty && (
+        <div>
+          <Button variant="link" onClick={() => route('/diagnostics')}>
+            {t('settings.device.openDiagnostics')}
+          </Button>
+        </div>
+      )}
+    </SettingsCard>
+  );
+};
+
 const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
   const { config, update, error } = props;
   return (
@@ -75,6 +121,8 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
       </SettingsCard>
 
       <SecurityCard {...props} />
+
+      <DiagnosticsCard {...props} />
 
       <BackupCard deviceName={config.deviceName} status={props.status} />
     </>

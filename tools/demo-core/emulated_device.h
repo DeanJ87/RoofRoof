@@ -21,6 +21,8 @@
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
+#include "SummaryList.h"
+#include <memory>
 #include "emulated_roof.h"
 
 using namespace SQM;
@@ -90,6 +92,16 @@ public:
     // why `action` ("flashWrite", "firmwareUpload", "filesystemUpload",
     // "restart") is refused now (the roof moving, the automatic close working).
     std::string platformHold(const std::string &action) const;
+
+    // --- Advanced diagnostics (spec 017) --------------------------------------
+    // GET /api/diag: the firmware's writer on the simulated roof ({"enabled":false} while off).
+    std::string diagDocument() const;
+    // GET /api/diag/moves.
+    std::string diagMoves() const;
+    // GET /api/diag/moves/{id} (JSON, or CSV with `csv`); "" when off or not held (404).
+    std::string diagMove(double id, bool csv) const;
+    // POST /api/diag/moves/clear: {status, body} like the device (409 while moving).
+    std::string diagClear();
 
     // --- Settings ----------------------------------------------------------
     std::string getConfig(bool redacted) const { return cfg.toJson(redacted); }
@@ -217,5 +229,12 @@ private:
     std::string firmwareVersion;
     DemoRoof::EmulatedRoof roof;
     bool roofBooted = false; // the roof boots on the first tick after a (re)start
+    // Spec 017: the log and the summary list while diag.enabled (the device's Diagnostics).
+    std::unique_ptr<Diag::MoveLog> diagLog;
+    std::unique_ptr<Diag::SummaryList> diagList;
+    uint32_t diagAddedId = 0;
+    void syncDiag();
+    void collectDiag();
+    Diag::Clock diagClock() const { return Diag::Clock{nowMs, static_cast<uint32_t>(validEpoch())}; }
     void runRoof();
 };

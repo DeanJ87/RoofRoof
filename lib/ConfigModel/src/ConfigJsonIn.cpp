@@ -470,6 +470,10 @@ namespace SQM
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);
             root.child("alpaca").take("enabled", cfg.alpaca.enabled);
+            const Section diag = root.child("diag");
+            diag.take("enabled", cfg.diag.enabled);
+            diag.take("keepSummaries", cfg.diag.keepSummaries);
+            diag.take("mqtt", cfg.diag.mqtt);
             applySafety(root.child("safety"), cfg.safety);
             if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error) ||
                 !applySetup(root.child("setup"), cfg.setup, error) || !applyAutoClose(root, cfg, error))

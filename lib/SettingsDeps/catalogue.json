@@ -77,7 +77,8 @@
     "autoClose.closeGuardSeconds",
     "autoClose.notStarted",
     "autoClose.remindMinutes",
-    "ui.confirmOpenClose"
+    "ui.confirmOpenClose",
+    "diag.enabled"
   ],
   "reasons": {
     "alerts-off": {
@@ -123,6 +124,10 @@
     "remote-off": {
       "text": "Alpaca and MQTT roof commands are off",
       "fix": "network#alpaca"
+    },
+    "diag-off": {
+      "text": "Advanced diagnostics is off",
+      "fix": "device#diagnostics"
     }
   },
   "entries": [
@@ -389,6 +394,20 @@
       "dependsOn": "Alpaca on, or MQTT on with roof commands - only an imaging app or MQTT sends a remote stop (spec 014)",
       "reasons": [
         "remote-off"
+      ]
+    },
+    {
+      "id": "D-46",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "diag.keepSummaries",
+        "diag.mqtt"
+      ],
+      "dependsOn": "Advanced diagnostics on (spec 017); diagnostics over MQTT also needs MQTT on",
+      "reasons": [
+        "diag-off",
+        "mqtt-off"
       ]
     }
   ]

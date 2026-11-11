@@ -22,6 +22,8 @@
 #include "CloseSequence.h"
 #include "Config.h"
 #include "Daylight.h"
+#include "DiagDocuments.h"
+#include "MoveLog.h"
 #include "FaultRecord.h"
 #include "InputsReport.h"
 #include "RoofController.h"
@@ -124,12 +126,19 @@ namespace DemoRoof
         // The critical alerts raised since the last call (spec 005's sink).
         std::vector<Alerts::Alert> takeCritical();
 
+        // Spec 017: the device's diagnostics log, stepped after each step's
+        // output exactly as RoofControl does (nullptr: off). Owned by the device.
+        void attachDiag(Diag::MoveLog *log) { diagLog = log; }
+        // RoofControl::diagLive: the roof's part of the live document.
+        Diag::RoofLive diagLive() const;
+
         // sessionStorage: where the roof is, its fault, the panel and the mount.
         void save(JsonObject out) const;
         void load(JsonObjectConst in);
 
     private:
         void step();
+        void recordDiag(const Roof::Readings &in);
         void stepSafety();
         void evaluateSafety();
         void stepMount();
@@ -162,7 +171,9 @@ namespace DemoRoof
         RoofIo::FaultRecord fault;
         RoofIo::GateInputs gates;
         uint32_t personStops = 0;
-        uint32_t remoteStops = 0; // spec 014: of personStops, the honoured remote stops
+        Diag::MoveLog *diagLog = nullptr;
+        Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
+        uint32_t remoteStops = 0;                       // spec 014: of personStops, the honoured remote stops
         float motorAmps = 0.0f;
 
         Safety::SourceRecord http;

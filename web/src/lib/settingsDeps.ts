@@ -135,6 +135,14 @@ const addDevice = (c: Context) => {
   c.add('wifi.ipv6', 'D-36', on(c.config, 'wifi.ipv6', true), [['D-36', 'wifi-disconnected', c.fact('wifiConnected')]]);
 };
 
+// Spec 017: the kept summaries and the MQTT topics belong to advanced
+// diagnostics; the topics also need MQTT.
+const addDiag = (c: Context) => {
+  const diagOn: Link = ['D-46', 'diag-off', on(c.config, 'diag.enabled')];
+  c.add('diag.keepSummaries', 'D-46', on(c.config, 'diag.keepSummaries'), [diagOn]);
+  c.add('diag.mqtt', 'D-46', on(c.config, 'diag.mqtt'), [diagOn, ['D-46', 'mqtt-off', on(c.config, 'mqtt.enabled')]]);
+};
+
 /**
  * Every reported setting, in catalogue order. With `facts === null` (status
  * not loaded yet) runtime and hardware links are unknown: they never make a
@@ -154,7 +162,9 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDaylight, addDevice].forEach((section) => section(context));
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDaylight, addDevice, addDiag].forEach((section) =>
+    section(context),
+  );
   return out;
 }
 

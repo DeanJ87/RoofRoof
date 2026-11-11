@@ -52,6 +52,25 @@ asyncio.run(stream())
 
 ---
 
+## Diagnostics stream
+
+With [advanced diagnostics](../user-guide/diagnostics.md) on, `/ws/diag` streams the live diagnostics document: the same document as [`GET /api/diag`](rest.md#get-apidiag).
+
+```javascript
+const ws = new WebSocket('ws://roofroof.local/ws/diag');
+ws.onmessage = (event) => {
+  const diag = JSON.parse(event.data);
+  console.log(diag.roof.phase, diag.roof.motorAmps, 'A');
+};
+```
+
+- It is sent every 250 ms while the roof is opening or closing, and every 2 s otherwise.
+- At most 3 clients are kept (a new one replaces the oldest). A client that stops reading is closed after 10 s.
+- With diagnostics off, the device closes a client as soon as it connects.
+- Like `/ws/status`, it has no authentication and carries readings only.
+
+---
+
 ## Notes
 
 - `/ws/status` is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then.

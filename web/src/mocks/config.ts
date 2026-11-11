@@ -83,6 +83,7 @@ export const mockConfig: Config = {
     remoteStop: false,
   },
   ui: { confirmOpenClose: false },
+  diag: { enabled: false, keepSummaries: false, mqtt: false },
   alerts: {
     enabled: true,
     events: {

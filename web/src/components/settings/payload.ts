@@ -30,4 +30,6 @@ export const toConfigPayload = (source: Config): Config => ({
   // The automatic close's policy and the UI options (spec 014).
   ...(source.autoClose && { autoClose: { ...source.autoClose } }),
   ...(source.ui && { ui: { ...source.ui } }),
+  // Advanced diagnostics (spec 017).
+  ...(source.diag && { diag: { ...source.diag } }),
 });

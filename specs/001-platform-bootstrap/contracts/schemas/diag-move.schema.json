@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "diag-move",
+  "type": "object",
+  "properties": {
+    "columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "intervalMs": {
+      "type": "number"
+    },
+    "move": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "averageAmps": {
+          "type": "number"
+        },
+        "calibration": {
+          "type": "boolean"
+        },
+        "drivenMs": {
+          "type": "number"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "endEpoch": {
+          "type": "number"
+        },
+        "endMs": {
+          "type": "number"
+        },
+        "endState": {
+          "type": "string"
+        },
+        "fault": {
+          "type": "null"
+        },
+        "fromUnknown": {
+          "type": "boolean"
+        },
+        "hallEnd": {
+          "type": "number"
+        },
+        "hallStart": {
+          "type": "number"
+        },
+        "id": {
+          "type": "number"
+        },
+        "kept": {
+          "type": "boolean"
+        },
+        "minVolts": {
+          "type": "number"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "peakAmps": {
+          "type": "number"
+        },
+        "profile": {
+          "type": "boolean"
+        },
+        "restVolts": {
+          "type": "null"
+        },
+        "result": {
+          "type": "string"
+        },
+        "sagVolts": {
+          "type": "null"
+        },
+        "stallAmps": {
+          "type": "null"
+        },
+        "startEpoch": {
+          "type": "number"
+        },
+        "startMs": {
+          "type": "number"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "active",
+        "averageAmps",
+        "calibration",
+        "drivenMs",
+        "durationMs",
+        "endEpoch",
+        "endMs",
+        "endState",
+        "fault",
+        "fromUnknown",
+        "hallEnd",
+        "hallStart",
+        "id",
+        "kept",
+        "minVolts",
+        "origin",
+        "peakAmps",
+        "profile",
+        "restVolts",
+        "result",
+        "sagVolts",
+        "stallAmps",
+        "startEpoch",
+        "startMs",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "columns",
+    "enabled",
+    "intervalMs",
+    "move",
+    "points"
+  ],
+  "additionalProperties": false
+}

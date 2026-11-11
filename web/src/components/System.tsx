@@ -7,9 +7,11 @@ import type { SetupConfig, SystemStatus } from '../types';
 import { Button, Card, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
-import { formatAgeMs, formatBytes, formatUptime } from '../i18n/format';
+import { formatAgeMs, formatBytes, formatCount, formatNumber, formatUptime } from '../i18n/format';
 import { post } from '../lib/api';
 import { fetchSetup } from '../lib/setupApi';
+import { fetchDiag } from '../lib/diagApi';
+import type { DiagDocument, DiagLive } from '../types/diag';
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
@@ -180,6 +182,34 @@ const SetupCard: FunctionalComponent = () => {
   );
 };
 
+// Spec 017 FR-031: a few live values while advanced diagnostics is on; no card
+// (and no stream) while it is off.
+const DiagLiveCard: FunctionalComponent<{ initial: DiagLive }> = ({ initial }) => {
+  const { data } = useWebSocket<DiagDocument>('/ws/diag');
+  const live = data?.enabled ? data : initial;
+  return (
+    <Card title={t('system.diagnostics')} icon="cpu" tone="violet" hint={t('system.diagnosticsHint')}>
+      <div class="system-list">
+        <InfoRow label={t('system.diagPhase')} value={t(`diagnostics.phaseName.${live.roof.phase}`)} />
+        <InfoRow label={t('system.diagSupply')} value={`${formatNumber(live.roof.supplyVolts, 2)} V`} />
+        <InfoRow label={t('system.diagCurrent')} value={`${formatNumber(live.roof.motorAmps, 2)} A`} />
+        <InfoRow label={t('system.diagStepTime')} value={`${formatCount(live.control.stepUs)} µs`} />
+      </div>
+      <div class="btn-row">
+        <Button onClick={() => route('/diagnostics')}>{t('system.openDiagnostics')}</Button>
+      </div>
+    </Card>
+  );
+};
+
+const DiagCard: FunctionalComponent = () => {
+  const [doc, setDoc] = useState<DiagDocument | null>(null);
+  useEffect(() => {
+    void fetchDiag().then(setDoc);
+  }, []);
+  return doc?.enabled ? <DiagLiveCard initial={doc} /> : null;
+};
+
 const ActionsCard: FunctionalComponent<{ confirming: boolean; setConfirming: (confirming: boolean) => void }> = ({
   confirming,
   setConfirming,
@@ -232,6 +262,7 @@ const System: FunctionalComponent = () => {
       {status.mqtt && <MqttCard mqtt={status.mqtt} />}
       <WifiCard wifi={status.wifi} />
       <SetupCard />
+      <DiagCard />
       <ActionsCard confirming={confirmRestart} setConfirming={setConfirmRestart} />
     </div>
   );

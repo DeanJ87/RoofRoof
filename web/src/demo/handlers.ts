@@ -3,6 +3,7 @@ import { DEMO_VERSION, demoDevice, type Reply } from './device';
 import { backupReply } from './backup';
 import { existingRealSender, withRealResults } from './realSend';
 import { mockStatus, mockWifiNetworks } from '../mocks/data';
+import { ROOF_COMMAND_HEADER } from '../lib/api';
 
 // The demo's requests, answered by the emulated device (./device.ts) the way
 // the firmware answers them. Anything a real device would send somewhere
@@ -119,6 +120,25 @@ const held = (action = 'flashWrite') => {
 
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
+// GET /api/diag/moves/{id}: JSON, or a CSV download with ?format=csv (spec 017).
+const diagMoveReply = (id: number, request: Request) => {
+  if ((JSON.parse(demoDevice.diagDocument()) as { enabled: boolean }).enabled === false)
+    return HttpResponse.json({ error: 'Advanced diagnostics is off' }, { status: 404 });
+  const csv = new URL(request.url).searchParams.get('format') === 'csv';
+  const body = Number.isInteger(id) ? demoDevice.diagMove(id, csv) : '';
+  if (!body) return HttpResponse.json({ error: "That move isn't held any more" }, { status: 404 });
+  if (!csv) return json(body);
+  return new HttpResponse(body, {
+    headers: { 'Content-Type': 'text/csv', 'Content-Disposition': `attachment; filename="roofroof-move-${id}.csv"` },
+  });
+};
+
+// The roof moves: /ws/diag sends every 250 ms then, every 2 s otherwise (spec 017).
+const roofMoving = () => {
+  const state = (demoDevice.statusParts().roof as { state?: string } | undefined)?.state;
+  return state === 'opening' || state === 'closing';
+};
+
 export const demoHandlers = [
   // Status
   http.get('/api/status', () => HttpResponse.json(statusDocument())),
@@ -179,6 +199,16 @@ export const demoHandlers = [
   http.post('/api/roof/calibration/abort', () => reply(demoDevice.calibration('abort'))),
   http.post('/api/roof/calibration/confirm', async ({ request }) => reply(demoDevice.calibration('confirm', await request.text()))),
 
+  // Advanced diagnostics (spec 017): the firmware's documents, from the simulated roof
+  http.get('/api/diag', () => json(demoDevice.diagDocument())),
+  http.get('/api/diag/moves', () => json(demoDevice.diagMoves())),
+  http.post('/api/diag/moves/clear', ({ request }) =>
+    request.headers.get(ROOF_COMMAND_HEADER) === '1'
+      ? reply(demoDevice.diagClear())
+      : HttpResponse.json({ error: 'Missing X-RoofRoof header' }, { status: 403 }),
+  ),
+  http.get('/api/diag/moves/:id', ({ request, params }) => diagMoveReply(Number(params.id), request)),
+
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', async ({ request }) => {
@@ -220,6 +250,23 @@ export const demoHandlers = [
     client.addEventListener('close', () => {
       clearInterval(interval);
       unsubscribe();
+    });
+  }),
+  // As on the device: closed at once while advanced diagnostics is off.
+  ws.link('*/ws/diag').addEventListener('connection', ({ client }) => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const send = () => {
+      const document = demoDevice.diagDocument();
+      if ((JSON.parse(document) as { enabled: boolean }).enabled === false) {
+        client.close();
+        return;
+      }
+      client.send(document);
+      timer = setTimeout(send, roofMoving() ? 250 : 2000);
+    };
+    send();
+    client.addEventListener('close', () => {
+      if (timer) clearTimeout(timer);
     });
   }),
 ];

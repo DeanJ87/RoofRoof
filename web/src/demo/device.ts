@@ -210,6 +210,18 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** GET /api/diag, /api/diag/moves and /api/diag/moves/{id} (spec 017); a move not held is "". */
+  diagDocument = () => this.core.diagDocument();
+  diagMoves = () => this.core.diagMoves();
+  diagMove = (id: number, csv: boolean) => this.core.diagMove(id, csv);
+
+  /** POST /api/diag/moves/clear (spec 017): refused while the roof moves. */
+  diagClear(): Reply {
+    const reply = JSON.parse(this.core.diagClear());
+    this.persist();
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** Why `action` (flashWrite, firmwareUpload, filesystemUpload, restart) is refused now, or "" (spec 010's rule). */
   platformHold = (action: string): string => this.core.platformHold(action);
 

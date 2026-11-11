@@ -120,6 +120,8 @@ namespace SQM
     RoofControl::Outcome RoofControl::runChecked(Roof::Command command, Roof::Origin origin)
     {
         Outcome outcome = outcomeOf(controller.command(command, origin));
+        if (outcome.accepted && (command == Roof::Command::Open || command == Roof::Command::Close))
+            moveOrigin = origin; // spec 017: the move's origin in its summary
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
         refreshSnapshot();
