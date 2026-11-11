@@ -1,3 +1,4 @@
+#include "BenchMode.h"
 #include "FirmwareImage.h"
 #include "FirmwareMarker.h"
 #include "Logger.h"
@@ -206,7 +207,7 @@ namespace SQM
 
         void firmwareUploadEnd()
         {
-            const FirmwareImage::Verdict verdict = FirmwareImage::check(uploadScanner, FirmwareMarker::layout());
+            const FirmwareImage::Verdict verdict = FirmwareImage::check(uploadScanner, FirmwareMarker::layout(), Bench::BUILD_NAME);
             if (verdict != FirmwareImage::Verdict::Ok)
             {
                 // Before Update.end(): the boot partition is never switched.

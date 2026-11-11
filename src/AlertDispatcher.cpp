@@ -1,4 +1,6 @@
 #include "AlertDispatcher.h"
+#include "BenchMode.h"
+#include "DeviceCore.h"
 #include "AlertDelivery.h"
 #include "AlertRootCA.h"
 #include "Logger.h"
@@ -211,12 +213,14 @@ namespace SQM
     }
 
     uint32_t AlertDispatcher::dispatch(
-        const Alerts::Alert &alert,
+        const Alerts::Alert &given,
         const AlertsConfig &cfg,
         const std::string &deviceName,
         uint8_t channelMask,
         const ChannelBlocks &blocked)
     {
+        // Spec 011: a bench board's alerts can't be mistaken for the roof's.
+        const Alerts::Alert alert = Core::benchLabelled(given, Bench::BUILD);
         AlertRecord record;
         record.uptimeSeconds = millis() / 1000;
         record.epochSeconds = epochNow();

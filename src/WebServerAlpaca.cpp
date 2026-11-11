@@ -1,3 +1,4 @@
+#include "BenchMode.h"
 #include "ConnectionMemory.h"
 #include "DomeBridge.h"
 #include "Logger.h"
@@ -100,7 +101,7 @@ namespace SQM
     // started: a device that comes and goes would confuse clients.
     std::vector<Alpaca::DeviceInfo> WebServer::AlpacaBackend::devices() const
     {
-        return {Alpaca::domeDeviceInfo()};
+        return {Alpaca::domeDeviceInfo(Bench::SIMULATION)};
     }
 
     Alpaca::DomeStatus WebServer::AlpacaBackend::domeStatus() const

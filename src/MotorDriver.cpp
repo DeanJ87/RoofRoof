@@ -4,6 +4,7 @@
 #include <atomic>
 #include <driver/gpio.h>
 
+#include "BenchMode.h"
 #include "MotionGuards.h"
 #include "RoofPins.h"
 
@@ -31,6 +32,21 @@ namespace SQM
             // The watchdog's heartbeat: EN can't go high unless it is fresh.
             std::atomic<uint32_t> beatMs{0};
 
+            // The duties last asked for (spec 011: what the simulated roof
+            // follows in a bench build; the pins never see them there).
+            std::atomic<uint8_t> dutyR{0};
+            std::atomic<uint8_t> dutyL{0};
+
+            // The one place a level reaches EN (spec 011 FR-021): always low in
+            // a bench build.
+            void writeEnable(bool level)
+            {
+                Driver::Outputs logical;
+                logical.enable = level;
+                const Driver::Outputs pins = Driver::physicalOutputs(logical, Bench::BUILD);
+                gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), pins.enable ? 1 : 0);
+            }
+
             ApplyResult setEnable(bool on)
             {
                 // Read before the clock: a beat stamped in between counts as fresh.
@@ -45,16 +61,22 @@ namespace SQM
                 else if (on && !alive)
                     result = ApplyResult::HeldWatchdog;
                 const bool level = on && result == ApplyResult::Applied;
-                gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), level ? 1 : 0);
+                writeEnable(level);
                 enOn.store(level);
                 portEXIT_CRITICAL(&enableLock);
                 return result;
             }
 
+            // The one place a duty reaches RPWM or LPWM: never in a bench build,
+            // where PWM isn't even attached (the pins stay plain outputs, low).
             void setPwm(uint8_t pin, uint8_t duty)
             {
-                if (pwmReady)
-                    ledcWrite(pin, duty);
+                (pin == Pins::RPWM ? dutyR : dutyL).store(duty);
+                Driver::Outputs logical;
+                (pin == Pins::RPWM ? logical.rpwm : logical.lpwm) = duty;
+                const Driver::Outputs pins = Driver::physicalOutputs(logical, Bench::BUILD);
+                if (pwmReady && !Bench::BUILD)
+                    ledcWrite(pin, pin == Pins::RPWM ? pins.rpwm : pins.lpwm);
             }
         } // namespace
 
@@ -76,6 +98,15 @@ namespace SQM
         bool begin()
         {
             setEnable(false);
+            if (Bench::BUILD)
+            {
+                // Spec 011: no PWM on the pins at all. The logical driver
+                // works as on the roof so the simulated roof can follow it.
+                pwmReady = true;
+                setPwm(Pins::RPWM, 0);
+                setPwm(Pins::LPWM, 0);
+                return true;
+            }
             const bool right = ledcAttach(Pins::RPWM, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
             const bool left = ledcAttach(Pins::LPWM, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
             pwmReady = right && left;
@@ -113,7 +144,7 @@ namespace SQM
             portENTER_CRITICAL(&enableLock);
             tripSet = true;
             tripMark = TRIP_MARK;
-            gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), 0);
+            writeEnable(false);
             enOn.store(false);
             portEXIT_CRITICAL(&enableLock);
         }
@@ -163,6 +194,15 @@ namespace SQM
         bool enabled()
         {
             return enOn.load();
+        }
+
+        Driver::Outputs logicalOutputs()
+        {
+            Driver::Outputs out;
+            out.enable = enOn.load();
+            out.rpwm = dutyR.load();
+            out.lpwm = dutyL.load();
+            return out;
         }
     } // namespace MotorDriver
 } // namespace SQM
