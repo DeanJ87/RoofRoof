@@ -27,6 +27,13 @@ export const ROOF_COMMAND_HEADER = 'X-RoofRoof';
 
 export type RoofCommand = 'open' | 'close' | 'stop' | 'clear-fault';
 
+/** A roof command with no answer by then counts as unreachable: a hung request never hides that Stop wasn't confirmed. */
+export const ROOF_COMMAND_TIMEOUT_MS = 5000;
+
 /** POST a roof command (spec 003). 409 answers say why it was refused (`reason`, `error`). */
 export const roofCommand = (command: RoofCommand): Promise<Response> =>
-  fetch(`/api/roof/${command}`, { method: 'POST', headers: { [ROOF_COMMAND_HEADER]: '1' } });
+  fetch(`/api/roof/${command}`, {
+    method: 'POST',
+    headers: { [ROOF_COMMAND_HEADER]: '1' },
+    signal: AbortSignal.timeout(ROOF_COMMAND_TIMEOUT_MS),
+  });

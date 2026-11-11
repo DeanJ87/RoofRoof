@@ -39,12 +39,22 @@ describe('readAnswer', () => {
     expect((await readAnswer('open', json(409, { reason: 'hotspot', error }), 1, null)).text).toBe(error);
   });
 
-  it('401 and 403 show the device’s error, or a fallback', async () => {
-    expect(await readAnswer('stop', json(403, { error: 'Roof commands need the header X-RoofRoof: 1' }), 1, null)).toMatchObject({
+  it('401 asks for the login; 403 shows the device’s error; other errors a fallback', async () => {
+    expect((await readAnswer('open', new Response('', { status: 401 }), 1, null)).text).toBe('Login needed: sign in and try again');
+    expect(await readAnswer('open', json(403, { error: 'Roof commands need the header X-RoofRoof: 1' }), 1, null)).toMatchObject({
       outcome: 'error',
       text: 'Roof commands need the header X-RoofRoof: 1',
     });
-    expect((await readAnswer('open', new Response('', { status: 401 }), 1, null)).text).toBe('The device refused the command');
+    expect((await readAnswer('close', new Response('', { status: 500 }), 1, null)).text).toBe('The device refused the command');
+  });
+
+  it('a Stop that failed says Stop wasn’t confirmed, and why', async () => {
+    expect((await readAnswer('stop', new Response('', { status: 401 }), 1, 'opening')).text).toBe(
+      'Stop not confirmed: Login needed: sign in and try again',
+    );
+    expect((await readAnswer('stop', new Response('', { status: 500 }), 1, 'opening')).text).toBe(
+      'Stop not confirmed: The device refused the command',
+    );
   });
 });
 
@@ -54,13 +64,18 @@ describe('sendRoofCommand', () => {
   it.each(['open', 'close', 'stop', 'clear-fault'] as const)('%s is a POST with the command header and no body', async (command) => {
     const fetchMock = vi.fn().mockResolvedValue(json(200, { success: true }));
     vi.stubGlobal('fetch', fetchMock);
-    await sendRoofCommand(command, 'closed', at);
-    expect(fetchMock).toHaveBeenCalledWith(`/api/roof/${command}`, { method: 'POST', headers: { [ROOF_COMMAND_HEADER]: '1' } });
+    await sendRoofCommand(command, () => 'closed', at);
+    const [path, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(path).toBe(`/api/roof/${command}`);
+    expect(init).toMatchObject({ method: 'POST', headers: { [ROOF_COMMAND_HEADER]: '1' } });
+    expect(init.body).toBeUndefined();
+    // A hung request times out, so an unconfirmed Stop is always reported.
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('no answer: unreachable, and Stop says it isn’t confirmed', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
-    expect(await sendRoofCommand('open', 'closed', at)).toMatchObject({ outcome: 'unreachable', text: "Couldn't reach the device" });
-    expect((await sendRoofCommand('stop', 'opening', at)).text).toBe("Stop not confirmed: couldn't reach the device");
+    expect(await sendRoofCommand('open', () => 'closed', at)).toMatchObject({ outcome: 'unreachable', text: "Couldn't reach the device" });
+    expect((await sendRoofCommand('stop', () => 'opening', at)).text).toBe("Stop not confirmed: couldn't reach the device");
   });
 });

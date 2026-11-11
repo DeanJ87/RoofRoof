@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../test/mswServer';
 import { mockStatus } from '../../mocks/data';
@@ -52,6 +52,18 @@ describe('RoofStopBar', () => {
     render(<RoofStopBar />);
     expect(screen.queryByRole('button', { name: 'Stop roof' })).toBeNull();
     expect(document.body.classList.contains('has-stop-bar')).toBe(false);
+  });
+
+  it('shows Stop when no status has come for 5 s: the roof\u2019s state is unknown', () => {
+    vi.useFakeTimers();
+    render(<RoofStopBar />);
+    expect(screen.queryByRole('button', { name: 'Stop roof' })).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(screen.getByRole('button', { name: 'Stop roof' })).toBeEnabled();
+    expect(screen.getByText('No live data')).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('sends stop with the command header', async () => {

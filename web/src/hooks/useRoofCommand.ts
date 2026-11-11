@@ -24,7 +24,9 @@ export const readAnswer = async (
   if (response.status === 202) return { ...base, outcome: 'pending', text: text(body, 'message') };
   if (response.ok) return { ...base, outcome: 'accepted', text: '' };
   const outcome = response.status === 409 ? 'refused' : 'error';
-  return { ...base, outcome, text: text(body, 'error') || t('roof.result.refused') };
+  const why = response.status === 401 ? t('roof.result.loginNeeded') : text(body, 'error') || t('roof.result.refused');
+  // A Stop that wasn't done says so first (FR-007).
+  return { ...base, outcome, text: command === 'stop' ? t('roof.result.stopNotDone', { reason: why }) : why };
 };
 
 export const unreachable = (command: RoofCommand, at: number, stateAt: RoofState | null): CommandResult => ({
@@ -36,13 +38,13 @@ export const unreachable = (command: RoofCommand, at: number, stateAt: RoofState
   stateAt,
 });
 
-/** Sends a command and records its answer. `state` is the roof's state as last seen. */
-export const sendRoofCommand = async (command: RoofCommand, state: RoofState | null, now = Date.now): Promise<CommandResult> => {
+/** Sends a command and records its answer, with the roof's state as last seen when the answer arrives. */
+export const sendRoofCommand = async (command: RoofCommand, state: () => RoofState | null, now = Date.now): Promise<CommandResult> => {
   try {
     const response = await roofCommand(command);
-    return await readAnswer(command, response, now(), state);
+    return await readAnswer(command, response, now(), state());
   } catch {
-    return unreachable(command, now(), state);
+    return unreachable(command, now(), state());
   }
 };
 
@@ -50,6 +52,8 @@ export const useRoofCommand = (state: RoofState | null) => {
   const [result, setResult] = useState<CommandResult | null>(null);
   const [inFlight, setInFlight] = useState<RoofCommand | null>(null);
   const mounted = useRef(true);
+  const current = useRef(state);
+  current.current = state;
   useEffect(
     () => () => {
       mounted.current = false;
@@ -60,7 +64,7 @@ export const useRoofCommand = (state: RoofState | null) => {
   const send = async (command: RoofCommand) => {
     // Stop never waits for, or blocks on, anything (constitution VII).
     if (command !== 'stop') setInFlight(command);
-    const answer = await sendRoofCommand(command, state);
+    const answer = await sendRoofCommand(command, () => current.current);
     if (!mounted.current) return;
     setResult(answer);
     // The note under the buttons, read out once (A11Y: status messages).

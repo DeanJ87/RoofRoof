@@ -2321,13 +2321,19 @@ main:focus {
 }
 
 .has-stop-bar .save-bar {
-  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.75rem);
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + var(--stop-bar, 3.25rem) + 0.5rem);
 }
 
-.has-demo-panel.has-stop-bar .save-bar {
-  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 7rem);
+.has-stop-bar .toaster {
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--stop-bar, 3.25rem) + 0.5rem);
 }
 
-.has-tour-dock.has-stop-bar .save-bar {
-  bottom: calc(var(--tour-dock, 0px) + 4.25rem);
+.has-demo-panel.has-stop-bar .save-bar,
+.has-demo-panel.has-stop-bar .toaster {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.25rem + var(--stop-bar, 3.25rem) + 0.5rem);
+}
+
+.has-tour-dock.has-stop-bar .save-bar,
+.has-tour-dock.has-stop-bar .toaster {
+  bottom: calc(var(--tour-dock, 0px) + var(--stop-bar, 3.25rem) + 1rem);
 }

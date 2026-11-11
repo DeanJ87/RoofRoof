@@ -3,6 +3,7 @@ import { useId } from 'preact/hooks';
 import type { RoofConfig, RoofStatus, RoofSwitch } from '../types';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
 import {
+  clearFaultReason,
   closePhasePill,
   parkPill,
   roofView,
@@ -112,15 +113,27 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send }> = ({ view, se
   );
 };
 
-const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean }> = ({ roof, send, busy }) =>
-  roof.fault ? (
+// Clear fault needs live data, so the person sees the fault they clear (constitution I).
+const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; reason: string }> = ({ roof, send, busy, reason }) => {
+  const id = useId();
+  if (!roof.fault) return null;
+  return (
     <div class="roof-fault" data-inventory="roof-fault-card">
       <Note tone="bad">{deviceText(roof.fault.text)}</Note>
-      <Button small onClick={() => send('clear-fault')} busy={busy} busyLabel={t('roof.sending')}>
+      <Button
+        small
+        onClick={() => send('clear-fault')}
+        disabled={reason !== ''}
+        busy={busy}
+        busyLabel={t('roof.sending')}
+        describedBy={reason ? id : undefined}
+      >
         {t('roof.clearFault')}
       </Button>
+      {reason && <Note id={id}>{t('roof.reason.clearFaultPrefix', { reason })}</Note>}
     </div>
-  ) : null;
+  );
+};
 
 const SWITCH_KEY = { closed: 'roof.switch.closed', open: 'roof.switch.open', unreadable: 'roof.switch.unreadable' } as const;
 const switchText = (value: RoofSwitch) => (value === 'notFitted' ? '' : t(SWITCH_KEY[value]));
@@ -192,13 +205,15 @@ export interface RoofCardProps {
 const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config }) => {
   const roof = live.status?.roof ?? null;
   const { result, inFlight, send } = useRoofCommand(roof?.state ?? null);
-  const view = roofView({ live, result, inFlight, now: Date.now() });
+  const input = { live, result, inFlight, now: Date.now() };
+  const view = roofView(input);
+  const clearReason = inFlight === 'open' || inFlight === 'close' ? t('roof.sending') : clearFaultReason(input);
   return (
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
         <Buttons view={view} send={send} />
-        {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} />}
+        {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
         {roof && <Checks roof={roof} />}
         {roof && <Readings roof={roof} />}
         {roof && <Hall roof={roof} config={config} />}

@@ -110,6 +110,13 @@ describe('RoofCard', () => {
     await waitFor(() => expect(cleared).toBe(true));
   });
 
+  it('Clear fault is disabled without live data, with the reason', () => {
+    show(live(status({ state: 'error', fault: FAULT }), { quiet: true }));
+    expect(button('Clear fault')).toBeDisabled();
+    expect(screen.getByText('Clear fault: No live data')).toBeInTheDocument();
+    expect(button('Stop')).toBeEnabled();
+  });
+
   it('shows the weather, the park and the automatic close with their reasons', () => {
     // inventory: roof-checks  inventory: roof-close-phase
     show(

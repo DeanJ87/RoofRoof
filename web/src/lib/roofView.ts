@@ -31,7 +31,11 @@ export interface LiveState {
   connected: boolean; // the socket is open
   quiet: boolean; // no message for more than 5 s
   reconnectedAt: number | null; // when a message last arrived after the socket was lost
+  lastMessageAt?: number | null; // when the last message arrived (ms), checked against `now` too
 }
+
+/** No message for longer than this and the data counts as stale (useQuiet's threshold). */
+export const LIVE_MS = 5000;
 
 export interface ButtonView {
   disabled: boolean;
@@ -71,11 +75,20 @@ export interface ViewInput {
   now: number;
 }
 
-export const isLive = (live: LiveState) => live.status !== null && live.connected && !live.quiet;
+// `now` catches a page that slept with the socket open: useQuiet's tick may lag.
+export const isLive = (live: LiveState, now = Date.now()) =>
+  live.status !== null && live.connected && !live.quiet && !(typeof live.lastMessageAt === 'number' && now - live.lastMessageAt > LIVE_MS);
 
-/** The last answer is still worth showing: young, and the roof hasn't changed state since. */
+const moving = (roof: RoofStatus | null) => roof?.state === 'opening' || roof?.state === 'closing';
+
+/** A Stop that wasn't confirmed stays on screen until the roof is seen not moving (never on time alone). */
+const unconfirmedStop = (result: CommandResult, roof: RoofStatus | null) =>
+  result.command === 'stop' && result.outcome !== 'accepted' && (roof === null || moving(roof));
+
+/** The last answer is still worth showing: young, and the roof hasn't changed state since it arrived. */
 export const resultShown = (result: CommandResult | null, roof: RoofStatus | null, now: number): result is CommandResult =>
-  result !== null && now - result.at < RESULT_MS && (result.stateAt === null || roof?.state === result.stateAt);
+  result !== null &&
+  (unconfirmedStop(result, roof) || (now - result.at < RESULT_MS && (result.stateAt === null || roof?.state === result.stateAt)));
 
 /** A `restarting` refusal holds Open and Close until a message arrives after a reconnect, or 30 s pass. */
 export const restartHeld = (result: CommandResult | null, live: LiveState, now: number) =>
@@ -93,7 +106,7 @@ export const supplyReason = (roof: RoofStatus): string | null => {
 // Reasons both buttons share, first match wins.
 const sharedReason = (input: ViewInput): string | null => {
   const { live, result, now } = input;
-  if (!isLive(live)) return t('roof.reason.noLiveData');
+  if (!isLive(live, now)) return t('roof.reason.noLiveData');
   if (!live.status?.roof) return t('roof.reason.notReporting');
   if (restartHeld(result, live, now)) return t('roof.reason.restarting');
   if (live.status.roof.fault) return t('roof.reason.fault');
@@ -127,7 +140,8 @@ const closeReason = (roof: RoofStatus): string | null => {
 const button = (input: ViewInput, own: (roof: RoofStatus) => string | null): ButtonView => {
   const shared = sharedReason(input);
   if (shared) return { disabled: true, reason: shared, busy: false };
-  if (input.inFlight && input.inFlight !== 'stop') return { disabled: true, reason: '', busy: true };
+  if (input.inFlight === 'open' || input.inFlight === 'close') return { disabled: true, reason: '', busy: true };
+  if (input.inFlight === 'clear-fault') return { disabled: true, reason: t('roof.reason.clearingFault'), busy: false };
   const reason = own(input.live.status!.roof!);
   return { disabled: reason !== null, reason: reason ?? '', busy: false };
 };
@@ -203,7 +217,7 @@ export const resultNote = (result: CommandResult | null, roof: RoofStatus | null
 export const roofView = (input: ViewInput): RoofView => {
   const roof = input.live.status?.roof ?? null;
   return {
-    live: isLive(input.live),
+    live: isLive(input.live, input.now),
     roof,
     open: openButton(input),
     close: closeButton(input),
@@ -215,11 +229,19 @@ export const roofView = (input: ViewInput): RoofView => {
   };
 };
 
-/** Stop is pinned to every page while the roof was last seen moving or a close waits (FR-014). */
-export const stopBarShown = (status: SystemStatus | null) => {
-  const roof = status?.roof;
-  return Boolean(roof && (roof.state === 'opening' || roof.state === 'closing' || roof.closePending));
+/**
+ * Stop is pinned to every page while the roof was last seen moving or a close waits (FR-014),
+ * and while no status has arrived at all for `waitedMs` (the roof's state is unknown).
+ */
+export const STOP_BAR_NO_STATUS_MS = 5000;
+export const stopBarShown = (status: SystemStatus | null, waitedMs = 0) => {
+  if (!status) return waitedMs >= STOP_BAR_NO_STATUS_MS;
+  const roof = status.roof;
+  return Boolean(roof && (moving(roof) || roof.closePending));
 };
+
+/** Clear fault needs live data: the person must see the fault they clear. */
+export const clearFaultReason = (input: ViewInput): string => (isLive(input.live, input.now) ? '' : t('roof.reason.noLiveData'));
 
 export const HALL_MAX_COUNTS = 4095;
 
