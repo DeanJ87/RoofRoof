@@ -66,12 +66,20 @@ std::string EmulatedDevice::roofInject(const std::string &json)
     return roofPanel();
 }
 
-std::string EmulatedDevice::platformHold() const
+std::string EmulatedDevice::platformHold(const std::string &action) const
 {
-    const Roof::State state = roof.snapshot().status.state;
-    if (state == Roof::State::Opening || state == Roof::State::Closing)
-        return RoofIo::holdText(RoofIo::HoldReason::Moving);
-    return "";
+    RoofIo::PlatformAction which = RoofIo::PlatformAction::FlashWrite;
+    if (action == "firmwareUpload")
+        which = RoofIo::PlatformAction::FirmwareUpload;
+    else if (action == "filesystemUpload")
+        which = RoofIo::PlatformAction::FilesystemUpload;
+    else if (action == "restart")
+        which = RoofIo::PlatformAction::Restart;
+    RoofIo::PlatformState state;
+    state.roof = roof.snapshot().status.state;
+    state.sequence = CloseSeq::platformState(roof.phase());
+    const RoofIo::HoldReason reason = RoofIo::platformHold(which, state);
+    return reason == RoofIo::HoldReason::None ? std::string() : RoofIo::holdText(reason);
 }
 
 std::string EmulatedDevice::roofPanel() const

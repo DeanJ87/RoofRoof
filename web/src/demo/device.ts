@@ -190,8 +190,8 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
-  /** Why a settings save, restore, upload or restart is refused now ("" when it isn't): the roof is moving (spec 010). */
-  platformHold = (): string => this.core.platformHold();
+  /** Why `action` (flashWrite, firmwareUpload, filesystemUpload, restart) is refused now, or "" (spec 010's rule). */
+  platformHold = (action: string): string => this.core.platformHold(action);
 
   /** The Demo panel's roof controls (spec 011). */
   roofPanel(): RoofPanel {

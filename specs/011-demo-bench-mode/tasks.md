@@ -52,4 +52,4 @@ Tests first for every lib change (constitution V). [P] = can run in parallel.
 ## Phase 7: Review and PR
 
 - [X] T060 Independent reviews of bench mode and the plant model until one says safe to merge
-- [ ] T061 Quickstart §1 suite; `source_hash.py --check` last; PR
+- [X] T061 Quickstart §1 suite; `source_hash.py --check` last; PR

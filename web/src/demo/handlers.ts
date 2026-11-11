@@ -111,9 +111,9 @@ export function statusDocument() {
 let joinedSsid: string | null = null;
 
 // Spec 010, as the device answers it: no settings save, restore, upload or
-// restart while the roof moves (409 with the reason).
-const held = () => {
-  const why = demoDevice.platformHold();
+// restart while the roof moves or the automatic close works (409 with the reason).
+const held = (action = 'flashWrite') => {
+  const why = demoDevice.platformHold(action);
   return why ? HttpResponse.json({ error: why }, { status: 409 }) : null;
 };
 
@@ -139,7 +139,7 @@ export const demoHandlers = [
     }),
   ),
   http.post('/api/restart', () => {
-    const hold = held();
+    const hold = held('restart');
     if (hold) return hold;
     demoDevice.restart();
     ipv6AtBoot = null;
@@ -184,8 +184,8 @@ export const demoHandlers = [
   http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real RoofRoof would connect to your broker here' })),
 
   // Updates (simulated: nothing flashed)
-  http.post('/api/update', () => held() ?? simulated()),
-  http.post('/api/update/fs', () => held() ?? simulated()),
+  http.post('/api/update', () => held('firmwareUpload') ?? simulated()),
+  http.post('/api/update/fs', () => held('filesystemUpload') ?? simulated()),
 
   // ASCOM Alpaca: the firmware's own router, in the device core
   http.get('/management/*', async ({ request }) =>
