@@ -168,6 +168,17 @@ export const locationConfigSchema = z.object({
     .max(180, t('validation.configSchema.longitudeMustBeBetween')),
 });
 
+// Spec 015: the setup wizard's state and page.
+export const setupConfigSchema = z.object({
+  state: z.enum(['new', 'offered', 'done'], t('validation.configSchema.setupStateMustBe')).optional(),
+  step: z
+    .number()
+    .int()
+    .min(0, t('validation.configSchema.setupStepMustBe'))
+    .max(9, t('validation.configSchema.setupStepMustBe'))
+    .optional(),
+});
+
 export const configSchema = z.object({
   deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
   wifi: wifiConfigSchema,
@@ -182,6 +193,7 @@ export const configSchema = z.object({
   daylight: daylightConfigSchema.optional(),
   location: locationConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
+  setup: setupConfigSchema.optional(),
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

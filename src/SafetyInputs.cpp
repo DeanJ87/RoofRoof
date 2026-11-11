@@ -45,7 +45,8 @@ namespace SQM
     SafetyInputs::SafetyInputs(SafetyPoller &poller, MQTTClient *mqtt)
         : poller(poller),
           mqtt(mqtt),
-          pendingLock(xSemaphoreCreateMutex())
+          pendingLock(xSemaphoreCreateMutex()),
+          reportLock(xSemaphoreCreateMutex())
     {
     }
 
@@ -53,6 +54,8 @@ namespace SQM
     {
         if (pendingLock != nullptr)
             vSemaphoreDelete(pendingLock);
+        if (reportLock != nullptr)
+            vSemaphoreDelete(reportLock);
     }
 
     SafetyInputs::Settings SafetyInputs::settingsOf(const Config &config)
@@ -91,6 +94,7 @@ namespace SQM
         if (change.sqmeterMqtt)
         {
             mqttRecord = Safety::SourceRecord{};
+            ++mqttGeneration;
             // dep: D-40 - the topics are read from RoofRoof's own broker, so with
             // MQTT off they never arrive and the source goes stale (unsafe).
             mqttRecord.enabled = settings.safety.mqttEnabled;
@@ -170,6 +174,24 @@ namespace SQM
         park.switch2 = switch2;
         park.nowMs = nowMs;
         parkResult = Safety::evaluatePark(park);
+
+        // Spec 015: a copy for GET /api/roof/inputs (the web server's task reads it).
+        Safety::InputsReport next{verdict, parkResult, snap.nina, nowMs, snap.sqmeterGeneration, mqttGeneration, snap.ninaGeneration};
+        // Never stalls the loop: a report missed now is replaced a second later.
+        if (reportLock != nullptr && xSemaphoreTake(reportLock, pdMS_TO_TICKS(REPORT_WAIT_MS)) == pdTRUE)
+        {
+            lastReport = std::move(next);
+            xSemaphoreGive(reportLock);
+        }
+    }
+
+    std::optional<Safety::InputsReport> SafetyInputs::report() const
+    {
+        if (reportLock == nullptr || xSemaphoreTake(reportLock, pdMS_TO_TICKS(REPORT_WAIT_MS)) != pdTRUE)
+            return std::nullopt;
+        std::optional<Safety::InputsReport> copy(lastReport);
+        xSemaphoreGive(reportLock);
+        return copy;
     }
 
     void SafetyInputs::logChanges()

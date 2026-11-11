@@ -83,6 +83,20 @@ namespace SQM::ConfigDetail
         return "alert";
     }
 
+    inline const char *setupStateName(SetupConfig::State state)
+    {
+        switch (state)
+        {
+        case SetupConfig::State::Offered:
+            return "offered";
+        case SetupConfig::State::Done:
+            return "done";
+        case SetupConfig::State::New:
+            break;
+        }
+        return "new";
+    }
+
     inline const char *switchesName(ParkConfig::Switches switches)
     {
         switch (switches)

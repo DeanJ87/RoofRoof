@@ -197,6 +197,9 @@ namespace SQM
         appendSafety(doc, *this);
         appendRoof(doc, roof);
         appendDaylight(doc, *this);
+        JsonObject setupOut = doc.createNestedObject("setup");
+        setupOut["state"] = setupStateName(setup.state);
+        setupOut["step"] = setup.step;
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

@@ -2362,3 +2362,41 @@ main:focus {
 .has-tour-dock.has-stop-bar .toaster {
   bottom: calc(var(--tour-dock, 0px) + var(--stop-bar, 3.25rem) + 1rem);
 }
+
+/* The setup wizard (spec 015): the page heading, the review's checks as a
+   plain list of rows, and the dashboard banner in the bench banner's slot. */
+.wizard-heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.wizard-heading:focus {
+  outline: none;
+}
+
+.wizard-heading:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 4px;
+}
+
+.note a {
+  color: var(--cyan);
+}
+
+.wizard-checks {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}

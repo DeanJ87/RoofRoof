@@ -371,6 +371,32 @@ namespace SQM
             return setError(error, "Daylight: mode must be off, alert or close");
         }
 
+        // Spec 015. From the UI/API an unknown state or a step out of range is
+        // refused; a stored one keeps the current value (the setup state moves
+        // nothing, so it never stops the settings loading).
+        bool applySetup(const Section &setup, SetupConfig &s, std::string *error)
+        {
+            const bool strict = setup.reader().strict();
+            uint32_t step = s.step;
+            setup.take("step", step);
+            if (step < SetupConfig::STEP_COUNT)
+                s.step = static_cast<uint8_t>(step);
+            else if (strict)
+                return setError(error, "Setup: step must be between 0 and 9");
+            if (!setup.has("state"))
+                return true;
+            const std::string state = setup["state"].is<const char *>() ? setup["state"].as<const char *>() : "";
+            for (SetupConfig::State choice : {SetupConfig::State::New, SetupConfig::State::Offered, SetupConfig::State::Done})
+            {
+                if (state == setupStateName(choice))
+                {
+                    s.state = choice;
+                    return true;
+                }
+            }
+            return strict ? setError(error, "Setup: state must be new, offered or done") : true;
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -407,7 +433,8 @@ namespace SQM
             applyTime(root, cfg);
             root.child("alpaca").take("enabled", cfg.alpaca.enabled);
             applySafety(root.child("safety"), cfg.safety);
-            if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error))
+            if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error) ||
+                !applySetup(root.child("setup"), cfg.setup, error))
                 return false;
             return applyRoof(root.child("roof"), cfg.roof, error) && applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
                    applyAlertsClient(root.child("alertsClient"), cfg.alerts, error);

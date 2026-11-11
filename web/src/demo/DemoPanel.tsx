@@ -1,5 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { route } from 'preact-router';
 import { useDialogFocus } from '../lib/a11y';
 import { Button, Note } from '../components/ui';
 import { demoDevice } from './device';
@@ -102,6 +103,16 @@ const DemoPanel: FunctionalComponent = () => {
               }}
             >
               Take the tour
+            </Button>
+            <Button
+              small
+              onClick={() => {
+                setOpen(false);
+                demoDevice.restartSetup();
+                route('/wizard');
+              }}
+            >
+              Restart setup wizard
             </Button>
             <Button small variant="danger" onClick={() => demoDevice.reset()}>
               Reset demo

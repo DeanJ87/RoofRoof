@@ -11,6 +11,7 @@
     { "path": "/api/roof/close", "method": "POST", "auth": "required" },
     { "path": "/api/roof/stop", "method": "POST", "auth": "required" },
     { "path": "/api/roof/clear-fault", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/inputs", "method": "GET", "auth": "open", "why": "Read-only: the weather sources, the park and N.I.N.A. as the device last polled them; no address or secret; sends nothing" },
     { "path": "/api/backup/preview", "method": "POST", "auth": "required" },
     { "path": "/api/backup/apply", "method": "POST", "auth": "required" },
     { "path": "/api/backup", "method": "POST", "auth": "required" },

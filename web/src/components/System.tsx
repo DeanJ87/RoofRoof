@@ -1,13 +1,15 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+import { route } from 'preact-router';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
-import type { SystemStatus } from '../types';
+import type { SetupConfig, SystemStatus } from '../types';
 import { Button, Card, Pill, ProgressMeter, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
 import { formatAgeMs, formatBytes, formatUptime } from '../i18n/format';
 import { post } from '../lib/api';
+import { fetchSetup } from '../lib/setupApi';
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
@@ -160,6 +162,24 @@ const WifiCard: FunctionalComponent<{ wifi: Status['wifi'] }> = ({ wifi }) => (
   </Card>
 );
 
+// Spec 015 FR-006: run the setup wizard again, whatever its state.
+const SETUP_STATE = { new: 'system.setupNew', offered: 'system.setupOffered', done: 'system.setupDone' } as const;
+
+const SetupCard: FunctionalComponent = () => {
+  const [setup, setSetup] = useState<SetupConfig | null>(null);
+  useEffect(() => {
+    void fetchSetup().then(setSetup);
+  }, []);
+  return (
+    <Card title={t('system.setup')} icon="roof" tone="cyan" hint={t('system.setupHint')}>
+      {setup && <InfoRow label={t('system.status')} value={t(SETUP_STATE[setup.state])} />}
+      <div class="btn-row">
+        <Button onClick={() => route('/wizard?step=1')}>{t('system.runSetupWizard')}</Button>
+      </div>
+    </Card>
+  );
+};
+
 const ActionsCard: FunctionalComponent<{ confirming: boolean; setConfirming: (confirming: boolean) => void }> = ({
   confirming,
   setConfirming,
@@ -211,6 +231,7 @@ const System: FunctionalComponent = () => {
       {status.ntp && <NtpCard ntp={status.ntp} />}
       {status.mqtt && <MqttCard mqtt={status.mqtt} />}
       <WifiCard wifi={status.wifi} />
+      <SetupCard />
       <ActionsCard confirming={confirmRestart} setConfirming={setConfirmRestart} />
     </div>
   );

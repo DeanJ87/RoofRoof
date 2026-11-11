@@ -304,6 +304,32 @@ Stop at once, keeping the position estimate (`stopped`). Always accepted.
 
 Clear a latched fault after fixing its cause. The fault is removed from storage too; the position is known again only at a magnet. Accepted with no fault.
 
+### `GET /api/roof/inputs`
+
+The weather sources, the park and N.I.N.A. as the device last evaluated them (once a second): the weather verdict with each SQMeter source's state and reason, the rain contact, the park result, and N.I.N.A.'s last mount reading. The [setup wizard](../user-guide/setup-wizard.md)'s **Test** reads it. Open (no password), like `/api/status`: it returns readings and the device's texts, no address or secret, and sends nothing to SQMeter or N.I.N.A. In the rare moment the device is updating the readings for longer than 50 ms it answers `503` (`{"error": "Inputs not available yet: try again"}`).
+
+```json
+{
+  "weather": {
+    "verdict": "safe",
+    "text": "safe",
+    "http": { "enabled": true, "state": "good", "generation": 1, "ageMs": 2100, "limitMs": 30000, "safe": true, "flags": 0, "text": "" },
+    "mqtt": { "enabled": false, "state": "off", "generation": 0, "ageMs": 0, "limitMs": 150000, "safe": false, "flags": 0, "text": "" },
+    "rainContact": "notFitted"
+  },
+  "park": { "parked": true, "text": "parked" },
+  "nina": { "state": "good", "generation": 1, "connected": true, "atPark": true, "slewing": false, "ageMs": 900, "text": "" }
+}
+```
+
+| Field | |
+|---|---|
+| `weather.verdict`, `weather.text` | `safe`, `unsafe` or `unknown`, and the same text as `roof.weatherText` in the status |
+| `weather.http`, `weather.mqtt` | Each SQMeter source: `state` (`off`, `waiting`, `good`, `stale`, `unreachable`, `unreadable`, `offline`), `ageMs` since its last good reply, the stale `limitMs`, SQMeter's `safe` and `flags` (its `reasonFlags`) from that reply, and the reason `text` ("" when off, or good and safe) |
+| `park.parked`, `park.text` | The park rule's answer, as `roof.parkConfirmed` and `roof.parkText` |
+| `nina.state` | `notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`; `connected`, `atPark` and `slewing` only mean something when it is `good`; `ageMs` since the reading; `text` the failure |
+| `…generation` | Goes up when that source's settings change (its record starts again), so a client can tell a reading of the new settings from an old one |
+
 ---
 
 ### `POST /api/update`

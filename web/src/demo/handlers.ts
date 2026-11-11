@@ -123,6 +123,7 @@ export const demoHandlers = [
   // Status
   http.get('/api/status', () => HttpResponse.json(statusDocument())),
   http.get('/api/settings/effective', () => json(demoDevice.effective())),
+  http.get('/api/roof/inputs', () => json(demoDevice.inputsDocument())),
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),

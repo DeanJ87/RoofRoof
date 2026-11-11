@@ -134,6 +134,14 @@ class DemoDevice {
   deliveryRequests = (id: number, credentials: string) => this.core.deliveryRequests(id, credentials);
   armedDocument = () => this.core.armedDocument();
   getConfig = () => this.core.getConfig(true);
+  /** GET /api/roof/inputs: the firmware's writer on the simulated SQMeter and N.I.N.A. (spec 015). */
+  inputsDocument = () => this.core.inputsDocument();
+
+  /** The Demo panel's "Restart setup wizard": the setup state of a new device (spec 015 FR-020). */
+  restartSetup() {
+    this.core.applyConfig(JSON.stringify({ setup: { state: 'new', step: 0 } }));
+    this.notify();
+  }
   isArmed = () => this.core.isArmed();
 
   statusParts() {
@@ -286,6 +294,8 @@ class DemoDevice {
         // The simulated SQMeter and N.I.N.A. (spec 011): the demo starts safe and parked.
         safety: { http: { enabled: true, url: 'http://sqmeter.local/api/safety' } },
         park: { nina: { url: 'http://192.168.1.20:1888' } },
+        // Set up already (spec 015): the Demo panel restarts the setup wizard.
+        setup: { state: 'done', step: 0 },
       }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with

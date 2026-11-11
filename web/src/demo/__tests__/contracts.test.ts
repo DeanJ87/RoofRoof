@@ -96,6 +96,28 @@ function writeSamples(dir: string) {
       },
     ),
   );
+  // GET /api/roof/inputs (spec 015): the firmware's own writer on the simulated sources, and a
+  // failing state the demo's SQMeter and N.I.N.A. never produce (lib/SafetyInputLogic writeInputsReport).
+  const inputs = JSON.parse(demoDevice.inputsDocument());
+  put('device-roof_inputs', inputs);
+  put('device2-roof_inputs', {
+    ...inputs,
+    weather: {
+      verdict: 'unsafe',
+      text: 'unsafe: SQMeter HTTP unreachable: connection refused (no good reply for 35 s)',
+      http: {
+        ...inputs.weather.http,
+        state: 'unreachable',
+        safe: false,
+        flags: 0,
+        text: 'SQMeter HTTP unreachable: connection refused (no good reply for 35 s)',
+      },
+      mqtt: { ...inputs.weather.mqtt, enabled: true, state: 'good', safe: true },
+      rainContact: 'dry',
+    },
+    park: { parked: false, text: 'not parked: N.I.N.A. unreachable: connection refused' },
+    nina: { ...inputs.nina, state: 'unreachable', connected: false, atPark: false, slewing: false, text: 'connection refused' },
+  });
   put('demo-settings_effective', JSON.parse(demoDevice.effective()));
   // MQTT and Alpaca off: the settings that depend on them are inactive, with their reasons.
   demoDevice.applyConfig(JSON.stringify({ mqtt: { enabled: false }, alpaca: { enabled: false }, alerts: { mqtt: { enabled: true } } }));
@@ -122,6 +144,7 @@ describe('demo documents match the device contract', () => {
   it.runIf(process.env.CONTRACT_SAMPLES)('writes the schema generator samples', () => writeSamples(process.env.CONTRACT_SAMPLES!));
 
   it('status (/api/status, /ws/status)', () => check('status', statusDocument()));
+  it('roof inputs (/api/roof/inputs)', () => check('roof-inputs', JSON.parse(demoDevice.inputsDocument())));
   it('settings in effect', () => check('settings-effective', JSON.parse(demoDevice.effective())));
   it('config', () => check('config', JSON.parse(demoDevice.getConfig())));
   it('recent alerts', () => check('alerts-recent', JSON.parse(demoDevice.recentAlerts())));

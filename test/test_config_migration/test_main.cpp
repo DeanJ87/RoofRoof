@@ -137,6 +137,30 @@ void test_stored_config_without_roof_loads_with_roof_defaults()
     TEST_ASSERT_EQUAL_STRING("HomeNet", loaded.wifi.ssid.c_str());
 }
 
+// Spec 015 (FR-002, SC-004): settings stored before the setup wizard load
+// as "offered" (Config::load marks them), every other setting as stored.
+void test_stored_config_without_setup_is_offered_the_wizard()
+{
+    const std::string stored = "{\"deviceName\":\"old\",\"wifi\":{\"ssid\":\"HomeNet\",\"password\":\"secret-wifi\"},"
+                               "\"roof\":{\"travelMm\":2100}}";
+    Config loaded = Config::createDefault();
+    std::string reason;
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+    TEST_ASSERT_TRUE(Config::storedBeforeSetup(stored));
+    loaded.markStoredBeforeSetup();
+    TEST_ASSERT_EQUAL(SetupConfig::State::Offered, loaded.setup.state);
+    TEST_ASSERT_EQUAL_UINT8(0, loaded.setup.step);
+    TEST_ASSERT_EQUAL_UINT32(2100, loaded.roof.travelMm);
+    TEST_ASSERT_EQUAL_STRING("old", loaded.deviceName.c_str());
+    TEST_ASSERT_EQUAL_STRING("HomeNet", loaded.wifi.ssid.c_str());
+    // Every release fixture predates the wizard.
+    const std::filesystem::path dir("test/fixtures/config-releases");
+    if (std::filesystem::is_directory(dir))
+        for (const auto &entry : std::filesystem::directory_iterator(dir))
+            if (entry.path().extension() == ".json")
+                TEST_ASSERT_TRUE_MESSAGE(Config::storedBeforeSetup(readFile(entry.path().string())), entry.path().string().c_str());
+}
+
 // A stored MQTT section from before spec 008 (no "roofCommands") loads with
 // MQTT roof commands off, whatever else was on (constitution: a migration
 // never turns on a motion feature).
@@ -174,5 +198,6 @@ int main(int, char **)
     RUN_TEST(test_stored_config_without_roof_loads_with_roof_defaults);
     RUN_TEST(test_stored_roof_without_current_scale_loads_with_its_default);
     RUN_TEST(test_stored_mqtt_without_roof_commands_loads_them_off);
+    RUN_TEST(test_stored_config_without_setup_is_offered_the_wizard);
     return UNITY_END();
 }

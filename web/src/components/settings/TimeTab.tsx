@@ -19,7 +19,7 @@ export const TIMEZONE_OPTIONS = [
 
 const knownZone = (timezone: string) => TIMEZONE_OPTIONS.some((tz) => tz.value === timezone);
 
-const TimeZoneCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => (
+export const TimeZoneCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => (
   <SettingsCard title={t('settings.time.timeZone')}>
     <div class="form-grid">
       <Field label={t('settings.time.timeZone')}>
@@ -40,7 +40,7 @@ const TimeZoneCard: FunctionalComponent<SettingsTabProps> = ({ config, update, e
 );
 
 // NTP is the device's only clock source (spec 001 research R11).
-const NtpCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => (
+export const NtpCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => (
   <SettingsCard id="ntp" title="NTP">
     <DepToggle
       entry={deps.get('ntp.enabled')}

@@ -8,6 +8,7 @@
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "HaDiscovery.h"
+#include "InputsReport.h"
 #include "MQTTClient.h"
 #include "PlatformHold.h"
 #include "RoofStatus.h"
@@ -25,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 namespace SQM
@@ -81,6 +83,10 @@ namespace SQM
         // Spec 013: the daylight state for the status document (any task).
         using DaylightSource = std::function<RoofIo::DaylightStatus()>;
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
+        // Spec 015: the weather sources, the park and N.I.N.A.'s reading as
+        // last evaluated, for GET /api/roof/inputs (any task; it only copies).
+        using InputsSource = std::function<std::optional<Safety::InputsReport>()>;
+        void setInputs(InputsSource source) { inputsSource = std::move(source); }
         // Any task: whether a channel took that alert.
         AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const
         {
@@ -123,6 +129,7 @@ namespace SQM
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;
         DaylightSource daylightSource;
+        InputsSource inputsSource;
         const char *lastClosePhase = nullptr; // as last broadcast on /ws/status
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;
@@ -292,6 +299,7 @@ namespace SQM
         // The roof (src/WebServerRoof.cpp).
         void setupRoofRoutes();
         void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
+        void handleRoofInputs(AsyncWebServerRequest *request);
         void handleRoofClearFault(AsyncWebServerRequest *request);
         // Answers 409 with the reason and returns true while `action` must wait
         // (spec 010, RoofIo::platformHold): the roof moves, a close waits, or

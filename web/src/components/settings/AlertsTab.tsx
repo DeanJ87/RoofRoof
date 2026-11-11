@@ -89,11 +89,11 @@ const SendAlertsCard: FunctionalComponent<{ view: AlertsView; status: SystemStat
   );
 };
 
-const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, updateMany, error, status, dirty, deps, fix }) => {
+// The alerts settings as the cards edit them (also the setup wizard's alerts page, spec 015).
+export const useAlertsView = ({ config, update, updateMany, error, dirty, deps, fix }: SettingsTabProps) => {
   const dep = (setting: string) => withoutAlertsOff(deps.get(setting));
   const alerts = mergeAlertsConfig(config.alerts);
   const tester = useAlertTest();
-  const schedule = useAlertSchedule(status?.alerts);
   const lastField = useRef<AlertsView['lastField']['current']>(null);
   // Counts only channels that can deliver (FR-007).
   const channelEntries = (['pushover', 'ntfy', 'webhook', 'mqtt'] as const).map((channel) => dep(`alerts.${channel}.enabled`));
@@ -113,6 +113,13 @@ const AlertsTab: FunctionalComponent<SettingsTabProps> = ({ config, update, upda
     tester,
     lastField,
   };
+  return { view, channelsOn };
+};
+
+const AlertsTab: FunctionalComponent<SettingsTabProps> = (props) => {
+  const { view, channelsOn } = useAlertsView(props);
+  const { status } = props;
+  const schedule = useAlertSchedule(status?.alerts);
 
   return (
     <>

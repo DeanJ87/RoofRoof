@@ -1,4 +1,3 @@
 {
-  "esp32dev": 1448384,
-  "overBudgetReason": "spec 013 daylight failsafe: SQMeter's solar position (double-precision trigonometry), the daylight state, its alert events, settings and status (+25 KB)"
+  "esp32dev": 1454752
 }

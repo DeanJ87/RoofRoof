@@ -104,6 +104,10 @@ namespace SQM
             ok = applyJson(json, out, false);
         }
 
+        // Spec 015: settings saved before the setup wizard existed belong to a
+        // set-up roof: offer the wizard, never open it by itself.
+        if (ok && storedBeforeSetup(json))
+            out.markStoredBeforeSetup();
         if (ok)
             Logger::info(TAG, "Config parsed successfully - SSID: '%s'", out.wifi.ssid.c_str());
         else

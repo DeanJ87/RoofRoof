@@ -288,6 +288,23 @@ namespace SQM
         double longitude = 0.0; // degrees, east positive
     };
 
+    // The setup wizard (spec 015): whether it still has to be offered, and
+    // the page to resume at. New for a device with no stored settings;
+    // Offered for settings saved before this existed (an upgraded device gets
+    // a banner, never the wizard by itself). Moves nothing, needs no restart.
+    struct SetupConfig
+    {
+        enum class State : uint8_t
+        {
+            New = 0,
+            Offered = 1,
+            Done = 2,
+        };
+        State state = State::New;
+        uint8_t step = 0; // 0 to STEP_COUNT - 1
+        static constexpr uint8_t STEP_COUNT = 10;
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -302,6 +319,7 @@ namespace SQM
         RoofConfig roof;
         DaylightConfig daylight;
         LocationConfig location;
+        SetupConfig setup;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
@@ -336,6 +354,10 @@ namespace SQM
         // validate() without the stored-size check, for settings read back
         // from NVS (spec 007: an upgrade that adds events must still load).
         bool validateLoaded(std::string *error = nullptr) const;
+        // Spec 015: a stored document with no "setup" object was saved by a
+        // release before the setup wizard; Config::load then marks it offered.
+        static bool storedBeforeSetup(const std::string &storedJson);
+        void markStoredBeforeSetup();
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.

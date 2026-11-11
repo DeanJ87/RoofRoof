@@ -166,6 +166,12 @@
       "path": "roof.minSupplyVolts",
       "min": 6,
       "max": 15
+    },
+    {
+      "path": "setup.step",
+      "int": true,
+      "min": 0,
+      "max": 9
     }
   ]
 }

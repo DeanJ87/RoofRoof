@@ -1,0 +1,40 @@
+{
+  "weather": {
+    "verdict": "safe",
+    "text": "safe",
+    "http": {
+      "enabled": true,
+      "state": "good",
+      "generation": 0,
+      "ageMs": 1980,
+      "limitMs": 30000,
+      "safe": true,
+      "flags": 0,
+      "text": ""
+    },
+    "mqtt": {
+      "enabled": false,
+      "state": "off",
+      "generation": 0,
+      "ageMs": 0,
+      "limitMs": 150000,
+      "safe": false,
+      "flags": 0,
+      "text": ""
+    },
+    "rainContact": "notFitted"
+  },
+  "park": {
+    "parked": true,
+    "text": "parked"
+  },
+  "nina": {
+    "state": "good",
+    "generation": 0,
+    "connected": true,
+    "atPark": true,
+    "slewing": false,
+    "ageMs": 2080,
+    "text": ""
+  }
+}

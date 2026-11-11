@@ -313,6 +313,8 @@ void startServices()
     // Spec 008: the automatic close's phase in the status and the MQTT document.
     webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
+    // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
+    webServer->setInputs([]() { return safetyInputs->report(); });
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out

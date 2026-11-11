@@ -22,6 +22,7 @@
 #include "Config.h"
 #include "Daylight.h"
 #include "FaultRecord.h"
+#include "InputsReport.h"
 #include "RoofController.h"
 #include "RoofGates.h"
 #include "RoofPlant.h"
@@ -104,6 +105,8 @@ namespace DemoRoof
         RoofIo::Snapshot snapshot() const;
         const Safety::WeatherVerdict &weather() const { return verdict; }
         const Safety::ParkResult &parkResult() const { return park; }
+        // Spec 015: GET /api/roof/inputs, as SafetyInputs::report().
+        Safety::InputsReport inputs() const;
         CloseSeq::Phase phase() const { return sequence.phase(); }
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
         const Daylight::View &daylight() const { return daylightView; }
@@ -130,6 +133,7 @@ namespace DemoRoof
         void latchExternal(const RoofIo::FaultRecord &record);
         void syncFault();
         void takePendingSettings();
+        void sourcesChanged(const SafetyConfig &nextSafety, const ParkConfig &nextPark);
         Roof::Readings readings();
         Safety::SqmeterReply sqmeterReply() const;
         RoofIo::Contact switchContact() const;
@@ -152,6 +156,11 @@ namespace DemoRoof
         Safety::SourceRecord mqtt;
         Safety::WeatherVerdict verdict;
         Safety::ParkResult park;
+        Nina::MountReading ninaReading; // the last evaluation's
+        // Bumped when that part's settings change (the poller's and SafetyInputs' generations).
+        uint32_t httpGeneration = 0;
+        uint32_t mqttGeneration = 0;
+        uint32_t ninaGeneration = 0;
         Mount mount;
         Injectors inject;
         bool weatherChanged = false;

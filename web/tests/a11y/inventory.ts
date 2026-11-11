@@ -38,4 +38,11 @@ export const INVENTORY: InventoryEntry[] = [
   { id: 'updates', route: '#/updates', component: 'Updates', states: ['default'] },
   { id: 'wifi', route: '#/wifi', component: 'WifiSetup (captive portal)', states: ['default'] },
   { id: 'not-found', route: '#/no-such-page', component: 'NotFound', states: ['default'] },
+  // Spec 015: every page of the setup wizard.
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `wizard-${i + 1}`,
+    route: `#/wizard?step=${i + 1}`,
+    component: 'Wizard',
+    states: ['default'] as A11yState[],
+  })),
 ];

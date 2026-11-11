@@ -73,6 +73,7 @@ Then change settings and watch them take effect:
 - **Settings → Network**: turn MQTT or Home Assistant discovery on and see the pills and dependencies react.
 - **Settings → Device → Backup & restore**: back up, change something and restore.
 - Enter an invalid value and you get the device's own error message.
+- **Demo → Restart setup wizard**: the demo starts set up; this puts it back to a new device's state and opens the [setup wizard](user-guide/setup-wizard.md). Try **Test** on the Weather and N.I.N.A. pages, with the Roof controls making the weather unsafe or unparking the mount.
 
 Device addresses work too: open `/management/v1/description` or `/api/status` on the demo's address to see what the device would answer.
 
@@ -140,7 +141,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 8a2552ba473c1c8b
+fingerprint: 96ffff610c894bb3
 -->
 <figure class="diagram" markdown>
 

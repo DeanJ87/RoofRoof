@@ -8,6 +8,8 @@ The dashboard is the web UI's home page, updated live over a WebSocket. Try it w
 
 The cards are **Status**, **Roof** and **Device & Network**.
 
+While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good.
+
 ![Dashboard](../assets/screenshots/dashboard.png)
 
 ---
@@ -104,7 +106,7 @@ The bell in the header lists the recent alerts with each channel's delivery resu
 | Page | |
 |---|---|
 | **Alpaca** | The ASCOM Alpaca devices N.I.N.A. sees, with live device state - see [ASCOM Alpaca](alpaca.md). The roof's Dome; none in the demo |
-| **System** | Firmware, uptime, memory, flash partitions, time sync, MQTT, WiFi, and the restart action |
+| **System** | Firmware, uptime, memory, flash partitions, time sync, MQTT, WiFi, **Setup** (**Run setup wizard**) and the restart action |
 | **Settings** | Device, Roof, Network, Time and Alerts - see [Configuration](configuration.md) |
 | **Updates** | Upload a firmware or web UI file - see [Updates](ota.md) |
 

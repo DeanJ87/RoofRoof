@@ -103,7 +103,24 @@ namespace SQM
         cfg.roof = RoofConfig();
         cfg.daylight = DaylightConfig{};
         cfg.location = LocationConfig{};
+        cfg.setup = SetupConfig{}; // new: the wizard opens after the first network join (spec 015)
         return cfg;
+    }
+
+    bool Config::storedBeforeSetup(const std::string &storedJson)
+    {
+        StaticJsonDocument<64> filter;
+        filter["setup"] = true;
+        DynamicJsonDocument doc(256);
+        if (deserializeJson(doc, storedJson, DeserializationOption::Filter(filter)) != DeserializationError::Ok)
+            return false; // unreadable: load() reports it; nothing to mark
+        return !doc["setup"].is<JsonObjectConst>();
+    }
+
+    void Config::markStoredBeforeSetup()
+    {
+        setup.state = SetupConfig::State::Offered;
+        setup.step = 0;
     }
 
     std::string Config::spliceStored(const std::string &main, const std::string &alerts, const std::string &client)
