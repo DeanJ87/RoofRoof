@@ -108,8 +108,8 @@ namespace SQM
         }
 
         // Unsafe again after a short safe spell: carry on where the attempt
-        // (or its back-off) stood, with its clock still running, so a flapping
-        // verdict can't restart the park time limit for ever and never alert.
+        // (or its back-off) stood, its clock counting the unsafe time only, so
+        // a flapping verdict can't restart the park time limit for ever.
         Decision Sequence::resume(const Inputs &in)
         {
             enter(paused.phase);
@@ -117,8 +117,7 @@ namespace SQM
             phaseSinceMs = paused.sinceMs + elapsed(paused.endedAtMs, in.nowMs);
             attemptLimitMs = paused.limitMs;
             paused.has = false;
-            // Straight on with the paused phase: a limit that ran out during
-            // the safe spell fails the attempt now.
+            // Straight on with the paused phase (its wall-clock cap may have run out).
             Decision out = waiting(in, false);
             if (out.event == Event::None)
                 out.event = Event::Started;
@@ -129,6 +128,7 @@ namespace SQM
         {
             Decision out = enter(Phase::WaitPark, Event::Started);
             parkRefusals = 0;
+            attemptWallStartMs = in.nowMs;
             attemptLimitMs = parkTimeoutMs; // a settings change applies from the next attempt
             out.action = requestIfDue(in.nowMs);
             return out;
@@ -181,7 +181,10 @@ namespace SQM
                 return since >= RETRY_AFTER_MS ? attempt(in) : Decision{};
             if (!in.ninaConfigured)
                 return failAttempt(Event::ParkNotConfirmed, Cause::NinaNotConfigured, Action::None);
-            if (since >= attemptLimitMs)
+            // The limit counts unsafe time; a wall-clock cap bounds an attempt
+            // stretched by many short safe spells.
+            const bool capped = elapsed(attemptWallStartMs, in.nowMs) >= 2 * attemptLimitMs + REARM_SAFE_MS;
+            if (since >= attemptLimitMs || capped)
             {
                 out = failAttempt(Event::ParkNotConfirmed, Cause::ParkTimeout, Action::None);
                 out.limitMs = attemptLimitMs;
@@ -330,14 +333,16 @@ namespace SQM
 
         Decision Sequence::enter(Phase next, Event event, Cause cause)
         {
+            const Phase previous = current;
             current = next;
             phaseSinceMs = lastNowMs;
             closingSeen = false;
             sawPending = false;
-            if (next == Phase::Idle && event == Event::Closed)
+            if (next == Phase::Idle && event == Event::Closed && previous == Phase::Closing)
             {
-                // The roof closed: the trouble is over, so a new failure on
-                // the next spell alerts at once.
+                // A close reached the closed magnet: the trouble is over, so a
+                // new failure on the next spell alerts at once. (A reading that
+                // flickers back to closed at rest doesn't reset it: no storm.)
                 for (auto &row : alertedEver)
                     for (bool &ever : row)
                         ever = false;

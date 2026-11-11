@@ -184,9 +184,10 @@ namespace SQM
             Phase current = Phase::Idle;
             uint32_t parkTimeoutMs = DEFAULT_PARK_TIMEOUT_MS;
             uint64_t lastNowMs = 0;
-            uint64_t phaseSinceMs = 0;   // when the current phase (or attempt) began
-            uint64_t attemptLimitMs = 0; // the park time limit taken when the attempt began
-            bool requested = false;      // a park request was ever sent
+            uint64_t phaseSinceMs = 0;       // when the current phase (or attempt) began
+            uint64_t attemptLimitMs = 0;     // the park time limit taken when the attempt began
+            uint64_t attemptWallStartMs = 0; // when the attempt began (kept across a resume)
+            bool requested = false;          // a park request was ever sent
             uint64_t lastRequestMs = 0;
             uint32_t seenStops = 0; // personStops at the last step
             Run parkHeld;           // the park result says parked

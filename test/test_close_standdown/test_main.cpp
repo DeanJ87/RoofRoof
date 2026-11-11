@@ -410,7 +410,11 @@ void test_a_closed_roof_resets_the_alert_throttle()
     Rig r;
     r.in.roof = State::Error;
     TEST_ASSERT_TRUE(r.startUnsafe().alert);
-    r.in.roof = State::Closed; // fault cleared and closed by the owner
+    r.in.roof = State::Closing; // the owner cleared the fault and closes it
+    r.in.moveTimeoutMs = 60000;
+    r.runTo(T0 + 40000, 100);
+    TEST_ASSERT_EQUAL(Phase::Closing, r.seq.phase());
+    r.in.roof = State::Closed;
     assertEvent(r.at(T0 + 60000), Event::Closed, Cause::None);
     r.in.roof = State::Open; // reopened in good weather...
     r.in.weatherSafe = true;
@@ -420,6 +424,36 @@ void test_a_closed_roof_resets_the_alert_throttle()
     const Decision d = r.at(T0 + 300000);
     assertEvent(d, Event::CannotClose, Cause::FaultLatched);
     TEST_ASSERT_TRUE(d.alert);
+}
+
+void test_a_closed_reading_flickering_at_rest_does_not_storm_alerts()
+{
+    Rig r;
+    r.in.roof = State::Closed;
+    r.in.weatherSafe = false;
+    int alerts = 0;
+    for (uint64_t t = T0; t < T0 + 600000; t += 100)
+    {
+        r.in.roof = ((t - T0) / 3000) % 2 == 0 ? State::Closed : State::Unknown; // 3 s each
+        if (r.at(t).alert)
+            alerts++;
+    }
+    TEST_ASSERT_EQUAL(1, alerts);
+}
+
+void test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time()
+{
+    Rig r;
+    r.seq.setParkTimeoutMs(60000);
+    uint64_t failedAt = 0;
+    for (uint64_t t = T0; t < T0 + 3 * 3600000ULL && failedAt == 0; t += 1000)
+    {
+        r.in.weatherSafe = (t - T0) % 540000 >= 1000; // 1 s unsafe, then 9 min safe
+        if (r.at(t).event == Event::ParkNotConfirmed)
+            failedAt = t;
+    }
+    TEST_ASSERT_TRUE(failedAt != 0);
+    TEST_ASSERT_TRUE(failedAt - T0 <= 2 * 60000 + REARM_SAFE_MS + 540000);
 }
 
 void test_no_reminder_of_cannot_close_once_the_roof_can_move()
@@ -479,6 +513,8 @@ int main(int, char **)
     RUN_TEST(test_a_restored_stand_down_holds_and_reminds_at_once);
     RUN_TEST(test_a_resumed_attempt_counts_only_unsafe_time);
     RUN_TEST(test_a_closed_roof_resets_the_alert_throttle);
+    RUN_TEST(test_a_closed_reading_flickering_at_rest_does_not_storm_alerts);
+    RUN_TEST(test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time);
     RUN_TEST(test_no_reminder_of_cannot_close_once_the_roof_can_move);
     RUN_TEST(test_restore_ignores_values_out_of_range);
     return UNITY_END();

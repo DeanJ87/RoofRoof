@@ -53,7 +53,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | WaitPark, RetryWait | safe | Idle | - | EndedSafe |
 | WaitPark, RetryWait | roof closing or close waiting | Closing | - | - |
 | WaitPark, RetryWait | parked for 4 s | Closing | Close | - |
-| WaitPark | N.I.N.A. not configured, or parkTimeoutMs since the attempt began | RetryWait | - | ParkNotConfirmed (NinaNotConfigured / ParkTimeout) |
+| WaitPark | N.I.N.A. not configured, or parkTimeoutMs of unsafe time since the attempt began, or 2 × parkTimeoutMs + 10 min of wall time | RetryWait | - | ParkNotConfirmed (NinaNotConfigured / ParkTimeout) |
 | WaitPark | otherwise | WaitPark | RequestPark if due | - |
 | RetryWait | 5 min since it began | WaitPark (new attempt) | RequestPark if due | Started |
 | Closing | close waiting for 30 s | Halted | Stop | CloseFailed (TooLong) |
