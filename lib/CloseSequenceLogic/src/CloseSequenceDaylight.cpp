@@ -1,5 +1,7 @@
 #include "CloseSequence.h"
 
+#include <algorithm>
+
 // Spec 013: the daylight-only episode (research R4, data-model.md). Kept
 // apart from spec 005's transition table in CloseSequence.cpp.
 
@@ -30,18 +32,20 @@ namespace SQM
         void Sequence::trackEpisode(const Inputs &given, bool personStopped, bool restoredNow)
         {
             const bool waitOver = personWaitOver(given, personStopped);
+            const bool weatherSafeLong = weatherSafeRun.lasted(given.weatherSafe, given.nowMs, REARM_SAFE_MS);
             if (current == Phase::Idle)
             {
-                // After a daylight-only episode (ended by the sun setting, the
-                // mode changed, or 10 minutes without a reason), the weather's
-                // own critical alerts go out in their own words.
-                if (afterDaylightEpisode && !given.weatherSafe)
-                {
-                    handToWeather();
-                    paused.has = false; // a fresh weather attempt, not the daylight one's back-off
-                    afterDaylightEpisode = false;
-                }
-                daylightOnly = given.daylight && given.weatherSafe;
+                trackIdle(given);
+                return;
+            }
+            // A weather episode the weather has left for REARM_SAFE_MS, kept
+            // going only by daylight: from here on it is daylight's (spec 005
+            // would have ended it), so new unsafe weather is a new weather
+            // episode with its own alerts and re-arm (as below).
+            if (!daylightOnly && weatherSafeLong && given.daylight)
+            {
+                daylightOnly = true;
+                heldUnsafeMs = 0;
                 return;
             }
             // The first step after a restart raises the record's reminder
@@ -76,6 +80,25 @@ namespace SQM
             clearAlertThrottle();
             if (closeFailedInDaylight)
                 closeFailedOnce = false;
+            requested = false; // the weather's park request goes out at once, as in spec 005
+        }
+
+        // Idle: a new episode is daylight-only when it starts with the weather
+        // safe. After a daylight-only episode (ended by the sun setting, the
+        // mode changed, or 10 minutes without a reason), the weather's own
+        // critical alerts go out in their own words.
+        void Sequence::trackIdle(const Inputs &given)
+        {
+            // After a daylight-only episode (ended by the sun setting, the
+            // mode changed, or 10 minutes without a reason), the weather's
+            // own critical alerts go out in their own words.
+            if (afterDaylightEpisode && !given.weatherSafe)
+            {
+                handToWeather();
+                paused.has = false; // a fresh weather attempt, not the daylight one's back-off
+                afterDaylightEpisode = false;
+            }
+            daylightOnly = given.daylight && given.weatherSafe;
         }
 
         // A person's daylight stand-down or a halt: the weather has been not
@@ -88,7 +111,9 @@ namespace SQM
             if ((current != Phase::HeldByPerson && current != Phase::Halted) || personStopped)
                 heldUnsafeMs = 0;
             else if (lastWeatherUnsafe)
-                heldUnsafeMs += elapsed(lastWeatherMs, given.nowMs);
+                // At most MAX_COUNT_STEP_MS per step: a stalled loop after one
+                // stale poll can't fill the count by itself.
+                heldUnsafeMs += std::min<uint64_t>(elapsed(lastWeatherMs, given.nowMs), MAX_COUNT_STEP_MS);
             lastWeatherUnsafe = unsafe;
             lastWeatherMs = given.nowMs;
             return heldUnsafeMs >= WEATHER_REARM_CONFIRM_MS && !personStopped;

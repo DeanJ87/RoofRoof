@@ -109,8 +109,20 @@ void test_persons_stop_holds_while_the_sun_is_up()
     const AlertText text = alertFor(stopped, "");
     TEST_ASSERT_EQUAL_STRING(
         "A person stopped the roof during the automatic close. It stays open in daylight until someone closes it or the sun has "
-        "been down (or the daylight close off) for 10 minutes.",
+        "been down (or the daylight close off) for 10 minutes, or the weather has been unsafe for 30 s.",
         text.message.c_str());
+}
+
+// Review round 5: a stalled loop after one unsafe sample can't fill the count.
+void test_a_stalled_loop_does_not_fill_the_count()
+{
+    Rig r;
+    startDaylight(r);
+    standDownByPerson(r, T0 + 1000);
+    r.in.weatherSafe = false;
+    r.at(T0 + 2000);
+    r.at(T0 + 62000); // a 60 s gap: counts 1 s
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
 }
 
 // FR-014: re-armed once nothing has wanted a close for 10 minutes.
@@ -162,9 +174,9 @@ void test_weather_rearms_a_daylight_stand_down()
     r.in.weatherSafe = false;
     // One unsafe sample (a stale poll) doesn't end the person's stop: 30 s must pass.
     TEST_ASSERT_EQUAL(Action::None, r.at(T0 + 61000).action);
-    TEST_ASSERT_EQUAL(Action::None, r.at(T0 + 61000 + WEATHER_REARM_CONFIRM_MS - 1).action);
+    TEST_ASSERT_EQUAL(0, r.runTo(T0 + 61000 + WEATHER_REARM_CONFIRM_MS - 1000, 1000).requests);
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
-    const Decision d = r.at(T0 + 61000 + WEATHER_REARM_CONFIRM_MS);
+    const Decision d = r.at(T0 + 61000 + WEATHER_REARM_CONFIRM_MS); // stepped every second: 30 s counted
     assertEvent(d, Event::Started, Cause::None);
     TEST_ASSERT_EQUAL(Action::RequestPark, d.action);
     TEST_ASSERT_FALSE(d.daylight);
@@ -333,9 +345,13 @@ void test_restart_keeps_the_daylight_episode()
     TEST_ASSERT_TRUE(fresh.daylightEpisode());
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, fresh.phase());
     in.weatherSafe = false;
+    for (int i = 0; i < 30; ++i)
+    {
+        in.nowMs += 1000;
+        TEST_ASSERT_EQUAL(Phase::HeldByPerson, fresh.phase());
+        fresh.step(in);
+    }
     in.nowMs += 1000;
-    fresh.step(in);
-    in.nowMs += WEATHER_REARM_CONFIRM_MS;
     const Decision d = fresh.step(in);
     assertEvent(d, Event::Started, Cause::None);
     TEST_ASSERT_EQUAL(Phase::WaitPark, fresh.phase());
@@ -397,6 +413,7 @@ int main(int, char **)
     RUN_TEST(test_daylight_close_waits_for_the_park);
     RUN_TEST(test_daylight_park_timeout_alerts);
     RUN_TEST(test_persons_stop_holds_while_the_sun_is_up);
+    RUN_TEST(test_a_stalled_loop_does_not_fill_the_count);
     RUN_TEST(test_stand_down_rearms_after_ten_minutes_without_daylight);
     RUN_TEST(test_halt_holds_while_the_sun_is_up);
     RUN_TEST(test_weather_rearms_a_daylight_stand_down);

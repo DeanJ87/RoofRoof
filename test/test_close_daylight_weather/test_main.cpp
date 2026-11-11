@@ -126,6 +126,61 @@ void test_weather_alerts_after_a_daylight_episode_ended()
     TEST_ASSERT_FALSE(d.daylight);
 }
 
+// Review round 5: a weather stand-down kept by daylight after the weather
+// cleared for 10 minutes is daylight's: new rain is a new weather episode.
+void test_new_rain_after_a_weather_stand_down_kept_by_daylight()
+{
+    Rig r;
+    r.startUnsafe();
+    standDownByPerson(r, T0 + 10000);
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(T0 + 60000 + REARM_SAFE_MS + 2000, 1000);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase()); // decision 6: still stood down while the sun is up
+    TEST_ASSERT_TRUE(r.seq.daylightEpisode());
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(r.in.nowMs + 60000, 1000);
+    TEST_ASSERT_TRUE(c.requests >= 1);
+    TEST_ASSERT_FALSE(r.seq.daylightEpisode());
+}
+
+void test_new_rain_after_a_weather_halt_kept_by_daylight()
+{
+    Rig r;
+    r.startAndClose();
+    r.at(T0 + 5000);
+    const Decision halt = r.at(T0 + 4100 + 60000 + CLOSE_GUARD_SLACK_MS + 1000);
+    assertEvent(halt, Event::CloseFailed, Cause::TooLong);
+    r.in.roof = State::Stopped;
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(r.in.nowMs + REARM_SAFE_MS + 2000, 1000);
+    TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(r.in.nowMs + 60000, 1000);
+    TEST_ASSERT_TRUE(c.requests >= 1);
+}
+
+// Review round 5: a failing weather attempt kept going by daylight becomes
+// daylight's; rain at sunset gets a fresh, alerted weather attempt.
+void test_weather_attempt_kept_by_daylight_alerts_afresh_later()
+{
+    Rig r;
+    r.startUnsafe();
+    r.at(T0 + 300000);
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(T0 + 3 * 3600000ULL, 1000);
+    TEST_ASSERT_TRUE(r.seq.daylightEpisode());
+    r.in.daylight = false;
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(r.in.nowMs + DEFAULT_PARK_TIMEOUT_MS + 10000, 1000);
+    bool alerted = false;
+    for (const Decision &d : c.events)
+        alerted = alerted || (d.event == Event::ParkNotConfirmed && d.alert && !d.daylight);
+    TEST_ASSERT_TRUE(alerted);
+}
+
 // Review: the weather close's critical alert isn't swallowed by the daylight
 // close's identical one just before (the throttle starts afresh).
 void test_weather_failure_alerts_after_a_daylight_failure()
@@ -265,6 +320,9 @@ void test_count_survives_a_restart()
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_new_rain_after_a_weather_stand_down_kept_by_daylight);
+    RUN_TEST(test_new_rain_after_a_weather_halt_kept_by_daylight);
+    RUN_TEST(test_weather_attempt_kept_by_daylight_alerts_afresh_later);
     RUN_TEST(test_unsafe_spells_add_up_to_end_the_stand_down);
     RUN_TEST(test_new_stop_starts_the_count_again);
     RUN_TEST(test_flapping_weather_ends_a_daylight_stand_down);

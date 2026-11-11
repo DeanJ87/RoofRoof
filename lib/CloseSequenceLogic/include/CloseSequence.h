@@ -54,6 +54,8 @@ namespace SQM
         // (added up over the spells, so a flapping verdict still gets there;
         // one stale poll can't send a park request against the person's stop).
         constexpr uint64_t WEATHER_REARM_CONFIRM_MS = 30000;
+        // The most one step adds to that count (ten steps' worth).
+        constexpr uint64_t MAX_COUNT_STEP_MS = 1000;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -238,6 +240,7 @@ namespace SQM
             // Spec 013: unsafe weather added up while a person's daylight
             // stand-down holds (from one step to the next, both not safe).
             uint64_t heldUnsafeMs = 0;
+            Run weatherSafeRun; // spec 013: the weather itself safe (daylight left out)
             bool lastWeatherUnsafe = false;
             uint64_t lastWeatherMs = 0;
             // A daylight-only episode ended: the next weather episode's
@@ -245,6 +248,7 @@ namespace SQM
             bool afterDaylightEpisode = false;
             bool closeFailedInDaylight = false; // the back-off's close failure was a daylight close's
             void handToWeather();
+            void trackIdle(const Inputs &given);
             static bool heldBack(Phase phase); // what the weather re-arms after a daylight-only episode
             uint64_t daylightCount() const;
             // This step's results of the three runs.
