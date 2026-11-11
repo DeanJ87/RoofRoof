@@ -231,7 +231,8 @@ void test_weather_rearms_a_daylight_back_off_and_halt()
     }
 }
 
-// A person's stop seen on the very step the weather turns unsafe wins.
+// A person's stop seen on the very step the weather turns unsafe wins, as a
+// daylight stand-down: the weather then re-arms it after its 30 s.
 void test_persons_stop_on_the_same_step_wins()
 {
     Rig r;
@@ -241,8 +242,12 @@ void test_persons_stop_on_the_same_step_wins()
     r.in.weatherSafe = false;
     const Decision d = r.at(T0 + 2000);
     assertEvent(d, Event::StoppedByPerson, Cause::None);
-    TEST_ASSERT_FALSE(d.daylight); // now a weather episode
+    TEST_ASSERT_TRUE(d.daylight);
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.runTo(T0 + 31000, 1000);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.at(T0 + 32000);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
 }
 
 // US3 AS3: an attempt waiting or a close under way carries on; the episode becomes weather.

@@ -50,7 +50,9 @@ namespace SQM
             }
             // The first step after a restart raises the record's reminder
             // first (a restart during a close): the weather re-arms next step.
-            if (given.weatherSafe || !daylightOnly || restoredNow)
+            // A person's stop on this very step stands the daylight episode
+            // down as daylight's: the weather then re-arms it after its 30 s.
+            if (given.weatherSafe || !daylightOnly || restoredNow || personStopped)
                 return;
             if ((current == Phase::HeldByPerson || current == Phase::Halted) && !waitOver)
                 return;
@@ -58,7 +60,7 @@ namespace SQM
             handToWeather();
             // CannotMove too: its "can't close by itself" is raised again at
             // once, in the weather's words, with the fresh throttle.
-            if (heldBack(current) && !personStopped)
+            if (heldBack(current))
                 enter(Phase::Idle);
         }
 
@@ -81,6 +83,15 @@ namespace SQM
             if (closeFailedInDaylight)
                 closeFailedOnce = false;
             requested = false; // the weather's park request goes out at once, as in spec 005
+            // A daylight attempt waiting for the park carries on as the
+            // weather's own attempt: its full time limit, from now.
+            if (current == Phase::WaitPark)
+            {
+                phaseSinceMs = lastNowMs;
+                phaseWallStartMs = lastNowMs;
+                attemptLimitMs = parkTimeoutMs;
+                parkRefusals = 0;
+            }
         }
 
         // Idle: a new episode is daylight-only when it starts with the weather

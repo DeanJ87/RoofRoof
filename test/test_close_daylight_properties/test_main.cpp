@@ -129,6 +129,7 @@ namespace
         {
             watch.attemptOn = true;
             watch.attemptSinceMs = in.nowMs;
+            watch.quietUnsafeMs = 0; // P11 counts from the weather's own attempt
         }
         if (seen.after != Phase::WaitPark && seen.after != Phase::Closing)
             watch.attemptOn = false;
@@ -360,14 +361,21 @@ namespace
             watch.heldUnsafeMs = 0;
             return;
         }
-        if (in.weatherSafe || !watch.daylightOnly || restarted)
+        // A stop on this very step stands it down as daylight's.
+        if (in.weatherSafe || !watch.daylightOnly || restarted || anyStop)
             return;
         if ((before == Phase::HeldByPerson || before == Phase::Halted) && !waitOver)
             return;
         watch.daylightOnly = false;
         // The weather episode's critical alerts are announced afresh.
         handToWeather(watch);
-        if (!heldBack(before) || anyStop)
+        if (before == Phase::WaitPark)
+        {
+            // The weather's own attempt, with its full time limit from now.
+            watch.attemptOn = true;
+            watch.attemptSinceMs = in.nowMs;
+        }
+        if (!heldBack(before))
             return;
         watch.expectRearm = true;
         watch.held = false;

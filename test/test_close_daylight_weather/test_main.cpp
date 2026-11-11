@@ -181,6 +181,23 @@ void test_weather_attempt_kept_by_daylight_alerts_afresh_later()
     TEST_ASSERT_TRUE(alerted);
 }
 
+// Review round 6: a daylight attempt waiting for the park becomes the
+// weather's own attempt with its full time limit.
+void test_handed_over_attempt_gets_the_full_time_limit()
+{
+    Rig r;
+    startDaylight(r);
+    r.runTo(T0 + 200000, 1000); // 200 s into the daylight attempt
+    r.in.weatherSafe = false;
+    r.at(T0 + 201000);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    Counts c = r.runTo(T0 + 201000 + DEFAULT_PARK_TIMEOUT_MS - 1000, 1000);
+    for (const Decision &d : c.events)
+        TEST_ASSERT_TRUE(d.event != Event::ParkNotConfirmed);
+    TEST_ASSERT_TRUE(c.requests >= 7); // every 30 s, as spec 005
+    assertEvent(r.at(T0 + 201000 + DEFAULT_PARK_TIMEOUT_MS), Event::ParkNotConfirmed, Cause::ParkTimeout);
+}
+
 // Review: the weather close's critical alert isn't swallowed by the daylight
 // close's identical one just before (the throttle starts afresh).
 void test_weather_failure_alerts_after_a_daylight_failure()
@@ -320,6 +337,7 @@ void test_count_survives_a_restart()
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_handed_over_attempt_gets_the_full_time_limit);
     RUN_TEST(test_new_rain_after_a_weather_stand_down_kept_by_daylight);
     RUN_TEST(test_new_rain_after_a_weather_halt_kept_by_daylight);
     RUN_TEST(test_weather_attempt_kept_by_daylight_alerts_afresh_later);
