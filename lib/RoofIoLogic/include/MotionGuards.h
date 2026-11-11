@@ -51,7 +51,15 @@ namespace SQM
             // This activity must stop writing (a close asked, or it was replaced or ended).
             bool shouldStop(uint32_t token) const;
 
+            // Short writes (a settings save, a restore, an NVS value; spec 010):
+            // counted while they run, never stopped, never stale (they always
+            // end), and independent of the upload's token.
+            void holdShort();
+            void releaseShort();
+            bool writing() const { return shortWrites > 0; }
+
         private:
+            uint32_t shortWrites = 0;
             uint32_t current = 0;
             uint32_t nextToken = 1;
             uint32_t lastProgressMs = 0;
@@ -70,12 +78,18 @@ namespace SQM
             bool cancel();
             // The timer couldn't be started, or the restart was stopped some other way.
             void clear();
+            // The restart's last check passed (spec 010): it can no longer be
+            // cancelled, and no move may start before the reset. False if none is due.
+            bool commit();
             bool scheduled() const { return due; }
-            bool cancellable() const { return due && !mandatory; }
+            bool cancellable() const { return due && !mustRun && !isCommitted; }
+            bool mandatory() const { return due && mustRun; }
+            bool committed() const { return isCommitted; }
 
         private:
             bool due = false;
-            bool mandatory = false;
+            bool mustRun = false;
+            bool isCommitted = false;
         };
 
         // What else is going on that a move must not overlap.
@@ -88,6 +102,8 @@ namespace SQM
             // stopped part-way can't be cancelled (the filesystem is half
             // erased): it is held while the roof moves and runs once it stops.
             bool restartCancellable = true;
+            bool flashWriting = false;     // a short flash write (a settings save) is running (spec 010)
+            bool restartCommitted = false; // a restart passed its last check: the reset is moments away
         };
 
         enum class BlockerAction : uint8_t
@@ -107,9 +123,11 @@ namespace SQM
         // Stop and abort always proceed. Open is refused while anything blocks.
         // Close always wins: it cancels a scheduled restart, stops an upload,
         // and waits (deferred) only while a flash write or an MQTT connect is
-        // still under way.
+        // still under way. A committed restart refuses close too (spec 010):
+        // the reset would cut it off.
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &blockers);
-        // "An upload is being written; MQTT is connecting; a restart is scheduled".
+        // "The device is restarting", "An upload is being written", "A settings
+        // save is being written", "MQTT is connecting", "A restart is scheduled".
         const char *blockerText(const Blockers &blockers);
 
         // Every roof command carries this header with the value "1": a

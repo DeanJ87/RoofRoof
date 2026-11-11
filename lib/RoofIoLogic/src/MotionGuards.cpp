@@ -64,17 +64,28 @@ namespace SQM
             return token != current || !active || stopRequested;
         }
 
+        void FlashActivity::holdShort()
+        {
+            ++shortWrites;
+        }
+
+        void FlashActivity::releaseShort()
+        {
+            if (shortWrites > 0)
+                --shortWrites;
+        }
+
         void RestartPlan::schedule(bool isMandatory)
         {
             if (!due)
-                mandatory = false;
+                mustRun = false;
             due = true;
-            mandatory = mandatory || isMandatory;
+            mustRun = mustRun || isMandatory;
         }
 
         bool RestartPlan::cancel()
         {
-            if (!due || mandatory)
+            if (!due || mustRun || isCommitted)
                 return false;
             due = false;
             return true;
@@ -83,22 +94,37 @@ namespace SQM
         void RestartPlan::clear()
         {
             due = false;
-            mandatory = false;
+            mustRun = false;
+            isCommitted = false;
+        }
+
+        bool RestartPlan::commit()
+        {
+            if (!due)
+                return false;
+            isCommitted = true;
+            return true;
         }
 
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
         {
             BlockerDecision d;
+            const bool flash = b.flashBusy || b.flashWriting;
             if (command == Roof::Command::Open)
             {
-                if (b.flashBusy || b.mqttConnecting || b.restartScheduled)
+                if (flash || b.mqttConnecting || b.restartScheduled || b.restartCommitted)
                     d.action = BlockerAction::Refuse;
             }
             else if (command == Roof::Command::Close)
             {
+                if (b.restartCommitted)
+                {
+                    d.action = BlockerAction::Refuse;
+                    return d;
+                }
                 d.cancelRestart = b.restartScheduled && b.restartCancellable;
                 d.stopFlash = b.flashBusy;
-                if (b.flashBusy || b.mqttConnecting)
+                if (flash || b.mqttConnecting)
                     d.action = BlockerAction::DeferClose;
             }
             return d;
@@ -106,8 +132,12 @@ namespace SQM
 
         const char *blockerText(const Blockers &b)
         {
+            if (b.restartCommitted)
+                return "The device is restarting";
             if (b.flashBusy)
                 return "An upload is being written";
+            if (b.flashWriting)
+                return "A settings save is being written";
             if (b.mqttConnecting)
                 return "MQTT is connecting";
             if (b.restartScheduled)
