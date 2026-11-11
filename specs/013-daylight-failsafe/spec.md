@@ -328,7 +328,9 @@ reason.
   spells (a new stop starts the count again; the count is kept across a restart). The critical
   alerts' throttle starts afresh at that moment, and a weather episode that starts after a
   daylight-only episode ended is a fresh attempt with fresh alerts. An
-  attempt waiting for the park or a close under way carries on. From then on the episode is a
+  attempt waiting for the park carries on as the weather's own attempt, with its full time limit
+  from that moment; a close under way carries on. A person's stop seen on that very step stands
+  the episode down as daylight's (the 30 s count then applies). From then on the episode is a
   weather episode (its alerts are worded for the weather).
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
   (neither the weather nor daylight) for 10 minutes, or the roof reads closed, or as FR-013 says.
