@@ -20,4 +20,8 @@ export const toConfigPayload = (source: Config): Config => ({
   ntp: { ...source.ntp },
   alpaca: { ...defaultAlpacaConfig, ...source.alpaca },
   alerts: mergeAlertsConfig(source.alerts),
+  // The roof's sections (spec 009 FR-023): carried when the device sent them, never invented.
+  ...(source.safety && { safety: { ...source.safety, http: { ...source.safety.http }, mqtt: { ...source.safety.mqtt } } }),
+  ...(source.park && { park: { ...source.park, nina: { ...source.park.nina } } }),
+  ...(source.roof && { roof: { ...source.roof } }),
 });

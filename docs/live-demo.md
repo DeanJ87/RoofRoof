@@ -9,7 +9,7 @@ The demo is a simulated RoofRoof in your browser. It runs **the firmware's own c
 There is **no public demo site**. The demo is built by CI and shipped inside the docs artifact, or you can run it from a checkout.
 
 !!! note "The roof comes in later specs"
-    This release is the platform only. The demo has the dashboard's Status and Device & Network cards, the Settings, Updates, System and Alpaca pages and the API explorer. The simulated roof *comes in a later spec*.
+    This release is the platform only. The demo has the dashboard's Status, Roof (a closed roof that doesn't move) and Device & Network cards, the Settings, Updates, System and Alpaca pages and the API explorer. The simulated roof *comes in a later spec*.
 
 ![Dashboard](assets/screenshots/dashboard.png)
 

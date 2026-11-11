@@ -1,8 +1,9 @@
 import { t } from '../../i18n';
-export type SettingsTabId = 'device' | 'network' | 'time' | 'alerts';
+export type SettingsTabId = 'device' | 'roof' | 'network' | 'time' | 'alerts';
 
 export const SETTINGS_TABS: { id: SettingsTabId; label: string }[] = [
   { id: 'device', label: t('settings.tabs.device') },
+  { id: 'roof', label: t('settings.tabs.roof') },
   { id: 'network', label: t('settings.tabs.network') },
   { id: 'time', label: t('settings.tabs.time') },
   { id: 'alerts', label: t('settings.tabs.alerts') },
@@ -17,6 +18,10 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   mqtt: 'network',
   wifi: 'network',
   security: 'device',
+  roof: 'roof',
+  hall: 'roof',
+  safety: 'roof',
+  park: 'roof',
 };
 
 export const isSettingsTab = (value: string | null): value is SettingsTabId => SETTINGS_TABS.some((tab) => tab.id === value);
@@ -49,6 +54,9 @@ const ERROR_ROOT_TAB: Record<string, SettingsTabId> = {
   timezone: 'time',
   alpaca: 'network',
   alerts: 'alerts',
+  roof: 'roof',
+  safety: 'roof',
+  park: 'roof',
 };
 
 export const tabForErrorPath = (path: string): SettingsTabId => {

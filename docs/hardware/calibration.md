@@ -4,7 +4,7 @@ description: "Calibrating the roof controller: the Hall sensor thresholds and po
 
 # Calibration
 
-The roof's real numbers are settings, measured once the roof is built: the Hall thresholds and which end reads high, the travel and speed, and (if fitted) the current-sense scale. This page covers the readings the controller takes from the board. The live values are in the `roof` section of [`GET /api/status`](../api/rest.md#get-apistatus); settings are changed with [`POST /api/config`](../api/rest.md#post-apiconfig) (the settings page gets a Roof tab in a later release).
+The roof's real numbers are settings, measured once the roof is built: the Hall thresholds and which end reads high, the travel and speed, and (if fitted) the current-sense scale. This page covers the readings the controller takes from the board. The live values are in the `roof` section of [`GET /api/status`](../api/rest.md#get-apistatus); settings are changed on the **Roof** tab of **Settings** ([Configuration](../user-guide/configuration.md)) or with [`POST /api/config`](../api/rest.md#post-apiconfig). The dashboard's [Roof card](../user-guide/dashboard.md#roof) shows the live readings.
 
 !!! danger "Motor disconnected"
     Calibrate with the motor's leads disconnected from the IBT-2 (or the motor supply off), until the Hall thresholds are set and checked. A wrong threshold can make the controller see a magnet that isn't there.
@@ -20,6 +20,8 @@ curl -s http://roofroof.local/api/status | python3 -c 'import json,sys; print(js
 ## Hall sensor
 
 The controller reads the SS49E on GPIO39 as raw 12-bit counts (0-4095), the median of five readings every 20 ms: `roof.hall.counts`. `roof.hall.level` is how it classifies that reading against the thresholds: `low`, `between`, `high`, `rail` (a disconnected or shorted sensor) or `unsettled` (not three equal classifications in a row yet).
+
+In the web UI, the **Hall reading** on the dashboard's Roof card and in **Settings → Roof → Hall sensor** is drawn on its 0-4095 scale with the two thresholds marked; in Settings the marks follow the thresholds as you type them, before you save, so you can see each end's reading fall past its mark.
 
 The worm gear holds the roof wherever it stops, so with the motor disconnected the roof doesn't move by hand. Take the end readings by bringing the sensor to each magnet instead: on a sensor that isn't fixed yet, hold it where it will sit at each end; on a fixed sensor, unbolt each magnet in turn and hold it at its stopping position in front of the sensor.
 
