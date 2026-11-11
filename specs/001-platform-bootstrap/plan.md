@@ -136,4 +136,4 @@ Every phase is its own commit (or a few commits).
 
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| ConformU not run in CI during 001 (Principle IV: "every change to the Alpaca code MUST pass ConformU") | With no Alpaca device there is nothing for ConformU to test; it errors on an empty device list | A placeholder device (e.g. a SafetyMonitor) would advertise a device the roof doesn't have, and clients could select it. The router and protocol stay covered by native tests, and spec 006 restores ConformU before any device ships. |
+| **Resolved by spec 006** (ConformU runs in CI against the simulator's Dome again; `.github/workflows/alpaca-conformance.yml`). ConformU not run in CI during 001 (Principle IV: "every change to the Alpaca code MUST pass ConformU") | With no Alpaca device there is nothing for ConformU to test; it errors on an empty device list | A placeholder device (e.g. a SafetyMonitor) would advertise a device the roof doesn't have, and clients could select it. The router and protocol stay covered by native tests, and spec 006 restores ConformU before any device ships. |
