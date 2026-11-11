@@ -37,7 +37,7 @@ section (analyser or debug build, not part of the gate).
 | Boot between the magnets: unknown, EN low; at a magnet that end | 2.4, 3.4 |
 | RPWM and LPWM never together, EN only while driven, 20 kHz | 6.2, Adv |
 | Hall counts at rest and each magnet; disconnected sensor reads 0 and `hallRail` | 3.1, 3.5 |
-| `supplyVolts` within 0.2 V; divider disconnected reads 0 and open and close refused | 2.5 |
+| `supplyVolts` within 0.2 V; divider disconnected reads 0 and open and close refused | 2.5, 6.9 |
 | Park switches and rain contact over the real cable; external pull-up | 2.6 |
 | SC-002 500 ms block, EN falls within 110 ms, cause `watchdog` | Adv |
 | SC-003 a latched fault survives 5 power cycles, clears only by `clear-fault` | 6.6 |
