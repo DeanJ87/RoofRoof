@@ -223,7 +223,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -267,7 +267,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -316,7 +316,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -360,7 +360,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -397,7 +397,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -453,7 +453,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -510,7 +510,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",

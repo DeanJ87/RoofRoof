@@ -17,6 +17,19 @@ namespace SQM
 {
     namespace RoofIo
     {
+        // The daylight failsafe's state (spec 013, Daylight::View), filled in by
+        // the status writer's caller like the close phase.
+        struct DaylightStatus
+        {
+            const char *mode = "alert";    // Daylight::modeName
+            const char *state = "unknown"; // Daylight::stateName
+            bool known = false;            // altitudeDeg holds a value
+            double altitudeDeg = 0.0;
+            float limitDeg = 0.0f;
+            std::string text; // Daylight::describe
+            bool closes = false;
+        };
+
         // A consistent copy of everything the section shows, taken under the
         // roof's lock and written outside it.
         struct Snapshot
@@ -50,6 +63,7 @@ namespace SQM
             // Spec 011: "off" (the real roof), "bench" (bench firmware: simulated
             // roof, motor never driven) or "demo" (the browser demo).
             const char *simulation = "off";
+            DaylightStatus daylight;
         };
 
         // The weather and park texts in the documents are cut to this many bytes
@@ -67,5 +81,8 @@ namespace SQM
 
         // Writes the section's keys into `out` (the caller creates the "roof" object).
         void writeStatus(JsonObject out, const Snapshot &snapshot);
+        // Spec 013: the roof object's "daylight" (the status document only;
+        // the MQTT state document leaves it out).
+        void writeDaylight(JsonObject out, const Snapshot &snapshot);
     } // namespace RoofIo
 } // namespace SQM

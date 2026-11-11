@@ -49,6 +49,13 @@ namespace SQM
         // A restarted attempt or back-off counts this much more than it kept:
         // the restart itself took time no clock ran through (start-up, WiFi).
         constexpr uint64_t RESTART_ALLOWANCE_MS = 10000;
+        // Spec 013: a person's stop of a daylight-only close is ended by the
+        // weather once it has been not safe this long in all since the stop
+        // (added up over the spells, so a flapping verdict still gets there;
+        // one stale poll can't send a park request against the person's stop).
+        constexpr uint64_t WEATHER_REARM_CONFIRM_MS = 30000;
+        // The most one step adds to that count (ten steps' worth).
+        constexpr uint64_t MAX_COUNT_STEP_MS = 1000;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -64,6 +71,10 @@ namespace SQM
             bool ninaConfigured = true; // the park result doesn't say "N.I.N.A. not configured"
             uint32_t personStops = 0;   // a person's accepted stops and aborts since start
             bool roofStarted = true;    // the roof's control task runs (else it reads Unknown for ever)
+            // Spec 013: daylight wants the roof closed (Daylight::View::closes()).
+            // The sequence then acts as for unsafe weather; the verdict itself is
+            // never changed (weatherSafe stays the weather's).
+            bool daylight = false;
         };
 
         enum class Phase : uint8_t
@@ -121,6 +132,9 @@ namespace SQM
             bool alert = false;    // a critical event, first of its kind this episode
             uint64_t limitMs = 0;  // the time limit that ran out (ParkTimeout, TooLong)
             bool reminder = false; // the episode's last critical event, raised again (REMIND_MS)
+            // Spec 013: the decision belongs to an episode daylight alone started,
+            // the weather safe throughout (alert wording and events).
+            bool daylight = false;
         };
 
         // The roof's answer to the Close action.
@@ -156,6 +170,9 @@ namespace SQM
             // The roof's answer to the Close action of the last step.
             Decision closeAnswered(CloseAnswer answer);
             Phase phase() const { return current; }
+            // Spec 013: the current episode was started by daylight and the
+            // weather has stayed safe since (false while idle with nothing wanted).
+            bool daylightEpisode() const { return daylightOnly; }
             // What must outlive a restart (a reset, a crash, a brown-out): a
             // stand-down, and an attempt or back-off with the time it has run,
             // so a board that keeps restarting in the rain still reaches its
@@ -170,6 +187,7 @@ namespace SQM
                 uint64_t limitMs = 0;      // the attempt's park limit
                 bool requested = false;    // a park request was sent...
                 uint64_t requestAgeMs = 0; // ...this long ago (kept spacing across a restart)
+                bool daylight = false;     // a daylight-only episode (spec 013); a stand-down's unsafeMs is the weather's count
             };
             Saved saved() const;
             // After a restart, before the first step: puts `saved` back, applied
@@ -188,6 +206,9 @@ namespace SQM
             };
 
             Decision decide(const Inputs &in, bool personStopped);
+            void trackEpisode(const Inputs &given, bool personStopped, bool restoredNow);
+            bool personWaitOver(const Inputs &given, bool personStopped);
+            void clearAlertThrottle();
             Decision remindIfDue(Decision decision);
             Decision halt(uint64_t limitMs);
             Decision resume(const Inputs &in);
@@ -216,6 +237,21 @@ namespace SQM
             Run parkHeld;           // the park result says parked
             Run unknown;            // the roof's position is unknown
             Run safe;               // the verdict is safe
+            // Spec 013: unsafe weather added up while a person's daylight
+            // stand-down holds (from one step to the next, both not safe).
+            uint64_t heldUnsafeMs = 0;
+            Run weatherSafeRun;               // spec 013: the weather itself safe (daylight left out)
+            bool daylightInSafeSpell = false; // daylight wanted a close during that safe spell
+            bool lastWeatherUnsafe = false;
+            uint64_t lastWeatherMs = 0;
+            // A daylight-only episode ended: the next weather episode's
+            // critical alerts go out in their own words (the throttle starts afresh).
+            bool afterDaylightEpisode = false;
+            bool closeFailedInDaylight = false; // the back-off's close failure was a daylight close's
+            void handToWeather();
+            void trackIdle(const Inputs &given);
+            static bool heldBack(Phase phase); // what the weather re-arms after a daylight-only episode
+            uint64_t daylightCount() const;
             // This step's results of the three runs.
             bool parkConfirmed = false;    // parked for PARK_SETTLE_MS
             bool unknownConfirmed = false; // unknown for UNKNOWN_CONFIRM_MS
@@ -252,7 +288,16 @@ namespace SQM
                 uint64_t limitMs = 0;
                 uint64_t endedAtMs = 0;
                 LastCritical critical;
+                bool daylight = false; // spec 013: the paused attempt was daylight-only
             } paused;
+            // Spec 013: the weather's attempt as spec 005 pauses it when the
+            // weather turns safe, kept while daylight runs its own attempt,
+            // and resumed if the weather turns unsafe within REARM_SAFE_MS.
+            Pause weatherPaused;
+            bool weatherPauseValid() const { return weatherPaused.has && lastNowMs - weatherPaused.endedAtMs < REARM_SAFE_MS; }
+            bool pauseForDaylight(const Inputs &given, bool personStopped);
+            void weatherTakesOver();
+            bool keptByDaylight(bool weatherSafeLong);
             uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
@@ -261,6 +306,8 @@ namespace SQM
             uint64_t alertedAtMs[8][10] = {};
             bool remindNow = false; // restored after a restart: remind on the first step
             bool restorePending = false;
+            // Spec 013: the episode was started by daylight with the weather safe.
+            bool daylightOnly = false;
             Saved restoring;
             void applyRestore();
         };

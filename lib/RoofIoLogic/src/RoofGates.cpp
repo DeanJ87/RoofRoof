@@ -48,7 +48,7 @@ namespace SQM
             switch (command)
             {
             case Roof::Command::Open:
-                return in.weather == Safety::Verdict::Safe ? GateRefusal::None : GateRefusal::WeatherNotSafe;
+                return openRefusal(in);
             case Roof::Command::Close:
                 return parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
             default:
@@ -75,7 +75,14 @@ namespace SQM
 
         bool openMustStop(const Roof::Status &status, const GateInputs &in)
         {
-            return status.state == Roof::State::Opening && in.weather != Safety::Verdict::Safe;
+            return status.state == Roof::State::Opening && openRefusal(in) != GateRefusal::None;
+        }
+
+        GateRefusal openRefusal(const GateInputs &in)
+        {
+            if (in.weather != Safety::Verdict::Safe)
+                return GateRefusal::WeatherNotSafe;
+            return in.daylightCloses ? GateRefusal::Daylight : GateRefusal::None;
         }
 
         const char *gateRefusalName(GateRefusal refusal)
@@ -86,6 +93,8 @@ namespace SQM
                 return "weatherNotSafe";
             case GateRefusal::MountNotParked:
                 return "mountNotParked";
+            case GateRefusal::Daylight:
+                return "daylight";
             default:
                 return "none";
             }

@@ -18,13 +18,14 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     ![Device settings](../assets/screenshots/settings-device.png)
 
 === "Roof"
-    How the roof moves, the Hall sensor, current sense and the supply, the weather sources and the mount park:
+    How the roof moves, the Hall sensor, current sense and the supply, the weather sources, the mount park and the daylight failsafe:
 
     - **Roof motion**: travel, speed, timeout margin, the time to leave a magnet, ramps, top and slow duty, and the opening direction - see [Roof motion](roof-motion.md).
     - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
     - **Current and supply**: current sense and its limits, and the minimum supply.
     - **Weather sources**: SQMeter over HTTP and over MQTT, the rain contact and the stale time - see [Safety inputs](safety-inputs.md).
     - **Mount park**: the N.I.N.A. address, the park switches fitted and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
+    - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe).
 
     While the roof is opening or closing the tab says so: the device refuses every save until it stops. Saving while the roof is stopped part-way makes its position unknown, and the tab says that too.
 
@@ -107,6 +108,9 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
       "supply_low": { "level": 2, "sound": "", "title": "", "message": "" },
       "unsafe_closing": { "level": 2, "sound": "", "title": "", "message": "" },
       "roof_closed": { "level": 2, "sound": "", "title": "", "message": "" },
+      "daylight_open": { "level": 3, "sound": "", "title": "", "message": "" },
+      "daylight_closed": { "level": 2, "sound": "", "title": "", "message": "" },
+      "daylight_unknown": { "level": 2, "sound": "", "title": "", "message": "" },
       "safety_lost": { "level": 2, "sound": "", "title": "", "message": "" },
       "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
@@ -135,7 +139,9 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "currentAmpsPerVolt": 8.5,
     "minRunningAmps": 0,
     "minSupplyVolts": 11
-  }
+  },
+  "daylight": { "mode": "alert", "sunAltitudeDeg": 0 },
+  "location": { "set": false, "latitude": 0, "longitude": 0 }
 }
 ```
 
@@ -261,6 +267,20 @@ sense off.
 | `roof.minRunningAmps` | number | `0` | With current sense on, a running current below this after a second of driving counts as a broken sense wire (`currentUnreadable`); 0 = off (0-20). Set it from a [bench measurement](../hardware/calibration.md#current-sense) |
 | `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
 
+### Daylight and location
+
+The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when the sun is up and the roof isn't closed. A configuration saved by an earlier release loads with these defaults, so an update never turns the close on.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `daylight.mode` | string | `"alert"` | `off` (nothing), `alert` (an alert, nothing moves) or `close` (shown as "Alert and close": park and close as for unsafe weather, and refuse opening while the sun is up). Any other value is refused |
+| `daylight.sunAltitudeDeg` | number | `0` | The sun counts as up at or above this altitude, in degrees (-18 to 30); it counts as down again 0.5 degrees below it |
+| `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes |
+| `location.latitude` | number | `0` | Degrees, north positive (-90 to 90) |
+| `location.longitude` | number | `0` | Degrees, east positive (-180 to 180) |
+
+A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
+
 ### Alerts
 
 See [Alerts](alerts.md) for events, levels and channels.
@@ -276,7 +296,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `safety_lost`; the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`; the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

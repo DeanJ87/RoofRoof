@@ -24,6 +24,9 @@ namespace SQM
             rules.onUnsafeClosing = a.unsafeClosing.level != 0;
             rules.onRoofClosed = a.roofClosed.level != 0;
             rules.onSafetyLost = a.safetyLost.level != 0;
+            rules.onDaylightOpen = a.daylightOpen.level != 0;
+            rules.onDaylightClosed = a.daylightClosed.level != 0;
+            rules.onDaylightUnknown = a.daylightUnknown.level != 0;
             return rules;
         }
 
@@ -42,6 +45,9 @@ namespace SQM
                 {AlertType::ClientLost, &AlertsConfig::clientLost},
                 {AlertType::ClientBack, &AlertsConfig::clientBack},
                 {AlertType::ClientDisconnected, &AlertsConfig::clientDisconnected},
+                {AlertType::DaylightOpen, &AlertsConfig::daylightOpen},
+                {AlertType::DaylightClosed, &AlertsConfig::daylightClosed},
+                {AlertType::DaylightUnknown, &AlertsConfig::daylightUnknown},
             };
             for (const auto &entry : SETTINGS)
                 if (entry.first == type)
@@ -310,6 +316,9 @@ namespace SQM
                 {"client_lost", Alerts::AlertType::ClientLost, "Imaging app stopped checking", "The imaging app stops checking"},
                 {"client_back", Alerts::AlertType::ClientBack, "Imaging app is back", "The imaging app is back"},
                 {"client_disconnected", Alerts::AlertType::ClientDisconnected, "Imaging app disconnected", "The imaging app disconnects"},
+                {"daylight_open", Alerts::AlertType::DaylightOpen, "Roof open in daylight", "The roof is open in daylight"},
+                {"daylight_closed", Alerts::AlertType::DaylightClosed, "Roof closed after daylight", "The roof closed after daylight"},
+                {"daylight_unknown", Alerts::AlertType::DaylightUnknown, "Daylight check not working", "The daylight check can't run"},
             };
         } // namespace
 

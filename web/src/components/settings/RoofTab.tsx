@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import type { ParkConfig, RoofConfig, SafetyConfig } from '../../types';
+import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
-import { DepToggle, Field, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
+import { DepNote, DepToggle, Field, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import { Note } from '../ui';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
@@ -234,6 +234,80 @@ const ParkCard: FunctionalComponent<ParkProps> = ({ park, update, error }) => (
   </SettingsCard>
 );
 
+type DaylightProps = SettingsTabProps & { daylight: DaylightConfig; location: LocationConfig };
+
+// A degrees field that can be negative (the sun's altitude, latitude, longitude).
+const DegreesField: FunctionalComponent<{
+  at: string[];
+  label: string;
+  hint: string;
+  value: number;
+  update: SettingsTabProps['update'];
+  error: SettingsTabProps['error'];
+}> = ({ at, label, hint, value, update, error }) => (
+  <Field label={label} hint={hint} error={error(at.join('.'))}>
+    <NumberInput dataField={at.join('.')} value={value} unit="°" onChange={(v) => update(at, v)} />
+  </Field>
+);
+
+// The daylight failsafe and where the roof is (spec 013). The site and the
+// threshold only matter while the check is on; the fields stay editable.
+const DaylightCard: FunctionalComponent<DaylightProps> = ({ daylight, location, update, error, deps, fix }) => (
+  <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
+    <div class="form-grid">
+      <Field label={t('settings.roof.daylightCheck')} hint={t('settings.roof.daylightCheckHint')} error={error('daylight.mode')}>
+        <SelectInput
+          dataField="daylight.mode"
+          value={daylight.mode}
+          options={[
+            { value: 'off', label: t('settings.roof.daylightOff') },
+            { value: 'alert', label: t('settings.roof.daylightAlert') },
+            { value: 'close', label: t('settings.roof.daylightClose') },
+          ]}
+          onChange={(v) => update(['daylight', 'mode'], v)}
+        />
+      </Field>
+      <DegreesField
+        at={['daylight', 'sunAltitudeDeg']}
+        label={t('settings.roof.sunAltitudeLimit')}
+        hint={t('settings.roof.sunAltitudeLimitHint')}
+        value={daylight.sunAltitudeDeg}
+        update={update}
+        error={error}
+      />
+    </div>
+    <DepNote entry={deps.get('daylight.mode')} onFix={fix} />
+    <DepNote entry={deps.get('daylight.sunAltitudeDeg')} onFix={fix} />
+    <Toggle
+      dataField="location.set"
+      label={t('settings.roof.locationSet')}
+      hint={t('settings.roof.locationSetHint')}
+      checked={location.set}
+      onChange={(v) => update(['location', 'set'], v)}
+    />
+    {(location.set || error('location.latitude') !== undefined || error('location.longitude') !== undefined) && (
+      <div class="form-grid indent">
+        <DegreesField
+          at={['location', 'latitude']}
+          label={t('settings.roof.latitude')}
+          hint={t('settings.roof.latitudeHint')}
+          value={location.latitude}
+          update={update}
+          error={error}
+        />
+        <DegreesField
+          at={['location', 'longitude']}
+          label={t('settings.roof.longitude')}
+          hint={t('settings.roof.longitudeHint')}
+          value={location.longitude}
+          update={update}
+          error={error}
+        />
+      </div>
+    )}
+  </SettingsCard>
+);
+
 // The device refuses every save while the roof moves; a save while it is
 // stopped part-way makes its position unknown (FR-021).
 const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ status }) => {
@@ -244,7 +318,7 @@ const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ sta
 };
 
 const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
-  const { roof, safety, park } = props.config;
+  const { roof, safety, park, daylight, location } = props.config;
   return (
     <>
       <MotionNote status={props.status} />
@@ -259,6 +333,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
       )}
       {safety && <SafetyCard {...props} safety={safety} />}
       {park && <ParkCard {...props} park={park} />}
+      {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}
     </>
   );
 };

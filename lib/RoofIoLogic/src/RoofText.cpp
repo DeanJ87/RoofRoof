@@ -169,6 +169,8 @@ namespace SQM
             case GateRefusal::MountNotParked:
                 return "Mount not parked: " + failedParkInputs(interlockBits(in)) +
                        (in.parked || in.parkText.empty() ? "" : " (" + in.parkText + ")");
+            case GateRefusal::Daylight:
+                return "Daylight: " + (in.daylightText.empty() ? std::string("the sun is up") : in.daylightText);
             default:
                 return "";
             }

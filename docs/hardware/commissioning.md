@@ -15,7 +15,7 @@ A [printable checklist](commissioning-checklist.md) carries every check below wi
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: fbd2d4d17a3e16ee
+fingerprint: 7c84d2f947f589d8
 -->
 <figure class="diagram" markdown>
 
@@ -154,13 +154,15 @@ The roof opens only on a safe weather verdict and closes only onto a confirmed p
    - Close N.I.N.A.: `N.I.N.A. not responding` within about 4 s.
 7. **Park switches against N.I.N.A.** Set `park.switches` as fitted. With the mount parked and every switch closed: parked. Open one switch with the mount still parked: not parked, and the reason says the sources **disagree**.
 8. **A save doesn't reset the verdict.** Change something unrelated (the NTP server). The verdict and the park result stay as they were.
+9. **The site and the clock for the daylight failsafe** ([Daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe)). In **Settings → Roof → Daylight** switch **Location set** on and enter the observatory's latitude and longitude (north and east positive), and check **Settings → Time** shows NTP synced. The Roof card's **Daylight** line now shows the sun's altitude against the threshold (`Sun -14.2° < 0.0°` at night). Compare it with an almanac or a planetarium app for the same moment: within 0.5°. A wrong sign on the longitude puts the sun on the other side of the earth.
+10. **Leave the daylight mode on Alert (the default) or Off until stage 11.** **Alert and close** refuses every open while the sun is up and starts the automatic close, which would get in the way of the daytime tests in stages 6 to 8. Stage 7 tries it on purpose.
 
 ## Stage 5: The alert channel (before anything can run unattended)
 
 A roof left open in the rain is only caught if the alert reaches you. Set this up and prove it now, because the critical alerts go out only to channels you have switched on, and with none set up the serial log is the only report.
 
 1. **Set up at least one channel** (Pushover, ntfy, a webhook, or MQTT to Home Assistant): [Alerts](../user-guide/alerts.md#channels).
-2. **Test each of the seven roof events** (**Settings → Alerts**, roof rows, **Test** on each row, on a phone): each one arrives, with its example values. The critical ones (**The mount doesn't park**, **The roof doesn't close**) offer only Urgent and Wake me and no silent sounds. Check the wording and the layout on the phone you will carry; change the wording with **Text** if you like (a critical alert keeps its reason either way).
+2. **Test each of the ten roof events** (**Settings → Alerts**, roof rows, **Test** on each row, on a phone): each one arrives, with its example values. The three daylight rows (**Roof open in daylight**, **Roof closed after daylight**, **Daylight check not working**) are ordinary events with their own levels; set **Roof open in daylight** to a level you will hear in the morning. The critical ones (**The mount doesn't park**, **The roof doesn't close**) offer only Urgent and Wake me and no silent sounds. Check the wording and the layout on the phone you will carry; change the wording with **Text** if you like (a critical alert keeps its reason either way).
 3. **The phone lets the critical level through.** Check your phone's silent or do-not-disturb setting lets a Wake me (Pushover emergency, ntfy max) alert sound.
 4. **Critical alerts ignore the master switch.** Turn **Send alerts** off with one channel still on, press **Test** on a critical row: it still arrives. Turn **Send alerts** back on.
 5. **MQTT only?** If MQTT is your only channel, a critical alert over MQTT (seen in Home Assistant) carries the reason text.
@@ -211,7 +213,15 @@ This is the whole safety function, run end to end with nothing to move. Read [Cl
 10. **A WiFi change with the roof open.** Request a close during the change: it waits (`closePending`) and starts once the WiFi has joined, or after 15 s at most. Saving MQTT settings with the broker unreachable answers within 1 s.
 11. **A close wins over an upload.** Start a web UI upload with the roof open and request a close: the upload stops (`409`) and the close is under way within a few seconds. Pull the network cable mid-upload: a close is not blocked for more than 5 s.
 12. **Command-line OTA** (only if you use it, roof closed): the device restarts through the plan, and an open during the upload is refused.
-13. **N.I.N.A. over Alpaca, motor still disconnected.** Do [stage 9](#stage-9-nina-over-ascom-alpaca-and-conformu) steps 1 to 7 now, with the hand-held magnet standing in for the roof and N.I.N.A.'s dome driving it.
+13. **The daylight dry run** (by day; skip to step 14 at night and do it the next morning). Reset to "open" with the mount unparked and SQMeter safe.
+    - **Alert.** With the mode on **Alert** and the sun above the threshold (lower the **Sun altitude** threshold below the sun's altitude shown on the Roof card if you need to), **Roof open in daylight** arrives about 30 s later, saying nothing closes the roof. Nothing moves, and `roofopen` is still accepted.
+    - **Alert and close.** Set the mode to **Alert and close**. Within about a second the log shows `Close sequence started: daylight, Sun ...` and `Asking N.I.N.A. to park the mount`; the mount parks, the close starts 4 to 5 s after the park is confirmed, and with the closed magnet at the sensor **Roof closed after daylight** arrives. **Unsafe: closing** does not.
+    - **Opening refused.** With the roof `closed`, `roofopen` answers `409` `daylight` with the sun and the threshold, and the Roof card's **Open** greys with the same reason. N.I.N.A.'s Open shutter gets the same refusal.
+    - **The park first.** Reset to "open" and unparked with N.I.N.A. closed: **Mount didn't park** arrives at `park.timeoutSeconds`, worded "It is daylight ...", and the roof stays open.
+    - **A person's stop.** Start the daylight close again and press Stop while the roof "closes": **Automatic close stopped** arrives once, worded "in daylight", nothing more happens and no 30-minute reminders follow. Make SQMeter unsafe: after 30 s the weather close starts (**Unsafe: closing**). Press Stop again and make SQMeter safe.
+    - **The check can't run.** Switch **Location set** off: the Roof card's Daylight line says **Location not set**, nothing is refused, and **Daylight check not working** arrives 10 minutes later. Switch it back on.
+    - Put the threshold back, and set the mode back to **Alert** or **Off** until stage 11.
+14. **N.I.N.A. over Alpaca, motor still disconnected.** Do [stage 9](#stage-9-nina-over-ascom-alpaca-and-conformu) steps 1 to 7 now, with the hand-held magnet standing in for the roof and N.I.N.A.'s dome driving it.
 
 !!! warning "Second gate"
     All of stage 7 passes, with its alerts on your phone and **Send alerts** back on, and the close sequence idle, before the motor is connected.
@@ -274,7 +284,8 @@ The roof may run unattended only when every line here is ticked on the [checklis
 2. The close-on-unsafe dry run passed with the motor disconnected (stage 7) **and** attended on the real roof (stage 8 step 11), with `park.timeoutSeconds` set a little above your mount's longest park time.
 3. Password protection is on, the settings are backed up ([Backup & restore](../user-guide/configuration.md#backup-restore) in **Settings → Device**, kept off the device) and the commissioned values are written on the checklist.
 4. **Health after a long session.** After an hour or more with the dashboard open, MQTT and a few uploads at rest, `roofstatus` shows `maxWatchdogBeatAgeMs` well under 50 and `maxStepGapMs` near 20, `watchdogTrips` is 0, and `stackFree.roof` in `/api/status` is above 2048 bytes.
-5. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
+5. **The daylight mode is the one you want**: **Alert and close** if you never image the sun (the roof parks and closes itself after sunrise), **Alert** to be told only, **Off** for solar imaging. The site is set and the Roof card's Daylight line shows the sun (stage 4 step 9), and the daylight dry run passed (stage 7 step 13).
+6. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
 
 ---
 

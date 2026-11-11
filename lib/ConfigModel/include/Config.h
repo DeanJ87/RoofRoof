@@ -149,6 +149,12 @@ namespace SQM
         EventSetting clientLost;
         EventSetting clientBack;
         EventSetting clientDisconnected;
+        // The daylight failsafe (spec 013): the roof open in daylight, closed
+        // after a daylight close, and the check unable to run. Persisted with
+        // the imaging-app events (the main part holds the long channel settings).
+        EventSetting daylightOpen;
+        EventSetting daylightClosed;
+        EventSetting daylightUnknown;
 
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
@@ -255,6 +261,33 @@ namespace SQM
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
     };
 
+    // The daylight failsafe (spec 013): with the sun at or above
+    // sunAltitudeDeg, alert (and with Close, close the roof as for unsafe
+    // weather and refuse opening). Alert is the default and what an older
+    // config loads as: a migration never turns a motion feature on.
+    struct DaylightConfig
+    {
+        enum class Mode : uint8_t
+        {
+            Off = 0,
+            Alert = 1,
+            Close = 2, // "alert and close"
+        };
+        Mode mode = Mode::Alert;
+        float sunAltitudeDeg = 0.0f; // the sun's centre, degrees above the horizon
+        static constexpr float MIN_SUN_ALTITUDE_DEG = -18.0f;
+        static constexpr float MAX_SUN_ALTITUDE_DEG = 30.0f;
+    };
+
+    // The observing site, for the sun's altitude (spec 013; SQMeter's names,
+    // without its GPS and sun-and-moon card).
+    struct LocationConfig
+    {
+        bool set = false;
+        double latitude = 0.0;  // degrees, north positive
+        double longitude = 0.0; // degrees, east positive
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -267,6 +300,8 @@ namespace SQM
         SafetyConfig safety;
         ParkConfig park;
         RoofConfig roof;
+        DaylightConfig daylight;
+        LocationConfig location;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";

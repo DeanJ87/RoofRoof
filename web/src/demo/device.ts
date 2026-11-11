@@ -31,6 +31,8 @@ export interface RoofPanel {
   parkFails: boolean;
   jam: boolean;
   supplyLow: boolean;
+  sunUp: boolean; // spec 013: the daylight state is day whatever the location and clock
+  daylight: string; // the device's daylight text
   mount: 'parked' | 'unparked' | 'slewing';
   state: string;
   weather: string;
@@ -38,7 +40,7 @@ export interface RoofPanel {
   phase: string;
 }
 
-export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow'>> & {
+export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp'>> & {
   mount?: 'park' | 'unpark';
 };
 

@@ -128,6 +128,7 @@ export const mockStatus: SystemStatus = {
     weatherText: 'safe',
     parkConfirmed: true,
     parkText: 'parked (N.I.N.A. AtPark)',
+    daylight: { mode: 'alert', state: 'night', sunAltitudeDeg: -32.5, limitDeg: 0, text: 'Sun -32.5° < 0.0°', closes: false },
     fault: null,
     watchdogTrips: 0,
     maxStepGapMs: 21,

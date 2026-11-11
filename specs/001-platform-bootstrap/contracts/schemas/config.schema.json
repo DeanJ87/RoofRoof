@@ -90,6 +90,78 @@
               ],
               "additionalProperties": false
             },
+            "daylight_closed": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "daylight_open": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
+            "daylight_unknown": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
             "mount_not_parked": {
               "type": "object",
               "properties": {
@@ -263,6 +335,9 @@
             "client_back",
             "client_disconnected",
             "client_lost",
+            "daylight_closed",
+            "daylight_open",
+            "daylight_unknown",
             "mount_not_parked",
             "move_fault",
             "roof_closed",
@@ -410,8 +485,44 @@
       ],
       "additionalProperties": false
     },
+    "daylight": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "sunAltitudeDeg": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "mode",
+        "sunAltitudeDeg"
+      ],
+      "additionalProperties": false
+    },
     "deviceName": {
       "type": "string"
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "latitude": {
+          "type": "number"
+        },
+        "longitude": {
+          "type": "number"
+        },
+        "set": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "latitude",
+        "longitude",
+        "set"
+      ],
+      "additionalProperties": false
     },
     "mqtt": {
       "type": "object",
@@ -718,7 +829,9 @@
     "alerts",
     "alpaca",
     "auth",
+    "daylight",
     "deviceName",
+    "location",
     "mqtt",
     "ntp",
     "ota",

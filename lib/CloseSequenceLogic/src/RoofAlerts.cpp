@@ -128,10 +128,38 @@ namespace SQM
             roof.source = lostSources(weather);
             roof.sourceLost = !roof.source.empty();
             roof.sourceKnown = sourcesKnown(weather) || roof.sourceLost;
-            roof.closing = attempting(sequence.phase);
-            if (sequence.phase != Phase::Idle)
+            roof.closing = attempting(sequence.phase) && !sequence.daylight;
+            if (sequence.phase != Phase::Idle && !sequence.daylight)
                 roof.weather = Safety::describe(weather);
             roof.closedCount = sequence.closedCount;
+        }
+
+        void updateDaylightConditions(
+            Alerts::RoofInputs &roof, const Daylight::View &daylight, Roof::State state, const SequenceView &sequence)
+        {
+            const bool weatherRunning = sequence.phase != Phase::Idle && !sequence.daylight;
+            const bool daylightClosing = attempting(sequence.phase) && sequence.daylight;
+            roof.daylightOpen = daylight.on() && daylight.state == Daylight::State::Day && state != Roof::State::Closed && !weatherRunning;
+            roof.daylightSun = roof.daylightOpen ? Daylight::describe(daylight) : std::string();
+            roof.daylightAction = roof.daylightOpen ? Daylight::actionText(daylight.mode, daylightClosing) : std::string();
+            roof.daylightUnknown = daylight.on() && daylight.state == Daylight::State::Unknown;
+            roof.daylightMissing = roof.daylightUnknown ? Daylight::describe(daylight) : std::string();
+            if (sequence.phase != Phase::Idle && sequence.daylight)
+                roof.daylightClosedSun = Daylight::describe(daylight);
+            roof.daylightClosedCount = sequence.daylightClosedCount;
+        }
+
+        RoofIo::DaylightStatus daylightStatus(const Daylight::View &daylight)
+        {
+            RoofIo::DaylightStatus out;
+            out.mode = Daylight::modeName(daylight.mode);
+            out.state = Daylight::stateName(daylight.state);
+            out.known = daylight.known;
+            out.altitudeDeg = daylight.altitudeDeg;
+            out.limitDeg = daylight.limitDeg;
+            out.text = Daylight::describe(daylight);
+            out.closes = daylight.closes();
+            return out;
         }
     } // namespace CloseSeq
 } // namespace SQM

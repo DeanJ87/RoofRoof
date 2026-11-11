@@ -123,6 +123,32 @@ describe('Open', () => {
     expect(open({ weather: 'unknown', weatherText: '' }).disabled).toBe(true);
   });
 
+  it('is refused in daylight when daylight closes the roof, and says why (spec 013)', () => {
+    const daylight = {
+      mode: 'close' as const,
+      state: 'day' as const,
+      sunAltitudeDeg: 3.2,
+      limitDeg: 0,
+      text: 'Sun 3.2° ≥ 0.0°',
+      closes: true,
+    };
+    const result = open({ daylight });
+    expect(result.disabled).toBe(true);
+    expect(result.reason).toBe('Daylight (Sun 3.2° ≥ 0.0°)');
+    // Alert only, or night: Open is not refused.
+    expect(open({ daylight: { ...daylight, mode: 'alert', closes: false } }).disabled).toBe(false);
+    expect(open({ daylight: { ...daylight, state: 'night', closes: false } }).disabled).toBe(false);
+    // Older firmware sends no daylight object.
+    expect(open({ daylight: undefined }).disabled).toBe(false);
+    // The weather comes first when both refuse.
+    const both = open({ daylight, weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' });
+    expect(both.reason).toContain('unsafe: rain (SQMeter HTTP)');
+    expect(both.reason).not.toContain('Daylight');
+    // Close is not refused by daylight.
+    const s = status({ state: 'open', daylight });
+    expect(closeButton(input({ live: live(s) })).disabled).toBe(false);
+  });
+
   it('is refused while the setup hotspot is on, Close is not', () => {
     expect(open({}, true).reason).toBe("Opening isn't available while the setup hotspot is on");
     const s = status({ state: 'open' }, true);

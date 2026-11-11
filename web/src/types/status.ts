@@ -115,6 +115,16 @@ export interface RoofFault {
   text: string; // with the measured value and the limit
 }
 
+// The daylight failsafe as the roof sees it now (spec 013). Absent on older firmware.
+export interface RoofDaylight {
+  mode: 'off' | 'alert' | 'close';
+  state: 'off' | 'unknown' | 'night' | 'day';
+  sunAltitudeDeg: number | null; // null while off or unknown
+  limitDeg: number;
+  text: string; // "Sun 3.2° ≥ 0.0°", "Location not set", "Clock not set", "Off"
+  closes: boolean; // daylight wants the roof closed now (mode close and day)
+}
+
 export interface RoofStatus {
   state: RoofState;
   positionKnown: boolean;
@@ -141,6 +151,7 @@ export interface RoofStatus {
   weatherText: string;
   parkConfirmed: boolean;
   parkText: string;
+  daylight?: RoofDaylight;
   fault: RoofFault | null;
   watchdogTrips: number;
   maxStepGapMs: number;

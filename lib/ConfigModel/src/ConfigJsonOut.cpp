@@ -142,6 +142,17 @@ namespace SQM
             park["timeoutSeconds"] = c.park.timeoutSeconds;
         }
 
+        void appendDaylight(JsonDocument &doc, const Config &c)
+        {
+            JsonObject daylight = doc.createNestedObject("daylight");
+            daylight["mode"] = daylightModeName(c.daylight.mode);
+            daylight["sunAltitudeDeg"] = c.daylight.sunAltitudeDeg;
+            JsonObject location = doc.createNestedObject("location");
+            location["set"] = c.location.set;
+            location["latitude"] = c.location.latitude;
+            location["longitude"] = c.location.longitude;
+        }
+
         void appendRoof(JsonDocument &doc, const RoofConfig &r)
         {
             JsonObject roof = doc.createNestedObject("roof");
@@ -185,6 +196,7 @@ namespace SQM
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
         appendSafety(doc, *this);
         appendRoof(doc, roof);
+        appendDaylight(doc, *this);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

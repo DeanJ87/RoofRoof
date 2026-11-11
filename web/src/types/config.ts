@@ -85,6 +85,18 @@ export interface RoofConfig {
   minSupplyVolts: number;
 }
 
+// The daylight failsafe and where the roof is (spec 013).
+export type DaylightMode = 'off' | 'alert' | 'close';
+export interface DaylightConfig {
+  mode: DaylightMode;
+  sunAltitudeDeg: number; // -18..30
+}
+export interface LocationConfig {
+  set: boolean;
+  latitude: number; // -90..90
+  longitude: number; // -180..180
+}
+
 export interface Config {
   deviceName: string;
   wifi: WiFiConfig;
@@ -96,5 +108,7 @@ export interface Config {
   safety?: SafetyConfig;
   park?: ParkConfig;
   roof?: RoofConfig;
+  daylight?: DaylightConfig;
+  location?: LocationConfig;
   alerts?: AlertsConfig;
 }

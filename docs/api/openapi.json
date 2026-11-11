@@ -249,7 +249,15 @@
                     "watchdogTrips": 0,
                     "maxStepGapMs": 21,
                     "maxWatchdogBeatAgeMs": 12,
-                    "simulation": "off"
+                    "simulation": "off",
+                    "daylight": {
+                      "mode": "alert",
+                      "state": "night",
+                      "sunAltitudeDeg": -14.2,
+                      "limitDeg": 0,
+                      "text": "Sun -14.2° < 0.0°",
+                      "closes": false
+                    }
                   },
                   "configRevision": 3751871155
                 }
@@ -506,7 +514,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -555,7 +563,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -631,7 +639,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -680,7 +688,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -731,7 +739,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -805,7 +813,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -889,7 +897,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -2445,6 +2453,78 @@
                     ],
                     "additionalProperties": false
                   },
+                  "daylight_closed": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "daylight_open": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "daylight_unknown": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
                   "mount_not_parked": {
                     "type": "object",
                     "properties": {
@@ -2618,6 +2698,9 @@
                   "client_back",
                   "client_disconnected",
                   "client_lost",
+                  "daylight_closed",
+                  "daylight_open",
+                  "daylight_unknown",
                   "mount_not_parked",
                   "move_fault",
                   "roof_closed",
@@ -2765,8 +2848,44 @@
             ],
             "additionalProperties": false
           },
+          "daylight": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "sunAltitudeDeg": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "mode",
+              "sunAltitudeDeg"
+            ],
+            "additionalProperties": false
+          },
           "deviceName": {
             "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "set": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "latitude",
+              "longitude",
+              "set"
+            ],
+            "additionalProperties": false
           },
           "mqtt": {
             "type": "object",
@@ -3073,7 +3192,9 @@
           "alerts",
           "alpaca",
           "auth",
+          "daylight",
           "deviceName",
+          "location",
           "mqtt",
           "ntp",
           "ota",
@@ -3140,6 +3261,60 @@
                     "additionalProperties": false
                   },
                   "client_lost": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "daylight_closed": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "daylight_open": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "daylight_unknown": {
                     "type": "object",
                     "properties": {
                       "level": {
@@ -3383,8 +3558,35 @@
             },
             "additionalProperties": false
           },
+          "daylight": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "sunAltitudeDeg": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
           "deviceName": {
             "type": "string"
+          },
+          "location": {
+            "type": "object",
+            "properties": {
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "set": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
           },
           "mqtt": {
             "type": "object",
@@ -4087,6 +4289,41 @@
               "currentSense": {
                 "type": "boolean"
               },
+              "daylight": {
+                "type": "object",
+                "properties": {
+                  "closes": {
+                    "type": "boolean"
+                  },
+                  "limitDeg": {
+                    "type": "number"
+                  },
+                  "mode": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "sunAltitudeDeg": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "closes",
+                  "limitDeg",
+                  "mode",
+                  "state",
+                  "sunAltitudeDeg",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
               "driving": {
                 "type": "boolean"
               },
@@ -4307,6 +4544,7 @@
               "closePending",
               "closePhase",
               "currentSense",
+              "daylight",
               "driving",
               "fault",
               "fromUnknown",

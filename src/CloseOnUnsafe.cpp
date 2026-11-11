@@ -1,8 +1,11 @@
 #include "CloseOnUnsafe.h"
 
+#include <Arduino.h>
 #include <atomic>
+#include <ctime>
 #include <esp_attr.h>
 
+#include "DeviceCore.h"
 #include "Logger.h"
 #include "RoofControl.h"
 #include "RoofText.h"
@@ -25,7 +28,7 @@ namespace SQM
             uint8_t phase;
             uint8_t event;
             uint8_t cause;
-            uint8_t requested;
+            uint8_t requested; // bit 0: a park request was sent; bit 1: a daylight-only episode (spec 013)
             uint32_t unsafeMs;
             uint32_t wallMs;
             uint32_t limitMs;
@@ -33,7 +36,12 @@ namespace SQM
             uint32_t check;
         };
         // Bump the low byte whenever Kept or the enums it holds change.
+        // Spec 013 added bit 1 of `requested` without changing the layout: a
+        // record from an older image (bit 1 always clear) stays valid, so an
+        // upgrade keeps a person's stand-down.
         constexpr uint32_t KEPT_MAGIC = 0x5EC00504u;
+        constexpr uint8_t KEPT_REQUESTED = 1u << 0;
+        constexpr uint8_t KEPT_DAYLIGHT = 1u << 1;
         // Two slots, written alternately and validated last, so a reset in the
         // middle of a write still leaves the previous record.
         RTC_NOINIT_ATTR Kept kept[2];
@@ -72,6 +80,41 @@ namespace SQM
         }
     } // namespace
 
+    void CloseOnUnsafe::updateConfig(const Config &config)
+    {
+        parkTimeoutMs.store(config.park.timeoutSeconds * 1000u);
+        std::lock_guard<std::mutex> held(daylightLock);
+        daylightSettings = Daylight::settingsFrom(config);
+    }
+
+    void CloseOnUnsafe::updateDaylight()
+    {
+        const uint32_t now = millis();
+        if (daylightStepped && now - lastDaylightMs < DAYLIGHT_EVERY_MS)
+            return;
+        daylightStepped = true;
+        lastDaylightMs = now;
+        Daylight::Settings settings;
+        {
+            std::lock_guard<std::mutex> held(daylightLock);
+            settings = daylightSettings;
+        }
+        const int64_t epoch = static_cast<int64_t>(time(nullptr));
+        const Daylight::View before = daylightView;
+        daylightView = daylightWatch.update(settings, epoch >= Core::CLOCK_VALID_EPOCH, epoch);
+        if (daylightView.state != before.state || daylightView.mode != before.mode)
+            Logger::info(TAG, "Daylight: %s (%s)", Daylight::stateName(daylightView.state), Daylight::describe(daylightView).c_str());
+        const RoofIo::DaylightStatus shown = CloseSeq::daylightStatus(daylightView);
+        std::lock_guard<std::mutex> held(daylightLock);
+        daylightShown = shown;
+    }
+
+    RoofIo::DaylightStatus CloseOnUnsafe::daylightStatus() const
+    {
+        std::lock_guard<std::mutex> held(daylightLock);
+        return daylightShown;
+    }
+
     void CloseOnUnsafe::begin(const Config &config)
     {
         updateConfig(config);
@@ -86,7 +129,8 @@ namespace SQM
         saved.unsafeMs = k->unsafeMs;
         saved.wallMs = k->wallMs;
         saved.limitMs = k->limitMs;
-        saved.requested = k->requested != 0;
+        saved.requested = (k->requested & KEPT_REQUESTED) != 0;
+        saved.daylight = (k->requested & KEPT_DAYLIGHT) != 0;
         saved.requestAgeMs = k->requestAgeMs;
         sequence.restore(saved);
         phaseNow.store(static_cast<uint8_t>(sequence.phase()));
@@ -117,7 +161,7 @@ namespace SQM
         slot.phase = static_cast<uint8_t>(saved.phase);
         slot.event = static_cast<uint8_t>(saved.event);
         slot.cause = static_cast<uint8_t>(saved.cause);
-        slot.requested = saved.requested ? 1 : 0;
+        slot.requested = static_cast<uint8_t>((saved.requested ? KEPT_REQUESTED : 0) | (saved.daylight ? KEPT_DAYLIGHT : 0));
         slot.unsafeMs = clampMs(saved.unsafeMs);
         slot.wallMs = clampMs(saved.wallMs);
         slot.limitMs = clampMs(saved.limitMs);
@@ -147,6 +191,7 @@ namespace SQM
         CloseSeq::applyRoof(in, snap.status, snap.closePending);
         in.personStops = snap.personStops;
         in.roofStarted = roof.running();
+        in.daylight = daylightView.closes(); // spec 013
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
 
         const CloseSeq::Phase before = sequence.phase();
@@ -154,9 +199,10 @@ namespace SQM
         phaseNow.store(static_cast<uint8_t>(sequence.phase()));
         keep();
         retryAlert(now);
-        if (CloseSeq::closedAfterAttempt(before, decision.event))
-            ++closedCount;
-        CloseSeq::updateConditions(roofConditions, snap, safety.weather(), {sequence.phase(), closedCount});
+        countClosed(before, decision);
+        const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
+        CloseSeq::updateConditions(roofConditions, snap, safety.weather(), view);
+        CloseSeq::updateDaylightConditions(roofConditions, daylightView, snap.status.state, view);
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 
@@ -176,6 +222,17 @@ namespace SQM
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
         }
+    }
+
+    // Each close the sequence saw finish, as a weather or a daylight episode (spec 013).
+    void CloseOnUnsafe::countClosed(CloseSeq::Phase before, const CloseSeq::Decision &decision)
+    {
+        if (!CloseSeq::closedAfterAttempt(before, decision.event))
+            return;
+        if (decision.daylight)
+            ++daylightClosedCount;
+        else
+            ++closedCount;
     }
 
     // A critical alert no channel took is sent again, at most every minute,
@@ -236,7 +293,9 @@ namespace SQM
             return;
         if (!CloseSeq::isCritical(decision.event))
         {
-            if (decision.event == CloseSeq::Event::Started)
+            if (decision.event == CloseSeq::Event::Started && decision.daylight)
+                Logger::info(TAG, "Close sequence started: daylight, %s", Daylight::describe(daylightView).c_str());
+            else if (decision.event == CloseSeq::Event::Started)
                 Logger::info(TAG, "Close sequence started: %s", weather.c_str());
             else
                 Logger::info(TAG, "Close sequence: %s", CloseSeq::eventName(decision.event));

@@ -395,6 +395,41 @@
         "currentSense": {
           "type": "boolean"
         },
+        "daylight": {
+          "type": "object",
+          "properties": {
+            "closes": {
+              "type": "boolean"
+            },
+            "limitDeg": {
+              "type": "number"
+            },
+            "mode": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "sunAltitudeDeg": {
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "closes",
+            "limitDeg",
+            "mode",
+            "state",
+            "sunAltitudeDeg",
+            "text"
+          ],
+          "additionalProperties": false
+        },
         "driving": {
           "type": "boolean"
         },
@@ -615,6 +650,7 @@
         "closePending",
         "closePhase",
         "currentSense",
+        "daylight",
         "driving",
         "fault",
         "fromUnknown",

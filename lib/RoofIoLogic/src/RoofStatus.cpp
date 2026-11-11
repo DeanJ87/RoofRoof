@@ -141,5 +141,16 @@ namespace SQM
             out["maxWatchdogBeatAgeMs"] = s.maxWatchdogBeatAgeMs;
             out["simulation"] = s.simulation != nullptr ? s.simulation : "off";
         }
+
+        void writeDaylight(JsonObject out, const Snapshot &s)
+        {
+            JsonObject daylight = out.createNestedObject("daylight");
+            daylight["mode"] = s.daylight.mode != nullptr ? s.daylight.mode : "alert";
+            daylight["state"] = s.daylight.state != nullptr ? s.daylight.state : "unknown";
+            putReading(daylight, "sunAltitudeDeg", s.daylight.known ? static_cast<float>(s.daylight.altitudeDeg) : NAN, 1);
+            putReading(daylight, "limitDeg", s.daylight.limitDeg, 1);
+            daylight["text"] = s.daylight.text;
+            daylight["closes"] = s.daylight.closes;
+        }
     } // namespace RoofIo
 } // namespace SQM

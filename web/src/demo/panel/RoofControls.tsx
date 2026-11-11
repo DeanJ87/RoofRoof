@@ -91,8 +91,9 @@ const RoofControls: FunctionalComponent = () => {
         current={panel.supplyLow ? 'low' : 'normal'}
         onPick={(value) => inject({ supplyLow: value === 'low' })}
       />
+      <Choice title="Sun up" options={OFF_ON} current={panel.sunUp ? 'on' : 'off'} onPick={(value) => inject({ sunUp: value === 'on' })} />
       <p class="demo-roof-summary" data-inventory="demo-roof-summary">
-        Roof {panel.state}; weather {panel.weather}; mount {panel.park}; close sequence {panel.phase}.
+        Roof {panel.state}; weather {panel.weather}; mount {panel.park}; close sequence {panel.phase}; daylight {panel.daylight}.
       </p>
     </div>
   );

@@ -12,12 +12,14 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <string>
 
 #include "AlertEngine.h"
 #include "AlertRetry.h"
 #include "CloseSequence.h"
 #include "Config.h"
+#include "Daylight.h"
 #include "RoofAlerts.h"
 
 namespace SQM
@@ -37,7 +39,14 @@ namespace SQM
         // restart: a stand-down, or an attempt with the time it has run.
         void begin(const Config &config);
         // Any task (a settings save runs on the web server's task).
-        void updateConfig(const Config &config) { parkTimeoutMs.store(config.park.timeoutSeconds * 1000u); }
+        void updateConfig(const Config &config);
+        // Main loop, before the gates are handed the verdict: works the
+        // daylight state out about once a second (spec 013).
+        void updateDaylight();
+        // Main loop: the daylight state as of the last update.
+        const Daylight::View &daylight() const { return daylightView; }
+        // Any task: the daylight state for the status document.
+        RoofIo::DaylightStatus daylightStatus() const;
         // Main loop, before handle() first runs.
         void setAlertSink(AlertSink sink, DeliveryProbe probe)
         {
@@ -67,6 +76,7 @@ namespace SQM
         CloseSeq::Decision carryOut(const CloseSeq::Decision &decision, SafetyInputs &safety, RoofControl &roof, std::string &refusal);
         void keep();
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather);
+        void countClosed(CloseSeq::Phase before, const CloseSeq::Decision &decision);
         void send(const Alerts::Alert &alert, uint64_t nowMs);
         void retryAlert(uint64_t nowMs);
 
@@ -85,7 +95,17 @@ namespace SQM
         uint64_t stepNowMs = 0;       // the time base of the last step
         uint32_t personStopsSeen = 0; // in the snapshot the decision was taken from
         uint32_t keptSeq = 0;         // the sequence number of the newest record kept
-        uint32_t closedCount = 0;     // closes after an attempt since start (spec 007)
+        uint32_t closedCount = 0;     // closes after a weather attempt since start (spec 007)
+        // Spec 013: the daylight state, worked out on the main loop.
+        static constexpr uint32_t DAYLIGHT_EVERY_MS = 1000;
+        mutable std::mutex daylightLock; // the settings (any task) and the status copy
+        Daylight::Settings daylightSettings;
+        RoofIo::DaylightStatus daylightShown;
+        Daylight::Watch daylightWatch;
+        Daylight::View daylightView;
+        bool daylightStepped = false;
+        uint32_t lastDaylightMs = 0;
+        uint32_t daylightClosedCount = 0; // daylight episodes that ended closed since start
         Alerts::RoofInputs roofConditions;
     };
 } // namespace SQM

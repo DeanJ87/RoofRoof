@@ -1,0 +1,6 @@
+{
+  "name": "DaylightLogic",
+  "version": "0.1.0",
+  "description": "The sun's altitude and the daylight failsafe's state (pure logic, spec 013)",
+  "dependencies": {}
+}
