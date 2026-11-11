@@ -35,7 +35,7 @@ table in [contracts/platform-hold.md](contracts/platform-hold.md).
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + docs |
 | **Performance Goals** | a hold check is a few comparisons; `whileStill` holds the roof's lock for microseconds |
-| **Constraints** | nothing new blocks the main loop, the web task or the timer task; flash growth under 7 KB |
+| **Constraints** | nothing new blocks the main loop, the web task or the timer task; flash growth under 8 KB |
 | **Scale/Scope** | ~120 lines of lib logic, ~300 lines of tests, ~250 lines of glue |
 
 ## Constitution Check

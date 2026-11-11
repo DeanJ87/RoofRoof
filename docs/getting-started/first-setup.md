@@ -9,7 +9,7 @@ RoofRoof ships with no WiFi credentials. On first power-on it starts in **hotspo
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: a725bd233b287c18
+fingerprint: b2e69fca80dfaad8
 -->
 <figure class="diagram" markdown>
 

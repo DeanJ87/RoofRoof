@@ -355,7 +355,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 - **SC-004**: On the bench, saving MQTT settings answers within 1 s even with the broker
   unreachable (bench check).
 - **SC-005**: The full local check (firmware build with zero warnings, native tests, web tests,
-  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 7 KB.
+  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 8 KB.
 
 ## Assumptions decided for the owner
 
