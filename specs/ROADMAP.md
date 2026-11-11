@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-012
+# RoofRoof roadmap: specs 002-013
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -183,13 +183,25 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     - ConformU against the real device.
   - A printable checklist, troubleshooting, and the README finalised.
 
+### 013 Daylight failsafe (base: 011)
+
+- **Scope:**
+  - A daylight setting: off, alert, or alert and close, with a sun-altitude threshold and the
+    site's latitude and longitude; the sun's altitude from SQMeter's solar position code.
+  - Alert and close reuses spec 005's sequence (park, close only on a confirmed park, critical
+    alerts on timeouts); it never overrides a person's stop or a halt and never opens. Opening
+    is refused while it wants the roof closed. Unsafe weather keeps its behaviour.
+  - Its own alert events (spec 007's design), the status document, the Roof card, Settings →
+    Roof, the demo's "Sun up" injector and the docs.
+- **Out of scope:** MQTT and Home Assistant entities for daylight; any open by schedule.
+
 ## Merge order
 
 ```text
 001 ─┬─ 002 ── 003 ─┐
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
-                            ├─ 007 ─┼─ 008 ── 009 ── 011 ── 012
-                            └─ 010 ─┘
+                            ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
+                            └─ 010 ─┘                     └─ 013
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.
