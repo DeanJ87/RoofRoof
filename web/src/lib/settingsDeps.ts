@@ -46,6 +46,8 @@ export { FIX_LABEL, REASONS } from './settingsDepReasons';
 const EVENT_KEYS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
 // The roof's non-critical events need alerts on; the critical two don't (spec 007).
 const ROOF_EVENT_KEYS: AlertEventKey[] = ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost'];
+// The daylight events need alerts on and daylight on (spec 013).
+const DAYLIGHT_EVENT_KEYS: AlertEventKey[] = ['daylight_open', 'daylight_closed', 'daylight_unknown'];
 
 // What every section needs, worked out once.
 interface Context {
@@ -53,6 +55,8 @@ interface Context {
   fact: <K extends keyof DepFacts>(key: K) => DepFacts[K] | null;
   add: (setting: string, id: string, isOn: boolean, chain: Link[], shown?: Shown) => void;
 }
+
+const daylightActive = (config: Config) => read<string>(config, 'daylight.mode', 'alert') !== 'off';
 
 const level = (c: Context, key: AlertEventKey) => read(c.config, `alerts.events.${key}.level`, 0);
 
@@ -79,6 +83,8 @@ const addAlertEvents = (c: Context) => {
   const device: Link = ['D-37', 'no-alpaca-device', devices === null ? null : devices > 0];
   for (const key of EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-37', level(c, key) !== 0, [alertsOn, alpacaOn, device]);
   for (const key of ROOF_EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-04', level(c, key) !== 0, [alertsOn]);
+  const daylightOn: Link = ['D-44', 'daylight-off', daylightActive(c.config)];
+  for (const key of DAYLIGHT_EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-04', level(c, key) !== 0, [alertsOn, daylightOn]);
 };
 
 const addAlertOptions = (c: Context) => {
@@ -101,6 +107,20 @@ const addSafety = (c: Context) => {
     ['D-40', 'mqtt-off', on(c.config, 'mqtt.enabled')],
     ['D-41', 'mqtt-disconnected', c.fact('mqttConnected')],
   ]);
+};
+
+// The daylight check needs the site and the clock; its threshold and the site
+// only matter while it is on (spec 013).
+const addDaylight = (c: Context) => {
+  const active = daylightActive(c.config);
+  const located = on(c.config, 'location.set');
+  c.add('daylight.mode', 'D-42', active, [
+    ['D-42', 'location-unknown', located],
+    ['D-43', 'clock-not-set', c.fact('clockSet')],
+  ]);
+  const daylightOn: Link = ['D-44', 'daylight-off', active];
+  c.add('daylight.sunAltitudeDeg', 'D-44', true, [daylightOn]);
+  for (const setting of ['location.set', 'location.latitude', 'location.longitude']) c.add(setting, 'D-44', located, [daylightOn]);
 };
 
 const addDevice = (c: Context) => {
@@ -130,7 +150,7 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDevice].forEach((section) => section(context));
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDaylight, addDevice].forEach((section) => section(context));
   return out;
 }
 
@@ -183,7 +203,14 @@ export const effectiveEntries = (draft: Config, report: EffectiveReport | null, 
 // (SQMeter spec 020 FR-005). The OTA password is typed in once the setting is
 // on, so it doesn't block it either; nor does a missing Alpaca device, which
 // arrives with a firmware update.
-const NON_BLOCKING = new Set(['wifi-disconnected', 'mqtt-disconnected', 'clock-unset', 'ota-no-password', 'no-alpaca-device']);
+const NON_BLOCKING = new Set([
+  'wifi-disconnected',
+  'mqtt-disconnected',
+  'clock-unset',
+  'clock-not-set',
+  'ota-no-password',
+  'no-alpaca-device',
+]);
 export const blocksSwitchingOn = (reason: string | undefined) => reason !== undefined && !NON_BLOCKING.has(reason);
 
 /** Settings that saving the draft would make inactive (were active or off before). */

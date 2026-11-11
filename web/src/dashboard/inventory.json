@@ -226,6 +226,28 @@
       "test": "roof-checks"
     },
     {
+      "id": "roof-daylight",
+      "label": "roof.daylight.label",
+      "sources": [
+        "status.roof.daylight",
+        "status.roof.daylight.mode",
+        "status.roof.daylight.state",
+        "status.roof.daylight.sunAltitudeDeg",
+        "status.roof.daylight.limitDeg",
+        "status.roof.daylight.text",
+        "status.roof.daylight.closes"
+      ],
+      "requiredBy": "013 FR-019",
+      "visibility": {
+        "rule": "when",
+        "when": "the device reports the daylight check (older firmware doesn't)"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-daylight",
+      "note": "The sun's reading as the device words it, the mode behind '?'. When daylight closes the roof, Open's reason says so."
+    },
+    {
       "id": "roof-readings",
       "label": "roof.supply",
       "sources": [
@@ -692,6 +714,18 @@
     {
       "match": "status.roof.simulation",
       "reason": "Not a dashboard item: bench firmware shows a banner on every page instead (components/BenchBanner.tsx, spec 011); the demo is already labelled by its Demo panel, and a real roof shows nothing"
+    },
+    {
+      "match": "deps.D-42",
+      "reason": "Shown on its Settings row (Roof, Daylight); the Roof card's daylight line says when the check can't run"
+    },
+    {
+      "match": "deps.D-43",
+      "reason": "Shown on its Settings row (Roof, Daylight); the Roof card's daylight line says when the check can't run"
+    },
+    {
+      "match": "deps.D-44",
+      "reason": "Shown on its Settings row (Roof, Daylight); the Roof card's daylight line says when the check can't run"
     }
   ]
 }

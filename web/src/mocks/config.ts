@@ -67,6 +67,8 @@ export const mockConfig: Config = {
     minRunningAmps: 0,
     minSupplyVolts: 11,
   },
+  daylight: { mode: 'alert', sunAltitudeDeg: 0 },
+  location: { set: false, latitude: 0, longitude: 0 },
   alerts: {
     enabled: true,
     events: {
@@ -77,6 +79,9 @@ export const mockConfig: Config = {
       unsafe_closing: { level: 2, sound: '' },
       roof_closed: { level: 2, sound: '' },
       safety_lost: { level: 2, sound: '' },
+      daylight_open: { level: 3, sound: '' },
+      daylight_closed: { level: 2, sound: '' },
+      daylight_unknown: { level: 2, sound: '' },
       client_lost: { level: 3, sound: '' },
       client_back: { level: 1, sound: '' },
       client_disconnected: { level: 0, sound: '' },

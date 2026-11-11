@@ -1,6 +1,6 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useId } from 'preact/hooks';
-import type { RoofConfig, RoofStatus, RoofSwitch } from '../types';
+import type { RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
 import {
   clearFaultReason,
@@ -138,21 +138,6 @@ const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; 
 const SWITCH_KEY = { closed: 'roof.switch.closed', open: 'roof.switch.open', unreadable: 'roof.switch.unreadable' } as const;
 const switchText = (value: RoofSwitch) => (value === 'notFitted' ? '' : t(SWITCH_KEY[value]));
 
-const Checks: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
-  const phase = closePhasePill(roof.closePhase);
-  return (
-    <div data-inventory="roof-checks">
-      <PillRow label={t('roof.weather.label')} pill={weatherPill(roof)} />
-      <PillRow label={t('roof.park.label')} pill={parkPill(roof)} />
-      {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
-    </div>
-  );
-};
-
-const supplyText = (roof: RoofStatus) =>
-  roof.supplyVolts === null ? t('roof.unreadable') : t('roof.volts', { value: formatNumber(roof.supplyVolts, 1) });
-const ampsText = (amps: number | null) => (amps === null ? t('roof.unreadable') : t('roof.amps', { value: formatNumber(amps, 1) }));
-
 // A reading with its limit behind "?" (FR-011).
 const HintRow: FunctionalComponent<{ label: string; hint: string; value: string; valueClass?: string }> = ({
   label,
@@ -167,6 +152,33 @@ const HintRow: FunctionalComponent<{ label: string; hint: string; value: string;
     <strong class={`reading-value ${valueClass}`}>{value}</strong>
   </div>
 );
+
+// The daylight check (spec 013): what the sun is doing as the device words it, the mode behind "?".
+const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight }> = ({ daylight }) => (
+  <div data-inventory="roof-daylight">
+    <HintRow
+      label={t('roof.daylight.label')}
+      hint={t('roof.daylight.hint', { mode: t(`roof.daylight.mode.${daylight.mode}`) })}
+      value={deviceText(daylight.text)}
+    />
+  </div>
+);
+
+const Checks: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
+  const phase = closePhasePill(roof.closePhase);
+  return (
+    <div data-inventory="roof-checks">
+      <PillRow label={t('roof.weather.label')} pill={weatherPill(roof)} />
+      <PillRow label={t('roof.park.label')} pill={parkPill(roof)} />
+      {roof.daylight && <DaylightRow daylight={roof.daylight} />}
+      {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
+    </div>
+  );
+};
+
+const supplyText = (roof: RoofStatus) =>
+  roof.supplyVolts === null ? t('roof.unreadable') : t('roof.volts', { value: formatNumber(roof.supplyVolts, 1) });
+const ampsText = (amps: number | null) => (amps === null ? t('roof.unreadable') : t('roof.amps', { value: formatNumber(amps, 1) }));
 
 const Readings: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => (
   <div data-inventory="roof-readings">

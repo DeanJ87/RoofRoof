@@ -69,8 +69,11 @@ describe('a fresh device (SC-005)', () => {
   it('shows no inactive warnings with the shipped defaults - only neutral notes', () => {
     // A device that has just joined WiFi, with no Alpaca device (as the demo).
     const standard: DepFacts = { ...fixtures.baseFacts, alpacaDevices: 0 };
-    const warnings = evaluate(defaults, standard).filter((e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off');
+    const warnings = evaluate(defaults, standard).filter(
+      (e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off' && e.reason !== 'location-unknown',
+    );
     // "Alerts are off" is shown once, by the Send alerts switch, not as a warning per row.
+    // Daylight is on by default but waits for the site (D-42): the Daylight card says so.
     expect(warnings.map((e) => `${e.setting}: ${e.text}`)).toEqual([]);
   });
 });

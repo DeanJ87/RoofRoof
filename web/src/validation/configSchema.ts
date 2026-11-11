@@ -147,6 +147,27 @@ export const parkConfigSchema = z.object({
     .max(1800, t('validation.configSchema.parkTimeLimitMustBeBetween')),
 });
 
+// Spec 013: the daylight failsafe and the roof's location.
+export const daylightConfigSchema = z.object({
+  mode: z.enum(['off', 'alert', 'close'], t('validation.configSchema.daylightModeMustBeOff')),
+  sunAltitudeDeg: z
+    .number()
+    .min(-18, t('validation.configSchema.sunAltitudeMustBeBetween'))
+    .max(30, t('validation.configSchema.sunAltitudeMustBeBetween')),
+});
+
+export const locationConfigSchema = z.object({
+  set: z.boolean(),
+  latitude: z
+    .number()
+    .min(-90, t('validation.configSchema.latitudeMustBeBetween'))
+    .max(90, t('validation.configSchema.latitudeMustBeBetween')),
+  longitude: z
+    .number()
+    .min(-180, t('validation.configSchema.longitudeMustBeBetween'))
+    .max(180, t('validation.configSchema.longitudeMustBeBetween')),
+});
+
 export const configSchema = z.object({
   deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
   wifi: wifiConfigSchema,
@@ -158,6 +179,8 @@ export const configSchema = z.object({
   safety: safetyConfigSchema.optional(),
   park: parkConfigSchema.optional(),
   roof: roofConfigSchema.optional(),
+  daylight: daylightConfigSchema.optional(),
+  location: locationConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
 });
 
