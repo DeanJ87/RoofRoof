@@ -90,7 +90,7 @@ Alpaca has no password, so nothing an imaging app sends may call off or hold up 
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand
 blocking: true
-fingerprint: abf1798b2d9676a2
+fingerprint: 95823063481c1ab2
 -->
 <figure class="diagram" markdown>
 

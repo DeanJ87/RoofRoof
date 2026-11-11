@@ -113,19 +113,19 @@ Settings (WiFi, thresholds, alert channels) live in NVS, a separate partition fr
 <!-- diagram: DIA-08
 sources: src/WebServerUpdates.cpp#firmwareUploadChunk src/WebServerUpdates.cpp#firmwareUploadEnd src/WebServerUpdates.cpp#WebServer::handleFirmwareUploadDone lib/FirmwareImage/ src/FirmwareMarker.cpp
 blocking: false
-fingerprint: 406b1a5cc7bdb389
+fingerprint: ca36807ef8333982
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 sequenceDiagram
     accTitle: Updating by file upload
-    accDescr: The browser sends a firmware file to the device. The device writes it to the unused app slot while scanning it for the RoofRoof marker. When the upload is complete it checks the product and layout, and only then points the bootloader at the new slot and restarts. A refused or failed upload leaves the old firmware booting, and new firmware that fails to start is rolled back.
+    accDescr: The browser sends a firmware file to the device. The device writes it to the unused app slot while scanning it for the RoofRoof marker. When the upload is complete it checks the product, the layout and the build (a bench-mode image is refused), and only then points the bootloader at the new slot and restarts. A refused or failed upload leaves the old firmware booting, and new firmware that fails to start is rolled back.
     participant B as Browser
     participant D as RoofRoof
     B->>D: Upload firmware.bin
     D->>D: Write it to the unused app slot,<br/>scanning it for the marker
-    D->>D: Upload complete: check product and layout
+    D->>D: Upload complete: check product, layout and build
     opt The marker matches
         D->>D: Point the bootloader at the new slot
         D-->>B: 200 success
@@ -145,8 +145,8 @@ sequenceDiagram
 ??? info "Diagram in words"
 
     1. **Upload**: the browser sends a firmware file to the device, which writes it to the app slot that isn't running and scans it for the RoofRoof marker as it arrives.
-    2. **Check**: once the upload is complete, the device checks that the marker names this product and this partition layout.
+    2. **Check**: once the upload is complete, the device checks that the marker names this product and this partition layout, and that it isn't a [bench-mode](bench-mode.md) image.
     3. **Success**: only then does it point the bootloader at the new slot, answer `200` and restart into the new firmware.
-    4. **Refusal or failure** (wrong product or layout, a failed write): the device answers `400` with the reason or `500`, and the boot slot is unchanged, so the old firmware keeps running.
+    4. **Refusal or failure** (wrong product or layout, a bench-mode image, a failed write): the device answers `400` with the reason or `500`, and the boot slot is unchanged, so the old firmware keeps running.
     5. If the new firmware fails before it has started properly (WiFi and the web server up), the bootloader returns to the previous slot; once it has started, it's kept.
     6. The **web UI image** takes the same path to the LittleFS partition, checked by size, with no boot slot to switch. A failure during its write can leave the web UI unavailable until a later upload succeeds.
