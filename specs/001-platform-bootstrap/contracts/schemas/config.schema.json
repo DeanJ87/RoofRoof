@@ -388,6 +388,9 @@
         "maxCurrentAmps": {
           "type": "number"
         },
+        "minRunningAmps": {
+          "type": "number"
+        },
         "minSupplyVolts": {
           "type": "number"
         },
@@ -424,6 +427,7 @@
         "hallLowCounts",
         "leaveMagnetSeconds",
         "maxCurrentAmps",
+        "minRunningAmps",
         "minSupplyVolts",
         "openDirection",
         "rampDownMs",

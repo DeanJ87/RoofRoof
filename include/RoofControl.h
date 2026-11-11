@@ -18,6 +18,7 @@
 
 #include "Config.h"
 #include "FaultRecord.h"
+#include "MotionGuards.h"
 #include "ParkRule.h"
 #include "RoofController.h"
 #include "RoofGates.h"
@@ -37,6 +38,7 @@ namespace SQM
             std::string reason; // "" or a gate/refusal machine name
             std::string text;   // why it was refused, with the value and the limit
             Roof::State state = Roof::State::Unknown;
+            bool pending = false; // a close accepted, waiting for an upload or MQTT connect to stop
         };
 
         RoofControl() = default;
@@ -71,9 +73,15 @@ namespace SQM
         // Any task: the roof is opening or closing. Flash writes (settings,
         // uploads, NVS) and restarts wait while it is (RoofIo::platformActionRefused).
         bool moving() const;
-        // Whether a flash write is under way elsewhere (an upload): open and
-        // close are refused meanwhile. Set once, before any command can arrive.
-        void setFlashBusy(std::function<bool()> check) { flashBusy = std::move(check); }
+        Roof::State state() const { return static_cast<Roof::State>(stateNow.load()); }
+        // What else is going on (uploads, an MQTT connect, a scheduled
+        // restart), and what a close does about it (cancel the restart, stop
+        // the upload). Set once, before any command can arrive.
+        void setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose)
+        {
+            blockers = std::move(probe);
+            closeHook = std::move(onClose);
+        }
 
         // Any task.
         RoofIo::Snapshot snapshot() const;
@@ -122,6 +130,9 @@ namespace SQM
         void syncFault(RoofIo::FaultCause causeIfNew);
         void refreshSnapshot();
         Outcome outcomeOf(const Roof::CommandResult &result);
+        Outcome runLocked(Roof::Command command, Roof::Origin origin);
+        RoofIo::BlockerDecision decide(Roof::Command command, const RoofIo::Blockers &now);
+        void runPendingClose();
 
         // Outside the lock, in the control task.
         void persistFault();
@@ -137,6 +148,8 @@ namespace SQM
         bool settingsPending = false;
         HardwareSettings pendingSettings;
         RoofIo::GateInputs gates;
+        bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
+        Roof::Origin closeOrigin = Roof::Origin::Person;
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
@@ -164,6 +177,7 @@ namespace SQM
         std::atomic<uint8_t> rainReading{0};
         std::atomic<bool> started{false};
         std::atomic<uint8_t> stateNow{0}; // Roof::State, as of the last snapshot
-        std::function<bool()> flashBusy;
+        std::function<RoofIo::Blockers()> blockers;
+        std::function<void(const RoofIo::BlockerDecision &)> closeHook;
     };
 } // namespace SQM

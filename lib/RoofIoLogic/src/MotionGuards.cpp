@@ -20,9 +20,77 @@ namespace SQM
             return roofMoving(state);
         }
 
-        bool flashBusyRefuses(Roof::Command command, bool flashBusy)
+        bool commandLineOtaAllowed(Roof::State state)
         {
-            return flashBusy && (command == Roof::Command::Open || command == Roof::Command::Close);
+            return state == Roof::State::Closed;
+        }
+
+        uint32_t FlashActivity::begin(uint32_t nowMs)
+        {
+            current = nextToken++;
+            if (nextToken == 0)
+                nextToken = 1;
+            active = true;
+            stopRequested = false;
+            lastProgressMs = nowMs;
+            return current;
+        }
+
+        void FlashActivity::progress(uint32_t token, uint32_t nowMs)
+        {
+            if (token == current && active)
+                lastProgressMs = nowMs;
+        }
+
+        void FlashActivity::end(uint32_t token)
+        {
+            if (token == current)
+                active = false;
+        }
+
+        bool FlashActivity::busy(uint32_t nowMs) const
+        {
+            return active && stepGapMs(nowMs, lastProgressMs) <= FLASH_STALE_MS;
+        }
+
+        void FlashActivity::requestStop()
+        {
+            if (active)
+                stopRequested = true;
+        }
+
+        bool FlashActivity::shouldStop(uint32_t token) const
+        {
+            return token != current || !active || stopRequested;
+        }
+
+        BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
+        {
+            BlockerDecision d;
+            if (command == Roof::Command::Open)
+            {
+                if (b.flashBusy || b.mqttConnecting || b.restartScheduled)
+                    d.action = BlockerAction::Refuse;
+            }
+            else if (command == Roof::Command::Close)
+            {
+                d.cancelRestart = b.restartScheduled;
+                d.stopFlash = b.flashBusy;
+                if (b.flashBusy || b.mqttConnecting)
+                    d.action = BlockerAction::DeferClose;
+            }
+            return d;
+        }
+
+        const char *blockerText(const Blockers &b)
+        {
+            if (b.flashBusy)
+                return "An upload is being written";
+            if (b.mqttConnecting)
+                return "MQTT is connecting";
+            if (b.restartScheduled)
+                return "A restart is scheduled";
+            return "";
         }
 
         bool commandHeaderValid(const char *value)
@@ -35,7 +103,12 @@ namespace SQM
             return stepGapMs(nowMs, beatMs) <= limitMs;
         }
 
-        float runningAmps(float readAmps, const Roof::Status &status, const Roof::Output &applied)
+        bool watchdogStoppedFault(bool outputOn, uint32_t nowMs, uint32_t beatMs)
+        {
+            return outputOn && !watchdogAlive(nowMs, beatMs);
+        }
+
+        float runningAmps(float readAmps, const Roof::Status &status, const Roof::Output &applied, float minRunningAmps)
         {
             if (!std::isfinite(readAmps))
                 return readAmps;
@@ -43,8 +116,8 @@ namespace SQM
             if (!on)
                 return readAmps; // motor off: the reading is the sense output's offset
             const float amps = readAmps * 255.0f / static_cast<float>(applied.duty);
-            const bool settled = status.driving && applied.duty >= CURRENT_CHECK_MIN_DUTY && status.moveElapsedMs >= CURRENT_SETTLE_MS;
-            if (settled && amps < MIN_RUNNING_AMPS)
+            const bool settled = status.driving && status.moveElapsedMs >= CURRENT_SETTLE_MS;
+            if (minRunningAmps > 0.0f && settled && amps < minRunningAmps)
                 return std::numeric_limits<float>::quiet_NaN();
             return amps;
         }

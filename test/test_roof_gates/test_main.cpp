@@ -218,6 +218,7 @@ void test_every_roof_and_park_field_counts_as_a_change(void)
         [](Config &c) { c.roof.currentSenseEnabled = true; },
         [](Config &c) { c.roof.maxCurrentAmps += 1.0f; },
         [](Config &c) { c.roof.currentAmpsPerVolt += 1.0f; },
+        [](Config &c) { c.roof.minRunningAmps += 1.0f; },
         [](Config &c) { c.roof.minSupplyVolts += 0.5f; },
         [](Config &c) { c.park.ninaUrl = "http://192.168.1.20:1888"; },
         [](Config &c) { c.park.switches = ParkConfig::Switches::Two; },
@@ -254,13 +255,98 @@ void test_platform_actions_refused_only_while_moving(void)
     }
 }
 
-void test_flash_busy_refuses_open_and_close_never_stop(void)
+void test_command_line_ota_only_while_closed(void)
 {
-    TEST_ASSERT_TRUE(flashBusyRefuses(Roof::Command::Open, true));
-    TEST_ASSERT_TRUE(flashBusyRefuses(Roof::Command::Close, true));
-    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Stop, true));
-    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Abort, true));
-    TEST_ASSERT_FALSE(flashBusyRefuses(Roof::Command::Open, false));
+    for (Roof::State state : ALL_STATES)
+        TEST_ASSERT_EQUAL_MESSAGE(state == Roof::State::Closed, commandLineOtaAllowed(state), Roof::stateName(state));
+}
+
+void test_flash_activity_busy_while_progressing(void)
+{
+    FlashActivity f;
+    TEST_ASSERT_FALSE(f.busy(0));
+    const uint32_t t = f.begin(1000);
+    TEST_ASSERT_TRUE(t != 0);
+    TEST_ASSERT_TRUE(f.busy(1000 + FLASH_STALE_MS));
+    f.progress(t, 4000);
+    TEST_ASSERT_TRUE(f.busy(4000 + FLASH_STALE_MS));
+    f.end(t);
+    TEST_ASSERT_FALSE(f.busy(4001));
+    TEST_ASSERT_TRUE(f.shouldStop(t));
+}
+
+void test_flash_activity_dropped_upload_stops_counting(void)
+{
+    // An upload whose connection dropped without a disconnect callback: the
+    // flag must not stay stuck (a part-open roof must still close in rain).
+    FlashActivity f;
+    const uint32_t t = f.begin(1000);
+    f.progress(t, 2000);
+    TEST_ASSERT_TRUE(f.busy(2000 + FLASH_STALE_MS));
+    TEST_ASSERT_FALSE(f.busy(2000 + FLASH_STALE_MS + 1));
+    // Across the 32-bit wrap too.
+    FlashActivity w;
+    const uint32_t start = 0xFFFFFFFFu - 100;
+    w.begin(start);
+    TEST_ASSERT_TRUE(w.busy(start + FLASH_STALE_MS));
+    TEST_ASSERT_FALSE(w.busy(start + FLASH_STALE_MS + 1));
+}
+
+void test_flash_activity_close_stops_the_upload(void)
+{
+    FlashActivity f;
+    const uint32_t t = f.begin(0);
+    TEST_ASSERT_FALSE(f.shouldStop(t));
+    f.requestStop();
+    TEST_ASSERT_TRUE(f.shouldStop(t)); // the next chunk aborts
+    f.end(t);
+    TEST_ASSERT_FALSE(f.busy(10)); // and the close can go
+    // A request with nothing writing changes nothing for the next upload.
+    f.requestStop();
+    const uint32_t next = f.begin(20);
+    TEST_ASSERT_FALSE(f.shouldStop(next));
+}
+
+void test_flash_activity_replaced_and_stale_tokens(void)
+{
+    FlashActivity f;
+    const uint32_t first = f.begin(0);
+    const uint32_t second = f.begin(10);
+    TEST_ASSERT_TRUE(first != second);
+    TEST_ASSERT_TRUE(f.shouldStop(first));
+    f.end(first); // an old request's cleanup doesn't end the new one
+    TEST_ASSERT_TRUE(f.busy(20));
+    f.progress(first, 9000); // nor keep it alive
+    TEST_ASSERT_FALSE(f.busy(10 + FLASH_STALE_MS + 1));
+}
+
+void test_blockers_open_refused_close_wins(void)
+{
+    Blockers none;
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Open, none).action);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Close, none).action);
+    Blockers flash;
+    flash.flashBusy = true;
+    Blockers mqtt;
+    mqtt.mqttConnecting = true;
+    Blockers restart;
+    restart.restartScheduled = true;
+    for (const Blockers &b : {flash, mqtt, restart})
+    {
+        TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Open, b).action);
+        TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Stop, b).action);
+        TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
+    }
+    const BlockerDecision f = blockerDecision(Roof::Command::Close, flash);
+    TEST_ASSERT_EQUAL(BlockerAction::DeferClose, f.action);
+    TEST_ASSERT_TRUE(f.stopFlash);
+    TEST_ASSERT_EQUAL(BlockerAction::DeferClose, blockerDecision(Roof::Command::Close, mqtt).action);
+    const BlockerDecision r = blockerDecision(Roof::Command::Close, restart);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, r.action); // the restart is cancelled instead
+    TEST_ASSERT_TRUE(r.cancelRestart);
+    TEST_ASSERT_EQUAL_STRING("An upload is being written", blockerText(flash));
+    TEST_ASSERT_EQUAL_STRING("MQTT is connecting", blockerText(mqtt));
+    TEST_ASSERT_EQUAL_STRING("A restart is scheduled", blockerText(restart));
 }
 
 void test_command_header_must_be_one(void)
@@ -305,30 +391,36 @@ namespace
     }
 } // namespace
 
+void test_watchdog_stopped_latches_instead_of_holding_silently(void)
+{
+    TEST_ASSERT_FALSE(watchdogStoppedFault(true, 1030, 1000));
+    TEST_ASSERT_TRUE(watchdogStoppedFault(true, 1031, 1000));
+    TEST_ASSERT_FALSE(watchdogStoppedFault(false, 5000, 1000)); // driver off: nothing to hold
+}
+
 void test_running_amps_scaled_by_the_duty(void)
 {
     // 2 A read at 40% duty (102/255) is 5 A in the motor.
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(2.0f, drivingFor(5000), forwardAt(102)));
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(5.0f, drivingFor(5000), forwardAt(255)));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(2.0f, drivingFor(5000), forwardAt(102), 0.0f));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 5.0f, runningAmps(5.0f, drivingFor(5000), forwardAt(255), 0.0f));
     // Motor off: no scaling.
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.05f, runningAmps(0.05f, Roof::Status(), Roof::Output()));
-    TEST_ASSERT_TRUE(std::isnan(runningAmps(NAN, drivingFor(5000), forwardAt(255))));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.05f, runningAmps(0.05f, Roof::Status(), Roof::Output(), 1.0f));
+    TEST_ASSERT_TRUE(std::isnan(runningAmps(NAN, drivingFor(5000), forwardAt(255), 0.0f)));
 }
 
-void test_running_amps_near_zero_after_settling_is_unreadable(void)
+void test_running_amps_floor_only_when_set_and_settled(void)
 {
-    // A broken sense wire reads 0 A: unreadable once settled at a real duty.
-    TEST_ASSERT_TRUE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS), forwardAt(CURRENT_CHECK_MIN_DUTY))));
-    // Not yet settled, or too slow to judge: kept as read.
-    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS - 1), forwardAt(255))));
-    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(5000), forwardAt(CURRENT_CHECK_MIN_DUTY - 1))));
-    // At the minimum running current it counts.
-    const float atMin = MIN_RUNNING_AMPS * CURRENT_CHECK_MIN_DUTY / 255.0f;
-    TEST_ASSERT_FALSE(std::isnan(runningAmps(atMin + 0.001f, drivingFor(5000), forwardAt(CURRENT_CHECK_MIN_DUTY))));
-    // Dead time (not driving): never judged.
+    // Off by default: a broken wire's 0 A is reported as read (no claim of detection).
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(5000), forwardAt(255), 0.0f)));
+    // With a measured floor: under it once settled is unreadable, at any duty.
+    TEST_ASSERT_TRUE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS), forwardAt(40), 1.5f)));
+    TEST_ASSERT_TRUE(std::isnan(runningAmps(1.4f, drivingFor(5000), forwardAt(255), 1.5f)));
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(1.5f, drivingFor(5000), forwardAt(255), 1.5f)));
+    // Not yet settled, or in the dead time: not judged.
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, drivingFor(CURRENT_SETTLE_MS - 1), forwardAt(255), 1.5f)));
     Roof::Status waiting = drivingFor(5000);
     waiting.driving = false;
-    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, waiting, forwardAt(255))));
+    TEST_ASSERT_FALSE(std::isnan(runningAmps(0.0f, waiting, forwardAt(255), 1.5f)));
 }
 
 int main(int, char **)
@@ -349,10 +441,16 @@ int main(int, char **)
     RUN_TEST(test_every_roof_and_park_field_counts_as_a_change);
     RUN_TEST(test_other_sections_are_not_motion_settings);
     RUN_TEST(test_platform_actions_refused_only_while_moving);
-    RUN_TEST(test_flash_busy_refuses_open_and_close_never_stop);
+    RUN_TEST(test_command_line_ota_only_while_closed);
+    RUN_TEST(test_flash_activity_busy_while_progressing);
+    RUN_TEST(test_flash_activity_dropped_upload_stops_counting);
+    RUN_TEST(test_flash_activity_close_stops_the_upload);
+    RUN_TEST(test_flash_activity_replaced_and_stale_tokens);
+    RUN_TEST(test_blockers_open_refused_close_wins);
     RUN_TEST(test_command_header_must_be_one);
     RUN_TEST(test_watchdog_alive_boundary_and_wrap);
     RUN_TEST(test_running_amps_scaled_by_the_duty);
-    RUN_TEST(test_running_amps_near_zero_after_settling_is_unreadable);
+    RUN_TEST(test_watchdog_stopped_latches_instead_of_holding_silently);
+    RUN_TEST(test_running_amps_floor_only_when_set_and_settled);
     return UNITY_END();
 }

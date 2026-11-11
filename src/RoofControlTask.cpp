@@ -160,7 +160,8 @@ namespace SQM
         supplyVolts = in.readings.supplyVolts;
         // Read under the output applied since the last step: scaled back by its duty.
         Roof::Readings readings = in.readings;
-        readings.motorAmps = RoofIo::runningAmps(in.readings.motorAmps, controller.status(), controller.output());
+        readings.motorAmps =
+            RoofIo::runningAmps(in.readings.motorAmps, controller.status(), controller.output(), settings.roof.minRunningAmps);
         motorAmps = readings.motorAmps;
         if (MotorDriver::tripped())
         {
@@ -170,16 +171,11 @@ namespace SQM
                 RoofIo::FaultCause::Watchdog, static_cast<float>(in.gapMs), static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
             MotorDriver::clearTrip();
         }
-        // The watchdog itself stopped while the driver is on: nothing would
-        // catch a stalled step any more.
-        const uint32_t beatAge = RoofIo::stepGapMs(in.readings.nowMs, MotorDriver::watchdogBeatMs());
-        if (MotorDriver::enabled() && beatAge > RoofIo::WATCHDOG_LIMIT_MS)
-            latchExternal(RoofIo::externalRecord(
-                RoofIo::FaultCause::WatchdogStopped, static_cast<float>(beatAge), static_cast<float>(RoofIo::WATCHDOG_LIMIT_MS)));
         takePendingSettings();
         gates.switch1 = static_cast<RoofIo::Contact>(park1Reading.load());
         gates.switch2 = static_cast<RoofIo::Contact>(park2Reading.load());
         checkGates();
+        runPendingClose();
         controller.tick(readings);
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);

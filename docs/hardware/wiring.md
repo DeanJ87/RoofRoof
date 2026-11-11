@@ -79,6 +79,11 @@ R_IS and L_IS are the BTS7960's current-sense outputs. If fitted, each goes thro
 
 Under the 20 kHz PWM the sense output is chopped: it follows the motor current only while its side of the bridge is on. Fit a capacitor of about **1 µF across each 20 kΩ lower resistor** (a time constant of about 7 ms) so the ADC reads a steady average; the firmware scales that average back by the duty. Without the capacitor the eight samples per step still average over a few PWM periods, more noisily.
 
+**A broken sense wire.** With the plain divider, a broken R_IS/L_IS wire reads 0 V, which the ADC can't tell from a small running current (it reads nothing below roughly 0.1-0.15 V). Two options:
+
+- set `roof.minRunningAmps` from a bench measurement ([Calibration](calibration.md#current-sense)); or
+- fit a **47 kΩ pull-up from the divider's input (the 10 kΩ top) to 3.3 V**. A broken wire then reads about 0.86 V at the pin, roughly 11 A at the default scale: an over-current fault as soon as the motor runs. With the wire intact the pull-up adds a small offset (about 70 µA into the IBT-2's sense resistor); calibrate with it fitted.
+
 ### Hall sensor (SS49E)
 
 The SS49E is a linear Hall sensor. It is powered at **5 V**, and its output swings over most of its 5 V supply (roughly 2.5 V at rest with no magnet, towards the supply rails as a magnet approaches). That is above what the ESP32 input tolerates, so **its output must go through a divider before GPIO39**. Do not connect it directly.

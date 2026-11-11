@@ -7,9 +7,11 @@
 
 #include "Config.h"
 #include "FirmwareMarker.h"
+#include "FlashGuard.h"
 #include "HeapTrace.h"
 #include "Logger.h"
 #include "MQTTClient.h"
+#include "MotionGuards.h"
 #include "MotorDriver.h"
 #include "RoofControl.h"
 #include "SafetyInputs.h"
@@ -134,8 +136,12 @@ void startWifi()
     HeapTrace::mark("wifi");
 }
 
+// Command-line OTA writes the flash: the roof refuses to open meanwhile (spec 003).
+static uint32_t arduinoOtaToken = 0;
+
 void onArduinoOtaStart()
 {
+    arduinoOtaToken = FlashGuard::begin();
     const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
     if (!firmware)
         LittleFS.end(); // writing the filesystem: unmount it first
@@ -151,11 +157,13 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
         Logger::info("OTA", "Progress: %u%%", percent);
         lastPercent = percent;
     }
+    FlashGuard::progress(arduinoOtaToken);
 }
 
 void onArduinoOtaError(ota_error_t error)
 {
     static const char *const REASONS[] = {"Auth failed", "Begin failed", "Connect failed", "Receive failed", "End failed"};
+    FlashGuard::end(arduinoOtaToken);
     const unsigned index = static_cast<unsigned>(error);
     Logger::error("OTA", "Error[%u]: %s", index, index < 5 ? REASONS[index] : "unknown");
 }
@@ -174,7 +182,12 @@ void startArduinoOta()
     ArduinoOTA.setPassword(config.ota.password.c_str());
     ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
     ArduinoOTA.onStart(onArduinoOtaStart);
-    ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete"); });
+    ArduinoOTA.onEnd(
+        []()
+        {
+            FlashGuard::end(arduinoOtaToken);
+            Logger::info("OTA", "Update complete");
+        });
     ArduinoOTA.onProgress(onArduinoOtaProgress);
     ArduinoOTA.onError(onArduinoOtaError);
     ArduinoOTA.begin();
@@ -289,7 +302,10 @@ void loop()
         restartingFromHotspot = WebServer::scheduleRestart(1000);
     }
 
-    if (arduinoOTAEnabled && !roofMoving)
+    // Command-line OTA blocks this loop for the whole upload and can't be
+    // stopped part-way, so it is only serviced while the roof is closed: a
+    // close can never be waiting behind it (spec 003 FR-030).
+    if (arduinoOTAEnabled && RoofIo::commandLineOtaAllowed(roofControl.state()))
         ArduinoOTA.handle();
     if (timeManager)
         timeManager->handle();

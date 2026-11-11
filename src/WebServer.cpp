@@ -328,6 +328,17 @@ namespace SQM
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
+    bool WebServer::restartScheduled()
+    {
+        return restartTimer != nullptr && esp_timer_is_active(restartTimer);
+    }
+
+    void WebServer::cancelRestart()
+    {
+        if (restartScheduled() && esp_timer_stop(restartTimer) == ESP_OK)
+            Logger::warn(TAG, "Scheduled restart cancelled: the roof is closing; restart it later");
+    }
+
     bool WebServer::scheduleRestart(uint32_t delayMs)
     {
         if (!restartTimer)

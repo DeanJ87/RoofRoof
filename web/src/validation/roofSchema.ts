@@ -23,6 +23,7 @@ export const roofConfigSchema = z
     currentSenseEnabled: z.boolean(),
     maxCurrentAmps: z.number().min(0.5).max(40),
     currentAmpsPerVolt: z.number().min(0.5).max(100),
+    minRunningAmps: z.number().min(0).max(20),
     minSupplyVolts: z.number().min(6).max(15),
   })
   .superRefine((data, ctx) => {

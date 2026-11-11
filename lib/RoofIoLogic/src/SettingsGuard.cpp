@@ -21,7 +21,7 @@ namespace SQM
                 return a.openDirection != b.openDirection || a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts ||
                        a.hallLowCounts != b.hallLowCounts || a.currentSenseEnabled != b.currentSenseEnabled ||
                        a.maxCurrentAmps != b.maxCurrentAmps || a.currentAmpsPerVolt != b.currentAmpsPerVolt ||
-                       a.minSupplyVolts != b.minSupplyVolts;
+                       a.minRunningAmps != b.minRunningAmps || a.minSupplyVolts != b.minSupplyVolts;
             }
 
             bool parkDiffers(const ParkConfig &a, const ParkConfig &b)

@@ -23,11 +23,20 @@ namespace SQM
         // holdOff(), before the first apply().
         bool begin();
 
+        // What apply() did with EN.
+        enum class ApplyResult : uint8_t
+        {
+            Applied,      // EN is as asked
+            HeldTripped,  // asked on, held low: the watchdog tripped
+            HeldUnarmed,  // asked on, held low: not armed (or no PWM)
+            HeldWatchdog, // asked on, held low: the watchdog's heartbeat is stale
+        };
+
         // Sets the pins to `outputs`. Switching on: the other direction's PWM
         // to 0, then this direction's, then EN; switching off: EN first. EN is
         // never set high while the watchdog's trip is set. Callers serialise
         // their calls (the roof's lock).
-        void apply(const Driver::Outputs &outputs);
+        ApplyResult apply(const Driver::Outputs &outputs);
 
         // The watchdog (any task, including the esp_timer task): EN low at once,
         // and held low by apply() until clearTrip().

@@ -47,7 +47,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": false, "clients": {} },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21 }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21 }
 }
 ```
 
@@ -76,7 +76,8 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `currentSense`, `motorAmps`, `maxCurrentAmps` | current sense on, the motor current (`null` while off or unreadable) and its limit |
 | `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted` |
 | `rainContact` | `notFitted`, `dry`, `raining` or `unreadable` |
-| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `parkInterlock`, `storedUnreadable`), `measured`, `limit` and `text` |
+| `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
+| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`), `measured`, `limit` and `text` |
 | `watchdogTrips`, `maxStepGapMs` | since the restart: how often the watchdog switched the driver off, and the longest gap between control steps |
 
 `stackFree.roof` is the roof control task's unused stack in bytes.
@@ -277,12 +278,18 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`flashBusy`) while a firmware or web UI upload is being written, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`busy`) while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
 
 
 ### `POST /api/roof/close`
 
 Close. Refused (`mountNotParked`) unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed, as the [safety inputs](../user-guide/safety-inputs.md) decide. During the close the park is checked every 20 ms; if it is lost the motor stops with a `parkInterlock` fault. The weather never blocks a close.
+
+A close always wins: it cancels a scheduled restart and stops an upload in progress (that upload fails with `409` "Upload stopped: the roof is closing"). If an upload or an MQTT connect is still finishing, the close is accepted as waiting and starts as soon as it is done, within a few seconds (`roof.closePending` in the status); stop or open cancels it:
+
+```json
+{ "success": true, "state": "open", "pending": true, "message": "Close starts once this has stopped: An upload is being written" }
+```
 
 ### `POST /api/roof/stop`
 

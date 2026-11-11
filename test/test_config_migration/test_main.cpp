@@ -148,6 +148,7 @@ void test_stored_roof_without_current_scale_loads_with_its_default()
     TEST_ASSERT_EQUAL_UINT32(2000, loaded.roof.travelMm);
     TEST_ASSERT_EQUAL_FLOAT(RoofConfig().currentAmpsPerVolt, loaded.roof.currentAmpsPerVolt);
     TEST_ASSERT_EQUAL_FLOAT(8.5f, loaded.roof.currentAmpsPerVolt);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, loaded.roof.minRunningAmps); // the broken-wire check stays off
     TEST_ASSERT_FALSE(loaded.roof.currentSenseEnabled);
 }
 

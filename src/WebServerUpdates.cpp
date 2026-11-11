@@ -4,6 +4,8 @@
 #include "WebServer.h"
 #include <LittleFS.h>
 #include <Update.h>
+
+#include "FlashGuard.h"
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
 
@@ -269,22 +271,103 @@ namespace SQM
         }
     } // namespace
 
-    // Nothing is written while the roof moves: flash writes stall its control
-    // task and watchdog (spec 003 FR-024). Decided on the first chunk.
-    bool WebServer::uploadRefused(size_t index)
+    namespace
     {
+        // Each upload request's own state (in the request's _tempObject, freed
+        // with it): its flash-activity token and why it stopped writing.
+        struct UploadState
+        {
+            uint32_t token;
+            uint8_t refusal; // UploadRefusal
+        };
+
+        enum UploadRefusal : uint8_t
+        {
+            UploadGoing = 0,
+            UploadRoofMoving = 1,
+            UploadRoofClosing = 2,
+        };
+
+        UploadState *uploadStateOf(AsyncWebServerRequest *request)
+        {
+            if (request->_tempObject == nullptr)
+                request->_tempObject = calloc(1, sizeof(UploadState));
+            return static_cast<UploadState *>(request->_tempObject);
+        }
+
+        void stopFirmwareWrite()
+        {
+            if (Update.isRunning())
+                Update.abort();
+        }
+
+        void stopFsWrite()
+        {
+            fsUpload.fail("Upload stopped: the roof is closing");
+        }
+    } // namespace
+
+    // Whether this chunk may be written (spec 003 FR-024, FR-029). Nothing is
+    // written while the roof moves (flash writes stall its control task and
+    // watchdog), and a close always wins: an upload in progress stops at its
+    // next chunk. A dropped connection ends the flash activity at once; one
+    // that is never reported stops counting after RoofIo::FLASH_STALE_MS.
+    bool WebServer::uploadMayWrite(AsyncWebServerRequest *request, size_t index, bool firmware)
+    {
+        UploadState *state = uploadStateOf(request);
+        if (state == nullptr)
+            return false;
         if (index == 0)
-            uploadRefusedMoving = roofMoving();
-        return uploadRefusedMoving;
+        {
+            if (roofMoving())
+            {
+                state->refusal = UploadRoofMoving;
+                return false;
+            }
+            state->token = FlashGuard::begin();
+            uploadActive = true;
+            const uint32_t token = state->token;
+            request->onDisconnect(
+                [request, token, firmware]()
+                {
+                    FlashGuard::end(token);
+                    uploadActive = false;
+                    if (firmware)
+                        abandonUnfinishedUpload(request);
+                });
+        }
+        if (state->refusal != UploadGoing)
+            return false;
+        if (roofMoving() || FlashGuard::shouldStop(state->token))
+        {
+            state->refusal = roofMoving() ? UploadRoofMoving : UploadRoofClosing;
+            Logger::warn("OTA", "Upload stopped part-way: the roof is %s", roofMoving() ? "moving" : "closing");
+            if (firmware)
+                stopFirmwareWrite();
+            else
+                stopFsWrite();
+            FlashGuard::end(state->token);
+            uploadActive = false;
+            return false;
+        }
+        FlashGuard::progress(state->token);
+        return true;
     }
 
-    bool WebServer::answerRefusedUpload(AsyncWebServerRequest *request)
+    // The upload's answer when it was stopped for the roof; false when it wasn't.
+    bool WebServer::answerStoppedUpload(AsyncWebServerRequest *request)
     {
-        if (!uploadRefusedMoving)
+        auto *state = static_cast<UploadState *>(request->_tempObject);
+        if (state == nullptr)
             return false;
-        uploadRefusedMoving = false;
-        if (requireAuth(request))
-            sendClosing(request, 409, createErrorJson("The roof is moving: stop it first, then try again").c_str());
+        FlashGuard::end(state->token);
+        if (state->refusal == UploadGoing)
+            return false;
+        if (!requireAuth(request))
+            return true;
+        const char *text = state->refusal == UploadRoofMoving ? "The roof is moving: stop it first, then try again"
+                                                              : "Upload stopped: the roof is closing; upload again once it has closed";
+        sendClosing(request, 409, createErrorJson(text).c_str());
         return true;
     }
 
@@ -302,17 +385,22 @@ namespace SQM
             [this](AsyncWebServerRequest *request)
             {
                 uploadActive = false;
-                if (answerRefusedUpload(request))
+                if (answerStoppedUpload(request))
+                {
+                    // Stopped part-way after the filesystem was erased: it must restart (held while the roof moves).
+                    if (fsUpload.touched)
+                        WebServer::scheduleRestart(1000);
+                    fsUpload = FsUpload{};
                     return;
+                }
                 handleFsUploadDone(request);
             },
             [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
-                if (uploadRefused(index))
-                    return;
-                if (!index)
-                    uploadActive = true;
+                // Unauthorised uploads never count as a flash write (they can't hold up an open).
                 if (!requestAuthorised(request))
+                    return;
+                if (!uploadMayWrite(request, index, false))
                     return;
                 fsUploadChunk(filename, request->contentLength(), UploadChunk{index, data, len, final});
             });
@@ -326,26 +414,17 @@ namespace SQM
             [this](AsyncWebServerRequest *request)
             {
                 uploadActive = false;
-                if (answerRefusedUpload(request))
+                if (answerStoppedUpload(request))
                     return;
                 handleFirmwareUploadDone(request);
             },
             [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
             {
-                if (uploadRefused(index))
-                    return;
                 if (!index)
-                {
-                    uploadActive = true;
                     firmwareUploadRequest = request;
-                    request->onDisconnect(
-                        [request]()
-                        {
-                            uploadActive = false;
-                            abandonUnfinishedUpload(request);
-                        });
-                }
                 if (!requestAuthorised(request))
+                    return;
+                if (!uploadMayWrite(request, index, true))
                     return;
                 firmwareUploadChunk(filename, index, data, len, final);
             });

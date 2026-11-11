@@ -13,6 +13,7 @@
 #include "RoofSettings.h"
 #include "RoofText.h"
 #include "SettingsGuard.h"
+#include "StepWatchdog.h"
 
 // Commands, settings and the hand-over between tasks. The control task and
 // the watchdog are in RoofControlTask.cpp.
@@ -99,34 +100,80 @@ namespace SQM
         return outcome;
     }
 
+    RoofIo::BlockerDecision RoofControl::decide(Roof::Command command, const RoofIo::Blockers &now)
+    {
+        const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
+        // A close always wins: the restart is cancelled and the upload stopped.
+        if ((decision.cancelRestart || decision.stopFlash) && closeHook)
+            closeHook(decision);
+        return decision;
+    }
+
+    RoofControl::Outcome RoofControl::runLocked(Roof::Command command, Roof::Origin origin)
+    {
+        const RoofIo::GateInputs now = currentGates();
+        const RoofIo::GateRefusal gate = RoofIo::gateCommand(command, now);
+        if (gate != RoofIo::GateRefusal::None)
+            return Outcome{false, RoofIo::gateRefusalName(gate), RoofIo::describeGate(gate, now), controller.status().state};
+        Outcome outcome = outcomeOf(controller.command(command, origin));
+        applyOutput();
+        syncFault(RoofIo::FaultCause::Logic);
+        refreshSnapshot();
+        return outcome;
+    }
+
     RoofControl::Outcome RoofControl::command(Roof::Command command, Roof::Origin origin)
     {
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
+        const RoofIo::BlockerDecision decision = decide(command, now);
         Outcome outcome;
         {
             RoofLocked held(lock);
-            const RoofIo::GateInputs now = currentGates();
-            const RoofIo::GateRefusal gate = RoofIo::gateCommand(command, now);
-            if (RoofIo::flashBusyRefuses(command, flashBusy && flashBusy()))
+            if (command != Roof::Command::Close)
+                closePending = false; // stop, abort or open replace a waiting close
+            const RoofIo::GateInputs gates = currentGates();
+            if (decision.action == RoofIo::BlockerAction::Refuse)
             {
-                outcome = Outcome{false, "flashBusy", RoofIo::FLASH_BUSY_TEXT, controller.status().state};
+                outcome =
+                    Outcome{false, "busy", std::string(RoofIo::blockerText(now)) + ": try again in a moment", controller.status().state};
             }
-            else if (gate != RoofIo::GateRefusal::None)
+            else if (
+                decision.action == RoofIo::BlockerAction::DeferClose && RoofIo::gateCommand(command, gates) == RoofIo::GateRefusal::None)
             {
-                outcome = Outcome{false, RoofIo::gateRefusalName(gate), RoofIo::describeGate(gate, now), controller.status().state};
+                closePending = true;
+                closeOrigin = origin;
+                outcome = Outcome{
+                    true,
+                    "",
+                    std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now),
+                    controller.status().state,
+                    true};
+                refreshSnapshot();
             }
             else
             {
-                outcome = outcomeOf(controller.command(command, origin));
-                applyOutput();
-                syncFault(RoofIo::FaultCause::Logic);
-                refreshSnapshot();
+                outcome = runLocked(command, origin);
             }
         }
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
+        else if (outcome.pending)
+            Logger::info(TAG, "%s", outcome.text.c_str());
         return outcome;
+    }
+
+    void RoofControl::runPendingClose()
+    {
+        if (!closePending)
+            return;
+        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
+        if (decide(Roof::Command::Close, now).action != RoofIo::BlockerAction::Proceed)
+            return;
+        closePending = false;
+        const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin);
+        notice = outcome.accepted ? "Waiting close started" : "Waiting close refused: " + outcome.text;
     }
 
     RoofControl::Outcome RoofControl::clearFault(Roof::Origin origin)
@@ -170,7 +217,20 @@ namespace SQM
     void RoofControl::applyOutput()
     {
         const Roof::Output out = controller.output();
-        MotorDriver::apply(Driver::outputsFor(out.command, out.duty));
+        if (MotorDriver::apply(Driver::outputsFor(out.command, out.duty)) != MotorDriver::ApplyResult::HeldWatchdog)
+            return;
+        // The logic wants the driver on but the watchdog has stopped: latch it
+        // as a fault (watchdogStopped) rather than hold EN low silently.
+        const uint32_t age = RoofIo::stepGapMs(millis(), MotorDriver::watchdogBeatMs());
+        const RoofIo::FaultRecord record = RoofIo::externalRecord(
+            RoofIo::FaultCause::WatchdogStopped, static_cast<float>(age), static_cast<float>(RoofIo::WATCHDOG_BEAT_LIMIT_MS));
+        const bool wasClear = controller.status().fault.kind == Roof::FaultKind::None;
+        controller.raiseFault(record.fault);
+        if (wasClear)
+            fault = record;
+        syncFault(RoofIo::FaultCause::Logic);
+        const Roof::Output off = controller.output();
+        MotorDriver::apply(Driver::outputsFor(off.command, off.duty));
     }
 
     void RoofControl::syncFault(RoofIo::FaultCause causeIfNew)
@@ -204,9 +264,11 @@ namespace SQM
         s.switch2 = gates.switch2;
         s.rainFitted = settings.rainFitted;
         s.rain = static_cast<RoofIo::Contact>(rainReading.load());
+        s.closePending = closePending;
         s.watchdogTrips = watchdogTrips;
         s.maxStepGapMs = maxStepGapMs;
-        const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind;
+        const bool changed =
+            s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind || s.closePending != snap.closePending;
         snap = s;
         stateNow.store(static_cast<uint8_t>(s.status.state));
         if (changed)

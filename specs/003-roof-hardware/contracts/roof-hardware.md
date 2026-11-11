@@ -13,7 +13,8 @@ and Home Assistant, 009 dashboard, 011 demo). Types are in [data-model.md](../da
 | `POST /api/roof/clear-fault` | 200 `{"success":true,"state":...}` | - (REST is a person) |
 | `POST/PUT /api/config`, `POST /api/backup/apply`, `POST /api/update`, `POST /api/update/fs`, `POST /api/wifi/connect`, `POST /api/restart` | as before | 409 `{"error":"The roof is moving: stop it first, then try again"}` while opening or closing |
 
-`reason` is `weatherNotSafe`, `mountNotParked`, `flashBusy` (an upload is being written), `notStarted` or a `Roof::refusalName` (`faultLatched`,
+A close while an upload or MQTT connect is finishing answers 202 `{"success":true,"state":...,"pending":true,"message":...}` and starts as soon as it is done (`roof.closePending`); it also cancels a scheduled restart and stops an upload (which answers 409 "Upload stopped: the roof is closing").
+`reason` is `weatherNotSafe`, `mountNotParked`, `busy` (open only: an upload, MQTT connect or scheduled restart), `notStarted` or a `Roof::refusalName` (`faultLatched`,
 `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`,
 `settingsInvalid`). `error` states the measured value and the limit or the failed input.
 REST commands use `Roof::Origin::Person`.
@@ -51,14 +52,16 @@ Safety::RainContact rainContact() const;
 // Any task: opening or closing (flash writes and restarts wait). The flash-busy check refuses open
 // and close while an upload is written.
 bool moving() const;
-void setFlashBusy(std::function<bool()> check);
+Roof::State state() const;
+// What else is going on, and what a close does about it (cancel the restart, stop the upload).
+void setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose);
 
 // Any task: a copy of everything the status section shows; revision() bumps on a state or fault change.
 RoofIo::Snapshot snapshot() const;
 uint32_t revision() const;
 ```
 
-`Outcome` is `{accepted, reason (machine name), text, state}`.
+`Outcome` is `{accepted, reason (machine name), text, state, pending}`.
 
 ## Pure API: `lib/RoofIoLogic`
 
@@ -70,7 +73,7 @@ uint32_t revision() const;
 | `FaultRecord.h` | `FaultCause`, `FaultRecord`, `encodeFault`, `decodeFault`, `causeName` |
 | `RoofGates.h` | `SAFETY_HANDOVER_STALE_MS`, `currentGates`, `GateInputs`, `GateRefusal`, `switchesClosed`, `parkHolds`, `gateCommand`, `interlockLost`, `interlockBits`, `openMustStop`, `gateRefusalName` |
 | `SettingsGuard.h` | `motionSettingsChanged`, `settingsSaveRefused` |
-| `MotionGuards.h` | `roofMoving`, `platformActionRefused`, `flashBusyRefuses`, `COMMAND_HEADER`, `commandHeaderValid`, `watchdogAlive`, `runningAmps` |
+| `MotionGuards.h` | `roofMoving`, `platformActionRefused`, `commandLineOtaAllowed`, `FlashActivity`, `Blockers`, `blockerDecision`, `blockerText`, `COMMAND_HEADER`, `commandHeaderValid`, `watchdogAlive`, `watchdogStoppedFault`, `runningAmps` |
 | `RoofText.h` | `describeFault`, `describeRefusal`, `describeGate` |
 | `RoofStatus.h` | `Snapshot`, `writeStatus` |
 

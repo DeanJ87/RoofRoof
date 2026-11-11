@@ -69,6 +69,7 @@ function writeSamples(dir: string) {
         motorAmps: 4.26,
         parkSwitches: { fitted: 2, switch1: 'open', switch2: 'unreadable' },
         rainContact: 'dry',
+        closePending: true,
       },
     ),
   );

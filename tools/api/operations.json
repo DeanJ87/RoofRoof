@@ -199,7 +199,7 @@
     "POST /api/roof/open": {
       "tag": "Roof",
       "summary": "Open the roof",
-      "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `flashBusy` while an upload is being written. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Needs the header `X-RoofRoof: 1`.",
+      "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Needs the header `X-RoofRoof: 1`.",
       "responses": {
         "200": {
           "inline": {
@@ -223,11 +223,19 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",
                 "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
               }
             },
             "required": [
@@ -284,7 +292,7 @@
     "POST /api/roof/close": {
       "tag": "Roof",
       "summary": "Close the roof",
-      "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`.",
+      "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).",
       "responses": {
         "200": {
           "inline": {
@@ -308,11 +316,19 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",
                 "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
               }
             },
             "required": [
@@ -358,7 +374,51 @@
             "additionalProperties": false
           }
         },
-        "403": "error"
+        "403": "error",
+        "202": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
       },
       "parameters": [
         {
@@ -393,11 +453,19 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",
                 "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
               }
             },
             "required": [
@@ -442,11 +510,19 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
               },
               "error": {
                 "type": "string",
                 "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
               }
             },
             "required": [
@@ -551,7 +627,7 @@
     "POST /api/update": {
       "tag": "Updates",
       "summary": "Upload firmware",
-      "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 while the roof is opening or closing (flash writes stall its control task).",
+      "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").",
       "upload": {
         "field": "firmware",
         "about": "roofroof-l2-firmware-<version>.bin"
@@ -566,7 +642,7 @@
     "POST /api/update/fs": {
       "tag": "Updates",
       "summary": "Upload the web UI",
-      "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 while the roof is opening or closing (flash writes stall its control task).",
+      "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").",
       "upload": {
         "field": "filesystem",
         "about": "roofroof-l2-littlefs-<version>.bin"

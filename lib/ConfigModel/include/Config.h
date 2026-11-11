@@ -195,6 +195,10 @@ namespace SQM
         // Motor amps per volt at the IBT-2's IS output (before the divider): the
         // BTS7960's sense ratio into the board's sense resistor (spec 003).
         float currentAmpsPerVolt = 8.5f;
+        // With current sense on: a running current below this, after a second
+        // of driving, counts as a broken sense wire. 0 = off (spec 003; set it
+        // from a bench measurement, the ADC can't resolve the lowest currents).
+        float minRunningAmps = 0.0f;
         float minSupplyVolts = 11.0f;
 
         // The ranges, shared with the web UI (test/fixtures/config-ranges.json) and
@@ -220,6 +224,7 @@ namespace SQM
         static constexpr float MAX_CURRENT_AMPS = 40.0f;
         static constexpr float MIN_CURRENT_AMPS_PER_VOLT = 0.5f;
         static constexpr float MAX_CURRENT_AMPS_PER_VOLT = 100.0f;
+        static constexpr float MAX_MIN_RUNNING_AMPS = 20.0f;
         static constexpr float MIN_SUPPLY_VOLTS = 6.0f;
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
     };

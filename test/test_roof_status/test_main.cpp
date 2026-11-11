@@ -165,6 +165,8 @@ void test_status_closed_roof(void)
     TEST_ASSERT_EQUAL_STRING("notFitted", roof["parkSwitches"]["switch2"]);
     TEST_ASSERT_EQUAL_STRING("dry", roof["rainContact"]);
     TEST_ASSERT_TRUE(roof["fault"].isNull());
+    TEST_ASSERT_FALSE(roof["closePending"].as<bool>());
+    TEST_ASSERT_TRUE(roof.containsKey("closePending"));
     TEST_ASSERT_EQUAL(0, roof["watchdogTrips"].as<int>());
     TEST_ASSERT_TRUE(roof.containsKey("maxStepGapMs"));
 }

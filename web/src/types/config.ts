@@ -79,6 +79,7 @@ export interface RoofConfig {
   currentSenseEnabled: boolean;
   maxCurrentAmps: number;
   currentAmpsPerVolt: number; // A/V at the IBT-2's current-sense output
+  minRunningAmps: number; // broken-sense-wire floor, 0 = off
   minSupplyVolts: number;
 }
 

@@ -21,7 +21,8 @@ The pure types live in `namespace SQM::RoofIo` (`lib/RoofIoLogic`); the firmware
 | `SAFETY_HANDOVER_STALE_MS` | 5000 | verdict and park result older than this: not safe, not parked |
 | `CURRENT_SAMPLES` | 8 | current samples per step, spread over several PWM periods |
 | `WATCHDOG_BEAT_LIMIT_MS` | 30 | EN may only go high while the watchdog's last check is this fresh |
-| `CURRENT_CHECK_MIN_DUTY`, `CURRENT_SETTLE_MS`, `MIN_RUNNING_AMPS` | 64 (25%), 1000, 0.2 A | under this current while settled at this duty: a broken sense wire |
+| `CURRENT_SETTLE_MS` | 1000 | driving this long before `roof.minRunningAmps` is checked |
+| `FLASH_STALE_MS` | 5000 | a flash writer with no progress for this long no longer blocks |
 | `COMMAND_HEADER` | `X-RoofRoof` | must be `1` on every roof command |
 | `PWM_FREQUENCY_HZ`, `PWM_RESOLUTION_BITS` | 20000, 8 | firmware only (`MotorDriver`) |
 
@@ -49,7 +50,7 @@ Unreadable → `Unreadable`.
 
 `FaultCause`: `Logic` (`logic`: spec 002 decided it), `Watchdog` (`watchdog`), `ParkInterlock`
 (`parkInterlock`), `StoredUnreadable` (`storedUnreadable`), `WatchdogStopped` (`watchdogStopped`:
-the watchdog's heartbeat age in ms / 100 ms). The three non-logic causes are latched
+the watchdog's heartbeat age in ms / 30 ms). The three non-logic causes are latched
 as `Roof::FaultKind::External`.
 
 | Cause | measured | limit |
@@ -91,7 +92,9 @@ changed)`: changed AND state `Opening` or `Closing`.
 |---|---|---|---|---|
 | `roof.currentAmpsPerVolt` | number A/V | 8.5 | 0.5-100 | motor amps per volt at the IBT-2's IS output |
 
-A config without it loads with 8.5. Message: `Roof: current scale must be between 0.5 and 100 A/V`.
+| `roof.minRunningAmps` | number A | 0 (off) | 0-20 | with current sense on, below this after 1 s of driving: a broken sense wire |
+
+A config without them loads with 8.5 and 0. Message: `Roof: current scale must be between 0.5 and 100 A/V`.
 
 ## Status section: `Snapshot` → `/api/status` `roof`
 
@@ -113,6 +116,7 @@ A config without it loads with 8.5. Message: `Roof: current scale must be betwee
 | `maxCurrentAmps` | number | setting |
 | `parkSwitches` | `{fitted, switch1, switch2}` | fitted 0-2; each `closed`, `open`, `unreadable`, or `notFitted` |
 | `rainContact` | string | `notFitted`, `dry`, `raining`, `unreadable` |
+| `closePending` | boolean | a close accepted, waiting for an upload or MQTT connect to finish |
 | `fault` | `{kind, cause, measured, limit, text}` or null | null when clear |
 | `watchdogTrips` | integer | since start |
 | `maxStepGapMs` | integer | the longest gap between steps since start |

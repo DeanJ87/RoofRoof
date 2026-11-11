@@ -386,6 +386,9 @@
     "roof": {
       "type": "object",
       "properties": {
+        "closePending": {
+          "type": "boolean"
+        },
         "currentSense": {
           "type": "boolean"
         },
@@ -582,6 +585,7 @@
         }
       },
       "required": [
+        "closePending",
         "currentSense",
         "driving",
         "fault",
