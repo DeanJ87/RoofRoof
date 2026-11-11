@@ -4,9 +4,12 @@
 #include "ParkRule.h"
 #include "SafetyInput.h"
 #include "SafetyPoller.h"
+#include "SqmeterSource.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <cstdint>
+#include <optional>
 #include <string>
-#include <vector>
 
 namespace SQM
 {
@@ -21,17 +24,24 @@ namespace SQM
     {
     public:
         SafetyInputs(SafetyPoller &poller, MQTTClient *mqtt);
+        ~SafetyInputs();
+        SafetyInputs(const SafetyInputs &) = delete;
+        SafetyInputs &operator=(const SafetyInputs &) = delete;
 
-        // Main loop only, as are all the members below.
-        void begin(const Config &config, uint32_t nowMs);
-        void updateConfig(const Config &config, uint32_t nowMs);
-        void handle(uint32_t nowMs);
+        // Main loop.
+        void begin(const Config &config);
+        // Any task (a settings save runs on the web server's task): the new
+        // settings are handed over and applied by the next handle().
+        void updateConfig(const Config &config);
+        // Main loop, every pass.
+        void handle();
 
-        // The GPIO inputs (spec 003). Until they are supplied, a fitted rain
-        // contact or park switch reads "unreadable": unsafe and not parked.
-        void setRainContact(bool raining);
-        void setParkSwitches(bool switch1Closed, bool switch2Closed);
+        // The GPIO inputs (spec 003), main loop. Until they are supplied, a
+        // fitted rain contact or park switch reads Unreadable: unsafe and not parked.
+        void setRainContact(Safety::RainContact reading) { rainReading = reading; }
+        void setParkSwitches(Safety::SwitchReading first, Safety::SwitchReading second);
 
+        // Main loop.
         const Safety::WeatherVerdict &weather() const { return verdict; }
         const Safety::ParkResult &park() const { return parkResult; }
         // Ask N.I.N.A. to park (spec 005). The answer is in the poller's
@@ -41,28 +51,42 @@ namespace SQM
     private:
         static constexpr uint32_t EVALUATE_EVERY_MS = 1000;
 
-        void applyConfig(const Config &config, uint32_t nowMs);
+        // The settings this class uses, as handed over between tasks.
+        struct Settings
+        {
+            SafetyConfig safety;
+            ParkConfig park;
+        };
+
+        static Settings settingsOf(const Config &config);
+        void apply(const Settings &next, uint64_t nowMs);
+        void watchTopics();
         void onMqttMessage(const std::string &topic, const std::string &payload);
-        void evaluate(uint32_t nowMs);
+        void evaluate(uint64_t nowMs);
         void logChanges();
 
         SafetyPoller &poller;
         MQTTClient *mqtt;
-        SafetyConfig safety;
-        ParkConfig parkConfig;
-        std::string mqttBase; // SQMeter's base topic, e.g. "sqmeter"
+        SemaphoreHandle_t pendingLock = nullptr;
+        std::optional<Settings> pending; // guarded by pendingLock
+        Settings settings;
+        bool started = false;
+
+        Safety::MqttTopics topics;
         Safety::SourceRecord mqttRecord;
+        uint32_t seenConnections = 0; // MQTT (re)connects already handled
         Safety::RainContact rainReading = Safety::RainContact::Unreadable;
         Safety::SwitchReading switch1 = Safety::SwitchReading::Unreadable;
         Safety::SwitchReading switch2 = Safety::SwitchReading::Unreadable;
-        uint32_t startedAtMs = 0;
-        uint32_t lastEvaluateMs = 0;
+        uint64_t startedAtMs = 0;
+        uint64_t lastEvaluateMs = 0;
         bool evaluated = false;
 
         Safety::WeatherVerdict verdict;
         Safety::ParkResult parkResult;
-        // What was last logged: the verdict, reasons and source states.
-        std::string loggedWeatherKey;
-        std::string loggedParkKey;
+        // What was last logged.
+        bool logged = false;
+        Safety::WeatherVerdict loggedVerdict;
+        Safety::ParkResult loggedPark;
     };
 } // namespace SQM

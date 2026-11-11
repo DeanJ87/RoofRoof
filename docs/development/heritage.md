@@ -69,7 +69,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 ### `test/`
 
-The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_park_logic`, `test_config_safety`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
+The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_park_logic`, `test_config_safety`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
 
 ## Web UI
 

@@ -31,7 +31,7 @@ namespace SQM
             uint8_t fittedSwitches = 0; // 0, 1 (GPIO32) or 2 (GPIO32 and GPIO33)
             SwitchReading switch1 = SwitchReading::Unreadable;
             SwitchReading switch2 = SwitchReading::Unreadable;
-            uint32_t nowMs = 0;
+            uint64_t nowMs = 0;
             uint32_t ninaMaxAgeMs = NINA_FRESH_MS;
         };
 

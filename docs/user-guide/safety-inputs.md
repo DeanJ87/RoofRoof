@@ -19,8 +19,8 @@ The verdict comes from [SQMeter](https://github.com/DeanJ87/SQMeter), over HTTP,
 
 | Source | How it's read | Counts as unsafe when |
 |---|---|---|
-| SQMeter over HTTP | `GET /api/safety` every 5 s (3 s timeout) | it says `safe: false`, or any `reasonFlags` bit is set; or no good reply for the stale time (`safety.staleSeconds`, default 30 s) |
-| SQMeter over MQTT | SQMeter's `availability`, `safe` and `safety` topics on this device's broker | it says unsafe; it is `offline` (SQMeter's last will); it has never said `online`; or nothing good for 150 s (SQMeter repeats its safe topic every minute) |
+| SQMeter over HTTP | `GET /api/safety` every 5 s (3 s timeouts, at most 6 s a request) | it says `safe: false`, or any `reasonFlags` bit is set; or no good reply for the stale time (`safety.staleSeconds`, default 30 s) |
+| SQMeter over MQTT | SQMeter's `availability`, `safe` and `safety` topics on this device's broker | it says unsafe; it is `offline` (SQMeter's last will); it has never said `online`; or nothing good for 150 s (SQMeter repeats its safe topic every minute). After each (re)connect the broker's stored copy only counts if it says unsafe, so an old "safe" left on the broker is never trusted |
 | Rain contact (GPIO4) | read by the roof hardware | it is wet, or it can't be read |
 
 - **Any** source that says unsafe makes the verdict unsafe.

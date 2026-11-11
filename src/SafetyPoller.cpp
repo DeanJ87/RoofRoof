@@ -3,25 +3,26 @@
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
-#include "SqmeterReply.h"
+#include "SqmeterSource.h"
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <esp_timer.h>
 
 namespace SQM
 {
     namespace
     {
         constexpr const char *TAG = "Safety";
-        constexpr int HTTP_OK = 200;
-
-        // The result of one GET: the status (> 0) and body, or why there is none.
-        struct HttpReply
-        {
-            int status = 0;
-            std::string body;
-            std::string error;
-        };
+        // Connect and wait-for-reply timeouts (spec 004 FR-010, FR-018).
+        constexpr uint16_t HTTP_TIMEOUT_MS = 3000;
+        // Every request ends within this, body included, so a slow SQMeter
+        // delays the next N.I.N.A. poll by at most this much: 2 s + 6 s stays
+        // inside N.I.N.A.'s 10 s freshness. (A DNS lookup isn't bounded: use
+        // IP addresses or mDNS names that resolve quickly.)
+        constexpr uint32_t HTTP_TOTAL_MS = 6000;
+        // N.I.N.A.'s full mount info is about 4 KB; SQMeter's safety document under 1 KB.
+        constexpr size_t MAX_BODY_BYTES = 8192;
 
         // HTTPClient splits "http://[fd00::10]:8080/x" at the first ':', so IPv6
         // hosts go in by parts (as AlertDispatcher does).
@@ -33,19 +34,50 @@ namespace SQM
             return http.begin(client, url.c_str());
         }
 
-        HttpReply httpGet(const std::string &url, uint16_t timeoutMs)
+        // The body, straight into `out`: until its Content-Length (`size`, -1 if
+        // not given) or the server closes; false past the cap or the deadline.
+        bool readBody(WiFiClient &stream, int size, std::string &out, uint64_t deadlineMs)
         {
-            HttpReply reply;
+            if (size > static_cast<int>(MAX_BODY_BYTES))
+                return false;
+            out.reserve(size > 0 ? static_cast<size_t>(size) : 1024);
+            char chunk[256];
+            while (SafetyPoller::nowMs() < deadlineMs)
+            {
+                if (size >= 0 && out.size() >= static_cast<size_t>(size))
+                    return true;
+                const int available = stream.available();
+                if (available <= 0)
+                {
+                    if (!stream.connected())
+                        return true;
+                    delay(5);
+                    continue;
+                }
+                const int got = stream.read(reinterpret_cast<uint8_t *>(chunk), sizeof(chunk));
+                if (got > 0)
+                    out.append(chunk, static_cast<size_t>(got));
+                if (out.size() > MAX_BODY_BYTES)
+                    return false;
+            }
+            return false;
+        }
+
+        Safety::HttpOutcome httpGet(const std::string &url)
+        {
+            Safety::HttpOutcome reply;
             if (WiFi.status() != WL_CONNECTED)
             {
                 reply.error = "WiFi not connected";
                 return reply;
             }
+            const uint64_t deadline = SafetyPoller::nowMs() + HTTP_TOTAL_MS;
             DualStackClient client;
             HTTPClient http;
-            http.setTimeout(timeoutMs);
-            http.setConnectTimeout(timeoutMs);
+            http.setTimeout(HTTP_TIMEOUT_MS);
+            http.setConnectTimeout(HTTP_TIMEOUT_MS);
             http.setReuse(false);
+            http.useHTTP10(true); // no chunked replies: the body is read as it comes
             if (!beginRequest(http, client, url))
             {
                 reply.error = "invalid URL";
@@ -54,11 +86,10 @@ namespace SQM
             const int code = http.GET();
             if (code <= 0)
                 reply.error = HTTPClient::errorToString(code).c_str();
+            else if (!readBody(*http.getStreamPtr(), http.getSize(), reply.body, deadline))
+                reply.error = "reply too slow or too long";
             else
-            {
                 reply.status = code;
-                reply.body = http.getString().c_str();
-            }
             http.end();
             return reply;
         }
@@ -71,22 +102,32 @@ namespace SQM
 
         // A N.I.N.A. request. Only GET without credentials is sent so far (v2);
         // v3's POST and Basic auth are refused here rather than sent wrongly.
-        HttpReply ninaRequest(const std::string &base, const Nina::Request &request, uint16_t timeoutMs)
+        Safety::HttpOutcome ninaRequest(const std::string &base, const Nina::Request &request)
         {
             if (request.method != Nina::Method::Get || !request.username.empty())
             {
-                HttpReply refused;
+                Safety::HttpOutcome refused;
                 refused.error = "request type not supported yet";
                 return refused;
             }
-            return httpGet(joinUrl(base, request.path), timeoutMs);
+            return httpGet(joinUrl(base, request.path));
         }
 
-        bool due(uint32_t nextMs, uint32_t nowMs)
+        bool sameSqmeter(const SafetyPoller::Targets &a, const SafetyPoller::Targets &b)
         {
-            return static_cast<int32_t>(nowMs - nextMs) >= 0;
+            return a.sqmeterEnabled == b.sqmeterEnabled && a.sqmeterUrl == b.sqmeterUrl;
+        }
+
+        bool sameNina(const SafetyPoller::Targets &a, const SafetyPoller::Targets &b)
+        {
+            return a.ninaUrl == b.ninaUrl && a.ninaApi == b.ninaApi;
         }
     } // namespace
+
+    uint64_t SafetyPoller::nowMs()
+    {
+        return static_cast<uint64_t>(esp_timer_get_time() / 1000);
+    }
 
     SafetyPoller::SafetyPoller()
         : mutex(xSemaphoreCreateMutex())
@@ -119,17 +160,24 @@ namespace SQM
         if (mutex == nullptr)
             return;
         xSemaphoreTake(mutex, portMAX_DELAY);
+        const uint64_t now = nowMs();
+        if (!configured || !sameSqmeter(targets, newTargets))
+        {
+            state.sqmeter = Safety::SourceRecord{};
+            state.sqmeter.enabled = newTargets.sqmeterEnabled;
+            ++state.sqmeterGeneration;
+        }
+        if (!configured || !sameNina(targets, newTargets))
+        {
+            const auto status = newTargets.ninaUrl.empty() ? Nina::ReadingStatus::NotConfigured : Nina::ReadingStatus::Waiting;
+            state.nina = Nina::failedReading(status, "", now);
+            state.lastPark = Nina::ParkReply{};
+            state.lastParkAtMs = 0;
+            ++state.ninaGeneration;
+            parkRequested = false;
+        }
         targets = newTargets;
-        const uint32_t generation = state.generation + 1;
-        state = Snapshot{};
-        state.generation = generation;
-        state.sqmeter.enabled = newTargets.sqmeterEnabled;
-        const uint32_t now = millis();
-        state.nina =
-            Nina::failedReading(newTargets.ninaUrl.empty() ? Nina::ReadingStatus::NotConfigured : Nina::ReadingStatus::Waiting, "", now);
-        nextSqmeterMs = now;
-        nextNinaMs = now;
-        parkRequested = false;
+        configured = true;
         xSemaphoreGive(mutex);
     }
 
@@ -149,11 +197,12 @@ namespace SQM
         return copy;
     }
 
-    SafetyPoller::Targets SafetyPoller::currentTargets(uint32_t &generation) const
+    SafetyPoller::Targets SafetyPoller::currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
         Targets copy = targets;
-        generation = state.generation;
+        sqmeterGeneration = state.sqmeterGeneration;
+        ninaGeneration = state.ninaGeneration;
         xSemaphoreGive(mutex);
         return copy;
     }
@@ -166,30 +215,39 @@ namespace SQM
     void SafetyPoller::run()
     {
         std::unique_ptr<Nina::Api> api;
-        uint32_t apiGeneration = 0;
+        uint32_t seenSqmeter = 0;
+        uint32_t seenNina = 0;
         UBaseType_t lowestStackFree = UINT32_MAX;
         for (;;)
         {
-            uint32_t generation = 0;
-            const Targets now = currentTargets(generation);
-            if (!api || apiGeneration != generation)
+            uint32_t sqmeterGeneration = 0;
+            uint32_t ninaGeneration = 0;
+            const Targets now = currentTargets(sqmeterGeneration, ninaGeneration);
+            if (!api || seenNina != ninaGeneration)
             {
                 api = Nina::makeApi(now.ninaApi);
-                apiGeneration = generation;
+                seenNina = ninaGeneration;
+                nextNinaMs = 0; // new settings: poll at once
+            }
+            if (seenSqmeter != sqmeterGeneration)
+            {
+                seenSqmeter = sqmeterGeneration;
+                nextSqmeterMs = 0;
             }
             // A request is answered once, never kept for later: a park sent
             // long after it was asked for could stop a night's imaging.
             if (parkRequested.exchange(false))
-                sendPark(*api, now, generation);
-            if (!now.ninaUrl.empty() && due(nextNinaMs, millis()))
+                sendPark(*api, now, ninaGeneration);
+            // N.I.N.A. first: its reading must stay fresh for the park check.
+            if (!now.ninaUrl.empty() && nowMs() >= nextNinaMs)
             {
-                nextNinaMs = millis() + NINA_POLL_MS;
-                pollNina(*api, now, generation);
+                nextNinaMs = nowMs() + NINA_POLL_MS;
+                pollNina(*api, now, ninaGeneration);
             }
-            if (now.sqmeterEnabled && due(nextSqmeterMs, millis()))
+            if (now.sqmeterEnabled && nowMs() >= nextSqmeterMs)
             {
-                nextSqmeterMs = millis() + SQMETER_POLL_MS;
-                pollSqmeter(now, generation);
+                nextSqmeterMs = nowMs() + SQMETER_POLL_MS;
+                pollSqmeter(now, sqmeterGeneration);
             }
             // Constitution VI: stack headroom is measured on the bench.
             const UBaseType_t stackFree = uxTaskGetStackHighWaterMark(nullptr);
@@ -202,38 +260,24 @@ namespace SQM
         }
     }
 
-    // Results are dropped if the settings changed while the request ran.
+    // Replies are dropped if that part's settings changed while the request ran.
     void SafetyPoller::pollSqmeter(const Targets &now, uint32_t generation)
     {
-        const HttpReply reply = httpGet(now.sqmeterUrl, HTTP_TIMEOUT_MS);
-        Safety::SqmeterReply parsed;
-        Safety::ReplyError error = Safety::ReplyError::None;
-        if (reply.status == HTTP_OK)
-            error = Safety::parseSafetyJson(reply.body, parsed);
-        const uint32_t at = millis();
+        const Safety::HttpOutcome reply = httpGet(now.sqmeterUrl);
         xSemaphoreTake(mutex, portMAX_DELAY);
-        if (generation == state.generation)
-        {
-            if (reply.status <= 0)
-                state.sqmeter.recordFailure(Safety::Failure::Unreachable, reply.error, at);
-            else if (reply.status != HTTP_OK)
-                state.sqmeter.recordFailure(Safety::Failure::Unreadable, "HTTP " + std::to_string(reply.status), at);
-            else if (error != Safety::ReplyError::None)
-                state.sqmeter.recordFailure(Safety::Failure::Unreadable, Safety::replyErrorText(error), at);
-            else
-                state.sqmeter.recordGood(parsed, at);
-        }
+        if (generation == state.sqmeterGeneration)
+            Safety::recordHttpReply(state.sqmeter, reply, nowMs());
         xSemaphoreGive(mutex);
     }
 
     void SafetyPoller::pollNina(const Nina::Api &api, const Targets &now, uint32_t generation)
     {
-        const HttpReply reply = ninaRequest(now.ninaUrl, api.mountInfoRequest(), HTTP_TIMEOUT_MS);
-        const uint32_t at = millis();
+        const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, api.mountInfoRequest());
+        const uint64_t at = nowMs();
         const Nina::MountReading reading = reply.status > 0 ? api.parseMountInfo(reply.status, reply.body, at)
                                                             : Nina::failedReading(Nina::ReadingStatus::Unreachable, reply.error, at);
         xSemaphoreTake(mutex, portMAX_DELAY);
-        if (generation == state.generation)
+        if (generation == state.ninaGeneration)
             state.nina = reading;
         xSemaphoreGive(mutex);
     }
@@ -244,16 +288,16 @@ namespace SQM
         if (!now.ninaUrl.empty())
         {
             // v2's park is a GET (research R2).
-            const HttpReply reply = ninaRequest(now.ninaUrl, api.parkRequest(), HTTP_TIMEOUT_MS);
+            const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, api.parkRequest());
             parsed =
                 reply.status > 0 ? api.parsePark(reply.status, reply.body) : Nina::ParkReply{Nina::ParkOutcome::Unreadable, reply.error};
         }
         Logger::info(TAG, "N.I.N.A. park request: %s", parsed.detail.c_str());
         xSemaphoreTake(mutex, portMAX_DELAY);
-        if (generation == state.generation)
+        if (generation == state.ninaGeneration)
         {
             state.lastPark = parsed;
-            state.lastParkAtMs = millis();
+            state.lastParkAtMs = nowMs();
         }
         xSemaphoreGive(mutex);
     }

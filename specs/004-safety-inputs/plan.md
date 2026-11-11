@@ -31,7 +31,7 @@ the consumed and exposed contracts in [contracts/](contracts/).
 | **Testing** | `pio test -e native` (new: `test_safety_input_logic`, `test_park_logic`, `test_nina`; extended: `test_config_model`, `test_config_ranges`, `test_settings_deps`), Vitest (config schema, settings deps) |
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + web UI (settings schema only) + docs |
-| **Performance Goals** | SQMeter HTTP polled every 5 s; N.I.N.A. every 2 s; verdict evaluated every 1 s; each HTTP request bounded by a 3 s timeout |
+| **Performance Goals** | SQMeter HTTP polled every 5 s; N.I.N.A. every 2 s; verdict evaluated every 1 s; each HTTP request: 3 s connect and reply timeouts, done within 6 s, body ≤ 8 KB |
 | **Constraints** | No blocking network calls on the loop or the async TCP task (VI); poller stack 6 KB with > 2 KB headroom measured on the bench; image < 75% of the OTA slot |
 | **Scale/Scope** | ~900 lines of lib logic and tests, ~400 lines of firmware glue |
 

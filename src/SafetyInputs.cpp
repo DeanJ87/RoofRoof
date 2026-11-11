@@ -2,8 +2,7 @@
 
 #include "Logger.h"
 #include "MQTTClient.h"
-#include "SqmeterReply.h"
-#include <Arduino.h>
+#include <vector>
 
 namespace SQM
 {
@@ -11,149 +10,159 @@ namespace SQM
     {
         constexpr const char *TAG = "Safety";
 
-        SafetyPoller::Targets targetsFor(const Config &config)
+        SafetyPoller::Targets targetsFor(const SafetyConfig &safety, const ParkConfig &park)
         {
             SafetyPoller::Targets targets;
-            targets.sqmeterEnabled = config.safety.httpEnabled;
-            targets.sqmeterUrl = config.safety.httpUrl;
-            targets.ninaUrl = config.park.ninaUrl;
+            targets.sqmeterEnabled = safety.httpEnabled;
+            targets.sqmeterUrl = safety.httpUrl;
+            targets.ninaUrl = park.ninaUrl;
             targets.ninaApi = Nina::ApiVersion::V2;
             return targets;
         }
 
-        // What changes the log line: not the ages, which tick every second.
-        std::string weatherKey(const Safety::WeatherVerdict &v)
+        bool sameMqttSource(const SafetyConfig &a, const SafetyConfig &b)
         {
-            return std::to_string(static_cast<int>(v.verdict)) + "/" + std::to_string(v.reasons) + "/" +
-                   std::to_string(static_cast<int>(v.http.state)) + "/" + std::to_string(static_cast<int>(v.mqtt.state)) + "/" +
-                   std::to_string(v.http.sqmeterFlags) + "/" + std::to_string(v.mqtt.sqmeterFlags);
+            return a.mqttEnabled == b.mqttEnabled && a.mqttTopic == b.mqttTopic;
         }
 
-        std::string parkKey(const Safety::ParkResult &r)
+        bool sameSources(const SafetyConfig &a, const SafetyConfig &b)
         {
-            return std::to_string(r.parked) + "/" + std::to_string(r.reasons);
+            return sameMqttSource(a, b) && a.httpEnabled == b.httpEnabled && a.httpUrl == b.httpUrl && a.staleSeconds == b.staleSeconds &&
+                   a.rainContact == b.rainContact;
         }
 
-        Safety::SwitchReading switchReading(bool closed)
+        // A change worth a log line: not the ages, which tick every second.
+        bool sameWeather(const Safety::WeatherVerdict &a, const Safety::WeatherVerdict &b)
         {
-            return closed ? Safety::SwitchReading::Closed : Safety::SwitchReading::Open;
+            return a.verdict == b.verdict && a.reasons == b.reasons && a.http.state == b.http.state && a.mqtt.state == b.mqtt.state &&
+                   a.http.sqmeterFlags == b.http.sqmeterFlags && a.mqtt.sqmeterFlags == b.mqtt.sqmeterFlags;
         }
     } // namespace
 
     SafetyInputs::SafetyInputs(SafetyPoller &poller, MQTTClient *mqtt)
         : poller(poller),
-          mqtt(mqtt)
+          mqtt(mqtt),
+          pendingLock(xSemaphoreCreateMutex())
     {
     }
 
-    void SafetyInputs::begin(const Config &config, uint32_t nowMs)
+    SafetyInputs::~SafetyInputs()
     {
-        applyConfig(config, nowMs);
-        poller.begin(targetsFor(config));
+        if (pendingLock != nullptr)
+            vSemaphoreDelete(pendingLock);
     }
 
-    void SafetyInputs::updateConfig(const Config &config, uint32_t nowMs)
+    SafetyInputs::Settings SafetyInputs::settingsOf(const Config &config)
     {
-        applyConfig(config, nowMs);
-        poller.configure(targetsFor(config));
+        return Settings{config.safety, config.park};
     }
 
-    // New settings start every source again: a source just switched on gets
-    // its own start-up window (unknown, never safe) before it counts as lost.
-    void SafetyInputs::applyConfig(const Config &config, uint32_t nowMs)
+    void SafetyInputs::begin(const Config &config)
     {
-        safety = config.safety;
-        parkConfig = config.park;
-        startedAtMs = nowMs;
-        mqttRecord = Safety::SourceRecord{};
-        // dep: D-40 - the topics are read from RoofRoof's own broker, so with
-        // MQTT off they never arrive and the source goes stale (unsafe).
-        mqttRecord.enabled = safety.mqttEnabled;
-        mqttBase = safety.mqttTopic;
+        apply(settingsOf(config), SafetyPoller::nowMs());
+        poller.begin(targetsFor(settings.safety, settings.park));
+    }
+
+    void SafetyInputs::updateConfig(const Config &config)
+    {
+        if (pendingLock == nullptr)
+            return;
+        xSemaphoreTake(pendingLock, portMAX_DELAY);
+        pending = settingsOf(config);
+        xSemaphoreGive(pendingLock);
+    }
+
+    // On the main loop. Only a change to the weather sources starts the
+    // weather window again (a source just switched on is unknown, never safe,
+    // until it answers or its stale time passes); an unrelated save keeps
+    // every reading. The poller does the same for its own parts.
+    void SafetyInputs::apply(const Settings &next, uint64_t nowMs)
+    {
+        const bool first = !started;
+        const bool sourcesChanged = first || !sameSources(settings.safety, next.safety);
+        const bool mqttChanged = first || !sameMqttSource(settings.safety, next.safety);
+        settings = next;
+        started = true;
+        if (sourcesChanged)
+            startedAtMs = nowMs;
+        if (mqttChanged)
+        {
+            mqttRecord = Safety::SourceRecord{};
+            // dep: D-40 - the topics are read from RoofRoof's own broker, so with
+            // MQTT off they never arrive and the source goes stale (unsafe).
+            mqttRecord.enabled = settings.safety.mqttEnabled;
+            topics = Safety::MqttTopics::under(settings.safety.mqttTopic);
+            watchTopics();
+        }
+        if (!first)
+            poller.configure(targetsFor(settings.safety, settings.park));
         evaluated = false;
+    }
+
+    void SafetyInputs::watchTopics()
+    {
         if (mqtt == nullptr)
             return;
-        std::vector<std::string> topics;
-        if (safety.mqttEnabled)
-            topics = {mqttBase + "/availability", mqttBase + "/safe", mqttBase + "/safety"};
-        mqtt->watch(topics, [this](const std::string &topic, const std::string &payload) { onMqttMessage(topic, payload); });
+        std::vector<std::string> wanted;
+        if (settings.safety.mqttEnabled)
+            wanted = {topics.availability, topics.safe, topics.safety};
+        mqtt->watch(wanted, [this](const std::string &topic, const std::string &payload) { onMqttMessage(topic, payload); });
+        mqttRecord.resubscribed();
+        seenConnections = mqtt->connectionCount();
     }
 
     void SafetyInputs::onMqttMessage(const std::string &topic, const std::string &payload)
     {
-        const uint32_t now = millis();
-        if (topic == mqttBase + "/availability")
+        Safety::applyMqttMessage(mqttRecord, topics, topic, payload, SafetyPoller::nowMs());
+    }
+
+    void SafetyInputs::setParkSwitches(Safety::SwitchReading first, Safety::SwitchReading second)
+    {
+        switch1 = first;
+        switch2 = second;
+    }
+
+    void SafetyInputs::handle()
+    {
+        const uint64_t now = SafetyPoller::nowMs();
+        std::optional<Settings> next;
+        if (pendingLock != nullptr && xSemaphoreTake(pendingLock, 0) == pdTRUE)
         {
-            const auto online = Safety::parseAvailability(payload);
-            if (!online)
-                mqttRecord.recordFailure(Safety::Failure::Unreadable, "availability payload not online/offline", now);
-            else
-                mqttRecord.availability = *online ? Safety::Availability::Online : Safety::Availability::Offline;
-            return;
+            next.swap(pending);
+            xSemaphoreGive(pendingLock);
         }
-        if (topic == mqttBase + "/safe")
+        if (next)
+            apply(*next, now);
+        // A reconnect re-subscribes, and the broker replays its retained copies next.
+        if (mqtt != nullptr && mqtt->connectionCount() != seenConnections)
         {
-            const auto safe = Safety::parseSafePayload(payload);
-            if (!safe)
-            {
-                mqttRecord.recordFailure(Safety::Failure::Unreadable, "safe payload not 1/0", now);
-                return;
-            }
-            // SQMeter publishes <base>/safety just before <base>/safe, so its
-            // flags are the latest; a bare "1" never clears them.
-            Safety::SqmeterReply reply = mqttRecord.last;
-            reply.safe = *safe;
-            reply.evaluatedAgeMs = 0;
-            mqttRecord.recordGood(reply, now);
-            return;
+            seenConnections = mqtt->connectionCount();
+            mqttRecord.resubscribed();
         }
-        if (topic != mqttBase + "/safety")
+        if (evaluated && now - lastEvaluateMs < EVALUATE_EVERY_MS)
             return;
-        Safety::SqmeterReply reply;
-        const Safety::ReplyError error = Safety::parseSafetyJson(payload, reply);
-        if (error == Safety::ReplyError::None)
-            mqttRecord.recordGood(reply, now);
-        else
-            mqttRecord.recordFailure(Safety::Failure::Unreadable, std::string("safety ") + Safety::replyErrorText(error), now);
-    }
-
-    void SafetyInputs::setRainContact(bool raining)
-    {
-        rainReading = raining ? Safety::RainContact::Raining : Safety::RainContact::Dry;
-    }
-
-    void SafetyInputs::setParkSwitches(bool switch1Closed, bool switch2Closed)
-    {
-        switch1 = switchReading(switch1Closed);
-        switch2 = switchReading(switch2Closed);
-    }
-
-    void SafetyInputs::handle(uint32_t nowMs)
-    {
-        if (evaluated && nowMs - lastEvaluateMs < EVALUATE_EVERY_MS)
-            return;
-        lastEvaluateMs = nowMs;
+        lastEvaluateMs = now;
         evaluated = true;
-        evaluate(nowMs);
+        evaluate(now);
         logChanges();
     }
 
-    void SafetyInputs::evaluate(uint32_t nowMs)
+    void SafetyInputs::evaluate(uint64_t nowMs)
     {
         const SafetyPoller::Snapshot snap = poller.snapshot();
 
         Safety::WeatherInputs in;
         in.http = snap.sqmeter;
         in.mqtt = mqttRecord;
-        in.rainContact = safety.rainContact ? rainReading : Safety::RainContact::NotFitted;
-        in.httpLimitMs = safety.staleSeconds * 1000;
+        in.rainContact = settings.safety.rainContact ? rainReading : Safety::RainContact::NotFitted;
+        in.httpLimitMs = settings.safety.staleSeconds * 1000;
         in.startedAtMs = startedAtMs;
         in.nowMs = nowMs;
         verdict = Safety::evaluateWeather(in);
 
         Safety::ParkInputs park;
         park.nina = snap.nina;
-        park.fittedSwitches = static_cast<uint8_t>(parkConfig.switches);
+        park.fittedSwitches = static_cast<uint8_t>(settings.park.switches);
         park.switch1 = switch1;
         park.switch2 = switch2;
         park.nowMs = nowMs;
@@ -162,17 +171,12 @@ namespace SQM
 
     void SafetyInputs::logChanges()
     {
-        const std::string weather = weatherKey(verdict);
-        if (weather != loggedWeatherKey)
-        {
-            loggedWeatherKey = weather;
+        if (!logged || !sameWeather(verdict, loggedVerdict))
             Logger::info(TAG, "Weather %s", Safety::describe(verdict).c_str());
-        }
-        const std::string park = parkKey(parkResult);
-        if (park != loggedParkKey)
-        {
-            loggedParkKey = park;
+        if (!logged || parkResult.parked != loggedPark.parked || parkResult.reasons != loggedPark.reasons)
             Logger::info(TAG, "Park: %s", Safety::describe(parkResult).c_str());
-        }
+        logged = true;
+        loggedVerdict = verdict;
+        loggedPark = parkResult;
     }
 } // namespace SQM

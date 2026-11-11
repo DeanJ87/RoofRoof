@@ -147,8 +147,8 @@ info connected/parked/slewing/disconnected, park "Parking", "Mount already parke
    or wrong-typed field, **When** parsed, **Then** the reading is "unreadable" or "API error" with
    the reason text, never a guess.
 3. **Given** a park request, **When** N.I.N.A. answers "Parking" or "Mount already parked",
-   **Then** the request counts as accepted; any other answer counts as refused, with N.I.N.A.'s
-   error text.
+   **Then** the request counts as accepted; `Success: false` counts as refused, with N.I.N.A.'s
+   error text; any other answer counts as unreadable (never as accepted).
 
 ---
 
@@ -179,7 +179,10 @@ survive a restart and a backup/restore, and an older saved config loads with eve
 - SQMeter's HTTP reply says `evaluatedAgeMs` older than the stale time: stale (SQMeter itself has
   stopped evaluating).
 - MQTT reconnects and the broker hands back an old retained `safe` value while SQMeter is gone:
-  the retained `availability` is `offline` (SQMeter's last will), so the source is offline.
+  the retained `availability` is `offline` (SQMeter's last will), so the source is offline. If
+  the broker lost the will (a broker restart with persisted retained messages), the first `safe`
+  and `safety` message after each subscription only counts when it says unsafe: a replayed
+  "safe" never makes the source fresh, so a dead SQMeter still goes stale.
 - MQTT `safe` arrives but `availability` never has: the source is not trusted until it has seen
   `online` (unknown during start-up, lost after it).
 - The `<base>/safety` JSON says rain while `<base>/safe` lags: rain wins.
@@ -187,7 +190,8 @@ survive a restart and a backup/restore, and an older saved config loads with eve
   unsafe.
 - N.I.N.A. answers but the mount is disconnected: not parked ("mount not connected").
 - N.I.N.A. `AtPark` true while `Slewing` true: not parked.
-- The clock (millis) wraps after 49 days: ages are computed with unsigned subtraction.
+- The 32-bit millisecond clock wraps after 49 days: times are kept as 64-bit milliseconds since
+  start, so a source silent for weeks is still stale.
 - A reading timestamped in the future (taken after `now` was sampled): age 0, fresh.
 
 ## Requirements *(mandatory)*
@@ -222,13 +226,17 @@ survive a restart and a backup/restore, and an older saved config loads with eve
 
 **SQMeter sources (parsing pure, transport in firmware)**
 
-- **FR-010**: HTTP: GET the configured URL every 5 s with a 3 s timeout. A reply is good only if
+- **FR-010**: HTTP: GET the configured URL every 5 s with 3 s connect and reply timeouts, every
+  request ending within 6 s and its body capped at 8 KB. A reply is good only if
   the status is 200 and the body is a JSON object with a boolean `safe` and a non-negative integer
   `reasonFlags`; `evaluatedAgeMs`, if present, MUST be a non-negative integer.
 - **FR-011**: MQTT: subscribe to `<base>/safe` (`1` or `0`), `<base>/safety` (the same JSON as
   HTTP) and `<base>/availability` (`online` or `offline`) on the device's own broker. The source is
   good only after `online` and while its last safe or safety message is at most 150 s old. Any
   other payload is unreadable.
+- **FR-011a**: After each MQTT (re)subscription, the first message on `<base>/safe` and on
+  `<base>/safety` MUST only be used when it says unsafe (it is usually the broker's retained copy,
+  of unknown age).
 - **FR-012**: The rain contact, when fitted, is an input value from spec 003: raining, dry or
   unreadable.
 
@@ -278,6 +286,8 @@ survive a restart and a backup/restore, and an older saved config loads with eve
 | III: any source unsafe → unsafe | FR-003 | `test_safety_input_logic`: `test_unsafe_when_any_source_unsafe_*` |
 | III: missing, stale, unparseable → unsafe | FR-003, FR-006, FR-008 | `test_unsafe_when_http_stale_by_one_ms`, `test_unsafe_when_source_unreadable`, `test_unsafe_when_waiting_after_grace` |
 | III: rain acted on even if every other input stale | FR-004 | `test_rain_reason_kept_when_other_sources_stale` |
+| III: stale after any silence, however long | FR-006 | `test_stale_after_very_long_silence`; `test_park_logic`: `test_not_parked_after_very_long_silence` |
+| III: a retained "safe" replay never refreshes MQTT | FR-011a | `test_sqmeter_source`: `test_retained_safe_copy_never_counts` |
 | III: rain sensor fault → unsafe | FR-004 | `test_rain_sensor_fault_bit10_unsafe` |
 | III: reasons state value and limit | FR-009 | `test_describe_stale_states_age_and_limit` |
 | II: AtPark AND switches, fresh | FR-013 | `test_park_logic`: `test_parked_only_when_all_true`, `test_not_parked_when_nina_stale_by_one_ms` |
@@ -329,8 +339,8 @@ any of them by editing the settings defaults or this spec.
    closed. Default none (they are optional, an owner decision).
 3. **Stale times**: SQMeter HTTP default 30 s (setting, 10-600 s); SQMeter MQTT fixed at 150 s
    (2.5 × SQMeter's fixed 60 s republish); N.I.N.A. fixed at 10 s (5 polls).
-4. **Poll periods**: SQMeter HTTP every 5 s, N.I.N.A. every 2 s, each with a 3 s timeout. Not
-   settings.
+4. **Poll periods**: SQMeter HTTP every 5 s, N.I.N.A. every 2 s, each with 3 s connect and
+   reply timeouts and a 6 s limit per request. Not settings.
 5. **Unknown** only during the start-up window (see FR-008); after it, a silent source is lost
    and the verdict is unsafe.
 6. **No weather source configured is unsafe**, not unknown. A new device therefore reports
