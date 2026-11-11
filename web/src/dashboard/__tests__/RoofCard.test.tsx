@@ -222,4 +222,39 @@ describe('RoofCard', () => {
     expect(screen.getByText('Not reporting')).toBeInTheDocument();
     expect(button('Stop')).toBeEnabled();
   });
+  // Spec 014: "Ask before Open and Close".
+  it('asks before Open and Close when set, and never before Stop', async () => {
+    const sent: string[] = [];
+    server.use(
+      http.post('/api/roof/:command', ({ params }) => {
+        sent.push(String(params.command));
+        return HttpResponse.json({ accepted: true, state: 'closed' });
+      }),
+    );
+    render(<RoofCard live={live(status())} config={mockConfig.roof} confirm />);
+    fireEvent.click(button('Open'));
+    expect(screen.getByRole('group', { name: 'Open the roof?' })).toBeInTheDocument();
+    expect(sent).toEqual([]);
+    fireEvent.click(button('Cancel'));
+    expect(screen.queryByRole('group', { name: 'Open the roof?' })).toBeNull();
+    fireEvent.click(button('Open'));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Open the roof?' })).getByRole('button', { name: 'Open' }));
+    await waitFor(() => expect(sent).toEqual(['open']));
+    fireEvent.click(button('Stop'));
+    await waitFor(() => expect(sent).toEqual(['open', 'stop']));
+  });
+
+  it('sends Open at once without the option', async () => {
+    const sent: string[] = [];
+    server.use(
+      http.post('/api/roof/:command', ({ params }) => {
+        sent.push(String(params.command));
+        return HttpResponse.json({ accepted: true, state: 'closed' });
+      }),
+    );
+    show(live(status()));
+    fireEvent.click(button('Open'));
+    expect(screen.queryByRole('group', { name: 'Open the roof?' })).toBeNull();
+    await waitFor(() => expect(sent).toEqual(['open']));
+  });
 });

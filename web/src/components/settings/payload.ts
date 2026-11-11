@@ -27,4 +27,7 @@ export const toConfigPayload = (source: Config): Config => ({
   // The daylight failsafe and the site (spec 013).
   ...(source.daylight && { daylight: { ...source.daylight } }),
   ...(source.location && { location: { ...source.location } }),
+  // The automatic close's policy and the UI options (spec 014).
+  ...(source.autoClose && { autoClose: { ...source.autoClose } }),
+  ...(source.ui && { ui: { ...source.ui } }),
 });

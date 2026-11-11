@@ -83,6 +83,23 @@ describe('Wizard', () => {
     }
   });
 
+  // Spec 014: the automatic close's policy and the other advanced settings stay in Settings.
+  it('shows none of the advanced policy settings, and links the N.I.N.A. docs anchor Settings uses', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 0 }, alpaca: { enabled: false } } });
+    render(<Wizard />);
+    await heading();
+    const advanced = ['autoClose.', 'daylight.bandDeg', 'mqtt.changeMinSeconds', 'ui.confirmOpenClose', 'daylight.advanced'];
+    for (let page = 1; page <= 10; page++) {
+      const button = within(screen.getByRole('navigation', { name: 'Setup pages' })).getAllByRole('button')[page - 1];
+      fireEvent.click(button);
+      await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent(`Step ${page} of 10`));
+      for (const field of advanced) expect(document.querySelector(`[data-field^="${field}"]`), `page ${page}: ${field}`).toBeNull();
+    }
+    fireEvent.click(pageButton('7. N.I.N.A.'));
+    const link = await screen.findByRole('link', { name: 'How N.I.N.A. opens and closes the roof' });
+    expect(link.getAttribute('href')).toMatch(/docs\/user-guide\/alpaca\.md#nina-opens-and-closes-the-roof$/);
+  });
+
   it('saves the page with the next step and moves on', async () => {
     mockDevice({ config: { auth: { enabled: true, username: 'admin', password: '********' }, setup: { state: 'new', step: 0 } } });
     const saves = recordSaves();

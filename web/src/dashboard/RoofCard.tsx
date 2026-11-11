@@ -1,5 +1,5 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
-import { useId } from 'preact/hooks';
+import { useId, useState } from 'preact/hooks';
 import type { RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
 import {
@@ -72,15 +72,32 @@ const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; c
   return notes;
 };
 
-const Buttons: FunctionalComponent<{ view: RoofView; send: Send }> = ({ view, send }) => {
+// Spec 014: with "Ask before Open and Close" on, Open and Close ask once
+// inline (the existing inline confirm pattern); Stop never asks (constitution VII).
+const Confirm: FunctionalComponent<{ asking: 'open' | 'close'; onYes: () => void; onNo: () => void }> = ({ asking, onYes, onNo }) => {
+  const question = asking === 'open' ? t('roof.confirmOpen') : t('roof.confirmClose');
+  return (
+    <div class="inline-confirm" role="group" aria-label={question} data-inventory="roof-confirm">
+      <span>{question}</span>
+      <Button onClick={onYes}>{asking === 'open' ? t('roof.open') : t('roof.close')}</Button>
+      <Button variant="ghost" onClick={onNo}>
+        {t('roof.cancel')}
+      </Button>
+    </div>
+  );
+};
+
+const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean }> = ({ view, send, confirm }) => {
   const base = useId();
+  const [asking, setAsking] = useState<'open' | 'close' | null>(null);
   const ids = { open: `${base}-open`, close: `${base}-close` };
   const closeId = view.close.reason && view.close.reason === view.open.reason ? ids.open : ids.close;
+  const press = (command: 'open' | 'close') => (confirm ? setAsking(command) : send(command));
   return (
     <div class="roof-controls" data-inventory="roof-buttons">
       <div class="btn-row">
         <Button
-          onClick={() => send('open')}
+          onClick={() => press('open')}
           disabled={view.open.disabled}
           busy={view.open.busy}
           busyLabel={t('roof.sending')}
@@ -89,7 +106,7 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send }> = ({ view, se
           {t('roof.open')}
         </Button>
         <Button
-          onClick={() => send('close')}
+          onClick={() => press('close')}
           disabled={view.close.disabled}
           busy={view.close.busy}
           busyLabel={t('roof.sending')}
@@ -98,10 +115,27 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send }> = ({ view, se
           {t('roof.close')}
         </Button>
         {/* Never disabled, never busy (constitution VII, FR-003). */}
-        <Button variant="danger" onClick={() => send('stop')}>
+        <Button
+          variant="danger"
+          onClick={() => {
+            setAsking(null);
+            send('stop');
+          }}
+        >
           {t('roof.stop')}
         </Button>
       </div>
+      {/* The question goes with the button: gone once the button is unavailable. */}
+      {asking && !view[asking].disabled && (
+        <Confirm
+          asking={asking}
+          onYes={() => {
+            setAsking(null);
+            send(asking);
+          }}
+          onNo={() => setAsking(null)}
+        />
+      )}
       {reasonNotes(view.open, view.close, ids)}
       {view.notes.map((note) => (
         <Note key={note.id} tone={note.tone}>
@@ -212,9 +246,10 @@ const Hall: FunctionalComponent<{ roof: RoofStatus; config?: RoofConfig }> = ({ 
 export interface RoofCardProps {
   live: LiveState;
   config?: RoofConfig;
+  confirm?: boolean; // spec 014: ui.confirmOpenClose
 }
 
-const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config }) => {
+const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = false }) => {
   const roof = live.status?.roof ?? null;
   const { result, inFlight, send } = useRoofCommand(roof?.state ?? null);
   const input = { live, result, inFlight, now: Date.now() };
@@ -224,7 +259,7 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config }) => {
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
-        <Buttons view={view} send={send} />
+        <Buttons view={view} send={send} confirm={confirm} />
         {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
         {roof && <Checks roof={roof} />}
         {roof && <Readings roof={roof} />}

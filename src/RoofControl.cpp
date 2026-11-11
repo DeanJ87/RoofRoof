@@ -53,6 +53,7 @@ namespace SQM
             return false;
         }
         settings = settingsOf(config);
+        remoteStopsClose.store(config.autoClose.remoteStop); // spec 014
         controller.applySettings(Roof::settingsFromConfig(settings.roof));
         gates.fittedSwitches = settings.fittedSwitches;
         if (!MotorDriver::begin())
@@ -112,6 +113,12 @@ namespace SQM
         const Outcome pre = precheck(command, origin);
         if (!pre.accepted)
             return pre;
+        return runChecked(command, origin);
+    }
+
+    // Under the lock, already checked: the command, the outputs, the fault record.
+    RoofControl::Outcome RoofControl::runChecked(Roof::Command command, Roof::Origin origin)
+    {
         Outcome outcome = outcomeOf(controller.command(command, origin));
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
@@ -124,10 +131,16 @@ namespace SQM
     // changing anything). Accepted when it can.
     RoofControl::Outcome RoofControl::precheck(Roof::Command command, Roof::Origin origin) const
     {
+        const RoofIo::CommandCheck check = checkNow(command, origin);
+        return Outcome{check.accepted, check.reason, check.text, controller.status().state};
+    }
+
+    RoofIo::CommandCheck RoofControl::checkNow(Roof::Command command, Roof::Origin origin) const
+    {
         RoofIo::CommandContext context;
         context.closePending = closePending;
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, currentGates(), controller, context);
-        return Outcome{check.accepted, check.reason, check.text, controller.status().state};
+        context.remoteStopsClose = remoteStopsClose.load();
+        return RoofIo::checkCommand(command, origin, currentGates(), controller, context);
     }
 
     // Under the lock: a stop or abort. Refused only for an Alpaca client
@@ -135,16 +148,21 @@ namespace SQM
     RoofControl::Outcome RoofControl::stopLocked(Roof::Command command, Roof::Origin origin)
     {
         // An Alpaca client may not stop a close while the weather isn't safe (spec 006).
-        const Outcome pre = precheck(command, origin);
-        if (!pre.accepted)
-            return pre;
+        const RoofIo::CommandCheck check = checkNow(command, origin);
+        if (!check.accepted)
+            return Outcome{false, check.reason, check.text, controller.status().state};
         closePending = false; // a stop replaces a waiting close
         // Counted before the stop is applied, so no snapshot shows the
         // stop without it: the close sequence (spec 005) stands down on it.
-        // An Alpaca client's stop stops the roof but doesn't count (spec 006).
-        if (RoofIo::countsAsPersonStop(command, origin))
+        // An Alpaca client's stop stops the roof but doesn't count (spec 006),
+        // unless the owner's autoClose.remoteStop made it a person's (spec 014).
+        if (RoofIo::countsAsPersonStop(command, origin) || check.standsDown)
             personStops++;
-        return runLocked(command, origin);
+        if (check.standsDown)
+            remoteStops++; // spec 014: the stand-down's alert names a remote stop
+        // Applied on this one check: a settings save between two checks can't
+        // count a stop that then isn't run.
+        return runChecked(command, origin);
     }
 
     // A command refused by what else is going on: its reason and text.
@@ -358,6 +376,7 @@ namespace SQM
         s.rain = static_cast<RoofIo::Contact>(rainReading.load());
         s.closePending = closePending;
         s.personStops = personStops;
+        s.remoteStops = remoteStops;
         closeWaitingNow.store(closePending);
         s.maxWatchdogBeatAgeMs = maxBeatAgeMs;
         s.watchdogTrips = watchdogTrips;
@@ -382,6 +401,7 @@ namespace SQM
 
     void RoofControl::updateConfig(const Config &config)
     {
+        remoteStopsClose.store(config.autoClose.remoteStop);
         if (lock == nullptr)
             return;
         RoofLocked held(lock);

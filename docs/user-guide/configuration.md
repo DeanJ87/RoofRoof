@@ -25,7 +25,9 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     - **Current and supply**: current sense and its limits, and the minimum supply.
     - **Weather sources**: SQMeter over HTTP and over MQTT, the rain contact and the stale time - see [Safety inputs](safety-inputs.md).
     - **Mount park**: the N.I.N.A. address, the park switches fitted and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
-    - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe).
+    - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe). The **Daylight band** is under **Advanced**.
+    - **Automatic close**: how the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) behaves - the safe spell that re-arms it after a Stop, the reminder interval, what happens when a close doesn't start and whether a Stop from an imaging app or MQTT calls it off. The timings that rarely need changing are under **Advanced**. While Alpaca is off a note says imaging apps can't open or close the roof, with a button to the [ASCOM Alpaca](alpaca.md#nina-opens-and-closes-the-roof) card.
+    - **Ask before Open and Close** (in **Roof motion**): Open and Close on the dashboard ask once before they are sent. Stop never asks.
 
     While the roof is opening or closing the tab says so: the device refuses every save until it stops. Saving while the roof is stopped part-way makes its position unknown, and the tab says that too.
 
@@ -81,7 +83,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "topic": "roofroof",
     "publishIntervalMs": 60000,
     "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" },
-    "roofCommands": false
+    "roofCommands": false,
+    "changeMinSeconds": 1
   },
   "ota": { "enabled": false, "password": "" },
   "auth": { "enabled": false, "username": "admin", "password": "" },
@@ -140,8 +143,20 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "minRunningAmps": 0,
     "minSupplyVolts": 11
   },
-  "daylight": { "mode": "alert", "sunAltitudeDeg": 0 },
-  "location": { "set": false, "latitude": 0, "longitude": 0 }
+  "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
+  "location": { "set": false, "latitude": 0, "longitude": 0 },
+  "autoClose": {
+    "rearmMinutes": 10,
+    "parkRequestSeconds": 30,
+    "parkHoldSeconds": 4,
+    "retryMinutes": 5,
+    "closeStartSeconds": 30,
+    "closeGuardSeconds": 30,
+    "notStarted": "halt",
+    "remindMinutes": 30,
+    "remoteStop": false
+  },
+  "ui": { "confirmOpenClose": false }
 }
 ```
 
@@ -196,6 +211,7 @@ The JSON Schema is `config.schema.json`; the [API Reference](../api/reference.md
 | `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
 | `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
 | `roofCommands` | bool | `false` | Accept open, close and stop on `<topic>/roof/set`, with an Alpaca client's limits ([Roof commands](mqtt.md#roof-commands)). Config saved before this setting existed loads with it off |
+| `changeMinSeconds` | int | `1` | At rest, a change of the roof's state document is published at most this often (1-60 s). While the roof moves or a close waits the fixed busy cadence applies ([MQTT](mqtt.md#the-roof-document)). Shown as **MQTT change gap** in **Settings → Roof → Automatic close → Advanced** |
 
 ### ArduinoOTA
 
@@ -274,7 +290,8 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `daylight.mode` | string | `"alert"` | `off` (nothing), `alert` (an alert, nothing moves) or `close` (shown as "Alert and close": park and close as for unsafe weather, and refuse opening while the sun is up). Any other value is refused |
-| `daylight.sunAltitudeDeg` | number | `0` | The sun counts as up at or above this altitude, in degrees (-18 to 30); it counts as down again 0.5 degrees below it |
+| `daylight.sunAltitudeDeg` | number | `0` | The sun counts as up at or above this altitude, in degrees (-18 to 30); it counts as down again `bandDeg` below it |
+| `daylight.bandDeg` | number | `0.5` | Once it is day, night comes again only this far below the threshold, so a sun lingering at it can't flicker the state (0.1 to 2 degrees) |
 | `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes |
 | `location.latitude` | number | `0` | Degrees, north positive (-90 to 90) |
 | `location.longitude` | number | `0` | Degrees, east positive (-180 to 180) |
@@ -289,6 +306,27 @@ Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing 
 |-------|------|---------|-------------|
 | `setup.state` | string | `"new"` | `new` (the wizard opens on the first dashboard visit of a page load), `offered` (a dashboard banner offers it) or `done`. Settings saved by a release before the wizard load as `offered`, so an upgraded roof is never interrupted. Any other value is refused |
 | `setup.step` | integer | `0` | The page to resume at, 0 (Device) to 9 (Review) |
+
+### Automatic close
+
+How the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) (and the daylight close) behaves. The defaults are the values the device has always used, and a configuration saved by an earlier release loads with them. Each range keeps the safety rules: no value lets the roof close onto an unparked mount, open by itself or stay open in unsafe weather without a critical alert.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `autoClose.rearmMinutes` | int | `10` | **Safe spell to re-arm** (5-60 min): after a person's Stop, a halted close or "can't close by itself", the automatic close acts again only once the roof is closed or the weather has been safe this long; a safe spell shorter than this doesn't restart an attempt's park time limit |
+| `autoClose.remindMinutes` | int | `30` | **Reminder interval** (10-120 min): a critical alert repeats this often while the roof stays open after it. The same event and cause alerts at most this often, and an alert no channel took is resent at gaps growing up to this, but neither waits longer than 30 minutes. Never off |
+| `autoClose.notStarted` | string | `"halt"` | **Close didn't start**: a close held back (by an upload, an MQTT connect or a network change) that hasn't started within the close start limit. `halt` stops and waits for a person or the safe spell; `retry` calls it off, raises "Roof didn't close" and tries again after the back-off, with the park confirmed again |
+| `autoClose.remoteStop` | bool | `false` | **Remote Stop calls off a close**: off, a Stop from an imaging app (Alpaca) or MQTT is refused while a close runs in unsafe weather or in daylight with "Alert and close". On, it is accepted and counts exactly as a person's Stop: the automatic close stands down and raises its critical "Automatic close stopped" alert (saying an imaging app or MQTT stopped it), with the reminders. Needs Alpaca on or MQTT roof commands on |
+| `autoClose.parkRequestSeconds` | int | `30` | **Park request spacing** (10-120 s): time between park requests while waiting for the park |
+| `autoClose.parkHoldSeconds` | int | `4` | **Park hold** (4-30 s): the park must be confirmed this long without a break before the close is commanded; the close's own park check still applies |
+| `autoClose.retryMinutes` | int | `5` | **Back-off** (1-30 min): the wait after a park that wasn't confirmed or a close that failed before the next try |
+| `autoClose.closeStartSeconds` | int | `30` | **Close start limit** (25-120 s): a held-back close must start within this. Never below 25 s, so a network change (which holds a close up to 15 s) isn't a failure |
+| `autoClose.closeGuardSeconds` | int | `30` | **Close guard** (10-120 s): added to a close's own timeout; a close still moving after both is stopped. The roof's own timeout always stops it first |
+| `ui.confirmOpenClose` | bool | `false` | **Ask before Open and Close**: the dashboard's Open and Close ask once before they are sent. Stop never asks |
+
+The last five `autoClose` fields are under **Settings → Roof → Automatic close → Advanced**. A value out of range is refused with the range.
+
+Some choices stay fixed whatever the settings, because the safety rules need them: opening is refused while the setup hotspot is on (it has no password, and Alpaca has no login); a close is refused in the moment before a restart (the reset would cut it off part-way and leave the position unknown); the roof never moves by itself from an unknown position or with a fault latched; and a person's Stop always works.
 
 ### Alerts
 

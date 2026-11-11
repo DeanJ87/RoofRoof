@@ -48,6 +48,7 @@ namespace SQM
             bool rainFitted = false;
             Contact rain = Contact::Unreadable;
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
+            uint32_t remoteStops = 0;  // spec 014: of personStops, the remote stops honoured by autoClose.remoteStop
             uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005; never an Alpaca client's; not in the document)
             uint32_t watchdogTrips = 0;
             uint32_t maxStepGapMs = 0;

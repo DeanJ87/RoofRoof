@@ -195,6 +195,20 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     Roof, the demo's "Sun up" injector and the docs.
 - **Out of scope:** MQTT and Home Assistant entities for daylight; any open by schedule.
 
+### 014 Configurable policies (base: 013)
+
+- **Scope:**
+  - An audit of every owner assumption of specs 002 to 013 and the timings in `lib/`: safety
+    invariants (constitution I-III, VIII) stay fixed; policy and tuning values become settings
+    with today's value as the default and a range that can't break an invariant; hardware facts
+    are already settings.
+  - The settings in ConfigModel, the web schemas, the shared ranges and the settings-deps
+    catalogue; an Automatic close card in Settings → Roof with an Advanced fold.
+  - The N.I.N.A. opening path made plain (Alpaca stays off by default) at one doc anchor the
+    setup wizard links to.
+  - Native tests pin every default; a differential fuzz against `main` with default settings.
+- **Out of scope:** changing any safety invariant; the setup wizard (015).
+
 ### 015 Setup wizard (base: 013)
 
 - **Scope:**
@@ -215,7 +229,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 001 ─┬─ 002 ── 003 ─┐
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
-                            └─ 010 ─┘                     └─ 013 ── 015
+                            └─ 010 ─┘                     └─ 013 ─┬─ 014
+                                                                  └─ 015
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

@@ -14,6 +14,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'daylight-off': { text: t('settingsDeps.daylightIsOff'), fix: 'roof#daylight' },
   'location-unknown': { text: t('settingsDeps.locationNotSet'), fix: 'roof#daylight' },
   'clock-not-set': { text: t('settingsDeps.clockNotSet'), fix: 'time#ntp' },
+  'remote-off': { text: t('settingsDeps.remoteCommandsAreOff'), fix: 'network#alpaca' },
 };
 
 // Label for the one-click fix of each reason.
@@ -28,4 +29,5 @@ export const FIX_LABEL: Record<string, string> = {
   'daylight-off': t('settingsDeps.daylightSettings'),
   'location-unknown': t('settingsDeps.setLocation'),
   'clock-not-set': t('settingsDeps.timeSettings'),
+  'remote-off': t('settingsDeps.turnOnAlpaca'),
 };

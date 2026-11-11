@@ -13,6 +13,16 @@ The device offers one Alpaca device: the roof, as a **Dome** with a shutter and 
 
 ---
 
+## N.I.N.A. opens and closes the roof
+
+In normal use the roof is opened and closed by your imaging app's sequence, not by RoofRoof: N.I.N.A. opens it over the Alpaca Dome at the start of the night (**Open dome shutter**) and closes it at the end (**Close dome shutter**). RoofRoof is the failsafe behind the sequence: it refuses anything the safety rules don't allow, whoever asks, and it parks the mount and closes the roof by itself only when the weather turns unsafe ([Close on unsafe weather](close-on-unsafe.md)) or, if you choose, when the sun comes up. It never opens the roof by itself.
+
+Alpaca is **off** on a new device and after an update, because it has no login and can move the roof: turn it on once the roof is commissioned and the device is on your trusted network. To set it up:
+
+1. Turn Alpaca on: **Settings → Network → ASCOM Alpaca → Serve Alpaca**, then **Save** and restart when asked ([Enabling Alpaca support](#enabling-alpaca-support)). While it is off, **Settings → Roof → Automatic close** says imaging apps can't open or close the roof, with a button that takes you there.
+2. Add the roof in N.I.N.A. as a Dome ([Adding the roof in N.I.N.A.](#adding-the-roof-in-nina)).
+3. Put **Open dome shutter** and **Close dome shutter** in your sequence. An open is refused while the weather isn't safe, and a close is refused unless the mount is confirmed parked, so park the mount before the close.
+
 ## Enabling Alpaca support
 
 1. Open the web UI and go to **Settings → Network**.
@@ -86,7 +96,9 @@ Disconnecting, or an imaging app that goes quiet, never stops or starts a move: 
 
 ## Stop from N.I.N.A. in bad weather
 
-Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe (or the sun is up with the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) on "Alert and close"), N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is closed or the weather has been safe for 10 minutes. N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop. The Alpaca connection is not a safeguard: ASCOM asks for it, but it is one setting for the whole server; the roof's own checks are what protect it.
+Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe (or the sun is up with the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) on "Alert and close"), N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is closed or the weather has been safe for the safe spell to re-arm (10 minutes by default). N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop.
+
+If you are often at the roof with N.I.N.A. to hand, you can turn on **Settings → Roof → Automatic close → Remote Stop calls off a close**. N.I.N.A.'s Stop (and an MQTT stop) during such a close is then accepted and counts exactly as a person's: the roof stops, the automatic close stands down, and the critical alert **Automatic close stopped** goes out with its reminders, so the roof is never left open in bad weather without one. It is off by default. The Alpaca connection is not a safeguard: ASCOM asks for it, but it is one setting for the whole server; the roof's own checks are what protect it.
 
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand

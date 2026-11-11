@@ -20,6 +20,8 @@ export const DEP_LABELS: Record<string, string> = {
   'alerts.events.daylight_unknown.level': t('settings.depLabels.theDaylightCheckStopsWorking'),
   'daylight.mode': t('settings.depLabels.theDaylightCheck'),
   'daylight.sunAltitudeDeg': t('settings.depLabels.theSunAltitudeLimit'),
+  'daylight.bandDeg': t('settings.depLabels.theDaylightBand'),
+  'autoClose.remoteStop': t('settings.depLabels.remoteStop'),
   'location.set': t('settings.depLabels.theLocation'),
   'location.latitude': t('settings.depLabels.theLatitude'),
   'location.longitude': t('settings.depLabels.theLongitude'),

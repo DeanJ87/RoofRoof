@@ -85,6 +85,9 @@ namespace SQM
                 return setError(error, "MQTT discovery prefix: use letters, numbers, _ and -, with / between levels");
             if (c.mqtt.publishIntervalMs < 1000 || c.mqtt.publishIntervalMs > 86400000)
                 return setError(error, "MQTT publish interval is invalid");
+            if (c.mqtt.changeMinSeconds < MQTTConfig::MIN_CHANGE_MIN_SECONDS ||
+                c.mqtt.changeMinSeconds > MQTTConfig::MAX_CHANGE_MIN_SECONDS)
+                return setError(error, "MQTT: change gap must be between 1 and 60 seconds");
             return true;
         }
 
@@ -231,10 +234,48 @@ namespace SQM
         {
             if (!inRange(c.daylight.sunAltitudeDeg, DaylightConfig::MIN_SUN_ALTITUDE_DEG, DaylightConfig::MAX_SUN_ALTITUDE_DEG))
                 return setError(error, "Daylight: sun altitude must be between -18 and 30 degrees");
+            if (!inRange(c.daylight.bandDeg, DaylightConfig::MIN_BAND_DEG, DaylightConfig::MAX_BAND_DEG))
+                return setError(error, "Daylight: band must be between 0.1 and 2 degrees");
             if (!std::isfinite(c.location.latitude) || c.location.latitude < -90.0 || c.location.latitude > 90.0)
                 return setError(error, "Location: latitude must be between -90 and 90 degrees");
             if (!std::isfinite(c.location.longitude) || c.location.longitude < -180.0 || c.location.longitude > 180.0)
                 return setError(error, "Location: longitude must be between -180 and 180 degrees");
+            return true;
+        }
+
+        // Spec 014: each policy value within the range that keeps constitution I-III.
+        bool validateAutoClose(const Config &c, std::string *error)
+        {
+            const AutoCloseConfig &a = c.autoClose;
+            using A = AutoCloseConfig;
+            struct Range
+            {
+                uint32_t value;
+                uint32_t min;
+                uint32_t max;
+                const char *text;
+            };
+            const Range ranges[] = {
+                {a.rearmMinutes, A::MIN_REARM_MINUTES, A::MAX_REARM_MINUTES, "safe spell to re-arm must be between 5 and 60 minutes"},
+                {a.parkRequestSeconds,
+                 A::MIN_PARK_REQUEST_SECONDS,
+                 A::MAX_PARK_REQUEST_SECONDS,
+                 "park request spacing must be between 10 and 120 seconds"},
+                {a.parkHoldSeconds, A::MIN_PARK_HOLD_SECONDS, A::MAX_PARK_HOLD_SECONDS, "park hold must be between 4 and 30 seconds"},
+                {a.retryMinutes, A::MIN_RETRY_MINUTES, A::MAX_RETRY_MINUTES, "back-off must be between 1 and 30 minutes"},
+                {a.closeStartSeconds,
+                 A::MIN_CLOSE_START_SECONDS,
+                 A::MAX_CLOSE_START_SECONDS,
+                 "close start limit must be between 25 and 120 seconds"},
+                {a.closeGuardSeconds,
+                 A::MIN_CLOSE_GUARD_SECONDS,
+                 A::MAX_CLOSE_GUARD_SECONDS,
+                 "close guard must be between 10 and 120 seconds"},
+                {a.remindMinutes, A::MIN_REMIND_MINUTES, A::MAX_REMIND_MINUTES, "reminder interval must be between 10 and 120 minutes"},
+            };
+            for (const Range &r : ranges)
+                if (r.value < r.min || r.value > r.max)
+                    return setError(error, std::string("Automatic close: ") + r.text);
             return true;
         }
 
@@ -303,6 +344,7 @@ namespace SQM
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
             validateSafety,
             validateDaylight,
+            validateAutoClose,
         };
         for (Check check : CHECKS)
             if (!check(*this, error))

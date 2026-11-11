@@ -1,7 +1,8 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
-import { DepNote, DepToggle, Field, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
+import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
+import AutoCloseCard from './AutoCloseCard';
 import { Note } from '../ui';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
@@ -71,6 +72,13 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
         />
       </Field>
     </div>
+    <Toggle
+      dataField="ui.confirmOpenClose"
+      label={t('settings.roof.confirmOpenClose')}
+      hint={t('settings.roof.confirmOpenCloseHint')}
+      checked={props.config.ui?.confirmOpenClose ?? false}
+      onChange={(v) => props.update(['ui', 'confirmOpenClose'], v)}
+    />
   </SettingsCard>
 );
 
@@ -340,6 +348,20 @@ const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
   <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
     <DaylightModeFields {...props} />
     <LocationFields {...props} />
+    {/* Spec 014: Settings only, not the setup wizard's daylight page. */}
+    <Fold label={t('settings.roof.advanced')} open={props.error('daylight.bandDeg') !== undefined} dataField="daylight.advanced">
+      <div class="form-grid">
+        <Field label={t('settings.roof.daylightBand')} hint={t('settings.roof.daylightBandHint')} error={props.error('daylight.bandDeg')}>
+          <NumberInput
+            dataField="daylight.bandDeg"
+            value={props.daylight.bandDeg ?? 0.5}
+            min={0}
+            unit="°"
+            onChange={(v) => props.update(['daylight', 'bandDeg'], v)}
+          />
+        </Field>
+      </div>
+    </Fold>
   </SettingsCard>
 );
 
@@ -353,7 +375,7 @@ export const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> =
 };
 
 const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
-  const { roof, safety, park, daylight, location } = props.config;
+  const { roof, safety, park, daylight, location, autoClose, mqtt } = props.config;
   return (
     <>
       <MotionNote status={props.status} />
@@ -368,6 +390,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
       )}
       {safety && <SafetyCard {...props} safety={safety} />}
       {park && <ParkCard {...props} park={park} />}
+      {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}
     </>
   );

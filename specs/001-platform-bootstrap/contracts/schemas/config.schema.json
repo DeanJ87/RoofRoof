@@ -485,9 +485,56 @@
       ],
       "additionalProperties": false
     },
+    "autoClose": {
+      "type": "object",
+      "properties": {
+        "closeGuardSeconds": {
+          "type": "number"
+        },
+        "closeStartSeconds": {
+          "type": "number"
+        },
+        "notStarted": {
+          "type": "string"
+        },
+        "parkHoldSeconds": {
+          "type": "number"
+        },
+        "parkRequestSeconds": {
+          "type": "number"
+        },
+        "rearmMinutes": {
+          "type": "number"
+        },
+        "remindMinutes": {
+          "type": "number"
+        },
+        "remoteStop": {
+          "type": "boolean"
+        },
+        "retryMinutes": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "closeGuardSeconds",
+        "closeStartSeconds",
+        "notStarted",
+        "parkHoldSeconds",
+        "parkRequestSeconds",
+        "rearmMinutes",
+        "remindMinutes",
+        "remoteStop",
+        "retryMinutes"
+      ],
+      "additionalProperties": false
+    },
     "daylight": {
       "type": "object",
       "properties": {
+        "bandDeg": {
+          "type": "number"
+        },
         "mode": {
           "type": "string"
         },
@@ -496,6 +543,7 @@
         }
       },
       "required": [
+        "bandDeg",
         "mode",
         "sunAltitudeDeg"
       ],
@@ -529,6 +577,9 @@
       "properties": {
         "broker": {
           "type": "string"
+        },
+        "changeMinSeconds": {
+          "type": "number"
         },
         "enabled": {
           "type": "boolean"
@@ -570,6 +621,7 @@
       },
       "required": [
         "broker",
+        "changeMinSeconds",
         "enabled",
         "homeAssistant",
         "password",
@@ -807,6 +859,18 @@
       ],
       "additionalProperties": false
     },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "confirmOpenClose": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "confirmOpenClose"
+      ],
+      "additionalProperties": false
+    },
     "wifi": {
       "type": "object",
       "properties": {
@@ -852,6 +916,7 @@
     "alerts",
     "alpaca",
     "auth",
+    "autoClose",
     "daylight",
     "deviceName",
     "location",
@@ -862,6 +927,7 @@
     "roof",
     "safety",
     "setup",
+    "ui",
     "wifi"
   ],
   "additionalProperties": false

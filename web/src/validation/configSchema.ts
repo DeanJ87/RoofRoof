@@ -37,6 +37,12 @@ export const mqttConfigSchema = z
       .max(86400000, t('validation.configSchema.publishIntervalCanBeAt')),
     homeAssistant: z.object({ enabled: z.boolean(), discoveryPrefix: z.string() }).optional(),
     roofCommands: z.boolean().optional(),
+    changeMinSeconds: z
+      .number()
+      .int()
+      .min(1, t('validation.configSchema.changeGapMustBeBetween'))
+      .max(60, t('validation.configSchema.changeGapMustBeBetween'))
+      .optional(),
   })
   // D-33 (a constraint): the device's own message.
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {
@@ -154,7 +160,29 @@ export const daylightConfigSchema = z.object({
     .number()
     .min(-18, t('validation.configSchema.sunAltitudeMustBeBetween'))
     .max(30, t('validation.configSchema.sunAltitudeMustBeBetween')),
+  bandDeg: z
+    .number()
+    .min(0.1, t('validation.configSchema.bandMustBeBetween'))
+    .max(2, t('validation.configSchema.bandMustBeBetween'))
+    .optional(),
 });
+
+// Spec 014: the automatic close's policy. The ranges are the device's
+// (lib/ConfigModel, lib/CloseSequenceLogic/ClosePolicy.h, the shared range fixture).
+const minutesOrSeconds = (min: number, max: number, message: string) => z.number().int().min(min, message).max(max, message);
+export const autoCloseConfigSchema = z.object({
+  rearmMinutes: minutesOrSeconds(5, 60, t('validation.configSchema.rearmMustBeBetween')),
+  parkRequestSeconds: minutesOrSeconds(10, 120, t('validation.configSchema.parkRequestMustBeBetween')),
+  parkHoldSeconds: minutesOrSeconds(4, 30, t('validation.configSchema.parkHoldMustBeBetween')),
+  retryMinutes: minutesOrSeconds(1, 30, t('validation.configSchema.backOffMustBeBetween')),
+  closeStartSeconds: minutesOrSeconds(25, 120, t('validation.configSchema.closeStartMustBeBetween')),
+  closeGuardSeconds: minutesOrSeconds(10, 120, t('validation.configSchema.closeGuardMustBeBetween')),
+  notStarted: z.enum(['halt', 'retry']),
+  remindMinutes: minutesOrSeconds(10, 120, t('validation.configSchema.reminderMustBeBetween')),
+  remoteStop: z.boolean(),
+});
+
+export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });
 
 export const locationConfigSchema = z.object({
   set: z.boolean(),
@@ -192,6 +220,8 @@ export const configSchema = z.object({
   roof: roofConfigSchema.optional(),
   daylight: daylightConfigSchema.optional(),
   location: locationConfigSchema.optional(),
+  autoClose: autoCloseConfigSchema.optional(),
+  ui: uiConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
   setup: setupConfigSchema.optional(),
 });

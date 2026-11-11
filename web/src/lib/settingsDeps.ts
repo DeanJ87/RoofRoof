@@ -120,6 +120,10 @@ const addDaylight = (c: Context) => {
   ]);
   const daylightOn: Link = ['D-44', 'daylight-off', active];
   c.add('daylight.sunAltitudeDeg', 'D-44', true, [daylightOn]);
+  c.add('daylight.bandDeg', 'D-44', true, [daylightOn]);
+  // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
+  const remote = on(c.config, 'alpaca.enabled') || (on(c.config, 'mqtt.enabled') && on(c.config, 'mqtt.roofCommands'));
+  c.add('autoClose.remoteStop', 'D-45', on(c.config, 'autoClose.remoteStop'), [['D-45', 'remote-off', remote]]);
   for (const setting of ['location.set', 'location.latitude', 'location.longitude']) c.add(setting, 'D-44', located, [daylightOn]);
 };
 

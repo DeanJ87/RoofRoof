@@ -19,7 +19,7 @@ namespace SQM
                 return nowMs > sinceMs ? nowMs - sinceMs : 0;
             }
             static_assert(static_cast<size_t>(Event::StoppedByPerson) < 8, "alertedAtMs has a row for every event");
-            static_assert(static_cast<size_t>(Cause::RoofNotStarted) < 10, "alertedAtMs has a column for every cause");
+            static_assert(static_cast<size_t>(Cause::NotStarted) < 11, "alertedAtMs has a column for every cause");
         } // namespace
 
         bool Sequence::Run::lasted(bool holds, uint64_t nowMs, uint64_t ms)
@@ -47,6 +47,9 @@ namespace SQM
             // so stops while idle (and the count at start-up) are history.
             const bool personStopped = given.personStops != seenStops;
             seenStops = given.personStops;
+            if (personStopped)
+                stopWasRemote = given.remoteStops != seenRemote;
+            seenRemote = given.remoteStops;
             trackEpisode(given, personStopped, restoredNow);
             // Spec 013: daylight wants the roof closed as unsafe weather does.
             // From here on "weather safe" reads "nothing wants the roof
@@ -54,9 +57,9 @@ namespace SQM
             Inputs in = given;
             in.weatherSafe = given.weatherSafe && !given.daylight;
             // Tracked every step, so each count runs without a break whatever the phase.
-            parkConfirmed = parkHeld.lasted(in.parked, in.nowMs, PARK_SETTLE_MS);
+            parkConfirmed = parkHeld.lasted(in.parked, in.nowMs, policy.parkSettleMs);
             unknownConfirmed = unknown.lasted(in.roof == Roof::State::Unknown, in.nowMs, UNKNOWN_CONFIRM_MS);
-            safeLong = safe.lasted(in.weatherSafe, in.nowMs, REARM_SAFE_MS);
+            safeLong = safe.lasted(in.weatherSafe, in.nowMs, policy.rearmSafeMs);
             // A close (anyone's) reached the closed magnet: the trouble is over,
             // so a new failure on the next spell alerts at once. A reading that
             // flickers back to closed at rest doesn't count: no alert storm.
@@ -66,6 +69,9 @@ namespace SQM
 
             Decision out = withAlert(remindIfDue(decide(in, personStopped)));
             out.daylight = daylightOnly;
+            out.retryMs = policy.retryAfterMs;
+            out.rearmMs = policy.rearmSafeMs;
+            out.remoteStop = out.event == Event::StoppedByPerson && stopWasRemote;
             return out;
         }
 
@@ -89,7 +95,7 @@ namespace SQM
         }
 
         // While the roof stays open after a critical event, the event is
-        // raised again every REMIND_MS: a lost or missed alert is not the last word.
+        // raised again every policy.remindMs: a lost or missed alert is not the last word.
         Decision Sequence::remindIfDue(Decision decision)
         {
             const bool open =
@@ -101,7 +107,12 @@ namespace SQM
             // weather itself is safe.
             if (current == Phase::HeldByPerson && daylightOnly && !lastWeatherUnsafe)
                 return decision;
-            if (!remindNow && elapsed(lastCritical.alertedAtMs, lastNowMs) < REMIND_MS)
+            // Spec 014: an occurrence the throttle held back is raised at the
+            // throttle's time (at most spec 005's 30 minutes after the last
+            // send), however long the reminder interval: a new stand-down or
+            // halt is never silent for longer than that.
+            const uint64_t dueMs = lastCritical.unsent ? std::min<uint64_t>(policy.remindMs, REMIND_MS) : policy.remindMs;
+            if (!remindNow && elapsed(lastCritical.alertedAtMs, lastNowMs) < dueMs)
                 return decision;
             Decision again;
             again.action = decision.action;
@@ -128,7 +139,7 @@ namespace SQM
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
-            if (paused.has && elapsed(paused.endedAtMs, in.nowMs) < REARM_SAFE_MS)
+            if (paused.has && elapsed(paused.endedAtMs, in.nowMs) < policy.rearmSafeMs)
                 return resume(in);
             return attempt(in);
         }
@@ -199,7 +210,7 @@ namespace SQM
             // ends, even across a brief safe spell (a flapping verdict).
             if (parkConfirmed)
             {
-                if (!closeFailedOnce || elapsed(closeFailedAtMs, in.nowMs) >= RETRY_AFTER_MS)
+                if (!closeFailedOnce || elapsed(closeFailedAtMs, in.nowMs) >= policy.retryAfterMs)
                     return closeNow();
                 // Parked, held back only by the back-off: not a park failure,
                 // so no "mount not parked" (its alert would name the wrong input).
@@ -210,10 +221,10 @@ namespace SQM
             // stretched by many short safe spells.
             const uint64_t wall = elapsed(phaseWallStartMs, in.nowMs);
             if (current == Phase::RetryWait)
-                return since >= RETRY_AFTER_MS || wall >= RETRY_AFTER_MS + REARM_SAFE_MS ? attempt(in) : Decision{};
+                return since >= policy.retryAfterMs || wall >= policy.retryAfterMs + policy.rearmSafeMs ? attempt(in) : Decision{};
             if (!in.ninaConfigured)
                 return failAttempt(Event::ParkNotConfirmed, Cause::NinaNotConfigured, Action::None);
-            const uint64_t capMs = 2 * attemptLimitMs + REARM_SAFE_MS;
+            const uint64_t capMs = 2 * attemptLimitMs + policy.rearmSafeMs;
             if (since >= attemptLimitMs || wall >= capMs)
             {
                 out = failAttempt(Event::ParkNotConfirmed, Cause::ParkTimeout, Action::None);
@@ -239,7 +250,7 @@ namespace SQM
                     closingSeen = true;
                     closingSinceMs = sawPending ? in.nowMs : phaseSinceMs;
                 }
-                const uint64_t limitMs = in.moveTimeoutMs + CLOSE_GUARD_SLACK_MS;
+                const uint64_t limitMs = in.moveTimeoutMs + policy.closeGuardSlackMs;
                 if (elapsed(closingSinceMs, in.nowMs) < limitMs)
                     return out;
                 return halt(limitMs);
@@ -247,9 +258,9 @@ namespace SQM
             if (in.closePending)
             {
                 sawPending = true;
-                if (elapsed(phaseSinceMs, in.nowMs) < CLOSE_START_MS)
+                if (elapsed(phaseSinceMs, in.nowMs) < policy.closeStartMs)
                     return out;
-                return halt(CLOSE_START_MS);
+                return policy.retryNotStarted ? notStarted() : halt(policy.closeStartMs);
             }
             // Neither closing nor waiting: the close ended part-way (a person's
             // open after the weather cleared is not a failure).
@@ -269,12 +280,25 @@ namespace SQM
             return out;
         }
 
+        // Spec 014, policy "retry": a waiting close that didn't start in time
+        // is called off (the stop drops the waiting close; nothing has moved)
+        // and counts as a failed close: alert, then the back-off, and the next
+        // close needs the park confirmed again.
+        Decision Sequence::notStarted()
+        {
+            Decision out = failAttempt(Event::CloseFailed, Cause::NotStarted, Action::Stop);
+            out.limitMs = policy.closeStartMs;
+            parkHeld.on = false; // the park must hold for the full time again
+            parkConfirmed = false;
+            return out;
+        }
+
         Decision Sequence::stoodDown(const Inputs &in, bool personStopped)
         {
             if (in.roof == Roof::State::Closed)
                 return enter(Phase::Idle, Event::Closed);
-            // Safe for REARM_SAFE_MS since standing down, not since before it.
-            if (safeLong && elapsed(phaseSinceMs, in.nowMs) >= REARM_SAFE_MS)
+            // Safe for policy.rearmSafeMs since standing down, not since before it.
+            if (safeLong && elapsed(phaseSinceMs, in.nowMs) >= policy.rearmSafeMs)
                 return enter(Phase::Idle, Event::EndedSafe);
             // A stop while the roof can't move (before a person clears a fault,
             // say) still stands the sequence down once it can.
@@ -314,6 +338,8 @@ namespace SQM
             }
             Decision out = withAlert(failAttempt(Event::CloseFailed, Cause::Refused, Action::None));
             out.daylight = daylightOnly;
+            out.retryMs = policy.retryAfterMs;
+            out.rearmMs = policy.rearmSafeMs;
             return out;
         }
 
@@ -321,7 +347,7 @@ namespace SQM
         {
             Saved out;
             // The park request spacing is kept in any phase, while it matters.
-            out.requested = requested && elapsed(lastRequestMs, lastNowMs) < PARK_REQUEST_GAP_MS;
+            out.requested = requested && elapsed(lastRequestMs, lastNowMs) < policy.parkRequestGapMs;
             out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
             out.daylight = daylightOnly;
             // Asked to close but not yet answered: nothing has moved, so a
@@ -364,7 +390,7 @@ namespace SQM
             const bool closingThen = saved.phase == Phase::Closing;
             const bool eventOk = isCritical(saved.event) || (!standDown && saved.event == Event::None);
             if ((!standDown && !waitingThen && !idleThen && !closingThen) || !eventOk ||
-                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::RoofNotStarted))
+                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::NotStarted))
                 return;
             restoring = saved;
             if (idleThen)
@@ -494,7 +520,7 @@ namespace SQM
 
         Action Sequence::requestIfDue(uint64_t nowMs)
         {
-            if (requested && elapsed(lastRequestMs, nowMs) < PARK_REQUEST_GAP_MS)
+            if (requested && elapsed(lastRequestMs, nowMs) < policy.parkRequestGapMs)
                 return Action::None;
             requested = true;
             lastRequestMs = nowMs;
@@ -505,12 +531,16 @@ namespace SQM
         {
             if (!isCritical(decision.event))
                 return decision;
-            // Each event and cause alerts at most once per REMIND_MS, across
+            // Each event and cause alerts at most once per policy.remindMs, across
             // episodes, so a flapping verdict can't turn a lasting fault into
             // an alert storm, while a new cause (a fault after a refusal) still alerts.
             const size_t e = static_cast<size_t>(decision.event);
             const size_t c = static_cast<size_t>(decision.cause);
-            decision.alert = !alertedEver[e][c] || elapsed(alertedAtMs[e][c], lastNowMs) >= REMIND_MS;
+            // Spec 014: the throttle is the reminder interval, but never longer
+            // than spec 005's 30 minutes, so a longer interval only spaces the
+            // reminders, never a new episode's first alert.
+            const uint64_t throttleMs = std::min<uint64_t>(policy.remindMs, REMIND_MS);
+            decision.alert = !alertedEver[e][c] || elapsed(alertedAtMs[e][c], lastNowMs) >= throttleMs;
             if (decision.alert)
             {
                 alertedEver[e][c] = true;
@@ -522,6 +552,7 @@ namespace SQM
             lastCritical.limitMs = decision.limitMs;
             if (decision.alert)
                 lastCritical.alertedAtMs = lastNowMs;
+            lastCritical.unsent = !decision.alert;
             return decision;
         }
 

@@ -720,6 +720,84 @@
           "id": "D-04"
         }
       }
+    },
+    {
+      "name": "remote stop: off by default, and waits for Alpaca or MQTT roof commands when on",
+      "config": {
+        "autoClose": {
+          "remoteStop": true
+        }
+      },
+      "facts": {},
+      "expect": {
+        "autoClose.remoteStop": {
+          "state": "inactive",
+          "id": "D-45",
+          "reason": "remote-off"
+        },
+        "daylight.bandDeg": {
+          "state": "active",
+          "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "remote stop: in effect with Alpaca on",
+      "config": {
+        "alpaca": {
+          "enabled": true
+        },
+        "autoClose": {
+          "remoteStop": true
+        }
+      },
+      "facts": {},
+      "expect": {
+        "autoClose.remoteStop": {
+          "state": "active",
+          "id": "D-45"
+        }
+      }
+    },
+    {
+      "name": "remote stop: in effect with MQTT roof commands on",
+      "config": {
+        "mqtt": {
+          "enabled": true,
+          "broker": "broker.local",
+          "roofCommands": true
+        },
+        "autoClose": {
+          "remoteStop": true
+        }
+      },
+      "facts": {},
+      "expect": {
+        "autoClose.remoteStop": {
+          "state": "active",
+          "id": "D-45"
+        }
+      }
+    },
+    {
+      "name": "remote stop off; daylight band waits for daylight",
+      "config": {
+        "daylight": {
+          "mode": "off"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "autoClose.remoteStop": {
+          "state": "off",
+          "id": "D-45"
+        },
+        "daylight.bandDeg": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        }
+      }
     }
   ]
 }

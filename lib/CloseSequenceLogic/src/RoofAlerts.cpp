@@ -12,7 +12,7 @@ namespace SQM
             std::string causeText(const Decision &decision)
             {
                 if (decision.event == Event::StoppedByPerson)
-                    return "Stopped by a person";
+                    return decision.remoteStop ? "Stopped by an imaging app or MQTT" : "Stopped by a person";
                 switch (decision.cause)
                 {
                 case Cause::PositionUnknown:

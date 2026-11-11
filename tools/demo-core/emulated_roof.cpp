@@ -32,6 +32,8 @@ namespace DemoRoof
         roofCfg = cfg.roof;
         mqttOn = cfg.mqtt.enabled;
         daylightCfg = Daylight::settingsFrom(cfg);
+        policy = CloseSeq::policyFrom(cfg);
+        remoteStopsClose = cfg.autoClose.remoteStop;
         settingsPending = false;
         const Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
         controller = Roof::Controller(settings);
@@ -42,6 +44,7 @@ namespace DemoRoof
         gates = RoofIo::GateInputs();
         gates.fittedSwitches = static_cast<uint8_t>(parkCfg.switches);
         personStops = 0;
+        remoteStops = 0;
         http = Safety::SourceRecord();
         mqtt = Safety::SourceRecord();
         // As SafetyPoller::configure and SafetyInputs::apply set them: a source
@@ -69,6 +72,8 @@ namespace DemoRoof
     void EmulatedRoof::settingsChanged(const Config &cfg)
     {
         daylightCfg = Daylight::settingsFrom(cfg);
+        policy = CloseSeq::policyFrom(cfg);
+        remoteStopsClose = cfg.autoClose.remoteStop;
         stepDaylight(true);
         sourcesChanged(cfg.safety, cfg.park);
         safetyCfg = cfg.safety;
@@ -331,9 +336,11 @@ namespace DemoRoof
         CloseSeq::applySafety(in, verdict.verdict, park);
         CloseSeq::applyRoof(in, controller.status(), false);
         in.personStops = personStops;
+        in.remoteStops = remoteStops;
         in.roofStarted = true;
         in.daylight = daylightView.closes();
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
+        sequence.setPolicy(policy);
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
         if (CloseSeq::closedAfterAttempt(before, decision.event))
@@ -413,12 +420,18 @@ namespace DemoRoof
     // motion logic's own checks, then the command.
     Outcome EmulatedRoof::runChecked(Roof::Command command, Roof::Origin origin)
     {
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, controller, RoofIo::CommandContext());
+        RoofIo::CommandContext context;
+        context.remoteStopsClose = remoteStopsClose;
+        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, controller, context);
         if (!check.accepted)
             return Outcome{false, check.reason, check.text, controller.status().state};
         const bool stopping = command == Roof::Command::Stop || command == Roof::Command::Abort;
-        if (stopping && RoofIo::countsAsPersonStop(command, origin))
-            personStops++; // the close sequence stands down on a person's stop (spec 005)
+        // The close sequence stands down on a person's stop (spec 005), and on a
+        // remote stop the owner's autoClose.remoteStop counts as one (spec 014).
+        if (stopping && (RoofIo::countsAsPersonStop(command, origin) || check.standsDown))
+            personStops++;
+        if (stopping && check.standsDown)
+            remoteStops++;
         const Outcome outcome = outcomeOf(controller.command(command, origin));
         syncFault();
         return outcome;

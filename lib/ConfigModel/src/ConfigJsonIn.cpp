@@ -78,6 +78,14 @@ namespace SQM
                 {"roof", "slowDutyPercent"},
                 {"roof", "hallHighCounts"},
                 {"roof", "hallLowCounts"},
+                {"mqtt", "changeMinSeconds"},
+                {"autoClose", "rearmMinutes"},
+                {"autoClose", "parkRequestSeconds"},
+                {"autoClose", "parkHoldSeconds"},
+                {"autoClose", "retryMinutes"},
+                {"autoClose", "closeStartSeconds"},
+                {"autoClose", "closeGuardSeconds"},
+                {"autoClose", "remindMinutes"},
             };
             for (const auto &field : FIELDS)
             {
@@ -141,6 +149,7 @@ namespace SQM
             homeAssistant.take("discoveryPrefix", m.discoveryPrefix);
             mqtt.take("publishIntervalMs", m.publishIntervalMs);
             mqtt.take("roofCommands", m.roofCommands);
+            mqtt.take("changeMinSeconds", m.changeMinSeconds);
         }
 
         void applyAccess(const Section &doc, Config &cfg, bool keepSecrets)
@@ -353,6 +362,7 @@ namespace SQM
         {
             const Section daylight = root.child("daylight");
             daylight.take("sunAltitudeDeg", cfg.daylight.sunAltitudeDeg);
+            daylight.take("bandDeg", cfg.daylight.bandDeg);
             const Section location = root.child("location");
             location.take("set", cfg.location.set);
             location.take("latitude", cfg.location.latitude);
@@ -397,6 +407,32 @@ namespace SQM
             return strict ? setError(error, "Setup: state must be new, offered or done") : true;
         }
 
+        // Spec 014. A not-started policy that isn't one of the two names is
+        // refused, never read as a default.
+        bool applyAutoClose(const Section &root, Config &cfg, std::string *error)
+        {
+            const Section a = root.child("autoClose");
+            AutoCloseConfig &c = cfg.autoClose;
+            a.take("rearmMinutes", c.rearmMinutes);
+            a.take("parkRequestSeconds", c.parkRequestSeconds);
+            a.take("parkHoldSeconds", c.parkHoldSeconds);
+            a.take("retryMinutes", c.retryMinutes);
+            a.take("closeStartSeconds", c.closeStartSeconds);
+            a.take("closeGuardSeconds", c.closeGuardSeconds);
+            a.take("remindMinutes", c.remindMinutes);
+            a.take("remoteStop", c.remoteStop);
+            root.child("ui").take("confirmOpenClose", cfg.ui.confirmOpenClose);
+            if (!a.has("notStarted"))
+                return true;
+            const std::string choice = a["notStarted"].is<const char *>() ? a["notStarted"].as<const char *>() : "";
+            if (choice == "halt" || choice == "retry")
+            {
+                c.notStarted = choice == "retry" ? AutoCloseConfig::NotStarted::Retry : AutoCloseConfig::NotStarted::Halt;
+                return true;
+            }
+            return setError(error, "Automatic close: notStarted must be halt or retry");
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -434,7 +470,7 @@ namespace SQM
             root.child("alpaca").take("enabled", cfg.alpaca.enabled);
             applySafety(root.child("safety"), cfg.safety);
             if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error) ||
-                !applySetup(root.child("setup"), cfg.setup, error))
+                !applySetup(root.child("setup"), cfg.setup, error) || !applyAutoClose(root, cfg, error))
                 return false;
             return applyRoof(root.child("roof"), cfg.roof, error) && applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
                    applyAlertsClient(root.child("alertsClient"), cfg.alerts, error);
@@ -445,7 +481,7 @@ namespace SQM
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
-        DynamicJsonDocument doc(json.size() + 4096 > 6144 ? json.size() + 4096 : 6144);
+        DynamicJsonDocument doc(json.size() + 5120 > 8192 ? json.size() + 5120 : 8192);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

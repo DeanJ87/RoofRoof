@@ -20,7 +20,11 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => [
     id: 'roof',
     title: t('roof.title'),
     node: (
-      <RoofCard live={ctx.live ?? { status: ctx.status, connected: false, quiet: false, reconnectedAt: null }} config={ctx.config?.roof} />
+      <RoofCard
+        live={ctx.live ?? { status: ctx.status, connected: false, quiet: false, reconnectedAt: null }}
+        config={ctx.config?.roof}
+        confirm={ctx.config?.ui?.confirmOpenClose ?? false}
+      />
     ),
   },
   { id: 'device', title: t('dashboard.deviceNetwork'), node: <DeviceCard status={ctx.status} /> },

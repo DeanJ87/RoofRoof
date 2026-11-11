@@ -17,7 +17,7 @@ Just want to see the motor turn on the bench before the Hall sensor exists? The 
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: 7c84d2f947f589d8
+fingerprint: 49f0732fe7ae8371
 -->
 <figure class="diagram" markdown>
 
@@ -159,7 +159,8 @@ The roof opens only on a safe weather verdict and closes only onto a confirmed p
 7. **Park switches against N.I.N.A.** Set `park.switches` as fitted. With the mount parked and every switch closed: parked. Open one switch with the mount still parked: not parked, and the reason says the sources **disagree**.
 8. **A save doesn't reset the verdict.** Change something unrelated (the NTP server). The verdict and the park result stay as they were.
 9. **The site and the clock for the daylight failsafe** ([Daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe)). In **Settings → Roof → Daylight** switch **Location set** on and enter the observatory's latitude and longitude (north and east positive), and check **Settings → Time** shows NTP synced. The Roof card's **Daylight** line now shows the sun's altitude against the threshold (`Sun -14.2° < 0.0°` at night). Compare it with an almanac or a planetarium app for the same moment: within 0.5°. A wrong sign on the longitude puts the sun on the other side of the earth.
-10. **Leave the daylight mode on Alert (the default) or Off until stage 11.** **Alert and close** refuses every open while the sun is up and starts the automatic close, which would get in the way of the daytime tests in stages 6 to 8. Stage 7 tries it on purpose.
+10. **Leave the automatic close settings at their defaults until stage 11** (**Settings → Roof → Automatic close**: safe spell to re-arm 10 minutes, reminder interval 30 minutes, **Close didn't start** on **Halt**, **Remote Stop calls off a close** off, and the **Advanced** timings). The steps and times in this guide assume them; stage 11 is where you change any ([Settings of the automatic close](../user-guide/close-on-unsafe.md#settings-of-the-automatic-close)).
+11. **Leave the daylight mode on Alert (the default) or Off until stage 11.** **Alert and close** refuses every open while the sun is up and starts the automatic close, which would get in the way of the daytime tests in stages 6 to 8. Stage 7 tries it on purpose.
 
 ## Stage 5: The alert channel (before anything can run unattended)
 
@@ -257,13 +258,13 @@ At the roof, the roof at its closed end (state `closed`), the 12 V switch in rea
 
 ## Stage 9: N.I.N.A. over ASCOM Alpaca, and ConformU
 
-Details: [ASCOM Alpaca](../user-guide/alpaca.md). Alpaca is off by default and an Alpaca client is not a person: it can't move a roof whose position is unknown, clear a fault or stop a close in bad weather. Do steps 1 to 7 first **with the motor still disconnected** (hand-held magnets, as in stage 6), before "Connect the motor" below; steps 2 and 5 are then repeated on the real roof, attended, after stage 8.
+Details: [ASCOM Alpaca](../user-guide/alpaca.md); how the sequence and the failsafe share the roof: [N.I.N.A. opens and closes the roof](../user-guide/alpaca.md#nina-opens-and-closes-the-roof). Alpaca is off by default and an Alpaca client is not a person: it can't move a roof whose position is unknown, clear a fault or stop a close in bad weather. Do steps 1 to 7 first **with the motor still disconnected** (hand-held magnets, as in stage 6), before "Connect the motor" below; steps 2 and 5 are then repeated on the real roof, attended, after stage 8.
 
 1. **Switch Alpaca on** (**Settings → Network → ASCOM Alpaca**) and restart. In N.I.N.A.'s dome equipment, discover **RoofRoof roof** and connect (add it by IP and port 80 if discovery doesn't cross your network).
 2. **Open and close from N.I.N.A.** with the weather safe and the mount parked. ShutterStatus runs through opening, open, closing and closed.
 3. **Weather unsafe:** N.I.N.A.'s Open shows an error with the weather's reason, and nothing moves.
 4. **Mount not parked:** N.I.N.A.'s Close shows the park reason.
-5. **Stop from N.I.N.A.** stops a move in safe weather. During a close in unsafe weather it shows an error and the close **continues**; the web UI's Stop still stops it, and no **Automatic close stopped** alert arrives for the client's stop. A client's stop of a close waiting behind an upload is refused in bad weather.
+5. **Stop from N.I.N.A.** stops a move in safe weather. With **Remote Stop calls off a close** off (the default), during a close in unsafe weather it shows an error and the close **continues**; the web UI's Stop still stops it, and no **Automatic close stopped** alert arrives for the client's stop. A client's stop of a close waiting behind an upload is refused in bad weather.
 6. **Position unknown:** after a boot between the magnets N.I.N.A.'s Open and Close say only a person can move the roof.
 7. **Alpaca off:** every Dome command, Stop included, answers "disabled". Turn it back on afterwards if you use it.
 8. **ConformU.** Run ConformU against the device (version 4.5.0 passes in CI against the simulator) **only on a [bench-build](../user-guide/bench-mode.md) board (GPIO36 tied to GND) or with the roof's own board attended, motor disconnected or a person at the roof ready to stop it**: it opens, closes and stops the shutter. Fix nothing by hand-editing results; every error is a finding.
@@ -289,7 +290,8 @@ The roof may run unattended only when every line here is ticked on the [checklis
 3. Password protection is on, the settings are backed up ([Backup & restore](../user-guide/configuration.md#backup-restore) in **Settings → Device**, kept off the device) and the commissioned values are written on the checklist.
 4. **Health after a long session.** After an hour or more with the dashboard open, MQTT and a few uploads at rest, `roofstatus` shows `maxWatchdogBeatAgeMs` well under 50 and `maxStepGapMs` near 20, `watchdogTrips` is 0, and `stackFree.roof` in `/api/status` is above 2048 bytes.
 5. **The daylight mode is the one you want**: **Alert and close** if you never image the sun (the roof parks and closes itself after sunrise), **Alert** to be told only, **Off** for solar imaging. The site is set and the Roof card's Daylight line shows the sun (stage 4 step 9), and the daylight dry run passed (stage 7 step 13).
-6. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
+6. **The automatic close settings are the ones you want** ([Settings of the automatic close](../user-guide/close-on-unsafe.md#settings-of-the-automatic-close)). If you change any, repeat the part of the stage 7 dry run it affects. If you turn on **Remote Stop calls off a close**, check that N.I.N.A.'s Stop during the attended unsafe close stops the roof and **Automatic close stopped** arrives on the phone.
+7. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
 
 ---
 

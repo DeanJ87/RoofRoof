@@ -26,6 +26,7 @@ namespace SQM
             s.locationSet = config.location.set;
             s.latitude = config.location.latitude;
             s.longitude = config.location.longitude;
+            s.bandDeg = config.daylight.bandDeg;
             return s;
         }
 
@@ -39,6 +40,10 @@ namespace SQM
             View v;
             v.mode = settings.mode;
             v.limitDeg = settings.limitDeg;
+            // Spec 014: the band is a setting, clamped to its range (never 0: the state would flicker).
+            v.bandDeg = !(settings.bandDeg >= MIN_BAND_DEG) ? MIN_BAND_DEG
+                        : settings.bandDeg > MAX_BAND_DEG   ? MAX_BAND_DEG
+                                                            : settings.bandDeg; // NaN too
             v.missing = Missing::None;
             if (settings.mode == Mode::Off)
             {
@@ -68,7 +73,7 @@ namespace SQM
             {
                 // Day at or above the threshold; night again only below the band.
                 const double limit = static_cast<double>(settings.limitDeg);
-                day = v.altitudeDeg >= limit || (day && v.altitudeDeg >= limit - BAND_DEG);
+                day = v.altitudeDeg >= limit || (day && v.altitudeDeg >= limit - static_cast<double>(v.bandDeg));
                 v.state = day ? State::Day : State::Night;
             }
             else
@@ -89,7 +94,8 @@ namespace SQM
                 return view.missing == Missing::Clock ? "Clock not set" : "Location not set";
             case State::Day:
                 if (view.altitudeDeg < static_cast<double>(view.limitDeg))
-                    return "Sun " + degrees(view.altitudeDeg) + ", day until < " + degrees(static_cast<double>(view.limitDeg) - BAND_DEG);
+                    return "Sun " + degrees(view.altitudeDeg) + ", day until < " +
+                           degrees(static_cast<double>(view.limitDeg) - static_cast<double>(view.bandDeg));
                 return "Sun " + degrees(view.altitudeDeg) + " ≥ " + degrees(view.limitDeg);
             case State::Night:
                 break;

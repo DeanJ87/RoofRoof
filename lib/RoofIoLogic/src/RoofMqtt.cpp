@@ -184,7 +184,7 @@ namespace SQM
                 if (busy(key))
                     return !failed && busyPublishes < BUSY_MAX_PUBLISHES && busyChange(key, last) && since >= BUSY_MIN_MS;
                 if (key != last)
-                    return since >= CHANGE_MIN_MS;
+                    return since >= (changeMinMs < intervalMs ? changeMinMs : intervalMs); // never later than the interval
                 return since >= intervalMs;
             }
 

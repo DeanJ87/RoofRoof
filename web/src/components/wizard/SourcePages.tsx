@@ -8,6 +8,7 @@ import { Note } from '../ui';
 import { TestPanel } from './TestPanel';
 import { NINA_FIELDS, WEATHER_FIELDS } from './pages';
 import { t } from '../../i18n';
+import { NINA_ROOF_DOC } from '../../lib/docsLinks';
 
 // Pages 6 to 9 (spec 015 FR-008, FR-009): the weather sources and N.I.N.A.,
 // each with a Test; the alert channels with Send test; the daylight mode.
@@ -46,6 +47,11 @@ export const NinaPage: FunctionalComponent<WizardPageProps> = (props) => {
         />
         <Note>{t('wizard.nina.failsafe')}</Note>
         {!alpacaOn && <Note tone="warn">{t('wizard.nina.alpacaOff')}</Note>}
+        <Note>
+          <a href={NINA_ROOF_DOC} target="_blank" rel="noopener noreferrer">
+            {t('settings.roof.ninaDocLink')}
+          </a>
+        </Note>
       </SettingsCard>
     </>
   );

@@ -172,6 +172,59 @@
       "int": true,
       "min": 0,
       "max": 9
+    },
+    {
+      "path": "mqtt.changeMinSeconds",
+      "int": true,
+      "min": 1,
+      "max": 60
+    },
+    {
+      "path": "daylight.bandDeg",
+      "min": 0.1,
+      "max": 2
+    },
+    {
+      "path": "autoClose.rearmMinutes",
+      "int": true,
+      "min": 5,
+      "max": 60
+    },
+    {
+      "path": "autoClose.parkRequestSeconds",
+      "int": true,
+      "min": 10,
+      "max": 120
+    },
+    {
+      "path": "autoClose.parkHoldSeconds",
+      "int": true,
+      "min": 4,
+      "max": 30
+    },
+    {
+      "path": "autoClose.retryMinutes",
+      "int": true,
+      "min": 1,
+      "max": 30
+    },
+    {
+      "path": "autoClose.closeStartSeconds",
+      "int": true,
+      "min": 25,
+      "max": 120
+    },
+    {
+      "path": "autoClose.closeGuardSeconds",
+      "int": true,
+      "min": 10,
+      "max": 120
+    },
+    {
+      "path": "autoClose.remindMinutes",
+      "int": true,
+      "min": 10,
+      "max": 120
     }
   ]
 }

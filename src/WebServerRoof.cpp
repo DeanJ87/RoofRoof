@@ -253,7 +253,9 @@ namespace SQM
         const RoofIo::Mqtt::StateKey key = RoofIo::Mqtt::keyOf(snapshot);
         const uint32_t now = millis();
         const uint32_t connection = mqttClient->connectionCount();
-        if (!roofStateSchedule.due(key, connection, now, getConfigCallback().mqtt.publishIntervalMs))
+        const Config &config = getConfigCallback();
+        roofStateSchedule.setChangeMinMs(config.mqtt.changeMinSeconds * 1000u); // spec 014
+        if (!roofStateSchedule.due(key, connection, now, config.mqtt.publishIntervalMs))
             return;
         const time_t epoch = time(nullptr);
         DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
