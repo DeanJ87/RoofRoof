@@ -4,12 +4,49 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <ctime>
+#include <esp_attr.h>
+#include <esp_timer.h>
 
 // Alerts (engine, schedule, dispatch) and the /api/alerts routes.
 
 namespace SQM
 {
     using namespace WebShared;
+
+    namespace
+    {
+        // The roof conditions already announced (spec 007 FR-012): kept in
+        // RTC memory, which survives a reset or a crash but not a power cut,
+        // so a board that keeps resetting doesn't repeat the same alert.
+        struct KeptAnnounced
+        {
+            uint32_t magic;
+            uint32_t bits;
+            uint32_t check;
+        };
+        constexpr uint32_t KEPT_ANNOUNCED_MAGIC = 0x5EC00701u;
+        RTC_NOINIT_ATTR KeptAnnounced keptAnnounced;
+    } // namespace
+
+    void WebServer::keepRoofAnnounced()
+    {
+        if (!roofAnnouncedRestored)
+        {
+            // Before the engine's first pass after a start.
+            roofAnnouncedRestored = true;
+            if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && Alerts::announcedValid(keptAnnounced.bits, keptAnnounced.check))
+                alertEngine.restoreAnnouncedRoof(static_cast<uint8_t>(keptAnnounced.bits));
+            return;
+        }
+        const uint32_t bits = alertEngine.announcedRoof();
+        if (keptAnnounced.magic == KEPT_ANNOUNCED_MAGIC && keptAnnounced.bits == bits &&
+            keptAnnounced.check == Alerts::announcedCheck(bits))
+            return;
+        keptAnnounced.magic = 0;
+        keptAnnounced.bits = bits;
+        keptAnnounced.check = Alerts::announcedCheck(bits);
+        keptAnnounced.magic = KEPT_ANNOUNCED_MAGIC;
+    }
 
     void WebServer::localClock(std::string &timeText, std::string &dateText)
     {
@@ -31,10 +68,14 @@ namespace SQM
     {
         const Config &cfg = getConfigCallback();
         Alerts::AlertInputs in;
-        in.nowSeconds = millis() / 1000;
+        // 64-bit microseconds: seconds that don't wrap after 49.7 days.
+        in.nowSeconds = static_cast<uint32_t>(esp_timer_get_time() / 1000000);
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
         watchClients(in, cfg, clock.time);
+        if (roofConditions)
+            in.roof = roofConditions();
+        keepRoofAnnounced(); // restores before the first pass
 
         // Always run the engine so its state tracks reality while alerts are
         // off. Each alert gets its configured level, sound and wording;
@@ -42,6 +83,7 @@ namespace SQM
         const time_t wallClock = time(nullptr);
         const uint32_t epoch = wallClock >= Core::CLOCK_VALID_EPOCH ? static_cast<uint32_t>(wallClock) : 0;
         const Core::AlertStep step = Core::runAlerts(alertEngine, in, Core::alertRules(cfg), Core::AlertSources{cfg}, clock);
+        keepRoofAnnounced();
         sendAlerts(step, cfg);
 
         // Only after this pass's alerts went out: a clean disconnect's
@@ -71,9 +113,12 @@ namespace SQM
     // nothing goes out.
     void WebServer::sendAlerts(const Core::AlertStep &step, const Config &cfg)
     {
-        if (!alertSchedule.state().sending || step.outgoing.empty() || !cfg.alerts.enabled)
+        if (step.outgoing.empty())
             return;
-        alertDispatcher->dispatch(Alerts::stackAlerts(step.outgoing), cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+        const Alerts::Alert stacked = Alerts::stackAlerts(step.outgoing);
+        if (!Core::alertGoesOut(stacked.type, cfg.alerts, alertSchedule.state().sending))
+            return;
+        alertDispatcher->dispatch(stacked, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
     uint32_t WebServer::raiseRoofAlert(const Alerts::Alert &alert)
@@ -81,10 +126,16 @@ namespace SQM
         const Config &cfg = getConfigCallback();
         if (!alertDispatcher)
             return 0;
-        // Not held by the pause or the master switch: a roof left open in the
-        // rain is not an imaging-app notice the owner chose to silence. Only
-        // the channels switched on are used.
-        return alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+        // Not held by the pause, the send mode, the grace or the master switch:
+        // a roof left open in the rain is not a notice the owner chose to
+        // silence. Only the channels switched on are used. The settings set
+        // the level (never below urgent), sound and wording (spec 007).
+        Core::LocalClock clock;
+        localClock(clock.time, clock.date);
+        const Alerts::Alert finished = Core::finishCriticalAlert(alert, Core::AlertSources{cfg}, clock);
+        if (!Core::alertGoesOut(finished.type, cfg.alerts, alertSchedule.state().sending))
+            return 0; // not reached: only critical alerts come here
+        return alertDispatcher->dispatch(finished, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
     void WebServer::applyPendingArm()

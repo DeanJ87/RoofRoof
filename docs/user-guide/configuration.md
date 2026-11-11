@@ -87,6 +87,13 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "cooldownSeconds": 300,
     "clientSilentSeconds": 120,
     "events": {
+      "mount_not_parked": { "level": 4, "sound": "", "title": "", "message": "" },
+      "roof_not_closed": { "level": 4, "sound": "", "title": "", "message": "" },
+      "move_fault": { "level": 3, "sound": "", "title": "", "message": "" },
+      "supply_low": { "level": 2, "sound": "", "title": "", "message": "" },
+      "unsafe_closing": { "level": 2, "sound": "", "title": "", "message": "" },
+      "roof_closed": { "level": 2, "sound": "", "title": "", "message": "" },
+      "safety_lost": { "level": 2, "sound": "", "title": "", "message": "" },
       "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
       "client_disconnected": { "level": 0, "sound": "", "title": "", "message": "" }
@@ -246,7 +253,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Send alerts at all |
-| `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me |
+| `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me; `mount_not_parked` and `roof_not_closed` 3 or 4 only |
 | `events.<event>.sound` | string | `""` | Pushover sound; empty uses `pushover.sound` |
 | `events.<event>.title` / `.message` | string | `""` | Your own wording with `{variables}` (up to 80 / 240 characters); empty uses the default |
 | `sendMode` | string | `"any"` | When to send: `any` (any time, unless paused) or `whileConnected` (only while an imaging app has an Alpaca device connected) |
@@ -254,7 +261,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: `client_lost`, `client_back`, `client_disconnected`. Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `safety_lost`; the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

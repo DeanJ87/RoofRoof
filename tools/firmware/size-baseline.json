@@ -1,3 +1,4 @@
 {
-  "esp32dev": 1376128
+  "esp32dev": 1389328,
+  "overBudgetReason": "spec 007: roof alert events (+13.2 KB)"
 }

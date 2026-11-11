@@ -20,14 +20,27 @@ namespace SQM
             ClientLost,
             ClientBack,
             ClientDisconnected,
-            // The roof's close on unsafe weather (RoofRoof spec 005): mount
-            // not parked, roof didn't close, can't close by itself, stopped
-            // by a person. Fixed wording, no setting; spec 007 replaces it
-            // with one event per case.
-            Roof,
+            // The roof (RoofRoof spec 007). The first two are critical: the
+            // close on unsafe weather (spec 005) raises them past the pause,
+            // the grace and the master switch, and sends them again until a
+            // channel takes them. The rest go through this engine.
+            MountNotParked,
+            RoofNotClosed,
+            MoveFault,     // a motion fault latched
+            SupplyLow,     // the 12 V supply below its minimum, or unreadable
+            UnsafeClosing, // the automatic close began an attempt
+            RoofClosed,    // the roof reached closed during the automatic close
+            SafetyLost,    // a weather source that is on was lost
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::Roof) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::SafetyLost) + 1;
+
+        // The roof events constitution II and III require: never off, never
+        // held back by the pause, the grace or the master switch.
+        constexpr bool isCritical(AlertType type)
+        {
+            return type == AlertType::MountNotParked || type == AlertType::RoofNotClosed;
+        }
 
         // How loudly an alert is delivered; set per event in the alert
         // settings. The dispatcher maps it to each channel's priority.
@@ -74,6 +87,45 @@ namespace SQM
             bool onClientLost = true;
             bool onClientBack = true;
             bool onClientDisconnected = false;
+            // The roof's non-critical events (spec 007).
+            bool onMoveFault = true;
+            bool onSupplyLow = true;
+            bool onUnsafeClosing = true;
+            bool onRoofClosed = true;
+            bool onSafetyLost = true;
+        };
+
+        // A low supply or a lost weather source must last this long before it
+        // is announced (a motor's start-up dip, one failed request).
+        constexpr uint32_t ROOF_SETTLE_SECONDS = 30;
+        // The roof's condition events wait at least this long between two
+        // alerts of the same event, whatever the cooldown setting (0 allowed):
+        // a verdict flapping every few seconds can't turn into an alert each.
+        constexpr uint32_t ROOF_MIN_COOLDOWN_SECONDS = 60;
+        constexpr uint32_t roofCooldown(uint32_t cooldownSeconds)
+        {
+            return cooldownSeconds > ROOF_MIN_COOLDOWN_SECONDS ? cooldownSeconds : ROOF_MIN_COOLDOWN_SECONDS;
+        }
+
+        // The roof as the alert engine sees it (RoofRoof spec 007), filled on
+        // the main loop from the roof's snapshot, the weather verdict and the
+        // close sequence. Each text is set while its condition holds.
+        struct RoofInputs
+        {
+            bool known = false; // false: no roof (the demo); the roof events are ignored
+            bool faultLatched = false;
+            std::string fault; // the fault, its value and limit
+            bool supplyLow = false;
+            std::string supply; // "Supply 10.9 V < 11.0 V"
+            bool sourceLost = false;
+            // false while a weather source that is on still waits for its first
+            // reply (after a start): whether it is lost isn't known yet, so
+            // the source event is left as it was.
+            bool sourceKnown = true;
+            std::string source;       // each lost source and why
+            bool closing = false;     // the automatic close is attempting a close
+            std::string weather;      // the verdict that started it
+            uint32_t closedCount = 0; // closes the automatic close saw finish, since start
         };
 
         // The most Alpaca devices an imaging app can be watched on. RoofRoof spec 006
@@ -98,6 +150,7 @@ namespace SQM
             uint32_t nowSeconds = 0; // monotonic
             size_t clientCount = 0;  // devices in use in `clients`
             ClientInputs clients[MAX_CLIENT_DEVICES];
+            RoofInputs roof;
         };
 
         // Why a change hasn't been announced yet.
@@ -131,6 +184,12 @@ namespace SQM
             // Changes seen but not announced yet, and how long until they
             // can be (as of the last update()). Doesn't change any state.
             std::vector<Wait> waits(uint32_t nowSeconds, const AlertRules &rules) const;
+
+            // The roof conditions announced and still present (bit 0 fault, 1
+            // supply, 2 source, 3 closing), kept across a reset so it doesn't
+            // repeat them; restored before the first update().
+            uint8_t announcedRoof() const;
+            void restoreAnnouncedRoof(uint8_t bits);
 
         private:
             struct Tracker
@@ -182,7 +241,25 @@ namespace SQM
             };
             ClientChange clientSilence(size_t index, bool silent, bool allowed, uint32_t now, uint32_t cooldown);
             void updateClients(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
+
+            // The roof (src/RoofEvents.cpp): a condition alerts on its rising
+            // edge only, once it has held for its settle time, outside the
+            // grace and the cooldown; its end resets it silently.
+            Tracker roofFault, roofSupply, roofSource, roofClosing;
+            uint32_t closedSeen = 0;
+            bool closedPending = false;
+            bool closedSent = false;
+            uint32_t closedSentAt = 0;
+            std::string closedWeather;
+            static bool rise(Tracker &tracker, bool current, const Emit &emit, bool inGrace);
+            void updateRoof(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
+            void addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const;
         };
+
+        // The announced bits as kept in RTC memory across a reset: a check
+        // word so random memory after a power cut isn't taken for a record.
+        uint32_t announcedCheck(uint32_t bits);
+        bool announcedValid(uint32_t bits, uint32_t check);
 
         // Formatting helpers shared with the dispatcher's test alerts.
         // One reason per line, bulleted.

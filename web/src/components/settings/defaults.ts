@@ -16,6 +16,13 @@ export const defaultAlpacaConfig: AlpacaConfig = {
 export const defaultAlertsConfig: AlertsConfig = {
   enabled: false,
   events: {
+    mount_not_parked: { level: 4, sound: '' },
+    roof_not_closed: { level: 4, sound: '' },
+    move_fault: { level: 3, sound: '' },
+    supply_low: { level: 2, sound: '' },
+    unsafe_closing: { level: 2, sound: '' },
+    roof_closed: { level: 2, sound: '' },
+    safety_lost: { level: 2, sound: '' },
     client_lost: { level: 3, sound: '' },
     client_back: { level: 1, sound: '' },
     client_disconnected: { level: 0, sound: '' },

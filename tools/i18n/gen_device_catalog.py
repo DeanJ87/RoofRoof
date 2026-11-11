@@ -29,6 +29,8 @@ SOURCES = {
     "lib/ConfigModel/src/ConfigJsonIn.cpp": ("settings", {"setError": [1]}),
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
+    # The roof's alert wording (spec 007), a table of templates.
+    "lib/AlertLogic/src/RoofEvents.cpp": ("alert", {}),
     "src/WebServer.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerApi.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
@@ -76,6 +78,7 @@ ASSIGN = {
 # test-alert table holds every event's title and its label.
 TABLES = {
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r'\{"\w+",\s*Alerts::AlertType::\w+,\s*"([^"]+)",\s*"([^"]+)"'),
+    "lib/AlertLogic/src/RoofEvents.cpp": re.compile(r'\{\s*AlertType::\w+,\s*"([^"]+)",\s*"([^"]+)"'),
 }
 PRINTF = re.compile(r"%(?:[-+ 0#]*\d*(?:\.\d+)?)(?:l|ll|h|z)?[dfisuxXgc]|%%")
 

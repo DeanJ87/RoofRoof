@@ -723,6 +723,13 @@
           "schema": {
             "type": "string",
             "enum": [
+              "mount_not_parked",
+              "roof_not_closed",
+              "move_fault",
+              "supply_low",
+              "unsafe_closing",
+              "roof_closed",
+              "safety_lost",
               "client_lost",
               "client_back",
               "client_disconnected"

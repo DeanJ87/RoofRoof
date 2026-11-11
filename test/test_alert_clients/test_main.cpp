@@ -206,7 +206,7 @@ void test_client_default_wording_names_no_product(void)
     TEST_ASSERT_EQUAL_STRING("client_lost", alertTypeName(AlertType::ClientLost));
     TEST_ASSERT_EQUAL_STRING("client_back", alertTypeName(AlertType::ClientBack));
     TEST_ASSERT_EQUAL_STRING("client_disconnected", alertTypeName(AlertType::ClientDisconnected));
-    TEST_ASSERT_EQUAL_STRING("roof", alertTypeName(AlertType::Roof));
+    TEST_ASSERT_EQUAL_STRING("mount_not_parked", alertTypeName(AlertType::MountNotParked));
 }
 
 // --- Connections kept across a self-caused restart (#136) ---
