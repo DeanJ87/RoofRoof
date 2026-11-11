@@ -51,6 +51,21 @@ namespace SQM
             "/api/roof/close", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); });
         server.on("/api/roof/stop", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Stop); });
         server.on("/api/roof/clear-fault", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofClearFault(request); });
+        server.on("/api/roof/inputs", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRoofInputs(request); });
+    }
+
+    // Spec 015 (contracts/roof-inputs.md): readings only, open like /api/status.
+    // A copy of what the main loop last evaluated: nothing is sent to SQMeter or
+    // N.I.N.A. and nothing changes, so it needs no rate limit and never waits on
+    // the network or the roof (constitution VI).
+    void WebServer::handleRoofInputs(AsyncWebServerRequest *request)
+    {
+        const Safety::InputsReport report = inputsSource ? inputsSource() : Safety::InputsReport{};
+        DynamicJsonDocument doc(Safety::INPUTS_REPORT_CAPACITY);
+        Safety::writeInputsReport(doc.to<JsonObject>(), report);
+        std::string body;
+        serializeJson(doc, body);
+        request->send(200, "application/json", body.c_str());
     }
 
     void WebServer::handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command)

@@ -107,6 +107,8 @@ public:
     // --- Documents ---------------------------------------------------------
     // The decision parts of GET /api/status; the demo adds the hardware parts.
     std::string statusParts() const;
+    // GET /api/roof/inputs (spec 015): the firmware's own writer on the simulated sources.
+    std::string inputsDocument() const;
 
     // GET /api/settings/effective: what's actually in effect, from the
     // device's own dependency rules (SQMeter spec 020).

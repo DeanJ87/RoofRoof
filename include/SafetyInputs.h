@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Config.h"
+#include "InputsReport.h"
 #include "ParkRule.h"
 #include "SafetyInput.h"
 #include "SafetyPoller.h"
@@ -48,6 +49,9 @@ namespace SQM
         // Ask N.I.N.A. to park (spec 005). The answer is in the poller's
         // snapshot; only park() says the mount is parked.
         void requestPark() { poller.requestPark(); }
+        // Any task (spec 015, GET /api/roof/inputs): the verdict, the park and
+        // N.I.N.A.'s reading as last evaluated, copied under their own lock.
+        Safety::InputsReport report() const;
 
     private:
         static constexpr uint32_t EVALUATE_EVERY_MS = 1000;
@@ -69,6 +73,9 @@ namespace SQM
         SafetyPoller &poller;
         MQTTClient *mqtt;
         SemaphoreHandle_t pendingLock = nullptr;
+        SemaphoreHandle_t reportLock = nullptr;
+        Safety::InputsReport lastReport; // guarded by reportLock
+        uint32_t mqttGeneration = 0;     // bumped when the MQTT source's settings change
         std::optional<Settings> pending; // guarded by pendingLock
         Settings settings;
         bool started = false;

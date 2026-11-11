@@ -19,6 +19,13 @@ std::string EmulatedDevice::statusParts() const
     return serialize(doc);
 }
 
+std::string EmulatedDevice::inputsDocument() const
+{
+    DynamicJsonDocument doc(Safety::INPUTS_REPORT_CAPACITY);
+    Safety::writeInputsReport(doc.to<JsonObject>(), roof.inputs());
+    return serialize(doc);
+}
+
 std::string EmulatedDevice::effective() const
 {
     const Deps::Facts f = facts();

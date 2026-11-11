@@ -66,12 +66,40 @@ namespace DemoRoof
     {
         daylightCfg = Daylight::settingsFrom(cfg);
         stepDaylight(true);
+        sourcesChanged(cfg.safety, cfg.park);
         safetyCfg = cfg.safety;
         parkCfg = cfg.park;
         mqttOn = cfg.mqtt.enabled;
         pendingRoof = cfg.roof;
         settingsPending = true;
         takePendingSettings();
+    }
+
+    // SafetyPoller::configure and SafetyInputs::apply: a changed source starts
+    // again from nothing under a new generation and is polled at once.
+    void EmulatedRoof::sourcesChanged(const SafetyConfig &nextSafety, const ParkConfig &nextPark)
+    {
+        bool repoll = false;
+        if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl)
+        {
+            http = Safety::SourceRecord();
+            ++httpGeneration;
+            repoll = true;
+        }
+        if (nextSafety.mqttEnabled != safetyCfg.mqttEnabled || nextSafety.mqttTopic != safetyCfg.mqttTopic)
+        {
+            mqtt = Safety::SourceRecord();
+            ++mqttGeneration;
+            repoll = true;
+        }
+        if (nextPark.ninaUrl != parkCfg.ninaUrl)
+        {
+            ++ninaGeneration;
+            ninaReadAtMs = 0;
+            repoll = true;
+        }
+        if (repoll)
+            polled = false;
     }
 
     // RoofControl::takePendingSettings: refused while a move is active, kept until it ends.
@@ -251,7 +279,7 @@ namespace DemoRoof
         Safety::ParkInputs p;
         if (parkCfg.ninaUrl.empty())
             p.nina.status = Nina::ReadingStatus::NotConfigured;
-        else if (polled)
+        else if (polled && ninaReadAtMs != 0)
         {
             p.nina.status = Nina::ReadingStatus::Good;
             p.nina.connected = true;
@@ -263,11 +291,17 @@ namespace DemoRoof
         p.switch1 = p.switch2 = RoofIo::parkReading(switchContact());
         p.nowMs = nowMs;
         park = Safety::evaluatePark(p);
+        ninaReading = p.nina;
 
         gates.weather = verdict.verdict;
         gates.weatherText = Safety::describe(verdict);
         gates.parked = park.parked;
         gates.parkText = Safety::describe(park);
+    }
+
+    Safety::InputsReport EmulatedRoof::inputs() const
+    {
+        return Safety::InputsReport{verdict, park, ninaReading, nowMs, httpGeneration, mqttGeneration, ninaGeneration};
     }
 
     // --- Daylight (CloseOnUnsafe::updateDaylight and main.cpp's hand-over) -----------
