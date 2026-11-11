@@ -57,6 +57,11 @@ the setup hotspot, a low supply, an unsettled Hall reading.
 | Top-duty open (if asked) | ramps up to the top duty, back to the slow duty before the end | 1.25 × the slow open + 5 s |
 | Top-duty close (if asked) | the same | 1.25 × the slow close + 5 s |
 
+Travel and speed aren't known yet, so these limits take the place of the usual timeout (the
+expected travel time plus the margin): the one exception the
+[constitution](https://github.com/DeanJ87/RoofRoof/blob/main/.specify/memory/constitution.md)
+(Principle I, version 2.0.0) makes to its timeout rule.
+
 Each leg stops at the **first magnet** after it leaves the one it started on, at its time limit
 (a `timeout` fault), or on any of the controller's usual faults: not leaving its start magnet in
 the leave time, the drive budget, over-current or a lost current reading (with current sense), a

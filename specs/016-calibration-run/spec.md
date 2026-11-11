@@ -119,7 +119,7 @@ Each answer takes the safest option the constitution allows and is also listed u
 | Principle | Rule | Where it is kept |
 |---|---|---|
 | I | Only a person may move a roof whose position is unknown, at reduced speed, to the first magnet | FR-001, FR-006: started only by an authenticated person who confirms they are at the roof; every leg from an unknown position runs at the slow duty and stops at the first magnet |
-| I | Every move has a hard timeout enforced by the motion code and stops on its magnet | FR-007, FR-008: each leg's limit is the controller's own timeout; each leg stops at its end's magnet |
+| I | Every move has a hard timeout enforced by the motion code and stops on its magnet (2.0.0: the calibration run's exception) | FR-007, FR-008: each leg's limit is the controller's own timeout; each leg stops at its end's magnet |
 | I | Any motion fault stops the motor, drops EN and locks out until a person clears it; a restart never clears it | FR-009: a leg's faults are the existing ones, through the existing latch and fault store |
 | I | Settings that change motion, OTA and restarts are refused while moving | FR-016: held for the whole run |
 | I | Never move by itself with the position unknown; unknown after a restart part-way | FR-018: nothing resumes after a restart |
@@ -524,7 +524,9 @@ Each was an open choice; the safest option the constitution allows was taken.
    the speed that fits it.
 6. **The time limit is a new setting** (180 s, 30-600 s): about 1.5 times a slow travel with the
    default roof. Later legs are bounded by the measured ones. During a leg the drive budget is the
-   leg's limit, since the old settings' budget may be wrong.
+   leg's limit, since the old settings' budget may be wrong. This is the exception that
+   constitution 2.0.0 adds to Principle I's timeout rule for an attended calibration run before
+   travel and speed are measured (the amendment states the new risk).
 7. **Top-duty legs slow down early**: at half the time the slow leg predicts at the top duty,
    allowing a motor deadband of up to half the slow duty, less the ramp-down time, so they arrive
    at the slow duty even when the motor is much faster at the top duty than the slow leg suggests.

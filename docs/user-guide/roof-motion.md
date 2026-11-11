@@ -49,7 +49,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: db8fd4dfa687b2f1
+fingerprint: 23c79987f56e9112
 -->
 <figure class="diagram" markdown>
 
@@ -82,7 +82,7 @@ stateDiagram-v2
     Error --> Unknown: a person clears it (or the end, at a magnet)
 ```
 
-<figcaption>The roof's states. Any state can go to error on a Hall sensor fault or a fault raised from outside.</figcaption>
+<figcaption>The roof's states. Any state can go to error on a Hall sensor fault or a fault raised from outside. A <a href="../calibration-run/">calibration run</a>'s legs are opening and closing moves too.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -94,6 +94,7 @@ stateDiagram-v2
     5. Abort part-way gives `unknown`. From `unknown`, only a person's open or close moves the roof, at the slow duty, stopping at the first magnet.
     6. A magnet lost while the roof is at rest makes it `unknown`; a magnet read at rest makes it that end. New settings while `stopped` make it `unknown`, since the estimate used the old ones.
     7. Any fault, from any state, gives `error`. Only a person can clear it; the roof is then at the end whose magnet is read, or `unknown`.
+    8. A [calibration run](calibration-run.md)'s legs are `opening` and `closing` moves that a person starts: each stops at the first magnet after leaving its start magnet (whichever end the polarity setting names), at its time limit, or on a fault; the park interlock watches every leg; a stop part-way gives `stopped` or `unknown` as above.
 
 ## Commands
 

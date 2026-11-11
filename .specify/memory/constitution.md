@@ -1,6 +1,19 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 (initial). Derived from SQMeter's constitution 1.3.1 (SQMeter main @ 877208b).
+- Version: 1.0.0 -> 2.0.0 (MAJOR: Principle I's timeout rule gains an exception, which relaxes it).
+- Modified: I. Motion Safety, the hard-timeout rule. During an attended calibration run (spec
+  016), before travel and speed are measured, a leg's hard timeout is roof.calibrationLimitSeconds
+  (30-600 s), enforced by the motion code; later legs are bounded by the times already measured;
+  the drive budget and every motion fault still apply.
+- New risk: a leg's timeout no longer follows from the roof's own travel and speed. A leg that
+  misses its magnet can drive into an end stop for up to the limit (at most 600 s, by default 180
+  s) less the travel time; with current sense off, only the timeout stops it. Mitigations: only a
+  person at the roof starts a run, every leg at the slow duty from an unknown position, the limit
+  is bounded and the owner's setting, later legs are bounded by the measured ones.
+- Templates: plan-template.md (Constitution Check) needs no change: it reads the principles from
+  this file. spec-template.md, tasks-template.md, checklist-template.md: no change.
+- Docs: docs/user-guide/calibration-run.md and specs/016-calibration-run/spec.md cite the rule.
+- Earlier: 1.0.0 (initial). Derived from SQMeter's constitution 1.3.1 (SQMeter main @ 877208b).
 - Added: I. Motion Safety and II. Close Only Onto a Parked Mount (no SQMeter equivalent);
   XI. SQMeter Heritage (the hybrid copy decision).
 - Adapted from SQMeter: III (fail-safe safety inputs), IV (Alpaca, now a Dome), V-X.
@@ -35,6 +48,11 @@ nothing has gone wrong.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed
   settings, plus a margin) and MUST stop on its target magnet. The timeout is enforced by the
   motion code itself, never by a client.
+  - The one exception is an attended calibration run, which measures travel and speed. Before
+    they are measured, each leg's hard timeout is the `roof.calibrationLimitSeconds` setting,
+    bounded to 30-600 s and enforced by the motion code. Later legs are bounded by the times
+    already measured. The drive budget and every motion fault below still apply, and each leg
+    stops at the first magnet it reaches.
 - Any motion fault MUST stop the motor, drop EN and lock out motion until a person clears it.
   Motion faults include:
   - a timeout or "no magnet before the timeout";
@@ -267,4 +285,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-10
+**Version**: 2.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-11
