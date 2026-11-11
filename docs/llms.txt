@@ -14,7 +14,7 @@ Other facts, to avoid common mistakes:
 ## Pages
 
 - Getting started: flashing, USB flash, first boot (the RoofRoof-Setup hotspot, roofroof.local)
-- Hardware: wiring (pin table, EN pull-down, voltage dividers)
+- Hardware: wiring (pin table, EN pull-down, voltage dividers), the commissioning guide and its printable checklist, calibration
 - User guide: dashboard, configuration, security, IPv6, MQTT, updates, ASCOM Alpaca, alerts
 - API: REST API, API reference (openapi.json), WebSocket, integrations
 - Development: workflow, contributing, coding standards, accessibility, translations, brand, releasing

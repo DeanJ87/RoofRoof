@@ -1,21 +1,21 @@
 ---
 title: Roll-off roof controller for ESP32
-description: "ESP32 firmware and web UI for an observatory roll-off-roof controller: ASCOM Alpaca for N.I.N.A., MQTT, Home Assistant and alerts. Platform stage: the roof comes in later specs."
+description: "ESP32 firmware and web UI for an observatory roll-off-roof controller: ASCOM Alpaca for N.I.N.A., MQTT, Home Assistant and alerts. Open, close and stop from the dashboard, N.I.N.A., MQTT or Home Assistant, and an automatic close onto a parked mount."
 ---
 
 # RoofRoof
 
 <div class="sqm-hero" markdown>
 <div class="sqm-hero-value">RoofRoof</div>
-<div class="sqm-hero-unit">ESP32 roll-off roof controller · roof hardware stage</div>
+<div class="sqm-hero-unit">ESP32 roll-off roof controller</div>
 
 Firmware and a web UI for an observatory roll-off roof: a safe, networked controller you reach from a browser, N.I.N.A. and Home Assistant.
 </div>
 
-RoofRoof is firmware for an ESP32 that will drive an observatory roll-off roof through an IBT-2 (BTS7960) motor driver. It was started as a copy of the author's SQMeter project, keeping its platform (WiFi setup, the web UI, the REST API, MQTT, alerts, updates, ASCOM Alpaca) and removing everything about sensors and sky quality.
+RoofRoof is firmware for an ESP32 that drives an observatory roll-off roof through an IBT-2 (BTS7960) motor driver. It was started as a copy of the author's SQMeter project, keeping its platform (WiFi setup, the web UI, the REST API, MQTT, alerts, updates, ASCOM Alpaca) and removing everything about sensors and sky quality.
 
-!!! note "Roof hardware stage"
-    The device serves its web UI, a REST API, live status, MQTT with Home Assistant discovery, an ASCOM Alpaca server and push alerts, and it holds the motor driver off from the first instruction of `setup()`. **It moves the roof on an authenticated REST command** ([REST API](api/rest.md#roof)) **an ASCOM Alpaca Dome command** ([ASCOM Alpaca](user-guide/alpaca.md)) **or, when switched on, an MQTT command** ([MQTT](user-guide/mqtt.md#roof-commands)): open only while the weather is safe, close only onto a parked mount. The roof's state goes out over MQTT, with a Home Assistant cover. The dashboard's [Roof card](user-guide/dashboard.md#roof) shows it live, with Open, Close and Stop.
+!!! note "Setting up a new roof"
+    The device serves its web UI, a REST API, live status, MQTT with Home Assistant discovery, an ASCOM Alpaca server and push alerts, and it holds the motor driver off from the first instruction of `setup()`. **It moves the roof on an authenticated REST command** ([REST API](api/rest.md#roof)) **an ASCOM Alpaca Dome command** ([ASCOM Alpaca](user-guide/alpaca.md)) **or, when switched on, an MQTT command** ([MQTT](user-guide/mqtt.md#roof-commands)): open only while the weather is safe, close only onto a parked mount. The roof's state goes out over MQTT, with a Home Assistant cover. The dashboard's [Roof card](user-guide/dashboard.md#roof) shows it live, with Open, Close and Stop. A new roof is brought into service with the [commissioning guide](hardware/commissioning.md).
 
 There is no public docs site: these docs and the [live demo](live-demo.md) are built by CI and downloaded as an artifact.
 
