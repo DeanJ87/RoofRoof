@@ -138,6 +138,7 @@ namespace SQM
             nina["url"] = c.park.ninaUrl;
             nina["api"] = "v2";
             park["switches"] = switchesName(c.park.switches);
+            park["timeoutSeconds"] = c.park.timeoutSeconds;
         }
 
         void appendRoof(JsonDocument &doc, const RoofConfig &r)

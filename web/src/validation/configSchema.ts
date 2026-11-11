@@ -138,6 +138,12 @@ export const parkConfigSchema = z.object({
     api: z.literal('v2'),
   }),
   switches: z.enum(['none', 'one', 'two']),
+  // Spec 005: how long the close sequence waits for the park to be confirmed.
+  timeoutSeconds: z
+    .number()
+    .int()
+    .min(30, t('validation.configSchema.parkTimeLimitMustBeBetween'))
+    .max(1800, t('validation.configSchema.parkTimeLimitMustBeBetween')),
 });
 
 export const configSchema = z.object({

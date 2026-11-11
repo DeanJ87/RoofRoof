@@ -6,8 +6,9 @@ description: "How RoofRoof decides when and how the roof moves: its states, the 
 
 This page explains how the controller decides when and how the roof moves. The decisions live in
 `lib/RoofLogic` (the motion) and `lib/RoofIoLogic` (the hardware layer), and are covered by tests.
-The roof moves on a person's command through the [REST API](../api/rest.md#roof); the automatic
-close on bad weather, Alpaca, MQTT and the dashboard's roof card come in later releases. Wire the
+The roof moves on a person's command through the [REST API](../api/rest.md#roof), and closes by
+itself when the weather turns unsafe ([Close on unsafe weather](close-on-unsafe.md)); Alpaca, MQTT
+and the dashboard's roof card come in later releases. Wire the
 board from [Wiring](../hardware/wiring.md) and set the Hall thresholds with
 [Calibration](../hardware/calibration.md) before the first move.
 

@@ -44,11 +44,12 @@ namespace SQM
         {
             // In AlertType order (lib/AlertLogic/include/AlertEngine.h).
             static constexpr const char *TAGS[] = {
-                "house",         // AlertsOn
-                "test_tube",     // Test
-                "satellite",     // ClientLost
-                "link",          // ClientBack
-                "electric_plug", // ClientDisconnected
+                "house",          // AlertsOn
+                "test_tube",      // Test
+                "satellite",      // ClientLost
+                "link",           // ClientBack
+                "electric_plug",  // ClientDisconnected
+                "rotating_light", // Roof
             };
             static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
             const size_t index = static_cast<size_t>(type);

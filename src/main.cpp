@@ -6,6 +6,7 @@
 #include <esp_ota_ops.h>
 #include <esp_task_wdt.h>
 
+#include "CloseOnUnsafe.h"
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
@@ -32,6 +33,7 @@ static std::unique_ptr<MQTTClient> mqttClient;
 static SafetyPoller safetyPoller;
 static std::unique_ptr<SafetyInputs> safetyInputs;
 static RoofControl roofControl;
+static CloseOnUnsafe closeOnUnsafe;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -60,6 +62,7 @@ bool saveConfigCallback(const Config &newConfig)
     if (safetyInputs)
         safetyInputs->updateConfig(config);
     roofControl.updateConfig(config); // taken by the roof once no move is active
+    closeOnUnsafe.updateConfig(config);
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
@@ -221,7 +224,7 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
-    // Spec 004: the weather verdict and park confirmation (reported only; spec 005 acts on them).
+    // Spec 004: the weather verdict and park confirmation.
     safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
     safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
@@ -229,11 +232,32 @@ void startServices()
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->setRoof(&roofControl);
     webServer->begin();
+
+    // Spec 005: unsafe ends parked and closed; its critical events go out
+    // through the alert dispatcher, never through N.I.N.A. or SQMeter.
+    closeOnUnsafe.begin(config);
+    closeOnUnsafe.setAlertSink(
+        [](const Alerts::Alert &alert) { return webServer->raiseRoofAlert(alert); },
+        [](uint32_t id)
+        {
+            switch (webServer->roofAlertOutcome(id))
+            {
+            case AlertDispatcher::Outcome::Delivered:
+                return CloseSeq::Delivery::Delivered;
+            case AlertDispatcher::Outcome::Pending:
+                return CloseSeq::Delivery::Pending;
+            case AlertDispatcher::Outcome::NoChannel:
+                return CloseSeq::Delivery::NoChannel;
+            default:
+                return CloseSeq::Delivery::Failed;
+            }
+        });
     HeapTrace::mark("setup complete");
 }
 
-// The roof's switch readings into the safety inputs (spec 004), and their
-// verdict and park result back to the roof's gates (spec 003), every 250 ms.
+// The roof's switch readings into the safety inputs (spec 004), their verdict
+// and park result back to the roof's gates (spec 003) every 250 ms, and the
+// close on unsafe weather (spec 005) every pass.
 void handleSafety()
 {
     if (!safetyInputs)
@@ -248,6 +272,7 @@ void handleSafety()
         roofControl.setSafety(safetyInputs->weather(), safetyInputs->park());
         lastHandOver = now;
     }
+    closeOnUnsafe.handle(*safetyInputs, roofControl);
 }
 
 void setup()
