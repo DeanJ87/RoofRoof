@@ -356,11 +356,15 @@
         },
         "switches": {
           "type": "string"
+        },
+        "timeoutSeconds": {
+          "type": "number"
         }
       },
       "required": [
         "nina",
-        "switches"
+        "switches",
+        "timeoutSeconds"
       ],
       "additionalProperties": false
     },

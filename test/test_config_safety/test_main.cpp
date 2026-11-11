@@ -46,6 +46,7 @@ void test_defaults_are_off()
     TEST_ASSERT_FALSE(c.safety.rainContact);
     TEST_ASSERT_TRUE(c.park.ninaUrl.empty());
     TEST_ASSERT_TRUE(c.park.switches == ParkConfig::Switches::None);
+    TEST_ASSERT_EQUAL_UINT32(240, c.park.timeoutSeconds);
 }
 
 void test_settings_json_shape()
@@ -60,6 +61,7 @@ void test_settings_json_shape()
     TEST_ASSERT_EQUAL_STRING("", doc["park"]["nina"]["url"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("v2", doc["park"]["nina"]["api"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("none", doc["park"]["switches"].as<const char *>());
+    TEST_ASSERT_EQUAL_UINT32(240, doc["park"]["timeoutSeconds"].as<uint32_t>());
 }
 
 void test_full_settings_round_trip()
@@ -67,7 +69,7 @@ void test_full_settings_round_trip()
     const Config c = applied(R"({"safety":{"http":{"enabled":true,"url":"http://sqmeter.local/api/safety"},)"
                              R"("mqtt":{"enabled":true,"topic":"obs/sqmeter"},"staleSeconds":120,"rainContact":true},)"
                              R"("mqtt":{"enabled":true,"broker":"10.0.0.2","topic":"roofroof"},)"
-                             R"("park":{"nina":{"url":"http://[fd00::20]:1888","api":"v2"},"switches":"two"}})");
+                             R"("park":{"nina":{"url":"http://[fd00::20]:1888","api":"v2"},"switches":"two","timeoutSeconds":600}})");
     TEST_ASSERT_TRUE(c.safety.httpEnabled);
     TEST_ASSERT_EQUAL_STRING("http://sqmeter.local/api/safety", c.safety.httpUrl.c_str());
     TEST_ASSERT_TRUE(c.safety.mqttEnabled);
@@ -76,6 +78,7 @@ void test_full_settings_round_trip()
     TEST_ASSERT_TRUE(c.safety.rainContact);
     TEST_ASSERT_EQUAL_STRING("http://[fd00::20]:1888", c.park.ninaUrl.c_str());
     TEST_ASSERT_TRUE(c.park.switches == ParkConfig::Switches::Two);
+    TEST_ASSERT_EQUAL_UINT32(600, c.park.timeoutSeconds);
 
     const auto again = Config::fromJson(c.toJson());
     TEST_ASSERT_TRUE(again.has_value());
@@ -132,6 +135,19 @@ void test_stale_time_boundaries()
         "safety.staleSeconds must be a whole number in range", rejectReason(R"({"safety":{"staleSeconds":-30}})").c_str());
 }
 
+// Spec 005: the close sequence's park time limit.
+void test_park_time_limit_boundaries()
+{
+    TEST_ASSERT_EQUAL_UINT32(30, applied(R"({"park":{"timeoutSeconds":30}})").park.timeoutSeconds);
+    TEST_ASSERT_EQUAL_UINT32(1800, applied(R"({"park":{"timeoutSeconds":1800}})").park.timeoutSeconds);
+    TEST_ASSERT_EQUAL_STRING(
+        "Park: time limit must be between 30 and 1800 seconds", rejectReason(R"({"park":{"timeoutSeconds":29}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Park: time limit must be between 30 and 1800 seconds", rejectReason(R"({"park":{"timeoutSeconds":1801}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "park.timeoutSeconds must be a whole number in range", rejectReason(R"({"park":{"timeoutSeconds":60.5}})").c_str());
+}
+
 // A config stored before spec 004 has no safety or park section: it loads,
 // and every new source stays off (constitution: a migration never turns a
 // feature on).
@@ -155,6 +171,23 @@ void test_pre_004_config_loads_with_sources_off()
     TEST_ASSERT_FALSE(loaded.safety.rainContact);
     TEST_ASSERT_TRUE(loaded.park.ninaUrl.empty());
     TEST_ASSERT_TRUE(loaded.park.switches == ParkConfig::Switches::None);
+    TEST_ASSERT_EQUAL_UINT32(240, loaded.park.timeoutSeconds);
+}
+
+// A config stored by spec 004 has a park section without the time limit: the default.
+void test_pre_005_config_loads_with_the_default_park_limit()
+{
+    Config stored = Config::createDefault();
+    stored.park.ninaUrl = "http://10.0.0.20:1888";
+    DynamicJsonDocument doc(4096);
+    deserializeJson(doc, stored.toJson(false, false));
+    doc["park"].remove("timeoutSeconds");
+    std::string old;
+    serializeJson(doc, old);
+    Config loaded = Config::createDefault();
+    TEST_ASSERT_TRUE(Config::applyJson(old, loaded, false));
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.20:1888", loaded.park.ninaUrl.c_str());
+    TEST_ASSERT_EQUAL_UINT32(240, loaded.park.timeoutSeconds);
 }
 
 void test_longest_settings_fit_the_stored_document()
@@ -181,7 +214,9 @@ int main(int, char **)
     RUN_TEST(test_url_host_errors_are_named);
     RUN_TEST(test_disabled_sources_keep_any_url);
     RUN_TEST(test_stale_time_boundaries);
+    RUN_TEST(test_park_time_limit_boundaries);
     RUN_TEST(test_pre_004_config_loads_with_sources_off);
+    RUN_TEST(test_pre_005_config_loads_with_the_default_park_limit);
     RUN_TEST(test_longest_settings_fit_the_stored_document);
     return UNITY_END();
 }
