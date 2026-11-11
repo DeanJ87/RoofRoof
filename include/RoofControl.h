@@ -16,6 +16,7 @@
 #include <freertos/task.h>
 #include <string>
 
+#include "BenchMode.h"
 #include "Config.h"
 #include "FaultRecord.h"
 #include "MotionGuards.h"
@@ -26,6 +27,10 @@
 #include "RoofStatus.h"
 #include "SafetyInput.h"
 #include "SwitchInput.h"
+#if ROOFROOF_BENCH
+#include "BenchGuard.h"
+#include "RoofPlant.h"
+#endif
 
 namespace SQM
 {
@@ -142,6 +147,15 @@ namespace SQM
         StepInputs readInputs(uint32_t nowMs);
         void setupPins();
         void restoreFault();
+#if ROOFROOF_BENCH
+        // Bench mode (spec 011, src/RoofBench.cpp): the simulated roof and the
+        // real-supply guard. benchStart() before the task starts; benchStep()
+        // every step under the lock, replacing the ADC's readings.
+        void benchStart();
+        void benchStep(StepInputs &in);
+        void benchSettings();
+        void benchLatch();
+#endif
 
         // Under the lock.
         void stepLocked(const StepInputs &in);
@@ -188,6 +202,12 @@ namespace SQM
         uint32_t maxStepGapMs = 0;
         uint32_t maxBeatAgeMs = 0; // the oldest watchdog heartbeat a step has seen
         std::string notice;        // logged by the control task outside the lock
+
+#if ROOFROOF_BENCH
+        // Guarded by `lock`.
+        RoofPlant::Plant benchPlant;
+        RoofPlant::BenchSupplyGuard benchGuard;
+#endif
 
         // The control task only.
         RoofIo::SwitchInput park1;

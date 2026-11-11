@@ -22,6 +22,7 @@ namespace SQM
             ParkInterlock,    // the park confirmation was lost during a close (interlock bits / 0)
             StoredUnreadable, // the saved record couldn't be read back
             WatchdogStopped,  // the watchdog timer itself stopped with the driver on (beat age ms / limit ms)
+            BenchSupply,      // bench firmware on a powered roof (spec 011): real supply volts or NaN / limit volts
         };
 
         struct FaultRecord
@@ -49,7 +50,7 @@ namespace SQM
         // An External fault with this cause and values.
         FaultRecord externalRecord(FaultCause cause, float measured, float limit);
 
-        // "logic", "watchdog", "parkInterlock", "storedUnreadable".
+        // "logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped", "benchSupply".
         const char *causeName(FaultCause cause);
     } // namespace RoofIo
 } // namespace SQM

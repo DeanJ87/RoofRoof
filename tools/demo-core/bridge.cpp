@@ -29,5 +29,9 @@ EMSCRIPTEN_BINDINGS(roofroof_core)
         .function("alpaca", &EmulatedDevice::alpaca)
         .function("backupRoute", &EmulatedDevice::backupRoute)
         .function("saveState", &EmulatedDevice::saveState)
-        .function("loadState", &EmulatedDevice::loadState);
+        .function("loadState", &EmulatedDevice::loadState)
+        .function("roofCommand", &EmulatedDevice::roofCommand)
+        .function("roofInject", &EmulatedDevice::roofInject)
+        .function("roofPanel", &EmulatedDevice::roofPanel)
+        .function("platformHold", &EmulatedDevice::platformHold);
 }

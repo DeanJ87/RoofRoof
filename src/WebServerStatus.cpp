@@ -1,3 +1,4 @@
+#include "BenchMode.h"
 #include "ConnectionBudget.h"
 #include "FirmwareMarker.h"
 #include "HeapTrace.h"
@@ -67,7 +68,12 @@ namespace SQM
         // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
         snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
-        HaDiscovery::Device device{std::string("roofroof_") + mac, cfg.deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
+        HaDiscovery::Device device{
+            std::string("roofroof_") + mac,
+            cfg.deviceName,
+            std::string(FIRMWARE_VERSION) + (Bench::BUILD ? " (bench)" : ""),
+            mqtt.topic,
+            mqtt.discoveryPrefix};
         const std::string key = discoveryKeyOf(mqtt.homeAssistant, device, groups);
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;

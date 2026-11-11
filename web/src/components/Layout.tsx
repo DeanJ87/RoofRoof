@@ -5,6 +5,7 @@ import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
 import BrandMark from './BrandMark';
+import BenchBanner from './BenchBanner';
 import RoofStopBar from './RoofStopBar';
 
 interface LayoutProps {
@@ -118,6 +119,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
       </header>
 
       <main class="app-main" id="main" tabIndex={-1}>
+        <BenchBanner />
         {children}
         <RoofStopBar />
       </main>

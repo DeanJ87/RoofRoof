@@ -53,6 +53,16 @@ namespace SQM
                 return text.empty() ? "park not confirmed" : text;
             }
 
+            // Spec 011: the bench firmware saw a real supply (or none it could read).
+            std::string benchSupplyText(float volts, float limitVolts)
+            {
+                const double limit = static_cast<double>(limitVolts);
+                const double measured = static_cast<double>(volts);
+                if (!std::isfinite(measured))
+                    return format("Bench firmware on a powered roof? Supply input unreadable (limit %.1f V)", limit);
+                return format("Bench firmware on a powered roof: supply %.1f V >= %.1f V", measured, limit);
+            }
+
             std::string externalText(const FaultRecord &r)
             {
                 switch (r.cause)
@@ -71,6 +81,8 @@ namespace SQM
                         static_cast<double>(r.fault.limit));
                 case FaultCause::StoredUnreadable:
                     return "Stored fault unreadable: the fault saved before the restart couldn't be read back";
+                case FaultCause::BenchSupply:
+                    return benchSupplyText(r.fault.measured, r.fault.limit);
                 default:
                     return format("Fault raised: %g (limit %g)", static_cast<double>(r.fault.measured), static_cast<double>(r.fault.limit));
                 }

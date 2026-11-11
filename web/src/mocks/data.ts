@@ -102,7 +102,7 @@ export const mockStatus: SystemStatus = {
     availabilityTopic: 'roofroof/availability',
     clientId: 'RoofRoof-D4E5F6',
   },
-  // The roof's hardware section, emulated as a closed roof (the simulated roof is spec 011).
+  // The roof's status section for the unit tests: a closed roof (the demo's own simulated roof is spec 011's).
   roof: {
     state: 'closed',
     positionKnown: true,
@@ -132,6 +132,7 @@ export const mockStatus: SystemStatus = {
     watchdogTrips: 0,
     maxStepGapMs: 21,
     maxWatchdogBeatAgeMs: 12,
+    simulation: 'off',
   },
 };
 

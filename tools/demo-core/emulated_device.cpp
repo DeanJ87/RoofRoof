@@ -11,6 +11,8 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
     cfg = *next;
+    if (roofBooted)
+        roof.settingsChanged(cfg);
     return "{\"success\":true}";
 }
 
@@ -20,6 +22,7 @@ bool EmulatedDevice::loadConfig(const std::string &json)
     if (!next)
         return false;
     cfg = *next;
+    roofBooted = false; // what the hardware boots with
     return true;
 }
 
@@ -34,6 +37,7 @@ void EmulatedDevice::restart(double nowMsIn)
     clientWatch.reset();
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
+    roofBooted = false; // boots on the next tick: unknown between the magnets
 }
 
 void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &localTime, const std::string &localDate)
@@ -45,7 +49,28 @@ void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &loc
     clockDate = localDate;
     if (bootMs == 0)
         bootMs = nowMs;
+    runRoof();
     runAlerts();
+}
+
+// The roof's control steps up to now, then the close sequence's critical
+// alerts through the device's critical sink (WebServer::raiseRoofAlert): past
+// the pause, the grace and the master switch, to the channels switched on.
+void EmulatedDevice::runRoof()
+{
+    if (!roofBooted)
+    {
+        roof.boot(cfg, nowMs);
+        roofBooted = true;
+    }
+    roof.advance(nowMs);
+    const Core::AlertSources sources{cfg};
+    for (const Alerts::Alert &alert : roof.takeCritical())
+    {
+        const Alerts::Alert finished = Core::finishCriticalAlert(alert, sources, Core::LocalClock{clockTime, clockDate});
+        if (Core::alertGoesOut(finished.type, cfg.alerts, schedule.state().sending))
+            record(finished, 0x0F);
+    }
 }
 
 void EmulatedDevice::setArmed(bool on, const std::string &source)
@@ -249,6 +274,8 @@ void EmulatedDevice::runAlerts()
     clientWatch.update(activity, silenceMs, cfg.alpaca.enabled, nowMs);
     const std::vector<Alpaca::DeviceInfo> list = devices();
     Core::addClientInputs(in, {clientWatch, list, nowMs}, cfg, clockTime);
+
+    in.roof = roof.conditions(); // spec 007's roof events
 
     const Core::AlertSources sources{cfg};
     Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});

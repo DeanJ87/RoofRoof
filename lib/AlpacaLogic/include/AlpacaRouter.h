@@ -47,7 +47,9 @@ namespace SQM
         };
 
         // The one Dome the device offers: number 0, interface version 3 (spec 006).
-        DeviceInfo domeDeviceInfo();
+        // `simulation` (spec 011): "bench" or "demo" put that at the start of
+        // the description; the name and UniqueID never change.
+        DeviceInfo domeDeviceInfo(const char *simulation = "off");
 
         // What the router needs from the device.
         class Backend

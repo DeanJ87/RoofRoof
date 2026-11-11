@@ -32,7 +32,7 @@ If switching the device to the new firmware fails once after a complete upload (
 If an upload stops sending for 20 seconds, usually a weak WiFi link, the Updates page cancels it and tries once more by itself ("Upload stalled, trying again"). The device drops the half-sent image straight away, so the retry starts clean; nothing was written to the running firmware. If it stalls again, move the device or the access point closer, or upload from a computer on the same network, then try again.
 
 !!! note "Files the device refuses"
-    Every firmware file carries a marker with the product and the partition layout it is made for. The device checks it before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for this device: "Not RoofRoof firmware." (no RoofRoof marker, for example another project's image), "This is firmware for another product (sqmeter)." (naming the product the file is for), or "Wrong partition layout: flash this one over USB." A web UI file must fill this device's web UI partition exactly; one made for a different layout is refused before anything is erased. Nothing is changed by a refused upload.
+    Every firmware file carries a marker with the product and the partition layout it is made for. The device checks it before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for this device: "Not RoofRoof firmware." (no RoofRoof marker, for example another project's image), "This is firmware for another product (sqmeter)." (naming the product the file is for), or "Wrong partition layout: flash this one over USB." A [bench-mode](bench-mode.md) image is refused too: "This is a bench-mode image (simulated roof, no motor): install it over USB." Command-line OTA checks the same marker once the image is received, before it is booted, and keeps the running firmware if it would have been refused here (the upload tool still reports success; the log says why). A web UI file must fill this device's web UI partition exactly; one made for a different layout is refused before anything is erased. Nothing is changed by a refused upload.
 
 !!! note "While the roof moves or closes"
     An upload is refused (`409`, with the reason) while the roof is opening or closing or a close is waiting to start, and also while the [automatic close](close-on-unsafe.md) is waiting for the park or closing: a web UI upload ends in a restart nothing can cancel. A close always wins over an upload in progress: the upload stops at its next chunk and fails with `409`. The restart after an upload waits until the roof is at rest (after a firmware upload, also until the automatic close isn't waiting for the park or closing). See [Roof motion](roof-motion.md#while-the-roof-moves).
@@ -113,19 +113,19 @@ Settings (WiFi, thresholds, alert channels) live in NVS, a separate partition fr
 <!-- diagram: DIA-08
 sources: src/WebServerUpdates.cpp#firmwareUploadChunk src/WebServerUpdates.cpp#firmwareUploadEnd src/WebServerUpdates.cpp#WebServer::handleFirmwareUploadDone lib/FirmwareImage/ src/FirmwareMarker.cpp
 blocking: false
-fingerprint: 406b1a5cc7bdb389
+fingerprint: ca36807ef8333982
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 sequenceDiagram
     accTitle: Updating by file upload
-    accDescr: The browser sends a firmware file to the device. The device writes it to the unused app slot while scanning it for the RoofRoof marker. When the upload is complete it checks the product and layout, and only then points the bootloader at the new slot and restarts. A refused or failed upload leaves the old firmware booting, and new firmware that fails to start is rolled back.
+    accDescr: The browser sends a firmware file to the device. The device writes it to the unused app slot while scanning it for the RoofRoof marker. When the upload is complete it checks the product, the layout and the build (a bench-mode image is refused), and only then points the bootloader at the new slot and restarts. A refused or failed upload leaves the old firmware booting, and new firmware that fails to start is rolled back.
     participant B as Browser
     participant D as RoofRoof
     B->>D: Upload firmware.bin
     D->>D: Write it to the unused app slot,<br/>scanning it for the marker
-    D->>D: Upload complete: check product and layout
+    D->>D: Upload complete: check product, layout and build
     opt The marker matches
         D->>D: Point the bootloader at the new slot
         D-->>B: 200 success
@@ -145,8 +145,8 @@ sequenceDiagram
 ??? info "Diagram in words"
 
     1. **Upload**: the browser sends a firmware file to the device, which writes it to the app slot that isn't running and scans it for the RoofRoof marker as it arrives.
-    2. **Check**: once the upload is complete, the device checks that the marker names this product and this partition layout.
+    2. **Check**: once the upload is complete, the device checks that the marker names this product and this partition layout, and that it isn't a [bench-mode](bench-mode.md) image.
     3. **Success**: only then does it point the bootloader at the new slot, answer `200` and restart into the new firmware.
-    4. **Refusal or failure** (wrong product or layout, a failed write): the device answers `400` with the reason or `500`, and the boot slot is unchanged, so the old firmware keeps running.
+    4. **Refusal or failure** (wrong product or layout, a bench-mode image, a failed write): the device answers `400` with the reason or `500`, and the boot slot is unchanged, so the old firmware keeps running.
     5. If the new firmware fails before it has started properly (WiFi and the web server up), the bootloader returns to the previous slot; once it has started, it's kept.
     6. The **web UI image** takes the same path to the LittleFS partition, checked by size, with no boot slot to switch. A failure during its write can leave the web UI unavailable until a later upload succeeds.

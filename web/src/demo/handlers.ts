@@ -60,6 +60,12 @@ const recentRevision = () => {
   return hash;
 };
 
+// The roof's state and fault: the device pushes a change at once (spec 003).
+const roofRevision = () => {
+  const roof = demoDevice.statusParts().roof as { state?: string; fault?: { kind?: string } | null } | undefined;
+  return `${roof?.state}:${roof?.fault?.kind ?? ''}`;
+};
+
 // Like the device's configRevision: changes when the settings change.
 const configRevision = () => {
   const text = JSON.stringify(demoDevice.rawConfig());
@@ -104,6 +110,13 @@ export function statusDocument() {
 // The network the WiFi setup screen "joined" (simulated).
 let joinedSsid: string | null = null;
 
+// Spec 010, as the device answers it: no settings save, restore, upload or
+// restart while the roof moves or the automatic close works (409 with the reason).
+const held = (action = 'flashWrite') => {
+  const why = demoDevice.platformHold(action);
+  return why ? HttpResponse.json({ error: why }, { status: 409 }) : null;
+};
+
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
 export const demoHandlers = [
@@ -113,17 +126,21 @@ export const demoHandlers = [
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),
-  http.post('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
-  http.put('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
+  http.post('/api/config', async ({ request }) => held() ?? reply(demoDevice.applyConfig(await request.text()))),
+  http.put('/api/config', async ({ request }) => held() ?? reply(demoDevice.applyConfig(await request.text()))),
   // Settings backup and restore (SQMeter spec 033); a restore that needs it restarts the demo device.
   ...(['preview', 'apply', 'backup'] as const).map((route) =>
     http.post(route === 'backup' ? '/api/backup' : `/api/backup/${route}`, async ({ request }) => {
+      const hold = route === 'apply' ? held() : null;
+      if (hold) return hold;
       const answer = backupReply(demoDevice.backupCore(), route, await request.text());
       if (answer.restarting) demoDevice.restart();
       return reply(answer.reply);
     }),
   ),
   http.post('/api/restart', () => {
+    const hold = held('restart');
+    if (hold) return hold;
     demoDevice.restart();
     ipv6AtBoot = null;
     return HttpResponse.json({ success: true, message: 'Restarting...' });
@@ -150,6 +167,11 @@ export const demoHandlers = [
     return reply(result);
   }),
 
+  // The roof (spec 011): the device's own command checks and motion logic, on the simulated roof
+  ...(['open', 'close', 'stop', 'clear-fault'] as const).map((name) =>
+    http.post(`/api/roof/${name}`, () => reply(demoDevice.roofCommand(name))),
+  ),
+
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', async ({ request }) => {
@@ -162,8 +184,8 @@ export const demoHandlers = [
   http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real RoofRoof would connect to your broker here' })),
 
   // Updates (simulated: nothing flashed)
-  http.post('/api/update', () => simulated()),
-  http.post('/api/update/fs', () => simulated()),
+  http.post('/api/update', () => held('firmwareUpload') ?? simulated()),
+  http.post('/api/update/fs', () => held('filesystemUpload') ?? simulated()),
 
   // ASCOM Alpaca: the firmware's own router, in the device core
   http.get('/management/*', async ({ request }) =>
@@ -177,8 +199,9 @@ export const demoHandlers = [
     const send = () => client.send(JSON.stringify(statusDocument()));
     send();
     const interval = setInterval(send, 2000);
-    // As on the device: a change to the recent alerts or the settings is pushed at once.
-    const revisions = () => `${recentRevision()}:${configRevision()}`;
+    // As on the device: a change to the recent alerts, the settings or the
+    // roof's state or fault is pushed at once.
+    const revisions = () => `${recentRevision()}:${configRevision()}:${roofRevision()}`;
     let lastRevision = revisions();
     const unsubscribe = demoDevice.onChange(() => {
       const revision = revisions();

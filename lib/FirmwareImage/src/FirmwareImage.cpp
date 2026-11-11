@@ -29,11 +29,11 @@ namespace SQM
             return out;
         }
 
-        std::string marker(const char *product, const char *layout)
+        std::string marker(const char *product, const char *layout, const char *build)
         {
             const auto bytes = magic();
             std::string out(bytes.begin(), bytes.end());
-            out += std::string("product=") + product + ";layout=" + layout + ";build=" + BUILD + ";";
+            out += std::string("product=") + product + ";layout=" + layout + ";build=" + build + ";";
             out.push_back('\0');
             return out;
         }
@@ -111,7 +111,7 @@ namespace SQM
             complete = true;
         }
 
-        Verdict check(const Scanner &scanner, const std::string &deviceLayout)
+        Verdict check(const Scanner &scanner, const std::string &deviceLayout, const std::string &runningBuild)
         {
             if (!scanner.found())
                 return Verdict::NoMarker;
@@ -119,7 +119,10 @@ namespace SQM
                 return Verdict::OtherProduct;
             if (scanner.layout() != deviceLayout)
                 return Verdict::OtherLayout;
-            if (scanner.build() != BUILD)
+            const std::string &build = scanner.build();
+            if (build == BUILD_BENCH)
+                return runningBuild == BUILD_BENCH ? Verdict::Ok : Verdict::BenchImage;
+            if (build != BUILD)
                 return Verdict::OtherBuild;
             return Verdict::Ok;
         }
@@ -138,6 +141,8 @@ namespace SQM
                 return "Wrong partition layout: flash this one over USB.";
             case Verdict::OtherBuild:
                 return "Not a RoofRoof build.";
+            case Verdict::BenchImage:
+                return "This is a bench-mode image (simulated roof, no motor): install it over USB.";
             }
             return std::string();
         }

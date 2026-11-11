@@ -43,7 +43,7 @@ test('offered once on a first visit, walks through, not offered again', async ({
   await walk(page, async () => {
     seen.push((await card(page).getByRole('heading').textContent()) ?? '');
   });
-  expect(seen).toEqual(['This is RoofRoof', 'Status', 'Alerts', 'The Demo panel']);
+  expect(seen).toEqual(['This is RoofRoof', 'Status', 'The roof', 'Open the roof', 'Bad weather', 'Alerts', 'The Demo panel']);
 
   await expect(card(page)).toHaveCount(0);
   await page.reload();

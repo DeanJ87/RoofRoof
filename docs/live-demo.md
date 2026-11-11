@@ -8,8 +8,7 @@ The demo is a simulated RoofRoof in your browser. It runs **the firmware's own c
 
 There is **no public demo site**. The demo is built by CI and shipped inside the docs artifact, or you can run it from a checkout.
 
-!!! note "The roof comes in later specs"
-    This release is the platform only. The demo has the dashboard's Status, Roof (a closed roof that doesn't move) and Device & Network cards, the Settings, Updates, System and Alpaca pages and the API explorer. The simulated roof *comes in a later spec*.
+The demo has a **simulated roof**: the firmware's own motion logic, command checks, close-on-unsafe sequence and roof alerts, driving a simulated motor, magnets and Hall sensor. See [The roof](#the-roof).
 
 ![Dashboard](assets/screenshots/dashboard.png)
 
@@ -51,7 +50,8 @@ There is **no public demo site**. The demo is built by CI and shipped inside the
 | Settings: defaults, validation and error messages | WiFi, restarts and firmware uploads |
 | Alerts: which events fire, their level, wording and stacking - and the exact requests a device sends | Delivery - nothing is sent, unless you turn on [real notifications](#real-notifications) |
 | Backup and restore of settings | The network - the demo connects to nothing unless you opt in |
-| The Alpaca management API N.I.N.A. talks to | The device's clock, which you can speed up |
+| The Alpaca management API and the Dome N.I.N.A. talks to | The device's clock, which you can speed up |
+| The roof's motion logic, gates, close sequence and alerts | The roof itself (motor, magnets, Hall sensor, current, 12 V supply), SQMeter and N.I.N.A. |
 
 Because the dashboard, the Alpaca page and the Alpaca API all come from one emulated device, they always agree.
 
@@ -59,7 +59,7 @@ Because the dashboard, the Alpaca page and the Alpaca API all come from one emul
 
 ## The tour
 
-On your first visit the demo offers a short tour: what RoofRoof is, the Status card, the alerts bell and the Demo panel. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
+On your first visit the demo offers a short tour: what RoofRoof is, the Status card, the Roof card, opening the roof, bad weather and the automatic close, the alerts bell and the Demo panel. Each action step finishes when the device reacts; **Do it for me** does it for you (opening also runs the device's clock 10x). **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
 
 ---
 
@@ -75,6 +75,30 @@ Then change settings and watch them take effect:
 - Enter an invalid value and you get the device's own error message.
 
 Device addresses work too: open `/management/v1/description` or `/api/status` on the demo's address to see what the device would answer.
+
+---
+
+## The roof
+
+The demo's roof starts closed, with the weather safe and the mount parked. Open and close it with
+`POST /api/roof/open` and `/api/roof/close` (or through the Alpaca Dome). A move takes about 50 s
+with the device's default travel and speed; at 10x it takes about 5 s.
+
+The **Roof** section of the Demo panel makes things go wrong on purpose:
+
+| Control | What it does | What the device does |
+|---|---|---|
+| **Weather**: Safe, Unsafe, Rain | the simulated SQMeter's answer (seen at its next poll, within 5 s) | unsafe or rain with the roof open: asks the mount to park, waits for the park to hold, closes; opening is refused |
+| **Mount**: Park, Unpark | the imaging app parks the mount (an 8 s slew) or unparks it | closing onto an unparked mount is refused |
+| **Park fails** | the mount slews but never reaches park | the roof stays open; once the park time limit runs out, a critical "mount didn't park" alert |
+| **Jam** | the roof can't move | the move stops with a fault and motion locks out until **Clear fault** (the jam removed first) |
+| **12 V supply**: Normal, Low | 12.6 V or 10.5 V | a move is refused, and one under way stops with a supply-low fault |
+
+Reloading the page restarts the demo device: a roof stopped part-way then reads *unknown*, as a
+real board would after a restart between the magnets. **Reset demo** starts again from closed.
+
+The demo's own firmware build for a real board is [bench mode](user-guide/bench-mode.md).
+
 
 ---
 
@@ -115,17 +139,18 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 035ca00fe1d52201
+fingerprint: f05e176310060e67
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the demo works
-    accDescr: Everything runs in your browser. The device core, the firmware's own logic compiled to WebAssembly, keeps the settings and state. A service worker answers the web UI's and the API explorer's requests from that core, and device addresses opened directly are answered the same way. Only if you turn on real notifications does the browser send the core's alert requests to ntfy.sh, Pushover or your secure WebSocket broker; the page's security policy blocks every other host.
+    accDescr: Everything runs in your browser. The device core, the firmware's own logic compiled to WebAssembly, keeps the settings and state, and drives a simulated roof, SQMeter and N.I.N.A. that the Demo panel's Roof controls can make go wrong. A service worker answers the web UI's and the API explorer's requests from that core, and device addresses opened directly are answered the same way. Only if you turn on real notifications does the browser send the core's alert requests to ntfy.sh, Pushover or your secure WebSocket broker; the page's security policy blocks every other host.
     subgraph browser["Your browser"]
         direction TB
         CORE["Device core<br/>lib/ compiled to WebAssembly"] --- STORE[("Settings and state<br/>session storage")]
+        CORE --- ROOF["Simulated roof, SQMeter and N.I.N.A.<br/>set by the Demo panel's Roof controls"]
         UI["RoofRoof web UI and Demo panel"] -->|"/api, /ws, Alpaca requests"| SW["Service worker<br/>answers like the device"]
         EXPLORER["API explorer<br/>/explorer/, Try it"] -->|"/api requests"| SW
         SW --> CORE
@@ -142,7 +167,7 @@ flowchart TB
 ??? info "Diagram in words"
 
     - Everything runs in your browser; there is no server behind the demo.
-    - The **device core** is the firmware's own `lib/` code compiled to WebAssembly. It keeps the settings and state in the tab's **session storage**.
+    - The **device core** is the firmware's own `lib/` code compiled to WebAssembly. It keeps the settings and state in the tab's **session storage**, and runs the roof's motion logic and close sequence against a **simulated roof**, SQMeter and N.I.N.A.; the Demo panel's Roof controls change what those report.
     - The **web UI** and Demo panel make the same requests as on a real device; a **service worker** answers them from the core. So does the **API explorer**'s Try it. Device addresses opened directly (such as `/management/v1/description`) are answered by the core too.
     - **Real notifications** are off by default. Turned on, the browser sends the core's alert requests - the ones a real RoofRoof would send - to ntfy.sh, Pushover or your secure WebSocket MQTT broker, at most one per service every 30 s.
     - The page's security policy blocks every other host, so nothing reaches a webhook.
