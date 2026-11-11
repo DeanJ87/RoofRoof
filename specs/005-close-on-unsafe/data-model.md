@@ -55,7 +55,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | WaitPark, RetryWait | parked for 4 s | Closing | Close | - |
 | WaitPark | N.I.N.A. not configured, or parkTimeoutMs of unsafe time since the attempt began, or 2 × parkTimeoutMs + 10 min of wall time | RetryWait | - | ParkNotConfirmed (NinaNotConfigured / ParkTimeout) |
 | WaitPark | otherwise | WaitPark | RequestPark if due | - |
-| RetryWait | 5 min since it began | WaitPark (new attempt) | RequestPark if due | Started |
+| RetryWait | 5 min of unsafe time since it began, or 15 min of wall time | WaitPark (new attempt) | RequestPark if due | Started |
 | Closing | close waiting for 30 s | Halted | Stop | CloseFailed (TooLong) |
 | Closing | closing for the move's timeout + 30 s (from the command, or from the start of a waiting close) | Halted | Stop | CloseFailed (TooLong) |
 | Closing | not closing, not waiting, safe | Idle | - | EndedSafe |

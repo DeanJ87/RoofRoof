@@ -102,6 +102,8 @@ namespace
         uint64_t quietUnsafeMs = 0;   // unsafe and not closed, with nothing done or raised
         uint64_t lastStepMs = 0;
         bool prevUnsafe = false;
+        State lastRoof = State::Unknown;
+        bool closedByMove = false; // the roof went from closing to closed this step
     };
 
     struct Failure
@@ -243,6 +245,8 @@ namespace
     // Updates the observer's runs for this step's inputs (before the decision).
     void observeInputs(Watch &watch, const Inputs &in)
     {
+        watch.closedByMove = watch.lastRoof == State::Closing && in.roof == State::Closed;
+        watch.lastRoof = in.roof;
         if (!in.parked)
             watch.parkedRun = false;
         else if (!watch.parkedRun)
@@ -356,8 +360,9 @@ namespace
     const char *checkAlert(const Seen &seen, const Inputs &in, Watch &watch)
     {
         // A closed roof ends the trouble: the throttle starts afresh.
-        if (seen.decision.event == Event::Closed && seen.after == Phase::Idle && seen.before == Phase::Closing)
+        if (watch.closedByMove)
         {
+            watch.closedByMove = false;
             for (auto &row : watch.alertedEver)
                 for (bool &ever : row)
                     ever = false;

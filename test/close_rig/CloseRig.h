@@ -80,13 +80,18 @@ namespace CloseTest
             in.weatherSafe = false;
             return at(T0);
         }
-        // Started, then the park held for 4 s: the close is commanded at T0 + 4000.
-        void startAndClose()
+        // Started, then the park held for 4 s: the close is commanded at T0 + 4100.
+        void startAndClose() { startAndCloseFrom(T0); }
+        // The same from `startMs` (the verdict is made unsafe there).
+        void startAndCloseFrom(uint64_t startMs)
         {
-            startUnsafe();
+            in.weatherSafe = false;
+            in.roof = State::Open;
+            in.parked = false;
+            at(startMs);
             in.parked = true;
-            at(T0 + 100);
-            const Decision d = at(T0 + 100 + PARK_SETTLE_MS);
+            at(startMs + 100);
+            const Decision d = at(startMs + 100 + PARK_SETTLE_MS);
             TEST_ASSERT_EQUAL(Action::Close, d.action);
             seq.closeAnswered(CloseAnswer::Started);
             in.roof = State::Closing;

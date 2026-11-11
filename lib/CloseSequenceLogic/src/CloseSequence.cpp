@@ -44,6 +44,16 @@ namespace SQM
             parkConfirmed = parkHeld.lasted(in.parked, in.nowMs, PARK_SETTLE_MS);
             unknownConfirmed = unknown.lasted(in.roof == Roof::State::Unknown, in.nowMs, UNKNOWN_CONFIRM_MS);
             safeLong = safe.lasted(in.weatherSafe, in.nowMs, REARM_SAFE_MS);
+            // A close (anyone's) reached the closed magnet: the trouble is over,
+            // so a new failure on the next spell alerts at once. A reading that
+            // flickers back to closed at rest doesn't count: no alert storm.
+            if (lastRoof == Roof::State::Closing && in.roof == Roof::State::Closed)
+            {
+                for (auto &row : alertedEver)
+                    for (bool &ever : row)
+                        ever = false;
+            }
+            lastRoof = in.roof;
 
             return withAlert(remindIfDue(decide(in, personStopped)));
         }
@@ -115,7 +125,9 @@ namespace SQM
             enter(paused.phase);
             // Only unsafe time counts against the limit: the safe spell is left out.
             phaseSinceMs = paused.sinceMs + elapsed(paused.endedAtMs, in.nowMs);
+            phaseWallStartMs = paused.wallStartMs;
             attemptLimitMs = paused.limitMs;
+            lastCritical = paused.critical; // reminders carry on through a flapping spell
             paused.has = false;
             // Straight on with the paused phase (its wall-clock cap may have run out).
             Decision out = waiting(in, false);
@@ -128,7 +140,6 @@ namespace SQM
         {
             Decision out = enter(Phase::WaitPark, Event::Started);
             parkRefusals = 0;
-            attemptWallStartMs = in.nowMs;
             attemptLimitMs = parkTimeoutMs; // a settings change applies from the next attempt
             out.action = requestIfDue(in.nowMs);
             return out;
@@ -159,7 +170,7 @@ namespace SQM
                 return out;
             if (in.weatherSafe)
             {
-                const Pause keep{true, current, phaseSinceMs, attemptLimitMs, in.nowMs};
+                const Pause keep{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, in.nowMs, lastCritical};
                 out = enter(Phase::Idle, Event::EndedSafe);
                 paused = keep;
                 return out;
@@ -177,17 +188,18 @@ namespace SQM
                 return out;
             }
             const uint64_t since = elapsed(phaseSinceMs, in.nowMs);
+            // Both waits count unsafe time, with a wall-clock cap for one
+            // stretched by many short safe spells.
+            const uint64_t wall = elapsed(phaseWallStartMs, in.nowMs);
             if (current == Phase::RetryWait)
-                return since >= RETRY_AFTER_MS ? attempt(in) : Decision{};
+                return since >= RETRY_AFTER_MS || wall >= RETRY_AFTER_MS + REARM_SAFE_MS ? attempt(in) : Decision{};
             if (!in.ninaConfigured)
                 return failAttempt(Event::ParkNotConfirmed, Cause::NinaNotConfigured, Action::None);
-            // The limit counts unsafe time; a wall-clock cap bounds an attempt
-            // stretched by many short safe spells.
-            const bool capped = elapsed(attemptWallStartMs, in.nowMs) >= 2 * attemptLimitMs + REARM_SAFE_MS;
-            if (since >= attemptLimitMs || capped)
+            const uint64_t capMs = 2 * attemptLimitMs + REARM_SAFE_MS;
+            if (since >= attemptLimitMs || wall >= capMs)
             {
                 out = failAttempt(Event::ParkNotConfirmed, Cause::ParkTimeout, Action::None);
-                out.limitMs = attemptLimitMs;
+                out.limitMs = since >= attemptLimitMs ? attemptLimitMs : capMs; // the limit that ran out
                 return out;
             }
             out.action = requestIfDue(in.nowMs);
@@ -276,6 +288,7 @@ namespace SQM
                 // withdrawn close's stop is seen on the next step.
                 current = beforeClose;
                 phaseSinceMs = beforeCloseSinceMs;
+                phaseWallStartMs = beforeCloseWallStartMs;
                 parkHeld.on = false;
                 parkConfirmed = false;
                 return Decision{};
@@ -314,6 +327,7 @@ namespace SQM
         {
             beforeClose = current;
             beforeCloseSinceMs = phaseSinceMs;
+            beforeCloseWallStartMs = phaseWallStartMs;
             Decision out = enter(Phase::Closing);
             out.action = Action::Close;
             return out;
@@ -333,20 +347,11 @@ namespace SQM
 
         Decision Sequence::enter(Phase next, Event event, Cause cause)
         {
-            const Phase previous = current;
             current = next;
             phaseSinceMs = lastNowMs;
+            phaseWallStartMs = lastNowMs;
             closingSeen = false;
             sawPending = false;
-            if (next == Phase::Idle && event == Event::Closed && previous == Phase::Closing)
-            {
-                // A close reached the closed magnet: the trouble is over, so a
-                // new failure on the next spell alerts at once. (A reading that
-                // flickers back to closed at rest doesn't reset it: no storm.)
-                for (auto &row : alertedEver)
-                    for (bool &ever : row)
-                        ever = false;
-            }
             if (next == Phase::Idle)
             {
                 lastCritical.has = false; // the episode is over: nothing to remind of

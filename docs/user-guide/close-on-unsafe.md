@@ -25,7 +25,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: a92a7da76f41f829
+fingerprint: 279a9f11e60f717d
 -->
 <figure class="diagram" markdown>
 
