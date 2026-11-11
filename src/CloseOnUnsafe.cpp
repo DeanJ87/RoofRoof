@@ -1,5 +1,7 @@
 #include "CloseOnUnsafe.h"
 
+#include <esp_attr.h>
+
 #include "Logger.h"
 #include "RoofControl.h"
 #include "RoofText.h"
@@ -8,6 +10,55 @@
 
 namespace SQM
 {
+    namespace
+    {
+        // A stand-down that must outlive a restart (a crash, the watchdog, an
+        // update): a person's stop is never overridden because the device
+        // restarted. RTC memory survives a reset but not a power cut.
+        struct Kept
+        {
+            uint32_t magic;
+            uint8_t phase;
+            uint8_t event;
+            uint8_t cause;
+            uint8_t check;
+        };
+        constexpr uint32_t KEPT_MAGIC = 0x5EC0005Du;
+        RTC_NOINIT_ATTR Kept kept;
+
+        uint8_t checkOf(uint8_t phase, uint8_t event, uint8_t cause)
+        {
+            return static_cast<uint8_t>(phase ^ (event << 3) ^ (cause << 5) ^ 0xA5u);
+        }
+    } // namespace
+
+    void CloseOnUnsafe::begin(const Config &config)
+    {
+        updateConfig(config);
+        if (kept.magic != KEPT_MAGIC || kept.check != checkOf(kept.phase, kept.event, kept.cause))
+            return;
+        sequence.restore(
+            static_cast<CloseSeq::Phase>(kept.phase), static_cast<CloseSeq::Event>(kept.event), static_cast<CloseSeq::Cause>(kept.cause));
+        loggedPhase = sequence.phase();
+        if (loggedPhase != CloseSeq::Phase::Idle)
+            Logger::warn(TAG, "Close sequence still stood down after the restart (%s)", CloseSeq::phaseName(loggedPhase));
+    }
+
+    void CloseOnUnsafe::keepPhase()
+    {
+        const CloseSeq::Phase phase = sequence.phase();
+        if (phase != CloseSeq::Phase::HeldByPerson && phase != CloseSeq::Phase::Halted)
+        {
+            kept.magic = 0;
+            return;
+        }
+        kept.phase = static_cast<uint8_t>(phase);
+        kept.event = static_cast<uint8_t>(sequence.lastEvent());
+        kept.cause = static_cast<uint8_t>(sequence.lastCause());
+        kept.check = checkOf(kept.phase, kept.event, kept.cause);
+        kept.magic = KEPT_MAGIC;
+    }
+
     void CloseOnUnsafe::handle(SafetyInputs &safety, RoofControl &roof)
     {
         // Ten steps a second: well inside every limit of the sequence, and the
@@ -44,6 +95,7 @@ namespace SQM
         {
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
+            keepPhase();
         }
     }
 

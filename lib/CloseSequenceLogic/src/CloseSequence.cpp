@@ -14,7 +14,8 @@ namespace SQM
             {
                 return nowMs > sinceMs ? nowMs - sinceMs : 0;
             }
-            static_assert(static_cast<size_t>(Event::StoppedByPerson) < 8, "alertedAtMs has a slot for every event");
+            static_assert(static_cast<size_t>(Event::StoppedByPerson) < 8, "alertedAtMs has a row for every event");
+            static_assert(static_cast<size_t>(Cause::FaultLatched) < 9, "alertedAtMs has a column for every cause");
         } // namespace
 
         bool Sequence::Run::lasted(bool holds, uint64_t nowMs, uint64_t ms)
@@ -68,13 +69,13 @@ namespace SQM
 
         // While the roof stays open after a critical event, the event is
         // raised again every REMIND_MS: a lost or missed alert is not the last word.
-        Decision Sequence::remindIfDue(Decision decision) const
+        Decision Sequence::remindIfDue(Decision decision)
         {
             const bool open =
                 current == Phase::RetryWait || current == Phase::HeldByPerson || current == Phase::CannotMove || current == Phase::Halted;
             if (decision.event != Event::None || !open || !lastCritical.has)
                 return decision;
-            if (elapsed(lastCritical.alertedAtMs, lastNowMs) < REMIND_MS)
+            if (!remindNow && elapsed(lastCritical.alertedAtMs, lastNowMs) < REMIND_MS)
                 return decision;
             Decision again;
             again.action = decision.action;
@@ -82,6 +83,7 @@ namespace SQM
             again.cause = lastCritical.cause;
             again.limitMs = lastCritical.limitMs;
             again.reminder = true;
+            remindNow = false;
             return again;
         }
 
@@ -100,12 +102,32 @@ namespace SQM
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
+            if (paused.has && elapsed(paused.endedAtMs, in.nowMs) < REARM_SAFE_MS)
+                return resume(in);
             return attempt(in);
+        }
+
+        // Unsafe again after a short safe spell: carry on where the attempt
+        // (or its back-off) stood, with its clock still running, so a flapping
+        // verdict can't restart the park time limit for ever and never alert.
+        Decision Sequence::resume(const Inputs &in)
+        {
+            enter(paused.phase);
+            phaseSinceMs = paused.sinceMs;
+            attemptLimitMs = paused.limitMs;
+            paused.has = false;
+            // Straight on with the paused phase: a limit that ran out during
+            // the safe spell fails the attempt now.
+            Decision out = waiting(in, false);
+            if (out.event == Event::None)
+                out.event = Event::Started;
+            return out;
         }
 
         Decision Sequence::attempt(const Inputs &in)
         {
             Decision out = enter(Phase::WaitPark, Event::Started);
+            parkRefusals = 0;
             attemptLimitMs = parkTimeoutMs; // a settings change applies from the next attempt
             out.action = requestIfDue(in.nowMs);
             return out;
@@ -135,7 +157,12 @@ namespace SQM
             if (interrupted(in, personStopped, out))
                 return out;
             if (in.weatherSafe)
-                return enter(Phase::Idle, Event::EndedSafe);
+            {
+                const Pause keep{true, current, phaseSinceMs, attemptLimitMs, in.nowMs};
+                out = enter(Phase::Idle, Event::EndedSafe);
+                paused = keep;
+                return out;
+            }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing); // a person's close: watch it
             // After a refused or interrupted close, no close until the back-off
@@ -212,7 +239,8 @@ namespace SQM
         {
             if (in.roof == Roof::State::Closed)
                 return enter(Phase::Idle, Event::Closed);
-            if (safeLong)
+            // Safe for REARM_SAFE_MS since standing down, not since before it.
+            if (safeLong && elapsed(phaseSinceMs, in.nowMs) >= REARM_SAFE_MS)
                 return enter(Phase::Idle, Event::EndedSafe);
             // A stop while the roof can't move (before a person clears a fault,
             // say) still stands the sequence down once it can.
@@ -231,6 +259,9 @@ namespace SQM
                 return Decision{};
             if (answer == CloseAnswer::Started)
                 return Decision{};
+            // The gate keeps disagreeing with the park result: a refusal like any other.
+            if (answer == CloseAnswer::ParkRefused && ++parkRefusals >= MAX_PARK_REFUSALS)
+                answer = CloseAnswer::Refused;
             if (answer == CloseAnswer::ParkRefused || answer == CloseAnswer::Withdrawn)
             {
                 // Not run: back to where the close came from, within the same
@@ -243,6 +274,19 @@ namespace SQM
                 return Decision{};
             }
             return withAlert(failAttempt(Event::CloseFailed, Cause::Refused, Action::None));
+        }
+
+        void Sequence::restore(Phase phase, Event event, Cause cause)
+        {
+            if (phase != Phase::HeldByPerson && phase != Phase::Halted)
+                return;
+            current = phase;
+            phaseSinceMs = lastNowMs;
+            lastCritical = LastCritical{};
+            lastCritical.has = true;
+            lastCritical.event = event;
+            lastCritical.cause = cause;
+            remindNow = true;
         }
 
         CloseAnswer answerFor(bool accepted, const std::string &reason)
@@ -286,6 +330,8 @@ namespace SQM
             if (next == Phase::Idle)
             {
                 lastCritical.has = false; // the episode is over: nothing to remind of
+                paused.has = false;       // waiting() keeps it for a short safe spell
+                parkRefusals = 0;
             }
             Decision out;
             out.event = event;
@@ -306,14 +352,16 @@ namespace SQM
         {
             if (!isCritical(decision.event))
                 return decision;
-            // Each event alerts at most once per REMIND_MS, across episodes, so
-            // a flapping verdict can't turn a lasting fault into an alert storm.
-            const size_t index = static_cast<size_t>(decision.event);
-            decision.alert = !alertedEver[index] || elapsed(alertedAtMs[index], lastNowMs) >= REMIND_MS;
+            // Each event and cause alerts at most once per REMIND_MS, across
+            // episodes, so a flapping verdict can't turn a lasting fault into
+            // an alert storm, while a new cause (a fault after a refusal) still alerts.
+            const size_t e = static_cast<size_t>(decision.event);
+            const size_t c = static_cast<size_t>(decision.cause);
+            decision.alert = !alertedEver[e][c] || elapsed(alertedAtMs[e][c], lastNowMs) >= REMIND_MS;
             if (decision.alert)
             {
-                alertedEver[index] = true;
-                alertedAtMs[index] = lastNowMs;
+                alertedEver[e][c] = true;
+                alertedAtMs[e][c] = lastNowMs;
             }
             lastCritical.has = true;
             lastCritical.event = decision.event;

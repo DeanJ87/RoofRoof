@@ -465,21 +465,57 @@ void test_each_critical_event_alerts_at_most_every_thirty_minutes()
     const Decision repeat = r.at(second + 60000);
     assertEvent(repeat, Event::ParkNotConfirmed, Cause::ParkTimeout);
     TEST_ASSERT_FALSE(repeat.alert);
-    // A new spell soon after (flapping weather) doesn't alert again either...
+    // A new spell after a long safe one, still within 30 minutes: logged, not alerted.
     r.in.weatherSafe = true;
-    r.at(second + 61000);
+    r.runTo(second + 61000 + REARM_SAFE_MS + 60000, 1000);
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
     r.in.weatherSafe = false;
-    r.at(second + 62000);
-    TEST_ASSERT_FALSE(r.at(second + 122000).alert);
-    // ...but 30 minutes after the last alert it does.
-    r.in.weatherSafe = true;
-    r.at(T0 + 60000 + REMIND_MS - 70000);
-    r.in.weatherSafe = false;
-    r.at(T0 + 60000 + REMIND_MS - 60000);
-    const Decision later = r.at(T0 + 60000 + REMIND_MS);
-    assertEvent(later, Event::ParkNotConfirmed, Cause::ParkTimeout);
-    TEST_ASSERT_TRUE(later.alert);
+    Counts c = r.runTo(T0 + 60000 + REMIND_MS - 1, 1000);
+    TEST_ASSERT_EQUAL(0, c.alerts);
+    TEST_ASSERT_TRUE(c.events.size() >= 2); // started, parkNotConfirmed
+    // 30 minutes after the last alert, the next failure alerts again.
+    c = r.runTo(T0 + 60000 + REMIND_MS + 400000, 1000);
+    TEST_ASSERT_TRUE(c.alerts >= 1);
+}
+
+void test_a_new_cause_alerts_though_its_event_alerted_recently()
+{
+    Rig r;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100).action);
+    TEST_ASSERT_TRUE(r.seq.closeAnswered(CloseAnswer::Refused).alert); // supply low, say
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100 + RETRY_AFTER_MS).action);
+    r.seq.closeAnswered(CloseAnswer::Started);
+    r.in.roof = State::Closing;
+    r.in.moveTimeoutMs = 60000;
+    r.at(T0 + 4200 + RETRY_AFTER_MS);
+    r.in.roof = State::Error; // then the close faults
+    const Decision d = r.at(T0 + 10000 + RETRY_AFTER_MS);
+    assertEvent(d, Event::CloseFailed, Cause::Fault);
+    TEST_ASSERT_TRUE(d.alert);
+}
+
+void test_repeated_gate_refusals_count_as_a_refusal()
+{
+    Rig r;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    uint64_t t = T0 + 4100;
+    for (uint8_t i = 1; i < MAX_PARK_REFUSALS; ++i)
+    {
+        TEST_ASSERT_EQUAL(Action::Close, r.at(t).action);
+        TEST_ASSERT_EQUAL(Event::None, r.seq.closeAnswered(CloseAnswer::ParkRefused).event);
+        r.at(t + 100);
+        t += 100 + PARK_SETTLE_MS;
+    }
+    TEST_ASSERT_EQUAL(Action::Close, r.at(t).action);
+    const Decision d = r.seq.closeAnswered(CloseAnswer::ParkRefused);
+    assertEvent(d, Event::CloseFailed, Cause::Refused);
+    TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    TEST_ASSERT_EQUAL(0, r.runTo(t + RETRY_AFTER_MS - 1, 100).closes);
 }
 
 int main(int, char **)
@@ -518,5 +554,7 @@ int main(int, char **)
     RUN_TEST(test_interrupted_close_alerts_and_backs_off);
     RUN_TEST(test_close_ending_part_way_after_the_weather_cleared_is_quiet);
     RUN_TEST(test_each_critical_event_alerts_at_most_every_thirty_minutes);
+    RUN_TEST(test_a_new_cause_alerts_though_its_event_alerted_recently);
+    RUN_TEST(test_repeated_gate_refusals_count_as_a_refusal);
     return UNITY_END();
 }

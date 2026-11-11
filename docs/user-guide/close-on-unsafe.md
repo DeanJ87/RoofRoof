@@ -25,7 +25,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 5ad5261a7adeb574
+fingerprint: 35b469e2a212b876
 -->
 <figure class="diagram" markdown>
 
@@ -71,7 +71,7 @@ stateDiagram-v2
     7. If the roof faults, or its position is unknown for 2 s, nothing is sent and a critical alert says it can't close by itself (`CannotMove`). Once a person has made the position known or cleared the fault, the 5-minute wait follows.
     8. A person's stop or abort during the sequence, or while it can't move, stands it down (`HeldByPerson`) with a critical alert: nothing more is sent or moved.
     9. `CannotMove`, `HeldByPerson` and `Halted` end when the roof reads closed, or the weather has been safe for 10 minutes without a break.
-    10. A safe verdict while waiting ends the sequence. A close already commanded runs to the closed magnet.
+    10. A safe verdict while waiting ends the sequence. A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
 
 ## Time limits
 
@@ -85,7 +85,8 @@ stateDiagram-v2
 | A close in motion | its own timeout + 30 s from the command (the motion logic's own timeout normally stops it first) | stopped where it is; "Roof didn't close" (critical); halted |
 | After a refused or interrupted close | 5 minutes with no close | - |
 | Position unknown | 2 s (the moments after a restart don't count) | "Roof can't close by itself" (critical) |
-| Standing down or halted ends | the roof closed, or safe for 10 minutes without a break | back to idle |
+| Standing down or halted ends | the roof closed, or safe for 10 minutes without a break since standing down | back to idle |
+| A safe spell during an attempt | shorter than 10 minutes: the attempt carries on, its clock still running | - |
 | Alerts | each kind at most every 30 minutes; repeated every 30 minutes while the roof stays open after one | - |
 
 Set `park.timeoutSeconds` to a little more than your mount takes to park from its furthest
@@ -112,6 +113,7 @@ until then these four use fixed wording.
 
 !!! warning "A stop is respected"
     The automatic close never overrides a person's stop: whoever pressed it may be at the roof.
+    The stand-down survives a restart of the device (a crash, an update), but not a power cut.
     A stop pressed by mistake leaves the roof open in the rain until someone acts on the alert.
 
 ## In the log

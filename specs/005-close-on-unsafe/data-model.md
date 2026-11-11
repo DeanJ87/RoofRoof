@@ -42,6 +42,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | Idle | roof unknown for 2 s | CannotMove | - | CannotClose (PositionUnknown) |
 | Idle | roof unknown < 2 s | Idle | - | - |
 | Idle | roof closing or close waiting | Closing | - | Started |
+| Idle | an attempt ended by a safe verdict less than 10 min ago | the paused phase, its clock still running (a limit that ran out fails at once) | as that phase decides | Started |
 | Idle | otherwise | WaitPark | RequestPark if due | Started |
 | WaitPark, RetryWait, Closing | roof closed | Idle | - | Closed |
 | WaitPark, RetryWait, Closing | a person's stop since the last step | HeldByPerson | - | StoppedByPerson |
@@ -63,6 +64,11 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | HeldByPerson, CannotMove, Halted | safe for 10 min without a break | Idle | - | EndedSafe |
 | CannotMove | a person's stop since the last step | HeldByPerson | - | StoppedByPerson |
 | CannotMove | roof neither unknown nor error | RetryWait | - | - |
+
+`ParkRefused` for the third time in a row in an attempt counts as `Refused` (`MAX_PARK_REFUSALS`).
+The 10 minutes of safe that end a stand-down count from entering it. `restore(phase, event, cause)`
+puts back a HeldByPerson or Halted kept across a restart, and its event is raised again on the
+first step.
 
 "Parked for 4 s" closes only when no close was refused or interrupted in the last 5 minutes; while
 held back by that alone, WaitPark neither fails its attempt nor sends requests.
@@ -87,7 +93,7 @@ After a `Close` action the glue reports the roof's answer with `closeAnswered`:
 | `action` | `Action` | `None`, `RequestPark`, `Close`, `Stop`. There is no open. |
 | `event` | `Event` | `None`, `Started`, `EndedSafe`, `Closed`, `ParkNotConfirmed`, `CloseFailed`, `CannotClose`, `StoppedByPerson` |
 | `cause` | `Cause` | `None`, `ParkTimeout`, `NinaNotConfigured`, `Fault`, `Refused`, `Interrupted`, `TooLong`, `PositionUnknown`, `FaultLatched` |
-| `alert` | `bool` | a critical event whose kind hasn't alerted for 30 minutes (alert it); others are logged only |
+| `alert` | `bool` | a critical event whose event and cause haven't alerted for 30 minutes (alert it); others are logged only |
 | `limitMs` | `uint64_t` | the time limit that ran out (ParkTimeout, TooLong) |
 | `reminder` | `bool` | the event is the episode's last critical event raised again |
 
