@@ -1,3 +1,4 @@
+#include "CalibrationDocument.h"
 #include "FlashGuard.h"
 #include "Logger.h"
 #include "MotionGuards.h"
@@ -8,6 +9,7 @@
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
+#include <AsyncJson.h>
 #include <WiFi.h>
 #include <ctime>
 
@@ -46,6 +48,16 @@ namespace SQM
 
     void WebServer::setupRoofRoutes()
     {
+        // Spec 016: before every shorter /api/roof route they could prefix-match.
+        AsyncCallbackJsonWebHandler *calibrate = new AsyncCallbackJsonWebHandler(
+            "/api/roof/calibration/start",
+            [this](AsyncWebServerRequest *request, JsonVariant &json) { handleCalibrationStart(request, json); },
+            512);
+        calibrate->setMethod(HTTP_POST);
+        server.addHandler(calibrate);
+        server.on(
+            "/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
+        server.on("/api/roof/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCalibrationStatus(request); });
         server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
         server.on(
             "/api/roof/close", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); });
@@ -98,6 +110,67 @@ namespace SQM
             return;
         }
         sendOutcome(request, roof->clearFault(Roof::Origin::Person));
+    }
+
+    // Spec 016 (contracts/calibration-api.md): only a person, logged in, with
+    // the command header; every check is the run's own (Calib::Run::start).
+    void WebServer::handleCalibrationStart(AsyncWebServerRequest *request, JsonVariant &json)
+    {
+        if (!requireAuth(request) || !requireCommandHeader(request))
+            return;
+        Calib::Request wanted;
+        const char *error = nullptr;
+        if (!Calib::parseRequest(json, wanted, error))
+        {
+            request->send(400, "application/json", createErrorJson(error).c_str());
+            return;
+        }
+        if (roof == nullptr)
+        {
+            sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
+            return;
+        }
+        const bool sequenceIdle = PlatformGuard::sequence() == RoofIo::SequenceState::Idle;
+        RoofControl::Outcome outcome = roof->startCalibration(wanted, sequenceIdle);
+        if (outcome.accepted)
+            outcome.state = Roof::State::Unknown; // the answer names the run's state, below
+        StaticJsonDocument<512> doc;
+        doc["success"] = outcome.accepted;
+        doc["state"] = outcome.accepted ? "running" : Roof::stateName(outcome.state);
+        if (!outcome.accepted)
+        {
+            doc["reason"] = outcome.reason;
+            doc["error"] = outcome.text;
+        }
+        std::string body;
+        serializeJson(doc, body);
+        request->send(outcome.accepted ? 200 : 409, "application/json", body.c_str());
+    }
+
+    void WebServer::handleCalibrationAbort(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request) || !requireCommandHeader(request))
+            return;
+        if (roof == nullptr)
+        {
+            sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
+            return;
+        }
+        Logger::info(TAG, "Calibration stop from the web API");
+        sendOutcome(request, roof->stopCalibration());
+    }
+
+    // Readings only, open like /api/status; the report is copied under the
+    // roof's lock and written outside it (constitution VI).
+    void WebServer::handleCalibrationStatus(AsyncWebServerRequest *request)
+    {
+        uint32_t nowMs = 0;
+        const Calib::Report report = roof != nullptr ? roof->calibrationReport(nowMs) : Calib::Report();
+        DynamicJsonDocument doc(Calib::DOCUMENT_CAPACITY);
+        Calib::writeDocument(doc.to<JsonObject>(), report, nowMs);
+        std::string body;
+        serializeJson(doc, body);
+        request->send(200, "application/json", body.c_str());
     }
 
     void WebServer::setRoof(RoofControl *control)

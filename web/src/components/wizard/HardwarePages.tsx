@@ -1,10 +1,11 @@
 import { FunctionalComponent } from 'preact';
+import { route } from 'preact-router';
 import { useState } from 'preact/hooks';
 import type { RoofStatus } from '../../types';
 import type { WizardPageProps } from './context';
 import { CurrentCard, HallCard, ParkSwitchesField, RainContactToggle, roofNum } from '../settings/RoofTab';
 import { ActionButton, Field, NumberInput, SettingsCard, Toggle } from '../settings/controls';
-import { Note, ReadingRow } from '../ui';
+import { Button, Note, ReadingRow } from '../ui';
 import { docsLink } from '../../lib/docsLinks';
 import { t } from '../../i18n';
 import { formatNumber } from '../../i18n/format';
@@ -109,6 +110,19 @@ export const HallPage: FunctionalComponent<WizardPageProps> = (props) => (
     </SettingsCard>
     {!props.hallNotFitted && props.config.roof && <HallCard {...props} roof={props.config.roof} />}
   </>
+);
+
+// Spec 016: the calibration run is offered here, but runs on its own attended
+// page (with Stop): this page has no motion control of its own.
+export const CalibrationPage: FunctionalComponent<WizardPageProps> = () => (
+  <SettingsCard id="calibration" title={t('wizard.calibrate.title')} hint={t('wizard.calibrate.hint')}>
+    <Note>{t('wizard.calibrate.what')}</Note>
+    <Note tone="warn">{t('wizard.calibrate.needs')}</Note>
+    <div class="btn-row">
+      <Button onClick={() => route('/calibrate')}>{t('calibrate.open')}</Button>
+    </div>
+    <Note>{t('wizard.calibrate.later')}</Note>
+  </SettingsCard>
 );
 
 // The factory motion values: until they are measured, the first moves run at the slow duty.

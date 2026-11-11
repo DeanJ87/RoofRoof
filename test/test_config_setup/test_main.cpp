@@ -67,9 +67,9 @@ void test_a_step_out_of_range_is_refused_from_the_ui()
 {
     const Config base = Config::createDefault();
     std::string error;
-    TEST_ASSERT_TRUE(fromUi("{\"setup\":{\"step\":9}}", base).has_value());
-    TEST_ASSERT_FALSE(fromUi("{\"setup\":{\"step\":10}}", base, &error).has_value());
-    TEST_ASSERT_EQUAL_STRING("Setup: step must be between 0 and 9", error.c_str());
+    TEST_ASSERT_TRUE(fromUi("{\"setup\":{\"step\":10}}", base).has_value());
+    TEST_ASSERT_FALSE(fromUi("{\"setup\":{\"step\":11}}", base, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Setup: step must be between 0 and 10", error.c_str());
     TEST_ASSERT_FALSE(fromUi("{\"setup\":{\"step\":-1}}", base, &error).has_value());
     TEST_ASSERT_FALSE(fromUi("{\"setup\":{\"step\":300}}", base, &error).has_value());
 }

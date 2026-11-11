@@ -93,6 +93,11 @@ namespace SQM
             committedProbe = std::move(restartCommitted);
         }
 
+        RoofIo::SequenceState sequence()
+        {
+            return sequenceNow();
+        }
+
         RoofIo::HoldReason hold(RoofIo::PlatformAction action)
         {
             return RoofIo::platformHold(action, latest());

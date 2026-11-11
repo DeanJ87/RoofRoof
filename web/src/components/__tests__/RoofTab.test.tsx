@@ -16,6 +16,7 @@ const FIELDS = [
   'roof.speedMmPerSecond',
   'roof.timeoutMarginSeconds',
   'roof.leaveMagnetSeconds',
+  'roof.calibrationLimitSeconds',
   'roof.rampUpMs',
   'roof.rampDownMs',
   'roof.topDutyPercent',
@@ -293,5 +294,17 @@ describe('toConfigPayload', () => {
     const { roof: _roof, safety: _safety, park: _park, daylight: _daylight, location: _location, ...older } = mockConfig;
     const payload = toConfigPayload(older as Config);
     expect('roof' in payload || 'safety' in payload || 'park' in payload || 'daylight' in payload || 'location' in payload).toBe(false);
+  });
+});
+
+// Spec 016: the Calibrate card links the attended page and holds its time limit.
+describe('Settings → Roof → Calibration run', () => {
+  it('links the calibration page and keeps the time limit under Advanced', async () => {
+    mockDevice();
+    await openRoofTab();
+    const card = (await screen.findByText('Open the calibration page')).closest('section, .card, [id="calibrate"]');
+    expect(card).not.toBeNull();
+    const limit = await findField('roof.calibrationLimitSeconds');
+    expect(limit.closest('details')).not.toBeNull();
   });
 });

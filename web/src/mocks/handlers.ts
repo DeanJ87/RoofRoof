@@ -1,6 +1,6 @@
 import { http, HttpResponse, ws } from 'msw';
 import type { AlertScheduleReason } from '../types';
-import { mockStatus, mockConfig, mockInputs, mockWifiNetworks, mockAlpacaDevices, mockRecentAlerts } from './data';
+import { mockStatus, mockConfig, mockInputs, mockWifiNetworks, mockAlpacaDevices, mockRecentAlerts, mockCalibration } from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
 
 // What a healthy device would report as its facts.
@@ -87,6 +87,9 @@ export const handlers = [
   // REST — config
   http.get('/api/config', () => HttpResponse.json(mockConfig)),
   http.get('/api/roof/inputs', () => HttpResponse.json(mockInputs)),
+  http.get('/api/roof/calibration', () => HttpResponse.json(mockCalibration)),
+  http.post('/api/roof/calibration/start', () => HttpResponse.json({ success: true, state: 'running' })),
+  http.post('/api/roof/calibration/abort', () => HttpResponse.json({ success: true, state: 'stopped' })),
   http.get('/api/settings/effective', () =>
     HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) }),
   ),

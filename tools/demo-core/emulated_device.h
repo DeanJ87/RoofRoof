@@ -79,6 +79,8 @@ public:
     // POST /api/roof/<name> (open, close, stop, clear-fault), as a person.
     // Returns {status, body} like the device (200, 409; 404 for another name).
     std::string roofCommand(const std::string &name);
+    // Spec 016: POST /api/roof/calibration/start (`body`) and /abort, GET /api/roof/calibration.
+    std::string calibration(const std::string &action, const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);

@@ -144,6 +144,27 @@ namespace SQM
             }
         } // namespace
 
+        bool parseRequest(JsonVariantConst body, Request &out, const char *&error)
+        {
+            error = nullptr;
+            if (!body.is<JsonObjectConst>())
+                error = "The body must be a JSON object";
+            else if (!body["attended"].is<bool>())
+                error = "attended must be true or false";
+            else if (!parseWhere(body["at"].as<const char *>(), out.at))
+                error = "at must be closed, open or partWay";
+            else if (!body["travelMm"].is<uint32_t>())
+                error = "travelMm must be a whole number of mm";
+            else if (!body["topPass"].isNull() && !body["topPass"].is<bool>())
+                error = "topPass must be true or false";
+            if (error != nullptr)
+                return false;
+            out.attended = body["attended"].as<bool>();
+            out.travelMm = body["travelMm"].as<uint32_t>();
+            out.topPass = body["topPass"] | false;
+            return true;
+        }
+
         void writeDocument(JsonObject out, const Report &r, uint32_t nowMs)
         {
             out["state"] = runStateName(r.state);

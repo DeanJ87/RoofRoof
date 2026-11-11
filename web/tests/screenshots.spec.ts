@@ -161,14 +161,14 @@ test('demo panel', async ({ page }) => {
 for (const [step, name] of [
   [3, 'wizard-hardware'],
   [4, 'wizard-hall'],
-  [7, 'wizard-nina'],
-  [10, 'wizard-review'],
+  [8, 'wizard-nina'],
+  [11, 'wizard-review'],
 ] as const) {
   test(`setup wizard page ${step}`, async ({ page }) => {
     await page.goto(`./?panel=hidden#/wizard?step=${step}`);
     await waitForDemoApp(page);
-    await expect(page.locator('.wizard-heading')).toContainText(`Step ${step} of 10`);
-    if (step === 7) {
+    await expect(page.locator('.wizard-heading')).toContainText(`Step ${step} of 11`);
+    if (step === 8) {
       await page.getByRole('button', { name: 'Test', exact: true }).click();
       await expect(page.locator('[data-test-result="nina"]')).toBeVisible({ timeout: 20_000 });
     }
@@ -177,11 +177,20 @@ for (const [step, name] of [
   });
 }
 
+// Spec 016: the calibration page with a finished run in the demo is too slow to wait for; its start form.
+test('calibration page', async ({ page }) => {
+  await page.goto('./?panel=hidden#/calibrate');
+  await waitForDemoApp(page);
+  await expect(page.getByRole('button', { name: 'Start calibration' })).toBeVisible();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: save('calibrate'), fullPage: true });
+});
+
 test('setup wizard at phone width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('./?panel=hidden#/wizard?step=6');
+  await page.goto('./?panel=hidden#/wizard?step=7');
   await waitForDemoApp(page);
-  await expect(page.locator('.wizard-heading')).toContainText('Step 6 of 10');
+  await expect(page.locator('.wizard-heading')).toContainText('Step 7 of 11');
   await page.getByRole('button', { name: 'Test', exact: true }).click();
   await expect(page.locator('[data-test-result="weather"]')).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: save('wizard-weather-phone'), fullPage: true });

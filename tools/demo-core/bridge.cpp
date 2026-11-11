@@ -32,6 +32,7 @@ EMSCRIPTEN_BINDINGS(roofroof_core)
         .function("saveState", &EmulatedDevice::saveState)
         .function("loadState", &EmulatedDevice::loadState)
         .function("roofCommand", &EmulatedDevice::roofCommand)
+        .function("calibration", &EmulatedDevice::calibration)
         .function("roofInject", &EmulatedDevice::roofInject)
         .function("roofPanel", &EmulatedDevice::roofPanel)
         .function("platformHold", &EmulatedDevice::platformHold);

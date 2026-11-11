@@ -9,7 +9,15 @@
   },
   "alpaca": {
     "enabled": true,
-    "clients": {}
+    "clients": {
+      "dome": {
+        "connected": false,
+        "watching": false,
+        "silent": false,
+        "lastCheckedAgeMs": null,
+        "clientId": null
+      }
+    }
   },
   "firmware": {
     "name": "RoofRoof",
@@ -81,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1794367229,
-    "iso": "2026-11-11T03:20:29+0000",
+    "epoch": 1794427152,
+    "iso": "2026-11-11T19:59:12+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1794363627173,
-    "nextSync": 1794370827173,
+    "lastSync": 1794423550410,
+    "nextSync": 1794430750410,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -122,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1794367167173,
+    "lastPublish": 1794427090410,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -142,9 +150,9 @@
     "moveTimeoutMs": 0,
     "hall": {
       "level": "low",
-      "counts": 712
+      "counts": 565
     },
-    "supplyVolts": 12.46,
+    "supplyVolts": 12.6,
     "supplyLow": false,
     "minSupplyVolts": 11,
     "currentSense": false,
@@ -157,24 +165,25 @@
     },
     "rainContact": "notFitted",
     "closePending": false,
+    "calibrating": false,
     "closePhase": "idle",
     "weather": "safe",
     "weatherText": "safe",
     "parkConfirmed": true,
-    "parkText": "parked (N.I.N.A. AtPark)",
+    "parkText": "parked",
     "fault": null,
     "watchdogTrips": 0,
-    "maxStepGapMs": 21,
-    "maxWatchdogBeatAgeMs": 12,
-    "simulation": "off",
+    "maxStepGapMs": 20,
+    "maxWatchdogBeatAgeMs": 0,
+    "simulation": "demo",
     "daylight": {
       "mode": "alert",
-      "state": "night",
-      "sunAltitudeDeg": -14.2,
+      "state": "unknown",
+      "sunAltitudeDeg": null,
       "limitDeg": 0,
-      "text": "Sun -14.2° < 0.0°",
+      "text": "Location not set",
       "closes": false
     }
   },
-  "configRevision": 3751871155
+  "configRevision": 388206608
 }

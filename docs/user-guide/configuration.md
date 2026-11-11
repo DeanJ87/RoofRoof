@@ -129,6 +129,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "speedMmPerSecond": 38,
     "timeoutMarginSeconds": 15,
     "leaveMagnetSeconds": 10,
+    "calibrationLimitSeconds": 180,
     "rampUpMs": 2000,
     "rampDownMs": 3000,
     "topDutyPercent": 100,
@@ -269,6 +270,7 @@ sense off.
 | `roof.speedMmPerSecond` | number | `38` | Roof speed at 100% duty, in mm/s (1-500) |
 | `roof.timeoutMarginSeconds` | int | `15` | Added to a move's expected time to give its hard timeout (3-300) |
 | `roof.leaveMagnetSeconds` | int | `10` | A move from an end must leave its magnet within this time (2-120) |
+| `roof.calibrationLimitSeconds` | int | `180` | The longest one leg of a [calibration run](calibration-run.md) may drive before it faults `timeout` (30-600); later legs are also bounded by the measured ones. In **Settings → Roof → Calibration run → Advanced** |
 | `roof.rampUpMs` | int | `2000` | Soft start, slow duty to top duty (0-30000) |
 | `roof.rampDownMs` | int | `3000` | Slowing near the end: the zone is the distance covered at the top duty in this time (0-30000) |
 | `roof.topDutyPercent` | int | `100` | Highest motor duty (20-100) |

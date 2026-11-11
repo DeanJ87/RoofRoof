@@ -47,6 +47,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 3.3 | `roof.hallHighEnd`, `hallHighCounts`, `hallLowCounts` set | / / |
 | ☐ 3.4 | States correct at each end, `unknown` between, also after a restart | |
 | ☐ 3.5 | Sensor unplugged: `hallRail` fault latched; cleared after replugging | |
+| ☐ 3.6 | Thresholds see both magnets (the calibration run in stage 8 refines them) | |
 
 ## Stage 4: Weather and park sources (motor disconnected)
 
@@ -126,7 +127,8 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 8.2 | First move leaves the closed end the right way; `roof.openDirection` | |
 | ☐ 8.3 | Stop at once; carries on from `stopped` | |
 | ☐ 8.4 | Full open and close at 40%: ends at the magnet within the timeout, not hard on the stops | s / s |
-| ☐ 8.5 | Travel (tape) and speed set from the 40% time before any faster move, refined at 70% then 100%; 40% time about 2.5 times the 100% time, margin raised if not; leave time back to 10 | mm / s / mm/s |
+| ☐ 8.5 | Travel (tape); calibration run at 40%, then with the top-duty pass at 70% and 100%, each proposal checked and accepted (or by hand); leave time back to 10 | mm / mm/s / s |
+| ☐ 8.5a | Calibration run's limit stops a leg with no magnet (`timeout` at 30 s); restored | |
 | ☐ 8.6 | No `supplyLow` at start; lowest supply during a move | V |
 | ☐ 8.7 | Timeout test mid-travel stops the roof, values restored; motor and IBT-2 cool enough after the longest run | |
 | ☐ 8.8 | Current sense (if fitted): `currentAmpsPerVolt`, `maxCurrentAmps`, `minRunningAmps`; `overCurrent` test; surge under 250 ms | / / |

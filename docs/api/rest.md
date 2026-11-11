@@ -47,7 +47,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "calibrating": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
 }
 ```
 
@@ -77,6 +77,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted` |
 | `rainContact` | `notFitted`, `dry`, `raining` or `unreadable` |
 | `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
+| `calibrating` | a [calibration run](../user-guide/calibration-run.md) is under way, pauses at each end included; open and close are refused (`calibrating`) and the Stop bar shows |
 | `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
@@ -329,6 +330,69 @@ The weather sources, the park and N.I.N.A. as the device last evaluated them (on
 | `park.parked`, `park.text` | The park rule's answer, as `roof.parkConfirmed` and `roof.parkText` |
 | `nina.state` | `notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`; `connected`, `atPark` and `slewing` only mean something when it is `good`; `ageMs` since the reading; `text` the failure |
 | `…generation` | Goes up when that source's settings change (its record starts again), so a client can tell a reading of the new settings from an old one |
+
+---
+
+### `POST /api/roof/calibration/start`
+
+Starts an attended [calibration run](../user-guide/calibration-run.md) (spec 016). Login and the `X-RoofRoof: 1` header, like every roof command. Body:
+
+```json
+{ "attended": true, "at": "closed", "travelMm": 1850, "topPass": false }
+```
+
+`attended` must be `true` (the person is at the roof and can see it); `at` is where the roof is now (`closed`, `open` or `partWay`), checked against the Hall reading; `travelMm` the travel between the magnets' trigger points, measured with a tape (100-20000); `topPass` adds an open and a close at the top duty. `200 {"success": true, "state": "running"}`; `400` for a body of another shape; `409` with `reason` and `error` when refused: `notAttended`, `calibrating`, `closeSequence` (the automatic close isn't idle), `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's refusals. Nothing is saved by the run.
+
+### `POST /api/roof/calibration/abort`
+
+Stops the roof as a person's stop and ends any run (no proposal, settings unchanged). Login and `X-RoofRoof: 1`. Answers like `POST /api/roof/stop`. A stop from anywhere else ends a run too.
+
+### `GET /api/roof/calibration`
+
+The last run since start-up. Open, like `/api/status`: readings and derived values only. The run is kept in memory only; after a restart it reads `idle`.
+
+```json
+{
+  "state": "done",
+  "active": false,
+  "request": { "at": "closed", "travelMm": 1850, "topPass": false, "limitSeconds": 180 },
+  "leg": null,
+  "ending": { "reason": "done", "text": "Calibration finished" },
+  "legs": [
+    { "name": "slowOpen", "target": "open", "dutyPercent": 40, "drivenMs": 112800, "level": "high",
+      "speedMmPerSecond": 41.0, "ampsMean": null, "ampsPeak": null, "supplyMinVolts": 12.3 }
+  ],
+  "hall": {
+    "between": { "mean": 2050, "min": 2041, "max": 2060, "noise": 4.2 },
+    "closed": { "mean": 702, "min": 699, "max": 705, "level": "low" },
+    "open": { "mean": 3398, "min": 3395, "max": 3401, "level": "high" }
+  },
+  "currentSense": false,
+  "maxCurrentAmps": 10,
+  "proposal": {
+    "travelMm": { "old": 1850, "new": 1850 },
+    "speedMmPerSecond": { "old": 38, "new": 41 },
+    "timeoutMarginSeconds": { "old": 15, "new": 10 },
+    "hallHighEnd": { "old": "open", "new": "open" },
+    "hallHighCounts": { "old": 3000, "new": 3000 },
+    "hallLowCounts": { "old": 1100, "new": 1100 },
+    "speedProblem": null,
+    "hallProblem": null,
+    "warnings": []
+  }
+}
+```
+
+| Field | |
+|---|---|
+| `state` | `idle` (no run since start-up), `running`, `done`, `failed` (a fault, a refused leg, blocked for 15 s) or `stopped` (a stop, the weather, the park, the automatic close) |
+| `leg` | While running: `index` of `count`, `name` (`toClosed`, `slowOpen`, `slowClose`, `topOpen`, `topClose`), `phase` (`settle` at an end, `wait` for a blocker, `drive`), `elapsedMs` and the leg's `limitMs` |
+| `ending` | `reason` (`done`, `stopped`, `weather`, `park`, `closeSequence`, `fault`, `refused`, `busy`) and its text |
+| `legs[]` | Each measured leg: time driven, duty, the level it ended on, the speed at 100 % duty it implies, and with current sense the mean and peak running current; the lowest supply |
+| `hall` | The in-between reading (middle half of each leg) with its noise (standard deviation), and the reading at rest at each end |
+| `proposal` | Only when `done`: the value at the start (`old`) and the proposed one (`new`); `null` where withheld, with `speedProblem` (`legsDisagree`, `legTooShort`, `outOfRange`) or `hallProblem` (`samePole`, `weakEnd`, `noRoom`); `warnings[]` (`directionsDiffer`, `currentNearLimit`) |
+
+The status document's `roof.calibrating` is `true` for the whole run, pauses included.
 
 ---
 

@@ -683,6 +683,27 @@ void test_the_document_while_running_and_idle(void)
     TEST_ASSERT_TRUE(doc["proposal"].isNull());
 }
 
+void test_the_start_request_is_parsed(void)
+{
+    StaticJsonDocument<256> doc;
+    Request req;
+    const char *error = nullptr;
+    deserializeJson(doc, "{\"attended\":true,\"at\":\"partWay\",\"travelMm\":1800,\"topPass\":true}");
+    TEST_ASSERT_TRUE(parseRequest(doc.as<JsonVariantConst>(), req, error));
+    TEST_ASSERT_TRUE(req.attended && req.topPass && req.at == Where::PartWay && req.travelMm == 1800);
+    deserializeJson(doc, "{\"attended\":false,\"at\":\"open\",\"travelMm\":900}");
+    TEST_ASSERT_TRUE(parseRequest(doc.as<JsonVariantConst>(), req, error));
+    TEST_ASSERT_FALSE(req.attended || req.topPass);
+    for (const char *bad : {"[]", "{\"at\":\"open\",\"travelMm\":900}", "{\"attended\":true,\"at\":\"middle\",\"travelMm\":900}",
+                            "{\"attended\":true,\"at\":\"open\",\"travelMm\":-1}", "{\"attended\":true,\"at\":\"open\",\"travelMm\":\"9\"}",
+                            "{\"attended\":true,\"at\":\"open\",\"travelMm\":900,\"topPass\":1}"})
+    {
+        deserializeJson(doc, bad);
+        TEST_ASSERT_FALSE_MESSAGE(parseRequest(doc.as<JsonVariantConst>(), req, error), bad);
+        TEST_ASSERT_NOT_NULL(error);
+    }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -723,5 +744,6 @@ int main(int, char **)
     RUN_TEST(test_a_weak_magnet_withholds_the_thresholds);
     RUN_TEST(test_the_document_of_a_finished_run);
     RUN_TEST(test_the_document_while_running_and_idle);
+    RUN_TEST(test_the_start_request_is_parsed);
     return UNITY_END();
 }

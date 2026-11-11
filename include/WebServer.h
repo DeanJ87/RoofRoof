@@ -301,6 +301,10 @@ namespace SQM
         void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
         void handleRoofInputs(AsyncWebServerRequest *request);
         void handleRoofClearFault(AsyncWebServerRequest *request);
+        // Spec 016: the calibration run.
+        void handleCalibrationStart(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleCalibrationAbort(AsyncWebServerRequest *request);
+        void handleCalibrationStatus(AsyncWebServerRequest *request);
         // Answers 409 with the reason and returns true while `action` must wait
         // (spec 010, RoofIo::platformHold): the roof moves, a close waits, or
         // for restarts, firmware and Wi-Fi changes the close sequence is busy.

@@ -28,6 +28,7 @@ DOCUMENTS = {
     "settings_effective": "settings-effective",
     "config": "config",
     "roof_inputs": "roof-inputs",
+    "calibration": "calibration",
     "alerts_recent": "alerts-recent",
     "alerts_armed": "alerts-armed",
     "management_v1_description": "alpaca-description",

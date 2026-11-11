@@ -1,9 +1,10 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
+import { route } from 'preact-router';
 import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
-import { Note } from '../ui';
+import { Button, Note } from '../ui';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -365,6 +366,21 @@ const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
   </SettingsCard>
 );
 
+// Spec 016: the attended calibration run, on its own page; its time limit under Advanced.
+export const CalibrateCard: FunctionalComponent<RoofProps> = (props) => (
+  <SettingsCard id="calibrate" title={t('calibrate.cardTitle')} hint={t('calibrate.cardHint')}>
+    <Note>{t('calibrate.cardText')}</Note>
+    <div class="btn-row">
+      <Button onClick={() => route('/calibrate')}>{t('calibrate.open')}</Button>
+    </div>
+    <Fold label={t('settings.roof.advanced')} open={props.error('roof.calibrationLimitSeconds') !== undefined} dataField="calibrate.advanced">
+      <div class="form-grid">
+        {roofNum(props, 'calibrationLimitSeconds', t('calibrate.limit'), { unit: 's', integer: true, hint: t('calibrate.limitHint') })}
+      </div>
+    </Fold>
+  </SettingsCard>
+);
+
 // The device refuses every save while the roof moves; a save while it is
 // stopped part-way makes its position unknown (FR-021).
 export const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ status }) => {
@@ -383,6 +399,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
         <>
           <MotionCard {...props} roof={roof} />
           <HallCard {...props} roof={roof} />
+          <CalibrateCard {...props} roof={roof} />
           <CurrentCard {...props} roof={roof} />
         </>
       ) : (

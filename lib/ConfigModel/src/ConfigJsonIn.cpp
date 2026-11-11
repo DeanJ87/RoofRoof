@@ -394,7 +394,7 @@ namespace SQM
             if (step < SetupConfig::STEP_COUNT)
                 s.step = static_cast<uint8_t>(step);
             else if (strict)
-                return setError(error, "Setup: step must be between 0 and 9");
+                return setError(error, "Setup: step must be between 0 and 10");
             if (!setup.has("state"))
                 return true;
             const std::string state = setup["state"].is<const char *>() ? setup["state"].as<const char *>() : "";

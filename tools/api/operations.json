@@ -540,6 +540,182 @@
         }
       ]
     },
+    "POST /api/roof/calibration/start": {
+      "tag": "Roof",
+      "summary": "Start a calibration run",
+      "description": "Spec 016: an attended run, started only by a person at the roof. From where the roof is, a slow close to the closed end (unless `at` is `closed`), a slow open and a slow close, and with `topPass` an open and a close at the top duty; each leg stops at the first magnet and is bounded by `roof.calibrationLimitSeconds` (later legs by the measured ones), the existing faults and the drive budget. Refused (409, with `reason` and `error`) unless `attended` is true, the weather is safe, daylight doesn't want the roof closed, the mount is confirmed parked, the automatic close is idle, no fault is latched, the roof is at rest, nothing blocks an open and the Hall reading agrees with `at`. Reasons: `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's (`supplyLow`, `supplyUnreadable`, `currentUnreadable`, `hallNotSettled`, `settingsInvalid`). Read the run with `GET /api/roof/calibration`. Nothing is saved: the proposal is accepted with `POST /api/config`. Needs the header `X-RoofRoof: 1`.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "attended": {
+              "type": "boolean",
+              "description": "The person confirms they are at the roof and can see it; must be true."
+            },
+            "at": {
+              "type": "string",
+              "enum": [
+                "closed",
+                "open",
+                "partWay"
+              ],
+              "description": "Where the roof is now, as the person sees it."
+            },
+            "travelMm": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 20000,
+              "description": "The travel between the magnets' trigger points, measured with a tape."
+            },
+            "topPass": {
+              "type": "boolean",
+              "description": "Also open and close at the top duty (default false)."
+            }
+          },
+          "required": [
+            "attended",
+            "at",
+            "travelMm"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "attended": true,
+          "at": "closed",
+          "travelMm": 1850,
+          "topPass": false
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "description": "`running` when accepted; the roof's state when refused."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "400": "error",
+        "403": "error",
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "description": "`running` when accepted; the roof's state when refused."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ]
+    },
+    "POST /api/roof/calibration/abort": {
+      "tag": "Roof",
+      "summary": "Stop the calibration run",
+      "description": "Stops the roof as a person's stop (the motor off at once) and ends any calibration run, with no proposal and every setting unchanged. Always accepted. Needs the header `X-RoofRoof: 1`.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "403": "error"
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ]
+    },
+    "GET /api/roof/calibration": {
+      "tag": "Roof",
+      "summary": "The calibration run",
+      "description": "Spec 016: the last calibration run since start-up (`idle` before any): its state, the leg under way with its limit, how it ended, each measured leg (time, duty, end level, speed at 100 % duty, current and supply), the Hall readings (in between, and at rest at each end) and, for a finished run, the proposal with the value at the start beside each proposed one (`null` where withheld, with the reason). Read-only, kept in memory only.",
+      "responses": {
+        "200": "calibration"
+      },
+      "example": "calibration"
+    },
     "GET /api/roof/inputs": {
       "tag": "Roof",
       "summary": "Weather sources and the mount",

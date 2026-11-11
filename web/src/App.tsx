@@ -10,6 +10,7 @@ import Alpaca from './components/Alpaca';
 import NotFound from './components/NotFound';
 import WifiSetup from './components/WifiSetup';
 import Wizard from './components/Wizard';
+import Calibrate from './components/Calibrate';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -51,6 +52,9 @@ const App: FunctionalComponent = () => (
     </Layout>
     <Layout path="/wizard">
       <Wizard />
+    </Layout>
+    <Layout path="/calibrate">
+      <Calibrate />
     </Layout>
     <Layout path="/wifi">
       <WifiSetup />

@@ -18,6 +18,7 @@
 
 #include "AlertEngine.h"
 #include "AlpacaRouter.h"
+#include "CalibrationRun.h"
 #include "CloseSequence.h"
 #include "Config.h"
 #include "Daylight.h"
@@ -90,6 +91,11 @@ namespace DemoRoof
         // POST /api/roof/* (a person) and the Alpaca Dome (a client).
         Outcome command(Roof::Command command, Roof::Origin origin);
         Outcome clearFault();
+        // Spec 016: RoofControl's calibration run (the same library), as a person.
+        Outcome startCalibration(const Calib::Request &request);
+        const Calib::Report &calibrationReport() const { return calibration.report(); }
+        bool calibrating() const { return calibration.active(); }
+        uint32_t clockMs() const { return static_cast<uint32_t>(nowMs); }
         Alpaca::DomeStatus domeStatus() const;
         Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action);
 
@@ -130,6 +136,7 @@ namespace DemoRoof
         Outcome runChecked(Roof::Command command, Roof::Origin origin);
         Outcome outcomeOf(const Roof::CommandResult &result) const;
         void checkGates();
+        void stepCalibration(const Roof::Readings &in);
         void latchExternal(const RoofIo::FaultRecord &record);
         void syncFault();
         void takePendingSettings();
@@ -172,6 +179,7 @@ namespace DemoRoof
         // Spec 013: CloseOnUnsafe::updateDaylight.
         Daylight::Settings daylightCfg;
         CloseSeq::Policy policy;       // spec 014: autoClose.*
+        Calib::Run calibration;        // spec 016
         bool remoteStopsClose = false; // spec 014: autoClose.remoteStop
         Daylight::Watch daylightWatch;
         Daylight::View daylightView;

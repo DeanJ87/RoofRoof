@@ -173,6 +173,11 @@ export const demoHandlers = [
     http.post(`/api/roof/${name}`, () => reply(demoDevice.roofCommand(name))),
   ),
 
+  // The calibration run (spec 016): the device's own run, on the simulated roof
+  http.get('/api/roof/calibration', () => reply(demoDevice.calibration('status'))),
+  http.post('/api/roof/calibration/start', async ({ request }) => reply(demoDevice.calibration('start', await request.text()))),
+  http.post('/api/roof/calibration/abort', () => reply(demoDevice.calibration('abort'))),
+
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', async ({ request }) => {

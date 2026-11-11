@@ -37,9 +37,11 @@ export const INVENTORY: InventoryEntry[] = [
   settingsTab('alerts', 'settings/AlertsTab'),
   { id: 'updates', route: '#/updates', component: 'Updates', states: ['default'] },
   { id: 'wifi', route: '#/wifi', component: 'WifiSetup (captive portal)', states: ['default'] },
+  // Spec 016: the calibration page.
+  { id: 'calibrate', route: '#/calibrate', component: 'Calibrate', states: ['default'] },
   { id: 'not-found', route: '#/no-such-page', component: 'NotFound', states: ['default'] },
   // Spec 015: every page of the setup wizard.
-  ...Array.from({ length: 10 }, (_, i) => ({
+  ...Array.from({ length: 11 }, (_, i) => ({
     id: `wizard-${i + 1}`,
     route: `#/wizard?step=${i + 1}`,
     component: 'Wizard',
