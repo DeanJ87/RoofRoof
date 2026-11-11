@@ -16,7 +16,7 @@
 - Demo core and panel: the same watch, "Sun up".
 - Web: Roof card line and Open reason, Settings → Roof Daylight card, Settings → Alerts rows,
   schemas, mocks, i18n.
-- Docs: a daylight page, configuration, alerts, REST, close-on-unsafe, settings dependencies,
+- Docs: a Daylight section in the close-on-unsafe guide, the commissioning guide and checklist (spec 012), configuration, alerts, REST, close-on-unsafe, settings dependencies,
   heritage, CHANGELOG.
 
 Decisions are in [research.md](research.md); types in [data-model.md](data-model.md); the offered
@@ -29,7 +29,7 @@ interfaces in [contracts/](contracts/).
 | **Language/Version** | C++17 (GCC 14, Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5); TypeScript strict |
 | **Primary Dependencies** | spec 005's `CloseSeq::Sequence` and `CloseOnUnsafe`; spec 003's gates and snapshot; spec 006's `checkCommand`; spec 007's alert engine; spec 009's Roof card and Roof tab; spec 011's demo core |
 | **Storage** | NVS: two small sections and three event settings; RTC: one flag bit in the existing record |
-| **Testing** | `pio test -e native` (new `test_daylight`, `test_close_daylight`; extended `test_roof_gates`, `test_roof_alert_events`, `test_roof_alert_settings`, `test_roof_status`, `test_config_*`, `test_settings_deps`, `test_dome_bridge`; every spec 005 test unchanged); Vitest; Playwright |
+| **Testing** | `pio test -e native` (new `test_daylight`, `test_close_daylight`, `test_close_daylight_properties`, `test_daylight_io`; `test_roof_alert_events` and the `test_settings_deps` fixtures extended; every spec 005 test unchanged); Vitest; Playwright |
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + web UI + docs |
 | **Performance Goals** | one sun evaluation a second on the main loop |
@@ -47,7 +47,7 @@ interfaces in [contracts/](contracts/).
 | VI. Budgets | Main loop only; flash measured. | build, `flash_budget.py` |
 | VII. UI | Existing rows and cards, i18n, a11y. | Vitest, Playwright, `size_check.py` |
 | VIII. Security | No new endpoint; the settings save keeps `requireAuth`. | - |
-| IX. Docs | Daylight page, configuration, alerts, REST, close-on-unsafe; the close-sequence diagram re-checked. | `diagrams.py`, `mkdocs build --strict` |
+| IX. Docs | Daylight section, commissioning stages, configuration, alerts, REST, close-on-unsafe; the close-sequence diagram re-checked. | `diagrams.py`, `mkdocs build --strict` |
 | X. Quality | check.py, function limits. | check.py |
 | XI. Heritage | `SunPosition` copied from SQMeter `877208b` unchanged into `lib/DaylightLogic`; `location.*` keeps SQMeter's names. | - |
 
@@ -67,7 +67,7 @@ include/CloseOnUnsafe.h, src/CloseOnUnsafe.cpp, include/RoofControl.h, src/RoofC
 tools/demo-core/emulated_roof.*, tools/alpaca-sim (openMustStop text)
 test/test_daylight, test/test_close_daylight (new) + extended tests
 web/src: types, validation, RoofCard, roofView, RoofTab (Daylight card), alerts rows, demo panel, mocks, i18n
-docs/user-guide/daylight.md (new), configuration, alerts, close-on-unsafe, api/rest, reference, heritage, CHANGELOG
+docs/user-guide/close-on-unsafe.md (Daylight section), docs/hardware/commissioning*.md, configuration, alerts, close-on-unsafe, api/rest, reference, heritage, CHANGELOG
 ```
 
 **Structure Decision**: one new pure library for the sun and the daylight state; the sequence

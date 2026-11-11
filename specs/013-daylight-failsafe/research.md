@@ -44,9 +44,10 @@ every restart while still telling an owner whose LAN has no NTP. The clock count
 every place it used "weather not safe": starting an attempt, ending one (`EndedSafe`), the
 10-minute re-arm of a stand-down. It tracks whether the episode is daylight-only. When the
 weather stops being safe during a daylight-only episode, the episode becomes a weather episode;
-if the sequence is then stood down by a person, halted or in its back-off, it re-arms first (goes
-to Idle without an event) so the weather attempt starts on the same step, unless a person's stop
-is seen on that same step. Every decision carries the episode (`Decision::daylight`), so alert
+if the sequence is then halted, in its back-off or unable to move, it re-arms first (goes to
+Idle without an event) so the weather attempt starts on the same step, unless a person's stop is
+seen on that same step; a person's stand-down waits until the weather has been not safe for 30 s
+(one stale poll can't act against the stop). The critical alert throttle starts afresh then. Every decision carries the episode (`Decision::daylight`), so alert
 wording and the alert events can say which.
 
 **Rationale**: a second sequence would issue its own park requests and closes, racing the first;
@@ -85,8 +86,8 @@ event. The critical events keep their guarantees without new types.
 ## R7. Restart record
 
 **Decision**: the RTC record's `requested` byte becomes flags (bit 0 requested, bit 1
-daylight-only episode); the magic's low byte is bumped, so a record from an older image is
-ignored (as for any layout change).
+daylight-only episode). The layout and magic stay, so a record from the previous image (bit 1
+always clear) still loads as a weather episode and an upgrade keeps a person's stand-down.
 
 **Rationale**: a daylight stand-down must survive a reset, and the weather re-arm needs to know
 the stood-down episode was daylight-only. No new bytes; the checksum covers the byte.
