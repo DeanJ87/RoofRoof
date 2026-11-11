@@ -60,11 +60,12 @@ lib/SafetyInputLogic/ include/InputsReport.h, src/InputsReport.cpp   (new)
 src/ConfigStore.cpp, include/SafetyInputs.h, src/SafetyInputs.cpp, include/WebServer.h, src/WebServerRoof.cpp, src/main.cpp
 tools/demo-core/ emulated_roof.*, emulated_device*.{h,cpp}, bridge.cpp
 test/test_inputs_report, test/test_config_setup (new); test/test_config_migration
-web/src: components/Wizard.tsx, components/wizard/* (new), components/SetupPrompt.tsx (new),
-  hooks/useConfigEditor.ts (new), hooks/useRoofInputs.ts (new), components/Settings.tsx,
+web/src: components/Wizard.tsx, components/wizard/* (new: pages, context, inputsTest, review, TestPanel,
+  DevicePages, HardwarePages, SourcePages, ReviewPage), components/SetupPrompt.tsx (new),
+  hooks/useConfigEditor.ts (new), hooks/useInputsTest.ts (new), lib/setupApi.ts (new), components/Settings.tsx,
   settings/{DeviceTab,TimeTab,RoofTab,AlertsTab}.tsx (exports), System.tsx, Layout.tsx, App.tsx,
   types, validation/configSchema.ts, lib/docsLinks.ts, demo (device, handlers, panel), mocks, i18n
-web/tests/wizard.spec.ts (new), screenshots.spec.ts
+web/tests/wizard.spec.ts (new), screenshots.spec.ts, dashboard.spec.ts (the banner), a11y/inventory.ts (every page)
 tools/api/{routes,operations}.json, tools/api/examples, tools/contracts/generate_schemas.py,
   specs/001-platform-bootstrap/contracts/schemas/{config,roof-inputs}.schema.json, docs/api/openapi.json
 docs/user-guide/setup-wizard.md (new), mkdocs.yml, docs/getting-started/first-setup.md,

@@ -50,11 +50,7 @@ export const ReviewPage: FunctionalComponent<WizardPageProps> = (props) => {
               </div>
               <Note
                 tone={NOTE_TONE[check.state]}
-                action={
-                  check.state === 'ok'
-                    ? undefined
-                    : { label: t('wizard.review.change'), onClick: () => props.goToPage(pageIndex(check.page)) }
-                }
+                action={{ label: t('wizard.review.change'), onClick: () => props.goToPage(pageIndex(check.page)) }}
               >
                 {check.text}
               </Note>
