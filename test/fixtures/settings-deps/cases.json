@@ -52,6 +52,10 @@
         "wifi.ipv6": {
           "state": "active",
           "id": "D-36"
+        },
+        "safety.mqtt.enabled": {
+          "id": "D-40",
+          "state": "off"
         }
       }
     },
@@ -369,6 +373,74 @@
       },
       "facts": {},
       "expect": {}
+    },
+    {
+      "name": "SQMeter MQTT source: off on a fresh device, then waits for MQTT (D-40)",
+      "config": {
+        "safety": {
+          "mqtt": {
+            "enabled": true,
+            "topic": "sqmeter"
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "safety.mqtt.enabled": {
+          "id": "D-40",
+          "state": "inactive",
+          "reason": "mqtt-off"
+        }
+      }
+    },
+    {
+      "name": "SQMeter MQTT source with MQTT on but the broker down (D-41)",
+      "config": {
+        "safety": {
+          "mqtt": {
+            "enabled": true,
+            "topic": "sqmeter"
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {
+        "mqttConnected": false
+      },
+      "expect": {
+        "safety.mqtt.enabled": {
+          "id": "D-41",
+          "state": "inactive",
+          "reason": "mqtt-disconnected"
+        }
+      }
+    },
+    {
+      "name": "SQMeter MQTT source with the broker connected is in effect",
+      "config": {
+        "safety": {
+          "mqtt": {
+            "enabled": true,
+            "topic": "sqmeter"
+          }
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "192.168.1.10",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "safety.mqtt.enabled": {
+          "id": "D-40",
+          "state": "active"
+        }
+      }
     }
   ]
 }

@@ -48,6 +48,12 @@
       "int": true,
       "min": 30,
       "max": 3600
+    },
+    {
+      "path": "safety.staleSeconds",
+      "int": true,
+      "min": 10,
+      "max": 600
     }
   ]
 }

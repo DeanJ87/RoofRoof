@@ -67,6 +67,7 @@ namespace SQM
                 {"ntp", "syncIntervalMs"},
                 {"alerts", "cooldownSeconds"},
                 {"alerts", "clientSilentSeconds"},
+                {"safety", "staleSeconds"},
             };
             for (const auto &field : FIELDS)
             {
@@ -247,6 +248,46 @@ namespace SQM
             return true;
         }
 
+        void applySafety(const Section &safety, SafetyConfig &s)
+        {
+            const Section http = safety.child("http");
+            http.take("enabled", s.httpEnabled);
+            http.take("url", s.httpUrl);
+            const Section mqtt = safety.child("mqtt");
+            mqtt.take("enabled", s.mqttEnabled);
+            mqtt.take("topic", s.mqttTopic);
+            safety.take("staleSeconds", s.staleSeconds);
+            safety.take("rainContact", s.rainContact);
+        }
+
+        // Named choices: anything but the documented names is refused, never
+        // read as a default (a typo must not change what confirms the park).
+        bool applyPark(const Section &park, ParkConfig &p, std::string *error)
+        {
+            const Section nina = park.child("nina");
+            nina.take("url", p.ninaUrl);
+            if (nina.has("api"))
+            {
+                const char *api = nina["api"].is<const char *>() ? nina["api"].as<const char *>() : "";
+                if (std::strcmp(api, "v2") != 0)
+                    return setError(error, "N.I.N.A. API version must be v2");
+                p.ninaApi = ParkConfig::NinaApi::V2;
+            }
+            if (!park.has("switches"))
+                return true;
+            const std::string switches = park["switches"].is<const char *>() ? park["switches"].as<const char *>() : "";
+            const ParkConfig::Switches choices[] = {ParkConfig::Switches::None, ParkConfig::Switches::One, ParkConfig::Switches::Two};
+            for (ParkConfig::Switches choice : choices)
+            {
+                if (switches == switchesName(choice))
+                {
+                    p.switches = choice;
+                    return true;
+                }
+            }
+            return setError(error, "Park switches must be none, one or two");
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -282,6 +323,9 @@ namespace SQM
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);
             root.child("alpaca").take("enabled", cfg.alpaca.enabled);
+            applySafety(root.child("safety"), cfg.safety);
+            if (!applyPark(root.child("park"), cfg.park, error))
+                return false;
             return applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
                    applyAlertsClient(root.child("alertsClient"), cfg.alerts, error);
         }

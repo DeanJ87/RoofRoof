@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
-import { isIpv6Literal, ntpIpv6Text, parseHost } from '../lib/netAddress';
+import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (SQMeter spec 011 FR-009).
@@ -99,6 +99,46 @@ export const alpacaConfigSchema = z.object({
   enabled: z.boolean(),
 });
 
+// SQMeter and N.I.N.A. serve plain http only; the device's rules and messages
+// (lib/ConfigModel ConfigValidate.cpp, spec 004 contracts/settings.md).
+const isPlainHttp = (url: string) => url.startsWith('http://');
+
+export const safetyConfigSchema = z
+  .object({
+    http: z.object({ enabled: z.boolean(), url: z.string() }),
+    mqtt: z.object({ enabled: z.boolean(), topic: z.string() }),
+    staleSeconds: z
+      .number()
+      .int()
+      .min(10, t('validation.configSchema.staleTimeMustBeBetween'))
+      .max(600, t('validation.configSchema.staleTimeMustBeBetween')),
+    rainContact: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.http.enabled) return;
+    const url = parseHttpUrl(data.http.url);
+    if (url.error) ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: url.error });
+    else if (!isPlainHttp(data.http.url))
+      ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: t('validation.configSchema.sqmeterUrlMustStartWithHttp') });
+  })
+  .refine((data) => !data.mqtt.enabled || MQTT_TOPIC.test(data.mqtt.topic), {
+    message: t('validation.configSchema.useLettersNumbersAndWith'),
+    path: ['mqtt', 'topic'],
+  });
+
+export const parkConfigSchema = z.object({
+  nina: z.object({
+    url: z.string().superRefine((value, ctx) => {
+      if (value === '') return;
+      const url = parseHttpUrl(value);
+      if (url.error) ctx.addIssue({ code: 'custom', message: url.error });
+      else if (!isPlainHttp(value)) ctx.addIssue({ code: 'custom', message: t('validation.configSchema.ninaUrlMustStartWithHttp') });
+    }),
+    api: z.literal('v2'),
+  }),
+  switches: z.enum(['none', 'one', 'two']),
+});
+
 export const configSchema = z.object({
   deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
   wifi: wifiConfigSchema,
@@ -107,6 +147,8 @@ export const configSchema = z.object({
   auth: authConfigSchema,
   ntp: ntpConfigSchema,
   alpaca: alpacaConfigSchema.optional(),
+  safety: safetyConfigSchema.optional(),
+  park: parkConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
 });
 

@@ -35,7 +35,15 @@
     "alerts.webhook.insecureTls",
     "alerts.events.*.sound",
     "alerts.events.*.title",
-    "alerts.events.*.message"
+    "alerts.events.*.message",
+    "safety.http.enabled",
+    "safety.http.url",
+    "safety.mqtt.topic",
+    "safety.staleSeconds",
+    "safety.rainContact",
+    "park.nina.url",
+    "park.nina.api",
+    "park.switches"
   ],
   "reasons": {
     "alerts-off": {
@@ -242,6 +250,31 @@
       "dependsOn": "WiFi connected to a network (not the setup hotspot)",
       "reasons": [
         "wifi-disconnected"
+      ]
+    },
+    {
+      "id": "D-40",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "safety.mqtt.enabled"
+      ],
+      "dependsOn": "MQTT on - SQMeter's safe topics are read from RoofRoof's own broker (spec 004)",
+      "reasons": [
+        "mqtt-off"
+      ]
+    },
+    {
+      "id": "D-41",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "safety.mqtt.enabled"
+      ],
+      "dependsOn": "MQTT broker connected; while it isn't, the SQMeter MQTT source goes stale and counts as unsafe",
+      "reasons": [
+        "mqtt-disconnected"
       ]
     }
   ]
