@@ -49,7 +49,13 @@ namespace SQM
                 "satellite",      // ClientLost
                 "link",           // ClientBack
                 "electric_plug",  // ClientDisconnected
-                "rotating_light", // Roof
+                "rotating_light", // MountNotParked
+                "rotating_light", // RoofNotClosed
+                "warning",        // MoveFault
+                "battery",        // SupplyLow
+                "umbrella",       // UnsafeClosing
+                "house",          // RoofClosed
+                "cloud",          // SafetyLost
             };
             static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
             const size_t index = static_cast<size_t>(type);

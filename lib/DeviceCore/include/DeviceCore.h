@@ -54,6 +54,15 @@ namespace SQM
             const AlertSources &sources, const Alerts::Alert &alert, const LocalClock &clock);
         void applyAlertTemplate(
             Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
+        // A roof critical event's custom wording (spec 007): rendered like any
+        // other, but a message using neither {reason} nor {details} gets the
+        // built-in message added, and a reminder's title keeps "Still: ".
+        void applyCriticalTemplate(
+            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
+        // A critical roof alert from the close sequence, finished for sending:
+        // the event's level (never below urgent), sound and wording. Pause,
+        // grace and the master switch don't apply (spec 005 FR-014, spec 007 FR-004).
+        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock);
 
         // The imaging app (SQMeter spec 021): silence time per Alpaca device,
         // the client state as alert inputs, and the documents that report it.

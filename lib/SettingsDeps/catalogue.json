@@ -41,6 +41,8 @@
     "alerts.enabled",
     "alerts.clientSilentSeconds",
     "alerts.cooldownSeconds",
+    "alerts.events.mount_not_parked.level",
+    "alerts.events.roof_not_closed.level",
     "alerts.pushover.userKey",
     "alerts.pushover.appToken",
     "alerts.pushover.sound",
@@ -146,9 +148,14 @@
         "alerts.events.client_lost.level",
         "alerts.events.client_back.level",
         "alerts.events.client_disconnected.level",
+        "alerts.events.move_fault.level",
+        "alerts.events.supply_low.level",
+        "alerts.events.unsafe_closing.level",
+        "alerts.events.roof_closed.level",
+        "alerts.events.safety_lost.level",
         "alerts.sendMode"
       ],
-      "dependsOn": "Alerts on (Send alerts); channels are push only",
+      "dependsOn": "Alerts on (Send alerts); channels are push only. The roof's critical alerts (mount not parked, roof didn't close) don't depend on it",
       "reasons": [
         "alerts-off"
       ]
