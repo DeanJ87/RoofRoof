@@ -297,7 +297,7 @@ weather is the most important thing to notice.
 **Status card**
 
 - **FR-015**: The Status card MUST show a "Roof" row with a problem pill while a fault is latched,
-  the fault's text behind "?", linking to the dashboard's Roof card.
+  the fault's text behind "?". (The Roof card, with Clear fault, is on the same page.)
 - **FR-016**: The Status card MUST show an "Automatic close" row while the close phase is
   `heldByPerson` (note), `cannotMove` or `halted` (problem), with its explanation behind "?".
 - **FR-017**: Every field of the status document's `roof` section MUST be mapped in the dashboard

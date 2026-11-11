@@ -51,7 +51,7 @@ RoofRoof reads `GET /v2/api/equipment/mount/info` every 2 s and, when the close 
 
 ## Setting it up
 
-There is no settings page for the sources yet; set them with the settings API (fields in [Configuration](configuration.md#safety-and-park)):
+Set the sources in **Settings → Roof → Weather sources** and the park in **Settings → Roof → Mount park**, or with the settings API (fields in [Configuration](configuration.md#safety-and-park)):
 
 ```bash
 curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json" -d '{

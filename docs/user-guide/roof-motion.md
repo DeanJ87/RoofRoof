@@ -6,11 +6,10 @@ description: "How RoofRoof decides when and how the roof moves: its states, the 
 
 This page explains how the controller decides when and how the roof moves. The decisions live in
 `lib/RoofLogic` (the motion) and `lib/RoofIoLogic` (the hardware layer), and are covered by tests.
-The roof moves on a person's command through the [REST API](../api/rest.md#roof), on an imaging
+The roof moves on a person's command from the dashboard's [Roof card](dashboard.md#roof) or the [REST API](../api/rest.md#roof), on an imaging
 app's through the [Alpaca Dome](alpaca.md), on [MQTT roof commands](mqtt.md#roof-commands) when
 they are switched on, and closes by itself when the weather turns unsafe
-([Close on unsafe weather](close-on-unsafe.md)); the dashboard's roof card comes in a later
-release. Wire the
+([Close on unsafe weather](close-on-unsafe.md)). Wire the
 board from [Wiring](../hardware/wiring.md) and set the Hall thresholds with
 [Calibration](../hardware/calibration.md) before the first move.
 
@@ -268,8 +267,8 @@ unknown.
 
 ## Settings
 
-The roof's settings are the `roof` section of the configuration (see the
-[configuration reference](configuration.md#roof)). The defaults are deliberately cautious and
+The roof's settings are the `roof` section of the configuration, set on the **Roof** tab of
+**Settings** (see the [configuration reference](configuration.md#roof)). The defaults are deliberately cautious and
 are meant to be replaced by the values measured on the roof:
 
 - the **travel** and **speed** (time a full move at 100% duty);
