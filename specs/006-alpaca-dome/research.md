@@ -85,13 +85,19 @@
   device list until spec 011's simulated roof.
 - **Rationale**: a Dome that can never move would look broken; 011 owns the demo roof.
 
-## R9. A client's stop and the automatic close (first safety review)
+## R9. A client's stop and the automatic close (safety reviews)
 
-- **Decision**: `AbortSlew` is the roof's Stop (estimate kept), never refused (not even with Alpaca
-  off), and not a person's stop. A client's `OpenShutter` is refused while a close runs or waits.
-- **Rationale**: Alpaca has no login. Counting a client's stop as a person's let one unauthenticated
-  request stand down the close on unsafe weather (constitution III). The roof's Abort would make the
-  position unknown, which also stops the automatic close from closing by itself (spec 005 FR-010).
-  Reversing a close is the other way a client could undo it.
-- **Alternatives considered**: count only a stop that interrupted a move: rejected, it still lets a
-  client stand the close down mid-close.
+- **Decision**: `AbortSlew` is the roof's Stop (estimate kept) and never a person's stop. A client's
+  stop is refused while spec 005's close on unsafe weather is under way or waiting (RoofControl
+  records which origin started the move under way and the waiting close's origin). With Alpaca off
+  the Dome changes nothing, `AbortSlew` included. A client's open is refused while the roof is
+  closing, a close waits, or a close was stopped part-way.
+- **Rationale**: Alpaca has no login. First review: counting a client's stop as a person's let one
+  request stand the close down (III). Second review: even uncounted, a stop interrupts the close
+  and spec 005 backs off for 5 minutes, so repeated stops could hold the roof open indefinitely;
+  and stop-then-open let a client reverse a person's close. The roof's Abort would make the
+  position unknown, which also stops the automatic close (spec 005 FR-010). The web UI's Stop
+  (authenticated) always works, so a person can still stop any move.
+- **Alternatives considered**: let the client stop it and retry without the back-off: rejected, a
+  stream of stops still delays the close indefinitely; count only a stop that interrupted a move:
+  rejected, it stands the close down mid-close.

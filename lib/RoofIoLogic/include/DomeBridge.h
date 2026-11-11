@@ -26,6 +26,15 @@ namespace SQM
         // position estimate is kept).
         Roof::Command roofCommand(Alpaca::DomeAction action);
 
+        // What the roof is asked for a Dome action, and as whom: always the
+        // client origin (constitution I: an Alpaca client is not a person).
+        struct DomeDispatch
+        {
+            Roof::Command command = Roof::Command::Stop;
+            Roof::Origin origin = Roof::Origin::Client;
+        };
+        DomeDispatch domeDispatch(Alpaca::DomeAction action);
+
         // A stop or abort from a person counts as a person's stop: spec 005's
         // sequence stands down on it. An Alpaca client's doesn't: Alpaca has no
         // login, and an unauthenticated stop must not be able to call off the
@@ -37,10 +46,9 @@ namespace SQM
         // latched fault (`reason` "faultLatched") the fault with its value and limit.
         std::string domeRefusalText(const std::string &reason, const std::string &text, const FaultRecord &fault);
 
-        // The Alpaca answer to a roof command's outcome. A stop is always
-        // accepted: the roof applies every stop it gets, and when the
-        // controller isn't running the driver is off already (constitution I:
-        // a stop is never refused).
+        // The Alpaca answer to a roof command's outcome. A stop refused only
+        // because the controller isn't running counts as done (the driver is
+        // off already); any other refusal, a stop's included, is passed on.
         Alpaca::DomeAnswer domeAnswer(
             Roof::Command command, bool accepted, const std::string &reason, const std::string &text, const FaultRecord &fault);
     } // namespace RoofIo

@@ -23,11 +23,14 @@
 | `domeStatus(status, closePending, running)` | `Roof::Status`, a close waiting, controller running | `Alpaca::DomeStatus` (table below) |
 | `roofCommand(action)` | `DomeAction` | `Open`, `Close`, `Stop` (abort keeps the estimate) |
 | `countsAsPersonStop(command, origin)` | `Roof::Command`, `Roof::Origin` | true for `Stop`/`Abort` from `Person` only |
-| `domeAnswer(command, accepted, reason, text, fault)` | an outcome | `DomeAnswer`; a stop is always accepted |
+| `domeAnswer(command, accepted, reason, text, fault)` | an outcome | `DomeAnswer`; a stop refused only because the controller isn't running counts as done |
 
-`lib/RoofIoLogic/include/CommandCheck.h`: `checkCommand(command, origin, gates, controller, closePending)`
-→ `{accepted, reason, text}`: stops always pass; open and close pass the weather and park gates; a
-client's open is refused while closing or a close waits (`closing`); then the controller's dry run.
+`lib/RoofIoLogic/include/CommandCheck.h`: `checkCommand(command, origin, gates, controller, context)`
+with `context = {closePending, automaticClose}` → `{accepted, reason, text}`: stops pass, except a
+client's while spec 005's close is under way or waiting (`automaticClose`); open and close pass the
+weather and park gates; a client's open is refused while closing, a close waits, or a close was
+stopped part-way (`closing`); then the controller's dry run. `domeDispatch(action)` gives the roof
+command and the client origin.
 `RoofControl::precheck` and the simulator both call it.
 | `domeRefusalText(reason, text, fault)` | refusal machine name and text, the latched fault | the text, plus `: ` and the fault's description when the reason is `faultLatched` |
 

@@ -75,19 +75,21 @@ namespace
         }
 
         // The firmware's decision (RoofIo::checkCommand, as RoofControl::precheck),
-        // then the motion logic. The simulator has no uploads or MQTT, so no
-        // close ever waits.
+        // then the motion logic. Not simulated: uploads and MQTT (so no close
+        // waits), the automatic close, and Alpaca switched off.
         DomeAnswer command(DomeAction action)
         {
             catchUp();
-            const Roof::Command command = RoofIo::roofCommand(action);
-            const RoofIo::CommandCheck check = RoofIo::checkCommand(command, Roof::Origin::Client, gates, bench.roof, false);
+            const RoofIo::DomeDispatch dispatch = RoofIo::domeDispatch(action);
+            const Roof::Command command = dispatch.command;
+            // No automatic close and no waiting close in the simulator.
+            const RoofIo::CommandCheck check = RoofIo::checkCommand(command, dispatch.origin, gates, bench.roof, RoofIo::CommandContext());
             bool accepted = check.accepted;
             std::string reason = check.reason;
             std::string text = check.text;
             if (accepted)
             {
-                const Roof::CommandResult result = bench.roof.command(command, Roof::Origin::Client);
+                const Roof::CommandResult result = bench.roof.command(command, dispatch.origin);
                 accepted = result.accepted;
                 reason = Roof::refusalName(result.reason);
                 text = RoofIo::describeRefusal(result);

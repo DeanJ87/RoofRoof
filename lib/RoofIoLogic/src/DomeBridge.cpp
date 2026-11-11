@@ -58,6 +58,14 @@ namespace SQM
             }
         }
 
+        DomeDispatch domeDispatch(Alpaca::DomeAction action)
+        {
+            DomeDispatch out;
+            out.command = roofCommand(action);
+            out.origin = Roof::Origin::Client;
+            return out;
+        }
+
         bool countsAsPersonStop(Roof::Command command, Roof::Origin origin)
         {
             const bool stop = command == Roof::Command::Stop || command == Roof::Command::Abort;
@@ -76,7 +84,8 @@ namespace SQM
             Roof::Command command, bool accepted, const std::string &reason, const std::string &text, const FaultRecord &fault)
         {
             Alpaca::DomeAnswer answer;
-            if (accepted || command == Roof::Command::Stop || command == Roof::Command::Abort)
+            const bool stop = command == Roof::Command::Stop || command == Roof::Command::Abort;
+            if (accepted || (stop && reason == "notStarted"))
                 return answer;
             answer.accepted = false;
             answer.message = domeRefusalText(reason, text, fault);

@@ -269,7 +269,7 @@ void test_alpaca_off_refuses_open_and_close_without_reaching_the_roof(void)
     Rig rig;
     rig.connect();
     rig.backend.enabled = false;
-    for (const char *m : {"openshutter", "closeshutter"})
+    for (const char *m : {"openshutter", "closeshutter", "abortslew"})
     {
         const Response r = rig.put(m);
         TEST_ASSERT_EQUAL_MESSAGE(ALPACA_ERR_NOT_CONNECTED, Rig::errorOf(r), m);
@@ -278,15 +278,25 @@ void test_alpaca_off_refuses_open_and_close_without_reaching_the_roof(void)
     TEST_ASSERT_EQUAL(0, rig.backend.actions.size());
 }
 
-// Constitution I: a stop is never refused, not even with Alpaca off (a move
-// started over Alpaca carries on after Alpaca is switched off).
-void test_abort_works_with_alpaca_off(void)
+// Alpaca off: the Dome changes nothing, a stop included (constitution VIII;
+// the web UI's Stop is the person's).
+void test_abort_with_alpaca_off_is_disabled(void)
 {
     Rig rig;
     rig.backend.enabled = false;
-    TEST_ASSERT_EQUAL(0, Rig::errorOf(rig.put("abortslew")));
-    TEST_ASSERT_EQUAL(1, rig.backend.actions.size());
-    TEST_ASSERT_TRUE(rig.backend.actions[0] == DomeAction::AbortSlew);
+    const Response r = rig.put("abortslew");
+    TEST_ASSERT_EQUAL(ALPACA_ERR_NOT_CONNECTED, Rig::errorOf(r));
+    TEST_ASSERT_TRUE(has(r, "disabled"));
+    TEST_ASSERT_EQUAL(0, rig.backend.actions.size());
+}
+
+void test_a_refused_abort_is_reported(void)
+{
+    Rig rig;
+    rig.backend.answer = {false, "The roof is closing on unsafe weather: an imaging app can't stop it (Stop in the web UI can)"};
+    const Response r = rig.put("abortslew");
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_OPERATION, Rig::errorOf(r));
+    TEST_ASSERT_TRUE(has(r, "closing on unsafe weather"));
 }
 
 void test_disconnecting_never_reaches_the_roof(void)
@@ -362,7 +372,8 @@ int main(int, char **)
     RUN_TEST(test_a_refusal_is_invalid_operation_with_its_reason);
     RUN_TEST(test_abort_works_connected_or_not);
     RUN_TEST(test_alpaca_off_refuses_open_and_close_without_reaching_the_roof);
-    RUN_TEST(test_abort_works_with_alpaca_off);
+    RUN_TEST(test_abort_with_alpaca_off_is_disabled);
+    RUN_TEST(test_a_refused_abort_is_reported);
     RUN_TEST(test_disconnecting_never_reaches_the_roof);
     RUN_TEST(test_requests_count_for_the_client_watch_except_the_ui_s);
     RUN_TEST(test_client_watch_follows_the_dome);
