@@ -23,7 +23,7 @@ namespace SQM
                     arrive();
                     return;
                 }
-                if (waitingDeadTime(readings.nowMs))
+                if (!deadTimeDone)
                     return;
                 startDriving(readings.nowMs);
             }
@@ -49,12 +49,22 @@ namespace SQM
         // constitution I: off for the dead time between any two drives, and after
         // start-up. Both ends of the interval are step times (driveEndMs is the
         // first step after the driver went off), so no caller's clock is involved.
-        bool Controller::waitingDeadTime(uint32_t nowMs) const
+        // Called every step: once the dead time has elapsed it is latched as done,
+        // so the stamp is only ever compared within a few steps of being taken.
+        void Controller::updateDeadTime(uint32_t nowMs)
         {
-            // Signed, so a step clock that went backwards (an integration bug) reads as
-            // still waiting, never as long past; the 49.7-day wrap is still harmless.
+            if (driveEndPending)
+            {
+                driveEndMs = nowMs;
+                driveEndPending = false;
+                deadTimeDone = false;
+            }
+            if (deadTimeDone)
+                return;
+            // Signed, so a step clock that went backwards (an integration bug) reads
+            // as still waiting, never as long past.
             const int32_t sinceEndMs = static_cast<int32_t>(nowMs - driveEndMs);
-            return sinceEndMs < static_cast<int32_t>(DEAD_TIME_MS);
+            deadTimeDone = sinceEndMs >= static_cast<int32_t>(DEAD_TIME_MS);
         }
 
         // True when the move ended: at its magnet, or on a wrong one (a fault).

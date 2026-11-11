@@ -72,7 +72,7 @@ namespace SQM
             // Move decisions (RoofControllerStep.cpp).
             void stepMove(const Readings &readings);
             void startDriving(uint32_t nowMs);
-            bool waitingDeadTime(uint32_t nowMs) const;
+            void updateDeadTime(uint32_t nowMs);
             bool checkMagnets();
             bool checkTimes(uint32_t nowMs);
             bool checkElectrical(const Readings &readings);
@@ -106,6 +106,10 @@ namespace SQM
             // construction counts as such a stop (constitution I: off after boot).
             bool driveEndPending = true;
             uint32_t driveEndMs = 0;
+            // Latched once the dead time has elapsed, so the stop's stamp is never
+            // compared again: a long idle can't turn the difference negative and
+            // bring the dead time back. Cleared by every stop and at construction.
+            bool deadTimeDone = false;
             // Driven time toward each end (index: End) since a magnet was last
             // confirmed (FR-025). Per direction, so one reversal part-way (nearly
             // two travels between magnets) never trips it, while restarts in one

@@ -50,11 +50,7 @@ namespace SQM
             last = readings;
             current.hallCounts = readings.hallCounts;
             current.hall = hall.update(readings.hallCounts, HallThresholds{config.hallHighCounts, config.hallLowCounts});
-            if (driveEndPending)
-            {
-                driveEndMs = readings.nowMs;
-                driveEndPending = false;
-            }
+            updateDeadTime(readings.nowMs);
             if (current.hall == HallLevel::High || current.hall == HallLevel::Low)
                 driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0;
 
@@ -157,7 +153,10 @@ namespace SQM
         void Controller::stopDriving()
         {
             if (move.driving)
+            {
                 driveEndPending = true; // timed from the next step, never from a caller's clock
+                deadTimeDone = false;
+            }
             move.driving = false;
             current.driving = false;
             current.moveElapsedMs = 0;

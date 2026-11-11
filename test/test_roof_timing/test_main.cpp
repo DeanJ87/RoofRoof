@@ -212,6 +212,189 @@ void test_a_step_clock_going_backwards_keeps_the_driver_off(void)
     }
 }
 
+namespace
+{
+    // A roof stopped part-way after a drive, then left idle for `idleMs` (ticked
+    // every `idleStepMs`), then asked to close: the time from the command to the
+    // first driven step, or 0 if it never drove within 2 s.
+    uint32_t driveDelayAfterIdle(uint64_t idleMs, uint32_t idleStepMs)
+    {
+        Bench b;
+        TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+        b.steps(5000 / 20);
+        b.command(Command::Stop);
+        Readings r = b.sim.readings(b.nowMs);
+        for (uint64_t idle = 0; idle < idleMs; idle += idleStepMs)
+        {
+            const uint32_t step = static_cast<uint32_t>(idleMs - idle < idleStepMs ? idleMs - idle : idleStepMs);
+            r.nowMs += step;
+            TEST_ASSERT_TRUE(b.roof.tick(r).command == Driver::Command::Off);
+        }
+        b.nowMs = r.nowMs;
+        if (!b.command(Command::Close).accepted)
+            return 0;
+        const uint32_t commandedAt = b.nowMs;
+        for (int i = 0; i < 100; ++i)
+            if (b.step().command != Driver::Command::Off)
+                return b.nowMs - commandedAt;
+        return 0;
+    }
+} // namespace
+
+// Final review: the dead time must not come back after a long idle. The stamp of
+// the last stop is never refreshed at rest, so a signed difference recomputed from
+// it turns negative after 2^31 ms (24.9 days) and the roof would accept a move and
+// never drive. The dead time is latched as done once it has elapsed.
+void test_a_move_after_25_days_idle_drives(void)
+{
+    const uint32_t delay = driveDelayAfterIdle(25ull * 86400000ull, 1000);
+    TEST_ASSERT_TRUE(delay > 0 && delay <= 520);
+}
+
+void test_a_move_after_48_days_idle_drives(void)
+{
+    const uint32_t delay = driveDelayAfterIdle(48ull * 86400000ull, 1000);
+    TEST_ASSERT_TRUE(delay > 0 && delay <= 520);
+}
+
+// Idle gaps around 2^31 and 2^32 ms (the signed and unsigned wraps), reached in
+// hour-long idle steps.
+void test_idle_gaps_around_the_clock_wraps_never_block_a_move(void)
+{
+    const uint64_t centres[] = {1ull << 31, 1ull << 32};
+    const int64_t offsets[] = {-3600000, -1000, -501, -1, 0, 1, 499, 500, 1000, 3600000};
+    for (uint64_t centre : centres)
+        for (int64_t offset : offsets)
+        {
+            const uint64_t idle = static_cast<uint64_t>(static_cast<int64_t>(centre) + offset);
+            const uint32_t delay = driveDelayAfterIdle(idle, 3600000);
+            char message[64];
+            snprintf(
+                message, sizeof(message), "idle %llu ms: delay %u", static_cast<unsigned long long>(idle), static_cast<unsigned>(delay));
+            TEST_ASSERT_TRUE_MESSAGE(delay > 0 && delay <= 520, message);
+        }
+}
+
+namespace
+{
+    constexpr uint64_t THIRTY_DAYS_MS = 30ull * 86400000ull;
+
+    // Ticks a resting bench roof for `idleMs` in one-second steps.
+    void idleFor(Bench &b, uint64_t idleMs)
+    {
+        Readings r = b.sim.readings(b.nowMs);
+        for (uint64_t idle = 0; idle < idleMs; idle += 1000)
+        {
+            r.nowMs += 1000;
+            b.roof.tick(r);
+        }
+        b.nowMs = r.nowMs;
+    }
+} // namespace
+
+// Audit of every stored time (final review): each is taken when a drive starts or
+// a condition first appears, and compared only while driving, so a long idle
+// before a move changes nothing. These check each one after 30 days idle.
+
+// The timeout's start (move.driveStartMs): a missing magnet still times out at the limit.
+void test_after_a_long_idle_the_timeout_counts_from_this_drive(void)
+{
+    Bench b;
+    b.sim.openMagnetMissing = true;
+    idleFor(b, THIRTY_DAYS_MS);
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    TEST_ASSERT_TRUE(b.runUntil([](const Controller &c) { return c.status().fault.kind != FaultKind::None; }, 200000));
+    const Fault fault = b.roof.status().fault;
+    TEST_ASSERT_TRUE(fault.kind == FaultKind::Timeout);
+    TEST_ASSERT_TRUE(fault.measured >= fault.limit && fault.measured < fault.limit + 20.0f);
+}
+
+// The leave-magnet check uses the same start.
+void test_after_a_long_idle_the_leave_time_counts_from_this_drive(void)
+{
+    Bench b;
+    b.sim.jammed = true;
+    idleFor(b, THIRTY_DAYS_MS);
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    TEST_ASSERT_TRUE(b.runUntil([](const Controller &c) { return c.status().fault.kind != FaultKind::None; }, 20000));
+    const Fault fault = b.roof.status().fault;
+    TEST_ASSERT_TRUE(fault.kind == FaultKind::DidNotLeave);
+    TEST_ASSERT_TRUE(fault.measured >= 10000.0f && fault.measured < 10020.0f);
+}
+
+// The confirm windows (Pending::sinceMs): a dip seen in an earlier move doesn't
+// carry its start time into a move a month later; the new dip still needs 250 ms.
+void test_after_a_long_idle_a_confirm_window_starts_afresh(void)
+{
+    Bench b;
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    b.steps(100);
+    b.sim.supplyVolts = 10.0f; // a dip starts...
+    b.steps(5);
+    b.command(Command::Stop); // ...and the move is stopped inside it
+    b.sim.supplyVolts = 12.6f;
+    idleFor(b, THIRTY_DAYS_MS);
+    b.step();
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    TEST_ASSERT_TRUE(b.runUntil([](const Controller &c) { return c.status().driving; }, 2000));
+    b.sim.supplyVolts = 10.0f;
+    b.steps(12); // 240 ms of the new dip: not yet
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
+    b.steps(2);
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::SupplyLow);
+}
+
+// The same for a condition that never lapses between moves: a current reading
+// stuck high at rest (no check runs while the motor is off). The window of the
+// earlier move must not carry over and fault the new one on its first step.
+void test_after_a_long_idle_a_stuck_condition_still_gets_its_confirm_time(void)
+{
+    Settings s;
+    s.currentSenseEnabled = true;
+    Bench b(s);
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    b.steps(100);
+    Readings r = b.sim.readings(b.nowMs);
+    r.motorAmps = 25.0f;
+    for (int i = 0; i < 5; ++i) // over the limit for 100 ms, then stopped
+    {
+        r.nowMs += 20;
+        b.roof.tick(r);
+    }
+    b.roof.command(Command::Stop, Origin::Person);
+    for (uint64_t idle = 0; idle < THIRTY_DAYS_MS; idle += 1000)
+    {
+        r.nowMs += 1000;
+        b.roof.tick(r);
+    }
+    TEST_ASSERT_TRUE(b.roof.command(Command::Open, Origin::Person).accepted);
+    int driven = 0;
+    for (int i = 0; i < 40 && b.roof.status().fault.kind == FaultKind::None; ++i)
+    {
+        r.nowMs += 20;
+        b.roof.tick(r);
+        if (b.roof.status().driving)
+            ++driven;
+    }
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::OverCurrent);
+    TEST_ASSERT_TRUE(driven >= 12); // 250 ms of driving at 20 ms steps before the fault
+}
+
+// The late-step check (lastStepMs) is refreshed every step: a long idle with
+// regular steps is no late step, and a late step after it is still caught.
+void test_after_a_long_idle_a_late_step_is_still_caught(void)
+{
+    Bench b;
+    idleFor(b, THIRTY_DAYS_MS);
+    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
+    TEST_ASSERT_TRUE(b.runUntil([](const Controller &c) { return c.status().driving; }, 2000));
+    b.steps(10);
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
+    b.stepMs = MAX_STEP_GAP_MS + 1;
+    b.step();
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::LateStep);
+}
+
 // Reaching a magnet resets the budget, so a working roof can open and close forever.
 void test_reaching_a_magnet_resets_the_drive_budget(void)
 {
@@ -280,6 +463,14 @@ int main(int, char **)
     RUN_TEST(test_the_first_drive_after_start_up_waits_the_dead_time);
     RUN_TEST(test_repeated_restarts_hit_the_drive_budget);
     RUN_TEST(test_reaching_a_magnet_resets_the_drive_budget);
+    RUN_TEST(test_a_move_after_25_days_idle_drives);
+    RUN_TEST(test_a_move_after_48_days_idle_drives);
+    RUN_TEST(test_idle_gaps_around_the_clock_wraps_never_block_a_move);
+    RUN_TEST(test_after_a_long_idle_the_timeout_counts_from_this_drive);
+    RUN_TEST(test_after_a_long_idle_the_leave_time_counts_from_this_drive);
+    RUN_TEST(test_after_a_long_idle_a_confirm_window_starts_afresh);
+    RUN_TEST(test_after_a_long_idle_a_stuck_condition_still_gets_its_confirm_time);
+    RUN_TEST(test_after_a_long_idle_a_late_step_is_still_caught);
     RUN_TEST(test_a_reversal_near_the_end_never_trips_the_drive_budget);
     RUN_TEST(test_the_budget_still_trips_restarts_in_one_direction);
     RUN_TEST(test_a_step_clock_going_backwards_keeps_the_driver_off);
