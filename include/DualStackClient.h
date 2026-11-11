@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WiFiClient.h>
+#include <functional>
 #include <lwip/sockets.h>
 
 namespace SQM
@@ -24,14 +25,15 @@ namespace SQM
         // NetworkClient's up to ten 1 s waits for a full send buffer (a
         // half-open link). The MQTT client runs on the main loop, which hands
         // the weather and park checks to the roof and must never stall for
-        // seconds. 0 (the default) keeps NetworkClient's behaviour.
-        void setWriteBudgetMs(uint32_t ms) { writeBudgetMs = ms; }
+        // seconds. Asked at every write; 0 (the default) keeps NetworkClient's
+        // behaviour.
+        void setWriteBudget(std::function<uint32_t()> budgetMs) { writeBudget = std::move(budgetMs); }
         using WiFiClient::write;
         size_t write(const uint8_t *buf, size_t size) override;
         size_t write(uint8_t data) override { return write(&data, 1); }
 
     private:
-        uint32_t writeBudgetMs = 0;
+        std::function<uint32_t()> writeBudget;
         static constexpr int32_t DEFAULT_TIMEOUT_MS = 3000;
         int connectIpv6(const ::sockaddr_in6 &address, int32_t timeoutMs);
     };

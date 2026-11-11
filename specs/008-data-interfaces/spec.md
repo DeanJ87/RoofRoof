@@ -214,7 +214,8 @@ phase, the weather verdict and its reason, and the park check and its reason.
   MUST be published only on a change of state, fault or waiting close, at most every 5 s and at most
   twice until the roof is at rest, and not after a failed publish on that connection. Home Assistant
   discovery MUST NOT be republished while the roof moves or the automatic close is attempting. A
-  write to the broker MUST give up within 250 ms and drop the connection, so no MQTT write can hold
+  write to the broker MUST give up within 250 ms while the roof is busy (1 s at rest) and drop the
+  connection, so no MQTT write can hold
   the main loop for seconds.
 - **FR-003**: Values that can't be read MUST be null, never a made-up number: position while
   unknown, the supply when unreadable, the motor current when current sense is off or unreadable.

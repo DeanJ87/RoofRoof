@@ -35,7 +35,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 ---
 
 !!! note "While the roof moves"
-    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, a write to the broker gives up after 250 ms and drops the connection, and while the roof moves, a close waits or the [automatic close](close-on-unsafe.md) is under way the state document is only published when the move or the attempt starts, reverses, ends or faults (at most twice, 5 s apart, and not again after a failed publish), not periodically, and Home Assistant discovery waits until it is over. The live position during a move is in [`/ws/status`](../api/websocket.md).
+    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, a write to the broker gives up after 250 ms while the roof is busy (1 s otherwise) and drops the connection, and while the roof moves, a close waits or the [automatic close](close-on-unsafe.md) is under way the state document is only published when the move or the attempt starts, reverses, ends or faults (at most twice, 5 s apart, and not again after a failed publish), not periodically, and Home Assistant discovery waits until it is over. The live position during a move is in [`/ws/status`](../api/websocket.md).
 
 ## Topics
 
@@ -121,7 +121,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: 5ce5eb82a8461728
+fingerprint: 95219d26eeaa82eb
 -->
 <figure class="diagram" markdown>
 

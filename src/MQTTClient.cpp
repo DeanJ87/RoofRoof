@@ -98,10 +98,12 @@ namespace SQM
         mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
-        // Spec 008: a write to a half-open broker link gives up quickly and
-        // drops the connection, so a publish never holds the main loop for
-        // seconds (the roof's checks need it every 5 s).
-        wifiClient.setWriteBudgetMs(WRITE_BUDGET_MS);
+        // Spec 008: a write to a half-open broker link gives up and drops the
+        // connection, so a publish never holds the main loop for seconds (the
+        // roof's checks need it every 5 s): 250 ms while the roof is busy (the
+        // reconnect hold applies), 1 s at rest so the burst after a connect
+        // (discovery, the state document) gets through a slow link.
+        wifiClient.setWriteBudget([this]() { return connectHold && connectHold() ? BUSY_WRITE_BUDGET_MS : WRITE_BUDGET_MS; });
     }
 
     void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)

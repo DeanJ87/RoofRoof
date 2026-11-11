@@ -60,7 +60,9 @@
   over for 5 s, which stops a close as a motion fault. Periodic ~1 KB documents during a move would
   fill a dead link's 5.7 KB send buffer, and documents queued at rest (during the park wait) can
   fill it before the close starts. So, besides the limits above, every write on the MQTT socket
-  (publishes, PINGREQ, alerts) gets a 250 ms budget (`DualStackClient::setWriteBudgetMs`): a write
+  (publishes, PINGREQ, alerts) gets a budget (`DualStackClient::setWriteBudget`), 250 ms while the
+  roof is busy (the reconnect hold applies) and 1 s at rest, so the burst after a connect gets
+  through a slow link: a write
   that can't finish in time closes the connection, and later writes fail at once. The reconnect
   is held while the roof is busy (spec 010). A main-loop pass can then lose at most about 250 ms to
   MQTT writes, far inside the 5 s hand-over limit. The live position is in
