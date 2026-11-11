@@ -34,6 +34,9 @@ const FIELDS = [
   'park.nina.url',
   'park.switches',
   'park.timeoutSeconds',
+  'daylight.mode',
+  'daylight.sunAltitudeDeg',
+  'location.set',
 ];
 
 const openRoofTab = async () => {
@@ -64,6 +67,42 @@ describe('Roof tab', () => {
     expect(field('roof.maxCurrentAmps')).toBeNull();
     fireEvent.click(screen.getByLabelText('Current sense'));
     for (const path of ['roof.maxCurrentAmps', 'roof.currentAmpsPerVolt', 'roof.minRunningAmps']) expect(field(path), path).not.toBeNull();
+  });
+
+  it('has the Daylight card: mode, limit, location; latitude and longitude once the location is set (spec 013)', async () => {
+    mockDevice();
+    await openRoofTab();
+    await findField('daylight.mode');
+    expect(document.getElementById('daylight')).not.toBeNull();
+    expect(Array.from((field('daylight.mode') as unknown as HTMLSelectElement).options).map((o) => o.textContent)).toEqual([
+      'Off',
+      'Alert',
+      'Alert and close',
+    ]);
+    expect(field('location.latitude')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Location set'));
+    expect(field('location.latitude')).not.toBeNull();
+    expect(field('location.longitude')).not.toBeNull();
+  });
+
+  it('refuses a sun altitude, latitude and longitude outside the device ranges', async () => {
+    mockDevice({ config: { location: { set: true, latitude: 0, longitude: 0 } } });
+    await openRoofTab();
+    fireEvent.change(await findField('daylight.sunAltitudeDeg'), { target: { value: '31' } });
+    expect(await screen.findByText('Sun altitude must be between -18 and 30 degrees')).toBeInTheDocument();
+    fireEvent.change(field('location.latitude')!, { target: { value: '91' } });
+    expect(await screen.findByText('Latitude must be between -90 and 90 degrees')).toBeInTheDocument();
+    fireEvent.change(field('location.longitude')!, { target: { value: '-181' } });
+    expect(await screen.findByText('Longitude must be between -180 and 180 degrees')).toBeInTheDocument();
+  });
+
+  it('says why the daylight check is not in effect: no location, and daylight off for the rest (D-42, D-44)', async () => {
+    mockDevice();
+    await openRoofTab();
+    await findField('daylight.mode');
+    expect(await waitFor(() => document.querySelector('[data-dep="D-42"]'))).toHaveTextContent('Location not set');
+    fireEvent.change(field('daylight.mode')!, { target: { value: 'off' } });
+    expect(await waitFor(() => document.querySelector('[data-dep="D-44"]'))).toHaveTextContent('Daylight is off');
   });
 
   it('refuses a slow duty above the top duty, next to the field, before saving', async () => {
@@ -112,6 +151,27 @@ describe('Roof tab', () => {
     expect(sent!.safety).toEqual(mockConfig.safety);
   });
 
+  it('saves the daylight mode, the limit and the location', async () => {
+    mockDevice();
+    let sent: Config | null = null;
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        sent = (await request.json()) as Config;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    fireEvent.change(await findField('daylight.mode'), { target: { value: 'close' } });
+    fireEvent.change(field('daylight.sunAltitudeDeg')!, { target: { value: '-6' } });
+    fireEvent.click(screen.getByLabelText('Location set'));
+    fireEvent.change(await findField('location.latitude'), { target: { value: '51.5' } });
+    fireEvent.change(field('location.longitude')!, { target: { value: '-0.12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6 });
+    expect(sent!.location).toEqual({ set: true, latitude: 51.5, longitude: -0.12 });
+  });
+
   it('says saves are refused while the roof moves, and what a save does while stopped part-way', async () => {
     mockDevice();
     withRoofState('opening');
@@ -151,8 +211,10 @@ describe('toConfigPayload', () => {
     expect(full.roof).toEqual(mockConfig.roof);
     expect(full.safety).toEqual(mockConfig.safety);
     expect(full.park).toEqual(mockConfig.park);
-    const { roof: _roof, safety: _safety, park: _park, ...older } = mockConfig;
+    expect(full.daylight).toEqual(mockConfig.daylight);
+    expect(full.location).toEqual(mockConfig.location);
+    const { roof: _roof, safety: _safety, park: _park, daylight: _daylight, location: _location, ...older } = mockConfig;
     const payload = toConfigPayload(older as Config);
-    expect('roof' in payload || 'safety' in payload || 'park' in payload).toBe(false);
+    expect('roof' in payload || 'safety' in payload || 'park' in payload || 'daylight' in payload || 'location' in payload).toBe(false);
   });
 });

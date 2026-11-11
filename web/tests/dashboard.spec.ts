@@ -188,7 +188,7 @@ test('the dashboard is the Status card, the Roof card and Device & Network, noth
 // and close-sequence states in the tests below.
 test('Roof card: state, position, buttons with reasons, checks, readings and the Hall scale', async ({ page }) => {
   // inventory: roof-card  inventory: roof-position  inventory: roof-buttons
-  // inventory: roof-checks  inventory: roof-readings  inventory: roof-hall
+  // inventory: roof-checks  inventory: roof-readings  inventory: roof-hall  inventory: roof-daylight
   await open(page);
   const roof = item(page, 'roof-card');
   await expect(roof.locator('.card-actions .pill')).toHaveText('Closed');
@@ -199,6 +199,7 @@ test('Roof card: state, position, buttons with reasons, checks, readings and the
   await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toBeEnabled();
   await expect(item(page, 'roof-checks')).toContainText('Safe');
   await expect(item(page, 'roof-checks')).toContainText('Parked');
+  await expect(item(page, 'roof-daylight')).toContainText('Daylight');
   await expect(item(page, 'roof-readings')).toContainText('Supply');
   await expect(item(page, 'roof-hall').getByRole('img', { name: /^Hall reading \d+ of 4095; low threshold/ })).toBeVisible();
   // No fault and an idle automatic close: neither shows, here or on the Status card.
@@ -261,6 +262,27 @@ test('unsafe weather: the close phase on the Roof card; a person stopping it sho
   expect(await roofCommand(page, 'stop')).toBe(200);
   await expect(item(page, 'roof-close')).toBeVisible({ timeout: 10_000 });
   await expect(item(page, 'roof-close-phase')).toBeVisible();
+});
+
+test('daylight: with alert and close and the sun up the open roof closes, and Open says why', async ({ page }) => {
+  // inventory: roof-daylight
+  await open(page);
+  // No location: the demo's "Sun up" switch makes it day whatever the site and clock, and nothing else does.
+  await setConfig(page, { 'daylight.mode': 'close' });
+  await roofReady(page);
+  await fast(page);
+  expect(await roofCommand(page, 'open')).toBe(200);
+  await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('open');
+  await panelChoice(page, 'Sun up: On');
+  await expect.poll(() => roofState(page), { timeout: 40_000 }).toMatch(/closing|closed/);
+  await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('closed');
+  await expect(item(page, 'roof-daylight')).toContainText('Sun');
+  await expect(item(page, 'roof-buttons')).toContainText('Open: Daylight');
+  await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeDisabled();
+  expect(await roofCommand(page, 'open')).toBe(409);
+  // The sun is down again: Open is back.
+  await panelChoice(page, 'Sun up: Off');
+  await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeEnabled({ timeout: 20_000 });
 });
 
 test('Device & Network: one address per row, local name and MQTT', async ({ page }) => {

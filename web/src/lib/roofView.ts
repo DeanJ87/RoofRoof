@@ -125,6 +125,7 @@ const openReason = (input: ViewInput, roof: RoofStatus): string | null => {
   if (roof.state === 'open') return t('roof.reason.alreadyOpen');
   if (roof.state === 'opening') return t('roof.reason.opening');
   if (roof.weather !== 'safe') return t('roof.reason.weather', { text: deviceText(roof.weatherText) || t('roof.weather.unknown') });
+  if (roof.daylight?.closes) return t('roof.reason.daylight', { text: deviceText(roof.daylight.text) });
   if (hotspotHeld(input)) return t('roof.reason.hotspot');
   return motionReason(roof);
 };

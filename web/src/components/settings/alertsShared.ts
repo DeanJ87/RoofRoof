@@ -91,6 +91,9 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   unsafe_closing: { title: t('settings.alerts.unsafeClosingTitle'), message: t('settings.alerts.unsafeClosingMessage') },
   roof_closed: { title: t('settings.alerts.roofClosedTitle'), message: t('settings.alerts.roofClosedMessage') },
   safety_lost: { title: t('settings.alerts.safetyLostTitle'), message: t('settings.alerts.safetyLostMessage') },
+  daylight_open: { title: t('settings.alerts.daylightOpenTitle'), message: t('settings.alerts.daylightOpenMessage') },
+  daylight_closed: { title: t('settings.alerts.daylightClosedTitle'), message: t('settings.alerts.daylightClosedMessage') },
+  daylight_unknown: { title: t('settings.alerts.daylightUnknownTitle'), message: t('settings.alerts.daylightUnknownMessage') },
   client_lost: {
     title: t('settings.alerts.imagingAppStoppedChecking'),
     message: t('settings.alerts.noRequestToTheDevice'),

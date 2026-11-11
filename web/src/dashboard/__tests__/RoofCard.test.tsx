@@ -42,6 +42,36 @@ describe('RoofCard', () => {
     expect(button('Stop')).toBeEnabled();
   });
 
+  it('shows the daylight line with the mode behind the hint, and why Open is off (spec 013)', () => {
+    // inventory: roof-daylight
+    const daylight = {
+      mode: 'close' as const,
+      state: 'day' as const,
+      sunAltitudeDeg: 3.2,
+      limitDeg: 0,
+      text: 'Sun 3.2° ≥ 0.0°',
+      closes: true,
+    };
+    show(live(status({ daylight })));
+    const row = document.querySelector('[data-inventory="roof-daylight"]')!;
+    expect(within(row as HTMLElement).getByText('Daylight')).toBeInTheDocument();
+    expect(row).toHaveTextContent('Sun 3.2° ≥ 0.0°');
+    expect(row.querySelector('[role="tooltip"], .info-tip, button')).not.toBeNull();
+    expect(button('Open')).toBeDisabled();
+    expect(screen.getByText('Open: Daylight (Sun 3.2° ≥ 0.0°)')).toBeInTheDocument();
+  });
+
+  it('shows the daylight line as Off, and leaves it out for older firmware', () => {
+    // inventory: roof-daylight
+    const off = { mode: 'off' as const, state: 'off' as const, sunAltitudeDeg: null, limitDeg: 0, text: 'Off', closes: false };
+    const { unmount } = show(live(status({ daylight: off })));
+    expect(document.querySelector('[data-inventory="roof-daylight"]')).toHaveTextContent('Off');
+    expect(button('Open')).toBeEnabled();
+    unmount();
+    show(live(status({ daylight: undefined })));
+    expect(document.querySelector('[data-inventory="roof-daylight"]')).toBeNull();
+  });
+
   it('never disables Stop, also with no live data, and says why Open and Close are', () => {
     // inventory: roof-buttons
     show(live(status({ state: 'opening' }), { connected: false }));

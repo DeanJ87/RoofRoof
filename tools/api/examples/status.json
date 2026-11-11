@@ -166,7 +166,15 @@
     "watchdogTrips": 0,
     "maxStepGapMs": 21,
     "maxWatchdogBeatAgeMs": 12,
-    "simulation": "off"
+    "simulation": "off",
+    "daylight": {
+      "mode": "alert",
+      "state": "night",
+      "sunAltitudeDeg": -14.2,
+      "limitDeg": 0,
+      "text": "Sun -14.2° < 0.0°",
+      "closes": false
+    }
   },
   "configRevision": 3751871155
 }

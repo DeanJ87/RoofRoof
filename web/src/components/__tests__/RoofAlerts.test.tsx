@@ -23,6 +23,9 @@ const ROOF_KEYS: AlertEventKey[] = [
   'unsafe_closing',
   'roof_closed',
   'safety_lost',
+  'daylight_open',
+  'daylight_closed',
+  'daylight_unknown',
 ];
 
 const options = (select: HTMLSelectElement) => Array.from(select.options).map((o) => o.value);
@@ -93,6 +96,42 @@ describe('Roof alert events', () => {
     }
     expect(EVENT_VARS.mount_not_parked).toEqual(['reason', 'limit', 'details']);
     expect(defaultText('move_fault').message).toContain('{reason}');
+  });
+
+  it('has the daylight events: variables, wording and defaults (spec 013)', () => {
+    expect(EVENT_VARS.daylight_open).toEqual(['reason', 'action']);
+    expect(EVENT_VARS.daylight_closed).toEqual(['reason']);
+    expect(EVENT_VARS.daylight_unknown).toEqual(['reason']);
+    expect(defaultText('daylight_open')).toEqual({
+      title: 'Roof open in daylight',
+      message: "The sun is up and the roof isn't closed. {action} Sun: {reason}",
+    });
+    expect(defaultText('daylight_closed').title).toBe('Roof closed after daylight');
+    expect(defaultText('daylight_unknown').title).toBe('Daylight check not working');
+    const events = mergeAlertsConfig(undefined).events;
+    expect(events.daylight_open.level).toBe(3);
+    expect(events.daylight_closed.level).toBe(2);
+    expect(events.daylight_unknown.level).toBe(2);
+  });
+
+  it('waits on alerts first, then on daylight, for the daylight events', () => {
+    const facts = { wifiConnected: true, mqttConnected: true, clockSet: true, alpacaDevices: 1 };
+    const withAlerts = { ...mockConfig, alerts: mergeAlertsConfig({ ...mockConfig.alerts, enabled: true }) };
+    const off = viewOf(evaluate({ ...withAlerts, daylight: { mode: 'off', sunAltitudeDeg: 0 } }, facts));
+    expect(off.get('alerts.events.daylight_open.level')).toMatchObject({ id: 'D-44', state: 'inactive', reason: 'daylight-off' });
+    const noAlerts = viewOf(
+      evaluate(
+        {
+          ...mockConfig,
+          alerts: mergeAlertsConfig({ ...mockConfig.alerts, enabled: false }),
+          daylight: { mode: 'off', sunAltitudeDeg: 0 },
+        },
+        facts,
+      ),
+    );
+    expect(noAlerts.get('alerts.events.daylight_open.level')).toMatchObject({ id: 'D-04', reason: 'alerts-off' });
+    const on = viewOf(evaluate({ ...withAlerts, daylight: { mode: 'close', sunAltitudeDeg: 0 } }, facts));
+    expect(on.get('alerts.events.daylight_closed.level').state).toBe('active');
   });
 
   it('lists the non-critical roof levels under alerts on, and not the critical ones', () => {

@@ -11,6 +11,9 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'alpaca-off': { text: t('settingsDeps.alpacaIsOff'), fix: 'network#alpaca' },
   'no-alpaca-device': { text: t('settingsDeps.noAlpacaDevice'), fix: 'network#alpaca' },
   'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
+  'daylight-off': { text: t('settingsDeps.daylightIsOff'), fix: 'roof#daylight' },
+  'location-unknown': { text: t('settingsDeps.locationNotSet'), fix: 'roof#daylight' },
+  'clock-not-set': { text: t('settingsDeps.clockNotSet'), fix: 'time#ntp' },
 };
 
 // Label for the one-click fix of each reason.
@@ -22,4 +25,7 @@ export const FIX_LABEL: Record<string, string> = {
   'alpaca-off': t('settingsDeps.turnOnAlpaca'),
   'no-alpaca-device': t('settingsDeps.alpacaSettings'),
   'ota-no-password': t('settingsDeps.setPassword'),
+  'daylight-off': t('settingsDeps.daylightSettings'),
+  'location-unknown': t('settingsDeps.setLocation'),
+  'clock-not-set': t('settingsDeps.timeSettings'),
 };

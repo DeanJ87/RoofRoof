@@ -24,4 +24,7 @@ export const toConfigPayload = (source: Config): Config => ({
   ...(source.safety && { safety: { ...source.safety, http: { ...source.safety.http }, mqtt: { ...source.safety.mqtt } } }),
   ...(source.park && { park: { ...source.park, nina: { ...source.park.nina } } }),
   ...(source.roof && { roof: { ...source.roof } }),
+  // The daylight failsafe and the site (spec 013).
+  ...(source.daylight && { daylight: { ...source.daylight } }),
+  ...(source.location && { location: { ...source.location } }),
 });

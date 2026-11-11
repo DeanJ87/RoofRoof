@@ -21,6 +21,9 @@ const ROOF_ROWS: RowSpec[] = [
   ['unsafe_closing', t('settings.alerts.theWeatherClosesTheRoof'), t('settings.alerts.theWeatherClosesTheRoofHint')],
   ['roof_closed', t('settings.alerts.theRoofClosedAfterUnsafe'), t('settings.alerts.theRoofClosedAfterUnsafeHint')],
   ['safety_lost', t('settings.alerts.aWeatherSourceIsLost'), t('settings.alerts.aWeatherSourceIsLostHint')],
+  ['daylight_open', t('settings.alerts.theRoofIsOpenInDaylight'), t('settings.alerts.theRoofIsOpenInDaylightHint')],
+  ['daylight_closed', t('settings.alerts.theRoofClosedAfterDaylight'), t('settings.alerts.theRoofClosedAfterDaylightHint')],
+  ['daylight_unknown', t('settings.alerts.theDaylightCheckStopsWorking'), t('settings.alerts.theDaylightCheckStopsWorkingHint')],
 ];
 const CLIENT_ROWS: RowSpec[] = [
   ['client_lost', t('settings.alerts.theImagingAppStopsChecking'), t('settings.alerts.noRequestReachedTheDevice')],
