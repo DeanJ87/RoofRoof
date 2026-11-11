@@ -1,5 +1,6 @@
 #include "WebServer.h"
 #include "Logger.h"
+#include "PlatformGuard.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
 #include <Preferences.h>
@@ -182,6 +183,10 @@ namespace SQM
 
     void WebServer::saveArmedState()
     {
+        // A flash write (spec 010): while the roof moves or a close waits it stays pending.
+        const PlatformGuard::FlashWrite write;
+        if (write.refused() != RoofIo::HoldReason::None)
+            return;
         const Alerts::ScheduleState &state = alertSchedule.state();
         Preferences prefs;
         if (prefs.begin(ARMED_NVS_NAMESPACE, false))

@@ -1,6 +1,7 @@
 #pragma once
 
-// Flash writes in progress (web uploads, command-line OTA), for the roof: open
+// Flash writes in progress (web uploads, command-line OTA, and since spec 010
+// every short write), for the roof: open
 // waits for them, and a close stops them (spec 003 FR-029; the decisions are
 // RoofIo::FlashActivity's). Any task.
 
@@ -18,5 +19,10 @@ namespace SQM
         // A close wants the flash: the writer stops at its next chunk.
         void requestStop();
         bool shouldStop(uint32_t token);
+        // Short writes (settings, NVS values; spec 010): counted while they run.
+        // Take them through PlatformGuard, which checks the roof first.
+        void holdShort();
+        void releaseShort();
+        bool writing();
     } // namespace FlashGuard
 } // namespace SQM

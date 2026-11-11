@@ -4,6 +4,7 @@
 #include <cstring>
 #include <limits>
 
+#include "PlatformHold.h"
 #include "StepWatchdog.h"
 
 namespace SQM
@@ -64,17 +65,28 @@ namespace SQM
             return token != current || !active || stopRequested;
         }
 
+        void FlashActivity::holdShort()
+        {
+            ++shortWrites;
+        }
+
+        void FlashActivity::releaseShort()
+        {
+            if (shortWrites > 0)
+                --shortWrites;
+        }
+
         void RestartPlan::schedule(bool isMandatory)
         {
             if (!due)
-                mandatory = false;
+                mustRun = false;
             due = true;
-            mandatory = mandatory || isMandatory;
+            mustRun = mustRun || isMandatory;
         }
 
         bool RestartPlan::cancel()
         {
-            if (!due || mandatory)
+            if (!due || mustRun || isCommitted)
                 return false;
             due = false;
             return true;
@@ -82,23 +94,42 @@ namespace SQM
 
         void RestartPlan::clear()
         {
+            if (isCommitted)
+                return;
             due = false;
-            mandatory = false;
+            mustRun = false;
+            isCommitted = false;
+        }
+
+        bool RestartPlan::commit()
+        {
+            if (!due)
+                return false;
+            isCommitted = true;
+            return true;
         }
 
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
         {
             BlockerDecision d;
+            // A WiFi change or scan is waited for like a flash write: a close
+            // started under it could lose N.I.N.A. part-way (spec 010).
+            const bool flash = b.flashBusy || b.flashWriting || b.networkChanging;
             if (command == Roof::Command::Open)
             {
-                if (b.flashBusy || b.mqttConnecting || b.restartScheduled)
+                if (flash || b.mqttConnecting || b.restartScheduled || b.restartCommitted || b.hotspotOn)
                     d.action = BlockerAction::Refuse;
             }
             else if (command == Roof::Command::Close)
             {
+                if (b.restartCommitted)
+                {
+                    d.action = BlockerAction::Refuse;
+                    return d;
+                }
                 d.cancelRestart = b.restartScheduled && b.restartCancellable;
                 d.stopFlash = b.flashBusy;
-                if (b.flashBusy || b.mqttConnecting)
+                if (flash || b.mqttConnecting)
                     d.action = BlockerAction::DeferClose;
             }
             return d;
@@ -106,13 +137,28 @@ namespace SQM
 
         const char *blockerText(const Blockers &b)
         {
+            if (b.restartCommitted)
+                return "The device is restarting";
+            if (b.hotspotOn)
+                return HOTSPOT_TEXT;
             if (b.flashBusy)
                 return "An upload is being written";
+            if (b.flashWriting)
+                return "A settings save is being written";
+            if (b.networkChanging)
+                return "The WiFi network is changing";
             if (b.mqttConnecting)
                 return "MQTT is connecting";
             if (b.restartScheduled)
                 return "A restart is scheduled";
             return "";
+        }
+
+        const char *blockerReason(const Blockers &b)
+        {
+            if (b.restartCommitted)
+                return RESTARTING_REASON;
+            return b.hotspotOn ? HOTSPOT_REASON : "busy";
         }
 
         bool commandHeaderValid(const char *value)

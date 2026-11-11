@@ -5,6 +5,7 @@
 #include "Ipv6Network.h"
 #include "Logger.h"
 #include "MotionGuards.h"
+#include "PlatformGuard.h"
 #include "RoofControl.h"
 #include "RoofReadings.h"
 #include "WebServerShared.h"
@@ -32,16 +33,6 @@ namespace SQM
             return std::string("http://") + WiFi.softAPIP().toString().c_str() + "/wifi";
         }
 
-        // The request came in over the setup hotspot (not the home network),
-        // so it may be sent to the setup screen.
-        bool arrivedViaHotspot(AsyncWebServerRequest *request)
-        {
-            if ((WiFi.getMode() & WIFI_AP) == 0)
-                return false;
-            AsyncClient *client = request->client();
-            return client != nullptr && client->localIP() == WiFi.softAPIP();
-        }
-
         // "1"/"0", "on"/"off", "true"/"false", "arm"/"disarm" (any case).
         bool parseArmPayload(std::string text, bool &armed)
         {
@@ -60,20 +51,67 @@ namespace SQM
 
         esp_timer_handle_t restartTimer = nullptr;
 
+        // Whether a restart is due, whether a close may cancel it and whether
+        // it is committed, guarded by restartPlanLock (the web task, the loop,
+        // the roof task and the timer task use it). Taken after the roof's
+        // lock where both are held, never before it.
+        portMUX_TYPE restartPlanLock = portMUX_INITIALIZER_UNLOCKED;
+        RoofIo::RestartPlan restartPlan;
+
+        // How soon a held restart is tried again (spec 010). The timer task
+        // never waits for the roof's lock, which the roof's watchdog timer
+        // shares the task with.
+        constexpr uint64_t RESTART_RETRY_US = 200ULL * 1000ULL;
+
         void restartTimerCallback(void *)
         {
-            // Never while the roof moves or a close waits: try again in a second.
-            RoofControl *roof = WebServer::roofForRestart.load();
-            const bool roofBusy = roof != nullptr && (roof->moving() || roof->closeWaiting());
-            if ((WebServer::restartHold.load() || roofBusy) && restartTimer != nullptr)
+            portENTER_CRITICAL(&restartPlanLock);
+            const bool due = restartPlan.scheduled();
+            const bool mandatory = restartPlan.mandatory();
+            portEXIT_CRITICAL(&restartPlanLock);
+            if (!due)
+                return; // cancelled: don't re-arm (a new schedule starts the timer itself)
+            // Committed under the roof's lock: no move starts after this, and
+            // none is under way (spec 010 FR-002, FR-008).
+            const PlatformGuard::RestartGo go = PlatformGuard::commitRestart(
+                mandatory,
+                []()
+                {
+                    portENTER_CRITICAL(&restartPlanLock);
+                    const bool committed = restartPlan.commit();
+                    portEXIT_CRITICAL(&restartPlanLock);
+                    return committed;
+                });
+            static bool heldLogged = false;
+            if (go == PlatformGuard::RestartGo::Held && restartTimer != nullptr)
             {
-                esp_timer_start_once(restartTimer, 1000ULL * 1000ULL);
+                if (!heldLogged)
+                    Logger::info("WebServer", "Restart waiting: the roof, a write, a latched fault not yet saved or the automatic close");
+                heldLogged = true;
+                esp_timer_start_once(restartTimer, RESTART_RETRY_US);
                 return;
             }
-            ESP.restart();
+            heldLogged = false;
+            if (go == PlatformGuard::RestartGo::Run)
+                ESP.restart();
         }
 
     } // namespace
+
+    // The request came in over the setup hotspot (not the home network): it
+    // may be sent to the setup screen, and it may not open the roof (spec 010).
+    bool WebShared::hotspotOn()
+    {
+        return (WiFi.getMode() & WIFI_AP) != 0;
+    }
+
+    bool WebShared::arrivedViaHotspot(AsyncWebServerRequest *request)
+    {
+        if ((WiFi.getMode() & WIFI_AP) == 0)
+            return false;
+        AsyncClient *client = request->client();
+        return client != nullptr && client->localIP() == WiFi.softAPIP();
+    }
 
     WebServer::WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig)
         : server(PORT),
@@ -331,14 +369,6 @@ namespace SQM
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
-    namespace
-    {
-        // Whether a restart is due and whether a close may cancel it, guarded
-        // by restartPlanLock (the web task, the loop and the roof task use it).
-        portMUX_TYPE restartPlanLock = portMUX_INITIALIZER_UNLOCKED;
-        RoofIo::RestartPlan restartPlan;
-    } // namespace
-
     bool WebServer::restartScheduled()
     {
         portENTER_CRITICAL(&restartPlanLock);
@@ -353,6 +383,14 @@ namespace SQM
         const bool cancellable = restartPlan.cancellable();
         portEXIT_CRITICAL(&restartPlanLock);
         return cancellable;
+    }
+
+    bool WebServer::restartCommitted()
+    {
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool committed = restartPlan.committed();
+        portEXIT_CRITICAL(&restartPlanLock);
+        return committed;
     }
 
     void WebServer::cancelRestart()
@@ -389,7 +427,10 @@ namespace SQM
         restartPlan.schedule(mandatory);
         portEXIT_CRITICAL(&restartPlanLock);
         esp_timer_stop(restartTimer);
-        if (esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL) != ESP_OK)
+        const esp_err_t started = esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL);
+        // ESP_ERR_INVALID_STATE: the callback re-armed it in between; it is
+        // armed, and it runs the plan just recorded.
+        if (started != ESP_OK && started != ESP_ERR_INVALID_STATE)
         {
             Logger::error(TAG, "Failed to schedule restart");
             portENTER_CRITICAL(&restartPlanLock);

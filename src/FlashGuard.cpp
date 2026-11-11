@@ -61,5 +61,27 @@ namespace SQM
             portEXIT_CRITICAL(&lock);
             return result;
         }
+
+        void holdShort()
+        {
+            portENTER_CRITICAL(&lock);
+            activity.holdShort();
+            portEXIT_CRITICAL(&lock);
+        }
+
+        void releaseShort()
+        {
+            portENTER_CRITICAL(&lock);
+            activity.releaseShort();
+            portEXIT_CRITICAL(&lock);
+        }
+
+        bool writing()
+        {
+            portENTER_CRITICAL(&lock);
+            const bool result = activity.writing();
+            portEXIT_CRITICAL(&lock);
+            return result;
+        }
     } // namespace FlashGuard
 } // namespace SQM

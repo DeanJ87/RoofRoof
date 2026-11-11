@@ -14,6 +14,7 @@
 #include <string>
 
 #include "ParkRule.h"
+#include "PlatformHold.h"
 #include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SafetyInput.h"
@@ -131,6 +132,9 @@ namespace SQM
             Refused,     // any other refusal (fault, supply, settings, not started)
         };
 
+        // The sequence as spec 010's platform hold rules see it.
+        RoofIo::SequenceState platformState(Phase phase);
+
         // The answer for RoofControl's outcome (its accepted flag and reason name).
         CloseAnswer answerFor(bool accepted, const std::string &reason);
 
@@ -220,6 +224,10 @@ namespace SQM
             Phase beforeClose = Phase::WaitPark;
             uint64_t beforeCloseSinceMs = 0;
             uint64_t beforeCloseWallStartMs = 0;
+            // The Close action went out and the roof hasn't answered yet: a
+            // restart in between (spec 010) is saved as the step before, not
+            // as a close under way, so it doesn't count as a failed close.
+            bool closeUnanswered = false;
             bool closingSeen = false; // the roof has read Closing since the close
             bool sawPending = false;  // the close waited (spec 003 closePending) first
             uint64_t closingSinceMs = 0;

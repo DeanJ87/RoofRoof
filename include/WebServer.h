@@ -9,6 +9,7 @@
 #include "DeviceCore.h"
 #include "HaDiscovery.h"
 #include "MQTTClient.h"
+#include "PlatformHold.h"
 #include "RoofTypes.h"
 #include "SettingsDeps.h"
 #include "TimeManager.h"
@@ -47,18 +48,17 @@ namespace SQM
 
         // The roof (spec 003); before begin(). Without it the roof routes refuse.
         void setRoof(RoofControl *control);
-        // Main loop, every pass: while the roof moves a scheduled restart waits.
-        static void holdRestarts(bool hold) { restartHold = hold; }
         // A restart is due (the roof refuses to open meanwhile); a close cancels
         // it unless it can't be cancelled (after a filesystem upload stopped
         // part-way, the filesystem is half erased: it runs once the roof stops).
+        // The timer runs it only through PlatformGuard (spec 010): never while
+        // the roof moves or a close waits, an ordinary one never while the
+        // close sequence is busy; once committed, open and close are refused.
         static bool restartScheduled();
         static bool restartCancellable();
+        static bool restartCommitted();
         static void cancelRestart();
         static bool scheduleMandatoryRestart(uint32_t delayMs) { return scheduleRestart(delayMs, true); }
-        // The roof, for the restart timer: it never fires while the roof moves or a close waits.
-        static inline std::atomic<RoofControl *> roofForRestart{nullptr};
-        static inline std::atomic<bool> restartHold{false};
         void begin();
         void handle();
         // No alert queued or being delivered.
@@ -83,7 +83,7 @@ namespace SQM
         void broadcastStatusData();
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
-        bool isWifiConnectPending() const { return wifiConnectActive; }
+        bool isWifiConnectPending() const { return wifiConnectActive.load(); }
         // `mandatory`: a close may not cancel it (RoofIo::RestartPlan).
         static bool scheduleRestart(uint32_t delayMs, bool mandatory = false);
 
@@ -121,7 +121,13 @@ namespace SQM
         uint32_t lastAlertsRevision = 0;
         std::atomic<uint32_t> configRevision{0};
         uint32_t lastConfigRevision = 0;
-        bool wifiConnectActive = false;
+        // Read by the roof's command blockers (any task): a WiFi change or a
+        // scan being started makes a close wait (spec 010).
+        std::atomic<bool> wifiChanging{false}; // from the claim until joined (the hold is bounded in time)
+        std::atomic<uint32_t> wifiChangeAtMs{0};
+        std::atomic<bool> wifiScanStarting{false};
+        std::atomic<uint32_t> wifiScanAtMs{0};
+        std::atomic<bool> wifiConnectActive{false};
         bool wifiConnectConfigSaved = false;
         uint32_t wifiConnectStartedAt = 0;
         std::string pendingWifiSSID;
@@ -257,15 +263,19 @@ namespace SQM
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
         // Saves settings and applies what takes effect at once (a settings save and a restore).
         bool saveAndApply(const Config &next);
+        // saveAndApply() counted as a flash write (spec 010); answers 409 when
+        // it must wait for the roof (or, with `restarts`, while a restart would
+        // be held) and 500 when the save failed. True when saved.
+        bool saveAsFlashWrite(AsyncWebServerRequest *request, const Config &next, bool restarts = false);
 
         // The roof (src/WebServerRoof.cpp).
         void setupRoofRoutes();
         void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
         void handleRoofClearFault(AsyncWebServerRequest *request);
-        // Answers 409 and returns true while the roof moves: settings saves,
-        // restores, uploads, WiFi changes and restarts wait (flash writes stall
-        // the control task and its watchdog).
-        bool refuseWhileMoving(AsyncWebServerRequest *request);
+        // Answers 409 with the reason and returns true while `action` must wait
+        // (spec 010, RoofIo::platformHold): the roof moves, a close waits, or
+        // for restarts, firmware and Wi-Fi changes the close sequence is busy.
+        bool refuseIfHeld(AsyncWebServerRequest *request, RoofIo::PlatformAction action);
         // Roof commands need the X-RoofRoof: 1 header (answers 403 without it).
         bool requireCommandHeader(AsyncWebServerRequest *request);
         bool roofMoving() const;

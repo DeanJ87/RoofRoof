@@ -195,27 +195,71 @@ long.
 ### While the roof moves
 
 Writing the flash pauses the processor's code cache, and with it the control task and the
-watchdog, so nothing writes the flash while the roof is opening or closing:
+watchdog; a restart cuts the driver; a change of WiFi network drops the link to N.I.N.A. So the
+rest of the device waits for the roof, and some actions also wait for the
+[automatic close](close-on-unsafe.md) while it is working: waiting for the park it asked for, or
+closing. Backing off after a failed attempt, or stood down (position unknown, a fault, a halted
+close, or stopped by a person), it holds nothing, so a broken network or device can still be put
+right remotely.
+While the home network is down or the setup hotspot is on, a working sequence can't reach N.I.N.A.
+anyway, so it holds only uploads, not a restart or a WiFi fix. Stop always stands the automatic
+close down, which lifts its hold:
 
-- settings saves, restores, firmware and web UI uploads, WiFi changes and restarts are refused
-  (`409`, "stop it first"); a restart already scheduled waits until the roof stops;
-- the alerts pause state is saved once the roof stops; command-line OTA is only serviced while the
-  roof is closed (it can't be stopped part-way), and is refused when it starts if the roof has
-  moved since.
+| Action | Roof opening or closing | A close waiting to start | Automatic close working |
+|---|---|---|---|
+| Settings save, restore without restart | refused | refused | allowed |
+| Web UI upload | refused | refused | refused |
+| Restart (from the Restart button, after a restore, a firmware upload or joining a network from the hotspot) | refused / waits | refused / waits | refused / waits |
+| Restart after a web UI upload (remounts the web UI) | waits | waits | runs |
+| Firmware upload (web or command line) | refused | refused | refused |
+| Change of WiFi network | refused | refused | refused |
+| WiFi scan | refused | refused | refused |
+
+"Refused" is `409` with the reason ("The roof is moving: stop it first, then try again", "A close
+is waiting to start: try again once the roof has closed", "The automatic close is under way: try
+again once the roof has closed or the weather is safe"). "Waits" is for a restart already
+scheduled: it is tried again every 0.2 s and runs once nothing holds it (an ordinary restart also
+waits for an upload to finish, and every restart waits for a settings save to finish and for a
+latched fault to be saved, so a restart never loses the lock-out). The alerts pause state
+and the WiFi network saved after a join are written once the roof is at rest. Command-line OTA is
+only serviced while the roof is closed (it can't be stopped part-way) and is refused when it
+starts if the roof has moved since.
+
+The check and the move can't race: the roof decides every command under one lock, and every flash
+write, upload, restart and MQTT connect checks the roof and registers itself under the same lock.
+Whichever comes first, the other sees it.
 
 And before a move starts, **a close always wins**:
 
-- open is refused (`busy`) while an upload or command-line OTA writes the flash, an MQTT connect is
-  under way or a restart is scheduled;
+- open is refused (`busy`) while anything writes the flash (an upload, command-line OTA, a
+  settings save or any other saved value, including the roof's own fault record), the WiFi network
+  is being changed or scanned, an MQTT connect is under way or a restart is scheduled;
 - a close that would run (the park is confirmed and the motion checks pass, and the roof isn't
   already closed or closing) cancels a scheduled restart and stops an upload at its next chunk; if
-  an upload or MQTT connect is still finishing, the close waits (`roof.closePending`) and starts as
-  soon as it is done, and no MQTT connect or restart starts meanwhile. An upload that stops sending
-  counts as finished after 5 s, so a dropped connection never blocks a close. The restart after a
-  web UI upload is never cancelled (the filesystem must be remounted); it waits until the roof
-  stops;
+  an upload, a flash write, a WiFi change or scan (at most 15 s), or an MQTT connect is still
+  finishing, the close waits
+  (`roof.closePending`) and starts as soon as it is done, and no MQTT connect or restart starts
+  meanwhile. An upload that stops sending counts as finished after 5 s, so a dropped connection
+  never blocks a close. The restart after a web UI upload is never cancelled (the filesystem must
+  be remounted); it waits until the roof stops;
+- once a restart has passed its last check, open and close are refused (`restarting`, "The
+  device is restarting") for the moment before the reset; the automatic close treats that as "not
+  run" and carries on after the restart;
 - stop is never refused, and cancels a waiting close; so does an open that runs, and so does any
   fault (clearing it never starts the old close).
+
+### If WiFi or power is lost mid-move
+
+- **WiFi lost.** The move carries on under the control task, which doesn't depend on WiFi: it ends
+  on its magnet or at its timeout. An open stops as soon as the weather can't be confirmed safe; a
+  close stops with a `parkInterlock` fault as soon as N.I.N.A. can't confirm the park (constitution
+  II). The device keeps trying the saved network; the setup hotspot only opens at start-up.
+- **Power lost or a reset** (brown-out, crash, watchdog). The driver's enable line has a pull-down,
+  so the motor stops at once and the worm gear holds the roof. After the restart the position is
+  unknown unless a magnet is read, nothing moves by itself, and a latched fault is still latched.
+  The log names the reason for the reset (power-on, brown-out, software restart, crash, watchdog).
+  An automatic close that was running counts as a failed close and is tried again after its
+  back-off.
 
 Settings saved at rest are taken at once; saved while stopped part-way, they make the position
 unknown.
