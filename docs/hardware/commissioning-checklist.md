@@ -146,9 +146,11 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 
 | | Check | Result |
 |---|---|---|
-| ☐ 10.1 | Cover, position, supply, Hall and fault entities appear | |
-| ☐ 10.2 | Roof commands left off, or on and tested | |
-| ☐ 10.3 | Cover and sensors follow a move; a fault turns the fault sensor on | |
+| ☐ 10.1 | Roof cover, position, supply, Hall and fault entities appear (motor current only with current sense); they follow a move; a fault turns the fault sensor on | |
+| ☐ 10.2 | Commands off: `OPEN` answers `switchedOff`; toggle wording reviewed | |
+| ☐ 10.3 | Commands on (optional): OPEN and STOP work; a retained `OPEN` answers `retained`; unknown position answers `positionUnknown`; STOP in an unsafe close answers `unsafeClose` | |
+| ☐ 10.4 | Broker cable pulled during a close: the close completes, no `parkInterlock` | |
+| ☐ 10.5 | Discovery burst on the real WiFi: no write-budget disconnect | |
 
 ## Stage 11: The gate for unattended use
 
