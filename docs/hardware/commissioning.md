@@ -15,7 +15,7 @@ A [printable checklist](commissioning-checklist.md) carries every check below wi
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: a89c70d732d9551f
+fingerprint: fbd2d4d17a3e16ee
 -->
 <figure class="diagram" markdown>
 
@@ -66,9 +66,11 @@ flowchart TD
 - A running [SQMeter](https://github.com/DeanJ87/SQMeter) reachable from the roof controller (its safety endpoint decides the weather), with a way to make it report unsafe (its manual override).
 - A serial connection (`pio device monitor --baud 115200`, or any terminal at 115200) for the log. Most checks name the log line to look for.
 
-### Commands used in this guide
+### Commands and settings used in this guide
 
-The roof is commanded with the REST API. Paste these into a shell once; the rest of the guide uses the short names. If you turned on password protection (stage 2), add `-u admin:YOURPASSWORD` to every `curl -X POST`.
+**In the web UI.** The dashboard's [Roof card](../user-guide/dashboard.md#roof) has **Open**, **Close**, **Stop** and, with a fault latched, **Clear fault**; a **Stop** bar sits at the bottom of every page while the roof moves. The roof's settings are in **Settings → Roof**, in five sections: **Roof motion**, **Hall sensor**, **Current and supply**, **Weather sources** and **Mount park** ([Configuration](../user-guide/configuration.md#settings-pages)). A save is refused while the roof moves. Use these wherever you are at a screen.
+
+**From a shell.** The same commands are in the REST API, and the steps below give the `curl` form for settings. Paste these once; they are handy for scripting and for checks that need a log window beside them. If you turned on password protection (stage 2), add `-u admin:YOURPASSWORD` to every `curl -X POST`.
 
 ```bash
 export ROOF=http://roofroof.local
@@ -79,7 +81,7 @@ roofstop()   { curl -s -X POST -H "X-RoofRoof: 1" $ROOF/api/roof/stop;        ec
 roofclear()  { curl -s -X POST -H "X-RoofRoof: 1" $ROOF/api/roof/clear-fault; echo; }
 ```
 
-`roofstatus` prints the `roof` section of [`GET /api/status`](../api/rest.md#get-apistatus): `state`, `hall.counts`, `supplyVolts`, `fault` and the rest. Settings are changed with [`POST /api/config`](../api/rest.md#post-apiconfig); the field names are in [Configuration](../user-guide/configuration.md#roof). The web UI's Stop works on any page and is the quickest way to stop a move from a phone at the roof.
+`roofopen`, `roofclose`, `roofstop` and `roofclear` are the Roof card's buttons by another name; where the guide says `roofopen`, pressing **Open** is the same. `roofstatus` prints the `roof` section of [`GET /api/status`](../api/rest.md#get-apistatus): `state`, `hall.counts`, `supplyVolts`, `fault` and the rest. Settings are changed with [`POST /api/config`](../api/rest.md#post-apiconfig); the field names are in [Configuration](../user-guide/configuration.md#roof). The Stop button (the card's, or the bar's on any other page) is the quickest way to stop a move from a phone at the roof.
 
 ---
 
@@ -104,7 +106,7 @@ Power is off, the USB cable is out, and **both motor leads are disconnected from
 3. **Turn on password protection** now: **Settings → Device → Security → Password-protect changes** ([Security](../user-guide/security.md)). Roof commands need it, and a person's command is the one the roof obeys from an unknown position. Add `-u` to the commands above.
 4. **Boot between the magnets.** With no magnet near the sensor, `roofstatus` shows `state: unknown`, `hall.level` between, and `driving: false`. EN (GPIO27) stays low; nothing moves by itself. Hold a magnet at the Hall sensor, restart from **System → Restart device**, and the state is that end after the restart. (This is stage 3's check too; do it again there once the thresholds are set.)
 5. **Supply reading.** Switch the 12 V supply on (the motor is still disconnected). Compare `supplyVolts` with a meter at the IBT-2's input: within about 0.2 V. (The unplugged-sense check is in stage 6, once the weather and park sources are set up.)
-6. **Park switches and the rain contact.** If fitted, set `park.switches` (`one` or `two`) and `safety.rainContact`:
+6. **Park switches and the rain contact.** If fitted, set the park switches (**Settings → Roof → Mount park**, `park.switches`: `one` or `two`) and the rain contact (**Weather sources**, `safety.rainContact`), or with:
    ```bash
    curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"park":{"switches":"two"},"safety":{"rainContact":true}}'
    ```
@@ -113,12 +115,12 @@ Power is off, the USB cable is out, and **both motor leads are disconnected from
 
 ## Stage 3: Hall calibration with the live reading (motor disconnected)
 
-Follow [Calibration](calibration.md#hall-sensor): note `hall.counts` between the magnets, at the closed end and at the open end (hold the magnet where the roof's magnet will sit, and a few millimetres short of that), set `roof.hallHighEnd`, `roof.hallHighCounts` and `roof.hallLowCounts`.
+Follow [Calibration](calibration.md#hall-sensor): note `hall.counts` between the magnets, at the closed end and at the open end (hold the magnet where the roof's magnet will sit, and a few millimetres short of that), set `roof.hallHighEnd`, `roof.hallHighCounts` and `roof.hallLowCounts` (**Settings → Roof → Hall sensor**, where the live reading is drawn against the thresholds as you type them).
 
 1. **Resting value** (about 2000 with the 10k/20k divider) and **both end readings**, written on the checklist.
 2. **The rails are never reached by a magnet.** Bring the magnet as close to the sensor as it ever gets (touching): the reading must stay clear of 30 and 4065. These values are reached only with the sensor disconnected or shorted.
 3. **Set** the high end and both thresholds, halfway between the resting value and each end's reading, at least 80 counts apart.
-4. **Check the states.** With the magnet at each end `state` is `closed` or `open` correctly (check which is which!), and away from both it is `unknown`. Restart between the magnets and at each end to see the same after a boot.
+4. **Check the states.** The Roof card's Hall marker follows the magnet and its level changes at the thresholds. With the magnet at each end `state` is `closed` or `open` correctly (check which is which!), and away from both it is `unknown`. Restart between the magnets and at each end to see the same after a boot.
 5. **A disconnected sensor.** Unplug the Hall sensor's output at the ESP32: `hall.counts` reads 0, `hall.level` becomes `rail` and within a second a `hallRail` fault is latched, even at rest. Plug it back in and clear the fault with `roofclear`.
 
 ## Stage 4: Weather and park sources (motor disconnected)
@@ -128,7 +130,7 @@ The roof opens only on a safe weather verdict and closes only onto a confirmed p
 !!! warning "Unsafe weather starts the automatic close"
     Whenever you make the weather unsafe in stages 4 and 6, **hold the closed magnet at the Hall sensor** (roof `closed`), so the automatic close has nothing to do. With the roof open or stopped and the mount parked, an unsafe verdict would ask the real mount to park and command a close that times out and latches a fault. Before stage 7 check that the close sequence is idle (no `Close` lines in the log and `roof.closePhase`, where shown, idle).
 
-1. **SQMeter over HTTP.** Set it up:
+1. **SQMeter over HTTP.** Set it up in **Settings → Roof → Weather sources**, or with:
    ```bash
    curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"safety":{"http":{"enabled":true,"url":"http://sqmeter.local/api/safety"}}}'
    ```
@@ -137,7 +139,7 @@ The roof opens only on a safe weather verdict and closes only onto a confirmed p
 3. **Wrong address.** Set the URL to a path that does not exist (an empty 404 reply): the source is reported unreadable, and the device does not reboot. Put the right URL back.
 4. **SQMeter over MQTT** (only if you use it; needs MQTT set up, [MQTT](../user-guide/mqtt.md)): stop SQMeter's MQTT and the log says `SQMeter MQTT offline` at once. After a RoofRoof reconnect (restart it), a retained `safe=1` left on the broker does not make the verdict safe by itself.
 5. **Rain contact** (if fitted): wet it or short it. The verdict goes unsafe with the contact as the reason. A contact alone is never enough for a safe verdict.
-6. **N.I.N.A. and the mount.** In N.I.N.A. install the **Advanced API** plugin (2.2.15 or newer) and turn the API on; set `park.nina.url` to `http://<PC>:1888`:
+6. **N.I.N.A. and the mount.** In N.I.N.A. install the **Advanced API** plugin (2.2.15 or newer) and turn the API on; set the N.I.N.A. address (**Settings → Roof → Mount park**, `park.nina.url`) to `http://<PC>:1888`, or with:
    ```bash
    curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"park":{"nina":{"url":"http://192.168.1.20:1888"}}}'
    ```
@@ -183,6 +185,7 @@ With the motor leads off, the controller still runs its whole drive logic. A han
 10. **A lost weather source.** Switch SQMeter off for longer than `safety.staleSeconds` (30 s) plus 30 s: **Weather source lost** arrives.
 11. **Power pulled mid-move.** Start a move (magnet away), pull the board's power, restore it: the log names the reset reason (power-on or brown-out), `state` is `unknown`, and the roof does not move by itself.
 12. **A power-cycled fault does not repeat its alert.** With a fault latched, reset the board (not a power cut): no new fault alert. After a power cut one alert arrives after the 60 s start-up grace.
+13. **The dashboard follows.** On the Roof card, with the closed magnet held and the weather safe and the mount parked: the state and position follow the real state; **Close** greys with the reason when you pull a park switch or close N.I.N.A.; **Open** greys with the verdict when the weather is unsafe; a fault (unplug the Hall sensor) shows on the Roof card and the Status card, and **Clear fault** works once the sensor is back. With the WiFi dropped, **Open**, **Close** and **Clear fault** grey with "No live data" and **Stop** still sends. During a move the **Stop** bar appears on **Settings** and **Updates** as well; **Stop roof** from there stops the move. A restart with the page open keeps Open and Close greyed until live data returns. Look at the card and the Stop bar on your phone in the dark and say whether you are happy with them.
 
 ## Stage 7: The close-on-unsafe dry run (motor disconnected)
 

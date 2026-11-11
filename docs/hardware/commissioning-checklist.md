@@ -86,6 +86,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 6.10 | SQMeter off past stale time plus 30 s: **Weather source lost** arrives | |
 | ☐ 6.11 | Power pulled mid-move: reset reason logged, `unknown`, no motion | |
 | ☐ 6.12 | Reset with a fault latched: no repeat alert; after a power cut one alert after 60 s | |
+| ☐ 6.13 | Dashboard follows: Roof card state and Hall marker; Close and Open grey with reasons; fault on the Roof and Status cards and Clear fault; "No live data" greys but Stop sends; Stop bar on other pages; looked at on a phone in the dark | |
 
 ## Stage 7: Close-on-unsafe dry run (motor disconnected)
 

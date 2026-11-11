@@ -123,11 +123,21 @@ section (analyser or debug build, not part of the gate).
 | Discovery burst on real WiFi without a write-budget disconnect | 10.5 |
 | The owner looks at the new MQTT toggle | 10.2 |
 
-## PRs for 009 and 011 (in progress when this was written)
+## PR #11 (spec 009, dashboard and settings)
 
-Their bench lists are added when they merge. Steps that depend on them: the commands in the guide's shell
-functions (dashboard Roof card, spec 009), the Roof settings tab's fields (009), bench mode as a stand-in
-for the hand-held magnet (011).
+| Item | Step |
+|---|---|
+| Owner's review of the Roof card, Stop bar, Status rows and Settings → Roof, on a phone in the dark | 6.13 |
+| The Roof card follows the real state; the Hall marker and level follow a magnet; the Settings Hall scale follows edited thresholds | 3.3, 3.4, 6.13 |
+| Open and Close with weather safe and mount parked; Stop from the card and from the Stop bar on Settings and Updates | 6.13, 8.3 |
+| Pull a park switch: Close greys with the reason; unsafe weather: Open greys | 6.13 |
+| A fault shows on the card and the Status card; Clear fault; "No live data" greys, Stop sends | 6.13 |
+| A restart with the page open: `restarting` holds Open and Close | 6.13 |
+
+## PR for 011 (in progress when this was written)
+
+Its bench list is added when it merges. Steps that depend on it: bench mode as a stand-in for the
+hand-held magnet.
 
 ## Owner assumptions placed in the guide
 
