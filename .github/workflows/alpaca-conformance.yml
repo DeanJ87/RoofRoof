@@ -141,7 +141,7 @@ jobs:
             failed=1
           fi
           # The shutter tests must have run (open and close of the simulated roof).
-          for line in "Shutter opened successfully" "Shutter closed successfully"; do
+          for line in "The shutter opened asynchronously" "The shutter closed asynchronously"; do
             if ! grep -q "$line" conformu-results/dome-conformance.txt; then
               echo "ConformU didn't report: $line"
               echo "| shutter tests | **did not run** |" >> "$GITHUB_STEP_SUMMARY"
