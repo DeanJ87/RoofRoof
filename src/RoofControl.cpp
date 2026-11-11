@@ -141,6 +141,10 @@ namespace SQM
         if (command == Roof::Command::Stop || command == Roof::Command::Abort)
         {
             closePending = false; // a stop replaces a waiting close
+            // Counted before the stop is applied, so no snapshot shows the
+            // stop without it: the close sequence (spec 005) stands down on it.
+            if (origin == Roof::Origin::Person)
+                personStops++;
             return runLocked(command, origin);
         }
         const Outcome pre = precheck(command, origin);
@@ -301,6 +305,7 @@ namespace SQM
         s.rainFitted = settings.rainFitted;
         s.rain = static_cast<RoofIo::Contact>(rainReading.load());
         s.closePending = closePending;
+        s.personStops = personStops;
         closeWaitingNow.store(closePending);
         s.maxWatchdogBeatAgeMs = maxBeatAgeMs;
         s.watchdogTrips = watchdogTrips;
