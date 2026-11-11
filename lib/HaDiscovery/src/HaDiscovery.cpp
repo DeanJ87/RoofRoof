@@ -140,7 +140,7 @@ namespace SQM
             std::string payload(const Device &device, const Entity &entity, const Groups &groups)
             {
                 const std::string &base = device.baseTopic;
-                DynamicJsonDocument doc(1536);
+                DynamicJsonDocument doc(2048); // the longest names: test_long_names_fit
                 doc["name"] = entity.name;
                 doc["unique_id"] = device.id + "_" + entity.object;
                 doc["object_id"] = device.id + "_" + entity.object;

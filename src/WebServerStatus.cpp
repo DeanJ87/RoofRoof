@@ -4,6 +4,7 @@
 #include "Ipv6Network.h"
 #include "Logger.h"
 #include "RoofControl.h"
+#include "RoofMqtt.h"
 #include "WebServer.h"
 #include "version.h"
 #include <ArduinoJson.h>
@@ -45,13 +46,19 @@ namespace SQM
         }
     } // namespace
 
+    // The roof moves, a close waits or the automatic close is attempting: a
+    // burst of retained configs must not hold the main loop then (spec 008
+    // research R4).
+    bool WebServer::roofBusyForMqtt() const
+    {
+        const bool attempting = closePhase && RoofIo::Mqtt::closeAttempting(closePhase());
+        return roof != nullptr && (roof->moving() || roof->closeWaiting() || attempting);
+    }
+
     // Home Assistant discovery whenever the connection or the settings change.
     void WebServer::publishDiscovery()
     {
-        // Not while the roof moves or a close waits: a burst of retained
-        // configs must not hold the main loop then (spec 008 research R4).
-        const bool roofBusy = roof != nullptr && (roof->moving() || roof->closeWaiting());
-        if (mqttClient == nullptr || !mqttClient->isConnected() || roofBusy)
+        if (mqttClient == nullptr || !mqttClient->isConnected() || roofBusyForMqtt())
             return;
         const Config &cfg = getConfigCallback();
         const MQTTConfig &mqtt = cfg.mqtt;

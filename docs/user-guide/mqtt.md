@@ -35,14 +35,14 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 ---
 
 !!! note "While the roof moves"
-    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, while the roof moves or a close waits the state document is only published when the move starts, reverses or faults (at most twice, 5 s apart, and not again after a failed publish), not periodically, and Home Assistant discovery waits until the roof stops. The live position during a move is in [`/ws/status`](../api/websocket.md).
+    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, a write to the broker gives up after 250 ms and drops the connection, and while the roof moves, a close waits or the [automatic close](close-on-unsafe.md) is under way the state document is only published when the move or the attempt starts, reverses, ends or faults (at most twice, 5 s apart, and not again after a failed publish), not periodically, and Home Assistant discovery waits until it is over. The live position during a move is in [`/ws/status`](../api/websocket.md).
 
 ## Topics
 
 | Topic | Retained | Payload | When |
 |---|---|---|---|
 | `<base>/availability` | Yes | `online` / `offline` (last will) | On connect / disconnect |
-| `<base>/state` | Yes | The roof document (below) | On connect; at rest, within a second of a change of the roof's state, fault, known position, automatic-close phase, or weather or park check, and every publish interval; while the roof moves or a close waits, only when it starts, reverses or faults (at most twice, 5 s apart) |
+| `<base>/state` | Yes | The roof document (below) | On connect; at rest, within a second of a change of the roof's state, fault, known position, automatic-close phase, or weather or park check, and every publish interval; while the roof moves or the automatic close is under way, only when it starts, reverses, ends or faults (at most twice, 5 s apart) |
 | `<base>/roof/set` | - | Subscribed: `OPEN`, `CLOSE`, `STOP` (any case) | Command ([Roof commands](#roof-commands)) |
 | `<base>/roof/result` | No | `{"command","accepted","reason","text","state"}` | One per message on `roof/set` |
 | `<base>/alerts` | No | One message per alert (with **Settings → Alerts → MQTT** on): `{"event","events"?,"title","message","level","device","timestamp"}` | Each alert |
@@ -96,7 +96,7 @@ MQTT has no login of its own, so these commands have the same limits as an ASCOM
 - Neither while the position is unknown or a fault is latched: a person moves the roof from an unknown position and clears faults in the web UI. There is no MQTT command to clear a fault, abort or set a position.
 - **Stop** stops the roof, except while a close runs or waits and the weather isn't safe: then it is refused and the roof keeps closing (Stop in the web UI still works). An MQTT stop never counts as a person's, so it never stands the [automatic close](close-on-unsafe.md) down.
 - **Open** is refused while a close runs or waits, or after a close was stopped part-way: MQTT can't reverse a close.
-- A **retained** message on `roof/set` is never acted on when the broker replays it (on every reconnect). Send commands without the retain flag: one sent with it still runs once if the device is connected at that moment, then stays on the broker and is refused on every replay. To clear one left there: `mosquitto_pub -r -n -t roofroof/roof/set`. The same goes for `alerts/armed/set`: a retained pause isn't replayed.
+- A **retained** message on `roof/set` is never acted on when the broker replays it (on every reconnect). Send commands without the retain flag: one sent with it still runs once if the device is connected at that moment, then stays on the broker and is refused on every replay. To clear one left there: `mosquitto_pub -r -n -t roofroof/roof/set`. The same goes for `alerts/armed/set`: a retained pause isn't replayed. A broker *bridged* to another broker can pass on a message retained there as a live one, so keep no retained message on `roof/set` on any broker.
 - Commands sent while the device is offline are not queued.
 
 Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained):
@@ -121,7 +121,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: cf1ae36740aef002
+fingerprint: 5ce5eb82a8461728
 -->
 <figure class="diagram" markdown>
 

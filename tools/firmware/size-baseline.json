@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1416032,
-  "overBudgetReason": "spec 008: MQTT roof commands and state document, Home Assistant roof entities, close phase and checks in the status"
+  "esp32dev": 1417536,
+  "overBudgetReason": "spec 008: MQTT roof commands and state document, Home Assistant roof entities, bounded MQTT writes, close phase and checks in the status"
 }

@@ -49,7 +49,8 @@
 
 - **Decision**: publish at once after a connect. At rest: on a change of the state key (state,
   fault kind, position known, waiting close, close phase, weather verdict, park confirmed), at most
-  once a second, otherwise every `mqtt.publishIntervalMs`. While the roof moves or a close waits:
+  once a second, otherwise every `mqtt.publishIntervalMs`. While the roof moves, a close waits or the
+  automatic close is attempting (waiting for the park, closing, waiting to retry):
   only on a change of state, fault or waiting close, at most every 5 s, at most twice until it is
   at rest, and nothing once a publish on the connection has failed; discovery is held until it
   stops. The supply-low flag isn't in the key: it is one unfiltered reading and flaps under load.
@@ -57,8 +58,12 @@
   can wait up to ten 1 s selects for a socket whose send buffer is full (a half-open link). The
   roof's gates count the weather unsafe and the park lost when the main loop hasn't handed them
   over for 5 s, which stops a close as a motion fault. Periodic ~1 KB documents during a move would
-  fill a dead link's 5.7 KB send buffer; two documents can't, whatever flaps, and a failed write
-  stops further ones. The live position is in
+  fill a dead link's 5.7 KB send buffer, and documents queued at rest (during the park wait) can
+  fill it before the close starts. So, besides the limits above, every write on the MQTT socket
+  (publishes, PINGREQ, alerts) gets a 250 ms budget (`DualStackClient::setWriteBudgetMs`): a write
+  that can't finish in time closes the connection, and later writes fail at once. The reconnect
+  is held while the roof is busy (spec 010). A main-loop pass can then lose at most about 250 ms to
+  MQTT writes, far inside the 5 s hand-over limit. The live position is in
   `/ws/status` (async task). Spec 010 owns the network under motion as a whole.
 - **Alternatives**: every 2 s while moving (SQMeter's interval idea; rejected for the risk above);
   a separate MQTT task (a second owner of PubSubClient, which isn't thread-safe).
