@@ -15,7 +15,8 @@ const doc = (change: (d: RoofInputs) => void = () => undefined) => {
 
 // The mock config has SQMeter over HTTP on, MQTT off and N.I.N.A. set, as mockInputs reads them.
 const config = structuredClone(mockConfig);
-const testAnswered = (d: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean) => answered(d, part, before, changed, config);
+const testAnswered = (d: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean) =>
+  answered(d, part, before, changed, config);
 
 describe('testAnswered', () => {
   it('an unchanged part answers with the reading the device holds now', () => {
@@ -98,7 +99,15 @@ describe('testAnswered', () => {
     const notSet = doc((d) => (d.nina.state = 'notConfigured'));
     expect(testAnswered(notSet, 'nina', doc(), false)).toBe(false);
     const cleared = { ...config, park: { ...config.park!, nina: { ...config.park!.nina, url: '' } } };
-    expect(answered(doc((d) => ((d.nina.state = 'notConfigured'), (d.nina.generation += 1))), 'nina', doc(), true, cleared)).toBe(true);
+    expect(
+      answered(
+        doc((d) => ((d.nina.state = 'notConfigured'), (d.nina.generation += 1))),
+        'nina',
+        doc(),
+        true,
+        cleared,
+      ),
+    ).toBe(true);
   });
 
   it('a failure of the new settings is an answer', () => {

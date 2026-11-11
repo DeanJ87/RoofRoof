@@ -81,8 +81,7 @@ void test_a_bad_stored_value_keeps_the_current_one()
     cfg.setup.state = SetupConfig::State::Done;
     cfg.setup.step = 3;
     std::string reason;
-    TEST_ASSERT_TRUE_MESSAGE(
-        Config::applyJson("{\"setup\":{\"state\":\"finished\",\"step\":42}}", cfg, false, &reason), reason.c_str());
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson("{\"setup\":{\"state\":\"finished\",\"step\":42}}", cfg, false, &reason), reason.c_str());
     TEST_ASSERT_EQUAL(SetupConfig::State::Done, cfg.setup.state);
     TEST_ASSERT_EQUAL_UINT8(3, cfg.setup.step);
 }

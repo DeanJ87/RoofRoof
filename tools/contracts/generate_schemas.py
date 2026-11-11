@@ -118,9 +118,7 @@ CONSTRAINTS = {
     ("roof-inputs", ("weather", "http", "state")): {"enum": SOURCE_STATES},
     ("roof-inputs", ("weather", "mqtt", "state")): {"enum": SOURCE_STATES},
     ("roof-inputs", ("weather", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
-    ("roof-inputs", ("nina", "state")): {
-        "enum": ["notConfigured", "waiting", "good", "unreachable", "unreadable", "apiError"]
-    },
+    ("roof-inputs", ("nina", "state")): {"enum": ["notConfigured", "waiting", "good", "unreachable", "unreadable", "apiError"]},
 }
 
 

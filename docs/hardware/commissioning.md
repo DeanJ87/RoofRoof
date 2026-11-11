@@ -109,6 +109,8 @@ Power is off, the USB cable is out, and **both motor leads are disconnected from
 
 ## Stage 2: First power-up (motor still disconnected)
 
+The [setup wizard](../user-guide/setup-wizard.md), which opens the first time you open the dashboard after joining WiFi, sets the settings of stages 2 to 5 in this order, with the live supply, park switch, rain contact and Hall readings, and a Test for SQMeter and N.I.N.A.; its last page reviews them. It never moves the roof: every test in these stages, and every move from stage 8, is still done here, attended.
+
 1. **Flash and join WiFi** if you have not (on a spare bare board running the [bench build](../user-guide/bench-mode.md), tie GPIO36 to GND first): [Flashing](../getting-started/flashing.md), then [First Boot](../getting-started/first-setup.md). Do it from USB only, with the 12 V motor supply **off**, and with a meter on GPIO27: it reads 0 V throughout the flash (a floating EN during flashing is a hazard [Wiring](wiring.md#the-en-pull-down) names). Note the device's address.
 2. **EN, RPWM and LPWM through a start.** With a meter on GPIO27, then GPIO25 and GPIO26, read 0 V before you plug in, while the board starts, and after it has started (the log shows the start-up; give it a minute). While the board is held in reset (hold the EN button on the DevKit), GPIO27 must still read 0 V: that is the pull-down at work. *Analyser:* capture GPIO25, 26 and 27 through a power-on and a reset; all three stay low.
 3. **Turn on password protection** now: **Settings → Device → Security → Password-protect changes** ([Security](../user-guide/security.md)). Roof commands need it, and a person's command is the one the roof obeys from an unknown position. Add `-u` to the commands above.

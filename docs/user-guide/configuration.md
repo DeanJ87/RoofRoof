@@ -8,7 +8,7 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 
 ## Settings pages
 
-**Settings** has five tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
+The [setup wizard](setup-wizard.md) walks through the essential settings once, with live readings and a review; it saves through the same settings API. **Settings** has five tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
 
 Some settings only work when something else is on - MQTT alerts need MQTT, internet alerts need WiFi. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
@@ -280,6 +280,15 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 | `location.longitude` | number | `0` | Degrees, east positive (-180 to 180) |
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
+
+### Setup wizard
+
+Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing and need no restart. **Settings** never sends them, so a save there keeps them.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `setup.state` | string | `"new"` | `new` (the wizard opens on the first dashboard visit of a page load), `offered` (a dashboard banner offers it) or `done`. Settings saved by a release before the wizard load as `offered`, so an upgraded roof is never interrupted. Any other value is refused |
+| `setup.step` | integer | `0` | The page to resume at, 0 (Device) to 9 (Review) |
 
 ### Alerts
 

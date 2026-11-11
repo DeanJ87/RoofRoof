@@ -73,6 +73,7 @@ Then change settings and watch them take effect:
 - **Settings → Network**: turn MQTT or Home Assistant discovery on and see the pills and dependencies react.
 - **Settings → Device → Backup & restore**: back up, change something and restore.
 - Enter an invalid value and you get the device's own error message.
+- **Demo → Restart setup wizard**: the demo starts set up; this puts it back to a new device's state and opens the [setup wizard](user-guide/setup-wizard.md). Try **Test** on the Weather and N.I.N.A. pages, with the Roof controls making the weather unsafe or unparking the mount.
 
 Device addresses work too: open `/management/v1/description` or `/api/status` on the demo's address to see what the device would answer.
 

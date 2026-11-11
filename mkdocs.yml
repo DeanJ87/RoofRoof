@@ -81,6 +81,7 @@ nav:
     - USB flash: getting-started/usb-flash.md
     - First Boot: getting-started/first-setup.md
   - User Guide:
+    - Setup wizard: user-guide/setup-wizard.md
     - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
     - Roof motion: user-guide/roof-motion.md
