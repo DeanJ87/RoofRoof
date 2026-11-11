@@ -144,6 +144,7 @@ namespace SQM
         loopTaskHandle = xTaskGetCurrentTaskHandle();
         restoreAlertSchedule();
         subscribeArmCommands();
+        subscribeRoofCommands();
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
         // CRITICAL: Register API routes BEFORE static file serving
@@ -194,7 +195,7 @@ namespace SQM
             return;
         mqttClient->onCommand(
             "alerts/armed/set",
-            [this](const std::string &payload)
+            [this](const std::string &payload, RoofIo::Mqtt::Delivery)
             {
                 bool armed = false;
                 if (parseArmPayload(payload, armed))
@@ -303,6 +304,8 @@ namespace SQM
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
         publishDiscovery();
+        publishRoofResults();
+        publishRoofState();
 
         if (now - lastAlertPass >= ALERT_PASS_INTERVAL_MS)
         {
@@ -313,10 +316,13 @@ namespace SQM
         sendPendingAlertTest();
 
         // Status every 2 seconds, and at once when the recent alerts or the
-        // settings change, or (at most every 250 ms) the roof's state or fault.
+        // settings change, or (at most every 250 ms) the roof's state or fault
+        // or the automatic close's phase (spec 008).
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
         const uint32_t roofRevision = roof != nullptr ? roof->revision() : 0;
-        const bool roofChanged = roofRevision != lastRoofRevision && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
+        const char *phase = closePhase ? closePhase() : nullptr;
+        const bool roofChanged = (roofRevision != lastRoofRevision || phase != lastClosePhase) &&
+                                 now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
         const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
         if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
         {
@@ -326,6 +332,7 @@ namespace SQM
             lastAlertsRevision = alertsRevision;
             lastConfigRevision = configRevision;
             lastRoofRevision = roofRevision;
+            lastClosePhase = phase;
         }
     }
 

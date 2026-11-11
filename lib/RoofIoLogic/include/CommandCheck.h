@@ -28,12 +28,17 @@ namespace SQM
             bool closePending = false; // a close is waiting for an upload or MQTT connect to stop
         };
 
-        // Stop and abort: accepted, except an Alpaca client's while a close is
+        // An origin with no login that isn't the controller: an Alpaca client
+        // (spec 006) or MQTT (spec 008). Each gets every rule below that
+        // names a client; none is weaker than another.
+        bool remoteOrigin(Roof::Origin origin);
+
+        // Stop and abort: accepted, except a remote client's while a close is
         // under way or waiting and the weather isn't safe, whoever started the
         // close (constitution III: nothing unauthenticated may call off or
         // delay the roof closing in bad weather; a person's stop from the web
         // UI and the controller's own stops still work). Open and close: the weather and park gates
-        // (constitution II, III); then, for a client, no open while the roof
+        // (constitution II, III); then, for a remote client, no open while the roof
         // is closing, a close waits, or a close was stopped part-way (a client
         // never reverses a close); then the motion logic's dry run (position
         // unknown, fault, supply...).

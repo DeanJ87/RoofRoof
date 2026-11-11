@@ -472,7 +472,10 @@ namespace SQM
         if (lock == nullptr)
             return RoofIo::Snapshot();
         RoofLocked held(lock);
-        return snap;
+        RoofIo::Snapshot s = snap;
+        // The weather and park as a command's checks would see them now (spec 008).
+        RoofIo::applyChecks(s, currentGates());
+        return s;
     }
 
     uint32_t RoofControl::stackFreeBytes() const

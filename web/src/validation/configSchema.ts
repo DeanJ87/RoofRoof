@@ -36,6 +36,7 @@ export const mqttConfigSchema = z
       .min(1000, t('validation.configSchema.publishIntervalMustBeAt'))
       .max(86400000, t('validation.configSchema.publishIntervalCanBeAt')),
     homeAssistant: z.object({ enabled: z.boolean(), discoveryPrefix: z.string() }).optional(),
+    roofCommands: z.boolean().optional(),
   })
   // D-33 (a constraint): the device's own message.
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {

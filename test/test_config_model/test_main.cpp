@@ -230,6 +230,25 @@ void test_alert_wording_limits_count_characters_not_bytes()
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
 }
 
+// Spec 008: MQTT roof commands are off unless turned on, including for config
+// saved before the setting existed, and a wrong type is refused.
+void test_mqtt_roof_commands_default_off_and_round_trip()
+{
+    const Config base = Config::createDefault();
+    TEST_ASSERT_FALSE(base.mqtt.roofCommands);
+    const auto old = Config::fromJson(R"({"mqtt":{"enabled":true,"broker":"10.0.0.2","topic":"roofroof"}})");
+    TEST_ASSERT_TRUE(old.has_value());
+    TEST_ASSERT_FALSE(old->mqtt.roofCommands);
+    const auto on = Config::fromJson(R"({"mqtt":{"roofCommands":true}})", &base);
+    TEST_ASSERT_TRUE(on.has_value());
+    TEST_ASSERT_TRUE(on->mqtt.roofCommands);
+    const auto again = Config::fromJson(on->toJson());
+    TEST_ASSERT_TRUE(again->mqtt.roofCommands);
+    std::string error;
+    TEST_ASSERT_FALSE(Config::fromJson(R"({"mqtt":{"roofCommands":"yes"}})", &base, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("Settings: mqtt.roofCommands must be true or false", error.c_str());
+}
+
 void test_ipv6_setting_defaults_on_and_round_trips()
 {
     const Config base = Config::createDefault();
@@ -551,6 +570,7 @@ int main()
     RUN_TEST(test_full_client_templates_fit_and_add_nothing_to_main);
     RUN_TEST(test_alert_wording_limits_count_characters_not_bytes);
     RUN_TEST(test_ipv6_setting_defaults_on_and_round_trips);
+    RUN_TEST(test_mqtt_roof_commands_default_off_and_round_trip);
     RUN_TEST(test_ipv6_broker_and_webhook_forms);
     RUN_TEST(test_settings_save_cannot_blank_the_wifi_network);
     RUN_TEST(test_masked_mqtt_password_round_trips_through_a_save);

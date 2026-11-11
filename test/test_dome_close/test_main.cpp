@@ -1,5 +1,5 @@
-// An Alpaca client against spec 005's close on unsafe weather (spec 006 FR-007,
-// constitution III): the shared command check, the real motion logic and the
+// An Alpaca client (spec 006 FR-007) and an MQTT command source (spec 008
+// FR-007) against spec 005's close on unsafe weather (constitution III): the shared command check, the real motion logic and the
 // real close sequence, with RoofControl's command flow (src/RoofControl.cpp:
 // stopLocked, commandLocked) reduced to its decisions. Whatever a client sends,
 // in any order, the roof still ends closed.
@@ -110,7 +110,7 @@ namespace
 
 // A client that keeps closing and stopping (each stop a moment after its close)
 // can't hold the roof open: its stops are refused, the close runs to the magnet.
-void test_close_then_stop_loop_still_ends_closed(void)
+static void closeThenStopLoop(Origin remote)
 {
     ControlledRoof roof(1850.0f);
     CloseSeq::Sequence seq;
@@ -124,11 +124,11 @@ void test_close_then_stop_loop_still_ends_closed(void)
         [&](uint64_t t)
         {
             if (t % 20000 == 1000)
-                roof.command(Command::Close, Origin::Client);
+                roof.command(Command::Close, remote);
             if (t % 20000 == 1300 || t % 7000 == 0)
             {
                 const bool closing = roof.bench.state() == State::Closing || roof.closePending;
-                const bool accepted = roof.command(Command::Stop, Origin::Client);
+                const bool accepted = roof.command(Command::Stop, remote);
                 TEST_ASSERT_FALSE(accepted && closing); // only a stop with nothing closing gets through
                 stopsAccepted += accepted ? 1 : 0;
             }
@@ -139,21 +139,71 @@ void test_close_then_stop_loop_still_ends_closed(void)
     TEST_ASSERT_TRUE(stopsAccepted > 0); // the client was active throughout
 }
 
+void test_close_then_stop_loop_still_ends_closed(void)
+{
+    closeThenStopLoop(Origin::Client);
+}
+
+void test_mqtt_close_then_stop_loop_still_ends_closed(void)
+{
+    closeThenStopLoop(Origin::Mqtt);
+}
+
+// MQTT sending OPEN and STOP over and over (a Home Assistant automation gone
+// wrong) while the weather is unsafe: nothing opens, no stop lands while the
+// roof closes, the sequence never stands down, and the roof ends closed.
+void test_mqtt_open_and_stop_loop_still_ends_closed(void)
+{
+    ControlledRoof roof(1850.0f);
+    CloseSeq::Sequence seq;
+    uint64_t now = 0;
+    runFor(
+        roof,
+        seq,
+        now,
+        3600ull * 1000,
+        [&](uint64_t t)
+        {
+            if (t % 900 == 0)
+                TEST_ASSERT_FALSE(roof.command(Command::Open, Origin::Mqtt));
+            if (t % 1300 == 0)
+            {
+                const bool closing = roof.bench.state() == State::Closing || roof.closePending;
+                const bool accepted = roof.command(Command::Stop, Origin::Mqtt);
+                TEST_ASSERT_FALSE(accepted && closing);
+            }
+        });
+    TEST_ASSERT_TRUE(roof.bench.state() == State::Closed);
+    TEST_ASSERT_EQUAL_UINT32(0, roof.personStops);
+    TEST_ASSERT_TRUE(seq.phase() == CloseSeq::Phase::Idle);
+}
+
 // A client's close while spec 005's close waits behind an upload: the client
 // can't then cancel the waiting close by stopping it.
-void test_client_cannot_cancel_a_waiting_close(void)
+static void cannotCancelAWaitingClose(Origin remote)
 {
     ControlledRoof roof(1850.0f);
     roof.blocked = true;
     TEST_ASSERT_TRUE(roof.command(Command::Close, Origin::Automatic));
     TEST_ASSERT_TRUE(roof.closePending);
-    TEST_ASSERT_FALSE(roof.command(Command::Stop, Origin::Client));
-    TEST_ASSERT_TRUE(roof.command(Command::Close, Origin::Client)); // re-deferred as the client's
-    TEST_ASSERT_FALSE(roof.command(Command::Abort, Origin::Client));
+    TEST_ASSERT_FALSE(roof.command(Command::Stop, remote));
+    TEST_ASSERT_TRUE(roof.command(Command::Close, remote)); // re-deferred as the client's
+    TEST_ASSERT_FALSE(roof.command(Command::Abort, remote));
+    TEST_ASSERT_FALSE(roof.command(Command::Open, remote)); // nor replace it with an open
     TEST_ASSERT_TRUE(roof.closePending);
     roof.unblock();
     TEST_ASSERT_TRUE(roof.bench.runToRest());
     TEST_ASSERT_TRUE(roof.bench.state() == State::Closed);
+}
+
+void test_client_cannot_cancel_a_waiting_close(void)
+{
+    cannotCancelAWaitingClose(Origin::Client);
+}
+
+void test_mqtt_cannot_cancel_a_waiting_close(void)
+{
+    cannotCancelAWaitingClose(Origin::Mqtt);
 }
 
 // The sequence's own stop and a person's are never refused.
@@ -175,7 +225,10 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_close_then_stop_loop_still_ends_closed);
+    RUN_TEST(test_mqtt_close_then_stop_loop_still_ends_closed);
+    RUN_TEST(test_mqtt_open_and_stop_loop_still_ends_closed);
     RUN_TEST(test_client_cannot_cancel_a_waiting_close);
+    RUN_TEST(test_mqtt_cannot_cancel_a_waiting_close);
     RUN_TEST(test_person_and_controller_stops_still_work);
     return UNITY_END();
 }
