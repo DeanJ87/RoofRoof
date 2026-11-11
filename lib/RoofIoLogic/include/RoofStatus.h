@@ -33,7 +33,7 @@ namespace SQM
             bool rainFitted = false;
             Contact rain = Contact::Unreadable;
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
-            uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005; not in the document)
+            uint32_t personStops = 0; // a person's or an Alpaca client's stops and aborts since start (specs 005, 006; not in the document)
             uint32_t watchdogTrips = 0;
             uint32_t maxStepGapMs = 0;
             uint32_t maxWatchdogBeatAgeMs = 0; // the oldest watchdog heartbeat a step saw (limit 50 ms)

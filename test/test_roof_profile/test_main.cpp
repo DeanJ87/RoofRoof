@@ -55,6 +55,11 @@ void test_machine_names_are_stable(void)
     TEST_ASSERT_EQUAL_STRING("external", faultName(FaultKind::External));
     TEST_ASSERT_EQUAL_STRING("positionUnknown", refusalName(Refusal::PositionUnknown));
     TEST_ASSERT_EQUAL_STRING("moving", refusalName(Refusal::Moving));
+    TEST_ASSERT_EQUAL_STRING("open", commandName(Command::Open));
+    TEST_ASSERT_EQUAL_STRING("close", commandName(Command::Close));
+    TEST_ASSERT_EQUAL_STRING("stop", commandName(Command::Stop));
+    TEST_ASSERT_EQUAL_STRING("abort", commandName(Command::Abort));
+    TEST_ASSERT_EQUAL_STRING("unknown", commandName(static_cast<Command>(9)));
     TEST_ASSERT_EQUAL_STRING("rail", hallLevelName(HallLevel::Rail));
     TEST_ASSERT_EQUAL_STRING("unknown", stateName(static_cast<State>(99)));
     TEST_ASSERT_EQUAL_STRING("unknown", faultName(static_cast<FaultKind>(99)));

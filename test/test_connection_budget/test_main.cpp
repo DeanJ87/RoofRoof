@@ -27,6 +27,8 @@ namespace
         std::string serverName() const override { return "RoofRoof"; }
         std::string location() const override { return ""; }
         std::string timestampUtc() const override { return ""; }
+        SQM::Alpaca::DomeStatus domeStatus() const override { return {}; }
+        SQM::Alpaca::DomeAnswer domeCommand(SQM::Alpaca::DomeAction) override { return {}; }
     };
 
     std::string get(SQM::Alpaca::Router &router, const std::string &path)
