@@ -48,8 +48,8 @@ namespace SQM
     void WebServer::setupRoofRoutes()
     {
         server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
-        server.on("/api/roof/close", HTTP_POST,
-                  [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); });
+        server.on(
+            "/api/roof/close", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); });
         server.on("/api/roof/stop", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Stop); });
         server.on("/api/roof/clear-fault", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofClearFault(request); });
     }
@@ -84,8 +84,8 @@ namespace SQM
     {
         if (roof == nullptr || !roof->settingsSaveRefused(getConfigCallback(), next))
             return false;
-        request->send(409, "application/json",
-                      createErrorJson("The roof is moving: roof and park settings can't change until it stops").c_str());
+        request->send(
+            409, "application/json", createErrorJson("The roof is moving: roof and park settings can't change until it stops").c_str());
         return true;
     }
 

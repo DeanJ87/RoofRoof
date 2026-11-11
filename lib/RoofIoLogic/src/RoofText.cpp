@@ -56,15 +56,16 @@ namespace SQM
                 switch (r.cause)
                 {
                 case FaultCause::Watchdog:
-                    return format("Control step %.0f ms late > %.0f ms (watchdog)", static_cast<double>(r.fault.measured),
-                                  static_cast<double>(r.fault.limit));
+                    return format(
+                        "Control step %.0f ms late > %.0f ms (watchdog)",
+                        static_cast<double>(r.fault.measured),
+                        static_cast<double>(r.fault.limit));
                 case FaultCause::ParkInterlock:
                     return "Park lost during the close: " + failedParkInputs(static_cast<uint32_t>(r.fault.measured));
                 case FaultCause::StoredUnreadable:
                     return "Stored fault unreadable: the fault saved before the restart couldn't be read back";
                 default:
-                    return format("Fault raised: %g (limit %g)", static_cast<double>(r.fault.measured),
-                                  static_cast<double>(r.fault.limit));
+                    return format("Fault raised: %g (limit %g)", static_cast<double>(r.fault.measured), static_cast<double>(r.fault.limit));
                 }
             }
 

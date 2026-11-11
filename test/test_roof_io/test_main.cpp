@@ -249,13 +249,13 @@ namespace
 
 void test_damaged_record_is_a_fault(void)
 {
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(0, 'X', true));  // magic
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(1, 'X', true));  // magic
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(2, 2, true));    // version
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));    // kind None
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));   // kind out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 4, true));    // cause out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 1, true));    // reserved byte
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(0, 'X', true));   // magic
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(1, 'X', true));   // magic
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(2, 2, true));     // version
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 4, true));     // cause out of range
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 1, true));     // reserved byte
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(14, 0, false));   // checksum itself
     TEST_ASSERT_EQUAL(Decoded::Fault, decodeWith(7, 0x55, true));       // a changed value that checks out

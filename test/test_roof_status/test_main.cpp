@@ -65,12 +65,14 @@ void test_every_fault_text_has_value_and_limit(void)
 void test_external_fault_texts_by_cause(void)
 {
     assertText("Control step 140 ms late > 100 ms (watchdog)", describeFault(externalRecord(FaultCause::Watchdog, 140, 100)));
-    assertText("Park lost during the close: park switch 1 not closed",
-               describeFault(externalRecord(FaultCause::ParkInterlock, InterlockSwitch1, 0)));
-    assertText("Park lost during the close: park not confirmed, park switch 2 not closed",
-               describeFault(externalRecord(FaultCause::ParkInterlock, InterlockParkResult | InterlockSwitch2, 0)));
-    assertText("Stored fault unreadable: the fault saved before the restart couldn't be read back",
-               describeFault(storedUnreadableRecord()));
+    assertText(
+        "Park lost during the close: park switch 1 not closed",
+        describeFault(externalRecord(FaultCause::ParkInterlock, InterlockSwitch1, 0)));
+    assertText(
+        "Park lost during the close: park not confirmed, park switch 2 not closed",
+        describeFault(externalRecord(FaultCause::ParkInterlock, InterlockParkResult | InterlockSwitch2, 0)));
+    assertText(
+        "Stored fault unreadable: the fault saved before the restart couldn't be read back", describeFault(storedUnreadableRecord()));
     assertText("Fault raised: 3 (limit 2)", describeFault(externalRecord(FaultCause::Logic, 3, 2)));
 }
 
@@ -98,8 +100,7 @@ void test_gate_texts_name_the_failed_input(void)
     assertText("Weather not safe: no verdict yet", describeGate(GateRefusal::WeatherNotSafe, in));
     in.parked = false;
     in.parkText = "not parked: N.I.N.A. not configured";
-    assertText("Mount not parked: park not confirmed (not parked: N.I.N.A. not configured)",
-               describeGate(GateRefusal::MountNotParked, in));
+    assertText("Mount not parked: park not confirmed (not parked: N.I.N.A. not configured)", describeGate(GateRefusal::MountNotParked, in));
     in.parked = true;
     in.fittedSwitches = 2;
     in.switch1 = Contact::Closed;

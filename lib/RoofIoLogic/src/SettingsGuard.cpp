@@ -6,13 +6,19 @@ namespace SQM
     {
         namespace
         {
-            bool roofDiffers(const RoofConfig &a, const RoofConfig &b)
+            // How far the roof moves and how fast.
+            bool travelDiffers(const RoofConfig &a, const RoofConfig &b)
             {
                 return a.travelMm != b.travelMm || a.speedMmPerSecond != b.speedMmPerSecond ||
                        a.timeoutMarginSeconds != b.timeoutMarginSeconds || a.leaveMagnetSeconds != b.leaveMagnetSeconds ||
                        a.rampUpMs != b.rampUpMs || a.rampDownMs != b.rampDownMs || a.topDutyPercent != b.topDutyPercent ||
-                       a.slowDutyPercent != b.slowDutyPercent || a.openDirection != b.openDirection ||
-                       a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts ||
+                       a.slowDutyPercent != b.slowDutyPercent;
+            }
+
+            // How the roof is sensed and protected.
+            bool sensingDiffers(const RoofConfig &a, const RoofConfig &b)
+            {
+                return a.openDirection != b.openDirection || a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts ||
                        a.hallLowCounts != b.hallLowCounts || a.currentSenseEnabled != b.currentSenseEnabled ||
                        a.maxCurrentAmps != b.maxCurrentAmps || a.currentAmpsPerVolt != b.currentAmpsPerVolt ||
                        a.minSupplyVolts != b.minSupplyVolts;
@@ -26,7 +32,8 @@ namespace SQM
 
         bool motionSettingsChanged(const Config &current, const Config &next)
         {
-            return roofDiffers(current.roof, next.roof) || parkDiffers(current.park, next.park);
+            return travelDiffers(current.roof, next.roof) || sensingDiffers(current.roof, next.roof) ||
+                   parkDiffers(current.park, next.park);
         }
 
         bool settingsSaveRefused(Roof::State state, bool motionChanged)

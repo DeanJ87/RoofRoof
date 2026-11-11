@@ -16,7 +16,7 @@ namespace SQM
             // each one critical section, so a step racing a trip can't switch
             // the driver back on.
             portMUX_TYPE enableLock = portMUX_INITIALIZER_UNLOCKED;
-            bool tripSet = false;         // guarded by enableLock
+            bool tripSet = false;          // guarded by enableLock
             std::atomic<bool> enOn{false}; // what EN was last set to
             bool pwmReady = false;
 
