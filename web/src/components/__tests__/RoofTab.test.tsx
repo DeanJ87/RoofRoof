@@ -257,6 +257,10 @@ describe('Roof tab', () => {
     await openRoofTab();
     expect(await screen.findByText(/Alpaca is off: imaging apps can't open or close the roof/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Alpaca settings' })).toBeInTheDocument();
+    // The same docs anchor as the setup wizard's N.I.N.A. page.
+    expect(screen.getByRole('link', { name: 'How N.I.N.A. opens and closes the roof' }).getAttribute('href')).toMatch(
+      /docs\/user-guide\/alpaca\.md#nina-opens-and-closes-the-roof$/,
+    );
   });
 
   it('shows no Alpaca note while Alpaca is on', async () => {
