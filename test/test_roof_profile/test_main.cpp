@@ -201,6 +201,50 @@ void test_hall_a_changed_candidate_restarts_the_count(void)
     TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
 }
 
+void test_hall_rail_readings_counted_in_a_window(void)
+{
+    HallFilter filter;
+    feed(filter, 2000, 3);
+    // Alternating good and rail: the third rail reading within eight confirms it.
+    TEST_ASSERT_TRUE(feed(filter, 4095, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 4095, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 0, 1) == HallLevel::Rail);
+    // It stays a rail until the rail readings have left the window and a level is confirmed.
+    TEST_ASSERT_TRUE(feed(filter, 2000, 5) == HallLevel::Rail);
+    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+}
+
+void test_isolated_rail_readings_do_not_interrupt_a_magnet(void)
+{
+    HallFilter filter;
+    feed(filter, 2000, 3);
+    feed(filter, 3200, 2);
+    feed(filter, 4095, 1); // a spike between two magnet readings
+    TEST_ASSERT_TRUE(feed(filter, 3200, 1) == HallLevel::High);
+}
+
+void test_reading_sanity_bounds(void)
+{
+    TEST_ASSERT_TRUE(supplyReadable(16.0f));
+    TEST_ASSERT_FALSE(supplyReadable(16.001f));
+    TEST_ASSERT_FALSE(supplyReadable(INFINITY));
+    TEST_ASSERT_FALSE(supplyReadable(NAN));
+    TEST_ASSERT_TRUE(supplyReadable(0.0f)); // readable, and low
+    TEST_ASSERT_TRUE(currentReadable(-0.5f));
+    TEST_ASSERT_FALSE(currentReadable(-0.51f));
+    TEST_ASSERT_FALSE(currentReadable(INFINITY));
+    TEST_ASSERT_FALSE(currentReadable(NAN));
+}
+
+void test_drive_budget_is_the_longest_single_move(void)
+{
+    const Settings s;
+    TEST_ASSERT_EQUAL_UINT32(unknownMoveTimeoutMs(s), driveBudgetMs(s));
+    TEST_ASSERT_TRUE(driveBudgetMs(s) >= moveTimeoutMs(s, static_cast<float>(s.travelMm)));
+}
+
 // --- Profile (FR-009, FR-010) -----------------------------------------------
 
 void test_to_duty_rounds_and_clamps(void)
@@ -333,6 +377,10 @@ int main(int, char **)
     RUN_TEST(test_hall_leaving_a_magnet_needs_the_hysteresis_band);
     RUN_TEST(test_hall_rails);
     RUN_TEST(test_hall_a_changed_candidate_restarts_the_count);
+    RUN_TEST(test_hall_rail_readings_counted_in_a_window);
+    RUN_TEST(test_isolated_rail_readings_do_not_interrupt_a_magnet);
+    RUN_TEST(test_reading_sanity_bounds);
+    RUN_TEST(test_drive_budget_is_the_longest_single_move);
     RUN_TEST(test_to_duty_rounds_and_clamps);
     RUN_TEST(test_ramp_up_is_linear_from_slow_to_top);
     RUN_TEST(test_slow_down_by_estimated_distance);

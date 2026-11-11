@@ -70,6 +70,7 @@ namespace SQM
             CurrentUnreadable, // current sense on and no reading for CONFIRM_MS
             SupplyLow,         // supply below its minimum, or unreadable, for CONFIRM_MS
             LateStep,          // a control step later than MAX_STEP_GAP_MS while driving
+            DriveBudget,       // driven too long in total without reaching a magnet
             External,          // raised by the caller (watchdog, park interlock)
         };
 

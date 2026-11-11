@@ -39,6 +39,7 @@ namespace SQM
                 "currentUnreadable",
                 "supplyLow",
                 "lateStep",
+                "driveBudget",
                 "external",
             };
             return nameIn(kind, NAMES);

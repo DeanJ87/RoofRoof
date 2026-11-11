@@ -24,6 +24,19 @@ namespace SQM
         HallLevel HallFilter::update(uint16_t counts, const HallThresholds &thresholds)
         {
             const HallLevel seen = classify(counts, thresholds, confirmed);
+            constexpr uint8_t WINDOW_MASK = static_cast<uint8_t>((1u << HALL_RAIL_WINDOW_READINGS) - 1u);
+            railHistory = static_cast<uint8_t>(((railHistory << 1) | (seen == HallLevel::Rail ? 1u : 0u)) & WINDOW_MASK);
+            int rails = 0;
+            for (uint8_t bits = railHistory; bits != 0; bits = static_cast<uint8_t>(bits & (bits - 1)))
+                ++rails;
+            if (rails >= HALL_RAIL_LATCH_READINGS)
+            {
+                confirmed = HallLevel::Rail;
+                candidateCount = 0;
+                return confirmed;
+            }
+            if (seen == HallLevel::Rail)
+                return confirmed; // too few to confirm; doesn't break a magnet's run either
             if (seen == confirmed)
             {
                 candidateCount = 0;

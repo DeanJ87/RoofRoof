@@ -4,12 +4,17 @@
 // jams, wrong wiring and missing magnets drive a simulated roof. After every
 // step and command an independent observer checks:
 //
-//   P1  never both directions; Off for the dead time between driven periods;
+//   P1  never both directions; Off for the dead time between driven periods,
+//       and after start-up, timed from steps (commands carry no time);
 //       the direction is the one the target needs;
 //   P2  the duty never exceeds the top duty, nor the slow duty from unknown;
 //   P3  a latched fault keeps the driver off until a person clears it;
 //   P4  no motion after the position became unknown without a person's command;
 //   P5  no driven period outlasts its timeout or (from a magnet) the leave time;
+//   P7  three rail readings among the last eight, consecutive or not, latch a
+//       fault on that step;
+//   P8  the total driving since a magnet was last read (or a person cleared a
+//       fault) never reaches the drive budget;
 //   P6  the target magnet ends the move, at that end, on the step it is
 //       confirmed.
 //
@@ -105,7 +110,10 @@ namespace
         uint32_t seed = 0;
         int step = 0;
         bool wasOn = false;
-        bool everOn = false;
+        bool everOn = true;     // start-up counts as a stop (constitution I)
+        bool pendingOff = true; // the off time starts at the next step
+        uint8_t railHistory = 0;
+        uint32_t drivenSinceMagnetMs = 0;
         Driver::Command lastDirection = Driver::Command::Off;
         uint32_t offSinceMs = 0;
         uint32_t onSinceMs = 0;
@@ -165,7 +173,7 @@ namespace
             if (on && !wasOn)
                 startPeriod(roof, nowMs);
             if (!on && wasOn)
-                offSinceMs = nowMs;
+                pendingOff = true;
             wasOn = on;
             if (!on)
                 return;
@@ -238,6 +246,36 @@ namespace
                 fail("P6 reaching the target magnet ends the move at that end");
         }
 
+        // Before the step's checks: the dead time runs from the first step after
+        // the driver went off; the drive budget counts the gap if it was on.
+        void beforeStep(uint32_t gapMs)
+        {
+            if (wasOn)
+                drivenSinceMagnetMs += gapMs;
+        }
+
+        // P7, P8 after a step, with the Hall reading that was fed to it.
+        void afterStep(const Controller &roof, uint32_t nowMs, uint16_t hallCounts)
+        {
+            if (pendingOff)
+            {
+                offSinceMs = nowMs;
+                pendingOff = false;
+            }
+            const Status &st = roof.status();
+            const bool rail = hallCounts <= HALL_RAIL_LOW_COUNTS || hallCounts >= HALL_RAIL_HIGH_COUNTS;
+            railHistory = static_cast<uint8_t>((railHistory << 1) | (rail ? 1 : 0));
+            int rails = 0;
+            for (int bit = 0; bit < 8; ++bit)
+                rails += (railHistory >> bit) & 1;
+            if (rails >= 3 && st.fault.kind == FaultKind::None)
+                fail("P7 three rail readings in eight latch a fault");
+            if (st.hall == HallLevel::High || st.hall == HallLevel::Low)
+                drivenSinceMagnetMs = 0;
+            if (roof.output().command != Driver::Command::Off && drivenSinceMagnetMs >= driveBudgetMs(settings))
+                fail("P8 total driving without a magnet stays under the budget");
+        }
+
         void check(const Controller &roof, uint32_t nowMs)
         {
             checkOutput(roof);
@@ -260,6 +298,8 @@ namespace
                 return;
             if (origin != Origin::Person && faultSeen)
                 fail("P3 only a person clears a fault");
+            if (faultSeen)
+                drivenSinceMagnetMs = 0;
             faultSeen = false;
         }
     };
@@ -272,6 +312,7 @@ namespace
         int dipSteps = 0;
         float dipVolts = 12.6f;
         int spikeSteps = 0;
+        int flickerSteps = 0; // an intermittent connector: every other reading at a rail
     };
 
     Readings readingsWith(const RoofSim &sim, uint32_t nowMs, Glitches &g, Random &rng)
@@ -283,6 +324,12 @@ namespace
         {
             --g.railSteps;
             r.hallCounts = g.railCounts;
+        }
+        if (g.flickerSteps > 0)
+        {
+            --g.flickerSteps;
+            if (g.flickerSteps % 2 == 0)
+                r.hallCounts = 4095;
         }
         if (g.dipSteps > 0)
         {
@@ -309,6 +356,8 @@ namespace
             g.dipSteps = static_cast<int>(rng.between(1, 30));
             g.dipVolts = rng.chance(1000) ? NAN : rng.uniform(7.0f, 12.5f);
         }
+        if (rng.chance(3))
+            g.flickerSteps = static_cast<int>(rng.between(2, 12));
         if (rng.chance(5))
             g.spikeSteps = static_cast<int>(rng.between(1, 20));
         if (rng.chance(5))
@@ -350,7 +399,7 @@ namespace
         static const Command COMMANDS[] = {
             Command::Open, Command::Close, Command::Open, Command::Close, Command::Stop, Command::Abort, Command::Open, Command::Close};
         const Command command = COMMANDS[pick - 2];
-        const CommandResult result = roof.command(command, origin, nowMs);
+        const CommandResult result = roof.command(command, origin);
         obs.commanded(roof, command, origin, result);
     }
 
@@ -365,7 +414,7 @@ namespace
         Glitches glitches;
         uint32_t nowMs = rng.next();
         if (rng.chance(300))
-            roof.raiseFault(Fault{FaultKind::Timeout, 1.0f, 1.0f}, nowMs);
+            roof.raiseFault(Fault{FaultKind::Timeout, 1.0f, 1.0f});
         for (obs.step = 0; obs.step < STEPS_PER_SEQUENCE; ++obs.step)
         {
             if (rng.chance(150))
@@ -379,7 +428,10 @@ namespace
             nowMs += gapMs;
             const State before = roof.status().state;
             const End target = roof.status().target;
-            roof.tick(readingsWith(sim, nowMs, glitches, rng));
+            const Readings readings = readingsWith(sim, nowMs, glitches, rng);
+            obs.beforeStep(gapMs);
+            roof.tick(readings);
+            obs.afterStep(roof, nowMs, readings.hallCounts);
             obs.check(roof, nowMs);
             obs.checkArrival(roof, before, target);
         }
@@ -390,7 +442,7 @@ namespace
     struct Coverage
     {
         uint32_t arrived = 0;
-        uint32_t faults[10] = {};
+        uint32_t faults[11] = {};
         uint32_t unknownMoves = 0;
     };
 } // namespace
@@ -443,7 +495,7 @@ void test_property_sequences_reach_every_fault_and_both_ends(void)
         "coverage: %u arrivals, %u steps driving from unknown, faults:",
         static_cast<unsigned>(seen.arrived),
         static_cast<unsigned>(seen.unknownMoves));
-    for (int kind = 1; kind < 10; ++kind)
+    for (int kind = 1; kind < 11; ++kind)
         printf(" %s %u", faultName(static_cast<FaultKind>(kind)), static_cast<unsigned>(seen.faults[kind]));
     printf("\n");
     TEST_ASSERT_TRUE(seen.arrived > 100);

@@ -109,10 +109,11 @@ namespace RoofTest
             settleHall();
         }
 
-        // Steps with the driver off until the Hall has settled where the roof is.
+        // Steps with the driver off until the Hall has settled where the roof is
+        // and the dead time after start-up has passed (600 ms).
         void settleHall()
         {
-            for (int i = 0; i < 4; ++i)
+            for (uint32_t waited = 0; waited < 600; waited += stepMs)
                 step();
         }
 
@@ -132,7 +133,7 @@ namespace RoofTest
 
         SQM::Roof::CommandResult command(SQM::Roof::Command command, SQM::Roof::Origin origin = SQM::Roof::Origin::Person)
         {
-            return roof.command(command, origin, nowMs);
+            return roof.command(command, origin);
         }
 
         // Steps until `until` is true or `maxMs` passes; true if `until` became true.
