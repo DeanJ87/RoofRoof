@@ -27,8 +27,8 @@ function arg(name) {
   return at === -1 ? undefined : process.argv[at + 1];
 }
 
-// The docs address lives in one place: mkdocs.yml's site_url. RoofRoof's repo
-// is private and its docs are a CI artifact, so site_url is empty and the
+// The docs address lives in one place: mkdocs.yml's site_url. RoofRoof's docs
+// are a CI artifact, so site_url is empty and the
 // release body gets relative links (an empty base).
 function docsBase() {
   const match = /^site_url:[ \t]*(\S*)/m.exec(readFileSync(join(ROOT, 'mkdocs.yml'), 'utf8'));

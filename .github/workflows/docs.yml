@@ -1,7 +1,7 @@
 name: Docs & Demo
 
-# The docs and the demo are CI artifacts: the repository is private, so there
-# is no GitHub Pages site and no public demo host (spec 001, research R9).
+# The docs and the demo are CI artifacts: there is no GitHub Pages
+# site and no public demo host (spec 001, research R9).
 # Download the "site" artifact from a run and open site/index.html (or serve
 # it with `python3 -m http.server -d site`); the demo is under site/demo/.
 on:

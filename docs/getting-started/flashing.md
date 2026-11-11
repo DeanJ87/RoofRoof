@@ -6,7 +6,7 @@ description: "Flash RoofRoof firmware onto an ESP32 over USB with esptool: the r
 
 Flash your ESP32 over USB once; after that it can be updated over WiFi by uploading a file on its Updates page ([Updates](../user-guide/ota.md)). RoofRoof has no browser flasher: use `esptool` from a computer with a USB data cable.
 
-The RoofRoof repository is private, so the files come from the repository's GitHub release assets or from a CI run's artifacts (you need access to the repository), or from your own build ([BUILD.md](https://github.com/DeanJ87/RoofRoof/blob/main/BUILD.md)).
+The files come from the repository's GitHub release assets (anyone can download them) or from a CI run's artifacts (you need a GitHub login), or from your own build ([BUILD.md](https://github.com/DeanJ87/RoofRoof/blob/main/BUILD.md)).
 
 ---
 

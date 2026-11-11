@@ -1,6 +1,6 @@
 site_name: RoofRoof
 site_description: "ESP32 firmware and web UI for an observatory roll-off-roof controller: ASCOM Alpaca for N.I.N.A., MQTT, Home Assistant and alerts."
-# Empty on purpose: the repository is private and the docs are a CI artifact,
+# Empty on purpose: the docs are a CI artifact,
 # so links are relative and there is no public address.
 site_url: ""
 repo_url: https://github.com/DeanJ87/RoofRoof
