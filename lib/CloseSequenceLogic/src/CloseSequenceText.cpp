@@ -30,7 +30,8 @@ namespace SQM
                     return withWhy("The roof refused to close; it tries again in 5 minutes. Refused:", why);
                 case Cause::TooLong:
                     return withWhy(
-                        "The close didn't finish within " + seconds(decision.limitMs) +
+                        "The close didn't finish " +
+                            (decision.limitMs == 0 ? std::string("in time") : "within " + seconds(decision.limitMs)) +
                             " and was stopped where it is; it won't close by itself until the roof has been closed or the weather has been "
                             "safe for 10 minutes. Roof:",
                         why);

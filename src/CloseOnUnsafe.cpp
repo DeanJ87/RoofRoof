@@ -23,7 +23,8 @@ namespace SQM
             uint8_t cause;
             uint8_t check;
         };
-        constexpr uint32_t KEPT_MAGIC = 0x5EC0005Du;
+        // Bump the low byte whenever Kept or the enums it holds change.
+        constexpr uint32_t KEPT_MAGIC = 0x5EC00501u;
         RTC_NOINIT_ATTR Kept kept;
 
         uint8_t checkOf(uint8_t phase, uint8_t event, uint8_t cause)

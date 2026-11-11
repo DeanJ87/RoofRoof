@@ -305,7 +305,8 @@ void test_flapping_verdict_still_raises_mount_not_parked_in_time()
     }
     TEST_ASSERT_FALSE(alerts.empty());
     assertEvent(alerts.front(), Event::ParkNotConfirmed, Cause::ParkTimeout);
-    TEST_ASSERT_TRUE(firstAlertMs <= T0 + DEFAULT_PARK_TIMEOUT_MS + 100);
+    // 240 s of unsafe time: the 3 s safe blips are left out of the clock.
+    TEST_ASSERT_TRUE(firstAlertMs <= T0 + DEFAULT_PARK_TIMEOUT_MS + 15000);
 }
 
 void test_a_long_safe_spell_starts_a_fresh_attempt()
@@ -378,145 +379,76 @@ void test_a_restored_stand_down_holds_and_reminds_at_once()
     TEST_ASSERT_EQUAL(Event::StoppedByPerson, seq.lastEvent());
     // Only the stand-downs are restored.
     Sequence other;
-    other.restore(Phase::Closing, Event::None, Cause::None);
+    other.restore(Phase::Closing, Event::CloseFailed, Cause::Refused);
+    TEST_ASSERT_EQUAL(Phase::Idle, other.phase());
+    other.restore(Phase::RetryWait, Event::ParkNotConfirmed, Cause::ParkTimeout);
     TEST_ASSERT_EQUAL(Phase::Idle, other.phase());
     other.restore(Phase::Halted, Event::CloseFailed, Cause::TooLong);
     TEST_ASSERT_EQUAL(Phase::Halted, other.phase());
     TEST_ASSERT_EQUAL(Cause::TooLong, other.lastCause());
 }
 
-// --- Wording and mapping ---
-
-void test_alert_text_names_the_step_and_the_reason()
+void test_a_resumed_attempt_counts_only_unsafe_time()
 {
-    Decision park;
-    park.event = Event::ParkNotConfirmed;
-    park.cause = Cause::ParkTimeout;
-    park.limitMs = 240000;
-    AlertText text = alertFor(park, "not parked: N.I.N.A. unreachable: connection refused");
-    TEST_ASSERT_EQUAL_STRING("Mount didn't park", text.title.c_str());
-    TEST_ASSERT_NOT_NULL(strstr(text.message.c_str(), "within 240 s"));
-    TEST_ASSERT_NOT_NULL(strstr(text.message.c_str(), "N.I.N.A. unreachable"));
-    TEST_ASSERT_NOT_NULL(strstr(text.message.c_str(), "stays open"));
-
-    park.cause = Cause::NinaNotConfigured;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(park, "").message.c_str(), "park.nina.url"));
-
-    Decision close;
-    close.event = Event::CloseFailed;
-    close.cause = Cause::TooLong;
-    close.limitMs = 90000;
-    text = alertFor(close, "closing");
-    TEST_ASSERT_EQUAL_STRING("Roof didn't close", text.title.c_str());
-    TEST_ASSERT_NOT_NULL(strstr(text.message.c_str(), "within 90 s"));
-    close.cause = Cause::Fault;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(close, "Park interlock: park switch 1 open").message.c_str(), "park switch 1 open"));
-    close.cause = Cause::Refused;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(close, "Supply 10.9 V < 11.0 V").message.c_str(), "10.9 V < 11.0 V"));
-    close.cause = Cause::Interrupted;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(close, "stopped").message.c_str(), "stopped before"));
-
-    Decision cannot;
-    cannot.event = Event::CannotClose;
-    cannot.cause = Cause::PositionUnknown;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(cannot, "").message.c_str(), "position is unknown"));
-    cannot.cause = Cause::FaultLatched;
-    TEST_ASSERT_NOT_NULL(strstr(alertFor(cannot, "Timeout 61.0 s > 60.0 s").message.c_str(), "61.0 s"));
-
-    Decision held;
-    held.event = Event::StoppedByPerson;
-    TEST_ASSERT_EQUAL_STRING("Automatic close stopped", alertFor(held, "").title.c_str());
-    held.reminder = true;
-    TEST_ASSERT_EQUAL_STRING("Still: Automatic close stopped", alertFor(held, "").title.c_str());
+    Rig r;
+    r.seq.setParkTimeoutMs(60000);
+    r.startUnsafe(); // request at T0
+    r.in.weatherSafe = true;
+    r.at(T0 + 1000); // 1 s unsafe, then 9 minutes safe
+    r.runTo(T0 + 1000 + 9 * 60000, 1000);
+    r.in.weatherSafe = false;
+    const uint64_t back = T0 + 2000 + 9 * 60000;
+    const Decision d = r.at(back);
+    TEST_ASSERT_EQUAL(Event::Started, d.event);
+    TEST_ASSERT_EQUAL(Action::RequestPark, d.action); // asked again, not failed at once
+    TEST_ASSERT_EQUAL(0u, r.runTo(back + 59000 - 1000, 1000).events.size());
+    assertEvent(r.at(back + 60000), Event::ParkNotConfirmed, Cause::ParkTimeout);
 }
 
-void test_reason_for_each_cause()
+void test_a_closed_roof_resets_the_alert_throttle()
 {
-    Reasons reasons;
-    reasons.park = "not parked: N.I.N.A. unreachable";
-    reasons.fault = "Supply 10.9 V < 11.0 V";
-    reasons.refusal = "Hall reading not settled";
-    reasons.roof = State::Stopped;
-    Decision d;
-    d.cause = Cause::ParkTimeout;
-    TEST_ASSERT_EQUAL_STRING(reasons.park.c_str(), reasonFor(d, reasons).c_str());
-    d.cause = Cause::NinaNotConfigured;
-    TEST_ASSERT_EQUAL_STRING(reasons.park.c_str(), reasonFor(d, reasons).c_str());
-    d.cause = Cause::Fault;
-    TEST_ASSERT_EQUAL_STRING(reasons.fault.c_str(), reasonFor(d, reasons).c_str());
-    d.cause = Cause::FaultLatched;
-    TEST_ASSERT_EQUAL_STRING(reasons.fault.c_str(), reasonFor(d, reasons).c_str());
-    d.cause = Cause::Refused;
-    TEST_ASSERT_EQUAL_STRING(reasons.refusal.c_str(), reasonFor(d, reasons).c_str());
-    d.cause = Cause::Interrupted;
-    TEST_ASSERT_EQUAL_STRING("stopped", reasonFor(d, reasons).c_str());
-    d.cause = Cause::TooLong;
-    TEST_ASSERT_EQUAL_STRING("stopped", reasonFor(d, reasons).c_str());
-    d.cause = Cause::PositionUnknown;
-    TEST_ASSERT_EQUAL_STRING("", reasonFor(d, reasons).c_str());
+    Rig r;
+    r.in.roof = State::Error;
+    TEST_ASSERT_TRUE(r.startUnsafe().alert);
+    r.in.roof = State::Closed; // fault cleared and closed by the owner
+    assertEvent(r.at(T0 + 60000), Event::Closed, Cause::None);
+    r.in.roof = State::Open; // reopened in good weather...
+    r.in.weatherSafe = true;
+    r.at(T0 + 120000);
+    r.in.roof = State::Error; // ...and the same fault again in the next rain
+    r.in.weatherSafe = false;
+    const Decision d = r.at(T0 + 300000);
+    assertEvent(d, Event::CannotClose, Cause::FaultLatched);
+    TEST_ASSERT_TRUE(d.alert);
 }
 
-void test_critical_events()
+void test_no_reminder_of_cannot_close_once_the_roof_can_move()
 {
-    TEST_ASSERT_TRUE(isCritical(Event::ParkNotConfirmed));
-    TEST_ASSERT_TRUE(isCritical(Event::CloseFailed));
-    TEST_ASSERT_TRUE(isCritical(Event::CannotClose));
-    TEST_ASSERT_TRUE(isCritical(Event::StoppedByPerson));
-    TEST_ASSERT_FALSE(isCritical(Event::None));
-    TEST_ASSERT_FALSE(isCritical(Event::Started));
-    TEST_ASSERT_FALSE(isCritical(Event::EndedSafe));
-    TEST_ASSERT_FALSE(isCritical(Event::Closed));
+    Rig r;
+    r.in.roof = State::Error;
+    r.startUnsafe();
+    r.in.roof = State::Open; // the fault cleared at the open magnet, no park
+    r.at(T0 + 1000);
+    TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    Counts c = r.runTo(T0 + 1000 + RETRY_AFTER_MS - 1000, 1000);
+    TEST_ASSERT_EQUAL(0, c.alerts);
+    for (const Decision &e : c.events)
+        TEST_ASSERT_FALSE(e.reminder);
 }
 
-void test_names()
+void test_restore_ignores_values_out_of_range()
 {
-    TEST_ASSERT_EQUAL_STRING("waitPark", phaseName(Phase::WaitPark));
-    TEST_ASSERT_EQUAL_STRING("cannotMove", phaseName(Phase::CannotMove));
-    TEST_ASSERT_EQUAL_STRING("stoppedByPerson", eventName(Event::StoppedByPerson));
-    TEST_ASSERT_EQUAL_STRING("faultLatched", causeName(Cause::FaultLatched));
-    TEST_ASSERT_EQUAL_STRING("?", phaseName(static_cast<Phase>(99)));
-}
-
-void test_only_a_safe_verdict_is_safe()
-{
-    Inputs in;
-    Safety::ParkResult park;
-    applySafety(in, Safety::Verdict::Safe, park);
-    TEST_ASSERT_TRUE(in.weatherSafe);
-    applySafety(in, Safety::Verdict::Unknown, park);
-    TEST_ASSERT_FALSE(in.weatherSafe);
-    applySafety(in, Safety::Verdict::Unsafe, park);
-    TEST_ASSERT_FALSE(in.weatherSafe);
-}
-
-void test_park_mapping()
-{
-    Inputs in;
-    Safety::ParkResult park;
-    park.parked = true;
-    applySafety(in, Safety::Verdict::Unsafe, park);
-    TEST_ASSERT_TRUE(in.parked);
-    TEST_ASSERT_TRUE(in.ninaConfigured);
-    park.parked = false;
-    park.reasons = Safety::ParkNinaNotConfigured | Safety::ParkSwitch1Open;
-    applySafety(in, Safety::Verdict::Unsafe, park);
-    TEST_ASSERT_FALSE(in.parked);
-    TEST_ASSERT_FALSE(in.ninaConfigured);
-    park.reasons = Safety::ParkNinaUnreachable;
-    applySafety(in, Safety::Verdict::Unsafe, park);
-    TEST_ASSERT_TRUE(in.ninaConfigured);
-}
-
-void test_roof_mapping()
-{
-    Inputs in;
-    Roof::Status status;
-    status.state = State::Closing;
-    status.moveTimeoutMs = 61000;
-    applyRoof(in, status, true);
-    TEST_ASSERT_EQUAL(State::Closing, in.roof);
-    TEST_ASSERT_EQUAL_UINT32(61000, in.moveTimeoutMs);
-    TEST_ASSERT_TRUE(in.closePending);
+    Sequence seq;
+    seq.restore(Phase::HeldByPerson, static_cast<Event>(200), Cause::None);
+    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
+    seq.restore(Phase::HeldByPerson, Event::Started, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
+    seq.restore(Phase::Halted, Event::CloseFailed, static_cast<Cause>(77));
+    TEST_ASSERT_EQUAL(Phase::Idle, seq.phase());
+    Decision restored;
+    restored.event = Event::CloseFailed;
+    restored.cause = Cause::TooLong;
+    TEST_ASSERT_NOT_NULL(strstr(alertFor(restored, "stopped").message.c_str(), "didn't finish in time"));
 }
 
 int main(int, char **)
@@ -545,12 +477,9 @@ int main(int, char **)
     RUN_TEST(test_reminders_in_the_retry_wait_stop_when_safe);
     RUN_TEST(test_stand_down_rearm_counts_from_the_stop);
     RUN_TEST(test_a_restored_stand_down_holds_and_reminds_at_once);
-    RUN_TEST(test_alert_text_names_the_step_and_the_reason);
-    RUN_TEST(test_reason_for_each_cause);
-    RUN_TEST(test_critical_events);
-    RUN_TEST(test_names);
-    RUN_TEST(test_only_a_safe_verdict_is_safe);
-    RUN_TEST(test_park_mapping);
-    RUN_TEST(test_roof_mapping);
+    RUN_TEST(test_a_resumed_attempt_counts_only_unsafe_time);
+    RUN_TEST(test_a_closed_roof_resets_the_alert_throttle);
+    RUN_TEST(test_no_reminder_of_cannot_close_once_the_roof_can_move);
+    RUN_TEST(test_restore_ignores_values_out_of_range);
     return UNITY_END();
 }

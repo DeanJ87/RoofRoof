@@ -24,7 +24,7 @@ Decisions are in [research.md](research.md); types and the transition table in
 | **Language/Version** | C++17 (GCC 14, Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5); TypeScript strict |
 | **Primary Dependencies** | `lib/RoofLogic` (`Roof::State`), spec 003's `RoofControl`, spec 004's `SafetyInputs`, the alert dispatcher |
 | **Storage** | NVS: one integer in the main config document |
-| **Testing** | `pio test -e native` (new: `test_close_sequence`, `test_close_standdown`, `test_close_properties`, sharing `test/close_rig`; extended: `test_config_safety`, `test_config_ranges`, `test_alert_clients`, `test_settings_deps` fixture), Vitest (config schema), a deliberate-breakage run by hand (results in the PR) |
+| **Testing** | `pio test -e native` (new: `test_close_sequence`, `test_close_standdown`, `test_close_text`, `test_close_properties`, sharing `test/close_rig`; extended: `test_config_safety`, `test_config_ranges`, `test_alert_clients`, `test_settings_deps` fixture), Vitest (config schema), a deliberate-breakage run by hand (results in the PR) |
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + settings schema + docs |
 | **Performance Goals** | the sequence is stepped every main-loop pass (~10 ms); a decision is a few comparisons; no allocation except alert text |
@@ -69,7 +69,7 @@ include/CloseOnUnsafe.h, src/CloseOnUnsafe.cpp   main-loop glue
 include/RoofControl.h, src/RoofControl.cpp       count a person's stops (RoofIo::Snapshot::personStops)
 include/WebServer.h, src/WebServerAlerts.cpp     raiseRoofAlert()
 src/main.cpp                                      begin, updateConfig, handle
-test/close_rig, test/test_close_sequence, test/test_close_standdown, test/test_close_properties
+test/close_rig, test/test_close_sequence, test/test_close_standdown, test/test_close_text, test/test_close_properties
 web/src/validation/configSchema.ts, web/src/types/config.ts, web/src/mocks/config.ts
 test/fixtures/config-ranges.json
 docs/user-guide/close-on-unsafe.md (new), safety-inputs.md, alerts.md, configuration.md, mkdocs.yml
