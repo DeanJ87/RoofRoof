@@ -60,7 +60,13 @@ namespace SQM
         bool tripMarked();
         void clearTripMark();
 
-        // EN is high (the driver is on).
+        // EN is high (the driver is on). In a bench build (spec 011): EN as
+        // the logic set it; the pin itself stays low.
         bool enabled();
+
+        // What the driver applies as the logic decided it (EN with the trip,
+        // arming and heartbeat rules, and the duties). In a bench build none of
+        // it reaches the pins; the simulated roof follows this (spec 011).
+        Driver::Outputs logicalOutputs();
     } // namespace MotorDriver
 } // namespace SQM

@@ -80,6 +80,44 @@ jobs:
           done <<< "$changed"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
+  # Bench mode (spec 011): the bench image must keep building, and must carry
+  # the bench marker the standard firmware refuses. Built only, never released.
+  bench:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio3-bench-${{ hashFiles('platformio.ini') }}
+      - name: Install PlatformIO
+        run: |
+          pip install "platformio==6.2.0"
+          python -m venv ~/.platformio/penv
+          ~/.platformio/penv/bin/pip install "pioarduino==6.2.0" uv
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: web
+      - name: Build the bench firmware
+        run: pio run -e esp32dev_bench
+      - name: The bench image carries the bench marker
+        run: |
+          LC_ALL=C grep -a -c "product=roofroof;layout=l2;build=bench;" .pio/build/esp32dev_bench/firmware.bin
+          if LC_ALL=C grep -a -q "build=standard;" .pio/build/esp32dev_bench/firmware.bin; then
+            echo "ERROR: the bench image carries the standard marker"; exit 1
+          fi
+
   build:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -255,6 +293,14 @@ jobs:
 
       - name: Build firmware
         run: pio run -e esp32dev
+
+      # Spec 011: the standard image never carries the bench marker.
+      - name: The standard image is not a bench image
+        run: |
+          LC_ALL=C grep -a -c "product=roofroof;layout=l2;build=standard;" .pio/build/esp32dev/firmware.bin
+          if LC_ALL=C grep -a -q "build=bench;" .pio/build/esp32dev/firmware.bin; then
+            echo "ERROR: the standard image carries the bench marker"; exit 1
+          fi
 
       - name: Build LittleFS image
         run: pio run -e esp32dev --target buildfs

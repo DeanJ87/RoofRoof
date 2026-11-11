@@ -60,6 +60,9 @@ namespace SQM
         setupPins();
         // Constitution I: a restart never clears the lockout. Latched before the first step.
         restoreFault();
+#if ROOFROOF_BENCH
+        benchStart();
+#endif
         refreshSnapshot();
         return startTask();
     }
@@ -351,6 +354,7 @@ namespace SQM
         s.maxWatchdogBeatAgeMs = maxBeatAgeMs;
         s.watchdogTrips = watchdogTrips;
         s.maxStepGapMs = maxStepGapMs;
+        s.simulation = Bench::SIMULATION;
         const bool changed =
             s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind || s.closePending != snap.closePending;
         snap = s;
@@ -387,6 +391,9 @@ namespace SQM
         settings = pendingSettings;
         settingsPending = false;
         gates.fittedSwitches = settings.fittedSwitches;
+#if ROOFROOF_BENCH
+        benchSettings();
+#endif
         applyOutput();
         notice = "Roof settings applied";
     }

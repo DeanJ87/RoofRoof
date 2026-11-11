@@ -16,6 +16,7 @@
 #include "MQTTClient.h"
 #include "MotionGuards.h"
 #include "MotorDriver.h"
+#include "OtaImageCheck.h"
 #include "PlatformGuard.h"
 #include "RoofControl.h"
 #include "SafetyInputs.h"
@@ -250,6 +251,15 @@ void startArduinoOta()
     ArduinoOTA.onEnd(
         []()
         {
+            // Spec 011: the web upload's marker check, after the fact (a bench
+            // image never boots on a standard board).
+            std::string why;
+            if (arduinoOtaFirmware && OtaImageCheck::revertIfRefused(why))
+            {
+                Logger::error("OTA", "Command-line firmware refused, the running firmware stays: %s", why.c_str());
+                FlashGuard::end(arduinoOtaToken);
+                return;
+            }
             Logger::info("OTA", "Update complete; restarting");
             WebServer::scheduleRestart(1000, !arduinoOtaFirmware);
             FlashGuard::end(arduinoOtaToken);
