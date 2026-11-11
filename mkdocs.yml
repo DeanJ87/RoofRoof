@@ -97,6 +97,7 @@ nav:
     - Wiring: hardware/wiring.md
     - Commissioning guide: hardware/commissioning.md
     - Commissioning checklist: hardware/commissioning-checklist.md
+    - Quick bench test: hardware/quick-bench-test.md
     - Calibration: hardware/calibration.md
   - API Reference:
     - REST API: api/rest.md

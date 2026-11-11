@@ -12,6 +12,8 @@ This is the one ordered procedure for bringing a new roof controller into servic
 
 A [printable checklist](commissioning-checklist.md) carries every check below with a box and a space for the measured value. Print it and fill it in as you go: step N of stage S here is box S.N there.
 
+Just want to see the motor turn on the bench before the Hall sensor exists? The [quick bench test](quick-bench-test.md) does that with a potentiometer standing in for the sensor. It skips most of the stages below and does not replace them.
+
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
