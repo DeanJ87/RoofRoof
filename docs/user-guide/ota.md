@@ -4,7 +4,7 @@ description: "Update RoofRoof firmware and web UI over WiFi by uploading a file,
 
 # Updates
 
-RoofRoof is updated by **uploading a file** to it, over WiFi from the web UI or over USB. The device never contacts GitHub or any release server: nothing is checked or downloaded for you, and the repository is private. Get the files from the release's assets (or your own build) and upload them yourself.
+RoofRoof is updated by **uploading a file** to it, over WiFi from the web UI or over USB. The device never contacts GitHub or any release server: nothing is checked or downloaded for you, by design. Get the files from the release's assets (or your own build) and upload them yourself.
 
 ---
 

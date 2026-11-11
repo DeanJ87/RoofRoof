@@ -103,4 +103,4 @@ Set the `ESP32_IP` environment variable or update it in `vite.config.ts`.
 
 ## Docs and demo
 
-The repository is private and there is no docs or demo host. CI builds both on every pull request and on `main` and uploads them as the `site` artifact (the demo is under `demo/`). To run the demo locally, see [docs/live-demo.md](docs/live-demo.md).
+There is no docs or demo host. CI builds both on every pull request and on `main` and uploads them as the `site` artifact (the demo is under `demo/`). To run the demo locally, see [docs/live-demo.md](docs/live-demo.md).

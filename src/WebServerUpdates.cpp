@@ -8,7 +8,7 @@
 #include <esp_partition.h>
 
 // Firmware and web UI updates by upload (/api/update, /api/update/fs). There is
-// no release check: the repository is private (spec 001 clarifications).
+// no release check: by design (spec 001).
 
 namespace SQM
 {

@@ -15,4 +15,4 @@ boot. It does not move a roof yet; the motor, safety rules and Dome device come 
 - [`docs/hardware/wiring.md`](docs/hardware/wiring.md): the pin table and the required 10 kΩ pull-down on the motor driver's EN pin
 - [`BUILD.md`](BUILD.md) and [`DEV_WORKFLOW.md`](DEV_WORKFLOW.md): build, flash and develop
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md)
-- [`docs/`](docs/index.md): the documentation. The repository is private, so there is no public site: CI builds the docs and the live demo and uploads them as the `site` artifact of the **Docs & Demo** workflow.
+- [`docs/`](docs/index.md): the documentation. There is no public docs site: CI builds the docs and the live demo and uploads them as the `site` artifact of the **Docs & Demo** workflow.

@@ -8,7 +8,7 @@ Other facts, to avoid common mistakes:
 - There is no roof movement, no sensors and no safety verdict in this release. The Alpaca server lists no devices (the roof's Dome device comes in a later spec), so N.I.N.A. finds the server but has nothing to connect to.
 - Settings are stored in the ESP32's NVS. LittleFS holds only the web UI. The UI is English only.
 - Updates are by manual file upload (Updates page) or USB. The device never contacts GitHub.
-- The repository is private: there is no public docs site or demo. The docs and the demo are CI artifacts.
+- There is no public docs site or demo. The docs and the demo are CI artifacts.
 - It is meant for a trusted local network: optional HTTP Basic Auth protects changes (off by default), reads are open, and there is no TLS.
 
 ## Pages
