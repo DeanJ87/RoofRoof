@@ -151,6 +151,9 @@ namespace SQM
         const CloseSeq::Decision decision = sequence.step(in);
         keep();
         retryAlert(now);
+        if (decision.event == CloseSeq::Event::Closed)
+            ++closedCount;
+        CloseSeq::updateConditions(roofConditions, snap, safety.weather(), {sequence.phase(), closedCount});
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 
@@ -239,11 +242,8 @@ namespace SQM
         Logger::error(TAG, "%s: %s", text.title.c_str(), text.message.c_str());
         if (!decision.alert || !alertSink)
             return; // already alerted in this episode
-        Alerts::Alert alert;
-        alert.type = Alerts::AlertType::Roof;
-        alert.level = Alerts::AlertLevel::Wake;
-        alert.title = text.title;
-        alert.message = text.message;
-        send(alert, stepNowMs);
+        // Typed, with its variables; the sink applies the event's settings
+        // (spec 007) each time it is sent or sent again.
+        send(CloseSeq::criticalAlert(decision, CloseSeq::reasonFor(decision, reasons)), stepNowMs);
     }
 } // namespace SQM
