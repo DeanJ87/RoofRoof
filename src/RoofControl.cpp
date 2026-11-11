@@ -474,6 +474,9 @@ namespace SQM
             if (sameFault(fault, savedFault) || controller.status().driving || RoofIo::roofMoving(controller.status().state) ||
                 closePending)
                 return;
+            // Not under a committed restart: the reset would cut the write off.
+            if (blockers && blockers().restartCommitted)
+                return;
             wanted = fault;
             FlashGuard::holdShort();
         }

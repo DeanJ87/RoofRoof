@@ -19,7 +19,9 @@ namespace SQM
     {
         // setup(), before the web server starts: the roof and whether the
         // close sequence is busy. Without them nothing is held.
-        void begin(RoofControl *roof, std::function<bool()> sequenceBusy);
+        // `restartCommitted`: no flash write starts once a restart is committed
+        // (the reset would cut it off).
+        void begin(RoofControl *roof, std::function<bool()> sequenceBusy, std::function<bool()> restartCommitted);
 
         // Why `action` must wait now, from the latest state (no lock): for
         // refusing a request up front. Use FlashWrite/beginUpload/commitRestart to act.
@@ -40,11 +42,12 @@ namespace SQM
             ~FlashWrite();
             FlashWrite(const FlashWrite &) = delete;
             FlashWrite &operator=(const FlashWrite &) = delete;
-            RoofIo::HoldReason refused() const { return reason; }
+            RoofIo::HoldReason refused() const;
 
         private:
             RoofIo::HoldReason reason = RoofIo::HoldReason::None;
             bool held = false;
+            bool refusedForRestart = false;
         };
 
         // An upload or command-line OTA: its flash activity token (FlashGuard),

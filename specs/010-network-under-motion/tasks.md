@@ -82,3 +82,11 @@ The rules and the shared lock (Phases 1-3) are the core; everything after uses t
 - [x] T031 The close sequence's busy flag checked again under the roof's lock for every claim, write, upload and commit
 - [x] T032 A committed restart plan is never cleared; test
 - [x] T033 MQTT client state read by other tasks from atomics the loop publishes (PubSubClient only on the loop)
+
+## Phase 12: Review round 3
+
+- [x] T034 Command-line OTA restarts through the restart plan (scheduled before the flash activity ends; mandatory for a web UI image)
+- [x] T035 No short write or fault save starts under a committed restart
+- [x] T036 WiFi change: pending strings cleared before the flag; the change flag dropped when its hold ends
+- [x] T037 The close sequence's record restored before the web server starts
+- [x] T038 Test: a committed restart is never cancelled by a close, even when reported cancellable

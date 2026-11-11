@@ -170,6 +170,7 @@ void startWifi()
 
 // Command-line OTA writes the flash: the roof refuses to open meanwhile (spec 003).
 static uint32_t arduinoOtaToken = 0;
+static bool arduinoOtaFirmware = true;
 
 void onArduinoOtaStart()
 {
@@ -178,6 +179,7 @@ void onArduinoOtaStart()
     // Checked and begun under the roof's lock (spec 010): the roof closed, no
     // close waiting and, for firmware, the close sequence idle.
     const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
+    arduinoOtaFirmware = firmware;
     RoofIo::HoldReason why = RoofIo::HoldReason::None;
     arduinoOtaToken =
         PlatformGuard::beginUpload(firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FilesystemUpload, why, true);
@@ -227,9 +229,18 @@ void startArduinoOta()
     ArduinoOTA.setPassword(config.ota.password.c_str());
     ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
     ArduinoOTA.onStart(onArduinoOtaStart);
-    // The flash stays busy until ArduinoOTA restarts the device (spec 010
-    // FR-009): no open may start in between and be cut off by the reset.
-    ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete; restarting"); });
+    // The restart goes through the restart plan like every other (spec 010):
+    // scheduled before the flash activity ends, so no open starts in between,
+    // and it waits for an unsaved fault, a short write and (firmware) the
+    // close sequence. A web UI image must be remounted: mandatory.
+    ArduinoOTA.setRebootOnSuccess(false);
+    ArduinoOTA.onEnd(
+        []()
+        {
+            Logger::info("OTA", "Update complete; restarting");
+            WebServer::scheduleRestart(1000, !arduinoOtaFirmware);
+            FlashGuard::end(arduinoOtaToken);
+        });
     ArduinoOTA.onProgress(onArduinoOtaProgress);
     ArduinoOTA.onError(onArduinoOtaError);
     ArduinoOTA.begin();
@@ -265,8 +276,8 @@ void startServices()
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out
-    // through the alert dispatcher, never through N.I.N.A. or SQMeter.
-    closeOnUnsafe.begin(config);
+    // through the alert dispatcher, never through N.I.N.A. or SQMeter. Its
+    // record was restored in setup(), before the web server could ask.
     closeOnUnsafe.setAlertSink(
         [](const Alerts::Alert &alert) { return webServer->raiseRoofAlert(alert); },
         [](uint32_t id)
@@ -342,7 +353,10 @@ void setup()
     // step; between the magnets the position is unknown and nothing moves.
     roofControl.begin(config);
     // Spec 010: which platform actions wait for the roof and the close sequence.
-    PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.busy(); });
+    // The close sequence's record (spec 005) is restored first, so its busy
+    // flag is right before any request can ask.
+    closeOnUnsafe.begin(config);
+    PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.busy(); }, []() { return WebServer::restartCommitted(); });
     HeapTrace::mark("roof");
     mountFilesystem();
     startWifi();

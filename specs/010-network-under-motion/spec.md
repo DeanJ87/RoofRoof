@@ -401,6 +401,9 @@ Each was an open choice; the safest option the constitution allows was taken.
      it, so an action can still begin in the instant the sequence leaves idle; a close refused for
      a committed restart is answered as "not run";
    - a fault record that can't be saved holds restarts until it is (the device keeps retrying);
+   - a fault latched in the few milliseconds between a restart's commit and the reset isn't
+     saved (no write is started under a committed restart); an RTC copy of the fault is a later
+     fix, as for any crash in that window;
    - the MQTT client is driven only on the main loop; other tasks read its state from the last
      loop pass. The alert dispatcher's MQTT channel is platform code from SQMeter and unchanged.
 
