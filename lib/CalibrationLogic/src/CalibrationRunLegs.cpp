@@ -130,6 +130,7 @@ namespace SQM
                 endAfterLeg = Ending::Weather;
                 endAfterText = RoofIo::describeGate(open, in.gates);
             }
+            // A backstop: the park interlock (checkGates) latches first for any leg.
             if (opening && !RoofIo::parkHolds(in.gates))
             {
                 controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
