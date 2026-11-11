@@ -66,6 +66,10 @@ flowchart TD
 - A running [SQMeter](https://github.com/DeanJ87/SQMeter) reachable from the roof controller (its safety endpoint decides the weather), with a way to make it report unsafe (its manual override).
 - A serial connection (`pio device monitor --baud 115200`, or any terminal at 115200) for the log. Most checks name the log line to look for.
 
+### Optional: rehearse on a spare board with the bench build
+
+If you have a spare ESP32, build and flash the **bench** firmware onto it (`pio run -e esp32dev_bench -t upload`; it is not a release file). It simulates the roof and never drives its motor pins, so you can rehearse the dashboard, the alerts, the close-on-unsafe sequence, N.I.N.A. over Alpaca and ConformU on a bare board before the roof board exists. Every page shows a bench banner, the Dome's description says bench mode and alert titles start with `Bench: `; it starts half-way (position unknown). It does **not** replace the checks of this guide on the roof's own board: the wiring, the EN pull-down, the Hall sensor and the real timings are only proved there. **Never flash the bench build onto the roof's board**: the standard firmware refuses it, and a bench build that sees 12 V latches a fault, but do not rely on either.
+
 ### Commands and settings used in this guide
 
 **In the web UI.** The dashboard's [Roof card](../user-guide/dashboard.md#roof) has **Open**, **Close**, **Stop** and, with a fault latched, **Clear fault**; a **Stop** bar sits at the bottom of every page while the roof moves. The roof's settings are in **Settings → Roof**, in five sections: **Roof motion**, **Hall sensor**, **Current and supply**, **Weather sources** and **Mount park** ([Configuration](../user-guide/configuration.md#settings-pages)). A save is refused while the roof moves. Use these wherever you are at a screen.
