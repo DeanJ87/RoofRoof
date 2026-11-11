@@ -60,6 +60,12 @@ const recentRevision = () => {
   return hash;
 };
 
+// The roof's state and fault: the device pushes a change at once (spec 003).
+const roofRevision = () => {
+  const roof = demoDevice.statusParts().roof as { state?: string; fault?: { kind?: string } | null } | undefined;
+  return `${roof?.state}:${roof?.fault?.kind ?? ''}`;
+};
+
 // Like the device's configRevision: changes when the settings change.
 const configRevision = () => {
   const text = JSON.stringify(demoDevice.rawConfig());
@@ -150,6 +156,11 @@ export const demoHandlers = [
     return reply(result);
   }),
 
+  // The roof (spec 011): the device's own command checks and motion logic, on the simulated roof
+  ...(['open', 'close', 'stop', 'clear-fault'] as const).map((name) =>
+    http.post(`/api/roof/${name}`, () => reply(demoDevice.roofCommand(name))),
+  ),
+
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),
   http.post('/api/wifi/connect', async ({ request }) => {
@@ -177,8 +188,9 @@ export const demoHandlers = [
     const send = () => client.send(JSON.stringify(statusDocument()));
     send();
     const interval = setInterval(send, 2000);
-    // As on the device: a change to the recent alerts or the settings is pushed at once.
-    const revisions = () => `${recentRevision()}:${configRevision()}`;
+    // As on the device: a change to the recent alerts, the settings or the
+    // roof's state or fault is pushed at once.
+    const revisions = () => `${recentRevision()}:${configRevision()}:${roofRevision()}`;
     let lastRevision = revisions();
     const unsubscribe = demoDevice.onChange(() => {
       const revision = revisions();

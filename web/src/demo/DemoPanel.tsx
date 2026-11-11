@@ -4,10 +4,11 @@ import { useDialogFocus } from '../lib/a11y';
 import { Button, Note } from '../components/ui';
 import { demoDevice } from './device';
 import RealNotifications from './panel/RealNotifications';
+import RoofControls from './panel/RoofControls';
 import { tour } from './tour/tourState';
 
-// The demo's own controls: the device's clock speed, real notifications and
-// the tour. Spec 011 adds the simulated roof. Only in the demo build
+// The demo's own controls: the device's clock speed, the simulated roof's
+// injectors (spec 011), real notifications and the tour. Only in the demo build
 // (mounted from main.tsx).
 
 // The flat RoofRoof mark, for 17 to 39 px (brand/README.md), inlined at 18 px.
@@ -90,6 +91,7 @@ const DemoPanel: FunctionalComponent = () => {
           </div>
           <Note>The device's own code runs in your browser. Nothing is sent anywhere unless you turn on Real notifications.</Note>
           <ClockSpeed />
+          <RoofControls />
           <RealNotifications />
           <div class="btn-row">
             <Button

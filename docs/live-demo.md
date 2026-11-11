@@ -8,8 +8,7 @@ The demo is a simulated RoofRoof in your browser. It runs **the firmware's own c
 
 There is **no public demo site**. The demo is built by CI and shipped inside the docs artifact, or you can run it from a checkout.
 
-!!! note "The roof comes in later specs"
-    This release is the platform only. The demo has the dashboard's Status, Roof (a closed roof that doesn't move) and Device & Network cards, the Settings, Updates, System and Alpaca pages and the API explorer. The simulated roof *comes in a later spec*.
+The demo has a **simulated roof**: the firmware's own motion logic, command checks, close-on-unsafe sequence and roof alerts, driving a simulated motor, magnets and Hall sensor. See [The roof](#the-roof).
 
 ![Dashboard](assets/screenshots/dashboard.png)
 
@@ -51,7 +50,8 @@ There is **no public demo site**. The demo is built by CI and shipped inside the
 | Settings: defaults, validation and error messages | WiFi, restarts and firmware uploads |
 | Alerts: which events fire, their level, wording and stacking - and the exact requests a device sends | Delivery - nothing is sent, unless you turn on [real notifications](#real-notifications) |
 | Backup and restore of settings | The network - the demo connects to nothing unless you opt in |
-| The Alpaca management API N.I.N.A. talks to | The device's clock, which you can speed up |
+| The Alpaca management API and the Dome N.I.N.A. talks to | The device's clock, which you can speed up |
+| The roof's motion logic, gates, close sequence and alerts | The roof itself (motor, magnets, Hall sensor, current, 12 V supply), SQMeter and N.I.N.A. |
 
 Because the dashboard, the Alpaca page and the Alpaca API all come from one emulated device, they always agree.
 
@@ -75,6 +75,30 @@ Then change settings and watch them take effect:
 - Enter an invalid value and you get the device's own error message.
 
 Device addresses work too: open `/management/v1/description` or `/api/status` on the demo's address to see what the device would answer.
+
+---
+
+## The roof
+
+The demo's roof starts closed, with the weather safe and the mount parked. Open and close it with
+`POST /api/roof/open` and `/api/roof/close` (or through the Alpaca Dome). A move takes about 50 s
+with the device's default travel and speed; at 10x it takes about 5 s.
+
+The **Roof** section of the Demo panel makes things go wrong on purpose:
+
+| Control | What it does | What the device does |
+|---|---|---|
+| **Weather**: Safe, Unsafe, Rain | the simulated SQMeter's answer (seen at its next poll, within 5 s) | unsafe or rain with the roof open: asks the mount to park, waits for the park to hold, closes; opening is refused |
+| **Mount**: Park, Unpark | the imaging app parks the mount (an 8 s slew) or unparks it | closing onto an unparked mount is refused |
+| **Park fails** | the mount slews but never reaches park | the roof stays open; once the park time limit runs out, a critical "mount didn't park" alert |
+| **Jam** | the roof can't move | the move stops with a fault and motion locks out until **Clear fault** (the jam removed first) |
+| **12 V supply**: Normal, Low | 12.6 V or 10.5 V | a move is refused, and one under way stops with a supply-low fault |
+
+Reloading the page restarts the demo device: a roof stopped part-way then reads *unknown*, as a
+real board would after a restart between the magnets. **Reset demo** starts again from closed.
+
+The demo's own firmware build for a real board is [bench mode](user-guide/bench-mode.md).
+
 
 ---
 

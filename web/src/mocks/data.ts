@@ -132,6 +132,7 @@ export const mockStatus: SystemStatus = {
     watchdogTrips: 0,
     maxStepGapMs: 21,
     maxWatchdogBeatAgeMs: 12,
+    simulation: 'off',
   },
 };
 

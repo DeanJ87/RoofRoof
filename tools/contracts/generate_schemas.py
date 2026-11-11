@@ -86,7 +86,11 @@ CONSTRAINTS = {
     ("status", ("roof", "parkSwitches", "switch1")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
     ("status", ("roof", "parkSwitches", "switch2")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
     ("status", ("roof", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
-    ("status", ("roof", "fault", "cause")): {"enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped"]},
+    ("status", ("roof", "fault", "cause")): {
+        "enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped", "benchSupply"]
+    },
+    # Spec 011: the real roof, bench firmware or the browser demo.
+    ("status", ("roof", "simulation")): {"enum": ["off", "bench", "demo"]},
     ("status", ("roof", "fault", "kind")): {
         "enum": [
             "timeout",
