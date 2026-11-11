@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import type { AlertEventKey, AlertEventSetting } from '../../types';
 import type { DepEntry } from '../../lib/settingsDeps';
-import { LEVEL_OPTIONS, isPending, soundOptions, type AlertsView } from './alertsShared';
+import { CRITICAL_LEVEL_OPTIONS, LEVEL_OPTIONS, isCriticalEvent, isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTemplateEditor, AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepNote, SelectInput } from './controls';
 import { InfoTip } from '../ui';
@@ -23,7 +23,12 @@ const testTitle = (event: AlertEventSetting, entry: DepEntry, label: string) => 
   return t('settings.alerts.sendASampleLabelAlert', { label });
 };
 
-const SoundSelect: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventKey; label: string }> = ({ view, eventKey: key, label }) => {
+const SoundSelect: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventKey; label: string; off: boolean }> = ({
+  view,
+  eventKey: key,
+  label,
+  off,
+}) => {
   const event = view.alerts.events[key];
   if (event.level < 2) return <span />;
   return (
@@ -31,13 +36,15 @@ const SoundSelect: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventK
       value={event.sound}
       ariaLabel={t('settings.alerts.soundFor', { label })}
       options={soundOptions(event.sound, t('settings.alerts.default'))}
-      disabled={view.off}
+      disabled={off}
       onChange={(v) => view.set(['events', key, 'sound'], v)}
     />
   );
 };
 
-// One "Notify me when" row: level, Pushover sound, Test and the wording.
+// One "Notify me when" row: level, Pushover sound, Test and the wording. The
+// roof's critical events (spec 007) offer Urgent and Wake me only, and stay
+// editable while alerts are off: they are sent anyway.
 export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
   view,
   eventKey: key,
@@ -47,7 +54,9 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
   editing,
   onEdit,
 }) => {
-  const { off, set } = view;
+  const { set } = view;
+  const critical = isCriticalEvent(key);
+  const off = view.off && !critical;
   const event = view.alerts.events[key];
   const entry = view.dep(`alerts.events.${key}.level`);
   // Can't be raised from Off while what it needs is missing (FR-005).
@@ -66,11 +75,11 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
         <SelectInput
           value={String(event.level)}
           ariaLabel={t('settings.alerts.levelFor', { label })}
-          options={LEVEL_OPTIONS}
+          options={critical ? CRITICAL_LEVEL_OPTIONS : LEVEL_OPTIONS}
           disabled={off || locked}
           onChange={(v) => set(['events', key, 'level'], Number(v))}
         />
-        {view.pushoverOn && <SoundSelect view={view} eventKey={key} label={label} />}
+        {view.pushoverOn && <SoundSelect view={view} eventKey={key} label={label} off={off} />}
         <ActionButton
           onClick={() => view.tester.sendEventTest(key, event, view.channelCount)}
           disabled={testDisabled}

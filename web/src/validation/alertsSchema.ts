@@ -37,6 +37,13 @@ export const alertsConfigSchema = z
     mqtt: z.object({ enabled: z.boolean() }),
   })
   .superRefine((data, ctx) => {
+    // The roof's critical alerts can't be switched off or quietened (spec 007).
+    for (const key of ['mount_not_parked', 'roof_not_closed']) {
+      const level = data.events[key]?.level;
+      if (level !== undefined && level < 3) {
+        ctx.addIssue({ code: 'custom', path: ['events', key, 'level'], message: t('validation.configSchema.roofCriticalAlertsAreUrgent') });
+      }
+    }
     // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
     const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
     if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {

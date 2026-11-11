@@ -44,6 +44,8 @@ export interface EffectiveReport {
 export { FIX_LABEL, REASONS } from './settingsDepReasons';
 
 const EVENT_KEYS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
+// The roof's non-critical events need alerts on; the critical two don't (spec 007).
+const ROOF_EVENT_KEYS: AlertEventKey[] = ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost'];
 
 // What every section needs, worked out once.
 interface Context {
@@ -76,6 +78,7 @@ const addAlertEvents = (c: Context) => {
   const devices = c.fact('alpacaDevices');
   const device: Link = ['D-37', 'no-alpaca-device', devices === null ? null : devices > 0];
   for (const key of EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-37', level(c, key) !== 0, [alertsOn, alpacaOn, device]);
+  for (const key of ROOF_EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-04', level(c, key) !== 0, [alertsOn]);
 };
 
 const addAlertOptions = (c: Context) => {
