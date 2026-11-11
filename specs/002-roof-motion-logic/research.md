@@ -159,3 +159,24 @@ fault; current, supply → fault; else the profile's duty. 5. Idle: follow the H
   budget.
 - **The dead time is compared signed.** An unsigned difference made a step clock that went
   backwards look like a long-finished pause; a negative difference now counts as still waiting.
+
+### R11b. From the final review: stored times across a long idle
+
+- **The dead time is latched as done.** The signed comparison was recomputed from the stop's
+  stamp on every step. After more than 2^31 ms (24.9 days) idle the difference turned negative,
+  so a move was accepted and never driven, with no timeout and no fault. Now each step checks the
+  dead time only until it has elapsed, then latches it as done until the next stop.
+- **Audit of every stored time in `lib/RoofLogic`:**
+  - `driveEndMs` (the stop): fixed as above.
+  - `move.driveStartMs` (timeout and leave time): set when the drive starts, compared only while
+    driving.
+  - `Pending::sinceMs` (confirm windows): cleared at every drive start and stop and whenever the
+    condition lapses, so a condition stuck through an idle still gets its full confirm time.
+  - `lastStepMs` (late step): refreshed on every step.
+  - The drive budget stores no time: it adds step gaps only while driving.
+
+  Each has a test after 30 days idle and a deliberate breakage that the tests catch.
+- **Remaining limit, accepted:** a single gap of more than 2^31 ms between two steps, before the
+  dead time has elapsed, reads as a backwards clock and keeps the driver off until the next stop.
+  Spec 003 steps the logic at 50 Hz with a watchdog, so this can't happen without a stalled control
+  task, and it fails safe.

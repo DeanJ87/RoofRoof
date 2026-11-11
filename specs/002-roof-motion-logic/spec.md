@@ -215,6 +215,10 @@ JSON on the device and in the web schema, with the shared range fixture.
 ### Edge Cases
 
 - The millisecond clock wraps (after 49.7 days) during a move: elapsed times are still right.
+- The roof sits idle for weeks, past the 24.9-day signed and 49.7-day unsigned wraps of the
+  millisecond clock, then gets a command: it drives after at most the normal pause. Every stored
+  time (the stop, the drive start, the confirm windows, the previous step) is compared only within a
+  drive or within a few steps of being taken, never across an idle.
 - The first control step: no gap to check; the Hall reading is not yet settled, so moves are
   refused until it is.
 - A noisy Hall reading at a threshold: a zone change needs several readings in a row, and leaving
@@ -260,7 +264,9 @@ JSON on the device and in the web schema, with the shared range fixture.
 - **FR-008**: Before the driver turns on after any stop, and after start-up, it MUST stay off for
   a dead time of at least 500 ms, including when a move is reversed. The dead time MUST be timed by
   control steps only, from the first step after the driver went off, so no caller's clock can
-  shorten it, and a step clock that goes backwards MUST count as still inside the dead time.
+  shorten it, and a step clock that goes backwards MUST count as still inside the dead time. Once
+  elapsed, the dead time MUST stay done until the next stop, so no length of idle time (24.9 or
+  49.7 days, the signed and unsigned wraps) can bring it back.
 - **FR-009**: The duty MUST never exceed the top duty setting; during a move from an unknown
   position it MUST never exceed the slow duty setting.
 - **FR-010**: A move from a known position MUST start at the slow duty and rise linearly to the

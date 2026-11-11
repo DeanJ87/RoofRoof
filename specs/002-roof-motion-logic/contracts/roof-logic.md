@@ -67,6 +67,8 @@ Output output() const;
    part-way never trips it. New settings at rest can shrink the budget below what is already used:
    the next drive then faults on its first step.
 9. A step clock that goes backwards keeps the driver off (the dead time reads as not yet over).
+10. No length of idle time changes how a move behaves: after weeks at rest a move drives after at
+    most the normal pause, and its timeout, leave time and confirm windows count from that drive.
 
 ## What the caller must do (spec 003)
 

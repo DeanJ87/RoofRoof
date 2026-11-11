@@ -108,3 +108,9 @@ US4 and US5 complete the scope; Phase 8 is the evidence for SC-001.
 - [x] T036 Drive budget per direction in `lib/RoofLogic/src/RoofController.cpp` and `src/RoofControllerStep.cpp`; signed dead-time comparison in `waitingDeadTime` (FR-025, FR-008)
 - [x] T037 Spec (FR-008, FR-025, assumptions), contract (guarantees 8, 9), research (R11a), data model and user guide updated; breakages for a shared budget and an unsigned dead time added to the run
 
+## Phase 12: Final review fix
+
+- [x] T038 Tests first in `test/test_roof_timing/test_main.cpp`: a move after 25 and 48 days idle drives within 520 ms; a sweep of idle gaps around 2^31 and 2^32 ms; after 30 days idle, the timeout, the leave time, the confirm windows (including a condition stuck through the idle) and the late-step check each still count from the new drive
+- [x] T039 Latch the dead time as done once it has elapsed (`updateDeadTime` in `lib/RoofLogic/src/RoofControllerStep.cpp`), cleared by every stop and at construction (FR-008)
+- [x] T040 Spec (FR-008, edge cases), research (R11b, the audit), contract (guarantee 10); breakages for each stored time added to the run
+
