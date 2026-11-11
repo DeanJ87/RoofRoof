@@ -33,6 +33,7 @@ namespace SQM
         {
             const bool waitOver = personWaitOver(given, personStopped);
             const bool weatherSafeLong = weatherSafeRun.lasted(given.weatherSafe, given.nowMs, REARM_SAFE_MS);
+            daylightInSafeSpell = given.weatherSafe && (daylightInSafeSpell || given.daylight);
             if (current == Phase::Idle)
             {
                 trackIdle(given);
@@ -42,7 +43,7 @@ namespace SQM
             // going only by daylight: from here on it is daylight's (spec 005
             // would have ended it), so new unsafe weather is a new weather
             // episode with its own alerts and re-arm (as below).
-            if (!daylightOnly && weatherSafeLong && given.daylight)
+            if (!daylightOnly && weatherSafeLong && daylightInSafeSpell)
             {
                 daylightOnly = true;
                 heldUnsafeMs = 0;
@@ -109,7 +110,10 @@ namespace SQM
                 paused.has = false; // a fresh weather attempt, not the daylight one's back-off
                 afterDaylightEpisode = false;
             }
-            daylightOnly = given.daylight && given.weatherSafe;
+            // A weather attempt paused by a short safe spell resumes as the
+            // weather's (idle() picks it up), whatever daylight does meanwhile.
+            const bool weatherPause = paused.has && !paused.daylight && elapsed(paused.endedAtMs, given.nowMs) < REARM_SAFE_MS;
+            daylightOnly = given.daylight && given.weatherSafe && !weatherPause;
         }
 
         // A person's daylight stand-down or a halt: the weather has been not

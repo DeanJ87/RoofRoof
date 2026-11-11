@@ -240,7 +240,8 @@ namespace SQM
             // Spec 013: unsafe weather added up while a person's daylight
             // stand-down holds (from one step to the next, both not safe).
             uint64_t heldUnsafeMs = 0;
-            Run weatherSafeRun; // spec 013: the weather itself safe (daylight left out)
+            Run weatherSafeRun;               // spec 013: the weather itself safe (daylight left out)
+            bool daylightInSafeSpell = false; // daylight wanted a close during that safe spell
             bool lastWeatherUnsafe = false;
             uint64_t lastWeatherMs = 0;
             // A daylight-only episode ended: the next weather episode's
@@ -287,6 +288,7 @@ namespace SQM
                 uint64_t limitMs = 0;
                 uint64_t endedAtMs = 0;
                 LastCritical critical;
+                bool daylight = false; // spec 013: the paused attempt was daylight-only
             } paused;
             uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...

@@ -198,6 +198,42 @@ void test_handed_over_attempt_gets_the_full_time_limit()
     assertEvent(r.at(T0 + 201000 + DEFAULT_PARK_TIMEOUT_MS), Event::ParkNotConfirmed, Cause::ParkTimeout);
 }
 
+// Review round 7: daylight on during the safe spell but off by its 10-minute
+// mark: the stand-down still becomes daylight's, and new rain re-arms it.
+void test_sunset_before_the_ten_minutes_still_hands_over()
+{
+    Rig r;
+    r.startUnsafe();
+    standDownByPerson(r, T0 + 10000);
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(T0 + 20000 + 590000, 1000);
+    r.in.daylight = false; // sunset 9 min 50 s into the safe spell
+    r.runTo(T0 + 20000 + 720000, 1000);
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(r.in.nowMs + 120000, 1000);
+    TEST_ASSERT_TRUE(c.requests >= 1);
+}
+
+// Review round 7: a weather attempt paused by a short safe spell resumes as
+// the weather's, with the time it has run, even if daylight came on meanwhile.
+void test_resumed_weather_pause_keeps_its_time_limit()
+{
+    Rig r;
+    r.startUnsafe();
+    r.runTo(T0 + 200000, 1000);
+    r.in.weatherSafe = true;
+    r.at(T0 + 201000);
+    r.in.daylight = true;
+    r.at(T0 + 202000);
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(T0 + 260000, 1000);
+    bool alerted = false;
+    for (const Decision &d : c.events)
+        alerted = alerted || (d.event == Event::ParkNotConfirmed && d.alert && !d.daylight);
+    TEST_ASSERT_TRUE(alerted); // about 242 s of unsafe weather, as spec 005
+}
+
 // Review: the weather close's critical alert isn't swallowed by the daylight
 // close's identical one just before (the throttle starts afresh).
 void test_weather_failure_alerts_after_a_daylight_failure()
@@ -337,6 +373,8 @@ void test_count_survives_a_restart()
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_sunset_before_the_ten_minutes_still_hands_over);
+    RUN_TEST(test_resumed_weather_pause_keeps_its_time_limit);
     RUN_TEST(test_handed_over_attempt_gets_the_full_time_limit);
     RUN_TEST(test_new_rain_after_a_weather_stand_down_kept_by_daylight);
     RUN_TEST(test_new_rain_after_a_weather_halt_kept_by_daylight);

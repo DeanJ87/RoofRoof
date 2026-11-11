@@ -15,7 +15,7 @@ A [printable checklist](commissioning-checklist.md) carries every check below wi
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: 230ef0ebb84995e6
+fingerprint: 7c84d2f947f589d8
 -->
 <figure class="diagram" markdown>
 

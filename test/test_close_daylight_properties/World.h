@@ -90,6 +90,9 @@ namespace
         uint64_t heldPrevMs = 0;
         bool closeBarDaylight = false; // the close back-off came from a daylight close
         bool justRestarted = false;
+        bool daylightInSafeSpell = false; // daylight wanted a close during the weather's safe spell
+        bool weatherPause = false;        // a weather attempt paused by a short safe spell
+        uint64_t weatherPauseAtMs = 0;
         bool weatherSafeRun = false;     // the weather itself safe, since weatherSafeSinceMs
         uint64_t weatherSafeSinceMs = 0; // the first step after a restart raises its reminder first
     };
