@@ -60,13 +60,15 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 4.6 | N.I.N.A. 2.2.15+ Advanced API: `Park: parked`; unparked and slewing correct; closing N.I.N.A. gives `not responding` in about 4 s | |
 | ☐ 4.7 | Park switches vs N.I.N.A.: one switch open gives "disagree" | |
 | ☐ 4.8 | An unrelated settings save doesn't reset the verdict or the park result | |
+| ☐ 4.9 | Site set (lat, lon); NTP synced; the Roof card's Daylight sun altitude within 0.5° of an almanac | ° vs ° |
+| ☐ 4.10 | Daylight mode left on Alert or Off until stage 11 | |
 
 ## Stage 5: The alert channel
 
 | | Check | Result |
 |---|---|---|
 | ☐ 5.1 | At least one channel set up | channel: |
-| ☐ 5.2 | **Test** on each of the seven roof rows arrives on the phone with example values; wording and layout reviewed | |
+| ☐ 5.2 | **Test** on each of the ten roof rows (the three daylight rows included) arrives on the phone with example values; wording and layout reviewed | |
 | ☐ 5.3 | The phone's silent mode lets Wake me through | |
 | ☐ 5.4 | With **Send alerts** off, a critical **Test** still arrives | |
 | ☐ 5.5 | MQTT only: the critical alert over MQTT carries the reason | |
@@ -108,7 +110,8 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 7.10 | WiFi change with the roof open: a close waits, then starts (15 s at most); MQTT save with broker down answers in 1 s | |
 | ☐ 7.11 | Close during a web upload stops it (`409`) and closes; pulled cable doesn't block a close more than 5 s | |
 | ☐ 7.12 | Command-line OTA (if used): restarts through the plan; open during upload refused | |
-| ☐ 7.13 | N.I.N.A. over Alpaca with the motor disconnected: steps 9.1 to 9.7 below | |
+| ☐ 7.13 | Daylight dry run (by day): Alert sends **Roof open in daylight**, nothing moves; Alert and close parks, closes, **Roof closed after daylight**; open refused `daylight`; N.I.N.A. closed gives **Mount didn't park** "It is daylight"; Stop stands it down with one alert and no reminders, unsafe weather 30 s later starts the weather close; no site: **Daylight check not working** after 10 min; mode set back | |
+| ☐ 7.14 | N.I.N.A. over Alpaca with the motor disconnected: steps 9.1 to 9.7 below | |
 
 Between steps: park, close, present the closed magnet, so the stand-down and the alert limit are cleared. **Send alerts** back on: ☐
 
@@ -136,7 +139,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 
 | | Check | Result |
 |---|---|---|
-| ☐ 9.1 | (steps 9.1 to 9.7 first with the motor disconnected, see 7.13; 9.2 and 9.5 again on the real roof) Alpaca on, restarted; N.I.N.A. discovers **RoofRoof roof** and connects | |
+| ☐ 9.1 | (steps 9.1 to 9.7 first with the motor disconnected, see 7.14; 9.2 and 9.5 again on the real roof) Alpaca on, restarted; N.I.N.A. discovers **RoofRoof roof** and connects | |
 | ☐ 9.2 | Open and close from N.I.N.A.; ShutterStatus runs opening, open, closing, closed | |
 | ☐ 9.3 | Unsafe: Open shows the weather reason, nothing moves | |
 | ☐ 9.4 | Unparked: Close shows the park reason | |
@@ -163,7 +166,8 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 11.2 | The dry run passed with the motor disconnected (stage 7) and attended on the real roof (8.11); `park.timeoutSeconds` a little above the mount's longest park | s |
 | ☐ 11.3 | Password protection on; settings backed up; values recorded below | |
 | ☐ 11.4 | After an hour or more: `maxWatchdogBeatAgeMs` under 50, `maxStepGapMs` near 20, `watchdogTrips` 0, `stackFree.roof` above 2048 | / / / |
-| ☐ 11.5 | First unattended spell short, phone alerts on | |
+| ☐ 11.5 | Daylight mode chosen (Alert and close, Alert or Off), site set, daylight dry run passed | mode: |
+| ☐ 11.6 | First unattended spell short, phone alerts on | |
 
 ## Values to record
 
@@ -179,5 +183,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | `roof.minSupplyVolts` | |
 | `park.switches` / `park.timeoutSeconds` | |
 | `safety.staleSeconds` | |
+| `daylight.mode` / `daylight.sunAltitudeDeg` | |
+| `location.latitude` / `location.longitude` | |
 
 Signed off by ______________________ on ______________
