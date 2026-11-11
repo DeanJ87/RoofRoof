@@ -43,7 +43,8 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
 | `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
-| `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
+| `DualStackClient.cpp/.h` | same | Changed: an optional write budget (`setWriteBudgetMs`), used by the MQTT client, so a write to a half-open link gives up after 250 ms and closes the connection instead of waiting up to 10 s (spec 008) | Yes |
+| `Ipv6Network`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
 | `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003); pin map | No |
 | `RoofControl.h`, `RoofControl.cpp`, `RoofControlTask.cpp`, `RoofLocked.h`, `RoofFaultStore.cpp/.h`, `WebServerRoof.cpp` | none | New (spec 003): the roof's control task, watchdog, inputs, stored fault, REST commands and status section | No |

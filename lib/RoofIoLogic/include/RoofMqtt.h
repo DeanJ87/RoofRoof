@@ -108,9 +108,18 @@ namespace SQM
             };
             StateKey keyOf(const Snapshot &snapshot);
 
+            // The automatic close is attempting (waiting for the park, closing,
+            // or waiting to retry): MQTT writes are kept to a minimum then, as
+            // while the roof moves (research R4). Not while held by a person,
+            // unable to move or halted: those wait for a person.
+            bool closeAttempting(const std::string &closePhase);
+            // The roof moves, a close waits, or the automatic close is attempting.
+            bool busy(const StateKey &key);
+
             // When the document is due: never published, or a new connection; at
             // rest, the key changed and CHANGE_MIN_MS has passed, or the interval
-            // has passed. While the roof moves or a close waits (research R4):
+            // has passed. While busy (research R4: the roof moves, a close waits,
+            // or the automatic close is attempting):
             // only a change of state, fault or waiting close, BUSY_MIN_MS after
             // the last publish, at most BUSY_MAX_PUBLISHES times, and nothing at
             // all once a publish has failed on this connection.

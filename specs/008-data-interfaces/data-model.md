@@ -55,8 +55,9 @@ in `RoofIo::checkCommand`: no stop while a close runs or waits and the weather i
   confirmed) and `keyOf(snapshot)`.
 - `StateSchedule::due(key, connection, nowMs, intervalMs)` and `published(key, connection, nowMs, ok)`:
   due when never published or a new connection; at rest when the key changed and 1 s has passed since
-  the last publish, or `intervalMs` has passed; while moving or a close waits, only on a change of
-  state, fault or waiting close, `BUSY_MIN_MS` (5 s) after the last publish, at most
+  the last publish, or `intervalMs` has passed; while busy (`busy(key)`: moving, a close waiting, or `closeAttempting(closePhase)`: `waitPark`,
+  `closing`, `retryWait`), only on a change of
+  state, fault, waiting close or attempt, `BUSY_MIN_MS` (5 s) after the last publish, at most
   `BUSY_MAX_PUBLISHES` (2) times until at rest, and never after a failed publish on the connection.
 - `Request::origin` is always `Origin::Mqtt`; the firmware passes it to `RoofControl::command`.
 

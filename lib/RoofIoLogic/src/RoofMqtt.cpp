@@ -69,17 +69,24 @@ namespace SQM
                     return true;
                 }
 
-                bool movingOrWaiting(const StateKey &key)
-                {
-                    return key.state == Roof::State::Opening || key.state == Roof::State::Closing || key.closePending;
-                }
-
                 // What a publish while busy waits for.
                 bool busyChange(const StateKey &a, const StateKey &b)
                 {
-                    return a.state != b.state || a.fault != b.fault || a.closePending != b.closePending;
+                    return a.state != b.state || a.fault != b.fault || a.closePending != b.closePending ||
+                           closeAttempting(a.closePhase) != closeAttempting(b.closePhase);
                 }
             } // namespace
+
+            bool closeAttempting(const std::string &closePhase)
+            {
+                return closePhase == "waitPark" || closePhase == "closing" || closePhase == "retryWait";
+            }
+
+            bool busy(const StateKey &key)
+            {
+                return key.state == Roof::State::Opening || key.state == Roof::State::Closing || key.closePending ||
+                       closeAttempting(key.closePhase);
+            }
 
             Delivery deliveryOf(const uint8_t *topic, size_t topicLength, const uint8_t *payload, size_t payloadLength)
             {
@@ -174,7 +181,7 @@ namespace SQM
                 if (!any || connection != lastConnection)
                     return true;
                 const uint32_t since = nowMs - lastMs;
-                if (movingOrWaiting(key))
+                if (busy(key))
                     return !failed && busyPublishes < BUSY_MAX_PUBLISHES && busyChange(key, last) && since >= BUSY_MIN_MS;
                 if (key != last)
                     return since >= CHANGE_MIN_MS;
@@ -187,7 +194,7 @@ namespace SQM
                 failed = (sameConnection && failed) || !ok;
                 any = true;
                 const uint8_t before = sameConnection ? busyPublishes : 0;
-                busyPublishes = movingOrWaiting(key) ? static_cast<uint8_t>(before + 1) : 0;
+                busyPublishes = busy(key) ? static_cast<uint8_t>(before + 1) : 0;
                 last = key;
                 lastConnection = connection;
                 lastMs = nowMs;

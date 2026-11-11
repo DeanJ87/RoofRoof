@@ -155,6 +155,9 @@ namespace SQM
         void publishRoofResults();
         void publishRoofState();
         RoofIo::Mqtt::StateSchedule roofStateSchedule;
+        bool roofBusyForMqtt() const;
+        static constexpr uint32_t ROOF_STATE_CHECK_MS = 100;
+        uint32_t lastRoofStateCheck = 0;
         std::vector<std::string> pendingRoofResults; // published on the next pass, outside PubSubClient's callback
         void sendPendingAlertTest();
         void startAlpacaDiscovery();

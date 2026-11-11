@@ -180,6 +180,27 @@ void test_every_entity_is_published_or_removed(void)
     }
 }
 
+// The longest saved device name, base topic and prefix still give whole configs.
+void test_long_names_fit(void)
+{
+    const Device longDevice{"roofroof_aabbccddeeff", std::string(64, 'n'), "0.1.0-beta.12", std::string(64, 't'), std::string(64, 'p')};
+    Groups groups;
+    groups.alertsSwitch = groups.roofCommands = groups.currentSense = true;
+    int seen = 0;
+    forEach(
+        longDevice,
+        groups,
+        [&](const std::string &, const std::string &payload)
+        {
+            DynamicJsonDocument doc(4096);
+            TEST_ASSERT_FALSE(deserializeJson(doc, payload));
+            TEST_ASSERT_EQUAL_STRING(std::string(64, 'n').c_str(), doc["device"]["name"]);
+            TEST_ASSERT_TRUE(payload.size() < 2048);
+            ++seen;
+        });
+    TEST_ASSERT_EQUAL(8, seen);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -191,5 +212,6 @@ int main(int, char **)
     RUN_TEST(test_motor_current_only_with_current_sense);
     RUN_TEST(test_roof_fault_sensor);
     RUN_TEST(test_every_entity_is_published_or_removed);
+    RUN_TEST(test_long_names_fit);
     return UNITY_END();
 }

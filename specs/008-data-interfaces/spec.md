@@ -56,7 +56,8 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: How often is the document published? → A: At rest: at once when the roof's state, fault, the
   close phase, the weather or park check or the known-position flag changes (at most once a second);
   otherwise every publish interval (`mqtt.publishIntervalMs`, default 60 s); and at once after every
-  (re)connect. While the roof moves or a close waits: only when its state, fault or waiting close
+  (re)connect. While the roof moves, a close waits or the automatic close is attempting (waiting
+  for the park, closing, waiting to retry): only when its state, fault, waiting close or attempt
   changes, at most every 5 s, at most twice until it is at rest again, and not at all once a publish
   has failed on that connection. A write to a broker whose link has silently died can hold the main
   loop for seconds, and the roof's checks depend on that loop (spec 010 owns the network under
@@ -208,10 +209,13 @@ phase, the weather verdict and its reason, and the park check and its reason.
   the status document's `roof` object field for field (one serializer).
 - **FR-002**: The document MUST be published at once after every connect; at rest, when the roof's
   state, fault, known-position flag, close phase, weather verdict or park check changes (at most
-  once a second), and otherwise every publish interval. While the roof moves or a close waits, it
+  once a second), and otherwise every publish interval. While the roof moves, a close waits or the
+  automatic close is attempting, it
   MUST be published only on a change of state, fault or waiting close, at most every 5 s and at most
   twice until the roof is at rest, and not after a failed publish on that connection. Home Assistant
-  discovery MUST NOT be republished while the roof moves; it goes out once the roof stops.
+  discovery MUST NOT be republished while the roof moves or the automatic close is attempting. A
+  write to the broker MUST give up within 250 ms and drop the connection, so no MQTT write can hold
+  the main loop for seconds.
 - **FR-003**: Values that can't be read MUST be null, never a made-up number: position while
   unknown, the supply when unreadable, the motor current when current sense is off or unreadable.
 - **FR-004**: The device MUST accept roof commands only on `<base>/roof/set` from its configured
@@ -291,7 +295,9 @@ Each was an open choice; the safest option the constitution allows was taken.
 3. **Retained commands are never acted on**, and a message whose retained flag can't be read counts
    as retained. (A command published with the retain flag still reaches the device live once, as
    MQTT delivers it to current subscribers without the flag; only its later replays are refused.)
-   The same applies to the alerts pause switch, so a retained pause can't replay on every reconnect. Because the MQTT library doesn't pass the flag, the device reads it from the received
+   The same applies to the alerts pause switch, so a retained pause can't replay on every reconnect.
+   A broker bridged to another broker can redeliver a message held there as live; the docs say not
+   to keep retained messages on `roof/set` anywhere (every check still applies). Because the MQTT library doesn't pass the flag, the device reads it from the received
    packet; the library version is pinned so that reading stays correct, and a mismatch fails safe.
 4. **No clear-fault, abort or set-position over MQTT.** Clearing a fault stays a person's action in
    the web UI.
@@ -305,7 +311,7 @@ Each was an open choice; the safest option the constitution allows was taken.
 9. **The weather and park shown are what the roof's checks use**, stale hand-over included, not the
    raw sources.
 10. **Publish cadence**: on change (at most once a second), the publish interval otherwise, at once
-    on connect; while the roof moves or a close waits, at most two publishes, 5 s apart, on a change
+    on connect; while the roof moves, a close waits or the automatic close is attempting, at most two publishes, 5 s apart, on a change
     of state, fault or waiting close, none after a failed one, and no discovery, so MQTT adds as little as
     possible to the main loop while the roof's checks depend on it. The live position stays in
     `/ws/status`.

@@ -99,4 +99,45 @@ namespace SQM
         WiFiClient::operator=(WiFiClient(fd));
         return 1;
     }
+    size_t DualStackClient::write(const uint8_t *buf, size_t size)
+    {
+        if (writeBudgetMs == 0)
+            return WiFiClient::write(buf, size);
+        const int socket = fd();
+        if (socket < 0 || !connected())
+            return 0;
+        size_t sent = 0;
+        const uint32_t start = millis();
+        while (sent < size)
+        {
+            const int res = ::send(socket, buf + sent, size - sent, MSG_DONTWAIT);
+            if (res > 0)
+            {
+                sent += static_cast<size_t>(res);
+                continue;
+            }
+            if (res < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+                break;
+            if (millis() - start >= writeBudgetMs)
+                break;
+            // Wait a little for room, never past the budget.
+            fd_set set;
+            FD_ZERO(&set);
+            FD_SET(socket, &set);
+            timeval wait{0, 20000};
+            ::select(socket + 1, nullptr, &set, nullptr, &wait);
+        }
+        if (sent < size)
+        {
+            // A link that can't take a few KB in the budget is gone or going:
+            // close it, so later writes fail at once instead of waiting too.
+            Logger::warn(
+                "Net",
+                "Write of %u bytes stopped after %u: closing the connection",
+                static_cast<unsigned>(size),
+                static_cast<unsigned>(sent));
+            stop();
+        }
+        return sent;
+    }
 } // namespace SQM

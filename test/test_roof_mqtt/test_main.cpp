@@ -394,6 +394,7 @@ void test_a_flapping_close_publishes_a_bounded_number_of_times(void)
     TEST_ASSERT_TRUE(publishes <= Mqtt::BUSY_MAX_PUBLISHES);
     // At rest again: published, and the count starts afresh.
     s.status.state = Roof::State::Closed;
+    s.closePhase = "idle";
     TEST_ASSERT_TRUE(schedule.due(Mqtt::keyOf(s), 1, closeMs + Mqtt::CHANGE_MIN_MS, 1000));
 }
 
@@ -432,6 +433,37 @@ void test_state_document_fits_with_escaped_texts(void)
     TEST_ASSERT_TRUE(text.size() < 2900);
 }
 
+// The automatic close's attempt counts as busy; a sequence waiting for a person doesn't.
+void test_an_attempting_close_is_busy(void)
+{
+    for (const char *phase : {"waitPark", "closing", "retryWait"})
+        TEST_ASSERT_TRUE_MESSAGE(Mqtt::closeAttempting(phase), phase);
+    for (const char *phase : {"idle", "heldByPerson", "cannotMove", "halted", ""})
+        TEST_ASSERT_FALSE_MESSAGE(Mqtt::closeAttempting(phase), phase);
+    // Waiting for the park with the roof open: nothing periodic, the weather
+    // and park flapping isn't a change, and the attempt starting is.
+    Snapshot open = closedRoof();
+    open.status.state = Roof::State::Open;
+    Mqtt::StateSchedule schedule;
+    schedule.published(Mqtt::keyOf(open), 1, 0, true);
+    Snapshot waiting = open;
+    waiting.closePhase = "waitPark";
+    waiting.weather = Safety::Verdict::Unsafe;
+    TEST_ASSERT_TRUE(Mqtt::busy(Mqtt::keyOf(waiting)));
+    TEST_ASSERT_FALSE(schedule.due(Mqtt::keyOf(waiting), 1, Mqtt::BUSY_MIN_MS - 1, 1000));
+    TEST_ASSERT_TRUE(schedule.due(Mqtt::keyOf(waiting), 1, Mqtt::BUSY_MIN_MS, 1000));
+    schedule.published(Mqtt::keyOf(waiting), 1, Mqtt::BUSY_MIN_MS, true);
+    Snapshot flapping = waiting;
+    flapping.weather = Safety::Verdict::Unknown;
+    flapping.parkConfirmed = false;
+    TEST_ASSERT_FALSE(schedule.due(Mqtt::keyOf(flapping), 1, 600000, 1000));
+    // Held by a person: at rest again, so the interval applies.
+    Snapshot held = waiting;
+    held.closePhase = "heldByPerson";
+    TEST_ASSERT_FALSE(Mqtt::busy(Mqtt::keyOf(held)));
+    TEST_ASSERT_TRUE(schedule.due(Mqtt::keyOf(held), 1, 600000, 1000));
+}
+
 // Every request is MQTT's: never a person (constitution I).
 void test_every_request_is_mqtt_s(void)
 {
@@ -461,7 +493,7 @@ void test_a_change_is_due_after_the_minimum_gap(void)
     changed[0].status.state = Roof::State::Open;
     changed[1].status.fault.kind = Roof::FaultKind::Timeout;
     changed[2].status.positionKnown = false;
-    changed[3].closePhase = "waitPark";
+    changed[3].closePhase = "heldByPerson";
     changed[4].weather = Safety::Verdict::Unsafe;
     changed[5].parkConfirmed = false;
     for (const Snapshot &c : changed)
@@ -517,9 +549,9 @@ void test_nothing_periodic_while_moving(void)
         flapping.parkConfirmed = false;
         flapping.status.positionKnown = false;
         TEST_ASSERT_FALSE(schedule.due(Mqtt::keyOf(flapping), 1, 600000, 1000));
-        // Nor is the phase (the live view is /ws/status).
+        // Nor is a phase that isn't an attempt starting or ending.
         Snapshot phase = s;
-        phase.closePhase = "closing";
+        phase.closePhase = "heldByPerson";
         TEST_ASSERT_FALSE(schedule.due(Mqtt::keyOf(phase), 1, 600000, 1000));
         // A reversal while moving waits BUSY_MIN_MS.
         Snapshot reversed = s;
@@ -562,5 +594,6 @@ int main(int, char **)
     RUN_TEST(test_nothing_more_while_busy_after_a_failed_publish);
     RUN_TEST(test_state_document_fits_with_escaped_texts);
     RUN_TEST(test_every_request_is_mqtt_s);
+    RUN_TEST(test_an_attempting_close_is_busy);
     return UNITY_END();
 }

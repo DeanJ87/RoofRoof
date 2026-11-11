@@ -218,6 +218,11 @@ namespace SQM
     {
         if (roof == nullptr || mqttClient == nullptr || !mqttClient->isConnected())
             return;
+        // Looked at ten times a second, not every loop pass: the snapshot takes the roof's lock.
+        const uint32_t passMs = millis();
+        if (passMs - lastRoofStateCheck < ROOF_STATE_CHECK_MS)
+            return;
+        lastRoofStateCheck = passMs;
         const RoofIo::Snapshot snapshot = roofSnapshot();
         const RoofIo::Mqtt::StateKey key = RoofIo::Mqtt::keyOf(snapshot);
         const uint32_t now = millis();
