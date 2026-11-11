@@ -107,6 +107,12 @@ const HallCard: FunctionalComponent<RoofProps> = (props) => {
   );
 };
 
+// The current-sense values show while it is on, or while one of them needs fixing
+// (it is still validated and saved while off).
+const CURRENT_KEYS = ['maxCurrentAmps', 'currentAmpsPerVolt', 'minRunningAmps'] as const;
+const showCurrent = (props: RoofProps) =>
+  props.roof.currentSenseEnabled || CURRENT_KEYS.some((key) => props.error(`roof.${key}`) !== undefined);
+
 const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
   <SettingsCard id="current" title={t('settings.roof.currentAndSupply')}>
     <Toggle
@@ -117,10 +123,10 @@ const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
       onChange={(v) => props.update(['roof', 'currentSenseEnabled'], v)}
     />
     <div class="form-grid">
-      {props.roof.currentSenseEnabled && roofNum(props, 'maxCurrentAmps', t('settings.roof.maxCurrent'), { unit: 'A' })}
-      {props.roof.currentSenseEnabled &&
+      {showCurrent(props) && roofNum(props, 'maxCurrentAmps', t('settings.roof.maxCurrent'), { unit: 'A' })}
+      {showCurrent(props) &&
         roofNum(props, 'currentAmpsPerVolt', t('settings.roof.ampsPerVolt'), { unit: 'A/V', hint: t('settings.roof.ampsPerVoltHint') })}
-      {props.roof.currentSenseEnabled &&
+      {showCurrent(props) &&
         roofNum(props, 'minRunningAmps', t('settings.roof.minRunning'), { unit: 'A', hint: t('settings.roof.minRunningHint') })}
       {roofNum(props, 'minSupplyVolts', t('settings.roof.minSupply'), { unit: 'V', hint: t('settings.roof.minSupplyHint') })}
     </div>

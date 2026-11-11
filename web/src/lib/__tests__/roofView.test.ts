@@ -3,6 +3,7 @@ import { mockStatus } from '../../mocks/data';
 import type { RoofState, RoofStatus, SystemStatus } from '../../types';
 import {
   RESTART_HOLD_MS,
+  clearFaultReason,
   RESULT_MS,
   closeButton,
   closePhasePill,
@@ -280,8 +281,9 @@ describe('the Stop bar', () => {
     expect(stopBarShown(status(roof))).toBe(shown);
   });
 
-  it('is not shown without a roof', () => {
+  it('is not shown without a status at first, and is once none has come for 5 s', () => {
     expect(stopBarShown(null)).toBe(false);
+    expect(stopBarShown(null, 5000)).toBe(true);
   });
 });
 
@@ -294,5 +296,41 @@ describe('the Hall scale', () => {
 
   it('leaves out thresholds it does not know', () => {
     expect(hallMarks(700)).toMatchObject({ low: null, high: null });
+  });
+});
+
+// Review fixes: a page that slept, an unconfirmed Stop, Clear fault.
+describe('live data and results over time', () => {
+  it('counts the data stale from its last message, even if the quiet tick lags', () => {
+    const slept = live(status(), { lastMessageAt: NOW - 6000 });
+    expect(openButton(input({ live: slept })).reason).toBe('No live data');
+    expect(openButton(input({ live: live(status(), { lastMessageAt: NOW - 1000 }) })).disabled).toBe(false);
+  });
+
+  it('keeps an unconfirmed Stop on screen while the roof is still seen moving, however long', () => {
+    const failed: CommandResult = {
+      command: 'stop',
+      outcome: 'unreachable',
+      reason: '',
+      text: 'Stop not confirmed',
+      at: 0,
+      stateAt: 'opening',
+    };
+    expect(resultNote(failed, status({ state: 'opening' }).roof!, NOW)?.text).toBe('Stop not confirmed');
+    expect(resultNote(failed, null, NOW)).not.toBeNull();
+    expect(resultNote(failed, status({ state: 'stopped' }).roof!, NOW)).toBeNull();
+  });
+
+  it('a fault being cleared keeps Open and Close disabled with a reason, not busy', () => {
+    expect(openButton(input({ live: live(status({ state: 'stopped' })), inFlight: 'clear-fault' }))).toEqual({
+      disabled: true,
+      reason: 'Clearing the fault',
+      busy: false,
+    });
+  });
+
+  it('Clear fault needs live data', () => {
+    expect(clearFaultReason(input({ live: live(status(), { connected: false }) }))).toBe('No live data');
+    expect(clearFaultReason(input())).toBe('');
   });
 });
