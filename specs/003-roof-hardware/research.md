@@ -153,12 +153,16 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 
 - **Decision**: the BTS7960's IS output follows the motor only while its side is on, so the
   reading averaged over 8 samples (several PWM periods) is about duty × the motor current. It is
-  scaled back by the duty applied while it was read (`RoofIo::runningAmps`). Driving at 25% duty or
-  more for a second, a reading under 0.2 A is a broken sense wire: NaN, which spec 002 latches as
-  `currentUnreadable`. The wiring page recommends a capacitor across each divider's lower resistor
-  so the ADC sees the averaged value.
-- **Rationale**: without the scaling, the over-current limit would be 2.5× higher at 40% duty; a
-  broken IS wire read 0 A, which looked valid.
+  scaled back by the duty applied while it was read (`RoofIo::runningAmps`). The broken-wire floor
+  is a setting, `roof.minRunningAmps` (0 = off, the default): a reading below it after a second of
+  driving is NaN, which spec 002 latches as `currentUnreadable`. The wiring page recommends a
+  capacitor across each divider's lower resistor so the ADC sees the averaged value, and describes
+  an optional pull-up that makes a broken line read high.
+- **Rationale**: without the scaling, the over-current limit would be 2.5× higher at 40% duty. The
+  ESP32 ADC at 11 dB reads nothing below roughly 100-150 mV (the calibrated read maps raw 0 to about
+  75-140 mV), which at 8.5 A/V and the 2/3 divider is roughly 1.5-2.5 A: a fixed 0.2 A floor could
+  not tell a broken wire from a running motor, so no detection is claimed until the owner measures
+  what a disconnected line and the slow-duty running current actually read (bench check).
 
 ## R14. Roof commands need a header (added after the PR review)
 
@@ -168,9 +172,28 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
 
 ## R15. The watchdog is itself watched (added after the PR review)
 
-- **Decision**: the watchdog timer stamps a heartbeat on every check; `MotorDriver` sets EN high only
-  while it is at most 30 ms old, and the control task latches `watchdogStopped` if it is more than
-  100 ms old with the driver on.
+- **Decision**: the watchdog timer stamps a heartbeat on every check; `MotorDriver::apply` sets EN
+  high only while it is at most 30 ms old (three missed checks) and reports when it held EN low for
+  that reason; `RoofControl::applyOutput` then latches `watchdogStopped` (the beat's age / 30 ms)
+  in the same call, so a stopped watchdog is never silent. (The first version latched only when EN
+  was already high, which could never happen.)
+
+## R16. A close always wins over a flash write (added after the second review)
+
+- **Decision**: `RoofIo::FlashActivity` tracks one flash writer (a web upload or command-line OTA)
+  by token. It counts as busy only while it makes progress (`FLASH_STALE_MS` = 5 s): a dropped
+  upload whose disconnect was never reported can't block a close for good. Both upload routes end
+  the activity on disconnect; each request keeps its token and refusal in its own `_tempObject`.
+  `RoofIo::blockerDecision`: open is refused while a flash write, an MQTT connect or a scheduled
+  restart is under way; a close cancels the restart, asks the writer to stop (it aborts at its next
+  chunk: `Update.abort()` or the filesystem write marked failed, and answers 409), and is deferred
+  (202, `closePending`) only while a write or MQTT connect is still finishing. The control task
+  starts the waiting close, through the same park gate, on the first step nothing blocks it.
+- **Command-line OTA** blocks the main loop for the whole upload and offers no safe way to stop
+  part-way, so it is serviced only while the roof is closed; while it runs it counts as a flash
+  write (open refused). A closed roof never needs a close.
+- **Rationale**: constitution II/III: a part-open roof must close in rain whatever else the device
+  is doing.
 
 ## R10. The status section and live updates
 

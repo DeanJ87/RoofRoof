@@ -44,7 +44,9 @@ A reading at 30 counts or below, or 4065 or above, is a rail: three of them amon
 
 Optional, and off by default (`roof.currentSenseEnabled`). The IBT-2's R_IS and L_IS outputs go through 10k/20k dividers to GPIO34 and GPIO35. The controller reads them only with current sense on, takes the larger of the two, undoes the divider (× 30 / 20) and multiplies by `roof.currentAmpsPerVolt`: the motor amps per volt at the IS output. The default, 8.5 A/V, is the BTS7960's typical sense ratio (about 8500) into a 1 kΩ sense resistor; boards and chips vary.
 
-The firmware divides the reading by the PWM duty that was applied (the sense output only follows the motor while its side is on), so compare at full duty first. Once the motor has run at 25% duty or more for a second, a reading under 0.2 A counts as a broken sense wire (`currentUnreadable`).
+The firmware divides the reading by the PWM duty that was applied (the sense output only follows the motor while its side is on), so compare at full duty first.
+
+**Broken-wire floor (optional).** `roof.minRunningAmps` (0 = off, the default) makes a running current below it, after a second of driving, a `currentUnreadable` fault. The ESP32's ADC reads nothing below roughly 0.1-0.15 V, about 1.5-2.5 A at the default scale, so measure before setting it: unplug one sense wire and note `roof.motorAmps` while the motor runs, then note the lowest steady running current at the slow duty. Set the floor between the two only if they are clearly apart; otherwise leave it at 0 and use the pull-up on the [wiring page](wiring.md#current-sense-gpio34-gpio35).
 
 1. With current sense on and the motor disconnected, `roof.motorAmps` should read near 0.
 2. Connect the motor with a clamp meter (or a meter in series) on one motor lead, open the roof under supervision, and compare `roof.motorAmps` with the meter during steady running.

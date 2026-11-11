@@ -118,6 +118,7 @@ export const mockStatus: SystemStatus = {
     maxCurrentAmps: 10,
     parkSwitches: { fitted: 0, switch1: 'notFitted', switch2: 'notFitted' },
     rainContact: 'notFitted',
+    closePending: false,
     fault: null,
     watchdogTrips: 0,
     maxStepGapMs: 21,

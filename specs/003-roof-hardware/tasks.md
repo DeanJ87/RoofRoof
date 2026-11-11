@@ -84,3 +84,12 @@ Docs (T024-T026) any time after Phase 2.
 - [x] T035 `X-RoofRoof: 1` on the roof routes (403), `roofCommand()` in `web/src/lib/api.ts` with a Vitest test, OpenAPI header parameter, REST and security docs (FR-027)
 - [x] T036 Watchdog heartbeat: `MotorDriver::watchdogBeat()`, EN only with a fresh beat, `watchdogStopped` latched by the step (FR-028)
 - [x] T037 Known limits in spec.md; roof-motion, wiring and calibration docs; status contract regenerated
+
+## Phase 11: Second review fixes
+
+- [x] T038 Tests then `RoofIo::FlashActivity` (stale timeout, replaced tokens, close stops it), `Blockers`/`blockerDecision`, `commandLineOtaAllowed`, `watchdogStoppedFault`, `runningAmps` with the `minRunningAmps` floor (FR-026, FR-028 to FR-030)
+- [x] T039 `src/FlashGuard.cpp`; both upload routes track their flash activity per request (`_tempObject`), end it on disconnect, stop on a close or a move (FR-029, FR-031)
+- [x] T040 `RoofControl` blockers and the waiting close (202, `closePending` in the status); `WebServer::restartScheduled/cancelRestart`; `MQTTClient::connecting()` (FR-029)
+- [x] T041 Command-line OTA only while closed, counted as a flash write (FR-030)
+- [x] T042 `MotorDriver::apply` reports a held EN; `applyOutput` latches `watchdogStopped` (FR-028)
+- [x] T043 `roof.minRunningAmps` setting (model, schema, fixture, catalogue, tests, docs); wiring pull-up option; status contract, OpenAPI and docs

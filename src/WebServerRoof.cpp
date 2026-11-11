@@ -1,3 +1,4 @@
+#include "FlashGuard.h"
 #include "Logger.h"
 #include "MotionGuards.h"
 #include "RoofControl.h"
@@ -20,6 +21,11 @@ namespace SQM
             StaticJsonDocument<512> doc;
             doc["success"] = outcome.accepted;
             doc["state"] = Roof::stateName(outcome.state);
+            if (outcome.pending)
+            {
+                doc["pending"] = true;
+                doc["message"] = outcome.text;
+            }
             if (!outcome.accepted)
             {
                 doc["reason"] = outcome.reason;
@@ -27,7 +33,8 @@ namespace SQM
             }
             std::string body;
             serializeJson(doc, body);
-            request->send(outcome.accepted ? 200 : 409, "application/json", body.c_str());
+            const int status = !outcome.accepted ? 409 : (outcome.pending ? 202 : 200);
+            request->send(status, "application/json", body.c_str());
         }
 
         const char *commandName(Roof::Command command)
@@ -84,8 +91,24 @@ namespace SQM
     void WebServer::setRoof(RoofControl *control)
     {
         roof = control;
-        if (roof != nullptr)
-            roof->setFlashBusy([]() { return uploadActive.load(); });
+        if (roof == nullptr)
+            return;
+        roof->setBlockers(
+            [this]()
+            {
+                RoofIo::Blockers b;
+                b.flashBusy = FlashGuard::busy();
+                b.mqttConnecting = mqttClient != nullptr && mqttClient->connecting();
+                b.restartScheduled = restartScheduled();
+                return b;
+            },
+            [](const RoofIo::BlockerDecision &decision)
+            {
+                if (decision.cancelRestart)
+                    cancelRestart();
+                if (decision.stopFlash)
+                    FlashGuard::requestStop();
+            });
     }
 
     bool WebServer::roofMoving() const

@@ -168,6 +168,7 @@ namespace SQM
         const std::string clientId = buildClientId();
         const std::string availabilityTopic = getAvailabilityTopic();
 
+        connectInFlight = true;
         bool connected = false;
         if (!config.username.empty())
         {
@@ -178,6 +179,7 @@ namespace SQM
         {
             connected = mqttClient->connect(clientId.c_str(), availabilityTopic.c_str(), 1, true, "offline");
         }
+        connectInFlight = false;
 
         if (connected)
         {

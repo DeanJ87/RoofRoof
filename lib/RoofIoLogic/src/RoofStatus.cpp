@@ -110,6 +110,7 @@ namespace SQM
             park["switch1"] = switchName(s.fittedSwitches, 0, s.switch1);
             park["switch2"] = switchName(s.fittedSwitches, 1, s.switch2);
             out["rainContact"] = rainName(s);
+            out["closePending"] = s.closePending;
             writeFault(out, s);
             out["watchdogTrips"] = s.watchdogTrips;
             out["maxStepGapMs"] = s.maxStepGapMs;

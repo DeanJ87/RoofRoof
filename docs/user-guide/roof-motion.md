@@ -151,14 +151,17 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
   never prolong a move. The web server runs below it (priority 3 against the task's 5), so a
   burst of requests can't starve a step.
 - **With current sense on**, the reading is taken under the 20 kHz PWM, so it is scaled back by
-  the duty that was applied. Once the motor has run at a quarter duty or more for a second, a
-  reading below 0.2 A means a broken sense wire: `currentUnreadable`.
+  the duty that was applied. A broken sense wire is caught only if you set `roof.minRunningAmps`
+  from a bench measurement (a running current below it after a second is `currentUnreadable`);
+  the ADC can't tell the lowest currents from a broken wire, so it is off by default
+  ([Calibration](../hardware/calibration.md#current-sense)).
 - **A watchdog** on the other processor core looks every 10 ms. If the motor is on and the task
   hasn't stepped for more than 100 ms, it switches the driver off itself and keeps it off until the
   task has latched an `external` fault with the cause `watchdog`. If the task hangs outright, the
   system watchdog restarts the device, and the EN pull-down holds the driver off meanwhile. The
   watchdog is itself watched: the driver can only switch on while its last check is at most 30 ms
-  old, and the task latches `watchdogStopped` if it stops for 100 ms with the motor on.
+  old, and if the controller wants the motor on when it isn't, it latches `watchdogStopped`
+  rather than wait silently.
 - **A latched fault survives a restart.** It is saved within one step of being latched and latched
   again at start-up before the first step. A saved record that can't be read back latches a fault
   of its own. Clearing the fault removes it.
@@ -194,8 +197,18 @@ watchdog, so nothing writes the flash while the roof is opening or closing:
 
 - settings saves, restores, firmware and web UI uploads, WiFi changes and restarts are refused
   (`409`, "stop it first"); a restart already scheduled waits until the roof stops;
-- command-line OTA waits, and the alerts pause state is saved once the roof stops;
-- while an upload is being written, open and close are refused (`flashBusy`); stop never is.
+- the alerts pause state is saved once the roof stops; command-line OTA is only serviced while the
+  roof is closed (it can't be stopped part-way).
+
+And before a move starts, **a close always wins**:
+
+- open is refused (`busy`) while an upload or command-line OTA writes the flash, an MQTT connect is
+  under way or a restart is scheduled;
+- a close cancels a scheduled restart and stops an upload at its next chunk; if an upload or MQTT
+  connect is still finishing, the close waits (`roof.closePending`) and starts as soon as it is
+  done. An upload that stops sending counts as finished after 5 s, so a dropped connection never
+  blocks a close;
+- stop is never refused, and cancels a waiting close.
 
 Settings saved at rest are taken at once; saved while stopped part-way, they make the position
 unknown.

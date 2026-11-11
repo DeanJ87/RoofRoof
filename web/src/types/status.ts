@@ -131,6 +131,7 @@ export interface RoofStatus {
   maxCurrentAmps: number;
   parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
   rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
+  closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
   fault: RoofFault | null;
   watchdogTrips: number;
   maxStepGapMs: number;

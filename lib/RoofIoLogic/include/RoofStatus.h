@@ -32,6 +32,7 @@ namespace SQM
             Contact switch2 = Contact::Unreadable;
             bool rainFitted = false;
             Contact rain = Contact::Unreadable;
+            bool closePending = false; // a close waiting for an upload or MQTT connect to stop
             uint32_t watchdogTrips = 0;
             uint32_t maxStepGapMs = 0;
         };

@@ -346,18 +346,29 @@ and `include/RoofPins.h`.
 **Added after the PR review**
 
 - **FR-024**: While the roof is opening or closing, settings saves, restores, firmware and web UI
-  uploads, WiFi changes and restarts MUST be refused (409); a scheduled restart, command-line OTA,
-  the alerts pause state's NVS write and MQTT reconnects MUST wait until it stops. Open and close
-  MUST be refused while an upload is being written; stop never is.
+  uploads, WiFi changes and restarts MUST be refused (409); a scheduled restart, the alerts pause
+  state's NVS write and MQTT reconnects MUST wait until it stops.
 - **FR-025**: The web server MUST run below the control task's priority.
 - **FR-026**: With current sense on, the reading MUST be scaled back by the PWM duty applied while it
-  was read, and a reading under 0.2 A after a second of driving at 25% duty or more MUST count as
-  unreadable.
+  was read. With the `roof.minRunningAmps` setting above 0, a reading below it after a second of
+  driving MUST count as unreadable. It is off by default: the ADC can't tell the lowest currents from
+  0 V, so detection of a broken sense wire is only what the owner's bench measurement supports.
 - **FR-027**: Roof commands MUST carry the header `X-RoofRoof: 1` (403 without it), and the web UI
   MUST send it.
-- **FR-028**: EN MUST only go high while the watchdog's last check is at most 30 ms old, and the
-  control task MUST latch a fault (`watchdogStopped`) if it is more than 100 ms old with the driver
-  on.
+- **FR-028**: EN MUST only go high while the watchdog's last check is at most 30 ms old. When the
+  logic wants the driver on and the check is older, the roof MUST latch a fault (`watchdogStopped`)
+  rather than hold EN low silently.
+- **FR-029**: A close always wins over a flash write. An upload in progress counts as busy only while
+  it makes progress (no chunk for 5 s, or a dropped connection, ends it). Open is refused while an
+  upload or command-line OTA writes the flash, an MQTT connect is under way or a restart is
+  scheduled. A close (any origin) cancels a scheduled restart, stops an upload at its next chunk
+  (the upload fails with 409) and, if an upload or MQTT connect is still finishing, is accepted as
+  waiting (202, `roof.closePending`) and starts as soon as it is done. Stop and open cancel a waiting
+  close.
+- **FR-030**: Command-line OTA MUST only be serviced while the roof is closed (it blocks the main loop
+  for the whole upload and can't be stopped part-way); it counts as a flash write while it runs.
+- **FR-031**: Each upload request MUST keep its own state (its flash activity and why it stopped), so
+  one request's refusal or disconnect never affects another's.
 
 **Docs**
 
@@ -445,12 +456,23 @@ Each was an open choice; the safest option the constitution allows was taken.
       failed poll during a close stops it with `parkInterlock`;
     - an intermittent park switch wire that settles closed reads closed until it has chattered for
       a second (three equal readings confirm a level);
+    - the watchdog-alive check and EN gating read the clock separately, so in the step that first
+      finds the watchdog stale, EN can be held low for that step before the fault is latched on the
+      same call (no step passes silently);
+    - a broken current-sense wire is only caught when `roof.minRunningAmps` is set from a bench
+      measurement; an optional pull-up at the divider's input makes a broken line read high (an
+      over-current fault) instead (wiring page);
+    - a waiting close waits at most for an upload to notice the stop (its next chunk, or 5 s without
+      one) or for an MQTT connect to finish (about 3 s plus DNS);
     - spec 010 builds on FR-024 (OTA, restarts and WiFi under motion).
 16a. **AsyncTCP runs at priority 3** (`CONFIG_ASYNC_TCP_PRIORITY`), below the roof's 5; its default
     of 10 would outrank the control step.
 16b. **Roof commands need `X-RoofRoof: 1`** against cross-site requests.
-16c. **Current sense under PWM** is scaled by the duty; under 0.2 A after a second at 25% duty or more
-    is a broken wire. A capacitor across each sense divider's lower resistor is recommended.
+16c. **Current sense under PWM** is scaled by the duty. The broken-wire floor is the setting
+    `roof.minRunningAmps`, off (0) by default. A capacitor across each sense divider's lower resistor
+    is recommended.
+16d. **A close always wins over an upload**; command-line OTA only runs while the roof is closed
+    (it can't be stopped part-way safely).
 17. **The roof status section is emulated by the demo as a closed roof** with fixed readings; the
     simulated roof is spec 011.
 

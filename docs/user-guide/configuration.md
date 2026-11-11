@@ -112,6 +112,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "currentSenseEnabled": false,
     "maxCurrentAmps": 10,
     "currentAmpsPerVolt": 8.5,
+    "minRunningAmps": 0,
     "minSupplyVolts": 11
   }
 }
@@ -234,6 +235,7 @@ sense off.
 | `roof.currentSenseEnabled` | bool | `false` | Use the IBT-2's current outputs for over-current detection; off until they are wired |
 | `roof.maxCurrentAmps` | number | `10` | Motor current that stops the roof as a fault, with current sense on (0.5-40) |
 | `roof.currentAmpsPerVolt` | number | `8.5` | Motor amps per volt at the IBT-2's current-sense output, before the divider (0.5-100); set it by [calibration](../hardware/calibration.md#current-sense) |
+| `roof.minRunningAmps` | number | `0` | With current sense on, a running current below this after a second of driving counts as a broken sense wire (`currentUnreadable`); 0 = off (0-20). Set it from a [bench measurement](../hardware/calibration.md#current-sense) |
 | `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
 
 ### Alerts

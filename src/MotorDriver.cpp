@@ -31,16 +31,24 @@ namespace SQM
             // The watchdog's heartbeat: EN can't go high unless it is fresh.
             std::atomic<uint32_t> beatMs{0};
 
-            void setEnable(bool on)
+            ApplyResult setEnable(bool on)
             {
                 // Read before the clock: a beat stamped in between counts as fresh.
                 const uint32_t beat = beatMs.load();
                 const bool alive = RoofIo::watchdogAlive(millis(), beat);
                 portENTER_CRITICAL(&enableLock);
-                const bool level = on && !tripSet && armed && alive;
+                ApplyResult result = ApplyResult::Applied;
+                if (on && tripSet)
+                    result = ApplyResult::HeldTripped;
+                else if (on && !armed)
+                    result = ApplyResult::HeldUnarmed;
+                else if (on && !alive)
+                    result = ApplyResult::HeldWatchdog;
+                const bool level = on && result == ApplyResult::Applied;
                 gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), level ? 1 : 0);
                 enOn.store(level);
                 portEXIT_CRITICAL(&enableLock);
+                return result;
             }
 
             void setPwm(uint8_t pin, uint8_t duty)
@@ -76,7 +84,7 @@ namespace SQM
             return pwmReady;
         }
 
-        void apply(const Driver::Outputs &outputs)
+        ApplyResult apply(const Driver::Outputs &outputs)
         {
             // Without PWM nothing can be driven: hold EN low.
             if (!outputs.enable || !pwmReady)
@@ -84,7 +92,7 @@ namespace SQM
                 setEnable(false);
                 setPwm(Pins::RPWM, 0);
                 setPwm(Pins::LPWM, 0);
-                return;
+                return outputs.enable ? ApplyResult::HeldUnarmed : ApplyResult::Applied;
             }
             // lib/DriverLogic never sets both; the zero goes first anyway.
             if (outputs.rpwm > 0)
@@ -97,7 +105,7 @@ namespace SQM
                 setPwm(Pins::RPWM, 0);
                 setPwm(Pins::LPWM, outputs.lpwm);
             }
-            setEnable(true);
+            return setEnable(true);
         }
 
         void trip()
