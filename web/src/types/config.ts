@@ -60,6 +60,7 @@ export type ParkSwitches = 'none' | 'one' | 'two';
 export interface ParkConfig {
   nina: { url: string; api: 'v2' };
   switches: ParkSwitches;
+  timeoutSeconds: number; // spec 005: the close sequence's wait for the park, 30-1800 s
 }
 
 // The roll-off roof's motion settings (spec 002).

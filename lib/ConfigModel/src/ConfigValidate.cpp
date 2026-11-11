@@ -143,6 +143,8 @@ namespace SQM
                 return setError(error, "Safety: stale time must be between 10 and 600 seconds");
             if (!c.park.ninaUrl.empty() && c.park.ninaUrl.rfind("http://", 0) != 0)
                 return setError(error, "N.I.N.A. URL must start with http://");
+            if (c.park.timeoutSeconds < ParkConfig::MIN_TIMEOUT_SECONDS || c.park.timeoutSeconds > ParkConfig::MAX_TIMEOUT_SECONDS)
+                return setError(error, "Park: time limit must be between 30 and 1800 seconds");
             return true;
         }
 

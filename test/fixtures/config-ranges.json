@@ -56,6 +56,12 @@
       "max": 600
     },
     {
+      "path": "park.timeoutSeconds",
+      "int": true,
+      "min": 30,
+      "max": 1800
+    },
+    {
       "path": "roof.travelMm",
       "int": true,
       "min": 100,
