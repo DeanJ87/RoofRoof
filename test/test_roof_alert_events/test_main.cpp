@@ -234,7 +234,7 @@ void test_closing_once_per_cooldown_with_a_flapping_verdict(void)
     TEST_ASSERT_EQUAL_STRING("unsafe: rain", var(all[0], "reason").c_str());
 }
 
-void test_closed_once_per_close_not_held_by_the_cooldown(void)
+void test_closed_once_per_close(void)
 {
     AlertEngine engine = started();
     Roof roof;
@@ -246,8 +246,9 @@ void test_closed_once_per_close_not_held_by_the_cooldown(void)
     TEST_ASSERT_EQUAL(1, count(out, AlertType::RoofClosed));
     TEST_ASSERT_EQUAL_STRING("Roof closed after unsafe weather", out[0].title.c_str());
     TEST_ASSERT_NOT_NULL(strstr(out[0].message.c_str(), "unsafe: rain"));
-    roof.closed = 2; // a second close within the cooldown
-    TEST_ASSERT_EQUAL(1, count(run(engine, 201, 201, roof), AlertType::RoofClosed));
+    roof.closed = 2; // a second close: held until the cooldown since the first ends
+    TEST_ASSERT_EQUAL(0, count(run(engine, 201, 201, roof), AlertType::RoofClosed));
+    TEST_ASSERT_EQUAL(1, count(run(engine, 202, 500, roof), AlertType::RoofClosed));
 }
 
 void test_closed_in_the_grace_is_sent_when_it_ends(void)
@@ -344,6 +345,55 @@ void test_waits_report_roof_settle_and_cooldown(void)
     TEST_ASSERT_EQUAL(1, waits.size());
     TEST_ASSERT_EQUAL(WaitKind::Cooldown, waits[0].kind);
     TEST_ASSERT_EQUAL(250, waits[0].remainingSeconds);
+}
+
+void test_waiting_sources_keep_a_restored_loss(void)
+{
+    AlertEngine engine;
+    engine.restoreAnnouncedRoof(0x04); // the source loss was announced before the reset
+    AlertInputs in = at(0, Roof{});
+    in.roof.sourceKnown = false; // every source still waits for a first reply
+    for (uint32_t t = 0; t < 200; ++t)
+    {
+        in.nowSeconds = t;
+        engine.update(in, rules());
+    }
+    TEST_ASSERT_EQUAL_HEX8(0x04, engine.announcedRoof());
+    // Still lost once known: not announced again.
+    Roof lost;
+    lost.source = true;
+    TEST_ASSERT_EQUAL(0, run(engine, 200, 400, lost).size());
+}
+
+void test_closing_bit_survives_a_reset(void)
+{
+    AlertEngine before = started();
+    Roof closing;
+    closing.closing = true;
+    run(before, 100, 100, closing);
+    TEST_ASSERT_EQUAL_HEX8(0x08, before.announcedRoof());
+    AlertEngine after;
+    after.restoreAnnouncedRoof(before.announcedRoof());
+    TEST_ASSERT_EQUAL(0, run(after, 0, 400, closing).size());
+}
+
+void test_closed_respects_the_cooldown(void)
+{
+    AlertEngine engine = started();
+    Roof roof;
+    roof.closed = 1;
+    TEST_ASSERT_EQUAL(1, run(engine, 100, 100, roof).size());
+    roof.closed = 2;
+    TEST_ASSERT_EQUAL(0, run(engine, 101, 399, roof).size());
+    TEST_ASSERT_EQUAL(1, count(run(engine, 400, 400, roof), AlertType::RoofClosed));
+}
+
+void test_announced_check_word(void)
+{
+    for (uint32_t bits = 0; bits <= 0x0F; ++bits)
+        TEST_ASSERT_TRUE(announcedValid(bits, announcedCheck(bits)));
+    TEST_ASSERT_FALSE(announcedValid(0x03, announcedCheck(0x02)));
+    TEST_ASSERT_FALSE(announcedValid(0x10, announcedCheck(0x10)));
 }
 
 // SC-003: random roof conditions over time. Each condition event is never
@@ -445,7 +495,7 @@ int main(int, char **)
     RUN_TEST(test_nothing_in_the_grace_then_a_present_condition_is_announced);
     RUN_TEST(test_an_event_switched_off_follows_silently);
     RUN_TEST(test_closing_once_per_cooldown_with_a_flapping_verdict);
-    RUN_TEST(test_closed_once_per_close_not_held_by_the_cooldown);
+    RUN_TEST(test_closed_once_per_close);
     RUN_TEST(test_closed_in_the_grace_is_sent_when_it_ends);
     RUN_TEST(test_closed_switched_off_is_dropped);
     RUN_TEST(test_unknown_roof_is_ignored);
@@ -455,5 +505,9 @@ int main(int, char **)
     RUN_TEST(test_waits_report_roof_settle_and_cooldown);
     RUN_TEST(test_cooldown_zero_still_spaces_roof_alerts_a_minute);
     RUN_TEST(test_property_random_roof_conditions);
+    RUN_TEST(test_waiting_sources_keep_a_restored_loss);
+    RUN_TEST(test_closing_bit_survives_a_reset);
+    RUN_TEST(test_closed_respects_the_cooldown);
+    RUN_TEST(test_announced_check_word);
     return UNITY_END();
 }

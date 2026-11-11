@@ -6,7 +6,7 @@ import { server } from '../../test/mswServer';
 import { mockConfig } from '../../mocks/config';
 import { alertsConfigSchema } from '../../validation/alertsSchema';
 import { EVENT_VARS } from '../settings/alertVariables';
-import { defaultText } from '../settings/alertsShared';
+import { defaultText, soundOptions } from '../settings/alertsShared';
 import { mergeAlertsConfig } from '../settings/defaults';
 import { evaluate, viewOf } from '../../lib/settingsDeps';
 import type { AlertEventKey, Config } from '../../types';
@@ -71,6 +71,19 @@ describe('Roof alert events', () => {
       expect(withLevel(key, 4)).toBe(true);
     }
     expect(withLevel('move_fault', 0)).toBe(true);
+    const withSound = (key: AlertEventKey, sound: string) =>
+      alertsConfigSchema.safeParse({ ...alerts, events: { ...alerts.events, [key]: { level: 4, sound } } }).success;
+    expect(withSound('mount_not_parked', 'none')).toBe(false);
+    expect(withSound('roof_not_closed', 'vibrate')).toBe(false);
+    expect(withSound('roof_not_closed', 'siren')).toBe(true);
+    expect(withSound('move_fault', 'none')).toBe(true);
+  });
+
+  it('offers no silent sound for the critical events', () => {
+    const values = soundOptions('', 'Default', true).map((o) => o.value);
+    expect(values).not.toContain('none');
+    expect(values).not.toContain('vibrate');
+    expect(soundOptions('', 'Default').map((o) => o.value)).toContain('none');
   });
 
   it('offers {reason} for every roof event and the built-in wording as the placeholder', () => {

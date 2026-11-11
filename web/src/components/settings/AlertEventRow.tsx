@@ -35,7 +35,7 @@ const SoundSelect: FunctionalComponent<{ view: AlertsView; eventKey: AlertEventK
     <SelectInput
       value={event.sound}
       ariaLabel={t('settings.alerts.soundFor', { label })}
-      options={soundOptions(event.sound, t('settings.alerts.default'))}
+      options={soundOptions(event.sound, t('settings.alerts.default'), isCriticalEvent(key))}
       disabled={off}
       onChange={(v) => view.set(['events', key, 'sound'], v)}
     />

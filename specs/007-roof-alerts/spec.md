@@ -88,10 +88,11 @@ Each answer takes the safest option the constitution allows and is also listed u
   attempt (waiting for the park, closing, or waiting to try again), at most once per cooldown. A
   verdict that flaps between safe and unsafe doesn't send one per flip. A sequence that can't move
   the roof at all (unknown position, fault) raises the critical "roof didn't close" instead.
-- Q: When does "roof closed after unsafe weather" fire? → A: Each time the roof reaches closed
-  while the automatic close is running, whoever closed it. It isn't held by the cooldown: closing
-  needs an open first, and opening is refused while it's unsafe. If the weather clears before the
-  close, nothing more is sent (the log says so).
+- Q: When does "roof closed after unsafe weather" fire? → A: When the roof reaches closed while the
+  automatic close is attempting a close (waiting for the park, closing, or waiting to retry),
+  whoever closed it, at most once per cooldown. A closed magnet that flickers back to closed while
+  the sequence can't move or is stood down doesn't count. If the weather clears before the close,
+  nothing more is sent (the log says so).
 - Q: What happens to the `roof` event name? → A: It is gone. Webhook and MQTT payloads now carry the
   new event names (`mount_not_parked`, `roof_not_closed`, ...). Spec 005 never shipped in a
   release, so nothing depends on `roof`.
@@ -246,7 +247,10 @@ the test send of each event.
   the built-in message is added if neither `{reason}` nor `{details}` is used.
 - The cooldown setting is 0: the roof's condition events still wait a minute between two alerts of
   the same event, so a flapping verdict can't send one per flip.
-- A long uptime: the engine's time base is seconds since start (136 years before it wraps).
+- A long uptime: the engine's time base is seconds since start from a 64-bit clock (136 years
+  before it wraps).
+- A custom critical message that renders past Pushover's 1,024-character limit: the built-in
+  message is sent instead, so the resend can't retry a refused message for ever.
 
 ## Requirements *(mandatory)*
 
@@ -264,9 +268,12 @@ the test send of each event.
 - **FR-002**: Spec 005's critical decisions MUST map to the events: mount not parked to
   `mount_not_parked`; roof didn't close, roof can't close by itself and stopped by a person to
   `roof_not_closed`. The built-in title and message stay spec 005's.
-- **FR-003**: A critical event's level MUST be "urgent" or "wake me" (default "wake me"). The device
-  MUST refuse a config with a lower level for it, and MUST send it as "urgent" if a lower level is
-  ever stored. The web UI MUST offer only those two levels.
+- **FR-003**: A critical event's level MUST be "urgent" or "wake me" (default "wake me"), and its
+  sound MUST NOT be silent or vibrate only. The device MUST refuse a settings change with a lower
+  level or a silent sound for it; settings read back from storage with one MUST be raised (to urgent,
+  the default sound) rather than refused, so the alert channels are never lost with them; and the
+  device MUST send it as "urgent" with an audible sound whatever is stored. The web UI MUST offer
+  only those two levels and no silent sounds.
 - **FR-004**: Critical events MUST go to every channel that is switched on, regardless of the alert
   pause, the send mode, the start-up grace and the master switch; the 30-minute throttle and
   reminders, and the resend of an alert no channel took, MUST stay as spec 005 defines them. They
@@ -291,21 +298,24 @@ the test send of each event.
 - **FR-009**: `unsafe_closing` MUST fire when the automatic close begins an attempt (waiting for the
   park, closing, or waiting to retry), with the weather verdict's reasons; not while the sequence
   can't move the roof or is stood down.
-- **FR-010**: `roof_closed` MUST fire each time the roof reaches closed during an automatic close
-  episode, held through the start-up grace but not by the cooldown.
+- **FR-010**: `roof_closed` MUST fire when the roof reaches closed while the automatic close is
+  attempting a close, held through the start-up grace and the cooldown; a closed reading that returns
+  while the sequence can't move or is stood down MUST NOT fire it.
 - **FR-011**: `safety_lost` MUST fire when any weather source that is switched on has been stale,
   unreachable, unreadable or offline (the rain contact: unreadable) for 30 s without a break, naming
   each lost source and why; not when no source is switched on and not during the start-up wait for a
   first reply; not again until every source is back.
-- **FR-012**: A `move_fault`, `supply_low` or `safety_lost` condition already announced before a
-  reset MUST NOT be announced again after the reset while it lasts. After a power cut it is
-  announced once the start-up grace ends.
+- **FR-012**: A `move_fault`, `supply_low`, `safety_lost` or `unsafe_closing` condition already
+  announced before a reset MUST NOT be announced again after the reset while it lasts (a weather
+  source still waiting for its first reply after the reset doesn't count as back). After a power cut
+  it is announced once the start-up grace ends.
 
 **Settings and UI**
 
 - **FR-013**: Each roof event MUST have the usual event setting (level 0-4, sound, title up to 80
   characters, message up to 240) in `alerts.events.<name>`, stored with the main alerts settings, with
-  defaults: `mount_not_parked` 4, `roof_not_closed` 4, `move_fault` 3, `supply_low` 2,
+  defaults (the size check applies when settings are saved, not when stored ones are loaded):
+  `mount_not_parked` 4, `roof_not_closed` 4, `move_fault` 3, `supply_low` 2,
   `unsafe_closing` 2, `roof_closed` 2, `safety_lost` 2. A config saved before this spec MUST load with
   them. The total size check of the stored alerts settings MUST still apply.
 - **FR-014**: Settings > Alerts MUST show a row per roof event using the existing event row (level,
@@ -370,7 +380,8 @@ Each was an open choice; the safest option the constitution allows was taken.
 5. **The other five follow the usual rules**, including the pause and "only while an imaging app is
    connected". The owner who pauses alerts while away hears only the critical ones.
 6. **Default levels**: critical "wake me"; roof fault "urgent"; the rest "normal".
-7. **A condition present at start-up is announced after the grace**, unless already announced
+7. **A condition present at start-up is announced after the grace** ("unsafe: closing" included,
+   when the restored sequence is attempting), unless already announced
    before a reset (RTC memory: survives a reset, not a power cut, and not reliably a firmware
    update). A reset loop doesn't repeat it; a power cut does once.
 8. **30 s settle for the supply and a lost source**, so a motor start's dip and a single failed
@@ -380,8 +391,12 @@ Each was an open choice; the safest option the constitution allows was taken.
     with the cooldown set to 0 (which the imaging-app events honour as SQMeter does).
 10. **"Unsafe: closing" covers the attempt phases only**, at most once per cooldown; nothing extra
     when the weather clears before the close (logged only), and no "weather safe again" event.
-11. **"Roof closed after unsafe weather" isn't held by the cooldown** (an open must come first, and
-    it is refused while unsafe), but waits out the start-up grace.
+11. **"Roof closed after unsafe weather" counts only a close after an attempt**, at most once per
+    cooldown, so a marginal closed magnet can't send one per flicker.
+11a. **Critical alerts can't be silent**: "none" and "vibrate" aren't offered and are refused; a
+    stored one is sent with the default sound.
+11b. **Stored settings with a critical level below urgent load with urgent**, rather than being
+    refused (which would lose every alert channel with them); the stored-size check applies on save.
 12. **A fault latched by the automatic close raises both** the critical "Roof didn't close" and
     "Roof fault".
 13. **The `roof` event name is dropped** without an alias: no release ever carried it.

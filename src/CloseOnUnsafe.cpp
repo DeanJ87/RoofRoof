@@ -148,10 +148,11 @@ namespace SQM
         in.roofStarted = roof.running();
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
 
+        const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
         keep();
         retryAlert(now);
-        if (decision.event == CloseSeq::Event::Closed)
+        if (CloseSeq::closedAfterAttempt(before, decision.event))
             ++closedCount;
         CloseSeq::updateConditions(roofConditions, snap, safety.weather(), {sequence.phase(), closedCount});
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)

@@ -34,6 +34,16 @@ namespace SQM
         // or waiting to try again (not when it can't move or is stood down).
         bool attempting(Phase phase);
 
+        // Whether a step's event is the roof closing after an attempt (the
+        // phase before the step was attempting): the "roof closed after unsafe
+        // weather" alert. A magnet that flickers back to closed while the
+        // sequence can't move or is stood down doesn't count.
+        bool closedAfterAttempt(Phase before, Event event);
+
+        // Whether every weather source that is on has answered since the start
+        // (none is still waiting for a first reply).
+        bool sourcesKnown(const Safety::WeatherVerdict &weather);
+
         // What the sequence knows besides the roof and the weather.
         struct SequenceView
         {

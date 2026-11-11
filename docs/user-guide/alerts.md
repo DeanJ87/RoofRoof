@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 48799f3aa2b0535f
+fingerprint: 974b3a37bd0bb50f
 -->
 <figure class="diagram" markdown>
 
@@ -28,7 +28,7 @@ flowchart TB
     CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source), or within the<br/>cooldown, 5 min by default (not &quot;imaging<br/>app is back&quot; or &quot;roof closed&quot;)"]
+    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source), or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
     HELD -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
     WORDING --> ON{"Sending alerts?"}
     ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent"]
@@ -57,7 +57,7 @@ flowchart TB
 
     1. The device compares the roof (a fault, the supply, the weather sources, the automatic close) and the imaging app (is each Alpaca device still being checked?) with what you were last told, every second.
     2. **Tracked silently, never announced**: an event whose level is Off, and imaging-app events for a device no app has used since boot.
-    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply or a lost weather source for its first 30 seconds; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" and "Roof closed after unsafe weather" are not held by the cooldown.
+    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply or a lost weather source for its first 30 seconds; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" is not held by the cooldown.
     4. The alert gets its default or custom wording; events raised in the same second become one notification.
     5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical roof alerts.
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
@@ -153,7 +153,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 
 **Roof safety** (critical): **The mount doesn't park** and **The roof doesn't close**. The constitution requires them, so they:
 
-- can be **Urgent** or **Wake me** only (the device refuses lower, and sends a lower stored level as Urgent);
+- can be **Urgent** or **Wake me** only, with a sound that makes a noise (not silent or vibrate only); the device refuses anything else, and sends a lower stored level as Urgent;
 - are sent to every channel that is switched on even with **Send alerts** off, while paused, in "Only while an imaging app is connected" with no app, and in the first minute after a start;
 - go out at most once every 30 minutes per cause, and again every 30 minutes ("Still: ...") while the roof stays open;
 - are sent again (after 1 minute, doubling to 30 minutes) until a channel takes one.
@@ -165,8 +165,10 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **The roof faults**: any motion fault, whoever moved the roof, with its value and limit. Not again until the fault has been cleared and another one latches. A fault during the automatic close also raises "The roof doesn't close".
 - **The 12 V supply is low**: below **Minimum supply** (`roof.minSupplyVolts`) or unreadable for 30 seconds without a break, so a motor's start doesn't alert. Not again until it has been back above the minimum.
 - **The weather closes the roof**: the automatic close began (waiting for the park, closing, or waiting to try again), with the weather's reasons. A verdict that flips between safe and unsafe sends at most one per cooldown. Nothing more is sent if the weather clears before the close.
-- **Roof closed after unsafe weather**: each time the roof reaches closed during the automatic close, whoever closed it.
+- **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, whoever closed it; at most once per cooldown.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, or the rain contact unreadable, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
+
+A custom message that comes out longer than Pushover's 1,024 characters is replaced by the built-in one.
 
 These four wait at least a minute between two alerts of the same event, even with **Cooldown** set to 0.
 

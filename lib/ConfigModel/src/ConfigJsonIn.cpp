@@ -417,7 +417,11 @@ namespace SQM
         if (reader.strict() && isBlank(cfg.wifi.ssid) && !isBlank(previousSsid))
             return setError(errorOut, "WiFi network can't be blank; use WiFi setup to change networks");
 
-        if (!cfg.validate(errorOut))
+        // Stored settings (not strict): a critical alert setting that is too
+        // low or silent is raised, never a reason to drop the alerts (spec 007).
+        if (!reader.strict())
+            cfg.alerts.raiseCriticalToMinimum();
+        if (!(reader.strict() ? cfg.validate(errorOut) : cfg.validateLoaded(errorOut)))
             return false;
         return !preserveSecretPlaceholders || validateIncoming(cfg, errorOut);
     }

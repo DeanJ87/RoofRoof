@@ -25,7 +25,8 @@ The placeholder `Roof` is replaced by seven types, in this order after `ClientDi
 | `supplyLow`, `supply` | the supply is below its minimum or unreadable, and its text |
 | `sourceLost`, `source` | a weather source that is on is lost, and its text |
 | `closing`, `weather` | the close sequence is attempting a close (WaitPark, Closing, RetryWait), and the weather text that started it |
-| `closedCount` | how many times the sequence saw the roof reach closed since start |
+| `closedCount` | closes after an attempt since start (`CloseSeq::closedAfterAttempt`) |
+| `sourceKnown` | no weather source that is on still waits for its first reply |
 
 ## Rules (`Alerts::AlertRules`)
 
@@ -48,7 +49,8 @@ A `Tracker` each for fault, supply, source and closing:
 `roof_closed`: `closedSeen` (the count last seen) and `closedPending`; a rise sets pending; pending
 is sent after the grace when the level is on, dropped when it is off.
 
-`announcedRoof()` / `restoreAnnouncedRoof(bits)`: bit 0 fault, bit 1 supply, bit 2 source.
+`announcedRoof()` / `restoreAnnouncedRoof(bits)`: bit 0 fault, bit 1 supply, bit 2 source, bit 3
+closing; `announcedCheck`/`announcedValid` guard the RTC copy.
 
 ## Event settings (`AlertsConfig`)
 

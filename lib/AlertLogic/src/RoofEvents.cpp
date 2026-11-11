@@ -48,6 +48,7 @@ namespace SQM
                 BitFault = 1u << 0,
                 BitSupply = 1u << 1,
                 BitSource = 1u << 2,
+                BitClosing = 1u << 3,
             };
         } // namespace
 
@@ -102,13 +103,15 @@ namespace SQM
                 alerts.push_back(roofAlert(FAULT, roof.fault));
             if (rise(roofSupply, roof.supplyLow, emit(rules.onSupplyLow, ROOF_SETTLE_SECONDS), inGrace))
                 alerts.push_back(roofAlert(SUPPLY, roof.supply));
-            if (rise(roofSource, roof.sourceLost, emit(rules.onSafetyLost, ROOF_SETTLE_SECONDS), inGrace))
+            // A source still waiting for its first reply: not known yet, so
+            // a loss announced before a reset stays announced.
+            if (roof.sourceKnown && rise(roofSource, roof.sourceLost, emit(rules.onSafetyLost, ROOF_SETTLE_SECONDS), inGrace))
                 alerts.push_back(roofAlert(SOURCE, roof.source));
             if (rise(roofClosing, roof.closing, emit(rules.onUnsafeClosing, 0), inGrace))
                 alerts.push_back(roofAlert(CLOSING, roof.weather));
 
-            // Each close the automatic close saw finish: not held by the
-            // cooldown (closing again needs an open, refused while unsafe).
+            // Each close an attempt saw finish, held through the grace and the
+            // cooldown (a closed magnet that flickers can't send one each).
             if (roof.closedCount != closedSeen)
             {
                 closedSeen = roof.closedCount;
@@ -117,9 +120,11 @@ namespace SQM
             }
             if (!rules.onRoofClosed)
                 closedPending = false;
-            if (closedPending && !inGrace)
+            if (closedPending && !inGrace && (!closedSent || now - closedSentAt >= cooldown))
             {
                 closedPending = false;
+                closedSent = true;
+                closedSentAt = now;
                 alerts.push_back(roofAlert(CLOSED, closedWeather));
             }
         }
@@ -133,6 +138,8 @@ namespace SQM
                 bits |= BitSupply;
             if (roofSource.notified)
                 bits |= BitSource;
+            if (roofClosing.notified)
+                bits |= BitClosing;
             return bits;
         }
 
@@ -147,6 +154,17 @@ namespace SQM
             restore(roofFault, (bits & BitFault) != 0);
             restore(roofSupply, (bits & BitSupply) != 0);
             restore(roofSource, (bits & BitSource) != 0);
+            restore(roofClosing, (bits & BitClosing) != 0);
+        }
+
+        uint32_t announcedCheck(uint32_t bits)
+        {
+            return (bits ^ 0xA5A5F00Du) * 2654435761u;
+        }
+
+        bool announcedValid(uint32_t bits, uint32_t check)
+        {
+            return bits <= 0x0Fu && check == announcedCheck(bits);
         }
 
         void AlertEngine::addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const

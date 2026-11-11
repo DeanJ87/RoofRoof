@@ -65,7 +65,7 @@ sequence (every 100 ms) and hands to the web server, which runs the engine once 
 | `supply_low` | `RoofIo::supplyLow(snapshot)` | 30 s | yes | same |
 | `safety_lost` | a source on and Stale/Unreachable/Unreadable/Offline, or the fitted rain contact Unreadable | 30 s | yes | same |
 | `unsafe_closing` | the sequence's phase is WaitPark, Closing or RetryWait | 0 | yes | after the grace if still attempting |
-| `roof_closed` | the sequence's count of `Event::Closed` went up | - | no | held through the grace |
+| `roof_closed` | the count of closes after an attempt went up (`closedAfterAttempt`) | - | yes | held through the grace |
 
 - Condition events fire on the rising edge only: when the condition ends, the tracker resets
   silently, so "back to normal" is never announced (out of scope) and the next rising edge alerts
@@ -74,15 +74,19 @@ sequence (every 100 ms) and hands to the web server, which runs the engine once 
   held change is not lost).
 - While the event's level is off, the tracker follows the condition silently (switching the level
   on doesn't announce an old condition), as the imaging-app rules do.
-- `roof_closed` keeps one pending flag: set when the count rises, sent when the grace has ended
-  (dropped if the level is off).
+- `roof_closed` keeps one pending flag: set when the count rises, sent when the grace and the
+  cooldown since the last one have ended (dropped if the level is off). Only a close after an
+  attempt counts, so a closed magnet that flickers while the sequence can't move doesn't.
+- `safety_lost` is left alone while a source that is on still waits for its first reply after a
+  start (`sourceKnown`), so a loss kept as announced across a reset isn't cleared by the start-up
+  wait.
 - **Rationale**: one alert per real change, bounded by the settle time and the cooldown, and never a
   storm from a flapping input.
 
 ## R5. Not repeating after a reset
 
 - **Decision**: the engine reports which of `move_fault`, `supply_low`, `safety_lost` it has
-  announced and that still hold (three bits); the web server keeps them in RTC memory (a magic
+  announced and that still hold (four bits: fault, supply, source, closing); the web server keeps them in RTC memory (a magic
   number and a check word, like spec 005's record) and restores them before the first engine pass.
   A restored bit marks the tracker as announced; it is cleared as soon as the condition is seen
   absent.

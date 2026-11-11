@@ -126,6 +126,13 @@ namespace SQM
         // The roof (spec 007). The first two are critical: their level is 3
         // (urgent) or 4 (wake me), never lower.
         static constexpr uint8_t MIN_CRITICAL_LEVEL = 3;
+        // A Pushover sound that makes a noise: not "none" (silent) or
+        // "vibrate"; the critical events can't use those.
+        static bool audibleSound(const std::string &sound) { return sound != "none" && sound != "vibrate"; }
+        // Settings read back from NVS: a critical event below urgent, or
+        // silent, is raised to urgent with the default sound rather than
+        // refused, so its channels aren't lost with it.
+        void raiseCriticalToMinimum();
         EventSetting mountNotParked;
         EventSetting roofNotClosed;
         EventSetting moveFault;
@@ -287,6 +294,9 @@ namespace SQM
         // `error` (if given) gets the reason a config is rejected - the same
         // message the web UI shows.
         bool validate(std::string *error = nullptr) const;
+        // validate() without the stored-size check, for settings read back
+        // from NVS (spec 007: an upgrade that adds events must still load).
+        bool validateLoaded(std::string *error = nullptr) const;
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.

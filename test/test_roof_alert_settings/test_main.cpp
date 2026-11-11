@@ -26,7 +26,7 @@ namespace
     {
         Config cfg = Config::createDefault();
         std::string error;
-        if (Config::applyJson(json, cfg, false, &error))
+        if (Config::applyJson(json, cfg, true, &error)) // as from the API
             return "";
         return error.empty() ? "rejected" : error;
     }
@@ -306,6 +306,91 @@ void test_samples_for_every_roof_event()
     TEST_ASSERT_NOT_NULL(strstr(parked.message.c_str(), "This is how"));
 }
 
+// A stored critical level below urgent, or a silent sound, is raised on load:
+// the stored alert channels must survive (they are what the alert goes to).
+void test_stored_critical_setting_is_raised_not_dropped()
+{
+    Config cfg = Config::createDefault();
+    std::string error;
+    const std::string stored = "{\"alerts\":{\"enabled\":false,\"events\":{\"mount_not_parked\":{\"level\":1,\"sound\":\"none\"},"
+                               "\"roof_not_closed\":{\"level\":9}},\"ntfy\":{\"enabled\":true,\"topic\":\"t\"}}}";
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, cfg, false, &error), error.c_str());
+    TEST_ASSERT_EQUAL_UINT8(3, cfg.alerts.mountNotParked.level);
+    TEST_ASSERT_EQUAL_STRING("", cfg.alerts.mountNotParked.sound.c_str());
+    TEST_ASSERT_EQUAL_UINT8(4, cfg.alerts.roofNotClosed.level);
+    TEST_ASSERT_TRUE(cfg.alerts.ntfyEnabled);
+    // From the API (strict), the same is refused.
+    Config api = Config::createDefault();
+    TEST_ASSERT_FALSE(Config::applyJson(levelJson("mount_not_parked", 1), api, true, &error));
+    TEST_ASSERT_EQUAL_STRING(
+        "Alerts: the roof's critical alerts can't be silent or vibrate only",
+        rejectReason("{\"alerts\":{\"events\":{\"roof_not_closed\":{\"sound\":\"vibrate\"}}}}").c_str());
+}
+
+// Settings stored before spec 007 near the size limit still load; only a
+// save checks the stored size.
+void test_large_stored_alerts_still_load()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.webhookEnabled = true;
+    cfg.alerts.webhookUrl = "http://192.168.1.10/" + std::string(1800, 'p');
+    cfg.alerts.webhookAuthHeader = "Bearer " + std::string(1800, 'a');
+    std::string error;
+    TEST_ASSERT_FALSE(cfg.validate(&error)); // too big to save now
+    Config loaded = Config::createDefault();
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(cfg.toJson(), loaded, false, &error), error.c_str());
+    TEST_ASSERT_TRUE(loaded.alerts.webhookEnabled);
+}
+
+void test_reason_kept_when_the_template_only_looks_like_it_uses_it()
+{
+    Config cfg = Config::createDefault();
+    const Alerts::Alert in = fromSequence(Alerts::AlertType::RoofNotClosed);
+    for (const char *message : {"{{reason}", "x{x{details}", "{Reason}"})
+    {
+        cfg.alerts.roofNotClosed.message = message;
+        const Alerts::Alert out = Core::finishCriticalAlert(in, Core::AlertSources{cfg}, CLOCK);
+        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(out.message.c_str(), in.message.c_str()), message);
+    }
+}
+
+void test_overlong_critical_message_uses_the_built_in_text()
+{
+    Config cfg = Config::createDefault();
+    std::string message;
+    while (message.size() + 9 <= AlertsConfig::MAX_TEMPLATE_MESSAGE)
+        message += "{details}";
+    cfg.alerts.mountNotParked.message = message;
+    const Alerts::Alert in = fromSequence(Alerts::AlertType::MountNotParked);
+    const Alerts::Alert out = Core::finishCriticalAlert(in, Core::AlertSources{cfg}, CLOCK);
+    TEST_ASSERT_TRUE(out.message.size() <= Core::MAX_CRITICAL_MESSAGE_BYTES);
+    TEST_ASSERT_EQUAL_STRING(in.message.c_str(), out.message.c_str());
+}
+
+void test_silent_stored_sound_is_sent_audible()
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.mountNotParked.sound = "none";
+    TEST_ASSERT_EQUAL_STRING(
+        "", Core::finishCriticalAlert(fromSequence(Alerts::AlertType::MountNotParked), Core::AlertSources{cfg}, CLOCK).sound.c_str());
+}
+
+// SC-001: every combination of the master switch and sending (pause, send
+// mode, grace) for every type: critical always goes out.
+void test_critical_alerts_go_out_in_every_state()
+{
+    AlertsConfig alerts = Config::createDefault().alerts;
+    for (size_t i = 0; i < Alerts::ALERT_TYPE_COUNT; ++i)
+        for (int enabled = 0; enabled < 2; ++enabled)
+            for (int sending = 0; sending < 2; ++sending)
+            {
+                const Alerts::AlertType type = static_cast<Alerts::AlertType>(i);
+                alerts.enabled = enabled != 0;
+                const bool want = Alerts::isCritical(type) || (enabled && sending);
+                TEST_ASSERT_EQUAL_MESSAGE(want, Core::alertGoesOut(type, alerts, sending != 0), Alerts::alertTypeName(type));
+            }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -321,5 +406,11 @@ int main(int, char **)
     RUN_TEST(test_rules_follow_the_roof_levels);
     RUN_TEST(test_engine_roof_alerts_get_their_settings);
     RUN_TEST(test_samples_for_every_roof_event);
+    RUN_TEST(test_stored_critical_setting_is_raised_not_dropped);
+    RUN_TEST(test_large_stored_alerts_still_load);
+    RUN_TEST(test_reason_kept_when_the_template_only_looks_like_it_uses_it);
+    RUN_TEST(test_overlong_critical_message_uses_the_built_in_text);
+    RUN_TEST(test_silent_stored_sound_is_sent_audible);
+    RUN_TEST(test_critical_alerts_go_out_in_every_state);
     return UNITY_END();
 }
