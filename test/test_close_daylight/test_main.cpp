@@ -261,11 +261,14 @@ void test_weather_during_a_daylight_attempt_carries_on()
     TEST_ASSERT_EQUAL(Event::None, d.event);
     TEST_ASSERT_FALSE(d.daylight);
     TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
-    // The weather clearing while daylight still wants a close: the attempt goes on.
+    // The weather clearing while daylight still wants a close: as spec 005,
+    // the weather's attempt is paused, and daylight starts its own.
     r.in.weatherSafe = true;
-    TEST_ASSERT_EQUAL(Event::None, r.at(T0 + 3000).event);
+    const Decision own = r.at(T0 + 3000);
+    assertEvent(own, Event::Started, Cause::None);
+    TEST_ASSERT_TRUE(own.daylight);
     TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
-    TEST_ASSERT_FALSE(r.seq.daylightEpisode()); // stays a weather episode
+    TEST_ASSERT_TRUE(r.seq.daylightEpisode());
 }
 
 // Clarification: a weather stand-down stays while daylight wants a close.

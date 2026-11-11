@@ -129,7 +129,6 @@ namespace
         {
             watch.attemptOn = true;
             watch.attemptSinceMs = in.nowMs;
-            watch.quietUnsafeMs = 0; // P11 counts from the weather's own attempt
         }
         if (seen.after != Phase::WaitPark && seen.after != Phase::Closing)
             watch.attemptOn = false;
@@ -272,6 +271,7 @@ namespace
         watch.weatherSafeRun = false;
         watch.daylightInSafeSpell = false;
         watch.weatherPause = false;
+        watch.weatherKept = false;
         // A daylight stand-down or halt keeps the weather's count in the record.
         const bool kept = saved.daylight && (saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted);
         watch.heldUnsafeMs = kept ? (saved.unsafeMs < WEATHER_REARM_CONFIRM_MS ? saved.unsafeMs : WEATHER_REARM_CONFIRM_MS) : 0;
@@ -333,10 +333,40 @@ namespace
         if (watch.afterDaylight && !in.weatherSafe)
         {
             handToWeather(watch);
+            watch.weatherKept = false;
             watch.afterDaylight = false;
         }
-        const bool pause = watch.weatherPause && in.nowMs - watch.weatherPauseAtMs < REARM_SAFE_MS;
-        watch.daylightOnly = in.daylight && in.weatherSafe && !pause;
+        watch.daylightOnly = in.daylight && in.weatherSafe;
+        // Daylight starts its own attempt; the weather's pause waits.
+        if (watch.daylightOnly && watch.weatherPause && in.nowMs - watch.weatherPauseAtMs < REARM_SAFE_MS)
+        {
+            watch.weatherKept = true;
+            watch.weatherKeptAtMs = watch.weatherPauseAtMs;
+        }
+    }
+
+    bool keptValid(const Watch &watch, uint64_t nowMs)
+    {
+        return watch.weatherKept && nowMs - watch.weatherKeptAtMs < REARM_SAFE_MS;
+    }
+
+    // The weather turns safe during its attempt while daylight wants a close:
+    // the weather's attempt is kept, daylight starts its own.
+    bool pauseForDaylight(Watch &watch, const Inputs &in, Phase before, bool anyStop)
+    {
+        if (watch.daylightOnly || !in.weatherSafe || !in.daylight || (before != Phase::WaitPark && before != Phase::RetryWait))
+            return false;
+        watch.weatherKept = true;
+        watch.weatherKeptAtMs = in.nowMs;
+        watch.daylightOnly = true;
+        watch.heldUnsafeMs = 0;
+        watch.quietUnsafeMs = 0;
+        if (!anyStop)
+        {
+            watch.attemptOn = true;
+            watch.attemptSinceMs = in.nowMs;
+        }
+        return true;
     }
 
     // Unsafe weather added up during a person's stand-down: from one step to
@@ -353,6 +383,28 @@ namespace
         return watch.heldUnsafeMs >= WEATHER_REARM_CONFIRM_MS && !anyStop;
     }
 
+    // The weather takes a daylight-only episode over.
+    void weatherTakesOver(Watch &watch, const Inputs &in, Phase before)
+    {
+        watch.daylightOnly = false;
+        // The weather episode's critical alerts are announced afresh.
+        handToWeather(watch);
+        watch.resumedWeather = keptValid(watch, in.nowMs) && before != Phase::Closing;
+        watch.weatherKept = false;
+        if (before == Phase::WaitPark)
+        {
+            // The weather's own attempt, with its full time limit from now.
+            watch.attemptOn = true;
+            watch.attemptSinceMs = in.nowMs;
+            watch.quietUnsafeMs = 0; // P11 counts from the weather's own attempt
+        }
+        if (!heldBack(before))
+            return;
+        watch.expectRearm = true;
+        watch.held = false;
+        watch.halted = false;
+    }
+
     // The episode as spec 013 defines it: daylight-only from the idle step
     // that starts it with the weather safe, until the weather isn't safe; then
     // nothing from the daylight episode holds the weather's back.
@@ -362,6 +414,9 @@ namespace
         const bool waitOver = personWaitOver(watch, in, before, anyStop);
         const bool restarted = watch.justRestarted;
         watch.justRestarted = false;
+        // A close under way at a restart comes back as a back-off (a failed close).
+        if (restarted && before == Phase::Closing)
+            before = Phase::RetryWait;
         const bool weatherSafeLong = trackWeatherSafe(watch, in);
         watch.daylightInSafeSpell = in.weatherSafe && (watch.daylightInSafeSpell || in.daylight);
         if (before == Phase::Idle)
@@ -369,27 +424,15 @@ namespace
             observeIdle(watch, in);
             return;
         }
-        if (relabel(watch, weatherSafeLong))
+        watch.resumedWeather = false;
+        if (relabel(watch, weatherSafeLong) || pauseForDaylight(watch, in, before, anyStop))
             return;
         // A stop on this very step stands it down as daylight's.
         if (in.weatherSafe || !watch.daylightOnly || restarted || anyStop)
             return;
         if ((before == Phase::HeldByPerson || before == Phase::Halted) && !waitOver)
             return;
-        watch.daylightOnly = false;
-        // The weather episode's critical alerts are announced afresh.
-        handToWeather(watch);
-        if (before == Phase::WaitPark)
-        {
-            // The weather's own attempt, with its full time limit from now.
-            watch.attemptOn = true;
-            watch.attemptSinceMs = in.nowMs;
-        }
-        if (!heldBack(before))
-            return;
-        watch.expectRearm = true;
-        watch.held = false;
-        watch.halted = false;
+        weatherTakesOver(watch, in, before);
     }
 
     // D1 and D2.
@@ -406,7 +449,8 @@ namespace
         }
         else if (before != after)
             watch.weatherPause = false;
-        if (watch.expectRearm && heldBack(after))
+        // A resumed weather back-off is the weather's own (spec 005 would be there too).
+        if (watch.expectRearm && heldBack(after) && !(watch.resumedWeather && after == Phase::RetryWait))
             return "D1 the weather turned unsafe and a daylight-only stand-down or back-off held it back";
         if (d.daylight != watch.daylightOnly)
             return "D2 a decision's episode isn't the observer's";

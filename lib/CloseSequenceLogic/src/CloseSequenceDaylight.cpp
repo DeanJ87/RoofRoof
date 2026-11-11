@@ -43,12 +43,8 @@ namespace SQM
             // going only by daylight: from here on it is daylight's (spec 005
             // would have ended it), so new unsafe weather is a new weather
             // episode with its own alerts and re-arm (as below).
-            if (!daylightOnly && weatherSafeLong && daylightInSafeSpell)
-            {
-                daylightOnly = true;
-                heldUnsafeMs = 0;
+            if (keptByDaylight(weatherSafeLong) || pauseForDaylight(given, personStopped))
                 return;
-            }
             // The first step after a restart raises the record's reminder
             // first (a restart during a close): the weather re-arms next step.
             // A person's stop on this very step stands the daylight episode
@@ -57,12 +53,51 @@ namespace SQM
                 return;
             if ((current == Phase::HeldByPerson || current == Phase::Halted) && !waitOver)
                 return;
+            weatherTakesOver();
+        }
+
+        // The weather takes a daylight-only episode over. CannotMove too: its
+        // "can't close by itself" is raised again at once, in the weather's
+        // words, with the fresh throttle. A weather attempt paused when
+        // daylight took over carries on where it stood, as spec 005 resumes it
+        // after a short safe spell.
+        void Sequence::weatherTakesOver()
+        {
             daylightOnly = false;
             handToWeather();
-            // CannotMove too: its "can't close by itself" is raised again at
-            // once, in the weather's words, with the fresh throttle.
-            if (heldBack(current))
+            const bool resumeWeather = weatherPauseValid() && current != Phase::Closing;
+            if (heldBack(current) || resumeWeather)
                 enter(Phase::Idle);
+            if (resumeWeather)
+                paused = weatherPaused;
+            weatherPaused.has = false;
+        }
+
+        bool Sequence::keptByDaylight(bool weatherSafeLong)
+        {
+            if (daylightOnly || !weatherSafeLong || !daylightInSafeSpell)
+                return false;
+            daylightOnly = true;
+            heldUnsafeMs = 0;
+            return true;
+        }
+
+        // A weather attempt (or its back-off) the moment the weather turns
+        // safe while daylight wants a close: spec 005 pauses it here and
+        // ends the episode, so it is kept as the weather's pause and daylight
+        // starts its own attempt (or, with a person's stop on this step, a
+        // daylight stand-down).
+        bool Sequence::pauseForDaylight(const Inputs &given, bool personStopped)
+        {
+            const bool waitingNow = current == Phase::WaitPark || current == Phase::RetryWait;
+            if (daylightOnly || !given.weatherSafe || !given.daylight || !waitingNow)
+                return false;
+            weatherPaused = Pause{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, given.nowMs, lastCritical, false};
+            if (!personStopped)
+                enter(Phase::Idle);
+            daylightOnly = true;
+            heldUnsafeMs = 0;
+            return true;
         }
 
         // As if the daylight episode hadn't been: the weather's critical
@@ -107,13 +142,20 @@ namespace SQM
             if (afterDaylightEpisode && !given.weatherSafe)
             {
                 handToWeather();
-                paused.has = false; // a fresh weather attempt, not the daylight one's back-off
+                // The weather's own pause, if it has one; else a fresh weather
+                // attempt, not the daylight one's back-off.
+                paused = weatherPauseValid() ? weatherPaused : Pause{};
+                weatherPaused.has = false;
                 afterDaylightEpisode = false;
             }
-            // A weather attempt paused by a short safe spell resumes as the
-            // weather's (idle() picks it up), whatever daylight does meanwhile.
-            const bool weatherPause = paused.has && !paused.daylight && elapsed(paused.endedAtMs, given.nowMs) < REARM_SAFE_MS;
-            daylightOnly = given.daylight && given.weatherSafe && !weatherPause;
+            daylightOnly = given.daylight && given.weatherSafe;
+            // Daylight starts its own attempt; a weather attempt paused by a
+            // short safe spell waits as the weather's, with the time it has run.
+            if (daylightOnly && paused.has && !paused.daylight)
+            {
+                weatherPaused = paused;
+                paused.has = false;
+            }
         }
 
         // A person's daylight stand-down or a halt: the weather has been not
