@@ -1,6 +1,6 @@
 # Contributing to RoofRoof
 
-The RoofRoof repository is private, so contributions come from people with access to it. Bug reports, feature requests, and pull requests are welcome.
+Contributions are open to anyone. Bug reports, feature requests, and pull requests are welcome.
 
 ---
 
