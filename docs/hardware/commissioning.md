@@ -68,7 +68,9 @@ flowchart TD
 
 ### Optional: rehearse on a spare board with the bench build
 
-If you have a spare ESP32, build and flash the **bench** firmware onto it (`pio run -e esp32dev_bench -t upload`; it is not a release file). It simulates the roof and never drives its motor pins, so you can rehearse the dashboard, the alerts, the close-on-unsafe sequence, N.I.N.A. over Alpaca and ConformU on a bare board before the roof board exists. Every page shows a bench banner, the Dome's description says bench mode and alert titles start with `Bench: `; it starts half-way (position unknown). It does **not** replace the checks of this guide on the roof's own board: the wiring, the EN pull-down, the Hall sensor and the real timings are only proved there. **Never flash the bench build onto the roof's board**: the standard firmware refuses it, and a bench build that sees 12 V latches a fault, but do not rely on either.
+If you have a spare ESP32, flash the **bench** firmware onto it ([Bench mode](../user-guide/bench-mode.md): `pio run -e esp32dev_bench -t upload` and `-t uploadfs`, **over USB only**; it is not a release file). It simulates the roof and never switches its EN, RPWM or LPWM pins on, so you can rehearse the dashboard, the alerts, the close-on-unsafe sequence, N.I.N.A. over Alpaca and ConformU on a bare board before the roof board exists. **On a bare board tie GPIO36 to GND** (or fit the 100k/22k divider): a floating supply input can read as 12 V and the bench firmware then latches the `benchSupply` fault. The bench roof starts half-way, which reads `unknown`; every page shows a bench banner and alert titles start with `Bench: `. Leaving bench mode means flashing the standard firmware (USB, or **Updates**).
+
+Bench mode does **not** replace the checks of this guide on the roof's own board: the wiring, the EN pull-down, the Hall sensor and the real timings are only proved there. **Never flash the bench build onto the roof's board**: the standard firmware refuses a bench image over the network, and a bench build that sees 12 V latches a fault, but do not rely on either.
 
 ### Commands and settings used in this guide
 
@@ -105,7 +107,7 @@ Power is off, the USB cable is out, and **both motor leads are disconnected from
 
 ## Stage 2: First power-up (motor still disconnected)
 
-1. **Flash and join WiFi** if you have not: [Flashing](../getting-started/flashing.md), then [First Boot](../getting-started/first-setup.md). Do it from USB only, with the 12 V motor supply **off**, and with a meter on GPIO27: it reads 0 V throughout the flash (a floating EN during flashing is a hazard [Wiring](wiring.md#the-en-pull-down) names). Note the device's address.
+1. **Flash and join WiFi** if you have not (on a spare bare board running the [bench build](../user-guide/bench-mode.md), tie GPIO36 to GND first): [Flashing](../getting-started/flashing.md), then [First Boot](../getting-started/first-setup.md). Do it from USB only, with the 12 V motor supply **off**, and with a meter on GPIO27: it reads 0 V throughout the flash (a floating EN during flashing is a hazard [Wiring](wiring.md#the-en-pull-down) names). Note the device's address.
 2. **EN, RPWM and LPWM through a start.** With a meter on GPIO27, then GPIO25 and GPIO26, read 0 V before you plug in, while the board starts, and after it has started (the log shows the start-up; give it a minute). While the board is held in reset (hold the EN button on the DevKit), GPIO27 must still read 0 V: that is the pull-down at work. *Analyser:* capture GPIO25, 26 and 27 through a power-on and a reset; all three stay low.
 3. **Turn on password protection** now: **Settings → Device → Security → Password-protect changes** ([Security](../user-guide/security.md)). Roof commands need it, and a person's command is the one the roof obeys from an unknown position. Add `-u` to the commands above.
 4. **Boot between the magnets.** With no magnet near the sensor, `roofstatus` shows `state: unknown`, `hall.level` between, and `driving: false`. EN (GPIO27) stays low; nothing moves by itself. Hold a magnet at the Hall sensor, restart from **System → Restart device**, and the state is that end after the restart. (This is stage 3's check too; do it again there once the thresholds are set.)
@@ -193,7 +195,7 @@ With the motor leads off, the controller still runs its whole drive logic. A han
 
 ## Stage 7: The close-on-unsafe dry run (motor disconnected)
 
-This is the whole safety function, run end to end with nothing to move. Read [Close on unsafe weather](../user-guide/close-on-unsafe.md) first. **Setup:** the roof "open" (hold the open magnet at the sensor, or use the firmware's bench mode once it is available), N.I.N.A. connected, the mount **unparked**, SQMeter safe, alerts on, the log open. Set `park.timeoutSeconds` to 30 for the test and back to your mount's real value after (a little above the longest time it takes to park).
+This is the whole safety function, run end to end with nothing to move. Read [Close on unsafe weather](../user-guide/close-on-unsafe.md) first. **Setup:** the roof "open" (hold the open magnet at the sensor of the roof's own board), N.I.N.A. connected, the mount **unparked**, SQMeter safe, alerts on, the log open. Set `park.timeoutSeconds` to 30 for the test and back to your mount's real value after (a little above the longest time it takes to park).
 
 **Reset between steps.** A critical alert for the same cause is sent at most once every 30 minutes, and a person's stop stands the sequence down (also across a restart). Between the steps below, **end the sequence and rearm the alerts**: park the mount, run `roofclose`, present the closed magnet so the roof reads `closed`, then set up the next step. (A restart also clears the alert limit, not the stand-down.)
 
@@ -247,10 +249,10 @@ Details: [ASCOM Alpaca](../user-guide/alpaca.md). Alpaca is off by default and a
 2. **Open and close from N.I.N.A.** with the weather safe and the mount parked. ShutterStatus runs through opening, open, closing and closed.
 3. **Weather unsafe:** N.I.N.A.'s Open shows an error with the weather's reason, and nothing moves.
 4. **Mount not parked:** N.I.N.A.'s Close shows the park reason.
-5. **Stop from N.I.N.A.** stops a move in safe weather. During a close in unsafe weather it shows an error and the close **continues**; the web UI's Stop still stops it, and the log doesn't say "stopped by a person" for the client's stop. A client's stop of a close waiting behind an upload is refused in bad weather.
+5. **Stop from N.I.N.A.** stops a move in safe weather. During a close in unsafe weather it shows an error and the close **continues**; the web UI's Stop still stops it, and no **Automatic close stopped** alert arrives for the client's stop. A client's stop of a close waiting behind an upload is refused in bad weather.
 6. **Position unknown:** after a boot between the magnets N.I.N.A.'s Open and Close say only a person can move the roof.
 7. **Alpaca off:** every Dome command, Stop included, answers "disabled". Turn it back on afterwards if you use it.
-8. **ConformU.** Run ConformU against the device (version 4.5.0 passes in CI against the simulator) **only with the motor disconnected or a person at the roof**: it opens, closes and stops the shutter. Fix nothing by hand-editing results; every error is a finding.
+8. **ConformU.** Run ConformU against the device (version 4.5.0 passes in CI against the simulator) **only on a [bench-build](../user-guide/bench-mode.md) board (GPIO36 tied to GND) or with the roof's own board attended, motor disconnected or a person at the roof ready to stop it**: it opens, closes and stops the shutter. Fix nothing by hand-editing results; every error is a finding.
 
 ## Stage 10: Home Assistant and MQTT (optional)
 
@@ -270,7 +272,7 @@ The roof may run unattended only when every line here is ticked on the [checklis
 
 1. The alert channel delivered a test on your phone (stage 5), and the critical events delivered in the dry runs (stages 7 and 8). With **Send alerts** off they still arrived (stage 7 step 2); **Send alerts** is switched back **on**.
 2. The close-on-unsafe dry run passed with the motor disconnected (stage 7) **and** attended on the real roof (stage 8 step 11), with `park.timeoutSeconds` set a little above your mount's longest park time.
-3. Password protection is on, the settings are backed up (**Settings → Backup**, kept off the device) and the commissioned values are written on the checklist.
+3. Password protection is on, the settings are backed up ([Backup & restore](../user-guide/configuration.md#backup-restore) in **Settings → Device**, kept off the device) and the commissioned values are written on the checklist.
 4. **Health after a long session.** After an hour or more with the dashboard open, MQTT and a few uploads at rest, `roofstatus` shows `maxWatchdogBeatAgeMs` well under 50 and `maxStepGapMs` near 20, `watchdogTrips` is 0, and `stackFree.roof` in `/api/status` is above 2048 bytes.
 5. **The first unattended spell is short**: close the roof, leave it closed, then try an evening you can watch from the phone and the log. Keep the phone with you, with alerts on.
 

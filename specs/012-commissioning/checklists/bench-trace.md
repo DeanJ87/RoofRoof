@@ -134,11 +134,19 @@ section (analyser or debug build, not part of the gate).
 | A fault shows on the card and the Status card; Clear fault; "No live data" greys, Stop sends | 6.13 |
 | A restart with the page open: `restarting` holds Open and Close | 6.13 |
 
-## PR for 011 (in progress when this was written)
+## PR #12 (spec 011, demo and bench mode)
 
-Its bench list is added when it merges. Steps that depend on it: bench mode as a stand-in for the
-hand-held magnet.
+| Item | Step |
+|---|---|
+| Bench image on a bare DevKit (GPIO36 to GND): unknown start, open and close from the UI, EN, RPWM and LPWM at 0 V throughout | Optional bench rehearsal (guide, before the stages) |
+| 12 V on the supply divider of a bench board: `benchSupply` fault | Optional bench rehearsal (stated, not a gate) |
+| Standard board refuses a bench image by web upload and command-line OTA; bench board accepts the standard image | Bench-mode page; guide says USB only, never on the roof board |
+| Bench board: N.I.N.A. and ConformU against the Dome, banner, "Bench: " alerts | 9.8 |
+| Bench board in Home Assistant: "(bench)" version, `roof.simulation: "bench"` | Bench-mode page |
 
+Items that test the bench build itself (upload refusals, the supply guard) are developer checks of spec
+011 and are not repeated in the owner's checklist; the guide only tells the owner how to use the bench
+build safely.
 ## Owner assumptions placed in the guide
 
 | Spec | Assumption | Step |
