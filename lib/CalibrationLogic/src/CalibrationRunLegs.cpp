@@ -66,7 +66,10 @@ namespace SQM
             {
                 leg.dutyPercent = rep.old.topDutyPercent;
                 leg.limitMs = boundedBy(rep.limitMs, slow->drivenMs, TOP_LEG_FACTOR);
-                const double atTopMs = static_cast<double>(slow->drivenMs) * rep.old.slowDutyPercent / rep.old.topDutyPercent;
+                const double s = rep.old.slowDutyPercent / 100.0;
+                const double t = rep.old.topDutyPercent / 100.0;
+                const double d = s * DEADBAND_ALLOWANCE;
+                const double atTopMs = static_cast<double>(slow->drivenMs) * (s - d) / (t - d);
                 const double slowAfter = atTopMs * SLOW_AFTER_FRACTION - rep.old.rampDownMs;
                 leg.slowAfterMs = slowAfter >= 1.0 ? static_cast<uint32_t>(slowAfter) : 1;
                 leg.expect = kind == LegKind::TopOpen ? open : closed;
@@ -76,7 +79,8 @@ namespace SQM
 
         bool Run::wantsLeg(uint32_t nowMs) const
         {
-            return active() && rep.phase != Phase::Drive && nowMs - rep.phaseStartMs >= SETTLE_MS && rep.legIndex < legCount;
+            return active() && rep.phase != Phase::Drive && rep.phase != Phase::Confirm && nowMs - rep.phaseStartMs >= SETTLE_MS &&
+                   rep.legIndex < legCount;
         }
 
         void Run::step(Roof::Controller &controller, const StepInputs &in)
@@ -187,6 +191,9 @@ namespace SQM
                 return;
             if (rep.legIndex >= legCount)
                 return finishDone();
+            // Before the slow close, the person confirms the slow open reached the open end.
+            if (legs[rep.legIndex] == LegKind::SlowClose && !openConfirmed)
+                return awaitConfirmation(nowMs);
             if (!in.busy)
                 return startLeg(controller, in.gates, nowMs);
             if (rep.phase != Phase::Wait)
@@ -196,6 +203,18 @@ namespace SQM
             }
             if (nowMs - waitStartMs >= LEG_WAIT_MS)
                 finish(Ending::Busy, in.busyText + ": the " + legText(legs[rep.legIndex]) + " couldn't start within 15 s");
+        }
+
+        void Run::awaitConfirmation(uint32_t nowMs)
+        {
+            if (rep.phase != Phase::Confirm)
+            {
+                rep.phase = Phase::Confirm;
+                waitStartMs = nowMs;
+                return;
+            }
+            if (nowMs - waitStartMs >= CONFIRM_WAIT_MS)
+                finish(Ending::Unconfirmed, "No answer whether the roof reached its open end within 5 minutes: nothing is proposed");
         }
 
         void Run::startLeg(Roof::Controller &controller, const RoofIo::GateInputs &gates, uint32_t nowMs)

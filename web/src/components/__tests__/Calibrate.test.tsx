@@ -111,6 +111,22 @@ describe('Calibrate', () => {
     await waitFor(() => expect(aborts).toEqual(['1']));
   });
 
+  it('asks whether the roof is open after the slow open, and sends the answer with the header', async () => {
+    serve({ ...running, leg: { index: 2, count: 2, name: 'slowClose', phase: 'confirm', elapsedMs: 4000, limitMs: 0 } });
+    const answers: unknown[] = [];
+    server.use(
+      http.post('/api/roof/calibration/confirm', async ({ request }) => {
+        answers.push({ body: await request.json(), header: request.headers.get('X-RoofRoof') });
+        return HttpResponse.json({ success: true, state: 'open' });
+      }),
+    );
+    render(<Calibrate />);
+    expect(await screen.findByText(/is it now fully open/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop calibration' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: "No, it isn't" }));
+    await waitFor(() => expect(answers).toEqual([{ body: { atOpenEnd: false }, header: '1' }]));
+  });
+
   it('shows the proposal beside the saved values and saves it only on Accept', async () => {
     serve(mockCalibration);
     const saves: Record<string, unknown>[] = [];

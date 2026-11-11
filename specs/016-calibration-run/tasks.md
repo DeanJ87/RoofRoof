@@ -54,3 +54,8 @@ setting, firmware, demo, web and docs.
 ## Phase 9: Verify
 
 - [ ] T019 quickstart §1 of spec 001 (build, native, web, Playwright, quality, flash, docs); converge; independent reviews until safe to merge; rebase; `source_hash.py --check`; PR
+
+## Phase 10: Review fixes
+
+- [X] T020 Round 1: a fault cleared before the run's next step still ends it (`Controller::faultCount`); the automatic close stops an opening leg; a leg against the saved polarity keeps no estimate; the duty capped at the slow duty if the magnet is gone when the drive starts; restarts refused up front during a run
+- [X] T021 Round 2: the person confirms the open end after the slow open (`POST /api/roof/calibration/confirm`, phase `confirm`, endings `wrongEnd` and `unconfirmed`), with tests for a backwards motor from part-way and with a wrong answer; top legs slow down allowing a deadband of half the slow duty (tested at 30 %/0.2, 40 %/0.3); the close sequence's idle state read under the roof's lock; page, demo, routes, OpenAPI, docs

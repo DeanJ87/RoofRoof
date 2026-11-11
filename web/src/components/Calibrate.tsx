@@ -5,7 +5,7 @@ import type { CalibrationStatus, CalibrationWhere, RoofConfig, RoofStatus, Syste
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useCalibration } from '../hooks/useCalibration';
 import { useConfigEditor } from '../hooks/useConfigEditor';
-import { abortCalibration, startCalibration } from '../lib/calibrationApi';
+import { abortCalibration, confirmCalibration, startCalibration } from '../lib/calibrationApi';
 import {
   acceptedRoof,
   calibrationChecks,
@@ -114,6 +114,13 @@ const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStar
 
 type Key = Parameters<typeof t>[0];
 
+const PHASE_TEXT: Record<string, Key> = {
+  wait: 'calibrate.waiting',
+  settle: 'calibrate.settling',
+  confirm: 'calibrate.confirming',
+  drive: 'calibrate.settling',
+};
+
 const LEG_TEXT: Record<string, Key> = {
   toClosed: 'calibrate.leg.toClosed',
   slowOpen: 'calibrate.leg.slowOpen',
@@ -123,12 +130,31 @@ const LEG_TEXT: Record<string, Key> = {
 };
 
 // The run under way, with Stop: never disabled, never busy (constitution VII).
-const Running: FunctionalComponent<{ run: CalibrationStatus; roof: RoofStatus; config: RoofConfig; onStop: () => void }> = ({
-  run,
-  roof,
-  config,
-  onStop,
-}) => {
+// After the slow open: only the person can see that the roof went the right way.
+const ConfirmOpen: FunctionalComponent<{ onAnswer: () => void }> = ({ onAnswer }) => {
+  const answer = (atOpenEnd: boolean) => void confirmCalibration(atOpenEnd).then(onAnswer);
+  return (
+    <div data-calibrate-confirm>
+      <Note tone="warn">{t('calibrate.confirmQuestion')}</Note>
+      <div class="btn-row">
+        <Button variant="primary" onClick={() => answer(true)}>
+          {t('calibrate.confirmYes')}
+        </Button>
+        <Button onClick={() => answer(false)}>{t('calibrate.confirmNo')}</Button>
+      </div>
+    </div>
+  );
+};
+
+interface RunningProps {
+  run: CalibrationStatus;
+  roof: RoofStatus;
+  config: RoofConfig;
+  onStop: () => void;
+  onAnswer: () => void;
+}
+
+const Running: FunctionalComponent<RunningProps> = ({ run, roof, config, onStop, onAnswer }) => {
   const leg = run.leg;
   const driving = leg?.phase === 'drive' && leg.limitMs > 0;
   return (
@@ -136,11 +162,10 @@ const Running: FunctionalComponent<{ run: CalibrationStatus; roof: RoofStatus; c
       {leg && (
         <Note>
           {t('calibrate.legOf', { index: leg.index, count: leg.count, leg: t(LEG_TEXT[leg.name]) })}{' '}
-          {driving
-            ? t('calibrate.driving', { elapsed: seconds(leg.elapsedMs), limit: seconds(leg.limitMs) })
-            : t(leg.phase === 'wait' ? 'calibrate.waiting' : 'calibrate.settling')}
+          {driving ? t('calibrate.driving', { elapsed: seconds(leg.elapsedMs), limit: seconds(leg.limitMs) }) : t(PHASE_TEXT[leg.phase])}
         </Note>
       )}
+      {leg?.phase === 'confirm' && <ConfirmOpen onAnswer={onAnswer} />}
       {driving && <ProgressMeter value={(leg.elapsedMs / leg.limitMs) * 100} label={t('calibrate.limitUsed')} />}
       <ReadingRow label={t('calibrate.hallNow')} value={String(roof.hall.counts)} />
       <HallScale counts={roof.hall.counts} low={config.hallLowCounts} high={config.hallHighCounts} />
@@ -276,7 +301,7 @@ const Calibrate: FunctionalComponent = () => {
       <h2>{t('calibrate.title')}</h2>
       <Note>{t('calibrate.intro')}</Note>
       {run?.active ? (
-        <Running run={run} roof={roof} config={config} onStop={stop} />
+        <Running run={run} roof={roof} config={config} onStop={stop} onAnswer={refresh} />
       ) : (
         <StartForm roof={roof} config={config} live={fresh} onStarted={refresh} />
       )}

@@ -13,7 +13,7 @@
 
 namespace SQM
 {
-    RoofControl::Outcome RoofControl::startCalibration(const Calib::Request &request, bool sequenceIdle)
+    RoofControl::Outcome RoofControl::startCalibration(const Calib::Request &request, const std::function<bool()> &sequenceIdle)
     {
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
@@ -25,7 +25,7 @@ namespace SQM
             Calib::StartInputs in;
             in.nowMs = millis();
             in.limitMs = settings.roof.calibrationLimitSeconds * 1000;
-            in.sequenceIdle = sequenceIdle;
+            in.sequenceIdle = sequenceIdle(); // read under the lock, as PlatformGuard's claims are
             in.closePending = closePending;
             in.settingsPending = settingsPending;
             in.gates = currentGates();
@@ -42,6 +42,24 @@ namespace SQM
             Logger::info(TAG, "Calibration run started by a person (from %s)", Calib::whereName(request.at));
         else
             Logger::warn(TAG, "Calibration run refused: %s", outcome.text.c_str());
+        return outcome;
+    }
+
+    RoofControl::Outcome RoofControl::confirmCalibration(bool atOpenEnd)
+    {
+        if (lock == nullptr || !started.load())
+            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+        Outcome outcome;
+        {
+            RoofLocked held(lock);
+            const Calib::Answer answer = calibration.confirmOpen(atOpenEnd);
+            calibratingNow.store(calibration.active());
+            if (!calibration.active())
+                notice = "Calibration run ended: " + calibration.report().endingText;
+            refreshSnapshot();
+            outcome = Outcome{answer.accepted, answer.reason, answer.text, controller.status().state};
+        }
+        Logger::info(TAG, "Calibration: the person says the roof %s at its open end", atOpenEnd ? "is" : "isn't");
         return outcome;
     }
 

@@ -38,6 +38,8 @@ test('a run measures the roof and its proposal is saved on Accept', async ({ pag
   await expect(stop).toBeVisible({ timeout: 10_000 });
   await expect(stop).toBeEnabled();
   await expect(page.locator('.stop-bar')).toBeVisible();
+  // After the slow open the person confirms the roof is open (the demo's roof is).
+  await page.getByRole('button', { name: 'Yes, it is open' }).click({ timeout: 60_000 });
   await expect(page.getByRole('button', { name: 'Accept and save' })).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('#calibrate-result')).toContainText('Calibration finished');
   await expect(page.locator('#calibrate-result')).toContainText('Slow open');

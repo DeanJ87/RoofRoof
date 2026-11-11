@@ -60,6 +60,14 @@ std::string EmulatedDevice::calibration(const std::string &action, const std::st
         const DemoRoof::Outcome outcome = roof.command(Roof::Command::Stop, Roof::Origin::Person);
         return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
     }
+    if (action == "confirm")
+    {
+        StaticJsonDocument<128> in;
+        if (deserializeJson(in, body) || !in["atOpenEnd"].is<bool>())
+            return response(400, errorJson("atOpenEnd must be true or false"));
+        const DemoRoof::Outcome outcome = roof.confirmCalibration(in["atOpenEnd"].as<bool>());
+        return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
+    }
     if (action != "start")
         return response(404, errorJson("Not found"));
     StaticJsonDocument<512> in;

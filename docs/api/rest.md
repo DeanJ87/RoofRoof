@@ -343,6 +343,10 @@ Starts an attended [calibration run](../user-guide/calibration-run.md) (spec 016
 
 `attended` must be `true` (the person is at the roof and can see it); `at` is where the roof is now (`closed`, `open` or `partWay`), checked against the Hall reading; `travelMm` the travel between the magnets' trigger points, measured with a tape (100-20000); `topPass` adds an open and a close at the top duty. `200 {"success": true, "state": "running"}`; `400` for a body of another shape; `409` with `reason` and `error` when refused: `notAttended`, `calibrating`, `closeSequence` (the automatic close isn't idle), `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's refusals. Nothing is saved by the run.
 
+### `POST /api/roof/calibration/confirm`
+
+After the slow open the run waits (`leg.phase` `confirm`, at most 5 minutes) for the person at the roof to say whether the roof is now fully open: `{"atOpenEnd": true}` carries on with the slow close, `{"atOpenEnd": false}` ends the run (`wrongEnd`, nothing proposed). The run tells the ends apart by the direction it drives, so only a person can catch a motor that runs the other way. Login and `X-RoofRoof: 1`; `409` with `notWaiting` when the run isn't waiting.
+
 ### `POST /api/roof/calibration/abort`
 
 Stops the roof as a person's stop and ends any run (no proposal, settings unchanged). Login and `X-RoofRoof: 1`. Answers like `POST /api/roof/stop`. A stop from anywhere else ends a run too.
@@ -386,8 +390,8 @@ The last run since start-up. Open, like `/api/status`: readings and derived valu
 | Field | |
 |---|---|
 | `state` | `idle` (no run since start-up), `running`, `done`, `failed` (a fault, a refused leg, blocked for 15 s) or `stopped` (a stop, the weather, the park, the automatic close) |
-| `leg` | While running: `index` of `count`, `name` (`toClosed`, `slowOpen`, `slowClose`, `topOpen`, `topClose`), `phase` (`settle` at an end, `wait` for a blocker, `drive`), `elapsedMs` and the leg's `limitMs` |
-| `ending` | `reason` (`done`, `stopped`, `weather`, `park`, `closeSequence`, `fault`, `refused`, `busy`) and its text |
+| `leg` | While running: `index` of `count`, `name` (`toClosed`, `slowOpen`, `slowClose`, `topOpen`, `topClose`), `phase` (`settle` at an end, `wait` for a blocker, `confirm` for the person's answer, `drive`), `elapsedMs` and the leg's `limitMs` |
+| `ending` | `reason` (`done`, `stopped`, `weather`, `park`, `closeSequence`, `fault`, `refused`, `busy`, `wrongEnd`, `unconfirmed`) and its text |
 | `legs[]` | Each measured leg: time driven, duty, the level it ended on, the speed at 100 % duty it implies, and with current sense the mean and peak running current; the lowest supply |
 | `hall` | The in-between reading (middle half of each leg) with its noise (standard deviation), and the reading at rest at each end |
 | `proposal` | Only when `done`: the value at the start (`old`) and the proposed one (`new`); `null` where withheld, with `speedProblem` (`legsDisagree`, `legTooShort`, `outOfRange`) or `hallProblem` (`samePole`, `weakEnd`, `noRoom`); `warnings[]` (`directionsDiffer`, `currentNearLimit`) |

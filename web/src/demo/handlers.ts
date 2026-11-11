@@ -177,6 +177,7 @@ export const demoHandlers = [
   http.get('/api/roof/calibration', () => reply(demoDevice.calibration('status'))),
   http.post('/api/roof/calibration/start', async ({ request }) => reply(demoDevice.calibration('start', await request.text()))),
   http.post('/api/roof/calibration/abort', () => reply(demoDevice.calibration('abort'))),
+  http.post('/api/roof/calibration/confirm', async ({ request }) => reply(demoDevice.calibration('confirm', await request.text()))),
 
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),

@@ -31,6 +31,8 @@ namespace CalibTest
         Run run;
         RoofIo::GateInputs gates;
         bool busy = false;
+        // The person at the roof answers the open-end question by looking at it.
+        bool answerTruthfully = true;
         uint32_t nowMs = 1000;
 
         explicit Rig(float startMm = 0.0f, const Roof::Settings &s = Roof::Settings())
@@ -66,6 +68,8 @@ namespace CalibTest
             in.busyText = "MQTT is connecting";
             in.faultText = RoofIo::describeFault(RoofIo::FaultRecord{roof.status().fault, RoofIo::FaultCause::Logic});
             run.step(roof, in);
+            if (answerTruthfully && run.report().phase == Phase::Confirm)
+                run.confirmOpen(plant.positionMm > plant.travelMm / 2.0f);
         }
 
         StartInputs startInputs() const

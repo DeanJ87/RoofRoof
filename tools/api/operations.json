@@ -707,6 +707,126 @@
         }
       ]
     },
+    "POST /api/roof/calibration/confirm": {
+      "tag": "Roof",
+      "summary": "Confirm the open end",
+      "description": "After the slow open the run waits (phase `confirm`, at most 5 minutes) for the person at the roof to say whether the roof is now at its open end: the one check of the motor's direction the run can't make itself. `true` carries on with the slow close; `false` ends the run (`wrongEnd`) with nothing proposed. 409 `notWaiting` when the run isn't waiting for it. Needs the header `X-RoofRoof: 1`.",
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "403": "error",
+        "400": "error",
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the command."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              },
+              "pending": {
+                "type": "boolean",
+                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+              },
+              "message": {
+                "type": "string",
+                "description": "What the waiting close is waiting for (202 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "atOpenEnd": {
+              "type": "boolean",
+              "description": "The roof is now fully open."
+            }
+          },
+          "required": [
+            "atOpenEnd"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "atOpenEnd": true
+        }
+      }
+    },
     "GET /api/roof/calibration": {
       "tag": "Roof",
       "summary": "The calibration run",

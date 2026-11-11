@@ -73,8 +73,10 @@ namespace SQM
         // (refused unless every check passes; `sequenceIdle` is spec 005's
         // sequence as PlatformGuard sees it), stops it (a person's stop, which
         // ends any run), and reads a copy of its report.
-        Outcome startCalibration(const Calib::Request &request, bool sequenceIdle);
+        Outcome startCalibration(const Calib::Request &request, const std::function<bool()> &sequenceIdle);
         Outcome stopCalibration();
+        // The person confirms (or denies) that the slow open reached the open end.
+        Outcome confirmCalibration(bool atOpenEnd);
         Calib::Report calibrationReport(uint32_t &nowMs) const;
         // Any task: a run is under way (pauses included).
         bool calibrating() const { return calibratingNow.load(); }

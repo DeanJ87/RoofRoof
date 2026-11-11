@@ -90,6 +90,7 @@ export const handlers = [
   http.get('/api/roof/calibration', () => HttpResponse.json(mockCalibration)),
   http.post('/api/roof/calibration/start', () => HttpResponse.json({ success: true, state: 'running' })),
   http.post('/api/roof/calibration/abort', () => HttpResponse.json({ success: true, state: 'stopped' })),
+  http.post('/api/roof/calibration/confirm', () => HttpResponse.json({ success: true, state: 'open' })),
   http.get('/api/settings/effective', () =>
     HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) }),
   ),

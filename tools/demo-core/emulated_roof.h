@@ -93,6 +93,11 @@ namespace DemoRoof
         Outcome clearFault();
         // Spec 016: RoofControl's calibration run (the same library), as a person.
         Outcome startCalibration(const Calib::Request &request);
+        Outcome confirmCalibration(bool atOpenEnd)
+        {
+            const Calib::Answer a = calibration.confirmOpen(atOpenEnd);
+            return Outcome{a.accepted, a.reason, a.text, controller.status().state};
+        }
         const Calib::Report &calibrationReport() const { return calibration.report(); }
         bool calibrating() const { return calibration.active(); }
         uint32_t clockMs() const { return static_cast<uint32_t>(nowMs); }

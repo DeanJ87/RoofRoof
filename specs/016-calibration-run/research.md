@@ -38,7 +38,11 @@ saved settings, as it always does).
 **Rationale**: a wrong polarity is the most common first-run error; the run must measure it, so
 it can't rely on it. A magnet seen at the start can't say which end it is; the person can see.
 A wrong answer at an end drives into the end stop and faults `didNotLeave` within the leave time:
-the same bound as a motor wired backwards on a first move today.
+the same bound as a motor wired backwards on a first move today. From part-way, a motor that runs
+the other way reaches the open end on the "first close" and the closed end on the "slow open",
+which the run can't tell from a correct roof; a wrong answer combined with a backwards motor looks
+consistent too. So after the slow open the run asks the person whether the roof is fully open
+(`POST /api/roof/calibration/confirm`) and continues only on "yes".
 
 ## R3. Bounds of each leg
 
@@ -55,14 +59,16 @@ calibrating); the leg's own limit keeps the "stops and restarts don't reset it" 
 
 ## R4. The top-duty legs
 
-**Decision**: ramp from the slow duty to the top duty over `rampUpMs`, cruise, and from 60 % of the
-time the slow leg predicts at the top duty (slow time × slow ÷ top) ramp back to the slow duty over
-`rampDownMs`; stop at the magnet. Only from a confirmed magnet.
+**Decision**: ramp from the slow duty to the top duty over `rampUpMs`, cruise, and from half the
+time the slow leg predicts at the top duty, less `rampDownMs`, ramp back to the slow duty; stop at
+the magnet. The prediction allows a motor deadband d of up to half the slow duty s: slow time ×
+(s − d) ÷ (top − d). Only from a confirmed magnet; capped at the slow duty if the magnet is gone
+when the drive starts.
 
 **Rationale**: a move above the slow duty from an unknown position is forbidden (constitution I);
-a run starting part-way has reached the closed magnet before any top leg. The 60 % point arrives
-at the slow duty unless the roof is more than 1.6 times faster at the top duty than the slow leg
-suggests, which no DC worm drive is.
+a run starting part-way has reached the closed magnet before any top leg. A DC motor's speed is
+closer to affine than proportional in the duty; tested with deadbands of 0.2-0.3 at slow duties of
+30-40 %, the legs reach the magnet at the slow duty.
 
 ## R5. Speed and margin
 

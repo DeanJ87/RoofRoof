@@ -39,9 +39,10 @@ namespace SQM
         };
         enum class Phase : uint8_t
         {
-            Settle, // at an end before the next leg (or the end of the run)
-            Wait,   // the next leg waits for something that blocks it
-            Drive,  // a leg is under way
+            Settle,  // at an end before the next leg (or the end of the run)
+            Wait,    // the next leg waits for something that blocks it
+            Drive,   // a leg is under way
+            Confirm, // after the slow open: the person confirms the roof is at its open end
         };
         enum class Ending : uint8_t
         {
@@ -54,6 +55,8 @@ namespace SQM
             Fault,
             Refused,
             Busy,
+            WrongEnd,    // the person said the roof isn't at its open end after the slow open
+            Unconfirmed, // no answer within CONFIRM_WAIT_MS
         };
 
         const char *whereName(Where where); // "closed", "open", "partWay"
@@ -64,6 +67,8 @@ namespace SQM
 
         // The pause at each end, longer than the dead time: the Hall reading at rest.
         constexpr uint32_t SETTLE_MS = 1000;
+        // The longest the run waits for the person to confirm the open end.
+        constexpr uint32_t CONFIRM_WAIT_MS = 300000;
         // The longest the next leg waits for a blocker (an MQTT connect, a Wi-Fi change).
         constexpr uint32_t LEG_WAIT_MS = 15000;
         // Later legs' limits from the measured ones (research R3).
@@ -71,8 +76,11 @@ namespace SQM
         constexpr double TOP_LEG_FACTOR = 1.25;
         constexpr uint32_t LEG_EXTRA_MS = 5000;
         // A top-duty leg starts slowing down after this fraction of the time the
-        // slow leg predicts at the top duty, less the ramp-down time (R4).
+        // slow leg predicts at the top duty, less the ramp-down time (R4). The
+        // prediction allows the motor a deadband of up to half the slow duty
+        // (speed affine in the duty), so it never overestimates the time to the end.
         constexpr double SLOW_AFTER_FRACTION = 0.5;
+        constexpr double DEADBAND_ALLOWANCE = 0.5;
         // The run's limit setting (roof.calibrationLimitSeconds).
         constexpr uint32_t MIN_LIMIT_MS = 30000;
         constexpr uint32_t MAX_LIMIT_MS = 600000;
@@ -146,6 +154,10 @@ namespace SQM
             // The pause is over and a leg is due: the caller probes its blockers for step().
             bool wantsLeg(uint32_t nowMs) const;
             void step(Roof::Controller &controller, const StepInputs &in);
+            // The person answers whether the roof is now at its open end (after
+            // the slow open): the only check of the motor's direction the run
+            // can't make itself (research R2). No ends the run (WrongEnd).
+            Answer confirmOpen(bool atOpenEnd);
             // An accepted stop or abort from anyone (the roof is being stopped): the run ends.
             void stopped(const std::string &text);
             // The automatic close takes over: the run ends; a closing leg is left
@@ -166,6 +178,7 @@ namespace SQM
             void legEnded(const Roof::CalibrationReport &report, uint32_t nowMs);
             void startLeg(Roof::Controller &controller, const RoofIo::GateInputs &gates, uint32_t nowMs);
             void pause(uint32_t nowMs);
+            void awaitConfirmation(uint32_t nowMs);
             void finish(Ending ending, const std::string &text);
             void finishDone();
 
@@ -179,6 +192,7 @@ namespace SQM
             bool restAtEnd = false; // the pause is at a magnet: its readings are the end's at rest
             Roof::End restEnd = Roof::End::Closed;
             uint32_t waitStartMs = 0;
+            bool openConfirmed = false;
             Ending endAfterLeg = Ending::None; // a closing leg finishes, then the run ends with this
             std::string endAfterText;
         };

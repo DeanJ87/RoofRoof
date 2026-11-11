@@ -59,13 +59,14 @@ namespace SQM
 
         const char *phaseName(Phase phase)
         {
-            static const char *const NAMES[] = {"settle", "wait", "drive"};
+            static const char *const NAMES[] = {"settle", "wait", "drive", "confirm"};
             return nameIn(phase, NAMES);
         }
 
         const char *endingName(Ending ending)
         {
-            static const char *const NAMES[] = {"none", "done", "stopped", "weather", "park", "closeSequence", "fault", "refused", "busy"};
+            static const char *const NAMES[] = {
+                "none", "done", "stopped", "weather", "park", "closeSequence", "fault", "refused", "busy", "wrongEnd", "unconfirmed"};
             return nameIn(ending, NAMES);
         }
 
@@ -142,6 +143,7 @@ namespace SQM
             rep.nowMs = in.nowMs;
             endAfterLeg = Ending::None;
             endAfterText.clear();
+            openConfirmed = false;
             plan(controller, request);
             legsEnded = controller.calibrationReport().ended;
             faultsSeen = controller.faultCount();
@@ -177,6 +179,23 @@ namespace SQM
                 finish(Ending::Stopped, text);
         }
 
+        Answer Run::confirmOpen(bool atOpenEnd)
+        {
+            if (!active() || rep.phase != Phase::Confirm)
+                return Answer{false, "notWaiting", "The run isn't waiting for a confirmation"};
+            if (!atOpenEnd)
+            {
+                finish(
+                    Ending::WrongEnd,
+                    "The roof isn't at its open end after the slow open: the motor runs the other way (check roof.openDirection) or "
+                    "the roof wasn't where you said. Nothing is proposed");
+                return Answer{};
+            }
+            openConfirmed = true;
+            rep.phase = Phase::Settle; // the next step starts the slow close
+            return Answer{};
+        }
+
         void Run::yieldToClose(Roof::Controller &controller)
         {
             if (!active())
@@ -199,6 +218,7 @@ namespace SQM
             case Ending::Fault:
             case Ending::Refused:
             case Ending::Busy:
+            case Ending::WrongEnd:
                 rep.state = RunState::Failed;
                 break;
             default:

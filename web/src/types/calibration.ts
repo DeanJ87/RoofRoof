@@ -54,7 +54,7 @@ export interface CalibrationStatus {
     index: number;
     count: number;
     name: CalibrationLegName;
-    phase: 'settle' | 'wait' | 'drive';
+    phase: 'settle' | 'wait' | 'drive' | 'confirm';
     elapsedMs: number;
     limitMs: number;
   } | null;

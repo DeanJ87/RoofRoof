@@ -200,8 +200,8 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
-  /** The calibration run (spec 016): `start` with its JSON body, `abort`, `status`. */
-  calibration(action: 'start' | 'abort' | 'status', body = ''): Reply {
+  /** The calibration run (spec 016): `start` and `confirm` with their JSON bodies, `abort`, `status`. */
+  calibration(action: 'start' | 'abort' | 'confirm' | 'status', body = ''): Reply {
     const reply = JSON.parse(this.core.calibration(action, body));
     if (action !== 'status') {
       this.persist();

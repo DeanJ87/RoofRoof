@@ -55,6 +55,12 @@ namespace SQM
             512);
         calibrate->setMethod(HTTP_POST);
         server.addHandler(calibrate);
+        AsyncCallbackJsonWebHandler *confirm = new AsyncCallbackJsonWebHandler(
+            "/api/roof/calibration/confirm",
+            [this](AsyncWebServerRequest *request, JsonVariant &json) { handleCalibrationConfirm(request, json); },
+            128);
+        confirm->setMethod(HTTP_POST);
+        server.addHandler(confirm);
         server.on("/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
         server.on("/api/roof/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCalibrationStatus(request); });
         server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
@@ -129,8 +135,8 @@ namespace SQM
             sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
-        const bool sequenceIdle = PlatformGuard::sequence() == RoofIo::SequenceState::Idle;
-        RoofControl::Outcome outcome = roof->startCalibration(wanted, sequenceIdle);
+        RoofControl::Outcome outcome =
+            roof->startCalibration(wanted, [] { return PlatformGuard::sequence() == RoofIo::SequenceState::Idle; });
         if (outcome.accepted)
             outcome.state = Roof::State::Unknown; // the answer names the run's state, below
         StaticJsonDocument<512> doc;
@@ -144,6 +150,23 @@ namespace SQM
         std::string body;
         serializeJson(doc, body);
         request->send(outcome.accepted ? 200 : 409, "application/json", body.c_str());
+    }
+
+    void WebServer::handleCalibrationConfirm(AsyncWebServerRequest *request, JsonVariant &json)
+    {
+        if (!requireAuth(request) || !requireCommandHeader(request))
+            return;
+        if (!json["atOpenEnd"].is<bool>())
+        {
+            request->send(400, "application/json", createErrorJson("atOpenEnd must be true or false").c_str());
+            return;
+        }
+        if (roof == nullptr)
+        {
+            sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
+            return;
+        }
+        sendOutcome(request, roof->confirmCalibration(json["atOpenEnd"].as<bool>()));
     }
 
     void WebServer::handleCalibrationAbort(AsyncWebServerRequest *request)

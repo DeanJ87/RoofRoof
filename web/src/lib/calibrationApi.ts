@@ -40,3 +40,5 @@ const send = async (path: string, body?: unknown): Promise<CalibrationAnswer> =>
 
 export const startCalibration = (request: CalibrationRequest) => send('/api/roof/calibration/start', request);
 export const abortCalibration = () => send('/api/roof/calibration/abort');
+/** The person says whether the slow open reached the open end (the run waits for it). */
+export const confirmCalibration = (atOpenEnd: boolean) => send('/api/roof/calibration/confirm', { atOpenEnd });

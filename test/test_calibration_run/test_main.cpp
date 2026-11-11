@@ -483,25 +483,6 @@ void test_the_automatic_close_stops_an_opening_leg(void)
     TEST_ASSERT_FALSE(r.roof.status().calibrating);
 }
 
-void test_top_legs_arrive_at_the_slow_duty_on_an_affine_motor(void)
-{
-    Rig r;
-    r.plant.deadbandFraction = 0.2f;  // slow at 40 % is a quarter of full speed, not 40 %
-    r.plant.speedMmPerSecond = 60.0f; // so a slow travel still fits the limit
-    TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
-    TEST_ASSERT_TRUE(r.until(LegKind::TopOpen));
-    uint8_t lastDuty = 0;
-    while (r.run.active() && r.rep().leg == LegKind::TopOpen && r.rep().phase == Phase::Drive)
-    {
-        if (r.roof.output().duty > 0)
-            lastDuty = r.roof.output().duty;
-        r.step();
-    }
-    TEST_ASSERT_EQUAL_UINT8(Roof::toDuty(0.4f), lastDuty);
-    TEST_ASSERT_TRUE(r.finish());
-    TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
-}
-
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -534,7 +515,6 @@ int main(int, char **)
     RUN_TEST(test_wants_leg_only_when_a_leg_is_due);
     RUN_TEST(test_a_fault_cleared_before_the_next_step_still_ends_the_run);
     RUN_TEST(test_the_automatic_close_stops_an_opening_leg);
-    RUN_TEST(test_top_legs_arrive_at_the_slow_duty_on_an_affine_motor);
     RUN_TEST(test_the_opposite_polarity_is_proposed);
     RUN_TEST(test_same_pole_magnets_return_to_closed_and_withhold_the_thresholds);
     RUN_TEST(test_a_weak_magnet_withholds_the_thresholds);

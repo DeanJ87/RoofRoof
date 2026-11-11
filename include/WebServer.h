@@ -304,6 +304,7 @@ namespace SQM
         // Spec 016: the calibration run.
         void handleCalibrationStart(AsyncWebServerRequest *request, JsonVariant &json);
         void handleCalibrationAbort(AsyncWebServerRequest *request);
+        void handleCalibrationConfirm(AsyncWebServerRequest *request, JsonVariant &json);
         void handleCalibrationStatus(AsyncWebServerRequest *request);
         // Answers 409 with the reason and returns true while `action` must wait
         // (spec 010, RoofIo::platformHold): the roof moves, a close waits, or

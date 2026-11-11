@@ -20,6 +20,12 @@ All three are registered before any shorter `/api/roof/...` route they could pre
   `restarting`, `invalid`, `hallDisagrees`, `notStarted`, and the motion logic's refusals
   (`supplyLow`, `supplyUnreadable`, `currentUnreadable`, `hallNotSettled`, `settingsInvalid`).
 
+## `POST /api/roof/calibration/confirm`
+
+`requireAuth`, `X-RoofRoof: 1`. Body `{"atOpenEnd": true|false}` (400 otherwise). Only while
+`leg.phase` is `confirm` (409 `notWaiting` otherwise): `true` continues with the slow close,
+`false` ends the run (`wrongEnd`). Answers like `POST /api/roof/stop`.
+
 ## `POST /api/roof/calibration/abort`
 
 `requireAuth`, `X-RoofRoof: 1`. Stops the roof as a person's stop and ends any run. Answers like
@@ -63,10 +69,10 @@ Open (readings only).
 ```
 
 - `state`: `idle` (no run since start-up), `running`, `done`, `failed`, `stopped`.
-- `leg` while running: `{ "index", "count", "name", "phase" ("settle", "wait", "drive"),
+- `leg` while running: `{ "index", "count", "name", "phase" ("settle", "wait", "confirm", "drive"),
   "elapsedMs", "limitMs" }`.
 - `ending`: `{ "reason", "text" }` once ended; reasons `done`, `stopped`, `weather`, `park`,
-  `closeSequence`, `fault`, `refused`, `busy`.
+  `closeSequence`, `fault`, `refused`, `busy`, `wrongEnd`, `unconfirmed`.
 - `legs[].name`: `slowOpen`, `slowClose`, `topOpen`, `topClose` (the first close isn't measured).
   `ampsMean`, `ampsPeak` are null without current sense.
 - `hall.*` null until read.

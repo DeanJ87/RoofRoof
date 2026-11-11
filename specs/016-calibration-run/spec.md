@@ -303,9 +303,12 @@ Playwright walk-through starts a run, waits for the result and accepts it.
 - The person says closed and the roof really is open (polarity unknown, so the magnet can't tell):
   the slow open pushes into the open end stop and faults `didNotLeave` within the leave time. The
   page asks the person to look before saying where the roof is.
-- The motor direction setting is wrong: the first leg drives the wrong way; from an end it faults
-  `didNotLeave`, from part-way it reaches the other end's magnet, and the next leg faults
-  `didNotLeave` at the end stop. The page says to check the direction with a first short move first.
+- The motor direction setting is wrong: from an end, the first leg pushes into the end stop and
+  faults `didNotLeave`. From part-way, the first close reaches the open end's magnet and the slow
+  open then drives to the closed end, which looks consistent to the run; so after the slow open the
+  run asks the person whether the roof is now fully open, and "No" ends it (`wrongEnd`) with
+  nothing proposed. The same question catches a wrong answer about where the roof was combined with
+  a backwards motor.
 - The current thresholds can't see a magnet: the leg times out. The page says the run needs
   thresholds that already see both magnets (set them from the live reading first).
 - Unsafe weather arrives during a closing leg: the leg finishes its close; the run ends with no
@@ -354,8 +357,9 @@ Playwright walk-through starts a run, waits for the result and accepts it.
 - **FR-006**: The run MUST drive, in order: a slow close to the closed end unless the roof is
   closed; a slow open; a slow close; and with the top-duty pass, an open and a close at the top
   duty. Slow legs drive at the slow duty throughout; top-duty legs ramp up from the slow duty over
-  the ramp-up time and drop back to the slow duty before the end (after 60 % of the time the slow
-  leg predicts at the top duty, over the ramp-down time). A leg above the slow duty MUST start on
+  the ramp-up time and drop back to the slow duty before the end: they start slowing down at half
+  the time the slow leg predicts at the top duty (allowing the motor a deadband of up to half the
+  slow duty), less the ramp-down time. A leg above the slow duty MUST start on
   a confirmed magnet.
 - **FR-007**: Each leg MUST be a move of the existing controller, stepped by the control task, with
   its own hard timeout: `roof.calibrationLimitSeconds` for the first close and the slow open; the
@@ -369,6 +373,11 @@ Playwright walk-through starts a run, waits for the result and accepts it.
   total), over-current and current unreadable (with current sense), supply low, Hall rail, a late
   control step, the watchdog and the park interlock. A fault MUST latch as today (needing a
   person to clear it, kept across a restart) and end the run as failed.
+- **FR-010a**: After the slow open the run MUST wait (at most 5 minutes) for the person to confirm
+  through `POST /api/roof/calibration/confirm` (authenticated, with the command header) that the
+  roof is now fully open, before the slow close. "No" ends the run as failed (`wrongEnd`), no
+  answer ends it (`unconfirmed`); either way nothing is proposed. The weather and park rules apply
+  while it waits.
 - **FR-010**: Between legs the run MUST wait at the end for 1 s (longer than the dead time), taking
   the Hall reading at rest, before the next leg starts. A leg that can't start because something
   blocks it MUST wait up to 15 s, then the run fails as busy.
@@ -513,8 +522,11 @@ Each was an open choice; the safest option the constitution allows was taken.
 6. **The time limit is a new setting** (180 s, 30-600 s): about 1.5 times a slow travel with the
    default roof. Later legs are bounded by the measured ones. During a leg the drive budget is the
    leg's limit, since the old settings' budget may be wrong.
-7. **Top-duty legs slow down before the end** after 60 % of the time the slow leg predicts, so they
-   arrive at the slow duty even if the roof is faster at the top duty than the slow leg suggests.
+7. **Top-duty legs slow down early**: at half the time the slow leg predicts at the top duty,
+   allowing a motor deadband of up to half the slow duty, less the ramp-down time, so they arrive
+   at the slow duty even when the motor is much faster at the top duty than the slow leg suggests.
+   The top-duty pass then spends much of its time at the slow duty; the speed is still measured
+   from the duty actually applied.
 8. **The speed comes from the top-duty legs when run**: real moves spend most of their time at the
    top duty. The margin covers the slow legs' shortfall, so a move from an unknown position (at
    the slow duty) still fits its timeout.
@@ -529,7 +541,19 @@ Each was an open choice; the safest option the constitution allows was taken.
 14. **The status route is open**, like `/api/status`: readings and derived values only.
 15. **The wizard gets an eleventh page** after the Hall page. A saved `setup.step` from before
     this release then resumes one page earlier than it did, which only repeats a page.
-16. **The UI mockup review is pending**: the owner reviews the page in the demo before merging.
+16. **The person confirms the open end** after the slow open. The run can't tell a motor that runs
+    the other way from part-way (both ends then look consistent), so it asks; "No", or no answer
+    within 5 minutes, ends it with nothing proposed.
+17. **The automatic close keeps a closing leg running** as its close rather than stopping it: the
+    leg drives the close direction to the first magnet within its limit, like a person's close from
+    an unknown position, which the automatic close itself may not start (constitution I). Stopping
+    it would leave a roof that started part-way open in bad weather.
+18. **"Authenticated" is the device's login**: with password protection off, as for every roof
+    command, anyone on the trusted LAN can start a run (constitution VIII), still needing the
+    attended confirmation and the command header.
+19. **MQTT reconnects wait for the run** like every platform action while the roof moves; stale
+    MQTT weather then ends the run (fail-safe).
+20. **The UI mockup review is pending**: the owner reviews the page in the demo before merging.
 
 ## Out of scope
 

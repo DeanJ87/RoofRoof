@@ -64,8 +64,12 @@ low supply, a Hall reading at a rail, a late control step, the watchdog, the par
 fault latches and needs a person to clear it, as always. Above the slow duty the roof only moves
 from a magnet.
 
-Between legs the roof rests at each end for a second while the Hall reading is taken. The run
-always ends at the closed end.
+Between legs the roof rests at each end for a second while the Hall reading is taken. After the
+slow open the page asks **is it now fully open?**: look at the roof and answer. **Yes** carries on
+with the slow close; **No** ends the run with nothing proposed (the motor runs the other way, or
+the roof wasn't where you said), and so does no answer within 5 minutes. The run tells the ends
+apart only by the direction it drives, so this is the one check it needs you for. The run always
+ends at the closed end.
 
 While the run is under way:
 
@@ -104,6 +108,10 @@ A value isn't proposed, with the reason, when:
 - an end reads less than 300 counts from the in-between level: its magnet is too weak or too far
   from the sensor;
 - no threshold is both clear of the noise and read at rest.
+
+The speed model is the controller's own: speed proportional to the duty. A motor that needs a
+good part of the slow duty before it moves runs slower at the slow duty than that model says; the
+proposed margin covers it, and the top-duty pass gives the speed real moves see.
 
 A peak running current at 80 % of `roof.maxCurrentAmps` is pointed out; current limits are never
 proposed.
