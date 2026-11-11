@@ -11,6 +11,7 @@ import AlertsTab from './settings/AlertsTab';
 import type { ConfigPath, SettingsTabProps } from './settings/context';
 import DeviceTab from './settings/DeviceTab';
 import NetworkTab from './settings/NetworkTab';
+import RoofTab from './settings/RoofTab';
 import { fieldErrorAliases, toConfigPayload } from './settings/payload';
 import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
@@ -292,6 +293,7 @@ const Settings: FunctionalComponent = () => {
 
       <div class="settings-tab-panel" role="tabpanel" id="settings-tab-panel" aria-labelledby={`settings-tab-${tab}`} tabIndex={0}>
         {tab === 'device' && <DeviceTab {...props} />}
+        {tab === 'roof' && <RoofTab {...props} />}
         {tab === 'network' && <NetworkTab {...props} originalWifiSsid={originalWifiSsid} />}
         {tab === 'time' && <TimeTab {...props} />}
         {tab === 'alerts' && <AlertsTab {...props} />}

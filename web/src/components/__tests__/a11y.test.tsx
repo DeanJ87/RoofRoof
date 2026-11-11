@@ -76,11 +76,11 @@ describe('Settings tabs', () => {
     expect(screen.getByRole('tabpanel', { name: 'Device' })).toBeInTheDocument();
 
     fireEvent.keyDown(device, { key: 'ArrowRight' });
-    const network = await screen.findByRole('tab', { name: 'Network', selected: true });
-    expect(network).toHaveFocus();
+    const roof = await screen.findByRole('tab', { name: 'Roof', selected: true });
+    expect(roof).toHaveFocus();
     expect(screen.getByRole('tab', { name: 'Device' })).toHaveAttribute('tabindex', '-1');
 
-    fireEvent.keyDown(network, { key: 'End' });
+    fireEvent.keyDown(roof, { key: 'End' });
     expect(await screen.findByRole('tab', { name: 'Alerts', selected: true })).toHaveFocus();
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Alerts' }), { key: 'Home' });
     expect(await screen.findByRole('tab', { name: 'Device', selected: true })).toHaveFocus();
