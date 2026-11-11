@@ -36,15 +36,21 @@ Each answer takes the safest option the constitution allows and is also listed u
   No. Alpaca has no login, so anything on the network can send it; if it counted, one request (a
   script, ConformU pointed at the device, an app's clean-up) could call off the close on unsafe
   weather, which constitution III forbids and VIII limits Alpaca to I-III.
-- Q: Can a client stop the automatic close at all? → A: No. While spec 005's close is under way or
-  waiting to start, a client's `AbortSlew` is refused (InvalidOperation, "The roof is closing on
-  unsafe weather: an imaging app can't stop it (Stop in the web UI can)"). Otherwise a client could
-  keep the roof open in the rain by stopping each attempt. The web UI's Stop, which an authenticated
-  person presses, always works and stands the sequence down (spec 005). Every other stop from a
-  client (its own moves, a person's) works at once.
+- Q: Can a client stop a close while the weather isn't safe? → A: No, whoever started the close
+  (spec 005's, a person's or the client's own). While a close is under way or waiting to start and
+  the weather verdict isn't safe, a client's `AbortSlew` is refused (InvalidOperation, "The roof is
+  closing and the weather isn't safe: an imaging app can't stop it (Stop in the web UI can)").
+  Otherwise a client could keep the roof open in the rain, by stopping each attempt or by starting
+  a close of its own and stopping that (the sequence would watch it, see it interrupted and wait 5
+  minutes; third safety review). The rule depends only on the verdict and the roof's state, not on
+  who started the close. The web UI's Stop (an authenticated person) always works and stands the
+  sequence down (spec 005); the controller's own stops always work. Every other stop from a client
+  works at once.
 - Q: Must a client be connected before it can move the roof? → A: Yes for `OpenShutter` and
-  `CloseShutter` (ASCOM's NotConnected error otherwise), so a stray request that never connected
-  moves nothing. `AbortSlew` is accepted connected or not.
+  `CloseShutter` (ASCOM's NotConnected error otherwise). This follows ASCOM and catches a client
+  that forgot to connect; it is not a safeguard (the connection is one flag for the whole server,
+  anything can set it, and it survives a self-caused restart). The safeguards are the roof's own
+  checks. `AbortSlew` is accepted connected or not.
 - Q: What does the Dome do while Alpaca support is switched off? → A: It isn't listed, and every
   Dome request, `AbortSlew` included, is answered with the "Alpaca support is disabled" error;
   nothing moves or stops. Switched off, Alpaca changes nothing (the web UI's Stop remains). The
@@ -85,8 +91,8 @@ Each answer takes the safest option the constitution allows and is also listed u
 | I | The roof never moves by itself while its position is unknown; only an authenticated person may | FR-006: a client is not a person |
 | I | Any motion fault locks out motion until a person clears it | FR-006: no Alpaca member clears a fault; open and close are refused while one is latched |
 | I | A move's timeout is enforced by the motion code, never by a client | FR-008: a disconnect or silence never ends or extends a move |
-| I | Stop is never refused | FR-007 |
-| III | Unsafe ends closed: nothing an unauthenticated client sends can call the automatic close off or delay it | FR-007: a client can't stop the automatic close and its stops never stand the sequence down; FR-005: a client can't reverse a close |
+| I, VII | A person's stop is never refused (the web UI's Stop on every page) | FR-007: only an Alpaca client's stop can be refused, and only to keep a close in bad weather going |
+| III | Unsafe ends closed: nothing an unauthenticated client sends can call off or delay a close in bad weather | FR-007: a client can't stop a close while the weather isn't safe and its stops never stand the sequence down; FR-005: a client can't reverse a close |
 | II | Every close is checked the same way whatever its source, including Alpaca `CloseShutter` | FR-005: the web UI's checked command path |
 | III | Opening is refused while the verdict is not safe; the roof never opens by itself | FR-005 |
 | III | Every refusal states the measured value and the limit, or the input that failed | FR-005: the Alpaca error carries the refusal's text |
@@ -164,22 +170,25 @@ and that nothing moved.
 The owner sees something wrong on the camera and presses Stop in N.I.N.A.'s dome panel while the
 roof is opening, or closing at their own request. The roof stops at once.
 
-**Why this priority**: Stop must work from every place a person may press it (constitution I, VII),
-within constitution III: the close on unsafe weather is stopped only from the web UI.
+**Why this priority**: Stop must work wherever a person may press it (constitution I, VII), within
+constitution III: a close while the weather isn't safe is stopped only from the web UI.
 
 **Independent Test**: With the roof opening or closing at a person's or a client's request,
 `AbortSlew` stops the motor before the reply and `ShutterStatus` then reports error (stopped
-part-way). With spec 005's close under way, a client's `AbortSlew` is refused and the close runs on.
+part-way). With a close under way and the weather not safe, a client's `AbortSlew` is refused and
+the close runs on.
 A client's stop never counts as a person's stop.
 
 **Acceptance Scenarios**:
 
-1. **Given** the roof opening or closing at a person's or a client's request, **When** a client calls
+1. **Given** the roof opening, or closing in safe weather, **When** a client calls
    `AbortSlew`, **Then** the motor is off before the reply, the position estimate is kept, and
    `Slewing` is false.
-2. **Given** the automatic close running or waiting to start, **When** a client calls `AbortSlew`,
-   **Then** the reply is an InvalidOperation error saying the web UI's Stop can stop it, and the
-   close carries on.
+2. **Given** a close running or waiting to start (spec 005's, a person's or a client's) and the
+   weather not safe, **When** a client calls `AbortSlew`, **Then** the reply is an InvalidOperation
+   error saying the web UI's Stop can stop it, and the close carries on.
+2a. **Given** it is raining and a client keeps sending `CloseShutter` and `AbortSlew`, **When** any
+   time passes, **Then** the roof still ends closed onto the parked mount.
 3. **Given** a client that has not connected, **When** it calls `AbortSlew` during a move it may
    stop, **Then** the roof stops.
 4. **Given** nothing moving, **When** a client calls `AbortSlew`, **Then** it succeeds and nothing
@@ -270,8 +279,8 @@ and the imaging-app tile on the dashboard.
   false MUST succeed and setting it true MUST answer NotImplemented. `FindHome`, `Park`, `SetPark`,
   `SlewToAltitude`, `SlewToAzimuth` and `SyncToAzimuth` MUST answer NotImplemented. Custom actions
   and commands stay unsupported.
-- **FR-003**: `ShutterStatus` MUST report: closed at the closed magnet; open at the open magnet or
-  stopped part-way with a known position; opening while opening; closing while closing or while a
+- **FR-003**: `ShutterStatus` MUST report: closed at the closed magnet; open at the open magnet;
+  opening while opening; closing while closing or while a
   close is waiting to start; error while stopped part-way, the position is unknown, a fault is
   latched or the roof controller isn't running. Only the open magnet reads open.
 - **FR-004**: `Slewing` MUST be true while the roof is opening or closing or a close is waiting to
@@ -292,8 +301,9 @@ and the imaging-app tile on the dashboard.
   as not a person: it may not move the roof from an unknown position or clear a fault.
 - **FR-007**: `AbortSlew` MUST stop the roof (the roof's Stop, keeping the position estimate)
   whether the client is connected or not, and MUST succeed when nothing is moving or the roof
-  controller isn't running, except: while spec 005's close on unsafe weather is under way or
-  waiting to start it MUST be refused with InvalidOperation saying the web UI's Stop can stop it,
+  controller isn't running, except: while a close is under way or waiting to start and the weather
+  verdict isn't safe (whoever started the close) it MUST be refused with InvalidOperation saying the
+  web UI's Stop can stop it,
   and while Alpaca is off it MUST answer the disabled error. It MUST NOT count as a person's stop.
 - **FR-008**: Disconnecting, a client going silent or Alpaca being switched off MUST NOT stop, start
   or extend a move.
@@ -350,8 +360,8 @@ and the imaging-app tile on the dashboard.
   check, and each shows the motor was never driven.
 - **SC-003**: Every Dome member in FR-002 to FR-004 and FR-009 has a native test of its reply,
   including each shutter state mapping (7 roof states, with and without a waiting close).
-- **SC-004**: `AbortSlew` turns the motor off within one control step, connected or not, except during
-  the automatic close, which it can't stop; it is never counted as a person's stop (native tests of
+- **SC-004**: `AbortSlew` turns the motor off within one control step, connected or not, except during a
+  close while the weather isn't safe, which it can't stop; it is never counted as a person's stop (native tests of
   both rules).
 - **SC-005**: On the bench (motor disconnected, bench check): N.I.N.A. connects to the Dome, opens and
   closes it with the weather safe and the mount parked, sees the refusal text when unsafe, and its
@@ -366,10 +376,10 @@ Each was an open choice; the safest option the constitution allows was taken.
 1. **An Alpaca client is not a person.** It can't move the roof from an unknown position and can't
    clear a fault; a person does both from the web UI. The cost: after a boot between the magnets,
    N.I.N.A. can't open or close the roof until someone moves it to a magnet.
-2. **A client can't stop the close on unsafe weather.** While spec 005's close is under way or
-   waiting, a client's `AbortSlew` is refused, and no client stop ever counts as a person's stop, so
-   nothing an unauthenticated client sends can call off or delay that close. The cost: someone at
-   the roof who must stop it uses the web UI's Stop (any page, logged in), not N.I.N.A.'s.
+2. **A client can't stop a close while the weather isn't safe**, whoever started it, and no client
+   stop ever counts as a person's stop, so nothing an unauthenticated client sends can call off or
+   delay the roof closing in bad weather. The cost: someone at the roof who must stop it uses the web
+   UI's Stop (any page, logged in), not N.I.N.A.'s, and N.I.N.A.'s Stop button shows an error then.
 2a. **`AbortSlew` is the roof's Stop**, keeping the position estimate, not its Abort (which would make
    the position unknown and so stop the automatic close from closing by itself).
 2b. **A client can't reverse a close**: its open is refused while the roof is closing, a close waits,

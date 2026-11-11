@@ -241,11 +241,10 @@ namespace
     }
 
     // Runs `command` as RoofControl does: the shared check, then the logic.
-    RoofIo::CommandContext ctx(bool closePending = false, bool automaticClose = false)
+    RoofIo::CommandContext ctx(bool closePending = false)
     {
         RoofIo::CommandContext c;
         c.closePending = closePending;
-        c.automaticClose = automaticClose;
         return c;
     }
 
@@ -343,43 +342,56 @@ void test_client_cannot_reverse_a_close(void)
     TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, ctx()).accepted);
 }
 
-// Without spec 005's close under way, every stop passes.
+// With nothing closing, every stop passes.
 void test_stops_pass_every_check(void)
 {
     Bench b(Settings(), 900.0f);
     RoofIo::GateInputs gates; // weather unknown, not parked
     b.roof.raiseFault(Fault{FaultKind::External, 1.0f, 0.0f});
     for (Command c : {Command::Stop, Command::Abort})
+    {
         for (Origin o : {Origin::Person, Origin::Automatic, Origin::Client})
-            for (bool pending : {false, true})
-                TEST_ASSERT_TRUE(RoofIo::checkCommand(c, o, gates, b.roof, ctx(pending)).accepted);
+            TEST_ASSERT_TRUE(RoofIo::checkCommand(c, o, gates, b.roof, ctx()).accepted);
+        // A person's and the controller's own stops pass even with a close waiting in bad weather.
+        for (Origin o : {Origin::Person, Origin::Automatic})
+            TEST_ASSERT_TRUE(RoofIo::checkCommand(c, o, gates, b.roof, ctx(true)).accepted);
+    }
 }
 
-// Constitution III: a client can't call off the close on unsafe weather by stopping it.
-void test_client_cannot_stop_the_automatic_close(void)
+// Constitution III: while the weather isn't safe, a client can't stop a close,
+// whoever started it (spec 005's, a person's or its own).
+void test_client_cannot_stop_a_close_in_bad_weather(void)
 {
-    Bench b(Settings(), 1850.0f);
-    const RoofIo::GateInputs gates = safeAndParked();
-    TEST_ASSERT_TRUE(run(b, Command::Close, Origin::Automatic, gates));
-    b.steps(50);
-    TEST_ASSERT_TRUE(b.state() == State::Closing);
-    for (Command c : {Command::Stop, Command::Abort})
+    RoofIo::GateInputs unsafe = safeAndParked();
+    unsafe.weather = Safety::Verdict::Unsafe;
+    unsafe.weatherText = "unsafe: rain";
+    for (Origin starter : {Origin::Automatic, Origin::Person, Origin::Client})
     {
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(c, Origin::Client, gates, b.roof, ctx(false, true));
-        TEST_ASSERT_FALSE(check.accepted);
-        TEST_ASSERT_EQUAL_STRING("automaticClose", check.reason.c_str());
-        TEST_ASSERT_FALSE(run(b, c, Origin::Client, gates, ctx(false, true)));
+        Bench b(Settings(), 1850.0f);
+        TEST_ASSERT_TRUE(run(b, Command::Close, starter, unsafe));
+        b.steps(50);
+        TEST_ASSERT_TRUE(b.state() == State::Closing);
+        for (Command c : {Command::Stop, Command::Abort})
+        {
+            const RoofIo::CommandCheck check = RoofIo::checkCommand(c, Origin::Client, unsafe, b.roof, ctx());
+            TEST_ASSERT_FALSE(check.accepted);
+            TEST_ASSERT_EQUAL_STRING("unsafeClose", check.reason.c_str());
+            TEST_ASSERT_FALSE(run(b, c, Origin::Client, unsafe));
+        }
+        // A person's stop and the controller's own still work.
+        TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Person, unsafe, b.roof, ctx()).accepted);
+        TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Automatic, unsafe, b.roof, ctx()).accepted);
+        TEST_ASSERT_TRUE(b.runToRest());
+        TEST_ASSERT_TRUE(b.state() == State::Closed);
     }
-    TEST_ASSERT_TRUE(b.state() == State::Closing);
-    // A person's stop and the controller's own still work.
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Person, gates, b.roof, ctx(false, true)).accepted);
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Automatic, gates, b.roof, ctx(false, true)).accepted);
-    TEST_ASSERT_TRUE(b.runToRest());
-    TEST_ASSERT_TRUE(b.state() == State::Closed);
-    // A waiting automatic close can't be stopped by a client either.
+    // Unknown weather counts as not safe; a waiting close is covered too.
+    RoofIo::GateInputs unknown = safeAndParked();
+    unknown.weather = Safety::Verdict::Unknown;
     Bench open(Settings(), 1850.0f);
-    TEST_ASSERT_FALSE(RoofIo::checkCommand(Command::Stop, Origin::Client, gates, open.roof, ctx(true, true)).accepted);
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Client, gates, open.roof, ctx(true, false)).accepted);
+    TEST_ASSERT_FALSE(RoofIo::checkCommand(Command::Stop, Origin::Client, unknown, open.roof, ctx(true)).accepted);
+    // Safe weather: a client may stop a close, and nothing is closing: a client may stop.
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Client, safeAndParked(), open.roof, ctx(true)).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Client, unsafe, open.roof, ctx()).accepted);
 }
 
 // A client may stop a person's close, but then may not reopen the roof.
@@ -435,7 +447,7 @@ int main(int, char **)
     RUN_TEST(test_client_unknown_position_refused_through_the_check);
     RUN_TEST(test_client_cannot_reverse_a_close);
     RUN_TEST(test_stops_pass_every_check);
-    RUN_TEST(test_client_cannot_stop_the_automatic_close);
+    RUN_TEST(test_client_cannot_stop_a_close_in_bad_weather);
     RUN_TEST(test_client_cannot_reopen_a_stopped_close);
     return UNITY_END();
 }

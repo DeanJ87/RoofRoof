@@ -51,8 +51,9 @@ namespace SQM
         // couldn't start (the driver then stays off).
         bool begin(const Config &config);
 
-        // Any task. Open and close pass the weather and park gates first; stop
-        // is never refused. The output is applied before this returns.
+        // Any task. Open and close pass the weather and park gates first. A
+        // stop is refused only for an Alpaca client while a close runs or waits
+        // in weather that isn't safe (spec 006); a person's never is. The output is applied before this returns.
         Outcome command(Roof::Command command, Roof::Origin origin);
         // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
         // if a person has stopped the roof since the snapshot that showed
@@ -162,7 +163,6 @@ namespace SQM
         bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
         uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005; never an Alpaca client's, spec 006)
         Roof::Origin closeOrigin = Roof::Origin::Person;
-        Roof::Origin moveOrigin = Roof::Origin::Person; // who started the move under way, or the last one
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause

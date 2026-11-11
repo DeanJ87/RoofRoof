@@ -26,8 +26,8 @@
 | `domeAnswer(command, accepted, reason, text, fault)` | an outcome | `DomeAnswer`; a stop refused only because the controller isn't running counts as done |
 
 `lib/RoofIoLogic/include/CommandCheck.h`: `checkCommand(command, origin, gates, controller, context)`
-with `context = {closePending, automaticClose}` → `{accepted, reason, text}`: stops pass, except a
-client's while spec 005's close is under way or waiting (`automaticClose`); open and close pass the
+with `context = {closePending}` → `{accepted, reason, text}`: stops pass, except a client's while
+a close is under way or waiting and the weather verdict isn't safe (`unsafeClose`); open and close pass the
 weather and park gates; a client's open is refused while closing, a close waits, or a close was
 stopped part-way (`closing`); then the controller's dry run. `domeDispatch(action)` gives the roof
 command and the client origin.

@@ -25,14 +25,14 @@ namespace SQM
         // What else the decision needs from the roof's owner (RoofControl).
         struct CommandContext
         {
-            bool closePending = false;   // a close is waiting for an upload or MQTT connect to stop
-            bool automaticClose = false; // the close under way or waiting is spec 005's (unsafe weather)
+            bool closePending = false; // a close is waiting for an upload or MQTT connect to stop
         };
 
-        // Stop and abort: accepted, except an Alpaca client's while spec 005's
-        // close on unsafe weather is under way or waiting (constitution III:
-        // nothing unauthenticated may call it off; a person's stop from the
-        // web UI still works). Open and close: the weather and park gates
+        // Stop and abort: accepted, except an Alpaca client's while a close is
+        // under way or waiting and the weather isn't safe, whoever started the
+        // close (constitution III: nothing unauthenticated may call off or
+        // delay the roof closing in bad weather; a person's stop from the web
+        // UI and the controller's own stops still work). Open and close: the weather and park gates
         // (constitution II, III); then, for a client, no open while the roof
         // is closing, a close waits, or a close was stopped part-way (a client
         // never reverses a close); then the motion logic's dry run (position
