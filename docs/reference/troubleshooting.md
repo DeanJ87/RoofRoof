@@ -86,7 +86,7 @@ Open the alerts bell. It lists the recent alerts with each channel's result. Com
 - The event's level is **Off**
 - The cooldown held it back; it's sent when the cooldown ends if things haven't changed back
 - The channel failed - the bell's list shows each channel's result, e.g. Pushover "user identifier is not a valid user" means the user key (not the app token) is wrong
-- The roof's own events *come in later specs*; today only the imaging-app events, "Alerts resumed" and tests exist ([Alerts](../user-guide/alerts.md))
+- The roof's critical alerts (**Mount didn't park**, **Roof didn't close**) ignore the pause, the send mode and **Send alerts**, but still need a channel switched on: with none set up the serial log is the only report. Press **Test** on the roof's rows to prove the channel ([Alerts](../user-guide/alerts.md#the-roof))
 
 ---
 
@@ -98,13 +98,35 @@ Open the alerts bell. It lists the recent alerts with each channel's result. Com
 4. Check username/password if your broker requires auth
 5. Watch broker logs: `mosquitto_sub -h broker -t "#" -v`
 
-Today the device publishes only `availability`, `alerts` and `alerts/armed` ([MQTT](../user-guide/mqtt.md)).
+The topics the device publishes are listed in [MQTT](../user-guide/mqtt.md).
 
 ---
 
 ## The Motor Driver Moves Briefly at Power-On
 
 Until the firmware starts, the ESP32's GPIO25, 26 and 27 float, and a floating enable pin can switch the IBT-2 on. Fit the 10 kΩ pull-down from the enable pin to GND ([Wiring](../hardware/wiring.md#the-en-pull-down)). The firmware drives all three pins low as the first thing `setup()` does, but that is roughly 300 ms after reset.
+
+---
+
+## Commissioning
+
+Symptoms met while following the [commissioning guide](../hardware/commissioning.md). The roof's status (`roof.state`, `roof.fault`, `roof.hall`) is in [`GET /api/status`](../api/rest.md#get-apistatus); a latched fault stays until a person clears it.
+
+| Symptom | Likely cause and what to do |
+|---|---|
+| The roof moves the wrong way, or `didNotLeave` after the first open | The motor turns the other way: stop it, set `roof.openDirection` to the other value, clear the fault ([Roof motion](../user-guide/roof-motion.md#timeouts-and-faults)) |
+| `timeout` before the roof reaches the end | The speed setting is too high or the margin too small: re-measure the speed at 100% ([Calibration](../hardware/calibration.md#travel-and-speed)), or raise `roof.timeoutMarginSeconds`. A slow duty that is not proportional to the duty needs a larger margin |
+| `wrongMagnet` | The other end's magnet was read: the Hall polarity is the wrong way round (`roof.hallHighEnd`) or the thresholds are too close to the resting value ([Calibration](../hardware/calibration.md#hall-sensor)) |
+| `hallRail`, or `hall.counts` of 0 or 4095 | The Hall sensor is disconnected, shorted or its divider is missing; check the 5 V supply and that the output goes through the divider ([Wiring](../hardware/wiring.md#hall-sensor-ss49e)) |
+| `supplyLow` at a motor start, or the open is refused for the supply | The supply dips more than 250 ms at the start or the sense divider is off: check the supply and wiring first; `supplyVolts` of 0 means the divider isn't connected |
+| Open refused: weather not safe | No weather source is switched on (that counts as unsafe), SQMeter is unreachable or stale, or it says unsafe: read the reasons in the answer and the `Safety` log lines ([Safety inputs](../user-guide/safety-inputs.md)) |
+| Close refused: mount not parked | N.I.N.A.'s Advanced API isn't answering, the mount isn't at park, or a park switch is open or wired the wrong way round; the reasons name which |
+| "sources disagree" | N.I.N.A. and a park switch say opposite things: check the switch's wiring, that it closes at park, and N.I.N.A.'s park position |
+| Open or close refused with the position unknown | Only a person can move the roof from between the magnets: use the web UI or the REST API, not N.I.N.A. or MQTT |
+| The roof doesn't close by itself | A fault is latched, the position is unknown, the person pressed Stop (it stands down until closed or 10 minutes of safe weather), or the mount isn't parked: the alert says which ([Close on unsafe weather](../user-guide/close-on-unsafe.md#alerts)) |
+| A restart, upload or WiFi change answers `409` | The roof is moving, a close is waiting, or the automatic close is working; try again once it has closed ([Roof motion](../user-guide/roof-motion.md#while-the-roof-moves)) |
+| Open answers `409` `hotspot` | The setup hotspot is on; the roof can't be opened while it is. Join the home network first ([First Boot](../getting-started/first-setup.md)) |
+| N.I.N.A.'s Stop shows an error | A close is running in weather that isn't safe: an Alpaca client can't stop it. Use the web UI's Stop ([ASCOM Alpaca](../user-guide/alpaca.md#stop-from-nina-in-bad-weather)) |
 
 ---
 

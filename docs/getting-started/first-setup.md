@@ -135,6 +135,12 @@ If the saved network can't be joined within 45 seconds of power-on (for example 
 
 ---
 
+## Next: commission the roof
+
+A device that has joined your network is not ready to move a roof. Follow the [commissioning guide](../hardware/commissioning.md) in order, with the motor disconnected, and print the [checklist](../hardware/commissioning-checklist.md) to tick off as you go.
+
+---
+
 ## WiFi Config is Persistent
 
 Credentials live in the NVS partition — completely separate from firmware and filesystem storage:

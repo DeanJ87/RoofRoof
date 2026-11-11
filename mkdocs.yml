@@ -95,6 +95,8 @@ nav:
     - Bench mode: user-guide/bench-mode.md
   - Hardware:
     - Wiring: hardware/wiring.md
+    - Commissioning guide: hardware/commissioning.md
+    - Commissioning checklist: hardware/commissioning-checklist.md
     - Calibration: hardware/calibration.md
   - API Reference:
     - REST API: api/rest.md
