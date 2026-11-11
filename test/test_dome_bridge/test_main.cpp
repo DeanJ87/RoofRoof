@@ -376,6 +376,9 @@ void test_client_cannot_stop_a_close_in_bad_weather(void)
             const RoofIo::CommandCheck check = RoofIo::checkCommand(c, Origin::Client, unsafe, b.roof, ctx());
             TEST_ASSERT_FALSE(check.accepted);
             TEST_ASSERT_EQUAL_STRING("unsafeClose", check.reason.c_str());
+            TEST_ASSERT_EQUAL_STRING(
+                "The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)",
+                check.text.c_str());
             TEST_ASSERT_FALSE(run(b, c, Origin::Client, unsafe));
         }
         // A person's stop and the controller's own still work.

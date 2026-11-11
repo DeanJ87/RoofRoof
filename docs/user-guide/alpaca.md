@@ -76,7 +76,7 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 | A fault is latched | `A fault is latched: a person must clear it first: No target magnet after 61.0 s >= 60.0 s timeout` | Find the cause, then clear the fault in the web UI. |
 | Supply low | `Supply 10.9 V < 11.5 V` | Check the 12 V supply. |
 | Closing (open) | `The roof is closing or was stopped while closing: an imaging app can't reverse a close` | Let it close, or open it from the web UI. |
-| Closing in bad weather (stop) | `The roof is closing and the weather isn't safe: an imaging app can't stop it (Stop in the web UI can)` | Use Stop in the web UI if the roof must not close. |
+| Closing in bad weather (stop) | `The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)` | Use Stop in the web UI if the roof must not close. |
 | Busy | `An upload is being written: try again in a moment` | Wait for the upload or restart to finish. |
 | Not connected | ASCOM NotConnected (`1031`): `Not connected: connect to the Dome first` | Connect first. |
 | Alpaca off | NotConnected: `Alpaca support is disabled in device settings`, for every Dome command including Stop | Turn Alpaca on, or use the web UI. |

@@ -3,7 +3,7 @@
 ## 1. Local checks
 
 Everything in [spec 001's quickstart §1](../001-platform-bootstrap/quickstart.md) passes. The new
-native suites are `test_alpaca_dome` and `test_dome_bridge`.
+native suites are `test_alpaca_dome`, `test_dome_bridge` and `test_dome_close`.
 
 ## 2. The simulator and ConformU
 
