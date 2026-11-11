@@ -69,6 +69,9 @@ namespace SQM
             const Status &status() const { return current; }
             Output output() const { return out; }
             const Settings &settings() const { return config; }
+            // Driven time toward `end` since a magnet was last confirmed (FR-025's
+            // budget, read-only: spec 017's diagnostics report it).
+            uint32_t budgetUsedMs(End end) const { return driveBudgetUsedMs[static_cast<int>(end)]; }
 
         private:
             // The move in progress.

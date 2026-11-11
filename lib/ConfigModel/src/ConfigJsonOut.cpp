@@ -219,6 +219,10 @@ namespace SQM
         JsonObject setupOut = doc.createNestedObject("setup");
         setupOut["state"] = setupStateName(setup.state);
         setupOut["step"] = setup.step;
+        JsonObject diagOut = doc.createNestedObject("diag");
+        diagOut["enabled"] = diag.enabled;
+        diagOut["keepSummaries"] = diag.keepSummaries;
+        diagOut["mqtt"] = diag.mqtt;
         appendAutoClose(doc, *this);
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
