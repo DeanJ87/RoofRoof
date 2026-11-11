@@ -69,9 +69,9 @@ and is also listed under "Assumptions decided for the owner".
   down again with Stop.
 - Q: And a weather close stood down by a person, after the weather clears in daylight with "alert
   and close"? → A: It stays stood down while the sun is up (no close against the person's stop),
-  re-arming once the sun has been down for 10 minutes. Without the daylight close it would have
-  re-armed 10 minutes after the weather cleared and then done nothing; staying stood down is the
-  same for the roof and keeps the reminder going while the roof is open in daylight.
+  re-arming once the sun has been down for 10 minutes. After 10 minutes of safe weather it counts
+  as daylight's stand-down, so new rain later re-arms it as for any daylight stand-down (30 s of
+  unsafe weather); a stop of the morning's weather close is not a stop of the afternoon's rain.
 - Q: Which alert events does daylight get? → A: Three new events in spec 007's design, each with a
   level, sound and wording in Settings → Alerts: **Roof open in daylight** (the sun is up, the
   roof isn't closed and the mode is on; says whether it is being closed), **Roof closed after
@@ -331,8 +331,10 @@ reason.
   attempt waiting for the park or a close under way carries on. From then on the episode is a
   weather episode (its alerts are worded for the weather).
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
-  (neither the weather nor daylight) for 10 minutes, or the roof reads closed. Daylight never ends
-  a stand-down or a halt.
+  (neither the weather nor daylight) for 10 minutes, or the roof reads closed, or as FR-013 says.
+  Daylight never ends a stand-down or a halt. A weather episode the weather itself has left for
+  10 minutes while daylight still wants a close becomes a daylight-only episode. A step adds at
+  most 1 s to FR-013's 30 s count.
 
 **Alerts**
 
@@ -437,7 +439,11 @@ possible was taken.
    critical alerts start afresh then, so a weather failure isn't hidden by the same daylight
    failure minutes before.
 6. **A weather stand-down stays while the sun is up with "alert and close".** It re-arms once the
-   sun has been down for 10 minutes. The roof doesn't move either way; the reminder keeps going.
+   sun has been down for 10 minutes. Once the weather itself has been safe for 10 minutes (when
+   spec 005 would have ended the episode), the stand-down, a halt or a still-running attempt kept
+   going only by daylight becomes daylight's: new rain is then a new weather episode, with its
+   own alerts and the 30 s count of assumption 5, so a morning stop never holds back an
+   afternoon's rain.
 7. **"Roof open in daylight" is not critical** and defaults to urgent. The constitution's critical
    alerts are for unsafe weather and the park; the daylight close's failures still raise those
    critical events.

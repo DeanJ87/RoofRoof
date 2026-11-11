@@ -89,7 +89,9 @@ namespace
         bool heldPrevUnsafe = false; // the previous step's weather (for the sum)
         uint64_t heldPrevMs = 0;
         bool closeBarDaylight = false; // the close back-off came from a daylight close
-        bool justRestarted = false;    // the first step after a restart raises its reminder first
+        bool justRestarted = false;
+        bool weatherSafeRun = false;     // the weather itself safe, since weatherSafeSinceMs
+        uint64_t weatherSafeSinceMs = 0; // the first step after a restart raises its reminder first
     };
 
     struct Failure

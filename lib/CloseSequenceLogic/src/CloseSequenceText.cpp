@@ -23,8 +23,9 @@ namespace SQM
             // What re-arms a stood-down sequence besides a person's close.
             const char *rearmText(const Decision &decision)
             {
-                return decision.daylight ? "the sun has been down (or the daylight close off) for 10 minutes"
-                                         : "the weather has been safe for 10 minutes";
+                return decision.daylight
+                           ? "the sun has been down (or the daylight close off) for 10 minutes, or the weather has been unsafe for 30 s"
+                           : "the weather has been safe for 10 minutes";
             }
 
             std::string seconds(uint64_t ms)

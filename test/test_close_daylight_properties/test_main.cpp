@@ -8,6 +8,7 @@
 //   D3  a stop or halt never ends while daylight alone still wants a close.
 // A failure names the seed and the step, so it can be replayed.
 
+#include <algorithm>
 #include <cstdio>
 #include <unity.h>
 
@@ -267,6 +268,7 @@ namespace
         watch.closingRun = false;
         watch.heldPrevUnsafe = false; // the sequence's own sum starts again too
         watch.justRestarted = true;
+        watch.weatherSafeRun = false;
         // A daylight stand-down or halt keeps the weather's count in the record.
         const bool kept = saved.daylight && (saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted);
         watch.heldUnsafeMs = kept ? (saved.unsafeMs < WEATHER_REARM_CONFIRM_MS ? saved.unsafeMs : WEATHER_REARM_CONFIRM_MS) : 0;
@@ -295,6 +297,31 @@ namespace
         clearAlerted(watch);
         if (watch.closeBarDaylight)
             watch.closeBarUntilMs = 0;
+        watch.anyRequest = false; // the weather's park request may go out at once
+    }
+
+    // The weather itself safe for REARM_SAFE_MS without a break.
+    bool trackWeatherSafe(Watch &watch, const Inputs &in)
+    {
+        if (!in.weatherSafe)
+            watch.weatherSafeRun = false;
+        else if (!watch.weatherSafeRun)
+        {
+            watch.weatherSafeRun = true;
+            watch.weatherSafeSinceMs = in.nowMs;
+        }
+        return watch.weatherSafeRun && in.nowMs - watch.weatherSafeSinceMs >= REARM_SAFE_MS;
+    }
+
+    // After a daylight-only episode the weather's alerts go out afresh.
+    void observeIdle(Watch &watch, const Inputs &in)
+    {
+        if (watch.afterDaylight && !in.weatherSafe)
+        {
+            handToWeather(watch);
+            watch.afterDaylight = false;
+        }
+        watch.daylightOnly = in.daylight && in.weatherSafe;
     }
 
     // Unsafe weather added up during a person's stand-down: from one step to
@@ -305,7 +332,7 @@ namespace
         if ((before != Phase::HeldByPerson && before != Phase::Halted) || anyStop)
             watch.heldUnsafeMs = 0;
         else if (watch.heldPrevUnsafe)
-            watch.heldUnsafeMs += in.nowMs - watch.heldPrevMs;
+            watch.heldUnsafeMs += std::min<uint64_t>(in.nowMs - watch.heldPrevMs, MAX_COUNT_STEP_MS);
         watch.heldPrevUnsafe = unsafe;
         watch.heldPrevMs = in.nowMs;
         return watch.heldUnsafeMs >= WEATHER_REARM_CONFIRM_MS && !anyStop;
@@ -320,15 +347,17 @@ namespace
         const bool waitOver = personWaitOver(watch, in, before, anyStop);
         const bool restarted = watch.justRestarted;
         watch.justRestarted = false;
+        const bool weatherSafeLong = trackWeatherSafe(watch, in);
         if (before == Phase::Idle)
         {
-            // After a daylight-only episode the weather's alerts go out afresh.
-            if (watch.afterDaylight && !in.weatherSafe)
-            {
-                handToWeather(watch);
-                watch.afterDaylight = false;
-            }
-            watch.daylightOnly = in.daylight && in.weatherSafe;
+            observeIdle(watch, in);
+            return;
+        }
+        // A weather episode kept going only by daylight for 10 minutes becomes daylight's.
+        if (!watch.daylightOnly && weatherSafeLong && in.daylight)
+        {
+            watch.daylightOnly = true;
+            watch.heldUnsafeMs = 0;
             return;
         }
         if (in.weatherSafe || !watch.daylightOnly || restarted)
