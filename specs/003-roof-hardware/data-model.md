@@ -52,9 +52,9 @@ as `Roof::FaultKind::External`.
 | `parkInterlock` | bits: 1 park result not parked, 2 switch 1 not closed, 4 switch 2 not closed | 0 |
 | `storedUnreadable` | 0 | 0 |
 
-Stored as a 16-byte NVS blob (`roofroof` / `roofFault`): `'R' 'F'`, version 1, kind, cause, 0,
-measured (float, little-endian), limit (float), then a 16-bit checksum of bytes 0-13 (sum, inverted),
-2 bytes reserved (0). `decodeFault`: length 0 → `None`; a valid record with a kind other than
+Stored as a 16-byte NVS blob (`roofroof` / `roofFault`): bytes 0-1 `'R' 'F'`, 2 version 1, 3 kind,
+4 cause, 5 reserved (0), 6-9 measured (float, little-endian), 10-13 limit (float), 14-15 a 16-bit
+checksum of bytes 0-13 (the sum, inverted). `decodeFault`: length 0 → `None`; a valid record with a kind other than
 None → `Fault`; anything else → `Unreadable` (latched as `storedUnreadable`).
 
 ## Gates: `GateInputs`, `GateRefusal`
