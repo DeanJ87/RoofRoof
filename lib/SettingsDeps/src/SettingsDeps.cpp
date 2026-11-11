@@ -126,6 +126,14 @@ namespace SQM
                 c.add("mqtt.homeAssistant.alertsSwitch", "D-13", mqtt.homeAssistant, {mqttOn, alerting});
             }
 
+            // The SQMeter MQTT safety source is read from RoofRoof's own broker (spec 004).
+            void addSafety(const Context &c)
+            {
+                const Link mqttOn{"D-40", "mqtt-off", c.cfg.mqtt.enabled};
+                const Link broker{"D-41", "mqtt-disconnected", c.f.mqttConnected};
+                c.add("safety.mqtt.enabled", "D-40", c.cfg.safety.mqttEnabled, {mqttOn, broker});
+            }
+
             void addDevice(const Context &c)
             {
                 const Config &cfg = c.cfg;
@@ -145,6 +153,7 @@ namespace SQM
             addAlertEvents(c);
             addAlertOptions(c);
             addMqtt(c);
+            addSafety(c);
             addDevice(c);
             return out;
         }

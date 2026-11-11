@@ -40,6 +40,13 @@ export const mockConfig: Config = {
     password: '',
   },
   alpaca: { enabled: true },
+  safety: {
+    http: { enabled: true, url: 'http://sqmeter.local/api/safety' },
+    mqtt: { enabled: false, topic: 'sqmeter' },
+    staleSeconds: 30,
+    rainContact: false,
+  },
+  park: { nina: { url: 'http://192.168.1.20:1888', api: 'v2' }, switches: 'none' },
   alerts: {
     enabled: true,
     events: {

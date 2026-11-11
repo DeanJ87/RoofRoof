@@ -63,6 +63,40 @@ namespace SQM
         bool enabled; // master switch for the Alpaca HTTP+UDP endpoints
     };
 
+    // Where the weather verdict comes from (spec 004): SQMeter over HTTP
+    // and/or MQTT, plus the optional rain contact on GPIO4.
+    struct SafetyConfig
+    {
+        bool httpEnabled = false;
+        std::string httpUrl;             // SQMeter's GET /api/safety, http:// only
+        bool mqttEnabled = false;        // on RoofRoof's own broker
+        std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
+        uint32_t staleSeconds = 30;      // SQMeter HTTP: unsafe after this long without a good reply
+        bool rainContact = false;        // a rain contact is fitted on GPIO4
+        static constexpr uint32_t MIN_STALE_SECONDS = 10;
+        static constexpr uint32_t MAX_STALE_SECONDS = 600;
+    };
+
+    // How the park is confirmed (spec 004, constitution II): N.I.N.A. AND the
+    // fitted park switches.
+    struct ParkConfig
+    {
+        std::string ninaUrl; // N.I.N.A. Advanced API base, e.g. http://192.168.1.20:1888; empty = not configured
+        enum class NinaApi : uint8_t
+        {
+            V2 = 0,
+        };
+        NinaApi ninaApi = NinaApi::V2;
+        // Park switches fitted: none, one (GPIO32) or two (GPIO32 and GPIO33).
+        enum class Switches : uint8_t
+        {
+            None = 0,
+            One = 1,
+            Two = 2,
+        };
+        Switches switches = Switches::None;
+    };
+
     // Push notifications. Persisted under their own NVS keys (see
     // src/ConfigStore.cpp): ESP-IDF caps NVS strings at 4000 bytes.
     struct AlertsConfig
@@ -133,6 +167,8 @@ namespace SQM
         NTPConfig ntp;
         AlpacaConfig alpaca;
         AlertsConfig alerts;
+        SafetyConfig safety;
+        ParkConfig park;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
