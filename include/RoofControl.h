@@ -152,6 +152,7 @@ namespace SQM
         HardwareSettings pendingSettings;
         RoofIo::GateInputs gates;
         bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
+        uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005)
         Roof::Origin closeOrigin = Roof::Origin::Person;
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;

@@ -76,6 +76,16 @@ namespace SQM
         alertDispatcher->dispatch(Alerts::stackAlerts(step.outgoing), cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
+    void WebServer::raiseRoofAlert(const Alerts::Alert &alert)
+    {
+        const Config &cfg = getConfigCallback();
+        if (!cfg.alerts.enabled || !alertDispatcher)
+            return;
+        // Not held by the pause: a roof left open in the rain is not an
+        // imaging-app notice the owner chose to silence.
+        alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+    }
+
     void WebServer::applyPendingArm()
     {
         const int8_t requested = pendingArm.exchange(-1);
