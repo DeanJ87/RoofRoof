@@ -59,7 +59,7 @@ Because the dashboard, the Alpaca page and the Alpaca API all come from one emul
 
 ## The tour
 
-On your first visit the demo offers a short tour: what RoofRoof is, the Status card, the alerts bell and the Demo panel. **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
+On your first visit the demo offers a short tour: what RoofRoof is, the Status card, the Roof card, opening the roof, bad weather and the automatic close, the alerts bell and the Demo panel. Each action step finishes when the device reacts; **Do it for me** does it for you (opening also runs the device's clock 10x). **Skip tour** or Esc ends it; **Take the tour** in the Demo panel starts it again. It works with the keyboard alone, on phones, and without animation.
 
 ---
 
@@ -139,7 +139,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 038919e147e0c200
+fingerprint: 8669ca17e4f15aa2
 -->
 <figure class="diagram" markdown>
 

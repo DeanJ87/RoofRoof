@@ -40,7 +40,7 @@ namespace SQM
     void RoofControl::benchStart()
     {
         const Roof::Settings roof = Roof::settingsFromConfig(settings.roof);
-        benchPlant = RoofPlant::forSettings(roof, static_cast<float>(roof.travelMm) / 2.0f, settings.roof.minRunningAmps);
+        benchPlant = RoofPlant::forSettings(roof, RoofPlant::benchStartMm(roof), settings.roof.minRunningAmps);
         Logger::warn(TAG, "BENCH MODE: the roof is simulated and the motor is never driven (EN, RPWM and LPWM held low)");
         uint32_t now = millis();
         for (uint32_t waited = 0; waited <= RoofPlant::BenchSupplyGuard::CONFIRM_MS; waited += RoofIo::CONTROL_PERIOD_MS)

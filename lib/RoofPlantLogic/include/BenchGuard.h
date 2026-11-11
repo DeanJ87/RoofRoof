@@ -11,6 +11,7 @@
 
 #include "DriverLogic.h"
 #include "RoofPlant.h"
+#include "RoofSettings.h"
 #include "RoofTypes.h"
 
 namespace SQM
@@ -38,6 +39,11 @@ namespace SQM
 
         // A reading that counts as a powered roof: NaN, or LIMIT_VOLTS or more.
         bool supplyPresent(float volts);
+
+        // Where the bench roof starts after a restart: half-way, so it reads
+        // unknown (the Dome: an error) until a person moves it, and a bench
+        // board never starts by reporting a closed roof.
+        float benchStartMm(const Roof::Settings &settings);
 
         // The longest step the simulated roof takes at once: a late step is
         // the motion logic's to fault on, not a jump across the travel.

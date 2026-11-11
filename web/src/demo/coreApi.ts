@@ -26,4 +26,5 @@ export interface Core extends BackupCore {
   roofCommand(name: string): string;
   roofInject(json: string): string;
   roofPanel(): string;
+  platformHold(): string;
 }

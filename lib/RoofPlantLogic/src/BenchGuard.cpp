@@ -34,6 +34,11 @@ namespace SQM
             return isTripped;
         }
 
+        float benchStartMm(const Roof::Settings &settings)
+        {
+            return static_cast<float>(settings.travelMm) / 2.0f;
+        }
+
         BenchStepOut benchStep(BenchSupplyGuard &guard, Plant &plant, const BenchStepIn &in)
         {
             BenchStepOut out;

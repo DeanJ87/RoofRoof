@@ -110,6 +110,13 @@ export function statusDocument() {
 // The network the WiFi setup screen "joined" (simulated).
 let joinedSsid: string | null = null;
 
+// Spec 010, as the device answers it: no settings save, restore, upload or
+// restart while the roof moves (409 with the reason).
+const held = () => {
+  const why = demoDevice.platformHold();
+  return why ? HttpResponse.json({ error: why }, { status: 409 }) : null;
+};
+
 const simulated = (extra: Record<string, unknown> = {}) => HttpResponse.json({ success: true, demo: true, ...extra });
 
 export const demoHandlers = [
@@ -119,17 +126,21 @@ export const demoHandlers = [
 
   // Settings
   http.get('/api/config', () => json(demoDevice.getConfig())),
-  http.post('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
-  http.put('/api/config', async ({ request }) => reply(demoDevice.applyConfig(await request.text()))),
+  http.post('/api/config', async ({ request }) => held() ?? reply(demoDevice.applyConfig(await request.text()))),
+  http.put('/api/config', async ({ request }) => held() ?? reply(demoDevice.applyConfig(await request.text()))),
   // Settings backup and restore (SQMeter spec 033); a restore that needs it restarts the demo device.
   ...(['preview', 'apply', 'backup'] as const).map((route) =>
     http.post(route === 'backup' ? '/api/backup' : `/api/backup/${route}`, async ({ request }) => {
+      const hold = route === 'apply' ? held() : null;
+      if (hold) return hold;
       const answer = backupReply(demoDevice.backupCore(), route, await request.text());
       if (answer.restarting) demoDevice.restart();
       return reply(answer.reply);
     }),
   ),
   http.post('/api/restart', () => {
+    const hold = held();
+    if (hold) return hold;
     demoDevice.restart();
     ipv6AtBoot = null;
     return HttpResponse.json({ success: true, message: 'Restarting...' });
@@ -173,8 +184,8 @@ export const demoHandlers = [
   http.post('/api/mqtt/test', () => simulated({ message: 'Demo: nothing was sent - a real RoofRoof would connect to your broker here' })),
 
   // Updates (simulated: nothing flashed)
-  http.post('/api/update', () => simulated()),
-  http.post('/api/update/fs', () => simulated()),
+  http.post('/api/update', () => held() ?? simulated()),
+  http.post('/api/update/fs', () => held() ?? simulated()),
 
   // ASCOM Alpaca: the firmware's own router, in the device core
   http.get('/management/*', async ({ request }) =>

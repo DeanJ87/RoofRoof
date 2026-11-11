@@ -3,6 +3,7 @@
 
 #include "emulated_device.h"
 
+#include "PlatformHold.h"
 #include "RoofStatus.h"
 
 using namespace DemoCore;
@@ -63,6 +64,14 @@ std::string EmulatedDevice::roofInject(const std::string &json)
             roof.unparkMount();
     }
     return roofPanel();
+}
+
+std::string EmulatedDevice::platformHold() const
+{
+    const Roof::State state = roof.snapshot().status.state;
+    if (state == Roof::State::Opening || state == Roof::State::Closing)
+        return RoofIo::holdText(RoofIo::HoldReason::Moving);
+    return "";
 }
 
 std::string EmulatedDevice::roofPanel() const

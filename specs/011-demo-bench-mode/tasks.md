@@ -45,11 +45,11 @@ Tests first for every lib change (constitution V). [P] = can run in parallel.
 ## Phase 6: After 008 and 009 merge
 
 - [X] T050 Rebase; adapt the demo core to 008's status fields (`applyChecks`, `closePhase`) and command check changes
-- [ ] T051 Wire the demo to 009's roof card (data it needs comes from the status); bench chip on the card if it has a header slot
-- [ ] T052 Tour roof steps (card, open, unsafe → closed) + tour test; Playwright demo spec
-- [ ] T053 Regenerate demo core, schemas, OpenAPI, screenshots if affected; re-run every check
+- [X] T051 Wire the demo to 009's roof card (data it needs comes from the status); bench mode shows through the page-wide banner (no separate card chip)
+- [X] T052 Tour roof steps (card, open, unsafe → closed) + tour test; Playwright demo spec
+- [X] T053 Regenerate demo core, schemas, OpenAPI, screenshots if affected; re-run every check
 
 ## Phase 7: Review and PR
 
-- [ ] T060 Independent reviews of bench mode and the plant model until one says safe to merge
+- [X] T060 Independent reviews of bench mode and the plant model until one says safe to merge
 - [ ] T061 Quickstart §1 suite; `source_hash.py --check` last; PR

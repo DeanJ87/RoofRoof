@@ -78,7 +78,7 @@ namespace SQM
         // to the new travel) and its injected jam, missing magnets, rail and
         // supply. The wiring follows the open-direction setting. Running
         // current is at least 1.2 x `minRunningAmps` (the "motor not drawing"
-        // limit), so a legal setting never reads as no current.
+        // limit), capped at 90% of the over-current limit.
         void applySettings(Plant &plant, const Roof::Settings &settings, float minRunningAmps = 0.0f);
 
         // The driver command a set of pin levels drives the motor with (what
