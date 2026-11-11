@@ -1,6 +1,7 @@
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
+#include "PlatformGuard.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
@@ -77,19 +78,16 @@ namespace SQM
             return;
         }
 
-        if (refuseWhileMoving(request))
+        if (!saveAsFlashWrite(request, *configOpt))
             return;
-        if (!saveAndApply(*configOpt))
-        {
-            request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
-            return;
-        }
         request->send(200, "application/json", "{\"success\":true}");
     }
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
     {
-        if (!requireAuth(request) || refuseWhileMoving(request))
+        // It drops the current network for up to 10 s: never while the roof
+        // moves, a close waits or the close sequence needs N.I.N.A. (spec 010).
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiChange))
             return;
 
         JsonObject jsonObj = json.as<JsonObject>();
@@ -99,17 +97,39 @@ namespace SQM
             return;
         }
 
+        // One attempt at a time: the loop reads the pending network meanwhile.
+        if (wifiConnectActive.load())
+        {
+            request->send(409, "application/json", createErrorJson("A WiFi network is already being tried").c_str());
+            return;
+        }
         const char *ssid = jsonObj["ssid"];
         const char *password = jsonObj["password"];
         Logger::info(TAG, "Starting nonblocking connection to SSID: '%s'", ssid);
 
+        // Registered under the roof's lock: a close decided from here on waits
+        // until the device has joined, for at most RoofIo::NETWORK_HOLD_MAX_MS.
+        const RoofIo::HoldReason held = PlatformGuard::claim(
+            RoofIo::PlatformAction::WifiChange,
+            [this]()
+            {
+                wifiChangeAtMs = millis();
+                wifiChanging = true;
+            });
+        if (held != RoofIo::HoldReason::None)
+        {
+            request->send(409, "application/json", createErrorJson(RoofIo::holdText(held)).c_str());
+            return;
+        }
         pendingWifiSSID = ssid;
         pendingWifiPassword = password;
-        wifiConnectActive = true;
         wifiConnectConfigSaved = false;
         wifiConnectStartedAt = millis();
         WiFi.disconnect(false);
         WiFi.begin(pendingWifiSSID.c_str(), pendingWifiPassword.c_str());
+        // Last: the loop only looks once the old network is dropped and the
+        // pending one is set.
+        wifiConnectActive = true;
 
         StaticJsonDocument<256> doc;
         doc["success"] = true;
@@ -135,7 +155,7 @@ namespace SQM
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
-        if (!requireAuth(request) || refuseWhileMoving(request))
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::Restart))
             return;
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
         scheduleRestart(500);
@@ -145,7 +165,9 @@ namespace SQM
     {
         // Starting a radio scan is an action, like joining a network
         // (/api/wifi/connect): both need the password when protection is on.
-        if (!requireAuth(request))
+        // A scan takes the radio off channel for about 2 s: a lost N.I.N.A.
+        // poll during a close stops it with a fault (spec 010).
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiScan))
             return;
 
         int n = WiFi.scanComplete();
@@ -159,7 +181,22 @@ namespace SQM
         if (n < 0)
         {
             WiFi.scanDelete();
-            if (WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING)
+            // Registered under the roof's lock; while it runs a close waits.
+            const RoofIo::HoldReason held = PlatformGuard::claim(
+                RoofIo::PlatformAction::WifiScan,
+                [this]()
+                {
+                    wifiScanAtMs = millis();
+                    wifiScanStarting = true;
+                });
+            if (held != RoofIo::HoldReason::None)
+            {
+                request->send(409, "application/json", createErrorJson(RoofIo::holdText(held)).c_str());
+                return;
+            }
+            const bool scanning = WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING;
+            wifiScanStarting = false;
+            if (scanning)
             {
                 request->send(202, "application/json", "{\"success\":true,\"scanning\":true,\"networks\":[]}");
             }
@@ -191,19 +228,28 @@ namespace SQM
 
     void WebServer::pollWiFiConnect()
     {
+        // The hold on a close is over: drop the flag, so a millis() wrap can't revive it.
+        if (wifiChanging.load() && !RoofIo::networkHoldsClose(true, millis() - wifiChangeAtMs.load()))
+            wifiChanging = false;
         if (!wifiConnectActive)
         {
             return;
         }
 
         const wl_status_t status = WiFi.status();
-        if (status == WL_CONNECTED)
+        // Joined the network being tried (not the old one still reported).
+        if (status == WL_CONNECTED && pendingWifiSSID == WiFi.SSID().c_str())
         {
-            // The save writes the flash: never while the roof moves (try again next pass).
-            if (!wifiConnectConfigSaved && roofMoving())
-                return;
+            // Joined: the network is back, a waiting close may go (it must
+            // not wait for the save below, which waits for it).
+            wifiChanging = false;
             if (!wifiConnectConfigSaved)
             {
+                // The save writes the flash: never while the roof moves or a
+                // close waits (try again next pass; spec 010).
+                const PlatformGuard::FlashWrite write;
+                if (write.refused() != RoofIo::HoldReason::None)
+                    return;
                 Config config = getConfigCallback();
                 config.wifi.ssid = pendingWifiSSID;
                 config.wifi.password = pendingWifiPassword;
@@ -219,9 +265,11 @@ namespace SQM
             // to show the new address.
             if (wifiConnectConfigSaved)
                 scheduleRestart(15000);
-            wifiConnectActive = false;
+            // The strings first: the web task may start a new attempt as soon
+            // as the flag is clear.
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
+            wifiConnectActive = false;
             return;
         }
 
@@ -229,9 +277,11 @@ namespace SQM
         {
             Logger::error(TAG, "WiFi connection timed out. Status: %d", status);
             WiFi.disconnect(false);
-            wifiConnectActive = false;
+            // wifiChanging stays: the saved network is rejoined later; the
+            // hold on a close ends at RoofIo::NETWORK_HOLD_MAX_MS anyway.
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
+            wifiConnectActive = false;
         }
     }
 

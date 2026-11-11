@@ -56,6 +56,9 @@ SOURCES = {
     # Roof faults and refusals with their values and limits (spec 003).
     "lib/RoofIoLogic/src/RoofText.cpp": ("roof", {"format": "fmt0"}),
     "lib/RoofIoLogic/src/RoofGates.cpp": ("roof", {}),
+    # Why a platform action waits for the roof, and the hotspot refusal (spec 010).
+    "lib/RoofIoLogic/src/PlatformHold.cpp": ("roof", {}),
+    "lib/RoofIoLogic/include/PlatformHold.h": ("roof", {}),
 }
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
 ASSIGN = {
@@ -71,6 +74,8 @@ ASSIGN = {
     "tools/demo-core/emulated_device_documents.cpp": re.compile(r'\b\w+\["error"\]\s*=\s*'),
     "lib/FirmwareImage/src/FirmwareImage.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/ConfigBackup/src/BackupRules.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/RoofIoLogic/src/PlatformHold.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/RoofIoLogic/include/PlatformHold.h": re.compile(r"\bHOTSPOT_TEXT\s*=\s*"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
 }

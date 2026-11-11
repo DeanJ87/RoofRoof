@@ -9,7 +9,7 @@ RoofRoof ships with no WiFi credentials. On first power-on it starts in **hotspo
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: 01b22f58c652e5e2
+fingerprint: e8a1d4f1feb3dba4
 -->
 <figure class="diagram" markdown>
 
@@ -128,7 +128,10 @@ Open the web UI. The Dashboard shows the **Status** and **Device & Network** car
 
 ## If the WiFi is Down at Startup
 
-If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), RoofRoof also opens the **RoofRoof-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network. A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed.
+If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), RoofRoof also opens the **RoofRoof-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network (once the roof is at rest and any automatic close has finished). A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed.
+
+!!! warning "The hotspot can't open the roof"
+    The setup hotspot has no password, so anyone in range can join it. The roof can't be opened while it is on, from any network: an open is refused (`409`, reason `hotspot`). Stop, close and clearing a fault work as usual, so you can still close the roof when the router is down. Opening needs a safe weather verdict from SQMeter on your home network anyway. Trying a new network from the setup screen is refused while the roof moves or an automatic close is waiting for the park or closing: it would drop the connection N.I.N.A. is reached over.
 
 ---
 

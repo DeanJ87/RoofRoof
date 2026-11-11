@@ -240,7 +240,7 @@ namespace SQM
         wifi["ip"] = WiFi.localIP().toString();
         wifi["rssi"] = WiFi.RSSI();
         wifi["mac"] = WiFi.macAddress();
-        wifi["connectPending"] = wifiConnectActive;
+        wifi["connectPending"] = wifiConnectActive.load();
         wifi["apMode"] = (WiFi.getMode() & WIFI_AP) != 0;
         {
             const Config &cfg = getConfigCallback();

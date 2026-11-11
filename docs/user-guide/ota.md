@@ -34,6 +34,9 @@ If an upload stops sending for 20 seconds, usually a weak WiFi link, the Updates
 !!! note "Files the device refuses"
     Every firmware file carries a marker with the product and the partition layout it is made for. The device checks it before switching to the new firmware and refuses, with `400` and a reason, a file that isn't for this device: "Not RoofRoof firmware." (no RoofRoof marker, for example another project's image), "This is firmware for another product (sqmeter)." (naming the product the file is for), or "Wrong partition layout: flash this one over USB." A web UI file must fill this device's web UI partition exactly; one made for a different layout is refused before anything is erased. Nothing is changed by a refused upload.
 
+!!! note "While the roof moves or closes"
+    An upload is refused (`409`, with the reason) while the roof is opening or closing or a close is waiting to start, and also while the [automatic close](close-on-unsafe.md) is waiting for the park or closing: a web UI upload ends in a restart nothing can cancel. A close always wins over an upload in progress: the upload stops at its next chunk and fails with `409`. The restart after an upload waits until the roof is at rest (after a firmware upload, also until the automatic close isn't waiting for the park or closing). See [Roof motion](roof-motion.md#while-the-roof-moves).
+
 !!! warning "Don't interrupt"
     Keep the browser open during upload. A power cut mid-flash leaves the slot being written incomplete; it's never booted, so the device keeps starting the firmware it was running.
 

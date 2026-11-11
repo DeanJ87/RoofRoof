@@ -9,7 +9,8 @@ namespace SQM
 {
 
     MQTTClient::MQTTClient(const MQTTConfig &config)
-        : config(config),
+        : enabledNow(config.enabled),
+          config(config),
           mqttClient(std::make_unique<PubSubClient>(wifiClient)),
           lastReconnectAttempt(0),
           lastPublish(0)
@@ -76,13 +77,20 @@ namespace SQM
         }
 
         Logger::info(TAG, "Initializing MQTT client");
+        configureClient();
+        connect();
+    }
+
+    // The broker and the client's limits. Also when MQTT is switched on by a
+    // settings save: without the 3 s socket timeout a dead broker would hold
+    // the main loop for PubSubClient's default 15 s.
+    void MQTTClient::configureClient()
+    {
         resolveBroker();
         mqttClient->setServer(brokerHost.c_str(), brokerPort);
         mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
-
-        connect();
     }
 
     void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
@@ -98,30 +106,35 @@ namespace SQM
 
     void MQTTClient::handle()
     {
-        if (!config.enabled)
-            return;
+        applyPendingConfig();
+        if (config.enabled)
+        {
+            if (!mqttClient->connected())
+                reconnect();
+            else
+                mqttClient->loop();
+        }
+        publishState();
+    }
 
-        if (!mqttClient->connected())
-        {
-            reconnect();
-        }
-        else
-        {
-            mqttClient->loop();
-        }
+    void MQTTClient::publishState()
+    {
+        connectedNow = config.enabled && mqttClient->connected();
+        stateNow = mqttClient->state();
     }
 
     bool MQTTClient::isConnected() const
     {
-        return config.enabled && mqttClient->connected();
+        return enabledNow.load() && connectedNow.load();
     }
 
     MQTTStatus MQTTClient::getStatus() const
     {
+        std::lock_guard<std::mutex> guard(configLock);
         MQTTStatus status;
         status.enabled = config.enabled;
-        status.connected = mqttClient->connected();
-        status.state = mqttClient->state();
+        status.connected = connectedNow.load();
+        status.state = stateNow.load();
         status.lastPublishMs = lastPublish;
         status.lastReconnectAttemptMs = lastReconnectAttempt;
         status.broker = config.broker;
@@ -134,25 +147,44 @@ namespace SQM
 
     void MQTTClient::updateConfig(const MQTTConfig &newConfig)
     {
-        config = newConfig;
+        std::lock_guard<std::mutex> guard(pendingLock);
+        pendingConfig = newConfig;
+    }
+
+    void MQTTClient::applyPendingConfig()
+    {
+        std::optional<MQTTConfig> next;
+        {
+            std::lock_guard<std::mutex> guard(pendingLock);
+            next.swap(pendingConfig);
+        }
+        if (next)
+            applyConfig(*next);
+    }
+
+    // Main loop: disconnect from the old broker, then connect to the new one
+    // (the roof's connect hold applies; if held, the 5 s retry takes over).
+    void MQTTClient::applyConfig(const MQTTConfig &newConfig)
+    {
+        if (mqttClient->connected())
+            publishAvailability(false); // still to the old broker, under the old topic
+        {
+            std::lock_guard<std::mutex> guard(configLock);
+            config = newConfig;
+            enabledNow = config.enabled;
+        }
+        Logger::info(TAG, "MQTT settings applied");
 
         if (config.enabled)
         {
-            resolveBroker();
-            mqttClient->setServer(brokerHost.c_str(), brokerPort);
             if (mqttClient->connected())
-            {
-                publishAvailability(false);
                 mqttClient->disconnect();
-            }
+            configureClient();
+            lastReconnectAttempt = millis();
             connect();
         }
         else
         {
-            if (mqttClient->connected())
-            {
-                publishAvailability(false);
-            }
             mqttClient->disconnect();
         }
     }

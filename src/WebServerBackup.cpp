@@ -1,5 +1,6 @@
 #include "ConfigBackup.h"
 #include "Logger.h"
+#include "PlatformGuard.h"
 #include "WebServer.h"
 #include "version.h"
 
@@ -105,6 +106,27 @@ namespace SQM
     bool WebServer::saveAndApply(const Config &next)
     {
         return saveConfigCallback(next);
+    }
+
+    bool WebServer::saveAsFlashWrite(AsyncWebServerRequest *request, const Config &next, bool restarts)
+    {
+        // A save that restarts is refused while a restart would be held.
+        if (restarts && refuseIfHeld(request, RoofIo::PlatformAction::Restart))
+            return false;
+        // Counted as a flash write until saved (spec 010): a close decided
+        // meanwhile waits for it, an open is refused.
+        const PlatformGuard::FlashWrite write;
+        if (write.refused() != RoofIo::HoldReason::None)
+        {
+            request->send(409, "application/json", createErrorJson(RoofIo::holdText(write.refused())).c_str());
+            return false;
+        }
+        if (!saveAndApply(next))
+        {
+            request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
+            return false;
+        }
+        return true;
     }
 
     void WebServer::handleBackupStart(AsyncWebServerRequest *request, bool preview)
@@ -231,14 +253,9 @@ namespace SQM
             request->send(409, "application/json", Backup::errorJson(Backup::Error::Stale).c_str());
             return;
         }
-        if (refuseWhileMoving(request))
-            return;
-        if (!saveAndApply(staged->preview.candidate))
-        {
-            request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
-            return;
-        }
         const bool restarting = staged->preview.restart != 0;
+        if (!saveAsFlashWrite(request, staged->preview.candidate, restarting))
+            return;
         Logger::info(TAG, "Settings restored from a backup%s", restarting ? "; restarting" : "");
         request->send(
             200, "application/json", restarting ? "{\"success\":true,\"restarting\":true}" : "{\"success\":true,\"restarting\":false}");

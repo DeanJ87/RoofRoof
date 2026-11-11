@@ -89,6 +89,7 @@ namespace SQM
         saved.requested = k->requested != 0;
         saved.requestAgeMs = k->requestAgeMs;
         sequence.restore(saved);
+        phaseNow.store(static_cast<uint8_t>(sequence.phase()));
         if (sequence.phase() != CloseSeq::Phase::Idle)
             Logger::warn(
                 TAG,
@@ -150,6 +151,7 @@ namespace SQM
 
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
+        phaseNow.store(static_cast<uint8_t>(sequence.phase()));
         keep();
         retryAlert(now);
         if (CloseSeq::closedAfterAttempt(before, decision.event))
@@ -167,6 +169,7 @@ namespace SQM
         const CloseSeq::Decision answer = carryOut(decision, safety, roof, reasons.refusal);
         report(decision, reasons, weather);
         report(answer, reasons, weather);
+        phaseNow.store(static_cast<uint8_t>(sequence.phase()));
         keep();
         if (sequence.phase() != loggedPhase)
         {
