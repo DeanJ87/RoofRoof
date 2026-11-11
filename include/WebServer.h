@@ -154,6 +154,9 @@ namespace SQM
             std::string serverName() const override;
             std::string location() const override;
             std::string timestampUtc() const override;
+            // The roof as the Dome (spec 006), through RoofControl with the client origin.
+            Alpaca::DomeStatus domeStatus() const override;
+            Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action) override;
 
         private:
             WebServer &owner;
