@@ -242,7 +242,7 @@ survive a restart and a backup/restore, and an older saved config loads with eve
   Known limit: an MQTT settings save reconnects from the web server's task (platform code from
   spec 001), and then a retained copy can arrive before the reconnect is noticed and count as
   live. It needs the broker to still say SQMeter is `online`; moving that reconnect onto the main
-  loop (a platform change) removes it.
+  loop (a platform change) removes it. Resolved by spec 010 (FR-013): the main loop applies MQTT settings.
 - **FR-012**: The rain contact, when fitted, is an input value from spec 003: raining, dry or
   unreadable.
 
