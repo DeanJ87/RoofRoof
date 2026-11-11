@@ -51,7 +51,10 @@ namespace SQM
         // first step after the driver went off), so no caller's clock is involved.
         bool Controller::waitingDeadTime(uint32_t nowMs) const
         {
-            return nowMs - driveEndMs < DEAD_TIME_MS;
+            // Signed, so a step clock that went backwards (an integration bug) reads as
+            // still waiting, never as long past; the 49.7-day wrap is still harmless.
+            const int32_t sinceEndMs = static_cast<int32_t>(nowMs - driveEndMs);
+            return sinceEndMs < static_cast<int32_t>(DEAD_TIME_MS);
         }
 
         // True when the move ended: at its magnet, or on a wrong one (a fault).
@@ -93,10 +96,13 @@ namespace SQM
             }
             // Repeated short moves that never reach a magnet (a jam, with current
             // sense off) can't each restart the clock forever (FR-025).
+            // Settings taken at rest can make the budget smaller than what is already
+            // used; the next drive then faults on its first step (fail-safe).
             const uint32_t budgetMs = driveBudgetMs(config);
-            if (driveBudgetUsedMs >= budgetMs)
+            const uint32_t usedMs = driveBudgetUsedMs[static_cast<int>(move.target)];
+            if (usedMs >= budgetMs)
             {
-                latch(Fault{FaultKind::DriveBudget, static_cast<float>(driveBudgetUsedMs), static_cast<float>(budgetMs)});
+                latch(Fault{FaultKind::DriveBudget, static_cast<float>(usedMs), static_cast<float>(budgetMs)});
                 return true;
             }
             return false;
