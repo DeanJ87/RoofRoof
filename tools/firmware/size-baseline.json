@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1422880,
-  "overBudgetReason": "spec 011: bench image refusal on the web upload and during command-line OTA, roof.simulation, the benchSupply cause (+3.8 KB over main)"
+  "esp32dev": 1448384,
+  "overBudgetReason": "spec 013 daylight failsafe: SQMeter's solar position (double-precision trigonometry), the daylight state, its alert events, settings and status (+25 KB)"
 }
