@@ -1,6 +1,6 @@
 # RoofRoof roadmap: specs 002-012
 
-The source of intent for each spec after 001, written from the owner's brief (2026-11-10) and the decisions the owner made. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
+The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
 The constitution (`.specify/memory/constitution.md`) governs everything: Motion Safety (I), Close Only Onto a Parked Mount (II), Unsafe Ends Closed (III), Alpaca Dome/ConformU (IV), Testable Pure Logic (V), Budgets (VI), UI (VII), Trusted-LAN Security (VIII), Docs (IX), Code Quality (X), SQMeter Heritage (XI). A lower number wins a conflict.
 
@@ -28,7 +28,7 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
 - Current sense (34/35) has 10k/20k dividers but **isn't fitted yet**. It's a setting; while it's off, jam detection is "no magnet before the timeout".
 - Never drive RPWM and LPWM at the same time. EN low means the driver is off. Both PWM low means stop. `lib/DriverLogic` and `MotorDriver` already enforce this; `MotorDriver` is the only writer of 25/26/27.
 
-## Owner decisions (don't re-ask)
+## Design decisions
 
 - **Park is confirmed by N.I.N.A. AtPark AND the GPIO32/33 park switches.**
   - The switches are optional, and a setting says whether they're fitted.
@@ -40,21 +40,6 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
 - **Safety source:** SQMeter `GET /api/safety` (a `safe` flag plus `reasonFlags`; bit 9 is rain, bit 10 is a rain-sensor fault; fail-safe) and/or SQMeter's MQTT safe topic. The local RAIN contact on GPIO4 is optional. Read SQMeter's spec 013 contract in ~/Projects/SQMeter for the exact payloads.
 - **Home Assistant MQTT discovery: yes**, extending `lib/HaDiscovery`, with a `cover` entity for the roof.
 - **English only** (the i18n framework stays). **Manual updates only** (upload, no GitHub check). The repo is private, and docs and demo are CI artifacts.
-
-## Autonomy rules (overnight run, 2026-11-11)
-
-- The owner has delegated review and merge to Claude. Every spec ends merged into `main` with CI green.
-- Don't stop for questions. Where the brief leaves a choice open:
-  - take the **safest** option the constitution allows (stop, stay, alert; never move by itself);
-  - record it in the spec under `## Assumptions decided for the owner`, so the owner can review it later.
-- Only real hardware facts (measured travel time, magnet thresholds, pin choices beyond the table) stay settings with conservative defaults.
-- Anything that needs the physical board or roof goes in the PR as a "Bench check (pending)" checklist. Don't fake it.
-- Tooling:
-  - PlatformIO is `~/.platformio/penv/bin/pio` (never Homebrew pio).
-  - Quality gate: `PATH=~/Projects/SQMeter/.venv-quality/bin:$PATH python3 tools/quality/check.py`.
-  - Zero compiler warnings. After any `lib/` change, run `bash tools/demo-core/build.sh`.
-  - The quickstart §1 suite (see specs/001-platform-bootstrap/quickstart.md) must pass before a PR.
-- Commit style: `NNN: <what>`. Branch: `spec/NNN-<slug>`. PR title: `NNN: <title>`, with the principles touched, the local check results, owner assumptions and bench checks listed.
 
 ## Specs
 
