@@ -138,10 +138,10 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 9.2 | Open and close from N.I.N.A.; ShutterStatus runs opening, open, closing, closed | |
 | ☐ 9.3 | Unsafe: Open shows the weather reason, nothing moves | |
 | ☐ 9.4 | Unparked: Close shows the park reason | |
-| ☐ 9.5 | N.I.N.A. Stop works in safe weather; in an unsafe close it shows an error and the close continues; web UI Stop still stops it; no "stopped by a person" in the log | |
+| ☐ 9.5 | N.I.N.A. Stop works in safe weather; in an unsafe close it shows an error and the close continues; web UI Stop still stops it; no **Automatic close stopped** alert | |
 | ☐ 9.6 | After a boot between the magnets, Open and Close say only a person can move the roof | |
 | ☐ 9.7 | Alpaca off: every Dome command, Stop included, says "disabled" | |
-| ☐ 9.8 | ConformU (motor disconnected or attended) passes with no errors | |
+| ☐ 9.8 | ConformU (bench-build board with GPIO36 to GND, or the roof's board with the motor disconnected or attended) passes with no errors | |
 
 ## Stage 10: Home Assistant and MQTT (optional)
 
