@@ -56,6 +56,7 @@ std::string EmulatedDevice::roofInject(const std::string &json)
         next.parkFails = p["parkFails"] | next.parkFails;
         next.jam = p["jam"] | next.jam;
         next.supplyLow = p["supplyLow"] | next.supplyLow;
+        next.sunUp = p["sunUp"] | next.sunUp;
         roof.setInjectors(next);
         const std::string mount = p["mount"] | "";
         if (mount == "park")
@@ -91,6 +92,8 @@ std::string EmulatedDevice::roofPanel() const
     doc["parkFails"] = i.parkFails;
     doc["jam"] = i.jam;
     doc["supplyLow"] = i.supplyLow;
+    doc["sunUp"] = i.sunUp;
+    doc["daylight"] = Daylight::describe(roof.daylight());
     const DemoRoof::Mount &m = roof.mountState();
     doc["mount"] = m.slewing ? "slewing" : (m.atPark ? "parked" : "unparked");
     doc["state"] = Roof::stateName(roof.snapshot().status.state);

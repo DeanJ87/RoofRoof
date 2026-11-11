@@ -10,6 +10,7 @@
 #include "HaDiscovery.h"
 #include "MQTTClient.h"
 #include "PlatformHold.h"
+#include "RoofStatus.h"
 #include "RoofTypes.h"
 #include "SettingsDeps.h"
 #include "TimeManager.h"
@@ -77,6 +78,9 @@ namespace SQM
         // and the MQTT document). Called from any task, so it must be.
         using ClosePhase = std::function<const char *()>;
         void setClosePhase(ClosePhase source) { closePhase = std::move(source); }
+        // Spec 013: the daylight state for the status document (any task).
+        using DaylightSource = std::function<RoofIo::DaylightStatus()>;
+        void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
         // Any task: whether a channel took that alert.
         AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const
         {
@@ -118,6 +122,7 @@ namespace SQM
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;
+        DaylightSource daylightSource;
         const char *lastClosePhase = nullptr; // as last broadcast on /ws/status
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;

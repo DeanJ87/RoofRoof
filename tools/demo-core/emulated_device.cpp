@@ -49,6 +49,7 @@ void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &loc
     clockDate = localDate;
     if (bootMs == 0)
         bootMs = nowMs;
+    roof.setClock(epoch);
     runRoof();
     runAlerts();
 }

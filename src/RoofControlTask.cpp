@@ -199,12 +199,13 @@ namespace SQM
             latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(now)), 0.0f));
             return;
         }
-        // Constitution III: no opening while the weather isn't safe.
+        // Constitution III: no opening while the weather isn't safe; spec 013:
+        // nor while daylight wants the roof closed.
         if (RoofIo::openMustStop(status, now))
         {
             controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
             applyOutput();
-            notice = "Opening stopped: " + RoofIo::describeGate(RoofIo::GateRefusal::WeatherNotSafe, now);
+            notice = "Opening stopped: " + RoofIo::describeGate(RoofIo::openRefusal(now), now);
         }
     }
 

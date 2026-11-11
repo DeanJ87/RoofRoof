@@ -312,6 +312,7 @@ void startServices()
     webServer->setRoof(&roofControl);
     // Spec 008: the automatic close's phase in the status and the MQTT document.
     webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
+    webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out
@@ -355,12 +356,19 @@ void handleSafety()
     // A verdict that stops being safe is handed over in the same pass the
     // close sequence first sees it, so the roof's checks (an Alpaca client's
     // stop of a close, spec 006) never lag the sequence.
+    // Spec 013: daylight is handed over with them, at once when it starts
+    // wanting the roof closed.
+    closeOnUnsafe.updateDaylight();
+    static bool handedCloses = false;
     const bool safeNow = safetyInputs->weather().safe();
-    if (now - lastHandOver >= 250 || (handedSafe && !safeNow))
+    const bool closesNow = closeOnUnsafe.daylight().closes();
+    if (now - lastHandOver >= 250 || (handedSafe && !safeNow) || (closesNow && !handedCloses))
     {
-        roofControl.setSafety(safetyInputs->weather(), safetyInputs->park());
+        roofControl.setSafety(
+            safetyInputs->weather(), safetyInputs->park(), closesNow, closesNow ? Daylight::describe(closeOnUnsafe.daylight()) : "");
         lastHandOver = now;
         handedSafe = safeNow;
+        handedCloses = closesNow;
     }
     closeOnUnsafe.handle(*safetyInputs, roofControl);
 }
