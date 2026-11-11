@@ -192,6 +192,9 @@ namespace SQM
         uint32_t hallLowCounts = 1100;  // at or below is the other end's magnet
         bool currentSenseEnabled = false;
         float maxCurrentAmps = 10.0f;
+        // Motor amps per volt at the IBT-2's IS output (before the divider): the
+        // BTS7960's sense ratio into the board's sense resistor (spec 003).
+        float currentAmpsPerVolt = 8.5f;
         float minSupplyVolts = 11.0f;
 
         // The ranges, shared with the web UI (test/fixtures/config-ranges.json) and
@@ -215,6 +218,8 @@ namespace SQM
         static constexpr uint32_t MIN_HALL_GAP_COUNTS = 80;
         static constexpr float MIN_CURRENT_AMPS = 0.5f;
         static constexpr float MAX_CURRENT_AMPS = 40.0f;
+        static constexpr float MIN_CURRENT_AMPS_PER_VOLT = 0.5f;
+        static constexpr float MAX_CURRENT_AMPS_PER_VOLT = 100.0f;
         static constexpr float MIN_SUPPLY_VOLTS = 6.0f;
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
     };

@@ -283,6 +283,7 @@ namespace SQM
             roof.take("hallLowCounts", r.hallLowCounts);
             roof.take("currentSenseEnabled", r.currentSenseEnabled);
             roof.take("maxCurrentAmps", r.maxCurrentAmps);
+            roof.take("currentAmpsPerVolt", r.currentAmpsPerVolt);
             roof.take("minSupplyVolts", r.minSupplyVolts);
             return applyRoofEnums(roof, r, error);
         }

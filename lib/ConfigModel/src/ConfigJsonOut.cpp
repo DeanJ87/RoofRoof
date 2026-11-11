@@ -157,6 +157,7 @@ namespace SQM
             roof["hallLowCounts"] = r.hallLowCounts;
             roof["currentSenseEnabled"] = r.currentSenseEnabled;
             roof["maxCurrentAmps"] = r.maxCurrentAmps;
+            roof["currentAmpsPerVolt"] = r.currentAmpsPerVolt;
             roof["minSupplyVolts"] = r.minSupplyVolts;
         }
     } // namespace
