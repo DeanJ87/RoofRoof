@@ -426,6 +426,44 @@ void test_a_closed_roof_resets_the_alert_throttle()
     TEST_ASSERT_TRUE(d.alert);
 }
 
+void test_a_hand_close_after_a_halt_resets_the_alert_throttle()
+{
+    Rig r;
+    r.startAndClose();
+    const uint64_t tripped = T0 + 4100 + 60000 + CLOSE_GUARD_SLACK_MS;
+    TEST_ASSERT_TRUE(r.at(tripped).alert); // halted
+    r.in.roof = State::Closing;            // the owner closes it by hand
+    r.at(tripped + 600000);
+    r.in.roof = State::Closed;
+    assertEvent(r.at(tripped + 640000), Event::Closed, Cause::None);
+    r.in.roof = State::Open; // reopened in good weather
+    r.in.weatherSafe = true;
+    r.at(tripped + 700000);
+    r.in.weatherSafe = false; // the same failure in the next rain alerts at once
+    r.startAndCloseFrom(tripped + 760000);
+    const Decision d = r.at(tripped + 760000 + 4100 + 90000);
+    assertEvent(d, Event::CloseFailed, Cause::TooLong);
+    TEST_ASSERT_TRUE(d.alert);
+}
+
+void test_a_retry_wait_stretched_by_safe_spells_is_capped_in_wall_time()
+{
+    Rig r;
+    r.seq.setParkTimeoutMs(60000);
+    r.startUnsafe();
+    r.at(T0 + 60000); // failed: RetryWait
+    TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    uint64_t retriedAt = 0;
+    for (uint64_t t = T0 + 61000; t < T0 + 3 * 3600000ULL && retriedAt == 0; t += 1000)
+    {
+        r.in.weatherSafe = (t - T0) % 540000 >= 1000; // 1 s unsafe, then 9 min safe
+        if (r.at(t).action == Action::RequestPark)
+            retriedAt = t;
+    }
+    TEST_ASSERT_TRUE(retriedAt != 0);
+    TEST_ASSERT_TRUE(retriedAt - (T0 + 60000) <= RETRY_AFTER_MS + REARM_SAFE_MS + 540000);
+}
+
 void test_a_closed_reading_flickering_at_rest_does_not_storm_alerts()
 {
     Rig r;
@@ -454,6 +492,17 @@ void test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time()
     }
     TEST_ASSERT_TRUE(failedAt != 0);
     TEST_ASSERT_TRUE(failedAt - T0 <= 2 * 60000 + REARM_SAFE_MS + 540000);
+    // The alert names the cap that ran out, not the park limit.
+    Rig again;
+    again.seq.setParkTimeoutMs(60000);
+    Decision fail;
+    for (uint64_t t = T0; t < T0 + 3 * 3600000ULL && fail.event != Event::ParkNotConfirmed; t += 1000)
+    {
+        again.in.weatherSafe = (t - T0) % 540000 >= 1000;
+        fail = again.at(t);
+    }
+    assertEvent(fail, Event::ParkNotConfirmed, Cause::ParkTimeout);
+    TEST_ASSERT_EQUAL_UINT64(2 * 60000 + REARM_SAFE_MS, fail.limitMs);
 }
 
 void test_no_reminder_of_cannot_close_once_the_roof_can_move()
@@ -513,6 +562,8 @@ int main(int, char **)
     RUN_TEST(test_a_restored_stand_down_holds_and_reminds_at_once);
     RUN_TEST(test_a_resumed_attempt_counts_only_unsafe_time);
     RUN_TEST(test_a_closed_roof_resets_the_alert_throttle);
+    RUN_TEST(test_a_hand_close_after_a_halt_resets_the_alert_throttle);
+    RUN_TEST(test_a_retry_wait_stretched_by_safe_spells_is_capped_in_wall_time);
     RUN_TEST(test_a_closed_reading_flickering_at_rest_does_not_storm_alerts);
     RUN_TEST(test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time);
     RUN_TEST(test_no_reminder_of_cannot_close_once_the_roof_can_move);

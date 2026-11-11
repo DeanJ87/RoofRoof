@@ -184,10 +184,11 @@ namespace SQM
             Phase current = Phase::Idle;
             uint32_t parkTimeoutMs = DEFAULT_PARK_TIMEOUT_MS;
             uint64_t lastNowMs = 0;
-            uint64_t phaseSinceMs = 0;       // when the current phase (or attempt) began
-            uint64_t attemptLimitMs = 0;     // the park time limit taken when the attempt began
-            uint64_t attemptWallStartMs = 0; // when the attempt began (kept across a resume)
-            bool requested = false;          // a park request was ever sent
+            uint64_t phaseSinceMs = 0;                   // when the current phase (or attempt) began
+            uint64_t attemptLimitMs = 0;                 // the park time limit taken when the attempt began
+            uint64_t phaseWallStartMs = 0;               // when the phase began, wall time (kept across a resume)
+            Roof::State lastRoof = Roof::State::Unknown; // the previous step's roof state
+            bool requested = false;                      // a park request was ever sent
             uint64_t lastRequestMs = 0;
             uint32_t seenStops = 0; // personStops at the last step
             Run parkHeld;           // the park result says parked
@@ -200,26 +201,10 @@ namespace SQM
             // Where the close came from, to go back to if the gate refuses it.
             Phase beforeClose = Phase::WaitPark;
             uint64_t beforeCloseSinceMs = 0;
+            uint64_t beforeCloseWallStartMs = 0;
             bool closingSeen = false; // the roof has read Closing since the close
             bool sawPending = false;  // the close waited (spec 003 closePending) first
             uint64_t closingSinceMs = 0;
-            // An attempt ended by a safe verdict, kept so a short safe spell
-            // doesn't restart its clock (resume()).
-            struct Pause
-            {
-                bool has = false;
-                Phase phase = Phase::WaitPark;
-                uint64_t sinceMs = 0;
-                uint64_t limitMs = 0;
-                uint64_t endedAtMs = 0;
-            } paused;
-            uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
-            bool closeFailedOnce = false; // a close was refused or interrupted...
-            uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
-            // When each event and cause last alerted (index: Event, Cause).
-            bool alertedEver[8][9] = {};
-            uint64_t alertedAtMs[8][9] = {};
-            bool remindNow = false; // restored after a restart: remind on the first step
             // The episode's last critical event, for the reminder.
             struct LastCritical
             {
@@ -228,7 +213,27 @@ namespace SQM
                 Cause cause = Cause::None;
                 uint64_t limitMs = 0;
                 uint64_t alertedAtMs = 0;
-            } lastCritical;
+            };
+            LastCritical lastCritical;
+            // An attempt ended by a safe verdict, kept so a short safe spell
+            // doesn't restart its clock (resume()).
+            struct Pause
+            {
+                bool has = false;
+                Phase phase = Phase::WaitPark;
+                uint64_t sinceMs = 0;
+                uint64_t wallStartMs = 0;
+                uint64_t limitMs = 0;
+                uint64_t endedAtMs = 0;
+                LastCritical critical;
+            } paused;
+            uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
+            bool closeFailedOnce = false; // a close was refused or interrupted...
+            uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
+            // When each event and cause last alerted (index: Event, Cause).
+            bool alertedEver[8][9] = {};
+            uint64_t alertedAtMs[8][9] = {};
+            bool remindNow = false; // restored after a restart: remind on the first step
         };
 
         // The verdict and park result into `in`: only Safe is safe (unknown is
