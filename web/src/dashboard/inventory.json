@@ -450,6 +450,16 @@
     {
       "match": "status.firmware.product",
       "reason": "Build details"
+    },
+    {
+      "match": "deps.D-40",
+      "reason": "Shown with the safety settings, which arrive with the roof settings page (spec 009)",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "deps.D-41",
+      "reason": "Shown with the safety settings, which arrive with the roof settings page (spec 009)",
+      "shownOn": "Settings"
     }
   ]
 }

@@ -1,5 +1,5 @@
 ---
-description: "RoofRoof's MQTT topics: availability, alerts and the alerts pause switch, with Home Assistant discovery. Roof topics come in a later spec."
+description: "RoofRoof's MQTT topics: availability, alerts and the alerts pause switch, SQMeter's safety topics it listens to, and Home Assistant discovery. Roof topics come in a later spec."
 ---
 
 # MQTT Integration
@@ -45,27 +45,36 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 
+With **SQMeter over MQTT** switched on as a weather source (see [Safety inputs](safety-inputs.md)), RoofRoof also listens to SQMeter's own topics on the same broker, under SQMeter's base topic (`safety.mqtt.topic`, default `sqmeter`):
+
+| Topic (SQMeter's) | Payload RoofRoof accepts |
+|---|---|
+| `<sqmeter>/availability` | `online` / `offline` |
+| `<sqmeter>/safe` | `1` safe / `0` unsafe |
+| `<sqmeter>/safety` | SQMeter's safety JSON (`safe`, `reasonFlags`, ...) |
+
 Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: 2b2421daf3cbfadc
+fingerprint: cb4b3f4f13744f01
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: RoofRoof listens on alerts/armed/set and publishes availability, alerts and alerts/armed under its base topic, plus Home Assistant discovery under the discovery prefix.
+    accDescr: RoofRoof listens on alerts/armed/set and, when SQMeter over MQTT is a weather source, SQMeter's availability, safe and safety topics; it publishes availability, alerts and alerts/armed under its base topic, plus Home Assistant discovery under the discovery prefix.
     SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D["RoofRoof"]
+    SQM["sqmeter/availability, /safe, /safety<br/>SQMeter's topics, when that source is on"] -->|weather| D
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on;<br/>the Connectivity sensor always, the Alerts switch only while Send alerts is on"]
 ```
 
-<figcaption>MQTT topic map: the one topic RoofRoof listens to (left) and what it publishes (right). All but the discovery topics sit under the base topic, default <code>roofroof</code>.</figcaption>
+<figcaption>MQTT topic map: the topics RoofRoof listens to (left) and what it publishes (right). Its own topics sit under the base topic, default <code>roofroof</code>; SQMeter's under SQMeter's, default <code>sqmeter</code>.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -77,6 +86,8 @@ flowchart LR
     - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect.
 
     It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
+
+    When SQMeter over MQTT is a weather source, it also listens on SQMeter's `availability`, `safe` and `safety` topics under SQMeter's base topic (default `sqmeter`). It never publishes to them.
 
     With Home Assistant discovery on, it also publishes retained `config` topics for the Connectivity sensor and the Alerts switch under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved. The sensor is always announced; the switch is only announced while **Send alerts** is on, and is removed otherwise.
 

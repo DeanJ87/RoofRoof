@@ -11,14 +11,14 @@ RoofRoof exposes the device's data through these integration paths. This release
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: false
-fingerprint: 13646463bfad16eb
+fingerprint: abbe1fc3153cf5fb
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: Integration paths
-    accDescr: The device status feeds four paths. REST is pulled by scripts; WebSocket pushes the status live to the dashboard and apps; MQTT publishes availability and alerts to a broker for Home Assistant; Alpaca answers discovery and the management API for N.I.N.A. and other clients; alerts are pushed to phones and services.
+    accDescr: The device status feeds four paths. REST is pulled by scripts; WebSocket pushes the status live to the dashboard and apps; MQTT publishes availability and alerts to a broker for Home Assistant; Alpaca answers discovery and the management API for N.I.N.A. and other clients; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict and N.I.N.A.'s mount state.
     DATA["Device status<br/>and alerts"]
     DATA --> REST["REST API<br/>pull, any time"]
     DATA --> WS["WebSocket<br/>push: status every 2 s"]
@@ -30,6 +30,8 @@ flowchart LR
     MQTT --> HA["Home Assistant,<br/>Node-RED"]
     ALPACA --> NINA["N.I.N.A. and other<br/>Alpaca clients"]
     ALERTS --> PHONES["Pushover, ntfy,<br/>webhook, MQTT"]
+    SQM["SQMeter<br/>/api/safety or MQTT"] -->|weather in| DATA
+    NAPI["N.I.N.A. Advanced API<br/>mount info, park"] -->|park state in| DATA
 ```
 
 <figcaption>Integration paths: which way the data flows on each, and who typically uses it.</figcaption>
@@ -44,6 +46,8 @@ flowchart LR
     - **MQTT**: published to your broker - availability, alerts and the alerts pause switch - for Home Assistant or Node-RED.
     - **ASCOM Alpaca**: answers discovery and the management API for N.I.N.A. and other Alpaca clients. No device is served yet.
     - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook or MQTT.
+
+    Two paths come in: SQMeter's weather verdict (polled over HTTP or read from MQTT) and N.I.N.A.'s mount state through its Advanced API (see [Safety inputs](../user-guide/safety-inputs.md)).
 
 ### REST API
 

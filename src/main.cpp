@@ -11,6 +11,8 @@
 #include "Logger.h"
 #include "MQTTClient.h"
 #include "MotorDriver.h"
+#include "SafetyInputs.h"
+#include "SafetyPoller.h"
 #include "TimeManager.h"
 #include "WebServer.h"
 #include "WiFiManager.h"
@@ -23,6 +25,8 @@ static std::unique_ptr<WiFiManager> wifiManager;
 static std::unique_ptr<TimeManager> timeManager;
 static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
+static SafetyPoller safetyPoller;
+static std::unique_ptr<SafetyInputs> safetyInputs;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -48,6 +52,8 @@ bool saveConfigCallback(const Config &newConfig)
         mqttClient->updateConfig(config.mqtt);
     if (timeManager)
         timeManager->updateConfig(config.ntp);
+    if (safetyInputs)
+        safetyInputs->updateConfig(config);
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
@@ -184,6 +190,11 @@ void startServices()
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
+    // Spec 004: the weather verdict and park confirmation (reported only; spec 005 acts on them).
+    safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
+    safetyInputs->begin(config);
+    HeapTrace::mark("safety inputs");
+
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
     webServer->begin();
     HeapTrace::mark("setup complete");
@@ -258,6 +269,8 @@ void loop()
 
     if (mqttClient)
         mqttClient->handle();
+    if (safetyInputs)
+        safetyInputs->handle();
 
     // Small delay to prevent a tight loop.
     delay(10);

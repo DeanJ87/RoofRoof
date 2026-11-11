@@ -72,6 +72,10 @@ namespace SQM
         defaultTime(cfg);
         cfg.alpaca.enabled = false;
         defaultAlerts(cfg.alerts);
+        // Every safety source off and N.I.N.A. not configured: the verdict is
+        // unsafe and the mount not parked until they are set up (spec 004).
+        cfg.safety = SafetyConfig{};
+        cfg.park = ParkConfig{};
         return cfg;
     }
 

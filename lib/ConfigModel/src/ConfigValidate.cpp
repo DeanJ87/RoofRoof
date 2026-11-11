@@ -130,6 +130,22 @@ namespace SQM
             return true;
         }
 
+        // SQMeter and N.I.N.A. serve plain http only (spec 004 research D9):
+        // https would also take the alert task's TLS session.
+        bool validateSafety(const Config &c, std::string *error)
+        {
+            const SafetyConfig &s = c.safety;
+            if (s.httpEnabled && s.httpUrl.rfind("http://", 0) != 0)
+                return setError(error, "SQMeter safety URL must start with http://");
+            if (s.mqttEnabled && !validTopic(s.mqttTopic))
+                return setError(error, "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels");
+            if (s.staleSeconds < SafetyConfig::MIN_STALE_SECONDS || s.staleSeconds > SafetyConfig::MAX_STALE_SECONDS)
+                return setError(error, "Safety: stale time must be between 10 and 600 seconds");
+            if (!c.park.ninaUrl.empty() && c.park.ninaUrl.rfind("http://", 0) != 0)
+                return setError(error, "N.I.N.A. URL must start with http://");
+            return true;
+        }
+
         bool validateAlertChannels(const AlertsConfig &a, std::string *error)
         {
             if (a.pushoverEnabled && (a.pushoverUserKey.empty() || a.pushoverAppToken.empty()))
@@ -161,6 +177,8 @@ namespace SQM
             const std::pair<bool, std::pair<const char *, const std::string *>> urls[] = {
                 {cfg.alerts.webhookEnabled, {"Alerts: webhook URL: ", &cfg.alerts.webhookUrl}},
                 {cfg.alerts.ntfyEnabled, {"Alerts: ntfy server: ", &cfg.alerts.ntfyServer}},
+                {cfg.safety.httpEnabled, {"SQMeter safety URL: ", &cfg.safety.httpUrl}},
+                {!cfg.park.ninaUrl.empty(), {"N.I.N.A. URL: ", &cfg.park.ninaUrl}},
             };
             for (const auto &entry : urls)
             {
@@ -191,6 +209,7 @@ namespace SQM
             validateAlertThresholds,
             validateAlertEvents,
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
+            validateSafety,
         };
         for (Check check : CHECKS)
             if (!check(*this, error))

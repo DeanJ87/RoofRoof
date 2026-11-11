@@ -52,6 +52,20 @@ namespace SQM::ConfigDetail
         return mode == AlertsConfig::SendMode::WhileConnected ? "whileConnected" : "any";
     }
 
+    inline const char *switchesName(ParkConfig::Switches switches)
+    {
+        switch (switches)
+        {
+        case ParkConfig::Switches::One:
+            return "one";
+        case ParkConfig::Switches::Two:
+            return "two";
+        case ParkConfig::Switches::None:
+            break;
+        }
+        return "none";
+    }
+
     // MQTT broker and webhook URL forms, IPv6 literals included (SQMeter spec 015);
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);

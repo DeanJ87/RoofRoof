@@ -22,14 +22,14 @@ There is no public docs site: these docs and the [live demo](live-demo.md) are b
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: 8417a3d2ad430a16
+fingerprint: 69d1e1ad4ffedcc9
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: What RoofRoof connects to
-    accDescr: The ESP32 holds the motor driver's pins low from boot, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services. It gets time from the internet by NTP.
+    accDescr: The ESP32 holds the motor driver's pins low from boot, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes to an MQTT broker, answers ASCOM Alpaca clients such as N.I.N.A., and sends alerts to push services. It reads the weather verdict from SQMeter and the mount's park state from N.I.N.A.'s Advanced API. It gets time from the internet by NTP.
     DRIVER["<b>IBT-2 motor driver</b><br/>RPWM, LPWM, EN<br/>held off at boot;<br/>EN has a 10 kΩ pull-down"]
     ESP["<b>ESP32 running RoofRoof</b><br/>settings in NVS,<br/>web UI in LittleFS"]
     WEB["Browser<br/>dashboard, REST, WebSocket"]
@@ -37,12 +37,16 @@ flowchart LR
     ALPACA["ASCOM Alpaca client<br/>e.g. N.I.N.A."]
     PUSH["Push alerts<br/>ntfy, Pushover, webhook"]
     NET["Internet<br/>NTP time"]
+    SQM["SQMeter<br/>weather verdict, HTTP or MQTT"]
+    NAPI["N.I.N.A. Advanced API<br/>mount parked?"]
     ESP -->|"GPIO25, 26, 27"| DRIVER
     NET -.->|time| ESP
     ESP <--> WEB
     ESP <-->|availability, alerts| MQTT
     ESP <--> ALPACA
     ESP --> PUSH
+    SQM -->|safe or unsafe| ESP
+    ESP <-->|mount info, park| NAPI
 ```
 
 <figcaption>What RoofRoof connects to: the motor driver it holds off, the ESP32 in the middle, and everything it talks to.</figcaption>
@@ -57,6 +61,9 @@ flowchart LR
         - An MQTT broker gets availability and alerts, with Home Assistant discovery; it can also switch alerts on and off.
         - ASCOM Alpaca clients such as N.I.N.A. can discover the server; it lists no device yet.
         - Alerts go to ntfy, Pushover, a webhook or MQTT.
+    - **Inputs:**
+        - SQMeter's weather verdict, over HTTP or through the MQTT broker.
+        - N.I.N.A.'s Advanced API: whether the mount is parked, and a park request when the roof needs to close.
     - **From the internet:** NTP time only. The device never downloads updates.
 
 ![The RoofRoof dashboard](assets/screenshots/dashboard.png)

@@ -83,6 +83,7 @@ nav:
   - User Guide:
     - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
+    - Safety inputs: user-guide/safety-inputs.md
     - Security: user-guide/security.md
     - IPv6: user-guide/ipv6.md
     - MQTT Integration: user-guide/mqtt.md
