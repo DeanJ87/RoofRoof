@@ -32,6 +32,12 @@ namespace SQM
             // skewed clock can't shorten the dead time.
             CommandResult command(Command command, Origin origin);
 
+            // What command() would answer for an open or close now, without
+            // changing anything (stop and abort are always accepted). Lets the
+            // caller act on side effects (spec 003: a close stops an upload)
+            // only for a command that will run.
+            CommandResult check(Command command, Origin origin) const;
+
             // A person clears the latched fault; automatic origins are refused.
             CommandResult clearFault(Origin origin);
 

@@ -132,6 +132,16 @@
       "max": 40
     },
     {
+      "path": "roof.currentAmpsPerVolt",
+      "min": 0.5,
+      "max": 100
+    },
+    {
+      "path": "roof.minRunningAmps",
+      "min": 0,
+      "max": 20
+    },
+    {
       "path": "roof.minSupplyVolts",
       "min": 6,
       "max": 15

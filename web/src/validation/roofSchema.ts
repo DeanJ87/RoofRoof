@@ -22,6 +22,8 @@ export const roofConfigSchema = z
     hallLowCounts: z.number().int().min(100).max(3995),
     currentSenseEnabled: z.boolean(),
     maxCurrentAmps: z.number().min(0.5).max(40),
+    currentAmpsPerVolt: z.number().min(0.5).max(100),
+    minRunningAmps: z.number().min(0).max(20),
     minSupplyVolts: z.number().min(6).max(15),
   })
   .superRefine((data, ctx) => {

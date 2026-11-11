@@ -196,6 +196,10 @@ namespace SQM
                 return setError(error, "Roof: the Hall high threshold must be at least 80 counts above the low threshold");
             if (!inRange(r.maxCurrentAmps, RoofConfig::MIN_CURRENT_AMPS, RoofConfig::MAX_CURRENT_AMPS))
                 return setError(error, "Roof: current limit must be between 0.5 and 40 amps");
+            if (!inRange(r.currentAmpsPerVolt, RoofConfig::MIN_CURRENT_AMPS_PER_VOLT, RoofConfig::MAX_CURRENT_AMPS_PER_VOLT))
+                return setError(error, "Roof: current scale must be between 0.5 and 100 A/V");
+            if (!inRange(r.minRunningAmps, 0.0f, RoofConfig::MAX_MIN_RUNNING_AMPS))
+                return setError(error, "Roof: minimum running current must be between 0 and 20 amps");
             if (!inRange(r.minSupplyVolts, RoofConfig::MIN_SUPPLY_VOLTS, RoofConfig::MAX_SUPPLY_VOLTS))
                 return setError(error, "Roof: minimum supply must be between 6 and 15 volts");
             return true;

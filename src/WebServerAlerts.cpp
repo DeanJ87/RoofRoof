@@ -118,10 +118,9 @@ namespace SQM
         return copy;
     }
 
-    void WebServer::scheduleChanged(bool wasSending)
+    void WebServer::saveArmedState()
     {
         const Alerts::ScheduleState &state = alertSchedule.state();
-        shareSchedule();
         Preferences prefs;
         if (prefs.begin(ARMED_NVS_NAMESPACE, false))
         {
@@ -130,6 +129,17 @@ namespace SQM
             prefs.putUInt("since", static_cast<uint32_t>(state.sinceEpoch > 0 ? state.sinceEpoch : 0));
             prefs.end();
         }
+        armedSavePending = false;
+    }
+
+    void WebServer::scheduleChanged(bool wasSending)
+    {
+        const Alerts::ScheduleState &state = alertSchedule.state();
+        shareSchedule();
+        // An NVS write stalls the roof's control task: saved once it stops.
+        armedSavePending = true;
+        if (!roofMoving())
+            saveArmedState();
         if (state.sending == wasSending)
             return;
         Logger::info(TAG, "Alerts %s (%s)", state.sending ? "resumed" : "paused", Alerts::scheduleReasonName(state.reason));

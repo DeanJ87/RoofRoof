@@ -80,7 +80,7 @@ namespace SQM
         mqttClient->setServer(brokerHost.c_str(), brokerPort);
         mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
-        mqttClient->setSocketTimeout(10);
+        mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
 
         connect();
     }
@@ -161,6 +161,14 @@ namespace SQM
     {
         if (!config.enabled)
             return;
+        // Marked in flight before the hold is asked, so a close accepted in
+        // between sees the connect and waits for it; cleared if held.
+        connectInFlight = true;
+        if (connectHold && connectHold())
+        {
+            connectInFlight = false;
+            return;
+        }
 
         Logger::info(TAG, "Connecting to MQTT broker: %s port %d", config.broker.c_str(), brokerPort);
 
@@ -177,6 +185,7 @@ namespace SQM
         {
             connected = mqttClient->connect(clientId.c_str(), availabilityTopic.c_str(), 1, true, "offline");
         }
+        connectInFlight = false;
 
         if (connected)
         {

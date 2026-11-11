@@ -1,0 +1,147 @@
+#include "MotionGuards.h"
+
+#include <cmath>
+#include <cstring>
+#include <limits>
+
+#include "StepWatchdog.h"
+
+namespace SQM
+{
+    namespace RoofIo
+    {
+        bool roofMoving(Roof::State state)
+        {
+            return state == Roof::State::Opening || state == Roof::State::Closing;
+        }
+
+        bool platformActionRefused(Roof::State state)
+        {
+            return roofMoving(state);
+        }
+
+        bool commandLineOtaAllowed(Roof::State state)
+        {
+            return state == Roof::State::Closed;
+        }
+
+        uint32_t FlashActivity::begin(uint32_t nowMs)
+        {
+            current = nextToken++;
+            if (nextToken == 0)
+                nextToken = 1;
+            active = true;
+            stopRequested = false;
+            lastProgressMs = nowMs;
+            return current;
+        }
+
+        void FlashActivity::progress(uint32_t token, uint32_t nowMs)
+        {
+            if (token == current && active)
+                lastProgressMs = nowMs;
+        }
+
+        void FlashActivity::end(uint32_t token)
+        {
+            if (token == current)
+                active = false;
+        }
+
+        bool FlashActivity::busy(uint32_t nowMs) const
+        {
+            return active && stepGapMs(nowMs, lastProgressMs) <= FLASH_STALE_MS;
+        }
+
+        void FlashActivity::requestStop()
+        {
+            if (active)
+                stopRequested = true;
+        }
+
+        bool FlashActivity::shouldStop(uint32_t token) const
+        {
+            return token != current || !active || stopRequested;
+        }
+
+        void RestartPlan::schedule(bool isMandatory)
+        {
+            if (!due)
+                mandatory = false;
+            due = true;
+            mandatory = mandatory || isMandatory;
+        }
+
+        bool RestartPlan::cancel()
+        {
+            if (!due || mandatory)
+                return false;
+            due = false;
+            return true;
+        }
+
+        void RestartPlan::clear()
+        {
+            due = false;
+            mandatory = false;
+        }
+
+        BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
+        {
+            BlockerDecision d;
+            if (command == Roof::Command::Open)
+            {
+                if (b.flashBusy || b.mqttConnecting || b.restartScheduled)
+                    d.action = BlockerAction::Refuse;
+            }
+            else if (command == Roof::Command::Close)
+            {
+                d.cancelRestart = b.restartScheduled && b.restartCancellable;
+                d.stopFlash = b.flashBusy;
+                if (b.flashBusy || b.mqttConnecting)
+                    d.action = BlockerAction::DeferClose;
+            }
+            return d;
+        }
+
+        const char *blockerText(const Blockers &b)
+        {
+            if (b.flashBusy)
+                return "An upload is being written";
+            if (b.mqttConnecting)
+                return "MQTT is connecting";
+            if (b.restartScheduled)
+                return "A restart is scheduled";
+            return "";
+        }
+
+        bool commandHeaderValid(const char *value)
+        {
+            return value != nullptr && std::strcmp(value, "1") == 0;
+        }
+
+        bool watchdogAlive(uint32_t nowMs, uint32_t beatMs, uint32_t limitMs)
+        {
+            return stepGapMs(nowMs, beatMs) <= limitMs;
+        }
+
+        bool watchdogStoppedFault(bool outputOn, uint32_t nowMs, uint32_t beatMs)
+        {
+            return outputOn && !watchdogAlive(nowMs, beatMs);
+        }
+
+        float runningAmps(float readAmps, const Roof::Status &status, const Roof::Output &applied, float minRunningAmps)
+        {
+            if (!std::isfinite(readAmps))
+                return readAmps;
+            const bool on = applied.command != Driver::Command::Off && applied.duty > 0;
+            if (!on)
+                return readAmps; // motor off: the reading is the sense output's offset
+            const float amps = readAmps * 255.0f / static_cast<float>(applied.duty);
+            const bool settled = status.driving && status.moveElapsedMs >= CURRENT_SETTLE_MS;
+            if (minRunningAmps > 0.0f && settled && amps < minRunningAmps)
+                return std::numeric_limits<float>::quiet_NaN();
+            return amps;
+        }
+    } // namespace RoofIo
+} // namespace SQM

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <Update.h>
 #include <ESPmDNS.h>
 #include <LittleFS.h>
 #include <esp_ota_ops.h>
@@ -7,10 +8,13 @@
 
 #include "Config.h"
 #include "FirmwareMarker.h"
+#include "FlashGuard.h"
 #include "HeapTrace.h"
 #include "Logger.h"
 #include "MQTTClient.h"
+#include "MotionGuards.h"
 #include "MotorDriver.h"
+#include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
 #include "TimeManager.h"
@@ -27,6 +31,7 @@ static std::unique_ptr<WebServer> webServer;
 static std::unique_ptr<MQTTClient> mqttClient;
 static SafetyPoller safetyPoller;
 static std::unique_ptr<SafetyInputs> safetyInputs;
+static RoofControl roofControl;
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 
@@ -54,6 +59,7 @@ bool saveConfigCallback(const Config &newConfig)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
         safetyInputs->updateConfig(config);
+    roofControl.updateConfig(config); // taken by the roof once no move is active
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
@@ -103,6 +109,9 @@ void mountFilesystem()
 // Join the saved network, or open the setup hotspot (captive portal).
 void startWifi()
 {
+    // The network is RoofRoof's own setting (config.wifi): the WiFi driver
+    // keeps no copy in NVS, so a reconnect while the roof moves writes no flash.
+    WiFi.persistent(false);
     wifiManager = std::make_unique<WiFiManager>(config.wifi);
     wifiManager->begin();
 
@@ -128,8 +137,21 @@ void startWifi()
     HeapTrace::mark("wifi");
 }
 
+// Command-line OTA writes the flash: the roof refuses to open meanwhile (spec 003).
+static uint32_t arduinoOtaToken = 0;
+
 void onArduinoOtaStart()
 {
+    // The roof may have moved since handle() was let through: refuse unless it
+    // is still closed. Aborted before the first write; ArduinoOTA then reports an error.
+    if (!RoofIo::commandLineOtaAllowed(roofControl.state()))
+    {
+        arduinoOtaToken = 0;
+        Update.abort();
+        Logger::warn("OTA", "Command-line OTA refused: the roof isn't closed");
+        return;
+    }
+    arduinoOtaToken = FlashGuard::begin();
     const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
     if (!firmware)
         LittleFS.end(); // writing the filesystem: unmount it first
@@ -145,11 +167,13 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
         Logger::info("OTA", "Progress: %u%%", percent);
         lastPercent = percent;
     }
+    FlashGuard::progress(arduinoOtaToken);
 }
 
 void onArduinoOtaError(ota_error_t error)
 {
     static const char *const REASONS[] = {"Auth failed", "Begin failed", "Connect failed", "Receive failed", "End failed"};
+    FlashGuard::end(arduinoOtaToken);
     const unsigned index = static_cast<unsigned>(error);
     Logger::error("OTA", "Error[%u]: %s", index, index < 5 ? REASONS[index] : "unknown");
 }
@@ -168,7 +192,12 @@ void startArduinoOta()
     ArduinoOTA.setPassword(config.ota.password.c_str());
     ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
     ArduinoOTA.onStart(onArduinoOtaStart);
-    ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete"); });
+    ArduinoOTA.onEnd(
+        []()
+        {
+            FlashGuard::end(arduinoOtaToken);
+            Logger::info("OTA", "Update complete");
+        });
     ArduinoOTA.onProgress(onArduinoOtaProgress);
     ArduinoOTA.onError(onArduinoOtaError);
     ArduinoOTA.begin();
@@ -187,6 +216,8 @@ void startServices()
     HeapTrace::mark("ota + time");
 
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
+    // Spec 003: no MQTT connect while the roof moves or a close waits.
+    mqttClient->setConnectHold([]() { return roofControl.moving() || roofControl.closeWaiting(); });
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
@@ -196,8 +227,27 @@ void startServices()
     HeapTrace::mark("safety inputs");
 
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
+    webServer->setRoof(&roofControl);
     webServer->begin();
     HeapTrace::mark("setup complete");
+}
+
+// The roof's switch readings into the safety inputs (spec 004), and their
+// verdict and park result back to the roof's gates (spec 003), every 250 ms.
+void handleSafety()
+{
+    if (!safetyInputs)
+        return;
+    safetyInputs->setParkSwitches(roofControl.parkSwitch(0), roofControl.parkSwitch(1));
+    safetyInputs->setRainContact(roofControl.rainContact());
+    safetyInputs->handle();
+    static uint32_t lastHandOver = 0;
+    const uint32_t now = millis();
+    if (now - lastHandOver >= 250)
+    {
+        roofControl.setSafety(safetyInputs->weather(), safetyInputs->park());
+        lastHandOver = now;
+    }
 }
 
 void setup()
@@ -219,6 +269,11 @@ void setup()
 
     setupWatchdog();
     loadConfig();
+    // Spec 003: the roof's control task, independent of WiFi and the web
+    // server. Any fault saved before the restart is latched before its first
+    // step; between the magnets the position is unknown and nothing moves.
+    roofControl.begin(config);
+    HeapTrace::mark("roof");
     mountFilesystem();
     startWifi();
     startArduinoOta();
@@ -238,6 +293,11 @@ void loop()
 {
     esp_task_wdt_reset();
 
+    // While the roof opens or closes (spec 003): no restart, no command-line
+    // OTA (flash writes stall its control task and watchdog) and no MQTT
+    // reconnect (it could hold this loop past the safety hand-over limit).
+    WebServer::holdRestarts(roofControl.moving() || roofControl.closeWaiting());
+
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
 
@@ -251,7 +311,10 @@ void loop()
         restartingFromHotspot = WebServer::scheduleRestart(1000);
     }
 
-    if (arduinoOTAEnabled)
+    // Command-line OTA blocks this loop for the whole upload and can't be
+    // stopped part-way, so it is only serviced while the roof is closed: a
+    // close can never be waiting behind it (spec 003 FR-030).
+    if (arduinoOTAEnabled && RoofIo::commandLineOtaAllowed(roofControl.state()))
         ArduinoOTA.handle();
     if (timeManager)
         timeManager->handle();
@@ -269,8 +332,7 @@ void loop()
 
     if (mqttClient)
         mqttClient->handle();
-    if (safetyInputs)
-        safetyInputs->handle();
+    handleSafety();
 
     // Small delay to prevent a tight loop.
     delay(10);

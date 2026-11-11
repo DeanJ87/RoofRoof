@@ -32,6 +32,10 @@
       "description": "Device status."
     },
     {
+      "name": "Roof",
+      "description": "Move the roof and clear a fault."
+    },
+    {
       "name": "Settings",
       "description": "Read and change the device's settings."
     },
@@ -117,7 +121,8 @@
                   "heapSize": 327680,
                   "stackFree": {
                     "asyncTcp": 3360,
-                    "loop": 3612
+                    "loop": 3612,
+                    "roof": 3480
                   },
                   "heapStages": [
                     {
@@ -159,16 +164,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794350418,
-                    "iso": "2026-11-10T22:40:18+0000",
+                    "epoch": 1794367229,
+                    "iso": "2026-11-11T03:20:29+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794346816480,
-                    "nextSync": 1794354016480,
+                    "lastSync": 1794363627173,
+                    "nextSync": 1794370827173,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -200,7 +205,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794350356480,
+                    "lastPublish": 1794367167173,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -208,7 +213,39 @@
                     "availabilityTopic": "roofroof/availability",
                     "clientId": "RoofRoof-D4E5F6"
                   },
-                  "configRevision": 887913319
+                  "roof": {
+                    "state": "closed",
+                    "positionKnown": true,
+                    "positionMm": 0,
+                    "positionPercent": 0,
+                    "target": null,
+                    "driving": false,
+                    "fromUnknown": false,
+                    "moveElapsedMs": 0,
+                    "moveTimeoutMs": 0,
+                    "hall": {
+                      "level": "low",
+                      "counts": 712
+                    },
+                    "supplyVolts": 12.46,
+                    "supplyLow": false,
+                    "minSupplyVolts": 11,
+                    "currentSense": false,
+                    "motorAmps": null,
+                    "maxCurrentAmps": 10,
+                    "parkSwitches": {
+                      "fitted": 0,
+                      "switch1": "notFitted",
+                      "switch2": "notFitted"
+                    },
+                    "rainContact": "notFitted",
+                    "closePending": false,
+                    "fault": null,
+                    "watchdogTrips": 0,
+                    "maxStepGapMs": 21,
+                    "maxWatchdogBeatAgeMs": 12
+                  },
+                  "configRevision": 3751871155
                 }
               }
             }
@@ -267,7 +304,7 @@
           "Settings"
         ],
         "summary": "Change settings",
-        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`.\n\nNeeds the password when protection is on.",
+        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -289,6 +326,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -321,7 +368,7 @@
           "Settings"
         ],
         "summary": "Change settings (PUT)",
-        "description": "The same as `POST /api/config`, for clients that use PUT.\n\nNeeds the password when protection is on.",
+        "description": "The same as `POST /api/config`, for clients that use PUT. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -340,6 +387,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -371,7 +428,7 @@
           "Device"
         ],
         "summary": "Restart",
-        "description": "Restarts the device after answering.\n\nNeeds the password when protection is on.",
+        "description": "Restarts the device after answering. Refused with 409 while the roof is opening or closing.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -388,10 +445,487 @@
               }
             }
           },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
         }
+      }
+    },
+    "/api/roof/open": {
+      "post": {
+        "operationId": "post_roof_open",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Open the roof",
+        "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
+      }
+    },
+    "/api/roof/close": {
+      "post": {
+        "operationId": "post_roof_close",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Close the roof",
+        "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
+      }
+    },
+    "/api/roof/stop": {
+      "post": {
+        "operationId": "post_roof_stop",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Stop the roof",
+        "description": "Switches the motor off at once and keeps the position estimate. Always accepted. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
+      }
+    },
+    "/api/roof/clear-fault": {
+      "post": {
+        "operationId": "post_roof_clear_fault",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Clear the roof's fault",
+        "description": "Clears a latched motion fault, as a person, and removes it from storage. The position is known again only at a magnet. Accepted with no fault too. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the command."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "What the waiting close is waiting for (202 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
       }
     },
     "/api/backup/preview": {
@@ -486,7 +1020,7 @@
           "Settings"
         ],
         "summary": "Apply a previewed restore",
-        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again.\n\nNeeds the password when protection is on.",
+        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -797,7 +1331,7 @@
           "Network"
         ],
         "summary": "Join a WiFi network",
-        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network.\n\nNeeds the password when protection is on.",
+        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network. Refused with 409 while the roof is opening or closing.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -816,6 +1350,16 @@
           },
           "400": {
             "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -864,7 +1408,7 @@
           "Updates"
         ],
         "summary": "Upload the web UI",
-        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept.\n\nNeeds the password when protection is on.",
+        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -893,6 +1437,16 @@
           },
           "500": {
             "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -934,7 +1488,7 @@
           "Updates"
         ],
         "summary": "Upload firmware",
-        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success.\n\nNeeds the password when protection is on.",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -963,6 +1517,16 @@
           },
           "500": {
             "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -1269,6 +1833,16 @@
       }
     },
     "parameters": {
+      "roofCommand": {
+        "name": "X-RoofRoof",
+        "in": "header",
+        "required": true,
+        "description": "Must be `1`. A cross-site form or simple cross-origin request can't send it, so another site in a browser can't move the roof (403 without it).",
+        "schema": {
+          "type": "string",
+          "const": "1"
+        }
+      },
       "source": {
         "name": "source",
         "in": "query",
@@ -2101,6 +2675,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "currentAmpsPerVolt": {
+                "type": "number"
+              },
               "currentSenseEnabled": {
                 "type": "boolean"
               },
@@ -2117,6 +2694,9 @@
                 "type": "number"
               },
               "maxCurrentAmps": {
+                "type": "number"
+              },
+              "minRunningAmps": {
                 "type": "number"
               },
               "minSupplyVolts": {
@@ -2148,12 +2728,14 @@
               }
             },
             "required": [
+              "currentAmpsPerVolt",
               "currentSenseEnabled",
               "hallHighCounts",
               "hallHighEnd",
               "hallLowCounts",
               "leaveMagnetSeconds",
               "maxCurrentAmps",
+              "minRunningAmps",
               "minSupplyVolts",
               "openDirection",
               "rampDownMs",
@@ -2544,6 +3126,9 @@
           "roof": {
             "type": "object",
             "properties": {
+              "currentAmpsPerVolt": {
+                "type": "number"
+              },
               "currentSenseEnabled": {
                 "type": "boolean"
               },
@@ -2560,6 +3145,9 @@
                 "type": "number"
               },
               "maxCurrentAmps": {
+                "type": "number"
+              },
+              "minRunningAmps": {
                 "type": "number"
               },
               "minSupplyVolts": {
@@ -3125,6 +3713,237 @@
           "resetReason": {
             "type": "number"
           },
+          "roof": {
+            "type": "object",
+            "properties": {
+              "closePending": {
+                "type": "boolean"
+              },
+              "currentSense": {
+                "type": "boolean"
+              },
+              "driving": {
+                "type": "boolean"
+              },
+              "fault": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "logic",
+                      "watchdog",
+                      "parkInterlock",
+                      "storedUnreadable",
+                      "watchdogStopped"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "timeout",
+                      "didNotLeave",
+                      "wrongMagnet",
+                      "hallRail",
+                      "overCurrent",
+                      "currentUnreadable",
+                      "supplyLow",
+                      "lateStep",
+                      "driveBudget",
+                      "external"
+                    ]
+                  },
+                  "limit": {
+                    "type": "number"
+                  },
+                  "measured": {
+                    "type": "number"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause",
+                  "kind",
+                  "limit",
+                  "measured",
+                  "text"
+                ],
+                "additionalProperties": false
+              },
+              "fromUnknown": {
+                "type": "boolean"
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "counts": {
+                    "type": "number"
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "unsettled",
+                      "low",
+                      "between",
+                      "high",
+                      "rail"
+                    ]
+                  }
+                },
+                "required": [
+                  "counts",
+                  "level"
+                ],
+                "additionalProperties": false
+              },
+              "maxCurrentAmps": {
+                "type": "number"
+              },
+              "maxStepGapMs": {
+                "type": "number"
+              },
+              "maxWatchdogBeatAgeMs": {
+                "type": "number"
+              },
+              "minSupplyVolts": {
+                "type": "number"
+              },
+              "motorAmps": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "moveElapsedMs": {
+                "type": "number"
+              },
+              "moveTimeoutMs": {
+                "type": "number"
+              },
+              "parkSwitches": {
+                "type": "object",
+                "properties": {
+                  "fitted": {
+                    "type": "number"
+                  },
+                  "switch1": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "unreadable",
+                      "notFitted"
+                    ]
+                  },
+                  "switch2": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "unreadable",
+                      "notFitted"
+                    ]
+                  }
+                },
+                "required": [
+                  "fitted",
+                  "switch1",
+                  "switch2"
+                ],
+                "additionalProperties": false
+              },
+              "positionKnown": {
+                "type": "boolean"
+              },
+              "positionMm": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "positionPercent": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "rainContact": {
+                "type": "string",
+                "enum": [
+                  "notFitted",
+                  "dry",
+                  "raining",
+                  "unreadable"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ]
+              },
+              "supplyLow": {
+                "type": "boolean"
+              },
+              "supplyVolts": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "target": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "enum": [
+                  "open",
+                  "closed",
+                  null
+                ]
+              },
+              "watchdogTrips": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "closePending",
+              "currentSense",
+              "driving",
+              "fault",
+              "fromUnknown",
+              "hall",
+              "maxCurrentAmps",
+              "maxStepGapMs",
+              "maxWatchdogBeatAgeMs",
+              "minSupplyVolts",
+              "motorAmps",
+              "moveElapsedMs",
+              "moveTimeoutMs",
+              "parkSwitches",
+              "positionKnown",
+              "positionMm",
+              "positionPercent",
+              "rainContact",
+              "state",
+              "supplyLow",
+              "supplyVolts",
+              "target",
+              "watchdogTrips"
+            ],
+            "additionalProperties": false
+          },
           "sketchSize": {
             "type": "number"
           },
@@ -3136,11 +3955,15 @@
               },
               "loop": {
                 "type": "number"
+              },
+              "roof": {
+                "type": "number"
               }
             },
             "required": [
               "asyncTcp",
-              "loop"
+              "loop",
+              "roof"
             ],
             "additionalProperties": false
           },
@@ -3269,6 +4092,7 @@
           "minFreeHeap",
           "partitions",
           "resetReason",
+          "roof",
           "sketchSize",
           "stackFree",
           "time",

@@ -45,7 +45,8 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
 | `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
-| `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins; pin map | No |
+| `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003); pin map | No |
+| `RoofControl.h`, `RoofControl.cpp`, `RoofControlTask.cpp`, `RoofLocked.h`, `RoofFaultStore.cpp/.h`, `WebServerRoof.cpp` | none | New (spec 003): the roof's control task, watchdog, inputs, stored fault, REST commands and status section | No |
 | `SafetyPoller.cpp/.h`, `SafetyInputs.cpp/.h` | none | New (spec 004): polls SQMeter and N.I.N.A. on their own task; keeps the weather verdict and park result | No |
 
 ### `lib/`
@@ -67,10 +68,11 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | HaDiscovery | none | New: Home Assistant MQTT discovery entities | Yes |
 | NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
 | SafetyInputLogic | none | New (spec 004): SQMeter reply parsing, the weather verdict and the park rule | No |
+| RoofIoLogic | none | New (spec 003): the roof hardware layer's decisions: reading scaling, switch inputs, watchdog rule, stored fault record, park and weather gates, settings-save guard, wording, status section | No |
 
 ### `test/`
 
-The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
+The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim`, and (spec 003) `test_roof_io`, `test_roof_gates`, `test_roof_status`, `test_roof_check`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
 
 ## Web UI
 

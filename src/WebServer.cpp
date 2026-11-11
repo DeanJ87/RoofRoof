@@ -4,6 +4,9 @@
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
+#include "MotionGuards.h"
+#include "RoofControl.h"
+#include "RoofReadings.h"
 #include "WebServerShared.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
@@ -59,6 +62,14 @@ namespace SQM
 
         void restartTimerCallback(void *)
         {
+            // Never while the roof moves or a close waits: try again in a second.
+            RoofControl *roof = WebServer::roofForRestart.load();
+            const bool roofBusy = roof != nullptr && (roof->moving() || roof->closeWaiting());
+            if ((WebServer::restartHold.load() || roofBusy) && restartTimer != nullptr)
+            {
+                esp_timer_start_once(restartTimer, 1000ULL * 1000ULL);
+                return;
+            }
             ESP.restart();
         }
 
@@ -248,6 +259,8 @@ namespace SQM
         const uint32_t now = millis();
 
         applyPendingArm();
+        if (armedSavePending && !roofMoving())
+            saveArmedState();
         retryAlpacaIpv6Discovery(now);
         if (mqttClient != nullptr && mqttClient->connectionCount() != mqttArmedConnection)
             publishArmedState();
@@ -262,15 +275,19 @@ namespace SQM
         sendPendingAlertTest();
 
         // Status every 2 seconds, and at once when the recent alerts or the
-        // settings change.
+        // settings change, or (at most every 250 ms) the roof's state or fault.
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
-        const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision;
+        const uint32_t roofRevision = roof != nullptr ? roof->revision() : 0;
+        const bool roofChanged = roofRevision != lastRoofRevision && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
+        const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
         if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
         {
             broadcastStatusData();
             lastStatusBroadcast = now;
+            lastRoofBroadcast = now;
             lastAlertsRevision = alertsRevision;
             lastConfigRevision = configRevision;
+            lastRoofRevision = roofRevision;
         }
     }
 
@@ -314,7 +331,42 @@ namespace SQM
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
-    bool WebServer::scheduleRestart(uint32_t delayMs)
+    namespace
+    {
+        // Whether a restart is due and whether a close may cancel it, guarded
+        // by restartPlanLock (the web task, the loop and the roof task use it).
+        portMUX_TYPE restartPlanLock = portMUX_INITIALIZER_UNLOCKED;
+        RoofIo::RestartPlan restartPlan;
+    } // namespace
+
+    bool WebServer::restartScheduled()
+    {
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool due = restartPlan.scheduled();
+        portEXIT_CRITICAL(&restartPlanLock);
+        return due;
+    }
+
+    bool WebServer::restartCancellable()
+    {
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool cancellable = restartPlan.cancellable();
+        portEXIT_CRITICAL(&restartPlanLock);
+        return cancellable;
+    }
+
+    void WebServer::cancelRestart()
+    {
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool cancelled = restartPlan.cancel();
+        portEXIT_CRITICAL(&restartPlanLock);
+        if (!cancelled || restartTimer == nullptr)
+            return;
+        esp_timer_stop(restartTimer);
+        Logger::warn(TAG, "Scheduled restart cancelled: the roof is closing; restart it later");
+    }
+
+    bool WebServer::scheduleRestart(uint32_t delayMs, bool mandatory)
     {
         if (!restartTimer)
         {
@@ -332,10 +384,17 @@ namespace SQM
             }
         }
 
+        // Recorded first: a close in between sees it (and can't cancel a mandatory one).
+        portENTER_CRITICAL(&restartPlanLock);
+        restartPlan.schedule(mandatory);
+        portEXIT_CRITICAL(&restartPlanLock);
         esp_timer_stop(restartTimer);
         if (esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL) != ESP_OK)
         {
             Logger::error(TAG, "Failed to schedule restart");
+            portENTER_CRITICAL(&restartPlanLock);
+            restartPlan.clear();
+            portEXIT_CRITICAL(&restartPlanLock);
             return false;
         }
 

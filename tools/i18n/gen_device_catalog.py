@@ -34,6 +34,8 @@ SOURCES = {
     "src/WebServerAlerts.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerAlpaca.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerStatus.cpp": ("api", {"createErrorJson": [0]}),
+    # Roof commands and the save guard (spec 003).
+    "src/WebServerRoof.cpp": ("api", {"createErrorJson": [0]}),
     "src/WebServerUpdates.cpp": ("api", {"createErrorJson": [0], "fail": [0]}),
     # Settings backup and restore (SQMeter spec 033): refusals and their reasons.
     "src/WebServerBackup.cpp": ("api", {"createErrorJson": [0]}),
@@ -49,6 +51,9 @@ SOURCES = {
     # what each channel's delivery reports in the recent alerts.
     "lib/DeviceCore/src/DeviceAlerts.cpp": ("alert", {}),
     "src/AlertDispatcher.cpp": ("alert", {}),
+    # Roof faults and refusals with their values and limits (spec 003).
+    "lib/RoofIoLogic/src/RoofText.cpp": ("roof", {"format": "fmt0"}),
+    "lib/RoofIoLogic/src/RoofGates.cpp": ("roof", {}),
 }
 # `<target>["error"] = <expr>;` and `error = <expr>;` assignments are device text too.
 ASSIGN = {

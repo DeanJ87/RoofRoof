@@ -79,6 +79,28 @@ CONSTRAINTS = {
     ("status", ("firmware", "product")): {"const": "roofroof"},
     ("status", ("firmware", "layout")): {"enum": ["l2", "other"]},  # FirmwareImage::layoutOf
     ("status", ("wifi", "ipv6", "addresses", "[]", "scope")): {"enum": ["link-local", "unique-local", "global"]},
+    # The roof section (spec 003, lib/RoofLogic and lib/RoofIoLogic names).
+    ("status", ("roof", "state")): {"enum": ["unknown", "closed", "open", "opening", "closing", "stopped", "error"]},
+    ("status", ("roof", "target")): {"enum": ["open", "closed", None]},
+    ("status", ("roof", "hall", "level")): {"enum": ["unsettled", "low", "between", "high", "rail"]},
+    ("status", ("roof", "parkSwitches", "switch1")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
+    ("status", ("roof", "parkSwitches", "switch2")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
+    ("status", ("roof", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
+    ("status", ("roof", "fault", "cause")): {"enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped"]},
+    ("status", ("roof", "fault", "kind")): {
+        "enum": [
+            "timeout",
+            "didNotLeave",
+            "wrongMagnet",
+            "hallRail",
+            "overCurrent",
+            "currentUnreadable",
+            "supplyLow",
+            "lateStep",
+            "driveBudget",
+            "external",
+        ]
+    },
     ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},
     ("alerts-armed", ("reason",)): {"enum": SCHEDULE_REASONS},
     ("config", ("alerts", "sendMode")): {"enum": SCHEDULE_MODES},

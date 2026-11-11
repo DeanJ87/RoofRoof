@@ -35,6 +35,8 @@
     "roof.hallLowCounts",
     "roof.currentSenseEnabled",
     "roof.maxCurrentAmps",
+    "roof.currentAmpsPerVolt",
+    "roof.minRunningAmps",
     "roof.minSupplyVolts",
     "alerts.enabled",
     "alerts.clientSilentSeconds",

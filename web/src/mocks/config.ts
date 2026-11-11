@@ -62,6 +62,8 @@ export const mockConfig: Config = {
     hallLowCounts: 1100,
     currentSenseEnabled: false,
     maxCurrentAmps: 10,
+    currentAmpsPerVolt: 8.5,
+    minRunningAmps: 0,
     minSupplyVolts: 11,
   },
   alerts: {
