@@ -55,8 +55,8 @@ Every task ends with `pio test -e native` green; firmware tasks also with `pio r
 
 - [x] T017 [P] Docs: `docs/user-guide/safety-inputs.md` (sources, fail-safe rules, N.I.N.A. setup, settings via API until 009), `docs/user-guide/configuration.md`, `docs/user-guide/mqtt.md` (subscribed topics), `mkdocs.yml` nav, `docs/development/heritage.md` (MQTTClient changed; new libs), `CHANGELOG.md`
 - [x] T018 Rebuild the demo core (`bash tools/demo-core/build.sh`); regenerate contract samples and `config.schema.json`; `python3 tools/api/openapi.py` if the config schema feeds it
-- [ ] T019 Quickstart §1 of spec 001 in full; quality gate; docs build
-- [ ] T020 `/speckit-converge` until converged; rebase onto `origin/main`; PR
+- [x] T019 Quickstart §1 of spec 001 in full; quality gate; docs build
+- [x] T020 `/speckit-converge` until converged; rebase onto `origin/main`; PR
 
 ## Dependencies
 
@@ -90,7 +90,7 @@ and constitution).
 - [x] T028 [LOW, F8, US3/AC3] Align the spec with the parser: `Success: false` is refused with N.I.N.A.'s text; any other unexpected answer is unreadable
 - [x] T029 [LOW, F9] Restart a source's records and window only when its own settings change; tests via the poller targets comparison
 - [x] T030 [LOW, F10] Log changes by comparing the verdict fields directly, without building key strings each second
-- [ ] T031 [LOW, F11] T019-T020: quickstart §1, quality gate, docs build; bench figures go in the PR's pending bench checks
+- [x] T031 [LOW, F11] T019-T020: quickstart §1, quality gate, docs build; bench figures go in the PR's pending bench checks
 
 ## Phase 9: Convergence
 
