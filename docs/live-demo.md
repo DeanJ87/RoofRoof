@@ -139,17 +139,18 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: 035ca00fe1d52201
+fingerprint: 038919e147e0c200
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: How the demo works
-    accDescr: Everything runs in your browser. The device core, the firmware's own logic compiled to WebAssembly, keeps the settings and state. A service worker answers the web UI's and the API explorer's requests from that core, and device addresses opened directly are answered the same way. Only if you turn on real notifications does the browser send the core's alert requests to ntfy.sh, Pushover or your secure WebSocket broker; the page's security policy blocks every other host.
+    accDescr: Everything runs in your browser. The device core, the firmware's own logic compiled to WebAssembly, keeps the settings and state, and drives a simulated roof, SQMeter and N.I.N.A. that the Demo panel's Roof controls can make go wrong. A service worker answers the web UI's and the API explorer's requests from that core, and device addresses opened directly are answered the same way. Only if you turn on real notifications does the browser send the core's alert requests to ntfy.sh, Pushover or your secure WebSocket broker; the page's security policy blocks every other host.
     subgraph browser["Your browser"]
         direction TB
         CORE["Device core<br/>lib/ compiled to WebAssembly"] --- STORE[("Settings and state<br/>session storage")]
+        CORE --- ROOF["Simulated roof, SQMeter and N.I.N.A.<br/>set by the Demo panel's Roof controls"]
         UI["RoofRoof web UI and Demo panel"] -->|"/api, /ws, Alpaca requests"| SW["Service worker<br/>answers like the device"]
         EXPLORER["API explorer<br/>/explorer/, Try it"] -->|"/api requests"| SW
         SW --> CORE
@@ -166,7 +167,7 @@ flowchart TB
 ??? info "Diagram in words"
 
     - Everything runs in your browser; there is no server behind the demo.
-    - The **device core** is the firmware's own `lib/` code compiled to WebAssembly. It keeps the settings and state in the tab's **session storage**.
+    - The **device core** is the firmware's own `lib/` code compiled to WebAssembly. It keeps the settings and state in the tab's **session storage**, and runs the roof's motion logic and close sequence against a **simulated roof**, SQMeter and N.I.N.A.; the Demo panel's Roof controls change what those report.
     - The **web UI** and Demo panel make the same requests as on a real device; a **service worker** answers them from the core. So does the **API explorer**'s Try it. Device addresses opened directly (such as `/management/v1/description`) are answered by the core too.
     - **Real notifications** are off by default. Turned on, the browser sends the core's alert requests - the ones a real RoofRoof would send - to ntfy.sh, Pushover or your secure WebSocket MQTT broker, at most one per service every 30 s.
     - The page's security policy blocks every other host, so nothing reaches a webhook.

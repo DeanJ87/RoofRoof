@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 94f44268089fc01b
+fingerprint: 42942fd13e67557b
 -->
 <figure class="diagram" markdown>
 
@@ -13,7 +13,7 @@ fingerprint: 94f44268089fc01b
 flowchart TB
     accTitle: Code layers and dependency direction
     accDescr: The hardware-free logic in lib/ is the core. The firmware in src/ and include/ uses it on the ESP32, the native tests in test/ run it on a computer, and tools/demo-core compiles it to WebAssembly for the demo. The web UI in web/ talks to the firmware only over HTTP and WebSocket.
-    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, DriverLogic, RoofLogic, RoofIoLogic,<br/>AlpacaLogic, AlertLogic, ConfigModel, ConfigBackup, HaDiscovery, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
+    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, DriverLogic, RoofLogic, RoofIoLogic, RoofPlantLogic,<br/>AlpacaLogic, AlertLogic, ConfigModel, ConfigBackup, HaDiscovery, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
     SRC["<b>src/, include/</b> - ESP32 firmware<br/>the roof's control task and motor driver,<br/>web server, MQTT, WiFi, uploads, alert delivery"]
     TEST["<b>test/</b> - native unit tests<br/>pio test -e native"]
     DEMO["<b>tools/demo-core</b><br/>lib/ compiled to WebAssembly"]
@@ -32,8 +32,8 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    - **`lib/`** holds the hardware-free logic: the device core, the motor driver's output logic (`DriverLogic`), the roof's motion logic (`RoofLogic`) and its hardware layer's decisions (`RoofIoLogic`: reading scaling, switch inputs, the watchdog rule, the stored fault, the park and weather gates), Alpaca, alerts, settings and their backup, Home Assistant discovery and more. It never includes Arduino or ESP-IDF headers.
-    - **`src/` and `include/`** are the ESP32 firmware: the roof's control task, the motor driver (the only code that writes the H-bridge pins), the web server, MQTT, WiFi, uploads and alert delivery. They use `lib/`.
+    - **`lib/`** holds the hardware-free logic: the device core, the motor driver's output logic (`DriverLogic`), the roof's motion logic (`RoofLogic`) and its hardware layer's decisions (`RoofIoLogic`: reading scaling, switch inputs, the watchdog rule, the stored fault, the park and weather gates), the simulated roof that the tests, the demo and bench mode share (`RoofPlantLogic`), Alpaca, alerts, settings and their backup, Home Assistant discovery and more. It never includes Arduino or ESP-IDF headers.
+    - **`src/` and `include/`** are the ESP32 firmware: the roof's control task, the motor driver (the only code that writes the H-bridge pins; in the `esp32dev_bench` build it writes them low only), the web server, MQTT, WiFi, uploads and alert delivery. They use `lib/`.
     - **`test/`** runs `lib/` natively on a computer (`pio test -e native`).
     - **`tools/demo-core`** compiles `lib/` to WebAssembly; the demo's request handlers and Demo panel in **`web/src/demo`** run it in the browser.
     - **`web/`** is the Preact UI. It has no code dependency on the firmware: it talks to it over HTTP and WebSocket, and in the demo the same requests are answered in the browser.
