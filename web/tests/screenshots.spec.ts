@@ -173,25 +173,32 @@ test('demo panel', async ({ page }) => {
   await page.screenshot({ path: save('demo-panel') });
 });
 
-// Spec 015: the setup wizard (the demo device is set up already; these open its pages directly).
-for (const [step, name] of [
-  [3, 'wizard-hardware'],
-  [4, 'wizard-hall'],
-  [8, 'wizard-nina'],
-  [11, 'wizard-review'],
+// Specs 015 and 018: the setup wizard (the demo device is set up already; these open its screens directly).
+const wizardShot = async (page: import('@playwright/test').Page, screen: string, name: string) => {
+  await page.goto(`./?panel=hidden#/wizard?screen=${screen}`);
+  await waitForDemoApp(page);
+  await expect(page.locator('[data-wizard-screen]')).toHaveAttribute('data-wizard-screen', screen);
+  if (screen === 'nina') {
+    await page.getByRole('button', { name: 'Test', exact: true }).click();
+    await expect(page.locator('[data-test-result="nina"]')).toBeVisible({ timeout: 20_000 });
+  }
+  await page.waitForTimeout(1500); // the live readings
+  await page.screenshot({ path: save(name) });
+};
+
+for (const [screen, name] of [
+  ['parkSwitches', 'wizard-choice'],
+  ['supply', 'wizard-supply'],
+  ['nina', 'wizard-nina'],
+  ['review', 'wizard-review'],
 ] as const) {
-  test(`setup wizard page ${step}`, async ({ page }) => {
-    await page.goto(`./?panel=hidden#/wizard?step=${step}`);
-    await waitForDemoApp(page);
-    await expect(page.locator('.wizard-heading')).toContainText(`Step ${step} of 11`);
-    if (step === 8) {
-      await page.getByRole('button', { name: 'Test', exact: true }).click();
-      await expect(page.locator('[data-test-result="nina"]')).toBeVisible({ timeout: 20_000 });
-    }
-    await page.waitForTimeout(1500); // the live readings
-    await page.screenshot({ path: save(name), fullPage: true });
-  });
+  test(`setup wizard: ${screen}`, async ({ page }) => wizardShot(page, screen, name));
 }
+
+test('setup wizard at phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await wizardShot(page, 'daylight', 'wizard-phone');
+});
 
 // Spec 016: the calibration page with a finished run in the demo is too slow to wait for; its start form.
 test('calibration page', async ({ page }) => {
@@ -200,14 +207,4 @@ test('calibration page', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Start calibration' })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: save('calibrate'), fullPage: true });
-});
-
-test('setup wizard at phone width', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('./?panel=hidden#/wizard?step=7');
-  await waitForDemoApp(page);
-  await expect(page.locator('.wizard-heading')).toContainText('Step 7 of 11');
-  await page.getByRole('button', { name: 'Test', exact: true }).click();
-  await expect(page.locator('[data-test-result="weather"]')).toBeVisible({ timeout: 20_000 });
-  await page.screenshot({ path: save('wizard-weather-phone'), fullPage: true });
 });

@@ -1,82 +1,12 @@
-import { ComponentChildren, FunctionalComponent } from 'preact';
-import { useEffect, useId, useRef, useState } from 'preact/hooks';
+import { ComponentChildren, FunctionalComponent, type Ref } from 'preact';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { announce } from '../lib/a11y';
 import { t } from '../i18n';
 
-export const COLORS = {
-  cyan: '#55c7f2',
-  violet: '#a78bfa',
-  green: '#5ee0a0',
-  amber: '#f4c15d',
-  red: '#f26b62',
-  muted: '#566675',
-};
+import { Icon, type IconTone } from './icons';
 
-type IconTone = keyof typeof COLORS;
-
-export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: number }> = ({ name, tone = 'cyan', size = 15 }) => {
-  const common = {
-    stroke: COLORS[tone],
-    strokeWidth: 1.7,
-    fill: 'none',
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-  };
-  const paths: Record<string, ComponentChildren> = {
-    star: <path {...common} d="m12 3 2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6-4.4-4.2 6-.8L12 3Z" />,
-    cloud: <path {...common} d="M18 18H8.2a4.2 4.2 0 1 1 1.1-8.2 6 6 0 0 1 11 3.3A2.8 2.8 0 0 1 18 18Z" />,
-    therm: (
-      <>
-        <path {...common} d="M10 14.5V5a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0Z" />
-        <path {...common} d="M12 7v8" />
-      </>
-    ),
-    gps: (
-      <>
-        <circle {...common} cx="12" cy="12" r="3.2" />
-        <path {...common} d="M12 3v3M12 18v3M3 12h3M18 12h3" />
-      </>
-    ),
-    eye: (
-      <>
-        <path {...common} d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z" />
-        <circle {...common} cx="12" cy="12" r="2.4" />
-      </>
-    ),
-    wifi: (
-      <>
-        <path {...common} d="M5 10a10 10 0 0 1 14 0M8 13a6 6 0 0 1 8 0M11 16a2 2 0 0 1 2 0" />
-        <path {...common} d="M12 19h.01" />
-      </>
-    ),
-    rain: (
-      <>
-        <path {...common} d="M18 15H8.4a3.6 3.6 0 0 1 .9-7 5.2 5.2 0 0 1 9.5 2.9A2.4 2.4 0 0 1 18 15Z" />
-        <path {...common} d="M8 19v1M12 18v2M16 19v1" />
-      </>
-    ),
-    cpu: (
-      <>
-        <rect {...common} x="5" y="5" width="14" height="14" rx="2" />
-        <path {...common} d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" />
-      </>
-    ),
-    upload: (
-      <>
-        <path {...common} d="M12 16V4M7 9l5-5 5 5" />
-        <path {...common} d="M5 18v2h14v-2" />
-      </>
-    ),
-    moon: <path {...common} d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />,
-    roof: <path {...common} d="M3 11 12 4l9 7M6 9.5V20h12V9.5M10 20v-5h4v5" />,
-  };
-
-  return (
-    <svg class="ui-icon" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      {paths[name] ?? null}
-    </svg>
-  );
-};
+// The icon set lives in icons.tsx (kept apart for the file-length limit); it is part of the DS.
+export { COLORS, Icon } from './icons';
 
 export const Pill: FunctionalComponent<{ tone?: string }> = ({ tone = 'pill-dim', children }) => (
   <span class={`pill ${tone}`}>{children}</span>
@@ -144,10 +74,12 @@ export const SensorReadingRow: FunctionalComponent<{ label: string; value: strin
 
 // `announceSteps`: for a running task (an update), announce each quarter
 // reached - never every percent (SQMeter spec 022).
-export const ProgressMeter: FunctionalComponent<{ value: number; label?: string; announceSteps?: boolean }> = ({
+// `valueText`: what the value means ("Screen 3 of 20"), read instead of the percentage.
+export const ProgressMeter: FunctionalComponent<{ value: number; label?: string; announceSteps?: boolean; valueText?: string }> = ({
   value,
   label = t('ui.progress'),
   announceSteps,
+  valueText,
 }) => {
   const percent = Math.round(Math.max(0, Math.min(100, value)));
   const quarter = Math.floor(percent / 25);
@@ -157,7 +89,15 @@ export const ProgressMeter: FunctionalComponent<{ value: number; label?: string;
     lastQuarter.current = quarter;
   }, [quarter, announceSteps, label]);
   return (
-    <div class="progress-meter" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
+    <div
+      class="progress-meter"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      aria-valuetext={valueText}
+    >
       <div style={{ width: `${percent}%` }} />
     </div>
   );
@@ -263,4 +203,200 @@ export const Note: FunctionalComponent<{
       </button>
     )}
   </p>
+);
+
+/* ==== Onboarding (spec 018; constitution VII as amended in 2.1.0) =========
+   The modal dialog, the choice cards, the speech bubble and the mascot, for a
+   guided flow such as the setup wizard. Tokens only (index.css). */
+
+const FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]):not([type="radio"]),input[type="radio"]:checked:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
+
+// The tab stops inside `root`, in order. A radio group is one stop: its
+// checked radio, or its first one while none is checked (as browsers do).
+const tabStops = (root: HTMLElement): HTMLElement[] => {
+  const stops = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+  for (const group of Array.from(root.querySelectorAll('[role="radiogroup"]'))) {
+    const first = group.querySelector<HTMLInputElement>('input[type="radio"]:not([disabled])');
+    if (first && !group.querySelector('input:checked')) stops.push(first);
+  }
+  return stops.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+};
+
+/**
+ * A modal dialog over the app (DS-11). Focus stays inside it (Tab and
+ * Shift+Tab wrap), Escape calls `onEscape` (the caller decides: the wizard
+ * asks before leaving), and focus goes back to where it was when the dialog
+ * closes, or to the main region when that is gone. `stopBar` is required:
+ * Stop must stay reachable while the roof moves (constitution VII), and
+ * outside the dialog it would be hidden from screen readers and the keyboard.
+ * The caller makes the rest of the app inert. The blur sits on a sibling of
+ * the dialog, so the Stop bar inside stays fixed to the window.
+ */
+export const Modal: FunctionalComponent<{
+  labelledBy: string;
+  onEscape: () => void;
+  stopBar: ComponentChildren;
+  header?: ComponentChildren;
+  footer?: ComponentChildren;
+  aside?: ComponentChildren;
+  class?: string;
+}> = ({ labelledBy, onEscape, stopBar, header, footer, aside, class: className, children }) => {
+  const root = useRef<HTMLDivElement>(null);
+  // A layout effect: it runs before the caller moves focus into the dialog.
+  useLayoutEffect(() => {
+    const active = document.activeElement;
+    const opener = active instanceof HTMLElement && !root.current?.contains(active) ? active : null;
+    document.body.classList.add('has-modal');
+    // Focus that lands outside (a click on the inert page) comes back in.
+    const pull = (event: FocusEvent) => {
+      const dialog = root.current;
+      if (dialog && event.target instanceof Node && !dialog.contains(event.target)) tabStops(dialog)[0]?.focus();
+    };
+    document.addEventListener('focusin', pull);
+    return () => {
+      document.removeEventListener('focusin', pull);
+      document.body.classList.remove('has-modal');
+      // After the route that closed it has rendered.
+      setTimeout(() => {
+        const back = opener && opener !== document.body && opener.isConnected ? opener : document.getElementById('main');
+        back?.focus();
+      }, 0);
+    };
+  }, []);
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onEscape();
+      return;
+    }
+    const dialog = root.current;
+    if (event.key !== 'Tab' || !dialog) return;
+    const stops = tabStops(dialog);
+    if (stops.length === 0) return;
+    const at = stops.indexOf(document.activeElement as HTMLElement);
+    const wrap = event.shiftKey ? at <= 0 : at === stops.length - 1 || at === -1;
+    if (!wrap) return;
+    event.preventDefault();
+    stops[event.shiftKey ? stops.length - 1 : 0].focus();
+  };
+  return (
+    <div class="modal-root">
+      <div class="modal-backdrop" aria-hidden="true" />
+      <div
+        ref={root}
+        class={`modal${className ? ` ${className}` : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        onKeyDown={onKeyDown}
+      >
+        <div class="modal-panel">
+          {header && <div class="modal-header">{header}</div>}
+          <div class="modal-body">
+            <div class="modal-content">{children}</div>
+            {aside && <aside class="modal-aside">{aside}</aside>}
+          </div>
+          {footer && <div class="modal-footer">{footer}</div>}
+        </div>
+        {stopBar}
+      </div>
+    </div>
+  );
+};
+
+export interface Choice {
+  value: string;
+  title: string;
+  detail?: string;
+  icon?: string;
+  badge?: string; // "Recommended"
+}
+
+/**
+ * One question's answers as large cards (DS-12): a radio group of native
+ * radios, so arrow keys move and wrap, Space selects and the group is one tab
+ * stop. `value` null: nothing chosen yet. The checked card has an edge, a tint
+ * and a check mark, never colour alone.
+ */
+export const ChoiceGroup: FunctionalComponent<{
+  name: string;
+  labelledBy: string;
+  value: string | null;
+  onChange: (value: string) => void;
+  options: Choice[];
+}> = ({ name, labelledBy, value, onChange, options }) => {
+  const id = useId();
+  return (
+    <div class="choice-group" role="radiogroup" aria-labelledby={labelledBy} data-choice-group={name}>
+      {options.map((option, index) => (
+        <label key={option.value} class={`choice${option.value === value ? ' is-checked' : ''}`}>
+          <input
+            type="radio"
+            class="choice-input"
+            name={name}
+            value={option.value}
+            checked={option.value === value}
+            aria-labelledby={`${id}-${index}`}
+            aria-describedby={
+              [option.badge && `${id}-${index}-b`, option.detail && `${id}-${index}-d`].filter(Boolean).join(' ') || undefined
+            }
+            onChange={() => onChange(option.value)}
+          />
+          {option.icon && (
+            <span class="choice-icon">
+              <Icon name={option.icon} size={20} />
+            </span>
+          )}
+          <span class="choice-text">
+            <span class="choice-title">
+              <span id={`${id}-${index}`}>{option.title}</span>
+              {option.badge && (
+                <span id={`${id}-${index}-b`}>
+                  <Pill tone="pill-cyan">{option.badge}</Pill>
+                </span>
+              )}
+            </span>
+            {option.detail && (
+              <span class="choice-detail" id={`${id}-${index}-d`}>
+                {option.detail}
+              </span>
+            )}
+          </span>
+          <span class="choice-mark" aria-hidden="true" />
+        </label>
+      ))}
+    </div>
+  );
+};
+
+/** RoofRoof's dog (DS-13): decoration only, in token colours. */
+export const Mascot: FunctionalComponent<{ size?: number }> = ({ size = 56 }) => (
+  <svg class="mascot" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <path class="mascot-ear" d="M17 15c-7 1-11 11-9 21 1 6 7 6 9 1l5-16zM47 15c7 1 11 11 9 21-1 6-7 6-9 1l-5-16z" />
+    <path class="mascot-fur" d="M32 12c11 0 18 8 18 19 0 12-8 19-18 19s-18-7-18-19c0-11 7-19 18-19z" />
+    <ellipse class="mascot-ear" cx="24.5" cy="28" rx="5.5" ry="6" />
+    <ellipse class="mascot-muzzle" cx="32" cy="39" rx="9.5" ry="7" />
+    <circle class="mascot-eye" cx="24.5" cy="29" r="2.3" />
+    <circle class="mascot-eye" cx="39.5" cy="29" r="2.3" />
+    <path class="mascot-eye" d="M28.5 35h7c0 2.2-1.6 3.6-3.5 3.6s-3.5-1.4-3.5-3.6z" />
+    <path class="mascot-line" d="M32 38.6v2.6m-4 1c1.6 1.3 3 1.3 4 0 1 1.3 2.4 1.3 4 0" />
+    <path class="mascot-collar" d="M20 47c7 4.5 17 4.5 24 0" />
+    <path class="mascot-tag" d="m32 50 1.3 2.7 3 .4-2.2 2 .6 3-2.7-1.5-2.7 1.5.6-3-2.2-2 3-.4z" />
+  </svg>
+);
+
+/**
+ * The mascot asking the screen's question (DS-13). The question is the
+ * heading that names the dialog; focus moves to it on each new screen.
+ */
+export const SpeechBubble: FunctionalComponent<{ id: string; headingRef?: Ref<HTMLHeadingElement> }> = ({ id, headingRef, children }) => (
+  <div class="speech">
+    <Mascot />
+    <div class="speech-bubble">
+      <h2 id={id} ref={headingRef} tabIndex={-1}>
+        {children}
+      </h2>
+    </div>
+  </div>
 );

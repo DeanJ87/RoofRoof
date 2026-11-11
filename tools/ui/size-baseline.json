@@ -1,4 +1,4 @@
 {
-  "jsCssGzipBytes": 126255,
-  "overBudgetReason": "spec 017: the Diagnostics page (live tiles, small-multiple charts, move log), its settings card and System card"
+  "jsCssGzipBytes": 131829,
+  "overBudgetReason": "spec 018: the setup wizard as a one-question dialog (modal, choice cards, speech bubble, mascot as DS components) and its screen texts; the old page list and cards removed"
 }

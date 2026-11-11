@@ -15,6 +15,11 @@ import { t } from '../i18n';
 
 let openedThisLoad = false; // module state: resets with the page
 
+/** The wizard is open (by any path): it doesn't open by itself again in this page load. */
+export const markWizardOpened = () => {
+  openedThisLoad = true;
+};
+
 /** For tests: forget that the wizard has been opened in this page load. */
 export const resetSetupPrompt = () => {
   openedThisLoad = false;
