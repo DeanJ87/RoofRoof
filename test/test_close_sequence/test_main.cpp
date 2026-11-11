@@ -294,6 +294,25 @@ void test_refused_close_alerts_and_backs_off()
     TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100 + RETRY_AFTER_MS).action); // the park has held throughout
 }
 
+void test_a_parked_mount_held_back_by_the_back_off_is_not_a_park_failure()
+{
+    Rig r;
+    r.seq.setParkTimeoutMs(30000);
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100).action);
+    r.seq.closeAnswered(CloseAnswer::Refused); // back-off until T0 + 4100 + 5 min
+    r.in.weatherSafe = true;                   // a brief safe spell...
+    r.at(T0 + 5000);
+    r.in.weatherSafe = false; // ...then a new attempt while the mount stays parked
+    TEST_ASSERT_EQUAL(Event::Started, r.at(T0 + 6000).event);
+    Counts c = r.runTo(T0 + 4100 + RETRY_AFTER_MS - 100, 100);
+    TEST_ASSERT_EQUAL(0, c.closes);
+    TEST_ASSERT_EQUAL(0u, c.events.size()); // no "mount not parked" though the park limit passed
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100 + RETRY_AFTER_MS).action);
+}
+
 void test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down()
 {
     Rig r;
@@ -487,6 +506,7 @@ int main(int, char **)
     RUN_TEST(test_park_requests_repeat_every_thirty_seconds_while_waiting);
     RUN_TEST(test_fault_while_closing_alerts_and_waits_for_a_person);
     RUN_TEST(test_refused_close_alerts_and_backs_off);
+    RUN_TEST(test_a_parked_mount_held_back_by_the_back_off_is_not_a_park_failure);
     RUN_TEST(test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down);
     RUN_TEST(test_answer_for_the_roofs_outcome);
     RUN_TEST(test_answers_outside_a_close_are_ignored);

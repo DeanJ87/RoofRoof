@@ -64,7 +64,8 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | CannotMove | a person's stop since the last step | HeldByPerson | - | StoppedByPerson |
 | CannotMove | roof neither unknown nor error | RetryWait | - | - |
 
-"Parked for 4 s" closes only when no close was refused or interrupted in the last 5 minutes.
+"Parked for 4 s" closes only when no close was refused or interrupted in the last 5 minutes; while
+held back by that alone, WaitPark neither fails its attempt nor sends requests.
 While in RetryWait, HeldByPerson, CannotMove or Halted with no other event, the episode's last
 critical event is raised again (`reminder`) 30 minutes after it last alerted.
 
