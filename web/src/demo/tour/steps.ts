@@ -1,6 +1,10 @@
 // The demo tour's steps (SQMeter spec 018 FR-001). Action steps finish when
 // the emulated device reacts (FR-002), never on a timer, and offer "Do it for
-// me". Spec 011 adds the roof's steps.
+// me". Spec 011 adds the roof's steps: the card, opening it, and unsafe weather.
+
+import { demoDevice } from '../device';
+
+const roofState = (): string => demoDevice.statusParts().roof?.state ?? '';
 
 export interface TourStep {
   id: string;
@@ -31,6 +35,37 @@ export const TOUR_STEPS: TourStep[] = [
     body: () => 'Whether the imaging app is checking the device, and whether alerts go out.',
   },
   {
+    id: 'roof',
+    title: 'The roof',
+    route: '/',
+    target: '[data-masonry-id="roof"]',
+    body: () =>
+      "Where the roof is, why Open or Close isn't available, and the weather and park checks every move passes. The roof here is simulated, but the logic is the device's own.",
+  },
+  {
+    id: 'roof-open',
+    title: 'Open the roof',
+    route: '/',
+    target: '[data-inventory="roof-buttons"]',
+    body: () =>
+      "Press Open. A real roof takes about 50 s; Do it for me also runs the device's clock 10x faster. The roof slows near the end and stops on its magnet.",
+    done: () => ['opening', 'open'].includes(roofState()),
+    doIt: () => {
+      demoDevice.setTimeMultiplier(10);
+      demoDevice.roofCommand('open');
+    },
+  },
+  {
+    id: 'roof-unsafe',
+    title: 'Bad weather',
+    route: '/',
+    target: '[data-masonry-id="roof"]',
+    body: () =>
+      'Make the weather unsafe (Demo panel → Roof → Weather). RoofRoof asks the imaging app to park the mount, waits until the park holds, then closes the roof. It never closes onto an unparked mount.',
+    done: () => demoDevice.roofPanel().phase !== 'idle' || (roofState() === 'closed' && demoDevice.roofPanel().unsafe),
+    doIt: () => demoDevice.roofInject({ unsafe: true }),
+  },
+  {
     id: 'bell',
     title: 'Alerts',
     route: '/',
@@ -42,7 +77,8 @@ export const TOUR_STEPS: TourStep[] = [
     id: 'demo-panel',
     title: 'The Demo panel',
     target: '.demo-panel-toggle',
-    body: () => "Speed up the device's clock, try real notifications, and take this tour again.",
+    body: () =>
+      "Speed up the device's clock, make the weather turn, jam the roof or fail the park, try real notifications, and take this tour again.",
   },
 ];
 

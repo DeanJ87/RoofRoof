@@ -269,7 +269,11 @@ namespace SQM
             outcome = outcomeOf(controller.clearFault(origin));
 #if ROOFROOF_BENCH
             if (benchGuard.tripped())
-                benchLatch(); // spec 011: on a powered board, the fault comes straight back
+            {
+                // Spec 011: on a powered board the fault comes straight back; say so.
+                benchLatch();
+                outcome = Outcome{false, "benchSupply", RoofIo::describeFault(fault), controller.status().state};
+            }
 #endif
             applyOutput();
             syncFault(RoofIo::FaultCause::Logic);

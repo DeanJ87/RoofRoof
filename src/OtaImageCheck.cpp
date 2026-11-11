@@ -42,6 +42,48 @@ namespace SQM
             }
         } // namespace
 
+        namespace
+        {
+            FirmwareImage::Scanner liveScanner;
+            size_t liveScanned = 0;
+            bool liveDecided = false;
+        } // namespace
+
+        void beginScan()
+        {
+            liveScanner = FirmwareImage::Scanner();
+            liveScanned = 0;
+            liveDecided = false;
+        }
+
+        bool scanWritten(size_t written, std::string &why)
+        {
+            const esp_partition_t *target = esp_ota_get_next_update_partition(nullptr);
+            if (target == nullptr || liveDecided)
+                return false;
+            // The updater writes whole sectors; the one it is filling isn't in
+            // the flash yet, so only what lies a sector behind is read.
+            const size_t flushed = written > FLASH_SECTOR_BYTES ? (written / FLASH_SECTOR_BYTES - 1) * FLASH_SECTOR_BYTES : 0;
+            static uint8_t buffer[512];
+            while (liveScanned < flushed && !liveScanner.found())
+            {
+                const size_t left = flushed - liveScanned;
+                const size_t length = left < sizeof(buffer) ? left : sizeof(buffer);
+                if (esp_partition_read(target, liveScanned, buffer, length) != ESP_OK)
+                    return false;
+                liveScanner.feed(buffer, length);
+                liveScanned += length;
+            }
+            if (!liveScanner.found())
+                return false;
+            liveDecided = true;
+            const FirmwareImage::Verdict verdict = FirmwareImage::check(liveScanner, FirmwareMarker::layout(), Bench::BUILD_NAME);
+            if (verdict == FirmwareImage::Verdict::Ok)
+                return false;
+            why = FirmwareImage::verdictMessage(verdict, liveScanner.product());
+            return true;
+        }
+
         // Update.end() has made the new image the boot partition. The running
         // firmware is put back first, so a power cut during the check boots
         // it; the new image is booted only once it passes. A refused image's

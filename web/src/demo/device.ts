@@ -190,6 +190,9 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** Why a settings save, restore, upload or restart is refused now ("" when it isn't): the roof is moving (spec 010). */
+  platformHold = (): string => this.core.platformHold();
+
   /** The Demo panel's roof controls (spec 011). */
   roofPanel(): RoofPanel {
     return JSON.parse(this.core.roofPanel());

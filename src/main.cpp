@@ -193,6 +193,8 @@ void onArduinoOtaStart()
     }
     if (!firmware)
         LittleFS.end(); // writing the filesystem: unmount it first
+    else
+        OtaImageCheck::beginScan(); // spec 011: the marker is checked as the image arrives
     Logger::info("OTA", "Start updating %s", firmware ? "firmware" : "filesystem");
 }
 
@@ -209,6 +211,18 @@ void onArduinoOtaProgress(unsigned int progress, unsigned int total)
     // calls this once the chunk is written). If the roof moved or a close
     // waits after a stall, or the activity was stopped, nothing more is
     // written. A filesystem stopped part-way was unmounted: it must restart.
+    // Spec 011: an image this board refuses (a bench image on a standard
+    // board, another product or layout) is stopped as soon as its marker is
+    // read, so the boot partition is never switched and the tool reports it.
+    std::string refused;
+    if (arduinoOtaToken != 0 && arduinoOtaFirmware && OtaImageCheck::scanWritten(progress, refused))
+    {
+        Logger::error("OTA", "Command-line firmware refused: %s", refused.c_str());
+        Update.abort();
+        FlashGuard::end(arduinoOtaToken);
+        arduinoOtaToken = 0;
+        return;
+    }
     if (arduinoOtaToken != 0 &&
         (PlatformGuard::keepUpload(arduinoOtaToken) != RoofIo::HoldReason::None || FlashGuard::shouldStop(arduinoOtaToken)))
     {

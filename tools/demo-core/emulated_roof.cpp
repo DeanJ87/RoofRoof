@@ -33,7 +33,7 @@ namespace DemoRoof
         settingsPending = false;
         const Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
         controller = Roof::Controller(settings);
-        RoofPlant::applySettings(plant, settings);
+        RoofPlant::applySettings(plant, settings, roofCfg.minRunningAmps);
         // Constitution I: a restart never clears the lockout.
         if (fault.fault.kind != Roof::FaultKind::None)
             controller.raiseFault(fault.fault);
@@ -77,7 +77,7 @@ namespace DemoRoof
         roofCfg = pendingRoof;
         settingsPending = false;
         gates.fittedSwitches = static_cast<uint8_t>(parkCfg.switches);
-        RoofPlant::applySettings(plant, settings); // the simulated roof is what the settings describe
+        RoofPlant::applySettings(plant, settings, roofCfg.minRunningAmps); // the simulated roof is what the settings describe
     }
 
     // --- Stepping ---------------------------------------------------------------
@@ -283,7 +283,6 @@ namespace DemoRoof
         reasons.park = Safety::describe(park);
         reasons.fault = RoofIo::describeFault(fault);
         reasons.roof = controller.status().state;
-        report(decision, reasons);
         carryOut(decision, reasons);
     }
 
@@ -297,11 +296,15 @@ namespace DemoRoof
             break;
         case CloseSeq::Action::Close:
         {
+            // As CloseOnUnsafe::handle: the decision and the roof's answer are
+            // reported once the refusal (if any) is known.
             const Outcome outcome = automaticClose(personStops);
             CloseSeq::Reasons reasons = given;
             reasons.refusal = outcome.text;
-            report(sequence.closeAnswered(CloseSeq::answerFor(outcome.accepted, outcome.reason)), reasons);
-            break;
+            const CloseSeq::Decision answer = sequence.closeAnswered(CloseSeq::answerFor(outcome.accepted, outcome.reason));
+            report(decision, reasons);
+            report(answer, reasons);
+            return;
         }
         case CloseSeq::Action::Stop:
             command(Roof::Command::Stop, Roof::Origin::Automatic);
@@ -309,6 +312,7 @@ namespace DemoRoof
         case CloseSeq::Action::None:
             break;
         }
+        report(decision, given);
     }
 
     // A critical event goes to the alert sink once per episode (decision.alert).

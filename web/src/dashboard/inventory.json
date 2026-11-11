@@ -56,7 +56,9 @@
     {
       "id": "alerts-mode-not-in-effect",
       "label": "status.sendMode",
-      "sources": ["deps.D-12"],
+      "sources": [
+        "deps.D-12"
+      ],
       "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -69,7 +71,12 @@
     {
       "id": "no-channel",
       "label": "status.channels",
-      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
+      "sources": [
+        "deps.D-01",
+        "deps.D-02",
+        "deps.D-03",
+        "deps.D-04"
+      ],
       "requiredBy": "025 FR-011, US1-6, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -124,7 +131,10 @@
     {
       "id": "roof-fault",
       "label": "roof.state.fault",
-      "sources": ["status.roof.fault", "status.roof.fault.text"],
+      "sources": [
+        "status.roof.fault",
+        "status.roof.fault.text"
+      ],
       "requiredBy": "009 FR-015, DS-07",
       "visibility": {
         "rule": "when",
@@ -132,14 +142,14 @@
       },
       "priority": 2,
       "location": "card:status",
-      "test": "roof-fault",
-      "testIn": "unit",
-      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+      "test": "roof-fault"
     },
     {
       "id": "roof-close",
       "label": "roof.closePhase.label",
-      "sources": ["status.roof.closePhase"],
+      "sources": [
+        "status.roof.closePhase"
+      ],
       "requiredBy": "009 FR-016, DS-07",
       "visibility": {
         "rule": "when",
@@ -147,14 +157,15 @@
       },
       "priority": 2,
       "location": "card:status",
-      "test": "roof-close",
-      "testIn": "unit",
-      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+      "test": "roof-close"
     },
     {
       "id": "roof-card",
       "label": "roof.title",
-      "sources": ["status.roof", "status.roof.state"],
+      "sources": [
+        "status.roof",
+        "status.roof.state"
+      ],
       "requiredBy": "009 FR-001",
       "visibility": {
         "rule": "always"
@@ -167,7 +178,10 @@
     {
       "id": "roof-position",
       "label": "roof.position.label",
-      "sources": ["status.roof.positionKnown", "status.roof.positionPercent"],
+      "sources": [
+        "status.roof.positionKnown",
+        "status.roof.positionPercent"
+      ],
       "requiredBy": "009 FR-001",
       "visibility": {
         "rule": "always"
@@ -179,7 +193,12 @@
     {
       "id": "roof-buttons",
       "label": "roof.open",
-      "sources": ["status.roof.closePending", "status.roof.supplyLow", "status.roof.minSupplyVolts", "status.wifi.apMode"],
+      "sources": [
+        "status.roof.closePending",
+        "status.roof.supplyLow",
+        "status.roof.minSupplyVolts",
+        "status.wifi.apMode"
+      ],
       "requiredBy": "009 FR-002 to FR-008",
       "visibility": {
         "rule": "always"
@@ -192,7 +211,12 @@
     {
       "id": "roof-checks",
       "label": "roof.weather.label",
-      "sources": ["status.roof.weather", "status.roof.weatherText", "status.roof.parkConfirmed", "status.roof.parkText"],
+      "sources": [
+        "status.roof.weather",
+        "status.roof.weatherText",
+        "status.roof.parkConfirmed",
+        "status.roof.parkText"
+      ],
       "requiredBy": "009 FR-011",
       "visibility": {
         "rule": "always"
@@ -228,7 +252,11 @@
     {
       "id": "roof-hall",
       "label": "roof.hall.label",
-      "sources": ["status.roof.hall", "status.roof.hall.counts", "status.roof.hall.level"],
+      "sources": [
+        "status.roof.hall",
+        "status.roof.hall.counts",
+        "status.roof.hall.level"
+      ],
       "requiredBy": "009 FR-013",
       "visibility": {
         "rule": "always"
@@ -240,7 +268,10 @@
     {
       "id": "roof-fault-card",
       "label": "roof.clearFault",
-      "sources": ["status.roof.fault", "status.roof.fault.text"],
+      "sources": [
+        "status.roof.fault",
+        "status.roof.fault.text"
+      ],
       "requiredBy": "009 FR-010",
       "visibility": {
         "rule": "when",
@@ -248,14 +279,14 @@
       },
       "priority": 2,
       "location": "card:roof",
-      "test": "roof-fault-card",
-      "testIn": "unit",
-      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+      "test": "roof-fault-card"
     },
     {
       "id": "roof-close-phase",
       "label": "roof.closePhase.label",
-      "sources": ["status.roof.closePhase"],
+      "sources": [
+        "status.roof.closePhase"
+      ],
       "requiredBy": "009 FR-011",
       "visibility": {
         "rule": "when",
@@ -263,9 +294,7 @@
       },
       "priority": 2,
       "location": "card:roof",
-      "test": "roof-close-phase",
-      "testIn": "unit",
-      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+      "test": "roof-close-phase"
     },
     {
       "id": "device-network-card",
@@ -310,7 +339,10 @@
     {
       "id": "mdns",
       "label": "glance.localName",
-      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
+      "sources": [
+        "status.wifi.hostname",
+        "status.wifi.mdns"
+      ],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -323,7 +355,12 @@
     {
       "id": "mqtt-state",
       "label": "glance.mqtt",
-      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
+      "sources": [
+        "status.mqtt.enabled",
+        "status.mqtt.connected",
+        "status.mqtt.state",
+        "status.mqtt"
+      ],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -651,6 +688,10 @@
     {
       "match": "deps.D-41",
       "reason": "Shown on its Settings row (Roof, Weather sources); a source it stops is in the weather verdict on the Roof card"
+    },
+    {
+      "match": "status.roof.simulation",
+      "reason": "Not a dashboard item: bench firmware shows a banner on every page instead (components/BenchBanner.tsx, spec 011); the demo is already labelled by its Demo panel, and a real roof shows nothing"
     }
   ]
 }

@@ -271,8 +271,9 @@ updating the demo; the contract tests fail.
   store still keeps any latched fault.
 - The demo's simulated N.I.N.A. is asked to park while "park fails" is on: it answers that it's
   parking and never gets there.
-- An upload or restart in the demo while the roof moves: the demo simulates uploads and
-  restarts and doesn't model spec 010's holds (the native tests cover them).
+- An upload, a settings save, a restore or a restart in the demo while the roof moves: refused
+  with the device's reason (spec 010's hold for a moving roof; the finer holds of the close
+  sequence are covered by the native tests).
 
 ## Requirements *(mandatory)*
 
@@ -403,8 +404,9 @@ updating the demo; the contract tests fail.
   clock shortens it.
 - **The demo's defaults** configure an SQMeter HTTP source and a N.I.N.A. address, so the demo
   starts safe and parked; the simulated N.I.N.A. takes about 8 s to park.
-- **The demo doesn't model spec 010's upload and restart holds**; uploads and restarts stay
-  simulated as before.
+- **The demo models spec 010's hold only for a moving roof** (settings saves, restores, uploads
+  and restarts refused with the device's reason); the close sequence's own holds are left to the
+  native tests.
 
 ## Out of scope
 

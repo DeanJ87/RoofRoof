@@ -7,8 +7,9 @@ import type { RoofStatus, SystemStatus } from '../../types';
 import type { LiveState } from '../../lib/roofView';
 import RoofCard from '../RoofCard';
 
-// The Roof card as rendered (spec 009 US1, US3; contracts/ui.md). States the
-// demo can't produce yet (spec 011's simulated roof) are driven here.
+// The Roof card as rendered (spec 009 US1, US3; contracts/ui.md), every state
+// driven directly. The demo's simulated roof (spec 011) shows the main ones in
+// Playwright (web/tests/dashboard.spec.ts).
 
 const status = (roof: Partial<RoofStatus> = {}, apMode = false): SystemStatus => {
   const s = structuredClone(mockStatus);

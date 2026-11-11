@@ -240,6 +240,27 @@ void test_only_the_motor_driver_writes_output_pins(void)
     for (size_t at = source.find("ledcWrite("); at != std::string::npos; at = source.find("ledcWrite(", at + 1))
         ++count;
     TEST_ASSERT_EQUAL(1, count);
+    // gpio_set_level: three in holdOff() (the Off levels) and one in writeEnable().
+    count = 0;
+    for (size_t at = source.find("gpio_set_level("); at != std::string::npos; at = source.find("gpio_set_level(", at + 1))
+        ++count;
+    TEST_ASSERT_EQUAL(4, count);
+    TEST_ASSERT_TRUE(source.find("const Driver::Outputs off = Driver::outputsFor(Driver::Command::Off, 0);") != std::string::npos);
+}
+
+// The bench roof starts half-way: a fresh controller reads it unknown, never closed (spec 011).
+void test_bench_start_reads_unknown(void)
+{
+    const Roof::Settings settings;
+    RoofPlant::Plant plant = RoofPlant::forSettings(settings, RoofPlant::benchStartMm(settings));
+    Roof::Controller roof(settings);
+    for (uint32_t t = 1000; t < 3000; t += 20)
+    {
+        plant.drive(roof.output(), 20);
+        roof.tick(plant.readings(t));
+    }
+    TEST_ASSERT_EQUAL(Roof::State::Unknown, roof.status().state);
+    TEST_ASSERT_FALSE(roof.status().positionKnown);
 }
 
 int main(int, char **)
@@ -256,5 +277,6 @@ int main(int, char **)
     RUN_TEST(test_bench_step_latches_on_a_powered_board_every_step);
     RUN_TEST(test_bench_step_clamps_a_long_gap);
     RUN_TEST(test_only_the_motor_driver_writes_output_pins);
+    RUN_TEST(test_bench_start_reads_unknown);
     return UNITY_END();
 }
