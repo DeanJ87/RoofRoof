@@ -160,4 +160,33 @@ describe('glanceItems', () => {
     expect(order.indexOf('freshness')).toBeLessThan(order.indexOf('alerts-state'));
     expect(order.indexOf('alerts-state')).toBeLessThan(order.indexOf('clock-location'));
   });
+  // Spec 009 FR-015, FR-016: the roof's problems, not its state (DS-07, DS-08).
+  it('lists a latched roof fault with its text behind "?"', () => {
+    // inventory: roof-fault
+    const status = withStatus((s) => {
+      s.roof!.fault = { kind: 'timeout', cause: 'logic', measured: 61, limit: 60, text: 'No target magnet after 61 s >= 60 s timeout' };
+    });
+    const fault = glanceItems(input({ status })).find((i) => i.id === 'roof-fault');
+    expect(fault).toMatchObject({
+      severity: 'problem',
+      label: 'Roof',
+      state: 'Fault',
+      detail: 'No target magnet after 61 s >= 60 s timeout',
+    });
+    expect(ids({})).not.toContain('roof-fault');
+  });
+
+  it('lists an automatic close that is held, can\u2019t move or has halted', () => {
+    // inventory: roof-close
+    const phase = (closePhase: 'idle' | 'waitPark' | 'closing' | 'retryWait' | 'heldByPerson' | 'cannotMove' | 'halted') =>
+      glanceItems(input({ status: withStatus((s) => (s.roof!.closePhase = closePhase)) })).find((i) => i.id === 'roof-close');
+    expect(phase('heldByPerson')).toMatchObject({ severity: 'note', state: 'Held', label: 'Automatic close' });
+    expect(phase('cannotMove')).toMatchObject({ severity: 'problem', state: "Can't move" });
+    expect(phase('halted')).toMatchObject({ severity: 'problem', state: 'Halted' });
+    for (const quiet of ['idle', 'waitPark', 'closing', 'retryWait'] as const) expect(phase(quiet)).toBeUndefined();
+  });
+
+  it('a healthy roof adds nothing to check', () => {
+    expect(toCheck(glanceItems(input({})))).toHaveLength(0);
+  });
 });

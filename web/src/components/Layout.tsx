@@ -5,6 +5,7 @@ import AlertsBell from './AlertsBell';
 import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
 import BrandMark from './BrandMark';
+import RoofStopBar from './RoofStopBar';
 
 interface LayoutProps {
   path?: string;
@@ -118,6 +119,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
 
       <main class="app-main" id="main" tabIndex={-1}>
         {children}
+        <RoofStopBar />
       </main>
       <Toaster />
       {/* Verdict changes, new alerts and connection loss (SQMeter spec 022 FR-009). */}

@@ -1154,6 +1154,17 @@ a.status-row-main:focus-visible .status-row-label {
   color: var(--text);
 }
 
+/* The existing `danger` variant's look (it had none): Stop, and destructive actions. */
+.btn-danger {
+  border-color: rgba(242, 107, 98, 0.4);
+  background: rgba(242, 107, 98, 0.12);
+  color: var(--red);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(242, 107, 98, 0.2);
+}
+
 .btn-link {
   min-height: 0;
   padding: 0;
@@ -1743,7 +1754,8 @@ input[type='file'].input::file-selector-button {
   gap: 1rem;
 }
 
-.save-bar {
+.save-bar,
+.stop-bar {
   position: sticky;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   z-index: 8;
@@ -1758,7 +1770,8 @@ input[type='file'].input::file-selector-button {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
 }
 
-.save-bar-state {
+.save-bar-state,
+.stop-bar-state {
   margin-inline-end: auto;
   color: var(--dim);
   font-size: 0.8rem;
@@ -1935,7 +1948,8 @@ input[type='file'].input::file-selector-button {
 
 /* The Demo button sits in the bottom-right corner: keep the save bar and
    toasts clear of it. */
-.has-demo-panel .save-bar {
+.has-demo-panel .save-bar,
+.has-demo-panel .stop-bar {
   bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.25rem);
 }
 
@@ -1945,7 +1959,8 @@ input[type='file'].input::file-selector-button {
 
 /* A docked tour card or offer (SQMeter spec 018) reserves its height (--tour-dock,
    measured from the bottom of the screen to its top edge) the same way. */
-.has-tour-dock .save-bar {
+.has-tour-dock .save-bar,
+.has-tour-dock .stop-bar {
   bottom: calc(var(--tour-dock, 0px) + 0.5rem);
 }
 
@@ -2256,4 +2271,63 @@ main:focus {
 [dir='rtl'] .metric-value,
 [dir='rtl'] .reading-value {
   text-align: inherit;
+}
+
+/* Spec 009: the Roof card and Stop on every page while the roof moves. */
+.roof-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+}
+
+.roof-fault {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.hall-scale {
+  display: block;
+  width: 100%;
+  height: 0.9rem;
+  margin-top: 0.35rem;
+}
+
+.hall-scale-track {
+  fill: var(--line);
+}
+
+.hall-scale-threshold {
+  stroke: var(--amber);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.hall-scale-reading {
+  stroke: var(--cyan);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Stacked with the save bar: the Stop bar sits at the bottom, the save bar above it. */
+.stop-bar {
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  border-color: var(--red);
+}
+
+.has-stop-bar .save-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.75rem);
+}
+
+.has-demo-panel.has-stop-bar .save-bar {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 7rem);
+}
+
+.has-tour-dock.has-stop-bar .save-bar {
+  bottom: calc(var(--tour-dock, 0px) + 4.25rem);
 }
