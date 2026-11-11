@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AlpacaDome.h"
+
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -30,7 +32,7 @@ namespace SQM
         };
 
         // The most Alpaca devices one server offers (fixed arrays: activity,
-        // client watch, connection memory). Spec 006 adds the Dome.
+        // client watch, connection memory). The Dome is the only one (spec 006).
         constexpr size_t MAX_DEVICES = 2;
 
         // One Alpaca device as the management API lists it.
@@ -44,6 +46,9 @@ namespace SQM
             int interfaceVersion = 1;
         };
 
+        // The one Dome the device offers: number 0, interface version 3 (spec 006).
+        DeviceInfo domeDeviceInfo();
+
         // What the router needs from the device.
         class Backend
         {
@@ -56,6 +61,11 @@ namespace SQM
             virtual std::string serverName() const = 0;   // the device's name (Settings → Device → Name)
             virtual std::string location() const = 0;     // "lat, lon" of the site, or "" (formatLocation)
             virtual std::string timestampUtc() const = 0; // ISO 8601, or "" if the clock isn't set
+            // The Dome (spec 006): the shutter now, and an action. The router
+            // calls domeCommand only with Alpaca on, and for open and close only
+            // for a connected client; the backend applies the roof's own checks.
+            virtual DomeStatus domeStatus() const = 0;
+            virtual DomeAnswer domeCommand(DomeAction action) = 0;
         };
 
         struct ServerIdentity

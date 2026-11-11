@@ -17,7 +17,7 @@ namespace SQM
                 {"mqtt-disconnected", "Broker not connected", "network#mqtt"},
                 {"wifi-disconnected", "Not connected to WiFi", "network#wifi"},
                 {"alpaca-off", "Alpaca is off", "network#alpaca"},
-                {"no-alpaca-device", "No Alpaca device yet", "network#alpaca"},
+                {"no-alpaca-device", "No Alpaca device", "network#alpaca"},
                 {"ota-no-password", "Set an upload password", "device#security"},
             };
 

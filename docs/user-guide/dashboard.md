@@ -22,7 +22,7 @@ The **Status** card answers, without a click: will anyone be told when something
 | Tile | Shows | When it's there |
 |---|---|---|
 | **Alerts** | **Sending**, **Paused** with who paused it and a **Resume** button, **Waiting** for an imaging app, or **Off** | Always |
-| **Imaging app** | One tile per Alpaca device: **Connected**, **Disconnected**, **Gone quiet** and when it last checked | Once an Alpaca device exists (*a later spec*) |
+| **Imaging app** | One tile per Alpaca device: **Connected**, **Disconnected**, **Gone quiet** and when it last checked | While Alpaca is on: the roof's Dome (not in the demo, which has no roof) |
 
 A problem no other card shows is one row under the tiles: its name, a pill, and "?" for what it means. The row takes you to where it's fixed.
 
@@ -60,7 +60,7 @@ The bell in the header lists the recent alerts with each channel's delivery resu
 
 | Page | |
 |---|---|
-| **Alpaca** | The ASCOM Alpaca devices N.I.N.A. sees, with live device state - see [ASCOM Alpaca](alpaca.md). None yet |
+| **Alpaca** | The ASCOM Alpaca devices N.I.N.A. sees, with live device state - see [ASCOM Alpaca](alpaca.md). The roof's Dome; none in the demo |
 | **System** | Firmware, uptime, memory, flash partitions, time sync, MQTT, WiFi, and the restart action |
 | **Settings** | Device, Network, Time and Alerts - see [Configuration](configuration.md) |
 | **Updates** | Upload a firmware or web UI file - see [Updates](ota.md) |

@@ -132,7 +132,7 @@ export const CASES: Case[] = [
     tab: 'alerts',
     config: { alpaca: { ...mockConfig.alpaca, enabled: true }, alerts: { ...alerts, events: level('client_lost', 3) } },
     facts: { alpacaDevices: 0 },
-    note: 'Inactive: No Alpaca device yet',
+    note: 'Inactive: No Alpaca device',
     control: 'The imaging app stops checking: level',
     control_state: 'unlocked',
   },

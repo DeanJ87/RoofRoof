@@ -1,0 +1,159 @@
+name: Alpaca conformance (ConformU)
+
+# Runs ASCOM ConformU against tools/alpaca-sim, which serves the firmware's
+# Alpaca API (Alpaca::Router in lib/AlpacaLogic) with the roof's Dome: spec
+# 002's motion logic driving a simulated roof, through the firmware's gate
+# checks and Dome mapping (lib/RoofIoLogic). Any error, issue or configuration
+# alert fails the job (constitution IV).
+#
+# It also runs when code the Dome depends on changes (the roof logic, the
+# gates, the simulated roof, the web server's Alpaca backend), so those changes
+# get a conformance run too. The firmware's own glue (RoofControl, the backend)
+# is covered by the on-device checks listed in each pull request.
+
+on:
+  pull_request:
+    paths:
+      - 'lib/AlpacaLogic/**'
+      - 'lib/RoofLogic/**'
+      - 'lib/RoofIoLogic/**'
+      - 'lib/DriverLogic/**'
+      - 'lib/SafetyInputLogic/**'
+      - 'lib/ConfigModel/**'
+      - 'lib/DeviceCore/**'
+      - 'test/roof_sim/**'
+      - 'src/WebServer.cpp'
+      - 'src/WebServerAlpaca.cpp'
+      - 'src/RoofControl.cpp'
+      - 'include/WebServer.h'
+      - 'tools/alpaca-sim/**'
+      - 'platformio.ini'
+      - '.github/workflows/alpaca-conformance.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/AlpacaLogic/**'
+      - 'lib/RoofLogic/**'
+      - 'lib/RoofIoLogic/**'
+      - 'lib/DriverLogic/**'
+      - 'lib/SafetyInputLogic/**'
+      - 'lib/ConfigModel/**'
+      - 'lib/DeviceCore/**'
+      - 'test/roof_sim/**'
+      - 'src/WebServer.cpp'
+      - 'src/WebServerAlpaca.cpp'
+      - 'src/RoofControl.cpp'
+      - 'include/WebServer.h'
+      - 'tools/alpaca-sim/**'
+      - 'platformio.ini'
+      - '.github/workflows/alpaca-conformance.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CONFORMU_VERSION: v4.5.0
+
+jobs:
+  conformu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Cache PlatformIO packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-conformu-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-conformu-
+
+      - name: Install PlatformIO
+        run: pip install "platformio==6.2.0"
+
+      - name: Build the Alpaca simulator
+        run: tools/alpaca-sim/build.sh
+
+      - name: Download ConformU
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$CONFORMU_VERSION" --repo ASCOMInitiative/ConformU -p conformu.linux-x64.tar.xz -D "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/conformu"
+          tar -xf "$RUNNER_TEMP/conformu.linux-x64.tar.xz" -C "$RUNNER_TEMP/conformu"
+
+      - name: Run ConformU
+        run: |
+          mkdir -p conformu-results
+          failed=0
+          {
+            echo "## ConformU $CONFORMU_VERSION against the Alpaca simulator's Dome"
+            echo
+            echo "| Check | Result |"
+            echo "|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Closed, weather safe, mount parked: ConformU opens and closes the shutter.
+          ./alpaca-sim 11111 > conformu-results/simulator.log 2>&1 &
+          sim=$!
+          sleep 1
+          url="http://127.0.0.1:11111/api/v1/dome/0"
+          for check in conformance alpacaprotocol; do
+            out="conformu-results/dome-$check.txt"
+            if "$RUNNER_TEMP/conformu/conformu" "$check" "$url" --resultsfile "conformu-results/dome-$check.json" > "$out" 2>&1; then
+              result="passed"
+            else
+              result="**failed** (exit $?)"
+              failed=1
+            fi
+            echo "| $check | $result |" >> "$GITHUB_STEP_SUMMARY"
+            # Show what went wrong right in the job log.
+            grep -E " (ERROR|ISSUE|INFO) " "$out" || true
+          done
+          kill "$sim"
+          wait "$sim" 2>/dev/null || true
+          # Constitution IV: zero errors, issues AND configuration alerts. The
+          # exit code doesn't count configuration alerts, so read the results.
+          if ! python3 - conformu-results/dome-conformance.json <<'PY'
+          import json, sys
+          r = json.load(open(sys.argv[1]))
+          counts = {k: r.get(k) for k in ("ErrorCount", "IssueCount", "ConfigurationAlertCount")}
+          print("ConformU counts:", counts)
+          sys.exit(0 if all(v == 0 for v in counts.values()) else 1)
+          PY
+          then
+            echo "| conformance results | **errors, issues or configuration alerts** |" >> "$GITHUB_STEP_SUMMARY"
+            failed=1
+          fi
+          # The protocol check writes no results file: require its all-clear line.
+          if ! grep -q "no errors, issues or information alerts" conformu-results/dome-alpacaprotocol.txt; then
+            echo "| alpacaprotocol results | **errors, issues or alerts** |" >> "$GITHUB_STEP_SUMMARY"
+            failed=1
+          fi
+          # The shutter tests must have run (open and close of the simulated roof).
+          for line in "The shutter opened asynchronously" "The shutter closed asynchronously"; do
+            if ! grep -q "$line" conformu-results/dome-conformance.txt; then
+              echo "ConformU didn't report: $line"
+              echo "| shutter tests | **did not run** |" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          exit $failed
+
+      - name: Upload ConformU logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: conformu-results
+          path: conformu-results/
+          retention-days: 14

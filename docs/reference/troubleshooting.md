@@ -54,7 +54,8 @@ If a new firmware doesn't finish starting (WiFi and the web server up), the devi
 
 1. **Settings → Network → ASCOM Alpaca** must be on, and the device restarted since.
 2. Discovery is a UDP broadcast, which doesn't cross subnets or VLANs. If N.I.N.A.'s PC is on another network, add the device manually: its IP, port `80`.
-3. Today the Alpaca server lists no devices (`curl http://<device-ip>/management/v1/configureddevices` returns an empty list), so a client finds the server but has nothing to connect to. The roof's device *comes in a later spec*.
+3. The server lists one device, the roof's Dome (`curl http://<device-ip>/management/v1/configureddevices`). An empty list means Alpaca is off.
+4. N.I.N.A. connects but Open or Close shows an error: the message says why (weather not safe, mount not parked, position unknown, a fault) - see [When a command is refused](../user-guide/alpaca.md#when-a-command-is-refused).
 
 See [ASCOM Alpaca](../user-guide/alpaca.md).
 

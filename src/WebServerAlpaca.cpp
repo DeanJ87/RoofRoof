@@ -1,5 +1,7 @@
 #include "ConnectionMemory.h"
+#include "DomeBridge.h"
 #include "Logger.h"
+#include "RoofControl.h"
 #include "WebServer.h"
 #include "version.h"
 #include <esp_attr.h>
@@ -94,10 +96,45 @@ namespace SQM
     {
         return owner.getConfigCallback().alpaca.enabled;
     }
-    // None until the Dome (spec 006).
+    // The roof's Dome (spec 006), listed whether or not the roof controller
+    // started: a device that comes and goes would confuse clients.
     std::vector<Alpaca::DeviceInfo> WebServer::AlpacaBackend::devices() const
     {
-        return {};
+        return {Alpaca::domeDeviceInfo()};
+    }
+
+    Alpaca::DomeStatus WebServer::AlpacaBackend::domeStatus() const
+    {
+        const RoofControl *roof = owner.roof;
+        if (roof == nullptr || !roof->running())
+            return RoofIo::domeStatus(Roof::Status(), false, false);
+        const RoofIo::Snapshot snap = roof->snapshot();
+        return RoofIo::domeStatus(snap.status, snap.closePending, true);
+    }
+
+    // Constitution II-III: the web UI's checked command path, with the client
+    // origin (constitution I: not a person). Runs on the async TCP task and
+    // takes only the roof's short lock, as the web UI's commands do.
+    Alpaca::DomeAnswer WebServer::AlpacaBackend::domeCommand(Alpaca::DomeAction action)
+    {
+        const RoofIo::DomeDispatch dispatch = RoofIo::domeDispatch(action);
+        const Roof::Command command = dispatch.command;
+        RoofControl *roof = owner.roof;
+        const RoofControl::Outcome outcome = roof != nullptr
+                                                 ? roof->command(command, dispatch.origin)
+                                                 : RoofControl::Outcome{false, "notStarted", "The roof controller isn't running"};
+        const RoofIo::FaultRecord fault = roof != nullptr ? roof->snapshot().fault : RoofIo::FaultRecord();
+        const Alpaca::DomeAnswer answer = RoofIo::domeAnswer(command, outcome.accepted, outcome.reason, outcome.text, fault);
+        const Alpaca::DeviceActivity activity = owner.alpacaRouter.activity(0);
+        const std::string client = activity.hasClientId ? " (client " + std::to_string(activity.clientId) + ")" : "";
+        const char *name = Roof::commandName(command);
+        if (!answer.accepted)
+            Logger::warn(TAG, "Alpaca %s%s refused: %s", name, client.c_str(), answer.message.c_str());
+        else if (!outcome.accepted)
+            Logger::warn(TAG, "Alpaca %s%s: the motor is off already (%s)", name, client.c_str(), outcome.text.c_str());
+        else
+            Logger::info(TAG, "Alpaca %s%s %s", name, client.c_str(), outcome.pending ? "accepted, waiting to start" : "accepted");
+        return answer;
     }
     std::string WebServer::AlpacaBackend::serverName() const
     {

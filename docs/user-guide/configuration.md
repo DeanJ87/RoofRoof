@@ -201,7 +201,7 @@ The `auth.password` field is masked in `GET /api/config` responses. Send the mas
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `alpaca.enabled` | bool | `false` | Serve Alpaca discovery and the management API (a restart starts or stops the discovery listener). See [ASCOM Alpaca](alpaca.md) |
+| `alpaca.enabled` | bool | `false` | Serve Alpaca discovery, the management API and the roof's Dome, which lets imaging apps open, close and stop the roof within the safety rules (a restart starts or stops the discovery listener). See [ASCOM Alpaca](alpaca.md) |
 
 ### Safety and park
 

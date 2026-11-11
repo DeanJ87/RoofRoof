@@ -84,7 +84,7 @@ const OffNote: FunctionalComponent<{ show: boolean }> = ({ show }) =>
     </Note>
   ) : null;
 
-const NoDevices: FunctionalComponent<{ show: boolean }> = ({ show }) => (show ? <Note>{t('alpaca.noAlpacaDeviceYet')}</Note> : null);
+const NoDevices: FunctionalComponent<{ show: boolean }> = ({ show }) => (show ? <Note>{t('alpaca.noAlpacaDevice')}</Note> : null);
 
 const Alpaca: FunctionalComponent = () => {
   const { config, devices, deviceStates, lastUpdated } = useAlpacaDevices(POLL_INTERVAL_MS);

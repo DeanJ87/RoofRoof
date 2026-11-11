@@ -18,7 +18,7 @@ export interface DepFacts {
   wifiConnected: boolean;
   mqttConnected: boolean;
   clockSet: boolean;
-  alpacaDevices: number; // Alpaca devices offered (spec 006 adds the Dome)
+  alpacaDevices: number; // Alpaca devices offered: the Dome (spec 006), none in the demo
 }
 
 export interface DepEntry {

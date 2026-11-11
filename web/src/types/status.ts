@@ -91,8 +91,8 @@ export interface SystemStatus {
     clientId?: string;
   };
   alerts?: AlertSchedule;
-  // The imaging app on each Alpaca device, keyed by device type ("dome"). No
-  // devices until spec 006.
+  // The imaging app on each Alpaca device, keyed by device type: "dome", the
+  // roof (spec 006); none in the demo.
   alpaca?: {
     enabled: boolean;
     clients: Record<string, AlpacaClientState>;

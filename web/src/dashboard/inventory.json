@@ -98,7 +98,7 @@
       "priority": 4,
       "location": "card:status",
       "test": "imaging-app",
-      "note": "One tile per Alpaca device once there is one (spec 006): connected, gone quiet or waiting, and when it last checked. No tile while there is no Alpaca device, including when Alpaca is off."
+      "note": "One tile per Alpaca device (the roof's Dome, spec 006): connected, gone quiet or waiting, and when it last checked. No tile while there is no Alpaca device (the demo) or Alpaca is off."
     },
     {
       "id": "clock-location",

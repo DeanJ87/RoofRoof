@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 704a8f46a4c0c45a
+fingerprint: 69f1bb275e30aabe
 -->
 <figure class="diagram" markdown>
 
@@ -58,7 +58,7 @@ flowchart TB
     IMPLEMENT --> CONVERGE{"speckit-converge:<br/>anything missing?"}
     CONVERGE -->|yes, new tasks| IMPLEMENT
     CONVERGE -->|converged| PR["One pull request to main"]
-    PR --> CI{"CI passes?<br/>build and tests, quality check,<br/>docs and diagrams"}
+    PR --> CI{"CI passes?<br/>build and tests, quality check,<br/>ConformU, docs and diagrams"}
     CI -->|no| IMPLEMENT
     CI -->|yes| MERGE["Merge"]
 ```
@@ -71,7 +71,7 @@ flowchart TB
     1. **Specify**: `spec.md` says what the feature does and why. **Clarify** settles open questions, when there are any.
     2. **Plan**: the plan, research, data model and contracts. **Tasks**: `tasks.md`.
     3. **Implement** the tasks, then **converge**: compare the code with the spec and add a task for anything missing. Repeat until converge reports nothing missing.
-    4. Open **one pull request** to `main`. It merges only when CI passes: the build and tests, the quality check (`tools/quality/check.py`, the [coding standard](coding-standards.md)), and the docs build with its diagram checks. ConformU is suspended until the roof's Alpaca device exists, because it has nothing to test before then.
+    4. Open **one pull request** to `main`. It merges only when CI passes: the build and tests, the quality check (`tools/quality/check.py`, the [coding standard](coding-standards.md)), ConformU against the Alpaca simulator's Dome, and the docs build with its diagram checks.
 
 ---
 

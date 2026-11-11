@@ -66,10 +66,14 @@ public:
 
     // --- Alpaca::Backend ---------------------------------------------------
     bool alpacaEnabled() const override { return cfg.alpaca.enabled; }
-    std::vector<Alpaca::DeviceInfo> devices() const override { return {}; } // the Dome comes with spec 006
+    // No Dome until the demo has a simulated roof (spec 011): a Dome that can
+    // never move would look broken. The members below are never reached.
+    std::vector<Alpaca::DeviceInfo> devices() const override { return {}; }
     std::string serverName() const override { return cfg.deviceName; }
     std::string location() const override { return ""; }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }
+    Alpaca::DomeStatus domeStatus() const override { return {}; }
+    Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction) override { return {false, "The demo has no roof"}; }
 
     // --- Settings ----------------------------------------------------------
     std::string getConfig(bool redacted) const { return cfg.toJson(redacted); }

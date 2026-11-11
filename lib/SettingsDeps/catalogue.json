@@ -87,7 +87,7 @@
       "fix": "network#alpaca"
     },
     "no-alpaca-device": {
-      "text": "No Alpaca device yet",
+      "text": "No Alpaca device",
       "fix": "network#alpaca"
     },
     "ota-no-password": {
@@ -257,7 +257,7 @@
         "alerts.events.client_back.level",
         "alerts.events.client_disconnected.level"
       ],
-      "dependsOn": "Alpaca on, with a device to connect to - imaging apps connect over Alpaca (SQMeter spec 021); RoofRoof has none until the Dome (spec 006)",
+      "dependsOn": "Alpaca on, with a device to connect to - imaging apps connect over Alpaca (SQMeter spec 021); the device offers the roof's Dome (spec 006), the demo none",
       "reasons": [
         "alpaca-off",
         "no-alpaca-device"

@@ -58,7 +58,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/config` | GET | Read config (passwords, keys and tokens masked) |
 | `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
 | `/api/settings/effective` | GET | Which settings are in effect, and why not (no secrets) |
-| `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth; no device is served yet) |
+| `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth). The Dome's open and close pass the same weather and park checks as the REST commands; an Alpaca client can't move a roof of unknown position or clear a fault ([ASCOM Alpaca](alpaca.md)) |
 | `/ws/status` | WS | Live status stream |
 
 Read-only integrations (Home Assistant, scripts polling the status) continue to work without credentials when auth is enabled.
