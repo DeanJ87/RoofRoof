@@ -36,21 +36,6 @@ namespace SQM
             const int status = !outcome.accepted ? 409 : (outcome.pending ? 202 : 200);
             request->send(status, "application/json", body.c_str());
         }
-
-        const char *commandName(Roof::Command command)
-        {
-            switch (command)
-            {
-            case Roof::Command::Open:
-                return "open";
-            case Roof::Command::Close:
-                return "close";
-            case Roof::Command::Stop:
-                return "stop";
-            default:
-                return "abort";
-            }
-        }
     } // namespace
 
     void WebServer::setupRoofRoutes()
@@ -72,7 +57,7 @@ namespace SQM
             return;
         }
         const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person);
-        Logger::info(TAG, "Roof %s from the web API: %s", commandName(command), outcome.accepted ? "accepted" : "refused");
+        Logger::info(TAG, "Roof %s from the web API: %s", Roof::commandName(command), outcome.accepted ? "accepted" : "refused");
         sendOutcome(request, outcome);
     }
 
