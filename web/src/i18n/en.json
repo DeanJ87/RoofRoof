@@ -175,7 +175,7 @@
   "device.roof.motorCurrentMeasuredALimitA": "Motor current {measured} A >= {limit} A",
   "device.roof.motorCurrentUnreadableLimitLimitA": "Motor current unreadable (limit {limit} A)",
   "device.roof.noTargetMagnetAfterMeasuredS": "No target magnet after {measured} s >= {limit} s timeout",
-  "device.roof.openingIsnTAvailableOverThe": "Opening isn't available over the setup hotspot: use the home network",
+  "device.roof.openingIsnTAvailableWhileThe": "Opening isn't available while the setup hotspot is on",
   "device.roof.stillOnTheStartMagnetAfter": "Still on the start magnet after {measured} s >= {limit} s",
   "device.roof.supplyMeasuredVLimitV": "Supply {measured} V < {limit} V",
   "device.roof.supplyUnreadableMinimumLimitV": "Supply unreadable (minimum {limit} V)",

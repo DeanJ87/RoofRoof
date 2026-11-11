@@ -83,7 +83,7 @@ namespace SQM
         void broadcastStatusData();
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
-        bool isWifiConnectPending() const { return wifiConnectActive; }
+        bool isWifiConnectPending() const { return wifiConnectActive.load(); }
         // `mandatory`: a close may not cancel it (RoofIo::RestartPlan).
         static bool scheduleRestart(uint32_t delayMs, bool mandatory = false);
 
@@ -121,7 +121,11 @@ namespace SQM
         uint32_t lastAlertsRevision = 0;
         std::atomic<uint32_t> configRevision{0};
         uint32_t lastConfigRevision = 0;
-        bool wifiConnectActive = false;
+        // Read by the roof's command blockers (any task): a WiFi change or a
+        // scan being started makes a close wait (spec 010).
+        std::atomic<bool> wifiChanging{false}; // from the claim until joined or timed out
+        std::atomic<bool> wifiScanStarting{false};
+        std::atomic<bool> wifiConnectActive{false};
         bool wifiConnectConfigSaved = false;
         uint32_t wifiConnectStartedAt = 0;
         std::string pendingWifiSSID;

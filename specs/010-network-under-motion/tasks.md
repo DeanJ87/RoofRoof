@@ -65,3 +65,11 @@ Phase 1 → Phase 2 → Phase 3 → Phases 4-7 (any order) → Phase 8 → Phase
 ## Implementation strategy
 
 The rules and the shared lock (Phases 1-3) are the core; everything after uses them.
+
+## Phase 10: Review round 1
+
+- [x] T023 A committed restart refuses with reason `restarting`; the close sequence answers it as "not run" (no back-off, no alert); tests in `test_platform_hold` and `test_close_sequence`
+- [x] T024 Web UI uploads (web and command-line) wait for the close sequence (`PlatformAction::FilesystemUpload`); scans too; tests
+- [x] T025 A WiFi change (until joined or timed out) and a scan register under the roof's lock and are a command blocker (`networkChanging`); tests
+- [x] T026 Restart timer: no re-arm once cancelled; `ESP_ERR_INVALID_STATE` keeps the plan; an ordinary restart waits for a flash write
+- [x] T027 Open refused while the setup hotspot is on, from any network; `MQTTClient::isConnected` uses the atomic flag

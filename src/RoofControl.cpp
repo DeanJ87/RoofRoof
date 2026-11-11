@@ -160,7 +160,7 @@ namespace SQM
             return runLocked(command, origin); // nothing to win
         const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
         if (decision.action == RoofIo::BlockerAction::Refuse)
-            return Outcome{false, "busy", std::string(RoofIo::blockerText(now)) + ": try again in a moment", state};
+            return Outcome{false, RoofIo::blockerReason(now), std::string(RoofIo::blockerText(now)) + ": try again in a moment", state};
         if ((decision.cancelRestart || decision.stopFlash) && closeHook)
             closeHook(decision); // a close always wins
         if (decision.action == RoofIo::BlockerAction::DeferClose)

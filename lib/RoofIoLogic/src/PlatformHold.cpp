@@ -12,7 +12,8 @@ namespace SQM
             bool waitsForSequence(PlatformAction action)
             {
                 return action == PlatformAction::Restart || action == PlatformAction::FirmwareUpload ||
-                       action == PlatformAction::WifiChange;
+                       action == PlatformAction::FilesystemUpload || action == PlatformAction::WifiChange ||
+                       action == PlatformAction::WifiScan;
             }
         } // namespace
 
@@ -63,6 +64,8 @@ namespace SQM
             {
             case PlatformAction::FlashWrite:
                 return "flashWrite";
+            case PlatformAction::FilesystemUpload:
+                return "filesystemUpload";
             case PlatformAction::Restart:
                 return "restart";
             case PlatformAction::MandatoryRestart:
@@ -76,9 +79,9 @@ namespace SQM
             }
         }
 
-        bool hotspotRefuses(Roof::Command command, bool viaHotspot)
+        bool hotspotRefuses(Roof::Command command, bool hotspotOn)
         {
-            return viaHotspot && command == Roof::Command::Open;
+            return hotspotOn && command == Roof::Command::Open;
         }
     } // namespace RoofIo
 } // namespace SQM

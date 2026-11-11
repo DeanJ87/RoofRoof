@@ -25,6 +25,12 @@ namespace SQM
         // refusing a request up front. Use FlashWrite/beginUpload/commitRestart to act.
         RoofIo::HoldReason hold(RoofIo::PlatformAction action);
 
+        // Any other action that a command must see once it has begun (a WiFi
+        // change, a scan): under the roof's lock, if nothing holds `action`,
+        // runs `mark` (non-blocking; it sets the caller's own flag, which the
+        // command blockers read) and returns None; else why not.
+        RoofIo::HoldReason claim(RoofIo::PlatformAction action, const std::function<void()> &mark);
+
         // A short flash write for this scope: checked and counted under the
         // roof's lock, released when it goes out of scope. Check refused() first.
         class FlashWrite
@@ -53,7 +59,8 @@ namespace SQM
 
         // The restart timer: runs `commit` under the roof's lock if the roof is
         // at rest, no close waits and (unless `mandatory`) the close sequence
-        // is idle. Never waits for the lock: a busy lock counts as Held.
+        // is idle and no flash write runs. Never waits for the lock: a busy
+        // lock counts as Held.
         enum class RestartGo : uint8_t
         {
             Run,    // `commit` returned true: restart now

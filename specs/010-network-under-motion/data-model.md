@@ -4,7 +4,8 @@
 
 | Value | Used for |
 |---|---|
-| `FlashWrite` | settings save, restore without restart, Wi-Fi credentials after a join, alerts pause state, web UI upload |
+| `FlashWrite` | settings save, restore without restart, Wi-Fi credentials after a join, alerts pause state |
+| `FilesystemUpload` | web UI upload (web or command line) |
 | `Restart` | a person's restart, a restore's restart, the restart after a firmware upload, the restart after joining from the hotspot |
 | `MandatoryRestart` | the restart after a web UI upload |
 | `FirmwareUpload` | `POST /api/update`, command-line OTA |
@@ -39,4 +40,5 @@ Adds `committed`: `commit()` (true if a restart was due; then `cancel()` returns
 | Field | Effect |
 |---|---|
 | `flashWriting` | a short write: open refused, close deferred (no stop request) |
-| `restartCommitted` | open and close refused ("The device is restarting") |
+| `restartCommitted` | open and close refused, reason `restarting` ("The device is restarting") |
+| `networkChanging` | a WiFi change or scan: open refused, close deferred |

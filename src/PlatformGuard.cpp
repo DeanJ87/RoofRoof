@@ -67,6 +67,12 @@ namespace SQM
             return RoofIo::platformHold(action, latest());
         }
 
+        RoofIo::HoldReason claim(RoofIo::PlatformAction action, const std::function<void()> &mark)
+        {
+            const RoofIo::HoldReason reason = sequenceHold(action);
+            return reason != RoofIo::HoldReason::None ? reason : underLock(mark);
+        }
+
         FlashWrite::FlashWrite(RoofIo::PlatformAction action)
         {
             reason = sequenceHold(action);
@@ -120,17 +126,27 @@ namespace SQM
             if (sequenceHold(action) != RoofIo::HoldReason::None)
                 return RestartGo::Held;
             bool ran = false;
+            bool flashHeld = false;
             bool committed = false;
             underLock(
                 [&]()
                 {
                     ran = true;
+                    // An ordinary restart also waits for a flash write to end
+                    // (an upload, a settings save): resetting part-way would
+                    // leave it half written. The mandatory one follows an
+                    // upload that has already ended.
+                    if (!mandatory && (FlashGuard::busy() || FlashGuard::writing()))
+                    {
+                        flashHeld = true;
+                        return;
+                    }
                     committed = commit();
                 },
                 false);
-            if (!ran)
-                return RestartGo::Held;
-            return committed ? RestartGo::Run : RestartGo::NotDue;
+            if (committed)
+                return RestartGo::Run;
+            return !ran || flashHeld ? RestartGo::Held : RestartGo::NotDue;
         }
     } // namespace PlatformGuard
 } // namespace SQM

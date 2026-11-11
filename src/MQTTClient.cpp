@@ -122,7 +122,7 @@ namespace SQM
 
     bool MQTTClient::isConnected() const
     {
-        return config.enabled && mqttClient->connected();
+        return enabledNow.load() && mqttClient->connected();
     }
 
     MQTTStatus MQTTClient::getStatus() const
