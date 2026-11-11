@@ -54,6 +54,11 @@ namespace SQM
         // Any task. Open and close pass the weather and park gates first; stop
         // is never refused. The output is applied before this returns.
         Outcome command(Roof::Command command, Roof::Origin origin);
+        // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
+        // if a person has stopped the roof since the snapshot that showed
+        // `personStopsSeen`, checked under the same lock as the command, so
+        // the close can never start after a person's stop it hasn't seen.
+        Outcome automaticClose(uint32_t personStopsSeen);
         Outcome clearFault(Roof::Origin origin);
         // Any task: latch an External fault with this cause (the output goes off).
         void raiseFault(RoofIo::FaultCause cause, float measured, float limit);
@@ -85,6 +90,8 @@ namespace SQM
             closeHook = std::move(onClose);
         }
 
+        // Any task: the control task and watchdog started (else nothing can move).
+        bool running() const { return started.load(); }
         // Any task.
         RoofIo::Snapshot snapshot() const;
         uint32_t revision() const { return revisionCount.load(); }
@@ -152,6 +159,7 @@ namespace SQM
         HardwareSettings pendingSettings;
         RoofIo::GateInputs gates;
         bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
+        uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005)
         Roof::Origin closeOrigin = Roof::Origin::Person;
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;

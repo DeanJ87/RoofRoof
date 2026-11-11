@@ -20,9 +20,14 @@ namespace SQM
             ClientLost,
             ClientBack,
             ClientDisconnected,
+            // The roof's close on unsafe weather (RoofRoof spec 005): mount
+            // not parked, roof didn't close, can't close by itself, stopped
+            // by a person. Fixed wording, no setting; spec 007 replaces it
+            // with one event per case.
+            Roof,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::ClientDisconnected) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::Roof) + 1;
 
         // How loudly an alert is delivered; set per event in the alert
         // settings. The dispatcher maps it to each channel's priority.

@@ -78,7 +78,8 @@ namespace SQM
         // per-channel test notifications); channels disabled in `cfg` are
         // never used, test or not. A channel switched on but blocked is
         // recorded as skipped with the reason and nothing is attempted.
-        void dispatch(
+        // Returns the stored record's id (0 if it couldn't be stored).
+        uint32_t dispatch(
             const Alerts::Alert &alert,
             const AlertsConfig &cfg,
             const std::string &deviceName,
@@ -86,6 +87,16 @@ namespace SQM
             const ChannelBlocks &blocked = ChannelBlocks{});
 
         std::vector<AlertRecord> recent() const;
+        // How record `id` went over all its channels (spec 005 resends a
+        // critical alert no channel took). Any task.
+        enum class Outcome : uint8_t
+        {
+            Pending,   // a channel is still trying
+            Delivered, // at least one channel sent it
+            Failed,    // a channel tried and failed (none sent); or the record is gone
+            NoChannel, // no channel was on and able to send (off, or blocked and skipped)
+        };
+        Outcome outcome(uint32_t id) const;
         void clearRecent();
         // Goes up whenever recent() would answer differently (a new alert, a
         // channel's result, a clear), so the UI can fetch the list only then.

@@ -95,6 +95,11 @@ namespace SQM
             Two = 2,
         };
         Switches switches = Switches::None;
+        // Spec 005: how long the close sequence waits for the park to be
+        // confirmed before it raises "mount not parked". A fact of the mount.
+        uint32_t timeoutSeconds = 240;
+        static constexpr uint32_t MIN_TIMEOUT_SECONDS = 30;
+        static constexpr uint32_t MAX_TIMEOUT_SECONDS = 1800;
     };
 
     // Push notifications. Persisted under their own NVS keys (see

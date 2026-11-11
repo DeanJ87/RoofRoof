@@ -63,6 +63,16 @@ namespace SQM
         void handle();
         // No alert queued or being delivered.
         bool alertsIdle() const;
+        // Main loop: a critical roof event from the close sequence (spec 005),
+        // to every channel that is on, past the alert pause and the start-up
+        // grace, when alerts are switched on. Spec 007 replaces the wording.
+        // Returns the record id for roofAlertOutcome() (0: not stored).
+        uint32_t raiseRoofAlert(const Alerts::Alert &alert);
+        // Any task: whether a channel took that alert.
+        AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const
+        {
+            return alertDispatcher ? alertDispatcher->outcome(id) : AlertDispatcher::Outcome::Failed;
+        }
 
         // Broadcast status data to /ws/status clients.
         void broadcastStatusData();

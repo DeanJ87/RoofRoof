@@ -53,7 +53,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 | Library | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
-| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept | No |
+| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; alert type `roof` added for the close on unsafe weather (spec 005) | No |
 | AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |

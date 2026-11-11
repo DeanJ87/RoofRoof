@@ -68,6 +68,7 @@ namespace SQM
                 {"alerts", "cooldownSeconds"},
                 {"alerts", "clientSilentSeconds"},
                 {"safety", "staleSeconds"},
+                {"park", "timeoutSeconds"},
                 {"roof", "travelMm"},
                 {"roof", "timeoutMarginSeconds"},
                 {"roof", "leaveMagnetSeconds"},
@@ -322,6 +323,7 @@ namespace SQM
         {
             const Section nina = park.child("nina");
             nina.take("url", p.ninaUrl);
+            park.take("timeoutSeconds", p.timeoutSeconds);
             if (nina.has("api"))
             {
                 const char *api = nina["api"].is<const char *>() ? nina["api"].as<const char *>() : "";
