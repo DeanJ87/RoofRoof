@@ -4,12 +4,13 @@ import { DepToggle, Field, SettingsCard, TextInput, Toggle } from './controls';
 import { t } from '../../i18n';
 import BackupCard from './BackupCard';
 
-// Password protection and command-line (ArduinoOTA) uploads.
-const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
+// Password protection (also the setup wizard's first page, spec 015).
+export const PasswordFields: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error'>> = ({ config, update, error }) => {
   const auth = config.auth ?? { enabled: false, username: 'admin', password: '' };
   return (
-    <SettingsCard id="security" title={t('settings.device.security')}>
+    <>
       <Toggle
+        dataField="auth.enabled"
         label={t('settings.device.passwordProtectChanges')}
         checked={auth.enabled}
         onChange={(v) => update(['auth', 'enabled'], v)}
@@ -25,6 +26,22 @@ const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, e
           </Field>
         </div>
       )}
+    </>
+  );
+};
+
+// The device's name (shown in N.I.N.A.).
+export const DeviceNameField: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error'>> = ({ config, update, error }) => (
+  <Field label={t('settings.device.name')} error={error('deviceName')} hint={t('settings.device.shownInNIN')}>
+    <TextInput dataField="deviceName" value={config.deviceName} onInput={(v) => update(['deviceName'], v)} />
+  </Field>
+);
+
+// Password protection and command-line (ArduinoOTA) uploads.
+const SecurityCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
+  return (
+    <SettingsCard id="security" title={t('settings.device.security')}>
+      <PasswordFields config={config} update={update} error={error} />
       <DepToggle
         entry={deps.get('ota.enabled')}
         onFix={fix}
@@ -54,9 +71,7 @@ const DeviceTab: FunctionalComponent<SettingsTabProps> = (props) => {
   return (
     <>
       <SettingsCard title={t('settings.device.device')}>
-        <Field label={t('settings.device.name')} error={error('deviceName')} hint={t('settings.device.shownInNIN')}>
-          <TextInput dataField="deviceName" value={config.deviceName} onInput={(v) => update(['deviceName'], v)} />
-        </Field>
+        <DeviceNameField config={config} update={update} error={error} />
       </SettingsCard>
 
       <SecurityCard {...props} />

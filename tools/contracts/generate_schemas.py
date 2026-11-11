@@ -27,6 +27,7 @@ DOCUMENTS = {
     "status": "status",
     "settings_effective": "settings-effective",
     "config": "config",
+    "roof_inputs": "roof-inputs",
     "alerts_recent": "alerts-recent",
     "alerts_armed": "alerts-armed",
     "management_v1_description": "alpaca-description",
@@ -71,6 +72,7 @@ SCHEDULE_REASONS = [  # Alerts::scheduleReasonName (lib/AlertLogic/src/AlertSche
     "waiting-for-client",
     "migrated",
 ]
+SOURCE_STATES = ["off", "waiting", "good", "stale", "unreachable", "unreadable", "offline"]  # Safety::sourceStateName
 CONSTRAINTS = {
     ("status", ("alerts", "mode")): {"enum": SCHEDULE_MODES},
     ("status", ("alerts", "reason")): {"enum": SCHEDULE_REASONS},
@@ -108,6 +110,17 @@ CONSTRAINTS = {
     ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},
     ("alerts-armed", ("reason",)): {"enum": SCHEDULE_REASONS},
     ("config", ("alerts", "sendMode")): {"enum": SCHEDULE_MODES},
+    # Spec 015: the setup wizard's state (lib/ConfigModel setupStateName) and page.
+    ("config", ("setup", "state")): {"enum": ["new", "offered", "done"]},
+    ("config", ("setup", "step")): {"type": "integer", "minimum": 0, "maximum": 9},
+    # GET /api/roof/inputs (lib/SafetyInputLogic InputsReport names).
+    ("roof-inputs", ("weather", "verdict")): {"enum": ["safe", "unsafe", "unknown"]},
+    ("roof-inputs", ("weather", "http", "state")): {"enum": SOURCE_STATES},
+    ("roof-inputs", ("weather", "mqtt", "state")): {"enum": SOURCE_STATES},
+    ("roof-inputs", ("weather", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
+    ("roof-inputs", ("nina", "state")): {
+        "enum": ["notConfigured", "waiting", "good", "unreachable", "unreadable", "apiError"]
+    },
 }
 
 

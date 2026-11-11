@@ -9,6 +9,8 @@ export interface Core extends BackupCore {
   restart(nowMs: number): void;
   tick(nowMs: number, epoch: number, localTime: string, localDate: string): void;
   statusParts(): string;
+  // GET /api/roof/inputs (spec 015).
+  inputsDocument(): string;
   effective(): string;
   recentAlerts(): string;
   clearAlerts(): void;

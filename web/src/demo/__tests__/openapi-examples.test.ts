@@ -24,6 +24,7 @@ const EXAMPLES: Record<string, string> = {
   'alerts-armed': 'alerts-armed',
   'config-change': 'action-result',
   'alert-test': 'action-result',
+  'roof-inputs': 'roof-inputs',
 };
 
 // The demo marks simulated actions `demo: true`; a device never sends it.
@@ -37,6 +38,7 @@ const fromDemo = (): Record<string, unknown> => ({
   'alerts-armed': JSON.parse(demoDevice.armedDocument()),
   'config-change': asDevice(JSON.parse(demoDevice.applyConfig(JSON.stringify({ deviceName: 'backyard-roof' })).body)),
   'alert-test': asDevice(JSON.parse(demoDevice.testAlert({ channel: 'all' }).body)),
+  'roof-inputs': JSON.parse(demoDevice.inputsDocument()),
 });
 
 describe('OpenAPI examples come from the demo and match the contract', () => {

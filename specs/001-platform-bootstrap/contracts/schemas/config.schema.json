@@ -784,6 +784,29 @@
       ],
       "additionalProperties": false
     },
+    "setup": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "new",
+            "offered",
+            "done"
+          ]
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        }
+      },
+      "required": [
+        "state",
+        "step"
+      ],
+      "additionalProperties": false
+    },
     "wifi": {
       "type": "object",
       "properties": {
@@ -838,6 +861,7 @@
     "park",
     "roof",
     "safety",
+    "setup",
     "wifi"
   ],
   "additionalProperties": false

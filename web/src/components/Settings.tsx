@@ -1,54 +1,24 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { Config, SystemStatus } from '../types';
-import {
-  getConfigValidationErrors,
-  getConfigValidationMessage,
-  hasConfigValidationErrors,
-  type ValidationErrors,
-} from '../validation/configSchema';
+import { getConfigValidationMessage, type ValidationErrors } from '../validation/configSchema';
 import AlertsTab from './settings/AlertsTab';
-import type { ConfigPath, SettingsTabProps } from './settings/context';
+import type { SettingsTabProps } from './settings/context';
 import DeviceTab from './settings/DeviceTab';
 import NetworkTab from './settings/NetworkTab';
 import RoofTab from './settings/RoofTab';
-import { fieldErrorAliases, toConfigPayload } from './settings/payload';
+import { fieldErrorAliases } from './settings/payload';
 import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type SettingsTabId } from './settings/tabs';
 import TimeTab from './settings/TimeTab';
-import { listReasons, restartReasons } from './settings/restart';
+import { listReasons } from './settings/restart';
 import { DEP_LABELS } from './settings/depLabels';
 import { showToast } from './toast';
 import { Button, Note } from './ui';
 import { nextTabIndex, scrollBehavior } from '../lib/a11y';
-import {
-  effectiveEntries,
-  fetchEffectiveReport,
-  fixTarget,
-  previewInactive,
-  viewOf,
-  type DepEntry,
-  type EffectiveReport,
-} from '../lib/settingsDeps';
+import { effectiveEntries, fixTarget, previewInactive, viewOf, type DepEntry } from '../lib/settingsDeps';
 import { t } from '../i18n';
-import { deviceError } from '../i18n/deviceMessage';
-import { fetchConfig, fetchStatus, restartDevice, saveConfig } from '../lib/settingsApi';
+import { restartDevice } from '../lib/settingsApi';
 import { useTabFromUrl } from '../hooks/useTabFromUrl';
-
-const STATUS_REFRESH_MS = 10000;
-
-// Sets value at path, copying every object along the way so state is never
-// mutated in place.
-type Node = Record<string, unknown>;
-const setPath = (target: Config, path: ConfigPath, value: unknown): Config => {
-  const root: Node = { ...target };
-  let current = root;
-  for (let i = 0; i < path.length - 1; i++) {
-    current[path[i]] = { ...(current[path[i]] as Node) };
-    current = current[path[i]] as Node;
-  }
-  current[path[path.length - 1]] = value;
-  return root as unknown as Config;
-};
+import { useConfigEditor } from '../hooks/useConfigEditor';
 
 // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
 const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) =>
@@ -65,43 +35,10 @@ const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) 
 const Settings: FunctionalComponent = () => {
   const initial = tabFromLocation(typeof window !== 'undefined' ? locationQuery(window.location) : '');
   const [tab, setTab] = useState<SettingsTabId>(initial.tab);
-  const [config, setConfig] = useState<Config | null>(null);
-  const [saved, setSaved] = useState<Config | null>(null);
-  const [status, setStatus] = useState<SystemStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const editor = useConfigEditor();
+  const { config, saved, status, effective, loading, validationErrors, originalWifiSsid, dirty, applyChanges } = editor;
   const [saving, setSaving] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
-  const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const pendingAnchor = useRef<string | undefined>(initial.anchor);
-
-  // What the device says is in effect (SQMeter spec 020).
-  const [effective, setEffective] = useState<EffectiveReport | null>(null);
-
-  const loadStatus = () => {
-    void fetchEffectiveReport().then((report) => report && setEffective(report));
-    return fetchStatus()
-      .then((data) => data && setStatus(data))
-      .catch(() => undefined);
-  };
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await fetchConfig();
-        const normalized = toConfigPayload(data);
-        setConfig(normalized);
-        setSaved(normalized);
-        setOriginalWifiSsid(data.wifi?.ssid ?? '');
-      } catch {
-        // Rendered below as the load-failure state.
-      } finally {
-        setLoading(false);
-      }
-    })();
-    loadStatus();
-    const timer = setInterval(loadStatus, STATUS_REFRESH_MS);
-    return () => clearInterval(timer);
-  }, []);
 
   useTabFromUrl(tab, setTab, pendingAnchor);
 
@@ -128,17 +65,6 @@ const Settings: FunctionalComponent = () => {
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
     if (!anchor) window.scrollTo?.({ top: 0 });
   };
-
-  const applyChanges = (changes: [ConfigPath, unknown][]) => {
-    setConfig((current) => {
-      if (!current) return current;
-      const next = toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current));
-      setValidationErrors(getConfigValidationErrors(next));
-      return next;
-    });
-  };
-
-  const dirty = useMemo(() => Boolean(config && saved && JSON.stringify(config) !== JSON.stringify(saved)), [config, saved]);
 
   const errorsByTab = useMemo(() => {
     const counts: Partial<Record<SettingsTabId, number>> = {};
@@ -174,49 +100,31 @@ const Settings: FunctionalComponent = () => {
   };
 
   const save = async () => {
-    if (!config || !saved) return;
-    const payload = toConfigPayload(config);
-    const errors = getConfigValidationErrors(payload);
-    setValidationErrors(errors);
-    if (hasConfigValidationErrors(errors)) {
-      showToast({ message: getConfigValidationMessage(errors), tone: 'bad' });
-      focusFirstError(errors);
-      return;
-    }
-
     setSaving(true);
-    try {
-      const { ok, body } = await saveConfig(payload);
-      if (ok && body?.success !== false) {
-        const reasons = restartReasons(saved, payload);
-        showToast(
-          reasons.length > 0
-            ? {
-                message: t('settings.savedRestartToApplyListreasons', { listReasons: listReasons(reasons) }),
-                tone: 'warn',
-                durationMs: 0,
-                action: { label: t('settings.restart'), onClick: restart },
-              }
-            : { message: t('settings.saved') },
-        );
-        setSaved(payload);
-        setConfig(payload);
-        setValidationErrors({});
-        loadStatus();
-      } else {
-        showToast({ message: deviceError(body, t('settings.failedToSaveSettings')), tone: 'bad' });
-      }
-    } catch {
+    const outcome = await editor.save();
+    setSaving(false);
+    if (outcome.kind === 'invalid') {
+      showToast({ message: getConfigValidationMessage(outcome.errors), tone: 'bad' });
+      focusFirstError(outcome.errors);
+    } else if (outcome.kind === 'refused') {
+      showToast({ message: outcome.message, tone: 'bad' });
+    } else if (outcome.kind === 'unreachable') {
       showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
-    } finally {
-      setSaving(false);
+    } else {
+      showToast(
+        outcome.restart.length > 0
+          ? {
+              message: t('settings.savedRestartToApplyListreasons', { listReasons: listReasons(outcome.restart) }),
+              tone: 'warn',
+              durationMs: 0,
+              action: { label: t('settings.restart'), onClick: restart },
+            }
+          : { message: t('settings.saved') },
+      );
     }
   };
 
-  const discard = () => {
-    setConfig(saved);
-    setValidationErrors({});
-  };
+  const discard = editor.discard;
 
   if (loading) {
     return (
@@ -226,7 +134,7 @@ const Settings: FunctionalComponent = () => {
     );
   }
 
-  if (!config) {
+  if (!config || !saved) {
     return <div class="empty-state tone-red">{t('settings.failedToLoadConfiguration')}</div>;
   }
 

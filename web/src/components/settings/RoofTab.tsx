@@ -35,8 +35,8 @@ const Num: FunctionalComponent<NumProps & Pick<SettingsTabProps, 'update' | 'err
   </Field>
 );
 
-type RoofProps = SettingsTabProps & { roof: RoofConfig };
-const roofNum = (props: RoofProps, key: keyof RoofConfig, label: string, extra: Partial<NumProps> = {}) => (
+export type RoofProps = SettingsTabProps & { roof: RoofConfig };
+export const roofNum = (props: RoofProps, key: keyof RoofConfig, label: string, extra: Partial<NumProps> = {}) => (
   <Num {...extra} at={['roof', key]} label={label} value={props.roof[key] as number} update={props.update} error={props.error} />
 );
 
@@ -76,7 +76,7 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
 
 // The live reading against the thresholds as edited, so calibration can be
 // checked before saving (FR-020).
-const HallCard: FunctionalComponent<RoofProps> = (props) => {
+export const HallCard: FunctionalComponent<RoofProps> = (props) => {
   const hall = props.status?.roof?.hall;
   return (
     <SettingsCard id="hall" title={t('settings.roof.hallSensor')} hint={t('settings.roof.hallHint')}>
@@ -113,7 +113,7 @@ const CURRENT_KEYS = ['maxCurrentAmps', 'currentAmpsPerVolt', 'minRunningAmps'] 
 const showCurrent = (props: RoofProps) =>
   props.roof.currentSenseEnabled || CURRENT_KEYS.some((key) => props.error(`roof.${key}`) !== undefined);
 
-const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
+export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
   <SettingsCard id="current" title={t('settings.roof.currentAndSupply')}>
     <Toggle
       dataField="roof.currentSenseEnabled"
@@ -133,10 +133,11 @@ const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
   </SettingsCard>
 );
 
-type SafetyProps = SettingsTabProps & { safety: SafetyConfig };
+export type SafetyProps = SettingsTabProps & { safety: SafetyConfig };
 
-const SafetyCard: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix }) => (
-  <SettingsCard id="safety" title={t('settings.roof.weatherSources')} hint={t('settings.roof.weatherSourcesHint')}>
+// SQMeter over HTTP and MQTT (also the setup wizard's weather page, spec 015).
+export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix }) => (
+  <>
     <Toggle
       dataField="safety.http.enabled"
       label={t('settings.roof.sqmeterHttp')}
@@ -172,13 +173,24 @@ const SafetyCard: FunctionalComponent<SafetyProps> = ({ safety, update, error, d
         </Field>
       </div>
     )}
-    <Toggle
-      dataField="safety.rainContact"
-      label={t('settings.roof.rainContact')}
-      hint={t('settings.roof.rainContactHint')}
-      checked={safety.rainContact}
-      onChange={(v) => update(['safety', 'rainContact'], v)}
-    />
+  </>
+);
+
+// The rain contact on GPIO4 (also the setup wizard's hardware page).
+export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, update }) => (
+  <Toggle
+    dataField="safety.rainContact"
+    label={t('settings.roof.rainContact')}
+    hint={t('settings.roof.rainContactHint')}
+    checked={safety.rainContact}
+    onChange={(v) => update(['safety', 'rainContact'], v)}
+  />
+);
+
+const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
+  <SettingsCard id="safety" title={t('settings.roof.weatherSources')} hint={t('settings.roof.weatherSourcesHint')}>
+    <WeatherSourceFields {...props} />
+    <RainContactToggle {...props} />
     <div class="form-grid">
       <Num
         at={['safety', 'staleSeconds']}
@@ -186,55 +198,64 @@ const SafetyCard: FunctionalComponent<SafetyProps> = ({ safety, update, error, d
         hint={t('settings.roof.staleAfterHint')}
         unit="s"
         integer
-        value={safety.staleSeconds}
-        update={update}
-        error={error}
+        value={props.safety.staleSeconds}
+        update={props.update}
+        error={props.error}
       />
     </div>
   </SettingsCard>
 );
 
-type ParkProps = SettingsTabProps & { park: ParkConfig };
+export type ParkProps = SettingsTabProps & { park: ParkConfig };
 
-const ParkCard: FunctionalComponent<ParkProps> = ({ park, update, error }) => (
+// N.I.N.A.'s address and the park switches (also the setup wizard's pages, spec 015).
+export const NinaUrlField: FunctionalComponent<ParkProps> = ({ park, update, error }) => (
+  <Field label={t('settings.roof.ninaUrl')} hint={t('settings.roof.ninaUrlHint')} error={error('park.nina.url')}>
+    <TextInput
+      dataField="park.nina.url"
+      type="url"
+      value={park.nina.url}
+      placeholder="http://192.168.1.20:1888"
+      onInput={(v) => update(['park', 'nina', 'url'], v)}
+    />
+  </Field>
+);
+
+export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, update }) => (
+  <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')}>
+    <SelectInput
+      dataField="park.switches"
+      value={park.switches}
+      options={[
+        { value: 'none', label: t('settings.roof.switchesNone') },
+        { value: 'one', label: t('settings.roof.switchesOne') },
+        { value: 'two', label: t('settings.roof.switchesTwo') },
+      ]}
+      onChange={(v) => update(['park', 'switches'], v)}
+    />
+  </Field>
+);
+
+const ParkCard: FunctionalComponent<ParkProps> = (props) => (
   <SettingsCard id="park" title={t('settings.roof.park')} hint={t('settings.roof.parkHint')}>
     <div class="form-grid">
-      <Field label={t('settings.roof.ninaUrl')} hint={t('settings.roof.ninaUrlHint')} error={error('park.nina.url')}>
-        <TextInput
-          dataField="park.nina.url"
-          type="url"
-          value={park.nina.url}
-          placeholder="http://192.168.1.20:1888"
-          onInput={(v) => update(['park', 'nina', 'url'], v)}
-        />
-      </Field>
-      <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')}>
-        <SelectInput
-          dataField="park.switches"
-          value={park.switches}
-          options={[
-            { value: 'none', label: t('settings.roof.switchesNone') },
-            { value: 'one', label: t('settings.roof.switchesOne') },
-            { value: 'two', label: t('settings.roof.switchesTwo') },
-          ]}
-          onChange={(v) => update(['park', 'switches'], v)}
-        />
-      </Field>
+      <NinaUrlField {...props} />
+      <ParkSwitchesField {...props} />
       <Num
         at={['park', 'timeoutSeconds']}
         label={t('settings.roof.parkTimeLimit')}
         hint={t('settings.roof.parkTimeLimitHint')}
         unit="s"
         integer
-        value={park.timeoutSeconds}
-        update={update}
-        error={error}
+        value={props.park.timeoutSeconds}
+        update={props.update}
+        error={props.error}
       />
     </div>
   </SettingsCard>
 );
 
-type DaylightProps = SettingsTabProps & { daylight: DaylightConfig; location: LocationConfig };
+export type DaylightProps = SettingsTabProps & { daylight: DaylightConfig; location: LocationConfig };
 
 // A degrees field that can be negative (the sun's altitude, latitude, longitude).
 const DegreesField: FunctionalComponent<{
@@ -252,8 +273,9 @@ const DegreesField: FunctionalComponent<{
 
 // The daylight failsafe and where the roof is (spec 013). The site and the
 // threshold only matter while the check is on; the fields stay editable.
-const DaylightCard: FunctionalComponent<DaylightProps> = ({ daylight, location, update, error, deps, fix }) => (
-  <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
+// The mode and the threshold (also the setup wizard's daylight page, spec 015).
+export const DaylightModeFields: FunctionalComponent<Omit<DaylightProps, 'location'>> = ({ daylight, update, error, deps, fix }) => (
+  <>
     <div class="form-grid">
       <Field label={t('settings.roof.daylightCheck')} hint={t('settings.roof.daylightCheckHint')} error={error('daylight.mode')}>
         <SelectInput
@@ -278,6 +300,12 @@ const DaylightCard: FunctionalComponent<DaylightProps> = ({ daylight, location, 
     </div>
     <DepNote entry={deps.get('daylight.mode')} onFix={fix} />
     <DepNote entry={deps.get('daylight.sunAltitudeDeg')} onFix={fix} />
+  </>
+);
+
+// Where the roof is (also the setup wizard's site page).
+export const LocationFields: FunctionalComponent<Pick<DaylightProps, 'location' | 'update' | 'error'>> = ({ location, update, error }) => (
+  <>
     <Toggle
       dataField="location.set"
       label={t('settings.roof.locationSet')}
@@ -305,12 +333,19 @@ const DaylightCard: FunctionalComponent<DaylightProps> = ({ daylight, location, 
         />
       </div>
     )}
+  </>
+);
+
+const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
+  <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
+    <DaylightModeFields {...props} />
+    <LocationFields {...props} />
   </SettingsCard>
 );
 
 // The device refuses every save while the roof moves; a save while it is
 // stopped part-way makes its position unknown (FR-021).
-const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ status }) => {
+export const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ status }) => {
   const state = status?.roof?.state;
   if (state === 'opening' || state === 'closing') return <Note tone="warn">{t('settings.roof.movingNote')}</Note>;
   if (state === 'stopped') return <Note tone="warn">{t('settings.roof.stoppedNote')}</Note>;

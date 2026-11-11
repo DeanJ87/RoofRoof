@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "roof-inputs",
+  "type": "object",
+  "properties": {
+    "nina": {
+      "type": "object",
+      "properties": {
+        "ageMs": {
+          "type": "number"
+        },
+        "atPark": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "generation": {
+          "type": "number"
+        },
+        "slewing": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "notConfigured",
+            "waiting",
+            "good",
+            "unreachable",
+            "unreadable",
+            "apiError"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ageMs",
+        "atPark",
+        "connected",
+        "generation",
+        "slewing",
+        "state",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "park": {
+      "type": "object",
+      "properties": {
+        "parked": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "parked",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "weather": {
+      "type": "object",
+      "properties": {
+        "http": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "flags": {
+              "type": "number"
+            },
+            "generation": {
+              "type": "number"
+            },
+            "limitMs": {
+              "type": "number"
+            },
+            "safe": {
+              "type": "boolean"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "off",
+                "waiting",
+                "good",
+                "stale",
+                "unreachable",
+                "unreadable",
+                "offline"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ageMs",
+            "enabled",
+            "flags",
+            "generation",
+            "limitMs",
+            "safe",
+            "state",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "ageMs": {
+              "type": "number"
+            },
+            "enabled": {
+              "type": "boolean"
+            },
+            "flags": {
+              "type": "number"
+            },
+            "generation": {
+              "type": "number"
+            },
+            "limitMs": {
+              "type": "number"
+            },
+            "safe": {
+              "type": "boolean"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "off",
+                "waiting",
+                "good",
+                "stale",
+                "unreachable",
+                "unreadable",
+                "offline"
+              ]
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ageMs",
+            "enabled",
+            "flags",
+            "generation",
+            "limitMs",
+            "safe",
+            "state",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "rainContact": {
+          "type": "string",
+          "enum": [
+            "notFitted",
+            "dry",
+            "raining",
+            "unreadable"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "safe",
+            "unsafe",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "http",
+        "mqtt",
+        "rainContact",
+        "text",
+        "verdict"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "nina",
+    "park",
+    "weather"
+  ],
+  "additionalProperties": false
+}

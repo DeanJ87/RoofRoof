@@ -9,6 +9,7 @@ import Updates from './components/Updates';
 import Alpaca from './components/Alpaca';
 import NotFound from './components/NotFound';
 import WifiSetup from './components/WifiSetup';
+import Wizard from './components/Wizard';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -47,6 +48,9 @@ const App: FunctionalComponent = () => (
     </Layout>
     <Layout path="/updates">
       <Updates />
+    </Layout>
+    <Layout path="/wizard">
+      <Wizard />
     </Layout>
     <Layout path="/wifi">
       <WifiSetup />

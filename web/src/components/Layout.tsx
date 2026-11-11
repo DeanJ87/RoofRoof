@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import BrandMark from './BrandMark';
 import BenchBanner from './BenchBanner';
 import RoofStopBar from './RoofStopBar';
+import SetupPrompt from './SetupPrompt';
 
 interface LayoutProps {
   path?: string;
@@ -120,6 +121,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
 
       <main class="app-main" id="main" tabIndex={-1}>
         <BenchBanner />
+        <SetupPrompt />
         {children}
         <RoofStopBar />
       </main>

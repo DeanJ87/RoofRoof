@@ -2,6 +2,7 @@
 export * from './status';
 export * from './config';
 export * from './alerts';
+export * from './inputs';
 
 export interface WiFiNetwork {
   ssid: string;

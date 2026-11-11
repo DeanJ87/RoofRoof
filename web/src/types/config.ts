@@ -97,6 +97,14 @@ export interface LocationConfig {
   longitude: number; // -180..180
 }
 
+// The setup wizard (spec 015): new (opens once per page load), offered (a
+// banner, after an upgrade) or done, and the page to resume at (0-9).
+export type SetupState = 'new' | 'offered' | 'done';
+export interface SetupConfig {
+  state: SetupState;
+  step: number;
+}
+
 export interface Config {
   deviceName: string;
   wifi: WiFiConfig;
@@ -111,4 +119,6 @@ export interface Config {
   daylight?: DaylightConfig;
   location?: LocationConfig;
   alerts?: AlertsConfig;
+  // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
+  setup?: SetupConfig;
 }

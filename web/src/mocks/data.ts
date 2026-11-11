@@ -1,4 +1,4 @@
-import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, WiFiNetwork } from '../types';
+import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, RoofInputs, WiFiNetwork } from '../types';
 
 export { mockConfig } from './config';
 
@@ -169,3 +169,16 @@ export const mockRecentAlerts: AlertRecord[] = [
     channels: { pushover: { status: 'sent', detail: 'HTTP 200' } },
   },
 ];
+
+// GET /api/roof/inputs (spec 015): SQMeter over HTTP good and safe, N.I.N.A. answering with the mount parked.
+export const mockInputs: RoofInputs = {
+  weather: {
+    verdict: 'safe',
+    text: 'safe',
+    http: { enabled: true, state: 'good', generation: 1, ageMs: 2100, limitMs: 30000, safe: true, flags: 0, text: '' },
+    mqtt: { enabled: false, state: 'off', generation: 0, ageMs: 0, limitMs: 150000, safe: false, flags: 0, text: '' },
+    rainContact: 'notFitted',
+  },
+  park: { parked: true, text: 'parked' },
+  nina: { state: 'good', generation: 1, connected: true, atPark: true, slewing: false, ageMs: 900, text: '' },
+};
