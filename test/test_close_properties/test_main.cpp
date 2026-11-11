@@ -356,7 +356,7 @@ namespace
     const char *checkAlert(const Seen &seen, const Inputs &in, Watch &watch)
     {
         // A closed roof ends the trouble: the throttle starts afresh.
-        if (seen.decision.event == Event::Closed && seen.after == Phase::Idle)
+        if (seen.decision.event == Event::Closed && seen.after == Phase::Idle && seen.before == Phase::Closing)
         {
             for (auto &row : watch.alertedEver)
                 for (bool &ever : row)

@@ -460,14 +460,17 @@ Each was an open choice; the safest option the constitution allows was taken.
     has been closed or the weather has been safe for 10 minutes.
 11c. **A parked mount held back only by the back-off is not a park failure**: no "mount not parked"
     alert; the close goes ahead when the back-off ends.
-11d. **A safe spell shorter than 10 minutes doesn't restart an attempt's clock** (a flapping verdict
-    still ends in "mount not parked" in time).
+11d. **A safe spell shorter than 10 minutes doesn't restart an attempt** (a flapping verdict still
+    ends in "mount not parked": after the limit's worth of unsafe time, and at the latest twice the
+    limit plus 10 minutes after the attempt began).
 11e. **A stand-down survives a restart** (kept in memory that survives a reset or a crash, but not
     a power cut, and not reliably a firmware update, which may move that memory): after a power cut
     or an update with the roof at the open magnet, the sequence starts afresh and may close the roof
     once the mount is confirmed parked. Keeping it in NVS is the later option.
-11i. **A safe spell is left out of an attempt's clock** when it resumes, and the alert throttle is
-    reset when the roof reads closed (a new failure on the next spell alerts at once).
+11i. **A safe spell is left out of an attempt's clock** when it resumes; an attempt is also capped at
+    twice its limit plus 10 minutes of wall time. The alert throttle is reset when a close reaches
+    the closed magnet (a new failure on the next spell alerts at once), not when a reading flickers
+    back to closed at rest.
 11f. **Alerts are throttled per event and cause**, so a new cause (a fault after a refusal) alerts at
     once. **Three gate refusals in a row** for the park count as a refused close (alert and back-off).
 11g. **A waiting close that hasn't started within 30 s halts the sequence** like a close that took
