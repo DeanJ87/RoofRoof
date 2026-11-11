@@ -195,8 +195,15 @@ namespace SQM
             return;
         mqttClient->onCommand(
             "alerts/armed/set",
-            [this](const std::string &payload, RoofIo::Mqtt::Delivery)
+            [this](const std::string &payload, RoofIo::Mqtt::Delivery delivery)
             {
+                // A retained pause would replay on every reconnect (spec 008):
+                // only a live message changes it.
+                if (delivery != RoofIo::Mqtt::Delivery::Live)
+                {
+                    Logger::warn(TAG, "Ignored a retained alerts/armed/set message");
+                    return;
+                }
                 bool armed = false;
                 if (parseArmPayload(payload, armed))
                     pendingArm = encodeArm(armed, Alerts::ScheduleReason::UserMqtt);

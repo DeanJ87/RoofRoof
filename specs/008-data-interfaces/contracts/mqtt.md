@@ -7,7 +7,7 @@ alerts/armed, alerts/armed/set) are unchanged.
 
 | Topic | Direction | Retained | Payload | When |
 |---|---|---|---|---|
-| `<base>/state` | out | yes | the roof document | on connect; on a change of state, fault, position known, waiting close, close phase, weather, park or supply low (at most every 250 ms); every publish interval at rest |
+| `<base>/state` | out | yes | the roof document | on connect; at rest, on a change of state, fault, position known, close phase, weather or park (at most once a second) and every publish interval; while moving or a close waits, at most twice, 5 s apart, on a change of state, fault or waiting close |
 | `<base>/roof/set` | in | must not be | `OPEN`, `CLOSE`, `STOP` (any case, whitespace trimmed) | command |
 | `<base>/roof/result` | out | no | `{command, accepted, reason, text, state}` | one per command received |
 

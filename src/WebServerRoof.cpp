@@ -138,7 +138,7 @@ namespace SQM
 
     RoofIo::Snapshot WebServer::roofSnapshot() const
     {
-        RoofIo::Snapshot s = roof->snapshot();
+        RoofIo::Snapshot s = roof->snapshotWithChecks();
         const char *phase = closePhase ? closePhase() : nullptr;
         if (phase != nullptr)
             s.closePhase = phase;
@@ -180,7 +180,7 @@ namespace SQM
         else
         {
             const RoofControl::Outcome outcome =
-                roof != nullptr ? roof->command(request.command, Roof::Origin::Mqtt)
+                roof != nullptr ? roof->command(request.command, request.origin)
                                 : RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown};
             result.accepted = outcome.accepted;
             result.reason = outcome.reason;
@@ -229,9 +229,10 @@ namespace SQM
         RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
         std::string body;
         serializeJson(doc, body);
-        // Marked published either way: a failed publish means the link is
-        // going, and the reconnect publishes again.
-        mqttClient->publishSubtopic(RoofIo::Mqtt::STATE_SUBTOPIC, body, true);
-        roofStateSchedule.published(key, connection, now);
+        // A failed publish isn't retried at once (the link is going, and the
+        // reconnect publishes again); while the roof is busy nothing more is
+        // tried on this connection (research R4).
+        const bool ok = mqttClient->publishSubtopic(RoofIo::Mqtt::STATE_SUBTOPIC, body, true);
+        roofStateSchedule.published(key, connection, now, ok);
     }
 } // namespace SQM

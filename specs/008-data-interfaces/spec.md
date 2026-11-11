@@ -53,14 +53,16 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: One topic per value, or one document? → A: One retained document on `<base>/state`, as
   SQMeter does, whose `roof` object is the status document's `roof` object field for field. Home
   Assistant reads its values with templates.
-- Q: How often is the document published? → A: At once when the roof's state, fault, the close
-  phase, the weather or park check, the supply-low flag, the known-position flag or a waiting close
-  changes (at most every 250 ms); otherwise every publish interval (`mqtt.publishIntervalMs`,
-  default 60 s); and at once after every (re)connect. While the roof moves only those changes are
-  published, not a periodic position: a write to a broker whose link has silently died can hold the
-  main loop for seconds, and the roof's checks depend on that loop (spec 010 owns the network under
+- Q: How often is the document published? → A: At rest: at once when the roof's state, fault, the
+  close phase, the weather or park check or the known-position flag changes (at most once a second);
+  otherwise every publish interval (`mqtt.publishIntervalMs`, default 60 s); and at once after every
+  (re)connect. While the roof moves or a close waits: only when its state, fault or waiting close
+  changes, at most every 5 s, at most twice until it is at rest again, and not at all once a publish
+  has failed on that connection. A write to a broker whose link has silently died can hold the main
+  loop for seconds, and the roof's checks depend on that loop (spec 010 owns the network under
   motion). The live position while moving is in `/ws/status`; the MQTT document has the estimate at
-  the start and the end of each move.
+  the start and the end of each move. The supply-low flag is not a trigger: it comes from one
+  unfiltered reading and would flap under motor load.
 - Q: Does the Home Assistant cover carry the position? → A: No. The cover shows the state and, with
   commands on, Open, Close and Stop; the position is its own sensor (null while unknown). A cover
   position would invite a set-position command, which the roof doesn't have. The roof's `error` and
@@ -204,11 +206,12 @@ phase, the weather verdict and its reason, and the park check and its reason.
 - **FR-001**: The device MUST publish a retained roof document to `<base>/state` with the time
   (Unix seconds, 0 and a false clock-valid flag until the clock is set) and a `roof` object that is
   the status document's `roof` object field for field (one serializer).
-- **FR-002**: The document MUST be published at once after every connect; when the roof's state,
-  fault, known-position flag, waiting close, close phase, weather verdict, park check or supply-low
-  flag changes (at most every 250 ms); and otherwise every publish interval, except while the roof
-  moves, when only those changes are published. Home Assistant discovery MUST NOT be republished
-  while the roof moves; it goes out once the roof stops.
+- **FR-002**: The document MUST be published at once after every connect; at rest, when the roof's
+  state, fault, known-position flag, close phase, weather verdict or park check changes (at most
+  once a second), and otherwise every publish interval. While the roof moves or a close waits, it
+  MUST be published only on a change of state, fault or waiting close, at most every 5 s and at most
+  twice until the roof is at rest, and not after a failed publish on that connection. Home Assistant
+  discovery MUST NOT be republished while the roof moves; it goes out once the roof stops.
 - **FR-003**: Values that can't be read MUST be null, never a made-up number: position while
   unknown, the supply when unreadable, the motor current when current sense is off or unreadable.
 - **FR-004**: The device MUST accept roof commands only on `<base>/roof/set` from its configured
@@ -216,8 +219,8 @@ phase, the weather verdict and its reason, and the park check and its reason.
   ignored). Any other payload MUST be refused without effect.
 - **FR-005**: MQTT roof commands MUST run only while a setting (off by default, and off for config
   saved by an older release) turns them on. While off, each command MUST be refused as switched off.
-- **FR-006**: A retained message on the command topic MUST never be acted on, and a message whose
-  retained flag can't be determined MUST be treated as retained.
+- **FR-006**: A retained message on the command topic (or on the alerts pause topic) MUST never be
+  acted on, and a message whose retained flag can't be determined MUST be treated as retained.
 - **FR-007**: Every MQTT command MUST pass the device's one shared command check with an MQTT origin
   whose rules are at least as strict as an Alpaca client's:
   - open only while the weather is safe; close only while the park is confirmed (and the park
@@ -286,7 +289,9 @@ Each was an open choice; the safest option the constitution allows was taken.
 2. **MQTT roof commands are off by default** and need a setting to turn on; an older config loads
    with them off. Home Assistant's cover is read-only until then.
 3. **Retained commands are never acted on**, and a message whose retained flag can't be read counts
-   as retained. Because the MQTT library doesn't pass the flag, the device reads it from the received
+   as retained. (A command published with the retain flag still reaches the device live once, as
+   MQTT delivers it to current subscribers without the flag; only its later replays are refused.)
+   The same applies to the alerts pause switch, so a retained pause can't replay on every reconnect. Because the MQTT library doesn't pass the flag, the device reads it from the received
    packet; the library version is pinned so that reading stays correct, and a mismatch fails safe.
 4. **No clear-fault, abort or set-position over MQTT.** Clearing a fault stays a person's action in
    the web UI.
@@ -299,8 +304,9 @@ Each was an open choice; the safest option the constitution allows was taken.
    MQTT session), so nothing stale can run later.
 9. **The weather and park shown are what the roof's checks use**, stale hand-over included, not the
    raw sources.
-10. **Publish cadence**: on change (at most every 250 ms), the publish interval otherwise, at once
-    on connect; no periodic publish and no discovery while the roof moves, so MQTT adds as little as
+10. **Publish cadence**: on change (at most once a second), the publish interval otherwise, at once
+    on connect; while the roof moves or a close waits, at most two publishes, 5 s apart, on a change
+    of state, fault or waiting close, none after a failed one, and no discovery, so MQTT adds as little as
     possible to the main loop while the roof's checks depend on it. The live position stays in
     `/ws/status`.
 11. **The new setting reuses the existing MQTT card's toggle and "?" tip** (no new parts or styles,

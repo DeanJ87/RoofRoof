@@ -24,8 +24,15 @@ namespace SQM
             constexpr const char *STATE_SUBTOPIC = "state";
             constexpr const char *COMMAND_SUBTOPIC = "roof/set";
             constexpr const char *RESULT_SUBTOPIC = "roof/result";
-            // A change of the state key is published at most this often.
-            constexpr uint32_t CHANGE_MIN_MS = 250;
+            // At rest, a change of the state key is published at most this often.
+            constexpr uint32_t CHANGE_MIN_MS = 1000;
+            // While the roof moves or a close waits, only a change of its state,
+            // fault or waiting close, at most this often and at most
+            // BUSY_MAX_PUBLISHES times until it is at rest again (research R4:
+            // a write to a half-open link can hold the main loop for seconds,
+            // and the roof's checks need that loop every 5 s).
+            constexpr uint32_t BUSY_MIN_MS = 5000;
+            constexpr uint8_t BUSY_MAX_PUBLISHES = 2;
             // A payload longer than this (after trimming) is never a command.
             constexpr size_t MAX_COMMAND_PAYLOAD = 16;
             // The JSON pools for the documents, sized by test_state_document_fits
@@ -54,9 +61,13 @@ namespace SQM
             // What to do with a message on the command topic.
             struct Request
             {
-                bool run = false;       // pass `command` to RoofControl::command(..., Origin::Mqtt)
+                bool run = false;       // pass `command` and `origin` to RoofControl::command
                 bool isCommand = false; // the payload names a command (even when not run)
                 Roof::Command command = Roof::Command::Stop;
+                // Always MQTT: not a person, so the remote-client rules apply
+                // (no move from unknown, no fault clear, no stopping or reversing
+                // a close in bad weather; RoofIo::checkCommand).
+                Roof::Origin origin = Roof::Origin::Mqtt;
                 std::string reason; // why not run: "switchedOff", "retained", "notACommand"
                 std::string text;
             };
@@ -91,28 +102,31 @@ namespace SQM
                 std::string closePhase;
                 Safety::Verdict weather = Safety::Verdict::Unknown;
                 bool parkConfirmed = false;
-                bool supplyLow = false;
 
                 bool operator==(const StateKey &other) const;
                 bool operator!=(const StateKey &other) const { return !(*this == other); }
             };
             StateKey keyOf(const Snapshot &snapshot);
 
-            // When the document is due: never published or a new connection; the
-            // key changed and CHANGE_MIN_MS has passed; at rest, the interval has
-            // passed. While the roof moves or a close waits, only changes
-            // (research R4: nothing periodic may hold the main loop then).
+            // When the document is due: never published, or a new connection; at
+            // rest, the key changed and CHANGE_MIN_MS has passed, or the interval
+            // has passed. While the roof moves or a close waits (research R4):
+            // only a change of state, fault or waiting close, BUSY_MIN_MS after
+            // the last publish, at most BUSY_MAX_PUBLISHES times, and nothing at
+            // all once a publish has failed on this connection.
             class StateSchedule
             {
             public:
                 bool due(const StateKey &key, uint32_t connection, uint32_t nowMs, uint32_t intervalMs) const;
-                void published(const StateKey &key, uint32_t connection, uint32_t nowMs);
+                void published(const StateKey &key, uint32_t connection, uint32_t nowMs, bool ok);
 
             private:
                 bool any = false;
                 StateKey last;
                 uint32_t lastConnection = 0;
                 uint32_t lastMs = 0;
+                bool failed = false;       // a publish on this connection failed
+                uint8_t busyPublishes = 0; // since the roof was last at rest
             };
         } // namespace Mqtt
     } // namespace RoofIo
