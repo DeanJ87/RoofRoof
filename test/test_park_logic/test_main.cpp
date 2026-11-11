@@ -19,7 +19,7 @@ namespace
 {
     constexpr uint32_t NOW_MS = 500000;
 
-    MountReading mount(bool connected, bool atPark, bool slewing, uint32_t takenAtMs = NOW_MS - 1000)
+    MountReading mount(bool connected, bool atPark, bool slewing, uint64_t takenAtMs = NOW_MS - 1000)
     {
         MountReading m;
         m.status = ReadingStatus::Good;
@@ -116,6 +116,20 @@ void test_not_parked_when_nina_stale_by_one_ms(void)
     TEST_ASSERT_EQUAL_UINT32(ParkNinaStale, r.reasons);
     TEST_ASSERT_FALSE(r.disagree); // a stale reading can't disagree
     TEST_ASSERT_EQUAL_STRING("not parked: N.I.N.A. stale: reading 10.0 s old > 10 s", describe(r).c_str());
+}
+
+// A reading older than a 32-bit millis() can count stays stale (convergence F1).
+void test_not_parked_after_very_long_silence(void)
+{
+    for (uint64_t silence : {(uint64_t{1} << 31) + 1, (uint64_t{1} << 32) - 1, (uint64_t{1} << 32) + 1000})
+    {
+        ParkInputs in = parkedInputs(0);
+        in.nina.takenAtMs = 5000;
+        in.nowMs = 5000 + silence;
+        const ParkResult r = evaluatePark(in);
+        TEST_ASSERT_FALSE(r.parked);
+        TEST_ASSERT_EQUAL_UINT32(ParkNinaStale, r.reasons);
+    }
 }
 
 void test_not_parked_when_mount_not_connected(void)
@@ -259,6 +273,7 @@ int main(int, char **)
     RUN_TEST(test_not_parked_for_each_nina_failure);
     RUN_TEST(test_nina_fresh_at_exactly_the_limit);
     RUN_TEST(test_not_parked_when_nina_stale_by_one_ms);
+    RUN_TEST(test_not_parked_after_very_long_silence);
     RUN_TEST(test_not_parked_when_mount_not_connected);
     RUN_TEST(test_not_parked_when_slewing_even_at_park);
     RUN_TEST(test_not_parked_when_not_at_park);

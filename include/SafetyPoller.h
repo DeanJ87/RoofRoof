@@ -36,9 +36,16 @@ namespace SQM
             Nina::MountReading nina;
             bool parkPending = false;  // asked for, not sent yet
             Nina::ParkReply lastPark;  // the latest park request's outcome
-            uint32_t lastParkAtMs = 0; // 0 = none sent
-            uint32_t generation = 0;   // bumped by configure(), so readers can tell old records
+            uint64_t lastParkAtMs = 0; // 0 = none sent
+            // Bumped when that part's settings change, so a reply to the old
+            // settings is dropped.
+            uint32_t sqmeterGeneration = 0;
+            uint32_t ninaGeneration = 0;
         };
+
+        // Milliseconds since start, 64-bit (never wraps). The time base of
+        // every safety record.
+        static uint64_t nowMs();
 
         SafetyPoller();
         ~SafetyPoller();
@@ -46,7 +53,8 @@ namespace SQM
         SafetyPoller &operator=(const SafetyPoller &) = delete;
 
         void begin(const Targets &targets);
-        // New settings: records start again from nothing. Any task.
+        // New settings. Only the part whose settings changed starts again from
+        // nothing; an unrelated save keeps every reading. Any task.
         void configure(const Targets &targets);
         // Ask N.I.N.A. to park the mount (spec 005 calls this). Any task; the
         // poller sends it before its next mount-info poll.
@@ -56,7 +64,6 @@ namespace SQM
     private:
         static constexpr uint32_t SQMETER_POLL_MS = 5000;
         static constexpr uint32_t NINA_POLL_MS = 2000;
-        static constexpr uint16_t HTTP_TIMEOUT_MS = 3000;
         static constexpr uint32_t TICK_MS = 100;
         static constexpr uint32_t TASK_STACK_BYTES = 6144;
 
@@ -65,15 +72,17 @@ namespace SQM
         void pollSqmeter(const Targets &targets, uint32_t generation);
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
         void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation);
-        Targets currentTargets(uint32_t &generation) const;
+        Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
         TaskHandle_t task = nullptr;
         Targets targets;
         Snapshot state;
+        bool configured = false;
         std::atomic<bool> parkRequested{false};
-        // Reset by configure() on another task.
-        std::atomic<uint32_t> nextSqmeterMs{0};
-        std::atomic<uint32_t> nextNinaMs{0};
+        // The poll schedule: the poller task's own (a settings change makes
+        // that part due at once).
+        uint64_t nextSqmeterMs = 0;
+        uint64_t nextNinaMs = 0;
     };
 } // namespace SQM

@@ -72,7 +72,7 @@ namespace SQM
                 return false;
             }
 
-            MountReading readMount(JsonObjectConst response, uint32_t nowMs)
+            MountReading readMount(JsonObjectConst response, uint64_t nowMs)
             {
                 MountReading reading = failedReading(ReadingStatus::Good, "", nowMs);
                 if (!readFlag(response, "Connected", reading.connected, reading))
@@ -89,7 +89,7 @@ namespace SQM
             }
         } // namespace
 
-        MountReading failedReading(ReadingStatus status, const std::string &detail, uint32_t nowMs)
+        MountReading failedReading(ReadingStatus status, const std::string &detail, uint64_t nowMs)
         {
             MountReading reading;
             reading.status = status;
@@ -108,7 +108,7 @@ namespace SQM
             return Request{Method::Get, PARK_PATH, "", ""};
         }
 
-        MountReading ApiV2::parseMountInfo(int httpStatus, const std::string &body, uint32_t nowMs) const
+        MountReading ApiV2::parseMountInfo(int httpStatus, const std::string &body, uint64_t nowMs) const
         {
             DynamicJsonDocument doc(PARSE_DOC_BYTES);
             if (!readEnvelope(body, ResponseKind::Mount, doc) || !doc["Success"].is<bool>())

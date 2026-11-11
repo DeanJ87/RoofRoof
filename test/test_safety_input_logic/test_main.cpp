@@ -30,7 +30,7 @@ namespace
         return r;
     }
 
-    SourceRecord goodRecord(bool safe, uint32_t flags, uint32_t atMs, Availability availability = Availability::Online)
+    SourceRecord goodRecord(bool safe, uint32_t flags, TimeMs atMs, Availability availability = Availability::Online)
     {
         SourceRecord record;
         record.enabled = true;
@@ -50,7 +50,7 @@ namespace
         return in;
     }
 
-    SourceStatus assessHttp(const SourceRecord &record, uint32_t nowMs)
+    SourceStatus assessHttp(const SourceRecord &record, TimeMs nowMs)
     {
         return assessSource(record, SourceKind::SqmeterHttp, SourceClock{LIMIT_MS, START_MS, nowMs});
     }
@@ -258,13 +258,38 @@ void test_future_timestamp_counts_as_fresh(void)
     TEST_ASSERT_EQUAL_UINT32(0, s.ageMs);
 }
 
-void test_millis_wrap_is_handled(void)
+// A source silent for longer than a 32-bit millis() can count (24.9 and
+// 49.7 days) stays stale: times are 64-bit (convergence F1).
+void test_stale_after_very_long_silence(void)
 {
-    const uint32_t before = UINT32_MAX - 999; // 1 s before the wrap
-    SourceRecord record = goodRecord(true, 0, before);
-    const SourceStatus s = assessSource(record, SourceKind::SqmeterHttp, SourceClock{LIMIT_MS, before - 100000, 4000});
-    TEST_ASSERT_TRUE(s.state == SourceState::Good);
-    TEST_ASSERT_EQUAL_UINT32(5000, s.ageMs);
+    const TimeMs lastGood = 5000;
+    for (TimeMs silence : {(TimeMs{1} << 31) + 1, (TimeMs{1} << 32) - 1, (TimeMs{1} << 32) + 1000, TimeMs{1} << 40})
+    {
+        WeatherInputs in;
+        in.http = goodRecord(true, 0, lastGood, Availability::Unknown);
+        in.mqtt = goodRecord(true, 0, lastGood);
+        in.startedAtMs = 0;
+        in.nowMs = lastGood + silence;
+        const WeatherVerdict v = evaluateWeather(in);
+        TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
+        TEST_ASSERT_TRUE(v.http.state == SourceState::Stale);
+        TEST_ASSERT_TRUE(v.mqtt.state == SourceState::Stale);
+    }
+}
+
+void test_elapsed_saturates(void)
+{
+    TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, elapsedMs(0, TimeMs{1} << 33));
+    TEST_ASSERT_EQUAL_UINT32(0, elapsedMs(10, 5));
+    TEST_ASSERT_EQUAL_UINT32(5, elapsedMs(5, 10));
+}
+
+void test_old_reply_is_stale_inside_the_start_window(void)
+{
+    SourceRecord record;
+    record.enabled = true;
+    record.recordGood(reply(true, 0, LIMIT_MS + 1), START_MS + 100);
+    TEST_ASSERT_TRUE(assessHttp(record, START_MS + 200).state == SourceState::Stale);
 }
 
 // ---- MQTT availability ----
@@ -436,7 +461,7 @@ namespace
     // 8 offline (MQTT), 9 enabled with nothing yet.
     constexpr int SWEEP_KINDS = 10;
 
-    SourceRecord sweepRecord(int kind, bool mqtt, uint32_t nowMs)
+    SourceRecord sweepRecord(int kind, bool mqtt, TimeMs nowMs)
     {
         SourceRecord r;
         r.enabled = kind != 0;
@@ -445,7 +470,7 @@ namespace
         if (kind >= 1 && kind <= 4)
             r.recordGood(reply(kind == 1, flags[kind]), nowMs);
         if (kind == 5)
-            r.recordGood(reply(true, 0), nowMs - 200000);
+            r.recordGood(reply(true, 0, 200000), nowMs); // SQMeter's own reading is 200 s old
         if (kind == 6)
             r.recordFailure(Failure::Unreachable, "timeout", nowMs);
         if (kind == 7)
@@ -473,7 +498,7 @@ void test_never_safe_with_a_bad_source_exhaustive(void)
     for (int h = 0; h < SWEEP_KINDS; ++h)
         for (int m = 0; m < SWEEP_KINDS; ++m)
             for (RainContact contact : contacts)
-                for (uint32_t now : {START_MS + 1000, NOW_MS})
+                for (TimeMs now : {TimeMs{START_MS + 1000}, TimeMs{NOW_MS}})
                 {
                     WeatherInputs in;
                     in.http = sweepRecord(h, false, now);
@@ -512,7 +537,9 @@ int main(int, char **)
     RUN_TEST(test_unknown_at_start_and_never_safe);
     RUN_TEST(test_unsafe_beats_waiting_at_start);
     RUN_TEST(test_future_timestamp_counts_as_fresh);
-    RUN_TEST(test_millis_wrap_is_handled);
+    RUN_TEST(test_stale_after_very_long_silence);
+    RUN_TEST(test_elapsed_saturates);
+    RUN_TEST(test_old_reply_is_stale_inside_the_start_window);
     RUN_TEST(test_mqtt_offline_is_unsafe_at_once);
     RUN_TEST(test_mqtt_not_trusted_before_online);
     RUN_TEST(test_mqtt_stale_limit_is_150_s);

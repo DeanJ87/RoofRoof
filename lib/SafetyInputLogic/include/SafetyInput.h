@@ -15,6 +15,10 @@ namespace SQM
 {
     namespace Safety
     {
+        // A time in milliseconds since start, 64-bit so it never wraps (a
+        // 32-bit millis() wraps after 49.7 days and would make an old reply look new).
+        using TimeMs = uint64_t;
+
         // SQMeter's MQTT safe topic is republished every 60 s; two missed
         // refreshes plus margin (research D3).
         constexpr uint32_t MQTT_STALE_MS = 150000;
@@ -46,15 +50,22 @@ namespace SQM
         {
             bool enabled = false;
             bool haveGood = false;
-            uint32_t goodAtMs = 0; // when the last good reply arrived
-            SqmeterReply last;     // the last good reply
+            TimeMs goodAtMs = 0; // when the last good reply arrived
+            SqmeterReply last;   // the last good reply
             Failure failure = Failure::None;
-            uint32_t failureAtMs = 0; // when the latest failure happened
-            std::string detail;       // its text ("connection refused", "missing reasonFlags")
+            TimeMs failureAtMs = 0; // when the latest failure happened
+            std::string detail;     // its text ("connection refused", "missing reasonFlags")
             Availability availability = Availability::Unknown;
+            // MQTT: whether a message has arrived on <base>/safe and <base>/safety
+            // since the last subscription. The first one is usually the broker's
+            // retained copy, which may be old (see applyMqttMessage).
+            bool safeSeen = false;
+            bool safetySeen = false;
 
-            void recordGood(const SqmeterReply &reply, uint32_t nowMs);
-            void recordFailure(Failure kind, const std::string &text, uint32_t nowMs);
+            void recordGood(const SqmeterReply &reply, TimeMs nowMs);
+            void recordFailure(Failure kind, const std::string &text, TimeMs nowMs);
+            // The topics were (re)subscribed: the broker replays retained copies next.
+            void resubscribed();
         };
 
         // A source as judged at `now`.
@@ -83,9 +94,9 @@ namespace SQM
         // The time a source is judged at.
         struct SourceClock
         {
-            uint32_t limitMs;     // stale after this long without a good reply
-            uint32_t startedAtMs; // when the source was switched on (boot or settings)
-            uint32_t nowMs;
+            uint32_t limitMs;   // stale after this long without a good reply
+            TimeMs startedAtMs; // when the source was switched on (boot or settings)
+            TimeMs nowMs;
         };
 
         SourceStatus assessSource(const SourceRecord &record, SourceKind kind, const SourceClock &clock);
@@ -127,8 +138,8 @@ namespace SQM
             RainContact rainContact = RainContact::NotFitted;
             uint32_t httpLimitMs = 30000; // the stale-time setting
             uint32_t mqttLimitMs = MQTT_STALE_MS;
-            uint32_t startedAtMs = 0;
-            uint32_t nowMs = 0;
+            TimeMs startedAtMs = 0;
+            TimeMs nowMs = 0;
         };
 
         struct WeatherVerdict
@@ -153,8 +164,8 @@ namespace SQM
         const char *verdictName(Verdict verdict);
         // "30 s", "30.5 s".
         std::string formatSeconds(uint32_t ms);
-        // `now - then`, or 0 for a timestamp after `now`; safe across the
-        // millis() wrap.
-        uint32_t elapsedMs(uint32_t thenMs, uint32_t nowMs);
+        // `now - then`, 0 for a timestamp after `now` (taken after `now` was
+        // sampled), saturating at UINT32_MAX (49 days, far past any limit).
+        uint32_t elapsedMs(TimeMs thenMs, TimeMs nowMs);
     } // namespace Safety
 } // namespace SQM

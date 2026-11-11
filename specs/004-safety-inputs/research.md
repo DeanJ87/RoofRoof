@@ -205,7 +205,9 @@ info for `AtPark: true`. Park doesn't check `CanPark`; a park that fails inside 
   core 0 (the Wi-Fi core; the async web server is on core 1). Plain `http://` only, so no TLS and
   no contention with the alert task's TLS session (constitution VI). It runs `HTTPClient` with a
   `DualStackClient` as `AlertDispatcher` does (IPv6 literals work). Readings go into a
-  mutex-guarded snapshot with `millis()` timestamps; the main loop reads the snapshot.
+  mutex-guarded snapshot with 64-bit millisecond timestamps (`esp_timer`, never wraps); the main
+  loop reads the snapshot. Settings saved on the web server's task are handed to the loop, which
+  applies them.
   *Alternative:* polling from the main loop (rejected: a 3 s timeout would stall the loop and the
   watchdog margin).
 - **D10. MQTT messages arrive on the main loop** (PubSubClient's callback runs inside

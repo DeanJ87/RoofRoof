@@ -53,7 +53,7 @@ bool saveConfigCallback(const Config &newConfig)
     if (timeManager)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
-        safetyInputs->updateConfig(config, millis());
+        safetyInputs->updateConfig(config);
 
     if (!config.ota.enabled || config.ota.password.empty())
         arduinoOTAEnabled = false;
@@ -192,7 +192,7 @@ void startServices()
 
     // Spec 004: the weather verdict and park confirmation (reported only; spec 005 acts on them).
     safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
-    safetyInputs->begin(config, millis());
+    safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
 
     webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
@@ -270,7 +270,7 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     if (safetyInputs)
-        safetyInputs->handle(millis());
+        safetyInputs->handle();
 
     // Small delay to prevent a tight loop.
     delay(10);

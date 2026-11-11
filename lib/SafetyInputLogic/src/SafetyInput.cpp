@@ -20,7 +20,7 @@ namespace SQM
             {
                 if (record.failure == Failure::None)
                     return false;
-                return !record.haveGood || static_cast<int32_t>(record.failureAtMs - record.goodAtMs) >= 0;
+                return !record.haveGood || record.failureAtMs >= record.goodAtMs;
             }
 
             SourceState failedState(const SourceRecord &record)
@@ -119,24 +119,32 @@ namespace SQM
             }
         } // namespace
 
-        void SourceRecord::recordGood(const SqmeterReply &reply, uint32_t nowMs)
+        void SourceRecord::recordGood(const SqmeterReply &reply, TimeMs nowMs)
         {
             haveGood = true;
             goodAtMs = nowMs;
             last = reply;
         }
 
-        void SourceRecord::recordFailure(Failure kind, const std::string &text, uint32_t nowMs)
+        void SourceRecord::recordFailure(Failure kind, const std::string &text, TimeMs nowMs)
         {
             failure = kind;
             failureAtMs = nowMs;
             detail = text;
         }
 
-        uint32_t elapsedMs(uint32_t thenMs, uint32_t nowMs)
+        void SourceRecord::resubscribed()
         {
-            const uint32_t elapsed = nowMs - thenMs;
-            return static_cast<int32_t>(elapsed) < 0 ? 0 : elapsed;
+            safeSeen = false;
+            safetySeen = false;
+        }
+
+        uint32_t elapsedMs(TimeMs thenMs, TimeMs nowMs)
+        {
+            if (thenMs >= nowMs)
+                return 0;
+            const TimeMs elapsed = nowMs - thenMs;
+            return elapsed > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(elapsed);
         }
 
         SourceStatus assessSource(const SourceRecord &record, SourceKind kind, const SourceClock &clock)
@@ -160,8 +168,10 @@ namespace SQM
             const bool trusted = kind == SourceKind::SqmeterHttp || record.availability == Availability::Online;
             if (kind == SourceKind::SqmeterMqtt && record.availability == Availability::Offline)
                 s.state = SourceState::Offline;
-            else if (record.haveGood && trusted && s.ageMs <= clock.limitMs)
-                s.state = SourceState::Good;
+            else if (record.haveGood && trusted)
+                // Already older than the limit (SQMeter's own evaluatedAgeMs
+                // counts) is stale even inside the start-up window.
+                s.state = s.ageMs <= clock.limitMs ? SourceState::Good : failedState(record);
             else if (elapsedMs(clock.startedAtMs, clock.nowMs) <= clock.limitMs)
                 s.state = SourceState::Waiting;
             else

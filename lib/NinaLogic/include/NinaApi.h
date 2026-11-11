@@ -55,12 +55,12 @@ namespace SQM
             bool connected = false;
             bool atPark = false;
             bool slewing = false;
-            uint32_t takenAtMs = 0;
-            std::string detail; // why it isn't Good ("HTTP 500", "missing AtPark", N.I.N.A.'s Error)
+            uint64_t takenAtMs = 0; // 64-bit milliseconds since start: never wraps
+            std::string detail;     // why it isn't Good ("HTTP 500", "missing AtPark", N.I.N.A.'s Error)
         };
 
         // A failed attempt (no reply), stamped `nowMs`.
-        MountReading failedReading(ReadingStatus status, const std::string &detail, uint32_t nowMs);
+        MountReading failedReading(ReadingStatus status, const std::string &detail, uint64_t nowMs);
 
         enum class ParkOutcome : uint8_t
         {
@@ -85,7 +85,7 @@ namespace SQM
             virtual Request mountInfoRequest() const = 0;
             virtual Request parkRequest() const = 0;
             // `httpStatus` is the HTTP status code (> 0) of a reply that arrived.
-            virtual MountReading parseMountInfo(int httpStatus, const std::string &body, uint32_t nowMs) const = 0;
+            virtual MountReading parseMountInfo(int httpStatus, const std::string &body, uint64_t nowMs) const = 0;
             virtual ParkReply parsePark(int httpStatus, const std::string &body) const = 0;
         };
 
@@ -96,7 +96,7 @@ namespace SQM
             const char *name() const override { return "v2"; }
             Request mountInfoRequest() const override;
             Request parkRequest() const override;
-            MountReading parseMountInfo(int httpStatus, const std::string &body, uint32_t nowMs) const override;
+            MountReading parseMountInfo(int httpStatus, const std::string &body, uint64_t nowMs) const override;
             ParkReply parsePark(int httpStatus, const std::string &body) const override;
         };
 

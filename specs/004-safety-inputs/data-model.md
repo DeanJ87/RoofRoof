@@ -1,8 +1,8 @@
 # Data Model: Safety Inputs
 
 All types are in `namespace SQM::Safety` (`lib/SafetyInputLogic`) or `SQM::Nina`
-(`lib/NinaLogic`). Times are `millis()` values passed in; ages use unsigned subtraction, so a
-wrap after 49 days is harmless, and a timestamp after `now` counts as age 0.
+(`lib/NinaLogic`). Times are 64-bit milliseconds since start (`esp_timer`), passed in; they
+never wrap, and a timestamp after `now` counts as age 0.
 
 ## Weather side
 
@@ -37,11 +37,16 @@ Rules, in order (`assessSource`):
 
 1. not enabled → Off
 2. MQTT availability Offline → Offline
-3. a good reply (and, for MQTT, availability Online) whose age (time since it arrived plus
-   SQMeter's `evaluatedAgeMs`) ≤ the limit → Good (its `last` decides safe/unsafe)
+3. a good reply (and, for MQTT, availability Online): its age (time since it arrived plus
+   SQMeter's `evaluatedAgeMs`) ≤ the limit → Good (its `last` decides safe/unsafe); older →
+   step 5
 4. within the start-up window (time since start ≤ the limit) → Waiting
 5. the latest failure is newer than the last good reply → Unreachable / Unreadable
 6. otherwise → Stale (no good reply for longer than the limit, or none since start)
+
+How answers reach the record (`SqmeterSource.h`): `recordHttpReply` (no reply → Unreachable;
+not 200 or not the document → Unreadable; else good) and `applyMqttMessage` (availability,
+`safe`, `safety`; the first `safe`/`safety` after `resubscribed()` counts only if unsafe).
 
 A failed attempt never refreshes a source, but doesn't make it unsafe by itself while its last
 good reply is still within the limit (one dropped poll on a weak link must not close the roof).
