@@ -242,7 +242,8 @@ JSON on the device and in the web schema, with the shared range fixture.
   stopped (part-way) and error (a fault is latched).
 - **FR-002**: The logic MUST accept four commands, each with an origin (a person, or automatic):
   open, close, stop and abort. Stop and abort MUST always be accepted, from any origin, in any
-  state.
+  state. Commands MUST carry no time: every time the logic uses comes from its control steps. Abort
+  with no move under way changes nothing (a stopped roof keeps its estimate, since nothing moved).
 - **FR-003**: Every open or close MUST return accepted or refused; a refusal MUST carry the reason
   and, where there is one, the measured value and the limit (constitution III).
 - **FR-004**: Open or close MUST be refused while a fault is latched, while the Hall reading has not
@@ -256,8 +257,10 @@ JSON on the device and in the web schema, with the shared range fixture.
 - **FR-006**: The logic's output MUST be a driver command (off, forward, reverse) and a duty
   (0-255) for `lib/DriverLogic`. It MUST be off whenever no move is being driven.
 - **FR-007**: Which driver direction opens the roof MUST be a setting.
-- **FR-008**: Before the driver turns on after any stop, it MUST stay off for a dead time of at
-  least 500 ms, including when a move is reversed.
+- **FR-008**: Before the driver turns on after any stop, and after start-up, it MUST stay off for
+  a dead time of at least 500 ms, including when a move is reversed. The dead time MUST be timed by
+  control steps only, from the first step after the driver went off, so no caller's clock can
+  shorten it.
 - **FR-009**: The duty MUST never exceed the top duty setting; during a move from an unknown
   position it MUST never exceed the slow duty setting.
 - **FR-010**: A move from a known position MUST start at the slow duty and rise linearly to the
@@ -286,13 +289,15 @@ JSON on the device and in the web schema, with the shared range fixture.
   (the other end's, or the start magnet again after leaving it); Hall reading at a rail; over-current
   for the confirm time (current sense on); no current reading (current sense on); supply below its
   minimum or unreadable for the confirm time during a move; a control step later than the allowed
-  gap during a move; and a fault raised from outside (the park interlock of spec 005, the watchdog
-  of spec 003).
+  gap during a move; the drive budget used up (FR-025); and a fault raised from outside (the park
+  interlock of spec 005, the watchdog of spec 003).
 - **FR-017**: A fault MUST switch the driver off on the step it is detected, latch, make the state
   "error" and the position unknown, and record the fault kind, the measured value and the limit.
 - **FR-018**: A latched fault MUST be cleared only by a person's command. The logic MUST accept a
   fault restored at start-up so a restart doesn't clear it (saving it is spec 003's).
-- **FR-019**: A Hall rail reading MUST latch a fault whether or not the roof is moving.
+- **FR-019**: Three rail readings among the last eight, consecutive or not, MUST latch a fault
+  whether or not the roof is moving; fewer are a glitch and MUST NOT interrupt the confirmation of a
+  magnet.
 
 **Hall sensor**
 
@@ -314,6 +319,16 @@ JSON on the device and in the web schema, with the shared range fixture.
   may turn current sense on.
 - **FR-024**: The logic MUST refuse new settings while a move is being driven.
 
+**Added after the safety review**
+
+- **FR-025**: The total time driven since a magnet was last read (or a person last cleared a
+  fault) MUST NOT reach the drive budget: the longest single move, a whole travel at the slow duty
+  plus the margin. Stopping and restarting doesn't reset it, so repeated restarts of a jammed roof
+  with current sense off still latch a fault.
+- **FR-026**: A supply reading that is not finite or is above 16 V MUST count as unreadable, like
+  NaN. With current sense on, a current reading that is not finite or is below -0.5 A MUST count as
+  unreadable.
+
 ### Key Entities
 
 - **Roof settings**: travel, speed, margins, ramps, duties, direction, Hall polarity and thresholds,
@@ -332,7 +347,11 @@ JSON on the device and in the web schema, with the shared range fixture.
 - **SC-001**: Across at least 10,000 randomly generated sequences of commands, origins and
   readings, the logic never asks for both directions at once, never asks for a duty above the top
   duty (or above the slow duty in a move from unknown), never drives while a fault is latched, and
-  never starts a move from an unknown position without a person's command.
+  never starts a move from an unknown position without a person's command. They also keep the
+  driver off for the dead time after any stop and after start-up, latch a rail pattern of three in
+  eight readings, keep the total driving without a magnet under the drive budget, and end every
+  move at its target magnet. Each of these properties is shown to catch a deliberately broken
+  version of the logic.
 - **SC-002**: Every fault kind and every timeout is shown by a test to switch the driver off on the
   step it occurs, at its boundary (one step before: still driving; at the limit: stopped).
 - **SC-003**: A simulated open and close with the default settings each end at their magnet within
@@ -361,7 +380,17 @@ Each is the safest option the constitution allows; the owner can change any of t
 - **Fixed values** (not settings, as they describe the ADC and the control loop, not the roof):
   dead time 500 ms, Hall confirmation 3 readings, Hall hysteresis 40 counts, Hall rails at 30 and
   4065 counts, over-current and supply confirm time 250 ms, the allowed control-step gap 100 ms
-  (spec 003 steps the logic every 20 ms or faster).
+  (spec 003 steps the logic every 20 ms or faster), a rail confirmed by 3 rail readings among the
+  last 8, a supply reading above 16 V or a current reading below -0.5 A treated as unreadable.
+- **Commands carry no time.** The dead time, timeouts and estimate use only the control steps'
+  clock, so a command from another task (web server, MQTT, Alpaca) with a skewed timestamp can't
+  shorten the dead time. Start-up counts as a stop, so the first drive also waits the dead time.
+- **The drive budget is the longest single move** (a whole travel at the slow duty plus the
+  margin) and is reset by reading any magnet or by a person clearing a fault. A roof that is stopped
+  and restarted part-way many times without reaching a magnet latches `driveBudget` rather than
+  getting a fresh timeout each time.
+- **Abort with no move under way keeps the position.** Nothing moved, so Alpaca's AbortSlew on a
+  stopped roof leaves its estimate.
 - **Added settings beyond the roadmap's list**: the open direction (so a reversed motor is a
   setting, not a rewire), the leave time (so a reversed motor or a jam at an end is caught in
   seconds rather than at the full timeout), and the supply minimum (the low-supply fault is

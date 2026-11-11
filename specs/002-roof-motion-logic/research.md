@@ -5,7 +5,7 @@ Each decision: what was chosen, why, and what else was considered.
 ## R1. One controller object, stepped with readings
 
 - **Decision**: `Roof::Controller` holds the state. `tick(readings)` advances one control step and
-  `command(cmd, origin, nowMs)` takes a command between steps; both leave the driver output ready in
+  `command(cmd, origin)` takes a command between steps (no time: see R11); both leave the driver output ready in
   `output()`. Time is `uint32_t` milliseconds and every elapsed time is an unsigned difference, so
   the 49.7-day wrap is harmless.
 - **Rationale**: Spec 003's motion task calls `tick` at a fixed rate and applies `output()` through
@@ -72,7 +72,7 @@ Each decision: what was chosen, why, and what else was considered.
 ## R6. Faults and their confirmation
 
 - **Decision**: fault kinds `timeout`, `didNotLeave`, `wrongMagnet`, `hallRail`, `overCurrent`,
-  `currentUnreadable`, `supplyLow`, `lateStep`, `external`. Over-current and supply low (or
+  `currentUnreadable`, `supplyLow`, `lateStep`, `driveBudget`, `external`. Over-current and supply low (or
   unreadable) must last 250 ms while driving; a late step is a gap > 100 ms between steps while
   driving; the others act on the step they are seen (Hall ones after the 3-reading confirmation).
   Each records the measured value and the limit: elapsed and timeout (ms), amps and limit, volts and
@@ -127,3 +127,24 @@ fault; current, supply → fault; else the profile's duty. 5. Idle: follow the H
   fields.
 - **Alternatives**: nested `roof.hall.*` / `roof.currentSense.*` (the range fixture and both of its
   test harnesses only address `section.key`).
+
+## R11. Changes from the safety review
+
+- **Commands carry no time.** First the dead time was measured from the `nowMs` a command passed
+  in. A command stamped later than the next step made the unsigned difference wrap, and a
+  stale stamp shortened the pause. Now the dead time runs from the first step after the driver went
+  off, and `command` and `raiseFault` take no time at all. Construction counts as a stop, so the
+  first drive after start-up waits too. *Alternative rejected*: validating stamps against the last
+  step (keeps a second clock in the API for no benefit).
+- **Rails in a window.** Consecutive-only confirmation let an intermittent connector (good, rail,
+  good, rail...) avoid both the rail fault and the arrival, leaving only the hard timeout. Now
+  rail readings are counted in a window (3 in the last 8) and kept out of the magnet's run.
+  *Alternative rejected*: any single rail reading while driving faults (one ADC spike would stop
+  the roof).
+- **Drive budget.** Each move had its own timeout, so stop/restart cycles of a jammed roof with
+  current sense off never timed out. The total driven time since a magnet (or a person's clear) is
+  now capped at the longest single move. *Alternative rejected*: a budget counted in restarts (a
+  person nudging the roof a few times is legitimate).
+- **Reading sanity.** Supply readings above 16 V or not finite, and current readings below -0.5 A
+  or not finite, are unreadable: a 12 V system can't read 16 V, and the IBT-2's sense outputs can't
+  go negative beyond ADC offset noise.
