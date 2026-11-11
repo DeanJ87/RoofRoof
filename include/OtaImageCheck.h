@@ -22,7 +22,9 @@ namespace SQM
         void beginScan();
         bool scanWritten(size_t written, std::string &why);
 
-        // The fallback after Update.end() (a marker the scan didn't reach):
+        // The fallback after Update.end(), for a marker the scan didn't reach
+        // (in the image's last sector). The upload tool has already been told
+        // "OK" by then, so only the log says it was refused.
         // true if the new image was refused and the boot partition put back;
         // `why` is FirmwareImage::verdictMessage's text. False when the image
         // is fine (or nothing new was written).

@@ -268,7 +268,7 @@ namespace SQM
             hadFault = controller.status().fault.kind != Roof::FaultKind::None;
             outcome = outcomeOf(controller.clearFault(origin));
 #if ROOFROOF_BENCH
-            if (benchGuard.tripped())
+            if (benchGuard.tripped() && outcome.accepted)
             {
                 // Spec 011: on a powered board the fault comes straight back; say so.
                 benchLatch();

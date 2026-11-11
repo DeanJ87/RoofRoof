@@ -32,7 +32,7 @@ until a person moves it.
 - `RoofControl::begin()` (bench): about 1 s of real supply readings, 20 ms apart, before the task
   starts. Then every step.
 - Tripped: `raiseFault(FaultCause::BenchSupply, measured, 6.0)`, every step for the rest of the
-  boot.
+  boot. A clear-fault on a tripped board answers 409 with reason `benchSupply` and the fault text.
 
 ## Upload rules
 

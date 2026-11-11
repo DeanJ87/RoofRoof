@@ -84,9 +84,10 @@ public:
     std::string roofInject(const std::string &json);
     // The panel's view: the injectors, the mount, and what the device sees.
     std::string roofPanel() const;
-    // Spec 010's hold as the demo models it: "" or why a settings save, a
-    // restore, an upload or a restart is refused now (the roof is moving).
-    std::string platformHold() const;
+    // Spec 010's hold, the firmware's own rule (RoofIo::platformHold): "" or
+    // why `action` ("flashWrite", "firmwareUpload", "filesystemUpload",
+    // "restart") is refused now (the roof moving, the automatic close working).
+    std::string platformHold(const std::string &action) const;
 
     // --- Settings ----------------------------------------------------------
     std::string getConfig(bool redacted) const { return cfg.toJson(redacted); }
