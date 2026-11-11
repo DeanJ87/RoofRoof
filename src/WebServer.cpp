@@ -4,6 +4,8 @@
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
+#include "RoofControl.h"
+#include "RoofReadings.h"
 #include "WebServerShared.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
@@ -262,15 +264,19 @@ namespace SQM
         sendPendingAlertTest();
 
         // Status every 2 seconds, and at once when the recent alerts or the
-        // settings change.
+        // settings change, or (at most every 250 ms) the roof's state or fault.
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
-        const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision;
+        const uint32_t roofRevision = roof != nullptr ? roof->revision() : 0;
+        const bool roofChanged = roofRevision != lastRoofRevision && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
+        const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
         if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
         {
             broadcastStatusData();
             lastStatusBroadcast = now;
+            lastRoofBroadcast = now;
             lastAlertsRevision = alertsRevision;
             lastConfigRevision = configRevision;
+            lastRoofRevision = roofRevision;
         }
     }
 

@@ -18,6 +18,7 @@ namespace SQM
     void WebServer::setupAPIRoutes()
     {
         setupBackupRoutes();
+        setupRoofRoutes();
         server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
         // What's actually in effect (SQMeter spec 020).
         server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });
@@ -76,6 +77,8 @@ namespace SQM
             return;
         }
 
+        if (refuseWhileMoving(request, *configOpt))
+            return;
         if (!saveAndApply(*configOpt))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());

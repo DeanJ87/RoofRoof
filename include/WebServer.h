@@ -9,6 +9,7 @@
 #include "DeviceCore.h"
 #include "HaDiscovery.h"
 #include "MQTTClient.h"
+#include "RoofTypes.h"
 #include "SettingsDeps.h"
 #include "TimeManager.h"
 #include <ArduinoJson.h>
@@ -26,6 +27,8 @@
 
 namespace SQM
 {
+    class RoofControl;
+
     // The device's HTTP server: the REST API, the live-update WebSocket, the
     // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer
     // with the sensors, safety monitor and display removed). RoofRoof spec 002
@@ -42,6 +45,8 @@ namespace SQM
         WebServer(const WebServer &) = delete;
         WebServer &operator=(const WebServer &) = delete;
 
+        // The roof (spec 003); before begin(). Without it the roof routes answer 503.
+        void setRoof(RoofControl *control) { roof = control; }
         void begin();
         void handle();
         // No alert queued or being delivered.
@@ -77,6 +82,9 @@ namespace SQM
 
         TimeManager *timeManager;
         MQTTClient *mqttClient;
+        RoofControl *roof = nullptr;
+        uint32_t lastRoofRevision = 0;
+        uint32_t lastRoofBroadcast = 0;
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;
 
@@ -215,6 +223,14 @@ namespace SQM
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
         // Saves settings and applies what takes effect at once (a settings save and a restore).
         bool saveAndApply(const Config &next);
+
+        // The roof (src/WebServerRoof.cpp).
+        void setupRoofRoutes();
+        void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
+        void handleRoofClearFault(AsyncWebServerRequest *request);
+        // Answers 409 and returns true when `next` changes motion settings while the roof moves.
+        bool refuseWhileMoving(AsyncWebServerRequest *request, const Config &next);
+        void appendRoof(JsonDocument &doc) const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;

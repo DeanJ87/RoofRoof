@@ -3,6 +3,7 @@
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
+#include "RoofControl.h"
 #include "WebServer.h"
 #include "version.h"
 #include <ArduinoJson.h>
@@ -186,6 +187,7 @@ namespace SQM
         JsonObject stacks = doc.createNestedObject("stackFree");
         stacks["asyncTcp"] = uxTaskGetStackHighWaterMark(nullptr);
         stacks["loop"] = loopTaskHandle != nullptr ? uxTaskGetStackHighWaterMark(loopTaskHandle) : 0;
+        stacks["roof"] = roof != nullptr ? roof->stackFreeBytes() : 0;
     }
 
     void WebServer::appendTime(JsonDocument &doc) const
@@ -296,6 +298,7 @@ namespace SQM
         appendWifi(doc);
         appendMqttStatus(doc);
         appendConnections(doc);
+        appendRoof(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())
             Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));

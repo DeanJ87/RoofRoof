@@ -231,6 +231,8 @@ namespace SQM
             request->send(409, "application/json", Backup::errorJson(Backup::Error::Stale).c_str());
             return;
         }
+        if (refuseWhileMoving(request, staged->preview.candidate))
+            return;
         if (!saveAndApply(staged->preview.candidate))
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
