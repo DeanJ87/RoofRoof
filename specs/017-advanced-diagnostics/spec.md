@@ -331,7 +331,8 @@ duty during a move, and the log after it; the documents match their contract sch
 - **FR-013**: A move in progress MUST be readable, marked `active`, with its profile so far.
 - **FR-014**: `POST /api/diag/moves/clear` MUST need `requireAuth` and the `X-RoofRoof: 1` header,
   MUST be refused (`409`, with the reason) while the roof moves or a close waits, and MUST empty the
-  log and the summary list, and remove the kept file (as a flash write, FR-016).
+  log and the summary list, and empty the kept file (or remove it while "Keep move summaries" is
+  off) as a flash write (FR-016).
 - **FR-015**: Move ids MUST increase by one per move; after a restart with kept summaries they MUST
   continue after the highest kept id.
 
@@ -352,7 +353,8 @@ duty during a move, and the log after it; the documents match their contract sch
   once, both not retained, and only while the roof isn't busy (not moving, no close waiting, the
   automatic close not attempting). While busy nothing MUST be published on them.
 - **FR-019**: A diagnostics publish MUST use the same publish path, socket time limits and write
-  budget as the other documents; a failed one is not retried until the next interval.
+  budget as the other documents; a failed live document waits for the next interval, a failed
+  summary goes again at the next check (once a second, at rest only).
 
 **Timing and memory**
 

@@ -111,6 +111,14 @@ namespace SQM
         return diagLog != nullptr ? diagLog->finished() : 0;
     }
 
+    uint32_t RoofControl::diagNextId() const
+    {
+        if (lock == nullptr)
+            return 1;
+        RoofLocked held(lock);
+        return diagLog != nullptr ? diagLog->nextId() : 1;
+    }
+
     RoofIo::HoldReason RoofControl::diagClear()
     {
         if (lock == nullptr)

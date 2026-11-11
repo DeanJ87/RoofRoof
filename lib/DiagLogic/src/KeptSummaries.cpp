@@ -156,9 +156,11 @@ namespace SQM
 
         bool KeptWrite::due(uint32_t nowMs, uint32_t revision, bool settingOn) const
         {
+            if (urgent)
+                return true; // a clear: the file is emptied (or removed) whatever the setting
             if (!settingOn || revision == writtenRevision)
                 return false;
-            return urgent || !any || nowMs - lastMs >= KEPT_WRITE_MIN_MS;
+            return !any || nowMs - lastMs >= KEPT_WRITE_MIN_MS;
         }
 
         void KeptWrite::written(uint32_t nowMs, uint32_t revision)

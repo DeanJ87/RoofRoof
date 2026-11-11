@@ -155,6 +155,8 @@ namespace SQM
         uint8_t diagIds(uint32_t (&out)[Diag::MAX_MOVES]) const;
         // Moves finished since the log was attached (0 without one).
         uint32_t diagFinished() const;
+        // The next move's id (1 without a log).
+        uint32_t diagNextId() const;
         // A person clears the log: refused (Moving or CloseWaiting) while the
         // roof moves or a close waits, so the move in progress isn't lost.
         RoofIo::HoldReason diagClear();

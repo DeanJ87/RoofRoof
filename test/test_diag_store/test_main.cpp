@@ -192,6 +192,8 @@ void test_a_write_is_due_only_with_a_change_and_the_interval_passed()
     TEST_ASSERT_TRUE(write.due(1000 + KEPT_WRITE_MIN_MS + 1, 8, true)); // a clear: at once
     write.written(1000 + KEPT_WRITE_MIN_MS + 1, 8);
     TEST_ASSERT_FALSE(write.due(1000 + KEPT_WRITE_MIN_MS + 2, 9, true));
+    write.cleared();
+    TEST_ASSERT_TRUE(write.due(1000 + KEPT_WRITE_MIN_MS + 3, 9, false)); // a clear removes the file with the setting off too
 }
 
 void test_nothing_goes_over_mqtt_while_busy()

@@ -38,8 +38,9 @@ namespace SQM
         public:
             // The list as it stands needs no write (it was just loaded).
             void start(uint32_t revision) { writtenRevision = revision; }
-            // The setting on, the list changed since the last write, and no
-            // write in the last KEPT_WRITE_MIN_MS (none yet, or a clear: at once).
+            // After a clear: at once, setting on or off (the file is emptied or
+            // removed). Otherwise the setting on, the list changed since the last
+            // write, and no write in the last KEPT_WRITE_MIN_MS (or none yet).
             bool due(uint32_t nowMs, uint32_t revision, bool settingOn) const;
             // Written (or the write failed: tried again after the interval).
             void written(uint32_t nowMs, uint32_t revision);

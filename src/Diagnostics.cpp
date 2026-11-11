@@ -85,6 +85,7 @@ namespace SQM
     {
         enabledNow.store(false);
         logReadyNow.store(false);
+        clearPending.store(false); // nothing to clear any more
         timing.store(false);
         // Taken back from the control step under the roof's lock before it is freed.
         Diag::MoveLog *attached = roof != nullptr ? roof->detachDiag() : nullptr;
@@ -182,6 +183,15 @@ namespace SQM
             keptRefusedAtMs = nowMs; // tried again after KEPT_RETRY_MS
             return;
         }
+        if (!keepNow.load())
+        {
+            // A clear with "Keep move summaries" off: the old file goes.
+            if (LittleFS.exists(Diag::KEPT_PATH))
+                LittleFS.remove(Diag::KEPT_PATH);
+            keptWrite.written(nowMs, summariesRevision());
+            return;
+        }
+        const uint32_t nextId = roof->diagNextId();
         std::vector<uint8_t> bytes(Diag::KEPT_MAX_BYTES);
         size_t size = 0;
         uint32_t revision = 0;
@@ -190,7 +200,7 @@ namespace SQM
             if (!list)
                 return;
             revision = list->revision();
-            size = Diag::encodeKept(*list, log->nextId(), clockNow(), bytes.data(), bytes.size());
+            size = Diag::encodeKept(*list, nextId, clockNow(), bytes.data(), bytes.size());
         }
         File file = LittleFS.open(Diag::KEPT_PATH, "w");
         const bool ok = file && file.write(bytes.data(), size) == size;
