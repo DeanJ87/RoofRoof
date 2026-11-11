@@ -4,6 +4,7 @@
 #include <ESPmDNS.h>
 #include <LittleFS.h>
 #include <esp_ota_ops.h>
+#include <esp_system.h>
 #include <esp_task_wdt.h>
 
 #include "CloseOnUnsafe.h"
@@ -15,6 +16,7 @@
 #include "MQTTClient.h"
 #include "MotionGuards.h"
 #include "MotorDriver.h"
+#include "PlatformGuard.h"
 #include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
@@ -69,6 +71,32 @@ bool saveConfigCallback(const Config &newConfig)
     else if (!arduinoOTAEnabled)
         Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
     return true;
+}
+
+const char *resetReasonText(esp_reset_reason_t reason)
+{
+    switch (reason)
+    {
+    case ESP_RST_POWERON:
+        return "power-on";
+    case ESP_RST_BROWNOUT:
+        return "brown-out";
+    case ESP_RST_SW:
+        return "software restart";
+    case ESP_RST_PANIC:
+        return "crash (panic)";
+    case ESP_RST_INT_WDT:
+        return "interrupt watchdog";
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:
+        return "task watchdog";
+    case ESP_RST_EXT:
+        return "reset pin";
+    case ESP_RST_DEEPSLEEP:
+        return "deep sleep";
+    default:
+        return "other";
+    }
 }
 
 // SQMeter spec 027 FR-021: tell the Arduino core not to mark a new firmware
@@ -147,15 +175,19 @@ void onArduinoOtaStart()
 {
     // The roof may have moved since handle() was let through: refuse unless it
     // is still closed. Aborted before the first write; ArduinoOTA then reports an error.
-    if (!RoofIo::commandLineOtaAllowed(roofControl.state()))
+    // Checked and begun under the roof's lock (spec 010): the roof closed, no
+    // close waiting and, for firmware, the close sequence idle.
+    const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
+    RoofIo::HoldReason why = RoofIo::HoldReason::None;
+    arduinoOtaToken =
+        PlatformGuard::beginUpload(firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FlashWrite, why, true);
+    if (arduinoOtaToken == 0)
     {
-        arduinoOtaToken = 0;
         Update.abort();
-        Logger::warn("OTA", "Command-line OTA refused: the roof isn't closed");
+        Logger::warn(
+            "OTA", "Command-line OTA refused: %s", why == RoofIo::HoldReason::Moving ? "the roof isn't closed" : RoofIo::holdText(why));
         return;
     }
-    arduinoOtaToken = FlashGuard::begin();
-    const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
     if (!firmware)
         LittleFS.end(); // writing the filesystem: unmount it first
     Logger::info("OTA", "Start updating %s", firmware ? "firmware" : "filesystem");
@@ -195,12 +227,9 @@ void startArduinoOta()
     ArduinoOTA.setPassword(config.ota.password.c_str());
     ArduinoOTA.setMdnsEnabled(false); // WiFiManager owns mDNS (and it can be off)
     ArduinoOTA.onStart(onArduinoOtaStart);
-    ArduinoOTA.onEnd(
-        []()
-        {
-            FlashGuard::end(arduinoOtaToken);
-            Logger::info("OTA", "Update complete");
-        });
+    // The flash stays busy until ArduinoOTA restarts the device (spec 010
+    // FR-009): no open may start in between and be cut off by the reset.
+    ArduinoOTA.onEnd([]() { Logger::info("OTA", "Update complete; restarting"); });
     ArduinoOTA.onProgress(onArduinoOtaProgress);
     ArduinoOTA.onError(onArduinoOtaError);
     ArduinoOTA.begin();
@@ -219,8 +248,10 @@ void startServices()
     HeapTrace::mark("ota + time");
 
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
-    // Spec 003: no MQTT connect while the roof moves or a close waits.
-    mqttClient->setConnectHold([]() { return roofControl.moving() || roofControl.closeWaiting(); });
+    // Spec 003: no MQTT connect while the roof moves or a close waits. Asked
+    // under the roof's lock after the connect is marked in flight (spec 010),
+    // so a command decided at the same moment is seen by one side or the other.
+    mqttClient->setConnectHold([]() { return roofControl.whileStill({}) != RoofIo::HoldReason::None; });
     mqttClient->begin();
     HeapTrace::mark("mqtt");
 
@@ -295,6 +326,9 @@ void setup()
 
     Logger::init();
     Logger::info("Main", "=== RoofRoof Starting ===");
+    // A reset mid-move (brown-out, crash, watchdog) leaves the position unknown
+    // between the magnets; the reason helps tell which (spec 010 FR-015).
+    Logger::info("Main", "Reset reason: %s", resetReasonText(esp_reset_reason()));
     Logger::info("Main", "ESP32 Chip: %s Rev %d", ESP.getChipModel(), ESP.getChipRevision());
     Logger::info("Main", "Flash: %d bytes", ESP.getFlashChipSize());
     // The image's own marker and the partition layout it runs on.
@@ -307,6 +341,8 @@ void setup()
     // server. Any fault saved before the restart is latched before its first
     // step; between the magnets the position is unknown and nothing moves.
     roofControl.begin(config);
+    // Spec 010: which platform actions wait for the roof and the close sequence.
+    PlatformGuard::begin(&roofControl, []() { return closeOnUnsafe.busy(); });
     HeapTrace::mark("roof");
     mountFilesystem();
     startWifi();
@@ -326,11 +362,6 @@ void setup()
 void loop()
 {
     esp_task_wdt_reset();
-
-    // While the roof opens or closes (spec 003): no restart, no command-line
-    // OTA (flash writes stall its control task and watchdog) and no MQTT
-    // reconnect (it could hold this loop past the safety hand-over limit).
-    WebServer::holdRestarts(roofControl.moving() || roofControl.closeWaiting());
 
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();

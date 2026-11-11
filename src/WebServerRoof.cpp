@@ -1,9 +1,11 @@
 #include "FlashGuard.h"
 #include "Logger.h"
 #include "MotionGuards.h"
+#include "PlatformGuard.h"
 #include "RoofControl.h"
 #include "RoofStatus.h"
 #include "WebServer.h"
+#include "WebServerShared.h"
 #include <ArduinoJson.h>
 
 // The roof's REST commands and its status section (spec 003 FR-013 to FR-016,
@@ -56,6 +58,13 @@ namespace SQM
             sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
+        // The setup hotspot has no password: it can't open the roof (spec 010 FR-012).
+        if (RoofIo::hotspotRefuses(command, WebShared::arrivedViaHotspot(request)))
+        {
+            Logger::warn(TAG, "Roof open over the setup hotspot refused");
+            sendOutcome(request, RoofControl::Outcome{false, RoofIo::HOTSPOT_REASON, RoofIo::HOTSPOT_TEXT, roof->state()});
+            return;
+        }
         const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person);
         Logger::info(TAG, "Roof %s from the web API: %s", Roof::commandName(command), outcome.accepted ? "accepted" : "refused");
         sendOutcome(request, outcome);
@@ -76,7 +85,6 @@ namespace SQM
     void WebServer::setRoof(RoofControl *control)
     {
         roof = control;
-        roofForRestart = control;
         if (roof == nullptr)
             return;
         roof->setBlockers(
@@ -84,6 +92,8 @@ namespace SQM
             {
                 RoofIo::Blockers b;
                 b.flashBusy = FlashGuard::busy();
+                b.flashWriting = FlashGuard::writing();
+                b.restartCommitted = restartCommitted();
                 b.mqttConnecting = mqttClient != nullptr && mqttClient->connecting();
                 b.restartScheduled = restartScheduled();
                 b.restartCancellable = restartCancellable();
@@ -103,11 +113,12 @@ namespace SQM
         return roof != nullptr && roof->moving();
     }
 
-    bool WebServer::refuseWhileMoving(AsyncWebServerRequest *request)
+    bool WebServer::refuseIfHeld(AsyncWebServerRequest *request, RoofIo::PlatformAction action)
     {
-        if (!roofMoving())
+        const RoofIo::HoldReason reason = PlatformGuard::hold(action);
+        if (reason == RoofIo::HoldReason::None)
             return false;
-        request->send(409, "application/json", createErrorJson("The roof is moving: stop it first, then try again").c_str());
+        request->send(409, "application/json", createErrorJson(RoofIo::holdText(reason)).c_str());
         return true;
     }
 

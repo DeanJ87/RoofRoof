@@ -7,6 +7,7 @@
 #include "CommandCheck.h"
 #include "DomeBridge.h"
 #include "DriverLogic.h"
+#include "FlashGuard.h"
 #include "Logger.h"
 #include "MotionGuards.h"
 #include "MotorDriver.h"
@@ -182,10 +183,12 @@ namespace SQM
     {
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
-        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
         Outcome outcome;
         {
             RoofLocked held(lock);
+            // Probed under the lock (spec 010 FR-001): a platform action
+            // registers itself under it too, so one of the two sees the other.
+            const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
             outcome = commandLocked(command, origin, now);
         }
         if (!outcome.accepted)
@@ -199,10 +202,10 @@ namespace SQM
     {
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
-        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
         Outcome outcome;
         {
             RoofLocked held(lock);
+            const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
             if (personStops != personStopsSeen)
                 outcome = Outcome{
                     false,
@@ -393,6 +396,28 @@ namespace SQM
         safetyAtMs = millis();
     }
 
+    RoofIo::HoldReason RoofControl::whileStill(const std::function<void()> &action, bool wait)
+    {
+        if (lock == nullptr)
+        {
+            // No lock: begin() failed before the task started, so nothing can move.
+            if (action)
+                action();
+            return RoofIo::HoldReason::None;
+        }
+        if (xSemaphoreTake(lock, wait ? portMAX_DELAY : 0) != pdTRUE)
+            return RoofIo::HoldReason::Moving;
+        RoofIo::PlatformState state;
+        state.roof = controller.status().state;
+        state.closeWaiting = closePending;
+        // Roof and close only: the close sequence's part is the caller's (PlatformGuard).
+        const RoofIo::HoldReason reason = RoofIo::platformHold(RoofIo::PlatformAction::FlashWrite, state);
+        if (reason == RoofIo::HoldReason::None && action)
+            action();
+        xSemaphoreGive(lock);
+        return reason;
+    }
+
     bool RoofControl::moving() const
     {
         return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load()));
@@ -439,11 +464,17 @@ namespace SQM
             // Never while driving: a flash write could hold up the next step.
             // A new fault has already switched the driver off, so it is saved
             // at once; only a cleared fault's removal can wait for the stop.
-            if (sameFault(fault, savedFault) || controller.status().driving)
+            // Counted as a flash write until it ends (spec 010): a command
+            // decided meanwhile waits (close) or is refused (open).
+            if (sameFault(fault, savedFault) || controller.status().driving || RoofIo::roofMoving(controller.status().state) ||
+                closePending)
                 return;
             wanted = fault;
+            FlashGuard::holdShort();
         }
-        if (!RoofFaultStore::save(wanted))
+        const bool saved = RoofFaultStore::save(wanted);
+        FlashGuard::releaseShort();
+        if (!saved)
         {
             saveFailedAtMs = now == 0 ? 1 : now;
             Logger::error(TAG, "Couldn't save the roof's fault in NVS; retrying in 5 s");

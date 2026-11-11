@@ -6,6 +6,7 @@
 #include <Update.h>
 
 #include "FlashGuard.h"
+#include "PlatformGuard.h"
 #include <esp_ota_ops.h>
 #include <esp_partition.h>
 
@@ -279,6 +280,7 @@ namespace SQM
         {
             uint32_t token;
             uint8_t refusal; // UploadRefusal
+            uint8_t held;    // RoofIo::HoldReason, for UploadHeld
         };
 
         enum UploadRefusal : uint8_t
@@ -286,6 +288,7 @@ namespace SQM
             UploadGoing = 0,
             UploadRoofMoving = 1,
             UploadRoofClosing = 2,
+            UploadHeld = 3, // refused at the start (spec 010): the roof, a waiting close or the close sequence
         };
 
         UploadState *uploadStateOf(AsyncWebServerRequest *request)
@@ -319,12 +322,18 @@ namespace SQM
             return false;
         if (index == 0)
         {
-            if (roofMoving())
+            // Checked and begun under the roof's lock (spec 010): a firmware
+            // upload also waits for the close sequence (a new firmware may not
+            // read its RTC record), a web UI upload only for the roof.
+            RoofIo::HoldReason why = RoofIo::HoldReason::None;
+            const RoofIo::PlatformAction action = firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FlashWrite;
+            state->token = PlatformGuard::beginUpload(action, why);
+            if (state->token == 0)
             {
-                state->refusal = UploadRoofMoving;
+                state->refusal = UploadHeld;
+                state->held = static_cast<uint8_t>(why);
                 return false;
             }
-            state->token = FlashGuard::begin();
             uploadActive = true;
             const uint32_t token = state->token;
             request->onDisconnect(
@@ -338,10 +347,15 @@ namespace SQM
         }
         if (state->refusal != UploadGoing)
             return false;
-        if (roofMoving() || FlashGuard::shouldStop(state->token))
+        // The chunk's progress is stamped under the roof's lock while the roof
+        // is still (spec 010): an upload that stalled past FLASH_STALE_MS let a
+        // close start, and this chunk must then not be written.
+        const RoofIo::HoldReason roofNow = PlatformGuard::keepUpload(state->token);
+        if (roofNow != RoofIo::HoldReason::None || FlashGuard::shouldStop(state->token))
         {
-            state->refusal = roofMoving() ? UploadRoofMoving : UploadRoofClosing;
-            Logger::warn("OTA", "Upload stopped part-way: the roof is %s", roofMoving() ? "moving" : "closing");
+            const bool moving = roofNow == RoofIo::HoldReason::Moving;
+            state->refusal = moving ? UploadRoofMoving : UploadRoofClosing;
+            Logger::warn("OTA", "Upload stopped part-way: the roof is %s", moving ? "moving" : "closing");
             if (firmware)
                 stopFirmwareWrite();
             else
@@ -350,7 +364,6 @@ namespace SQM
             uploadActive = false;
             return false;
         }
-        FlashGuard::progress(state->token);
         return true;
     }
 
@@ -365,8 +378,9 @@ namespace SQM
             return false;
         if (!requireAuth(request))
             return true;
-        const char *text = state->refusal == UploadRoofMoving ? "The roof is moving: stop it first, then try again"
-                                                              : "Upload stopped: the roof is closing; upload again once it has closed";
+        const char *text = state->refusal == UploadHeld         ? RoofIo::holdText(static_cast<RoofIo::HoldReason>(state->held))
+                           : state->refusal == UploadRoofMoving ? "The roof is moving: stop it first, then try again"
+                                                                : "Upload stopped: the roof is closing; upload again once it has closed";
         sendClosing(request, 409, createErrorJson(text).c_str());
         return true;
     }

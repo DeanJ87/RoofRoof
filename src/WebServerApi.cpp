@@ -1,6 +1,7 @@
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
+#include "PlatformGuard.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
@@ -77,19 +78,16 @@ namespace SQM
             return;
         }
 
-        if (refuseWhileMoving(request))
+        if (!saveAsFlashWrite(request, *configOpt))
             return;
-        if (!saveAndApply(*configOpt))
-        {
-            request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
-            return;
-        }
         request->send(200, "application/json", "{\"success\":true}");
     }
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
     {
-        if (!requireAuth(request) || refuseWhileMoving(request))
+        // It drops the current network for up to 10 s: never while the roof
+        // moves, a close waits or the close sequence needs N.I.N.A. (spec 010).
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiChange))
             return;
 
         JsonObject jsonObj = json.as<JsonObject>();
@@ -135,7 +133,7 @@ namespace SQM
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
     {
-        if (!requireAuth(request) || refuseWhileMoving(request))
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::Restart))
             return;
         request->send(200, "application/json", "{\"success\":true,\"message\":\"Restarting...\"}");
         scheduleRestart(500);
@@ -145,7 +143,9 @@ namespace SQM
     {
         // Starting a radio scan is an action, like joining a network
         // (/api/wifi/connect): both need the password when protection is on.
-        if (!requireAuth(request))
+        // A scan takes the radio off channel for about 2 s: a lost N.I.N.A.
+        // poll during a close stops it with a fault (spec 010).
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiScan))
             return;
 
         int n = WiFi.scanComplete();
@@ -199,11 +199,13 @@ namespace SQM
         const wl_status_t status = WiFi.status();
         if (status == WL_CONNECTED)
         {
-            // The save writes the flash: never while the roof moves (try again next pass).
-            if (!wifiConnectConfigSaved && roofMoving())
-                return;
             if (!wifiConnectConfigSaved)
             {
+                // The save writes the flash: never while the roof moves or a
+                // close waits (try again next pass; spec 010).
+                const PlatformGuard::FlashWrite write;
+                if (write.refused() != RoofIo::HoldReason::None)
+                    return;
                 Config config = getConfigCallback();
                 config.wifi.ssid = pendingWifiSSID;
                 config.wifi.password = pendingWifiPassword;

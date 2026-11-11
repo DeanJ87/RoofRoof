@@ -49,6 +49,10 @@ namespace SQM
         // Main loop: the roof as the alert engine sees it (spec 007), as of
         // the last step.
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
+        // Any task: the sequence is in any phase but idle (an attempt, a
+        // back-off or a stand-down). Restarts, firmware updates and Wi-Fi
+        // changes wait meanwhile (spec 010).
+        bool busy() const { return phaseNow.load() != static_cast<uint8_t>(CloseSeq::Phase::Idle); }
 
     private:
         static constexpr const char *TAG = "Close";
@@ -65,6 +69,7 @@ namespace SQM
         void retryAlert(uint64_t nowMs);
 
         CloseSeq::Sequence sequence;
+        std::atomic<uint8_t> phaseNow{static_cast<uint8_t>(CloseSeq::Phase::Idle)};
         std::atomic<uint32_t> parkTimeoutMs{CloseSeq::DEFAULT_PARK_TIMEOUT_MS};
         AlertSink alertSink;
         DeliveryProbe deliveryProbe;
