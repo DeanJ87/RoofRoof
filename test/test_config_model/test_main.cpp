@@ -509,6 +509,16 @@ void test_roof_at_every_maximum_fits_the_persisted_size()
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
     TEST_ASSERT_TRUE(cfg.toJson(false, false).size() < Config::MAX_PERSISTED_JSON_BYTES);
+    // ArduinoJson drops what doesn't fit without an error: with long strings
+    // everywhere, every section must still be in the document.
+    cfg.wifi.ssid = std::string(32, 's');
+    cfg.wifi.password = std::string(63, 'p');
+    cfg.mqtt.broker = std::string(60, 'b');
+    cfg.safety.httpUrl = "http://" + std::string(100, 'h') + "/api/safety";
+    cfg.park.ninaUrl = "http://" + std::string(100, 'n') + ":1888";
+    const std::string json = cfg.toJson();
+    for (const char *section : {"\"wifi\"", "\"mqtt\"", "\"safety\"", "\"park\"", "\"roof\"", "\"alerts\"", "\"minSupplyVolts\""})
+        TEST_ASSERT_TRUE_MESSAGE(json.find(section) != std::string::npos, section);
 }
 
 void test_roof_missing_section_keeps_defaults()
