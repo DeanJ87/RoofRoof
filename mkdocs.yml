@@ -92,6 +92,7 @@ nav:
     - Updates: user-guide/ota.md
     - ASCOM Alpaca: user-guide/alpaca.md
     - Alerts: user-guide/alerts.md
+    - Bench mode: user-guide/bench-mode.md
   - Hardware:
     - Wiring: hardware/wiring.md
     - Calibration: hardware/calibration.md

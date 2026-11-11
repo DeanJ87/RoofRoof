@@ -15,6 +15,9 @@ This page is the wiring reference for the roof controller's ESP32: which pin doe
     - GPIO32, GPIO33 (park switches) and GPIO4 (rain contact): internal pull-ups on; a closed contact reads low.
     - GPIO25 and GPIO26: 20 kHz PWM, never both at once; GPIO27: high only while a move is driven.
 
+!!! tip "Trying the firmware without a roof"
+    The [bench-mode](../user-guide/bench-mode.md) firmware runs on a bare board with a simulated roof and never drives GPIO25, 26 or 27. It refuses to simulate while GPIO36 reads a 12 V supply, so it can't stand in for the roof.
+
 !!! danger "Fit the EN pull-down before connecting the motor driver"
     Until the firmware starts, the driver's inputs float. Without the pull-down on EN described [below](#the-en-pull-down) a reset, a crash, a brown-out or flashing can switch the motor on.
 

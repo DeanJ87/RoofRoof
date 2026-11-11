@@ -5,7 +5,9 @@ import { formatIsoWithOffset, localClock } from './posixTz';
 
 // The demo's emulated RoofRoof: the firmware's own logic (device core,
 // WebAssembly), ticking once a second like the device. State lasts until the
-// tab closes (sessionStorage). Spec 011 adds the simulated roof.
+// tab closes (sessionStorage). Spec 011 adds the simulated roof: the device's
+// own motion logic and close sequence on a simulated motor, magnets and Hall
+// sensor, with the Demo panel's injectors (./roof.ts).
 
 const STORAGE_KEY = 'roofroof.demo.v1';
 // The latest release: what the demo device reports. Set at build time from
@@ -21,6 +23,24 @@ interface Saved {
   clockMs: number;
   savedAt: number;
 }
+
+// The Demo panel's roof controls (tools/demo-core EmulatedDevice::roofPanel).
+export interface RoofPanel {
+  unsafe: boolean;
+  rain: boolean;
+  parkFails: boolean;
+  jam: boolean;
+  supplyLow: boolean;
+  mount: 'parked' | 'unparked' | 'slewing';
+  state: string;
+  weather: string;
+  park: string;
+  phase: string;
+}
+
+export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow'>> & {
+  mount?: 'park' | 'unpark';
+};
 
 // What the device is still waiting on.
 export interface Pending {
@@ -162,6 +182,26 @@ class DemoDevice {
     return { status: reply.status, body, contentType: reply.contentType };
   }
 
+  /** POST /api/roof/<name> as a person (spec 011): open, close, stop, clear-fault. */
+  roofCommand(name: string): Reply {
+    const reply = JSON.parse(this.core.roofCommand(name));
+    this.persist();
+    this.notify();
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** The Demo panel's roof controls (spec 011). */
+  roofPanel(): RoofPanel {
+    return JSON.parse(this.core.roofPanel());
+  }
+
+  roofInject(change: RoofInjection): RoofPanel {
+    const panel = JSON.parse(this.core.roofInject(JSON.stringify(change)));
+    this.persist();
+    this.notify();
+    return panel;
+  }
+
   /** The device core's backup routes (SQMeter spec 033), answered by demo/backup.ts. */
   backupCore = (): BackupCore => this.core;
 
@@ -177,6 +217,10 @@ class DemoDevice {
   setTimeMultiplier(multiplier: number) {
     this.timeMultiplier = multiplier;
     this.persist();
+    this.notify();
+  }
+
+  private notify() {
     this.listeners.forEach((listener) => listener());
   }
 
@@ -234,6 +278,9 @@ class DemoDevice {
         alpaca: { enabled: true },
         mqtt: { enabled: true, broker: '192.168.1.10', topic: 'roofroof' },
         alerts: { enabled: true, ntfy: { enabled: true, topic: 'roofroof-demo' } },
+        // The simulated SQMeter and N.I.N.A. (spec 011): the demo starts safe and parked.
+        safety: { http: { enabled: true, url: 'http://sqmeter.local/api/safety' } },
+        park: { nina: { url: 'http://192.168.1.20:1888' } },
       }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with

@@ -4,7 +4,7 @@
 // the demo. One EmulatedDevice holds what the device would hold - settings,
 // the alert engine and schedule, and the Alpaca API - and answers the same
 // requests with the same documents. No I/O: the demo feeds it the time
-// (SQMeter spec 016). Spec 011 adds the simulated roof.
+// (SQMeter spec 016). Spec 011 adds the simulated roof (emulated_roof.h).
 
 #include <ArduinoJson.h>
 
@@ -21,6 +21,7 @@
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
+#include "emulated_roof.h"
 
 using namespace SQM;
 
@@ -66,14 +67,23 @@ public:
 
     // --- Alpaca::Backend ---------------------------------------------------
     bool alpacaEnabled() const override { return cfg.alpaca.enabled; }
-    // No Dome until the demo has a simulated roof (spec 011): a Dome that can
-    // never move would look broken. The members below are never reached.
-    std::vector<Alpaca::DeviceInfo> devices() const override { return {}; }
+    // The roof's Dome (spec 006), on the simulated roof (spec 011).
+    std::vector<Alpaca::DeviceInfo> devices() const override { return {Alpaca::domeDeviceInfo("demo")}; }
     std::string serverName() const override { return cfg.deviceName; }
     std::string location() const override { return ""; }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }
-    Alpaca::DomeStatus domeStatus() const override { return {}; }
-    Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction) override { return {false, "The demo has no roof"}; }
+    Alpaca::DomeStatus domeStatus() const override { return roof.domeStatus(); }
+    Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action) override { return roof.domeCommand(action); }
+
+    // --- The roof (spec 011) -------------------------------------------------
+    // POST /api/roof/<name> (open, close, stop, clear-fault), as a person.
+    // Returns {status, body} like the device (200, 409; 404 for another name).
+    std::string roofCommand(const std::string &name);
+    // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow} (any subset)
+    // and {mount: "park"|"unpark"}. Returns roofPanel().
+    std::string roofInject(const std::string &json);
+    // The panel's view: the injectors, the mount, and what the device sees.
+    std::string roofPanel() const;
 
     // --- Settings ----------------------------------------------------------
     std::string getConfig(bool redacted) const { return cfg.toJson(redacted); }
@@ -197,4 +207,7 @@ private:
     std::string clockDate = "--";
     Alpaca::Router router;
     std::string firmwareVersion;
+    DemoRoof::EmulatedRoof roof;
+    bool roofBooted = false; // the roof boots on the first tick after a (re)start
+    void runRoof();
 };

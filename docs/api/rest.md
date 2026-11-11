@@ -47,7 +47,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12 }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "rainContact": "notFitted", "closePending": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
 }
 ```
 
@@ -80,7 +80,8 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
-| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`), `measured`, `limit` and `text` |
+| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`, `benchSupply`), `measured`, `limit` and `text` |
+| `simulation` | `off` on a real roof; `bench` for the bench-mode firmware (a simulated roof, the motor never driven; see [Bench mode](../user-guide/bench-mode.md)); `demo` in the online demo |
 | `watchdogTrips`, `maxStepGapMs`, `maxWatchdogBeatAgeMs` | since the restart: how often the watchdog switched the driver off, the longest gap between control steps, and the oldest watchdog heartbeat a step saw (the driver needs it at most 50 ms old) |
 
 `stackFree.roof` is the roof control task's unused stack in bytes.
