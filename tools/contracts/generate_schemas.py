@@ -33,6 +33,9 @@ DOCUMENTS = {
     "alerts_armed": "alerts-armed",
     "management_v1_description": "alpaca-description",
     "management_v1_configureddevices": "alpaca-configured-devices",
+    "diag": "diag",
+    "diag_moves": "diag-moves",
+    "diag_move": "diag-move",
 }
 
 # Objects keyed by data (a variable set of keys): only their values are described.

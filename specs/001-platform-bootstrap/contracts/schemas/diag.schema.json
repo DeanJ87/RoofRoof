@@ -1,0 +1,284 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "diag",
+  "type": "object",
+  "properties": {
+    "control": {
+      "type": "object",
+      "properties": {
+        "maxBeatAgeMs": {
+          "type": "number"
+        },
+        "maxGapMs": {
+          "type": "number"
+        },
+        "maxStepUs": {
+          "type": "null"
+        },
+        "periodMs": {
+          "type": "number"
+        },
+        "stepUs": {
+          "type": "null"
+        },
+        "watchdogLimitMs": {
+          "type": "number"
+        },
+        "watchdogMarginMs": {
+          "type": "number"
+        },
+        "watchdogTrips": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "maxBeatAgeMs",
+        "maxGapMs",
+        "maxStepUs",
+        "periodMs",
+        "stepUs",
+        "watchdogLimitMs",
+        "watchdogMarginMs",
+        "watchdogTrips"
+      ],
+      "additionalProperties": false
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "log": {
+      "type": "string"
+    },
+    "loop": {
+      "type": "object",
+      "properties": {
+        "maxPassMs": {
+          "type": "null"
+        },
+        "passMs": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "maxPassMs",
+        "passMs"
+      ],
+      "additionalProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "freeHeap": {
+          "type": "null"
+        },
+        "largestBlock": {
+          "type": "null"
+        },
+        "minFreeHeap": {
+          "type": "null"
+        },
+        "stackFree": {
+          "type": "object",
+          "properties": {
+            "control": {
+              "type": "null"
+            },
+            "loop": {
+              "type": "null"
+            },
+            "network": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "control",
+            "loop",
+            "network"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "freeHeap",
+        "largestBlock",
+        "minFreeHeap",
+        "stackFree"
+      ],
+      "additionalProperties": false
+    },
+    "move": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "active",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "resetReason": {
+      "type": "null"
+    },
+    "roof": {
+      "type": "object",
+      "properties": {
+        "currentSense": {
+          "type": "boolean"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "driveBudgetMs": {
+          "type": "number"
+        },
+        "driveBudgetUsedMs": {
+          "type": "number"
+        },
+        "driving": {
+          "type": "boolean"
+        },
+        "duty": {
+          "type": "number"
+        },
+        "dutyPercent": {
+          "type": "number"
+        },
+        "elapsedMs": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "en": {
+          "type": "boolean"
+        },
+        "hall": {
+          "type": "string"
+        },
+        "hallCounts": {
+          "type": "number"
+        },
+        "lpwm": {
+          "type": "number"
+        },
+        "motorAmps": {
+          "type": "number"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "positionKnown": {
+          "type": "boolean"
+        },
+        "positionMm": {
+          "type": "number"
+        },
+        "powerWatts": {
+          "type": "number"
+        },
+        "remainingMs": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "restVolts": {
+          "type": "number"
+        },
+        "rpwm": {
+          "type": "number"
+        },
+        "sagVolts": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "supplyVolts": {
+          "type": "number"
+        },
+        "target": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "timeoutMs": {
+          "type": [
+            "null",
+            "number"
+          ]
+        }
+      },
+      "required": [
+        "currentSense",
+        "direction",
+        "driveBudgetMs",
+        "driveBudgetUsedMs",
+        "driving",
+        "duty",
+        "dutyPercent",
+        "elapsedMs",
+        "en",
+        "hall",
+        "hallCounts",
+        "lpwm",
+        "motorAmps",
+        "phase",
+        "positionKnown",
+        "positionMm",
+        "powerWatts",
+        "remainingMs",
+        "restVolts",
+        "rpwm",
+        "sagVolts",
+        "state",
+        "supplyVolts",
+        "target",
+        "timeoutMs"
+      ],
+      "additionalProperties": false
+    },
+    "simulation": {
+      "type": "string"
+    },
+    "uptimeS": {
+      "type": "number"
+    },
+    "wifi": {
+      "type": "object",
+      "properties": {
+        "rssi": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "rssi"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "control",
+    "enabled",
+    "log",
+    "loop",
+    "memory",
+    "move",
+    "resetReason",
+    "roof",
+    "simulation",
+    "uptimeS",
+    "wifi"
+  ],
+  "additionalProperties": false
+}

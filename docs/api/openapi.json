@@ -56,6 +56,10 @@
       "description": "Restart."
     },
     {
+      "name": "Diagnostics",
+      "description": "Advanced diagnostics (off by default): live readings and the move log."
+    },
+    {
       "name": "Alpaca",
       "description": "ASCOM Alpaca: see the standard.",
       "externalDocs": {
@@ -1467,6 +1471,242 @@
             }
           }
         }
+      }
+    },
+    "/api/diag": {
+      "get": {
+        "operationId": "get_diag",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Live diagnostics",
+        "description": "Everything the controller measures now: the supply and its sag, the motor current and power, the duty, direction and ramp phase, the driver's EN and PWM levels, the Hall reading, the position estimate with the elapsed and remaining time and the timeout, the drive budget, the control task's step time and gap, the watchdog margin, the main loop's pass time, memory, stacks, Wi-Fi signal, uptime and reset reason. The same document streams on /ws/diag. With advanced diagnostics off it is {\"enabled\": false}.\n\nOpen: Read-only: the live diagnostics readings (spec 017), like /api/status; no address or secret; {\"enabled\": false} while diagnostics are off.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Diag"
+                },
+                "example": {
+                  "enabled": true,
+                  "log": "ready",
+                  "simulation": "demo",
+                  "roof": {
+                    "state": "closing",
+                    "target": "closed",
+                    "phase": "softStart",
+                    "driving": true,
+                    "direction": "reverse",
+                    "duty": 177,
+                    "dutyPercent": 69,
+                    "en": true,
+                    "rpwm": 0,
+                    "lpwm": 177,
+                    "supplyVolts": 12.39,
+                    "restVolts": 12.6,
+                    "sagVolts": 0.21,
+                    "currentSense": true,
+                    "motorAmps": 3,
+                    "powerWatts": 37.2,
+                    "hallCounts": 2050,
+                    "hall": "between",
+                    "positionKnown": true,
+                    "positionMm": 1829.7,
+                    "elapsedMs": 980,
+                    "remainingMs": 50336,
+                    "timeoutMs": 65869,
+                    "driveBudgetUsedMs": 880,
+                    "driveBudgetMs": 136711
+                  },
+                  "control": {
+                    "periodMs": 20,
+                    "stepUs": null,
+                    "maxStepUs": null,
+                    "maxGapMs": 0,
+                    "watchdogLimitMs": 100,
+                    "watchdogMarginMs": 100,
+                    "maxBeatAgeMs": 0,
+                    "watchdogTrips": 0
+                  },
+                  "loop": {
+                    "passMs": null,
+                    "maxPassMs": null
+                  },
+                  "memory": {
+                    "freeHeap": null,
+                    "minFreeHeap": null,
+                    "largestBlock": null,
+                    "stackFree": {
+                      "control": null,
+                      "loop": null,
+                      "network": null
+                    }
+                  },
+                  "wifi": {
+                    "rssi": null
+                  },
+                  "uptimeS": 124,
+                  "resetReason": null,
+                  "move": {
+                    "id": 2,
+                    "active": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diag/moves": {
+      "get": {
+        "operationId": "get_diag_moves",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Move log",
+        "description": "The last 32 move summaries, newest first, each saying whether its profile is still held (the last 5 moves). The same handler serves /api/diag/moves/{id}: one move with its summary and downsampled profile (404 when it isn't held), or with ?format=csv the profile as a CSV download. With advanced diagnostics off the list is {\"enabled\": false}.\n\nOpen: Read-only: the move log's summaries and one move's profile (/api/diag/moves/{id}, JSON or CSV); readings only, changes nothing.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagMoves"
+                },
+                "example": {
+                  "enabled": true,
+                  "keep": false,
+                  "maxMoves": 5,
+                  "maxSummaries": 32,
+                  "moves": [
+                    {
+                      "id": 2,
+                      "active": false,
+                      "kept": false,
+                      "profile": true,
+                      "startMs": 124020,
+                      "endMs": 172460,
+                      "startEpoch": 1794428474,
+                      "endEpoch": 1794428523,
+                      "origin": "person",
+                      "target": "closed",
+                      "endState": "closed",
+                      "result": "arrived",
+                      "fault": null,
+                      "durationMs": 48440,
+                      "drivenMs": 48440,
+                      "fromUnknown": false,
+                      "peakAmps": 3,
+                      "averageAmps": 3,
+                      "stallAmps": null,
+                      "restVolts": 12.6,
+                      "minVolts": 12.3,
+                      "sagVolts": 0.3,
+                      "hallStart": 3532,
+                      "hallEnd": 565
+                    },
+                    {
+                      "id": 1,
+                      "active": false,
+                      "kept": false,
+                      "profile": true,
+                      "startMs": 4020,
+                      "endMs": 53520,
+                      "startEpoch": 1794428354,
+                      "endEpoch": 1794428404,
+                      "origin": "person",
+                      "target": "open",
+                      "endState": "open",
+                      "result": "arrived",
+                      "fault": null,
+                      "durationMs": 49500,
+                      "drivenMs": 49500,
+                      "fromUnknown": false,
+                      "peakAmps": 3,
+                      "averageAmps": 3,
+                      "stallAmps": null,
+                      "restVolts": null,
+                      "minVolts": 12.3,
+                      "sagVolts": null,
+                      "hallStart": 565,
+                      "hallEnd": 3532
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diag/moves/clear": {
+      "post": {
+        "operationId": "post_diag_moves_clear",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Clear the move log",
+        "description": "Empties the move log and the summary list, and the kept summaries at the next flash write the device allows. Needs the X-RoofRoof: 1 header. Refused while the roof moves or a close waits, so the move in progress isn't lost.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
       }
     },
     "/api/backup/preview": {
@@ -3890,6 +4130,26 @@
           "deviceName": {
             "type": "string"
           },
+          "diag": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "keepSummaries": {
+                "type": "boolean"
+              },
+              "mqtt": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "enabled",
+              "keepSummaries",
+              "mqtt"
+            ],
+            "additionalProperties": false
+          },
           "location": {
             "type": "object",
             "properties": {
@@ -4261,6 +4521,7 @@
           "autoClose",
           "daylight",
           "deviceName",
+          "diag",
           "location",
           "mqtt",
           "ntp",
@@ -4678,6 +4939,21 @@
           "deviceName": {
             "type": "string"
           },
+          "diag": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "keepSummaries": {
+                "type": "boolean"
+              },
+              "mqtt": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
           "location": {
             "type": "object",
             "properties": {
@@ -4950,6 +5226,573 @@
             "additionalProperties": false
           }
         },
+        "additionalProperties": false
+      },
+      "Diag": {
+        "title": "diag",
+        "type": "object",
+        "properties": {
+          "control": {
+            "type": "object",
+            "properties": {
+              "maxBeatAgeMs": {
+                "type": "number"
+              },
+              "maxGapMs": {
+                "type": "number"
+              },
+              "maxStepUs": {
+                "type": "null"
+              },
+              "periodMs": {
+                "type": "number"
+              },
+              "stepUs": {
+                "type": "null"
+              },
+              "watchdogLimitMs": {
+                "type": "number"
+              },
+              "watchdogMarginMs": {
+                "type": "number"
+              },
+              "watchdogTrips": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "maxBeatAgeMs",
+              "maxGapMs",
+              "maxStepUs",
+              "periodMs",
+              "stepUs",
+              "watchdogLimitMs",
+              "watchdogMarginMs",
+              "watchdogTrips"
+            ],
+            "additionalProperties": false
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "log": {
+            "type": "string"
+          },
+          "loop": {
+            "type": "object",
+            "properties": {
+              "maxPassMs": {
+                "type": "null"
+              },
+              "passMs": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "maxPassMs",
+              "passMs"
+            ],
+            "additionalProperties": false
+          },
+          "memory": {
+            "type": "object",
+            "properties": {
+              "freeHeap": {
+                "type": "null"
+              },
+              "largestBlock": {
+                "type": "null"
+              },
+              "minFreeHeap": {
+                "type": "null"
+              },
+              "stackFree": {
+                "type": "object",
+                "properties": {
+                  "control": {
+                    "type": "null"
+                  },
+                  "loop": {
+                    "type": "null"
+                  },
+                  "network": {
+                    "type": "null"
+                  }
+                },
+                "required": [
+                  "control",
+                  "loop",
+                  "network"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "freeHeap",
+              "largestBlock",
+              "minFreeHeap",
+              "stackFree"
+            ],
+            "additionalProperties": false
+          },
+          "move": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "active",
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "resetReason": {
+            "type": "null"
+          },
+          "roof": {
+            "type": "object",
+            "properties": {
+              "currentSense": {
+                "type": "boolean"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "driveBudgetMs": {
+                "type": "number"
+              },
+              "driveBudgetUsedMs": {
+                "type": "number"
+              },
+              "driving": {
+                "type": "boolean"
+              },
+              "duty": {
+                "type": "number"
+              },
+              "dutyPercent": {
+                "type": "number"
+              },
+              "elapsedMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "en": {
+                "type": "boolean"
+              },
+              "hall": {
+                "type": "string"
+              },
+              "hallCounts": {
+                "type": "number"
+              },
+              "lpwm": {
+                "type": "number"
+              },
+              "motorAmps": {
+                "type": "number"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "positionKnown": {
+                "type": "boolean"
+              },
+              "positionMm": {
+                "type": "number"
+              },
+              "powerWatts": {
+                "type": "number"
+              },
+              "remainingMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "restVolts": {
+                "type": "number"
+              },
+              "rpwm": {
+                "type": "number"
+              },
+              "sagVolts": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "supplyVolts": {
+                "type": "number"
+              },
+              "target": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "timeoutMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              }
+            },
+            "required": [
+              "currentSense",
+              "direction",
+              "driveBudgetMs",
+              "driveBudgetUsedMs",
+              "driving",
+              "duty",
+              "dutyPercent",
+              "elapsedMs",
+              "en",
+              "hall",
+              "hallCounts",
+              "lpwm",
+              "motorAmps",
+              "phase",
+              "positionKnown",
+              "positionMm",
+              "powerWatts",
+              "remainingMs",
+              "restVolts",
+              "rpwm",
+              "sagVolts",
+              "state",
+              "supplyVolts",
+              "target",
+              "timeoutMs"
+            ],
+            "additionalProperties": false
+          },
+          "simulation": {
+            "type": "string"
+          },
+          "uptimeS": {
+            "type": "number"
+          },
+          "wifi": {
+            "type": "object",
+            "properties": {
+              "rssi": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "rssi"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "control",
+          "enabled",
+          "log",
+          "loop",
+          "memory",
+          "move",
+          "resetReason",
+          "roof",
+          "simulation",
+          "uptimeS",
+          "wifi"
+        ],
+        "additionalProperties": false
+      },
+      "DiagMove": {
+        "title": "diag-move",
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalMs": {
+            "type": "number"
+          },
+          "move": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "averageAmps": {
+                "type": "number"
+              },
+              "drivenMs": {
+                "type": "number"
+              },
+              "durationMs": {
+                "type": "number"
+              },
+              "endEpoch": {
+                "type": "number"
+              },
+              "endMs": {
+                "type": "number"
+              },
+              "endState": {
+                "type": "string"
+              },
+              "fault": {
+                "type": "null"
+              },
+              "fromUnknown": {
+                "type": "boolean"
+              },
+              "hallEnd": {
+                "type": "number"
+              },
+              "hallStart": {
+                "type": "number"
+              },
+              "id": {
+                "type": "number"
+              },
+              "kept": {
+                "type": "boolean"
+              },
+              "minVolts": {
+                "type": "number"
+              },
+              "origin": {
+                "type": "string"
+              },
+              "peakAmps": {
+                "type": "number"
+              },
+              "profile": {
+                "type": "boolean"
+              },
+              "restVolts": {
+                "type": "null"
+              },
+              "result": {
+                "type": "string"
+              },
+              "sagVolts": {
+                "type": "null"
+              },
+              "stallAmps": {
+                "type": "null"
+              },
+              "startEpoch": {
+                "type": "number"
+              },
+              "startMs": {
+                "type": "number"
+              },
+              "target": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "active",
+              "averageAmps",
+              "drivenMs",
+              "durationMs",
+              "endEpoch",
+              "endMs",
+              "endState",
+              "fault",
+              "fromUnknown",
+              "hallEnd",
+              "hallStart",
+              "id",
+              "kept",
+              "minVolts",
+              "origin",
+              "peakAmps",
+              "profile",
+              "restVolts",
+              "result",
+              "sagVolts",
+              "stallAmps",
+              "startEpoch",
+              "startMs",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "enabled",
+          "intervalMs",
+          "move",
+          "points"
+        ],
+        "additionalProperties": false
+      },
+      "DiagMoves": {
+        "title": "diag-moves",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "keep": {
+            "type": "boolean"
+          },
+          "maxMoves": {
+            "type": "number"
+          },
+          "maxSummaries": {
+            "type": "number"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "active": {
+                  "type": "boolean"
+                },
+                "averageAmps": {
+                  "type": "number"
+                },
+                "drivenMs": {
+                  "type": "number"
+                },
+                "durationMs": {
+                  "type": "number"
+                },
+                "endEpoch": {
+                  "type": "number"
+                },
+                "endMs": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "endState": {
+                  "type": "string"
+                },
+                "fault": {
+                  "type": "null"
+                },
+                "fromUnknown": {
+                  "type": "boolean"
+                },
+                "hallEnd": {
+                  "type": "number"
+                },
+                "hallStart": {
+                  "type": "number"
+                },
+                "id": {
+                  "type": "number"
+                },
+                "kept": {
+                  "type": "boolean"
+                },
+                "minVolts": {
+                  "type": "number"
+                },
+                "origin": {
+                  "type": "string"
+                },
+                "peakAmps": {
+                  "type": "number"
+                },
+                "profile": {
+                  "type": "boolean"
+                },
+                "restVolts": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "result": {
+                  "type": "string"
+                },
+                "sagVolts": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "stallAmps": {
+                  "type": "null"
+                },
+                "startEpoch": {
+                  "type": "number"
+                },
+                "startMs": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "target": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "active",
+                "averageAmps",
+                "drivenMs",
+                "durationMs",
+                "endEpoch",
+                "endMs",
+                "endState",
+                "fault",
+                "fromUnknown",
+                "hallEnd",
+                "hallStart",
+                "id",
+                "kept",
+                "minVolts",
+                "origin",
+                "peakAmps",
+                "profile",
+                "restVolts",
+                "result",
+                "sagVolts",
+                "stallAmps",
+                "startEpoch",
+                "startMs",
+                "target"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "keep",
+          "maxMoves",
+          "maxSummaries",
+          "moves"
+        ],
         "additionalProperties": false
       },
       "Error": {

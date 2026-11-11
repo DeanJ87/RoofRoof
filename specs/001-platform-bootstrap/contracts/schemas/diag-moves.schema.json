@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "diag-moves",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "keep": {
+      "type": "boolean"
+    },
+    "maxMoves": {
+      "type": "number"
+    },
+    "maxSummaries": {
+      "type": "number"
+    },
+    "moves": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "averageAmps": {
+            "type": "number"
+          },
+          "drivenMs": {
+            "type": "number"
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "endEpoch": {
+            "type": "number"
+          },
+          "endMs": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "endState": {
+            "type": "string"
+          },
+          "fault": {
+            "type": "null"
+          },
+          "fromUnknown": {
+            "type": "boolean"
+          },
+          "hallEnd": {
+            "type": "number"
+          },
+          "hallStart": {
+            "type": "number"
+          },
+          "id": {
+            "type": "number"
+          },
+          "kept": {
+            "type": "boolean"
+          },
+          "minVolts": {
+            "type": "number"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "peakAmps": {
+            "type": "number"
+          },
+          "profile": {
+            "type": "boolean"
+          },
+          "restVolts": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "result": {
+            "type": "string"
+          },
+          "sagVolts": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "stallAmps": {
+            "type": "null"
+          },
+          "startEpoch": {
+            "type": "number"
+          },
+          "startMs": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "active",
+          "averageAmps",
+          "drivenMs",
+          "durationMs",
+          "endEpoch",
+          "endMs",
+          "endState",
+          "fault",
+          "fromUnknown",
+          "hallEnd",
+          "hallStart",
+          "id",
+          "kept",
+          "minVolts",
+          "origin",
+          "peakAmps",
+          "profile",
+          "restVolts",
+          "result",
+          "sagVolts",
+          "stallAmps",
+          "startEpoch",
+          "startMs",
+          "target"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "enabled",
+    "keep",
+    "maxMoves",
+    "maxSummaries",
+    "moves"
+  ],
+  "additionalProperties": false
+}
