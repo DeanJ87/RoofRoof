@@ -7,7 +7,7 @@ description: "RoofRoof alerts via ntfy, Pushover, webhook or MQTT: the roof's ev
 RoofRoof can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about a change even when N.I.N.A. and the observatory PC aren't running.
 
 !!! note "What raises an alert"
-    The **roof's** events: two critical ones from the [close on unsafe weather](close-on-unsafe.md) (the mount didn't park, the roof didn't close) and five others (a fault, a low supply, a lost weather source, the weather closing the roof, and the roof closed afterwards). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (none until a later spec), **Alerts resumed** and the **Send test** messages.
+    The **roof's** events: two critical ones from the [close on unsafe weather](close-on-unsafe.md) (the mount didn't park, the roof didn't close) and five others (a fault, a low supply, a lost weather source, the weather closing the roof, and the roof closed afterwards). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (the roof's [Dome](alpaca.md)), **Alerts resumed** and the **Send test** messages.
 
 !!! warning "Set up a channel before the roof runs unattended"
     The two critical roof alerts go to every channel that is switched on, even with **Send alerts** off or alerts paused. With no channel set up they reach nobody: only the serial log has them.

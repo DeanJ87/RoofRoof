@@ -32,7 +32,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 |---|---|---|---|
 | `main.cpp` | `src/main.cpp` | Changed: sensor, display, BLE, battery and update-check setup and tasks removed; the motor driver is held off first thing in `setup()` | No |
 | `WebServer.cpp`, `WebServer.h` | same | Changed: sensor, safety, display, language and release routes removed | No |
-| `WebServerAlpaca.cpp` | same | Changed: serves the generic device list (no devices until spec 006) | With `lib/AlpacaLogic` |
+| `WebServerAlpaca.cpp` | same | Changed: serves the generic device list with the roof's Dome (spec 006), commanded through `RoofControl` | With `lib/AlpacaLogic` |
 | `WebServerApi.cpp`, `WebServerStatus.cpp`, `WebServerLive.cpp` | same | Changed: sensor and safety documents removed; `/ws/status` only | No |
 | `WebServerAlerts.cpp` | same | Changed: battery and sensor events removed | No |
 | `WebServerUpdates.cpp` | same | Changed: GitHub release check removed; upload auth moved before the flash write | Yes (auth fix) |
@@ -54,7 +54,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | Library | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
 | AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; the roof's seven alert types (two critical), their inputs and rising-edge trackers in `src/RoofEvents.cpp`, and the announced-before-reset bits added (specs 005, 007) | No |
-| AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept | Yes (device list) |
+| AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept; the shared envelope moved to `src/RouterInternal.h`; the Dome (`AlpacaDome.h`, `src/AlpacaDome.cpp`, spec 006) and `ALPACA_ERR_INVALID_OPERATION` added | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
 | ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007) | No |
@@ -72,7 +72,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 ### `test/`
 
-The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim`, and (spec 003) `test_roof_io`, `test_roof_gates`, `test_roof_status`, `test_roof_check`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
+The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim`, and (spec 003) `test_roof_io`, `test_roof_gates`, `test_roof_status`, `test_roof_check`, and (spec 006) `test_alpaca_dome`, `test_dome_bridge`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
 
 ## Web UI
 
@@ -98,7 +98,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Docs site, mkdocs config and theme | `docs/`, `mkdocs.yml`, `overrides/` | Changed: pages for removed features deleted; user guide, API and development pages edited; stylesheet renamed `sqmeter.css` to `roofroof.css` | No |
 | Hardware docs | `docs/hardware` | Replaced: SQMeter's eight pages (BOM, PCB, enclosure, RG-15, wind and so on) by one wiring page | No |
 | Brand kit | `brand/` | Changed: RoofRoof mark, tokens and social images replace SQMeter's | No |
-| CI workflows | `.github/workflows` | Changed: language-pack and conformance jobs removed; build, docs, quality and diagram checks kept | No |
+| CI workflows | `.github/workflows` | Changed: language-pack jobs removed; build, docs, quality and diagram checks kept; the conformance job back in spec 006, for the Dome | No |
 | API contracts | `specs/001-platform-bootstrap/contracts` | New: JSON Schemas for RoofRoof's documents, generated by `tools/contracts` | No |
 
 ## Tools
@@ -110,7 +110,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | `tools/firmware` (flash budget, USB package) | same | Changed: one build target | No |
 | `tools/release` (changelog, notes) | same | Changed: RoofRoof repository and banner | No |
 | `tools/demo-core` | same | Changed: emulated device reworked for RoofRoof; sensor feed removed; builds `rr-core` | No |
-| `tools/alpaca-sim` | same | Changed: simulator serves no devices until spec 006 | No |
+| `tools/alpaca-sim` | same | Changed: serves the Dome, driven by the roof logic and the native tests' simulated roof (spec 006); `unsafe` and `unparked` options | No |
 | `tools/i18n` | same | Changed: translation, pack-building and review tooling removed; checker kept | No |
 | `tools/brand` | same | Changed: `build.mjs` added | No |
 | `tools/contract-check.py` | same | Changed: checks against RoofRoof's schemas | No |
@@ -137,4 +137,3 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Sky and weather dashboard cards, night chart, sun and moon card | `web/src/components` |
 | Demo panel's sensor inputs, conditions and imaging app | `web/src/demo` |
 | Hardware docs for the sky meter, indi-allsky guide, sky quality reference | `docs/hardware`, `docs/user-guide`, `docs/reference` |
-| Alpaca conformance workflow | `.github/workflows/alpaca-conformance.yml` |

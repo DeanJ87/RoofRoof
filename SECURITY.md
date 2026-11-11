@@ -18,7 +18,7 @@ Known non-issues (by design):
 - Authentication is off by default, and when on it protects changes only; reads are open
 - No HTTPS (local network only), so a password travels in plain text on the LAN
 - The firmware and web UI upload endpoints are unauthenticated until the password is turned on
-- ASCOM Alpaca has no authentication in its specification
+- ASCOM Alpaca has no authentication in its specification: while Alpaca is on, anything on the network can send the roof's Dome open, close and stop commands. They pass the same weather and park checks as every other command, but can't be limited to one client
 
 If you intend to expose RoofRoof to untrusted networks, place it behind a reverse proxy with authentication, or a VPN. Never rely on the network or this firmware's web interface as the only thing standing between a person and a moving roof: keep physical safety interlocks independent. See [docs/user-guide/security.md](docs/user-guide/security.md).
 

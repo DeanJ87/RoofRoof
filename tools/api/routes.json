@@ -27,6 +27,6 @@
     { "path": "/api/alerts/recent", "method": "GET", "auth": "open", "why": "Read-only recent alerts (no secrets)" },
     { "path": "/setup", "method": "GET", "auth": "open", "why": "Alpaca setup pages redirect to Settings; the Settings page itself asks for the password on save" },
     { "path": "/management", "method": "GET", "auth": "open", "why": "ASCOM Alpaca management API: the Alpaca spec has no auth" },
-    { "path": "/api/v1", "method": "ANY", "auth": "open", "why": "ASCOM Alpaca device API: the Alpaca spec has no auth; PUTs only change the client's own connection state" }
+    { "path": "/api/v1", "method": "ANY", "auth": "open", "why": "ASCOM Alpaca device API: the Alpaca spec has no auth. The Dome's open and close pass the same weather and park checks as the REST commands, cannot move a roof of unknown position or clear a fault, and its stop is never refused (constitution I-III, VIII)" }
   ]
 }
