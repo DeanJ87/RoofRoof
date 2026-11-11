@@ -221,8 +221,9 @@ JSON on the device and in the web schema, with the shared range fixture.
   a magnet needs the reading past the threshold by a hysteresis band.
 - The reading leaves a magnet while the roof is idle (sensor drift, or the roof moved by hand):
   the state becomes "unknown".
-- Stop or abort while waiting out the dead time: nothing was driving; the state goes back to what
-  it was before the command.
+- Stop while waiting out the dead time: nothing was driving; the state goes back to what it was
+  before the command. Abort at that point makes the position unknown unless a magnet is read, as
+  the roof may have moved before the pause.
 - Open while closing (or the reverse): the motor stops, waits the dead time and turns the other
   way; the timeout is for the new move.
 - Current sense on and the motor not yet driven (dead time): current is not checked.
