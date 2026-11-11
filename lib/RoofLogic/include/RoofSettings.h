@@ -46,6 +46,10 @@ namespace SQM
         // offset noise) the reading is broken, treated as unreadable.
         constexpr float MIN_CURRENT_READING_AMPS = -0.5f;
 
+        // Spec 016: the range of a calibration leg's limit.
+        constexpr uint32_t MIN_CALIBRATION_LEG_MS = 1000;
+        constexpr uint32_t MAX_CALIBRATION_LEG_MS = 600000;
+
         // Whether a supply reading can be believed: finite and at most MAX_SUPPLY_READING_VOLTS.
         bool supplyReadable(float volts);
         // Whether a current reading can be believed: finite and at least MIN_CURRENT_READING_AMPS.

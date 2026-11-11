@@ -64,6 +64,7 @@ namespace SQM
                 "settingsInvalid",
                 "notAPerson",
                 "moving",
+                "legInvalid",
             };
             return nameIn(reason, NAMES);
         }

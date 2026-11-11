@@ -17,8 +17,9 @@ namespace SQM
         {
             if (!move.driving)
             {
+                // A calibration leg always drives: its end is the next magnet (spec 016).
                 End at = End::Closed;
-                if (magnetEnd(at) && at == move.target)
+                if (!move.calibration && magnetEnd(at) && at == move.target)
                 {
                     arrive();
                     return;
@@ -27,7 +28,7 @@ namespace SQM
                     return;
                 startDriving(readings.nowMs);
             }
-            if (checkMagnets())
+            if (move.calibration ? checkLegMagnets() : checkMagnets())
                 return;
             if (checkTimes(readings.nowMs) || checkElectrical(readings))
                 return;
@@ -39,9 +40,16 @@ namespace SQM
             End at = End::Closed;
             move.driving = true;
             move.driveStartMs = nowMs;
-            move.startedAtMagnet = magnetEnd(at) && at != move.target;
+            const bool onMagnet = magnetEnd(at);
+            // A calibration leg's start magnet is whichever it is on: the run
+            // can't trust the polarity it is measuring (spec 016).
+            move.startedAtMagnet = onMagnet && (move.calibration || at != move.target);
             move.leftStart = false;
-            move.timeoutMs = move.fromUnknown ? unknownMoveTimeoutMs(config) : moveTimeoutMs(config, remainingMm());
+            move.startLevel = current.hall;
+            if (move.calibration)
+                move.timeoutMs = move.leg.limitMs;
+            else
+                move.timeoutMs = move.fromUnknown ? unknownMoveTimeoutMs(config) : moveTimeoutMs(config, remainingMm());
             current.moveTimeoutMs = move.timeoutMs;
             resetPending();
         }
@@ -108,7 +116,7 @@ namespace SQM
             // sense off) can't each restart the clock forever (FR-025).
             // Settings taken at rest can make the budget smaller than what is already
             // used; the next drive then faults on its first step (fail-safe).
-            const uint32_t budgetMs = driveBudgetMs(config);
+            const uint32_t budgetMs = budgetLimitMs();
             const uint32_t usedMs = driveBudgetUsedMs[static_cast<int>(move.target)];
             if (usedMs >= budgetMs)
             {
@@ -163,8 +171,12 @@ namespace SQM
 
         void Controller::driveProfile(uint32_t nowMs)
         {
-            const float fraction =
-                move.fromUnknown ? dutyFraction(config.slowDutyPercent) : profileFraction(config, nowMs - move.driveStartMs, remainingMm());
+            const uint32_t drivenMs = nowMs - move.driveStartMs;
+            float fraction = 0.0f;
+            if (move.calibration)
+                fraction = legFraction(config, move.leg, drivenMs);
+            else
+                fraction = move.fromUnknown ? dutyFraction(config.slowDutyPercent) : profileFraction(config, drivenMs, remainingMm());
             const Driver::Command closeDirection =
                 config.openDirection == Driver::Command::Forward ? Driver::Command::Reverse : Driver::Command::Forward;
             out.command = move.target == End::Open ? config.openDirection : closeDirection;
@@ -184,6 +196,7 @@ namespace SQM
 
         void Controller::arrive()
         {
+            endLeg(true);
             stopDriving();
             move = Move{};
             current.fromUnknown = false;

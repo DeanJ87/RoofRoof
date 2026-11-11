@@ -38,6 +38,19 @@ namespace SQM
             // only for a command that will run.
             CommandResult check(Command command, Origin origin) const;
 
+            // Spec 016: starts one leg of a calibration run (RoofControllerCalibrate.cpp).
+            // Only a person's, at rest, with the readiness every move needs, a
+            // leg within its ranges, and above the slow duty only from a
+            // confirmed magnet (constitution I). The leg then runs through
+            // tick() like any move, with the leg's limit as its timeout and
+            // drive budget, and stops at the first magnet after it has left
+            // its start magnet.
+            CommandResult calibrate(const CalibrationLeg &leg, Origin origin);
+            // What calibrate() would answer now, without changing anything.
+            CommandResult checkCalibrate(const CalibrationLeg &leg, Origin origin) const;
+            // How the last calibration leg ended.
+            const CalibrationReport &calibrationReport() const { return legReport; }
+
             // A person clears the latched fault; automatic origins are refused.
             CommandResult clearFault(Origin origin);
 
@@ -66,6 +79,11 @@ namespace SQM
                 bool leftStart = false;       // and has since left it
                 uint32_t driveStartMs = 0;
                 uint32_t timeoutMs = 0;
+                // Spec 016: a calibration leg, and what it has applied so far.
+                bool calibration = false;
+                CalibrationLeg leg;
+                HallLevel startLevel = HallLevel::Unsettled;
+                float dutyMs = 0.0f;
             };
 
             // When a condition that must last CONFIRM_MS was first seen.
@@ -80,6 +98,9 @@ namespace SQM
             void startDriving(uint32_t nowMs);
             void updateDeadTime(uint32_t nowMs);
             bool checkMagnets();
+            bool checkLegMagnets();
+            uint32_t budgetLimitMs() const;
+            void endLeg(bool arrived);
             bool checkTimes(uint32_t nowMs);
             bool checkElectrical(const Readings &readings);
             bool confirmed(Pending &pending, bool condition, uint32_t nowMs) const;
@@ -124,6 +145,7 @@ namespace SQM
             Pending supplyLow;
             Pending overCurrent;
             Pending currentUnreadable;
+            CalibrationReport legReport;
         };
     } // namespace Roof
 } // namespace SQM
