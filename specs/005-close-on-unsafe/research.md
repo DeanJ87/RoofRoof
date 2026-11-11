@@ -62,8 +62,10 @@ for the owner").
 | Park confirmed | `park.timeoutSeconds`, default 240 s (30-1800), from the first request of the attempt | "mount not parked" (critical), wait 5 min, then a new attempt |
 | N.I.N.A. not configured | at once | the same |
 | Back-off after a failed attempt | 5 min (`RETRY_AFTER_MS`) | a new attempt (a confirmed park still closes during the wait) |
-| Waiting close (spec 003 `closePending`) | 30 s (`CLOSE_START_MS`) | stop, "roof didn't close" (too long), 5 min wait |
-| Close in motion | the move's own timeout + 30 s (`CLOSE_GUARD_SLACK_MS`) | stop, "roof didn't close" (too long), 5 min wait |
+| Waiting close (spec 003 `closePending`) | 30 s (`CLOSE_START_MS`) | stop, "roof didn't close" (too long), halted until closed or 10 min safe |
+| After a refused or interrupted close | 5 min (`RETRY_AFTER_MS`), across episodes | no close before |
+| Alerts | each event at most every 30 min (`REMIND_MS`); raised again every 30 min while the roof stays open | - |
+| Close in motion | the move's own timeout + 30 s (`CLOSE_GUARD_SLACK_MS`), from the command | stop, "roof didn't close" (too long), halted until closed or 10 min safe |
 | Position unknown before standing down | 2 s (`UNKNOWN_CONFIRM_MS`) | "roof can't close by itself" |
 | Safe before a stood-down sequence re-arms | 10 min without a break (`REARM_SAFE_MS`) | back to idle |
 
@@ -112,12 +114,15 @@ for the owner").
 - **Decision**: one new alert type `roof` (`Alerts::AlertType::Roof`) carrying the four critical
   events with fixed wording from the pure library (`CloseSeq::alertFor`), dispatched by
   `WebServer::raiseRoofAlert` at the `wake` level to every channel that is on, past the alert
-  pause and the start-up grace, only when alerts are switched on. Each critical event alerts at
-  most once per episode (an episode ends when the sequence returns to idle); repeats are logged.
+  pause, the start-up grace and the master switch, to the channels that are switched on. Each event
+  alerts at most once every 30 minutes, across episodes (a flapping verdict can't storm), and the
+  episode's last critical event is raised again every 30 minutes while the roof stays open after
+  it, because a delivery can fail (the dispatcher tries each channel once).
 - **Rationale**: the brief keeps roof alert types, wording and settings in spec 007; one type with
   no setting is the smallest hook that reaches the existing channels, and 007 replaces it with its
   own events. The pause is the owner's choice for imaging-app alerts; a roof left open in the rain
-  is not something to hold back. The alert channels (Pushover, ntfy, webhook, MQTT) never go
+  is not something to hold back; the same goes for the master switch, which on a new device is off
+  while channels are being set up. The alert channels (Pushover, ntfy, webhook, MQTT) never go
   through N.I.N.A. or SQMeter, so losing them doesn't lose the alert (constitution III).
 - **Alternatives**: reuse an existing type (rejected: they mean imaging-app events); add 007's full
   event list now (rejected: out of scope).

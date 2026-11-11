@@ -269,9 +269,11 @@ void test_fault_while_closing_alerts_and_waits_for_a_person()
     assertEvent(d, Event::CloseFailed, Cause::Fault);
     TEST_ASSERT_TRUE(d.alert);
     TEST_ASSERT_EQUAL(Phase::CannotMove, r.seq.phase());
-    Counts c = r.runTo(T0 + 3600000, 1000);
-    TEST_ASSERT_EQUAL(0, c.requests + c.closes + c.stops);
-    TEST_ASSERT_EQUAL(0u, c.events.size());
+    // Nothing moves; the alert is repeated every 30 min while the roof stays open.
+    Counts c = r.runTo(T0 + 20000 + REMIND_MS - 1000, 1000);
+    assertOnlyReminders(c, Event::CloseFailed, 0);
+    c = r.runTo(T0 + 20000 + 2 * REMIND_MS, 1000);
+    assertOnlyReminders(c, Event::CloseFailed, 2);
 }
 
 void test_refused_close_alerts_and_backs_off()
@@ -285,8 +287,36 @@ void test_refused_close_alerts_and_backs_off()
     assertEvent(d, Event::CloseFailed, Cause::Refused);
     TEST_ASSERT_TRUE(d.alert);
     TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
-    // Still parked: the retry wait closes again, but no park request before the back-off ends.
-    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4200).action);
+    // Still parked, but no close (and no request) until the back-off ends: a
+    // lasting refusal can't become a close every step.
+    Counts c = r.runTo(T0 + 4100 + RETRY_AFTER_MS - 1, 100);
+    TEST_ASSERT_EQUAL(0, c.closes + c.requests);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100 + RETRY_AFTER_MS).action); // the park has held throughout
+}
+
+void test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down()
+{
+    Rig r;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100).action);
+    TEST_ASSERT_EQUAL(Event::None, r.seq.closeAnswered(CloseAnswer::Withdrawn).event);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    r.in.personStops = 1; // the stop the roof saw before the close
+    assertEvent(r.at(T0 + 4200), Event::StoppedByPerson, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+}
+
+void test_answer_for_the_roofs_outcome()
+{
+    TEST_ASSERT_EQUAL(CloseAnswer::Started, answerFor(true, ""));
+    TEST_ASSERT_EQUAL(CloseAnswer::ParkRefused, answerFor(false, RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked)));
+    TEST_ASSERT_EQUAL(CloseAnswer::ParkRefused, answerFor(false, "mountNotParked"));
+    TEST_ASSERT_EQUAL(CloseAnswer::Withdrawn, answerFor(false, PERSON_STOP_REASON));
+    TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "supplyLow"));
+    TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "notStarted"));
+    TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "weatherNotSafe"));
 }
 
 void test_answers_outside_a_close_are_ignored()
@@ -322,7 +352,7 @@ void test_waiting_close_guard_at_its_boundary()
     TEST_ASSERT_EQUAL(Action::Stop, d.action);
     assertEvent(d, Event::CloseFailed, Cause::TooLong);
     TEST_ASSERT_EQUAL_UINT64(CLOSE_START_MS, d.limitMs);
-    TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
 }
 
 void test_moving_close_guard_at_its_boundary()
@@ -337,6 +367,26 @@ void test_moving_close_guard_at_its_boundary()
     TEST_ASSERT_EQUAL(Action::Stop, d.action);
     assertEvent(d, Event::CloseFailed, Cause::TooLong);
     TEST_ASSERT_EQUAL_UINT64(60000 + CLOSE_GUARD_SLACK_MS, d.limitMs);
+    TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+}
+
+void test_a_halted_close_stays_stopped_where_it_is()
+{
+    Rig r;
+    r.startAndClose();
+    const uint64_t tripped = T0 + 4100 + 60000 + CLOSE_GUARD_SLACK_MS;
+    TEST_ASSERT_EQUAL(Action::Stop, r.at(tripped).action);
+    r.in.roof = State::Stopped; // the stop kept the estimate: the logic would accept a close
+    r.in.moveTimeoutMs = 0;
+    Counts c = r.runTo(tripped + REMIND_MS - 1000, 1000); // parked, unsafe
+    assertOnlyReminders(c, Event::CloseFailed, 0);
+    TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+    c = r.runTo(tripped + 3 * 3600000ULL, 1000);
+    TEST_ASSERT_EQUAL(0, c.requests + c.closes + c.stops);
+    // Only a closed roof or a long safe spell ends it.
+    r.in.roof = State::Closed;
+    assertEvent(r.at(tripped + 3 * 3600000ULL + 1000), Event::Closed, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
 }
 
 void test_close_guard_after_a_waiting_close_counts_from_its_start()
@@ -367,6 +417,10 @@ void test_interrupted_close_alerts_and_backs_off()
     assertEvent(d, Event::CloseFailed, Cause::Interrupted);
     TEST_ASSERT_TRUE(d.alert);
     TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    // No re-drive straight away, though the park still holds.
+    Counts c = r.runTo(T0 + 6000 + RETRY_AFTER_MS - 1, 100);
+    TEST_ASSERT_EQUAL(0, c.closes + c.requests + c.stops);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 6000 + RETRY_AFTER_MS).action); // the park has held throughout
 }
 
 void test_close_ending_part_way_after_the_weather_cleared_is_quiet()
@@ -381,7 +435,7 @@ void test_close_ending_part_way_after_the_weather_cleared_is_quiet()
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
 }
 
-void test_each_critical_event_alerts_once_per_episode()
+void test_each_critical_event_alerts_at_most_every_thirty_minutes()
 {
     Rig r;
     r.seq.setParkTimeoutMs(60000);
@@ -392,13 +446,21 @@ void test_each_critical_event_alerts_once_per_episode()
     const Decision repeat = r.at(second + 60000);
     assertEvent(repeat, Event::ParkNotConfirmed, Cause::ParkTimeout);
     TEST_ASSERT_FALSE(repeat.alert);
-    // The episode ends when it is safe; the next one alerts again.
+    // A new spell soon after (flapping weather) doesn't alert again either...
     r.in.weatherSafe = true;
     r.at(second + 61000);
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
     r.in.weatherSafe = false;
     r.at(second + 62000);
-    TEST_ASSERT_TRUE(r.at(second + 122000).alert);
+    TEST_ASSERT_FALSE(r.at(second + 122000).alert);
+    // ...but 30 minutes after the last alert it does.
+    r.in.weatherSafe = true;
+    r.at(T0 + 60000 + REMIND_MS - 70000);
+    r.in.weatherSafe = false;
+    r.at(T0 + 60000 + REMIND_MS - 60000);
+    const Decision later = r.at(T0 + 60000 + REMIND_MS);
+    assertEvent(later, Event::ParkNotConfirmed, Cause::ParkTimeout);
+    TEST_ASSERT_TRUE(later.alert);
 }
 
 int main(int, char **)
@@ -425,13 +487,16 @@ int main(int, char **)
     RUN_TEST(test_park_requests_repeat_every_thirty_seconds_while_waiting);
     RUN_TEST(test_fault_while_closing_alerts_and_waits_for_a_person);
     RUN_TEST(test_refused_close_alerts_and_backs_off);
+    RUN_TEST(test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down);
+    RUN_TEST(test_answer_for_the_roofs_outcome);
     RUN_TEST(test_answers_outside_a_close_are_ignored);
     RUN_TEST(test_close_started_answer_keeps_closing);
     RUN_TEST(test_waiting_close_guard_at_its_boundary);
     RUN_TEST(test_moving_close_guard_at_its_boundary);
+    RUN_TEST(test_a_halted_close_stays_stopped_where_it_is);
     RUN_TEST(test_close_guard_after_a_waiting_close_counts_from_its_start);
     RUN_TEST(test_interrupted_close_alerts_and_backs_off);
     RUN_TEST(test_close_ending_part_way_after_the_weather_cleared_is_quiet);
-    RUN_TEST(test_each_critical_event_alerts_once_per_episode);
+    RUN_TEST(test_each_critical_event_alerts_at_most_every_thirty_minutes);
     return UNITY_END();
 }

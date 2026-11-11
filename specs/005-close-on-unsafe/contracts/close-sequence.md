@@ -32,12 +32,16 @@ void handle(SafetyInputs &safety, RoofControl &roof); // main loop, every pass a
 void setAlertSink(std::function<void(const Alerts::Alert &)> sink); // main loop; spec 007 replaces the wording
 ```
 
+`RoofControl` gains `Outcome automaticClose(uint32_t personStopsSeen)`: the close with the automatic
+origin, refused (`personStop`) if a person's stop was counted since the snapshot showing
+`personStopsSeen`, checked under the same lock as the command.
+
 `RoofIo::Snapshot` gains `personStops`: a person's stops and aborts since start, counted under the
 roof's lock before the stop is applied, so no snapshot shows the stop without the count (it isn't
 written to the status document).
 
 `WebServer` gains `void raiseRoofAlert(const Alerts::Alert &alert)` (main loop): dispatches to every
-channel that is on, past the pause and the start-up grace, when alerts are switched on.
+channel that is switched on, past the pause, the start-up grace and the master switch.
 
 ## Alert type
 
@@ -57,11 +61,14 @@ retire it.
 2. A close is produced only when the verdict is not safe, the roof is neither closed, unknown nor in
    error, the sequence isn't stood down, and the park has said parked for the last 4 s.
 3. Two park requests are never less than 30 s apart.
-4. After a person's stop, nothing is produced until the roof reads closed or the verdict has been
-   safe for 10 minutes without a break.
+4. After a person's stop (while running, waiting or unable to move), nothing is produced until the
+   roof reads closed or the verdict has been safe for 10 minutes without a break; a close decided
+   before a stop the roof has counted is refused.
 5. Nothing is produced while the position is unknown or a fault is latched.
 6. An attempt that doesn't see the park confirmed raises "mount not parked" exactly when
    `park.timeoutSeconds` has passed (at once without N.I.N.A.).
 7. A close that faults, is refused, is interrupted or outlasts its guard raises "roof didn't close";
-   the guard also produces a stop.
-8. Each critical event alerts at most once per episode.
+   the guard also produces a stop and halts the sequence; no close follows a refused or interrupted
+   one within 5 minutes.
+8. Each critical event alerts at most once every 30 minutes, and is raised again every 30 minutes
+   while the roof stays open after it.

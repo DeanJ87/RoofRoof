@@ -79,10 +79,11 @@ namespace SQM
     void WebServer::raiseRoofAlert(const Alerts::Alert &alert)
     {
         const Config &cfg = getConfigCallback();
-        if (!cfg.alerts.enabled || !alertDispatcher)
+        if (!alertDispatcher)
             return;
-        // Not held by the pause: a roof left open in the rain is not an
-        // imaging-app notice the owner chose to silence.
+        // Not held by the pause or the master switch: a roof left open in the
+        // rain is not an imaging-app notice the owner chose to silence. Only
+        // the channels switched on are used.
         alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 

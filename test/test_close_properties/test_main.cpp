@@ -11,15 +11,19 @@
 //       4 s, the roof movable (not closed, closing, unknown or in error) and
 //       not stood down by a person;
 //   P3  two park requests never less than 30 s apart, and none while safe;
-//   P4  after a person's stop during the sequence, no park request, close or
+//   P4  after a person's stop during the sequence (or while it can't move), no park request, close or
 //       stop until the roof reads closed or the verdict has been safe for
 //       10 minutes without a break;
 //   P5  nothing at all while the roof is unknown or in error;
 //   P6  an attempt never waits for the park longer than its time limit
 //       without raising "mount not parked";
-//   P7  each critical event alerts at most once per episode;
+//   P7  each critical event alerts at most once every 30 minutes;
 //   P8  a close in motion never outlasts its own timeout plus 30 s and the
 //       step that sees it; a stop only ends a close.
+//
+//   P9  after a close outlasted its guard, nothing until the roof reads closed
+//       or the verdict has been safe for 10 minutes;
+//   P10 no close within 5 minutes of a refused or interrupted close.
 //
 // A failure names the seed and the step, so it can be replayed.
 
@@ -88,7 +92,10 @@ namespace
         uint32_t attemptLimitMs = DEFAULT_PARK_TIMEOUT_MS;
         bool closingRun = false;
         uint64_t closingSinceMs = 0;
-        uint8_t alertedThisEpisode = 0;
+        bool alertedEver[8] = {};
+        uint64_t alertedAtMs[8] = {};
+        bool halted = false;          // a close outlasted its guard
+        uint64_t closeBarUntilMs = 0; // a refused or interrupted close: no close before this
     };
 
     struct Failure
@@ -245,7 +252,10 @@ namespace
             watch.safeSinceMs = in.nowMs;
         }
         if (in.roof == State::Closed || (watch.safeRun && in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS))
+        {
             watch.held = false;
+            watch.halted = false;
+        }
     }
 
     bool running(Phase phase)
@@ -270,6 +280,8 @@ namespace
             return "P2 close without 4 s of park";
         if (!movable(in.roof) || in.closePending)
             return "P2 close of a roof that isn't movable";
+        if (in.nowMs < watch.closeBarUntilMs)
+            return "P10 a close within the back-off after a refused or interrupted close";
         return nullptr;
     }
 
@@ -293,6 +305,8 @@ namespace
             return "P1 an action other than request, close or stop";
         if (watch.held)
             return "P4 an action while stood down by a person";
+        if (watch.halted)
+            return "P9 an action after a close outlasted its guard";
         if (in.roof == State::Unknown || in.roof == State::Error)
             return "P5 an action while unknown or faulted";
         if (action == Action::Close)
@@ -323,17 +337,23 @@ namespace
     }
 
     // P7: each critical event alerts once per episode.
-    const char *checkAlert(const Seen &seen, Watch &watch)
+    const char *checkAlert(const Seen &seen, const Inputs &in, Watch &watch)
     {
         if (seen.decision.alert)
         {
             const uint8_t bit = static_cast<uint8_t>(1u << static_cast<uint8_t>(seen.decision.event));
-            if ((watch.alertedThisEpisode & bit) != 0)
-                return "P7 a critical event alerted twice in one episode";
-            watch.alertedThisEpisode = static_cast<uint8_t>(watch.alertedThisEpisode | bit);
+            const size_t i = static_cast<size_t>(seen.decision.event);
+            (void)bit;
+            if (watch.alertedEver[i] && in.nowMs - watch.alertedAtMs[i] < REMIND_MS)
+                return "P7 a critical event alerted twice within 30 minutes";
+            watch.alertedEver[i] = true;
+            watch.alertedAtMs[i] = in.nowMs;
         }
-        if (seen.after == Phase::Idle)
-            watch.alertedThisEpisode = 0;
+        const bool failed = seen.decision.event == Event::CloseFailed && !seen.decision.reminder;
+        if (failed && seen.decision.cause == Cause::TooLong)
+            watch.halted = true;
+        if (failed && (seen.decision.cause == Cause::Refused || seen.decision.cause == Cause::Interrupted))
+            watch.closeBarUntilMs = in.nowMs + RETRY_AFTER_MS;
         return nullptr;
     }
 
@@ -360,7 +380,7 @@ namespace
     {
         const char *broken = checkAttempt(seen, in, watch);
         if (broken == nullptr)
-            broken = checkAlert(seen, watch);
+            broken = checkAlert(seen, in, watch);
         if (broken == nullptr)
             broken = checkGuard(seen, in, watch);
         return broken;
@@ -392,7 +412,9 @@ namespace
             const Phase before = seq.phase();
             // A person's stop seen while the sequence runs stands it down (P4),
             // unless the roof reads closed, which ends it.
-            const bool stopped = w.in.personStops != lastStops && running(before) && w.in.roof != State::Closed;
+            const bool safeLong = watch.safeRun && w.in.nowMs - watch.safeSinceMs >= REARM_SAFE_MS;
+            const bool watching = running(before) || (before == Phase::CannotMove && !safeLong);
+            const bool stopped = w.in.personStops != lastStops && watching && w.in.roof != State::Closed;
             lastStops = w.in.personStops;
             const Decision d = seq.step(w.in);
             if (stopped && d.event != Event::StoppedByPerson)

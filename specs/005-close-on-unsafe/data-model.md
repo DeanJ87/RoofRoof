@@ -31,6 +31,7 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | `RetryWait` | an attempt failed; 5 min before the next | close, if the park holds for 4 s |
 | `HeldByPerson` | a person stopped the sequence | nothing |
 | `CannotMove` | the position is unknown or a fault is latched | nothing |
+| `Halted` | a close outlasted its guard and was stopped | nothing |
 
 ## Transitions
 
@@ -54,20 +55,26 @@ All types are in `lib/CloseSequenceLogic/include/CloseSequence.h`, namespace `SQ
 | WaitPark | N.I.N.A. not configured, or parkTimeoutMs since the attempt began | RetryWait | - | ParkNotConfirmed (NinaNotConfigured / ParkTimeout) |
 | WaitPark | otherwise | WaitPark | RequestPark if due | - |
 | RetryWait | 5 min since it began | WaitPark (new attempt) | RequestPark if due | Started |
-| Closing | close waiting for 30 s | RetryWait | Stop | CloseFailed (TooLong) |
-| Closing | closing for the move's timeout + 30 s | RetryWait | Stop | CloseFailed (TooLong) |
+| Closing | close waiting for 30 s | Halted | Stop | CloseFailed (TooLong) |
+| Closing | closing for the move's timeout + 30 s (from the command, or from the start of a waiting close) | Halted | Stop | CloseFailed (TooLong) |
 | Closing | not closing, not waiting, safe | Idle | - | EndedSafe |
 | Closing | not closing, not waiting, unsafe | RetryWait | - | CloseFailed (Interrupted) |
-| HeldByPerson, CannotMove | roof closed | Idle | - | Closed |
-| HeldByPerson, CannotMove | safe for 10 min without a break | Idle | - | EndedSafe |
+| HeldByPerson, CannotMove, Halted | roof closed | Idle | - | Closed |
+| HeldByPerson, CannotMove, Halted | safe for 10 min without a break | Idle | - | EndedSafe |
+| CannotMove | a person's stop since the last step | HeldByPerson | - | StoppedByPerson |
 | CannotMove | roof neither unknown nor error | RetryWait | - | - |
+
+"Parked for 4 s" closes only when no close was refused or interrupted in the last 5 minutes.
+While in RetryWait, HeldByPerson, CannotMove or Halted with no other event, the episode's last
+critical event is raised again (`reminder`) 30 minutes after it last alerted.
 
 After a `Close` action the glue reports the roof's answer with `closeAnswered`:
 
 | Answer | Meaning | To | Event (cause) |
 |---|---|---|---|
 | `Started` | accepted (moving, or waiting for an upload or MQTT connect) | Closing | - |
-| `ParkRefused` | spec 003's gate: the park no longer holds | WaitPark (same attempt) | - |
+| `ParkRefused` | spec 003's gate: the park no longer holds | the phase the close came from (same attempt) | - |
+| `Withdrawn` | a person's stop was counted after the snapshot the decision used (`RoofControl::automaticClose`) | the phase the close came from; the next step stands down | - |
 | `Refused` | the motion logic refused (fault, supply, settings, not started) | RetryWait | CloseFailed (Refused) |
 
 "RequestPark if due": only when no request was ever sent or the last was ≥ 30 s ago.
@@ -79,10 +86,12 @@ After a `Close` action the glue reports the roof's answer with `closeAnswered`:
 | `action` | `Action` | `None`, `RequestPark`, `Close`, `Stop`. There is no open. |
 | `event` | `Event` | `None`, `Started`, `EndedSafe`, `Closed`, `ParkNotConfirmed`, `CloseFailed`, `CannotClose`, `StoppedByPerson` |
 | `cause` | `Cause` | `None`, `ParkTimeout`, `NinaNotConfigured`, `Fault`, `Refused`, `Interrupted`, `TooLong`, `PositionUnknown`, `FaultLatched` |
-| `alert` | `bool` | a critical event raised for the first time in this episode (alert it); repeats are logged only |
+| `alert` | `bool` | a critical event whose kind hasn't alerted for 30 minutes (alert it); others are logged only |
+| `limitMs` | `uint64_t` | the time limit that ran out (ParkTimeout, TooLong) |
+| `reminder` | `bool` | the event is the episode's last critical event raised again |
 
 Critical events: `ParkNotConfirmed`, `CloseFailed`, `CannotClose`, `StoppedByPerson`. An episode runs
-from leaving `Idle` to returning to it.
+from leaving `Idle` to returning to it; reminders stop when it ends.
 
 ## Alert
 

@@ -22,9 +22,9 @@ void test_persons_stop_while_closing_stands_down()
     TEST_ASSERT_TRUE(d.alert);
     TEST_ASSERT_EQUAL(Action::None, d.action);
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
-    Counts c = r.runTo(T0 + 6 * 3600000ULL, 1000); // six hours, parked, unsafe
-    TEST_ASSERT_EQUAL(0, c.requests + c.closes + c.stops);
-    TEST_ASSERT_EQUAL(0u, c.events.size());
+    Counts c = r.runTo(T0 + 6 * 3600000ULL, 1000);      // six hours, parked, unsafe
+    assertOnlyReminders(c, Event::StoppedByPerson, 11); // every 30 min after the first
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
 }
 
 void test_persons_stop_while_waiting_or_backing_off_stands_down()
@@ -139,9 +139,24 @@ void test_unknown_position_stands_down_after_two_seconds()
     TEST_ASSERT_TRUE(d.alert);
     TEST_ASSERT_EQUAL(Action::None, d.action);
     r.in.parked = true;
-    c = r.runTo(T0 + 3600000, 1000);
+    c = r.runTo(T0 - 50 + UNKNOWN_CONFIRM_MS + REMIND_MS - 1000, 1000);
+    assertOnlyReminders(c, Event::CannotClose, 0);
+    c = r.runTo(T0 - 50 + UNKNOWN_CONFIRM_MS + REMIND_MS, 1);
+    assertOnlyReminders(c, Event::CannotClose, 1);
+}
+
+void test_a_stop_while_unable_to_move_stands_down_once_it_can()
+{
+    Rig r;
+    r.in.roof = State::Error;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.in.personStops = 1; // a person at the roof presses stop...
+    assertEvent(r.at(T0 + 1000), Event::StoppedByPerson, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.in.roof = State::Open; // ...then clears the fault at the open magnet
+    Counts c = r.runTo(T0 + 3600000, 1000);
     TEST_ASSERT_EQUAL(0, c.requests + c.closes + c.stops);
-    TEST_ASSERT_EQUAL(0u, c.events.size());
 }
 
 void test_unknown_at_start_up_that_settles_starts_normally()
@@ -313,6 +328,8 @@ void test_alert_text_names_the_step_and_the_reason()
     Decision held;
     held.event = Event::StoppedByPerson;
     TEST_ASSERT_EQUAL_STRING("Automatic close stopped", alertFor(held, "").title.c_str());
+    held.reminder = true;
+    TEST_ASSERT_EQUAL_STRING("Still: Automatic close stopped", alertFor(held, "").title.c_str());
 }
 
 void test_reason_for_each_cause()
@@ -417,6 +434,7 @@ int main(int, char **)
     RUN_TEST(test_unknown_position_stands_down_after_two_seconds);
     RUN_TEST(test_unknown_at_start_up_that_settles_starts_normally);
     RUN_TEST(test_fault_latched_cannot_close);
+    RUN_TEST(test_a_stop_while_unable_to_move_stands_down_once_it_can);
     RUN_TEST(test_fault_while_waiting_stands_down);
     RUN_TEST(test_unknown_while_waiting_or_closing_stands_down_after_two_seconds);
     RUN_TEST(test_resumes_after_a_person_makes_the_position_known);

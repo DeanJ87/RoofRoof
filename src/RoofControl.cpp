@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <cstring>
 
+#include "CloseSequence.h"
 #include "DriverLogic.h"
 #include "Logger.h"
 #include "MotionGuards.h"
@@ -183,6 +184,30 @@ namespace SQM
         {
             RoofLocked held(lock);
             outcome = commandLocked(command, origin, now);
+        }
+        if (!outcome.accepted)
+            Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
+        else if (outcome.pending)
+            Logger::info(TAG, "%s", outcome.text.c_str());
+        return outcome;
+    }
+
+    RoofControl::Outcome RoofControl::automaticClose(uint32_t personStopsSeen)
+    {
+        if (lock == nullptr || !started.load())
+            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
+        Outcome outcome;
+        {
+            RoofLocked held(lock);
+            if (personStops != personStopsSeen)
+                outcome = Outcome{
+                    false,
+                    CloseSeq::PERSON_STOP_REASON,
+                    "A person stopped the roof: the automatic close is withdrawn",
+                    controller.status().state};
+            else
+                outcome = commandLocked(Roof::Command::Close, Roof::Origin::Automatic, now);
         }
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());

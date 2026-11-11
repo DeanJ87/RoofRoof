@@ -14,6 +14,7 @@
 #include <string>
 
 #include "ParkRule.h"
+#include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SafetyInput.h"
 
@@ -35,6 +36,12 @@ namespace SQM
         constexpr uint64_t CLOSE_START_MS = 30000;
         // A moving close may take its own timeout plus this (R6).
         constexpr uint64_t CLOSE_GUARD_SLACK_MS = 30000;
+        // A critical event alerts at most this often, and is raised again this
+        // often while the roof stays open after it (research R10).
+        constexpr uint64_t REMIND_MS = 1800000;
+        // RoofControl's refusal reason when a person stopped the roof since
+        // the sequence decided to close.
+        constexpr const char *PERSON_STOP_REASON = "personStop";
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -59,6 +66,7 @@ namespace SQM
             RetryWait,    // an attempt failed: no request until the back-off ends
             HeldByPerson, // a person stopped the sequence
             CannotMove,   // the position is unknown or a fault is latched
+            Halted,       // a close outlasted its guard and was stopped: waits for a person
         };
 
         // What the caller must do now. There is no open (constitution III).
@@ -101,8 +109,9 @@ namespace SQM
             Action action = Action::None;
             Event event = Event::None;
             Cause cause = Cause::None;
-            bool alert = false;   // a critical event, first of its kind this episode
-            uint64_t limitMs = 0; // the time limit that ran out (ParkTimeout, TooLong)
+            bool alert = false;    // a critical event, first of its kind this episode
+            uint64_t limitMs = 0;  // the time limit that ran out (ParkTimeout, TooLong)
+            bool reminder = false; // the episode's last critical event, raised again (REMIND_MS)
         };
 
         // The roof's answer to the Close action.
@@ -110,8 +119,12 @@ namespace SQM
         {
             Started,     // accepted: moving, or waiting for an upload or MQTT connect
             ParkRefused, // spec 003's gate: the park no longer holds
+            Withdrawn,   // a person stopped the roof since the decision: not run
             Refused,     // any other refusal (fault, supply, settings, not started)
         };
+
+        // The answer for RoofControl's outcome (its accepted flag and reason name).
+        CloseAnswer answerFor(bool accepted, const std::string &reason);
 
         // An alert's wording (spec 007 replaces it with its own events).
         struct AlertText
@@ -142,11 +155,14 @@ namespace SQM
                 bool lasted(bool holds, uint64_t nowMs, uint64_t ms);
             };
 
+            Decision decide(const Inputs &in, bool personStopped);
+            Decision remindIfDue(Decision decision) const;
+            Decision halt(uint64_t limitMs);
             Decision idle(const Inputs &in);
             Decision waiting(const Inputs &in, bool personStopped);
             Decision attempt(const Inputs &in);
             Decision closing(const Inputs &in, bool personStopped);
-            Decision stoodDown(const Inputs &in);
+            Decision stoodDown(const Inputs &in, bool personStopped);
             bool interrupted(const Inputs &in, bool personStopped, Decision &out);
             Decision closeNow();
             Decision failAttempt(Event event, Cause cause, Action action);
@@ -175,7 +191,20 @@ namespace SQM
             bool closingSeen = false; // the roof has read Closing since the close
             bool sawPending = false;  // the close waited (spec 003 closePending) first
             uint64_t closingSinceMs = 0;
-            uint8_t alerted = 0; // critical events already alerted this episode (bit per Event)
+            bool closeFailedOnce = false; // a close was refused or interrupted...
+            uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
+            // When each event last alerted (index: Event).
+            bool alertedEver[8] = {};
+            uint64_t alertedAtMs[8] = {};
+            // The episode's last critical event, for the reminder.
+            struct LastCritical
+            {
+                bool has = false;
+                Event event = Event::None;
+                Cause cause = Cause::None;
+                uint64_t limitMs = 0;
+                uint64_t alertedAtMs = 0;
+            } lastCritical;
         };
 
         // The verdict and park result into `in`: only Safe is safe (unknown is

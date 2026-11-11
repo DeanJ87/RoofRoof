@@ -31,7 +31,7 @@ namespace SQM
                 case Cause::TooLong:
                     return withWhy(
                         "The close didn't finish within " + seconds(decision.limitMs) +
-                            " and was stopped; it tries again in 5 minutes. Roof:",
+                            " and was stopped where it is; it won't close by itself until a person has closed it. Roof:",
                         why);
                 default:
                     break;
@@ -52,6 +52,30 @@ namespace SQM
                         "The weather is unsafe and the park wasn't confirmed within " + seconds(decision.limitMs) +
                             ", so the roof stays open. Park:",
                         why)};
+            }
+
+            AlertText firstAlertFor(const Decision &decision, const std::string &why)
+            {
+                switch (decision.event)
+                {
+                case Event::ParkNotConfirmed:
+                    return parkMessage(decision, why);
+                case Event::CloseFailed:
+                    return {"Roof didn't close", closeFailedMessage(decision, why)};
+                case Event::CannotClose:
+                    if (decision.cause == Cause::PositionUnknown)
+                        return {
+                            "Roof can't close by itself",
+                            "The weather is unsafe and the roof's position is unknown. A person must move it to a magnet."};
+                    return {"Roof can't close by itself", withWhy("The weather is unsafe and a fault is latched. Fault:", why)};
+                case Event::StoppedByPerson:
+                    return {
+                        "Automatic close stopped",
+                        "A person stopped the roof during the automatic close. It stays open while unsafe until someone closes it."};
+                default:
+                    break;
+                }
+                return {eventName(decision.event), why};
             }
         } // namespace
 
@@ -78,31 +102,15 @@ namespace SQM
 
         AlertText alertFor(const Decision &decision, const std::string &why)
         {
-            switch (decision.event)
-            {
-            case Event::ParkNotConfirmed:
-                return parkMessage(decision, why);
-            case Event::CloseFailed:
-                return {"Roof didn't close", closeFailedMessage(decision, why)};
-            case Event::CannotClose:
-                if (decision.cause == Cause::PositionUnknown)
-                    return {
-                        "Roof can't close by itself",
-                        "The weather is unsafe and the roof's position is unknown. A person must move it to a magnet."};
-                return {"Roof can't close by itself", withWhy("The weather is unsafe and a fault is latched. Fault:", why)};
-            case Event::StoppedByPerson:
-                return {
-                    "Automatic close stopped",
-                    "A person stopped the roof during the automatic close. It stays open while unsafe until someone closes it."};
-            default:
-                break;
-            }
-            return {eventName(decision.event), why};
+            AlertText text = firstAlertFor(decision, why);
+            if (decision.reminder)
+                text.title = "Still: " + text.title;
+            return text;
         }
 
         const char *phaseName(Phase phase)
         {
-            static constexpr const char *NAMES[] = {"idle", "waitPark", "closing", "retryWait", "heldByPerson", "cannotMove"};
+            static constexpr const char *NAMES[] = {"idle", "waitPark", "closing", "retryWait", "heldByPerson", "cannotMove", "halted"};
             const size_t index = static_cast<size_t>(phase);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }
