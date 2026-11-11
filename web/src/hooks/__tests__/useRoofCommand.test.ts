@@ -78,4 +78,10 @@ describe('sendRoofCommand', () => {
     expect(await sendRoofCommand('open', () => 'closed', at)).toMatchObject({ outcome: 'unreachable', text: "Couldn't reach the device" });
     expect((await sendRoofCommand('stop', () => 'opening', at)).text).toBe("Stop not confirmed: couldn't reach the device");
   });
+
+  it('a timeout says to watch the roof for Open and Close, and Stop not confirmed', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('timed out', 'TimeoutError')));
+    expect((await sendRoofCommand('close', () => 'open', at)).text).toBe("No answer within 5 s: watch the roof's state");
+    expect((await sendRoofCommand('stop', () => 'closing', at)).text).toBe("Stop not confirmed: couldn't reach the device");
+  });
 });

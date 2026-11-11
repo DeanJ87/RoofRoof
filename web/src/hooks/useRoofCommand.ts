@@ -29,11 +29,17 @@ export const readAnswer = async (
   return { ...base, outcome, text: command === 'stop' ? t('roof.result.stopNotDone', { reason: why }) : why };
 };
 
-export const unreachable = (command: RoofCommand, at: number, stateAt: RoofState | null): CommandResult => ({
+// A timeout may still have reached the device: Open and Close say to watch the roof.
+const unreachableText = (command: RoofCommand, timedOut: boolean) => {
+  if (command === 'stop') return t('roof.result.stopNotConfirmed');
+  return timedOut ? t('roof.result.noAnswer') : t('roof.result.unreachable');
+};
+
+export const unreachable = (command: RoofCommand, at: number, stateAt: RoofState | null, timedOut = false): CommandResult => ({
   command,
   outcome: 'unreachable',
   reason: '',
-  text: command === 'stop' ? t('roof.result.stopNotConfirmed') : t('roof.result.unreachable'),
+  text: unreachableText(command, timedOut),
   at,
   stateAt,
 });
@@ -43,8 +49,9 @@ export const sendRoofCommand = async (command: RoofCommand, state: () => RoofSta
   try {
     const response = await roofCommand(command);
     return await readAnswer(command, response, now(), state());
-  } catch {
-    return unreachable(command, now(), state());
+  } catch (error) {
+    const timedOut = error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError');
+    return unreachable(command, now(), state(), timedOut);
   }
 };
 

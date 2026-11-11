@@ -347,6 +347,7 @@
   "roof.reason.supplyUnreadable": "Supply unreadable (minimum {min} V)",
   "roof.reason.weather": "Weather not safe ({text})",
   "roof.result.loginNeeded": "Login needed: sign in and try again",
+  "roof.result.noAnswer": "No answer within 5 s: watch the roof's state",
   "roof.result.refused": "The device refused the command",
   "roof.result.stopNotConfirmed": "Stop not confirmed: couldn't reach the device",
   "roof.result.stopNotDone": "Stop not confirmed: {reason}",
