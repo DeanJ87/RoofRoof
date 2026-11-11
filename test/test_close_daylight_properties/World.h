@@ -88,7 +88,8 @@ namespace
         uint64_t heldUnsafeMs = 0;   // unsafe weather added up during a person's daylight stand-down
         bool heldPrevUnsafe = false; // the previous step's weather (for the sum)
         uint64_t heldPrevMs = 0;
-        bool justRestarted = false; // the first step after a restart raises its reminder first
+        bool closeBarDaylight = false; // the close back-off came from a daylight close
+        bool justRestarted = false;    // the first step after a restart raises its reminder first
     };
 
     struct Failure

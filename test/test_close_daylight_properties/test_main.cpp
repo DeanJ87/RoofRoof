@@ -165,7 +165,10 @@ namespace
         if (failed && seen.decision.cause == Cause::TooLong)
             watch.halted = true;
         if (failed && (seen.decision.cause == Cause::Refused || seen.decision.cause == Cause::Interrupted))
+        {
             watch.closeBarUntilMs = in.nowMs + RETRY_AFTER_MS;
+            watch.closeBarDaylight = seen.decision.daylight;
+        }
         return nullptr;
     }
 
@@ -264,7 +267,9 @@ namespace
         watch.closingRun = false;
         watch.heldPrevUnsafe = false; // the sequence's own sum starts again too
         watch.justRestarted = true;
-        watch.heldUnsafeMs = 0;
+        // A daylight stand-down or halt keeps the weather's count in the record.
+        const bool kept = saved.daylight && (saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted);
+        watch.heldUnsafeMs = kept ? (saved.unsafeMs < WEATHER_REARM_CONFIRM_MS ? saved.unsafeMs : WEATHER_REARM_CONFIRM_MS) : 0;
         // The time the board was down (since the last step) doesn't count: it
         // ran no clock. (On the bench a restart takes a few seconds.)
         const uint64_t downMs = w.in.nowMs - watch.lastStepMs;
@@ -284,14 +289,22 @@ namespace
                 ever = false;
     }
 
+    // As if the daylight episode hadn't been: fresh alerts, no daylight close back-off.
+    void handToWeather(Watch &watch)
+    {
+        clearAlerted(watch);
+        if (watch.closeBarDaylight)
+            watch.closeBarUntilMs = 0;
+    }
+
     // Unsafe weather added up during a person's stand-down: from one step to
     // the next, both not safe; a stop (or another phase) starts it again.
     bool personWaitOver(Watch &watch, const Inputs &in, Phase before, bool anyStop)
     {
         const bool unsafe = !in.weatherSafe;
-        if (before != Phase::HeldByPerson || anyStop)
+        if ((before != Phase::HeldByPerson && before != Phase::Halted) || anyStop)
             watch.heldUnsafeMs = 0;
-        else if (unsafe && watch.heldPrevUnsafe)
+        else if (watch.heldPrevUnsafe)
             watch.heldUnsafeMs += in.nowMs - watch.heldPrevMs;
         watch.heldPrevUnsafe = unsafe;
         watch.heldPrevMs = in.nowMs;
@@ -312,7 +325,7 @@ namespace
             // After a daylight-only episode the weather's alerts go out afresh.
             if (watch.afterDaylight && !in.weatherSafe)
             {
-                clearAlerted(watch);
+                handToWeather(watch);
                 watch.afterDaylight = false;
             }
             watch.daylightOnly = in.daylight && in.weatherSafe;
@@ -320,11 +333,11 @@ namespace
         }
         if (in.weatherSafe || !watch.daylightOnly || restarted)
             return;
-        if (before == Phase::HeldByPerson && !waitOver)
+        if ((before == Phase::HeldByPerson || before == Phase::Halted) && !waitOver)
             return;
         watch.daylightOnly = false;
         // The weather episode's critical alerts are announced afresh.
-        clearAlerted(watch);
+        handToWeather(watch);
         if (!heldBack(before) || anyStop)
             return;
         watch.expectRearm = true;

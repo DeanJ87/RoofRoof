@@ -1,5 +1,7 @@
 #include "CloseSequence.h"
 
+#include <algorithm>
+
 #include "MotionGuards.h"
 
 // The transitions (specs/005-close-on-unsafe/data-model.md). Each phase's
@@ -348,6 +350,8 @@ namespace SQM
                 out.wallMs = elapsed(wallStartMs, lastNowMs);
                 out.limitMs = attemptLimitMs;
             }
+            else
+                out.unsafeMs = daylightCount(); // spec 013: the weather's count against a daylight stand-down
             return out;
         }
 
@@ -393,6 +397,8 @@ namespace SQM
             lastCritical.cause = restoring.cause;
             lastCritical.limitMs = restoring.event == Event::ParkNotConfirmed ? attemptLimitMs : 0;
             remindNow = current == Phase::HeldByPerson || current == Phase::Halted;
+            // Spec 013: a daylight stand-down keeps the weather's count across the restart.
+            heldUnsafeMs = daylightOnly && remindNow ? std::min<uint64_t>(restoring.unsafeMs, WEATHER_REARM_CONFIRM_MS) : 0;
             if (current == Phase::Closing)
             {
                 // A restart during a close: the close failed part-way. Back off
@@ -402,6 +408,7 @@ namespace SQM
                 phaseWallStartMs = lastNowMs;
                 closeFailedOnce = true;
                 closeFailedAtMs = lastNowMs;
+                closeFailedInDaylight = daylightOnly;
                 lastCritical.has = true;
                 lastCritical.event = Event::CloseFailed;
                 lastCritical.cause = Cause::Interrupted;
@@ -458,6 +465,7 @@ namespace SQM
             {
                 closeFailedOnce = true;
                 closeFailedAtMs = lastNowMs;
+                closeFailedInDaylight = daylightOnly;
             }
             return out;
         }
