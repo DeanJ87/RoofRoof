@@ -249,9 +249,13 @@ Details: [ASCOM Alpaca](../user-guide/alpaca.md). Alpaca is off by default and a
 
 Skip this stage if you don't use MQTT. Details: [MQTT](../user-guide/mqtt.md).
 
-1. Enable MQTT and Home Assistant discovery; the roof appears as a cover with position, supply, Hall and fault entities (and motor current only with current sense on).
-2. Roof commands over MQTT are **off by default** (setting `mqtt.roofCommands`). Switched off, a command gets an answer on the result topic saying so. Leave them off unless you want them; switched on, they obey the same rules as an Alpaca client.
-3. Move the roof from the web UI and watch the cover and sensors follow within a second or two; a fault turns the fault sensor on with its text.
+Do this stage with the motor disconnected (hand-held magnet) the first time, and keep MQTT roof commands off until step 3 passes.
+
+1. **Watch.** Enable MQTT and Home Assistant discovery. The roof appears as a **Roof** cover (read-only while commands are off) with position, supply, Hall and fault entities, and motor current only with current sense on. The base topic carries one retained document, `<base>/state`. Move the roof from the dashboard and see the cover and sensors follow within a second or two; a fault turns the fault sensor on with its text.
+2. **Commands off by default.** With **Settings → Network → MQTT → Accept roof commands** (`mqtt.roofCommands`) off, publish `OPEN` to `<base>/roof/set`: the answer on `<base>/roof/result` says `switchedOff` and nothing moves. Look at the toggle in Settings and review its wording.
+3. **Commands on (optional).** Switch it on. With the weather safe, `OPEN` opens and `STOP` stops. A **retained** `OPEN` left on the broker, then a device restart: the answer is `retained` and nothing moves. After a boot between the magnets, `OPEN` and `CLOSE` answer `positionUnknown`. With the automatic close running in unsafe weather, `STOP` answers `unsafeClose` and the close continues; the web UI's Stop still stops it.
+4. **A dead broker link.** Pull the broker's network cable (a half-open link) during a close (attended, or driverless): the close completes with no park-interlock fault, and the log shows the MQTT write dropped.
+5. **Discovery on the real WiFi.** After a connect, the discovery burst gets through without a write-budget disconnect.
 
 ## Stage 11: The gate for unattended use
 

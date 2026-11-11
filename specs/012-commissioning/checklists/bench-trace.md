@@ -110,12 +110,24 @@ section (analyser or debug build, not part of the gate).
 | Power pulled mid-move: reset reason logged, unknown, no motion | 6.11, 8.9 |
 | A fault followed at once by a restart: waits until saved; still latched | 6.6 |
 
-## PRs #10 (008), 009 and 011 (in progress when this was written)
+## PR #10 (spec 008, data interfaces)
 
-Their bench lists are added to this file, and to the guide, when those PRs merge. Steps that depend
-on them: stage 10 (MQTT and Home Assistant, spec 008), the commands in the guide's shell functions
-(the dashboard's roof card, spec 009), the Roof settings tab's fields (spec 009), bench mode as a stand-in for the
-hand-held magnet (spec 011).
+| Item | Step |
+|---|---|
+| HA shows the Roof cover, position, supply, Hall and fault entities (motor current with current sense) | 10.1 |
+| Commands off: `OPEN` answers `switchedOff`; on: OPEN and STOP work | 10.2, 10.3 |
+| A retained `OPEN` then a restart: `retained`, nothing moves | 10.3 |
+| MQTT STOP in an unsafe automatic close: `unsafeClose`, the close continues | 10.3 |
+| Unknown position at boot: `positionUnknown` | 10.3 |
+| Broker cable pulled during a close: no park-interlock fault | 10.4 |
+| Discovery burst on real WiFi without a write-budget disconnect | 10.5 |
+| The owner looks at the new MQTT toggle | 10.2 |
+
+## PRs for 009 and 011 (in progress when this was written)
+
+Their bench lists are added when they merge. Steps that depend on them: the commands in the guide's shell
+functions (dashboard Roof card, spec 009), the Roof settings tab's fields (009), bench mode as a stand-in
+for the hand-held magnet (011).
 
 ## Owner assumptions placed in the guide
 
