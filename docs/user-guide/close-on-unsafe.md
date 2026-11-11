@@ -96,13 +96,20 @@ position; see [Configuration](configuration.md#safety-and-park).
 
 ## Alerts
 
-The four critical events go out at the **Wake** level (Pushover emergency, ntfy `max`) to every
-alert channel that is switched on, as event `roof`, even while alerts are paused or switched off as a whole: only the channels you have switched on are
-used, so set at least one up. An alert no channel took (WiFi down just after a start, a failed send)
-is sent again after a minute, then at doubling gaps up to 30 minutes, until one does. Each kind is sent at most every 30 minutes; while the roof stays open
-after one, it is sent again every 30 minutes with "Still:" in front of the title. Everything else is
-written to the log. None of them goes through N.I.N.A. or SQMeter, so losing either doesn't lose the
-alert.
+The four critical cases below are two alert events: **The mount doesn't park**
+(`mount_not_parked`) and **The roof doesn't close** (`roof_not_closed`, the other three). In
+**Settings → Alerts → Roof safety** you choose their level (**Urgent** or **Wake me**, default Wake
+me: Pushover emergency, ntfy `max`), sound and wording; they can't be switched off. They go to every
+alert channel that is switched on, even while alerts are paused or switched off as a whole: only the
+channels you have switched on are used, so set at least one up. An alert no channel took (WiFi down
+just after a start, a failed send) is sent again after a minute, then at doubling gaps up to 30
+minutes, until one does. Each kind is sent at most every 30 minutes; while the roof stays open after
+one, it is sent again every 30 minutes with "Still:" in front of the title. None of them goes through
+N.I.N.A. or SQMeter, so losing either doesn't lose the alert.
+
+The start of the sequence (**The weather closes the roof**) and the roof reaching closed (**Roof
+closed after unsafe weather**) are ordinary alert events with the usual rules (the master switch, the
+pause, the cooldown); see [Alerts](alerts.md#the-roof).
 
 | Alert | Means | What to do |
 |---|---|---|
@@ -111,8 +118,9 @@ alert.
 | **Roof can't close by itself** | A fault is latched, the roof's position is unknown (after a restart between the magnets, or an abort), or the roof controller didn't start. Nothing is sent or moved. | Move the roof to a magnet, or clear the fault. If it is still unsafe, the roof closes once the mount is confirmed parked. |
 | **Automatic close stopped** | A person stopped or aborted the roof during the sequence (or while it couldn't move). Nothing more happens while it is unsafe. | Close the roof yourself when it is safe to, or wait for 10 minutes of safe weather. |
 
-The roof's own alert events, with their levels, wording and settings, arrive in a later release;
-until then these four use fixed wording.
+The titles above are the built-in wording. Your own wording (with `{reason}`, `{limit}` and
+`{details}`) keeps the reason: a message that uses neither `{reason}` nor `{details}` gets the
+built-in message added under it.
 
 !!! warning "A stop is respected"
     The automatic close never overrides a person's stop: whoever pressed it may be at the roof.

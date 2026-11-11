@@ -53,13 +53,13 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 | Library | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
-| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; alert type `roof` added for the close on unsafe weather (spec 005) | No |
+| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; the roof's seven alert types (two critical), their inputs and rising-edge trackers in `src/RoofEvents.cpp`, and the announced-before-reset bits added (specs 005, 007) | No |
 | AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
-| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002) | No |
+| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007) | No |
 | ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
-| DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept | No |
+| DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
 | FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic | Yes |
 | NetAddress | `lib/NetAddress` | Unchanged (code) | No |
 | SettingsDeps | `lib/SettingsDeps` | Changed: catalogue cut to the settings that remain | No |
