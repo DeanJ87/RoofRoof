@@ -76,3 +76,22 @@ for (const width of [1280, 390]) {
     expect(between).toEqual([]);
   });
 }
+
+// Spec 009: on a phone the Roof card's three buttons stay on screen, clickable
+// and clear of the Demo button and the tour offer (FR-026).
+for (const width of [320, 390]) {
+  test(`at ${width} px the Roof card's Open, Close and Stop stay clear`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 700 });
+    await page.goto('./#/');
+    const roof = page.locator('[data-inventory="roof-card"]');
+    await expect(roof).toBeVisible({ timeout: 15_000 });
+    for (const name of ['Open', 'Close', 'Stop']) {
+      const control = roof.getByRole('button', { name, exact: true });
+      await control.scrollIntoViewIfNeeded();
+      await expectClear(page, control);
+      const box = (await control.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+    }
+  });
+}

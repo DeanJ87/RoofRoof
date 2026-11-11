@@ -391,3 +391,6 @@ Each was an open choice; the safest option the constitution allows was taken.
   states it can't produce are tested on the components.
 - Commissioning docs (012).
 - Any change to the device's checks, the status document, MQTT or Home Assistant (008, 010).
+- A browser check of the Stop bar's layout against the save bar and the demo panel: it needs a
+  moving roof in the demo (011). Until then the Stop bar is covered by component tests on every
+  route, and its layout is a bench item.

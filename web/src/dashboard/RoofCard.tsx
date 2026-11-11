@@ -140,10 +140,36 @@ const supplyText = (roof: RoofStatus) =>
   roof.supplyVolts === null ? t('roof.unreadable') : t('roof.volts', { value: formatNumber(roof.supplyVolts, 1) });
 const ampsText = (amps: number | null) => (amps === null ? t('roof.unreadable') : t('roof.amps', { value: formatNumber(amps, 1) }));
 
+// A reading with its limit behind "?" (FR-011).
+const HintRow: FunctionalComponent<{ label: string; hint: string; value: string; valueClass?: string }> = ({
+  label,
+  hint,
+  value,
+  valueClass = '',
+}) => (
+  <div class="reading-row">
+    <span class="reading-label">
+      {label} <InfoTip text={hint} />
+    </span>
+    <strong class={`reading-value ${valueClass}`}>{value}</strong>
+  </div>
+);
+
 const Readings: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => (
   <div data-inventory="roof-readings">
-    <ReadingRow label={t('roof.supply')} value={supplyText(roof)} valueClass={roof.supplyLow ? 'tone-red' : ''} />
-    {roof.currentSense && <ReadingRow label={t('roof.motorCurrent')} value={ampsText(roof.motorAmps)} />}
+    <HintRow
+      label={t('roof.supply')}
+      hint={t('roof.supplyHint', { min: formatNumber(roof.minSupplyVolts, 1) })}
+      value={supplyText(roof)}
+      valueClass={roof.supplyLow ? 'tone-red' : ''}
+    />
+    {roof.currentSense && (
+      <HintRow
+        label={t('roof.motorCurrent')}
+        hint={t('roof.motorCurrentHint', { max: formatNumber(roof.maxCurrentAmps, 1) })}
+        value={ampsText(roof.motorAmps)}
+      />
+    )}
     {roof.parkSwitches.fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof.parkSwitches.switch1)} />}
     {roof.parkSwitches.fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof.parkSwitches.switch2)} />}
     {roof.rainContact !== 'notFitted' && <ReadingRow label={t('roof.rainContact')} value={t(`roof.rain.${roof.rainContact}`)} />}
@@ -152,12 +178,7 @@ const Readings: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => (
 
 const Hall: FunctionalComponent<{ roof: RoofStatus; config?: RoofConfig }> = ({ roof, config }) => (
   <div class="roof-hall" data-inventory="roof-hall">
-    <div class="reading-row">
-      <span class="reading-label">
-        {t('roof.hall.label')} <InfoTip text={t('roof.hall.hint')} />
-      </span>
-      <strong class="reading-value">{formatCount(roof.hall.counts)}</strong>
-    </div>
+    <HintRow label={t('roof.hall.label')} hint={t('roof.hall.hint')} value={formatCount(roof.hall.counts)} />
     <HallScale counts={roof.hall.counts} low={config?.hallLowCounts} high={config?.hallHighCounts} />
     <Note>{t(`roof.hall.level.${roof.hall.level}`)}</Note>
   </div>
