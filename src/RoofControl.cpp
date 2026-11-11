@@ -406,7 +406,8 @@ namespace SQM
         notice = "Roof settings applied";
     }
 
-    void RoofControl::setSafety(const Safety::WeatherVerdict &weather, const Safety::ParkResult &park)
+    void RoofControl::setSafety(
+        const Safety::WeatherVerdict &weather, const Safety::ParkResult &park, bool daylightCloses, const std::string &daylightText)
     {
         if (lock == nullptr)
             return;
@@ -417,6 +418,8 @@ namespace SQM
         gates.weatherText = weatherText;
         gates.parked = park.parked;
         gates.parkText = parkText;
+        gates.daylightCloses = daylightCloses;
+        gates.daylightText = daylightText;
         safetyHandedOver = true;
         safetyAtMs = millis();
     }

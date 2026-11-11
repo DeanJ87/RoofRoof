@@ -20,6 +20,7 @@
 #include "AlpacaRouter.h"
 #include "CloseSequence.h"
 #include "Config.h"
+#include "Daylight.h"
 #include "FaultRecord.h"
 #include "RoofController.h"
 #include "RoofGates.h"
@@ -51,6 +52,7 @@ namespace DemoRoof
         bool parkFails = false; // the mount never reaches park
         bool jam = false;       // the roof can't move
         bool supplyLow = false; // the 12 V supply at LOW_SUPPLY_VOLTS
+        bool sunUp = false;     // spec 013: the sun well above the daylight threshold
     };
 
     // The simulated mount as N.I.N.A. reports it.
@@ -81,6 +83,8 @@ namespace DemoRoof
         void settingsChanged(const Config &cfg);
         // Steps the roof up to `nowMs`.
         void advance(uint64_t nowMs);
+        // The device's clock (Unix seconds, 0 when not set), for the daylight state.
+        void setClock(int64_t epochSeconds) { epoch = epochSeconds; }
 
         // POST /api/roof/* (a person) and the Alpaca Dome (a client).
         Outcome command(Roof::Command command, Roof::Origin origin);
@@ -102,6 +106,7 @@ namespace DemoRoof
         const Safety::ParkResult &parkResult() const { return park; }
         CloseSeq::Phase phase() const { return sequence.phase(); }
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
+        const Daylight::View &daylight() const { return daylightView; }
         // The critical alerts raised since the last call (spec 005's sink).
         std::vector<Alerts::Alert> takeCritical();
 
@@ -115,6 +120,7 @@ namespace DemoRoof
         void evaluateSafety();
         void stepMount();
         void stepSequence();
+        void stepDaylight(bool now);
         void carryOut(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
         Outcome automaticClose(uint32_t personStopsSeen);
@@ -153,6 +159,13 @@ namespace DemoRoof
         CloseSeq::Sequence sequence;
         Alerts::RoofInputs roofConditions;
         uint32_t closedCount = 0;
+        // Spec 013: CloseOnUnsafe::updateDaylight.
+        Daylight::Settings daylightCfg;
+        Daylight::Watch daylightWatch;
+        Daylight::View daylightView;
+        uint32_t daylightClosedCount = 0;
+        int64_t epoch = 0;
+        uint64_t lastDaylightMs = 0;
         std::vector<Alerts::Alert> critical;
 
         uint64_t nowMs = 0; // stepped up to here

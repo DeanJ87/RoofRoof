@@ -142,6 +142,8 @@ namespace SQM
         const char *phase = closePhase ? closePhase() : nullptr;
         if (phase != nullptr)
             s.closePhase = phase;
+        if (daylightSource)
+            s.daylight = daylightSource();
         return s;
     }
 
@@ -149,7 +151,10 @@ namespace SQM
     {
         if (roof == nullptr)
             return;
-        RoofIo::writeStatus(doc.createNestedObject("roof"), roofSnapshot());
+        const RoofIo::Snapshot snapshot = roofSnapshot();
+        JsonObject out = doc.createNestedObject("roof");
+        RoofIo::writeStatus(out, snapshot);
+        RoofIo::writeDaylight(out, snapshot);
     }
 
     // Open, close and stop from <base>/roof/set (spec 008 FR-004 to FR-009).

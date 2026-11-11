@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "CommandCheck.h"
+#include "DeviceCore.h"
 #include "DomeBridge.h"
 #include "MotionGuards.h"
 #include "ParkRule.h"
@@ -30,6 +31,7 @@ namespace DemoRoof
         parkCfg = cfg.park;
         roofCfg = cfg.roof;
         mqttOn = cfg.mqtt.enabled;
+        daylightCfg = Daylight::settingsFrom(cfg);
         settingsPending = false;
         const Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
         controller = Roof::Controller(settings);
@@ -47,6 +49,9 @@ namespace DemoRoof
         sequence = CloseSeq::Sequence();
         roofConditions = Alerts::RoofInputs();
         closedCount = 0;
+        daylightClosedCount = 0;
+        daylightWatch = Daylight::Watch();
+        daylightView = Daylight::View();
         critical.clear();
         nowMs = now;
         bootMs = now;
@@ -54,10 +59,13 @@ namespace DemoRoof
         polled = false;
         ninaReadAtMs = 0;
         evaluateSafety();
+        stepDaylight(true);
     }
 
     void EmulatedRoof::settingsChanged(const Config &cfg)
     {
+        daylightCfg = Daylight::settingsFrom(cfg);
+        stepDaylight(true);
         safetyCfg = cfg.safety;
         parkCfg = cfg.park;
         mqttOn = cfg.mqtt.enabled;
@@ -107,6 +115,7 @@ namespace DemoRoof
         syncFault();
         stepMount();
         stepSafety();
+        stepDaylight(false);
         if (nowMs - lastSequenceMs >= SEQUENCE_EVERY_MS)
         {
             lastSequenceMs = nowMs;
@@ -261,6 +270,18 @@ namespace DemoRoof
         gates.parkText = Safety::describe(park);
     }
 
+    // --- Daylight (CloseOnUnsafe::updateDaylight and main.cpp's hand-over) -----------
+
+    void EmulatedRoof::stepDaylight(bool now)
+    {
+        if (!now && nowMs - lastDaylightMs < EVALUATE_EVERY_MS)
+            return;
+        lastDaylightMs = nowMs;
+        daylightView = daylightWatch.update(daylightCfg, epoch >= Core::CLOCK_VALID_EPOCH, epoch, inject.sunUp);
+        gates.daylightCloses = daylightView.closes();
+        gates.daylightText = gates.daylightCloses ? Daylight::describe(daylightView) : std::string();
+    }
+
     // --- The close sequence (CloseOnUnsafe::handle) ------------------------------
 
     void EmulatedRoof::stepSequence()
@@ -271,12 +292,15 @@ namespace DemoRoof
         CloseSeq::applyRoof(in, controller.status(), false);
         in.personStops = personStops;
         in.roofStarted = true;
+        in.daylight = daylightView.closes();
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
         if (CloseSeq::closedAfterAttempt(before, decision.event))
-            ++closedCount;
-        CloseSeq::updateConditions(roofConditions, snapshot(), verdict, {sequence.phase(), closedCount});
+            ++(decision.daylight ? daylightClosedCount : closedCount);
+        const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
+        CloseSeq::updateConditions(roofConditions, snapshot(), verdict, view);
+        CloseSeq::updateDaylightConditions(roofConditions, daylightView, controller.status().state, view);
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None)
             return;
         CloseSeq::Reasons reasons;
@@ -402,7 +426,10 @@ namespace DemoRoof
     void EmulatedRoof::setInjectors(const Injectors &next)
     {
         weatherChanged = next.unsafe != inject.unsafe || next.rain != inject.rain;
+        const bool sunChanged = next.sunUp != inject.sunUp;
         inject = next;
+        if (sunChanged)
+            stepDaylight(true);
     }
 
     RoofIo::Snapshot EmulatedRoof::snapshot() const
@@ -426,6 +453,7 @@ namespace DemoRoof
         s.simulation = "demo";
         RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
         s.closePhase = CloseSeq::phaseName(sequence.phase());
+        s.daylight = CloseSeq::daylightStatus(daylightView);
         return s;
     }
 
@@ -441,6 +469,7 @@ namespace DemoRoof
         i["parkFails"] = inject.parkFails;
         i["jam"] = inject.jam;
         i["supplyLow"] = inject.supplyLow;
+        i["sunUp"] = inject.sunUp;
         if (fault.fault.kind == Roof::FaultKind::None)
             return;
         uint8_t bytes[RoofIo::FAULT_RECORD_BYTES];
@@ -462,6 +491,7 @@ namespace DemoRoof
         inject.parkFails = i["parkFails"] | false;
         inject.jam = i["jam"] | false;
         inject.supplyLow = i["supplyLow"] | false;
+        inject.sunUp = i["sunUp"] | false;
         fault = RoofIo::FaultRecord();
         JsonArrayConst f = in["fault"];
         if (f.isNull())

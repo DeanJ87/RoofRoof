@@ -12,7 +12,10 @@ std::string EmulatedDevice::statusParts() const
     doc["uptime"] = (nowMs - bootMs) / 1000;
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, devices(), cfg, nowMs);
-    RoofIo::writeStatus(doc.createNestedObject("roof"), roof.snapshot()); // the firmware's own writer (spec 011)
+    const RoofIo::Snapshot snapshot = roof.snapshot();
+    JsonObject roofOut = doc.createNestedObject("roof");
+    RoofIo::writeStatus(roofOut, snapshot); // the firmware's own writer (spec 011)
+    RoofIo::writeDaylight(roofOut, snapshot);
     return serialize(doc);
 }
 
