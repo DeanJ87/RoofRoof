@@ -1,5 +1,5 @@
 ---
-description: "What RoofRoof does when the weather turns unsafe: ask N.I.N.A. to park, wait for the confirmed park, close. Its time limits, what each critical alert means, and what to do."
+description: "What RoofRoof does when the weather turns unsafe, or the sun is up and the daylight failsafe is set to close: ask N.I.N.A. to park, wait for the confirmed park, close. Its time limits, what each critical alert means, and what to do."
 ---
 
 # Close on unsafe weather
@@ -26,14 +26,14 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: b36a9c99e1f08d84
+fingerprint: eaf39fba165b100b
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The close on unsafe weather
-    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park; a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end.
+    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park; a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a halted or waiting sequence starts again at once, a sequence a person stood down after 30 s of unsafe weather.
     [*] --> Idle
     Idle --> WaitPark: not safe, roof not closed (park request)
     Idle --> Closing: not safe, a close already running
@@ -57,9 +57,12 @@ stateDiagram-v2
     CannotMove --> Idle: closed, or safe for 10 min
     HeldByPerson --> Idle: closed, or safe for 10 min
     Halted --> Idle: closed, or safe for 10 min
+    HeldByPerson --> Idle: weather unsafe 30 s, daylight-only attempt (starts again)
+    Halted --> Idle: weather unsafe, daylight-only attempt (starts again)
+    RetryWait --> Idle: weather unsafe, daylight-only attempt (starts again)
 ```
 
-<figcaption>The close on unsafe weather. From waiting or closing, a fault or a position unknown for 2 s also stands the sequence down (CannotMove), and the roof reading closed always ends it.</figcaption>
+<figcaption>The close on unsafe weather (and, with the daylight close on, in daylight: "not safe" then also means the sun is up). From waiting or closing, a fault or a position unknown for 2 s also stands the sequence down (CannotMove), and the roof reading closed always ends it.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -73,8 +76,9 @@ stateDiagram-v2
     7. If the roof faults, or its position is unknown for 2 s, nothing is sent and a critical alert says it can't close by itself (`CannotMove`). Once a person has made the position known or cleared the fault, the 5-minute wait follows.
     8. A person's stop or abort during the sequence, or while it can't move, stands it down (`HeldByPerson`) with a critical alert: nothing more is sent or moved.
     9. `CannotMove`, `HeldByPerson` and `Halted` end when the roof reads closed, or the weather has been safe for 10 minutes without a break.
-    10. A safe verdict while waiting ends the sequence. A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
-    11. A restart of the device (not a power cut) keeps a stand-down, and an attempt or back-off with the time it has run (plus 10 s for the restart), so a board that keeps restarting still reaches its limits. A restart after the close was asked for but before the roof took it carries on from the park wait; it isn't a failed close.
+    10. A safe verdict while waiting ends the sequence (with the daylight close on, only when the sun isn't up either). A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
+    11. An attempt that began only because of daylight is a daylight attempt until the weather first turns unsafe. Then a halted or waiting daylight attempt ends at once (`Idle`) and the weather attempt starts on the same pass; one a person stood down ends once the weather has been not safe for 30 s without a break (a new stop restarts the wait); a person's stop on that very pass still stands it down.
+12. A restart of the device (not a power cut) keeps a stand-down, and an attempt or back-off with the time it has run (plus 10 s for the restart), so a board that keeps restarting still reaches its limits. A restart after the close was asked for but before the roof took it carries on from the park wait; it isn't a failed close.
 
 ## Time limits
 
@@ -135,6 +139,87 @@ built-in message added under it.
     power cut, and not
     reliably a firmware update.
     A stop pressed by mistake leaves the roof open in the rain until someone acts on the alert.
+
+## Daylight failsafe
+
+The same sequence also runs when the sun is up and the roof isn't closed, if you ask for it. Set
+**Settings → Roof → Daylight** to one of three modes (`daylight.mode`):
+
+| Mode | When the sun is up and the roof isn't closed |
+|---|---|
+| **Off** | Nothing. Solar imaging works as it does without the feature. |
+| **Alert** (the default) | An alert says the roof is open in daylight. Nothing moves, and nothing is refused. |
+| **Alert and close** | The roof is parked and closed as for unsafe weather. Opening is refused while the sun is up. |
+
+**Alert** is the default, also after an update from a release without it. Some owners image the sun
+on purpose, for them an open roof in daylight is normal, and an update never turns on a feature that
+moves the roof. Alert tells every owner about a forgotten open roof and moves nothing. Pick **Alert
+and close** once if you never image the sun.
+
+**The sun is up** when its altitude is at or above the **Sun altitude** threshold
+(`daylight.sunAltitudeDeg`, default 0 degrees, the sun's centre on the horizon; -18 to +30). A lower
+value closes earlier, a higher one suits a site with a high horizon. The sun counts as down again
+only once it is 0.5 degrees below the threshold, so a sun that lingers there doesn't flicker the
+state. The altitude is worked out on the device, once a second, from the site and the clock.
+
+**The site and the clock.** Enter the latitude and longitude in **Settings → Roof → Daylight**
+(`location.set`, `location.latitude`, `location.longitude`; RoofRoof has no GPS). Without the site, or
+before the clock is set by NTP, the check can't tell day from night, so it **does nothing**: no
+alert, no close, no refusal. With the mode on (alert, or alert and close), it sends **Daylight check
+not working** (naming what is missing) once it has been unable to run for 10 minutes. A clock set
+within 10 minutes of a restart never alerts. With the mode off, nothing is sent.
+
+**Alert and close** is spec 005's sequence, unchanged: it asks N.I.N.A. to park, closes only once the
+park is confirmed, never onto an unparked mount, and uses the same time limits, back-off and critical
+alerts, worded for daylight (see below). Nothing in it opens the roof.
+
+**Opening.** While the sun is up in **Alert and close**, every open is refused (web UI, REST,
+[Alpaca](alpaca.md), [MQTT](mqtt.md) and Home Assistant) with the reason `daylight` and the sun's
+altitude and the threshold (`Daylight: Sun 3.2° ≥ 0.0°`). An open under way is stopped, as it is for
+unsafe weather; the sequence then parks and closes. When the weather is also unsafe, the weather
+reason is the one named. **Off** and **Alert** never refuse or stop anything. To open the roof in
+daylight, set the mode to Alert or Off first.
+
+**A person's Stop.** A person's Stop (web UI, REST) stands a daylight close down, exactly as it
+does a weather close. An Alpaca or MQTT client's stop of a close in daylight is refused
+(`unsafeClose`), as in bad weather. The stand-down lasts while the sun is up. It ends once the sun
+has been down, or the mode has not been **Alert and close**, for 10 minutes, or when the roof reads
+closed. A halted close stays halted the same way. Daylight never ends a stand-down or a halt.
+**Automatic close stopped** goes out once when you stop a daylight close, with no 30-minute
+"Still:" reminders: you stopped it on purpose. Set the mode to **Alert** if you want the roof open
+for the rest of the day.
+
+**Unsafe weather comes first** and is unchanged:
+
+- If the weather turns unsafe while a daylight-only attempt is halted or backing off after a
+  failure, the weather close starts at once. If a person stood the daylight close down, the weather
+  close starts once the weather has been not safe for 30 s without a break (a single missed SQMeter
+  poll doesn't send a park request against your stop; a new Stop restarts the 30 s). A person can
+  stop the weather close with Stop too. The critical alerts start afresh, so a weather close that
+  fails the same way as the daylight one just did is still announced. An
+  attempt already waiting for the park, or a close under way, carries on, and its alerts are worded
+  for the weather from then on.
+- A weather close stood down by a person stays stood down while the sun is up in **Alert and
+  close**, even after the weather clears. It re-arms once the sun has been down for 10 minutes. The
+  roof doesn't move either way, and the weather close's reminders keep coming while the roof is
+  open in daylight.
+- With the mode **Off** or **Alert**, the sequence is exactly the one described above.
+
+**Alerts.** Three events in [Settings → Alerts](alerts.md#the-roof): **Roof open in daylight**,
+**Roof closed after daylight** and **Daylight check not working**. When a daylight close can't
+finish, the same critical alerts as above go out, with "It is daylight" in place of "The weather is
+unsafe" ("Mount didn't park: It is daylight and the park wasn't confirmed within 240 s, so the roof
+stays open"), and the stood-down alert says the roof stays open "in daylight" and what re-arms it:
+the sun has been down (or the daylight close off) for 10 minutes. **Roof open in daylight** isn't
+sent while the weather close is already closing the roof ("The weather closes the roof" has said so).
+The daylight events are ordinary alerts: they wait while alerts are paused, including **Only while
+an imaging app is connected** (a crashed imaging PC disconnects, so that setting also silences
+**Roof open in daylight**; use **Any time** if you rely on it). After an update, a device with no
+site set sends **Daylight check not working: Location not set** once, 10 minutes after the restart:
+set the site, or set the mode to Off.
+
+The Roof card's **Daylight** line shows the mode and the sun against the threshold, or why the check
+can't run; see [the dashboard](dashboard.md#roof).
 
 ## In the log
 

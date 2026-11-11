@@ -71,12 +71,13 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 | Reason | Example message | What to do |
 |---|---|---|
 | Weather not safe (open) | `Weather not safe: unsafe: rain` | Wait for the weather. There is no override ([Safety inputs](safety-inputs.md)). |
+| Daylight (open) | `Daylight: Sun 3.2° ≥ 0.0°` | The daylight failsafe is on "Alert and close" and the sun is up. Wait for the sun to go down, or set the mode to Alert or Off ([Daylight failsafe](close-on-unsafe.md#daylight-failsafe)). |
 | Mount not parked (close) | `Mount not parked: park not confirmed (N.I.N.A. not responding)` | Park the mount; check the [park rule](safety-inputs.md#park). |
 | Position unknown | `Position unknown: only a person can move the roof` | Move the roof to a magnet from the web UI ([Roof motion](roof-motion.md)). |
 | A fault is latched | `A fault is latched: a person must clear it first: No target magnet after 61.0 s >= 60.0 s timeout` | Find the cause, then clear the fault in the web UI. |
 | Supply low | `Supply 10.9 V < 11.5 V` | Check the 12 V supply. |
 | Closing (open) | `The roof is closing or was stopped while closing: an imaging app can't reverse a close` | Let it close, or open it from the web UI. |
-| Closing in bad weather (stop) | `The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)` | Use Stop in the web UI if the roof must not close. |
+| Closing in bad weather or daylight (stop) | `The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)`; in daylight: `The roof is closing in daylight (Sun 3.2° ≥ 0.0°): ... can't stop it ...` | Use Stop in the web UI if the roof must not close. |
 | Busy | `An upload is being written: try again in a moment` | Wait for the upload or restart to finish. |
 | Not connected | ASCOM NotConnected (`1031`): `Not connected: connect to the Dome first` | Connect first. |
 | Alpaca off | NotConnected: `Alpaca support is disabled in device settings`, for every Dome command including Stop | Turn Alpaca on, or use the web UI. |
@@ -85,7 +86,7 @@ Disconnecting, or an imaging app that goes quiet, never stops or starts a move: 
 
 ## Stop from N.I.N.A. in bad weather
 
-Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe, N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is closed or the weather has been safe for 10 minutes. N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop. The Alpaca connection is not a safeguard: ASCOM asks for it, but it is one setting for the whole server; the roof's own checks are what protect it.
+Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe (or the sun is up with the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) on "Alert and close"), N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is closed or the weather has been safe for 10 minutes. N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop. The Alpaca connection is not a safeguard: ASCOM asks for it, but it is one setting for the whole server; the roof's own checks are what protect it.
 
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand

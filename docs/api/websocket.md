@@ -27,7 +27,7 @@ ws.onclose = () => {
 
 ## Message Format
 
-Each message is the status document - the same as [`GET /api/status`](rest.md#get-apistatus): firmware, memory, flash partitions, time, WiFi, MQTT, NTP, alerts, Alpaca, connections and the roof. See the [API Reference](reference.md) for every field.
+Each message is the status document - the same as [`GET /api/status`](rest.md#get-apistatus): firmware, memory, flash partitions, time, WiFi, MQTT, NTP, alerts, Alpaca, connections and the roof. See the [API Reference](reference.md) for every field. The roof carries `roof.daylight`: the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe)'s mode, state, the sun's altitude against the threshold, its text and `closes`, whether daylight wants the roof closed now ([fields](rest.md#get-apistatus)).
 
 !!! note "The same in every language"
     Messages never change with the UI language. Numbers are JSON numbers with `.` as the decimal point and no thousands separators; field names are never translated.

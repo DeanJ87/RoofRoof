@@ -55,7 +55,7 @@ If a new firmware doesn't finish starting (WiFi and the web server up), the devi
 1. **Settings → Network → ASCOM Alpaca** must be on, and the device restarted since.
 2. Discovery is a UDP broadcast, which doesn't cross subnets or VLANs. If N.I.N.A.'s PC is on another network, add the device manually: its IP, port `80`.
 3. The server lists one device, the roof's Dome (`curl http://<device-ip>/management/v1/configureddevices`). An empty list means Alpaca is off.
-4. N.I.N.A. connects but Open or Close shows an error: the message says why (weather not safe, mount not parked, position unknown, a fault) - see [When a command is refused](../user-guide/alpaca.md#when-a-command-is-refused).
+4. N.I.N.A. connects but Open or Close shows an error: the message says why (weather not safe, daylight, mount not parked, position unknown, a fault) - see [When a command is refused](../user-guide/alpaca.md#when-a-command-is-refused).
 
 See [ASCOM Alpaca](../user-guide/alpaca.md).
 
@@ -87,6 +87,27 @@ Open the alerts bell. It lists the recent alerts with each channel's result. Com
 - The cooldown held it back; it's sent when the cooldown ends if things haven't changed back
 - The channel failed - the bell's list shows each channel's result, e.g. Pushover "user identifier is not a valid user" means the user key (not the app token) is wrong
 - The roof's critical alerts (**Mount didn't park**, **Roof didn't close**) ignore the pause, the send mode and **Send alerts**, but still need a channel switched on: with none set up the serial log is the only report. Press **Test** on the roof's rows to prove the channel ([Alerts](../user-guide/alerts.md#the-roof))
+- "Roof open in daylight" and "Daylight check not working" need the daylight mode to be on, and the check to be able to run ([Daylight check not working](#daylight-check-not-working)) ([Alerts](../user-guide/alerts.md))
+
+---
+
+## Daylight Check Not Working
+
+The alert **Daylight check not working** (or the Roof card's Daylight line saying **Location not set** or **Clock not set**) means the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe) can't tell day from night, so it does nothing: no daylight alert, no close and no refusal. It is sent once the check has been unable to run for 10 minutes, and only while the mode is **Alert** or **Alert and close**.
+
+- **Location not set**: enter the latitude and longitude in **Settings → Roof → Daylight** and save. Latitude is north positive, longitude east positive.
+- **Clock not set**: the device sets its clock by NTP. Check **Settings → Time** and that the device can reach an NTP server.
+- If you don't want the check, set the mode to **Off**.
+
+---
+
+## Open Refused: Daylight
+
+An Open from the web UI, N.I.N.A. or MQTT is refused with **Daylight: Sun 3.2° ≥ 0.0°**. The daylight failsafe is on **Alert and close** and the sun is at or above the threshold, so the roof is kept closed. There is no override for one open.
+
+- To open the roof in daylight (solar imaging, or a test), set **Settings → Roof → Daylight** to **Alert** or **Off**.
+- If the sun is not really up, check the latitude and longitude (east positive; a wrong sign puts the sun on the other side of the earth), the time zone and the **Sun altitude** threshold. The roof card's Daylight line shows the altitude the device works out.
+- When the weather is also unsafe, the weather reason is the one shown.
 
 ---
 
