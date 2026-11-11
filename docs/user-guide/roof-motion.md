@@ -48,7 +48,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: b339770b89790e0c
+fingerprint: 7503d78fc2861ac1
 -->
 <figure class="diagram" markdown>
 
@@ -98,10 +98,10 @@ stateDiagram-v2
 
 | Command | What it does |
 |---|---|
-| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked. Asking for the end the roof is already at, or the move already under way, changes nothing. |
+| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked: a command from the web UI, not an imaging app over [Alpaca](alpaca.md) or the [automatic close](close-on-unsafe.md). Asking for the end the roof is already at, or the move already under way, changes nothing. |
 | Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted. |
 | Abort | Motor off at once; part-way, the position becomes unknown. With no move under way it changes nothing. Always accepted. |
-| Clear fault | Only a person can clear a fault. A restart never clears one. |
+| Clear fault | Only a person can clear a fault, from the web UI; Alpaca has no way to. A restart never clears one. |
 
 ## The speed profile
 

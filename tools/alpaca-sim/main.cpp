@@ -1,35 +1,143 @@
 // Alpaca simulator: serves the firmware's Alpaca API (Alpaca::Router from
 // lib/AlpacaLogic) on a desktop machine, so the protocol can be tested without
-// an ESP32. Spec 001: discovery and management with no devices; spec 006 adds
-// the simulated Dome and runs ConformU against it in CI.
+// an ESP32. The Dome (spec 006) is spec 002's motion logic driving a simulated
+// roof (test/roof_sim), through the same gate checks and the same Dome mapping
+// (lib/RoofIoLogic DomeBridge) as the firmware; ConformU runs against it in CI.
 //
-//   tools/alpaca-sim/build.sh && ./alpaca-sim [port]     (default 11111)
+//   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [unsafe] [unparked]
+//
+// Starts closed, with the weather safe and the mount parked unless told
+// otherwise. Travel is 300 mm at 100 mm/s, so a move takes about 4 s. The roof
+// is stepped every 20 ms of simulated time, caught up to the wall clock before
+// each request.
 //
 // Deliberately tiny: one request per connection, GET query strings and
 // application/x-www-form-urlencoded PUT bodies, nothing else.
 
 #include "AlpacaRouter.h"
+#include "CommandCheck.h"
+#include "Config.h"
+#include "DomeBridge.h"
+#include "RoofGates.h"
+#include "RoofSim.h"
+#include "RoofText.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <string>
 
+using namespace SQM;
 using namespace SQM::Alpaca;
 
 namespace
 {
+    Roof::Settings simulatedSettings()
+    {
+        Roof::Settings settings;
+        settings.travelMm = 300;
+        settings.speedMmPerSecond = 100.0f;
+        settings.timeoutMarginMs = 5000;
+        settings.leaveMagnetMs = 2000;
+        settings.rampUpMs = 500;
+        settings.rampDownMs = 500;
+        return settings;
+    }
+
+    // The roof: the controller and the plant, with fixed weather and park inputs.
+    class SimRoof
+    {
+    public:
+        SimRoof(bool safe, bool parked)
+            : bench(simulatedSettings()),
+              started(std::chrono::steady_clock::now())
+        {
+            gates.weather = safe ? Safety::Verdict::Safe : Safety::Verdict::Unsafe;
+            gates.weatherText = safe ? "safe" : "unsafe: rain (simulated)";
+            gates.parked = parked;
+            gates.parkText = parked ? "parked" : "N.I.N.A. reports the mount not parked (simulated)";
+            bench.sim.speedMmPerSecond = simulatedSettings().speedMmPerSecond; // the plant moves as the settings say
+            steppedMs = 0;
+        }
+
+        DomeStatus status()
+        {
+            catchUp();
+            return RoofIo::domeStatus(bench.roof.status(), false, true);
+        }
+
+        // The firmware's decision (RoofIo::checkCommand, as RoofControl::precheck),
+        // then the motion logic. Not simulated: uploads and MQTT (so no close
+        // waits), the automatic close, and Alpaca switched off.
+        DomeAnswer command(DomeAction action)
+        {
+            catchUp();
+            const RoofIo::DomeDispatch dispatch = RoofIo::domeDispatch(action);
+            const Roof::Command command = dispatch.command;
+            // No automatic close and no waiting close in the simulator.
+            const RoofIo::CommandCheck check = RoofIo::checkCommand(command, dispatch.origin, gates, bench.roof, RoofIo::CommandContext());
+            bool accepted = check.accepted;
+            std::string reason = check.reason;
+            std::string text = check.text;
+            if (accepted)
+            {
+                const Roof::CommandResult result = bench.roof.command(command, dispatch.origin);
+                accepted = result.accepted;
+                reason = Roof::refusalName(result.reason);
+                text = RoofIo::describeRefusal(result);
+            }
+            RoofIo::FaultRecord fault;
+            fault.fault = bench.roof.status().fault;
+            const DomeAnswer answer = RoofIo::domeAnswer(command, accepted, reason, text, fault);
+            std::printf(
+                "  roof %s: %s%s\n", Roof::commandName(command), answer.accepted ? "accepted" : "refused: ", answer.message.c_str());
+            return answer;
+        }
+
+    private:
+        // Steps the roof up to the wall clock, applying the firmware's
+        // interlock and open stop after each step (RoofControl::checkGates).
+        void catchUp()
+        {
+            const auto elapsed = std::chrono::steady_clock::now() - started;
+            const uint64_t nowMs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count());
+            while (steppedMs + bench.stepMs <= nowMs)
+            {
+                bench.step();
+                steppedMs += bench.stepMs;
+                const Roof::Status &now = bench.roof.status();
+                if (RoofIo::interlockLost(now, gates))
+                    bench.roof.raiseFault(
+                        RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f)
+                            .fault);
+                else if (RoofIo::openMustStop(now, gates))
+                    bench.roof.command(Roof::Command::Stop, Roof::Origin::Automatic);
+            }
+        }
+
+        RoofTest::Bench bench;
+        RoofIo::GateInputs gates;
+        std::chrono::steady_clock::time_point started;
+        uint64_t steppedMs;
+    };
+
     class SimBackend : public Backend
     {
     public:
+        explicit SimBackend(SimRoof &roof)
+            : roof(roof)
+        {
+        }
         bool alpacaEnabled() const override { return true; }
-        std::vector<DeviceInfo> devices() const override { return {}; }
+        std::vector<DeviceInfo> devices() const override { return {domeDeviceInfo()}; }
         std::string serverName() const override { return "RoofRoof simulator"; }
         std::string location() const override { return ""; }
         std::string timestampUtc() const override
@@ -41,6 +149,11 @@ namespace
             strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc);
             return buffer;
         }
+        DomeStatus domeStatus() const override { return roof.status(); }
+        DomeAnswer domeCommand(DomeAction action) override { return roof.command(action); }
+
+    private:
+        SimRoof &roof;
     };
 
     std::string urlDecode(const std::string &in)
@@ -158,6 +271,20 @@ namespace
 int main(int argc, char **argv)
 {
     const int port = argc > 1 ? std::atoi(argv[1]) : 11111;
+    bool safe = true;
+    bool parked = true;
+    for (int i = 2; i < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "unsafe") == 0)
+            safe = false;
+        else if (std::strcmp(argv[i], "unparked") == 0)
+            parked = false;
+        else
+        {
+            std::fprintf(stderr, "alpaca-sim: unknown option %s (expected unsafe or unparked)\n", argv[i]);
+            return 2;
+        }
+    }
     std::signal(SIGPIPE, SIG_IGN);
 
     const int server = socket(AF_INET, SOCK_STREAM, 0);
@@ -172,10 +299,15 @@ int main(int argc, char **argv)
         std::perror("alpaca-sim: bind/listen");
         return 1;
     }
-    std::printf("Alpaca simulator on http://127.0.0.1:%d\n", port);
+    std::printf(
+        "Alpaca simulator on http://127.0.0.1:%d (weather %s, mount %s)\n",
+        port,
+        safe ? "safe" : "unsafe",
+        parked ? "parked" : "not parked");
     std::fflush(stdout);
 
-    SimBackend backend;
+    SimRoof roof(safe, parked);
+    SimBackend backend(roof);
     Router router(backend, {"RoofRoof (simulator)", "RoofRoof", "sim", 0x0000AABBCCDDEEFFULL});
     for (;;)
     {

@@ -6,9 +6,10 @@ the roof when the weather turns unsafe, but only onto a parked mount.
 Built on the SQMeter platform. The rules every change is checked against are in
 [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
 
-**Status:** platform only (spec 001). The device serves its web UI, REST API, live status, MQTT with Home
-Assistant discovery, an Alpaca server (no device yet) and push alerts, and it holds the motor driver off from
-boot. It does not move a roof yet; the motor, safety rules and Dome device come in later specs.
+**Status:** in development. The device serves its web UI, REST API, live status, MQTT with Home Assistant
+discovery, the roof as an ASCOM Alpaca Dome and push alerts, and it holds the motor driver off from boot. The
+roof opens and closes on a person's or an imaging app's command, within the safety rules, and closes by itself
+onto a parked mount when the weather turns unsafe.
 
 ## Where to look
 

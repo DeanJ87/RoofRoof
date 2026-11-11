@@ -9,7 +9,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'mqtt-disconnected': { text: t('settingsDeps.brokerNotConnected'), fix: 'network#mqtt' },
   'wifi-disconnected': { text: t('settingsDeps.notConnectedToWifi'), fix: 'network#wifi' },
   'alpaca-off': { text: t('settingsDeps.alpacaIsOff'), fix: 'network#alpaca' },
-  'no-alpaca-device': { text: t('settingsDeps.noAlpacaDeviceYet'), fix: 'network#alpaca' },
+  'no-alpaca-device': { text: t('settingsDeps.noAlpacaDevice'), fix: 'network#alpaca' },
   'ota-no-password': { text: t('settingsDeps.setAnUploadPassword'), fix: 'device#security' },
 };
 

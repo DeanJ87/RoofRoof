@@ -44,8 +44,9 @@ namespace SQM
         // clear a fault (constitution I).
         enum class Origin : uint8_t
         {
-            Person,
-            Automatic,
+            Person,    // the authenticated web UI
+            Automatic, // the controller itself (spec 005's close)
+            Client,    // an ASCOM Alpaca client (spec 006): no login, so not a person
         };
 
         // The Hall reading after confirmation (HallFilter).
@@ -142,6 +143,7 @@ namespace SQM
         // Stable machine names for status documents, logs and MQTT (never translated).
         const char *stateName(State state);
         const char *endName(End end);
+        const char *commandName(Command command);
         const char *faultName(FaultKind kind);
         const char *refusalName(Refusal reason);
         const char *hallLevelName(HallLevel level);

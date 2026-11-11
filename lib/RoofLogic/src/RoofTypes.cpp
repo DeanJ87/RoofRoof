@@ -21,6 +21,12 @@ namespace SQM
             return nameIn(state, NAMES);
         }
 
+        const char *commandName(Command command)
+        {
+            static const char *const NAMES[] = {"open", "close", "stop", "abort"};
+            return nameIn(command, NAMES);
+        }
+
         const char *endName(End end)
         {
             static const char *const NAMES[] = {"closed", "open"};

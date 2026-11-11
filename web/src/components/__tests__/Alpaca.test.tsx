@@ -7,7 +7,7 @@ import Alpaca from '../Alpaca';
 import { describeClient } from '../../lib/alpacaClients';
 
 const dome = {
-  DeviceName: 'RoofRoof Dome',
+  DeviceName: 'RoofRoof roof',
   DeviceType: 'Dome',
   DeviceNumber: 0,
   UniqueID: 'roofroof-dome-0',
@@ -15,10 +15,20 @@ const dome = {
 const envelope = <T,>(Value: T) => ({ Value, ErrorNumber: 0, ErrorMessage: '', ClientTransactionID: 0, ServerTransactionID: 1 });
 
 describe('Alpaca', () => {
-  it('says there is no device yet while none is configured', async () => {
+  it('says there is no device while none is configured (the demo)', async () => {
+    server.use(http.get('/management/v1/configureddevices', () => HttpResponse.json(envelope([]))));
     render(<Alpaca />);
-    expect(await screen.findByText(/No Alpaca device yet/)).toBeInTheDocument();
+    expect(await screen.findByText(/No Alpaca device: the demo has no roof/)).toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/management/v1/configureddevices`)).toBeInTheDocument();
+  });
+
+  it("lists the roof's Dome with its live shutter state (spec 006)", async () => {
+    render(<Alpaca />);
+    expect(await screen.findByText('RoofRoof roof')).toBeInTheDocument();
+    expect(screen.getByText('roofroof-a1b2c3d4e5f6-dome-0')).toBeInTheDocument();
+    expect(await screen.findByText('ShutterStatus')).toBeInTheDocument();
+    expect(screen.getByText('Slewing')).toBeInTheDocument();
+    expect(screen.queryByText(/No Alpaca device/)).not.toBeInTheDocument();
   });
 
   it('lists a configured device with its setup URL and live device state', async () => {
@@ -28,7 +38,7 @@ describe('Alpaca', () => {
     );
     render(<Alpaca />);
 
-    expect(await screen.findByText('RoofRoof Dome')).toBeInTheDocument();
+    expect(await screen.findByText('RoofRoof roof')).toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/setup/v1/dome/0/setup`)).toBeInTheDocument();
     expect(await screen.findByText('ShutterStatus')).toBeInTheDocument();
   });

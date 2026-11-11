@@ -258,7 +258,8 @@ void startServices()
 }
 
 // The roof's switch readings into the safety inputs (spec 004), their verdict
-// and park result back to the roof's gates (spec 003) every 250 ms, and the
+// and park result back to the roof's gates (spec 003) every 250 ms (at once when
+// the verdict stops being safe), and the
 // close on unsafe weather (spec 005) every pass.
 void handleSafety()
 {
@@ -268,11 +269,17 @@ void handleSafety()
     safetyInputs->setRainContact(roofControl.rainContact());
     safetyInputs->handle();
     static uint32_t lastHandOver = 0;
+    static bool handedSafe = false;
     const uint32_t now = millis();
-    if (now - lastHandOver >= 250)
+    // A verdict that stops being safe is handed over in the same pass the
+    // close sequence first sees it, so the roof's checks (an Alpaca client's
+    // stop of a close, spec 006) never lag the sequence.
+    const bool safeNow = safetyInputs->weather().safe();
+    if (now - lastHandOver >= 250 || (handedSafe && !safeNow))
     {
         roofControl.setSafety(safetyInputs->weather(), safetyInputs->park());
         lastHandOver = now;
+        handedSafe = safeNow;
     }
     closeOnUnsafe.handle(*safetyInputs, roofControl);
 }

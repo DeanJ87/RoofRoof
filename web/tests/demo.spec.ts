@@ -43,7 +43,7 @@ test.describe('demo links (US1, SC-001)', () => {
     await expect(page.getByText('"ServerName": "RoofRoof Demo"')).toBeVisible();
     await expect(page.getByText('"Manufacturer": "RoofRoof"')).toBeVisible();
     await page.goto('./management/v1/configureddevices');
-    await expect(page.getByText('"Value": []')).toBeVisible(); // no Alpaca device until spec 006
+    await expect(page.getByText('"Value": []')).toBeVisible(); // the demo has no roof, so no Dome (spec 011)
   });
 });
 

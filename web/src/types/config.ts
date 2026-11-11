@@ -41,7 +41,7 @@ export interface NTPConfig {
   syncIntervalMs: number;
 }
 
-// ASCOM Alpaca: discovery, the management API and (spec 006) the Dome.
+// ASCOM Alpaca: discovery, the management API and the roof's Dome (spec 006).
 export interface AlpacaConfig {
   enabled: boolean;
 }

@@ -108,7 +108,7 @@ void test_unique_id_includes_mac(void)
 namespace
 {
     // Two stand-in devices: the router must work for whatever list the
-    // Backend gives (spec 006 adds the real Dome).
+    // Backend gives (the device's own is the Dome alone).
     class FakeBackend : public SQM::Alpaca::Backend
     {
     public:
@@ -124,6 +124,8 @@ namespace
         std::string serverName() const override { return name; }
         std::string location() const override { return where; }
         std::string timestampUtc() const override { return ""; }
+        SQM::Alpaca::DomeStatus domeStatus() const override { return {}; }
+        SQM::Alpaca::DomeAnswer domeCommand(SQM::Alpaca::DomeAction) override { return {}; }
     };
 
     const ServerIdentity IDENTITY{"RoofRoof", "RoofRoof", "1.2.3", 0x1234};
@@ -191,8 +193,8 @@ void test_router_bad_requests_are_plain_400(void)
     TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/dome/1/name").status);
     TEST_ASSERT_EQUAL(400, route(router, true, "/api/v1/dome/0/name").status);
     TEST_ASSERT_EQUAL(400, route(router, false, "/api/v1/dome/0/name/extra").status);
-    // Device-specific methods arrive with the device (spec 006).
-    const SQM::Alpaca::Response r = route(router, false, "/api/v1/dome/0/shutterstatus");
+    // A Dome member asked of another device type (test_alpaca_dome has the Dome's).
+    const SQM::Alpaca::Response r = route(router, false, "/api/v1/switch/1/shutterstatus");
     TEST_ASSERT_EQUAL(400, r.status);
     TEST_ASSERT_EQUAL_STRING("text/plain", r.contentType);
     TEST_ASSERT_EQUAL(400, route(router, false, "/management/v1/bogus").status);
