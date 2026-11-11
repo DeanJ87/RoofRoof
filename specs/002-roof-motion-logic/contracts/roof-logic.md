@@ -34,9 +34,10 @@ CommandResult clearFault(Origin origin);
 // park interlock drops during a close (Principle II).
 void raiseFault(const Fault &fault, uint32_t nowMs);
 
-// New settings, taken only while no move is active (false: Refusal::Moving). Invalid settings are
-// taken but refuse every move (settingsInvalid) until valid ones arrive.
-bool applySettings(const Settings &settings);
+// New settings, taken only while no move is active (else refused: Refusal::Moving). Invalid
+// settings are taken but refuse every move (settingsInvalid) until valid ones arrive. Taking new
+// settings while stopped part-way makes the position unknown (the estimate used the old ones).
+CommandResult applySettings(const Settings &settings);
 
 const Status &status() const;
 Output output() const;

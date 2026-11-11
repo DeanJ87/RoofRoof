@@ -95,6 +95,23 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "ntfy": { "enabled": false, "server": "https://ntfy.sh", "topic": "", "token": "" },
     "webhook": { "enabled": false, "url": "", "authHeader": "", "insecureTls": false },
     "mqtt": { "enabled": false }
+  },
+  "roof": {
+    "travelMm": 1850,
+    "speedMmPerSecond": 38,
+    "timeoutMarginSeconds": 15,
+    "leaveMagnetSeconds": 10,
+    "rampUpMs": 2000,
+    "rampDownMs": 3000,
+    "topDutyPercent": 100,
+    "slowDutyPercent": 40,
+    "openDirection": "forward",
+    "hallHighEnd": "open",
+    "hallHighCounts": 3000,
+    "hallLowCounts": 1100,
+    "currentSenseEnabled": false,
+    "maxCurrentAmps": 10,
+    "minSupplyVolts": 11
   }
 }
 ```
@@ -192,6 +209,30 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` only, e.g. `http://192.168.1.20:1888`; empty means not configured, so the mount never counts as parked |
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
 | `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (GPIO32) or `two` (GPIO32 and GPIO33) |
+
+### Roof
+
+How the roof moves; see [Roof motion](roof-motion.md). The defaults are cautious until the roof is
+measured. A configuration saved by an earlier release loads with these defaults, with current
+sense off.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `roof.travelMm` | int | `1850` | Distance between the two ends, in mm (100-20000) |
+| `roof.speedMmPerSecond` | number | `38` | Roof speed at 100% duty, in mm/s (1-500) |
+| `roof.timeoutMarginSeconds` | int | `15` | Added to a move's expected time to give its hard timeout (3-300) |
+| `roof.leaveMagnetSeconds` | int | `10` | A move from an end must leave its magnet within this time (2-120) |
+| `roof.rampUpMs` | int | `2000` | Soft start, slow duty to top duty (0-30000) |
+| `roof.rampDownMs` | int | `3000` | Slowing near the end: the zone is the distance covered at the top duty in this time (0-30000) |
+| `roof.topDutyPercent` | int | `100` | Highest motor duty (20-100) |
+| `roof.slowDutyPercent` | int | `40` | Duty at the ends and for every move from an unknown position (10-100, not above the top duty) |
+| `roof.openDirection` | string | `"forward"` | Which motor direction opens the roof: `forward` (RPWM) or `reverse` (LPWM) |
+| `roof.hallHighEnd` | string | `"open"` | Which end's magnet reads high on the Hall sensor: `open` or `closed` |
+| `roof.hallHighCounts` | int | `3000` | Raw reading at or above which the high end's magnet is read (100-3995) |
+| `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (100-3995, at least 80 below the high threshold) |
+| `roof.currentSenseEnabled` | bool | `false` | Use the IBT-2's current outputs for over-current detection; off until they are wired |
+| `roof.maxCurrentAmps` | number | `10` | Motor current that stops the roof as a fault, with current sense on (0.5-40) |
+| `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
 
 ### Alerts
 

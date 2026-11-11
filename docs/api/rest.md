@@ -66,6 +66,8 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
+Every field, with its default, is in the [configuration reference](../user-guide/configuration.md#full-configuration-reference), including the `roof` section that sets how the roof moves ([Roof motion](../user-guide/roof-motion.md)).
+
 ```bash
 curl http://roofroof.local/api/config
 ```
