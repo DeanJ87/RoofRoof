@@ -47,6 +47,9 @@ namespace SQM
             bool parkConfirmed = false;
             std::string parkText;
             const char *closePhase = "idle";
+            // Spec 011: "off" (the real roof), "bench" (bench firmware: simulated
+            // roof, motor never driven) or "demo" (the browser demo).
+            const char *simulation = "off";
         };
 
         // The weather and park texts in the documents are cut to this many bytes

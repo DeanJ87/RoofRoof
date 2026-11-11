@@ -133,6 +133,26 @@ void test_verdicts_check_product_then_layout_then_build()
     TEST_ASSERT_EQUAL(Verdict::OtherProduct, FirmwareImage::check(everythingWrong, "l2"));
 }
 
+// Spec 011 FR-024, FR-025: a standard board never takes a bench image; a
+// bench board takes both; the build rule comes after product and layout.
+void test_bench_images_only_on_bench_boards()
+{
+    const auto standard = scan(image(FirmwareImage::marker()), 512);
+    const auto bench = scan(image(FirmwareImage::marker(FirmwareImage::PRODUCT, FirmwareImage::LAYOUT, FirmwareImage::BUILD_BENCH)), 512);
+    const auto benchOtherLayout = scan(image(FirmwareImage::marker(FirmwareImage::PRODUCT, "s16", FirmwareImage::BUILD_BENCH)), 512);
+    const auto otherBuild = scan(image(withFields("product=roofroof;layout=l2;build=ble;")), 512);
+
+    TEST_ASSERT_EQUAL(Verdict::BenchImage, FirmwareImage::check(bench, "l2"));
+    TEST_ASSERT_EQUAL(Verdict::BenchImage, FirmwareImage::check(bench, "l2", FirmwareImage::BUILD));
+    TEST_ASSERT_EQUAL(Verdict::Ok, FirmwareImage::check(bench, "l2", FirmwareImage::BUILD_BENCH));
+    TEST_ASSERT_EQUAL(Verdict::Ok, FirmwareImage::check(standard, "l2", FirmwareImage::BUILD_BENCH));
+    TEST_ASSERT_EQUAL(Verdict::Ok, FirmwareImage::check(standard, "l2", FirmwareImage::BUILD));
+    TEST_ASSERT_EQUAL(Verdict::OtherLayout, FirmwareImage::check(benchOtherLayout, "l2", FirmwareImage::BUILD_BENCH));
+    TEST_ASSERT_EQUAL(Verdict::OtherBuild, FirmwareImage::check(otherBuild, "l2", FirmwareImage::BUILD_BENCH));
+    // An unknown running build is treated as standard for bench images.
+    TEST_ASSERT_EQUAL(Verdict::BenchImage, FirmwareImage::check(bench, "l2", "ble"));
+}
+
 void test_marker_fields_fit_the_scanner()
 {
     const std::string marker = FirmwareImage::marker();
@@ -142,7 +162,7 @@ void test_marker_fields_fit_the_scanner()
 
 void test_messages_are_short()
 {
-    for (Verdict v : {Verdict::NoMarker, Verdict::OtherProduct, Verdict::OtherLayout, Verdict::OtherBuild})
+    for (Verdict v : {Verdict::NoMarker, Verdict::OtherProduct, Verdict::OtherLayout, Verdict::OtherBuild, Verdict::BenchImage})
     {
         const std::string message = FirmwareImage::verdictMessage(v);
         TEST_ASSERT_TRUE(!message.empty());
@@ -179,7 +199,17 @@ void test_firmware_embeds_the_same_marker()
         escaped += buf;
     }
     TEST_ASSERT_TRUE_MESSAGE(source.str().find(escaped) != std::string::npos, escaped.c_str());
-    TEST_ASSERT_TRUE(source.str().find("\"product=roofroof;layout=\" SQM_LAYOUT_ID \";build=standard;\"") != std::string::npos);
+    TEST_ASSERT_TRUE(
+        source.str().find("\"product=roofroof;layout=\" SQM_LAYOUT_ID \";build=\" ROOFROOF_BUILD_NAME \";\"") != std::string::npos);
+    // include/BenchMode.h names the two builds as the library does.
+    std::ifstream bench("include/BenchMode.h");
+    TEST_ASSERT_TRUE(bench.good());
+    std::stringstream benchSource;
+    benchSource << bench.rdbuf();
+    TEST_ASSERT_TRUE(
+        benchSource.str().find(std::string("#define ROOFROOF_BUILD_NAME \"") + FirmwareImage::BUILD + "\"") != std::string::npos);
+    TEST_ASSERT_TRUE(
+        benchSource.str().find(std::string("#define ROOFROOF_BUILD_NAME \"") + FirmwareImage::BUILD_BENCH + "\"") != std::string::npos);
     // include/BuildTarget.h names the library's layout.
     std::ifstream target("include/BuildTarget.h");
     TEST_ASSERT_TRUE(target.good());
@@ -199,6 +229,7 @@ int main()
     RUN_TEST(test_stray_magic_without_fields_is_skipped);
     RUN_TEST(test_magic_bytes_never_repeat);
     RUN_TEST(test_verdicts_check_product_then_layout_then_build);
+    RUN_TEST(test_bench_images_only_on_bench_boards);
     RUN_TEST(test_marker_fields_fit_the_scanner);
     RUN_TEST(test_messages_are_short);
     RUN_TEST(test_layout_of_partition_table);

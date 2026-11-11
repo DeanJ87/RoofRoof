@@ -73,6 +73,11 @@ namespace SQM
         // pass and its critical sink.
         bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending);
 
+        // Spec 011 FR-026: an alert from bench firmware says so in its title
+        // ("Bench: " first, once). Unchanged when `bench` is false.
+        constexpr const char *BENCH_ALERT_PREFIX = "Bench: ";
+        Alerts::Alert benchLabelled(Alerts::Alert alert, bool bench);
+
         // The imaging app (SQMeter spec 021): silence time per Alpaca device,
         // the client state as alert inputs, and the documents that report it.
         // `devices` is the Alpaca device list (Alpaca::Backend::devices).

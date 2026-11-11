@@ -177,7 +177,7 @@ void test_fault_record_round_trips_every_kind_and_cause(void)
 {
     for (uint8_t kind = 1; kind <= static_cast<uint8_t>(Roof::FaultKind::External); ++kind)
     {
-        for (uint8_t cause = 0; cause <= static_cast<uint8_t>(FaultCause::WatchdogStopped); ++cause)
+        for (uint8_t cause = 0; cause <= static_cast<uint8_t>(FaultCause::BenchSupply); ++cause)
         {
             FaultRecord in;
             in.fault.kind = static_cast<Roof::FaultKind>(kind);
@@ -254,7 +254,7 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(2, 2, true));     // version
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 5, true));     // cause out of range
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 6, true));     // cause out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 1, true));     // reserved byte
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(14, 0, false));   // checksum itself
@@ -278,6 +278,7 @@ void test_external_records_and_cause_names(void)
     TEST_ASSERT_EQUAL_STRING("parkInterlock", causeName(FaultCause::ParkInterlock));
     TEST_ASSERT_EQUAL_STRING("storedUnreadable", causeName(FaultCause::StoredUnreadable));
     TEST_ASSERT_EQUAL_STRING("watchdogStopped", causeName(FaultCause::WatchdogStopped));
+    TEST_ASSERT_EQUAL_STRING("benchSupply", causeName(FaultCause::BenchSupply));
 }
 
 int main(int, char **)
