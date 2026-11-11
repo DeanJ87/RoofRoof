@@ -331,7 +331,9 @@ namespace
         }
         if (seen.after != Phase::WaitPark && seen.after != Phase::Closing)
             watch.attemptOn = false;
-        if (seen.after == Phase::WaitPark && watch.attemptOn && in.nowMs - watch.attemptSinceMs > watch.attemptLimitMs)
+        // A parked mount held back only by the back-off after a failed close isn't a park failure.
+        const bool heldBack = watch.parkedRun && in.nowMs - watch.parkedSinceMs >= PARK_SETTLE_MS && in.nowMs < watch.closeBarUntilMs;
+        if (seen.after == Phase::WaitPark && watch.attemptOn && !heldBack && in.nowMs - watch.attemptSinceMs > watch.attemptLimitMs)
             return "P6 waited past the park limit without failing the attempt";
         return nullptr;
     }

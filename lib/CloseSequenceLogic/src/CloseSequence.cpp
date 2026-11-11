@@ -140,8 +140,14 @@ namespace SQM
                 return enter(Phase::Closing); // a person's close: watch it
             // After a refused or interrupted close, no close until the back-off
             // ends, even across a brief safe spell (a flapping verdict).
-            if (parkConfirmed && (!closeFailedOnce || elapsed(closeFailedAtMs, in.nowMs) >= RETRY_AFTER_MS))
-                return closeNow();
+            if (parkConfirmed)
+            {
+                if (!closeFailedOnce || elapsed(closeFailedAtMs, in.nowMs) >= RETRY_AFTER_MS)
+                    return closeNow();
+                // Parked, held back only by the back-off: not a park failure,
+                // so no "mount not parked" (its alert would name the wrong input).
+                return out;
+            }
             const uint64_t since = elapsed(phaseSinceMs, in.nowMs);
             if (current == Phase::RetryWait)
                 return since >= RETRY_AFTER_MS ? attempt(in) : Decision{};

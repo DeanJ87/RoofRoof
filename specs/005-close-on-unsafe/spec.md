@@ -447,7 +447,15 @@ Each was an open choice; the safest option the constitution allows was taken.
     repeated every 30 minutes while the roof stays open after it. The other events are logged only.
     Spec 007 adds the events, levels and settings. With no channel configured (the default), the
     serial log is the only report until specs 008 and 009 add the status and dashboard output.
-11. **No status, MQTT or UI output for the sequence in this spec** (specs 008 and 009).
+11. **No status, MQTT or UI output for the sequence in this spec** (specs 008 and 009). Before the
+    roof runs unattended, at least one alert channel must be set up (a bench check).
+11a. **A halted sequence re-arms after 10 minutes of safe weather**: a later unsafe spell starts a new
+    automatic close, still bounded by spec 002's timeout and drive budget and this spec's guard.
+11b. **A person's stop while the roof can't move by itself also stands the sequence down**, including
+    the stop that ends a person's own recovery move; the roof then closes by itself only after it
+    has been closed or the weather has been safe for 10 minutes.
+11c. **A parked mount held back only by the back-off is not a park failure**: no "mount not parked"
+    alert; the close goes ahead when the back-off ends.
 12. **The sequence runs on the main loop**: its timing is limited by the loop (a blocked loop delays
     it; spec 003's gates still refuse a close on a park result older than 5 s).
 
