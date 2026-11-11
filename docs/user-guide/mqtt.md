@@ -37,7 +37,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 ---
 
 !!! note "While the roof moves"
-    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)).
+    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules.
 
 ## Topics
 
@@ -61,7 +61,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch
 blocking: false
-fingerprint: d09425d9dde65626
+fingerprint: 10b034a96a913954
 -->
 <figure class="diagram" markdown>
 
