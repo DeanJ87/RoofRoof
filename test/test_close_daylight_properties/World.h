@@ -93,6 +93,9 @@ namespace
         bool daylightInSafeSpell = false; // daylight wanted a close during the weather's safe spell
         bool weatherPause = false;        // a weather attempt paused by a short safe spell
         uint64_t weatherPauseAtMs = 0;
+        bool weatherKept = false; // the weather's attempt paused while daylight runs its own
+        uint64_t weatherKeptAtMs = 0;
+        bool resumedWeather = false;     // the hand-over resumed that pause
         bool weatherSafeRun = false;     // the weather itself safe, since weatherSafeSinceMs
         uint64_t weatherSafeSinceMs = 0; // the first step after a restart raises its reminder first
     };

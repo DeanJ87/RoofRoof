@@ -290,6 +290,14 @@ namespace SQM
                 LastCritical critical;
                 bool daylight = false; // spec 013: the paused attempt was daylight-only
             } paused;
+            // Spec 013: the weather's attempt as spec 005 pauses it when the
+            // weather turns safe, kept while daylight runs its own attempt,
+            // and resumed if the weather turns unsafe within REARM_SAFE_MS.
+            Pause weatherPaused;
+            bool weatherPauseValid() const { return weatherPaused.has && lastNowMs - weatherPaused.endedAtMs < REARM_SAFE_MS; }
+            bool pauseForDaylight(const Inputs &given, bool personStopped);
+            void weatherTakesOver();
+            bool keptByDaylight(bool weatherSafeLong);
             uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS

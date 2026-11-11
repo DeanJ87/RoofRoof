@@ -234,6 +234,45 @@ void test_resumed_weather_pause_keeps_its_time_limit()
     TEST_ASSERT_TRUE(alerted); // about 242 s of unsafe weather, as spec 005
 }
 
+// Review round 8: a person's stop while the weather is safe and only daylight
+// wants a close is daylight's: new rain re-arms it after 30 s.
+void test_stop_in_a_safe_spell_is_daylights()
+{
+    Rig r;
+    r.startUnsafe();
+    r.runTo(T0 + 60000, 1000);
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(T0 + 90000, 1000);
+    standDownByPerson(r, T0 + 91000);
+    TEST_ASSERT_TRUE(r.seq.daylightEpisode());
+    r.runTo(T0 + 120000, 1000);
+    r.in.weatherSafe = false;
+    Counts c = r.runTo(T0 + 160000, 1000);
+    TEST_ASSERT_TRUE(c.requests >= 1);
+    TEST_ASSERT_FALSE(r.seq.daylightEpisode());
+}
+
+// Review round 8: the weather's attempt, paused when the weather cleared and
+// daylight took over, resumes with the time it had run when rain returns.
+void test_weather_attempt_resumes_after_a_daylight_spell()
+{
+    Rig r;
+    r.startUnsafe(); // rain from T0
+    r.runTo(T0 + 30000, 1000);
+    r.in.weatherSafe = true; // safe from 31 s, sun up
+    r.in.daylight = true;
+    r.runTo(T0 + 300000, 1000); // daylight's own attempt runs (and fails)
+    r.in.weatherSafe = false;   // rain again at 300 s
+    Counts c = r.runTo(T0 + 330000, 1000);
+    TEST_ASSERT_TRUE(c.requests >= 1); // the weather's request at once, not after a daylight back-off
+    bool weatherFail = false;
+    Counts later = r.runTo(T0 + 300000 + DEFAULT_PARK_TIMEOUT_MS, 1000);
+    for (const Decision &d : later.events)
+        weatherFail = weatherFail || (d.event == Event::ParkNotConfirmed && !d.daylight);
+    TEST_ASSERT_TRUE(weatherFail); // with ~30 s already used, it fails before a full new limit
+}
+
 // Review: the weather close's critical alert isn't swallowed by the daylight
 // close's identical one just before (the throttle starts afresh).
 void test_weather_failure_alerts_after_a_daylight_failure()
@@ -373,6 +412,8 @@ void test_count_survives_a_restart()
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_stop_in_a_safe_spell_is_daylights);
+    RUN_TEST(test_weather_attempt_resumes_after_a_daylight_spell);
     RUN_TEST(test_sunset_before_the_ten_minutes_still_hands_over);
     RUN_TEST(test_resumed_weather_pause_keeps_its_time_limit);
     RUN_TEST(test_handed_over_attempt_gets_the_full_time_limit);

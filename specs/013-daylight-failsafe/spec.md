@@ -336,8 +336,10 @@ reason.
   (neither the weather nor daylight) for 10 minutes, or the roof reads closed, or as FR-013 says.
   Daylight never ends a stand-down or a halt. A weather episode the weather itself has left for
   10 minutes, with daylight wanting a close at some time in that spell, becomes a daylight-only
-  episode. A weather attempt paused by a short safe spell resumes as the weather's, with the time
-  it has run, even if daylight came on meanwhile. A step adds at
+  episode. When the weather turns safe during a weather attempt or its back-off while daylight
+  wants a close, the weather's attempt is paused as spec 005 pauses it and daylight starts its own
+  attempt (a person's stop on that step is a daylight stand-down); rain within 10 minutes resumes
+  the weather's attempt where it stood, with the time it had run. A step adds at
   most 1 s to FR-013's 30 s count.
 
 **Alerts**
