@@ -1,16 +1,18 @@
-import type { AlertSchedule, Config, SystemStatus } from '../types';
+import type { AlertSchedule, Config, RoofClosePhase, SystemStatus } from '../types';
 import { REASONS, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
 import { describeSchedule } from '../components/settings/alertSchedule';
 import { describeClient, type ClientView } from '../lib/alpacaClients';
 import { t } from '../i18n';
 import { appHref } from '../lib/appHref';
+import { deviceText } from '../i18n/deviceMessage';
+import { closePhasePill } from '../lib/roofView';
 
 // What the Status card shows (SQMeter specs 025 content, 026 presentation).
 // The card's job is the imaging app and whether alerts go out, plus problems
 // no other card shows (DS-08). One function decides what shows and in which
 // order; StatusCard only renders it. Each item's id is an entry of
 // inventory.json. Every item is short: a name (`label`), a one- or two-word
-// state for its pill, and the detail behind "?". Spec 009 adds the roof.
+// state for its pill, and the detail behind "?".
 
 // idle: a normal resting state that needs nothing (no imaging app connected while
 // alerts don't depend on one): shown dim, never counted as something to check.
@@ -44,6 +46,8 @@ const PRIORITY: Record<string, number> = {
   'alerts-state': 3,
   'alerts-mode-not-in-effect': 3,
   'no-channel': 3,
+  'roof-fault': 2,
+  'roof-close': 2,
   'imaging-app': 4,
   'clock-location': 7,
 };
@@ -147,6 +151,26 @@ const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
   });
 };
 
+// The roof's problems (spec 009 FR-015, FR-016; DS-07): a latched fault, and an
+// automatic close held by a person, unable to move or halted. The state itself is
+// the Roof card's (DS-08).
+const roofFaultItem = ({ status }: GlanceInput): GlanceItem | null => {
+  const fault = status?.roof?.fault;
+  return fault
+    ? item('roof-fault', 'problem', { label: t('roof.title'), state: t('roof.state.fault'), detail: deviceText(fault.text) })
+    : null;
+};
+
+const STUCK: Partial<Record<RoofClosePhase, Severity>> = { heldByPerson: 'note', cannotMove: 'problem', halted: 'problem' };
+
+const roofCloseItem = ({ status }: GlanceInput): GlanceItem | null => {
+  const phase = status?.roof?.closePhase;
+  const severity = phase ? STUCK[phase] : undefined;
+  const pill = phase ? closePhasePill(phase) : null;
+  if (!severity || !pill) return null;
+  return item('roof-close', severity, { label: t('roof.closePhase.label'), state: pill.label, detail: pill.text });
+};
+
 // The device's clock (NTP): alert times and the imaging-app "last checked" need it.
 const clockItem = ({ status }: GlanceInput): GlanceItem | null =>
   status && status.time.epoch === 0
@@ -165,6 +189,8 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     alertsItem(input),
     sendModeItem(input),
     channelsItem(input),
+    roofFaultItem(input),
+    roofCloseItem(input),
     ...imagingAppItems(input),
     clockItem(input),
   ].filter((entry): entry is GlanceItem => Boolean(entry));
