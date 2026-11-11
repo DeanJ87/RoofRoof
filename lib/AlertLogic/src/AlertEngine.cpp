@@ -86,6 +86,9 @@ namespace SQM
                 "unsafe_closing",
                 "roof_closed",
                 "safety_lost",
+                "daylight_open",
+                "daylight_closed",
+                "daylight_unknown",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);

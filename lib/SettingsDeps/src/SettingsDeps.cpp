@@ -19,6 +19,9 @@ namespace SQM
                 {"alpaca-off", "Alpaca is off", "network#alpaca"},
                 {"no-alpaca-device", "No Alpaca device", "network#alpaca"},
                 {"ota-no-password", "Set an upload password", "device#security"},
+                {"daylight-off", "Daylight is off", "roof#daylight"},
+                {"location-unknown", "Location not set", "roof#daylight"},
+                {"clock-not-set", "Clock not set", "time#ntp"},
             };
 
             const Reason *reason(const char *code)
@@ -113,6 +116,26 @@ namespace SQM
                 c.add("alerts.events.unsafe_closing.level", "D-04", a.unsafeClosing.level != 0, {alertsOn});
                 c.add("alerts.events.roof_closed.level", "D-04", a.roofClosed.level != 0, {alertsOn});
                 c.add("alerts.events.safety_lost.level", "D-04", a.safetyLost.level != 0, {alertsOn});
+                // Spec 013: the daylight events need alerts on and daylight on.
+                const Link daylightOn{"D-44", "daylight-off", c.cfg.daylight.mode != DaylightConfig::Mode::Off};
+                c.add("alerts.events.daylight_open.level", "D-04", a.daylightOpen.level != 0, {alertsOn, daylightOn});
+                c.add("alerts.events.daylight_closed.level", "D-04", a.daylightClosed.level != 0, {alertsOn, daylightOn});
+                c.add("alerts.events.daylight_unknown.level", "D-04", a.daylightUnknown.level != 0, {alertsOn, daylightOn});
+            }
+
+            // Spec 013: the daylight check needs the site and the clock; its
+            // threshold and the site only matter while it is on.
+            void addDaylight(const Context &c)
+            {
+                const Config &cfg = c.cfg;
+                const bool on = cfg.daylight.mode != DaylightConfig::Mode::Off;
+                c.add(
+                    "daylight.mode", "D-42", on, {{"D-42", "location-unknown", cfg.location.set}, {"D-43", "clock-not-set", c.f.clockSet}});
+                const Link daylightOn{"D-44", "daylight-off", on};
+                c.add("daylight.sunAltitudeDeg", "D-44", true, {daylightOn});
+                c.add("location.set", "D-44", cfg.location.set, {daylightOn});
+                c.add("location.latitude", "D-44", cfg.location.set, {daylightOn});
+                c.add("location.longitude", "D-44", cfg.location.set, {daylightOn});
             }
 
             void addAlertOptions(const Context &c)
@@ -162,6 +185,7 @@ namespace SQM
             addAlertOptions(c);
             addMqtt(c);
             addSafety(c);
+            addDaylight(c);
             addDevice(c);
             return out;
         }

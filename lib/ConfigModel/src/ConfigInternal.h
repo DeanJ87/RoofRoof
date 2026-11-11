@@ -16,9 +16,10 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 10;
-    // Events from here on are the imaging-app events, persisted under their own
-    // key; the roof's (spec 007) come first, in the main part.
+    constexpr size_t EVENT_COUNT = 13;
+    // Events from here on are the imaging-app events and the daylight events
+    // (spec 013), persisted under their own key; the roof's (spec 007) come
+    // first, in the main part.
     constexpr size_t FIRST_CLIENT_EVENT = 7;
     // The roof's critical events (spec 007): the first two.
     constexpr size_t CRITICAL_EVENT_COUNT = 2;
@@ -49,6 +50,9 @@ namespace SQM::ConfigDetail
             {"client_lost", &a.clientLost},
             {"client_back", &a.clientBack},
             {"client_disconnected", &a.clientDisconnected},
+            {"daylight_open", &a.daylightOpen},
+            {"daylight_closed", &a.daylightClosed},
+            {"daylight_unknown", &a.daylightUnknown},
         }};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
@@ -63,6 +67,20 @@ namespace SQM::ConfigDetail
     inline const char *sendModeName(AlertsConfig::SendMode mode)
     {
         return mode == AlertsConfig::SendMode::WhileConnected ? "whileConnected" : "any";
+    }
+
+    inline const char *daylightModeName(DaylightConfig::Mode mode)
+    {
+        switch (mode)
+        {
+        case DaylightConfig::Mode::Off:
+            return "off";
+        case DaylightConfig::Mode::Close:
+            return "close";
+        case DaylightConfig::Mode::Alert:
+            break;
+        }
+        return "alert";
     }
 
     inline const char *switchesName(ParkConfig::Switches switches)

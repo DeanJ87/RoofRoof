@@ -44,6 +44,16 @@
     ],
     "client_disconnected": [
       "client_id"
+    ],
+    "daylight_open": [
+      "reason",
+      "action"
+    ],
+    "daylight_closed": [
+      "reason"
+    ],
+    "daylight_unknown": [
+      "reason"
     ]
   },
   "sharesWordingWith": {}

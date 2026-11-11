@@ -14,6 +14,19 @@ namespace SQM
                 return why.empty() ? text : text + " " + why;
             }
 
+            // Why the roof should close: the weather (spec 005) or daylight (spec 013).
+            const char *whyClose(const Decision &decision)
+            {
+                return decision.daylight ? "It is daylight" : "The weather is unsafe";
+            }
+
+            // What re-arms a stood-down sequence besides a person's close.
+            const char *rearmText(const Decision &decision)
+            {
+                return decision.daylight ? "the sun has been down (or the daylight close off) for 10 minutes"
+                                         : "the weather has been safe for 10 minutes";
+            }
+
             std::string seconds(uint64_t ms)
             {
                 return std::to_string((ms + 999) / 1000) + " s";
@@ -32,8 +45,8 @@ namespace SQM
                     return withWhy(
                         "The close didn't finish " +
                             (decision.limitMs == 0 ? std::string("in time") : "within " + seconds(decision.limitMs)) +
-                            " and was stopped where it is; it won't close by itself until the roof has been closed or the weather has been "
-                            "safe for 10 minutes. Roof:",
+                            " and was stopped where it is; it won't close by itself until the roof has been closed or " +
+                            rearmText(decision) + ". Roof:",
                         why);
                 default:
                     break;
@@ -46,12 +59,12 @@ namespace SQM
                 if (decision.cause == Cause::NinaNotConfigured)
                     return {
                         "Mount didn't park",
-                        "The weather is unsafe and N.I.N.A. isn't set up (park.nina.url), so the park can't be "
-                        "confirmed. The roof stays open."};
+                        std::string(whyClose(decision)) + " and N.I.N.A. isn't set up (park.nina.url), so the park can't be "
+                                                          "confirmed. The roof stays open."};
                 return {
                     "Mount didn't park",
                     withWhy(
-                        "The weather is unsafe and the park wasn't confirmed " +
+                        std::string(whyClose(decision)) + " and the park wasn't confirmed " +
                             (decision.limitMs == 0 ? std::string("in time") : "within " + seconds(decision.limitMs)) +
                             ", so the roof stays open. Park:",
                         why)};
@@ -59,6 +72,7 @@ namespace SQM
 
             AlertText firstAlertFor(const Decision &decision, const std::string &why)
             {
+                const std::string because = whyClose(decision);
                 switch (decision.event)
                 {
                 case Event::ParkNotConfirmed:
@@ -69,17 +83,18 @@ namespace SQM
                     if (decision.cause == Cause::RoofNotStarted)
                         return {
                             "Roof can't close by itself",
-                            "The weather is unsafe and the roof controller didn't start, so the motor stays off. Restart the device."};
+                            because + " and the roof controller didn't start, so the motor stays off. Restart the device."};
                     if (decision.cause == Cause::PositionUnknown)
                         return {
                             "Roof can't close by itself",
-                            "The weather is unsafe and the roof's position is unknown. A person must move it to a magnet."};
-                    return {"Roof can't close by itself", withWhy("The weather is unsafe and a fault is latched. Fault:", why)};
+                            because + " and the roof's position is unknown. A person must move it to a magnet."};
+                    return {"Roof can't close by itself", withWhy(because + " and a fault is latched. Fault:", why)};
                 case Event::StoppedByPerson:
                     return {
                         "Automatic close stopped",
-                        "A person stopped the roof during the automatic close. It stays open while unsafe until someone closes it or the "
-                        "weather has been safe for 10 minutes."};
+                        std::string("A person stopped the roof during the automatic close. It stays open ") +
+                            (decision.daylight ? "in daylight" : "while unsafe") + " until someone closes it or " + rearmText(decision) +
+                            "."};
                 default:
                     break;
                 }
