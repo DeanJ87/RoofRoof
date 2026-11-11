@@ -49,7 +49,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   of the window above everything else, so it is visible, inside the focus loop and read by screen
   readers while the rest of the app is hidden from them. The dialog's own footer sits above it.
 - Q: What do Close and Escape do? → A: Neither leaves at once. Both open a "Leave setup?" screen
-  in the dialog with three choices: Keep going (the default, focused first), Leave for now (back to
+  in the dialog with three choices: Keep going (the first and primary choice; focus is on the question, as on every screen), Leave for now (back to
   where the wizard was opened from; nothing more is saved, and the dashboard banner offers to carry
   on), and Skip setup (spec 015's warning, then setup is done). Escape on that screen is Keep
   going.
@@ -128,7 +128,7 @@ ends setup. System → Run setup wizard opens it again at the first screen.
 **Why this priority**: spec 015's guarantees; the owner must never be trapped or lose their place.
 
 **Independent Test**: Continue past the first page, press Escape: "Leave setup?" with Keep going
-focused; Leave for now shows the dashboard with the banner and focus on the page; reload: the
+first; Leave for now shows the dashboard with the banner and focus on the page; reload: the
 wizard opens at the second page.
 
 **Acceptance Scenarios**:
@@ -358,8 +358,9 @@ three-word labels don't fit; they get their own copy rule (one question, at most
 
 ### Measurable Outcomes
 
-- **SC-001**: Every screen asks exactly one question and has at most one choice group or at most
-  four fields (checked by a test over the screen list).
+- **SC-001**: Every screen asks exactly one question and has at most one choice group and at most
+  four fields besides on/off switches (the alert details screen: four per channel that is on);
+  checked by a test over the screen list.
 - **SC-002**: The accessibility scan finds no violation on any screen at 320 px and 1280 px, with
   light and dark browser preferences (4 runs per screen).
 - **SC-003**: With the roof moving, the Stop button is the topmost element at its centre on every

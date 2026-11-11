@@ -20,7 +20,7 @@ mkdocs build --strict
    Continue says to choose; pick One: the live state shows.
 3. On a wide window the "Why this matters" panel sits to the right; at 320 px it is under the
    content, and the footer stays at the bottom.
-4. Press Escape: "Leave setup?" with Keep going focused. Leave for now: the dashboard with the
+4. Press Escape: "Leave setup?" with Keep going first. Leave for now: the dashboard with the
    "Setup isn't finished" banner.
 5. Start an open from the dashboard, open the wizard (banner → Continue setup): the Stop bar sits
    above the dialog's footer; Tab reaches it; click it.

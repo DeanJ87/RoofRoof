@@ -129,13 +129,18 @@ describe('Wizard', () => {
     expect(screen.getByRole('radio', { name: 'Set a password' })).not.toBeChecked();
   });
 
-  it('offers no roof command and no advanced policy setting on any screen', async () => {
+  it('offers no roof command, no advanced policy setting and one question with few fields on any screen', async () => {
     const advanced = ['autoClose.', 'daylight.bandDeg', 'mqtt.changeMinSeconds', 'ui.confirmOpenClose', 'daylight.advanced'];
     for (const { id } of SCREENS) {
       mockDevice({
         config: {
           setup: { state: 'done', step: 0 },
-          alerts: { ...mockConfig.alerts!, ntfy: { ...mockConfig.alerts!.ntfy, enabled: true } },
+          // One channel on, as the Channel screen leaves it.
+          alerts: {
+            ...mockConfig.alerts!,
+            ntfy: { ...mockConfig.alerts!.ntfy, enabled: true },
+            pushover: { ...mockConfig.alerts!.pushover, enabled: false },
+          },
         },
       });
       at(`screen=${id}`);
@@ -144,6 +149,11 @@ describe('Wizard', () => {
       for (const name of [/^open$/i, /^close$/i, /clear fault/i, /^stop/i, /^start calibration$/i])
         expect(screen.queryByRole('button', { name }), `${id}: ${name}`).toBeNull();
       for (const field of advanced) expect(document.querySelector(`[data-field^="${field}"]`), `${id}: ${field}`).toBeNull();
+      // SC-001: one question, at most one choice group and at most four fields besides on/off switches.
+      const panel = document.querySelector('.modal-panel')!;
+      expect(panel.querySelectorAll('[role="radiogroup"]').length, id).toBeLessThanOrEqual(1);
+      expect(panel.querySelectorAll('input:not([type="radio"]):not([role="switch"]), select').length, id).toBeLessThanOrEqual(4);
+      expect(panel.querySelectorAll('h2').length, id).toBe(1);
       cleanup();
     }
   });
