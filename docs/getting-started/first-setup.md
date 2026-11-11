@@ -122,7 +122,7 @@ The IP address is logged over serial (115200 baud) if you have a monitor connect
 
 ## Step 5 — Access the Dashboard
 
-Open the web UI. The Dashboard shows the **Status** and **Device & Network** cards. Further settings (device name, password protection, time zone, MQTT, alerts) are under **Settings**; see [Configuration](../user-guide/configuration.md). The roof's own controls *come in later specs*.
+Open the web UI. The Dashboard shows the **Status**, **Roof** and **Device & Network** cards ([Dashboard](../user-guide/dashboard.md)). Further settings (device name, the roof, password protection, time zone, MQTT, alerts) are under **Settings**; see [Configuration](../user-guide/configuration.md).
 
 ---
 

@@ -56,7 +56,9 @@
     {
       "id": "alerts-mode-not-in-effect",
       "label": "status.sendMode",
-      "sources": ["deps.D-12"],
+      "sources": [
+        "deps.D-12"
+      ],
       "requiredBy": "025 FR-010, 020 D-12, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -69,7 +71,12 @@
     {
       "id": "no-channel",
       "label": "status.channels",
-      "sources": ["deps.D-01", "deps.D-02", "deps.D-03", "deps.D-04"],
+      "sources": [
+        "deps.D-01",
+        "deps.D-02",
+        "deps.D-03",
+        "deps.D-04"
+      ],
       "requiredBy": "025 FR-011, US1-6, 026 FR-002",
       "visibility": {
         "rule": "when",
@@ -122,6 +129,180 @@
       "test": "clock-location"
     },
     {
+      "id": "roof-fault",
+      "label": "roof.state.fault",
+      "sources": [
+        "status.roof.fault",
+        "status.roof.fault.text"
+      ],
+      "requiredBy": "009 FR-015, DS-07",
+      "visibility": {
+        "rule": "when",
+        "when": "a motion fault is latched"
+      },
+      "priority": 2,
+      "location": "card:status",
+      "test": "roof-fault",
+      "testIn": "unit",
+      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+    },
+    {
+      "id": "roof-close",
+      "label": "roof.closePhase.label",
+      "sources": [
+        "status.roof.closePhase"
+      ],
+      "requiredBy": "009 FR-016, DS-07",
+      "visibility": {
+        "rule": "when",
+        "when": "the automatic close is held by a person, can't move or has halted"
+      },
+      "priority": 2,
+      "location": "card:status",
+      "test": "roof-close",
+      "testIn": "unit",
+      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+    },
+    {
+      "id": "roof-card",
+      "label": "roof.title",
+      "sources": [
+        "status.roof",
+        "status.roof.state"
+      ],
+      "requiredBy": "009 FR-001",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-card",
+      "note": "The Roof card: the state pill (Fault while one is latched)."
+    },
+    {
+      "id": "roof-position",
+      "label": "roof.position.label",
+      "sources": [
+        "status.roof.positionKnown",
+        "status.roof.positionPercent"
+      ],
+      "requiredBy": "009 FR-001",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-position"
+    },
+    {
+      "id": "roof-buttons",
+      "label": "roof.open",
+      "sources": [
+        "status.roof.closePending",
+        "status.roof.supplyLow",
+        "status.roof.minSupplyVolts",
+        "status.wifi.apMode"
+      ],
+      "requiredBy": "009 FR-002 to FR-008",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-buttons",
+      "note": "Open, Close and Stop, with the reason a button is disabled: a waiting close, the supply and its minimum, the setup hotspot."
+    },
+    {
+      "id": "roof-checks",
+      "label": "roof.weather.label",
+      "sources": [
+        "status.roof.weather",
+        "status.roof.weatherText",
+        "status.roof.parkConfirmed",
+        "status.roof.parkText"
+      ],
+      "requiredBy": "009 FR-011",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-checks"
+    },
+    {
+      "id": "roof-readings",
+      "label": "roof.supply",
+      "sources": [
+        "status.roof.supplyVolts",
+        "status.roof.currentSense",
+        "status.roof.motorAmps",
+        "status.roof.parkSwitches",
+        "status.roof.parkSwitches.fitted",
+        "status.roof.parkSwitches.switch1",
+        "status.roof.parkSwitches.switch2",
+        "status.roof.rainContact"
+      ],
+      "requiredBy": "009 FR-011",
+      "visibility": {
+        "rule": "when",
+        "when": "the supply always; the motor current while current sense is on; the park switches and the rain contact when fitted"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-readings"
+    },
+    {
+      "id": "roof-hall",
+      "label": "roof.hall.label",
+      "sources": [
+        "status.roof.hall",
+        "status.roof.hall.counts",
+        "status.roof.hall.level"
+      ],
+      "requiredBy": "009 FR-013",
+      "visibility": {
+        "rule": "always"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-hall"
+    },
+    {
+      "id": "roof-fault-card",
+      "label": "roof.clearFault",
+      "sources": [
+        "status.roof.fault",
+        "status.roof.fault.text"
+      ],
+      "requiredBy": "009 FR-010",
+      "visibility": {
+        "rule": "when",
+        "when": "a motion fault is latched"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-fault-card",
+      "testIn": "unit",
+      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+    },
+    {
+      "id": "roof-close-phase",
+      "label": "roof.closePhase.label",
+      "sources": [
+        "status.roof.closePhase"
+      ],
+      "requiredBy": "009 FR-011",
+      "visibility": {
+        "rule": "when",
+        "when": "the automatic close isn't idle"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-close-phase",
+      "testIn": "unit",
+      "demoCannot": "The demo's roof is a static closed roof until spec 011 simulates one"
+    },
+    {
       "id": "device-network-card",
       "label": "dashboard.deviceNetwork",
       "sources": [
@@ -164,7 +345,10 @@
     {
       "id": "mdns",
       "label": "glance.localName",
-      "sources": ["status.wifi.hostname", "status.wifi.mdns"],
+      "sources": [
+        "status.wifi.hostname",
+        "status.wifi.mdns"
+      ],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -177,7 +361,12 @@
     {
       "id": "mqtt-state",
       "label": "glance.mqtt",
-      "sources": ["status.mqtt.enabled", "status.mqtt.connected", "status.mqtt.state", "status.mqtt"],
+      "sources": [
+        "status.mqtt.enabled",
+        "status.mqtt.connected",
+        "status.mqtt.state",
+        "status.mqtt"
+      ],
       "requiredBy": "025 FR-015, 013",
       "visibility": {
         "rule": "when",
@@ -385,11 +574,6 @@
       "shownOn": "Updates"
     },
     {
-      "match": "status.wifi.apMode",
-      "reason": "Setup and hardware details",
-      "shownOn": "System"
-    },
-    {
       "match": "status.wifi.connectPending",
       "reason": "Setup and hardware details",
       "shownOn": "System"
@@ -452,18 +636,68 @@
       "reason": "Build details"
     },
     {
+      "match": "status.roof.positionMm",
+      "reason": "The percentage open is shown; the millimetres are in the API and on MQTT"
+    },
+    {
+      "match": "status.roof.target",
+      "reason": "The state already says opening or closing"
+    },
+    {
+      "match": "status.roof.driving",
+      "reason": "Only false during the 500 ms dead time of a move; the state says it is moving"
+    },
+    {
+      "match": "status.roof.fromUnknown",
+      "reason": "Move details for troubleshooting through the API; the card says a move from an unknown position goes slowly"
+    },
+    {
+      "match": "status.roof.moveElapsedMs",
+      "reason": "Move details for troubleshooting through the API"
+    },
+    {
+      "match": "status.roof.moveTimeoutMs",
+      "reason": "Move details for troubleshooting through the API"
+    },
+    {
+      "match": "status.roof.maxCurrentAmps",
+      "reason": "A setting (Settings, Roof); an over-current fault states it"
+    },
+    {
+      "match": "status.roof.fault.kind",
+      "reason": "The fault's text names it, with the measured value and the limit"
+    },
+    {
+      "match": "status.roof.fault.cause",
+      "reason": "The fault's text names it, with the measured value and the limit"
+    },
+    {
+      "match": "status.roof.fault.measured",
+      "reason": "The fault's text names it, with the measured value and the limit"
+    },
+    {
+      "match": "status.roof.fault.limit",
+      "reason": "The fault's text names it, with the measured value and the limit"
+    },
+    {
+      "match": "status.roof.watchdogTrips",
+      "reason": "Device internals for troubleshooting"
+    },
+    {
+      "match": "status.roof.maxStepGapMs",
+      "reason": "Device internals for troubleshooting"
+    },
+    {
+      "match": "status.roof.maxWatchdogBeatAgeMs",
+      "reason": "Device internals for troubleshooting"
+    },
+    {
       "match": "deps.D-40",
-      "reason": "Shown with the safety settings, which arrive with the roof settings page (spec 009)",
-      "shownOn": "Settings"
+      "reason": "Shown on its Settings row (Roof, Weather sources); a source it stops is in the weather verdict on the Roof card"
     },
     {
       "match": "deps.D-41",
-      "reason": "Shown with the safety settings, which arrive with the roof settings page (spec 009)",
-      "shownOn": "Settings"
-    },
-    {
-      "match": "status.roof.**",
-      "reason": "The roof card (state, position, readings, fault, clear fault) is spec 009; until then the roof section is read through the API"
+      "reason": "Shown on its Settings row (Roof, Weather sources); a source it stops is in the weather verdict on the Roof card"
     }
   ]
 }
