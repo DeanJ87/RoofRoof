@@ -1,0 +1,266 @@
+#include "RoofController.h"
+
+#include <cmath>
+
+#include "MotionProfile.h"
+
+// Commands, the idle state and the fault latch. The per-step move is in
+// RoofControllerStep.cpp.
+
+namespace SQM
+{
+    namespace Roof
+    {
+        namespace
+        {
+            CommandResult refused(Refusal reason, float measured = 0.0f, float limit = 0.0f)
+            {
+                CommandResult result;
+                result.accepted = false;
+                result.reason = reason;
+                result.measured = measured;
+                result.limit = limit;
+                return result;
+            }
+
+            State endState(End end)
+            {
+                return end == End::Open ? State::Open : State::Closed;
+            }
+        } // namespace
+
+        Controller::Controller(const Settings &settings)
+            : config(settings),
+              settingsValid(validSettings(settings))
+        {
+        }
+
+        Output Controller::tick(const Readings &readings)
+        {
+            const uint32_t gapMs = readings.nowMs - lastStepMs;
+            const bool late = stepped && move.driving && gapMs > MAX_STEP_GAP_MS;
+            if (move.driving && stepped)
+                advanceEstimate(gapMs);
+            stepped = true;
+            lastStepMs = readings.nowMs;
+            last = readings;
+            current.hallCounts = readings.hallCounts;
+            current.hall = hall.update(readings.hallCounts, HallThresholds{config.hallHighCounts, config.hallLowCounts});
+
+            // constitution I: a late step means the motor ran unsupervised.
+            if (late)
+                latch(Fault{FaultKind::LateStep, static_cast<float>(gapMs), static_cast<float>(MAX_STEP_GAP_MS)}, readings.nowMs);
+            if (current.hall == HallLevel::Rail)
+            {
+                const float rail = readings.hallCounts <= HALL_RAIL_LOW_COUNTS ? HALL_RAIL_LOW_COUNTS : HALL_RAIL_HIGH_COUNTS;
+                latch(Fault{FaultKind::HallRail, static_cast<float>(readings.hallCounts), rail}, readings.nowMs);
+            }
+            if (current.fault.kind == FaultKind::None)
+            {
+                if (move.active)
+                    stepMove(readings);
+                else
+                    followHall();
+            }
+            current.driving = move.driving;
+            current.moveElapsedMs = move.driving ? readings.nowMs - move.driveStartMs : 0;
+            return out;
+        }
+
+        CommandResult Controller::command(Command command, Origin origin, uint32_t nowMs)
+        {
+            switch (command)
+            {
+            case Command::Open:
+                return requestMove(End::Open, origin, nowMs);
+            case Command::Close:
+                return requestMove(End::Closed, origin, nowMs);
+            case Command::Abort:
+                stopMove(nowMs, false);
+                return CommandResult{};
+            case Command::Stop:
+            default:
+                // Anything unrecognised stops: the safe reading of a bad command.
+                stopMove(nowMs, true);
+                return CommandResult{};
+            }
+        }
+
+        // Why an open or close can't start now, whatever its origin (FR-004).
+        CommandResult Controller::readinessRefusal() const
+        {
+            if (current.fault.kind != FaultKind::None)
+                return refused(Refusal::FaultLatched);
+            if (!settingsValid)
+                return refused(Refusal::SettingsInvalid);
+            if (current.hall == HallLevel::Unsettled || current.hall == HallLevel::Rail)
+                return refused(Refusal::HallNotSettled);
+            if (std::isnan(last.supplyVolts))
+                return refused(Refusal::SupplyUnreadable, last.supplyVolts, config.minSupplyVolts);
+            if (!(last.supplyVolts >= config.minSupplyVolts))
+                return refused(Refusal::SupplyLow, last.supplyVolts, config.minSupplyVolts);
+            if (config.currentSenseEnabled && !std::isfinite(last.motorAmps))
+                return refused(Refusal::CurrentUnreadable, last.motorAmps, config.maxCurrentAmps);
+            return CommandResult{};
+        }
+
+        CommandResult Controller::requestMove(End target, Origin origin, uint32_t nowMs)
+        {
+            if (current.fault.kind != FaultKind::None)
+                return refused(Refusal::FaultLatched);
+            End at = End::Closed;
+            if (move.active ? move.target == target : (magnetEnd(at) && at == target))
+                return CommandResult{}; // already there, or already on its way
+            const CommandResult notReady = readinessRefusal();
+            if (!notReady.accepted)
+                return notReady;
+            // constitution I: never by itself from an unknown position.
+            if (!current.positionKnown && origin != Origin::Person)
+                return refused(Refusal::PositionUnknown);
+
+            // A reversal stops first; the dead time runs before the new drive.
+            stopDriving(nowMs);
+            move = Move{};
+            move.active = true;
+            move.target = target;
+            move.fromUnknown = !current.positionKnown;
+            current.target = target;
+            current.state = target == End::Open ? State::Opening : State::Closing;
+            current.fromUnknown = move.fromUnknown;
+            current.moveTimeoutMs = 0;
+            return CommandResult{};
+        }
+
+        void Controller::stopMove(uint32_t nowMs, bool keepEstimate)
+        {
+            if (!move.active)
+                return;
+            stopDriving(nowMs);
+            // constitution I: an abort part-way leaves the position unknown.
+            if (!keepEstimate || move.fromUnknown)
+                current.positionKnown = false;
+            move = Move{};
+            settleIdle();
+        }
+
+        void Controller::stopDriving(uint32_t nowMs)
+        {
+            if (move.driving)
+            {
+                driveEndMs = nowMs;
+                everDriven = true;
+            }
+            move.driving = false;
+            current.driving = false;
+            current.moveElapsedMs = 0;
+            out = Output{};
+            resetPending();
+        }
+
+        void Controller::latch(const Fault &fault, uint32_t nowMs)
+        {
+            stopDriving(nowMs);
+            move = Move{};
+            current.positionKnown = false;
+            current.fromUnknown = false;
+            current.state = State::Error;
+            if (current.fault.kind != FaultKind::None)
+                return; // the first fault is the one to report
+            current.fault = fault;
+            if (current.fault.kind == FaultKind::None)
+                current.fault.kind = FaultKind::External;
+        }
+
+        void Controller::raiseFault(const Fault &fault, uint32_t nowMs)
+        {
+            latch(fault, nowMs);
+        }
+
+        CommandResult Controller::clearFault(Origin origin)
+        {
+            if (origin != Origin::Person)
+                return refused(Refusal::NotAPerson);
+            if (current.fault.kind == FaultKind::None)
+                return CommandResult{};
+            current.fault = Fault{};
+            current.positionKnown = false;
+            current.state = State::Unknown;
+            followHall();
+            return CommandResult{};
+        }
+
+        bool Controller::applySettings(const Settings &settings)
+        {
+            if (move.active)
+                return false;
+            config = settings;
+            settingsValid = validSettings(settings);
+            // The estimate was made with the old travel and speed.
+            if (current.state == State::Stopped)
+            {
+                current.positionKnown = false;
+                current.state = State::Unknown;
+            }
+            if (current.fault.kind == FaultKind::None)
+                followHall();
+            return true;
+        }
+
+        // Idle: the magnets are the truth; leaving one at rest loses the position.
+        void Controller::followHall()
+        {
+            End at = End::Closed;
+            if (magnetEnd(at))
+            {
+                current.positionKnown = true;
+                current.positionMm = at == End::Open ? static_cast<float>(config.travelMm) : 0.0f;
+                current.state = endState(at);
+                return;
+            }
+            if (current.hall != HallLevel::Between)
+                return;
+            if (current.state == State::Open || current.state == State::Closed)
+            {
+                current.positionKnown = false;
+                current.state = State::Unknown;
+            }
+        }
+
+        // The idle state after a move ends without arriving.
+        void Controller::settleIdle()
+        {
+            current.fromUnknown = false;
+            current.moveTimeoutMs = 0;
+            End at = End::Closed;
+            if (magnetEnd(at))
+                followHall();
+            else
+                current.state = current.positionKnown ? State::Stopped : State::Unknown;
+        }
+
+        bool Controller::magnetEnd(End &end) const
+        {
+            const End other = config.hallHighEnd == End::Open ? End::Closed : End::Open;
+            if (current.hall == HallLevel::High)
+                end = config.hallHighEnd;
+            else if (current.hall == HallLevel::Low)
+                end = other;
+            else
+                return false;
+            return true;
+        }
+
+        float Controller::remainingMm() const
+        {
+            const float travel = static_cast<float>(config.travelMm);
+            return move.target == End::Open ? travel - current.positionMm : current.positionMm;
+        }
+
+        void Controller::resetPending()
+        {
+            supplyLow = Pending{};
+            overCurrent = Pending{};
+            currentUnreadable = Pending{};
+        }
+    } // namespace Roof
+} // namespace SQM
