@@ -54,6 +54,24 @@ namespace SQM
                 }
                 return theRoof->whileStill(action, wait);
             }
+
+            // The roof's part checked under its lock, and the close sequence's
+            // checked again inside it (the sequence may have left idle since a
+            // first look): `action` runs only if nothing holds `platform`.
+            RoofIo::HoldReason underLockFor(RoofIo::PlatformAction platform, const std::function<void()> &action)
+            {
+                RoofIo::HoldReason reason = sequenceHold(platform);
+                if (reason != RoofIo::HoldReason::None)
+                    return reason;
+                const RoofIo::HoldReason roof = underLock(
+                    [&]()
+                    {
+                        reason = sequenceHold(platform);
+                        if (reason == RoofIo::HoldReason::None)
+                            action();
+                    });
+                return roof != RoofIo::HoldReason::None ? roof : reason;
+            }
         } // namespace
 
         void begin(RoofControl *roof, std::function<bool()> busy)
@@ -69,16 +87,13 @@ namespace SQM
 
         RoofIo::HoldReason claim(RoofIo::PlatformAction action, const std::function<void()> &mark)
         {
-            const RoofIo::HoldReason reason = sequenceHold(action);
-            return reason != RoofIo::HoldReason::None ? reason : underLock(mark);
+            return underLockFor(action, mark);
         }
 
         FlashWrite::FlashWrite(RoofIo::PlatformAction action)
         {
-            reason = sequenceHold(action);
-            if (reason != RoofIo::HoldReason::None)
-                return;
-            reason = underLock(
+            reason = underLockFor(
+                action,
                 [this]()
                 {
                     FlashGuard::holdShort();
@@ -94,12 +109,10 @@ namespace SQM
 
         uint32_t beginUpload(RoofIo::PlatformAction action, RoofIo::HoldReason &why, bool closedOnly)
         {
-            why = sequenceHold(action);
-            if (why != RoofIo::HoldReason::None)
-                return 0;
             uint32_t token = 0;
             bool notClosed = false;
-            why = underLock(
+            why = underLockFor(
+                action,
                 [&]()
                 {
                     // Under the lock the published state matches the controller's.
@@ -122,23 +135,22 @@ namespace SQM
 
         RestartGo commitRestart(bool mandatory, const std::function<bool()> &commit)
         {
-            const RoofIo::PlatformAction action = mandatory ? RoofIo::PlatformAction::MandatoryRestart : RoofIo::PlatformAction::Restart;
-            if (sequenceHold(action) != RoofIo::HoldReason::None)
-                return RestartGo::Held;
             bool ran = false;
-            bool flashHeld = false;
+            bool held = false;
             bool committed = false;
             underLock(
                 [&]()
                 {
                     ran = true;
-                    // An ordinary restart also waits for a flash write to end
-                    // (an upload, a settings save): resetting part-way would
-                    // leave it half written. The mandatory one follows an
-                    // upload that has already ended.
-                    if (!mandatory && (FlashGuard::busy() || FlashGuard::writing()))
+                    RoofIo::RestartInputs in;
+                    in.mandatory = mandatory;
+                    in.sequenceBusy = sequenceBusy();
+                    in.uploadBusy = FlashGuard::busy();
+                    in.shortWrite = FlashGuard::writing();
+                    in.faultUnsaved = theRoof != nullptr && theRoof->faultUnsavedHeld();
+                    if (!RoofIo::restartMayCommit(in))
                     {
-                        flashHeld = true;
+                        held = true;
                         return;
                     }
                     committed = commit();
@@ -146,7 +158,7 @@ namespace SQM
                 false);
             if (committed)
                 return RestartGo::Run;
-            return !ran || flashHeld ? RestartGo::Held : RestartGo::NotDue;
+            return !ran || held ? RestartGo::Held : RestartGo::NotDue;
         }
     } // namespace PlatformGuard
 } // namespace SQM

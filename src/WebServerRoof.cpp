@@ -97,7 +97,12 @@ namespace SQM
                 b.flashBusy = FlashGuard::busy();
                 b.flashWriting = FlashGuard::writing();
                 b.restartCommitted = restartCommitted();
-                b.networkChanging = wifiChanging.load() || wifiScanStarting.load() || WiFi.scanComplete() == WIFI_SCAN_RUNNING;
+                // Bounded in time: a stuck scan or a failed change never holds
+                // a close past RoofIo::NETWORK_HOLD_MAX_MS.
+                const uint32_t now = millis();
+                const bool scanning = wifiScanStarting.load() || WiFi.scanComplete() == WIFI_SCAN_RUNNING;
+                b.networkChanging = RoofIo::networkHoldsClose(wifiChanging.load(), now - wifiChangeAtMs.load()) ||
+                                    RoofIo::networkHoldsClose(scanning, now - wifiScanAtMs.load());
                 b.mqttConnecting = mqttClient != nullptr && mqttClient->connecting();
                 b.restartScheduled = restartScheduled();
                 b.restartCancellable = restartCancellable();

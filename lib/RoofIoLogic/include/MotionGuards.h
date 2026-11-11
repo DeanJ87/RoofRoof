@@ -76,7 +76,9 @@ namespace SQM
             void schedule(bool mandatory);
             // True if it was cancelled (the caller stops its timer).
             bool cancel();
-            // The timer couldn't be started, or the restart was stopped some other way.
+            // The timer couldn't be started, or the restart was stopped some
+            // other way. Ignored once committed: the reset is moments away and
+            // moves must stay refused until it.
             void clear();
             // The restart's last check passed (spec 010): it can no longer be
             // cancelled, and no move may start before the reset. False if none is due.

@@ -93,6 +93,8 @@ namespace SQM
 
         void RestartPlan::clear()
         {
+            if (isCommitted)
+                return;
             due = false;
             mustRun = false;
             isCommitted = false;

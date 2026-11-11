@@ -73,3 +73,12 @@ The rules and the shared lock (Phases 1-3) are the core; everything after uses t
 - [x] T025 A WiFi change (until joined or timed out) and a scan register under the roof's lock and are a command blocker (`networkChanging`); tests
 - [x] T026 Restart timer: no re-arm once cancelled; `ESP_ERR_INVALID_STATE` keeps the plan; an ordinary restart waits for a flash write
 - [x] T027 Open refused while the setup hotspot is on, from any network; `MQTTClient::isConnected` uses the atomic flag
+
+## Phase 11: Review round 2
+
+- [x] T028 WiFi change: one at a time, the attempt published only after the old network is dropped, joined only on the network being tried; tests of the bound
+- [x] T029 A WiFi change or scan holds a close for at most `NETWORK_HOLD_MAX_MS` (15 s, under the close sequence's 30 s); pure `networkHoldsClose` with tests
+- [x] T030 Pure `restartMayCommit`: every restart waits for a short write and for a latched fault to be saved; ordinary ones also for the sequence and uploads; tests
+- [x] T031 The close sequence's busy flag checked again under the roof's lock for every claim, write, upload and commit
+- [x] T032 A committed restart plan is never cleared; test
+- [x] T033 MQTT client state read by other tasks from atomics the loop publishes (PubSubClient only on the loop)

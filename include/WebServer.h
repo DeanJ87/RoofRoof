@@ -123,8 +123,10 @@ namespace SQM
         uint32_t lastConfigRevision = 0;
         // Read by the roof's command blockers (any task): a WiFi change or a
         // scan being started makes a close wait (spec 010).
-        std::atomic<bool> wifiChanging{false}; // from the claim until joined or timed out
+        std::atomic<bool> wifiChanging{false}; // from the claim until joined (the hold is bounded in time)
+        std::atomic<uint32_t> wifiChangeAtMs{0};
         std::atomic<bool> wifiScanStarting{false};
+        std::atomic<uint32_t> wifiScanAtMs{0};
         std::atomic<bool> wifiConnectActive{false};
         bool wifiConnectConfigSaved = false;
         uint32_t wifiConnectStartedAt = 0;
