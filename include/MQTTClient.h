@@ -42,6 +42,10 @@ namespace SQM
 
         void begin();
         void handle();
+        // Main loop, first thing in every pass: MQTT's time in this pass
+        // starts now (while the roof is busy, at most 500 ms of writes and
+        // reads in all; spec 008).
+        void startPass() { passBudget.start(millis()); }
         // While the roof moves or a close waits (spec 003), no connect is
         // tried: a connect to a dead broker (DNS, TCP connect, CONNACK) would
         // hold up the main loop, and with it the safety hand-over to the roof.
@@ -99,10 +103,10 @@ namespace SQM
         // Reads (and the CONNACK wait) give up after this many seconds: well
         // under the roof's 5 s safety hand-over limit (spec 003 research R8).
         static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
-        // A write (publish, PINGREQ) gives up after this long and drops the
-        // connection (spec 008): at rest, and while the roof is busy.
-        static constexpr uint32_t WRITE_BUDGET_MS = 1000;
-        static constexpr uint32_t BUSY_WRITE_BUDGET_MS = 250;
+        // MQTT's time on the main loop (spec 008, RoofIo::Mqtt::PassBudget).
+        RoofIo::Mqtt::PassBudget passBudget;
+        bool busy() const;
+        void runLoop();
         std::function<bool()> connectHold;
         std::atomic<bool> connectInFlight{false};
 

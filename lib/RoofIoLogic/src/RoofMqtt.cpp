@@ -199,6 +199,39 @@ namespace SQM
                 lastConnection = connection;
                 lastMs = nowMs;
             }
+            uint32_t PassBudget::writeBudgetMs(uint32_t nowMs, bool busy) const
+            {
+                if (!busy)
+                    return REST_WRITE_BUDGET_MS;
+                const uint32_t used = nowMs - startMs;
+                if (used >= BUSY_PASS_BUDGET_MS)
+                    return 0;
+                const uint32_t left = BUSY_PASS_BUDGET_MS - used;
+                return left < BUSY_WRITE_BUDGET_MS ? left : BUSY_WRITE_BUDGET_MS;
+            }
+
+            bool PassBudget::mayRead(uint32_t nowMs, bool busy) const
+            {
+                return !busy || nowMs - startMs < BUSY_PASS_BUDGET_MS;
+            }
+
+            bool packetComplete(const uint8_t *bytes, size_t size)
+            {
+                if (bytes == nullptr || size < 2)
+                    return false;
+                size_t remaining = 0;
+                size_t scale = 1;
+                for (size_t i = 1; i <= MAX_LENGTH_BYTES; ++i)
+                {
+                    if (i >= size)
+                        return false; // the length field isn't all here yet
+                    remaining += static_cast<size_t>(bytes[i] & 0x7F) * scale;
+                    if ((bytes[i] & 0x80) == 0)
+                        return size >= 1 + i + remaining;
+                    scale *= 128;
+                }
+                return false; // a length longer than MQTT allows
+            }
         } // namespace Mqtt
     } // namespace RoofIo
 } // namespace SQM
