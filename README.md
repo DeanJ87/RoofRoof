@@ -14,6 +14,7 @@ unsafe. Its state goes out over MQTT, with a Home Assistant roof cover.
 
 ## Where to look
 
+- [`docs/hardware/commissioning.md`](docs/hardware/commissioning.md): the ordered procedure for bringing up a new roof, with a [printable checklist](docs/hardware/commissioning-checklist.md)
 - [`docs/hardware/wiring.md`](docs/hardware/wiring.md): the pin table and the required 10 kΩ pull-down on the motor driver's EN pin
 - [`BUILD.md`](BUILD.md) and [`DEV_WORKFLOW.md`](DEV_WORKFLOW.md): build, flash and develop
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md)

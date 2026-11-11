@@ -128,3 +128,5 @@ Which switches are fitted is a setting (`park.switches`: none, one on GPIO32, or
 6. The SS49E output through a divider to GPIO39, not directly.
 7. Park switches to GND on GPIO32 and GPIO33; rain contact to GND on GPIO4, if fitted.
 8. With the motor supply off, power the ESP32 and confirm EN, RPWM and LPWM read 0 V (a multimeter on GPIO27) before and after the firmware starts.
+
+The whole bring-up, from this checklist to a roof that closes itself, is the [commissioning guide](commissioning.md) ([printable checklist](commissioning-checklist.md)).

@@ -390,3 +390,29 @@
   font-size: 0.68rem;
   font-style: normal;
 }
+
+/* Printing: the commissioning checklist is meant to be printed. */
+@media print {
+  .md-header,
+  .md-tabs,
+  .md-sidebar,
+  .md-footer,
+  .md-top,
+  .md-source-file,
+  .headerlink {
+    display: none !important;
+  }
+  .md-content {
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+  }
+  h2 {
+    page-break-after: avoid;
+  }
+}
