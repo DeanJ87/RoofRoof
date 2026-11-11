@@ -100,3 +100,7 @@ Second convergence pass, on the Phase 8 fixes.
 - [x] T033 [MEDIUM, N2, FR-010] State the real bound in FR-010, the plan and the code: the body by 6 s, header lines 3 s each, DNS unbounded; fail-safe because readings go stale
 - [x] T034 [LOW, N3, T029] Move "which records a save restarts" into `lib/SafetyInputLogic` (`settingsChange`) with native tests (`test_safety_settings`); the poller and SafetyInputs only apply it
 - [x] T035 [LOW, N4, FR-011a] Record the known limit (an MQTT settings save reconnects on the web task) in the spec and the PR
+
+## Phase 10: Convergence
+
+- [x] T036 [LOW, P1, T033] Spec assumption 4 states the same request bound as FR-010
