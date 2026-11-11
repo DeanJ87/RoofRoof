@@ -151,6 +151,19 @@ void test_band_resets_on_off_or_unknown(void)
     }
 }
 
+// FR-004: a mode or threshold change decides from scratch (the band doesn't carry over).
+void test_band_resets_on_mode_or_threshold_change(void)
+{
+    const float limit = 2.0f;
+    const int64_t inBand = risingThrough(limit - 0.25);
+    Watch w;
+    TEST_ASSERT_EQUAL(State::Day, w.update(at(Mode::Alert, limit), true, NOON).state);
+    TEST_ASSERT_EQUAL(State::Night, w.update(at(Mode::Close, limit), true, inBand).state);
+    Watch v;
+    TEST_ASSERT_EQUAL(State::Day, v.update(at(Mode::Close, limit), true, NOON).state);
+    TEST_ASSERT_EQUAL(State::Night, v.update(at(Mode::Close, limit - 0.1f), true, risingThrough(limit - 0.35)).state);
+}
+
 void test_threshold_change_applies_at_once(void)
 {
     Watch w;
@@ -237,6 +250,7 @@ int main(int, char **)
     RUN_TEST(test_only_alert_and_close_closes);
     RUN_TEST(test_threshold_and_band_edges);
     RUN_TEST(test_band_resets_on_off_or_unknown);
+    RUN_TEST(test_band_resets_on_mode_or_threshold_change);
     RUN_TEST(test_threshold_change_applies_at_once);
     RUN_TEST(test_forced_sun_up);
     RUN_TEST(test_texts);

@@ -83,6 +83,11 @@ namespace SQM
             const bool unsafeLong = weatherUnsafe.lasted(!given.weatherSafe, given.nowMs, WEATHER_REARM_CONFIRM_MS);
             if (current == Phase::Idle)
             {
+                // A daylight attempt paused by the sun setting (or the mode
+                // changed) and resumed by unsafe weather: the weather's own
+                // critical alerts go out in their own words.
+                if (paused.has && paused.daylight && !given.weatherSafe)
+                    clearAlertThrottle();
                 daylightOnly = given.daylight && given.weatherSafe;
                 return;
             }
@@ -92,7 +97,10 @@ namespace SQM
                 return;
             daylightOnly = false;
             clearAlertThrottle();
-            const bool heldBack = current == Phase::HeldByPerson || current == Phase::Halted || current == Phase::RetryWait;
+            // CannotMove too: its "can't close by itself" is raised again at
+            // once, in the weather's words, with the fresh throttle.
+            const bool heldBack =
+                current == Phase::HeldByPerson || current == Phase::Halted || current == Phase::RetryWait || current == Phase::CannotMove;
             if (heldBack && !personStopped)
                 enter(Phase::Idle);
         }
@@ -231,7 +239,7 @@ namespace SQM
                 return out;
             if (in.weatherSafe)
             {
-                const Pause keep{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, in.nowMs, lastCritical};
+                const Pause keep{true, current, phaseSinceMs, phaseWallStartMs, attemptLimitMs, in.nowMs, lastCritical, daylightOnly};
                 out = enter(Phase::Idle, Event::EndedSafe);
                 paused = keep;
                 return out;

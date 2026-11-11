@@ -275,6 +275,13 @@ namespace
         return phase == Phase::HeldByPerson || phase == Phase::Halted || phase == Phase::RetryWait;
     }
 
+    void clearAlerted(Watch &watch)
+    {
+        for (auto &row : watch.alertedEver)
+            for (bool &ever : row)
+                ever = false;
+    }
+
     void trackUnsafe(Watch &watch, const Inputs &in)
     {
         if (in.weatherSafe)
@@ -295,6 +302,9 @@ namespace
         trackUnsafe(watch, in);
         if (before == Phase::Idle)
         {
+            // A paused daylight attempt resumed by the weather alerts afresh.
+            if (watch.pausedDaylight && !in.weatherSafe)
+                clearAlerted(watch);
             watch.daylightOnly = in.daylight && in.weatherSafe;
             return;
         }
@@ -307,9 +317,7 @@ namespace
             return;
         watch.daylightOnly = false;
         // The weather episode's critical alerts are announced afresh.
-        for (auto &row : watch.alertedEver)
-            for (bool &ever : row)
-                ever = false;
+        clearAlerted(watch);
         if (!heldBack(before) || anyStop)
             return;
         watch.expectRearm = true;
@@ -318,8 +326,10 @@ namespace
     }
 
     // D1 and D2.
-    const char *checkEpisode(const Watch &watch, const Decision &d, Phase after)
+    const char *checkEpisode(Watch &watch, const Decision &d, Phase after)
     {
+        if (d.event == Event::EndedSafe)
+            watch.pausedDaylight = d.daylight;
         if (watch.expectRearm && heldBack(after))
             return "D1 the weather turned unsafe and a daylight-only stand-down or back-off held it back";
         if (d.daylight != watch.daylightOnly)

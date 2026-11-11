@@ -81,10 +81,11 @@ namespace
         uint64_t lastStepMs = 0;
         bool prevUnsafe = false;
         State lastRoof = State::Unknown;
-        bool closedByMove = false; // the roof went from closing to closed this step
-        bool daylightOnly = false; // the episode is daylight-only (the observer's own tracking)
-        bool expectRearm = false;  // D1: this step must leave a stand-down, halt or back-off
-        bool unsafeRun = false;    // the weather itself not safe, since unsafeSinceMs
+        bool closedByMove = false;   // the roof went from closing to closed this step
+        bool daylightOnly = false;   // the episode is daylight-only (the observer's own tracking)
+        bool expectRearm = false;    // D1: this step must leave a stand-down, halt or back-off
+        bool pausedDaylight = false; // a daylight attempt ended by daylight going (it may resume)
+        bool unsafeRun = false;      // the weather itself not safe, since unsafeSinceMs
         uint64_t unsafeSinceMs = 0;
     };
 

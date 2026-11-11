@@ -63,7 +63,7 @@ read as `!wanted`. Before it:
 | Phase | Condition | Effect |
 |---|---|---|
 | Idle | | episode daylight-only = `daylight && weatherSafe` |
-| any other | weather not safe, episode daylight-only, no person's stop this step, phase Halted or RetryWait, or HeldByPerson with the weather not safe for `WEATHER_REARM_CONFIRM_MS` (30 s; a stop restarts it) | enter Idle (no event); episode weather; critical alert throttle cleared; the table then starts the weather attempt |
+| any other | weather not safe, episode daylight-only, no person's stop this step, phase Halted, RetryWait or CannotMove, or HeldByPerson with the weather not safe for `WEATHER_REARM_CONFIRM_MS` (30 s; a stop restarts it) | enter Idle (no event); episode weather; critical alert throttle cleared; the table then starts the weather attempt |
 | any other | weather not safe (HeldByPerson: after the 30 s) | episode weather |
 
 ## Alert conditions (`Alerts::RoofInputs` additions)

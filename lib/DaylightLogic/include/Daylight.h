@@ -78,6 +78,8 @@ namespace SQM
 
         private:
             bool day = false;
+            Mode lastMode = Mode::Off;
+            float lastLimitDeg = 0.0f;
             View last;
         };
 

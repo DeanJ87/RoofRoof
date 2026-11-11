@@ -271,6 +271,7 @@ namespace SQM
                 uint64_t limitMs = 0;
                 uint64_t endedAtMs = 0;
                 LastCritical critical;
+                bool daylight = false; // spec 013: a daylight-only attempt
             } paused;
             uint8_t parkRefusals = 0;     // the gate refused the close for the park, in a row
             bool closeFailedOnce = false; // a close was refused or interrupted...

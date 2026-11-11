@@ -31,6 +31,11 @@ namespace SQM
 
         View Watch::update(const Settings &settings, bool clockSet, int64_t epochSeconds, bool forceSunUp)
         {
+            // A mode or threshold change decides from scratch (FR-004).
+            if (settings.mode != lastMode || settings.limitDeg != lastLimitDeg)
+                day = false;
+            lastMode = settings.mode;
+            lastLimitDeg = settings.limitDeg;
             View v;
             v.mode = settings.mode;
             v.limitDeg = settings.limitDeg;

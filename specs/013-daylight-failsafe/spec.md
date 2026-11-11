@@ -320,10 +320,12 @@ reason.
 - **FR-012**: With mode off or alert, or the state not `day`, the close sequence MUST behave
   exactly as spec 005 specifies, step for step.
 - **FR-013**: When the weather stops being safe during an episode the daylight close started and
-  the sequence is halted or backing off after a failure, the sequence MUST re-arm and start the
-  weather close at once (as if the daylight episode had not happened); when it is stood down by a
+  the sequence is halted, backing off after a failure or unable to move, the sequence MUST re-arm
+  and start the weather close at once (an unable-to-move sequence raises its critical alert again,
+  in the weather's words) (as if the daylight episode had not happened); when it is stood down by a
   person, once the weather has been not safe for 30 s without a break (a new stop restarts the
-  wait). The critical alerts' throttle starts afresh at that moment. An
+  wait). The critical alerts' throttle starts afresh at that moment, and also when unsafe weather
+  resumes a daylight attempt that was paused because daylight ended. An
   attempt waiting for the park or a close under way carries on. From then on the episode is a
   weather episode (its alerts are worded for the weather).
 - **FR-014**: A stand-down or halt MUST re-arm only after nothing has wanted the roof closed
@@ -455,6 +457,14 @@ possible was taken.
 14. **A device with no site set says so**: after an upgrade, "Daylight check not working: Location
     not set" goes out once, 10 minutes after the restart, and Settings shows the daylight mode as
     not in effect until the site is set (or the mode is off).
+15. **Accepted small gaps.** After a restart that loses the clock (rare: a soft reset keeps it), a
+    person's daylight stand-down counts the unknown daylight state as "nothing wants a close" and
+    re-arms after 10 minutes, so the close may start once NTP sets the clock with the sun up (still
+    only onto a confirmed park). A weather stand-down kept by daylight still says it re-arms after
+    10 minutes of safe weather. Downgrading to the previous release reads the new restart flag as
+    a recent park request (the first request waits up to 30 s). Full-length custom texts in a
+    multi-byte script for all six imaging-app and daylight events no longer fit the stored alert
+    settings; the save is refused with a message.
 
 ## Out of scope
 
