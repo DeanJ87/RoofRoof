@@ -420,6 +420,8 @@ namespace DemoRoof
         s.personStops = personStops;
         s.maxStepGapMs = STEP_MS;
         s.simulation = "demo";
+        RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
+        s.closePhase = CloseSeq::phaseName(sequence.phase());
         return s;
     }
 

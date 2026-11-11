@@ -33,5 +33,19 @@ namespace SQM
             }
             return isTripped;
         }
+
+        BenchStepOut benchStep(BenchSupplyGuard &guard, Plant &plant, const BenchStepIn &in)
+        {
+            BenchStepOut out;
+            out.latch = guard.update(in.real.supplyVolts, in.real.nowMs);
+            out.measured = guard.measured();
+            const uint32_t elapsed = in.gapMs < MAX_PLANT_STEP_MS ? in.gapMs : MAX_PLANT_STEP_MS;
+            plant.drive(outputOf(in.logical), elapsed);
+            out.readings = in.real;
+            out.readings.hallCounts = plant.hallCounts();
+            out.readings.supplyVolts = plant.supplyNow();
+            out.readings.motorAmps = in.currentSense ? plant.senseAmps() : std::nanf("");
+            return out;
+        }
     } // namespace RoofPlant
 } // namespace SQM

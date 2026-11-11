@@ -49,7 +49,10 @@ To leave bench mode, install the standard firmware: over USB, or through **Updat
 | The fault store: a latched fault survives a restart | |
 | SQMeter, N.I.N.A., the park switches and the rain contact, if you connect them | |
 
-The simulated roof starts **closed** after every restart. Bench mode has no fault injection: try
+The simulated roof starts **half-way** after every restart, so it reads *unknown* (and the Dome
+reports a shutter error) until you move it: open or close it from the web UI (a person's command
+moves it slowly to the first magnet). A bench board that somehow ends up on a roof therefore never
+starts by reporting a closed roof. Bench mode has no fault injection: try
 jams, a low supply and unsafe weather in the [demo](../live-demo.md#the-roof).
 
 ## The safeguards
@@ -63,8 +66,9 @@ jams, a low supply and unsafe weather in the [demo](../live-demo.md#the-roof).
     - **Updates** in the web UI refuses it before anything is installed: *"This is a bench-mode
       image (simulated roof, no motor): install it over USB."*;
     - command-line OTA (`espota`, `pio run -t upload --upload-port <ip>`) checks the image it just
-      received before it is booted and keeps the running firmware. The upload tool still reports
-      success; the device's log says it was refused.
+      received before it is booted, keeps the running firmware and erases the refused image's
+      first sector, so it can't be booted later either. The upload tool still reports success; the
+      device's log says it was refused.
 - **A bench board on a powered roof stops itself.** The bench firmware still reads the real
   12 V supply input. If it reads 6.0 V or more (or can't be read) for a second, the roof latches
   the fault `benchSupply` (*"Bench firmware on a powered roof: supply 12.4 V >= 6.0 V"*): it reads
@@ -73,8 +77,9 @@ jams, a low supply and unsafe weather in the [demo](../live-demo.md#the-roof).
   while the supply is still there latches it again.
 - **It says so everywhere:**
     - a banner on every page of the web UI;
-    - `roof.simulation` is `bench` in [`/api/status`](../api/rest.md) and `/ws/status` (`off` on
-      the roof);
+    - `roof.simulation` is `bench` in [`/api/status`](../api/rest.md), `/ws/status` and the MQTT
+      state document (`off` on the roof), and Home Assistant shows the firmware version with
+      "(bench)";
     - the Alpaca Dome's description starts *BENCH MODE (simulated roof, no motor)*;
     - every alert's title starts *Bench:*;
     - the log says bench mode at start-up.

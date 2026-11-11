@@ -52,8 +52,8 @@ test('healthy: the Status card is the alerts state, All good', async ({ page }) 
   await open(page);
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveText('All good');
-  // The demo has no roof, so no Dome and no imaging-app tile (spec 011); Alerts is the one tile.
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  // The demo's roof is an Alpaca Dome (spec 011), so the imaging-app tile is there too.
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
   await expect(tile(page, 'alerts-state')).toContainText('Sending');
   await expect(statusCard(page).locator('.status-row')).toHaveCount(0);
   // It is the first card, and nothing sits between the header and the cards (026 FR-014).
@@ -80,14 +80,14 @@ test('send mode not in effect while Alpaca is off', async ({ page }) => {
   await expect(item(page, 'alerts-mode-not-in-effect')).toHaveCount(0);
 });
 
-test('imaging app: no tile without an Alpaca device, whether Alpaca is on or off', async ({ page }) => {
+test('imaging app: a tile for the Dome while Alpaca is on, none while it is off', async ({ page }) => {
   // inventory: imaging-app
   await open(page);
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
   await setConfig(page, { 'alpaca.enabled': false });
   await expect(tile(page, 'imaging-app')).toHaveCount(0);
   await setConfig(page, { 'alpaca.enabled': true });
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
 });
 
 test('no alert channel can send', async ({ page }) => {

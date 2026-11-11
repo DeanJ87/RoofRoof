@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1419088,
-  "overBudgetReason": "spec 008: MQTT roof commands and state document, Home Assistant roof entities, bounded MQTT writes and reads, close phase and checks in the status"
+  "esp32dev": 1422208,
+  "overBudgetReason": "spec 011: bench image refusal on both upload paths, roof.simulation, the benchSupply cause (+3.1 KB)"
 }
