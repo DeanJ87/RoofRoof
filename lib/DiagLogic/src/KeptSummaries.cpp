@@ -74,7 +74,8 @@ namespace SQM
                 at[52] = static_cast<uint8_t>(s.origin);
                 at[53] = static_cast<uint8_t>(s.target);
                 at[54] = static_cast<uint8_t>(s.endState);
-                at[55] = static_cast<uint8_t>(static_cast<uint8_t>(s.result) | (s.fromUnknown ? 4 : 0) | (static_cast<uint8_t>(s.fault) << 3));
+                at[55] =
+                    static_cast<uint8_t>(static_cast<uint8_t>(s.result) | (s.fromUnknown ? 4 : 0) | (static_cast<uint8_t>(s.fault) << 3));
             }
 
             bool decodeRecord(const uint8_t *at, Summary &s)

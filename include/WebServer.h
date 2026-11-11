@@ -114,7 +114,7 @@ namespace SQM
         static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
 
         AsyncWebServer server;
-        AsyncWebSocket wsStatus; // /ws/status
+        AsyncWebSocket wsStatus;           // /ws/status
         AsyncWebSocket wsDiag{"/ws/diag"}; // spec 017: the live diagnostics stream
         std::map<uint32_t, uint32_t> wsDiagClients;
         // Live-update clients closed since boot (SQMeter spec 011 FR-008): the

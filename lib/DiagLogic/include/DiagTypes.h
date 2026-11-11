@@ -55,10 +55,10 @@ namespace SQM
             uint32_t nowMs = 0;
             Roof::Status status;
             Roof::Output output;
-            float supplyVolts = NAN; // NaN: unreadable
-            float motorAmps = NAN;   // the running current; NaN without current sense
+            float supplyVolts = NAN;                    // NaN: unreadable
+            float motorAmps = NAN;                      // the running current; NaN without current sense
             Roof::Origin origin = Roof::Origin::Person; // of the last accepted open or close
-            uint8_t slowDuty = 0; // the settings' duties, 0-255
+            uint8_t slowDuty = 0;                       // the settings' duties, 0-255
             uint8_t topDuty = 255;
         };
 
@@ -75,8 +75,8 @@ namespace SQM
         struct Summary
         {
             uint32_t id = 0;
-            uint32_t startMs = 0; // uptime (a kept summary: 0)
-            uint32_t endMs = 0;   // the last step so far while active (a kept summary: the duration)
+            uint32_t startMs = 0;    // uptime (a kept summary: 0)
+            uint32_t endMs = 0;      // the last step so far while active (a kept summary: the duration)
             uint32_t startEpoch = 0; // Unix seconds, kept summaries only (0: clock not set)
             uint32_t endEpoch = 0;
             uint32_t drivenMs = 0;

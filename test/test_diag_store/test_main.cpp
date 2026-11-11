@@ -180,7 +180,7 @@ void test_a_write_is_due_only_with_a_change_and_the_interval_passed()
 {
     KeptWrite write;
     write.start(5);
-    TEST_ASSERT_FALSE(write.due(0, 5, true)); // just loaded
+    TEST_ASSERT_FALSE(write.due(0, 5, true));  // just loaded
     TEST_ASSERT_FALSE(write.due(0, 6, false)); // the setting off
     TEST_ASSERT_TRUE(write.due(0, 6, true));   // the first write
     write.written(1000, 6);

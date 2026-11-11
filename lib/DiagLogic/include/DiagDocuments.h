@@ -35,7 +35,7 @@ namespace SQM
             Driver::Outputs pins; // EN, RPWM and LPWM as the driver applies them
             Roof::Settings settings;
             float supplyVolts = NAN;
-            float motorAmps = NAN; // the running current; NaN without current sense
+            float motorAmps = NAN;             // the running current; NaN without current sense
             uint32_t budgetUsedMs[2] = {0, 0}; // toward each end (index: Roof::End)
             uint32_t watchdogTrips = 0;
             uint32_t maxGapMs = 0;
@@ -89,8 +89,8 @@ namespace SQM
         // What the list document shows besides the summaries.
         struct ListView
         {
-            HeldIds held;       // the moves still held with their profiles
-            bool keep = false;  // diag.keepSummaries
+            HeldIds held;      // the moves still held with their profiles
+            bool keep = false; // diag.keepSummaries
             Clock clock;
         };
 

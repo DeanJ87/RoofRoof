@@ -57,12 +57,16 @@ namespace SQM
             }
         };
 
-        void sendChunked(AsyncWebServerRequest *request, const char *type, std::function<bool(size_t, std::string &)> part, const char *disposition = nullptr)
+        void sendChunked(
+            AsyncWebServerRequest *request,
+            const char *type,
+            std::function<bool(size_t, std::string &)> part,
+            const char *disposition = nullptr)
         {
             auto chunks = std::make_shared<Chunks>();
             chunks->part = std::move(part);
-            AsyncWebServerResponse *response =
-                request->beginChunkedResponse(type, [chunks](uint8_t *buffer, size_t maxLen, size_t) { return chunks->fill(buffer, maxLen); });
+            AsyncWebServerResponse *response = request->beginChunkedResponse(
+                type, [chunks](uint8_t *buffer, size_t maxLen, size_t) { return chunks->fill(buffer, maxLen); });
             if (disposition != nullptr)
                 response->addHeader("Content-Disposition", disposition);
             request->send(response);
@@ -204,10 +208,16 @@ namespace SQM
         {
             const String disposition = String("attachment; filename=\"roofroof-move-") + id + ".csv\"";
             sendChunked(
-                request, "text/csv", [move](size_t index, std::string &out) { return Diag::csvPart(*move, index, out); }, disposition.c_str());
+                request,
+                "text/csv",
+                [move](size_t index, std::string &out) { return Diag::csvPart(*move, index, out); },
+                disposition.c_str());
             return;
         }
-        sendChunked(request, "application/json", [move, clock](size_t index, std::string &out) { return Diag::movePart(*move, clock, index, out); });
+        sendChunked(
+            request,
+            "application/json",
+            [move, clock](size_t index, std::string &out) { return Diag::movePart(*move, clock, index, out); });
     }
 
     // A person's command (constitution VIII): the password and the command

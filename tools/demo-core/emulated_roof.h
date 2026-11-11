@@ -173,7 +173,7 @@ namespace DemoRoof
         uint32_t personStops = 0;
         Diag::MoveLog *diagLog = nullptr;
         Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
-        uint32_t remoteStops = 0; // spec 014: of personStops, the honoured remote stops
+        uint32_t remoteStops = 0;                       // spec 014: of personStops, the honoured remote stops
         float motorAmps = 0.0f;
 
         Safety::SourceRecord http;

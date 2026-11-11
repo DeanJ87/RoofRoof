@@ -288,7 +288,7 @@ namespace SQM
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;
         // Spec 017: set with the log; the control task times its steps while set.
         std::atomic<bool> diagTimed{false};
-        std::atomic<uint32_t> stepUsNow{0};    // written by the control task only
+        std::atomic<uint32_t> stepUsNow{0}; // written by the control task only
         std::atomic<uint32_t> maxStepUsNow{0};
     };
 } // namespace SQM
