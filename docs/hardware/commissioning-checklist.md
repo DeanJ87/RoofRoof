@@ -36,6 +36,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 2.4 | Boot between the magnets: `unknown`, EN low. At a magnet after a restart: that end | |
 | ☐ 2.5 | `supplyVolts` within 0.2 V of the meter | V / V |
 | ☐ 2.6 | Park switches and rain contact read `closed`/`open` and `raining`/`dry` over the real cable (external pull-up if not) | |
+| ☐ 2.7 | Current sense left off until stage 8 | |
 
 ## Stage 3: Hall calibration (motor disconnected)
 
@@ -69,12 +70,13 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 5.3 | The phone's silent mode lets Wake me through | |
 | ☐ 5.4 | With **Send alerts** off, a critical **Test** still arrives | |
 | ☐ 5.5 | MQTT only: the critical alert over MQTT carries the reason | |
+| ☐ 5.6 | Real roof events arrive in stages 6 and 7 (ticked there) | |
 
 ## Stage 6: The driver and the faults (motor disconnected, hand-held magnet)
 
 | | Check | Result |
 |---|---|---|
-| ☐ 6.1 | Open refused with no weather source; close refused with N.I.N.A. off or a park switch open; a switch opened mid-close stops with `parkInterlock` | |
+| ☐ 6.1 | Open refused with no weather source; close refused with N.I.N.A. off or a park switch open; a switch opened mid-close stops with `parkInterlock`; between the magnets only a person's open or close is accepted (not N.I.N.A. or MQTT) | |
 | ☐ 6.2 | EN high only while driving; RPWM and LPWM never both high; 20 kHz | |
 | ☐ 6.3 | Stop drops EN at once; `stopped`; a start waits 0.5 s | |
 | ☐ 6.4 | No magnet: `timeout` fault after the expected time plus margin | s |
