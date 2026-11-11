@@ -64,6 +64,28 @@ namespace SQM
             return token != current || !active || stopRequested;
         }
 
+        void RestartPlan::schedule(bool isMandatory)
+        {
+            if (!due)
+                mandatory = false;
+            due = true;
+            mandatory = mandatory || isMandatory;
+        }
+
+        bool RestartPlan::cancel()
+        {
+            if (!due || mandatory)
+                return false;
+            due = false;
+            return true;
+        }
+
+        void RestartPlan::clear()
+        {
+            due = false;
+            mandatory = false;
+        }
+
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
         {
             BlockerDecision d;

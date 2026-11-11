@@ -161,16 +161,20 @@ namespace SQM
     {
         if (!config.enabled)
             return;
-        // Re-checked right before connecting: never while the roof moves or a close waits.
+        // Marked in flight before the hold is asked, so a close accepted in
+        // between sees the connect and waits for it; cleared if held.
+        connectInFlight = true;
         if (connectHold && connectHold())
+        {
+            connectInFlight = false;
             return;
+        }
 
         Logger::info(TAG, "Connecting to MQTT broker: %s port %d", config.broker.c_str(), brokerPort);
 
         const std::string clientId = buildClientId();
         const std::string availabilityTopic = getAvailabilityTopic();
 
-        connectInFlight = true;
         bool connected = false;
         if (!config.username.empty())
         {

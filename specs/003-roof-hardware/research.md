@@ -205,8 +205,11 @@ Decisions behind [plan.md](plan.md). Each records what was chosen, why, and what
   and the deferral run after the park gate and `Roof::Controller::check()` (a dry run of the motion
   logic's own refusals), and not when the roof is already closed or closing. A fault ends a waiting
   close. Restarts that remount a rewritten filesystem are mandatory (`scheduleMandatoryRestart`):
-  never cancelled, held while the roof moves or a close waits. MQTT connects are held while a close
-  waits too, and the hold is asked inside `MQTTClient::connect()`.
+  never cancelled, held while the roof moves or a close waits. `RoofIo::RestartPlan` keeps the
+  scheduled restart and its kind; once mandatory, a later ordinary schedule never downgrades it
+  (the final review caught a version that did). MQTT connects are held while a close
+  waits too, and the hold is asked inside `MQTTClient::connect()`, after the connect is marked in
+  flight, so a close accepted in between waits for it.
 - **Command-line OTA** re-checks the roof in its start callback and calls `Update.abort()` before the
   first write if the roof is no longer closed.
 
