@@ -114,14 +114,14 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 | `notACommand` | not `OPEN`, `CLOSE` or `STOP` (`command` is `null`) |
 | `weatherNotSafe`, `mountNotParked` | the weather or park check |
 | `unsafeClose`, `closing` | the limits above: a stop during a close in bad weather, an open during or after a close |
-| `positionUnknown`, `faultLatched`, `busy`, `notStarted`, ... | the roof's own checks, as for the [REST commands](../api/rest.md#roof) |
+| `positionUnknown`, `faultLatched`, `busy`, `restarting`, `hotspot`, `notStarted`, ... | the roof's own checks, as for the [REST commands](../api/rest.md#roof) |
 
 `text` always says why, with the measured value and the limit or the input that failed.
 
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: c771b40113b9a62d
+fingerprint: 0e852676af37972c
 -->
 <figure class="diagram" markdown>
 

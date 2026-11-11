@@ -66,7 +66,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "password": "",
     "topic": "roofroof",
     "publishIntervalMs": 60000,
-    "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" }
+    "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" },
+    "roofCommands": false
   },
   "ota": { "enabled": false, "password": "" },
   "auth": { "enabled": false, "username": "admin", "password": "" },
@@ -172,9 +173,10 @@ The JSON Schema is `config.schema.json`; the [API Reference](../api/reference.md
 | `username` | string | `""` | Auth username (leave empty if none) |
 | `password` | string | `""` | Auth password |
 | `topic` | string | `"roofroof"` | Base topic: letters, numbers, `_`, `-`, with `/` between levels. See [MQTT](mqtt.md#topics) |
-| `publishIntervalMs` | int | `60000` | Interval for periodic documents (nothing is published periodically yet) |
+| `publishIntervalMs` | int | `60000` | How often the roof's state document is republished at rest ([MQTT](mqtt.md#the-roof-document)) |
 | `homeAssistant.enabled` | bool | `false` | Home Assistant MQTT discovery |
 | `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
+| `roofCommands` | bool | `false` | Accept open, close and stop on `<topic>/roof/set`, with an Alpaca client's limits ([Roof commands](mqtt.md#roof-commands)). Config saved before this setting existed loads with it off |
 
 ### ArduinoOTA
 

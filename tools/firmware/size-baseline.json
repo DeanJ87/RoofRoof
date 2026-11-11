@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1405664,
-  "overBudgetReason": "spec 010: platform hold rules, PlatformGuard, MQTT settings hand-over, review fixes (+8.4 KB over main)"
+  "esp32dev": 1416032,
+  "overBudgetReason": "spec 008: MQTT roof commands and state document, Home Assistant roof entities, close phase and checks in the status"
 }

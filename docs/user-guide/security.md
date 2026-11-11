@@ -4,7 +4,7 @@ description: "RoofRoof's security model: built for a trusted LAN, optional HTTP 
 
 # Security
 
-RoofRoof is an observatory roof controller (its roof features come in later specs) designed to run on a trusted LAN. This page describes the security model, what HTTP auth protects, and recommended deployment.
+RoofRoof is an observatory roof controller designed to run on a trusted LAN. This page describes the security model, what HTTP auth protects, and recommended deployment.
 
 ---
 
@@ -62,6 +62,10 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/ws/status` | WS | Live status stream |
 
 Read-only integrations (Home Assistant, scripts polling the status) continue to work without credentials when auth is enabled.
+
+### MQTT roof commands
+
+With **Accept roof commands** on (off by default), anyone who can publish to `<base>/roof/set` on your broker can open, close and stop the roof: the device's password doesn't apply to MQTT, so the broker's own users and access lists are the only gate. Give the broker a password, and allow only Home Assistant (or whatever you trust) to publish to that topic. Whoever sends them, MQTT commands pass the same weather and park checks as every other command, can't move a roof whose position is unknown or clear a fault, can't stop or reverse the automatic close in bad weather, and are ignored when retained ([MQTT](mqtt.md#roof-commands)).
 
 Every route and whether it needs the password is listed in `tools/api/routes.json`; CI fails if a new route isn't declared there, so a route can't ship open by accident.
 

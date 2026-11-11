@@ -1,13 +1,10 @@
 ---
-description: "RoofRoof WebSocket API: the device status from /ws/status every 2 seconds, with no polling. Roof telemetry comes in a later spec."
+description: "RoofRoof WebSocket API: the device status, with the roof's state, position, readings, checks and automatic-close phase, from /ws/status every 2 seconds and at once when the roof changes."
 ---
 
 # WebSocket
 
 Connect to `/ws/status` for a live stream of the device status, pushed every 2 seconds. The same object is available once from [`GET /api/status`](rest.md#get-apistatus).
-
-!!! note "Roof telemetry comes in a later spec"
-    This release is the platform only. The roof's live stream (position, motion, supply) *comes in a later spec*; it will be a separate stream.
 
 ---
 
@@ -58,7 +55,7 @@ asyncio.run(stream())
 ## Notes
 
 - `/ws/status` is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then.
-- `/ws/status` is also sent within 250 ms when the roof's state or fault changes (`roof` in the status), not only on the regular 2 s broadcast.
+- `/ws/status` is also sent within 250 ms when the roof's state or fault, a waiting close, or the automatic close's phase changes (`roof` in the status), not only on the regular 2 s broadcast. While the roof moves this is the live position; MQTT only publishes the roof on a change then.
 - The server broadcasts to all connected clients simultaneously, and limits how many it keeps per endpoint (`connections` in the status).
 - There is no authentication on the WebSocket endpoint.
 - The WebSocket at `/ws/sensors` no longer exists.

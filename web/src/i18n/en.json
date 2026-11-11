@@ -546,7 +546,7 @@
   "settings.network.reachableAtHttpValueLocal": "Reachable at http://{value}.local. Turn off on networks that don't allow multicast.",
   "settings.network.reconnectAutomatically": "Reconnect automatically",
   "settings.network.roofCommands": "Roof commands",
-  "settings.network.roofCommandsHint": "Open, close and stop from {base}/roof/set, such as Home Assistant's roof buttons. They pass the same weather and park checks as every other command. They can't move the roof while its position is unknown, can't clear a fault, and can never stop the automatic close in bad weather. Retained messages are ignored.",
+  "settings.network.roofCommandsHint": "Open, close and stop from {base}/roof/set, with every safety check. Never from an unknown position; can't clear a fault or stop a close in bad weather.",
   "settings.network.scan": "Scan",
   "settings.network.serveAlpaca": "Serve Alpaca",
   "settings.network.testConnection": "Test connection",

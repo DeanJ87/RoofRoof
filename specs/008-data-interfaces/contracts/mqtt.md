@@ -61,7 +61,7 @@ alerts/armed, alerts/armed/set) are unchanged.
 ```
 
 Reasons: `switchedOff`, `retained`, `notACommand`, `notStarted`, the gates' `weatherNotSafe` and
-`mountNotParked`, the remote rules' `unsafeClose` and `closing`, `busy`, and the motion logic's
+`mountNotParked`, the remote rules' `unsafeClose` and `closing`, `busy`, `restarting`, `hotspot`, and the motion logic's
 refusals (`positionUnknown`, `faultLatched`, ...). `command` is null for `notACommand`.
 
 ## Home Assistant

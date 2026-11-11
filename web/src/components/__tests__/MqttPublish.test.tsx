@@ -46,7 +46,7 @@ describe('MQTT publish settings', () => {
     const toggle = (await screen.findByLabelText('Accept roof commands')) as HTMLInputElement;
     expect(toggle.checked).toBe(false);
     expect(screen.getByText(/obs\/roof\/set/)).toBeInTheDocument();
-    expect(screen.getByText(/can never stop the automatic close in bad weather/)).toBeInTheDocument();
+    expect(screen.getByText(/can't clear a fault or stop a close in bad weather/)).toBeInTheDocument();
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
