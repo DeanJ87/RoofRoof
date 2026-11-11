@@ -441,6 +441,62 @@
           "state": "active"
         }
       }
+    },
+    {
+      "name": "roof events: the non-critical ones wait for alerts (the critical two are sent anyway and aren't listed)",
+      "config": {},
+      "facts": {},
+      "expect": {
+        "alerts.events.move_fault.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.supply_low.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.unsafe_closing.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.roof_closed.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.safety_lost.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        }
+      }
+    },
+    {
+      "name": "roof events with alerts on are in effect, and off when their level is off",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "roof_closed": {
+              "level": 0
+            }
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.events.move_fault.level": {
+          "state": "active",
+          "id": "D-04"
+        },
+        "alerts.events.roof_closed.level": {
+          "state": "off",
+          "id": "D-04"
+        }
+      }
     }
   ]
 }

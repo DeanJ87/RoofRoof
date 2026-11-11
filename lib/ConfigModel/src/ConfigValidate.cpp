@@ -111,7 +111,17 @@ namespace SQM
         bool validateAlertEvents(const Config &c, std::string *error)
         {
             const AlertsConfig &a = c.alerts;
-            for (const auto &entry : eventSettings(a))
+            const auto settings = eventSettings(a);
+            // Constitution II and III: the roof's critical alerts can't be
+            // switched off or quietened (spec 007 FR-003).
+            for (size_t i = 0; i < CRITICAL_EVENT_COUNT; ++i)
+            {
+                if (settings[i].second->level < AlertsConfig::MIN_CRITICAL_LEVEL || settings[i].second->level > 4)
+                    return setError(error, "Alerts: the roof's critical alerts are urgent or wake me");
+                if (!AlertsConfig::audibleSound(settings[i].second->sound))
+                    return setError(error, "Alerts: the roof's critical alerts can't be silent or vibrate only");
+            }
+            for (const auto &entry : settings)
             {
                 if (entry.second->level > 4)
                     return setError(error, "Alerts: event levels are 0 (off) to 4 (wake me)");
@@ -123,10 +133,20 @@ namespace SQM
             if (a.clientSilentSeconds < AlertsConfig::MIN_CLIENT_SILENT_SECONDS ||
                 a.clientSilentSeconds > AlertsConfig::MAX_CLIENT_SILENT_SECONDS)
                 return setError(error, "Alerts: silence time must be between 30 and 3600 seconds");
-            // NVS strings top out just under 4000 bytes; each stored part has its own key.
+            return true;
+        }
+
+        // NVS strings top out just under 4000 bytes; each stored part has its
+        // own key. Checked before a save, not on load: settings stored before
+        // a release added events must still load (spec 007).
+        bool validateStoredSize(const Config &c, std::string *error)
+        {
             if (c.alertsToJson(false, Config::AlertsPart::Main).size() > Config::MAX_ALERTS_JSON_BYTES ||
                 c.alertsToJson(false, Config::AlertsPart::Client).size() > Config::MAX_ALERTS_JSON_BYTES)
-                return setError(error, "Alerts: the custom alert texts are too long in total - shorten some");
+                return setError(
+                    error,
+                    "Alerts: the alert settings are too long to store - shorten custom alert texts or long channel settings (webhook URL "
+                    "or header, tokens)");
             return true;
         }
 
@@ -255,6 +275,11 @@ namespace SQM
     } // namespace ConfigDetail
 
     bool Config::validate(std::string *error) const
+    {
+        return validateLoaded(error) && validateStoredSize(*this, error);
+    }
+
+    bool Config::validateLoaded(std::string *error) const
     {
         using Check = bool (*)(const Config &, std::string *);
         static const Check CHECKS[] = {

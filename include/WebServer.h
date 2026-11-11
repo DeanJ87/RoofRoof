@@ -64,10 +64,15 @@ namespace SQM
         // No alert queued or being delivered.
         bool alertsIdle() const;
         // Main loop: a critical roof event from the close sequence (spec 005),
-        // to every channel that is on, past the alert pause and the start-up
-        // grace, when alerts are switched on. Spec 007 replaces the wording.
+        // with its settings applied (spec 007: level never below urgent, sound,
+        // wording keeping the reason), to every channel that is on, past the
+        // alert pause, the send mode, the start-up grace and the master switch.
         // Returns the record id for roofAlertOutcome() (0: not stored).
         uint32_t raiseRoofAlert(const Alerts::Alert &alert);
+        // Main loop, before begin(): where the alert pass reads the roof's
+        // conditions for the non-critical roof events (spec 007).
+        using RoofConditions = std::function<Alerts::RoofInputs()>;
+        void setRoofConditions(RoofConditions source) { roofConditions = std::move(source); }
         // Any task: whether a channel took that alert.
         AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const
         {
@@ -160,6 +165,9 @@ namespace SQM
 
         // Alerts
         Alerts::AlertEngine alertEngine;
+        RoofConditions roofConditions;
+        bool roofAnnouncedRestored = false;
+        void keepRoofAnnounced();
 
         // When alerts go out (SQMeter spec 021): the send mode and the pause
         // state ("armed"), with why and since when. Saved in NVS. Pause/resume

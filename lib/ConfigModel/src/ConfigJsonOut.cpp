@@ -166,7 +166,9 @@ namespace SQM
 
     std::string Config::alertsToJson(bool redactSecrets, AlertsPart part) const
     {
-        DynamicJsonDocument doc(3072); // strings are referenced, not copied
+        // Strings are referenced, not copied: the size is for the members (ten
+        // events since spec 007). test_roof_alert_settings checks nothing is cut.
+        DynamicJsonDocument doc(4096);
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets, part);
         std::string json;
         serializeJson(doc, json);
@@ -175,7 +177,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(4608);
+        DynamicJsonDocument doc(6144); // see alertsToJson
         doc["deviceName"] = deviceName;
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);

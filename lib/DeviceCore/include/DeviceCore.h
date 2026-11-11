@@ -54,6 +54,24 @@ namespace SQM
             const AlertSources &sources, const Alerts::Alert &alert, const LocalClock &clock);
         void applyAlertTemplate(
             Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
+        // A roof critical event's custom wording (spec 007): rendered like any
+        // other, but a message using neither {reason} nor {details} gets the
+        // built-in message added, and a reminder's title keeps "Still: ".
+        void applyCriticalTemplate(
+            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars);
+        // A critical roof alert from the close sequence, finished for sending:
+        // the event's level (never below urgent), sound and wording. Pause,
+        // grace and the master switch don't apply (spec 005 FR-014, spec 007 FR-004).
+        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock);
+        // Pushover's limit on a message; a longer critical one uses the built-in text.
+        constexpr size_t MAX_CRITICAL_MESSAGE_BYTES = 1024;
+        // ...and its titles; a longer critical title uses the built-in one.
+        constexpr size_t MAX_CRITICAL_TITLE_BYTES = 200;
+        // Whether an alert of `type` goes out at all now: the critical roof
+        // alerts always; the rest with the master switch on and while sending
+        // (not paused, the send mode allows it). Used by the firmware's alert
+        // pass and its critical sink.
+        bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending);
 
         // The imaging app (SQMeter spec 021): silence time per Alpaca device,
         // the client state as alert inputs, and the documents that report it.

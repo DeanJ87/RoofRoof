@@ -105,6 +105,14 @@ namespace SQM
                 c.add("alerts.events.client_lost.level", "D-37", a.clientLost.level != 0, {alertsOn, alpacaOn, device});
                 c.add("alerts.events.client_back.level", "D-37", a.clientBack.level != 0, {alertsOn, alpacaOn, device});
                 c.add("alerts.events.client_disconnected.level", "D-37", a.clientDisconnected.level != 0, {alertsOn, alpacaOn, device});
+                // The roof's non-critical events need alerts on; the critical
+                // two (mount not parked, roof didn't close) are sent whatever
+                // the master switch says, so they depend on nothing (spec 007).
+                c.add("alerts.events.move_fault.level", "D-04", a.moveFault.level != 0, {alertsOn});
+                c.add("alerts.events.supply_low.level", "D-04", a.supplyLow.level != 0, {alertsOn});
+                c.add("alerts.events.unsafe_closing.level", "D-04", a.unsafeClosing.level != 0, {alertsOn});
+                c.add("alerts.events.roof_closed.level", "D-04", a.roofClosed.level != 0, {alertsOn});
+                c.add("alerts.events.safety_lost.level", "D-04", a.safetyLost.level != 0, {alertsOn});
             }
 
             void addAlertOptions(const Context &c)

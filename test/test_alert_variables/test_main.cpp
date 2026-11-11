@@ -110,10 +110,36 @@ void test_client_events_fill_their_variables(void)
     assertFillsSharedVars(engine.update(client(410, false, false, true), rules), AlertType::ClientDisconnected);
 }
 
+// The roof's non-critical events (spec 007); the critical ones are checked in
+// test_roof_alerts (CloseSeq::criticalAlert).
+void test_roof_events_fill_their_variables(void)
+{
+    const AlertRules rules = quickRules();
+    AlertEngine engine;
+    AlertInputs in;
+    in.nowSeconds = 0;
+    in.roof.known = true;
+    engine.update(in, rules);
+    in.nowSeconds = 100;
+    in.roof.faultLatched = true;
+    in.roof.supplyLow = true;
+    in.roof.sourceLost = true;
+    in.roof.closing = true;
+    in.roof.closedCount = 1;
+    std::vector<Alert> alerts = engine.update(in, rules);
+    in.nowSeconds = 100 + ROOF_SETTLE_SECONDS; // the supply and source settle
+    const std::vector<Alert> settled = engine.update(in, rules);
+    alerts.insert(alerts.end(), settled.begin(), settled.end());
+    for (AlertType type :
+         {AlertType::MoveFault, AlertType::SupplyLow, AlertType::SafetyLost, AlertType::UnsafeClosing, AlertType::RoofClosed})
+        assertFillsSharedVars(alerts, type);
+}
+
 int main(int argc, char **argv)
 {
     UNITY_BEGIN();
     RUN_TEST(test_every_listed_event_exists);
     RUN_TEST(test_client_events_fill_their_variables);
+    RUN_TEST(test_roof_events_fill_their_variables);
     return UNITY_END();
 }

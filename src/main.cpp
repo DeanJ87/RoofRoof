@@ -252,6 +252,8 @@ void startServices()
                 return CloseSeq::Delivery::Failed;
             }
         });
+    // Spec 007: the roof's non-critical events, read once a second by the alert pass.
+    webServer->setRoofConditions([]() { return closeOnUnsafe.conditions(); });
     HeapTrace::mark("setup complete");
 }
 

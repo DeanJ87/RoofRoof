@@ -69,7 +69,11 @@ const soundLabel = (sound: string) =>
     : sound === 'vibrate'
       ? t('settings.alerts.vibrateOnly')
       : `${sound[0].toUpperCase()}${sound.slice(1)}${LONG_SOUNDS.has(sound) ? ' (long)' : ''}`;
-export const soundOptions = (current: string, defaultLabel: string) => [
+// The critical roof events can't be silent or vibrate only (spec 007).
+export const SILENT_SOUNDS = ['none', 'vibrate'];
+export const soundOptions = (current: string, defaultLabel: string, audibleOnly = false) =>
+  allSoundOptions(current, defaultLabel).filter((option) => !audibleOnly || !SILENT_SOUNDS.includes(option.value));
+const allSoundOptions = (current: string, defaultLabel: string) => [
   { value: '', label: defaultLabel },
   ...(current && !PUSHOVER_SOUNDS.includes(current) ? [current] : [])
     .concat(PUSHOVER_SOUNDS)
@@ -79,6 +83,14 @@ export const soundOptions = (current: string, defaultLabel: string) => [
 // The firmware's built-in wording (lib/AlertLogic), written as templates;
 // shown as the placeholder until you write your own.
 const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = {
+  // The critical roof events: the close sequence's own wording for each case.
+  mount_not_parked: { title: t('settings.alerts.mountDidntPark'), message: '{details}' },
+  roof_not_closed: { title: t('settings.alerts.roofDidntClose'), message: '{details}' },
+  move_fault: { title: t('settings.alerts.roofFault'), message: t('settings.alerts.roofFaultMessage') },
+  supply_low: { title: t('settings.alerts.supplyLowTitle'), message: t('settings.alerts.supplyLowMessage') },
+  unsafe_closing: { title: t('settings.alerts.unsafeClosingTitle'), message: t('settings.alerts.unsafeClosingMessage') },
+  roof_closed: { title: t('settings.alerts.roofClosedTitle'), message: t('settings.alerts.roofClosedMessage') },
+  safety_lost: { title: t('settings.alerts.safetyLostTitle'), message: t('settings.alerts.safetyLostMessage') },
   client_lost: {
     title: t('settings.alerts.imagingAppStoppedChecking'),
     message: t('settings.alerts.noRequestToTheDevice'),
@@ -98,10 +110,19 @@ const VAR_HELP: Record<string, string> = {
   silent_for: t('settings.alerts.theSilentForTimeE'),
   last_checked: t('settings.alerts.whenTheImagingAppLast'),
   client_id: t('settings.alerts.theAlpacaClientidTheImaging'),
+  reason: t('settings.alerts.varReason'),
+  limit: t('settings.alerts.varLimit'),
+  details: t('settings.alerts.varDetails'),
 };
 // For the imaging-app events {device} is the Alpaca device, not the device name.
 const CLIENT_VAR_HELP: Record<string, string> = { device: t('settings.alerts.theAlpacaDevice') };
 const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
+
+// The roof's critical events (spec 007): only urgent or wake me, and sent
+// whatever the master switch, the pause or the start-up grace say.
+export const CRITICAL_EVENTS: AlertEventKey[] = ['mount_not_parked', 'roof_not_closed'];
+export const isCriticalEvent = (key: AlertEventKey) => CRITICAL_EVENTS.includes(key);
+export const CRITICAL_LEVEL_OPTIONS = LEVEL_OPTIONS.filter((option) => Number(option.value) >= 3);
 
 export const varHelp = (key: AlertEventKey, name: string) =>
   (CLIENT_EVENTS.includes(key) ? CLIENT_VAR_HELP[name] : undefined) ?? VAR_HELP[name];

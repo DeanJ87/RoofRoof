@@ -79,7 +79,13 @@ namespace SQM
                 "client_lost",
                 "client_back",
                 "client_disconnected",
-                "roof",
+                "mount_not_parked",
+                "roof_not_closed",
+                "move_fault",
+                "supply_low",
+                "unsafe_closing",
+                "roof_closed",
+                "safety_lost",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);
@@ -207,6 +213,7 @@ namespace SQM
                 startedAt = in.nowSeconds;
             }
             updateClients(in, rules, alerts);
+            updateRoof(in, rules, alerts);
             return alerts;
         }
 
@@ -335,6 +342,7 @@ namespace SQM
             for (size_t i = 0; i < MAX_CLIENT_DEVICES; ++i)
                 if (!clientKeys[i].empty())
                     add("client:" + clientKeys[i], clients[i], 0);
+            addRoofWaits(out, now, rules);
             return out;
         }
 

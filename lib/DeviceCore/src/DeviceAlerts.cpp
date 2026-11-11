@@ -19,6 +19,11 @@ namespace SQM
             rules.onClientLost = a.clientLost.level != 0;
             rules.onClientBack = a.clientBack.level != 0;
             rules.onClientDisconnected = a.clientDisconnected.level != 0;
+            rules.onMoveFault = a.moveFault.level != 0;
+            rules.onSupplyLow = a.supplyLow.level != 0;
+            rules.onUnsafeClosing = a.unsafeClosing.level != 0;
+            rules.onRoofClosed = a.roofClosed.level != 0;
+            rules.onSafetyLost = a.safetyLost.level != 0;
             return rules;
         }
 
@@ -27,6 +32,13 @@ namespace SQM
             using Alerts::AlertType;
             using Setting = AlertsConfig::EventSetting AlertsConfig::*;
             static constexpr std::pair<AlertType, Setting> SETTINGS[] = {
+                {AlertType::MountNotParked, &AlertsConfig::mountNotParked},
+                {AlertType::RoofNotClosed, &AlertsConfig::roofNotClosed},
+                {AlertType::MoveFault, &AlertsConfig::moveFault},
+                {AlertType::SupplyLow, &AlertsConfig::supplyLow},
+                {AlertType::UnsafeClosing, &AlertsConfig::unsafeClosing},
+                {AlertType::RoofClosed, &AlertsConfig::roofClosed},
+                {AlertType::SafetyLost, &AlertsConfig::safetyLost},
                 {AlertType::ClientLost, &AlertsConfig::clientLost},
                 {AlertType::ClientBack, &AlertsConfig::clientBack},
                 {AlertType::ClientDisconnected, &AlertsConfig::clientDisconnected},
@@ -63,6 +75,93 @@ namespace SQM
             // Not needed past this point, and the recent-alerts list keeps alerts.
             alert.vars.clear();
             alert.vars.shrink_to_fit();
+        }
+
+        namespace
+        {
+            std::string varOf(const std::vector<std::pair<std::string, std::string>> &vars, const char *name)
+            {
+                std::string value;
+                for (const auto &var : vars)
+                    if (var.first == name)
+                        value = var.second;
+                return value;
+            }
+
+            // A critical event's level: the setting's, never below urgent
+            // (constitution II and III; spec 007 FR-003).
+            Alerts::AlertLevel criticalLevel(uint8_t level)
+            {
+                if (level < AlertsConfig::MIN_CRITICAL_LEVEL)
+                    level = AlertsConfig::MIN_CRITICAL_LEVEL;
+                return static_cast<Alerts::AlertLevel>(level > 4 ? 4 : level);
+            }
+        } // namespace
+
+        namespace
+        {
+            // Whether rendering `text` fills in {reason} or {details}: rendered
+            // with markers in their place, as renderTemplate() reads it (so
+            // "{{reason}" or a typo doesn't count).
+            bool usesReason(const std::string &text, std::vector<std::pair<std::string, std::string>> vars)
+            {
+                static const std::string MARK = "\x01\x02";
+                for (auto &var : vars)
+                    if (var.first == "reason" || var.first == "details")
+                        var.second = MARK;
+                vars.push_back({"reason", MARK});
+                vars.push_back({"details", MARK});
+                return Alerts::renderTemplate(text, vars).find(MARK) != std::string::npos;
+            }
+        } // namespace
+
+        void applyCriticalTemplate(
+            Alerts::Alert &alert, const AlertsConfig::EventSetting &setting, const std::vector<std::pair<std::string, std::string>> &vars)
+        {
+            const std::string builtIn = alert.message;
+            const std::string builtInTitle = alert.title;
+            if (!setting.title.empty())
+            {
+                alert.title = Alerts::renderTemplate(setting.title, vars);
+                if (varOf(vars, "reminder") == "yes" && alert.title.rfind("Still: ", 0) != 0)
+                    alert.title = "Still: " + alert.title;
+                // Pushover refuses titles over 250 characters: too long falls
+                // back to the built-in title (which carries "Still: " itself).
+                if (alert.title.size() > MAX_CRITICAL_TITLE_BYTES)
+                    alert.title = builtInTitle;
+            }
+            if (!setting.message.empty())
+            {
+                alert.message = Alerts::renderTemplate(setting.message, vars);
+                // The reason is never lost (constitution III; spec 007 FR-005).
+                if (!usesReason(setting.message, vars))
+                    alert.message += "\n\n" + builtIn;
+                // Pushover refuses more than 1024 characters, and the resend
+                // would retry for ever: too long falls back to the built-in text.
+                if (alert.message.size() > MAX_CRITICAL_MESSAGE_BYTES)
+                    alert.message = builtIn;
+            }
+            alert.vars.clear();
+            alert.vars.shrink_to_fit();
+        }
+
+        bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending)
+        {
+            // The roof's critical alerts: past the master switch, the pause,
+            // the send mode and the grace (spec 005 FR-014, spec 007 FR-004).
+            return Alerts::isCritical(type) || (alerts.enabled && sending);
+        }
+
+        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)
+        {
+            const AlertsConfig::EventSetting *setting = eventSettingFor(sources.cfg.alerts, alert.type);
+            alert.level = criticalLevel(setting != nullptr ? setting->level : 4);
+            if (setting == nullptr)
+                return alert;
+            // Never silent (spec 007): a silent or vibrate-only sound uses the default.
+            alert.sound = AlertsConfig::audibleSound(setting->sound) ? setting->sound : std::string();
+            applyCriticalTemplate(alert, *setting, alertVars(sources, alert, clock));
+            return alert;
         }
 
         void clientSilenceMs(const Config &cfg, uint32_t (&out)[Alpaca::MAX_DEVICES])
@@ -194,6 +293,13 @@ namespace SQM
         namespace
         {
             constexpr SampleAlert SAMPLE_ALERTS[] = {
+                {"mount_not_parked", Alerts::AlertType::MountNotParked, "Mount didn't park", "The mount doesn't park"},
+                {"roof_not_closed", Alerts::AlertType::RoofNotClosed, "Roof didn't close", "The roof doesn't close"},
+                {"move_fault", Alerts::AlertType::MoveFault, "Roof fault", "The roof faults"},
+                {"supply_low", Alerts::AlertType::SupplyLow, "12 V supply low", "The 12 V supply is low"},
+                {"unsafe_closing", Alerts::AlertType::UnsafeClosing, "Unsafe: closing", "The weather closes the roof"},
+                {"roof_closed", Alerts::AlertType::RoofClosed, "Roof closed after unsafe weather", "The roof closed after unsafe weather"},
+                {"safety_lost", Alerts::AlertType::SafetyLost, "Weather source lost", "A weather source is lost"},
                 {"client_lost", Alerts::AlertType::ClientLost, "Imaging app stopped checking", "The imaging app stops checking"},
                 {"client_back", Alerts::AlertType::ClientBack, "Imaging app is back", "The imaging app is back"},
                 {"client_disconnected", Alerts::AlertType::ClientDisconnected, "Imaging app disconnected", "The imaging app disconnects"},
@@ -223,7 +329,8 @@ namespace SQM
                 return test;
             }
             test.type = sample->type;
-            test.level = static_cast<Alerts::AlertLevel>(level);
+            const bool critical = Alerts::isCritical(sample->type);
+            test.level = critical ? criticalLevel(level) : static_cast<Alerts::AlertLevel>(level);
             test.sound = wording.sound;
             test.title = sample->title;
             test.message = std::string("This is how a \"") + sample->label + "\" alert arrives.";
@@ -233,9 +340,16 @@ namespace SQM
                 {"device", "RoofRoof Dome (example)"},
                 {"silent_for", formatDuration(cfg.alerts.clientSilentSeconds)},
                 {"last_checked", "2 min ago (example)"},
-                {"client_id", "1234 (example)"}};
+                {"client_id", "1234 (example)"},
+                {"reason", "Timeout 61.0 s > 60.0 s (example)"},
+                {"limit", "240 s (example)"},
+                {"details", test.message},
+                {"reminder", "no"}};
             AlertsConfig::EventSetting custom{level, wording.sound, wording.title, wording.message};
-            applyAlertTemplate(test, custom, alertVars(sources, test, clock));
+            if (critical)
+                applyCriticalTemplate(test, custom, alertVars(sources, test, clock));
+            else
+                applyAlertTemplate(test, custom, alertVars(sources, test, clock));
             test.title = "Test: " + test.title;
             return test;
         }

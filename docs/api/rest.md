@@ -345,7 +345,7 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
 
-Add `event=<client_lost|client_back|client_disconnected>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`.
+Add `event=<event>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Events: `mount_not_parked`, `roof_not_closed` (critical: sent at level 3 or above), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `safety_lost`, `client_lost`, `client_back`, `client_disconnected`. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`.
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 
