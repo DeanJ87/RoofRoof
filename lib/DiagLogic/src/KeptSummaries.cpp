@@ -39,16 +39,22 @@ namespace SQM
                 return value;
             }
 
-            uint32_t crc32(const uint8_t *data, size_t size)
+            uint32_t crc32(const uint8_t *data, size_t size, uint32_t crc = 0xFFFFFFFFu)
             {
-                uint32_t crc = 0xFFFFFFFFu;
                 for (size_t i = 0; i < size; ++i)
                 {
                     crc ^= data[i];
                     for (int bit = 0; bit < 8; ++bit)
                         crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
                 }
-                return ~crc;
+                return crc;
+            }
+
+            // The version, count and next id (header bytes 4-11) and the records.
+            uint32_t fileCrc(const uint8_t *data, size_t size)
+            {
+                const uint32_t head = crc32(data + 4, 8);
+                return ~crc32(data + KEPT_HEADER_BYTES, size - KEPT_HEADER_BYTES, head);
             }
 
             void encodeRecord(const Summary &s, const Clock &clock, uint8_t *at)
@@ -112,7 +118,7 @@ namespace SQM
             put32(out + 8, nextId);
             for (uint8_t i = 0; i < list.size(); ++i)
                 encodeRecord(list.at(i), clock, out + KEPT_HEADER_BYTES + i * KEPT_RECORD_BYTES);
-            put32(out + 12, crc32(out + KEPT_HEADER_BYTES, bytes - KEPT_HEADER_BYTES));
+            put32(out + 12, fileCrc(out, bytes));
             return bytes;
         }
 
@@ -123,18 +129,25 @@ namespace SQM
             const uint8_t count = data[5];
             if (count > MAX_SUMMARIES || size != KEPT_HEADER_BYTES + count * KEPT_RECORD_BYTES)
                 return false;
-            if (crc32(data + KEPT_HEADER_BYTES, size - KEPT_HEADER_BYTES) != get32(data + 12))
+            if (fileCrc(data, size) != get32(data + 12))
                 return false;
-            Summary summaries[MAX_SUMMARIES];
+            // Every record checked first, so a bad one leaves `out` unchanged;
+            // no list of 32 summaries on the caller's stack.
+            Summary record;
             uint32_t highest = 0;
             for (uint8_t i = 0; i < count; ++i)
             {
-                if (!decodeRecord(data + KEPT_HEADER_BYTES + i * KEPT_RECORD_BYTES, summaries[i]))
+                if (!decodeRecord(data + KEPT_HEADER_BYTES + i * KEPT_RECORD_BYTES, record))
                     return false;
-                if (summaries[i].id > highest)
-                    highest = summaries[i].id;
+                if (record.id > highest)
+                    highest = record.id;
             }
-            out.load(summaries, count);
+            out.clear();
+            for (int i = count - 1; i >= 0; --i) // oldest first: add() puts each at the front
+            {
+                decodeRecord(data + KEPT_HEADER_BYTES + i * KEPT_RECORD_BYTES, record);
+                out.add(record);
+            }
             const uint32_t stored = get32(data + 8);
             nextId = stored > highest ? stored : highest + 1;
             return true;

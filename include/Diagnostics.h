@@ -47,13 +47,14 @@ namespace SQM
         // A bounded copy of the summary list (empty while off).
         void copySummaries(Diag::SummaryList &out) const;
         uint32_t summariesRevision() const;
-        // After RoofControl::diagClear() succeeded: the list empties and the
-        // kept file is rewritten empty at the next chance.
+        // After RoofControl::diagClear() succeeded: the main loop empties the
+        // list and rewrites the kept file empty at the next chance.
         void clearSummaries();
 
     private:
         static constexpr const char *TAG = "Diag";
         static constexpr uint32_t COLLECT_EVERY_MS = 250;
+        static constexpr uint32_t KEPT_RETRY_MS = 1000; // after the flash-write guard refused
 
         void applyConfig();
         void enable();
@@ -76,6 +77,7 @@ namespace SQM
         uint32_t lastAddedId = 0;
         uint32_t lastCollectMs = 0;
         Diag::KeptWrite keptWrite;
+        uint32_t keptRefusedAtMs = 0;
 
         // The list: the main loop writes it, any task copies it.
         std::unique_ptr<Diag::SummaryList> list;

@@ -135,7 +135,7 @@ namespace SQM
 
         std::string summaryJson(const Summary &summary, const Clock &clock, bool held)
         {
-            StaticJsonDocument<SUMMARY_DOC_CAPACITY> doc;
+            DynamicJsonDocument doc(SUMMARY_DOC_CAPACITY); // on the heap: callers run on small task stacks
             writeSummary(doc.to<JsonObject>(), summary, clock, held);
             std::string text;
             serializeJson(doc, text);

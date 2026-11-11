@@ -54,7 +54,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   (4 points a second) to start with; when a long move fills the profile, neighbouring points are
   merged and each point then covers twice as long, so a whole move always fits. A normal 50 s
   move ends with 100 points at 2 a second; the longest move a timeout allows still fits. The log
-  is about 6 KB, taken from the heap only while the mode is on.
+  is about 8.5 KB with its summary list and one copy buffer, taken from the heap only while the mode is on.
 - Q: What does each profile point hold? → A: The average and the highest motor current in its
   interval (when current sense is fitted), the lowest supply volts and the average duty. The
   lowest supply and the highest current are what show a stall or a sagging supply; an average
@@ -342,8 +342,8 @@ duty during a move, and the log after it; the documents match their contract sch
   no restart is committed (spec 010's flash-write guard), at most once every 5 minutes, and only when
   a summary was added or the list cleared since the last write.
 - **FR-017**: The file MUST carry a version and a checksum; a file that doesn't match MUST be ignored
-  (and replaced at the next write). It MUST be read only at start-up or when the setting is switched
-  on, on the main loop.
+  (and replaced at the next write). It MUST be read only at start-up or when the mode is switched on, on
+  the main loop.
 
 **MQTT**
 
@@ -369,7 +369,7 @@ duty during a move, and the log after it; the documents match their contract sch
 - **FR-024**: No diagnostics value MUST feed the motion logic, the gates, the safety verdict, the
   close sequence, the alerts or any decision; diagnostics only copy what those produce.
 - **FR-025**: The log MUST be taken from the heap when the mode is switched on and given back when it
-  is switched off, in one piece of a fixed size (about 6 KB), by the main loop; the control task
+  is switched off, in pieces of a fixed size (about 8.5 KB in all), by the main loop; the control task
   only sees it attached or not, under the roof's lock.
 - **FR-026**: Reading the log from another task MUST be a bounded copy under the roof's lock (one
   move at most, about 1 KB) or the summary list's own short lock; no reader holds a lock while
@@ -442,8 +442,8 @@ duty during a move, and the log after it; the documents match their contract sch
   mode on.
 - **SC-004**: A 50 s move's profile has between 80 and 120 points and covers the whole move; a move
   up to the longest timeout still fits in 120 points (native tests).
-- **SC-005**: The log uses no heap with the mode off and at most 8 KB with it on (a compile-time
-  check of its size).
+- **SC-005**: The log uses no heap with the mode off; with it on, the log and the summary list
+  take at most 8 KB (a native test of their size), plus one 1 KB copy buffer.
 - **SC-006**: A kept file survives a restart and a damaged one is ignored (native tests); no write is
   due while the roof is busy, or twice within 5 minutes (native tests).
 - **SC-007**: No diagnostics MQTT publish is due while the roof is busy (native tests of the
@@ -458,7 +458,7 @@ Each was an open choice; the safest option the constitution allows was taken.
 
 1. **Off by default, and two separate switches** for keeping summaries and for MQTT, both doing
    nothing while the mode is off. Nothing changes for an owner who doesn't ask for it.
-2. **Five moves with profiles, 32 summaries.** About 6 KB of heap, taken only while on: a whole
+2. **Five moves with profiles, 32 summaries.** About 8.5 KB of heap, taken only while on: a whole
    evening's opening and closing with charts, and weeks of summaries, without coming near the heap
    the alert sender's TLS session needs (about 40 KB).
 3. **A profile point every 250 ms, merging when full**, so every move fits in 120 points (2 to 4 a
@@ -482,7 +482,10 @@ Each was an open choice; the safest option the constitution allows was taken.
     so a battery that is simply low doesn't read as sag.
 11. **A move already under way when the mode is switched on isn't recorded**; recording starts with
     the next move, so no move is recorded with a wrong start.
-12. **The UI mockup review is pending**: the owner reviews the page in the demo before merging.
+12. **Switching "Keep move summaries" on while diagnostics are already on starts a new kept list**:
+    the file is read only when diagnostics are switched on or at start-up, so ids never collide; the
+    next write replaces the old file.
+13. **The UI mockup review is pending**: the owner reviews the page in the demo before merging.
 
 ## Out of scope
 

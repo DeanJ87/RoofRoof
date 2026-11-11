@@ -126,7 +126,7 @@ namespace SQM
         s.largestBlock = static_cast<int64_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
         s.stackControl = roof->stackFreeBytes();
         s.stackLoop = loopTaskHandle != nullptr ? static_cast<int64_t>(uxTaskGetStackHighWaterMark(loopTaskHandle)) : Diag::UNKNOWN;
-        TaskHandle_t network = xTaskGetHandle("async_tcp");
+        static TaskHandle_t network = xTaskGetHandle("async_tcp"); // looked up once (it walks the task lists)
         s.stackNetwork = network != nullptr ? static_cast<int64_t>(uxTaskGetStackHighWaterMark(network)) : Diag::UNKNOWN;
         s.rssi = WiFi.status() == WL_CONNECTED ? static_cast<int64_t>(WiFi.RSSI()) : Diag::UNKNOWN;
         s.uptimeS = millis() / 1000;
@@ -214,6 +214,11 @@ namespace SQM
     // header; refused while the roof moves or a close waits (FR-014).
     void WebServer::handleDiagClear(AsyncWebServerRequest *request)
     {
+        if (request->url() != "/api/diag/moves/clear")
+        {
+            handleNotFound(request);
+            return;
+        }
         if (!requireAuth(request) || !requireCommandHeader(request))
             return;
         if (!diagOn())
@@ -306,7 +311,7 @@ namespace SQM
         if (next < 0)
             return;
         const Diag::Summary &summary = summaries->at(static_cast<uint8_t>(next));
-        mqttClient->publishSubtopic(Diag::MQTT_MOVE_SUBTOPIC, Diag::summaryJson(summary, clockNow(), false), false);
-        diagMqtt.summaryPublished(summary.id);
+        if (mqttClient->publishSubtopic(Diag::MQTT_MOVE_SUBTOPIC, Diag::summaryJson(summary, clockNow(), false), false))
+            diagMqtt.summaryPublished(summary.id); // a failed one goes again on the next check
     }
 } // namespace SQM

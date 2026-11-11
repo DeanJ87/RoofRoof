@@ -104,13 +104,22 @@ namespace SQM
             return;
         const uint32_t now = millis();
         if (clearPending.exchange(false))
+        {
+            // Here, not in the request: serialised with collectFinished(), so a
+            // move copied before the clear can't come back after it.
+            {
+                std::lock_guard<std::mutex> guard(listLock);
+                if (list)
+                    list->clear();
+            }
             keptWrite.cleared();
+        }
         if (now - lastCollectMs >= COLLECT_EVERY_MS)
         {
             lastCollectMs = now;
             collectFinished();
         }
-        if (keptWrite.due(now, summariesRevision(), keepNow.load()))
+        if (now - keptRefusedAtMs >= KEPT_RETRY_MS && keptWrite.due(now, summariesRevision(), keepNow.load()))
             writeKept(now);
     }
 
@@ -118,7 +127,15 @@ namespace SQM
     void Diagnostics::collectFinished()
     {
         uint32_t ids[Diag::MAX_MOVES];
-        const uint8_t count = roof->diagIds(ids);
+        uint8_t count = roof->diagIds(ids);
+        Diag::Summary newest;
+        if (count > 0 && roof->diagLatest(newest) && newest.active)
+        {
+            // The move in progress is always the newest: not copied while it runs.
+            for (uint8_t i = 1; i < count; ++i)
+                ids[i - 1] = ids[i];
+            --count;
+        }
         for (int i = count - 1; i >= 0; --i)
         {
             if (ids[i] <= lastAddedId || !roof->diagMove(ids[i], *scratch) || scratch->summary.active)
@@ -161,7 +178,10 @@ namespace SQM
     {
         PlatformGuard::FlashWrite write;
         if (write.refused() != RoofIo::HoldReason::None)
-            return; // tried again on a later pass
+        {
+            keptRefusedAtMs = nowMs; // tried again after KEPT_RETRY_MS
+            return;
+        }
         std::vector<uint8_t> bytes(Diag::KEPT_MAX_BYTES);
         size_t size = 0;
         uint32_t revision = 0;
@@ -216,11 +236,6 @@ namespace SQM
 
     void Diagnostics::clearSummaries()
     {
-        {
-            std::lock_guard<std::mutex> guard(listLock);
-            if (list)
-                list->clear();
-        }
-        clearPending.store(true);
+        clearPending.store(true); // the main loop empties the list
     }
 } // namespace SQM
