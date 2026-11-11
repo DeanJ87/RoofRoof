@@ -59,6 +59,25 @@ namespace SQM
             bool stopRequested = false;
         };
 
+        // A scheduled restart and whether a close may cancel it. Once a
+        // mandatory one is due (it remounts a rewritten filesystem), a later
+        // ordinary schedule never downgrades it, and cancel() refuses it.
+        class RestartPlan
+        {
+        public:
+            void schedule(bool mandatory);
+            // True if it was cancelled (the caller stops its timer).
+            bool cancel();
+            // The timer couldn't be started, or the restart was stopped some other way.
+            void clear();
+            bool scheduled() const { return due; }
+            bool cancellable() const { return due && !mandatory; }
+
+        private:
+            bool due = false;
+            bool mandatory = false;
+        };
+
         // What else is going on that a move must not overlap.
         struct Blockers
         {

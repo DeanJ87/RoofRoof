@@ -74,7 +74,7 @@ uint32_t revision() const;
 | `FaultRecord.h` | `FaultCause`, `FaultRecord`, `encodeFault`, `decodeFault`, `causeName` |
 | `RoofGates.h` | `SAFETY_HANDOVER_STALE_MS`, `currentGates`, `GateInputs`, `GateRefusal`, `switchesClosed`, `parkHolds`, `gateCommand`, `interlockLost`, `interlockBits`, `openMustStop`, `gateRefusalName` |
 | `SettingsGuard.h` | `motionSettingsChanged`, `settingsSaveRefused` |
-| `MotionGuards.h` | `roofMoving`, `platformActionRefused`, `commandLineOtaAllowed`, `FlashActivity`, `Blockers`, `blockerDecision`, `blockerText`, `COMMAND_HEADER`, `commandHeaderValid`, `watchdogAlive`, `watchdogStoppedFault`, `runningAmps` |
+| `MotionGuards.h` | `RestartPlan`, `roofMoving`, `platformActionRefused`, `commandLineOtaAllowed`, `FlashActivity`, `Blockers`, `blockerDecision`, `blockerText`, `COMMAND_HEADER`, `commandHeaderValid`, `watchdogAlive`, `watchdogStoppedFault`, `runningAmps` |
 | `RoofText.h` | `describeFault`, `describeRefusal`, `describeGate` |
 | `RoofStatus.h` | `Snapshot`, `writeStatus` |
 

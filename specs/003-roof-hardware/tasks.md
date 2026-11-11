@@ -102,3 +102,8 @@ Docs (T024-T026) any time after Phase 2.
 - [x] T047 Watchdog beat limit 50 ms with tests; `maxWatchdogBeatAgeMs` in the status (FR-028)
 - [x] T048 Command-line OTA re-checks the roof in its start callback (FR-030)
 - [x] T049 Filesystem-upload restarts are mandatory (never cancelled by a close), and the restart timer waits while a close waits (FR-029)
+
+## Phase 13: Final review fixes
+
+- [x] T050 Tests then `RoofIo::RestartPlan` (a mandatory restart survives a close and is never downgraded), used by `WebServer::scheduleRestart(delay, mandatory)` and `cancelRestart` (FR-029)
+- [x] T051 `MQTTClient::connect()` marks the connect in flight before asking the hold (FR-029)

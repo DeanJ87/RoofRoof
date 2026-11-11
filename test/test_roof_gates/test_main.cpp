@@ -320,6 +320,47 @@ void test_flash_activity_replaced_and_stale_tokens(void)
     TEST_ASSERT_FALSE(f.busy(10 + FLASH_STALE_MS + 1));
 }
 
+void test_mandatory_restart_survives_a_close(void)
+{
+    // Through the scheduling path the firmware uses: a filesystem upload's
+    // mandatory restart, then a close.
+    RestartPlan plan;
+    plan.schedule(true);
+    Blockers b;
+    b.restartScheduled = plan.scheduled();
+    b.restartCancellable = plan.cancellable();
+    const BlockerDecision close = blockerDecision(Roof::Command::Close, b);
+    TEST_ASSERT_FALSE(close.cancelRestart);
+    TEST_ASSERT_FALSE(plan.cancel()); // even if asked directly
+    TEST_ASSERT_TRUE(plan.scheduled());
+    // A later ordinary schedule never downgrades it.
+    plan.schedule(false);
+    TEST_ASSERT_FALSE(plan.cancellable());
+    TEST_ASSERT_FALSE(plan.cancel());
+    TEST_ASSERT_TRUE(plan.scheduled());
+}
+
+void test_ordinary_restart_is_cancelled_by_a_close(void)
+{
+    RestartPlan plan;
+    TEST_ASSERT_FALSE(plan.cancel());
+    plan.schedule(false);
+    Blockers b;
+    b.restartScheduled = plan.scheduled();
+    b.restartCancellable = plan.cancellable();
+    TEST_ASSERT_TRUE(blockerDecision(Roof::Command::Close, b).cancelRestart);
+    TEST_ASSERT_TRUE(plan.cancel());
+    TEST_ASSERT_FALSE(plan.scheduled());
+    // An ordinary one upgraded by a mandatory one stays mandatory.
+    plan.schedule(false);
+    plan.schedule(true);
+    TEST_ASSERT_FALSE(plan.cancel());
+    plan.clear();
+    TEST_ASSERT_FALSE(plan.scheduled());
+    plan.schedule(false); // a fresh one after clearing is ordinary again
+    TEST_ASSERT_TRUE(plan.cancellable());
+}
+
 void test_blockers_open_refused_close_wins(void)
 {
     Blockers none;
@@ -455,6 +496,8 @@ int main(int, char **)
     RUN_TEST(test_flash_activity_dropped_upload_stops_counting);
     RUN_TEST(test_flash_activity_close_stops_the_upload);
     RUN_TEST(test_flash_activity_replaced_and_stale_tokens);
+    RUN_TEST(test_mandatory_restart_survives_a_close);
+    RUN_TEST(test_ordinary_restart_is_cancelled_by_a_close);
     RUN_TEST(test_blockers_open_refused_close_wins);
     RUN_TEST(test_command_header_must_be_one);
     RUN_TEST(test_watchdog_alive_boundary_and_wrap);

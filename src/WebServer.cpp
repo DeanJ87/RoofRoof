@@ -4,6 +4,7 @@
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
+#include "MotionGuards.h"
 #include "RoofControl.h"
 #include "RoofReadings.h"
 #include "WebServerShared.h"
@@ -330,28 +331,43 @@ namespace SQM
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
 
+    namespace
+    {
+        // Whether a restart is due and whether a close may cancel it, guarded
+        // by restartPlanLock (the web task, the loop and the roof task use it).
+        portMUX_TYPE restartPlanLock = portMUX_INITIALIZER_UNLOCKED;
+        RoofIo::RestartPlan restartPlan;
+    } // namespace
+
     bool WebServer::restartScheduled()
     {
-        return restartTimer != nullptr && esp_timer_is_active(restartTimer);
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool due = restartPlan.scheduled();
+        portEXIT_CRITICAL(&restartPlanLock);
+        return due;
+    }
+
+    bool WebServer::restartCancellable()
+    {
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool cancellable = restartPlan.cancellable();
+        portEXIT_CRITICAL(&restartPlanLock);
+        return cancellable;
     }
 
     void WebServer::cancelRestart()
     {
-        if (restartScheduled() && restartIsCancellable && esp_timer_stop(restartTimer) == ESP_OK)
-            Logger::warn(TAG, "Scheduled restart cancelled: the roof is closing; restart it later");
+        portENTER_CRITICAL(&restartPlanLock);
+        const bool cancelled = restartPlan.cancel();
+        portEXIT_CRITICAL(&restartPlanLock);
+        if (!cancelled || restartTimer == nullptr)
+            return;
+        esp_timer_stop(restartTimer);
+        Logger::warn(TAG, "Scheduled restart cancelled: the roof is closing; restart it later");
     }
 
-    bool WebServer::scheduleMandatoryRestart(uint32_t delayMs)
+    bool WebServer::scheduleRestart(uint32_t delayMs, bool mandatory)
     {
-        restartIsCancellable = false;
-        return scheduleRestart(delayMs);
-    }
-
-    bool WebServer::scheduleRestart(uint32_t delayMs)
-    {
-        // A mandatory restart still due stays mandatory.
-        if (!restartScheduled())
-            restartIsCancellable = true;
         if (!restartTimer)
         {
             esp_timer_create_args_t restartTimerArgs = {};
@@ -368,10 +384,17 @@ namespace SQM
             }
         }
 
+        // Recorded first: a close in between sees it (and can't cancel a mandatory one).
+        portENTER_CRITICAL(&restartPlanLock);
+        restartPlan.schedule(mandatory);
+        portEXIT_CRITICAL(&restartPlanLock);
         esp_timer_stop(restartTimer);
         if (esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL) != ESP_OK)
         {
             Logger::error(TAG, "Failed to schedule restart");
+            portENTER_CRITICAL(&restartPlanLock);
+            restartPlan.clear();
+            portEXIT_CRITICAL(&restartPlanLock);
             return false;
         }
 

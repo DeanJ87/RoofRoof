@@ -53,10 +53,9 @@ namespace SQM
         // it unless it can't be cancelled (after a filesystem upload stopped
         // part-way, the filesystem is half erased: it runs once the roof stops).
         static bool restartScheduled();
-        static bool restartCancellable() { return restartIsCancellable; }
+        static bool restartCancellable();
         static void cancelRestart();
-        static bool scheduleMandatoryRestart(uint32_t delayMs);
-        static inline std::atomic<bool> restartIsCancellable{true};
+        static bool scheduleMandatoryRestart(uint32_t delayMs) { return scheduleRestart(delayMs, true); }
         // The roof, for the restart timer: it never fires while the roof moves or a close waits.
         static inline std::atomic<RoofControl *> roofForRestart{nullptr};
         static inline std::atomic<bool> restartHold{false};
@@ -70,7 +69,8 @@ namespace SQM
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive; }
-        static bool scheduleRestart(uint32_t delayMs);
+        // `mandatory`: a close may not cancel it (RoofIo::RestartPlan).
+        static bool scheduleRestart(uint32_t delayMs, bool mandatory = false);
 
     private:
         static constexpr const char *TAG = "WebServer";
