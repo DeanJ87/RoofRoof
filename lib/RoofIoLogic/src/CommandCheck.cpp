@@ -6,22 +6,52 @@ namespace SQM
 {
     namespace RoofIo
     {
-        CommandCheck checkCommand(
-            Roof::Command command, Roof::Origin origin, const GateInputs &gates, const Roof::Controller &controller, bool closePending)
+        namespace
         {
-            CommandCheck out;
+            bool isStop(Roof::Command command)
+            {
+                return command == Roof::Command::Stop || command == Roof::Command::Abort;
+            }
+
+            // The roof is closing, about to, or was stopped part-way while closing.
+            bool closeUnderWay(const Roof::Status &status, const CommandContext &context)
+            {
+                return status.state == Roof::State::Closing || context.closePending ||
+                       (status.state == Roof::State::Stopped && status.target == Roof::End::Closed);
+            }
+        } // namespace
+
+        CommandCheck checkCommand(
+            Roof::Command command,
+            Roof::Origin origin,
+            const GateInputs &gates,
+            const Roof::Controller &controller,
+            const CommandContext &context)
+        {
+            const Roof::Status &status = controller.status();
+            const bool client = origin == Roof::Origin::Client;
+            if (isStop(command))
+            {
+                const bool closing = status.state == Roof::State::Closing || context.closePending;
+                if (client && context.automaticClose && closing)
+                    return CommandCheck{
+                        false,
+                        "automaticClose",
+                        "The roof is closing on unsafe weather: an imaging app can't stop it (Stop in the web UI can)"};
+                return CommandCheck{};
+            }
             if (command != Roof::Command::Open && command != Roof::Command::Close)
-                return out;
+                return CommandCheck{};
             const GateRefusal gate = gateCommand(command, gates);
             if (gate != GateRefusal::None)
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};
-            const bool closing = controller.status().state == Roof::State::Closing || closePending;
-            if (origin == Roof::Origin::Client && command == Roof::Command::Open && closing)
-                return CommandCheck{false, "closing", "The roof is closing: an imaging app can't reverse a close"};
+            if (client && command == Roof::Command::Open && closeUnderWay(status, context))
+                return CommandCheck{
+                    false, "closing", "The roof is closing or was stopped while closing: an imaging app can't reverse a close"};
             const Roof::CommandResult result = controller.check(command, origin);
             if (!result.accepted)
                 return CommandCheck{false, Roof::refusalName(result.reason), describeRefusal(result)};
-            return out;
+            return CommandCheck{};
         }
     } // namespace RoofIo
 } // namespace SQM

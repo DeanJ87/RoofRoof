@@ -135,6 +135,11 @@ jobs:
             echo "| conformance results | **errors, issues or configuration alerts** |" >> "$GITHUB_STEP_SUMMARY"
             failed=1
           fi
+          # The protocol check writes no results file: require its all-clear line.
+          if ! grep -q "no errors, issues or information alerts" conformu-results/dome-alpacaprotocol.txt; then
+            echo "| alpacaprotocol results | **errors, issues or alerts** |" >> "$GITHUB_STEP_SUMMARY"
+            failed=1
+          fi
           # The shutter tests must have run (open and close of the simulated roof).
           for line in "Shutter opened successfully" "Shutter closed successfully"; do
             if ! grep -q "$line" conformu-results/dome-conformance.txt; then

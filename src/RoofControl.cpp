@@ -108,7 +108,12 @@ namespace SQM
         const Outcome pre = precheck(command, origin);
         if (!pre.accepted)
             return pre;
+        const Roof::State before = controller.status().state;
         Outcome outcome = outcomeOf(controller.command(command, origin));
+        // Who started the move under way (a repeat of the same move keeps its starter).
+        const Roof::State moving = command == Roof::Command::Open ? Roof::State::Opening : Roof::State::Closing;
+        if (outcome.accepted && (command == Roof::Command::Open || command == Roof::Command::Close) && before != moving)
+            moveOrigin = origin;
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
         refreshSnapshot();
@@ -120,8 +125,29 @@ namespace SQM
     // changing anything). Accepted when it can.
     RoofControl::Outcome RoofControl::precheck(Roof::Command command, Roof::Origin origin) const
     {
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, currentGates(), controller, closePending);
+        RoofIo::CommandContext context;
+        context.closePending = closePending;
+        // Whose close is under way or waiting: spec 005's can't be stopped by a client.
+        context.automaticClose = (closePending ? closeOrigin : moveOrigin) == Roof::Origin::Automatic;
+        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, currentGates(), controller, context);
         return Outcome{check.accepted, check.reason, check.text, controller.status().state};
+    }
+
+    // Under the lock: a stop or abort. Refused only for an Alpaca client
+    // during the close on unsafe weather (RoofIo::checkCommand).
+    RoofControl::Outcome RoofControl::stopLocked(Roof::Command command, Roof::Origin origin)
+    {
+        // An Alpaca client may not stop the close on unsafe weather (spec 006).
+        const Outcome pre = precheck(command, origin);
+        if (!pre.accepted)
+            return pre;
+        closePending = false; // a stop replaces a waiting close
+        // Counted before the stop is applied, so no snapshot shows the
+        // stop without it: the close sequence (spec 005) stands down on it.
+        // An Alpaca client's stop stops the roof but doesn't count (spec 006).
+        if (RoofIo::countsAsPersonStop(command, origin))
+            personStops++;
+        return runLocked(command, origin);
     }
 
     // Under the lock. A close's side effects (cancelling a restart, stopping an
@@ -131,15 +157,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now)
     {
         if (command == Roof::Command::Stop || command == Roof::Command::Abort)
-        {
-            closePending = false; // a stop replaces a waiting close
-            // Counted before the stop is applied, so no snapshot shows the
-            // stop without it: the close sequence (spec 005) stands down on it.
-            // An Alpaca client's stop stops the roof but doesn't count (spec 006).
-            if (RoofIo::countsAsPersonStop(command, origin))
-                personStops++;
-            return runLocked(command, origin);
-        }
+            return stopLocked(command, origin);
         const Outcome pre = precheck(command, origin);
         if (!pre.accepted)
             return pre;

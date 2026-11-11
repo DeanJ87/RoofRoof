@@ -161,12 +161,31 @@ void test_answer_carries_the_refusal(void)
     TEST_ASSERT_EQUAL_STRING("", a.message.c_str());
 }
 
-void test_a_stop_is_never_refused(void)
+// The driver is off already when the controller isn't running: the stop is done.
+void test_a_stop_with_the_controller_down_is_done(void)
 {
     for (Command c : {Command::Stop, Command::Abort})
     {
         const Alpaca::DomeAnswer a = RoofIo::domeAnswer(c, false, "notStarted", "The roof controller didn't start", {});
         TEST_ASSERT_TRUE(a.accepted);
+    }
+}
+
+// ...but a stop the roof refused (a client's, during the close on unsafe weather) is reported.
+void test_a_refused_stop_is_reported(void)
+{
+    const Alpaca::DomeAnswer a = RoofIo::domeAnswer(Command::Stop, false, "automaticClose", "The roof is closing on unsafe weather", {});
+    TEST_ASSERT_FALSE(a.accepted);
+    TEST_ASSERT_EQUAL_STRING("The roof is closing on unsafe weather", a.message.c_str());
+}
+
+void test_every_dome_action_is_the_client_s(void)
+{
+    for (DomeAction a : {DomeAction::OpenShutter, DomeAction::CloseShutter, DomeAction::AbortSlew})
+    {
+        const RoofIo::DomeDispatch d = RoofIo::domeDispatch(a);
+        TEST_ASSERT_TRUE(d.origin == Origin::Client);
+        TEST_ASSERT_TRUE(d.command == RoofIo::roofCommand(a));
     }
 }
 
@@ -222,9 +241,17 @@ namespace
     }
 
     // Runs `command` as RoofControl does: the shared check, then the logic.
-    bool run(Bench &b, Command command, Origin origin, const RoofIo::GateInputs &gates, bool closePending = false)
+    RoofIo::CommandContext ctx(bool closePending = false, bool automaticClose = false)
     {
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, b.roof, closePending);
+        RoofIo::CommandContext c;
+        c.closePending = closePending;
+        c.automaticClose = automaticClose;
+        return c;
+    }
+
+    bool run(Bench &b, Command command, Origin origin, const RoofIo::GateInputs &gates, const RoofIo::CommandContext &context = {})
+    {
+        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, b.roof, context);
         if (!check.accepted)
             return false;
         return b.command(command, origin).accepted;
@@ -245,7 +272,7 @@ void test_client_open_refused_while_unsafe(void)
     {
         gates.weather = v;
         gates.weatherText = "unsafe: rain";
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, gates, b.roof, false);
+        const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, gates, b.roof, ctx());
         TEST_ASSERT_FALSE(check.accepted);
         TEST_ASSERT_EQUAL_STRING("weatherNotSafe", check.reason.c_str());
         TEST_ASSERT_EQUAL_STRING("Weather not safe: unsafe: rain", check.text.c_str());
@@ -261,7 +288,7 @@ void test_client_close_refused_unless_parked(void)
     RoofIo::GateInputs gates = safeAndParked();
     gates.parked = false;
     gates.parkText = "N.I.N.A. not responding";
-    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Close, Origin::Client, gates, b.roof, false);
+    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Close, Origin::Client, gates, b.roof, ctx());
     TEST_ASSERT_FALSE(check.accepted);
     TEST_ASSERT_EQUAL_STRING("mountNotParked", check.reason.c_str());
     TEST_ASSERT_EQUAL_STRING("Mount not parked: park not confirmed (N.I.N.A. not responding)", check.text.c_str());
@@ -290,11 +317,11 @@ void test_client_moves_when_safe_and_parked(void)
 void test_client_unknown_position_refused_through_the_check(void)
 {
     Bench b(Settings(), 900.0f);
-    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, safeAndParked(), b.roof, false);
+    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, safeAndParked(), b.roof, ctx());
     TEST_ASSERT_FALSE(check.accepted);
     TEST_ASSERT_EQUAL_STRING("positionUnknown", check.reason.c_str());
     // A person may (constitution I).
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, safeAndParked(), b.roof, false).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, safeAndParked(), b.roof, ctx()).accepted);
 }
 
 void test_client_cannot_reverse_a_close(void)
@@ -304,18 +331,19 @@ void test_client_cannot_reverse_a_close(void)
     TEST_ASSERT_TRUE(run(b, Command::Close, Origin::Person, gates));
     b.steps(50);
     TEST_ASSERT_TRUE(b.state() == State::Closing);
-    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, gates, b.roof, false);
+    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, gates, b.roof, ctx());
     TEST_ASSERT_FALSE(check.accepted);
     TEST_ASSERT_EQUAL_STRING("closing", check.reason.c_str());
     TEST_ASSERT_TRUE(b.state() == State::Closing);
     // ...nor replace a waiting close.
     Bench open(Settings(), 1850.0f);
-    TEST_ASSERT_FALSE(RoofIo::checkCommand(Command::Open, Origin::Client, gates, open.roof, true).accepted);
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Client, gates, open.roof, false).accepted);
+    TEST_ASSERT_FALSE(RoofIo::checkCommand(Command::Open, Origin::Client, gates, open.roof, ctx(true)).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Client, gates, open.roof, ctx()).accepted);
     // A person still can (spec 003).
-    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, false).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, ctx()).accepted);
 }
 
+// Without spec 005's close under way, every stop passes.
 void test_stops_pass_every_check(void)
 {
     Bench b(Settings(), 900.0f);
@@ -324,7 +352,60 @@ void test_stops_pass_every_check(void)
     for (Command c : {Command::Stop, Command::Abort})
         for (Origin o : {Origin::Person, Origin::Automatic, Origin::Client})
             for (bool pending : {false, true})
-                TEST_ASSERT_TRUE(RoofIo::checkCommand(c, o, gates, b.roof, pending).accepted);
+                TEST_ASSERT_TRUE(RoofIo::checkCommand(c, o, gates, b.roof, ctx(pending)).accepted);
+}
+
+// Constitution III: a client can't call off the close on unsafe weather by stopping it.
+void test_client_cannot_stop_the_automatic_close(void)
+{
+    Bench b(Settings(), 1850.0f);
+    const RoofIo::GateInputs gates = safeAndParked();
+    TEST_ASSERT_TRUE(run(b, Command::Close, Origin::Automatic, gates));
+    b.steps(50);
+    TEST_ASSERT_TRUE(b.state() == State::Closing);
+    for (Command c : {Command::Stop, Command::Abort})
+    {
+        const RoofIo::CommandCheck check = RoofIo::checkCommand(c, Origin::Client, gates, b.roof, ctx(false, true));
+        TEST_ASSERT_FALSE(check.accepted);
+        TEST_ASSERT_EQUAL_STRING("automaticClose", check.reason.c_str());
+        TEST_ASSERT_FALSE(run(b, c, Origin::Client, gates, ctx(false, true)));
+    }
+    TEST_ASSERT_TRUE(b.state() == State::Closing);
+    // A person's stop and the controller's own still work.
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Person, gates, b.roof, ctx(false, true)).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Automatic, gates, b.roof, ctx(false, true)).accepted);
+    TEST_ASSERT_TRUE(b.runToRest());
+    TEST_ASSERT_TRUE(b.state() == State::Closed);
+    // A waiting automatic close can't be stopped by a client either.
+    Bench open(Settings(), 1850.0f);
+    TEST_ASSERT_FALSE(RoofIo::checkCommand(Command::Stop, Origin::Client, gates, open.roof, ctx(true, true)).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, Origin::Client, gates, open.roof, ctx(true, false)).accepted);
+}
+
+// A client may stop a person's close, but then may not reopen the roof.
+void test_client_cannot_reopen_a_stopped_close(void)
+{
+    Bench b(Settings(), 1850.0f);
+    const RoofIo::GateInputs gates = safeAndParked();
+    TEST_ASSERT_TRUE(run(b, Command::Close, Origin::Person, gates));
+    b.steps(100);
+    TEST_ASSERT_TRUE(run(b, Command::Stop, Origin::Client, gates));
+    b.steps(10);
+    TEST_ASSERT_TRUE(b.state() == State::Stopped);
+    const RoofIo::CommandCheck check = RoofIo::checkCommand(Command::Open, Origin::Client, gates, b.roof, ctx());
+    TEST_ASSERT_FALSE(check.accepted);
+    TEST_ASSERT_EQUAL_STRING("closing", check.reason.c_str());
+    // It may close; a person may open.
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Close, Origin::Client, gates, b.roof, ctx()).accepted);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, ctx()).accepted);
+    // Stopped while opening: the client may carry on opening.
+    Bench c;
+    TEST_ASSERT_TRUE(run(c, Command::Open, Origin::Client, gates));
+    c.steps(100);
+    TEST_ASSERT_TRUE(run(c, Command::Stop, Origin::Client, gates));
+    c.steps(10);
+    TEST_ASSERT_TRUE(c.state() == State::Stopped);
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Client, gates, c.roof, ctx()).accepted);
 }
 
 int main(int, char **)
@@ -342,7 +423,9 @@ int main(int, char **)
     RUN_TEST(test_refusal_text_names_a_latched_fault);
     RUN_TEST(test_refusal_text_otherwise_unchanged);
     RUN_TEST(test_answer_carries_the_refusal);
-    RUN_TEST(test_a_stop_is_never_refused);
+    RUN_TEST(test_a_stop_with_the_controller_down_is_done);
+    RUN_TEST(test_a_refused_stop_is_reported);
+    RUN_TEST(test_every_dome_action_is_the_client_s);
     RUN_TEST(test_client_moves_refused_when_unknown);
     RUN_TEST(test_client_moves_from_a_known_position);
     RUN_TEST(test_client_cannot_clear_a_fault);
@@ -352,5 +435,7 @@ int main(int, char **)
     RUN_TEST(test_client_unknown_position_refused_through_the_check);
     RUN_TEST(test_client_cannot_reverse_a_close);
     RUN_TEST(test_stops_pass_every_check);
+    RUN_TEST(test_client_cannot_stop_the_automatic_close);
+    RUN_TEST(test_client_cannot_reopen_a_stopped_close);
     return UNITY_END();
 }

@@ -115,13 +115,14 @@ namespace SQM
                     return std::nullopt;
                 }
 
-                // Open, close and abort. Open and close need Alpaca on and a
-                // connected client; abort is never refused, not even with
-                // Alpaca off (constitution I: stop always works).
+                // Open, close and abort, only with Alpaca on: switched off, the
+                // Dome changes nothing (constitution VIII; the web UI's Stop
+                // stays). Open and close also need a connected client; abort
+                // doesn't. What the roof makes of the action is the backend's.
                 Response action(DeviceCall &call, DomeAction what)
                 {
                     Envelope reply = call.reply();
-                    if (what != DomeAction::AbortSlew && !call.enabled)
+                    if (!call.enabled)
                         return reply.finish(ALPACA_ERR_NOT_CONNECTED, DISABLED_MESSAGE);
                     if (what != DomeAction::AbortSlew && !call.activity.connected)
                         return reply.finish(ALPACA_ERR_NOT_CONNECTED, NOT_CONNECTED_MESSAGE);

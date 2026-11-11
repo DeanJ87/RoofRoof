@@ -37,9 +37,9 @@ N.I.N.A.'s **Setup** button opens the device's Settings page.
 
 | Member | What it does |
 |---|---|
-| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open. Returns at once; progress shows in `ShutterStatus`. Needs a connected client. Refused while the roof is closing or a close is waiting: an imaging app can't reverse a close. |
+| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open. Returns at once; progress shows in `ShutterStatus`. Needs a connected client. Refused while the roof is closing, a close is waiting, or a close was stopped part-way: an imaging app can't reverse a close. |
 | `CloseShutter` | Closes the roof, through the same checks as the web UI's Close. Returns at once. Needs a connected client. A close that has to wait for an upload or an MQTT connect to stop succeeds and shows as closing. |
-| `AbortSlew` | Stops the roof at once, keeping its position estimate (the roof's Stop, not its Abort). Always works: connected or not, and even with Alpaca off. |
+| `AbortSlew` | Stops the roof at once, keeping its position estimate (the roof's Stop, not its Abort), connected or not. It can't stop the [close on unsafe weather](close-on-unsafe.md) (below). |
 | `ShutterStatus` | 0 open, 1 closed, 2 opening, 3 closing, 4 error (below). |
 | `Slewing` | True while the roof is opening or closing, or a close is waiting to start. |
 | `CanSetShutter` | True. |
@@ -75,28 +75,29 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 | Position unknown | `Position unknown: only a person can move the roof` | Move the roof to a magnet from the web UI ([Roof motion](roof-motion.md)). |
 | A fault is latched | `A fault is latched: a person must clear it first: No target magnet after 61.0 s >= 60.0 s timeout` | Find the cause, then clear the fault in the web UI. |
 | Supply low | `Supply 10.9 V < 11.5 V` | Check the 12 V supply. |
-| Closing (open) | `The roof is closing: an imaging app can't reverse a close` | Wait for it to close, or stop it first. |
+| Closing (open) | `The roof is closing or was stopped while closing: an imaging app can't reverse a close` | Let it close, or open it from the web UI. |
+| Automatic close (stop) | `The roof is closing on unsafe weather: an imaging app can't stop it (Stop in the web UI can)` | Use Stop in the web UI if the roof must not close. |
 | Busy | `An upload is being written: try again in a moment` | Wait for the upload or restart to finish. |
 | Not connected | ASCOM NotConnected (`1031`): `Not connected: connect to the Dome first` | Connect first. |
-| Alpaca off | NotConnected: `Alpaca support is disabled in device settings` | Turn Alpaca on. |
+| Alpaca off | NotConnected: `Alpaca support is disabled in device settings`, for every Dome command including Stop | Turn Alpaca on, or use the web UI. |
 
 Disconnecting, or an imaging app that goes quiet, never stops or starts a move: a move has its own time limit and magnet checks in the roof's motion logic, and stopping a close half-way would leave the roof neither open nor closed. The [imaging-app alerts](alerts.md#the-imaging-app) tell you when an app has gone quiet.
 
 ## Stop from N.I.N.A. and the automatic close
 
-N.I.N.A.'s Stop (`AbortSlew`) stops the roof at once, but it is **not a person's stop**: Alpaca has no password, so nothing an imaging app sends may call off the [close on unsafe weather](close-on-unsafe.md). If the roof is closing by itself and N.I.N.A. stops it, the automatic close treats it as an interrupted close: it sends "roof didn't close", waits 5 minutes and tries again once the mount is confirmed parked. To keep the roof still while it's unsafe (someone at the roof), press **Stop in the web UI**: a person's stop stands the automatic close down until the roof is closed or the weather has been safe for 10 minutes.
+Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While that close is under way or waiting to start, N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is closed or the weather has been safe for 10 minutes. N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop.
 
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand
 blocking: true
-fingerprint: 77f0035bc6e1788f
+fingerprint: abf1798b2d9676a2
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 sequenceDiagram
     accTitle: An imaging app drives the roof's Dome
-    accDescr: The app finds RoofRoof by UDP discovery and lists its one Dome. It connects. OpenShutter goes through the same weather check (and is refused while the roof is closing), and CloseShutter through the same park check, as the web UI's buttons; a refused command returns InvalidOperation with the reason and nothing moves, an accepted one returns at once and the app polls ShutterStatus until open or closed. Open and close need a connected client. AbortSlew stops the roof at once, connected or not, but is not a person's stop: an automatic close in progress treats it as interrupted and tries again after 5 minutes.
+    accDescr: The app finds RoofRoof by UDP discovery and lists its one Dome. It connects. OpenShutter goes through the same weather check (and is refused while the roof is closing), and CloseShutter through the same park check, as the web UI's buttons; a refused command returns InvalidOperation with the reason and nothing moves, an accepted one returns at once and the app polls ShutterStatus until open or closed. Open and close need a connected client. AbortSlew stops the roof at once, connected or not, except the automatic close on unsafe weather, which it can't stop; it is never a person's stop.
     participant A as Imaging app
     participant R as RoofRoof (Alpaca)
     participant C as Roof control
@@ -122,9 +123,14 @@ sequenceDiagram
     R->>C: close, origin client: park gate, interlock throughout
     C-->>R: closing, or refused: mount not parked
     A->>R: PUT abortslew (connected or not)
-    R->>C: stop (not a person's stop)
-    C-->>R: motor off; an automatic close tries again later
-    R-->>A: OK
+    R->>C: stop, origin client (never a person's stop)
+    alt the automatic close on unsafe weather is under way
+        C-->>R: refused: use Stop in the web UI
+        R-->>A: InvalidOperation, the close carries on
+    else any other move
+        C-->>R: motor off
+        R-->>A: OK
+    end
 ```
 
 <figcaption>An imaging app and the roof's Dome: every command goes through the roof's own checks.</figcaption>
@@ -136,8 +142,8 @@ sequenceDiagram
     2. The app lists the configured devices and finds one: Dome 0, "RoofRoof roof".
     3. It connects. Open and close are refused with NotConnected until it has.
     4. `OpenShutter` goes to the roof control with the client origin, through the weather check and the motion checks. A refusal comes back as InvalidOperation with the reason, and nothing moves. An accepted open returns at once; the app polls `ShutterStatus` until it reads open.
-    5. An open while the roof is closing, or a close is waiting, is refused: an imaging app can't reverse a close. `CloseShutter` goes through the park check at the start, and the park is re-checked on every control step while closing. A mount that isn't confirmed parked refuses the close.
-    6. `AbortSlew` stops the roof at once, connected or not. It is not a person's stop: an automatic close in progress raises "roof didn't close" and tries again after 5 minutes.
+    5. An open while the roof is closing, a close is waiting, or a close was stopped part-way, is refused: an imaging app can't reverse a close. `CloseShutter` goes through the park check at the start, and the park is re-checked on every control step while closing. A mount that isn't confirmed parked refuses the close.
+    6. `AbortSlew` stops the roof at once, connected or not, except the automatic close on unsafe weather: that is refused with InvalidOperation and the close carries on (Stop in the web UI can stop it). It is never a person's stop.
 
 ---
 

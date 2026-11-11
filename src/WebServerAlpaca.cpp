@@ -117,10 +117,11 @@ namespace SQM
     // takes only the roof's short lock, as the web UI's commands do.
     Alpaca::DomeAnswer WebServer::AlpacaBackend::domeCommand(Alpaca::DomeAction action)
     {
-        const Roof::Command command = RoofIo::roofCommand(action);
+        const RoofIo::DomeDispatch dispatch = RoofIo::domeDispatch(action);
+        const Roof::Command command = dispatch.command;
         RoofControl *roof = owner.roof;
         const RoofControl::Outcome outcome = roof != nullptr
-                                                 ? roof->command(command, Roof::Origin::Client)
+                                                 ? roof->command(command, dispatch.origin)
                                                  : RoofControl::Outcome{false, "notStarted", "The roof controller isn't running"};
         const RoofIo::FaultRecord fault = roof != nullptr ? roof->snapshot().fault : RoofIo::FaultRecord();
         const Alpaca::DomeAnswer answer = RoofIo::domeAnswer(command, outcome.accepted, outcome.reason, outcome.text, fault);

@@ -142,6 +142,7 @@ namespace SQM
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
         Outcome precheck(Roof::Command command, Roof::Origin origin) const;
         Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
+        Outcome stopLocked(Roof::Command command, Roof::Origin origin);
         void runPendingClose();
 
         // Outside the lock, in the control task.
@@ -159,8 +160,9 @@ namespace SQM
         HardwareSettings pendingSettings;
         RoofIo::GateInputs gates;
         bool closePending = false; // a close waiting for the flash or an MQTT connect (close wins)
-        uint32_t personStops = 0;  // a person's or an Alpaca client's stops and aborts since start (specs 005, 006)
+        uint32_t personStops = 0;  // a person's stops and aborts since start (spec 005; never an Alpaca client's, spec 006)
         Roof::Origin closeOrigin = Roof::Origin::Person;
+        Roof::Origin moveOrigin = Roof::Origin::Person; // who started the move under way, or the last one
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
