@@ -42,7 +42,8 @@ namespace SQM
             Working,      // waiting for the park it asked for, or closing: not to be interrupted
             Waiting,      // backing off after a failed attempt, or stood down (unknown, fault,
                           // halted): a restart or a WiFi fix may be the way out, so nothing waits
-            HeldByPerson, // a person stopped it: a new firmware might lose that stand-down
+            HeldByPerson, // a person stopped it: holds nothing (a new firmware may start a new
+                          // attempt, which still needs the park confirmed)
         };
 
         struct PlatformState
@@ -91,6 +92,5 @@ namespace SQM
         // closed and stay.
         constexpr const char *HOTSPOT_REASON = "hotspot";
         constexpr const char *HOTSPOT_TEXT = "Opening isn't available while the setup hotspot is on";
-        bool hotspotRefuses(Roof::Command command, bool hotspotOn);
     } // namespace RoofIo
 } // namespace SQM

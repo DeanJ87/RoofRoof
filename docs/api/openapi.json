@@ -1498,7 +1498,7 @@
           "Updates"
         ],
         "summary": "Upload firmware",
-        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 (with the reason) before anything is written while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing, or a person has stopped it (a new firmware may not read what it keeps across a restart); the restart after it waits for the roof and the close. An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 (with the reason) before anything is written while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing (a new firmware may not read what it keeps across a restart); the restart after it waits for the roof and the close. An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []

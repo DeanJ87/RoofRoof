@@ -396,11 +396,12 @@ void loop()
     // Joined a network from the setup hotspot: restart so time, MQTT, Alpaca
     // discovery and OTA start normally. The delay lets the setup screen show
     // the new address first.
-    static bool restartingFromHotspot = false;
-    if (!restartingFromHotspot && wifiManager->connectedFromHotspotFor(15000))
+    // Scheduled again if a close cancelled it (spec 010): the passwordless
+    // hotspot, and the refusal to open while it is on, last until the restart.
+    if (wifiManager->connectedFromHotspotFor(15000) && !WebServer::restartScheduled())
     {
         Logger::info("Main", "Connected to WiFi from the setup hotspot; restarting");
-        restartingFromHotspot = WebServer::scheduleRestart(1000);
+        WebServer::scheduleRestart(1000);
     }
 
     // Command-line OTA blocks this loop for the whole upload and can't be

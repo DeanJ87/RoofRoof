@@ -196,7 +196,9 @@ namespace SQM
             RoofLocked held(lock);
             // Probed under the lock (spec 010 FR-001): a platform action
             // registers itself under it too, so one of the two sees the other.
-            const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
+            // Stop and abort never look at blockers: not probed for them.
+            const bool stopping = command == Roof::Command::Stop || command == Roof::Command::Abort;
+            const RoofIo::Blockers now = blockers && !stopping ? blockers() : RoofIo::Blockers();
             outcome = commandLocked(command, origin, now);
         }
         if (!outcome.accepted)

@@ -102,3 +102,8 @@ The rules and the shared lock (Phases 1-3) are the core; everything after uses t
 - [x] T042 A working close sequence doesn't hold a restart or a WiFi fix while the home network is down or the hotspot is on; the refusal text names Stop as the way out; tests
 - [x] T043 The hotspot open refusal is a command blocker decided under the roof's lock; tests
 - [x] T044 A command-line filesystem OTA stopped part-way schedules the mandatory restart; a held restart is logged once
+
+## Phase 15: Review round 6 (safe to merge) follow-ups
+
+- [x] T045 A person's stand-down no longer holds a firmware upload (remote recovery); test
+- [x] T046 Stop and abort don't probe the blockers; the hotspot-join restart is scheduled again if a close cancelled it; the unused `hotspotRefuses` removed (the rule is the `hotspotOn` blocker, tested)

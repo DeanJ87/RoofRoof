@@ -101,12 +101,10 @@ void test_stand_downs_leave_the_way_out_open(void)
     // restart or an update must stay possible.
     for (PlatformAction action : ALL_ACTIONS)
         TEST_ASSERT_EQUAL_MESSAGE(HoldReason::None, platformHold(action, in(SequenceState::Waiting)), platformActionName(action));
-    // A person's stand-down only holds a new firmware (it might lose the stand-down).
+    // A person's stand-down holds nothing either: a new firmware may start a
+    // new attempt, which still needs the park confirmed.
     for (PlatformAction action : ALL_ACTIONS)
-    {
-        const HoldReason expected = action == PlatformAction::FirmwareUpload ? HoldReason::CloseSequence : HoldReason::None;
-        TEST_ASSERT_EQUAL_MESSAGE(expected, platformHold(action, in(SequenceState::HeldByPerson)), platformActionName(action));
-    }
+        TEST_ASSERT_EQUAL_MESSAGE(HoldReason::None, platformHold(action, in(SequenceState::HeldByPerson)), platformActionName(action));
     for (PlatformAction action : ALL_ACTIONS)
         TEST_ASSERT_EQUAL(HoldReason::None, platformHold(action, in(SequenceState::Idle)));
 }
@@ -139,6 +137,8 @@ void test_hotspot_refuses_open_under_the_lock(void)
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
     TEST_ASSERT_EQUAL_STRING("hotspot", blockerReason(b));
     TEST_ASSERT_EQUAL_STRING(HOTSPOT_TEXT, blockerText(b));
+    TEST_ASSERT_EQUAL_STRING("hotspot", HOTSPOT_REASON);
+    TEST_ASSERT_EQUAL_STRING("Opening isn't available while the setup hotspot is on", HOTSPOT_TEXT);
     b.restartCommitted = true; // the reset comes first
     TEST_ASSERT_EQUAL_STRING("restarting", blockerReason(b));
 }
@@ -181,17 +181,6 @@ void test_hold_texts_and_names(void)
     TEST_ASSERT_EQUAL_STRING("firmwareUpload", platformActionName(PlatformAction::FirmwareUpload));
     TEST_ASSERT_EQUAL_STRING("wifiChange", platformActionName(PlatformAction::WifiChange));
     TEST_ASSERT_EQUAL_STRING("wifiScan", platformActionName(PlatformAction::WifiScan));
-}
-
-void test_hotspot_refuses_only_open(void)
-{
-    TEST_ASSERT_TRUE(hotspotRefuses(Roof::Command::Open, true));
-    for (Roof::Command other : {Roof::Command::Close, Roof::Command::Stop, Roof::Command::Abort})
-        TEST_ASSERT_FALSE(hotspotRefuses(other, true));
-    for (Roof::Command any : {Roof::Command::Open, Roof::Command::Close, Roof::Command::Stop, Roof::Command::Abort})
-        TEST_ASSERT_FALSE(hotspotRefuses(any, false));
-    TEST_ASSERT_EQUAL_STRING("hotspot", HOTSPOT_REASON);
-    TEST_ASSERT_EQUAL_STRING("Opening isn't available while the setup hotspot is on", HOTSPOT_TEXT);
 }
 
 // Spec 010's additions to spec 003's command blockers (MotionGuards).
@@ -371,7 +360,6 @@ int main(int, char **)
     RUN_TEST(test_mandatory_restart_ignores_sequence);
     RUN_TEST(test_nothing_held_at_rest);
     RUN_TEST(test_hold_texts_and_names);
-    RUN_TEST(test_hotspot_refuses_only_open);
     RUN_TEST(test_short_writes_count_as_busy_without_touching_the_upload);
     RUN_TEST(test_open_refused_close_deferred_during_short_write);
     RUN_TEST(test_committed_restart_refuses_moves);

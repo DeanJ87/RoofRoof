@@ -6,17 +6,18 @@ The close sequence's phases map to `RoofIo::SequenceState` (`CloseSeq::platformS
 and Closing are `Working`; HeldByPerson is `HeldByPerson`; RetryWait, CannotMove and Halted are
 `Waiting`; Idle is `Idle`.
 
-| Action | Roof opening or closing | A close waits | Sequence `Working` | Sequence `HeldByPerson` |
+| Action | Roof opening or closing | A close waits | Sequence `Working`, network up | `Working`, network down |
 |---|---|---|---|---|
 | `FlashWrite` | `Moving` | `CloseWaiting` | - | - |
-| `FilesystemUpload` | `Moving` | `CloseWaiting` | `CloseSequence` | - |
+| `FilesystemUpload` | `Moving` | `CloseWaiting` | `CloseSequence` | `CloseSequence` |
 | `Restart` | `Moving` | `CloseWaiting` | `CloseSequence` | - |
 | `MandatoryRestart` | `Moving` | `CloseWaiting` | - | - |
 | `FirmwareUpload` | `Moving` | `CloseWaiting` | `CloseSequence` | `CloseSequence` |
 | `WifiChange` | `Moving` | `CloseWaiting` | `CloseSequence` | - |
 | `WifiScan` | `Moving` | `CloseWaiting` | `CloseSequence` | - |
 
-`Waiting` holds nothing: the sequence can wait there for hours, often because the network is
+"Network up" is the home network joined with the setup hotspot off. `Waiting`, `HeldByPerson` and
+`Idle` hold nothing: the sequence can wait there for hours, often because the network is
 broken, and a WiFi fix, a restart or an update must stay possible.
 
 Texts (`RoofIo::holdText`):
@@ -27,8 +28,8 @@ Texts (`RoofIo::holdText`):
 | `CloseWaiting` | A close is waiting to start: try again once the roof has closed |
 | `CloseSequence` | The automatic close is under way: try again once the roof has closed or the weather is safe |
 
-`RoofIo::hotspotRefuses(command, hotspotOn)`: true only for `Open` while the hotspot is on. Reason
-name `hotspot`, text "Opening isn't available while the setup hotspot is on".
+`Blockers::hotspotOn` (decided under the roof's lock): `Open` is refused while the hotspot is on.
+Reason name `hotspot`, text "Opening isn't available while the setup hotspot is on".
 
 The restart timer also holds an ordinary restart while an upload or short write runs.
 
