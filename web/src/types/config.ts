@@ -78,6 +78,7 @@ export interface RoofConfig {
   hallLowCounts: number;
   currentSenseEnabled: boolean;
   maxCurrentAmps: number;
+  currentAmpsPerVolt: number; // A/V at the IBT-2's current-sense output
   minSupplyVolts: number;
 }
 

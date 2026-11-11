@@ -425,6 +425,7 @@ void test_roof_every_field_round_trips()
     cfg.roof.hallLowCounts = 900;
     cfg.roof.currentSenseEnabled = true;
     cfg.roof.maxCurrentAmps = 12.5f;
+    cfg.roof.currentAmpsPerVolt = 9.25f;
     cfg.roof.minSupplyVolts = 10.5f;
     const std::string json = cfg.toJson(false);
     TEST_ASSERT_TRUE(json.find("\"openDirection\":\"reverse\"") != std::string::npos);
@@ -446,6 +447,7 @@ void test_roof_every_field_round_trips()
     TEST_ASSERT_EQUAL_UINT32(900, r.hallLowCounts);
     TEST_ASSERT_TRUE(r.currentSenseEnabled);
     TEST_ASSERT_EQUAL_FLOAT(12.5f, r.maxCurrentAmps);
+    TEST_ASSERT_EQUAL_FLOAT(9.25f, r.currentAmpsPerVolt);
     TEST_ASSERT_EQUAL_FLOAT(10.5f, r.minSupplyVolts);
     TEST_ASSERT_EQUAL_STRING(json.c_str(), loaded->toJson(false).c_str());
 }
