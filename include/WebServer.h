@@ -7,6 +7,8 @@
 #include "Config.h"
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
+#include "DiagDocuments.h"
+#include "DiagSchedule.h"
 #include "HaDiscovery.h"
 #include "InputsReport.h"
 #include "MQTTClient.h"
@@ -32,6 +34,7 @@
 namespace SQM
 {
     class RoofControl;
+    class Diagnostics;
 
     // The device's HTTP server: the REST API, the live-update WebSocket, the
     // web UI, Alpaca, alerts and the MQTT documents (SQMeter's WebServer
@@ -51,6 +54,8 @@ namespace SQM
 
         // The roof (spec 003); before begin(). Without it the roof routes refuse.
         void setRoof(RoofControl *control);
+        // Spec 017: advanced diagnostics (its routes, stream and MQTT); before begin().
+        void setDiagnostics(Diagnostics *source) { diagnostics = source; }
         // A restart is due (the roof refuses to open meanwhile); a close cancels
         // it unless it can't be cancelled (after a filesystem upload stopped
         // part-way, the filesystem is half erased: it runs once the roof stops).
@@ -110,6 +115,8 @@ namespace SQM
 
         AsyncWebServer server;
         AsyncWebSocket wsStatus; // /ws/status
+        AsyncWebSocket wsDiag{"/ws/diag"}; // spec 017: the live diagnostics stream
+        std::map<uint32_t, uint32_t> wsDiagClients;
         // Live-update clients closed since boot (SQMeter spec 011 FR-008): the
         // oldest past the per-endpoint limit, and ones that stopped reading.
         uint32_t wsReplaced = 0;
@@ -125,6 +132,24 @@ namespace SQM
         TimeManager *timeManager;
         MQTTClient *mqttClient;
         RoofControl *roof = nullptr;
+        Diagnostics *diagnostics = nullptr;
+        // Spec 017 (src/WebServerDiag.cpp).
+        uint32_t lastDiagBroadcast = 0;
+        uint32_t lastDiagMqttCheck = 0;
+        Diag::MqttSchedule diagMqtt;
+        bool diagMqttStarted = false;
+        uint32_t diagMqttRevision = 0;
+        bool diagSummaryPending = false;
+        void setupDiagRoutes();
+        void handleDiagLive(AsyncWebServerRequest *request);
+        void handleDiagMoves(AsyncWebServerRequest *request);
+        void handleDiagClear(AsyncWebServerRequest *request);
+        void onDiagWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
+        void broadcastDiag(uint32_t now);
+        void publishDiag(uint32_t now);
+        bool diagOn() const;
+        std::string diagLiveJson() const;
+        Diag::SystemLive diagSystem() const;
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;

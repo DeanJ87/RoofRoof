@@ -20,6 +20,7 @@ namespace SQM
     {
         setupBackupRoutes();
         setupRoofRoutes();
+        setupDiagRoutes();
         server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
         // What's actually in effect (SQMeter spec 020).
         server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });

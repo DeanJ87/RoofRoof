@@ -29,6 +29,8 @@
 #include "RoofStatus.h"
 #include "SafetyInput.h"
 #include "SwitchInput.h"
+#include "DiagDocuments.h"
+#include "MoveLog.h"
 #if ROOFROOF_BENCH
 #include "BenchGuard.h"
 #include "RoofPlant.h"
@@ -136,6 +138,30 @@ namespace SQM
         // The control task's unused stack, bytes (0 before it starts).
         uint32_t stackFreeBytes() const;
 
+        // Spec 017, advanced diagnostics (src/RoofControlDiag.cpp). The main
+        // loop owns the log's memory: attachDiag() hands it to the step under
+        // the lock, detachDiag() takes it back under the lock (then it may be
+        // freed). The step records into it after applying its output; with no
+        // log attached the step does nothing for diagnostics and isn't timed.
+        void attachDiag(Diag::MoveLog *log);
+        Diag::MoveLog *detachDiag();
+        // Any task: bounded copies under the lock. False when no log is
+        // attached (diagLive still fills the roof's part).
+        bool diagLive(Diag::RoofLive &out) const;
+        // The read interface for other firmware code (research R13): one held
+        // move with its profile, the move in progress or the last one.
+        bool diagMove(uint32_t id, Diag::Move &out) const;
+        bool diagLatest(Diag::Summary &out) const;
+        uint8_t diagIds(uint32_t (&out)[Diag::MAX_MOVES]) const;
+        // Moves finished since the log was attached (0 without one).
+        uint32_t diagFinished() const;
+        // A person clears the log: refused (Moving or CloseWaiting) while the
+        // roof moves or a close waits, so the move in progress isn't lost.
+        RoofIo::HoldReason diagClear();
+        // The control step's own duration, last and longest (µs; -1 untimed).
+        int64_t diagStepUs() const { return diagTimed.load() ? static_cast<int64_t>(stepUsNow.load()) : -1; }
+        int64_t diagMaxStepUs() const { return diagTimed.load() ? static_cast<int64_t>(maxStepUsNow.load()) : -1; }
+
     private:
         static constexpr const char *TAG = "Roof";
         static constexpr uint32_t TASK_STACK_BYTES = 6144;
@@ -178,6 +204,8 @@ namespace SQM
 
         // Under the lock.
         void stepLocked(const StepInputs &in);
+        void recordDiag(const StepInputs &in);
+        void noteStepTime(int64_t us);
         void takePendingSettings();
         RoofIo::GateInputs currentGates() const;
         void checkGates();
@@ -228,6 +256,8 @@ namespace SQM
         uint32_t maxBeatAgeMs = 0; // the oldest watchdog heartbeat a step has seen
         std::string notice;        // logged by the control task outside the lock
         Calib::Run calibration;    // spec 016: the attended calibration run
+        Diag::MoveLog *diagLog = nullptr;               // spec 017: owned by the main loop's Diagnostics
+        Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
 
 #if ROOFROOF_BENCH
         // Guarded by `lock`.
@@ -256,5 +286,9 @@ namespace SQM
         std::atomic<bool> calibratingNow{false}; // spec 016: calibration.active(), for moving()
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;
+        // Spec 017: set with the log; the control task times its steps while set.
+        std::atomic<bool> diagTimed{false};
+        std::atomic<uint32_t> stepUsNow{0};    // written by the control task only
+        std::atomic<uint32_t> maxStepUsNow{0};
     };
 } // namespace SQM

@@ -109,7 +109,12 @@ namespace SQM
         const TickType_t period = pdMS_TO_TICKS(RoofIo::CONTROL_PERIOD_MS);
         for (;;)
         {
+            // Spec 017: timed only while a diagnostics log is attached.
+            const bool timed = diagTimed.load(std::memory_order_relaxed);
+            const int64_t startedUs = timed ? esp_timer_get_time() : 0;
             step();
+            if (timed)
+                noteStepTime(esp_timer_get_time() - startedUs);
             esp_task_wdt_reset();
             persistFault();
             logChanges();
@@ -188,6 +193,9 @@ namespace SQM
         syncFault(RoofIo::FaultCause::Logic);
         stepCalibration(readings); // spec 016: after the tick, under the same lock
         refreshSnapshot();
+        // Spec 017: after the output is applied, so recording can't delay it.
+        if (diagLog != nullptr)
+            recordDiag(in);
     }
 
     void RoofControl::checkGates()
