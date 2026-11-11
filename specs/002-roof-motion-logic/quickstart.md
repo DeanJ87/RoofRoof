@@ -8,7 +8,7 @@ The logic has no hardware glue yet (spec 003), so everything here runs on a desk
 ~/.platformio/penv/bin/pio test -e native -f "test_roof_*"
 ```
 
-Expected: every test passes (four suites). `test_roof_properties` runs 10,000 seeded random sequences of
+Expected: every test passes (five suites). `test_roof_properties` runs 10,000 seeded random sequences of
 commands, origins and readings against a simulated roof (SC-001) and fails with the seed and step
 of any broken invariant.
 

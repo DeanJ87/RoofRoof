@@ -91,6 +91,7 @@ lib/ConfigModel/             RoofConfig in Config.h; defaults, JSON in/out, vali
 test/test_roof_profile/      settings, Hall filter, profile and timeouts
 test/test_roof_logic/        moves: open/close, unknown position, stop, abort, reversal, settings
 test/test_roof_faults/       every fault kind at its boundary, the latch and clearing
+test/test_roof_timing/       dead time by steps and after start-up, drive budget, abort at rest, reading sanity
 test/test_roof_properties/   seeded random sequences against the simulator
 test/roof_sim/RoofSim.h      the simulated roof shared by those suites
 test/test_config_model/, test/test_config_migration/, test/test_config_backup/  roof section
