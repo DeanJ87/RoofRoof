@@ -1,7 +1,7 @@
 // Alpaca simulator: serves the firmware's Alpaca API (Alpaca::Router from
 // lib/AlpacaLogic) on a desktop machine, so the protocol can be tested without
 // an ESP32. The Dome (spec 006) is spec 002's motion logic driving a simulated
-// roof (test/roof_sim), through the same gate checks and the same Dome mapping
+// roof (lib/RoofPlantLogic via test/roof_sim), through the same gate checks and the same Dome mapping
 // (lib/RoofIoLogic DomeBridge) as the firmware; ConformU runs against it in CI.
 //
 //   tools/alpaca-sim/build.sh && ./alpaca-sim [port] [unsafe] [unparked]

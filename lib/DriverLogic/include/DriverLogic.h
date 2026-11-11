@@ -29,5 +29,10 @@ namespace SQM
         // The outputs for `command` at `duty`. Never both PWM above 0; anything
         // but Forward or Reverse is Off.
         Outputs outputsFor(Command command, uint8_t duty);
+
+        // What may reach the pins for `logical` (spec 011 FR-021): `logical`
+        // itself, except in a bench build, where every level is low whatever
+        // was asked (EN off, both PWM 0). Every pin write goes through this.
+        Outputs physicalOutputs(const Outputs &logical, bool benchBuild);
     } // namespace Driver
 } // namespace SQM

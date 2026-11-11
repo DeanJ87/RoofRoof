@@ -102,13 +102,14 @@ export interface SystemStatus {
 }
 
 export type RoofState = 'unknown' | 'closed' | 'open' | 'opening' | 'closing' | 'stopped' | 'error';
+export type RoofSimulation = 'off' | 'bench' | 'demo';
 export type RoofSwitch = 'closed' | 'open' | 'unreadable' | 'notFitted';
 // The automatic close on unsafe weather (spec 005's CloseSeq::Phase).
 export type RoofClosePhase = 'idle' | 'waitPark' | 'closing' | 'retryWait' | 'heldByPerson' | 'cannotMove' | 'halted';
 
 export interface RoofFault {
   kind: string; // Roof::faultName
-  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped';
+  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped' | 'benchSupply';
   measured: number | null;
   limit: number | null;
   text: string; // with the measured value and the limit
@@ -144,4 +145,6 @@ export interface RoofStatus {
   watchdogTrips: number;
   maxStepGapMs: number;
   maxWatchdogBeatAgeMs: number; // the oldest watchdog heartbeat a step saw since start (EN needs it <= 50 ms)
+  // Spec 011: the real roof, bench firmware (simulated roof, motor never driven) or the browser demo.
+  simulation: RoofSimulation;
 }

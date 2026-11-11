@@ -146,9 +146,23 @@ void test_test_alerts()
 
 void test_status_document_fits();
 
+// Spec 011 FR-026: bench alerts say so, once; the standard build's don't change.
+void test_bench_alerts_are_labelled_once(void)
+{
+    Alerts::Alert alert;
+    alert.title = "Roof didn't close";
+    alert.message = "unchanged";
+    TEST_ASSERT_EQUAL_STRING("Roof didn't close", Core::benchLabelled(alert, false).title.c_str());
+    const Alerts::Alert bench = Core::benchLabelled(alert, true);
+    TEST_ASSERT_EQUAL_STRING("Bench: Roof didn't close", bench.title.c_str());
+    TEST_ASSERT_EQUAL_STRING("unchanged", bench.message.c_str());
+    TEST_ASSERT_EQUAL_STRING("Bench: Roof didn't close", Core::benchLabelled(bench, true).title.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_bench_alerts_are_labelled_once);
     RUN_TEST(test_alert_wording_and_levels);
     RUN_TEST(test_alert_vars_match_the_shared_list);
     RUN_TEST(test_iso_utc_and_durations);

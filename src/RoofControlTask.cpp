@@ -150,6 +150,9 @@ namespace SQM
         StepInputs in = readInputs(now);
         in.gapMs = RoofIo::stepGapMs(now, previous);
         RoofLocked held(lock);
+#if ROOFROOF_BENCH
+        benchStep(in); // spec 011: the simulated roof's readings replace the ADC's
+#endif
         stepLocked(in);
     }
 

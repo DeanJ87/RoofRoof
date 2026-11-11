@@ -33,9 +33,11 @@ const alpaca = (path: string) => JSON.parse(demoDevice.alpaca('GET', path, []).b
 
 // The samples the schema generator reads (<source>-<document>.json). Several
 // states of the one emulated device, so optional values (a set "since", alerts
-// in the list) show up. The demo has no Alpaca device (no roof), so the client-state
-// sample is the firmware's writeClientWatch (lib/DeviceCore/src/DeviceAlerts.cpp)
-// applied by hand to a "dome" device.
+// in the list) show up. The roof section is the firmware's own writer on the
+// demo's simulated roof (spec 011); the moving and faulted samples override
+// some of its values to show the states a closed roof doesn't (current sense,
+// switches, a watchdog fault). The connected client-state sample is the
+// firmware's writeClientWatch (lib/DeviceCore/src/DeviceAlerts.cpp) applied by hand.
 function writeSamples(dir: string) {
   mkdirSync(dir, { recursive: true });
   const put = (name: string, document: unknown) => writeFileSync(join(dir, `${name}.json`), JSON.stringify(document, null, 2) + '\n');
@@ -95,6 +97,10 @@ function writeSamples(dir: string) {
     ),
   );
   put('demo-settings_effective', JSON.parse(demoDevice.effective()));
+  // MQTT and Alpaca off: the settings that depend on them are inactive, with their reasons.
+  demoDevice.applyConfig(JSON.stringify({ mqtt: { enabled: false }, alpaca: { enabled: false }, alerts: { mqtt: { enabled: true } } }));
+  put('demo2-settings_effective', JSON.parse(demoDevice.effective()));
+  demoDevice.applyConfig(JSON.stringify({ mqtt: { enabled: true }, alpaca: { enabled: true }, alerts: { mqtt: { enabled: false } } }));
   put('demo-config', JSON.parse(demoDevice.getConfig()));
   put('demo-alerts_armed', JSON.parse(demoDevice.armedDocument()));
   demoDevice.testAlert({ channel: 'all' });

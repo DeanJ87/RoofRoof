@@ -411,7 +411,8 @@
                 "watchdog",
                 "parkInterlock",
                 "storedUnreadable",
-                "watchdogStopped"
+                "watchdogStopped",
+                "benchSupply"
               ]
             },
             "kind": {
@@ -560,6 +561,14 @@
             "unreadable"
           ]
         },
+        "simulation": {
+          "type": "string",
+          "enum": [
+            "off",
+            "bench",
+            "demo"
+          ]
+        },
         "state": {
           "type": "string",
           "enum": [
@@ -624,6 +633,7 @@
         "positionMm",
         "positionPercent",
         "rainContact",
+        "simulation",
         "state",
         "supplyLow",
         "supplyVolts",

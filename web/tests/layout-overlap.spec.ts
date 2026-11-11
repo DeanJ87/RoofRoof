@@ -13,7 +13,12 @@ const overlaps = async (a: Locator, b: Locator) => {
   return x.x < y.x + y.width && y.x < x.x + x.width && x.y < y.y + y.height && y.y < x.y + x.height;
 };
 
-const floating = (page: Page) => [page.locator('.demo-panel-toggle'), page.locator('.tour-offer'), page.locator('.tour-card')];
+const floating = (page: Page) => [
+  page.locator('.demo-panel-toggle'),
+  page.locator('.tour-offer'),
+  page.locator('.tour-card'),
+  page.locator('.stop-bar'),
+];
 
 const expectClear = async (page: Page, control: Locator) => {
   await expect(control).toBeVisible();
@@ -39,6 +44,25 @@ for (const width of [320, 390]) {
     await expectClear(page, save);
     await save.click(); // a covered button fails here: the click is intercepted
     await expectClear(page, page.locator('.toast').first());
+  });
+
+  // Spec 009/011: while the demo's roof moves, the Stop bar shows on every page
+  // and must leave the save bar and toasts clear (and itself stay clickable).
+  test(`at ${width} px the Stop bar leaves the save bar and toasts clear while the roof moves`, async ({ page }) => {
+    await openSettings(page, width);
+    await page.waitForTimeout(2000); // the weather read and the Hall settled
+    const status = await page.evaluate(() =>
+      fetch('/api/roof/open', { method: 'POST', headers: { 'X-RoofRoof': '1' } }).then((r) => r.status),
+    );
+    expect(status).toBe(200);
+    const bar = page.locator('.stop-bar');
+    await expect(bar).toBeVisible({ timeout: 10_000 });
+    await page.locator('[data-field="deviceName"]').fill('Moving roof');
+    const save = page.getByRole('button', { name: 'Save' });
+    await expectClear(page, save);
+    await save.click();
+    await expectClear(page, page.locator('.toast').first());
+    await expect(bar.getByRole('button', { name: 'Stop' })).toBeVisible();
   });
 
   test(`at ${width} px the docked tour card leaves the save bar clear`, async ({ page }) => {

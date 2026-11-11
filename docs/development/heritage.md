@@ -61,10 +61,11 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007) | No |
 | ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
 | DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
-| FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic | Yes |
+| FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic; a second build kind, `bench`, that a standard board refuses (spec 011) | Yes |
 | NetAddress | `lib/NetAddress` | Unchanged (code) | No |
 | SettingsDeps | `lib/SettingsDeps` | Changed: catalogue cut to the settings that remain | No |
-| DriverLogic | none | New: what the motor driver's inputs must be for each command | No |
+| DriverLogic | none | New: what the motor driver's inputs must be for each command; what may reach the pins (all low in the bench build, spec 011) | No |
+| RoofPlantLogic | none | New (spec 011): the simulated roof (motor, magnets, Hall, current, supply) for the native tests, the Alpaca simulator, the demo and bench mode, and the bench build's supply guard | No |
 | RoofLogic | none | New: the roof's state machine, speed profile, timeouts, motion faults and fault latch (spec 002) | No |
 | HaDiscovery | none | New: Home Assistant MQTT discovery entities; spec 008 adds the roof's cover, sensors and fault sensor, read from one retained state document with templates, and entity fields for units, classes and diagnostics | Yes |
 | NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
@@ -73,7 +74,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 ### `test/`
 
-The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim`, and (spec 003) `test_roof_io`, `test_roof_gates`, `test_roof_status`, `test_roof_check`, and (spec 006) `test_alpaca_dome`, `test_dome_bridge`, `test_dome_close`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
+The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_sqmeter_source`, `test_safety_settings`, `test_park_logic`, `test_config_safety`, and (spec 002) `test_roof_profile`, `test_roof_logic`, `test_roof_faults`, `test_roof_timing`, `test_roof_properties` with their simulated roof in `test/roof_sim` (since spec 011 a wrapper around `lib/RoofPlantLogic`), and (spec 003) `test_roof_io`, `test_roof_gates`, `test_roof_status`, `test_roof_check`, and (spec 006) `test_alpaca_dome`, `test_dome_bridge`, `test_dome_close`, and (spec 011) `test_roof_plant`, `test_bench_mode`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
 
 ## Web UI
 

@@ -22,4 +22,9 @@ export interface Core extends BackupCore {
   saveState(): string;
   loadState(json: string): boolean;
   pending(): string;
+  // The simulated roof (spec 011, tools/demo-core/emulated_device_roof.cpp).
+  roofCommand(name: string): string;
+  roofInject(json: string): string;
+  roofPanel(): string;
+  platformHold(action: string): string;
 }

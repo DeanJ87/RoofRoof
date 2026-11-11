@@ -52,8 +52,8 @@ test('healthy: the Status card is the alerts state, All good', async ({ page }) 
   await open(page);
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveText('All good');
-  // The demo has no roof, so no Dome and no imaging-app tile (spec 011); Alerts is the one tile.
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  // The demo's roof is an Alpaca Dome (spec 011), so the imaging-app tile is there too.
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
   await expect(tile(page, 'alerts-state')).toContainText('Sending');
   await expect(statusCard(page).locator('.status-row')).toHaveCount(0);
   // It is the first card, and nothing sits between the header and the cards (026 FR-014).
@@ -80,14 +80,14 @@ test('send mode not in effect while Alpaca is off', async ({ page }) => {
   await expect(item(page, 'alerts-mode-not-in-effect')).toHaveCount(0);
 });
 
-test('imaging app: no tile without an Alpaca device, whether Alpaca is on or off', async ({ page }) => {
+test('imaging app: a tile for the Dome while Alpaca is on, none while it is off', async ({ page }) => {
   // inventory: imaging-app
   await open(page);
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
   await setConfig(page, { 'alpaca.enabled': false });
   await expect(tile(page, 'imaging-app')).toHaveCount(0);
   await setConfig(page, { 'alpaca.enabled': true });
-  await expect(tile(page, 'imaging-app')).toHaveCount(0);
+  await expect(tile(page, 'imaging-app')).toHaveCount(1);
 });
 
 test('no alert channel can send', async ({ page }) => {
@@ -184,8 +184,8 @@ test('the dashboard is the Status card, the Roof card and Device & Network, noth
   await expect(page.locator('.masonry-item').nth(1)).toContainText('Roof');
 });
 
-// Spec 009: the demo's roof is a static closed roof (spec 011 simulates one);
-// the other states are tested on the card (web/src/dashboard/__tests__).
+// Spec 009, with spec 011's simulated roof: the closed roof here, its fault
+// and close-sequence states in the tests below.
 test('Roof card: state, position, buttons with reasons, checks, readings and the Hall scale', async ({ page }) => {
   // inventory: roof-card  inventory: roof-position  inventory: roof-buttons
   // inventory: roof-checks  inventory: roof-readings  inventory: roof-hall
@@ -205,6 +205,62 @@ test('Roof card: state, position, buttons with reasons, checks, readings and the
   await expect(item(page, 'roof-fault-card')).toHaveCount(0);
   await expect(item(page, 'roof-close-phase')).toHaveCount(0);
   await expect(statusCard(page).locator('[data-inventory^="roof-"]')).toHaveCount(0);
+});
+
+// The demo's simulated roof (spec 011): the Demo panel's controls and the device's own commands.
+const roofCommand = (page: Page, name: string) =>
+  page.evaluate((name) => fetch(`/api/roof/${name}`, { method: 'POST', headers: { 'X-RoofRoof': '1' } }).then((r) => r.status), name);
+const roofState = (page: Page) =>
+  page.evaluate(async () => ((await (await fetch('/api/status')).json()) as { roof: { state: string } }).roof.state);
+const panelChoice = async (page: Page, name: string) => {
+  await openPanel(page);
+  await page.getByRole('button', { name, exact: true }).click();
+};
+const fast = (page: Page) => panelChoice(page, 'Clock speed 10x');
+// The demo device has booted, read the weather and the park, and the roof is closed.
+const roofReady = (page: Page) =>
+  expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const roof = ((await (await fetch('/api/status')).json()) as { roof: { state: string; weather: string; parkConfirmed: boolean } })
+            .roof;
+          return `${roof.state}:${roof.weather}:${roof.parkConfirmed}`;
+        }),
+      { timeout: 15_000 },
+    )
+    .toBe('closed:safe:true');
+
+test('a jammed roof: the fault on the Roof card and the Status card, gone once cleared', async ({ page }) => {
+  // inventory: roof-fault-card  inventory: roof-fault
+  await open(page);
+  await roofReady(page);
+  await fast(page);
+  await panelChoice(page, 'Jam: On');
+  expect(await roofCommand(page, 'open')).toBe(200);
+  await expect(item(page, 'roof-fault-card')).toBeVisible({ timeout: 30_000 });
+  await expect(item(page, 'roof-fault-card')).toContainText(/leave|magnet/i);
+  await expect(item(page, 'roof-fault')).toBeVisible();
+  await panelChoice(page, 'Jam: Off');
+  expect(await roofCommand(page, 'clear-fault')).toBe(200);
+  await expect(item(page, 'roof-fault-card')).toHaveCount(0, { timeout: 10_000 });
+  await expect(item(page, 'roof-fault')).toHaveCount(0);
+});
+
+test('unsafe weather: the close phase on the Roof card; a person stopping it shows on the Status card', async ({ page }) => {
+  // inventory: roof-close-phase  inventory: roof-close
+  await open(page);
+  await roofReady(page);
+  await fast(page);
+  expect(await roofCommand(page, 'open')).toBe(200);
+  await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('open');
+  await expect(item(page, 'roof-close-phase')).toHaveCount(0);
+  await panelChoice(page, 'Weather: Unsafe');
+  await expect(item(page, 'roof-close-phase')).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('closing');
+  expect(await roofCommand(page, 'stop')).toBe(200);
+  await expect(item(page, 'roof-close')).toBeVisible({ timeout: 10_000 });
+  await expect(item(page, 'roof-close-phase')).toBeVisible();
 });
 
 test('Device & Network: one address per row, local name and MQTT', async ({ page }) => {

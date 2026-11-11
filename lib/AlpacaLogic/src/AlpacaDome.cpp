@@ -12,9 +12,15 @@ namespace SQM
 {
     namespace Alpaca
     {
-        DeviceInfo domeDeviceInfo()
+        DeviceInfo domeDeviceInfo(const char *simulation)
         {
-            return {"Dome", "dome", 0, "RoofRoof roof", "Roll-off roof: shutter open, close and stop only", 3};
+            std::string description = "Roll-off roof: shutter open, close and stop only";
+            const std::string kind = simulation != nullptr ? simulation : "off";
+            if (kind == "bench")
+                description = "BENCH MODE (simulated roof, no motor): " + description;
+            else if (kind == "demo")
+                description = "Demo (simulated roof): " + description;
+            return {"Dome", "dome", 0, "RoofRoof roof", description, 3};
         }
 
         namespace Internal

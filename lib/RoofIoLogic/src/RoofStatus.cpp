@@ -139,6 +139,7 @@ namespace SQM
             out["watchdogTrips"] = s.watchdogTrips;
             out["maxStepGapMs"] = s.maxStepGapMs;
             out["maxWatchdogBeatAgeMs"] = s.maxWatchdogBeatAgeMs;
+            out["simulation"] = s.simulation != nullptr ? s.simulation : "off";
         }
     } // namespace RoofIo
 } // namespace SQM

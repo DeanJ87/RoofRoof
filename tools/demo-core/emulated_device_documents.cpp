@@ -2,14 +2,17 @@
 
 #include "emulated_device.h"
 
+#include "RoofStatus.h"
+
 using namespace DemoCore;
 
 std::string EmulatedDevice::statusParts() const
 {
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(6144);
     doc["uptime"] = (nowMs - bootMs) / 1000;
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, devices(), cfg, nowMs);
+    RoofIo::writeStatus(doc.createNestedObject("roof"), roof.snapshot()); // the firmware's own writer (spec 011)
     return serialize(doc);
 }
 
@@ -125,6 +128,7 @@ std::string EmulatedDevice::saveState() const
     doc["armed"] = state.sending;
     doc["armedReason"] = static_cast<uint8_t>(state.reason);
     doc["armedSince"] = static_cast<double>(state.sinceEpoch);
+    roof.save(doc.createNestedObject("roof"));
     return serialize(doc);
 }
 
@@ -140,5 +144,7 @@ bool EmulatedDevice::loadState(const std::string &json)
     schedule = Alerts::AlertSchedule{};
     schedule.restore(
         doc["armed"] | true, doc.containsKey("armedReason"), doc["armedReason"] | 0, static_cast<int64_t>(doc["armedSince"] | 0.0));
+    roof.load(doc["roof"]); // a reload is a restart: the roof boots where it was
+    roofBooted = false;
     return true;
 }

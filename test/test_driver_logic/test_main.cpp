@@ -73,6 +73,42 @@ void test_unknown_command_is_off(void)
     TEST_ASSERT_EQUAL_UINT8(0, out.lpwm);
 }
 
+// Spec 011 FR-021: a bench build never lets a level reach the pins, for any
+// command, duty or hand-made combination of levels.
+void test_bench_build_holds_every_pin_low(void)
+{
+    for (Command command : {Command::Off, Command::Forward, Command::Reverse})
+        for (int duty = 0; duty <= 255; ++duty)
+        {
+            const Outputs pins = physicalOutputs(outputsFor(command, static_cast<uint8_t>(duty)), true);
+            TEST_ASSERT_FALSE(pins.enable);
+            TEST_ASSERT_EQUAL_UINT8(0, pins.rpwm);
+            TEST_ASSERT_EQUAL_UINT8(0, pins.lpwm);
+        }
+    Outputs raw;
+    raw.enable = true;
+    raw.rpwm = 255;
+    raw.lpwm = 255;
+    const Outputs pins = physicalOutputs(raw, true);
+    TEST_ASSERT_FALSE(pins.enable);
+    TEST_ASSERT_EQUAL_UINT8(0, pins.rpwm);
+    TEST_ASSERT_EQUAL_UINT8(0, pins.lpwm);
+}
+
+// The standard build applies the logic's levels unchanged.
+void test_standard_build_applies_levels_unchanged(void)
+{
+    for (Command command : {Command::Off, Command::Forward, Command::Reverse})
+        for (int duty = 0; duty <= 255; ++duty)
+        {
+            const Outputs logical = outputsFor(command, static_cast<uint8_t>(duty));
+            const Outputs pins = physicalOutputs(logical, false);
+            TEST_ASSERT_EQUAL(logical.enable, pins.enable);
+            TEST_ASSERT_EQUAL_UINT8(logical.rpwm, pins.rpwm);
+            TEST_ASSERT_EQUAL_UINT8(logical.lpwm, pins.lpwm);
+        }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -82,5 +118,7 @@ int main(int, char **)
     RUN_TEST(test_zero_duty_is_stopped_not_off);
     RUN_TEST(test_never_both_pwm_for_any_command_or_duty);
     RUN_TEST(test_unknown_command_is_off);
+    RUN_TEST(test_bench_build_holds_every_pin_low);
+    RUN_TEST(test_standard_build_applies_levels_unchanged);
     return UNITY_END();
 }
