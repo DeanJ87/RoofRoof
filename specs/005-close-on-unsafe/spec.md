@@ -262,7 +262,7 @@ before the close without a command, or lets a commanded close finish.
   ends.
 - A close accepted as waiting (spec 003: an upload or MQTT connect is finishing) counts as the close
   running; if it is dropped, the sequence alerts and tries again.
-- The millisecond clock wraps during the sequence: every time limit uses wrap-safe differences.
+- A long uptime: the sequence's time base is 64-bit milliseconds since start, which never wraps.
 - The park setting changes during a wait: the new limit applies from the next attempt.
 - N.I.N.A. answers "already parked": acceptance never counts as parked; only the park rule does.
 - The main loop is held up (a blocking reconnect): the sequence's steps are late, never early, and
