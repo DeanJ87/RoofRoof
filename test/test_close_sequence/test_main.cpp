@@ -345,6 +345,19 @@ void test_close_refused_for_a_restart_goes_back_without_back_off()
     TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 8300).action); // the park held 4 s again
 }
 
+void test_platform_state_of_each_phase()
+{
+    // Spec 010: only waiting for the park and closing are "working" (nothing
+    // may interrupt them); a back-off and the stand-downs leave the way out open.
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Idle, platformState(Phase::Idle));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Working, platformState(Phase::WaitPark));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Working, platformState(Phase::Closing));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Waiting, platformState(Phase::RetryWait));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Waiting, platformState(Phase::CannotMove));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::Waiting, platformState(Phase::Halted));
+    TEST_ASSERT_EQUAL(RoofIo::SequenceState::HeldByPerson, platformState(Phase::HeldByPerson));
+}
+
 void test_answer_for_the_roofs_outcome()
 {
     TEST_ASSERT_EQUAL(CloseAnswer::Started, answerFor(true, ""));
@@ -566,6 +579,7 @@ int main(int, char **)
     RUN_TEST(test_a_parked_mount_held_back_by_the_back_off_is_not_a_park_failure);
     RUN_TEST(test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down);
     RUN_TEST(test_close_refused_for_a_restart_goes_back_without_back_off);
+    RUN_TEST(test_platform_state_of_each_phase);
     RUN_TEST(test_answer_for_the_roofs_outcome);
     RUN_TEST(test_answers_outside_a_close_are_ignored);
     RUN_TEST(test_close_started_answer_keeps_closing);

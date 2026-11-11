@@ -49,10 +49,9 @@ namespace SQM
         // Main loop: the roof as the alert engine sees it (spec 007), as of
         // the last step.
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
-        // Any task: the sequence is in any phase but idle (an attempt, a
-        // back-off or a stand-down). Restarts, firmware updates and Wi-Fi
-        // changes wait meanwhile (spec 010).
-        bool busy() const { return phaseNow.load() != static_cast<uint8_t>(CloseSeq::Phase::Idle); }
+        // Any task: the sequence as spec 010's hold rules see it (restarts,
+        // uploads and WiFi changes wait while it works; see PlatformHold.h).
+        RoofIo::SequenceState platformState() const { return CloseSeq::platformState(static_cast<CloseSeq::Phase>(phaseNow.load())); }
 
     private:
         static constexpr const char *TAG = "Close";

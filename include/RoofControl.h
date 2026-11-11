@@ -98,11 +98,8 @@ namespace SQM
         // What else is going on (uploads, an MQTT connect, a scheduled
         // restart), and what a close does about it (cancel the restart, stop
         // the upload). Set once, before any command can arrive.
-        void setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose)
-        {
-            blockers = std::move(probe);
-            closeHook = std::move(onClose);
-        }
+        // Under the roof's lock (the control task calls them; spec 010).
+        void setBlockers(std::function<RoofIo::Blockers()> probe, std::function<void(const RoofIo::BlockerDecision &)> onClose);
 
         // Any task: the control task and watchdog started (else nothing can move).
         bool running() const { return started.load(); }

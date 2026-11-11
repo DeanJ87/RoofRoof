@@ -428,7 +428,7 @@
           "Device"
         ],
         "summary": "Restart",
-        "description": "Restarts the device after answering. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle.\n\nNeeds the password when protection is on.",
+        "description": "Restarts the device after answering. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1020,7 +1020,7 @@
           "Settings"
         ],
         "summary": "Apply a previewed restore",
-        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task), and, when it would restart, also while the automatic close is under way.\n\nNeeds the password when protection is on.",
+        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task), and, when it would restart, also while the automatic close is waiting for the park or closing.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1194,7 +1194,7 @@
           "Network"
         ],
         "summary": "Scan for WiFi networks",
-        "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives. Refused with 409 while the roof is opening or closing, a close is waiting to start or the automatic close is under way (the radio leaves its channel during a scan); while a scan runs, an open is refused and a close waits.\n\nNeeds the password when protection is on.",
+        "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives. Refused with 409 while the roof is opening or closing, a close is waiting to start or the automatic close is waiting for the park or closing (the radio leaves its channel during a scan); while a scan runs (at most 15 s), an open is refused and a close waits.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1341,7 +1341,7 @@
           "Network"
         ],
         "summary": "Join a WiFi network",
-        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle: it drops the current network for up to 10 s. Until it has joined or timed out, an open is refused and a close waits.\n\nNeeds the password when protection is on.",
+        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing: it drops the current network for up to 10 s. Until it has joined (at most 15 s), an open is refused and a close waits.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1418,7 +1418,7 @@
           "Updates"
         ],
         "summary": "Upload the web UI",
-        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle (flash writes stall the control task, and the restart after it can't be cancelled). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
+        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing (flash writes stall the control task, and the restart after it can't be cancelled). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1498,7 +1498,7 @@
           "Updates"
         ],
         "summary": "Upload firmware",
-        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 (with the reason) before anything is written while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle (a new firmware may not read what it keeps across a restart); the restart after it waits for the same. An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 (with the reason) before anything is written while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing, or a person has stopped it (a new firmware may not read what it keeps across a restart); the restart after it waits for the roof and the close. An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []

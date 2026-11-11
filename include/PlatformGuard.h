@@ -21,7 +21,7 @@ namespace SQM
         // close sequence is busy. Without them nothing is held.
         // `restartCommitted`: no flash write starts once a restart is committed
         // (the reset would cut it off).
-        void begin(RoofControl *roof, std::function<bool()> sequenceBusy, std::function<bool()> restartCommitted);
+        void begin(RoofControl *roof, std::function<RoofIo::SequenceState()> sequence, std::function<bool()> restartCommitted);
 
         // Why `action` must wait now, from the latest state (no lock): for
         // refusing a request up front. Use FlashWrite/beginUpload/commitRestart to act.

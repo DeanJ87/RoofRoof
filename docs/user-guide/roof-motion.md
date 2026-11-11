@@ -197,16 +197,18 @@ long.
 Writing the flash pauses the processor's code cache, and with it the control task and the
 watchdog; a restart cuts the driver; a change of WiFi network drops the link to N.I.N.A. So the
 rest of the device waits for the roof, and some actions also wait for the
-[automatic close](close-on-unsafe.md) while it is in any phase but idle (waiting for the park,
-backing off after a failed attempt, or stood down):
+[automatic close](close-on-unsafe.md) while it is working: waiting for the park it asked for, or
+closing. Backing off after a failed attempt, or stood down (position unknown, a fault, a halted
+close), it holds nothing, so a broken network or device can still be put right remotely; stopped by
+a person, it only holds a firmware upload (a new firmware might not read that stand-down back):
 
-| Action | Roof opening or closing | A close waiting to start | Automatic close not idle |
+| Action | Roof opening or closing | A close waiting to start | Automatic close working |
 |---|---|---|---|
 | Settings save, restore without restart | refused | refused | allowed |
 | Web UI upload | refused | refused | refused |
 | Restart (from the Restart button, after a restore, a firmware upload or joining a network from the hotspot) | refused / waits | refused / waits | refused / waits |
 | Restart after a web UI upload (remounts the web UI) | waits | waits | runs |
-| Firmware upload (web or command line) | refused | refused | refused |
+| Firmware upload (web or command line) | refused | refused | refused (also while stopped by a person) |
 | Change of WiFi network | refused | refused | refused |
 | WiFi scan | refused | refused | refused |
 

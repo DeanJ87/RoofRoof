@@ -13,12 +13,12 @@ namespace SQM
         {
             // Set once in setup() before any other task can ask.
             RoofControl *theRoof = nullptr;
-            std::function<bool()> sequenceProbe;
+            std::function<RoofIo::SequenceState()> sequenceProbe;
             std::function<bool()> committedProbe;
 
-            bool sequenceBusy()
+            RoofIo::SequenceState sequenceNow()
             {
-                return sequenceProbe && sequenceProbe();
+                return sequenceProbe ? sequenceProbe() : RoofIo::SequenceState::Idle;
             }
 
             RoofIo::PlatformState latest()
@@ -33,7 +33,7 @@ namespace SQM
                 {
                     state.roof = Roof::State::Closed; // no roof: nothing moves
                 }
-                state.sequenceBusy = sequenceBusy();
+                state.sequence = sequenceNow();
                 return state;
             }
 
@@ -42,7 +42,7 @@ namespace SQM
             {
                 RoofIo::PlatformState state;
                 state.roof = Roof::State::Closed;
-                state.sequenceBusy = sequenceBusy();
+                state.sequence = sequenceNow();
                 return RoofIo::platformHold(action, state);
             }
 
@@ -75,7 +75,7 @@ namespace SQM
             }
         } // namespace
 
-        void begin(RoofControl *roof, std::function<bool()> busy, std::function<bool()> restartCommitted)
+        void begin(RoofControl *roof, std::function<RoofIo::SequenceState()> busy, std::function<bool()> restartCommitted)
         {
             theRoof = roof;
             sequenceProbe = std::move(busy);
@@ -129,6 +129,11 @@ namespace SQM
                 action,
                 [&]()
                 {
+                    if (committedProbe && committedProbe())
+                    {
+                        notClosed = true; // reported as busy; the reset is moments away
+                        return;
+                    }
                     // Under the lock the published state matches the controller's.
                     if (closedOnly && theRoof != nullptr && theRoof->state() != Roof::State::Closed)
                     {
@@ -144,7 +149,15 @@ namespace SQM
 
         RoofIo::HoldReason keepUpload(uint32_t token)
         {
-            return underLock([token]() { FlashGuard::progress(token); });
+            bool committed = false;
+            const RoofIo::HoldReason reason = underLock(
+                [&]()
+                {
+                    committed = committedProbe && committedProbe();
+                    if (!committed)
+                        FlashGuard::progress(token);
+                });
+            return committed ? RoofIo::HoldReason::Moving : reason;
         }
 
         RestartGo commitRestart(bool mandatory, const std::function<bool()> &commit)
@@ -158,7 +171,7 @@ namespace SQM
                     ran = true;
                     RoofIo::RestartInputs in;
                     in.mandatory = mandatory;
-                    in.sequenceBusy = sequenceBusy();
+                    in.sequenceWorking = sequenceNow() == RoofIo::SequenceState::Working;
                     in.uploadBusy = FlashGuard::busy();
                     in.shortWrite = FlashGuard::writing();
                     in.faultUnsaved = theRoof != nullptr && theRoof->faultUnsavedHeld();
