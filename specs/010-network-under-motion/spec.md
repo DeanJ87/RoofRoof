@@ -78,10 +78,10 @@ decided for the owner".
   while it moves. RTC memory survives every reset of the same firmware; the one case it may not
   survive, a new firmware, is now refused while the sequence is not idle. A power cut loses it,
   as spec 005 accepted.
-- Q: What may be done over the setup hotspot? → A: Everything except opening the roof. Stop is
-  never refused (constitution I), and closing and clearing a fault help the roof end closed. An
-  open over the hotspot is refused with a reason; opening always needs a safe verdict, which needs
-  the home network anyway.
+- Q: What may be done while the setup hotspot is on? → A: Everything except opening the roof, from
+  any network (a client on the hotspot can reach the device's other addresses too). Stop is never
+  refused (constitution I), and closing and clearing a fault help the roof end closed. Opening
+  always needs a safe verdict, which needs the home network anyway.
 - Q: When Wi-Fi drops mid-move, should the move stop? → A: No. The move goes on under the control
   task's own timeout and magnets; what Wi-Fi loss takes away (a stale weather or park hand-over, a
   lost N.I.N.A. poll) already stops an open and stops a close with a fault, as constitution II
@@ -166,13 +166,12 @@ clear-fault answer as from the home network.
 
 **Acceptance Scenarios**:
 
-1. **Given** a request arrives over the setup hotspot, **When** it is an open, **Then** it is
-   refused (409, `reason` `hotspot`, "Opening isn't available over the setup hotspot: use the home
-   network").
+1. **Given** the setup hotspot is on, **When** an open arrives over any network, **Then** it is
+   refused (409, `reason` `hotspot`, "Opening isn't available while the setup hotspot is on").
 2. **Given** a request arrives over the setup hotspot, **When** it is a stop, close or clear-fault,
    **Then** it is handled exactly as from the home network (authentication, header and gates).
-3. **Given** the hotspot is open and the station is also connected, **When** a request arrives over
-   the home network, **Then** an open is not refused for the hotspot.
+3. **Given** the hotspot is off, **When** an open arrives, **Then** it is not refused for the
+   hotspot.
 
 ---
 
@@ -259,6 +258,9 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
   record, web uploads and command-line OTA.
 - **FR-004**: Short writes (everything except uploads and command-line OTA) MUST NOT replace or stop
   an upload's activity, and an upload MUST NOT be stopped or refused by a short write.
+- **FR-004a**: A Wi-Fi change and a Wi-Fi scan MUST register under the roof's lock as they start;
+  until the change has joined or timed out, or the scan has ended, open MUST be refused and a close
+  MUST wait, as for a flash write.
 - **FR-005**: A flash write MUST be refused (409 for a request, deferred for a background write)
   while the roof moves or a close waits. Open MUST be refused (`busy`) and a close MUST wait
   (`pending`) while any flash write runs, as spec 003 FR-029 does for uploads.
@@ -266,29 +268,31 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 **Restarts**
 
 - **FR-006**: An ordinary restart (a person's, after a restore, after a firmware upload, after
-  joining a network from the hotspot) MUST wait while the roof moves, a close waits or the close
-  sequence is not idle. A person's restart request MUST be refused (409) in those cases with the
+  joining a network from the hotspot) MUST wait while the roof moves, a close waits, the close
+  sequence is not idle, or a flash write runs. A person's restart request MUST be refused (409) in those cases with the
   reason; a restore that needs a restart likewise.
 - **FR-007**: The restart after a web UI upload (mandatory, spec 003) MUST wait while the roof moves
   or a close waits, and MUST NOT wait for the close sequence.
 - **FR-008**: Once a restart is committed (the last check passed), open and close MUST be refused
-  until the reset ("The device is restarting: try again once it is back"); stop MUST be accepted.
+  until the reset (reason `restarting`, "The device is restarting"); stop MUST be accepted. The
+  automatic close MUST treat that refusal as "not run" (back to waiting for the park), not as a
+  failed close.
   The restart timer MUST NOT block waiting for the roof's lock.
 - **FR-009**: Command-line OTA MUST keep counting as flash activity until the device resets after
   a successful upload.
 
 **Firmware uploads and Wi-Fi changes during the automatic close**
 
-- **FR-010**: A firmware upload (web and command-line) MUST be refused before anything is written
+- **FR-010**: A firmware upload and a web UI upload (web and command-line; the web UI upload always
+  ends in a restart nothing may cancel) MUST be refused before anything is written
   while the roof moves, a close waits or the close sequence is not idle (409 with the reason).
 - **FR-011**: A change of Wi-Fi network (`POST /api/wifi/connect`) and a Wi-Fi scan MUST be refused
-  while the roof moves or a close waits; the network change also while the close sequence is not
-  idle.
+  while the roof moves, a close waits or the close sequence is not idle.
 
 **Setup hotspot**
 
-- **FR-012**: An open command that arrives over the setup hotspot MUST be refused (409, reason
-  `hotspot`, with a text saying to use the home network). Stop, close and clear-fault over the
+- **FR-012**: An open command MUST be refused while the setup hotspot is on, whatever network it
+  arrives over (409, reason `hotspot`). Stop, close and clear-fault over the
   hotspot MUST behave as from the home network. The rule MUST be a pure function so the Alpaca Dome
   (spec 006) applies the same rule.
 
@@ -347,21 +351,22 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 - **SC-004**: On the bench, saving MQTT settings answers within 1 s even with the broker
   unreachable (bench check).
 - **SC-005**: The full local check (firmware build with zero warnings, native tests, web tests,
-  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 5 KB.
+  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 6 KB.
 
 ## Assumptions decided for the owner
 
 Each was an open choice; the safest option the constitution allows was taken.
 
-1. **Firmware uploads, ordinary restarts and Wi-Fi changes are refused while the automatic close is
+1. **Firmware and web UI uploads, ordinary restarts, Wi-Fi changes and scans are refused while the automatic close is
    in any phase other than idle**, including the stand-down phases (a person stopped it, the
    position is unknown, a close was halted). Those can last until the roof is closed or the weather
-   has been safe for 10 minutes; closing the roof, or a power cycle at the device, ends them. Web
-   UI uploads and settings saves without a restart are not affected.
+   has been safe for 10 minutes; closing the roof, or a power cycle at the device, ends them.
+   Settings saves without a restart are not affected.
 2. **Spec 005's RTC record stays in RTC memory** (not NVS). Writing the attempt's running time to
    flash would mean frequent writes, some during moves; refusing a new firmware while the sequence
    is busy covers the one case RTC memory may not.
-3. **Opening over the setup hotspot is refused; closing, stopping and clearing a fault are not.**
+3. **Opening is refused while the setup hotspot is on; closing, stopping and clearing a fault are
+   not.**
    The hotspot has no password. An open needs a safe weather verdict, which needs the home network,
    so nothing useful is lost; closing helps the roof end closed.
 4. **A committed restart refuses close as well as open.** It lasts milliseconds, ordinary restarts
@@ -384,10 +389,13 @@ Each was an open choice; the safest option the constitution allows was taken.
      cancels, activates at the next restart; if that restart happens while the sequence is busy
      (a crash), the RTC record may not be read and the sequence starts over;
    - the setup hotspot itself still opens while the roof is open: it is how the device is reached
-     when the home network is gone;
-   - a Wi-Fi change or scan is checked without the roof's lock (it can't be done under it): one
-     that starts in the same instant as a close can drop the network under it, and the close then
-     stops with a `parkInterlock` fault (a safe stop, constitution II).
+     when the home network is gone; while it is on, the roof can't be opened from any network;
+   - a Wi-Fi change that times out ends its hold; the device then rejoins the saved network on
+     its own schedule, and a close in that gap meets the park gate as usual (refused, or stopped
+     with `parkInterlock` if N.I.N.A. drops part-way);
+   - the close sequence's busy flag is read outside the roof's lock, so an ordinary restart can
+     commit in the instant the sequence leaves idle; the close it refuses is answered as "not run"
+     and the sequence carries on from its RTC record after the restart.
 
 ## Out of scope
 

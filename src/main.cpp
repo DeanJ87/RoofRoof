@@ -180,7 +180,7 @@ void onArduinoOtaStart()
     const bool firmware = ArduinoOTA.getCommand() == U_FLASH;
     RoofIo::HoldReason why = RoofIo::HoldReason::None;
     arduinoOtaToken =
-        PlatformGuard::beginUpload(firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FlashWrite, why, true);
+        PlatformGuard::beginUpload(firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FilesystemUpload, why, true);
     if (arduinoOtaToken == 0)
     {
         Update.abort();

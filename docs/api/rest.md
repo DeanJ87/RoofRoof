@@ -244,7 +244,7 @@ curl -X POST http://roofroof.local/api/wifi/connect \
 { "success": true, "pending": true, "message": "Connection started" }
 ```
 
-`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is under way: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused with `409` while the roof is opening or closing or a close is waiting to start.
+`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is under way: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused the same way. While either runs, an open is refused (`busy`) and a close waits for it.
 
 ---
 
@@ -278,14 +278,14 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) when the request comes over the setup hotspot, which has no password, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe.
 
 
 ### `POST /api/roof/close`
 
 Close. Refused (`mountNotParked`) unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed, as the [safety inputs](../user-guide/safety-inputs.md) decide. During the close the park is checked every 20 ms; if it is lost the motor stops with a `parkInterlock` fault. The weather never blocks a close.
 
-A close always wins, as long as it would run (past the park check and the motion checks, and not already closed or closing): it cancels a scheduled restart (except the one that remounts a rewritten web UI) and stops an upload in progress (that upload fails with `409` "Upload stopped: the roof is closing"). Once a restart has passed its last check, a close is refused (`busy`, "The device is restarting") for the moment before the reset. If an upload, a settings save or an MQTT connect is still finishing, the close is accepted as waiting and starts as soon as it is done, within a few seconds (`roof.closePending` in the status); stop or open cancels it:
+A close always wins, as long as it would run (past the park check and the motion checks, and not already closed or closing): it cancels a scheduled restart (except the one that remounts a rewritten web UI) and stops an upload in progress (that upload fails with `409` "Upload stopped: the roof is closing"). Once a restart has passed its last check, open and close are refused (`restarting`, "The device is restarting") for the moment before the reset. If an upload, a settings save, a WiFi change or scan, or an MQTT connect is still finishing, the close is accepted as waiting and starts as soon as it is done, within a few seconds (`roof.closePending` in the status); stop or open cancels it:
 
 ```json
 { "success": true, "state": "open", "pending": true, "message": "Close starts once this has stopped: An upload is being written" }
@@ -323,7 +323,7 @@ curl -X POST http://roofroof.local/api/update/fs \
   -F "filesystem=@roofroof-l2-littlefs-v0.1.0.bin"
 ```
 
-Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. The image must fill the web UI partition exactly; one for a different layout gets 400 before anything is erased. Responses are as for `/api/update`, except that the automatic close doesn't refuse it (the firmware doesn't change), and its restart waits only for the roof.
+Use this endpoint for web UI assets only. It does not update firmware and does not erase NVS configuration. The image must fill the web UI partition exactly; one for a different layout gets 400 before anything is erased. Responses are as for `/api/update`; its restart can't be cancelled and waits only for the roof.
 
 Both upload endpoints need the password when protection is on. Keep RoofRoof on a trusted network and don't port-forward it.
 

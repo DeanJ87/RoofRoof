@@ -17,7 +17,8 @@ namespace SQM
     {
         enum class PlatformAction : uint8_t
         {
-            FlashWrite,       // a settings save, restore, NVS write or web UI upload
+            FlashWrite,       // a settings save, restore or NVS write
+            FilesystemUpload, // a web UI upload: always ends in a mandatory restart
             Restart,          // any restart but the one after a web UI upload
             MandatoryRestart, // after a web UI upload: remounts the filesystem
             FirmwareUpload,   // web or command-line
@@ -47,10 +48,12 @@ namespace SQM
         const char *holdName(HoldReason reason);
         const char *platformActionName(PlatformAction action);
 
-        // The setup hotspot has no password: an open that arrives over it is
-        // refused. Stop, close and clear-fault help the roof end closed and stay.
+        // The setup hotspot has no password: while it is on, open is refused
+        // (from any network: a client on the hotspot can reach the device's
+        // other addresses too). Stop, close and clear-fault help the roof end
+        // closed and stay.
         constexpr const char *HOTSPOT_REASON = "hotspot";
-        constexpr const char *HOTSPOT_TEXT = "Opening isn't available over the setup hotspot: use the home network";
-        bool hotspotRefuses(Roof::Command command, bool viaHotspot);
+        constexpr const char *HOTSPOT_TEXT = "Opening isn't available while the setup hotspot is on";
+        bool hotspotRefuses(Roof::Command command, bool hotspotOn);
     } // namespace RoofIo
 } // namespace SQM

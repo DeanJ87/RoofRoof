@@ -7,6 +7,7 @@
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
+#include <WiFi.h>
 
 // The roof's REST commands and its status section (spec 003 FR-013 to FR-016,
 // FR-020; contracts/roof-hardware.md). Every command calls requireAuth
@@ -58,10 +59,12 @@ namespace SQM
             sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
-        // The setup hotspot has no password: it can't open the roof (spec 010 FR-012).
-        if (RoofIo::hotspotRefuses(command, WebShared::arrivedViaHotspot(request)))
+        // The setup hotspot has no password: while it is on, the roof can't be
+        // opened (a client on it can reach the device's other addresses too;
+        // spec 010 FR-012).
+        if (RoofIo::hotspotRefuses(command, WebShared::hotspotOn()))
         {
-            Logger::warn(TAG, "Roof open over the setup hotspot refused");
+            Logger::warn(TAG, "Roof open refused: the setup hotspot is on");
             sendOutcome(request, RoofControl::Outcome{false, RoofIo::HOTSPOT_REASON, RoofIo::HOTSPOT_TEXT, roof->state()});
             return;
         }
@@ -94,6 +97,7 @@ namespace SQM
                 b.flashBusy = FlashGuard::busy();
                 b.flashWriting = FlashGuard::writing();
                 b.restartCommitted = restartCommitted();
+                b.networkChanging = wifiChanging.load() || wifiScanStarting.load() || WiFi.scanComplete() == WIFI_SCAN_RUNNING;
                 b.mqttConnecting = mqttClient != nullptr && mqttClient->connecting();
                 b.restartScheduled = restartScheduled();
                 b.restartCancellable = restartCancellable();

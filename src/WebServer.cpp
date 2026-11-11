@@ -66,8 +66,11 @@ namespace SQM
         void restartTimerCallback(void *)
         {
             portENTER_CRITICAL(&restartPlanLock);
+            const bool due = restartPlan.scheduled();
             const bool mandatory = restartPlan.mandatory();
             portEXIT_CRITICAL(&restartPlanLock);
+            if (!due)
+                return; // cancelled: don't re-arm (a new schedule starts the timer itself)
             // Committed under the roof's lock: no move starts after this, and
             // none is under way (spec 010 FR-002, FR-008).
             const PlatformGuard::RestartGo go = PlatformGuard::commitRestart(
@@ -92,6 +95,11 @@ namespace SQM
 
     // The request came in over the setup hotspot (not the home network): it
     // may be sent to the setup screen, and it may not open the roof (spec 010).
+    bool WebShared::hotspotOn()
+    {
+        return (WiFi.getMode() & WIFI_AP) != 0;
+    }
+
     bool WebShared::arrivedViaHotspot(AsyncWebServerRequest *request)
     {
         if ((WiFi.getMode() & WIFI_AP) == 0)
@@ -414,7 +422,10 @@ namespace SQM
         restartPlan.schedule(mandatory);
         portEXIT_CRITICAL(&restartPlanLock);
         esp_timer_stop(restartTimer);
-        if (esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL) != ESP_OK)
+        const esp_err_t started = esp_timer_start_once(restartTimer, static_cast<uint64_t>(delayMs) * 1000ULL);
+        // ESP_ERR_INVALID_STATE: the callback re-armed it in between; it is
+        // armed, and it runs the plan just recorded.
+        if (started != ESP_OK && started != ESP_ERR_INVALID_STATE)
         {
             Logger::error(TAG, "Failed to schedule restart");
             portENTER_CRITICAL(&restartPlanLock);

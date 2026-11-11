@@ -1,5 +1,7 @@
 #include "CloseSequence.h"
 
+#include "MotionGuards.h"
+
 // The transitions (specs/005-close-on-unsafe/data-model.md). Each phase's
 // function checks its conditions in the table's order.
 
@@ -392,7 +394,10 @@ namespace SQM
                 return CloseAnswer::Started;
             if (reason == RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked))
                 return CloseAnswer::ParkRefused;
-            if (reason == PERSON_STOP_REASON)
+            // A person's stop since the decision, or a restart about to happen
+            // (spec 010): not run, and not a failed close; the sequence goes back
+            // a step (after a restart it carries on from its RTC record).
+            if (reason == PERSON_STOP_REASON || reason == RoofIo::RESTARTING_REASON)
                 return CloseAnswer::Withdrawn;
             return CloseAnswer::Refused;
         }

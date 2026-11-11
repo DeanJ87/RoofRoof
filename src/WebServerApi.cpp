@@ -101,6 +101,14 @@ namespace SQM
         const char *password = jsonObj["password"];
         Logger::info(TAG, "Starting nonblocking connection to SSID: '%s'", ssid);
 
+        // Registered under the roof's lock: a close decided from here on waits
+        // until the attempt ends (at most WIFI_CONNECT_TIMEOUT_MS).
+        const RoofIo::HoldReason held = PlatformGuard::claim(RoofIo::PlatformAction::WifiChange, [this]() { wifiChanging = true; });
+        if (held != RoofIo::HoldReason::None)
+        {
+            request->send(409, "application/json", createErrorJson(RoofIo::holdText(held)).c_str());
+            return;
+        }
         pendingWifiSSID = ssid;
         pendingWifiPassword = password;
         wifiConnectActive = true;
@@ -159,7 +167,16 @@ namespace SQM
         if (n < 0)
         {
             WiFi.scanDelete();
-            if (WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING)
+            // Registered under the roof's lock; while it runs a close waits.
+            const RoofIo::HoldReason held = PlatformGuard::claim(RoofIo::PlatformAction::WifiScan, [this]() { wifiScanStarting = true; });
+            if (held != RoofIo::HoldReason::None)
+            {
+                request->send(409, "application/json", createErrorJson(RoofIo::holdText(held)).c_str());
+                return;
+            }
+            const bool scanning = WiFi.scanNetworks(true) == WIFI_SCAN_RUNNING;
+            wifiScanStarting = false;
+            if (scanning)
             {
                 request->send(202, "application/json", "{\"success\":true,\"scanning\":true,\"networks\":[]}");
             }
@@ -199,6 +216,9 @@ namespace SQM
         const wl_status_t status = WiFi.status();
         if (status == WL_CONNECTED)
         {
+            // Joined: the network is back, a waiting close may go (it must
+            // not wait for the save below, which waits for it).
+            wifiChanging = false;
             if (!wifiConnectConfigSaved)
             {
                 // The save writes the flash: never while the roof moves or a
@@ -231,6 +251,7 @@ namespace SQM
         {
             Logger::error(TAG, "WiFi connection timed out. Status: %d", status);
             WiFi.disconnect(false);
+            wifiChanging = false;
             wifiConnectActive = false;
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();

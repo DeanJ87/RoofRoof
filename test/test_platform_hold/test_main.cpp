@@ -20,6 +20,7 @@ namespace
 {
     const PlatformAction ALL_ACTIONS[] = {
         PlatformAction::FlashWrite,
+        PlatformAction::FilesystemUpload,
         PlatformAction::Restart,
         PlatformAction::MandatoryRestart,
         PlatformAction::FirmwareUpload,
@@ -38,7 +39,8 @@ namespace
     // Whether the close sequence holds this action (contracts/platform-hold.md).
     bool sequenceHolds(PlatformAction action)
     {
-        return action == PlatformAction::Restart || action == PlatformAction::FirmwareUpload || action == PlatformAction::WifiChange;
+        return action == PlatformAction::Restart || action == PlatformAction::FirmwareUpload ||
+               action == PlatformAction::FilesystemUpload || action == PlatformAction::WifiChange || action == PlatformAction::WifiScan;
     }
 
     PlatformState with(Roof::State roof, bool closeWaiting = false, bool sequenceBusy = false)
@@ -88,7 +90,9 @@ void test_mandatory_restart_ignores_sequence(void)
     // firmware keeps spec 005's RTC record, so it waits only for the roof.
     TEST_ASSERT_EQUAL(HoldReason::None, platformHold(PlatformAction::MandatoryRestart, with(Roof::State::Open, false, true)));
     TEST_ASSERT_EQUAL(HoldReason::None, platformHold(PlatformAction::FlashWrite, with(Roof::State::Open, false, true)));
-    TEST_ASSERT_EQUAL(HoldReason::None, platformHold(PlatformAction::WifiScan, with(Roof::State::Open, false, true)));
+    // A web UI upload always ends in a restart: it waits for the sequence at its start.
+    TEST_ASSERT_EQUAL(HoldReason::CloseSequence, platformHold(PlatformAction::FilesystemUpload, with(Roof::State::Open, false, true)));
+    TEST_ASSERT_EQUAL(HoldReason::CloseSequence, platformHold(PlatformAction::WifiScan, with(Roof::State::Open, false, true)));
     TEST_ASSERT_EQUAL(HoldReason::CloseSequence, platformHold(PlatformAction::Restart, with(Roof::State::Open, false, true)));
 }
 
@@ -111,6 +115,7 @@ void test_hold_texts_and_names(void)
     TEST_ASSERT_EQUAL_STRING("closeWaiting", holdName(HoldReason::CloseWaiting));
     TEST_ASSERT_EQUAL_STRING("closeSequence", holdName(HoldReason::CloseSequence));
     TEST_ASSERT_EQUAL_STRING("flashWrite", platformActionName(PlatformAction::FlashWrite));
+    TEST_ASSERT_EQUAL_STRING("filesystemUpload", platformActionName(PlatformAction::FilesystemUpload));
     TEST_ASSERT_EQUAL_STRING("restart", platformActionName(PlatformAction::Restart));
     TEST_ASSERT_EQUAL_STRING("mandatoryRestart", platformActionName(PlatformAction::MandatoryRestart));
     TEST_ASSERT_EQUAL_STRING("firmwareUpload", platformActionName(PlatformAction::FirmwareUpload));
@@ -126,7 +131,7 @@ void test_hotspot_refuses_only_open(void)
     for (Roof::Command any : {Roof::Command::Open, Roof::Command::Close, Roof::Command::Stop, Roof::Command::Abort})
         TEST_ASSERT_FALSE(hotspotRefuses(any, false));
     TEST_ASSERT_EQUAL_STRING("hotspot", HOTSPOT_REASON);
-    TEST_ASSERT_EQUAL_STRING("Opening isn't available over the setup hotspot: use the home network", HOTSPOT_TEXT);
+    TEST_ASSERT_EQUAL_STRING("Opening isn't available while the setup hotspot is on", HOTSPOT_TEXT);
 }
 
 // Spec 010's additions to spec 003's command blockers (MotionGuards).
@@ -174,6 +179,7 @@ void test_open_refused_close_deferred_during_short_write(void)
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Stop, b).action);
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
     TEST_ASSERT_EQUAL_STRING("A settings save is being written", blockerText(b));
+    TEST_ASSERT_EQUAL_STRING("busy", blockerReason(b));
     // With an upload as well, the upload is still asked to stop.
     b.flashBusy = true;
     TEST_ASSERT_TRUE(blockerDecision(Roof::Command::Close, b).stopFlash);
@@ -214,6 +220,8 @@ void test_committed_restart_refuses_moves(void)
     TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Close, only).action);
     TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Open, only).action);
     TEST_ASSERT_EQUAL_STRING("The device is restarting", blockerText(only));
+    TEST_ASSERT_EQUAL_STRING("restarting", blockerReason(only));
+    TEST_ASSERT_EQUAL_STRING("restarting", RESTARTING_REASON);
 
     plan.clear();
     TEST_ASSERT_FALSE(plan.committed());
@@ -221,6 +229,22 @@ void test_committed_restart_refuses_moves(void)
     plan.schedule(true);
     TEST_ASSERT_TRUE(plan.mandatory());
     TEST_ASSERT_TRUE(plan.commit());
+}
+
+void test_network_change_waited_for_like_a_write(void)
+{
+    // A WiFi change or scan can drop N.I.N.A.: a close waits for it, an open
+    // is refused, stop goes on (spec 010, review round 1).
+    Blockers b;
+    b.networkChanging = true;
+    TEST_ASSERT_EQUAL(BlockerAction::Refuse, blockerDecision(Roof::Command::Open, b).action);
+    const BlockerDecision close = blockerDecision(Roof::Command::Close, b);
+    TEST_ASSERT_EQUAL(BlockerAction::DeferClose, close.action);
+    TEST_ASSERT_FALSE(close.stopFlash);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Stop, b).action);
+    TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
+    TEST_ASSERT_EQUAL_STRING("The WiFi network is changing", blockerText(b));
+    TEST_ASSERT_EQUAL_STRING("busy", blockerReason(b));
 }
 
 int main(int, char **)
@@ -236,5 +260,6 @@ int main(int, char **)
     RUN_TEST(test_short_writes_count_as_busy_without_touching_the_upload);
     RUN_TEST(test_open_refused_close_deferred_during_short_write);
     RUN_TEST(test_committed_restart_refuses_moves);
+    RUN_TEST(test_network_change_waited_for_like_a_write);
     return UNITY_END();
 }

@@ -202,17 +202,19 @@ backing off after a failed attempt, or stood down):
 
 | Action | Roof opening or closing | A close waiting to start | Automatic close not idle |
 |---|---|---|---|
-| Settings save, restore without restart, web UI upload | refused | refused | allowed |
+| Settings save, restore without restart | refused | refused | allowed |
+| Web UI upload | refused | refused | refused |
 | Restart (from the Restart button, after a restore, a firmware upload or joining a network from the hotspot) | refused / waits | refused / waits | refused / waits |
 | Restart after a web UI upload (remounts the web UI) | waits | waits | runs |
 | Firmware upload (web or command line) | refused | refused | refused |
 | Change of WiFi network | refused | refused | refused |
-| WiFi scan | refused | refused | allowed |
+| WiFi scan | refused | refused | refused |
 
 "Refused" is `409` with the reason ("The roof is moving: stop it first, then try again", "A close
 is waiting to start: try again once the roof has closed", "The automatic close is under way: try
 again once the roof has closed or the weather is safe"). "Waits" is for a restart already
-scheduled: it is tried again every 0.2 s and runs once nothing holds it. The alerts pause state
+scheduled: it is tried again every 0.2 s and runs once nothing holds it (an ordinary restart also
+waits for an upload or a settings save to finish). The alerts pause state
 and the WiFi network saved after a join are written once the roof is at rest. Command-line OTA is
 only serviced while the roof is closed (it can't be stopped part-way) and is refused when it
 starts if the roof has moved since.
@@ -224,17 +226,19 @@ Whichever comes first, the other sees it.
 And before a move starts, **a close always wins**:
 
 - open is refused (`busy`) while anything writes the flash (an upload, command-line OTA, a
-  settings save or any other saved value, including the roof's own fault record), an MQTT connect
-  is under way or a restart is scheduled;
+  settings save or any other saved value, including the roof's own fault record), the WiFi network
+  is being changed or scanned, an MQTT connect is under way or a restart is scheduled;
 - a close that would run (the park is confirmed and the motion checks pass, and the roof isn't
   already closed or closing) cancels a scheduled restart and stops an upload at its next chunk; if
-  an upload, a flash write or an MQTT connect is still finishing, the close waits
+  an upload, a flash write, a WiFi change or scan, or an MQTT connect is still finishing, the
+  close waits
   (`roof.closePending`) and starts as soon as it is done, and no MQTT connect or restart starts
   meanwhile. An upload that stops sending counts as finished after 5 s, so a dropped connection
   never blocks a close. The restart after a web UI upload is never cancelled (the filesystem must
   be remounted); it waits until the roof stops;
-- once a restart has passed its last check, open and close are refused ("The device is
-  restarting") for the moment before the reset;
+- once a restart has passed its last check, open and close are refused (`restarting`, "The
+  device is restarting") for the moment before the reset; the automatic close treats that as "not
+  run" and carries on after the restart;
 - stop is never refused, and cancels a waiting close; so does an open that runs, and so does any
   fault (clearing it never starts the old close).
 

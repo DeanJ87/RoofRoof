@@ -327,11 +327,32 @@ void test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down()
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
 }
 
+void test_close_refused_for_a_restart_goes_back_without_back_off()
+{
+    // Spec 010: a committed restart refuses the close ("restarting"); that is
+    // neither a failed close nor a person's stop.
+    Rig r;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100).action);
+    const Decision d = r.seq.closeAnswered(answerFor(false, "restarting"));
+    TEST_ASSERT_EQUAL(Event::None, d.event);
+    TEST_ASSERT_FALSE(d.alert);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    TEST_ASSERT_EQUAL(Event::None, r.at(T0 + 4200).event); // no stand-down
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 8300).action); // the park held 4 s again
+}
+
 void test_answer_for_the_roofs_outcome()
 {
     TEST_ASSERT_EQUAL(CloseAnswer::Started, answerFor(true, ""));
     TEST_ASSERT_EQUAL(CloseAnswer::ParkRefused, answerFor(false, RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked)));
     TEST_ASSERT_EQUAL(CloseAnswer::ParkRefused, answerFor(false, "mountNotParked"));
+    // A restart about to happen (spec 010): not a failed close, no back-off.
+    TEST_ASSERT_EQUAL(CloseAnswer::Withdrawn, answerFor(false, "restarting"));
+    TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "busy"));
     TEST_ASSERT_EQUAL(CloseAnswer::Withdrawn, answerFor(false, PERSON_STOP_REASON));
     TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "supplyLow"));
     TEST_ASSERT_EQUAL(CloseAnswer::Refused, answerFor(false, "notStarted"));
@@ -544,6 +565,7 @@ int main(int, char **)
     RUN_TEST(test_refused_close_alerts_and_backs_off);
     RUN_TEST(test_a_parked_mount_held_back_by_the_back_off_is_not_a_park_failure);
     RUN_TEST(test_withdrawn_close_returns_to_waiting_and_the_stop_stands_down);
+    RUN_TEST(test_close_refused_for_a_restart_goes_back_without_back_off);
     RUN_TEST(test_answer_for_the_roofs_outcome);
     RUN_TEST(test_answers_outside_a_close_are_ignored);
     RUN_TEST(test_close_started_answer_keeps_closing);

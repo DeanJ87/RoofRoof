@@ -109,7 +109,9 @@ namespace SQM
         BlockerDecision blockerDecision(Roof::Command command, const Blockers &b)
         {
             BlockerDecision d;
-            const bool flash = b.flashBusy || b.flashWriting;
+            // A WiFi change or scan is waited for like a flash write: a close
+            // started under it could lose N.I.N.A. part-way (spec 010).
+            const bool flash = b.flashBusy || b.flashWriting || b.networkChanging;
             if (command == Roof::Command::Open)
             {
                 if (flash || b.mqttConnecting || b.restartScheduled || b.restartCommitted)
@@ -138,11 +140,18 @@ namespace SQM
                 return "An upload is being written";
             if (b.flashWriting)
                 return "A settings save is being written";
+            if (b.networkChanging)
+                return "The WiFi network is changing";
             if (b.mqttConnecting)
                 return "MQTT is connecting";
             if (b.restartScheduled)
                 return "A restart is scheduled";
             return "";
+        }
+
+        const char *blockerReason(const Blockers &b)
+        {
+            return b.restartCommitted ? RESTARTING_REASON : "busy";
         }
 
         bool commandHeaderValid(const char *value)

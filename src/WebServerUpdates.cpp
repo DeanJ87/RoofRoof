@@ -322,11 +322,12 @@ namespace SQM
             return false;
         if (index == 0)
         {
-            // Checked and begun under the roof's lock (spec 010): a firmware
-            // upload also waits for the close sequence (a new firmware may not
-            // read its RTC record), a web UI upload only for the roof.
+            // Checked and begun under the roof's lock (spec 010). Both kinds
+            // also wait for the close sequence: a new firmware may not read its
+            // RTC record, and a web UI upload ends in a restart nothing can cancel.
             RoofIo::HoldReason why = RoofIo::HoldReason::None;
-            const RoofIo::PlatformAction action = firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FlashWrite;
+            const RoofIo::PlatformAction action =
+                firmware ? RoofIo::PlatformAction::FirmwareUpload : RoofIo::PlatformAction::FilesystemUpload;
             state->token = PlatformGuard::beginUpload(action, why);
             if (state->token == 0)
             {
