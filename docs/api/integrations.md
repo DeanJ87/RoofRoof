@@ -4,25 +4,25 @@ description: "Every way to get data out of RoofRoof today: REST, WebSocket, MQTT
 
 # Integrations
 
-RoofRoof exposes the device's data through these integration paths. The roof's state and readings are in the status (REST and WebSocket), and the REST API and the ASCOM Alpaca Dome can open, close and stop it; the roof's MQTT topics and Home Assistant cover *come in later specs* and will use the same paths.
+RoofRoof exposes the device's data through these integration paths. The roof's state and readings are in the status (REST and WebSocket), and the REST API and the ASCOM Alpaca Dome can open, close and stop it; over MQTT the roof is published as one retained document, and, when switched on, Home Assistant's roof cover can open, close and stop it with an Alpaca client's limits.
 
 ## Supported integration paths
 
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: false
-fingerprint: 77a17130d829f396
+fingerprint: e9cbd400c39f4b1e
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: Integration paths
-    accDescr: The device status feeds four paths. REST is pulled by scripts and can command the roof; WebSocket pushes the status live to the dashboard and apps; MQTT publishes availability and alerts to a broker for Home Assistant; Alpaca serves the roof as a Dome that N.I.N.A. and other clients can open, close and stop; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict and N.I.N.A.'s mount state.
+    accDescr: The device status feeds four paths. REST is pulled by scripts and can command the roof; WebSocket pushes the status live to the dashboard and apps; MQTT publishes the roof's state, availability and alerts to a broker for Home Assistant and, when switched on, takes its open, close and stop commands; Alpaca serves the roof as a Dome that N.I.N.A. and other clients can open, close and stop; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict and N.I.N.A.'s mount state.
     DATA["Device status<br/>and alerts"]
     DATA --> REST["REST API<br/>pull, any time;<br/>roof open, close, stop"]
     DATA --> WS["WebSocket<br/>push: status every 2 s<br/>and on a roof change"]
-    DATA --> MQTT["MQTT<br/>publish: availability, alerts,<br/>alerts/armed"]
+    DATA --> MQTT["MQTT<br/>publish: roof state, availability, alerts;<br/>roof commands when switched on"]
     DATA --> ALPACA["ASCOM Alpaca<br/>Dome: shutter state;<br/>open, close, stop"]
     DATA --> ALERTS["Alerts<br/>pushed on events"]
     REST --> SCRIPTS["Scripts, Home Assistant REST"]
@@ -43,7 +43,7 @@ flowchart LR
 
     - **REST API**: pulled any time, by scripts and Home Assistant's REST integrations; with the password, it also opens, closes and stops the roof and clears a fault.
     - **WebSocket**: pushed live, the status every 2 seconds and within 250 ms of a roof state or fault change, to the dashboard and apps.
-    - **MQTT**: published to your broker - availability, alerts and the alerts pause switch - for Home Assistant or Node-RED.
+    - **MQTT**: published to your broker - the roof's state, availability, alerts and the alerts pause switch - for Home Assistant (a roof cover with sensors) or Node-RED; with roof commands switched on, open, close and stop come back the same way, with an Alpaca client's limits.
     - **ASCOM Alpaca**: the roof as a Dome for N.I.N.A. and other Alpaca clients: the shutter state, and open, close and stop through the same checks as the web UI's.
     - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook or MQTT.
 
@@ -67,7 +67,7 @@ Real-time streaming over a persistent connection. Connect to `/ws/status` for th
 
 ### MQTT
 
-Configure RoofRoof to publish to an MQTT broker: availability, alerts and an alerts pause/resume switch for Home Assistant. See [MQTT Integration](../user-guide/mqtt.md) for setup.
+Configure RoofRoof to publish to an MQTT broker: the roof's state document, availability, alerts and an alerts pause/resume switch, with Home Assistant discovery of a roof cover and its sensors, and (switched on separately) open, close and stop commands. See [MQTT Integration](../user-guide/mqtt.md) for setup.
 
 ### ASCOM Alpaca
 

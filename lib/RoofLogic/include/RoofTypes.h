@@ -47,6 +47,7 @@ namespace SQM
             Person,    // the authenticated web UI
             Automatic, // the controller itself (spec 005's close)
             Client,    // an ASCOM Alpaca client (spec 006): no login, so not a person
+            Mqtt,      // a command on the MQTT roof topic (spec 008): no login, so not a person
         };
 
         // The Hall reading after confirmation (HallFilter).

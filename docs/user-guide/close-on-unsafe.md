@@ -126,8 +126,9 @@ built-in message added under it.
 !!! warning "A stop is respected"
     The automatic close never overrides a person's stop: whoever pressed it may be at the roof.
     A person's stop is the web UI's or the REST API's (logged in). An imaging app's Stop over
-    [Alpaca](alpaca.md) can't stop a close while the weather isn't safe: Alpaca has no password, so it
-    is refused.
+    [Alpaca](alpaca.md), or a STOP over [MQTT](mqtt.md#roof-commands) (Home Assistant), can't stop a
+    close while the weather isn't safe: neither has a password, so it is refused, and it never
+    counts as a person's stop.
     The stand-down, and an attempt's running time, survive a restart of the device (a crash, a
     reset, a brown-out), so a board that keeps restarting in the rain still alerts in time; not a
     power cut, and not

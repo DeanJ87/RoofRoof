@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <cstring>
 #include <time.h>
 
 namespace SQM
@@ -21,9 +22,15 @@ namespace SQM
     void MQTTClient::dispatch(const char *topic, const uint8_t *payload, unsigned int length)
     {
         const std::string text(reinterpret_cast<const char *>(payload), length);
-        if (commandHandler && config.topic + "/" + commandSubtopic == topic)
+        for (const auto &command : commands)
         {
-            commandHandler(text);
+            if (config.topic + "/" + command.first != topic)
+                continue;
+            // PubSubClient doesn't pass the retained flag: read it from where
+            // `topic` and `payload` sit in its buffer (spec 008 research R2).
+            const RoofIo::Mqtt::Delivery delivery =
+                RoofIo::Mqtt::deliveryOf(reinterpret_cast<const uint8_t *>(topic), std::strlen(topic), payload, length);
+            command.second(text, delivery);
             return;
         }
         if (watchHandler)
@@ -33,9 +40,9 @@ namespace SQM
     // The command topic and every watched topic, after a connect.
     void MQTTClient::subscribeAll()
     {
-        if (commandHandler)
+        for (const auto &command : commands)
         {
-            const std::string topic = config.topic + "/" + commandSubtopic;
+            const std::string topic = config.topic + "/" + command.first;
             mqttClient->subscribe(topic.c_str(), 1);
         }
         for (const std::string &topic : watchedTopics)
@@ -91,15 +98,28 @@ namespace SQM
         mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
+        // Spec 008: a write to a half-open broker link gives up and drops the
+        // connection, so a publish never holds the main loop for seconds (the
+        // roof's checks need it every 5 s): 250 ms while the roof is busy (the
+        // reconnect hold applies), 1 s at rest so the burst after a connect
+        // (discovery, the state document) gets through a slow link.
+        wifiClient.setWriteBudget([this]() { return passBudget.writeBudgetMs(millis(), busy()); });
     }
 
     void MQTTClient::onCommand(const std::string &subtopic, CommandHandler handler)
     {
-        commandSubtopic = subtopic;
-        commandHandler = std::move(handler);
+        bool replaced = false;
+        for (auto &command : commands)
+            if (command.first == subtopic)
+            {
+                command.second = std::move(handler);
+                replaced = true;
+            }
+        if (!replaced)
+            commands.emplace_back(subtopic, std::move(handler));
         if (config.enabled && mqttClient->connected())
         {
-            const std::string topic = config.topic + "/" + commandSubtopic;
+            const std::string topic = config.topic + "/" + subtopic;
             mqttClient->subscribe(topic.c_str(), 1);
         }
     }
@@ -112,9 +132,32 @@ namespace SQM
             if (!mqttClient->connected())
                 reconnect();
             else
-                mqttClient->loop();
+                runLoop();
         }
         publishState();
+    }
+
+    bool MQTTClient::busy() const
+    {
+        return connectHold && connectHold();
+    }
+
+    // PubSubClient's loop (reads, keepalive, PUBACKs). While the roof is busy
+    // it runs only with pass time left and with nothing or a whole packet
+    // buffered, reads held to that, so it never waits for the rest of a
+    // packet (spec 008: the whole MQTT pass stays within its budget).
+    void MQTTClient::runLoop()
+    {
+        if (!busy())
+        {
+            mqttClient->loop();
+            return;
+        }
+        if (!passBudget.mayRead(millis(), true) || !wifiClient.readReady())
+            return;
+        wifiClient.holdReads(true);
+        mqttClient->loop();
+        wifiClient.holdReads(false);
     }
 
     void MQTTClient::publishState()

@@ -1,6 +1,9 @@
 #include "DualStackClient.h"
 
 #include "Logger.h"
+#include "RoofMqtt.h"
+
+#include <algorithm>
 
 #include <cerrno>
 #include <cstring>
@@ -98,5 +101,126 @@ namespace SQM
         // WiFiClient takes over the connected socket (and closes it in stop()).
         WiFiClient::operator=(WiFiClient(fd));
         return 1;
+    }
+    size_t DualStackClient::write(const uint8_t *buf, size_t size)
+    {
+        if (!writeBudget)
+            return WiFiClient::write(buf, size);
+        const uint32_t writeBudgetMs = writeBudget();
+        const int socket = fd();
+        if (socket < 0 || !connected())
+            return 0;
+        if (writeBudgetMs == 0)
+        {
+            Logger::warn("Net", "No time left for a %u-byte write: closing the connection", static_cast<unsigned>(size));
+            stop();
+            return 0;
+        }
+        size_t sent = 0;
+        const uint32_t start = millis();
+        while (sent < size)
+        {
+            const int res = ::send(socket, buf + sent, size - sent, MSG_DONTWAIT);
+            if (res > 0)
+            {
+                sent += static_cast<size_t>(res);
+                continue;
+            }
+            if (res < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+                break;
+            if (millis() - start >= writeBudgetMs)
+                break;
+            // Wait a little for room, never past the budget.
+            fd_set set;
+            FD_ZERO(&set);
+            FD_SET(socket, &set);
+            timeval wait{0, 20000};
+            ::select(socket + 1, nullptr, &set, nullptr, &wait);
+        }
+        if (sent < size)
+        {
+            // A link that can't take a few KB in the budget is gone or going:
+            // close it, so later writes fail at once instead of waiting too.
+            Logger::warn(
+                "Net",
+                "Write of %u bytes stopped after %u: closing the connection",
+                static_cast<unsigned>(size),
+                static_cast<unsigned>(sent));
+            stop();
+        }
+        return sent;
+    }
+    // Whatever the socket has now, without waiting, up to RX_LIMIT buffered.
+    void DualStackClient::fillRx()
+    {
+        if (rxPos > 0)
+        {
+            rx.erase(rx.begin(), rx.begin() + static_cast<std::ptrdiff_t>(rxPos));
+            rxPos = 0;
+        }
+        const int socket = fd();
+        while (socket >= 0 && rx.size() < RX_LIMIT)
+        {
+            uint8_t chunk[256];
+            const size_t room = RX_LIMIT - rx.size();
+            const int got = ::recv(socket, chunk, room < sizeof(chunk) ? room : sizeof(chunk), MSG_DONTWAIT);
+            if (got <= 0)
+                return;
+            rx.insert(rx.end(), chunk, chunk + got);
+        }
+    }
+
+    bool DualStackClient::readReady()
+    {
+        if (!writeBudget)
+            return true;
+        fillRx();
+        const size_t buffered = rx.size() - rxPos;
+        return buffered == 0 || RoofIo::Mqtt::packetComplete(rx.data() + rxPos, buffered);
+    }
+
+    int DualStackClient::available()
+    {
+        if (!writeBudget)
+            return WiFiClient::available();
+        if (!readsHeld && rxPos == rx.size())
+            fillRx();
+        return static_cast<int>(rx.size() - rxPos);
+    }
+
+    int DualStackClient::read()
+    {
+        uint8_t b = 0;
+        return read(&b, 1) == 1 ? b : -1;
+    }
+
+    int DualStackClient::read(uint8_t *buf, size_t size)
+    {
+        if (!writeBudget)
+            return WiFiClient::read(buf, size);
+        if (!readsHeld && rxPos == rx.size())
+            fillRx();
+        const size_t take = std::min(size, rx.size() - rxPos);
+        if (take == 0)
+            return -1;
+        std::memcpy(buf, rx.data() + rxPos, take);
+        rxPos += take;
+        return static_cast<int>(take);
+    }
+
+    int DualStackClient::peek()
+    {
+        if (!writeBudget)
+            return WiFiClient::peek();
+        if (!readsHeld && rxPos == rx.size())
+            fillRx();
+        return rxPos < rx.size() ? rx[rxPos] : -1;
+    }
+
+    void DualStackClient::stop()
+    {
+        rx.clear();
+        rxPos = 0;
+        WiFiClient::stop();
     }
 } // namespace SQM

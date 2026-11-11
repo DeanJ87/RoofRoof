@@ -4,6 +4,7 @@
 #include "Ipv6Network.h"
 #include "Logger.h"
 #include "RoofControl.h"
+#include "RoofMqtt.h"
 #include "WebServer.h"
 #include "version.h"
 #include <ArduinoJson.h>
@@ -23,22 +24,51 @@ extern uint32_t bootCount;
 
 namespace SQM
 {
+    namespace
+    {
+        // Which entities are announced (spec 008 adds the roof's).
+        HaDiscovery::Groups discoveryGroups(const Config &cfg)
+        {
+            HaDiscovery::Groups groups;
+            groups.alertsSwitch = cfg.alerts.enabled; // dep: D-13
+            groups.roofCommands = cfg.mqtt.roofCommands;
+            groups.currentSense = cfg.roof.currentSenseEnabled;
+            return groups;
+        }
+
+        // Everything discovery depends on: rebuilt from scratch when it changes.
+        std::string discoveryKeyOf(bool on, const HaDiscovery::Device &device, const HaDiscovery::Groups &groups)
+        {
+            std::string key = std::to_string(on) + device.name + device.baseTopic + device.prefix;
+            for (const bool group : {groups.alertsSwitch, groups.roofCommands, groups.currentSense})
+                key += group ? '1' : '0';
+            return key;
+        }
+    } // namespace
+
+    // The roof moves, a close waits or the automatic close is attempting: a
+    // burst of retained configs must not hold the main loop then (spec 008
+    // research R4).
+    bool WebServer::roofBusyForMqtt() const
+    {
+        const bool attempting = closePhase && RoofIo::Mqtt::closeAttempting(closePhase());
+        return roof != nullptr && (roof->moving() || roof->closeWaiting() || attempting);
+    }
+
     // Home Assistant discovery whenever the connection or the settings change.
     void WebServer::publishDiscovery()
     {
-        if (mqttClient == nullptr || !mqttClient->isConnected())
+        if (mqttClient == nullptr || !mqttClient->isConnected() || roofBusyForMqtt())
             return;
         const Config &cfg = getConfigCallback();
         const MQTTConfig &mqtt = cfg.mqtt;
-        HaDiscovery::Groups groups;
-        groups.alertsSwitch = cfg.alerts.enabled; // dep: D-13
+        const HaDiscovery::Groups groups = discoveryGroups(cfg);
 
         // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
         snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
         HaDiscovery::Device device{std::string("roofroof_") + mac, cfg.deviceName, FIRMWARE_VERSION, mqtt.topic, mqtt.discoveryPrefix};
-        std::string key = std::to_string(mqtt.homeAssistant) + device.name + device.baseTopic + device.prefix;
-        key += groups.alertsSwitch ? '1' : '0';
+        const std::string key = discoveryKeyOf(mqtt.homeAssistant, device, groups);
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
 

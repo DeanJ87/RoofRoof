@@ -276,6 +276,85 @@ void test_status_rain_not_fitted(void)
     TEST_ASSERT_EQUAL_STRING("raining", write(s)["roof"]["rainContact"]);
 }
 
+// Spec 008 FR-011: the checks the commands use, and the automatic close's phase.
+void test_status_checks_and_phase(void)
+{
+    Snapshot s = closedRoof();
+    DynamicJsonDocument fresh = write(s);
+    TEST_ASSERT_EQUAL_STRING("idle", fresh["roof"]["closePhase"]);
+    TEST_ASSERT_EQUAL_STRING("unknown", fresh["roof"]["weather"]);
+    TEST_ASSERT_FALSE(fresh["roof"]["parkConfirmed"].as<bool>());
+    s.closePhase = "waitPark";
+    s.weather = Safety::Verdict::Unsafe;
+    s.weatherText = "unsafe: rain";
+    s.parkConfirmed = false;
+    s.parkText = "Mount not parked: park not confirmed";
+    DynamicJsonDocument doc = write(s);
+    JsonObject roof = doc["roof"];
+    TEST_ASSERT_EQUAL_STRING("waitPark", roof["closePhase"]);
+    TEST_ASSERT_EQUAL_STRING("unsafe", roof["weather"]);
+    TEST_ASSERT_EQUAL_STRING("unsafe: rain", roof["weatherText"]);
+    TEST_ASSERT_FALSE(roof["parkConfirmed"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("Mount not parked: park not confirmed", roof["parkText"]);
+    s.closePhase = nullptr; // never left unset by the firmware; still a name
+    s.weather = Safety::Verdict::Safe;
+    s.parkConfirmed = true;
+    DynamicJsonDocument other = write(s);
+    TEST_ASSERT_EQUAL_STRING("idle", other["roof"]["closePhase"]);
+    TEST_ASSERT_EQUAL_STRING("safe", other["roof"]["weather"]);
+    TEST_ASSERT_TRUE(other["roof"]["parkConfirmed"].as<bool>());
+}
+
+// The park is confirmed only when the close gate would pass now (constitution II).
+void test_apply_checks_follows_the_gates(void)
+{
+    GateInputs g;
+    Snapshot s;
+    applyChecks(s, g);
+    TEST_ASSERT_TRUE(s.weather == Safety::Verdict::Unknown);
+    TEST_ASSERT_EQUAL_STRING("no verdict yet", s.weatherText.c_str());
+    TEST_ASSERT_FALSE(s.parkConfirmed);
+    TEST_ASSERT_EQUAL_STRING("Mount not parked: park not confirmed", s.parkText.c_str());
+
+    g.weather = Safety::Verdict::Safe;
+    g.weatherText = "safe";
+    g.parked = true;
+    g.parkText = "parked (N.I.N.A. AtPark)";
+    applyChecks(s, g);
+    TEST_ASSERT_TRUE(s.weather == Safety::Verdict::Safe);
+    TEST_ASSERT_EQUAL_STRING("safe", s.weatherText.c_str());
+    TEST_ASSERT_TRUE(s.parkConfirmed);
+    TEST_ASSERT_EQUAL_STRING("parked (N.I.N.A. AtPark)", s.parkText.c_str());
+
+    // N.I.N.A. says parked but a fitted switch is open: not confirmed, and why.
+    g.fittedSwitches = 1;
+    g.switch1 = Contact::Open;
+    applyChecks(s, g);
+    TEST_ASSERT_FALSE(s.parkConfirmed);
+    TEST_ASSERT_EQUAL_STRING(describeGate(GateRefusal::MountNotParked, g).c_str(), s.parkText.c_str());
+    TEST_ASSERT_TRUE(s.parkText.find("switch 1") != std::string::npos);
+}
+
+// Long texts (N.I.N.A.'s or SQMeter's own error details) are cut, never inside a UTF-8 character.
+void test_apply_checks_caps_long_texts(void)
+{
+    GateInputs g;
+    g.weather = Safety::Verdict::Unsafe;
+    g.weatherText = std::string(500, 'w');
+    g.parked = false;
+    g.parkText = std::string(196, 'p') + "\xC3\xA9\xC3\xA9" + std::string(300, 'p'); // "é" across the cut
+    Snapshot s;
+    applyChecks(s, g);
+    TEST_ASSERT_EQUAL_size_t(MAX_CHECK_TEXT, s.weatherText.size());
+    TEST_ASSERT_EQUAL_STRING("...", s.weatherText.substr(s.weatherText.size() - 3).c_str());
+    TEST_ASSERT_TRUE(s.parkText.size() <= MAX_CHECK_TEXT);
+    const std::string kept = s.parkText.substr(0, s.parkText.size() - 3);
+    TEST_ASSERT_TRUE((static_cast<unsigned char>(kept.back()) & 0xC0) != 0xC0); // no lead byte left without its tail
+    g.weatherText = std::string(MAX_CHECK_TEXT, 'x');
+    applyChecks(s, g);
+    TEST_ASSERT_EQUAL_STRING(g.weatherText.c_str(), s.weatherText.c_str()); // at the limit: unchanged
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -290,5 +369,8 @@ int main(int, char **)
     RUN_TEST(test_status_fault_with_cause_and_text);
     RUN_TEST(test_status_fault_measured_nan_is_null);
     RUN_TEST(test_status_rain_not_fitted);
+    RUN_TEST(test_status_checks_and_phase);
+    RUN_TEST(test_apply_checks_follows_the_gates);
+    RUN_TEST(test_apply_checks_caps_long_texts);
     return UNITY_END();
 }

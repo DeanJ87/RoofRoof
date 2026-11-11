@@ -13,6 +13,12 @@ namespace SQM
                 return command == Roof::Command::Stop || command == Roof::Command::Abort;
             }
 
+            // Who a refusal says can't do it.
+            const char *remoteName(Roof::Origin origin)
+            {
+                return origin == Roof::Origin::Mqtt ? "an MQTT command" : "an imaging app";
+            }
+
             // The roof is closing, about to, or was stopped part-way while closing.
             bool closeUnderWay(const Roof::Status &status, const CommandContext &context)
             {
@@ -20,6 +26,11 @@ namespace SQM
                        (status.state == Roof::State::Stopped && status.target == Roof::End::Closed);
             }
         } // namespace
+
+        bool remoteOrigin(Roof::Origin origin)
+        {
+            return origin == Roof::Origin::Client || origin == Roof::Origin::Mqtt;
+        }
 
         CommandCheck checkCommand(
             Roof::Command command,
@@ -29,7 +40,7 @@ namespace SQM
             const CommandContext &context)
         {
             const Roof::Status &status = controller.status();
-            const bool client = origin == Roof::Origin::Client;
+            const bool client = remoteOrigin(origin);
             if (isStop(command))
             {
                 const bool closing = status.state == Roof::State::Closing || context.closePending;
@@ -38,8 +49,8 @@ namespace SQM
                         false,
                         "unsafeClose",
                         "The roof is closing and the weather isn't safe (" +
-                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) +
-                            "): an imaging app can't stop it (Stop in the web UI can)"};
+                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) + "): " + remoteName(origin) +
+                            " can't stop it (Stop in the web UI can)"};
                 return CommandCheck{};
             }
             if (command != Roof::Command::Open && command != Roof::Command::Close)
@@ -49,7 +60,9 @@ namespace SQM
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};
             if (client && command == Roof::Command::Open && closeUnderWay(status, context))
                 return CommandCheck{
-                    false, "closing", "The roof is closing or was stopped while closing: an imaging app can't reverse a close"};
+                    false,
+                    "closing",
+                    std::string("The roof is closing or was stopped while closing: ") + remoteName(origin) + " can't reverse a close"};
             const Roof::CommandResult result = controller.check(command, origin);
             if (!result.accepted)
                 return CommandCheck{false, Roof::refusalName(result.reason), describeRefusal(result)};

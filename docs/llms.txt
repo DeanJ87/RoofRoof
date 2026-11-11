@@ -1,6 +1,6 @@
 # RoofRoof
 
-> RoofRoof is ESP32 firmware and a web UI for an observatory roll-off-roof controller, in development. It was started as a copy of the author's SQMeter project with the sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check removed. The device serves its own browser UI, a REST API described by OpenAPI 3.1, live WebSocket status, MQTT with Home Assistant discovery, the roof as an ASCOM Alpaca Dome, and push alerts (ntfy, Pushover, webhook, MQTT). It opens and closes the roof on a person's or an Alpaca client's command within its safety rules, and closes it by itself onto a parked mount when the weather turns unsafe.
+> RoofRoof is ESP32 firmware and a web UI for an observatory roll-off-roof controller, in development. It was started as a copy of the author's SQMeter project with the sensors, safety monitor, sky and weather logic, Bluetooth, display, battery, language packs and GitHub release check removed. The device serves its own browser UI, a REST API described by OpenAPI 3.1, live WebSocket status, MQTT with Home Assistant discovery, the roof as an ASCOM Alpaca Dome, and push alerts (ntfy, Pushover, webhook, MQTT). It publishes the roof's state over MQTT with a Home Assistant cover, and opens and closes the roof on a person's, an Alpaca client's or (when switched on) an MQTT command within its safety rules, and closes it by itself onto a parked mount when the weather turns unsafe.
 
 Other facts, to avoid common mistakes:
 

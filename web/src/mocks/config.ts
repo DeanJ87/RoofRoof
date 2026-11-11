@@ -29,6 +29,7 @@ export const mockConfig: Config = {
     topic: 'roofroof',
     publishIntervalMs: 60000,
     homeAssistant: { enabled: false, discoveryPrefix: 'homeassistant' },
+    roofCommands: false,
   },
   ota: {
     enabled: false,

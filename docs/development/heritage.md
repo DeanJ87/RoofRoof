@@ -39,11 +39,12 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `WebServerBackup.cpp`, `WebServerShared.h` | same | Changed: small edits for the removed settings | No |
 | `ConfigStore.cpp` | same | Changed: removed settings dropped from load and save | No |
 | `TimeManager.cpp/.h` | same | Changed: NTP only, GPS time removed | No |
-| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics; `updateConfig()` only hands the settings over and `handle()` applies them on the main loop, with the client's limits set again when MQTT is switched on (spec 010) | Yes: settings applied on the loop |
+| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics; `updateConfig()` only hands the settings over and `handle()` applies them on the main loop, with the client's limits set again when MQTT is switched on (spec 010); several command subtopics, each handler told whether the message was retained, read from PubSubClient 2.8.0's receive buffer (`RoofIo::Mqtt::deliveryOf`, spec 008; the library is pinned for it) | Yes: settings applied on the loop; several command topics and the retained flag |
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
 | `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
-| `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
+| `DualStackClient.cpp/.h` | same | Changed: an optional write budget (`setWriteBudget`), used by the MQTT client, so a write to a half-open link gives up after 250 ms while the roof is busy (1 s at rest) and closes the connection instead of waiting up to 10 s, and, with the budget set, its own non-blocking read buffer so the MQTT client never waits for the rest of a message while the roof is busy (spec 008) | Yes |
+| `Ipv6Network`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
 | `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003); pin map | No |
 | `RoofControl.h`, `RoofControl.cpp`, `RoofControlTask.cpp`, `RoofLocked.h`, `RoofFaultStore.cpp/.h`, `WebServerRoof.cpp` | none | New (spec 003): the roof's control task, watchdog, inputs, stored fault, REST commands and status section | No |
@@ -65,7 +66,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | SettingsDeps | `lib/SettingsDeps` | Changed: catalogue cut to the settings that remain | No |
 | DriverLogic | none | New: what the motor driver's inputs must be for each command | No |
 | RoofLogic | none | New: the roof's state machine, speed profile, timeouts, motion faults and fault latch (spec 002) | No |
-| HaDiscovery | none | New: Home Assistant MQTT discovery entities | Yes |
+| HaDiscovery | none | New: Home Assistant MQTT discovery entities; spec 008 adds the roof's cover, sensors and fault sensor, read from one retained state document with templates, and entity fields for units, classes and diagnostics | Yes |
 | NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
 | SafetyInputLogic | none | New (spec 004): SQMeter reply parsing, the weather verdict and the park rule | No |
 | RoofIoLogic | none | New (spec 003): the roof hardware layer's decisions: reading scaling, switch inputs, watchdog rule, stored fault record, park and weather gates, settings-save guard, wording, status section | No |

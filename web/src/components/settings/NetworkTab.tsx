@@ -178,6 +178,19 @@ const MqttTest: FunctionalComponent<{ config: SettingsTabProps['config']; test: 
   );
 };
 
+// Open, close and stop over MQTT (spec 008): off unless switched on.
+const RoofCommandsGroup: FunctionalComponent<SettingsTabProps> = ({ config, update }) => (
+  <Group title={t('settings.network.roofCommands')}>
+    <Toggle
+      dataField="mqttRoofCommands"
+      label={t('settings.network.acceptRoofCommands')}
+      checked={config.mqtt.roofCommands ?? false}
+      onChange={(v) => update(['mqtt', 'roofCommands'], v)}
+      hint={t('settings.network.roofCommandsHint', { base: config.mqtt.topic || 'roofroof' })}
+    />
+  </Group>
+);
+
 // Home Assistant MQTT discovery.
 const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
   const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
@@ -256,6 +269,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
             <MqttFields {...props} />
             <MqttTest config={config} test={mqttTest} />
 
+            <RoofCommandsGroup {...props} />
             <HomeAssistantGroup {...props} />
           </>
         )}
