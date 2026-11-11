@@ -14,6 +14,7 @@ namespace SQM
             // Set once in setup() before any other task can ask.
             RoofControl *theRoof = nullptr;
             std::function<bool()> sequenceProbe;
+            std::function<bool()> committedProbe;
 
             bool sequenceBusy()
             {
@@ -74,10 +75,11 @@ namespace SQM
             }
         } // namespace
 
-        void begin(RoofControl *roof, std::function<bool()> busy)
+        void begin(RoofControl *roof, std::function<bool()> busy, std::function<bool()> restartCommitted)
         {
             theRoof = roof;
             sequenceProbe = std::move(busy);
+            committedProbe = std::move(restartCommitted);
         }
 
         RoofIo::HoldReason hold(RoofIo::PlatformAction action)
@@ -96,6 +98,13 @@ namespace SQM
                 action,
                 [this]()
                 {
+                    // A committed restart is moments away: don't start a write
+                    // it would cut off (reported as the roof being busy; retried).
+                    if (committedProbe && committedProbe())
+                    {
+                        refusedForRestart = true;
+                        return;
+                    }
                     FlashGuard::holdShort();
                     held = true;
                 });
@@ -105,6 +114,11 @@ namespace SQM
         {
             if (held)
                 FlashGuard::releaseShort();
+        }
+
+        RoofIo::HoldReason FlashWrite::refused() const
+        {
+            return refusedForRestart ? RoofIo::HoldReason::Moving : reason;
         }
 
         uint32_t beginUpload(RoofIo::PlatformAction action, RoofIo::HoldReason &why, bool closedOnly)

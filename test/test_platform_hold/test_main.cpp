@@ -215,6 +215,12 @@ void test_committed_restart_refuses_moves(void)
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Stop, b).action);
     TEST_ASSERT_EQUAL(BlockerAction::Proceed, blockerDecision(Roof::Command::Abort, b).action);
     TEST_ASSERT_EQUAL_STRING("The device is restarting", blockerText(b));
+    // Committed and still reported cancellable: a close never cancels it.
+    Blockers both = b;
+    both.restartCancellable = true;
+    const BlockerDecision closeBoth = blockerDecision(Roof::Command::Close, both);
+    TEST_ASSERT_EQUAL(BlockerAction::Refuse, closeBoth.action);
+    TEST_ASSERT_FALSE(closeBoth.cancelRestart);
     // Committed alone (the probe saw it before anything else) refuses a close too.
     Blockers only;
     only.restartCommitted = true;

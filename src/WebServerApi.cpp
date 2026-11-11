@@ -228,6 +228,9 @@ namespace SQM
 
     void WebServer::pollWiFiConnect()
     {
+        // The hold on a close is over: drop the flag, so a millis() wrap can't revive it.
+        if (wifiChanging.load() && !RoofIo::networkHoldsClose(true, millis() - wifiChangeAtMs.load()))
+            wifiChanging = false;
         if (!wifiConnectActive)
         {
             return;
@@ -262,9 +265,11 @@ namespace SQM
             // to show the new address.
             if (wifiConnectConfigSaved)
                 scheduleRestart(15000);
-            wifiConnectActive = false;
+            // The strings first: the web task may start a new attempt as soon
+            // as the flag is clear.
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
+            wifiConnectActive = false;
             return;
         }
 
@@ -274,9 +279,9 @@ namespace SQM
             WiFi.disconnect(false);
             // wifiChanging stays: the saved network is rejoined later; the
             // hold on a close ends at RoofIo::NETWORK_HOLD_MAX_MS anyway.
-            wifiConnectActive = false;
             pendingWifiSSID.clear();
             pendingWifiPassword.clear();
+            wifiConnectActive = false;
         }
     }
 
