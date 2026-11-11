@@ -20,6 +20,7 @@
 #include "FaultRecord.h"
 #include "MotionGuards.h"
 #include "ParkRule.h"
+#include "PlatformHold.h"
 #include "RoofController.h"
 #include "RoofGates.h"
 #include "RoofStatus.h"
@@ -82,6 +83,15 @@ namespace SQM
         Roof::State state() const { return static_cast<Roof::State>(stateNow.load()); }
         // A close is waiting for an upload or MQTT connect (MQTT reconnects wait meanwhile).
         bool closeWaiting() const { return closeWaitingNow.load(); }
+        // Any task (spec 010): under the roof's lock, if the roof isn't moving
+        // and no close waits, runs `action` (may be empty) and returns None;
+        // otherwise Moving or CloseWaiting. Commands decide under the same lock
+        // and probe their blockers there, so no move starts between this check
+        // and `action`, and a command decided after it sees what `action`
+        // registered (a flash write, an upload, a committed restart). `action`
+        // must not block. With `wait` false the lock isn't waited for: Moving
+        // if a step or command holds it (try again).
+        RoofIo::HoldReason whileStill(const std::function<void()> &action, bool wait = true);
         // What else is going on (uploads, an MQTT connect, a scheduled
         // restart), and what a close does about it (cancel the restart, stop
         // the upload). Set once, before any command can arrive.
