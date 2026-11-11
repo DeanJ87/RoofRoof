@@ -14,6 +14,8 @@ import { useAlertSchedule } from '../hooks/useAlertSchedule';
 import { StatusDot } from './dashboard/MiniSpark';
 import { dashboardCards } from './dashboard/cards';
 import { DEFAULT_ORDER, loadOrder, saveOrder } from './dashboard/order';
+import { useReconnectedAt } from '../hooks/useRoofCommand';
+import RoofCard from '../dashboard/RoofCard';
 
 // Nothing received yet; once data has arrived, a lost connection keeps the
 // last values on screen, greyed, with the Status card saying so.
@@ -47,6 +49,7 @@ const Dashboard: FunctionalComponent = () => {
   const [arranging, setArranging] = useState(false);
   const { data: status, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
   const quiet = useQuiet(lastMessageAt);
+  const reconnectedAt = useReconnectedAt(connected, lastMessageAt);
   const [config, setConfig] = useState<Config | null>(null);
   const configRevision = status?.configRevision;
   const effective = useEffectiveReport(configRevision);
@@ -63,10 +66,19 @@ const Dashboard: FunctionalComponent = () => {
   const items = glanceItems({ status, config, effective, connected, quiet, schedule });
   const onAction = () => void pauseOrResume(true);
 
-  if (!status) return <Waiting connected={connected} />;
+  const live = { status, connected, quiet, reconnectedAt, lastMessageAt };
+  // Stop never waits for live data: the Roof card (Stop enabled, Open and Close
+  // disabled with "No live data") shows under the waiting note too.
+  if (!status)
+    return (
+      <div class="dashboard page-enter">
+        <Waiting connected={connected} />
+        <RoofCard live={live} />
+      </div>
+    );
 
   const statusCard: MasonryItem = { id: 'status', title: t('status.title'), node: <StatusCard items={items} onAction={onAction} /> };
-  const visible = [statusCard, ...dashboardCards({ status })];
+  const visible = [statusCard, ...dashboardCards({ status, config, live })];
   const fullOrder = mergeOrder(savedOrder, DEFAULT_ORDER);
   const ordered = fullOrder.map((id) => visible.find((card) => card.id === id)).filter((card): card is MasonryItem => Boolean(card));
 

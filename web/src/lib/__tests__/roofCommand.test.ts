@@ -10,7 +10,7 @@ describe('roofCommand', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response('{"success":true,"state":"opening"}'));
     vi.stubGlobal('fetch', fetchMock);
     await roofCommand('open');
-    expect(fetchMock).toHaveBeenCalledWith('/api/roof/open', { method: 'POST', headers: { 'X-RoofRoof': '1' } });
+    expect(fetchMock).toHaveBeenCalledWith('/api/roof/open', expect.objectContaining({ method: 'POST', headers: { 'X-RoofRoof': '1' } }));
   });
 
   it('sends the header for every command', async () => {

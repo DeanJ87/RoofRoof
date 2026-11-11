@@ -4,11 +4,11 @@ description: "Configure RoofRoof from the web UI or REST API: device name, netwo
 
 # Configuration
 
-All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API. Roof settings (travel, speed) *come in later specs*; the safety sources are [below](#safety-and-park).
+All settings are stored in NVS (Non-Volatile Storage) and survive firmware and filesystem updates. Configure via the web UI (**Settings**) or the REST API. The roof, weather and park settings are on the **Roof** tab ([below](#safety-and-park) and in the [reference](#full-configuration-reference)).
 
 ## Settings pages
 
-**Settings** has four tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
+**Settings** has five tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
 
 Some settings only work when something else is on - MQTT alerts need MQTT, internet alerts need WiFi. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
@@ -16,6 +16,19 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     Name, password protection, command-line uploads (ArduinoOTA) and Backup & restore.
 
     ![Device settings](../assets/screenshots/settings-device.png)
+
+=== "Roof"
+    How the roof moves, the Hall sensor, current sense and the supply, the weather sources and the mount park:
+
+    - **Roof motion**: travel, speed, timeout margin, the time to leave a magnet, ramps, top and slow duty, and the opening direction - see [Roof motion](roof-motion.md).
+    - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
+    - **Current and supply**: current sense and its limits, and the minimum supply.
+    - **Weather sources**: SQMeter over HTTP and over MQTT, the rain contact and the stale time - see [Safety inputs](safety-inputs.md).
+    - **Mount park**: the N.I.N.A. address, the park switches fitted and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
+
+    While the roof is opening or closing the tab says so: the device refuses every save until it stops. Saving while the roof is stopped part-way makes its position unknown, and the tab says that too.
+
+    ![Roof settings](../assets/screenshots/settings-roof.png)
 
 === "Network"
     WiFi, mDNS, IPv6, MQTT including Home Assistant discovery - see [MQTT](mqtt.md) - and ASCOM Alpaca - see [ASCOM Alpaca](alpaca.md).

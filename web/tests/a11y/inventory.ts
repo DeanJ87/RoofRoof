@@ -31,6 +31,7 @@ export const INVENTORY: InventoryEntry[] = [
   { id: 'alpaca', route: '#/alpaca', component: 'Alpaca', states: ['default'] },
   { id: 'system', route: '#/system', component: 'System', states: ['default'] },
   settingsTab('device', 'settings/DeviceTab', ['error']),
+  settingsTab('roof', 'settings/RoofTab'),
   settingsTab('network', 'settings/NetworkTab'),
   settingsTab('time', 'settings/TimeTab'),
   settingsTab('alerts', 'settings/AlertsTab'),

@@ -92,8 +92,9 @@ stateDiagram-v2
 | A safe spell during an attempt | shorter than 10 minutes: the attempt carries on, its clock still running | - |
 | Alerts | each kind at most every 30 minutes; repeated every 30 minutes while the roof stays open after one | - |
 
-Set `park.timeoutSeconds` to a little more than your mount takes to park from its furthest
-position; see [Configuration](configuration.md#safety-and-park).
+Set `park.timeoutSeconds` (**Settings → Roof → Mount park → Park time limit**) to a little more
+than your mount takes to park from its furthest position; see
+[Configuration](configuration.md#safety-and-park).
 
 ## Alerts
 

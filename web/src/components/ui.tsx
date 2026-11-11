@@ -68,6 +68,7 @@ export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: n
       </>
     ),
     moon: <path {...common} d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />,
+    roof: <path {...common} d="M3 11 12 4l9 7M6 9.5V20h12V9.5M10 20v-5h4v5" />,
   };
 
   return (
@@ -179,11 +180,26 @@ export const Button: FunctionalComponent<{
   title?: string;
   type?: 'button' | 'submit';
   ariaLabel?: string;
-}> = ({ onClick, variant = 'default', small, block, disabled, busy, busyLabel, title, type = 'button', ariaLabel, children }) => (
+  describedBy?: string; // the id of the Note that says why it's disabled
+}> = ({
+  onClick,
+  variant = 'default',
+  small,
+  block,
+  disabled,
+  busy,
+  busyLabel,
+  title,
+  type = 'button',
+  ariaLabel,
+  describedBy,
+  children,
+}) => (
   <button
     type={type}
     title={title}
     aria-label={ariaLabel}
+    aria-describedby={describedBy}
     class={`btn btn-${variant}${small ? ' btn-sm' : ''}${block ? ' btn-block' : ''}`}
     disabled={disabled || busy}
     onClick={onClick}

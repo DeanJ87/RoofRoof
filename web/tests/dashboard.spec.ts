@@ -175,11 +175,36 @@ test('the demo says its clock moved on the Demo button, not the dashboard', asyn
   await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved', { timeout: 20_000 });
 });
 
-test('the dashboard is the Status card and Device & Network, nothing from the old sensors', async ({ page }) => {
+test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({ page }) => {
   // inventory: device-network-card
   await open(page);
   await expect(card(page, 'Device & Network')).toBeVisible();
-  await expect(page.locator('.masonry-item')).toHaveCount(2);
+  await expect(page.locator('.masonry-item')).toHaveCount(3);
+  // The roof straight after Status (spec 009 FR-001).
+  await expect(page.locator('.masonry-item').nth(1)).toContainText('Roof');
+});
+
+// Spec 009: the demo's roof is a static closed roof (spec 011 simulates one);
+// the other states are tested on the card (web/src/dashboard/__tests__).
+test('Roof card: state, position, buttons with reasons, checks, readings and the Hall scale', async ({ page }) => {
+  // inventory: roof-card  inventory: roof-position  inventory: roof-buttons
+  // inventory: roof-checks  inventory: roof-readings  inventory: roof-hall
+  await open(page);
+  const roof = item(page, 'roof-card');
+  await expect(roof.locator('.card-actions .pill')).toHaveText('Closed');
+  await expect(roof.getByRole('meter', { name: 'Position' })).toHaveAttribute('aria-valuetext', '0% open');
+  await expect(roof.getByRole('button', { name: 'Open', exact: true })).toBeEnabled();
+  await expect(roof.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
+  await expect(item(page, 'roof-buttons')).toContainText('Close: Already closed');
+  await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toBeEnabled();
+  await expect(item(page, 'roof-checks')).toContainText('Safe');
+  await expect(item(page, 'roof-checks')).toContainText('Parked');
+  await expect(item(page, 'roof-readings')).toContainText('Supply');
+  await expect(item(page, 'roof-hall').getByRole('img', { name: /^Hall reading \d+ of 4095; low threshold/ })).toBeVisible();
+  // No fault and an idle automatic close: neither shows, here or on the Status card.
+  await expect(item(page, 'roof-fault-card')).toHaveCount(0);
+  await expect(item(page, 'roof-close-phase')).toHaveCount(0);
+  await expect(statusCard(page).locator('[data-inventory^="roof-"]')).toHaveCount(0);
 });
 
 test('Device & Network: one address per row, local name and MQTT', async ({ page }) => {

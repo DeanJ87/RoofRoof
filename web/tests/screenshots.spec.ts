@@ -79,6 +79,16 @@ test('status card', async ({ page }) => {
   await card.screenshot({ path: save('status-card') });
 });
 
+// Spec 009: the Roof card on its own, for the dashboard guide and the owner's review.
+test('roof card', async ({ page }) => {
+  await page.goto('./?panel=hidden');
+  await waitForDemoApp(page);
+  const card = page.locator('[data-inventory="roof-card"]');
+  await expect(card.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
+  await waitForLayout(page);
+  await card.screenshot({ path: save('roof-card') });
+});
+
 test('system', async ({ page }) => {
   await page.goto('./?panel=hidden#/system');
   await waitForDemoApp(page);
@@ -103,6 +113,7 @@ test('alpaca', async ({ page }) => {
 
 for (const [id, label] of [
   ['device', 'Device'],
+  ['roof', 'Roof'],
   ['network', 'Network'],
   ['time', 'Time'],
   ['alerts', 'Alerts'],
