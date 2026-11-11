@@ -79,6 +79,18 @@ namespace SQM
             }
         }
 
+        bool restartMayCommit(const RestartInputs &in)
+        {
+            if (in.faultUnsaved || in.shortWrite)
+                return false;
+            return in.mandatory || (!in.sequenceBusy && !in.uploadBusy);
+        }
+
+        bool networkHoldsClose(bool changing, uint32_t ageMs)
+        {
+            return changing && ageMs <= NETWORK_HOLD_MAX_MS;
+        }
+
         bool hotspotRefuses(Roof::Command command, bool hotspotOn)
         {
             return hotspotOn && command == Roof::Command::Open;

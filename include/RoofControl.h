@@ -92,6 +92,9 @@ namespace SQM
         // must not block. With `wait` false the lock isn't waited for: Moving
         // if a step or command holds it (try again).
         RoofIo::HoldReason whileStill(const std::function<void()> &action, bool wait = true);
+        // Only inside a whileStill action (the lock is held): a latched fault
+        // isn't in NVS yet, so a restart now would lose the lockout.
+        bool faultUnsavedHeld() const;
         // What else is going on (uploads, an MQTT connect, a scheduled
         // restart), and what a close does about it (cancel the restart, stop
         // the upload). Set once, before any command can arrive.

@@ -7,6 +7,7 @@
 #include <unity.h>
 
 #include "Config.h" // for the library finder: RoofIoLogic builds with ConfigModel
+#include "CloseSequence.h"
 #include "MotionGuards.h"
 #include "PlatformHold.h"
 
@@ -223,12 +224,16 @@ void test_committed_restart_refuses_moves(void)
     TEST_ASSERT_EQUAL_STRING("restarting", blockerReason(only));
     TEST_ASSERT_EQUAL_STRING("restarting", RESTARTING_REASON);
 
-    plan.clear();
-    TEST_ASSERT_FALSE(plan.committed());
-    TEST_ASSERT_FALSE(plan.scheduled());
-    plan.schedule(true);
-    TEST_ASSERT_TRUE(plan.mandatory());
-    TEST_ASSERT_TRUE(plan.commit());
+    plan.clear(); // ignored once committed: moves stay refused until the reset
+    TEST_ASSERT_TRUE(plan.committed());
+    TEST_ASSERT_TRUE(plan.scheduled());
+    RestartPlan fresh;
+    fresh.schedule(true);
+    TEST_ASSERT_TRUE(fresh.mandatory());
+    fresh.clear();
+    TEST_ASSERT_FALSE(fresh.scheduled());
+    fresh.schedule(true);
+    TEST_ASSERT_TRUE(fresh.commit());
 }
 
 void test_network_change_waited_for_like_a_write(void)
@@ -247,6 +252,44 @@ void test_network_change_waited_for_like_a_write(void)
     TEST_ASSERT_EQUAL_STRING("busy", blockerReason(b));
 }
 
+void test_restart_may_commit(void)
+{
+    RestartInputs in;
+    TEST_ASSERT_TRUE(restartMayCommit(in));
+    in.sequenceBusy = true;
+    TEST_ASSERT_FALSE(restartMayCommit(in));
+    in.mandatory = true; // the mandatory one doesn't wait for the sequence
+    TEST_ASSERT_TRUE(restartMayCommit(in));
+    in = RestartInputs();
+    in.uploadBusy = true;
+    TEST_ASSERT_FALSE(restartMayCommit(in));
+    in.mandatory = true;
+    TEST_ASSERT_TRUE(restartMayCommit(in));
+    // Nothing restarts with a fault not yet saved, or part-way through a short write.
+    for (bool mandatory : {false, true})
+    {
+        RestartInputs f;
+        f.mandatory = mandatory;
+        f.faultUnsaved = true;
+        TEST_ASSERT_FALSE(restartMayCommit(f));
+        RestartInputs w;
+        w.mandatory = mandatory;
+        w.shortWrite = true;
+        TEST_ASSERT_FALSE(restartMayCommit(w));
+    }
+}
+
+void test_network_hold_is_bounded_inside_the_close_start_limit(void)
+{
+    // A stuck scan or a failed WiFi change must never hold a waiting close
+    // past the close sequence's limit (which would halt the automatic close).
+    TEST_ASSERT_TRUE(NETWORK_HOLD_MAX_MS + 5000 < CloseSeq::CLOSE_START_MS);
+    TEST_ASSERT_TRUE(networkHoldsClose(true, 0));
+    TEST_ASSERT_TRUE(networkHoldsClose(true, NETWORK_HOLD_MAX_MS));
+    TEST_ASSERT_FALSE(networkHoldsClose(true, NETWORK_HOLD_MAX_MS + 1));
+    TEST_ASSERT_FALSE(networkHoldsClose(false, 0));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -261,5 +304,7 @@ int main(int, char **)
     RUN_TEST(test_open_refused_close_deferred_during_short_write);
     RUN_TEST(test_committed_restart_refuses_moves);
     RUN_TEST(test_network_change_waited_for_like_a_write);
+    RUN_TEST(test_restart_may_commit);
+    RUN_TEST(test_network_hold_is_bounded_inside_the_close_start_limit);
     return UNITY_END();
 }

@@ -109,6 +109,11 @@ namespace SQM
         // and the loop changes `config` only under it.
         mutable std::mutex configLock;
         std::atomic<bool> enabledNow{false};
+        // The client's state as of the loop's last pass, for other tasks:
+        // PubSubClient (and its socket) is only touched on the loop.
+        std::atomic<bool> connectedNow{false};
+        std::atomic<int> stateNow{0};
+        void publishState();
 
         MQTTConfig config;          // changed on the loop only
         DualStackClient wifiClient; // IPv4, or IPv6 literals and IPv6-only names (SQMeter spec 015)

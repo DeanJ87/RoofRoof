@@ -259,8 +259,10 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 - **FR-004**: Short writes (everything except uploads and command-line OTA) MUST NOT replace or stop
   an upload's activity, and an upload MUST NOT be stopped or refused by a short write.
 - **FR-004a**: A Wi-Fi change and a Wi-Fi scan MUST register under the roof's lock as they start;
-  until the change has joined or timed out, or the scan has ended, open MUST be refused and a close
-  MUST wait, as for a flash write.
+  until the change has joined the new network, or the scan has ended, open MUST be refused and a
+  close MUST wait, as for a flash write, but never longer than 15 s from the start (well inside the
+  close sequence's 30 s limit for a waiting close). Only one Wi-Fi change runs at a time, and it
+  counts as joined only on the network being tried.
 - **FR-005**: A flash write MUST be refused (409 for a request, deferred for a background write)
   while the roof moves or a close waits. Open MUST be refused (`busy`) and a close MUST wait
   (`pending`) while any flash write runs, as spec 003 FR-029 does for uploads.
@@ -269,7 +271,9 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 
 - **FR-006**: An ordinary restart (a person's, after a restore, after a firmware upload, after
   joining a network from the hotspot) MUST wait while the roof moves, a close waits, the close
-  sequence is not idle, or a flash write runs. A person's restart request MUST be refused (409) in those cases with the
+  sequence is not idle, or a flash write runs. Every restart, the mandatory one included, MUST wait
+  while a short flash write runs or a latched fault isn't saved yet (a restart never clears the
+  lockout). A person's restart request MUST be refused (409) in those cases with the
   reason; a restore that needs a restart likewise.
 - **FR-007**: The restart after a web UI upload (mandatory, spec 003) MUST wait while the roof moves
   or a close waits, and MUST NOT wait for the close sequence.
@@ -351,7 +355,7 @@ and its tests and adds the reset reason to the log so a brown-out mid-move can b
 - **SC-004**: On the bench, saving MQTT settings answers within 1 s even with the broker
   unreachable (bench check).
 - **SC-005**: The full local check (firmware build with zero warnings, native tests, web tests,
-  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 6 KB.
+  Playwright, quality gate, docs build, flash budget) passes; flash growth stays under 7 KB.
 
 ## Assumptions decided for the owner
 
@@ -390,12 +394,15 @@ Each was an open choice; the safest option the constitution allows was taken.
      (a crash), the RTC record may not be read and the sequence starts over;
    - the setup hotspot itself still opens while the roof is open: it is how the device is reached
      when the home network is gone; while it is on, the roof can't be opened from any network;
-   - a Wi-Fi change that times out ends its hold; the device then rejoins the saved network on
-     its own schedule, and a close in that gap meets the park gate as usual (refused, or stopped
-     with `parkInterlock` if N.I.N.A. drops part-way);
-   - the close sequence's busy flag is read outside the roof's lock, so an ordinary restart can
-     commit in the instant the sequence leaves idle; the close it refuses is answered as "not run"
-     and the sequence carries on from its RTC record after the restart.
+   - a Wi-Fi change or scan holds a close for at most 15 s; a close after that, with the network
+     still not back, meets the park gate as usual (refused, or stopped with `parkInterlock` if
+     N.I.N.A. drops part-way);
+   - the close sequence's busy flag is checked again under the roof's lock but is not changed under
+     it, so an action can still begin in the instant the sequence leaves idle; a close refused for
+     a committed restart is answered as "not run";
+   - a fault record that can't be saved holds restarts until it is (the device keeps retrying);
+   - the MQTT client is driven only on the main loop; other tasks read its state from the last
+     loop pass. The alert dispatcher's MQTT channel is platform code from SQMeter and unchanged.
 
 ## Out of scope
 

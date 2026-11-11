@@ -214,7 +214,8 @@ backing off after a failed attempt, or stood down):
 is waiting to start: try again once the roof has closed", "The automatic close is under way: try
 again once the roof has closed or the weather is safe"). "Waits" is for a restart already
 scheduled: it is tried again every 0.2 s and runs once nothing holds it (an ordinary restart also
-waits for an upload or a settings save to finish). The alerts pause state
+waits for an upload to finish, and every restart waits for a settings save to finish and for a
+latched fault to be saved, so a restart never loses the lock-out). The alerts pause state
 and the WiFi network saved after a join are written once the roof is at rest. Command-line OTA is
 only serviced while the roof is closed (it can't be stopped part-way) and is refused when it
 starts if the roof has moved since.
@@ -230,8 +231,8 @@ And before a move starts, **a close always wins**:
   is being changed or scanned, an MQTT connect is under way or a restart is scheduled;
 - a close that would run (the park is confirmed and the motion checks pass, and the roof isn't
   already closed or closing) cancels a scheduled restart and stops an upload at its next chunk; if
-  an upload, a flash write, a WiFi change or scan, or an MQTT connect is still finishing, the
-  close waits
+  an upload, a flash write, a WiFi change or scan (at most 15 s), or an MQTT connect is still
+  finishing, the close waits
   (`roof.closePending`) and starts as soon as it is done, and no MQTT connect or restart starts
   meanwhile. An upload that stops sending counts as finished after 5 s, so a dropped connection
   never blocks a close. The restart after a web UI upload is never cancelled (the filesystem must

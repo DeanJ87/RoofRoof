@@ -418,6 +418,11 @@ namespace SQM
         return reason;
     }
 
+    bool RoofControl::faultUnsavedHeld() const
+    {
+        return fault.fault.kind != Roof::FaultKind::None && !sameFault(fault, savedFault);
+    }
+
     bool RoofControl::moving() const
     {
         return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load()));

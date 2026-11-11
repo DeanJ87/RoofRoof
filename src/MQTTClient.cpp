@@ -107,22 +107,25 @@ namespace SQM
     void MQTTClient::handle()
     {
         applyPendingConfig();
-        if (!config.enabled)
-            return;
+        if (config.enabled)
+        {
+            if (!mqttClient->connected())
+                reconnect();
+            else
+                mqttClient->loop();
+        }
+        publishState();
+    }
 
-        if (!mqttClient->connected())
-        {
-            reconnect();
-        }
-        else
-        {
-            mqttClient->loop();
-        }
+    void MQTTClient::publishState()
+    {
+        connectedNow = config.enabled && mqttClient->connected();
+        stateNow = mqttClient->state();
     }
 
     bool MQTTClient::isConnected() const
     {
-        return enabledNow.load() && mqttClient->connected();
+        return enabledNow.load() && connectedNow.load();
     }
 
     MQTTStatus MQTTClient::getStatus() const
@@ -130,8 +133,8 @@ namespace SQM
         std::lock_guard<std::mutex> guard(configLock);
         MQTTStatus status;
         status.enabled = config.enabled;
-        status.connected = mqttClient->connected();
-        status.state = mqttClient->state();
+        status.connected = connectedNow.load();
+        status.state = stateNow.load();
         status.lastPublishMs = lastPublish;
         status.lastReconnectAttemptMs = lastReconnectAttempt;
         status.broker = config.broker;
