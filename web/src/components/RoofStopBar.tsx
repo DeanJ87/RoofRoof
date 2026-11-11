@@ -43,8 +43,14 @@ const RoofStopBar: FunctionalComponent = () => {
   useLayoutEffect(() => {
     const body = document.body;
     body.classList.toggle('has-stop-bar', shown);
-    if (shown && bar.current) body.style.setProperty('--stop-bar', `${Math.ceil(bar.current.getBoundingClientRect().height)}px`);
+    const element = bar.current;
+    const measure = () => element && body.style.setProperty('--stop-bar', `${Math.ceil(element.getBoundingClientRect().height)}px`);
+    measure();
+    // A rotated phone or a wrapping note changes the height without a re-render.
+    const observer = element && typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null;
+    if (element) observer?.observe(element);
     return () => {
+      observer?.disconnect();
       body.classList.remove('has-stop-bar');
       body.style.removeProperty('--stop-bar');
     };

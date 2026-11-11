@@ -336,6 +336,7 @@
   "roof.reason.supplyUnreadable": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars.",
   "roof.reason.weather": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars. {text} is the device's verdict reason, e.g. 'unsafe: rain (SQMeter HTTP)'.",
   "roof.result.loginNeeded": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars.",
+  "roof.result.noAnswer": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars. Open or Close got no answer in time; the device may still have taken it.",
   "roof.result.refused": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars.",
   "roof.result.stopNotConfirmed": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars.",
   "roof.result.stopNotDone": "Dashboard -> Roof card: a one-line note (a sentence); max 90 chars. {reason} is the device's refusal or roof.result.loginNeeded.",

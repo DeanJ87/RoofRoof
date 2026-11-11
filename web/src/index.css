@@ -2313,11 +2313,19 @@ main:focus {
   vector-effect: non-scaling-stroke;
 }
 
-/* Stacked with the save bar: the Stop bar sits at the bottom, the save bar above it. */
+/* Fixed to the bottom of the window, also on a page shorter than it; the page keeps
+   room for it, and the save bar and toasts sit above it. */
 .stop-bar {
+  position: fixed;
+  inset-inline: max(0.75rem, env(safe-area-inset-left));
+  max-width: calc(1180px - 2rem);
+  margin-inline: auto;
   flex-wrap: wrap;
-  margin-top: 1rem;
   border-color: var(--red);
+}
+
+.has-stop-bar .app-main {
+  padding-bottom: calc(var(--stop-bar, 3.25rem) + 1.5rem);
 }
 
 .has-stop-bar .save-bar {
