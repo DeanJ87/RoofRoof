@@ -99,8 +99,10 @@ namespace SQM
         // Reads (and the CONNACK wait) give up after this many seconds: well
         // under the roof's 5 s safety hand-over limit (spec 003 research R8).
         static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
-        // A write (publish, PINGREQ) gives up after this long and drops the connection (spec 008).
-        static constexpr uint32_t WRITE_BUDGET_MS = 250;
+        // A write (publish, PINGREQ) gives up after this long and drops the
+        // connection (spec 008): at rest, and while the roof is busy.
+        static constexpr uint32_t WRITE_BUDGET_MS = 1000;
+        static constexpr uint32_t BUSY_WRITE_BUDGET_MS = 250;
         std::function<bool()> connectHold;
         std::atomic<bool> connectInFlight{false};
 

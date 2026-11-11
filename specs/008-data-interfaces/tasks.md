@@ -56,4 +56,4 @@ with `pio test -e native` green; firmware tasks also with `pio run -e esp32dev`.
 ## Phase 7: Check and review
 
 - [x] T027 Spec 001 quickstart §1 in full; record the numbers
-- [ ] T028 Independent safety reviews until one says safe to merge; fix and re-test each finding
+- [x] T028 Independent safety reviews until one says safe to merge; fix and re-test each finding (three rounds: the first two found the main loop could be held by MQTT writes on a half-open link during a close; fixed with the busy publish limits and a bounded socket write; the third said safe to merge)

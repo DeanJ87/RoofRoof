@@ -101,6 +101,7 @@ namespace SQM
     }
     size_t DualStackClient::write(const uint8_t *buf, size_t size)
     {
+        const uint32_t writeBudgetMs = writeBudget ? writeBudget() : 0;
         if (writeBudgetMs == 0)
             return WiFiClient::write(buf, size);
         const int socket = fd();
