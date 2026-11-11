@@ -304,7 +304,7 @@
           "Settings"
         ],
         "summary": "Change settings",
-        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
+        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -368,7 +368,7 @@
           "Settings"
         ],
         "summary": "Change settings (PUT)",
-        "description": "The same as `POST /api/config`, for clients that use PUT. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
+        "description": "The same as `POST /api/config`, for clients that use PUT. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -428,7 +428,7 @@
           "Device"
         ],
         "summary": "Restart",
-        "description": "Restarts the device after answering. Refused with 409 while the roof is opening or closing.\n\nNeeds the password when protection is on.",
+        "description": "Restarts the device after answering. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -468,7 +468,7 @@
           "Roof"
         ],
         "summary": "Open the roof",
-        "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Refused with `hotspot` when the request comes over the setup hotspot, which has no password. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -500,7 +500,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, an MQTT connect or a scheduled restart, for open; a restart about to happen, for open and close), `hotspot` (open over the setup hotspot) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -593,7 +593,7 @@
           "Roof"
         ],
         "summary": "Close the roof",
-        "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).\n\nNeeds the password when protection is on.",
+        "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload, another flash write or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -625,7 +625,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, an MQTT connect or a scheduled restart, for open; a restart about to happen, for open and close), `hotspot` (open over the setup hotspot) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -725,7 +725,7 @@
                     },
                     "reason": {
                       "type": "string",
-                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload, MQTT connect or scheduled restart; open only) or `notStarted`."
+                      "description": "Why it was refused (409 only): `weatherNotSafe`, `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, an MQTT connect or a scheduled restart, for open; a restart about to happen, for open and close), `hotspot` (open over the setup hotspot) or `notStarted`."
                     },
                     "error": {
                       "type": "string",
@@ -1020,7 +1020,7 @@
           "Settings"
         ],
         "summary": "Apply a previewed restore",
-        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again. Refused with 409 while the roof is opening or closing (flash writes stall its control task).\n\nNeeds the password when protection is on.",
+        "description": "Saves exactly the settings the preview with this `token` showed, as one settings save, and restarts the device about 2 s later when `restarting` is true. 409 `stale` when the preview was already applied or replaced, is older than 10 minutes, or the settings changed since: preview again. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task), and, when it would restart, also while the automatic close is under way.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1194,7 +1194,7 @@
           "Network"
         ],
         "summary": "Scan for WiFi networks",
-        "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives.\n\nNeeds the password when protection is on.",
+        "description": "The first call starts a background scan and answers 202 with `scanning: true`; call again about once a second until `scanning` is false and the list arrives. Refused with 409 while the roof is opening or closing or a close is waiting to start (the radio leaves its channel during a scan).\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1223,6 +1223,16 @@
           },
           "500": {
             "description": "Device failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
             "content": {
               "application/json": {
                 "schema": {
@@ -1331,7 +1341,7 @@
           "Network"
         ],
         "summary": "Join a WiFi network",
-        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network. Refused with 409 while the roof is opening or closing.\n\nNeeds the password when protection is on.",
+        "description": "What the WiFi setup screen uses. Answers 202 at once; poll `/api/status` (`wifi.connectPending`, then `wifi.connected`). On success the network is saved and the device restarts onto it 15 s later. Send `\"\"` as the password for an open network. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle: it drops the current network for up to 10 s.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1408,7 +1418,7 @@
           "Updates"
         ],
         "summary": "Upload the web UI",
-        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
+        "description": "A LittleFS image that fills the web UI partition exactly. A file for another layout is refused before anything is erased. Settings are kept. Refused with 409 (with the reason) while the roof is opening or closing or a close is waiting to start (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -1488,7 +1498,7 @@
           "Updates"
         ],
         "summary": "Upload firmware",
-        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 while the roof is opening or closing (flash writes stall its control task). An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
+        "description": "A firmware `.bin` for this device's build and partition layout. 400 when the file is for another layout (nothing changed); 500 keeps the running firmware. The device restarts on success. Refused with 409 (with the reason) before anything is written while the roof is opening or closing, a close is waiting to start, or the automatic close is in any phase but idle (a new firmware may not read what it keeps across a restart); the restart after it waits for the same. An upload in progress is stopped by a roof close (409, \"Upload stopped: the roof is closing\").\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []

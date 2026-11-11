@@ -31,7 +31,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | Module | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
 | `main.cpp` | `src/main.cpp` | Changed: sensor, display, BLE, battery and update-check setup and tasks removed; the motor driver is held off first thing in `setup()` | No |
-| `WebServer.cpp`, `WebServer.h` | same | Changed: sensor, safety, display, language and release routes removed | No |
+| `WebServer.cpp`, `WebServer.h` | same | Changed: sensor, safety, display, language and release routes removed; restarts, uploads, settings saves and WiFi changes go through `PlatformGuard` (spec 010) | No |
 | `WebServerAlpaca.cpp` | same | Changed: serves the generic device list with the roof's Dome (spec 006), commanded through `RoofControl` | With `lib/AlpacaLogic` |
 | `WebServerApi.cpp`, `WebServerStatus.cpp`, `WebServerLive.cpp` | same | Changed: sensor and safety documents removed; `/ws/status` only | No |
 | `WebServerAlerts.cpp` | same | Changed: battery and sensor events removed | No |
@@ -39,7 +39,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `WebServerBackup.cpp`, `WebServerShared.h` | same | Changed: small edits for the removed settings | No |
 | `ConfigStore.cpp` | same | Changed: removed settings dropped from load and save | No |
 | `TimeManager.cpp/.h` | same | Changed: NTP only, GPS time removed | No |
-| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics | No |
+| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics; `updateConfig()` only hands the settings over and `handle()` applies them on the main loop, with the client's limits set again when MQTT is switched on (spec 010) | Yes: settings applied on the loop |
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
 | `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
