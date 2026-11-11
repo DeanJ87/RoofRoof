@@ -47,6 +47,7 @@ The **Roof** card shows the roof as its control task sees it, live:
 - **Open**, **Close** and **Stop**;
 - with a latched fault, its text (the measured value and the limit) and **Clear fault**;
 - **Weather** and **Mount park**: the weather verdict and the park check exactly as the roof's own command checks see them now, each with its reason behind "?"; and **Automatic close** while the [close on unsafe weather](close-on-unsafe.md) is under way or standing down;
+- **Daylight**: the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) as the device sees it: its mode and the sun's altitude against the threshold ("Sun 3.2° ≥ 0.0°"), or why the check can't run ("Location not set", "Clock not set"); with the mode off it says so;
 - **Supply**, **Motor current** (while current sense is on), the park switches and the rain contact (when fitted);
 - the **Hall reading** on its 0-4095 scale, with the low and high thresholds marked and where the reading is (at the low magnet, between the magnets, at the high magnet). Use it to [calibrate](../hardware/calibration.md).
 
@@ -63,6 +64,7 @@ The **Roof** card shows the roof as its control task sees it, live:
 | The device is restarting (after it refused a command with `restarting`, until it is back) | yes | yes |
 | Already at that end, or already moving that way | yes | yes |
 | The weather isn't safe (the verdict's reason) | yes | - |
+| It is daylight: the sun's altitude and the threshold (only with the daylight failsafe on **Alert and close**) | yes | - |
 | The setup hotspot is on (it has no password) | yes | - |
 | The mount isn't confirmed parked (what failed, e.g. a park switch open) | - | yes |
 | A close is already waiting to start | - | yes |
@@ -71,7 +73,7 @@ The **Roof** card shows the roof as its control task sees it, live:
 
 The device checks every command anyway, whatever the page shows. If it refuses one, its reason appears under the buttons. When it is busy for a moment (an upload, a settings save or an MQTT connect is finishing) the buttons stay usable: try again shortly.
 
-From an unknown position (after a restart between the magnets, or a fault) Open and Close still work: the roof moves slowly to the first magnet it reaches. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof is closed or the weather has been safe for 10 minutes.
+From an unknown position (after a restart between the magnets, or a fault) Open and Close still work: the roof moves slowly to the first magnet it reaches. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof is closed or the weather has been safe for 10 minutes (in daylight with **Alert and close**, until the sun has been down for 10 minutes).
 
 ### Stop on every page
 

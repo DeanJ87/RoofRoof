@@ -92,9 +92,9 @@ mosquitto_pub -h <broker-ip> -t roofroof/roof/set -m OPEN
 
 MQTT has no login of its own, so these commands have the same limits as an ASCOM Alpaca client's, never fewer:
 
-- **Open** only while the weather is safe; **close** only onto a confirmed park, re-checked throughout the close ([Roof motion](roof-motion.md#weather-and-park-checks)).
+- **Open** only while the weather is safe and, with the daylight failsafe on "Alert and close", the sun is down; **close** only onto a confirmed park, re-checked throughout the close ([Roof motion](roof-motion.md#weather-and-park-checks)).
 - Neither while the position is unknown or a fault is latched: a person moves the roof from an unknown position and clears faults in the web UI. There is no MQTT command to clear a fault, abort or set a position.
-- **Stop** stops the roof, except while a close runs or waits and the weather isn't safe: then it is refused and the roof keeps closing (Stop in the web UI still works). An MQTT stop never counts as a person's, so it never stands the [automatic close](close-on-unsafe.md) down.
+- **Stop** stops the roof, except while a close runs or waits and the weather isn't safe, or the sun is up with the daylight failsafe on "Alert and close": then it is refused and the roof keeps closing (Stop in the web UI still works). An MQTT stop never counts as a person's, so it never stands the [automatic close](close-on-unsafe.md) down.
 - **Open** is refused while a close runs or waits, or after a close was stopped part-way: MQTT can't reverse a close.
 - A **retained** message on `roof/set` is never acted on when the broker replays it (on every reconnect). Send commands without the retain flag: one sent with it still runs once if the device is connected at that moment, then stays on the broker and is refused on every replay. To clear one left there: `mosquitto_pub -r -n -t roofroof/roof/set`. The same goes for `alerts/armed/set`: a retained pause isn't replayed. A broker *bridged* to another broker can pass on a message retained there as a live one, so keep no retained message on `roof/set` on any broker.
 - Commands sent while the device is offline are not queued.
@@ -113,7 +113,8 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 | `retained` | the message was retained (or its flag couldn't be read) |
 | `notACommand` | not `OPEN`, `CLOSE` or `STOP` (`command` is `null`) |
 | `weatherNotSafe`, `mountNotParked` | the weather or park check |
-| `unsafeClose`, `closing` | the limits above: a stop during a close in bad weather, an open during or after a close |
+| `daylight` | an open while the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) is on "Alert and close" and the sun is up (`Daylight: Sun 3.2° ≥ 0.0°`) |
+| `unsafeClose`, `closing` | the limits above: a stop during a close in bad weather or in daylight, an open during or after a close |
 | `positionUnknown`, `faultLatched`, `busy`, `restarting`, `hotspot`, `notStarted`, ... | the roof's own checks, as for the [REST commands](../api/rest.md#roof) |
 
 `text` always says why, with the measured value and the limit or the input that failed.
@@ -121,7 +122,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: e57d7aa92ecbf91b
+fingerprint: 2808b3a7fd805194
 -->
 <figure class="diagram" markdown>
 

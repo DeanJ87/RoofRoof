@@ -7,7 +7,7 @@ description: "RoofRoof alerts via ntfy, Pushover, webhook or MQTT: the roof's ev
 RoofRoof can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about a change even when N.I.N.A. and the observatory PC aren't running.
 
 !!! note "What raises an alert"
-    The **roof's** events: two critical ones from the [close on unsafe weather](close-on-unsafe.md) (the mount didn't park, the roof didn't close) and five others (a fault, a low supply, a lost weather source, the weather closing the roof, and the roof closed afterwards). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (the roof's [Dome](alpaca.md)), **Alerts resumed** and the **Send test** messages.
+    The **roof's** events: two critical ones from the [close on unsafe weather](close-on-unsafe.md) (the mount didn't park, the roof didn't close) and eight others (a fault, a low supply, a lost weather source, the weather closing the roof, the roof closed afterwards, and three about daylight). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (the roof's [Dome](alpaca.md)), **Alerts resumed** and the **Send test** messages.
 
 !!! warning "Set up a channel before the roof runs unattended"
     The two critical roof alerts go to every channel that is switched on, even with **Send alerts** off or alerts paused. With no channel set up they reach nobody: only the serial log has them.
@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 899ec9902fdb2e94
+fingerprint: 0f4dcc44ef23ddef
 -->
 <figure class="diagram" markdown>
 
@@ -25,10 +25,10 @@ fingerprint: 899ec9902fdb2e94
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch, and is sent again until a channel takes it.
-    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
+    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source), or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
+    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source, open in daylight)<br/>or 10 min (daylight check), or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
     HELD -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
     WORDING --> ON{"Sending alerts?"}
     ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent"]
@@ -55,9 +55,9 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares the roof (a fault, the supply, the weather sources, the automatic close) and the imaging app (is each Alpaca device still being checked?) with what you were last told, every second.
+    1. The device compares the roof (a fault, the supply, the weather sources, the automatic close, the daylight failsafe) and the imaging app (is each Alpaca device still being checked?) with what you were last told, every second.
     2. **Tracked silently, never announced**: an event whose level is Off, and imaging-app events for a device no app has used since boot.
-    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply or a lost weather source for its first 30 seconds; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" is not held by the cooldown.
+    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply, a lost weather source or the roof open in daylight for its first 30 seconds; the daylight check unable to run for its first 10 minutes; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" is not held by the cooldown.
     4. The alert gets its default or custom wording; events raised in the same second become one notification.
     5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical roof alerts.
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
@@ -80,6 +80,9 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | The 12 V supply is low | Below the roof's minimum supply for 30 s | Normal |
 | The weather closes the roof | The automatic close started because the weather isn't safe | Normal |
 | Roof closed after unsafe weather | The roof reached closed during the automatic close | Normal |
+| Roof open in daylight | The sun is up, the roof isn't closed and the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) is on (alert, or alert and close) | Urgent |
+| Roof closed after daylight | The roof reached closed during a daylight close | Normal |
+| Daylight check not working | The daylight check couldn't run for 10 minutes (no location, or no clock) | Normal |
 | A weather source is lost | SQMeter or the rain contact stopped answering for 30 s | Normal |
 | The imaging app stops checking | No request reached a device for the **Silent for** time. See [The imaging app](#the-imaging-app) | Urgent |
 | The imaging app is back | It started checking again | Quiet |
@@ -112,7 +115,8 @@ Alerts raised at the same moment arrive as one notification at the loudest of th
 |---|---|
 | `{event}` | The event name, as in webhook payloads: `client_lost`, ... |
 | `{device}`, `{time}`, `{date}`, `{level}` | Device name, local time and date, alert level |
-| `{reason}` | Roof events: why, with the value and the limit or the input that failed ("Timeout 61.0 s > 60.0 s", "Supply 10.9 V < 11.0 V", "SQMeter HTTP unreachable: ...", the weather's reasons) |
+| `{reason}` | Roof events: why, with the value and the limit or the input that failed ("Sun 3.2° ≥ 0.0°", "Timeout 61.0 s > 60.0 s", "Supply 10.9 V < 11.0 V", "SQMeter HTTP unreachable: ...", the weather's reasons) |
+| `{action}` | Roof open in daylight: whether the roof is being closed |
 | `{limit}`, `{details}` | Critical roof events: the time limit that ran out ("240 s", empty when none did) and the whole built-in message |
 | `{silent_for}`, `{last_checked}`, `{client_id}` | Imaging-app events: the **Silent for** time ("2 min"), when the app last checked ("21:04", or "3 min ago" without a clock) and the Alpaca ClientID it sent. For these events `{device}` is the Alpaca device |
 
@@ -166,11 +170,14 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **The 12 V supply is low**: below **Minimum supply** (`roof.minSupplyVolts`) or unreadable for 30 seconds without a break, so a motor's start doesn't alert. Not again until it has been back above the minimum.
 - **The weather closes the roof**: the automatic close began (waiting for the park, closing, or waiting to try again), with the weather's reasons. A verdict that flips between safe and unsafe sends at most one per cooldown. Nothing more is sent if the weather clears before the close.
 - **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, or after a stop or a halted close, whoever closed it; at most once per cooldown.
+- **Roof open in daylight** (`daylight_open`, default Urgent): the sun is at or above the threshold, the roof isn't closed and the daylight mode is **Alert** or **Alert and close**. It goes out once, after the condition has held for 30 seconds, with the sun's altitude against the threshold (`{reason}`, "Sun 3.2° ≥ 0.0°") and what happens next (`{action}`: "The mount is being parked and the roof closed.", "Daylight is set to alert only, so nothing closes it.", or "The automatic close can't close it now: see the roof's other alerts."). Not again until the roof has been closed or the sun has set and it starts again. It is not critical: with **Alert and close**, the critical alerts above cover every way the close can fail, worded "It is daylight". It isn't sent while the weather close is already closing the roof.
+- **Roof closed after daylight** (`daylight_closed`, default Normal): the roof reached closed during a close that began because of daylight; `{reason}` is the sun.
+- **Daylight check not working** (`daylight_unknown`, default Normal): the mode is on and the check couldn't run for 10 minutes without a break: `{reason}` is "Location not set" or "Clock not set". A clock set by NTP within 10 minutes of a restart never sends it. Nothing moves, refuses or closes meanwhile.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, or the rain contact unreadable, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 
 A custom title or message that comes out longer than Pushover allows (200 / 1,024 characters) is replaced by the built-in one.
 
-These four wait at least a minute between two alerts of the same event, even with **Cooldown** set to 0.
+The roof events above wait at least a minute between two alerts of the same event, even with **Cooldown** set to 0.
 
 A fault, a low supply or a lost source that is already there when the device starts is announced once the start-up minute is over. One that was already announced before a reset (a crash, the watchdog, a restart) isn't repeated while it lasts; after a power cut it is announced again.
 
@@ -237,7 +244,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"RoofRoof","event":"client_lost","title":"The imaging app stopped checking","message":"No request reached the device for 2 min.","level":"urgent","timestamp":1759500000}
 ```
 
-`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `safety_lost`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 

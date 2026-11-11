@@ -92,6 +92,7 @@ The **Roof** section of the Demo panel makes things go wrong on purpose:
 | **Mount**: Park, Unpark | the imaging app parks the mount (an 8 s slew) or unparks it | closing onto an unparked mount is refused |
 | **Park fails** | the mount slews but never reaches park | the roof stays open; once the park time limit runs out, a critical "mount didn't park" alert |
 | **Jam** | the roof can't move | the move stops with a fault and motion locks out until **Clear fault** (the jam removed first) |
+| **Sun up** | forces the daylight state to day, the sun 10° above the threshold, whatever the location and the clock, until you switch it off | mode "Alert": one "Roof open in daylight" alert; mode "Alert and close": an open roof parks and closes, and opening is refused with the daylight reason. Set the mode in Settings → Roof → Daylight |
 | **12 V supply**: Normal, Low | 12.6 V or 10.5 V | a move is refused, and one under way stops with a supply-low fault |
 
 Reloading the page restarts the demo device: a roof stopped part-way then reads *unknown*, as a
@@ -139,7 +140,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: f05e176310060e67
+fingerprint: 8a2552ba473c1c8b
 -->
 <figure class="diagram" markdown>
 

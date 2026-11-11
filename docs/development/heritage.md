@@ -54,11 +54,11 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 | Library | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
-| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; the roof's seven alert types (two critical), their inputs and rising-edge trackers in `src/RoofEvents.cpp`, and the announced-before-reset bits added (specs 005, 007) | No |
+| AlertLogic | `lib/AlertLogic` | Changed: battery and sun-position alerts removed; schedule and engine kept; the roof's ten alert types (two critical; three about daylight), their inputs and rising-edge trackers in `src/RoofEvents.cpp`, and the announced-before-reset bits added (specs 005, 007, 013) | No |
 | AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept; the shared envelope moved to `src/RouterInternal.h`; the Dome (`AlpacaDome.h`, `src/AlpacaDome.cpp`, spec 006) and `ALPACA_ERR_INVALID_OPERATION` added | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
-| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007) | No |
+| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013) | No |
 | ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
 | DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
 | FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic; a second build kind, `bench`, that a standard board refuses (spec 011) | Yes |
@@ -70,6 +70,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | HaDiscovery | none | New: Home Assistant MQTT discovery entities; spec 008 adds the roof's cover, sensors and fault sensor, read from one retained state document with templates, and entity fields for units, classes and diagnostics | Yes |
 | NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
 | SafetyInputLogic | none | New (spec 004): SQMeter reply parsing, the weather verdict and the park rule | No |
+| DaylightLogic | `lib/AlertLogic` (`SunPosition.h`, `SunPosition.cpp` only) | `SunPosition.h` and `SunPosition.cpp` copied unchanged from SQMeter `877208b`; `Daylight.h` and `Daylight.cpp` new (spec 013): the daylight state with its 0.5° band, the unknown inputs, the texts and the mode names | No |
 | RoofIoLogic | none | New (spec 003): the roof hardware layer's decisions: reading scaling, switch inputs, watchdog rule, stored fault record, park and weather gates, settings-save guard, wording, status section | No |
 
 ### `test/`
@@ -134,7 +135,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | OLED display | `src/OledDisplay.cpp`, `lib/DisplayLogic` |
 | Language packs (13 languages) and their tooling | `src/LanguagePack.cpp`, `lib/LanguageLogic`, `web/src/i18n/locales`, `tools/i18n` |
 | GitHub update check and release logic | `src/OtaUpdater.cpp`, `lib/ReleaseLogic`, `lib/ReleaseUrls` |
-| Sun position and darkness rules for alerts | `lib/AlertLogic/src/SunPosition.cpp` |
+| Sun position and darkness rules for alerts | `lib/AlertLogic/src/SunPosition.cpp` (came back for the daylight failsafe, spec 013: see `lib/DaylightLogic`) |
 | Board profiles and ESP32-S3 builds | `include/BoardFeatures.h`, `lib/ConfigModel/include/BoardProfile.h` |
 | Sky and weather dashboard cards, night chart, sun and moon card | `web/src/components` |
 | Demo panel's sensor inputs, conditions and imaging app | `web/src/demo` |
