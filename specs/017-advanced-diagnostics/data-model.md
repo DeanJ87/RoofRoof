@@ -27,7 +27,8 @@ Missing keys load as false (stored settings from earlier releases). No restart; 
 | `MQTT_LIVE_MS` | 60000 | the live document's MQTT interval at rest |
 | `KEPT_WRITE_MIN_MS` | 300000 | the least time between two writes of the kept file |
 
-`static_assert(sizeof(MoveLog) + sizeof(SummaryList) <= 8192)`.
+`sizeof(MoveLog) + sizeof(SummaryList) <= 8192` (test_diag_recorder); with the firmware's 1 KB copy
+buffer the heap while on is about 8.5 KB.
 
 ## Sample (one control step, built by the step)
 
@@ -101,8 +102,8 @@ Up to `MAX_SUMMARIES` summaries, newest first, with `revision` (bumped on every 
 
 ## Kept file (`/diag-moves.bin`)
 
-Header 16 bytes: magic `RRDG`, version (1), count, reserved, next id (uint32), CRC-32 of the
-records (uint32). Then `count` records of 48 bytes, little-endian, newest first: id, start and end
+Header 16 bytes: magic `RRDG`, version (1), count, reserved, next id (uint32), CRC-32 of header
+bytes 4-11 and the records (uint32). Then `count` records of 56 bytes (1,808 bytes at most), little-endian, newest first: id, start and end
 epoch, duration, driven ms, origin, target, end state, result, fault kind, flags (fromUnknown),
 fault measured and limit, peak, average and stall current, rest and lowest supply (floats, NaN
 kept as NaN), Hall at start and end. A header or CRC that doesn't match is ignored.

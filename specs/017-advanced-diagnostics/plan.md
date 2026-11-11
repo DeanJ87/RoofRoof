@@ -68,12 +68,12 @@ lib/ConfigModel/ Config.h, ConfigInternal.h, ConfigJsonIn.cpp, ConfigJsonOut.cpp
 lib/RoofLogic/ include/RoofController.h (driveBudgetUsedMs)
 lib/SettingsDeps/ catalogue.json, src/SettingsDeps.cpp (the two dependent settings)
 include/RoofControl.h, src/RoofControlDiag.cpp (new), src/RoofControl.cpp, src/RoofControlTask.cpp
-include/Diagnostics.h, src/Diagnostics.cpp (new), src/main.cpp
+include/Diagnostics.h, src/Diagnostics.cpp, include/ResetReason.h, src/ResetReason.cpp (new), src/main.cpp
 include/WebServer.h, src/WebServerDiag.cpp (new), src/WebServer.cpp, src/WebServerLive.cpp
-tools/demo-core/ emulated_roof.*, emulated_device*.{h,cpp}, bridge.cpp, build.sh
+tools/demo-core/ emulated_roof.*, emulated_device*.{h,cpp} (new: emulated_device_diag.cpp), bridge.cpp, build.sh
 test/test_diag_recorder, test/test_diag_documents, test/test_diag_store, test/test_config_diag (new);
   test/test_config_migration, test/fixtures/config-ranges.json, settings-deps fixtures
-web/src: components/Diagnostics.tsx (new), components/diagnostics/* (new: tiles, chart, moves),
+web/src: components/Diagnostics.tsx (new), components/diagnostics/{LiveCards,DiagChart}.tsx (new), lib/diagChart.ts (new),
   lib/diagApi.ts (new), types/diag.ts (new), components/settings/DeviceTab.tsx, System.tsx, App.tsx,
   types/config.ts, validation/configSchema.ts, demo (device, handlers), mocks, i18n
 web/tests/diagnostics.spec.ts (new), a11y inventory

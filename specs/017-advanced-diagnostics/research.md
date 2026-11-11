@@ -26,8 +26,8 @@
 
 ## R2 The log's memory: allocated only while on, handed over under the lock
 
-- **Decision**: `Diagnostics` (main loop) owns the `Diag::MoveLog` (about 5.2 KB) and the
-  `Diag::SummaryList` (about 1.9 KB). When `diag.enabled` becomes true it allocates both
+- **Decision**: `Diagnostics` (main loop) owns the `Diag::MoveLog` (about 5.2 KB), the
+  `Diag::SummaryList` (about 2 KB) and a 1 KB copy buffer (about 8.5 KB in all). When `diag.enabled` becomes true it allocates both
   (`new (std::nothrow)`); `RoofControl::attachDiag(log)` sets the step's pointer under the lock.
   When it becomes false, `RoofControl::detachDiag()` clears the pointer under the lock and returns
   it; the main loop deletes it afterwards. The control task sees the pointer only under the lock,
@@ -59,7 +59,7 @@
 - **Decision**: readers copy under the roof's lock: one `Diag::Move` (about 1 KB), the held ids,
   or the live part of the log (about 60 bytes). The summary list lives on the main loop behind its
   own `std::mutex`; a handler copies it (about 2 KB) and lets go before writing the reply. Replies
-  are rendered from the copy: the live document through a 1.5 KB ArduinoJson pool, the list, the
+  are rendered from the copy: the live document through a 2.5 KB ArduinoJson pool (summaries through a 1 KB heap pool), the list, the
   move and the CSV as a chunked response generated part by part (one summary or 8 points per
   part), so no reply needs a pool of tens of KB.
 - **Rationale**: the step waits for a reader at most for a 1 KB copy, as it does today for
@@ -136,12 +136,12 @@
 ## R11 Kept summaries
 
 - **Decision**: `/diag-moves.bin`: a 16-byte header (magic `RRDG`, version 1, count, next id, CRC-32
-  of the records) and up to 32 records of 48 bytes, little-endian, written whole. `Diag::KeptWrite`
+  of the header's version, count and next id and of the records) and up to 32 records of 56 bytes, little-endian, written whole. `Diag::KeptWrite`
   decides when a write is due: setting on, the list changed since the last write, 5 minutes since
   the last write (or none yet), and the platform not busy; the platform check itself is
   `PlatformGuard::FlashWrite` (the roof at rest, no close waiting, the sequence idle, no committed
   restart). Read at start-up and when the setting is switched on.
-- **Rationale**: at most 12 writes of 1.6 KB an hour, with LittleFS's wear levelling; spec 010's
+- **Rationale**: at most 12 writes of 1.8 KB an hour, with LittleFS's wear levelling; spec 010's
   guard is the one place flash writes are allowed.
 
 ## R12 The demo
