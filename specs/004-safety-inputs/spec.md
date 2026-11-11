@@ -346,7 +346,7 @@ any of them by editing the settings defaults or this spec.
 3. **Stale times**: SQMeter HTTP default 30 s (setting, 10-600 s); SQMeter MQTT fixed at 150 s
    (2.5 × SQMeter's fixed 60 s republish); N.I.N.A. fixed at 10 s (5 polls).
 4. **Poll periods**: SQMeter HTTP every 5 s, N.I.N.A. every 2 s, each with 3 s connect and
-   reply timeouts and a 6 s limit per request. Not settings.
+   reply timeouts; the body is read until 6 s (see FR-010). Not settings.
 5. **Unknown** only during the start-up window (see FR-008); after it, a silent source is lost
    and the verdict is unsafe.
 6. **No weather source configured is unsafe**, not unknown. A new device therefore reports
