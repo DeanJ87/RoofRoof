@@ -51,7 +51,8 @@ namespace SQM
                 return {
                     "Mount didn't park",
                     withWhy(
-                        "The weather is unsafe and the park wasn't confirmed within " + seconds(decision.limitMs) +
+                        "The weather is unsafe and the park wasn't confirmed " +
+                            (decision.limitMs == 0 ? std::string("in time") : "within " + seconds(decision.limitMs)) +
                             ", so the roof stays open. Park:",
                         why)};
             }

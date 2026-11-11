@@ -1,5 +1,6 @@
 #include "CloseOnUnsafe.h"
 
+#include <atomic>
 #include <esp_attr.h>
 
 #include "Logger.h"
@@ -20,6 +21,7 @@ namespace SQM
         struct Kept
         {
             uint32_t magic;
+            uint32_t seq; // the newer valid slot wins
             uint8_t phase;
             uint8_t event;
             uint8_t cause;
@@ -31,15 +33,32 @@ namespace SQM
             uint32_t check;
         };
         // Bump the low byte whenever Kept or the enums it holds change.
-        constexpr uint32_t KEPT_MAGIC = 0x5EC00503u;
-        RTC_NOINIT_ATTR Kept kept;
+        constexpr uint32_t KEPT_MAGIC = 0x5EC00504u;
+        // Two slots, written alternately and validated last, so a reset in the
+        // middle of a write still leaves the previous record.
+        RTC_NOINIT_ATTR Kept kept[2];
 
         uint32_t checkOf(const Kept &k)
         {
             uint32_t sum = 0x9E3779B9u ^ (k.phase | (k.event << 8) | (k.cause << 16) | (static_cast<uint32_t>(k.requested) << 24));
-            for (uint32_t value : {k.unsafeMs, k.wallMs, k.limitMs, k.requestAgeMs})
+            for (uint32_t value : {k.seq, k.unsafeMs, k.wallMs, k.limitMs, k.requestAgeMs})
                 sum = (sum ^ value) * 16777619u;
             return sum;
+        }
+
+        bool valid(const Kept &k)
+        {
+            return k.magic == KEPT_MAGIC && k.check == checkOf(k);
+        }
+
+        // The newest valid slot, or nullptr.
+        const Kept *newest()
+        {
+            const bool a = valid(kept[0]);
+            const bool b = valid(kept[1]);
+            if (a && b)
+                return static_cast<int32_t>(kept[1].seq - kept[0].seq) > 0 ? &kept[1] : &kept[0];
+            return a ? &kept[0] : b ? &kept[1] : nullptr;
         }
 
         uint32_t clampMs(uint64_t ms)
@@ -56,47 +75,56 @@ namespace SQM
     void CloseOnUnsafe::begin(const Config &config)
     {
         updateConfig(config);
-        if (kept.magic != KEPT_MAGIC || kept.check != checkOf(kept))
+        const Kept *k = newest();
+        if (k == nullptr)
             return;
+        keptSeq = k->seq;
         CloseSeq::Sequence::Saved saved;
-        saved.phase = static_cast<CloseSeq::Phase>(kept.phase);
-        saved.event = static_cast<CloseSeq::Event>(kept.event);
-        saved.cause = static_cast<CloseSeq::Cause>(kept.cause);
-        saved.unsafeMs = kept.unsafeMs;
-        saved.wallMs = kept.wallMs;
-        saved.limitMs = kept.limitMs;
-        saved.requested = kept.requested != 0;
-        saved.requestAgeMs = kept.requestAgeMs;
+        saved.phase = static_cast<CloseSeq::Phase>(k->phase);
+        saved.event = static_cast<CloseSeq::Event>(k->event);
+        saved.cause = static_cast<CloseSeq::Cause>(k->cause);
+        saved.unsafeMs = k->unsafeMs;
+        saved.wallMs = k->wallMs;
+        saved.limitMs = k->limitMs;
+        saved.requested = k->requested != 0;
+        saved.requestAgeMs = k->requestAgeMs;
         sequence.restore(saved);
-        loggedPhase = sequence.phase();
-        if (loggedPhase != CloseSeq::Phase::Idle)
+        if (sequence.phase() != CloseSeq::Phase::Idle)
             Logger::warn(
                 TAG,
                 "Close sequence carries on after the restart (%s, %u s)",
-                CloseSeq::phaseName(loggedPhase),
-                static_cast<unsigned>(kept.unsafeMs / 1000));
+                CloseSeq::phaseName(sequence.phase()),
+                static_cast<unsigned>(k->unsafeMs / 1000));
     }
 
-    // Every step: RTC memory is plain RAM, so keeping the running time costs nothing.
+    // Every step: RTC memory is plain RAM, so keeping the running time costs
+    // nothing. The other slot is written, then validated, so the previous
+    // record stands until the new one is complete.
     void CloseOnUnsafe::keep()
     {
         const CloseSeq::Sequence::Saved saved = sequence.saved();
         if (saved.phase == CloseSeq::Phase::Idle && !saved.requested)
         {
-            kept.magic = 0;
+            kept[0].magic = 0;
+            kept[1].magic = 0;
             return;
         }
-        kept.magic = 0; // invalid while it changes
-        kept.phase = static_cast<uint8_t>(saved.phase);
-        kept.event = static_cast<uint8_t>(saved.event);
-        kept.cause = static_cast<uint8_t>(saved.cause);
-        kept.requested = saved.requested ? 1 : 0;
-        kept.requestAgeMs = clampMs(saved.requestAgeMs);
-        kept.unsafeMs = clampMs(saved.unsafeMs);
-        kept.wallMs = clampMs(saved.wallMs);
-        kept.limitMs = clampMs(saved.limitMs);
-        kept.check = checkOf(kept);
-        kept.magic = KEPT_MAGIC;
+        Kept &slot = kept[(keptSeq + 1) & 1u];
+        slot.magic = 0;
+        std::atomic_signal_fence(std::memory_order_seq_cst);
+        slot.seq = keptSeq + 1;
+        slot.phase = static_cast<uint8_t>(saved.phase);
+        slot.event = static_cast<uint8_t>(saved.event);
+        slot.cause = static_cast<uint8_t>(saved.cause);
+        slot.requested = saved.requested ? 1 : 0;
+        slot.unsafeMs = clampMs(saved.unsafeMs);
+        slot.wallMs = clampMs(saved.wallMs);
+        slot.limitMs = clampMs(saved.limitMs);
+        slot.requestAgeMs = clampMs(saved.requestAgeMs);
+        slot.check = checkOf(slot);
+        std::atomic_signal_fence(std::memory_order_seq_cst);
+        slot.magic = KEPT_MAGIC;
+        keptSeq = slot.seq;
     }
 
     void CloseOnUnsafe::handle(SafetyInputs &safety, RoofControl &roof)
