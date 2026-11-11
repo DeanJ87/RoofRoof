@@ -97,6 +97,22 @@ test('system', async ({ page }) => {
   await capturePage(page, 'system');
 });
 
+// Spec 017: the Diagnostics page during a move (switched on through the API; off by default).
+test('diagnostics', async ({ page }) => {
+  await page.goto('./?panel=hidden#/system');
+  await waitForDemoApp(page);
+  await page.waitForTimeout(2500); // the emulated device starts
+  await page.evaluate(async () => {
+    const body = JSON.stringify({ diag: { enabled: true } });
+    await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    await fetch('/api/roof/open', { method: 'POST', headers: { 'X-RoofRoof': '1' } });
+    location.hash = '#/diagnostics';
+  });
+  await expect(page.getByRole('heading', { name: /in progress$/ })).toBeVisible({ timeout: 10_000 });
+  await page.waitForTimeout(8000); // a few seconds of the move on the chart
+  await page.screenshot({ path: save('diagnostics'), fullPage: true });
+});
+
 test('updates', async ({ page }) => {
   await page.goto('./?panel=hidden#/updates');
   await waitForDemoApp(page);

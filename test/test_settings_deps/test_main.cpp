@@ -18,7 +18,7 @@ using namespace SQM;
 // Settings dependencies (SQMeter spec 020). The fixture cases are shared with
 // web/src/lib/__tests__/settingsDeps.test.ts, so the device and the web UI's
 // preview give the same answers. Catalogue IDs covered here:
-// D-01 D-02 D-03 D-04 D-12 D-13 D-28 D-32 D-33 D-34 D-36 D-37 D-40 D-41.
+// D-01 D-02 D-03 D-04 D-12 D-13 D-28 D-32 D-33 D-34 D-36 D-37 D-40 D-41 D-46.
 
 namespace
 {

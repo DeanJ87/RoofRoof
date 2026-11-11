@@ -798,6 +798,94 @@
           "reason": "daylight-off"
         }
       }
+    },
+    {
+      "name": "diagnostics: kept summaries and MQTT are off by default",
+      "config": {},
+      "facts": {},
+      "expect": {
+        "diag.keepSummaries": {
+          "state": "off",
+          "id": "D-46"
+        },
+        "diag.mqtt": {
+          "state": "off",
+          "id": "D-46"
+        }
+      }
+    },
+    {
+      "name": "diagnostics off: kept summaries and MQTT wait for it (D-46)",
+      "config": {
+        "diag": {
+          "keepSummaries": true,
+          "mqtt": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "broker.local",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "diag.keepSummaries": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "diag-off",
+          "text": "Advanced diagnostics is off",
+          "fix": "device#diagnostics"
+        },
+        "diag.mqtt": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "diag-off"
+        }
+      }
+    },
+    {
+      "name": "diagnostics on: kept summaries in effect, MQTT waits for MQTT",
+      "config": {
+        "diag": {
+          "enabled": true,
+          "keepSummaries": true,
+          "mqtt": true
+        }
+      },
+      "facts": {},
+      "expect": {
+        "diag.keepSummaries": {
+          "state": "active",
+          "id": "D-46"
+        },
+        "diag.mqtt": {
+          "state": "inactive",
+          "id": "D-46",
+          "reason": "mqtt-off",
+          "fix": "network#mqtt"
+        }
+      }
+    },
+    {
+      "name": "diagnostics and MQTT on: diagnostics over MQTT in effect",
+      "config": {
+        "diag": {
+          "enabled": true,
+          "mqtt": true
+        },
+        "mqtt": {
+          "enabled": true,
+          "broker": "broker.local",
+          "topic": "roofroof"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "diag.mqtt": {
+          "state": "active",
+          "id": "D-46"
+        }
+      }
     }
   ]
 }

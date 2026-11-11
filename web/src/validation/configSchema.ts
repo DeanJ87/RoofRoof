@@ -184,6 +184,9 @@ export const autoCloseConfigSchema = z.object({
 
 export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });
 
+// Spec 017: advanced diagnostics.
+export const diagConfigSchema = z.object({ enabled: z.boolean(), keepSummaries: z.boolean(), mqtt: z.boolean() });
+
 export const locationConfigSchema = z.object({
   set: z.boolean(),
   latitude: z
@@ -222,6 +225,7 @@ export const configSchema = z.object({
   location: locationConfigSchema.optional(),
   autoClose: autoCloseConfigSchema.optional(),
   ui: uiConfigSchema.optional(),
+  diag: diagConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
   setup: setupConfigSchema.optional(),
 });

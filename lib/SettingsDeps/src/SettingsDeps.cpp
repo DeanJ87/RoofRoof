@@ -23,6 +23,7 @@ namespace SQM
                 {"location-unknown", "Location not set", "roof#daylight"},
                 {"clock-not-set", "Clock not set", "time#ntp"},
                 {"remote-off", "Alpaca and MQTT roof commands are off", "network#alpaca"},
+                {"diag-off", "Advanced diagnostics is off", "device#diagnostics"},
             };
 
             const Reason *reason(const char *code)
@@ -178,6 +179,16 @@ namespace SQM
                 c.add("wifi.mdns", "D-36", cfg.wifi.mdns, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
                 c.add("wifi.ipv6", "D-36", cfg.wifi.ipv6, {{"D-36", "wifi-disconnected", c.f.wifiConnected}});
             }
+
+            // Spec 017: the kept summaries and the MQTT topics belong to
+            // advanced diagnostics; the topics also need MQTT.
+            void addDiag(const Context &c)
+            {
+                const DiagConfig &d = c.cfg.diag;
+                const Link diagOn{"D-46", "diag-off", d.enabled};
+                c.add("diag.keepSummaries", "D-46", d.keepSummaries, {diagOn});
+                c.add("diag.mqtt", "D-46", d.mqtt, {diagOn, {"D-46", "mqtt-off", c.cfg.mqtt.enabled}});
+            }
         } // namespace
 
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
@@ -192,6 +203,7 @@ namespace SQM
             addSafety(c);
             addDaylight(c);
             addDevice(c);
+            addDiag(c);
             return out;
         }
 
