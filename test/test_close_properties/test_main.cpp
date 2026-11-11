@@ -26,7 +26,7 @@
 //   P10 no close within 5 minutes of a refused or interrupted close;
 //   P11 unsafe with the roof open never goes quiet (no close, no critical
 //       event, not stood down) for longer than an attempt and its back-off,
-//       however the verdict flaps.
+//       however the verdict flaps and however often the board restarts.
 //
 // A failure names the seed and the step, so it can be replayed.
 
@@ -459,10 +459,38 @@ namespace
         w.in.ninaConfigured = !rnd.chance(50);
     }
 
+    // A restart of the board (a reset, a crash, a brown-out): only what the
+    // sequence keeps survives; a move under way ends between the magnets.
+    void restartBoard(World &w, Watch &watch, Sequence &seq, uint32_t &lastStops)
+    {
+        const Sequence::Saved saved = seq.saved();
+        seq = Sequence();
+        seq.setParkTimeoutMs(watch.attemptLimitMs);
+        seq.restore(saved);
+        if (w.in.roof == State::Closing || w.in.roof == State::Opening)
+            w.in.roof = State::Unknown;
+        w.in.closePending = false;
+        w.in.personStops = 0;
+        lastStops = 0;
+        // What lives only in RAM starts again: the alert throttle and the close back-off.
+        for (auto &row : watch.alertedEver)
+            for (bool &ever : row)
+                ever = false;
+        watch.closeBarUntilMs = 0;
+        watch.closingRun = false;
+        // The time the board was down (since the last step) doesn't count: it
+        // ran no clock. (On the bench a restart takes a few seconds.)
+        const uint64_t downMs = w.in.nowMs - watch.lastStepMs;
+        watch.attemptSinceMs += downMs;
+        watch.lastStepMs = w.in.nowMs;
+    }
+
     // One step of the sequence, the roof's answer and every check. nullptr when all hold.
     const char *stepOnce(World &w, Watch &watch, Sequence &seq, Random &rnd, uint32_t &lastStops)
     {
         w.in.nowMs += rnd.chance(20) ? 30000 + rnd.below(120000) : 10 + rnd.below(1500);
+        if (rnd.chance(3))
+            restartBoard(w, watch, seq, lastStops);
         worldChanges(w, rnd);
         observeInputs(watch, w.in);
         const Phase before = seq.phase();

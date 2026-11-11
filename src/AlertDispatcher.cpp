@@ -210,7 +210,7 @@ namespace SQM
         static_cast<AlertDispatcher *>(arg)->run();
     }
 
-    void AlertDispatcher::dispatch(
+    uint32_t AlertDispatcher::dispatch(
         const Alerts::Alert &alert,
         const AlertsConfig &cfg,
         const std::string &deviceName,
@@ -241,6 +241,30 @@ namespace SQM
         Logger::info(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
         if (httpMask != 0 && queue != nullptr && id != 0)
             queueHttp(new Job{id, alert, cfg, deviceName, httpMask});
+        return id;
+    }
+
+    AlertDispatcher::Outcome AlertDispatcher::outcome(uint32_t id) const
+    {
+        if (id == 0 || !mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
+            return Outcome::Failed;
+        Outcome result = Outcome::Failed;
+        for (const AlertRecord &record : records)
+        {
+            if (record.id != id)
+                continue;
+            bool sent = false, pending = false, any = false;
+            for (DeliveryStatus status : record.status)
+            {
+                sent |= status == DeliveryStatus::Sent;
+                pending |= status == DeliveryStatus::Pending;
+                any |= status != DeliveryStatus::NotSent;
+            }
+            result = sent ? Outcome::Delivered : pending ? Outcome::Pending : any ? Outcome::Failed : Outcome::NoChannel;
+            break;
+        }
+        xSemaphoreGive(mutex);
+        return result;
     }
 
     uint32_t AlertDispatcher::store(AlertRecord &record)

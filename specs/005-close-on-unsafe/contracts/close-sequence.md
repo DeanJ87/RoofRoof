@@ -29,7 +29,7 @@ const char *phaseName(Phase); const char *eventName(Event); const char *causeNam
 void begin(const Config &config);           // setup()
 void updateConfig(const Config &config);    // any task: park.timeoutSeconds
 void handle(SafetyInputs &safety, RoofControl &roof); // main loop, every pass after handleSafety()
-void setAlertSink(std::function<void(const Alerts::Alert &)> sink); // main loop; spec 007 replaces the wording
+void setAlertSink(AlertSink sink, DeliveryProbe probe); // main loop; sink returns the record id, probe says how it went
 ```
 
 `RoofControl` gains `Outcome automaticClose(uint32_t personStopsSeen)`: the close with the automatic
@@ -40,8 +40,11 @@ origin, refused (`personStop`) if a person's stop was counted since the snapshot
 roof's lock before the stop is applied, so no snapshot shows the stop without the count (it isn't
 written to the status document).
 
-`WebServer` gains `void raiseRoofAlert(const Alerts::Alert &alert)` (main loop): dispatches to every
-channel that is switched on, past the pause, the start-up grace and the master switch.
+`WebServer` gains `uint32_t raiseRoofAlert(const Alerts::Alert &alert)` (main loop): dispatches to
+every channel that is switched on, past the pause, the start-up grace and the master switch, and
+returns the record id; `roofAlertOutcome(id)` says whether a channel took it.
+`AlertDispatcher::dispatch` now returns the record id, and `AlertDispatcher::outcome(id)` summarises
+its channels. `RoofControl::running()` says whether the control task started.
 
 ## Alert type
 

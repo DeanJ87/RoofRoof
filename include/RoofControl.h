@@ -90,6 +90,8 @@ namespace SQM
             closeHook = std::move(onClose);
         }
 
+        // Any task: the control task and watchdog started (else nothing can move).
+        bool running() const { return started.load(); }
         // Any task.
         RoofIo::Snapshot snapshot() const;
         uint32_t revision() const { return revisionCount.load(); }

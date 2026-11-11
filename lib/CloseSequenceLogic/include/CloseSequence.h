@@ -45,6 +45,9 @@ namespace SQM
         // The gate refusing the close for the park this many times in a row
         // counts as a refusal (back-off and alert).
         constexpr uint8_t MAX_PARK_REFUSALS = 3;
+        // A restarted attempt or back-off counts this much more than it kept:
+        // the restart itself took time no clock ran through (start-up, WiFi).
+        constexpr uint64_t RESTART_ALLOWANCE_MS = 10000;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -59,6 +62,7 @@ namespace SQM
             bool parked = false;        // spec 004's park result
             bool ninaConfigured = true; // the park result doesn't say "N.I.N.A. not configured"
             uint32_t personStops = 0;   // a person's accepted stops and aborts since start
+            bool roofStarted = true;    // the roof's control task runs (else it reads Unknown for ever)
         };
 
         enum class Phase : uint8_t
@@ -104,6 +108,7 @@ namespace SQM
             TooLong,     // the close outlasted its guard
             PositionUnknown,
             FaultLatched,
+            RoofNotStarted, // the roof controller didn't start: nothing can move
         };
 
         // What one step decided.
@@ -147,13 +152,26 @@ namespace SQM
             // The roof's answer to the Close action of the last step.
             Decision closeAnswered(CloseAnswer answer);
             Phase phase() const { return current; }
-            // After a restart: a stand-down that must outlive it (a person's
-            // stop, a halted close), with its event, raised again on the first
-            // step. Only HeldByPerson and Halted are restored; anything else is ignored.
-            void restore(Phase phase, Event event, Cause cause);
-            // The event and cause that put the sequence in its phase (for restore()).
-            Event lastEvent() const { return lastCritical.has ? lastCritical.event : Event::None; }
-            Cause lastCause() const { return lastCritical.has ? lastCritical.cause : Cause::None; }
+            // What must outlive a restart (a reset, a crash, a brown-out): a
+            // stand-down, and an attempt or back-off with the time it has run,
+            // so a board that keeps restarting in the rain still reaches its
+            // time limits and alerts. Phase Idle when there is nothing to keep.
+            struct Saved
+            {
+                Phase phase = Phase::Idle;
+                Event event = Event::None; // the episode's last critical event
+                Cause cause = Cause::None;
+                uint64_t unsafeMs = 0;     // how long the phase has run (unsafe time)
+                uint64_t wallMs = 0;       // and in wall time
+                uint64_t limitMs = 0;      // the attempt's park limit
+                bool requested = false;    // a park request was sent...
+                uint64_t requestAgeMs = 0; // ...this long ago (kept spacing across a restart)
+            };
+            Saved saved() const;
+            // After a restart, before the first step: puts `saved` back, applied
+            // on the first step. Values that don't make sense are ignored. A
+            // stand-down's event is raised again at once.
+            void restore(const Saved &saved);
 
         private:
             // A condition that must hold without a break for some time.
@@ -231,9 +249,12 @@ namespace SQM
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
             // When each event and cause last alerted (index: Event, Cause).
-            bool alertedEver[8][9] = {};
-            uint64_t alertedAtMs[8][9] = {};
+            bool alertedEver[8][10] = {};
+            uint64_t alertedAtMs[8][10] = {};
             bool remindNow = false; // restored after a restart: remind on the first step
+            bool restorePending = false;
+            Saved restoring;
+            void applyRestore();
         };
 
         // The verdict and park result into `in`: only Safe is safe (unknown is

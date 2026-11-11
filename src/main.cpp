@@ -236,7 +236,22 @@ void startServices()
     // Spec 005: unsafe ends parked and closed; its critical events go out
     // through the alert dispatcher, never through N.I.N.A. or SQMeter.
     closeOnUnsafe.begin(config);
-    closeOnUnsafe.setAlertSink([](const Alerts::Alert &alert) { webServer->raiseRoofAlert(alert); });
+    closeOnUnsafe.setAlertSink(
+        [](const Alerts::Alert &alert) { return webServer->raiseRoofAlert(alert); },
+        [](uint32_t id)
+        {
+            switch (webServer->roofAlertOutcome(id))
+            {
+            case AlertDispatcher::Outcome::Delivered:
+                return CloseSeq::Delivery::Delivered;
+            case AlertDispatcher::Outcome::Pending:
+                return CloseSeq::Delivery::Pending;
+            case AlertDispatcher::Outcome::NoChannel:
+                return CloseSeq::Delivery::NoChannel;
+            default:
+                return CloseSeq::Delivery::Failed;
+            }
+        });
     HeapTrace::mark("setup complete");
 }
 
