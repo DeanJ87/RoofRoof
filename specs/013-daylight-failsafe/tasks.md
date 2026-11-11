@@ -48,4 +48,4 @@ with `pio run -e esp32dev`.
 
 ## Phase 7: Verify
 
-- [ ] T020 Quickstart §1 of spec 001; converge; independent reviews until one says safe to merge
+- [X] T020 Quickstart §1 of spec 001; converge; independent reviews until one says safe to merge
