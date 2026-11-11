@@ -87,7 +87,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Settings (Alerts, Network, Time, Device tabs, backup card) | `web/src/components/settings` | Changed: Sensors, Safety, Battery, Display and Language tabs and cards removed | No |
 | Alpaca, System, Updates pages | `web/src/components` | Changed: no release check; upload only | No |
 | Settings dependency logic and links | `web/src/lib/settingsDep*.ts` | Changed: follows the cut catalogue | No |
-| Layout, UI kit, toasts, WiFi setup | `web/src/components` | Unchanged apart from the name | No |
+| Layout, UI kit, toasts, WiFi setup | `web/src/components` | Changed: the UI kit gains the onboarding set (modal, choice cards, speech bubble, mascot; spec 018) and its icons move to `icons.tsx`; the layout makes the page inert behind a modal | No (SQMeter has no guided flow) |
 | i18n | `web/src/i18n` | Changed: English only; the 13 other language packs and loader removed | No |
 | Browser demo and its panel | `web/src/demo` | Changed: runs the firmware core built as `rr-core` (was `sqm-core`); sensor panel, conditions, presets and imaging app removed | No |
 | Mocks, types, validation, test helpers | `web/src/mocks`, `types`, `validation`, `test` | Changed: sensor, battery and display types and schemas removed | No |
