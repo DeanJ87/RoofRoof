@@ -82,6 +82,16 @@ describe('testAnswered', () => {
     ).toBe(false);
   });
 
+  it('after a change, an unchanged source still waiting does not hold the answer back', () => {
+    const before = doc((d) => (d.weather.mqtt = { ...d.weather.mqtt, enabled: true, state: 'waiting' }));
+    const mqttOn = { ...config, safety: { ...config.safety!, mqtt: { ...config.safety!.mqtt, enabled: true } } };
+    const after = doc((d) => ((d.weather.http.generation += 1), (d.weather.mqtt = { ...d.weather.mqtt, enabled: true, state: 'waiting' })));
+    expect(answered(after, 'weather', before, true, mqttOn)).toBe(true);
+    // The changed source itself still waiting is not an answer.
+    const stillWaiting = doc((d) => ((d.weather.http.generation += 1), (d.weather.http.state = 'waiting')));
+    expect(testAnswered(stillWaiting, 'weather', doc(), true)).toBe(false);
+  });
+
   it('a changed part with no reading from before the save never answers (it could be the old one)', () => {
     expect(
       testAnswered(

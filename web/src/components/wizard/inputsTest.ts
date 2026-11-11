@@ -15,8 +15,16 @@ export const TEST_POLL_MS = 1000;
 const generations = (doc: RoofInputs, part: TestPart): number[] =>
   part === 'weather' ? [doc.weather.http.generation, doc.weather.mqtt.generation] : [doc.nina.generation];
 
-const waiting = (doc: RoofInputs, part: TestPart): boolean =>
-  part === 'weather' ? [doc.weather.http, doc.weather.mqtt].some((source) => source.state === 'waiting') : doc.nina.state === 'waiting';
+// A source still waiting for its first reply. After a change, only the
+// sources the change started again count; an unchanged one may still wait.
+const waiting = (doc: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean): boolean => {
+  if (part === 'nina') return doc.nina.state === 'waiting';
+  const sources = [
+    [doc.weather.http, before?.weather.http],
+    [doc.weather.mqtt, before?.weather.mqtt],
+  ] as const;
+  return sources.some(([now, was]) => now.state === 'waiting' && (!changed || !was || now.generation !== was.generation));
+};
 
 // The reading is of the saved settings: each source the settings switch on is
 // being read, and each they switch off isn't (a reading taken as the device
@@ -33,7 +41,7 @@ const matchesSettings = (doc: RoofInputs, part: TestPart, config: Config): boole
  * changed this part; `config`: the settings as saved.
  */
 export const testAnswered = (doc: RoofInputs, part: TestPart, before: RoofInputs | null, changed: boolean, config: Config): boolean => {
-  if (waiting(doc, part) || !matchesSettings(doc, part, config)) return false;
+  if (waiting(doc, part, before, changed) || !matchesSettings(doc, part, config)) return false;
   if (!changed) return true;
   if (!before) return false; // can't tell an old reading from a new one
   const was = generations(before, part);

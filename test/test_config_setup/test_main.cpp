@@ -98,6 +98,28 @@ void test_a_save_without_setup_keeps_it()
     TEST_ASSERT_EQUAL_UINT8(4, cfg->setup.step);
 }
 
+// A setup-only save (the banner's Dismiss, Skip setup, a step) changes
+// nothing but the setup state: no motion setting, no command switch.
+void test_a_setup_only_save_changes_nothing_else()
+{
+    Config base = Config::createDefault();
+    base.roof.travelMm = 2100;
+    base.roof.speedMmPerSecond = 41.5f;
+    base.roof.topDutyPercent = 40;
+    base.mqtt.roofCommands = true;
+    base.daylight.mode = DaylightConfig::Mode::Close;
+    base.alerts.ntfyEnabled = true;
+    base.alerts.ntfyTopic = "roof";
+    base.safety.httpEnabled = true;
+    base.safety.httpUrl = "http://sqmeter.local/api/safety";
+    const auto cfg = fromUi("{\"setup\":{\"state\":\"done\",\"step\":0}}", base);
+    TEST_ASSERT_TRUE(cfg.has_value());
+    TEST_ASSERT_EQUAL(SetupConfig::State::Done, cfg->setup.state);
+    Config expected = base;
+    expected.setup = cfg->setup;
+    TEST_ASSERT_EQUAL_STRING(expected.toJson(false, true).c_str(), cfg->toJson(false, true).c_str());
+}
+
 void test_stored_before_setup_is_a_document_without_the_section()
 {
     TEST_ASSERT_TRUE(Config::storedBeforeSetup("{\"deviceName\":\"old\",\"wifi\":{\"ssid\":\"HomeNet\"}}"));
@@ -137,6 +159,7 @@ int main()
     RUN_TEST(test_a_step_out_of_range_is_refused_from_the_ui);
     RUN_TEST(test_a_bad_stored_value_keeps_the_current_one);
     RUN_TEST(test_a_save_without_setup_keeps_it);
+    RUN_TEST(test_a_setup_only_save_changes_nothing_else);
     RUN_TEST(test_stored_before_setup_is_a_document_without_the_section);
     RUN_TEST(test_marking_stored_before_setup_offers_the_wizard);
     RUN_TEST(test_the_stored_document_carries_setup);

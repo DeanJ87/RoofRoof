@@ -15,7 +15,10 @@ export type TestState =
   | { phase: 'timeout'; doc: RoofInputs | null }
   | { phase: 'failed'; message: string };
 
-export type TestSave = () => Promise<{ ok: true; changed: boolean; config: Config } | { ok: false; message: string }>;
+// `before`: the inputs read before the save that the Test answers (when the page saved it).
+export type TestSave = () => Promise<
+  { ok: true; changed: boolean; config: Config; before?: RoofInputs | null } | { ok: false; message: string }
+>;
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -47,7 +50,7 @@ export const useInputsTest = (part: TestPart) => {
     const saved = await save();
     if (!live.current) return;
     if (!saved.ok) return setState({ phase: 'failed', message: saved.message });
-    await follow(before, saved.changed, saved.config);
+    await follow(saved.before !== undefined ? saved.before : before, saved.changed, saved.config);
   };
 
   return { state, run };

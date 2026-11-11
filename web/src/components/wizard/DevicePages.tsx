@@ -1,5 +1,5 @@
 import { FunctionalComponent } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import type { WizardPageProps } from './context';
 import { DeviceNameField, PasswordFields } from '../settings/DeviceTab';
 import { NtpCard, TimeZoneCard } from '../settings/TimeTab';
@@ -14,12 +14,9 @@ import { t } from '../../i18n';
 // starts switched on when it is off and none is set; turning it off warns.
 export const DevicePage: FunctionalComponent<WizardPageProps> = (props) => {
   const { config, updateMany } = props;
-  const offered = useRef(false);
   useEffect(() => {
-    if (offered.current) return;
-    offered.current = true;
-    if (!config.auth.enabled && config.auth.password === '') updateMany([[['auth', 'enabled'], true]]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the page opens: never again after the owner turns it off
+    if (props.offerPassword()) updateMany([[['auth', 'enabled'], true]]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per wizard visit (offerPassword says so): never again after the owner turns it off
   }, []);
   return (
     <>

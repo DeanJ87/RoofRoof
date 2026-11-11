@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Config, SetupConfig, SystemStatus } from '../types';
+import type { Config, RoofInputs, SetupConfig, SystemStatus } from '../types';
 import { useConfigEditor, type SaveOutcome } from '../hooks/useConfigEditor';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { TestSave } from '../hooks/useInputsTest';
@@ -11,7 +11,7 @@ import { listReasons } from './settings/restart';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { restartDevice } from '../lib/settingsApi';
-import { saveSetup } from '../lib/setupApi';
+import { fetchInputs, saveSetup } from '../lib/setupApi';
 import { locationQuery } from './settings/tabs';
 import type { SettingsTabProps } from './settings/context';
 import type { WizardPageProps } from './wizard/context';
@@ -195,6 +195,12 @@ const Wizard: FunctionalComponent = () => {
   const [finished, setFinished] = useState(false);
   const [restart, setRestart] = useState<string[]>([]);
   const heading = useHeadingFocus(step);
+  // The inputs as they were before the last save of a Test page, so a Test
+  // right after a plain Save still waits for a reading of the saved settings.
+  const lastSave = useRef<{ step: number; before: RoofInputs | null; was: Config } | null>(null);
+  // Password protection is offered once per visit to the wizard, never again
+  // after the owner has seen page 1 (and only when none is saved).
+  const passwordOffered = useRef(false);
 
   if (loading || step === null) {
     return (
@@ -207,7 +213,13 @@ const Wizard: FunctionalComponent = () => {
 
   const state = setup?.state ?? 'new';
   const status = live ?? editor.status;
-  const go = (index: number) => {
+  // Leaving a page drops its unsaved edits: Back, Skip page and the page list
+  // never save, and no later save may carry them (FR-007).
+  // `justSaved`: the page was saved this moment, so there is nothing to drop
+  // (this render's `dirty` and `saved` are from before the save).
+  const go = (index: number, justSaved = false) => {
+    if (dirty && !justSaved) editor.discard();
+    lastSave.current = null;
     setProblem(null);
     setSkipping(false);
     setStep(index);
@@ -217,7 +229,11 @@ const Wizard: FunctionalComponent = () => {
   // One save of the page; false (with the reason shown) when it didn't go through.
   const save = async (next: SetupConfig | undefined): Promise<boolean> => {
     setBusy(true);
+    const testPage = WIZARD_PAGES[step].id === 'weather' || WIZARD_PAGES[step].id === 'nina';
+    const before = testPage ? await fetchInputs() : null;
+    const was = saved;
     const outcome = await editor.save(next ? { setup: next } : {});
+    if (testPage && outcome.kind === 'saved') lastSave.current = { step, before, was };
     setBusy(false);
     const text = outcomeText(outcome);
     setProblem(text);
@@ -229,9 +245,14 @@ const Wizard: FunctionalComponent = () => {
   const saveForTest =
     (fields: string[]): TestSave =>
     async () => {
-      if (!dirty) return { ok: true, changed: false, config };
-      const changed = fields.some((field) => valueAt(saved, field) !== valueAt(config, field));
-      return (await save(undefined)) ? { ok: true, changed, config } : { ok: false, message: t('wizard.test.notSaved') };
+      const differs = (was: Config) => fields.some((field) => valueAt(was, field) !== valueAt(config, field));
+      if (!dirty) {
+        const last = lastSave.current?.step === step ? lastSave.current : null;
+        return last ? { ok: true, changed: differs(last.was), config, before: last.before } : { ok: true, changed: false, config };
+      }
+      const changed = differs(saved);
+      if (!(await save(undefined))) return { ok: false, message: t('wizard.test.notSaved') };
+      return { ok: true, changed, config, before: lastSave.current?.before ?? null };
     };
 
   // A page with changes is saved with the next step; an unchanged one only
@@ -239,10 +260,10 @@ const Wizard: FunctionalComponent = () => {
   const next = async () => {
     const at: SetupConfig = { state, step: step + 1 };
     if (!dirty) {
-      void saveSetup(at);
-      return go(step + 1);
+      await saveSetup(at); // in order, so the device keeps the latest page
+      return go(step + 1, true);
     }
-    if (await save(at)) go(step + 1);
+    if (await save(at)) go(step + 1, true);
   };
   const finish = async () => {
     const done: SetupConfig = { state: 'done', step: 0 };
@@ -275,6 +296,11 @@ const Wizard: FunctionalComponent = () => {
     setHallNotFitted,
     saveForTest,
     goToPage: go,
+    offerPassword: () => {
+      if (passwordOffered.current) return false;
+      passwordOffered.current = true;
+      return !saved.auth.enabled && saved.auth.password === '';
+    },
   } satisfies SettingsTabProps & WizardPageProps;
   const Page = PAGES[WIZARD_PAGES[step].id];
 

@@ -177,21 +177,20 @@ namespace SQM
 
         // Spec 015: a copy for GET /api/roof/inputs (the web server's task reads it).
         Safety::InputsReport next{verdict, parkResult, snap.nina, nowMs, snap.sqmeterGeneration, mqttGeneration, snap.ninaGeneration};
-        if (reportLock != nullptr && xSemaphoreTake(reportLock, portMAX_DELAY) == pdTRUE)
+        // Never stalls the loop: a report missed now is replaced a second later.
+        if (reportLock != nullptr && xSemaphoreTake(reportLock, pdMS_TO_TICKS(REPORT_WAIT_MS)) == pdTRUE)
         {
             lastReport = std::move(next);
             xSemaphoreGive(reportLock);
         }
     }
 
-    Safety::InputsReport SafetyInputs::report() const
+    std::optional<Safety::InputsReport> SafetyInputs::report() const
     {
-        Safety::InputsReport copy;
-        if (reportLock != nullptr && xSemaphoreTake(reportLock, portMAX_DELAY) == pdTRUE)
-        {
-            copy = lastReport;
-            xSemaphoreGive(reportLock);
-        }
+        if (reportLock == nullptr || xSemaphoreTake(reportLock, pdMS_TO_TICKS(REPORT_WAIT_MS)) != pdTRUE)
+            return std::nullopt;
+        std::optional<Safety::InputsReport> copy(lastReport);
+        xSemaphoreGive(reportLock);
         return copy;
     }
 

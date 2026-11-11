@@ -51,7 +51,10 @@ namespace SQM
         void requestPark() { poller.requestPark(); }
         // Any task (spec 015, GET /api/roof/inputs): the verdict, the park and
         // N.I.N.A.'s reading as last evaluated, copied under their own lock.
-        Safety::InputsReport report() const;
+        // Waits at most REPORT_WAIT_MS for it (the loop holds it only for a
+        // move); nothing when it couldn't be had in time.
+        std::optional<Safety::InputsReport> report() const;
+        static constexpr uint32_t REPORT_WAIT_MS = 50;
 
     private:
         static constexpr uint32_t EVALUATE_EVERY_MS = 1000;

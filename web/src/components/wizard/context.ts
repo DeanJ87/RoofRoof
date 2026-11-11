@@ -10,4 +10,6 @@ export interface WizardPageProps extends SettingsTabProps {
   // Saves the page for a Test; `changed` says whether these settings changed.
   saveForTest: (fields: string[]) => TestSave;
   goToPage: (index: number) => void;
+  // True once per wizard visit, when no password is saved: page 1 then starts with protection on.
+  offerPassword: () => boolean;
 }

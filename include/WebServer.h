@@ -26,6 +26,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 namespace SQM
@@ -84,7 +85,7 @@ namespace SQM
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
         // Spec 015: the weather sources, the park and N.I.N.A.'s reading as
         // last evaluated, for GET /api/roof/inputs (any task; it only copies).
-        using InputsSource = std::function<Safety::InputsReport()>;
+        using InputsSource = std::function<std::optional<Safety::InputsReport>()>;
         void setInputs(InputsSource source) { inputsSource = std::move(source); }
         // Any task: whether a channel took that alert.
         AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const

@@ -94,6 +94,14 @@ describe('Wizard', () => {
     expect(saves).toHaveLength(1);
     expect(saves[0].deviceName).toBe('Backyard roof');
     expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
+    // The saved edit stays: the next page's save sends it, not the value from before.
+    fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 3 of 10'));
+    expect(screen.queryByRole('button', { name: 'Save', exact: true })).toBeNull(); // nothing unsaved
+    fireEvent.change(screen.getByLabelText('Park switches fitted', { selector: 'select' }), { target: { value: 'one' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(saves).toHaveLength(2));
+    expect(saves[1].deviceName).toBe('Backyard roof');
   });
 
   it('keeps the page and says why when the device refuses the save (the roof moving)', async () => {
@@ -115,8 +123,41 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await heading()).toHaveTextContent('Step 2 of 10');
-    await waitFor(() => expect(saves).toEqual([{ setup: { state: 'new', step: 1 } }]));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 10'));
+    expect(saves).toEqual([{ setup: { state: 'new', step: 1 } }]);
+  });
+
+  it('leaving a page drops its unsaved edits: a later save never carries them (FR-007)', async () => {
+    mockDevice({
+      config: {
+        setup: { state: 'new', step: 4 },
+        roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
+      },
+    });
+    const saves = recordSaves();
+    render(<Wizard />);
+    await heading();
+    fireEvent.click(screen.getByRole('button', { name: 'Use first-run values' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 6 of 10'));
+    fireEvent.click(screen.getByRole('switch', { name: 'SQMeter over MQTT' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect((saves[0].roof as { topDutyPercent: number }).topDutyPercent).toBe(100);
+  });
+
+  it('offers password protection once per visit, never again after it is turned off', async () => {
+    mockDevice({ config: { auth: { enabled: false, username: 'admin', password: '' }, setup: { state: 'new', step: 0 } } });
+    render(<Wizard />);
+    const toggle = await screen.findByLabelText('Password-protect changes');
+    await waitFor(() => expect(toggle).toBeChecked());
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 10'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 1 of 10'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByLabelText('Password-protect changes')).not.toBeChecked();
   });
 
   it('Skip page and Back never save', async () => {

@@ -144,6 +144,7 @@
   "device.api.failedToSaveConfiguration": "Failed to save configuration",
   "device.api.failedToStartWifiScan": "Failed to start WiFi scan",
   "device.api.failedToWriteToPartition": "Failed to write to partition",
+  "device.api.inputsNotAvailableYetTryAgain": "Inputs not available yet: try again",
   "device.api.levelMustBe14": "Level must be 1-4",
   "device.api.notEnoughFreeMemoryForA": "Not enough free memory for a backup",
   "device.api.notFound": "Not found",

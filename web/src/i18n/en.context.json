@@ -133,6 +133,7 @@
   "device.api.failedToSaveConfiguration": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
   "device.api.failedToStartWifiScan": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
   "device.api.failedToWriteToPartition": "Sent by the device (src/WebServerUpdates.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
+  "device.api.inputsNotAvailableYetTryAgain": "Sent by the device (src/WebServerRoof.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.api.levelMustBe14": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",
   "device.api.notEnoughFreeMemoryForA": "Sent by the device (src/WebServerBackup.cpp) and shown in the UI. Keep the {placeholders}: they are values the device fills in.",
   "device.api.notFound": "Sent by the device and shown in the UI: an error the device returns for an action (test, calibrate, restart...).",

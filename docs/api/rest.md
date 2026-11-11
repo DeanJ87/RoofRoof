@@ -306,7 +306,7 @@ Clear a latched fault after fixing its cause. The fault is removed from storage 
 
 ### `GET /api/roof/inputs`
 
-The weather sources, the park and N.I.N.A. as the device last evaluated them (once a second): the weather verdict with each SQMeter source's state and reason, the rain contact, the park result, and N.I.N.A.'s last mount reading. The [setup wizard](../user-guide/setup-wizard.md)'s **Test** reads it. Open (no password), like `/api/status`: it returns readings and the device's texts, no address or secret, and sends nothing to SQMeter or N.I.N.A.
+The weather sources, the park and N.I.N.A. as the device last evaluated them (once a second): the weather verdict with each SQMeter source's state and reason, the rain contact, the park result, and N.I.N.A.'s last mount reading. The [setup wizard](../user-guide/setup-wizard.md)'s **Test** reads it. Open (no password), like `/api/status`: it returns readings and the device's texts, no address or secret, and sends nothing to SQMeter or N.I.N.A. In the rare moment the device is updating the readings for longer than 50 ms it answers `503` (`{"error": "Inputs not available yet: try again"}`).
 
 ```json
 {

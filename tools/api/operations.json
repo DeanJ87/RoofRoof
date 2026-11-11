@@ -545,7 +545,8 @@
       "summary": "Weather sources and the mount",
       "description": "The weather verdict with each SQMeter source's state and reason, the park result, and N.I.N.A.'s last mount reading (connected, at park, slewing), as the device last polled them. Read-only: it sends nothing to SQMeter or N.I.N.A. The setup wizard's Tests read it.",
       "responses": {
-        "200": "roof-inputs"
+        "200": "roof-inputs",
+        "503": "error"
       },
       "example": "roof-inputs"
     },

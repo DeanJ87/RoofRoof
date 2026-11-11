@@ -57,12 +57,18 @@ namespace SQM
     // Spec 015 (contracts/roof-inputs.md): readings only, open like /api/status.
     // A copy of what the main loop last evaluated: nothing is sent to SQMeter or
     // N.I.N.A. and nothing changes, so it needs no rate limit and never waits on
-    // the network or the roof (constitution VI).
+    // the network or the roof (constitution VI); it waits at most
+    // SafetyInputs::REPORT_WAIT_MS for the copy, and answers 503 without it.
     void WebServer::handleRoofInputs(AsyncWebServerRequest *request)
     {
-        const Safety::InputsReport report = inputsSource ? inputsSource() : Safety::InputsReport{};
+        const std::optional<Safety::InputsReport> report = inputsSource ? inputsSource() : std::nullopt;
+        if (!report)
+        {
+            request->send(503, "application/json", createErrorJson("Inputs not available yet: try again").c_str());
+            return;
+        }
         DynamicJsonDocument doc(Safety::INPUTS_REPORT_CAPACITY);
-        Safety::writeInputsReport(doc.to<JsonObject>(), report);
+        Safety::writeInputsReport(doc.to<JsonObject>(), *report);
         std::string body;
         serializeJson(doc, body);
         request->send(200, "application/json", body.c_str());

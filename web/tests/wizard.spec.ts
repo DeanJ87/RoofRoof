@@ -122,8 +122,9 @@ test('a save while the roof moves is refused, with the Stop bar on the page', as
   await expect.poll(() => roofCommand(page, 'open'), { timeout: 15_000, intervals: [1000] }).toBe(200);
   await expect(page.locator('.stop-bar').getByRole('button', { name: 'Stop' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('The roof is moving: saves are refused until it stops')).toBeVisible();
-  await page.getByRole('switch', { name: 'Password-protect changes' }).uncheck();
-  await saveAndContinue(page);
+  await page.locator('[data-field="deviceName"]').fill('Moving roof');
+  // The Stop bar sits over the bottom of the page while the roof moves: click without a pointer.
+  await page.getByRole('button', { name: 'Save and continue' }).evaluate((el: HTMLElement) => el.click());
   await expect(page.locator('#wizard-problem')).toBeVisible();
   await expect(heading(page)).toHaveText('Step 1 of 10: Device');
   await page.locator('.stop-bar').getByRole('button', { name: 'Stop' }).click();
