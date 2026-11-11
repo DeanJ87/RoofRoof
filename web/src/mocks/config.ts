@@ -47,6 +47,23 @@ export const mockConfig: Config = {
     rainContact: false,
   },
   park: { nina: { url: 'http://192.168.1.20:1888', api: 'v2' }, switches: 'none' },
+  roof: {
+    travelMm: 1850,
+    speedMmPerSecond: 38,
+    timeoutMarginSeconds: 15,
+    leaveMagnetSeconds: 10,
+    rampUpMs: 2000,
+    rampDownMs: 3000,
+    topDutyPercent: 100,
+    slowDutyPercent: 40,
+    openDirection: 'forward',
+    hallHighEnd: 'open',
+    hallHighCounts: 3000,
+    hallLowCounts: 1100,
+    currentSenseEnabled: false,
+    maxCurrentAmps: 10,
+    minSupplyVolts: 11,
+  },
   alerts: {
     enabled: true,
     events: {

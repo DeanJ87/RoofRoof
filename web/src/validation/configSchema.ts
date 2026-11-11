@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
+import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
 
 export const wifiConfigSchema = z.object({
@@ -149,6 +150,7 @@ export const configSchema = z.object({
   alpaca: alpacaConfigSchema.optional(),
   safety: safetyConfigSchema.optional(),
   park: parkConfigSchema.optional(),
+  roof: roofConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
 });
 

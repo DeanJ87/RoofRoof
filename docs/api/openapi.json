@@ -2098,6 +2098,74 @@
             ],
             "additionalProperties": false
           },
+          "roof": {
+            "type": "object",
+            "properties": {
+              "currentSenseEnabled": {
+                "type": "boolean"
+              },
+              "hallHighCounts": {
+                "type": "number"
+              },
+              "hallHighEnd": {
+                "type": "string"
+              },
+              "hallLowCounts": {
+                "type": "number"
+              },
+              "leaveMagnetSeconds": {
+                "type": "number"
+              },
+              "maxCurrentAmps": {
+                "type": "number"
+              },
+              "minSupplyVolts": {
+                "type": "number"
+              },
+              "openDirection": {
+                "type": "string"
+              },
+              "rampDownMs": {
+                "type": "number"
+              },
+              "rampUpMs": {
+                "type": "number"
+              },
+              "slowDutyPercent": {
+                "type": "number"
+              },
+              "speedMmPerSecond": {
+                "type": "number"
+              },
+              "timeoutMarginSeconds": {
+                "type": "number"
+              },
+              "topDutyPercent": {
+                "type": "number"
+              },
+              "travelMm": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "currentSenseEnabled",
+              "hallHighCounts",
+              "hallHighEnd",
+              "hallLowCounts",
+              "leaveMagnetSeconds",
+              "maxCurrentAmps",
+              "minSupplyVolts",
+              "openDirection",
+              "rampDownMs",
+              "rampUpMs",
+              "slowDutyPercent",
+              "speedMmPerSecond",
+              "timeoutMarginSeconds",
+              "topDutyPercent",
+              "travelMm"
+            ],
+            "additionalProperties": false
+          },
           "safety": {
             "type": "object",
             "properties": {
@@ -2198,6 +2266,7 @@
           "ntp",
           "ota",
           "park",
+          "roof",
           "safety",
           "wifi"
         ],
@@ -2468,6 +2537,57 @@
               },
               "switches": {
                 "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "roof": {
+            "type": "object",
+            "properties": {
+              "currentSenseEnabled": {
+                "type": "boolean"
+              },
+              "hallHighCounts": {
+                "type": "number"
+              },
+              "hallHighEnd": {
+                "type": "string"
+              },
+              "hallLowCounts": {
+                "type": "number"
+              },
+              "leaveMagnetSeconds": {
+                "type": "number"
+              },
+              "maxCurrentAmps": {
+                "type": "number"
+              },
+              "minSupplyVolts": {
+                "type": "number"
+              },
+              "openDirection": {
+                "type": "string"
+              },
+              "rampDownMs": {
+                "type": "number"
+              },
+              "rampUpMs": {
+                "type": "number"
+              },
+              "slowDutyPercent": {
+                "type": "number"
+              },
+              "speedMmPerSecond": {
+                "type": "number"
+              },
+              "timeoutMarginSeconds": {
+                "type": "number"
+              },
+              "topDutyPercent": {
+                "type": "number"
+              },
+              "travelMm": {
+                "type": "number"
               }
             },
             "additionalProperties": false

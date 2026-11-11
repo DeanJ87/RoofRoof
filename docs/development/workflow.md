@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 79275f3f9508433a
+fingerprint: adb8bf22bf743dcf
 -->
 <figure class="diagram" markdown>
 
@@ -13,7 +13,7 @@ fingerprint: 79275f3f9508433a
 flowchart TB
     accTitle: Code layers and dependency direction
     accDescr: The hardware-free logic in lib/ is the core. The firmware in src/ and include/ uses it on the ESP32, the native tests in test/ run it on a computer, and tools/demo-core compiles it to WebAssembly for the demo. The web UI in web/ talks to the firmware only over HTTP and WebSocket.
-    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, DriverLogic, AlpacaLogic, AlertLogic,<br/>ConfigModel, ConfigBackup, HaDiscovery, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
+    LIB["<b>lib/</b> - hardware-free C++<br/>DeviceCore, DriverLogic, RoofLogic, AlpacaLogic,<br/>AlertLogic, ConfigModel, ConfigBackup, HaDiscovery, ...<br/><i>no Arduino or ESP-IDF headers</i>"]
     SRC["<b>src/, include/</b> - ESP32 firmware<br/>the motor driver, web server, MQTT, WiFi,<br/>uploads, alert delivery"]
     TEST["<b>test/</b> - native unit tests<br/>pio test -e native"]
     DEMO["<b>tools/demo-core</b><br/>lib/ compiled to WebAssembly"]
@@ -32,7 +32,7 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    - **`lib/`** holds the hardware-free logic: the device core, the motor driver's output logic (`DriverLogic`), Alpaca, alerts, settings and their backup, Home Assistant discovery and more. It never includes Arduino or ESP-IDF headers.
+    - **`lib/`** holds the hardware-free logic: the device core, the motor driver's output logic (`DriverLogic`), the roof's motion logic (`RoofLogic`), Alpaca, alerts, settings and their backup, Home Assistant discovery and more. It never includes Arduino or ESP-IDF headers.
     - **`src/` and `include/`** are the ESP32 firmware: the motor driver (the only code that writes the H-bridge pins), the web server, MQTT, WiFi, uploads and alert delivery. They use `lib/`.
     - **`test/`** runs `lib/` natively on a computer (`pio test -e native`).
     - **`tools/demo-core`** compiles `lib/` to WebAssembly; the demo's request handlers and Demo panel in **`web/src/demo`** run it in the browser.
