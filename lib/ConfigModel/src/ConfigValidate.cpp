@@ -193,6 +193,9 @@ namespace SQM
                 return setError(error, "Roof: timeout margin must be between 3 and 300 seconds");
             if (r.leaveMagnetSeconds < RoofConfig::MIN_LEAVE_MAGNET_SECONDS || r.leaveMagnetSeconds > RoofConfig::MAX_LEAVE_MAGNET_SECONDS)
                 return setError(error, "Roof: leave-magnet time must be between 2 and 120 seconds");
+            if (r.calibrationLimitSeconds < RoofConfig::MIN_CALIBRATION_LIMIT_SECONDS ||
+                r.calibrationLimitSeconds > RoofConfig::MAX_CALIBRATION_LIMIT_SECONDS)
+                return setError(error, "Roof: calibration time limit must be between 30 and 600 seconds");
             if (r.rampUpMs > RoofConfig::MAX_RAMP_MS)
                 return setError(error, "Roof: ramp up must be between 0 and 30000 ms");
             if (r.rampDownMs > RoofConfig::MAX_RAMP_MS)

@@ -100,6 +100,12 @@
       "max": 120
     },
     {
+      "path": "roof.calibrationLimitSeconds",
+      "int": true,
+      "min": 30,
+      "max": 600
+    },
+    {
       "path": "roof.rampUpMs",
       "int": true,
       "min": 0,

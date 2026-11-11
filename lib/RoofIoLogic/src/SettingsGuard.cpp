@@ -12,7 +12,7 @@ namespace SQM
                 return a.travelMm != b.travelMm || a.speedMmPerSecond != b.speedMmPerSecond ||
                        a.timeoutMarginSeconds != b.timeoutMarginSeconds || a.leaveMagnetSeconds != b.leaveMagnetSeconds ||
                        a.rampUpMs != b.rampUpMs || a.rampDownMs != b.rampDownMs || a.topDutyPercent != b.topDutyPercent ||
-                       a.slowDutyPercent != b.slowDutyPercent;
+                       a.slowDutyPercent != b.slowDutyPercent || a.calibrationLimitSeconds != b.calibrationLimitSeconds;
             }
 
             // How the roof is sensed and protected.
@@ -36,9 +36,9 @@ namespace SQM
                    parkDiffers(current.park, next.park);
         }
 
-        bool settingsSaveRefused(Roof::State state, bool motionChanged)
+        bool settingsSaveRefused(Roof::State state, bool motionChanged, bool calibrating)
         {
-            return motionChanged && (state == Roof::State::Opening || state == Roof::State::Closing);
+            return motionChanged && (calibrating || state == Roof::State::Opening || state == Roof::State::Closing);
         }
     } // namespace RoofIo
 } // namespace SQM

@@ -130,6 +130,7 @@ namespace SQM
             park["switch2"] = switchName(s.fittedSwitches, 1, s.switch2);
             out["rainContact"] = rainName(s);
             out["closePending"] = s.closePending;
+            out["calibrating"] = s.calibrating;
             out["closePhase"] = s.closePhase != nullptr ? s.closePhase : "idle";
             out["weather"] = Safety::verdictName(s.weather);
             out["weatherText"] = s.weatherText;

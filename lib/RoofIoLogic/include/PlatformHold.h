@@ -55,6 +55,8 @@ namespace SQM
             // it isn't, waiting for the park can't succeed (N.I.N.A. is out of
             // reach), so the sequence doesn't hold a restart or a WiFi fix.
             bool networkUp = true;
+            // Spec 016: a calibration run is under way, pauses included: held as if moving.
+            bool calibrating = false;
         };
 
         HoldReason platformHold(PlatformAction action, const PlatformState &state);

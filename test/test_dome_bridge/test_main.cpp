@@ -449,6 +449,27 @@ void test_client_cannot_reopen_a_stopped_close(void)
 
 static void runRemoteTests();
 
+// Spec 016: open and close refused for everyone but the automatic close during a run; stops always pass.
+void test_moves_refused_while_calibrating(void)
+{
+    Bench b;
+    RoofIo::CommandContext c;
+    c.calibrating = true;
+    const RoofIo::GateInputs gates = safeAndParked();
+    for (Origin origin : {Origin::Person, Origin::Client, Origin::Mqtt})
+        for (Command command : {Command::Open, Command::Close})
+        {
+            const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, b.roof, c);
+            TEST_ASSERT_FALSE(check.accepted);
+            TEST_ASSERT_EQUAL_STRING("calibrating", check.reason.c_str());
+        }
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Close, Origin::Automatic, gates, b.roof, c).accepted);
+    for (Origin origin : {Origin::Person, Origin::Client, Origin::Mqtt, Origin::Automatic})
+        TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, origin, gates, b.roof, c).accepted);
+    c.calibrating = false;
+    TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, c).accepted);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -489,4 +510,5 @@ static void runRemoteTests()
     RUN_TEST(test_stops_pass_every_check);
     RUN_TEST(test_client_cannot_stop_a_close_in_bad_weather);
     RUN_TEST(test_client_cannot_reopen_a_stopped_close);
+    RUN_TEST(test_moves_refused_while_calibrating);
 }

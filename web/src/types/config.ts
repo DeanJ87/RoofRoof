@@ -71,6 +71,7 @@ export interface RoofConfig {
   speedMmPerSecond: number;
   timeoutMarginSeconds: number;
   leaveMagnetSeconds: number;
+  calibrationLimitSeconds: number;
   rampUpMs: number;
   rampDownMs: number;
   topDutyPercent: number;
