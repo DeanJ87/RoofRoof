@@ -253,14 +253,16 @@ namespace SQM
         {
             if (record.id != id)
                 continue;
-            bool sent = false, pending = false, any = false;
+            bool sent = false, pending = false, failed = false;
             for (DeliveryStatus status : record.status)
             {
                 sent |= status == DeliveryStatus::Sent;
                 pending |= status == DeliveryStatus::Pending;
-                any |= status != DeliveryStatus::NotSent;
+                failed |= status == DeliveryStatus::Failed;
             }
-            result = sent ? Outcome::Delivered : pending ? Outcome::Pending : any ? Outcome::Failed : Outcome::NoChannel;
+            // Only skipped (switched on but blocked, e.g. MQTT alerts with MQTT
+            // off) or not sent: no channel can take it, so resending won't help.
+            result = sent ? Outcome::Delivered : pending ? Outcome::Pending : failed ? Outcome::Failed : Outcome::NoChannel;
             break;
         }
         xSemaphoreGive(mutex);

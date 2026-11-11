@@ -233,19 +233,42 @@ void test_a_roof_that_didnt_start_names_that_cause()
     TEST_ASSERT_EQUAL_STRING("roofNotStarted", causeName(Cause::RoofNotStarted));
 }
 
-void test_an_alert_no_channel_took_is_sent_again_every_minute()
+void test_an_alert_no_channel_took_is_sent_again_with_a_growing_gap()
 {
     AlertRetry retry;
     TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, 1000)); // nothing sent yet
     retry.sent(1000);
-    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Pending, 1000 + ALERT_RETRY_MS));
     TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, 1000 + ALERT_RETRY_MS - 1));
     TEST_ASSERT_TRUE(retry.resendDue(Delivery::Failed, 1000 + ALERT_RETRY_MS));
-    retry.sent(1000 + ALERT_RETRY_MS);
-    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, 1000 + ALERT_RETRY_MS + 1));
-    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Delivered, 1000 + 3 * ALERT_RETRY_MS)); // a channel took it
+    // An endpoint that keeps reporting failure: 60 s, then doubling, up to 30 min.
+    uint64_t t = 1000 + ALERT_RETRY_MS;
+    uint64_t expected = ALERT_RETRY_MS * 2;
+    for (int i = 0; i < 8; ++i)
+    {
+        retry.resent(t);
+        TEST_ASSERT_EQUAL_UINT64(expected, retry.gapMs());
+        TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, t + expected - 1));
+        TEST_ASSERT_TRUE(retry.resendDue(Delivery::Failed, t + expected));
+        t += expected;
+        expected = expected * 2 > ALERT_RETRY_MAX_MS ? ALERT_RETRY_MAX_MS : expected * 2;
+    }
+    TEST_ASSERT_EQUAL_UINT64(ALERT_RETRY_MAX_MS, retry.gapMs());
+    // A new alert starts at 60 s again.
+    retry.sent(t);
+    TEST_ASSERT_EQUAL_UINT64(ALERT_RETRY_MS, retry.gapMs());
+    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Delivered, t + 3 * ALERT_RETRY_MS)); // a channel took it
     TEST_ASSERT_FALSE(retry.active());
-    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, 1000 + 9 * ALERT_RETRY_MS));
+}
+
+void test_a_send_pending_for_ever_counts_as_failed()
+{
+    AlertRetry retry;
+    retry.sent(0);
+    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Pending, ALERT_PENDING_STALE_MS - 1));
+    TEST_ASSERT_TRUE(retry.resendDue(Delivery::Pending, ALERT_PENDING_STALE_MS));
+    retry.resent(ALERT_PENDING_STALE_MS); // gap now 120 s
+    TEST_ASSERT_FALSE(retry.resendDue(Delivery::Pending, 2 * ALERT_PENDING_STALE_MS - 1));
+    TEST_ASSERT_TRUE(retry.resendDue(Delivery::Pending, 2 * ALERT_PENDING_STALE_MS));
 }
 
 void test_no_resend_without_a_channel_or_once_idle()
@@ -271,7 +294,8 @@ int main(int, char **)
     RUN_TEST(test_a_restart_loop_still_raises_mount_not_parked);
     RUN_TEST(test_a_restored_time_too_long_for_the_new_time_base_is_clamped);
     RUN_TEST(test_a_roof_that_didnt_start_names_that_cause);
-    RUN_TEST(test_an_alert_no_channel_took_is_sent_again_every_minute);
+    RUN_TEST(test_an_alert_no_channel_took_is_sent_again_with_a_growing_gap);
+    RUN_TEST(test_a_send_pending_for_ever_counts_as_failed);
     RUN_TEST(test_no_resend_without_a_channel_or_once_idle);
     return UNITY_END();
 }

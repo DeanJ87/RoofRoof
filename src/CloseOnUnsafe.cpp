@@ -183,7 +183,8 @@ namespace SQM
         if (!retry.resendDue(deliveryOf(lastAlertId, deliveryProbe), nowMs))
             return;
         Logger::warn(TAG, "No channel took the alert \"%s\": sending it again", lastAlert.title.c_str());
-        send(lastAlert, nowMs);
+        lastAlertId = alertSink ? alertSink(lastAlert) : 0;
+        retry.resent(nowMs);
     }
 
     void CloseOnUnsafe::send(const Alerts::Alert &alert, uint64_t nowMs)
