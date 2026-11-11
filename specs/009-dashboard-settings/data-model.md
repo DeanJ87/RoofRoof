@@ -26,7 +26,9 @@ spec 008) and the `roof`, `safety` and `park` settings (`web/src/types/config.ts
 | `at` | number | when it was answered (ms) |
 | `stateAt` | `RoofState \| null` | the roof's state when it was answered |
 
-Expiry: shown until the roof's state differs from `stateAt`, or `RESULT_MS` (15 s) pass. A
+`stateAt` is taken when the answer arrives. Expiry: shown until the roof's state differs from
+`stateAt`, or `RESULT_MS` (15 s) pass; a Stop that wasn't accepted stays until the roof is seen not
+opening or closing. Commands time out after 5 s (unreachable). A
 `restarting` refusal holds Open and Close until a message arrives after a reconnect later than `at`,
 or `RESTART_HOLD_MS` (30 s) pass.
 
@@ -62,7 +64,8 @@ unreadable → Hall not settled.
 ## stopBarShown(roof)
 
 `roof.state` is `opening` or `closing`, or `roof.closePending`, from the last status, whether or not
-it is still fresh.
+it is still fresh; or no status has arrived for 5 s. The bar's height is published as `--stop-bar`
+so the save bar and toasts sit above it.
 
 ## HallScale
 
