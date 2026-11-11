@@ -7,14 +7,14 @@ description: "RoofRoof alerts via ntfy, Pushover, webhook or MQTT: channels, lev
 RoofRoof can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about a change even when N.I.N.A. and the observatory PC aren't running.
 
 !!! note "What raises an alert today"
-    This release is the platform only. The events that exist now are the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device, plus **Alerts resumed** and the **Send test** messages. There is no Alpaca device until a later spec, so in practice you will see tests and "Alerts resumed". The roof's own events (it opened, it failed to close, rain) *coming in a later spec* use the same channels, levels and wording described here.
+    This release is the platform only. The events that exist now are the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device, plus **Alerts resumed** and the **Send test** messages. There is no Alpaca device until a later spec, so in practice you will see tests and "Alerts resumed". The [close on unsafe weather](close-on-unsafe.md) sends four critical `roof` alerts with fixed wording; the roof's own events with their levels and wording *come in a later spec* and use the same channels described here.
 
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel.
 
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 8dca5d4b2b85b477
+fingerprint: 6076032fae4689a3
 -->
 <figure class="diagram" markdown>
 
@@ -53,7 +53,7 @@ flowchart TB
     2. **Tracked silently, never announced**: an event whose level is Off, and imaging-app events for a device no app has used since boot.
     3. **Held back for now, sent later if still true**: a change within the cooldown since that condition's last alert (5 minutes by default). "The imaging app is back" is not held back.
     4. The alert gets its default or custom wording; events raised in the same second become one notification.
-    5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent.
+    5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical `roof` alerts of the [close on unsafe weather](close-on-unsafe.md#alerts).
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
     7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without WiFi) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
@@ -72,7 +72,9 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
 | Alerts resumed | Alerts went from paused to sending (always Quiet, not a setting) | Quiet |
 
-*The roof's events (opened, closed, failed to move, stalled, rain, low supply) come in later specs.*
+| Roof (close on unsafe weather) | The mount didn't park, the roof didn't close, the roof can't close by itself, or a person stopped the automatic close. See [Close on unsafe weather](close-on-unsafe.md#alerts) | Wake (fixed; sent even while paused) |
+
+*The roof's own events, with their settings, come in a later spec.*
 
 | Level | Pushover | ntfy |
 |---|---|---|
@@ -192,7 +194,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"RoofRoof","event":"client_lost","title":"The imaging app stopped checking","message":"No request reached the device for 2 min.","level":"urgent","timestamp":1759500000}
 ```
 
-`event` is one of `alerts_on`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `alerts_on`, `client_lost`, `client_back`, `client_disconnected`, `roof`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 

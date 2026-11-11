@@ -9,7 +9,7 @@ RoofRoof keeps two answers up to date, once a second:
 - **Weather**: safe, unsafe (with the reasons) or unknown.
 - **Park**: parked or not parked (with the reasons).
 
-The automatic close and the refusal to open while unsafe use them; they *come in a later spec*. For now the device works the answers out and writes each change to its log (serial, `Safety` tag), so the sources can be set up and checked first.
+The roof uses them to refuse an open while the weather isn't safe and a close while the mount isn't confirmed parked, and to [close by itself when the weather turns unsafe](close-on-unsafe.md). Each change is also written to the log (serial, `Safety` tag).
 
 Doubt always lands on the safe side: a source that stops answering, answers late or answers something unreadable makes the weather **unsafe** and the mount **not parked**.
 
@@ -38,7 +38,7 @@ The mount counts as parked only when **all** of these hold:
 1. N.I.N.A.'s latest reading, at most 10 s old, says the mount is connected, at park and not slewing;
 2. every fitted park switch (`park.switches`: none, one on GPIO32, or two on GPIO32 and GPIO33) is closed.
 
-Anything else is "not parked", with the reasons. When N.I.N.A. and the switches point opposite ways (N.I.N.A. says parked and a switch is open, or N.I.N.A. says not parked and every switch is closed), the result also says they **disagree**: the close sequence treats that as a fault.
+Anything else is "not parked", with the reasons. When N.I.N.A. and the switches point opposite ways (N.I.N.A. says parked and a switch is open, or N.I.N.A. says not parked and every switch is closed), the result also says they **disagree**. The mount then counts as not parked, so the [close on unsafe weather](close-on-unsafe.md) waits, and its alert names the disagreement.
 
 ### N.I.N.A.
 
