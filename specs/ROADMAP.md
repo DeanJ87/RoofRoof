@@ -158,6 +158,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
   - Wi-Fi loss mid-move: the move completes or stops safely, and is never left driving without control;
   - captive-portal behaviour when the roof is open;
   - a brown-out or reboot mid-move gives unknown position, with no motion.
+- Platform race from spec 004 (FR-011a): `MQTTClient::updateConfig` runs on the web server's task during a settings save. Move the reconnect onto the main loop, like the 004 settings hand-off.
 - Tests and docs for each.
 
 ### 011 Demo and bench mode (base: 009)
