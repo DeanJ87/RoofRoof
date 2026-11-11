@@ -122,6 +122,7 @@
   "device.alert.thisIsHowALabelAlert": "This is how a \"{label}\" alert arrives.",
   "device.alert.unsafeClosing": "Unsafe: closing",
   "device.alert.weatherSourceLost": "Weather source lost",
+  "device.api.aWifiNetworkIsAlreadyBeing": "A WiFi network is already being tried",
   "device.api.badClientId": "Bad client ID",
   "device.api.badCredentialsCheckUsernamePassword": "Bad credentials - check username/password",
   "device.api.badProtocol": "Bad protocol",

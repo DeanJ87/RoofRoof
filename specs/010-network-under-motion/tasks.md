@@ -56,7 +56,7 @@ by story. Every task ends with `pio test -e native` green; firmware tasks also w
 
 - [x] T020 Deliberate breakage of each rule (quickstart §2), results recorded for the PR
 - [x] T021 Quickstart §1 of spec 001: firmware build (zero warnings), native tests, web typecheck/test/build, Playwright, quality gate, flash budget, docs build; demo core rebuilt
-- [ ] T022 Independent safety reviews until one reports safe to merge; fixes with tests
+- [x] T022 Independent safety reviews until one reports safe to merge; fixes with tests
 
 ## Dependencies
 
