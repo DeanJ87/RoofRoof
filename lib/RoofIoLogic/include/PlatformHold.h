@@ -50,6 +50,10 @@ namespace SQM
             Roof::State roof = Roof::State::Unknown;
             bool closeWaiting = false;
             SequenceState sequence = SequenceState::Idle;
+            // The home network is joined and the setup hotspot is off. While
+            // it isn't, waiting for the park can't succeed (N.I.N.A. is out of
+            // reach), so the sequence doesn't hold a restart or a WiFi fix.
+            bool networkUp = true;
         };
 
         HoldReason platformHold(PlatformAction action, const PlatformState &state);

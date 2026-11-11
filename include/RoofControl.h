@@ -152,6 +152,7 @@ namespace SQM
         Outcome outcomeOf(const Roof::CommandResult &result);
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
         Outcome precheck(Roof::Command command, Roof::Origin origin) const;
+        static Outcome blockedOutcome(const RoofIo::Blockers &now, Roof::State state);
         Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
         Outcome stopLocked(Roof::Command command, Roof::Origin origin);
         void runPendingClose();

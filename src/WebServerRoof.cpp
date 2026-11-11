@@ -59,15 +59,6 @@ namespace SQM
             sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
-        // The setup hotspot has no password: while it is on, the roof can't be
-        // opened (a client on it can reach the device's other addresses too;
-        // spec 010 FR-012).
-        if (RoofIo::hotspotRefuses(command, WebShared::hotspotOn()))
-        {
-            Logger::warn(TAG, "Roof open refused: the setup hotspot is on");
-            sendOutcome(request, RoofControl::Outcome{false, RoofIo::HOTSPOT_REASON, RoofIo::HOTSPOT_TEXT, roof->state()});
-            return;
-        }
         const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person);
         Logger::info(TAG, "Roof %s from the web API: %s", Roof::commandName(command), outcome.accepted ? "accepted" : "refused");
         sendOutcome(request, outcome);
@@ -97,6 +88,8 @@ namespace SQM
                 b.flashBusy = FlashGuard::busy();
                 b.flashWriting = FlashGuard::writing();
                 b.restartCommitted = restartCommitted();
+                // The setup hotspot has no password: no open while it is on (spec 010 FR-012).
+                b.hotspotOn = WebShared::hotspotOn();
                 // Bounded in time: a stuck scan or a failed change never holds
                 // a close past RoofIo::NETWORK_HOLD_MAX_MS.
                 const uint32_t now = millis();

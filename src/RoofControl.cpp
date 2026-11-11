@@ -144,6 +144,14 @@ namespace SQM
         return runLocked(command, origin);
     }
 
+    // A command refused by what else is going on: its reason and text.
+    RoofControl::Outcome RoofControl::blockedOutcome(const RoofIo::Blockers &now, Roof::State state)
+    {
+        const std::string reason = RoofIo::blockerReason(now);
+        const std::string text = RoofIo::blockerText(now);
+        return Outcome{false, reason, reason == RoofIo::HOTSPOT_REASON ? text : text + ": try again in a moment", state};
+    }
+
     // Under the lock. A close's side effects (cancelling a restart, stopping an
     // upload) and its deferral happen only once it would run: past the gates
     // and the motion logic's checks, and not when the roof is already closed
@@ -160,7 +168,7 @@ namespace SQM
             return runLocked(command, origin); // nothing to win
         const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
         if (decision.action == RoofIo::BlockerAction::Refuse)
-            return Outcome{false, RoofIo::blockerReason(now), std::string(RoofIo::blockerText(now)) + ": try again in a moment", state};
+            return blockedOutcome(now, state);
         if ((decision.cancelRestart || decision.stopFlash) && closeHook)
             closeHook(decision); // a close always wins
         if (decision.action == RoofIo::BlockerAction::DeferClose)

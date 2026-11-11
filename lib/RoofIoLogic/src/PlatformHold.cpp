@@ -14,11 +14,13 @@ namespace SQM
             // (it might not read the stand-down back); a back-off or another
             // stand-down holds nothing, so the network or the device can be
             // put right remotely.
-            bool waitsForSequence(PlatformAction action, SequenceState sequence)
+            bool waitsForSequence(PlatformAction action, SequenceState sequence, bool networkUp)
             {
                 switch (sequence)
                 {
                 case SequenceState::Working:
+                    if (!networkUp)
+                        return action == PlatformAction::FirmwareUpload || action == PlatformAction::FilesystemUpload;
                     return action != PlatformAction::FlashWrite && action != PlatformAction::MandatoryRestart;
                 case SequenceState::HeldByPerson:
                     return action == PlatformAction::FirmwareUpload;
@@ -34,7 +36,7 @@ namespace SQM
                 return HoldReason::Moving;
             if (state.closeWaiting)
                 return HoldReason::CloseWaiting;
-            if (waitsForSequence(action, state.sequence))
+            if (waitsForSequence(action, state.sequence, state.networkUp))
                 return HoldReason::CloseSequence;
             return HoldReason::None;
         }
@@ -48,7 +50,8 @@ namespace SQM
             case HoldReason::CloseWaiting:
                 return "A close is waiting to start: try again once the roof has closed";
             case HoldReason::CloseSequence:
-                return "The automatic close is under way: try again once the roof has closed or the weather is safe";
+                return "The automatic close is under way: try again once the roof has closed or the weather is safe, or press Stop to "
+                       "stand it down";
             default:
                 return "";
             }

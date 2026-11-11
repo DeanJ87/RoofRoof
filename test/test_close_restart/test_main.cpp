@@ -282,6 +282,30 @@ void test_no_resend_without_a_channel_or_once_idle()
     TEST_ASSERT_FALSE(retry.resendDue(Delivery::Failed, 10 * ALERT_RETRY_MS));
 }
 
+void test_a_restart_before_the_close_is_answered_is_not_a_failed_close()
+{
+    // Spec 010: between the Close action and the roof's answer nothing has
+    // moved; a restart there (a committed restart refuses the close) carries
+    // on from the park wait, without a back-off or a "didn't close" alert.
+    Rig r;
+    r.startUnsafe();
+    r.in.parked = true;
+    r.at(T0 + 100);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(T0 + 4100).action);
+    const Sequence::Saved before = r.seq.saved();
+    TEST_ASSERT_EQUAL(Phase::WaitPark, before.phase);
+    TEST_ASSERT_TRUE(before.unsafeMs >= 4000);
+    Sequence again;
+    Inputs in = r.in;
+    const Decision first = restart(again, before, in, BASE + 1000);
+    TEST_ASSERT_EQUAL(Event::None, first.event);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, again.phase());
+
+    // Once the roof took the close, a restart is a close cut off part-way.
+    r.seq.closeAnswered(CloseAnswer::Started);
+    TEST_ASSERT_EQUAL(Phase::Closing, r.seq.saved().phase);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -297,5 +321,6 @@ int main(int, char **)
     RUN_TEST(test_an_alert_no_channel_took_is_sent_again_with_a_growing_gap);
     RUN_TEST(test_a_send_pending_for_ever_counts_as_failed);
     RUN_TEST(test_no_resend_without_a_channel_or_once_idle);
+    RUN_TEST(test_a_restart_before_the_close_is_answered_is_not_a_failed_close);
     return UNITY_END();
 }

@@ -82,11 +82,16 @@ namespace SQM
                     portEXIT_CRITICAL(&restartPlanLock);
                     return committed;
                 });
+            static bool heldLogged = false;
             if (go == PlatformGuard::RestartGo::Held && restartTimer != nullptr)
             {
+                if (!heldLogged)
+                    Logger::info("WebServer", "Restart waiting: the roof, a write, a latched fault not yet saved or the automatic close");
+                heldLogged = true;
                 esp_timer_start_once(restartTimer, RESTART_RETRY_US);
                 return;
             }
+            heldLogged = false;
             if (go == PlatformGuard::RestartGo::Run)
                 ESP.restart();
         }
