@@ -27,6 +27,7 @@ namespace SQM
             cfg.mqtt.topic = "roofroof";
             cfg.mqtt.homeAssistant = false;
             cfg.mqtt.discoveryPrefix = "homeassistant";
+            cfg.mqtt.roofCommands = false;
             cfg.mqtt.publishIntervalMs = 60000; // 1 minute
 
             cfg.ota.enabled = false;

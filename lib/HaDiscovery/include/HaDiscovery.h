@@ -2,7 +2,7 @@
 
 // Home Assistant MQTT discovery (SQMeter spec 013 FR-008): the device's
 // entities as retained config messages under the discovery prefix. RoofRoof spec 008
-// adds the roof's cover and sensors to the entity table.
+// adds the roof's cover, sensors and fault sensor (contracts/mqtt.md).
 
 #include <functional>
 #include <string>
@@ -26,6 +26,11 @@ namespace SQM
         {
             // The Alerts switch, only while alerts can go out (SQMeter spec 020 D-13).
             bool alertsSwitch = false;
+            // The roof cover takes commands only while MQTT roof commands are on
+            // (spec 008 FR-010); otherwise it is read-only.
+            bool roofCommands = false;
+            // The motor current sensor, only while current sense is on.
+            bool currentSense = false;
         };
 
         // Calls `publish(topic, payload)` for every entity: its config when its

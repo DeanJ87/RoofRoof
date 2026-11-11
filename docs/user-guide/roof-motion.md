@@ -6,9 +6,11 @@ description: "How RoofRoof decides when and how the roof moves: its states, the 
 
 This page explains how the controller decides when and how the roof moves. The decisions live in
 `lib/RoofLogic` (the motion) and `lib/RoofIoLogic` (the hardware layer), and are covered by tests.
-The roof moves on a person's command through the [REST API](../api/rest.md#roof), and closes by
-itself when the weather turns unsafe ([Close on unsafe weather](close-on-unsafe.md)); Alpaca, MQTT
-and the dashboard's roof card come in later releases. Wire the
+The roof moves on a person's command through the [REST API](../api/rest.md#roof), on an imaging
+app's through the [Alpaca Dome](alpaca.md), on [MQTT roof commands](mqtt.md#roof-commands) when
+they are switched on, and closes by itself when the weather turns unsafe
+([Close on unsafe weather](close-on-unsafe.md)); the dashboard's roof card comes in a later
+release. Wire the
 board from [Wiring](../hardware/wiring.md) and set the Hall thresholds with
 [Calibration](../hardware/calibration.md) before the first move.
 
@@ -48,7 +50,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 7503d78fc2861ac1
+fingerprint: db8fd4dfa687b2f1
 -->
 <figure class="diagram" markdown>
 
@@ -98,10 +100,10 @@ stateDiagram-v2
 
 | Command | What it does |
 |---|---|
-| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked: a command from the web UI, not an imaging app over [Alpaca](alpaca.md) or the [automatic close](close-on-unsafe.md). Asking for the end the roof is already at, or the move already under way, changes nothing. |
-| Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted. |
+| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked: a command from the web UI, not an imaging app over [Alpaca](alpaca.md), an [MQTT command](mqtt.md#roof-commands) or the [automatic close](close-on-unsafe.md). Asking for the end the roof is already at, or the move already under way, changes nothing. |
+| Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted by the motion logic; an imaging app's or MQTT's stop is refused before it while a close runs or waits in weather that isn't safe ([Close on unsafe weather](close-on-unsafe.md)). |
 | Abort | Motor off at once; part-way, the position becomes unknown. With no move under way it changes nothing. Always accepted. |
-| Clear fault | Only a person can clear a fault, from the web UI; Alpaca has no way to. A restart never clears one. |
+| Clear fault | Only a person can clear a fault, from the web UI; Alpaca and MQTT have no way to. A restart never clears one. |
 
 ## The speed profile
 

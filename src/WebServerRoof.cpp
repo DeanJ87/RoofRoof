@@ -3,11 +3,13 @@
 #include "MotionGuards.h"
 #include "PlatformGuard.h"
 #include "RoofControl.h"
+#include "RoofMqtt.h"
 #include "RoofStatus.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
 #include <WiFi.h>
+#include <ctime>
 
 // The roof's REST commands and its status section (spec 003 FR-013 to FR-016,
 // FR-020; contracts/roof-hardware.md). Every command calls requireAuth
@@ -19,6 +21,7 @@ namespace SQM
     {
         // 200 with the new state, or 409 with the refusal's reason and text
         // (constitution III: the measured value and the limit, or the failed input).
+        // And the roof over MQTT (spec 008, contracts/mqtt.md).
         void sendOutcome(AsyncWebServerRequest *request, const RoofControl::Outcome &outcome)
         {
             StaticJsonDocument<512> doc;
@@ -133,10 +136,108 @@ namespace SQM
         return false;
     }
 
+    RoofIo::Snapshot WebServer::roofSnapshot() const
+    {
+        RoofIo::Snapshot s = roof->snapshotWithChecks();
+        const char *phase = closePhase ? closePhase() : nullptr;
+        if (phase != nullptr)
+            s.closePhase = phase;
+        return s;
+    }
+
     void WebServer::appendRoof(JsonDocument &doc) const
     {
         if (roof == nullptr)
             return;
-        RoofIo::writeStatus(doc.createNestedObject("roof"), roof->snapshot());
+        RoofIo::writeStatus(doc.createNestedObject("roof"), roofSnapshot());
+    }
+
+    // Open, close and stop from <base>/roof/set (spec 008 FR-004 to FR-009).
+    void WebServer::subscribeRoofCommands()
+    {
+        if (mqttClient == nullptr)
+            return;
+        mqttClient->onCommand(
+            RoofIo::Mqtt::COMMAND_SUBTOPIC,
+            [this](const std::string &payload, RoofIo::Mqtt::Delivery delivery) { onRoofCommand(payload, delivery); });
+    }
+
+    // Main loop (PubSubClient's callback). Only a command that passes the
+    // setting, the retained check and the payload reaches the roof, and then
+    // through RoofControl::command with the MQTT origin: the same checks as
+    // every other source, with an Alpaca client's rules (constitution I-III).
+    void WebServer::onRoofCommand(const std::string &payload, RoofIo::Mqtt::Delivery delivery)
+    {
+        const RoofIo::Mqtt::Request request = RoofIo::Mqtt::parseCommand(payload, delivery, getConfigCallback().mqtt.roofCommands);
+        RoofIo::Mqtt::Result result;
+        result.command = request.isCommand ? Roof::commandName(request.command) : nullptr;
+        if (!request.run)
+        {
+            result.reason = request.reason;
+            result.text = request.text;
+            result.state = roof != nullptr ? roof->state() : Roof::State::Unknown;
+        }
+        else
+        {
+            const RoofControl::Outcome outcome =
+                roof != nullptr ? roof->command(request.command, request.origin)
+                                : RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown};
+            result.accepted = outcome.accepted;
+            result.reason = outcome.reason;
+            result.text = outcome.pending ? outcome.text : (outcome.accepted ? std::string() : outcome.text);
+            result.state = outcome.state;
+        }
+        Logger::info(
+            TAG,
+            "Roof %s from MQTT: %s%s%s",
+            result.command != nullptr ? result.command : "command",
+            result.accepted ? "accepted" : "refused",
+            result.text.empty() ? "" : ": ",
+            result.text.c_str());
+        DynamicJsonDocument doc(RoofIo::Mqtt::RESULT_DOC_CAPACITY);
+        RoofIo::Mqtt::writeResult(doc.to<JsonObject>(), result);
+        std::string body;
+        serializeJson(doc, body);
+        if (pendingRoofResults.size() < 4) // a flood of commands keeps the first answers
+            pendingRoofResults.push_back(std::move(body));
+    }
+
+    void WebServer::publishRoofResults()
+    {
+        if (pendingRoofResults.empty())
+            return;
+        if (mqttClient != nullptr && mqttClient->isConnected())
+            for (const std::string &body : pendingRoofResults)
+                mqttClient->publishSubtopic(RoofIo::Mqtt::RESULT_SUBTOPIC, body, false);
+        pendingRoofResults.clear();
+    }
+
+    // The retained roof document on <base>/state, when RoofIo::Mqtt's schedule
+    // says (FR-002: nothing periodic while the roof moves or a close waits).
+    void WebServer::publishRoofState()
+    {
+        if (roof == nullptr || mqttClient == nullptr || !mqttClient->isConnected())
+            return;
+        // Looked at ten times a second, not every loop pass: the snapshot takes the roof's lock.
+        const uint32_t passMs = millis();
+        if (passMs - lastRoofStateCheck < ROOF_STATE_CHECK_MS)
+            return;
+        lastRoofStateCheck = passMs;
+        const RoofIo::Snapshot snapshot = roofSnapshot();
+        const RoofIo::Mqtt::StateKey key = RoofIo::Mqtt::keyOf(snapshot);
+        const uint32_t now = millis();
+        const uint32_t connection = mqttClient->connectionCount();
+        if (!roofStateSchedule.due(key, connection, now, getConfigCallback().mqtt.publishIntervalMs))
+            return;
+        const time_t epoch = time(nullptr);
+        DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
+        RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
+        std::string body;
+        serializeJson(doc, body);
+        // A failed publish isn't retried at once (the link is going, and the
+        // reconnect publishes again); while the roof is busy nothing more is
+        // tried on this connection (research R4).
+        const bool ok = mqttClient->publishSubtopic(RoofIo::Mqtt::STATE_SUBTOPIC, body, true);
+        roofStateSchedule.published(key, connection, now, ok);
     }
 } // namespace SQM

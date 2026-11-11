@@ -100,6 +100,7 @@ namespace SQM
             JsonObject homeAssistant = mqtt.createNestedObject("homeAssistant");
             homeAssistant["enabled"] = c.mqtt.homeAssistant;
             homeAssistant["discoveryPrefix"] = c.mqtt.discoveryPrefix;
+            mqtt["roofCommands"] = c.mqtt.roofCommands;
 
             JsonObject ota = doc.createNestedObject("ota");
             ota["enabled"] = c.ota.enabled;

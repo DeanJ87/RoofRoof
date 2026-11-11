@@ -137,6 +137,21 @@ void test_stored_config_without_roof_loads_with_roof_defaults()
     TEST_ASSERT_EQUAL_STRING("HomeNet", loaded.wifi.ssid.c_str());
 }
 
+// A stored MQTT section from before spec 008 (no "roofCommands") loads with
+// MQTT roof commands off, whatever else was on (constitution: a migration
+// never turns on a motion feature).
+void test_stored_mqtt_without_roof_commands_loads_them_off()
+{
+    std::string reason;
+    const std::string stored =
+        "{\"mqtt\":{\"enabled\":true,\"broker\":\"10.0.0.2\",\"topic\":\"roofroof\",\"homeAssistant\":{\"enabled\":true}}}";
+    Config fresh = Config::createDefault();
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, fresh, false, &reason), reason.c_str());
+    TEST_ASSERT_TRUE(fresh.mqtt.enabled);
+    TEST_ASSERT_TRUE(fresh.mqtt.homeAssistant);
+    TEST_ASSERT_FALSE(fresh.mqtt.roofCommands);
+}
+
 // A stored roof section from before the current-sense scale existed (spec 002)
 // loads with its default, and current sensing stays as it was (off).
 void test_stored_roof_without_current_scale_loads_with_its_default()
@@ -158,5 +173,6 @@ int main(int, char **)
     RUN_TEST(test_every_release_loads_without_loss);
     RUN_TEST(test_stored_config_without_roof_loads_with_roof_defaults);
     RUN_TEST(test_stored_roof_without_current_scale_loads_with_its_default);
+    RUN_TEST(test_stored_mqtt_without_roof_commands_loads_them_off);
     return UNITY_END();
 }

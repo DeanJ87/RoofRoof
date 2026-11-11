@@ -3,6 +3,7 @@
 #include <atomic>
 
 #include "Config.h"
+#include "RoofMqtt.h"
 #include <PubSubClient.h>
 #include <functional>
 #include "DualStackClient.h"
@@ -41,6 +42,10 @@ namespace SQM
 
         void begin();
         void handle();
+        // Main loop, first thing in every pass: MQTT's time in this pass
+        // starts now (while the roof is busy, at most 500 ms of writes and
+        // reads in all; spec 008).
+        void startPass() { passBudget.start(millis()); }
         // While the roof moves or a close waits (spec 003), no connect is
         // tried: a connect to a dead broker (DNS, TCP connect, CONNACK) would
         // hold up the main loop, and with it the safety hand-over to the roof.
@@ -67,9 +72,11 @@ namespace SQM
         void updateConfig(const MQTTConfig &newConfig);
 
         // Commands from the broker: `<topic>/<subtopic>` messages go to
-        // `handler` (on the task that runs handle()). Subscribed on every
-        // (re)connect.
-        using CommandHandler = std::function<void(const std::string &payload)>;
+        // `handler` (on the task that runs handle()) with how the broker
+        // delivered them: live, or retained (spec 008: a retained roof command
+        // is never acted on; Unknown when the flag can't be read). One handler
+        // per subtopic; subscribed now if connected and on every (re)connect.
+        using CommandHandler = std::function<void(const std::string &payload, RoofIo::Mqtt::Delivery delivery)>;
         void onCommand(const std::string &subtopic, CommandHandler handler);
         // Messages on other devices' topics (absolute, e.g. SQMeter's
         // `sqmeter/safe`, spec 004): `handler` gets (topic, payload) on the task
@@ -85,8 +92,7 @@ namespace SQM
         bool connecting() const { return connectInFlight.load(); }
 
     private:
-        std::string commandSubtopic;
-        CommandHandler commandHandler;
+        std::vector<std::pair<std::string, CommandHandler>> commands; // subtopic, handler
         std::vector<std::string> watchedTopics;
         TopicHandler watchHandler;
         void dispatch(const char *topic, const uint8_t *payload, unsigned int length);
@@ -97,6 +103,10 @@ namespace SQM
         // Reads (and the CONNACK wait) give up after this many seconds: well
         // under the roof's 5 s safety hand-over limit (spec 003 research R8).
         static constexpr uint16_t SOCKET_TIMEOUT_S = 3;
+        // MQTT's time on the main loop (spec 008, RoofIo::Mqtt::PassBudget).
+        RoofIo::Mqtt::PassBudget passBudget;
+        bool busy() const;
+        void runLoop();
         std::function<bool()> connectHold;
         std::atomic<bool> connectInFlight{false};
 

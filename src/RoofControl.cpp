@@ -475,6 +475,23 @@ namespace SQM
         return snap;
     }
 
+    RoofIo::Snapshot RoofControl::snapshotWithChecks() const
+    {
+        if (lock == nullptr)
+            return RoofIo::Snapshot();
+        RoofIo::Snapshot s;
+        RoofIo::GateInputs now;
+        {
+            RoofLocked held(lock);
+            s = snap;
+            now = currentGates();
+        }
+        // The weather and park as a command's checks would see them now (spec
+        // 008), worded outside the lock: the control task never waits for it.
+        RoofIo::applyChecks(s, now);
+        return s;
+    }
+
     uint32_t RoofControl::stackFreeBytes() const
     {
         return task != nullptr ? uxTaskGetStackHighWaterMark(task) : 0;

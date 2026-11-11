@@ -20,6 +20,7 @@ export interface MQTTConfig {
   topic: string; // base topic
   publishIntervalMs: number;
   homeAssistant?: { enabled: boolean; discoveryPrefix: string };
+  roofCommands?: boolean; // open, close and stop from <topic>/roof/set (spec 008), default off
 }
 
 export interface OTAConfig {

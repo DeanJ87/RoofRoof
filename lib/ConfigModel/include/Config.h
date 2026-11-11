@@ -33,6 +33,10 @@ namespace SQM
         uint32_t publishIntervalMs;
         bool homeAssistant = false; // MQTT discovery
         std::string discoveryPrefix = "homeassistant";
+        // Open, close and stop from <topic>/roof/set (spec 008). Off by default,
+        // and off for config saved before it existed (a migration never turns
+        // on a motion feature).
+        bool roofCommands = false;
     };
 
     struct OTAConfig

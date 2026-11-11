@@ -14,6 +14,7 @@
     "mqtt.password",
     "mqtt.publishIntervalMs",
     "mqtt.homeAssistant.discoveryPrefix",
+    "mqtt.roofCommands",
     "ota.password",
     "auth.enabled",
     "auth.username",

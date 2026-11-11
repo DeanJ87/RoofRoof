@@ -240,6 +240,11 @@
                     },
                     "rainContact": "notFitted",
                     "closePending": false,
+                    "closePhase": "idle",
+                    "weather": "safe",
+                    "weatherText": "safe",
+                    "parkConfirmed": true,
+                    "parkText": "parked (N.I.N.A. AtPark)",
                     "fault": null,
                     "watchdogTrips": 0,
                     "maxStepGapMs": 21,
@@ -2772,6 +2777,9 @@
               "publishIntervalMs": {
                 "type": "number"
               },
+              "roofCommands": {
+                "type": "boolean"
+              },
               "topic": {
                 "type": "string"
               },
@@ -2786,6 +2794,7 @@
               "password",
               "port",
               "publishIntervalMs",
+              "roofCommands",
               "topic",
               "username"
             ],
@@ -3381,6 +3390,9 @@
               },
               "publishIntervalMs": {
                 "type": "number"
+              },
+              "roofCommands": {
+                "type": "boolean"
               },
               "topic": {
                 "type": "string"
@@ -4044,6 +4056,9 @@
               "closePending": {
                 "type": "boolean"
               },
+              "closePhase": {
+                "type": "string"
+              },
               "currentSense": {
                 "type": "boolean"
               },
@@ -4150,6 +4165,9 @@
               "moveTimeoutMs": {
                 "type": "number"
               },
+              "parkConfirmed": {
+                "type": "boolean"
+              },
               "parkSwitches": {
                 "type": "object",
                 "properties": {
@@ -4181,6 +4199,9 @@
                   "switch2"
                 ],
                 "additionalProperties": false
+              },
+              "parkText": {
+                "type": "string"
               },
               "positionKnown": {
                 "type": "boolean"
@@ -4240,10 +4261,17 @@
               },
               "watchdogTrips": {
                 "type": "number"
+              },
+              "weather": {
+                "type": "string"
+              },
+              "weatherText": {
+                "type": "string"
               }
             },
             "required": [
               "closePending",
+              "closePhase",
               "currentSense",
               "driving",
               "fault",
@@ -4256,7 +4284,9 @@
               "motorAmps",
               "moveElapsedMs",
               "moveTimeoutMs",
+              "parkConfirmed",
               "parkSwitches",
+              "parkText",
               "positionKnown",
               "positionMm",
               "positionPercent",
@@ -4265,7 +4295,9 @@
               "supplyLow",
               "supplyVolts",
               "target",
-              "watchdogTrips"
+              "watchdogTrips",
+              "weather",
+              "weatherText"
             ],
             "additionalProperties": false
           },

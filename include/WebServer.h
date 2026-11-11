@@ -73,6 +73,10 @@ namespace SQM
         // conditions for the non-critical roof events (spec 007).
         using RoofConditions = std::function<Alerts::RoofInputs()>;
         void setRoofConditions(RoofConditions source) { roofConditions = std::move(source); }
+        // Before begin(): the automatic close's phase name (spec 008: the status
+        // and the MQTT document). Called from any task, so it must be.
+        using ClosePhase = std::function<const char *()>;
+        void setClosePhase(ClosePhase source) { closePhase = std::move(source); }
         // Any task: whether a channel took that alert.
         AlertDispatcher::Outcome roofAlertOutcome(uint32_t id) const
         {
@@ -113,6 +117,8 @@ namespace SQM
         RoofControl *roof = nullptr;
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
+        ClosePhase closePhase;
+        const char *lastClosePhase = nullptr; // as last broadcast on /ws/status
         GetConfigCallback getConfigCallback;
         SaveConfigCallback saveConfigCallback;
 
@@ -143,6 +149,16 @@ namespace SQM
         // begin(), step by step.
         void restoreAlertSchedule();
         void subscribeArmCommands();
+        // The roof over MQTT (spec 008, src/WebServerRoof.cpp), all on the main loop.
+        void subscribeRoofCommands();
+        void onRoofCommand(const std::string &payload, RoofIo::Mqtt::Delivery delivery);
+        void publishRoofResults();
+        void publishRoofState();
+        RoofIo::Mqtt::StateSchedule roofStateSchedule;
+        bool roofBusyForMqtt() const;
+        static constexpr uint32_t ROOF_STATE_CHECK_MS = 100;
+        uint32_t lastRoofStateCheck = 0;
+        std::vector<std::string> pendingRoofResults; // published on the next pass, outside PubSubClient's callback
         void sendPendingAlertTest();
         void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);
@@ -286,6 +302,8 @@ namespace SQM
         bool armedSavePending = false;
         void saveArmedState();
         void appendRoof(JsonDocument &doc) const;
+        // The roof's snapshot with the close phase filled in (not started: the default).
+        RoofIo::Snapshot roofSnapshot() const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;
