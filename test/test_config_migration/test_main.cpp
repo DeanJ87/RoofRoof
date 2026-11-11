@@ -121,9 +121,26 @@ void test_every_release_loads_without_loss()
         TEST_MESSAGE("no release fixtures yet: the first comes with v0.1.0");
 }
 
+// A stored config from before the roof settings existed (no "roof") loads
+// with the roof defaults and current sensing off.
+void test_stored_config_without_roof_loads_with_roof_defaults()
+{
+    Config loaded = Config::createDefault();
+    std::string reason;
+    const std::string stored = "{\"deviceName\":\"old\",\"wifi\":{\"ssid\":\"HomeNet\",\"password\":\"secret-wifi\"}}";
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+    const RoofConfig defaults;
+    TEST_ASSERT_EQUAL_UINT32(defaults.travelMm, loaded.roof.travelMm);
+    TEST_ASSERT_EQUAL_UINT32(defaults.slowDutyPercent, loaded.roof.slowDutyPercent);
+    TEST_ASSERT_EQUAL_UINT32(defaults.hallHighCounts, loaded.roof.hallHighCounts);
+    TEST_ASSERT_FALSE(loaded.roof.currentSenseEnabled);
+    TEST_ASSERT_EQUAL_STRING("HomeNet", loaded.wifi.ssid.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_every_release_loads_without_loss);
+    RUN_TEST(test_stored_config_without_roof_loads_with_roof_defaults);
     return UNITY_END();
 }

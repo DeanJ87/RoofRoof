@@ -76,6 +76,7 @@ namespace SQM
         // unsafe and the mount not parked until they are set up (spec 004).
         cfg.safety = SafetyConfig{};
         cfg.park = ParkConfig{};
+        cfg.roof = RoofConfig();
         return cfg;
     }
 

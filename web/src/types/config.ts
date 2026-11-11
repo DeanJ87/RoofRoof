@@ -62,6 +62,25 @@ export interface ParkConfig {
   switches: ParkSwitches;
 }
 
+// The roll-off roof's motion settings (spec 002).
+export interface RoofConfig {
+  travelMm: number;
+  speedMmPerSecond: number;
+  timeoutMarginSeconds: number;
+  leaveMagnetSeconds: number;
+  rampUpMs: number;
+  rampDownMs: number;
+  topDutyPercent: number;
+  slowDutyPercent: number;
+  openDirection: 'forward' | 'reverse';
+  hallHighEnd: 'open' | 'closed';
+  hallHighCounts: number;
+  hallLowCounts: number;
+  currentSenseEnabled: boolean;
+  maxCurrentAmps: number;
+  minSupplyVolts: number;
+}
+
 export interface Config {
   deviceName: string;
   wifi: WiFiConfig;
@@ -72,5 +91,6 @@ export interface Config {
   alpaca?: AlpacaConfig;
   safety?: SafetyConfig;
   park?: ParkConfig;
+  roof?: RoofConfig;
   alerts?: AlertsConfig;
 }
