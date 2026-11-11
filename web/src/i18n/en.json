@@ -1036,6 +1036,7 @@
   "wizard.device.passwordNeeded": "Set a password before the motor is connected.",
   "wizard.device.title": "This device",
   "wizard.finish": "Finish",
+  "wizard.finishFailed": "Couldn't finish: the device didn't save it. Try again once the roof is still.",
   "wizard.finished": "Setup finished. The motion tests are next, in the commissioning guide.",
   "wizard.hall.benchTestLink": "Bench test without the sensor",
   "wizard.hall.hint": "The sensor that finds the magnets at the open and closed ends. Hold a magnet to it and watch the reading.",

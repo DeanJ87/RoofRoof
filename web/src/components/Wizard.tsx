@@ -234,11 +234,20 @@ const Wizard: FunctionalComponent = () => {
       return (await save(undefined)) ? { ok: true, changed, config } : { ok: false, message: t('wizard.test.notSaved') };
     };
 
+  // A page with changes is saved with the next step; an unchanged one only
+  // records the step (best effort: the page has nothing to lose).
   const next = async () => {
-    if (await save({ state, step: step + 1 })) go(step + 1);
+    const at: SetupConfig = { state, step: step + 1 };
+    if (!dirty) {
+      void saveSetup(at);
+      return go(step + 1);
+    }
+    if (await save(at)) go(step + 1);
   };
   const finish = async () => {
-    if (await save({ state: 'done', step: 0 })) setFinished(true);
+    const done: SetupConfig = { state: 'done', step: 0 };
+    if (dirty ? await save(done) : await saveSetup(done)) return setFinished(true);
+    if (!dirty) setProblem(t('wizard.finishFailed'));
   };
   const skip = async () => {
     setBusy(true);

@@ -1013,6 +1013,7 @@
   "wizard.device.passwordNeeded": "Setup wizard -> Password card: note while protection is on; a sentence; max 90 chars.",
   "wizard.device.title": "Setup wizard -> Device: card title; max 32 chars.",
   "wizard.finish": "Setup wizard review page: primary button that ends setup; max 32 chars.",
+  "wizard.finishFailed": "Setup wizard: error note when Finish isn't saved; a sentence; max 90 chars.",
   "wizard.finished": "Setup wizard: note after Finish; a sentence; max 90 chars.",
   "wizard.hall.benchTestLink": "Setup wizard -> Hall sensor: link to the docs; label; max 32 chars.",
   "wizard.hall.hint": "Setup wizard -> Hall sensor fitted card: the ? tip; max 160 chars.",

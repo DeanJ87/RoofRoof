@@ -103,9 +103,20 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     expect(screen.getByText('The roof is moving: saves are refused until it stops')).toBeInTheDocument();
+    fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Backyard roof' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     expect(await screen.findByText('The roof is moving: wait until it stops')).toBeInTheDocument();
     expect(await heading()).toHaveTextContent('Step 1 of 10');
+  });
+
+  it('an unchanged page only records the step', async () => {
+    mockDevice({ config: { auth: { enabled: true, username: 'admin', password: '********' }, setup: { state: 'new', step: 0 } } });
+    const saves = recordSaves();
+    render(<Wizard />);
+    await heading();
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    expect(await heading()).toHaveTextContent('Step 2 of 10');
+    await waitFor(() => expect(saves).toEqual([{ setup: { state: 'new', step: 1 } }]));
   });
 
   it('Skip page and Back never save', async () => {
