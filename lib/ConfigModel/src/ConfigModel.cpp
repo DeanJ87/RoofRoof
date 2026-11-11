@@ -60,6 +60,9 @@ namespace SQM
             a.clientLost = {3, "", "", ""};
             a.clientBack = {1, "", "", ""};
             a.clientDisconnected = {0, "", "", ""};
+            a.daylightOpen = {3, "", "", ""};
+            a.daylightClosed = {2, "", "", ""};
+            a.daylightUnknown = {2, "", "", ""};
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSeconds = 120;
             a.cooldownSeconds = 300;
@@ -98,6 +101,8 @@ namespace SQM
         cfg.safety = SafetyConfig{};
         cfg.park = ParkConfig{};
         cfg.roof = RoofConfig();
+        cfg.daylight = DaylightConfig{};
+        cfg.location = LocationConfig{};
         return cfg;
     }
 

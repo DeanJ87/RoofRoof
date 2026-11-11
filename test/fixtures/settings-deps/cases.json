@@ -521,6 +521,205 @@
           "id": "D-04"
         }
       }
+    },
+    {
+      "name": "daylight check: needs the location (default config: mode alert, location not set)",
+      "config": {},
+      "facts": {},
+      "expect": {
+        "daylight.mode": {
+          "state": "inactive",
+          "id": "D-42",
+          "reason": "location-unknown"
+        },
+        "daylight.sunAltitudeDeg": {
+          "state": "active",
+          "id": "D-44"
+        },
+        "location.set": {
+          "state": "off",
+          "id": "D-44"
+        },
+        "location.latitude": {
+          "state": "off",
+          "id": "D-44"
+        },
+        "location.longitude": {
+          "state": "off",
+          "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "daylight check: with the location and the clock it is in effect, and so are the site settings",
+      "config": {
+        "location": {
+          "set": true,
+          "latitude": 51.5,
+          "longitude": -0.1
+        }
+      },
+      "facts": {
+        "clockSet": true
+      },
+      "expect": {
+        "daylight.mode": {
+          "state": "active",
+          "id": "D-42"
+        },
+        "daylight.sunAltitudeDeg": {
+          "state": "active",
+          "id": "D-44"
+        },
+        "location.set": {
+          "state": "active",
+          "id": "D-44"
+        },
+        "location.latitude": {
+          "state": "active",
+          "id": "D-44"
+        },
+        "location.longitude": {
+          "state": "active",
+          "id": "D-44"
+        }
+      }
+    },
+    {
+      "name": "daylight check: waits for the clock (a runtime fact)",
+      "config": {
+        "location": {
+          "set": true
+        }
+      },
+      "facts": {
+        "clockSet": false
+      },
+      "expect": {
+        "daylight.mode": {
+          "state": "inactive",
+          "id": "D-43",
+          "reason": "clock-not-set"
+        }
+      }
+    },
+    {
+      "name": "daylight off: the threshold and the site are inactive, the mode itself is off",
+      "config": {
+        "daylight": {
+          "mode": "off"
+        },
+        "location": {
+          "set": true,
+          "latitude": 10,
+          "longitude": 20
+        }
+      },
+      "facts": {
+        "clockSet": true
+      },
+      "expect": {
+        "daylight.mode": {
+          "state": "off",
+          "id": "D-42"
+        },
+        "daylight.sunAltitudeDeg": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        },
+        "location.set": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        },
+        "location.latitude": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        },
+        "location.longitude": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        }
+      }
+    },
+    {
+      "name": "daylight events: need alerts on first, then daylight on",
+      "config": {
+        "daylight": {
+          "mode": "off"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.events.daylight_open.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.daylight_closed.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        },
+        "alerts.events.daylight_unknown.level": {
+          "state": "inactive",
+          "id": "D-04",
+          "reason": "alerts-off"
+        }
+      }
+    },
+    {
+      "name": "daylight events: alerts on but daylight off -> daylight-off; both on -> in effect, level 0 -> off",
+      "config": {
+        "alerts": {
+          "enabled": true,
+          "events": {
+            "daylight_closed": {
+              "level": 0
+            }
+          }
+        },
+        "daylight": {
+          "mode": "off"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.events.daylight_open.level": {
+          "state": "inactive",
+          "id": "D-44",
+          "reason": "daylight-off"
+        },
+        "alerts.events.daylight_closed.level": {
+          "state": "off",
+          "id": "D-04"
+        }
+      }
+    },
+    {
+      "name": "daylight events with alerts and daylight on are in effect",
+      "config": {
+        "alerts": {
+          "enabled": true
+        },
+        "daylight": {
+          "mode": "close"
+        }
+      },
+      "facts": {},
+      "expect": {
+        "alerts.events.daylight_open.level": {
+          "state": "active",
+          "id": "D-04"
+        },
+        "alerts.events.daylight_unknown.level": {
+          "state": "active",
+          "id": "D-04"
+        }
+      }
     }
   ]
 }

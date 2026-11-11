@@ -94,6 +94,18 @@
     "ota-no-password": {
       "text": "Set an upload password",
       "fix": "device#security"
+    },
+    "daylight-off": {
+      "text": "Daylight is off",
+      "fix": "roof#daylight"
+    },
+    "location-unknown": {
+      "text": "Location not set",
+      "fix": "roof#daylight"
+    },
+    "clock-not-set": {
+      "text": "Clock not set",
+      "fix": "time#ntp"
     }
   },
   "entries": [
@@ -154,6 +166,9 @@
         "alerts.events.unsafe_closing.level",
         "alerts.events.roof_closed.level",
         "alerts.events.safety_lost.level",
+        "alerts.events.daylight_open.level",
+        "alerts.events.daylight_closed.level",
+        "alerts.events.daylight_unknown.level",
         "alerts.sendMode"
       ],
       "dependsOn": "Alerts on (Send alerts); channels are push only. The roof's critical alerts (mount not parked, roof didn't close) don't depend on it",
@@ -301,6 +316,49 @@
       "dependsOn": "MQTT broker connected; while it isn't, the SQMeter MQTT source goes stale and counts as unsafe",
       "reasons": [
         "mqtt-disconnected"
+      ]
+    },
+    {
+      "id": "D-42",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "daylight.mode"
+      ],
+      "dependsOn": "The site's latitude and longitude set (Location set) - without them the daylight check can't tell day from night and does nothing (spec 013)",
+      "reasons": [
+        "location-unknown"
+      ]
+    },
+    {
+      "id": "D-43",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "daylight.mode"
+      ],
+      "dependsOn": "The clock set by NTP - until then the daylight check can't run (spec 013)",
+      "reasons": [
+        "clock-not-set"
+      ]
+    },
+    {
+      "id": "D-44",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "daylight.sunAltitudeDeg",
+        "location.set",
+        "location.latitude",
+        "location.longitude",
+        "alerts.events.daylight_open.level",
+        "alerts.events.daylight_closed.level",
+        "alerts.events.daylight_unknown.level"
+      ],
+      "dependsOn": "Daylight on (alert, or alert and close) - the threshold, the site and the daylight events are used only then",
+      "reasons": [
+        "daylight-off"
       ]
     }
   ]

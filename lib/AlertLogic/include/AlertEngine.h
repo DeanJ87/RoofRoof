@@ -31,9 +31,13 @@ namespace SQM
             UnsafeClosing, // the automatic close began an attempt
             RoofClosed,    // the roof reached closed during the automatic close
             SafetyLost,    // a weather source that is on was lost
+            // The daylight failsafe (RoofRoof spec 013), through this engine.
+            DaylightOpen,    // the sun is up and the roof isn't closed
+            DaylightClosed,  // the roof reached closed after a daylight close
+            DaylightUnknown, // the daylight check can't run (no site or clock)
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::SafetyLost) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::DaylightUnknown) + 1;
 
         // The roof events constitution II and III require: never off, never
         // held back by the pause, the grace or the master switch.
@@ -93,11 +97,18 @@ namespace SQM
             bool onUnsafeClosing = true;
             bool onRoofClosed = true;
             bool onSafetyLost = true;
+            // The daylight events (spec 013).
+            bool onDaylightOpen = true;
+            bool onDaylightClosed = true;
+            bool onDaylightUnknown = true;
         };
 
         // A low supply or a lost weather source must last this long before it
         // is announced (a motor's start-up dip, one failed request).
         constexpr uint32_t ROOF_SETTLE_SECONDS = 30;
+        // The daylight check must have been unable to run this long before it
+        // is announced: NTP sets the clock within it after a restart (spec 013).
+        constexpr uint32_t DAYLIGHT_UNKNOWN_SETTLE_SECONDS = 600;
         // The roof's condition events wait at least this long between two
         // alerts of the same event, whatever the cooldown setting (0 allowed):
         // a verdict flapping every few seconds can't turn into an alert each.
@@ -126,6 +137,15 @@ namespace SQM
             bool closing = false;     // the automatic close is attempting a close
             std::string weather;      // the verdict that started it
             uint32_t closedCount = 0; // closes the automatic close saw finish, since start
+            // The daylight failsafe (spec 013). "Unsafe: closing" (`closing`)
+            // and "roof closed" (`closedCount`) count weather episodes only.
+            bool daylightOpen = false;        // mode on, sun up, roof not closed, no weather close running
+            std::string daylightSun;          // "Sun 3.2° ≥ 0.0°"
+            std::string daylightAction;       // what happens to the open roof
+            bool daylightUnknown = false;     // mode on, the check can't run
+            std::string daylightMissing;      // "Location not set", "Clock not set"
+            uint32_t daylightClosedCount = 0; // daylight episodes that ended closed, since start
+            std::string daylightClosedSun;    // the sun's text when that episode began
         };
 
         // The most Alpaca devices an imaging app can be watched on. RoofRoof spec 006
@@ -186,7 +206,8 @@ namespace SQM
             std::vector<Wait> waits(uint32_t nowSeconds, const AlertRules &rules) const;
 
             // The roof conditions announced and still present (bit 0 fault, 1
-            // supply, 2 source, 3 closing), kept across a reset so it doesn't
+            // supply, 2 source, 3 closing, 4 daylight open, 5 daylight
+            // unknown), kept across a reset so it doesn't
             // repeat them; restored before the first update().
             uint8_t announcedRoof() const;
             void restoreAnnouncedRoof(uint8_t bits);
@@ -245,14 +266,22 @@ namespace SQM
             // The roof (src/RoofEvents.cpp): a condition alerts on its rising
             // edge only, once it has held for its settle time, outside the
             // grace and the cooldown; its end resets it silently.
-            Tracker roofFault, roofSupply, roofSource, roofClosing;
-            uint32_t closedSeen = 0;
-            bool closedPending = false;
-            bool closedSent = false;
-            uint32_t closedSentAt = 0;
-            std::string closedWeather;
+            Tracker roofFault, roofSupply, roofSource, roofClosing, daylightOpen, daylightUnknown;
+            // A count that rises once per close: each rise alerts once, held
+            // through the grace and the cooldown.
+            struct Count
+            {
+                uint32_t seen = 0;
+                bool pending = false;
+                bool sent = false;
+                uint32_t sentAt = 0;
+                std::string text;
+            };
+            Count roofClosed, daylightClosed;
             static bool rise(Tracker &tracker, bool current, const Emit &emit, bool inGrace);
+            static bool counted(Count &count, uint32_t value, const std::string &text, const Emit &emit, bool inGrace);
             void updateRoof(const AlertInputs &inputs, const AlertRules &rules, std::vector<Alert> &alerts);
+            void updateDaylight(const RoofInputs &roof, const AlertRules &rules, uint32_t now, std::vector<Alert> &alerts);
             void addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const;
         };
 

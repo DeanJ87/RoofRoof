@@ -32,12 +32,22 @@ namespace SQM
                 "Unsafe: closing",
                 "The weather isn't safe: the mount is being parked and the roof closed. Weather: {reason}"};
             constexpr Wording CLOSED = {AlertType::RoofClosed, "Roof closed after unsafe weather", "The roof is closed. Weather: {reason}"};
+            constexpr Wording DAYLIGHT_OPEN = {
+                AlertType::DaylightOpen, "Roof open in daylight", "The sun is up and the roof isn't closed. {action} Sun: {reason}"};
+            constexpr Wording DAYLIGHT_CLOSED = {
+                AlertType::DaylightClosed, "Roof closed after daylight", "The roof is closed: it was open in daylight. Sun: {reason}"};
+            constexpr Wording DAYLIGHT_UNKNOWN = {
+                AlertType::DaylightUnknown,
+                "Daylight check not working",
+                "The daylight failsafe can't tell day from night, so it won't alert or close. {reason}"};
 
-            Alert roofAlert(const Wording &wording, const std::string &reason)
+            Alert roofAlert(const Wording &wording, const std::string &reason, const std::string &action = std::string())
             {
                 Alert alert;
                 alert.type = wording.type;
                 alert.vars = {{"reason", reason}};
+                if (wording.type == AlertType::DaylightOpen)
+                    alert.vars.push_back({"action", action});
                 alert.title = wording.title;
                 alert.message = renderTemplate(wording.message, alert.vars);
                 return alert;
@@ -49,6 +59,8 @@ namespace SQM
                 BitSupply = 1u << 1,
                 BitSource = 1u << 2,
                 BitClosing = 1u << 3,
+                BitDaylightOpen = 1u << 4,
+                BitDaylightUnknown = 1u << 5,
             };
         } // namespace
 
@@ -112,21 +124,43 @@ namespace SQM
 
             // Each close an attempt saw finish, held through the grace and the
             // cooldown (a closed magnet that flickers can't send one each).
-            if (roof.closedCount != closedSeen)
+            if (counted(roofClosed, roof.closedCount, roof.weather, emit(rules.onRoofClosed, 0), inGrace))
+                alerts.push_back(roofAlert(CLOSED, roofClosed.text));
+            updateDaylight(roof, rules, now, alerts);
+        }
+
+        // Spec 013: the roof open in daylight (settles like a supply dip, so a
+        // closed magnet that flickers at rest can't announce it), the check
+        // unable to run for 10 minutes, and each daylight close that ended closed.
+        void AlertEngine::updateDaylight(const RoofInputs &roof, const AlertRules &rules, uint32_t now, std::vector<Alert> &alerts)
+        {
+            const bool inGrace = now - startedAt < rules.startupGraceSeconds;
+            const uint32_t cooldown = roofCooldown(rules.cooldownSeconds);
+            const auto emit = [&](bool on, uint32_t settle) { return Emit{now, cooldown, on, settle}; };
+            if (rise(daylightOpen, roof.daylightOpen, emit(rules.onDaylightOpen, ROOF_SETTLE_SECONDS), inGrace))
+                alerts.push_back(roofAlert(DAYLIGHT_OPEN, roof.daylightSun, roof.daylightAction));
+            if (rise(daylightUnknown, roof.daylightUnknown, emit(rules.onDaylightUnknown, DAYLIGHT_UNKNOWN_SETTLE_SECONDS), inGrace))
+                alerts.push_back(roofAlert(DAYLIGHT_UNKNOWN, roof.daylightMissing));
+            if (counted(daylightClosed, roof.daylightClosedCount, roof.daylightClosedSun, emit(rules.onDaylightClosed, 0), inGrace))
+                alerts.push_back(roofAlert(DAYLIGHT_CLOSED, daylightClosed.text));
+        }
+
+        bool AlertEngine::counted(Count &count, uint32_t value, const std::string &text, const Emit &emit, bool inGrace)
+        {
+            if (value != count.seen)
             {
-                closedSeen = roof.closedCount;
-                closedPending = rules.onRoofClosed;
-                closedWeather = roof.weather;
+                count.seen = value;
+                count.pending = emit.allowed;
+                count.text = text;
             }
-            if (!rules.onRoofClosed)
-                closedPending = false;
-            if (closedPending && !inGrace && (!closedSent || now - closedSentAt >= cooldown))
-            {
-                closedPending = false;
-                closedSent = true;
-                closedSentAt = now;
-                alerts.push_back(roofAlert(CLOSED, closedWeather));
-            }
+            if (!emit.allowed)
+                count.pending = false;
+            if (!count.pending || inGrace || (count.sent && emit.now - count.sentAt < emit.cooldown))
+                return false;
+            count.pending = false;
+            count.sent = true;
+            count.sentAt = emit.now;
+            return true;
         }
 
         uint8_t AlertEngine::announcedRoof() const
@@ -140,6 +174,10 @@ namespace SQM
                 bits |= BitSource;
             if (roofClosing.notified)
                 bits |= BitClosing;
+            if (daylightOpen.notified)
+                bits |= BitDaylightOpen;
+            if (daylightUnknown.notified)
+                bits |= BitDaylightUnknown;
             return bits;
         }
 
@@ -155,6 +193,8 @@ namespace SQM
             restore(roofSupply, (bits & BitSupply) != 0);
             restore(roofSource, (bits & BitSource) != 0);
             restore(roofClosing, (bits & BitClosing) != 0);
+            restore(daylightOpen, (bits & BitDaylightOpen) != 0);
+            restore(daylightUnknown, (bits & BitDaylightUnknown) != 0);
         }
 
         uint32_t announcedCheck(uint32_t bits)
@@ -164,7 +204,7 @@ namespace SQM
 
         bool announcedValid(uint32_t bits, uint32_t check)
         {
-            return bits <= 0x0Fu && check == announcedCheck(bits);
+            return bits <= 0x3Fu && check == announcedCheck(bits);
         }
 
         void AlertEngine::addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const
@@ -184,6 +224,8 @@ namespace SQM
             add(alertTypeName(AlertType::SupplyLow), roofSupply, ROOF_SETTLE_SECONDS);
             add(alertTypeName(AlertType::SafetyLost), roofSource, ROOF_SETTLE_SECONDS);
             add(alertTypeName(AlertType::UnsafeClosing), roofClosing, 0);
+            add(alertTypeName(AlertType::DaylightOpen), daylightOpen, ROOF_SETTLE_SECONDS);
+            add(alertTypeName(AlertType::DaylightUnknown), daylightUnknown, DAYLIGHT_UNKNOWN_SETTLE_SECONDS);
         }
     } // namespace Alerts
 } // namespace SQM

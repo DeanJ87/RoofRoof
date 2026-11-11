@@ -35,15 +35,21 @@ namespace SQM
             return elapsed(sinceMs, nowMs) >= ms;
         }
 
-        Decision Sequence::step(const Inputs &in)
+        Decision Sequence::step(const Inputs &given)
         {
-            lastNowMs = in.nowMs;
+            lastNowMs = given.nowMs;
             if (restorePending)
                 applyRestore();
             // A change since the last step. Only the running phases act on it,
             // so stops while idle (and the count at start-up) are history.
-            const bool personStopped = in.personStops != seenStops;
-            seenStops = in.personStops;
+            const bool personStopped = given.personStops != seenStops;
+            seenStops = given.personStops;
+            trackEpisode(given, personStopped);
+            // Spec 013: daylight wants the roof closed as unsafe weather does.
+            // From here on "weather safe" reads "nothing wants the roof
+            // closed": with daylight false this is spec 005, step for step.
+            Inputs in = given;
+            in.weatherSafe = given.weatherSafe && !given.daylight;
             // Tracked every step, so each count runs without a break whatever the phase.
             parkConfirmed = parkHeld.lasted(in.parked, in.nowMs, PARK_SETTLE_MS);
             unknownConfirmed = unknown.lasted(in.roof == Roof::State::Unknown, in.nowMs, UNKNOWN_CONFIRM_MS);
@@ -59,7 +65,44 @@ namespace SQM
             }
             lastRoof = in.roof;
 
-            return withAlert(remindIfDue(decide(in, personStopped)));
+            Decision out = withAlert(remindIfDue(decide(in, personStopped)));
+            out.daylight = daylightOnly;
+            return out;
+        }
+
+        // Spec 013 (research R4). An episode is daylight-only from the idle
+        // step that starts it with the weather safe until the weather first
+        // stops being safe. At that moment a daylight-only stand-down (a
+        // person's stop, a halted close) or back-off must not hold the
+        // weather close back: the sequence re-arms and the weather attempt
+        // starts on this same step, as if the daylight episode hadn't been.
+        // A person's stop seen on this very step wins (it stands down below).
+        // A person's stand-down waits for the weather to have been not safe
+        // for WEATHER_REARM_CONFIRM_MS (a new stop restarts the wait); a halt
+        // or a back-off re-arms at once. The critical alerts' throttle starts
+        // afresh, so the weather close's failures are announced in their own
+        // words even when the daylight close failed the same way just before.
+        void Sequence::trackEpisode(const Inputs &given, bool personStopped)
+        {
+            const bool unsafeLong = weatherUnsafe.lasted(!given.weatherSafe, given.nowMs, WEATHER_REARM_CONFIRM_MS);
+            if (current == Phase::Idle)
+            {
+                daylightOnly = given.daylight && given.weatherSafe;
+                return;
+            }
+            if (given.weatherSafe || !daylightOnly)
+                return;
+            if (current == Phase::HeldByPerson && personStopped)
+                weatherUnsafe.sinceMs = given.nowMs; // the wait starts again from this stop
+            if (current == Phase::HeldByPerson && (!unsafeLong || personStopped))
+                return;
+            daylightOnly = false;
+            for (auto &row : alertedEver)
+                for (bool &ever : row)
+                    ever = false;
+            const bool heldBack = current == Phase::HeldByPerson || current == Phase::Halted || current == Phase::RetryWait;
+            if (heldBack && !personStopped)
+                enter(Phase::Idle);
         }
 
         Decision Sequence::decide(const Inputs &in, bool personStopped)
@@ -88,6 +131,10 @@ namespace SQM
             const bool open =
                 current == Phase::RetryWait || current == Phase::HeldByPerson || current == Phase::CannotMove || current == Phase::Halted;
             if (decision.event != Event::None || !open || !lastCritical.has)
+                return decision;
+            // Spec 013: a person who stopped a daylight-only close meant it; no
+            // wake-me reminder all day (the first alert went out).
+            if (current == Phase::HeldByPerson && daylightOnly)
                 return decision;
             if (!remindNow && elapsed(lastCritical.alertedAtMs, lastNowMs) < REMIND_MS)
                 return decision;
@@ -300,7 +347,9 @@ namespace SQM
                 parkConfirmed = false;
                 return Decision{};
             }
-            return withAlert(failAttempt(Event::CloseFailed, Cause::Refused, Action::None));
+            Decision out = withAlert(failAttempt(Event::CloseFailed, Cause::Refused, Action::None));
+            out.daylight = daylightOnly;
+            return out;
         }
 
         Sequence::Saved Sequence::saved() const
@@ -309,6 +358,7 @@ namespace SQM
             // The park request spacing is kept in any phase, while it matters.
             out.requested = requested && elapsed(lastRequestMs, lastNowMs) < PARK_REQUEST_GAP_MS;
             out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
+            out.daylight = daylightOnly;
             // Asked to close but not yet answered: nothing has moved, so a
             // restart now carries on from the step before (spec 010).
             const bool unanswered = current == Phase::Closing && closeUnanswered;
@@ -372,6 +422,7 @@ namespace SQM
             const uint64_t longestMs = 1800000;
             attemptLimitMs = restoring.limitMs != 0 && restoring.limitMs <= longestMs ? restoring.limitMs : parkTimeoutMs;
             requested = restoring.requested;
+            daylightOnly = restoring.daylight && current != Phase::Idle;
             lastRequestMs = lastNowMs - (restoring.requestAgeMs < lastNowMs ? restoring.requestAgeMs : lastNowMs);
             lastCritical = LastCritical{};
             lastCritical.has = isCritical(restoring.event);

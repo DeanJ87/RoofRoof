@@ -12,6 +12,7 @@
 
 #include "AlertEngine.h"
 #include "CloseSequence.h"
+#include "Daylight.h"
 #include "RoofStatus.h"
 #include "SafetyInput.h"
 
@@ -48,12 +49,17 @@ namespace SQM
         struct SequenceView
         {
             Phase phase = Phase::Idle;
-            uint32_t closedCount = 0; // Event::Closed seen since start
+            uint32_t closedCount = 0; // Event::Closed seen since start (weather episodes)
+            // Spec 013: the episode is daylight-only (Sequence::daylightEpisode()).
+            bool daylight = false;
+            uint32_t daylightClosedCount = 0; // Event::Closed seen at the end of daylight episodes
         };
 
         // Refreshes `roof` from the roof's snapshot, the weather verdict and
-        // the sequence. The weather text is taken while the sequence runs and
-        // kept after, so the close's alert says what the weather was.
+        // the sequence. The weather text is taken while a weather episode runs
+        // and kept after, so the close's alert says what the weather was.
+        // "Closing" is a weather episode attempting a close (spec 013: a
+        // daylight-only episode raises the daylight events instead).
         void updateConditions(
             Alerts::RoofInputs &roof,
             const RoofIo::Snapshot &snapshot,
@@ -64,5 +70,16 @@ namespace SQM
         // SQMeter stale, unreachable, unreadable or offline; the rain contact
         // unreadable. Waiting for a first reply and switched off don't count.
         std::string lostSources(const Safety::WeatherVerdict &weather);
+
+        // Spec 013: the daylight events' conditions. Open in daylight: the
+        // mode on, the sun up, the roof not closed and no weather episode
+        // running (its "Unsafe: closing" said it already). Unknown: the mode
+        // on and the check unable to run. The sun's text is kept while a
+        // daylight episode runs, for its "closed" alert.
+        void updateDaylightConditions(
+            Alerts::RoofInputs &roof, const Daylight::View &daylight, Roof::State state, const SequenceView &sequence);
+
+        // The daylight state as the status document shows it.
+        RoofIo::DaylightStatus daylightStatus(const Daylight::View &daylight);
     } // namespace CloseSeq
 } // namespace SQM

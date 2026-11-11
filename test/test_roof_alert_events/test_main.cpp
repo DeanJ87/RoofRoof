@@ -390,10 +390,11 @@ void test_closed_respects_the_cooldown(void)
 
 void test_announced_check_word(void)
 {
-    for (uint32_t bits = 0; bits <= 0x0F; ++bits)
+    // Spec 013 added bits 4 (daylight open) and 5 (daylight unknown).
+    for (uint32_t bits = 0; bits <= 0x3F; ++bits)
         TEST_ASSERT_TRUE(announcedValid(bits, announcedCheck(bits)));
     TEST_ASSERT_FALSE(announcedValid(0x03, announcedCheck(0x02)));
-    TEST_ASSERT_FALSE(announcedValid(0x10, announcedCheck(0x10)));
+    TEST_ASSERT_FALSE(announcedValid(0x40, announcedCheck(0x40)));
 }
 
 // SC-003: random roof conditions over time. Each condition event is never

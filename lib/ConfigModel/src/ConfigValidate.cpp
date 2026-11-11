@@ -227,6 +227,17 @@ namespace SQM
             return true;
         }
 
+        bool validateDaylight(const Config &c, std::string *error)
+        {
+            if (!inRange(c.daylight.sunAltitudeDeg, DaylightConfig::MIN_SUN_ALTITUDE_DEG, DaylightConfig::MAX_SUN_ALTITUDE_DEG))
+                return setError(error, "Daylight: sun altitude must be between -18 and 30 degrees");
+            if (!std::isfinite(c.location.latitude) || c.location.latitude < -90.0 || c.location.latitude > 90.0)
+                return setError(error, "Location: latitude must be between -90 and 90 degrees");
+            if (!std::isfinite(c.location.longitude) || c.location.longitude < -180.0 || c.location.longitude > 180.0)
+                return setError(error, "Location: longitude must be between -180 and 180 degrees");
+            return true;
+        }
+
         bool validateRoof(const Config &c, std::string *error)
         {
             return validateRoofTiming(c.roof, error) && validateRoofDuty(c.roof, error) && validateRoofSensing(c.roof, error);
@@ -291,6 +302,7 @@ namespace SQM
             validateAlertEvents,
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
             validateSafety,
+            validateDaylight,
         };
         for (Check check : CHECKS)
             if (!check(*this, error))

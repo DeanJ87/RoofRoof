@@ -347,6 +347,30 @@ namespace SQM
             return setError(error, "Park switches must be none, one or two");
         }
 
+        // A mode that isn't one of the three names is refused, never read as a
+        // default (a typo must not turn the daylight close on or off).
+        bool applyDaylight(const Section &root, Config &cfg, std::string *error)
+        {
+            const Section daylight = root.child("daylight");
+            daylight.take("sunAltitudeDeg", cfg.daylight.sunAltitudeDeg);
+            const Section location = root.child("location");
+            location.take("set", cfg.location.set);
+            location.take("latitude", cfg.location.latitude);
+            location.take("longitude", cfg.location.longitude);
+            if (!daylight.has("mode"))
+                return true;
+            const std::string mode = daylight["mode"].is<const char *>() ? daylight["mode"].as<const char *>() : "";
+            for (DaylightConfig::Mode choice : {DaylightConfig::Mode::Off, DaylightConfig::Mode::Alert, DaylightConfig::Mode::Close})
+            {
+                if (mode == daylightModeName(choice))
+                {
+                    cfg.daylight.mode = choice;
+                    return true;
+                }
+            }
+            return setError(error, "Daylight: mode must be off, alert or close");
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -383,7 +407,7 @@ namespace SQM
             applyTime(root, cfg);
             root.child("alpaca").take("enabled", cfg.alpaca.enabled);
             applySafety(root.child("safety"), cfg.safety);
-            if (!applyPark(root.child("park"), cfg.park, error))
+            if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error))
                 return false;
             return applyRoof(root.child("roof"), cfg.roof, error) && applyAlerts(root.child("alerts"), cfg.alerts, keep, error) &&
                    applyAlertsClient(root.child("alertsClient"), cfg.alerts, error);

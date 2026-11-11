@@ -25,6 +25,29 @@ namespace SQM
                 return status.state == Roof::State::Closing || context.closePending ||
                        (status.state == Roof::State::Stopped && status.target == Roof::End::Closed);
             }
+
+            // A client's stop of a close while the weather isn't safe, or (spec
+            // 013) while daylight wants the roof closed: refused, a person's isn't.
+            CommandCheck checkClientStop(
+                Roof::Origin origin, const GateInputs &gates, const Roof::Status &status, const CommandContext &context)
+            {
+                const bool closing = status.state == Roof::State::Closing || context.closePending;
+                if (closing && gates.weather != Safety::Verdict::Safe)
+                    return CommandCheck{
+                        false,
+                        "unsafeClose",
+                        "The roof is closing and the weather isn't safe (" +
+                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) + "): " + remoteName(origin) +
+                            " can't stop it (Stop in the web UI can)"};
+                if (closing && gates.daylightCloses)
+                    return CommandCheck{
+                        false,
+                        "unsafeClose",
+                        "The roof is closing in daylight (" +
+                            (gates.daylightText.empty() ? std::string("the sun is up") : gates.daylightText) + "): " + remoteName(origin) +
+                            " can't stop it (Stop in the web UI can)"};
+                return CommandCheck{};
+            }
         } // namespace
 
         bool remoteOrigin(Roof::Origin origin)
@@ -42,17 +65,7 @@ namespace SQM
             const Roof::Status &status = controller.status();
             const bool client = remoteOrigin(origin);
             if (isStop(command))
-            {
-                const bool closing = status.state == Roof::State::Closing || context.closePending;
-                if (client && closing && gates.weather != Safety::Verdict::Safe)
-                    return CommandCheck{
-                        false,
-                        "unsafeClose",
-                        "The roof is closing and the weather isn't safe (" +
-                            (gates.weatherText.empty() ? std::string("no verdict yet") : gates.weatherText) + "): " + remoteName(origin) +
-                            " can't stop it (Stop in the web UI can)"};
-                return CommandCheck{};
-            }
+                return client ? checkClientStop(origin, gates, status, context) : CommandCheck{};
             if (command != Roof::Command::Open && command != Roof::Command::Close)
                 return CommandCheck{};
             const GateRefusal gate = gateCommand(command, gates);

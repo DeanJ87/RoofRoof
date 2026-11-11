@@ -4,7 +4,8 @@
 // motion logic (spec 003 FR-017 to FR-020, research R8): constitution II
 // (close only onto a confirmed park, re-checked throughout the close) and III
 // (no opening unless the weather is safe). Spec 005's automatic close goes
-// through the same checks.
+// through the same checks. Spec 013: no opening while daylight wants the roof
+// closed (daylight mode "alert and close" and the sun up).
 
 #include <cstdint>
 #include <string>
@@ -29,6 +30,10 @@ namespace SQM
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;
             Contact switch2 = Contact::Unreadable;
+            // Spec 013: daylight wants the roof closed (Daylight::View::closes())
+            // and why ("Sun 3.2° ≥ 0.0°"), handed over with the verdict.
+            bool daylightCloses = false;
+            std::string daylightText;
         };
 
         // The main loop hands the verdict and park result over every 250 ms. If
@@ -43,6 +48,7 @@ namespace SQM
             None,
             WeatherNotSafe,
             MountNotParked,
+            Daylight, // spec 013: the daylight close wants the roof closed
         };
 
         // Bits of the park-interlock fault's measured value.
@@ -62,17 +68,22 @@ namespace SQM
         bool switchesClosed(uint8_t fitted, Contact switch1, Contact switch2);
         // The park result says parked AND every fitted switch reads closed now.
         bool parkHolds(const GateInputs &in);
-        // Open: only with a safe verdict. Close: only while the park holds.
-        // Stop and abort are never gated.
+        // Open: only with a safe verdict (WeatherNotSafe) and daylight not
+        // wanting the roof closed (Daylight; the weather is named first).
+        // Close: only while the park holds. Stop and abort are never gated.
         GateRefusal gateCommand(Roof::Command command, const GateInputs &in);
         // A close is under way (including its dead time) and the park no longer holds.
         bool interlockLost(const Roof::Status &status, const GateInputs &in);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
-        // An open is under way and the verdict is no longer safe: stop it.
+        // An open is under way and the verdict is no longer safe, or daylight
+        // wants the roof closed: stop it.
         bool openMustStop(const Roof::Status &status, const GateInputs &in);
+        // Why an open would be refused now (None, WeatherNotSafe or Daylight):
+        // the reason an open under way was stopped.
+        GateRefusal openRefusal(const GateInputs &in);
 
-        // "none", "weatherNotSafe", "mountNotParked".
+        // "none", "weatherNotSafe", "mountNotParked", "daylight".
         const char *gateRefusalName(GateRefusal refusal);
     } // namespace RoofIo
 } // namespace SQM
