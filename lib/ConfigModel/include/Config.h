@@ -68,11 +68,11 @@ namespace SQM
     struct SafetyConfig
     {
         bool httpEnabled = false;
-        std::string httpUrl;             // SQMeter's GET /api/safety, http:// only
-        bool mqttEnabled = false;        // on RoofRoof's own broker
+        std::string httpUrl;               // SQMeter's GET /api/safety, http:// only
+        bool mqttEnabled = false;          // on RoofRoof's own broker
         std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
-        uint32_t staleSeconds = 30;      // SQMeter HTTP: unsafe after this long without a good reply
-        bool rainContact = false;        // a rain contact is fitted on GPIO4
+        uint32_t staleSeconds = 30;        // SQMeter HTTP: unsafe after this long without a good reply
+        bool rainContact = false;          // a rain contact is fitted on GPIO4
         static constexpr uint32_t MIN_STALE_SECONDS = 10;
         static constexpr uint32_t MAX_STALE_SECONDS = 600;
     };

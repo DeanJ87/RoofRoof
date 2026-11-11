@@ -39,13 +39,14 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `WebServerBackup.cpp`, `WebServerShared.h` | same | Changed: small edits for the removed settings | No |
 | `ConfigStore.cpp` | same | Changed: removed settings dropped from load and save | No |
 | `TimeManager.cpp/.h` | same | Changed: NTP only, GPS time removed | No |
-| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; otherwise the code is the same | No |
+| `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics | No |
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
 | `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
 | `Ipv6Network`, `DualStackClient`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
 | `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins; pin map | No |
+| `SafetyPoller.cpp/.h`, `SafetyInputs.cpp/.h` | none | New (spec 004): polls SQMeter and N.I.N.A. on their own task; keeps the weather verdict and park result | No |
 
 ### `lib/`
 
@@ -63,10 +64,12 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | SettingsDeps | `lib/SettingsDeps` | Changed: catalogue cut to the settings that remain | No |
 | DriverLogic | none | New: what the motor driver's inputs must be for each command | No |
 | HaDiscovery | none | New: Home Assistant MQTT discovery entities | Yes |
+| NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
+| SafetyInputLogic | none | New (spec 004): SQMeter reply parsing, the weather verdict and the park rule | No |
 
 ### `test/`
 
-The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
+The native tests follow their libraries. Changed: `test_alert_*`, `test_alpaca_*`, `test_config_*`, `test_connection_budget`, `test_device_core`, `test_firmware_image`, `test_settings_deps`. Unchanged apart from comments: `test_backup_crypto`, `test_captive_*`, `test_net_address`. New: `test_driver_logic`, `test_ha_discovery`, and (spec 004) `test_nina`, `test_safety_input_logic`, `test_park_logic`, `test_config_safety`. Their shared fixtures in `test/fixtures` were cut down to the remaining settings.
 
 ## Web UI
 

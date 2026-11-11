@@ -29,11 +29,11 @@ namespace Fixtures
         R"("DeviceId":"ASCOM.EQMOD.Telescope"},"Error":"","StatusCode":200,"Success":true,"Type":"API"})";
 
     // No mount connected: only the required fields are certain.
-    inline const char *const INFO_DISCONNECTED =
-        R"({"Response":{"Connected":false,"Name":"","DisplayName":"","DeviceId":""},)"
-        R"("Error":"","StatusCode":200,"Success":true,"Type":"API"})";
+    inline const char *const INFO_DISCONNECTED = R"({"Response":{"Connected":false,"Name":"","DisplayName":"","DeviceId":""},)"
+                                                 R"("Error":"","StatusCode":200,"Success":true,"Type":"API"})";
 
-    inline const char *const INFO_UNKNOWN_ERROR = R"({"Response":"","Error":"Unknown error","StatusCode":500,"Success":false,"Type":"API"})";
+    inline const char *const INFO_UNKNOWN_ERROR =
+        R"({"Response":"","Error":"Unknown error","StatusCode":500,"Success":false,"Type":"API"})";
 
     inline const char *const INFO_MISSING_AT_PARK =
         R"({"Response":{"Slewing":false,"Connected":true},"Error":"","StatusCode":200,"Success":true,"Type":"API"})";
@@ -54,7 +54,8 @@ namespace Fixtures
 
     inline const char *const PARK_PARKING = R"({"Response":"Parking","Error":"","StatusCode":200,"Success":true,"Type":"API"})";
 
-    inline const char *const PARK_ALREADY = R"({"Response":"Mount already parked","Error":"","StatusCode":200,"Success":true,"Type":"API"})";
+    inline const char *const PARK_ALREADY =
+        R"({"Response":"Mount already parked","Error":"","StatusCode":200,"Success":true,"Type":"API"})";
 
     inline const char *const PARK_NOT_CONNECTED =
         R"({"Response":"","Error":"Mount not connected","StatusCode":409,"Success":false,"Type":"API"})";

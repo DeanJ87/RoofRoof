@@ -36,5 +36,5 @@
   not implementation choices. The native test names in the Principle I-III table are required by
   the constitution's Development Workflow ("a spec touching motion or safety MUST list ... the tests
   that prove them").
-- Clarifications were answered under the overnight autonomy rules; see "Assumptions decided for the
+- Open questions took the safest option the constitution allows; see "Assumptions decided for the
   owner".
