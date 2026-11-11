@@ -37,9 +37,9 @@ namespace SQM
             // The first fault latched is kept until cleared.
             void raiseFault(const Fault &fault, uint32_t nowMs);
 
-            // New settings, refused (false) while a move is active. Invalid settings
-            // are taken but refuse every move until valid ones arrive.
-            bool applySettings(const Settings &settings);
+            // New settings, refused (Refusal::Moving) while a move is active. Invalid
+            // settings are taken but refuse every move until valid ones arrive.
+            CommandResult applySettings(const Settings &settings);
 
             const Status &status() const { return current; }
             Output output() const { return out; }

@@ -189,10 +189,10 @@ namespace SQM
             return CommandResult{};
         }
 
-        bool Controller::applySettings(const Settings &settings)
+        CommandResult Controller::applySettings(const Settings &settings)
         {
             if (move.active)
-                return false;
+                return refused(Refusal::Moving);
             config = settings;
             settingsValid = validSettings(settings);
             // The estimate was made with the old travel and speed.
@@ -203,7 +203,7 @@ namespace SQM
             }
             if (current.fault.kind == FaultKind::None)
                 followHall();
-            return true;
+            return CommandResult{};
         }
 
         // Idle: the magnets are the truth; leaving one at rest loses the position.
