@@ -8,7 +8,7 @@ import { mergeAlertsConfig } from '../settings/defaults';
 import { DepNote } from '../settings/controls';
 import { ChoiceGroup, Note } from '../ui';
 import { TestPanel } from './TestPanel';
-import { NINA_FIELDS, WEATHER_FIELDS } from './pages';
+import { NINA_FIELDS, WEATHER_FIELDS, pageIndex } from './pages';
 import { t } from '../../i18n';
 import { NINA_ROOF_DOC } from '../../lib/docsLinks';
 
@@ -166,8 +166,13 @@ export const DaylightScreen: FunctionalComponent<WizardPageProps> = (props) => {
           <SunAltitudeField daylight={daylight} update={props.update} error={props.error} />
         </div>
       )}
-      <DepNote entry={props.deps.get('daylight.mode')} onFix={props.fix} />
-      {daylight.mode !== 'off' && !props.config.location?.set && <Note tone="warn">{t('wizard.daylight.needsSite')}</Note>}
+      {/* Without the location, the note below says it and stays in the wizard; Settings' note would leave it. */}
+      {props.config.location?.set && <DepNote entry={props.deps.get('daylight.mode')} onFix={props.fix} />}
+      {daylight.mode !== 'off' && !props.config.location?.set && (
+        <Note tone="warn" action={{ label: t('wizard.daylight.setSite'), onClick: () => void props.goToPage(pageIndex('site')) }}>
+          {t('wizard.daylight.needsSite')}
+        </Note>
+      )}
     </div>
   );
 };

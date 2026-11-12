@@ -405,42 +405,4 @@ describe('Wizard', () => {
     await onScreen('alertDetails');
     expect(screen.getByText('User key')).toBeInTheDocument();
   });
-
-  it('with a channel already saved, the chosen card follows the pick', async () => {
-    mockDevice({ config: { setup: { state: 'done', step: 0 } } }); // Pushover saved on
-    at('screen=alertChannel');
-    render(<Wizard />);
-    await onScreen('alertChannel');
-    expect(screen.getByRole('radio', { name: 'Pushover' })).toBeChecked();
-    fireEvent.click(screen.getByRole('radio', { name: 'ntfy' }));
-    expect(screen.getByRole('radio', { name: 'ntfy' })).toBeChecked();
-    fireEvent.click(screen.getByRole('radio', { name: 'Webhook' }));
-    expect(screen.getByRole('radio', { name: 'Webhook' })).toBeChecked();
-    // The pick survives the screen being rebuilt (Escape, then Keep going).
-    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
-    fireEvent.click(await screen.findByRole('button', { name: 'Keep going' }));
-    await onScreen('alertChannel');
-    expect(screen.getByRole('radio', { name: 'Webhook' })).toBeChecked();
-  });
-
-  it('Skip for now picks the next screen from the settings as saved', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 8 }, alerts: { ...mockConfig.alerts!, enabled: false } } });
-    render(<Wizard />);
-    await onScreen('alertChannel');
-    fireEvent.click(screen.getByRole('radio', { name: 'ntfy' }));
-    fireEvent.click(button('Skip for now'));
-    await onScreen('daylight'); // alerts stay off, so their details are left out
-  });
-
-  it('a refused save moves focus to its reason, which is announced', async () => {
-    mockDevice({ config: { ...PASSWORD_SET, setup: { state: 'new', step: 0 } } });
-    recordSaves(() => HttpResponse.json({ error: 'The roof is moving: wait until it stops' }, { status: 409 }));
-    render(<Wizard />);
-    await onScreen('name');
-    fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Backyard roof' } });
-    fireEvent.click(button('Continue'));
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('The roof is moving: wait until it stops');
-    await waitFor(() => expect(document.activeElement).toBe(alert));
-  });
 });

@@ -87,7 +87,8 @@ wizard resumes at.
    didn't close, the mount didn't park) would reach no one.
 10. **Daylight**: what to do with a roof open after sunrise: **Do nothing**, **Alert me**
    (recommended) or **Alert and close**, and the sun altitude threshold
-   ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)).
+   ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)). Without the site's location the
+   screen says so, and **Set location** saves your answer and goes back to the Site screen.
 11. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
     reading yet), with what to do and **Change**, which opens that part. **Finish** ends setup
     and shows the last screen, with the commissioning guide.

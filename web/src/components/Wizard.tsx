@@ -314,7 +314,11 @@ const Wizard: FunctionalComponent = () => {
     setAlertPick,
     saveForTest,
     saveHere: () => void save({ state, step: stepOf(index) }),
-    goToPage: (page) => go(settle(firstScreenOf(page), props)),
+    // Keeps this screen's answer: it is saved first (a refused save stays here with its reason).
+    goToPage: async (page) => {
+      const to = settle(firstScreenOf(page), props);
+      if (!dirty || (await save({ state, step: page }))) go(to, true);
+    },
     offerPassword: () => {
       if (passwordOffered.current) return false;
       passwordOffered.current = true;

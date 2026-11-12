@@ -15,7 +15,7 @@ export interface WizardPageProps extends SettingsTabProps {
   // Saves the screen without moving on (Send test needs the saved channel).
   saveHere: () => void;
   // Opens the first screen of spec 015's page `index` (the review's Change).
-  goToPage: (index: number) => void;
+  goToPage: (index: number) => void | Promise<void>;
   // True once per wizard visit, when no password is saved: protection then starts on.
   offerPassword: () => boolean;
   // The alert channel picked on its screen in this visit (null before a pick).
