@@ -18,6 +18,9 @@ export interface WizardPageProps extends SettingsTabProps {
   goToPage: (index: number) => void;
   // True once per wizard visit, when no password is saved: protection then starts on.
   offerPassword: () => boolean;
+  // The alert channel picked on its screen in this visit (null before a pick).
+  alertPick: string | null;
+  setAlertPick: (channel: string) => void;
   // The id of the screen's question, which names a choice group.
   questionId: string;
   // A choice screen shows its current setting as chosen (spec 018 FR-009).

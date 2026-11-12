@@ -217,6 +217,7 @@ const Wizard: FunctionalComponent = () => {
   const seenUpTo = useRef(0);
   const [picked, setPicked] = useState<ReadonlySet<ScreenId>>(new Set());
   const [hallNotFitted, setHallNotFitted] = useState(false);
+  const [alertPick, setAlertPick] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('screen');
@@ -309,6 +310,8 @@ const Wizard: FunctionalComponent = () => {
     },
     hallNotFitted,
     setHallNotFitted,
+    alertPick,
+    setAlertPick,
     saveForTest,
     saveHere: () => void save({ state, step: stepOf(index) }),
     goToPage: (page) => go(settle(firstScreenOf(page), props)),
@@ -342,7 +345,10 @@ const Wizard: FunctionalComponent = () => {
     setBusy(true);
     const ok = await saveSetup({ state: 'done', step: 0 });
     setBusy(false);
-    if (!ok) return setProblem(t('wizard.skipFailed'));
+    if (!ok) {
+      setTimeout(() => document.getElementById('wizard-problem-box')?.focus(), 0);
+      return setProblem(t('wizard.skipFailed'));
+    }
     showToast({ message: t('wizard.skipped') });
     route(returnTo);
   };
@@ -362,7 +368,7 @@ const Wizard: FunctionalComponent = () => {
     go,
     keepGoing,
     // Escape and Close ask first (FR-004); on the leave screen Escape keeps going; once done, they close.
-    close: () => (mode === 'done' ? route('/') : mode === 'screen' ? setMode('leave') : keepGoing()),
+    close: () => (busy ? undefined : mode === 'done' ? route('/') : mode === 'screen' ? setMode('leave') : keepGoing()),
     askSkip: () => setMode('skip'),
     skip: () => void skip(),
     onContinue: () => void (screen.id === 'review' ? finish() : next()),

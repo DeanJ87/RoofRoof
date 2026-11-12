@@ -416,6 +416,11 @@ describe('Wizard', () => {
     expect(screen.getByRole('radio', { name: 'ntfy' })).toBeChecked();
     fireEvent.click(screen.getByRole('radio', { name: 'Webhook' }));
     expect(screen.getByRole('radio', { name: 'Webhook' })).toBeChecked();
+    // The pick survives the screen being rebuilt (Escape, then Keep going).
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep going' }));
+    await onScreen('alertChannel');
+    expect(screen.getByRole('radio', { name: 'Webhook' })).toBeChecked();
   });
 
   it('Skip for now picks the next screen from the settings as saved', async () => {

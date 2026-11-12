@@ -83,5 +83,5 @@ Tests first where the logic is new (components, screen list, selection rule).
 - [x] T023 Size: build, pack, `size_check.py`; record the baseline with its reason
   (`tools/ui/size-baseline.json`)
 - [x] T024 Full local check (quickstart §1 of spec 001), quality gate, i18n checks, docs build
-- [ ] T025 Independent review (accessibility, focus trap, Stop over the dialog, spec 015 save and
+- [x] T025 Independent review (accessibility, focus trap, Stop over the dialog, spec 015 save and
   safety behaviour, DS consistency); fix and repeat until safe to merge

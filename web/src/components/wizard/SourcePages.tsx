@@ -1,5 +1,4 @@
 import { FunctionalComponent } from 'preact';
-import { useState } from 'preact/hooks';
 import type { AlertChannelName } from '../../types';
 import { choiceOf, type WizardPageProps } from './context';
 import { NinaUrlField, SqmeterTopicField, SqmeterUrlField, SunAltitudeField } from '../settings/RoofTab';
@@ -101,11 +100,12 @@ const CHANNELS: AlertChannelName[] = ['ntfy', 'pushover', 'webhook', 'mqtt'];
 export const AlertChannelScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const alerts = mergeAlertsConfig(props.config.alerts);
   const saved = mergeAlertsConfig(props.saved.alerts);
-  // The card picked here; before a pick, the first channel that is on.
-  const [picked, setPicked] = useState<AlertChannelName | null>(null);
+  // The card picked in this visit (kept by the wizard, so a remount keeps it);
+  // before a pick, the first channel that is on.
+  const picked = props.alertPick && alerts[props.alertPick as AlertChannelName]?.enabled ? props.alertPick : null;
   const current = alerts.enabled ? (picked ?? CHANNELS.find((channel) => alerts[channel].enabled) ?? null) : null;
   const choice = choiceOf(props, 'alerts', current, (v) => {
-    setPicked(v as AlertChannelName);
+    props.setAlertPick(v);
     props.updateMany([
       [['alerts', 'enabled'], true],
       ...CHANNELS.map((channel): [string[], unknown] => [['alerts', channel, 'enabled'], channel === v || saved[channel].enabled]),
