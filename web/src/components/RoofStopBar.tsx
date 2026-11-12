@@ -5,6 +5,7 @@ import { useRoofCommand } from '../hooks/useRoofCommand';
 import { STOP_BAR_NO_STATUS_MS, resultNote, stopBarShown } from '../lib/roofView';
 import type { SystemStatus } from '../types';
 import { Button, Note } from './ui';
+import { announce } from '../lib/a11y';
 import { t } from '../i18n';
 
 // Stop on every page while the roof moves (constitution VII; spec 009 FR-014).
@@ -38,6 +39,12 @@ const RoofStopBar: FunctionalComponent = () => {
   const waited = useAfter(STOP_BAR_NO_STATUS_MS);
   const shown = stopBarShown(status, waited ? STOP_BAR_NO_STATUS_MS : 0);
   const { result, send } = useRoofCommand(status?.roof?.state ?? null);
+  // Inside a modal dialog (spec 018) the bar appears where the page is hidden
+  // from screen readers: say that it is there.
+  useEffect(() => {
+    if (shown && document.body.classList.contains('has-modal')) announce(`${barLabel(status)}: ${t('roof.stopRoof')}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the bar appears
+  }, [shown]);
   const bar = useRef<HTMLDivElement>(null);
   // The save bar and toasts move up by the bar's height while it shows, so
   // nothing covers Stop and Stop covers nothing (index.css).

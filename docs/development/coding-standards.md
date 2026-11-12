@@ -243,6 +243,9 @@ The web UI is built from a small set of parts in `web/src/components/ui.tsx`, an
 | DS-08 | Each fact appears in one place on the dashboard. A card shows its own state; the Status card shows only what no other card shows: the imaging app, whether alerts go out, and problems nothing else shows. Settings and rules not in effect belong in Settings. A Status tile is its label, "?" and pill (plus a button for an action such as Resume): the why goes in "?". | auto (`web/tests/dashboard.spec.ts`, "the Status card repeats no other card", "no run-on text") + converge |
 | DS-09 | On a phone (≤ 599 px) cards stack in one column, tiles stay two per row, and nothing overlaps or hides a control (spec 022). | auto (`web/tests/layout-overlap.spec.ts`) |
 | DS-10 | Spacing, colour and type come from the tokens in `web/src/index.css`; a new colour, size or shadow adds a token. | converge |
+| DS-11 | A guided flow over the app (the setup wizard) is a `Modal`: a dimmed, blurred backdrop (a solid dim without blur), a progress bar (`ProgressMeter` with `valueText`), Back and Close, a footer that stays in view with one primary action, and the Stop bar inside it (`stopBar`, constitution VII). Focus stays in it, Escape asks before leaving, and focus goes back on close. | auto (`web/src/components/__tests__/Onboarding.test.tsx`, `web/tests/wizard.spec.ts`) |
+| DS-12 | One question's answers are a `ChoiceGroup`: full-width choice cards (icon, title, one-line detail, a "Recommended" `Pill` only where a spec settled the default), a native radio group, nothing chosen until the person answers where the answer is a fact only they know. Not for settings pages, which keep `Toggle` and `SelectInput`. | converge |
+| DS-13 | The mascot (`Mascot`, in a `SpeechBubble`) only asks a guided flow's question or fills an empty state; it is decoration (`aria-hidden`) and the words carry the meaning. | converge |
 
 **Copy** (English is the source; translations follow it)
 
@@ -257,6 +260,7 @@ The web UI is built from a small set of parts in `web/src/components/ui.tsx`, an
 | DS-26 | Whose time or place it is (this browser's time zone, the device's location) is said once, in a hint, not on every line. | converge |
 | DS-27 | One name for each thing in the UI, alerts, Home Assistant and the docs, from `tools/i18n/glossary/en.json`, including card titles and the safety reasons and alert titles the firmware sends. Part numbers are extra detail where hardware matters (System page rows, hardware docs, Alpaca sensor descriptions), never the name. | auto (`tools/ui/label_check.py`) |
 | DS-28 | Docs name the UI as it is: every bold `Settings → Tab → Card → Control` path uses labels the UI shows (`web/src/i18n/en.json`, or a product-name card title like "ASCOM Alpaca"), so renaming a tab or card can't leave the docs pointing at something that's gone. | auto (`tools/docs/ui_paths.py`, DS-PATH) |
+| DS-29 | A guided flow asks one question per screen in its speech bubble: a full sentence ending in "?" (or a short statement on a review or done screen), at most 60 characters; the "why" beside it is a hint (160 characters). | auto (`tools/ui/copy_check.py`, type "question") |
 
 The type of each English string comes from its context note in `web/src/i18n/en.context.json` (`python3 tools/ui/copy_check.py --list`). A string that can't follow a rule is listed in `tools/ui/copy-exceptions.json` with its reason (EXC-01).
 

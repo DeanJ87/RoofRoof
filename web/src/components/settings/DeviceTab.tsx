@@ -18,19 +18,27 @@ export const PasswordFields: FunctionalComponent<Pick<SettingsTabProps, 'config'
         onChange={(v) => update(['auth', 'enabled'], v)}
         hint={t('settings.device.requiredToChangeSettingsUpdate')}
       />
-      {auth.enabled && (
-        <div class="form-grid indent">
-          <Field label={t('settings.device.username')} error={error('auth.username')}>
-            <TextInput dataField="auth.username" value={auth.username} onInput={(v) => update(['auth', 'username'], v)} />
-          </Field>
-          <Field label={t('settings.device.password')} error={error('auth.password')} hint={t('settings.device.leaveTheMaskToKeep')}>
-            <TextInput dataField="auth.password" type="password" value={auth.password} onInput={(v) => update(['auth', 'password'], v)} />
-          </Field>
-        </div>
-      )}
+      {auth.enabled && <PasswordInputs config={config} update={update} error={error} indent />}
     </>
   );
 };
+
+// The user name and password (also the setup wizard's password screen, spec 018).
+export const PasswordInputs: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error'> & { indent?: boolean }> = ({
+  config,
+  update,
+  error,
+  indent,
+}) => (
+  <div class={`form-grid${indent ? ' indent' : ''}`}>
+    <Field label={t('settings.device.username')} error={error('auth.username')}>
+      <TextInput dataField="auth.username" value={config.auth.username} onInput={(v) => update(['auth', 'username'], v)} />
+    </Field>
+    <Field label={t('settings.device.password')} error={error('auth.password')} hint={t('settings.device.leaveTheMaskToKeep')}>
+      <TextInput dataField="auth.password" type="password" value={config.auth.password} onInput={(v) => update(['auth', 'password'], v)} />
+    </Field>
+  </div>
+);
 
 // The device's name (shown in N.I.N.A.).
 export const DeviceNameField: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error'>> = ({ config, update, error }) => (

@@ -1,6 +1,18 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 -> 2.0.0 (MAJOR: Principle I's timeout rule gains an exception, which relaxes it).
+- Version: 2.0.0 -> 2.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
+- Modified: VII. Quiet, Consistent UI. The design system gains one documented set of onboarding
+  components for guided flows (the modal dialog, the progress bar, the choice card group, the
+  speech bubble and the mascot) in `web/src/components/ui.tsx`; beyond them, no new button or
+  card styles. Any modal over the app carries the Stop bar inside it, so Stop stays visible,
+  in the keyboard's focus loop and announced while the rest of the app is hidden behind it.
+- Why: spec 018 turns the setup wizard into a one-question-per-screen dialog; built only from
+  Settings cards and toggles, it would be the long form it replaces.
+- Templates: plan-template.md, spec-template.md, tasks-template.md, checklist-template.md: no
+  change (they read the principles from this file).
+- Docs: docs/development/coding-standards.md gains DS-11 to DS-13 (the onboarding components) and
+  DS-29 (a guided flow's question); specs/018-wizard-redesign/spec.md argues the amendment.
+- Earlier: 1.0.0 -> 2.0.0 (MAJOR: Principle I's timeout rule gains an exception, which relaxes it).
 - Modified: I. Motion Safety, the hard-timeout rule. During an attended calibration run (spec
   016), before travel and speed are measured, a leg's hard timeout is roof.calibrationLimitSeconds
   (30-600 s), enforced by the motion code; later legs are bounded by the times already measured;
@@ -163,7 +175,12 @@ The web UI is used in the dark, often on a phone, sometimes in a hurry.
 - The UI follows SQMeter's design system (DS rules, spec 026): the shared parts in
   `web/src/components/ui.tsx` and `settings/controls.tsx`, the tokens in `index.css`, and no new
   button or card styles.
+  - The one addition is the onboarding set for guided flows such as the setup wizard (DS-11 to
+    DS-13): the modal dialog, its progress bar, the choice card group, the speech bubble and the
+    mascot, built only from the tokens. A flow uses these rather than a style of its own.
 - Stop MUST be reachable on every page while the roof is moving, and is never disabled.
+  - A modal over the app MUST carry the Stop bar inside it, visible above its content, in its
+    focus loop and announced when it appears.
 - Open and Close show why they are unavailable (unsafe, mount not parked, fault lockout, position
   unknown) through a "?" or a Note. A greyed-out button never appears without its reason.
 - Explanations go in "?" tooltips, and copy follows DS-20 to DS-28.
@@ -285,4 +302,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 2.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-11
+**Version**: 2.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-11
