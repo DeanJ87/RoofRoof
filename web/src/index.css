@@ -108,6 +108,9 @@ code {
   --mascot-fur: #b9c7d4;
   --mascot-muzzle: #dfe7ee;
   --mascot-ear: #5f7184;
+  --choice-tint: rgba(85, 199, 242, 0.08); /* a chosen card's surface */
+  --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.55);
+  --radius-choice: 0.75rem;
   /* One theme, the night one, whatever the browser prefers (spec 018): its own
      controls and scrollbars follow. */
   color-scheme: dark;
@@ -2629,7 +2632,7 @@ main:focus {
   border: 1px solid var(--line);
   border-radius: var(--radius-dialog);
   background: var(--panel);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-dialog);
   animation: modal-in 0.18s ease-out;
 }
 
@@ -2770,7 +2773,7 @@ main:focus {
   min-height: 3.75rem;
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--control-edge);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-choice);
   background: var(--panel-2);
   cursor: pointer;
   transition:
@@ -2784,11 +2787,11 @@ main:focus {
 
 .choice.is-checked {
   border-color: var(--cyan);
-  background: rgba(85, 199, 242, 0.08);
+  background: var(--choice-tint);
   box-shadow: inset 0 0 0 1px var(--cyan);
 }
 
-.choice:focus-within {
+.choice:has(:focus-visible) {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
@@ -2911,7 +2914,7 @@ main:focus {
   margin-bottom: 0.9rem;
   padding: 0.8rem 1rem;
   border: 1px solid var(--line);
-  border-radius: 0.9rem;
+  border-radius: var(--radius-choice);
   background: var(--panel-2);
 }
 
@@ -2943,4 +2946,14 @@ main:focus {
 
 .speech-bubble h2:focus {
   outline: none; /* a programmatic focus target (tabIndex -1), not a control */
+}
+
+/* A refused save's reason takes focus (it is not a control). */
+.wizard-problem:focus {
+  outline: none;
+}
+
+/* The demo tour's docked card raises the Stop bar; the dialog keeps room for both. */
+.has-tour-dock.has-stop-bar .modal {
+  padding-bottom: calc(var(--tour-dock, 0px) + var(--stop-bar, 3.25rem) + 1.5rem);
 }

@@ -118,7 +118,9 @@ export const settle = (index: number, props: WizardPageProps): number => (showin
 /** Where `index` stands among the screens that show: [position from 1, how many]. */
 export const progressOf = (index: number, props: WizardPageProps): [number, number] => {
   const shown = SCREENS.map((_, i) => i).filter((i) => showing(i, props));
-  return [shown.indexOf(index) + 1, shown.length];
+  // A screen opened directly that wouldn't show counts where it stands.
+  const extra = shown.includes(index) ? 0 : 1;
+  return [shown.filter((i) => i < index).length + 1, shown.length + extra];
 };
 
 /** The first screen of spec 015's page `page` (an index into WIZARD_PAGES). */

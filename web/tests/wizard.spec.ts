@@ -188,6 +188,12 @@ test('with the roof moving, Stop is above the dialog, in its focus loop, and a s
   await proceed(page);
   await expect(page.locator('#wizard-problem')).toBeVisible();
   await onScreen(page, 'name');
+  // Focus stays in the dialog (on the reason), so Escape still works.
+  await expect(page.locator('#wizard-problem-box')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(question(page)).toHaveText('Leave setup?');
+  await page.keyboard.press('Escape');
+  await onScreen(page, 'name');
 
   await stop.click();
   await expect

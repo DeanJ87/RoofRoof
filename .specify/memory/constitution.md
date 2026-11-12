@@ -179,8 +179,8 @@ The web UI is used in the dark, often on a phone, sometimes in a hurry.
     DS-13): the modal dialog, its progress bar, the choice card group, the speech bubble and the
     mascot, built only from the tokens. A flow uses these rather than a style of its own.
 - Stop MUST be reachable on every page while the roof is moving, and is never disabled.
-  - A modal over the app MUST carry the Stop bar inside it, visible above its content and in its
-    focus loop.
+  - A modal over the app MUST carry the Stop bar inside it, visible above its content, in its
+    focus loop and announced when it appears.
 - Open and Close show why they are unavailable (unsafe, mount not parked, fault lockout, position
   unknown) through a "?" or a Note. A greyed-out button never appears without its reason.
 - Explanations go in "?" tooltips, and copy follows DS-20 to DS-28.

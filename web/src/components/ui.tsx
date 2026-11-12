@@ -170,7 +170,8 @@ export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text
         setOpen(!open);
       }}
       onKeyDown={(event) => {
-        if (event.key !== 'Escape') return;
+        // The first Escape hides the tip; once hidden, Escape reaches a dialog around it.
+        if (event.key !== 'Escape' || dismissed) return;
         event.stopPropagation();
         setOpen(false);
         setDismissed(true);
@@ -264,12 +265,20 @@ export const Modal: FunctionalComponent<{
       }, 0);
     };
   }, []);
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
+  // Escape anywhere while the dialog is open (focus may sit on the page after a
+  // disabled button lost it); a child that handles Escape stops it first.
+  const escape = useRef(onEscape);
+  escape.current = onEscape;
+  useEffect(() => {
+    const onEscapeKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault();
-      onEscape();
-      return;
-    }
+      escape.current();
+    };
+    document.addEventListener('keydown', onEscapeKey);
+    return () => document.removeEventListener('keydown', onEscapeKey);
+  }, []);
+  const onKeyDown = (event: KeyboardEvent) => {
     const dialog = root.current;
     if (event.key !== 'Tab' || !dialog) return;
     const stops = tabStops(dialog);
@@ -300,6 +309,8 @@ export const Modal: FunctionalComponent<{
           {footer && <div class="modal-footer">{footer}</div>}
         </div>
         {stopBar}
+        {/* Announcements while the dialog is open: a live region outside an aria-modal dialog may go unread. */}
+        <div class="sr-only" role="status" aria-live="polite" data-modal-live />
       </div>
     </div>
   );

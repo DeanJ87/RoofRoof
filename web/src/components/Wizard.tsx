@@ -7,10 +7,8 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import type { TestSave } from '../hooks/useInputsTest';
 import { getConfigValidationMessage } from '../validation/configSchema';
 import { fieldErrorAliases } from './settings/payload';
-import { listReasons } from './settings/restart';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
-import { restartDevice } from '../lib/settingsApi';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
 import { locationQuery } from './settings/tabs';
 import type { WizardPageProps } from './wizard/context';
@@ -28,10 +26,11 @@ import {
   type ScreenId,
 } from './wizard/screens';
 import { DoneScreen } from './wizard/ReviewPage';
+import { Footer, Header, LeaveChoices, RestartNote } from './wizard/Chrome';
 import RoofStopBar from './RoofStopBar';
 import { markWizardOpened } from './SetupPrompt';
 import { showToast } from './toast';
-import { Button, Icon, Modal, Note, ProgressMeter, SpeechBubble } from './ui';
+import { Button, Modal, Note, SpeechBubble } from './ui';
 import { t } from '../i18n';
 
 // The setup wizard (specs 015 and 018): a dialog over the app that asks one
@@ -86,98 +85,11 @@ type Mode = 'screen' | 'leave' | 'skip' | 'done';
 
 const MISSING: Partial<Record<ScreenId, string>> = { name: t('wizard.missing.name'), password: t('wizard.missing.password') };
 
-// Back, the progress bar and Close (FR-002).
-const Header: FunctionalComponent<{ onBack?: () => void; onClose: () => void; at: [number, number] }> = ({ onBack, onClose, at }) => (
-  <>
-    {onBack ? (
-      <Button variant="ghost" ariaLabel={t('wizard.back')} onClick={onBack}>
-        <Icon name="back" tone="muted" size={20} />
-      </Button>
-    ) : (
-      <span class="modal-header-spacer" />
-    )}
-    <ProgressMeter
-      value={(at[0] / at[1]) * 100}
-      label={t('wizard.progress')}
-      valueText={t('wizard.progressText', { number: at[0], total: at[1] })}
-    />
-    <Button variant="ghost" ariaLabel={t('wizard.close')} onClick={onClose}>
-      <Icon name="close" tone="muted" size={20} />
-    </Button>
-  </>
-);
-
-// "Leave setup?" (FR-004): keep going, leave for now, or skip with spec 015's warning.
-const LeaveChoices: FunctionalComponent<{
-  skipping: boolean;
-  busy: boolean;
-  keepGoing: () => void;
-  leave: () => void;
-  askSkip: () => void;
-  skip: () => void;
-}> = ({ skipping, busy, keepGoing, leave, askSkip, skip }) => (
-  <div class="card-group" data-leave>
-    {skipping ? <Note tone="bad">{t('wizard.skipWarning')}</Note> : <Note>{t('wizard.leaveKeeps')}</Note>}
-    <div class="btn-row">
-      <Button variant="primary" onClick={keepGoing}>
-        {t('wizard.keepGoing')}
-      </Button>
-      {skipping ? (
-        <Button variant="danger" onClick={skip} busy={busy}>
-          {t('wizard.skipConfirm')}
-        </Button>
-      ) : (
-        <>
-          <Button onClick={leave}>{t('wizard.leaveForNow')}</Button>
-          <Button variant="ghost" onClick={askSkip}>
-            {t('wizard.skipSetup')}
-          </Button>
-        </>
-      )}
-    </div>
-  </div>
-);
-
 // The question and its "why" for the screen or the dialog's own screens.
 const textsOf = (mode: Mode, id: ScreenId): [string, string] => {
   const key = mode === 'screen' ? id : mode === 'skip' ? 'leave' : mode;
   return [t(`wizard.q.${key}`), t(`wizard.why.${key}`)];
 };
-
-const RestartNote: FunctionalComponent<{ restart: string[] }> = ({ restart }) => (
-  <Note tone="warn" action={{ label: t('settings.restart'), onClick: () => void restartDevice().catch(() => undefined) }}>
-    {t('wizard.restartToApply', { listReasons: listReasons(restart) })}
-  </Note>
-);
-
-// Skip for now and Continue (FR-002, FR-006): an unavailable Continue says what the screen still needs.
-const Footer: FunctionalComponent<{
-  last: boolean;
-  answered: boolean;
-  missing: string;
-  busy: boolean;
-  onSkip: () => void;
-  onContinue: () => void;
-}> = ({ last, answered, missing, busy, onSkip, onContinue }) => (
-  <>
-    {!answered && <Note id="wizard-missing">{missing}</Note>}
-    {!last && (
-      <Button variant="ghost" onClick={onSkip}>
-        {t('wizard.skipForNow')}
-      </Button>
-    )}
-    <Button
-      variant="primary"
-      onClick={onContinue}
-      disabled={!answered}
-      describedBy={answered ? undefined : 'wizard-missing'}
-      busy={busy}
-      busyLabel={t('common.saving')}
-    >
-      {last ? t('wizard.finish') : t('wizard.continue')}
-    </Button>
-  </>
-);
 
 // Focus goes to the question on every new screen (FR-003): the dialog's name.
 const useQuestionFocus = (key: string) => {
@@ -224,7 +136,8 @@ const DialogFooter: FunctionalComponent<{ view: View }> = ({ view }) => {
       answered={isAnswered(view.index, view.props)}
       missing={missingText(view)}
       busy={view.busy}
-      onSkip={() => view.go(nextScreen(view.index, view.props))}
+      // The next screen as the settings will be once this screen's edits are dropped.
+      onSkip={() => view.go(nextScreen(view.index, { ...view.props, config: view.props.saved }))}
       onContinue={view.onContinue}
     />
   );
@@ -254,9 +167,12 @@ const DialogContent: FunctionalComponent<{ view: View; title: string }> = ({ vie
       {mode === 'done' && <DoneScreen />}
       {mode === 'done' && view.restart.length > 0 && <RestartNote restart={view.restart} />}
       {view.problem && (
-        <Note tone="bad" id="wizard-problem">
-          {view.problem}
-        </Note>
+        // Announced, and focused after a refused save (the busy Continue lost focus).
+        <div role="alert" tabIndex={-1} id="wizard-problem-box" class="wizard-problem">
+          <Note tone="bad" id="wizard-problem">
+            {view.problem}
+          </Note>
+        </div>
       )}
     </div>
   );
@@ -275,7 +191,7 @@ const wizardDialog = (view: View) => {
       stopBar={<RoofStopBar />}
       header={
         <Header
-          onBack={mode === 'screen' && previous >= 0 ? () => view.go(previous) : undefined}
+          onBack={mode === 'screen' && previous >= 0 && !view.busy ? () => view.go(previous) : undefined}
           onClose={view.close}
           at={mode === 'done' ? [1, 1] : progressOf(index, props)}
         />
@@ -322,7 +238,7 @@ const Wizard: FunctionalComponent = () => {
 
   const leave = () => route(returnTo);
   const shell = (title: string, body: ComponentChildren) => (
-    <Modal labelledBy={QUESTION_ID} onEscape={leave} stopBar={<RoofStopBar />} header={<Header onClose={leave} at={[0, 1]} />}>
+    <Modal labelledBy={QUESTION_ID} onEscape={leave} stopBar={<RoofStopBar />} header={<Header onClose={leave} at={[1, SCREENS.length]} />}>
       <SpeechBubble id={QUESTION_ID} headingRef={heading}>
         {title}
       </SpeechBubble>
@@ -358,6 +274,7 @@ const Wizard: FunctionalComponent = () => {
     setBusy(false);
     setProblem(outcomeText(outcome));
     if (outcome.kind === 'invalid') focusField(outcome.errors);
+    else if (outcome.kind !== 'saved') setTimeout(() => document.getElementById('wizard-problem-box')?.focus(), 0);
     if (outcome.kind === 'saved' && outcome.restart.length > 0) setRestart((prior) => [...new Set([...prior, ...outcome.restart])]);
     return outcome.kind === 'saved';
   };
