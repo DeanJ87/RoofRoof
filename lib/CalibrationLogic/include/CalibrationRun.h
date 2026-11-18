@@ -147,6 +147,11 @@ namespace SQM
             Proposal proposal;
         };
 
+        // The checks a run start and a jog start (spec 019) share, in order:
+        // attended, no run, the close sequence idle, no fault, at rest, no close
+        // or settings waiting, the open gate, the park, nothing blocking an open.
+        Answer attendedRefusal(const Roof::Controller &controller, bool attended, bool calibrating, const StartInputs &in);
+
         class Run
         {
         public:

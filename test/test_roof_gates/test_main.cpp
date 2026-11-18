@@ -175,6 +175,29 @@ void test_open_stops_when_not_safe(void)
     }
 }
 
+// Spec 019: a jog stops in either direction, whatever its state; the
+// interlock watches it as a calibration-type move.
+void test_a_jog_stops_when_not_safe_or_daylight_and_is_interlocked(void)
+{
+    GateInputs unsafe = parkedWith(0);
+    unsafe.weather = Safety::Verdict::Unsafe;
+    GateInputs daylight = parkedWith(0);
+    daylight.daylightCloses = true;
+    GateInputs lost = parkedWith(0);
+    lost.parked = false;
+    for (Roof::State state : ALL_STATES)
+    {
+        Roof::Status jog = inState(state);
+        jog.jogging = true;
+        jog.calibrating = true;
+        TEST_ASSERT_TRUE_MESSAGE(openMustStop(jog, unsafe), Roof::stateName(state));
+        TEST_ASSERT_TRUE_MESSAGE(openMustStop(jog, daylight), Roof::stateName(state));
+        TEST_ASSERT_FALSE(openMustStop(jog, parkedWith(0)));
+        TEST_ASSERT_TRUE(interlockLost(jog, lost));
+        TEST_ASSERT_FALSE(interlockLost(jog, parkedWith(0)));
+    }
+}
+
 void test_stale_safety_handover_is_not_safe_and_not_parked(void)
 {
     const GateInputs fresh = parkedWith(0);
@@ -502,6 +525,7 @@ int main(int, char **)
     RUN_TEST(test_interlock_lost_during_any_calibration_leg);
     RUN_TEST(test_interlock_bits_name_the_input);
     RUN_TEST(test_open_stops_when_not_safe);
+    RUN_TEST(test_a_jog_stops_when_not_safe_or_daylight_and_is_interlocked);
     RUN_TEST(test_stale_safety_handover_is_not_safe_and_not_parked);
     RUN_TEST(test_gate_refusal_names);
     RUN_TEST(test_settings_save_refused_only_while_moving);

@@ -97,6 +97,22 @@ namespace SQM
             std::vector<Problem> warnings;
         };
 
+        // Spec 019: the Hall rule the run and the teach share (research R7 of
+        // spec 016): which end reads high, and the range each threshold may take
+        // (clear of the in-between readings, read at rest at its end, within
+        // RoofConfig's range). A Problem (samePole, weakEnd, noRoom) when none fits.
+        struct HallFit
+        {
+            Roof::End highEnd = Roof::End::Open;
+            double highLo = 0.0;
+            double highHi = 0.0;
+            double lowLo = 0.0;
+            double lowHi = 0.0;
+        };
+        Problem fitHall(const Stats &closedRest, const Stats &openRest, const Stats &between, HallFit &out);
+        // `counts` rounded and kept within [lo, hi] (rounded inward).
+        uint16_t clampCounts(double counts, double lo, double hi);
+
         // The speed a measured leg implies at 100 % duty (travel ÷ its duty-weighted time).
         float legSpeed(const MeasuredLeg &leg, uint32_t travelMm);
 

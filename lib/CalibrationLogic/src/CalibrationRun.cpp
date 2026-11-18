@@ -72,12 +72,12 @@ namespace SQM
 
         // Spec 016 FR-001 to FR-004, in this order: the request, the run, the
         // close sequence and the roof, then the weather, the park and the
-        // blockers, then the roof's own readiness (roofRefusal).
-        Answer Run::startRefusal(const Roof::Controller &controller, const Request &request, const StartInputs &in) const
+        // blockers. Spec 019's jog starts with the same checks.
+        Answer attendedRefusal(const Roof::Controller &controller, bool attended, bool calibrating, const StartInputs &in)
         {
-            if (!request.attended)
+            if (!attended)
                 return refuse("notAttended", "Confirm that you are at the roof and can see it");
-            if (active())
+            if (calibrating)
                 return refuse("calibrating", "A calibration run is already under way");
             if (!in.sequenceIdle)
                 return refuse("closeSequence", "The automatic close is busy: calibrate once it is idle");
@@ -99,6 +99,15 @@ namespace SQM
                     RoofIo::describeGate(RoofIo::GateRefusal::MountNotParked, in.gates));
             if (in.busy)
                 return refuse(in.busyReason.empty() ? "busy" : in.busyReason, in.busyText);
+            return Answer{};
+        }
+
+        // Then the roof's own readiness (roofRefusal).
+        Answer Run::startRefusal(const Roof::Controller &controller, const Request &request, const StartInputs &in) const
+        {
+            const Answer common = attendedRefusal(controller, request.attended, active(), in);
+            if (!common.accepted)
+                return common;
             return roofRefusal(controller, request, in);
         }
 

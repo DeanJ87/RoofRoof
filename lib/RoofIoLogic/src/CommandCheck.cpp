@@ -85,6 +85,8 @@ namespace SQM
                 return CommandCheck{};
             if (context.calibrating && origin != Roof::Origin::Automatic)
                 return CommandCheck{false, CALIBRATING_REASON, "A calibration run is under way: stop it first"};
+            if (status.jogging && origin != Roof::Origin::Automatic)
+                return CommandCheck{false, JOGGING_REASON, "A person is jogging the roof: release the button or press Stop first"};
             const GateRefusal gate = gateCommand(command, gates);
             if (gate != GateRefusal::None)
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};
