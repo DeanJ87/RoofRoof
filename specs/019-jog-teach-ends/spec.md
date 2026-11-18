@@ -38,10 +38,12 @@ Each answer takes the safest option the constitution allows and is also listed u
 
 - Q: How does the device know the button is still held? → A: The page sends a keep-alive every
   150 ms while the button is held. The motion code stops the jog when no keep-alive has arrived for
-  500 ms (`Roof::JOG_HOLD_MS`). Releasing the button sends a person's Stop at once. The deadline is
-  kept by the control step's own clock, so a stalled browser, web server or Wi-Fi link can only
-  stop a jog sooner, never prolong it. 500 ms tolerates two lost keep-alives without stuttering,
-  and at the default slow duty (40 % of 38 mm/s) the roof travels about 8 mm in it.
+  500 ms (`Roof::JOG_HOLD_MS`). Releasing the button stops that jog at once (a release names the
+  jog's id). The deadline is kept by the control step's own clock from when the last keep-alive
+  reached the device: a stalled browser or a dropped link stops the roof within 500 ms plus one
+  step. A keep-alive held up in the network can only carry the jog on by its own delay, never past
+  the jog's 30 s limit, its magnets, its gates or its faults. 500 ms tolerates two lost keep-alives
+  without stuttering, and at the default slow duty (40 % of 38 mm/s) the roof travels about 8 mm in it.
 - Q: How fast does a jog run? → A: At `roof.slowDutyPercent`, with no ramp, whatever the position.
 - Q: How long may one jog run? → A: Its hard timeout is the smaller of 30 s (`Roof::JOG_MAX_MS`)
   and the timeout of a move from an unknown position (the whole travel at the slow duty plus the
@@ -246,8 +248,10 @@ Playwright walk-through jogs, marks and confirms.
   (`requireAuth`, the `X-RoofRoof: 1` header), with `attended: true` and a direction (`open` or
   `close`). No other path (Alpaca, MQTT, Home Assistant, the close sequence, a schedule, the wizard
   page) may start one.
-- **FR-002**: The same route with the jog's `id` MUST renew it. A renewal for a jog that has ended,
-  or a different one, MUST be refused (`jogEnded`) and MUST NOT move the roof.
+- **FR-002**: The same route with the jog's `id` MUST renew it, and with `release: true` MUST stop
+  it (a release never counts as a person's Stop for the close sequence). A renewal or release for a
+  jog that has ended, or a different one, MUST be refused (`jogEnded`) and MUST NOT move the roof.
+  The start answer MUST carry the jog's limit.
 - **FR-003**: A jog MUST drive at the slow duty toward the requested end (through
   `roof.openDirection`), with no ramp.
 - **FR-004**: The motion code MUST stop a jog when it hasn't been renewed for `JOG_HOLD_MS` (500 ms)
@@ -370,8 +374,11 @@ Each was an open choice; the safest option the constitution allows was taken.
 1. **Keep-alive deadline 500 ms, keep-alives every 150 ms.** Two can be lost without a stop; the
    roof moves about 8 mm at the default slow duty in that time. Kept by the control step, so the
    network can only shorten a jog.
-2. **Release sends a person's Stop** through the existing stop route, so the release and every
-   other Stop are the same command.
+2. **Release stops only the jog it names**, through the jog route, and isn't counted as a person's
+   Stop: a late release after the weather turned can then never make the automatic close stand
+   down. The Stop button shown while the roof moves stays the ordinary person's Stop. The page
+   releases a held button a second before the jog's limit, counted from the press, so a long hold
+   ends as a stop rather than as a latched `timeout` fault.
 3. **A jog is capped at 30 s** (and at an unknown-position move's timeout, if smaller). A full slow
    travel takes several presses; the drive budget across presses is every move's. No constitution
    exception is needed.
@@ -408,7 +415,13 @@ Each was an open choice; the safest option the constitution allows was taken.
 15. **Constitution 2.0.0 → 2.0.1 (PATCH)**: the wording of Principle II is clarified to match the
     roadmap's design decision and the code since spec 004 (switches optional, a setting says which
     are fitted). No rule changes, so it is not a relaxation.
-16. **The UI mockup review is pending**: the owner reviews the card in the demo before merging.
+16. **Jog ids count up from 1 at each start-up** and are shown by the open status route. A
+    renewal must name the running jog and arrive while it runs, from a logged-in client with the
+    command header; on a trusted LAN (constitution VIII) that is enough, and a renewal can never
+    start a jog.
+17. **The reading window starts when the driver goes off.** The worm gear can't coast, so the
+    second after a stop already reads the roof at rest.
+18. **The UI mockup review is pending**: the owner reviews the card in the demo before merging.
 
 ## Out of scope
 

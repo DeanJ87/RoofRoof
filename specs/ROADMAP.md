@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-017
+# RoofRoof roadmap: specs 002-019
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -30,8 +30,9 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
 
 ## Design decisions
 
-- **Park is confirmed by N.I.N.A. AtPark AND the GPIO32/33 park switches.**
-  - The switches are optional, and a setting says whether they're fitted.
+- **Park is confirmed by N.I.N.A. AtPark AND every fitted park switch (GPIO32/33).**
+  - The switches are optional, a second check on the mount, and `park.switches` says which are
+    fitted; with none, N.I.N.A.'s park alone confirms it.
   - If the configured sources disagree, or the park can't be confirmed, the roof stays open and a critical alert goes out.
 - **N.I.N.A. Advanced API** (github.com/christian-photo/ninaAPI):
   - Target v2 (2.2.x): `GET /v2/api/equipment/mount/park`, then poll `/v2/api/equipment/mount/info` for `AtPark`.
@@ -262,6 +263,24 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** any decision from diagnostics (wear alerts, limits); Home Assistant entities;
   the calibration run itself (spec 016); its legs are recorded and tagged as calibration moves.
 
+### 019 Jog and teach the ends (base: 016)
+
+- **Scope:**
+  - An attended hold-to-run jog from the calibration page: a person at the roof holds Open or
+    Close to move it at the slow duty; release stops it, and the motion code stops it when the
+    page's keep-alives stop (500 ms), at the first magnet after leaving its start one, and at 30 s
+    (a `timeout` fault). Every motion fault and the drive budget apply; both directions need the
+    open gate and the park, and the interlock watches every jog. Never automatic; nothing resumes
+    after a restart.
+  - Teach: the person marks the closed end, the open end and a place part-way (the Hall reading
+    over a second at rest); the device proposes the high end and both thresholds by spec 016's rule
+    and saves them through the settings save once the person confirms. The position is then known
+    from the magnet the roof sits on.
+  - A Teach card on the calibration page; a wizard page before the Calibration run page; the demo;
+    the docs. Constitution 2.0.1 rewords Principle II's park rule (switches optional, as built).
+- **Out of scope:** proposing travel, speed or margin (016); jogging from Alpaca, MQTT or Home
+  Assistant, above the slow duty, or in bad weather; any change to the park rule.
+
 ## Merge order
 
 ```text
@@ -269,7 +288,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
-                                                                  └─ 015 ─┬─ 016
+                                                                  └─ 015 ─┬─ 016 ── 019
                                                                           └─ 017
 ```
 

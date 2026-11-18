@@ -1,5 +1,5 @@
 ---
-description: "The setup wizard: once RoofRoof has joined your WiFi, eleven short pages walk through the essential settings with live readings, test SQMeter and N.I.N.A., and end with a review of every check. It never moves the roof."
+description: "The setup wizard: once RoofRoof has joined your WiFi, twelve short pages walk through the essential settings with live readings, test SQMeter and N.I.N.A., and end with a review of every check. It never moves the roof."
 ---
 
 # Setup wizard
@@ -44,28 +44,33 @@ save keeps the page open with the device's reason.
       meter reading is only compared, never saved; a difference points to the divider or its wiring;
     - **Current and supply**: current sense and its scaling, and the minimum supply;
     - **Park and rain inputs**: the park switches fitted, each with its live state, and the rain
-      contact with its state. Operate each by hand and watch it change.
+      contact with its state. Operate each by hand and watch it change. The switches are optional:
+      N.I.N.A.'s park alone confirms the mount is parked, and fitted switches are a second check
+      that must agree ([Safety inputs](safety-inputs.md)).
 4. **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn
    against them as you type ([Calibration](../hardware/calibration.md)). **Not fitted yet** leaves
    the thresholds as they are and says what that means: without the sensor the roof finds neither
    end, so the automatic close can't work. The
    [quick bench test](../hardware/quick-bench-test.md) shows how to try the controller without it.
-5. **Calibration run**: what the [calibration run](calibration-run.md) does and what it needs,
+5. **Teach the ends**: what [teaching the ends](calibration-run.md#teach-the-ends) does and what
+   it needs, with **Open the Teach card**. The jog has its own card with Stop; this page itself
+   moves nothing.
+6. **Calibration run**: what the [calibration run](calibration-run.md) does and what it needs,
    with **Open the calibration page**. The run is attended and has its own page with Stop; this
    page itself moves nothing. Skip it until the motor is connected and its direction checked.
-6. **Roof motion**: travel, speed and top duty. While they are still the factory values,
+7. **Roof motion**: travel, speed and top duty. While they are still the factory values,
    **Use first-run values** sets the top duty to 40 %, the commissioning guide's first-move duty.
    Travel and speed are measured during commissioning (stage 8).
-7. **Weather**: SQMeter over HTTP and over MQTT, with **Test**.
-8. **N.I.N.A.**: the Advanced API address, with **Test**, and the Alpaca Dome switch. N.I.N.A.'s
+8. **Weather**: SQMeter over HTTP and over MQTT, with **Test**.
+9. **N.I.N.A.**: the Advanced API address, with **Test**, and the Alpaca Dome switch. N.I.N.A.'s
    sequence opens and closes the roof through the Alpaca Dome; RoofRoof is the failsafe behind it.
    Changing Alpaca needs a restart, which the last page offers.
-9. **Alerts**: the master switch and the channels, with **Send test** per channel once saved. With
+10. **Alerts**: the master switch and the channels, with **Send test** per channel once saved. With
    no channel the page warns that critical alerts (the roof didn't close, the mount didn't park)
    would reach no one.
-10. **Daylight**: **Off**, **Alert** or **Alert and close**, and the sun altitude threshold
+11. **Daylight**: **Off**, **Alert** or **Alert and close**, and the sun altitude threshold
    ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)).
-11. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
+12. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
     reading yet), with what to do and **Change**, which opens its page. **Finish** ends setup.
 
 ![The setup wizard's hardware page](../assets/screenshots/wizard-hardware.png)

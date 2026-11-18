@@ -69,29 +69,32 @@ const useDeviceState = () => {
   return { status, effective, loadStatus };
 };
 
+// The settings into the editor; a failure is rendered by the caller as the load-failure state.
+const loadInto = (take: (data: Awaited<ReturnType<typeof fetchConfig>>) => void, done: () => void) =>
+  fetchConfig()
+    .then(take)
+    .catch(() => undefined)
+    .finally(done);
+
 export const useConfigEditor = () => {
   const [config, setConfig] = useState<Config | null>(null);
   const [saved, setSaved] = useState<Config | null>(null);
-  // The setup state as loaded (spec 015): kept out of the edited settings, so
-  // a Settings save never sends it.
+  // The setup state as loaded (spec 015): kept out of the edited settings (a Settings save never sends it).
   const [setup, setSetup] = useState<Config['setup']>(undefined);
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
   const { status, effective, loadStatus } = useDeviceState();
-
-  useEffect(() => {
-    fetchConfig()
-      .then((data) => {
-        const normalized = toConfigPayload(data);
-        setConfig(normalized);
-        setSaved(normalized);
-        setSetup(data.setup);
-        setOriginalWifiSsid(data.wifi?.ssid ?? '');
-      })
-      .catch(() => undefined) // rendered by the caller as the load-failure state
-      .finally(() => setLoading(false));
-  }, []);
+  const take = (data: Awaited<ReturnType<typeof fetchConfig>>) => {
+    const normalized = toConfigPayload(data);
+    setConfig(normalized);
+    setSaved(normalized);
+    setSetup(data.setup);
+    setOriginalWifiSsid(data.wifi?.ssid ?? '');
+  };
+  const load = () => loadInto(take, () => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loaded once on mount; reload() loads again
+  useEffect(() => void load(), []);
 
   const applyChanges = (changes: [ConfigPath, unknown][]) => {
     setConfig((current) => {
@@ -136,6 +139,7 @@ export const useConfigEditor = () => {
     save,
     discard,
     loadStatus,
+    reload: () => void load(), // spec 019: after the device saved a taught proposal itself
   };
 };
 

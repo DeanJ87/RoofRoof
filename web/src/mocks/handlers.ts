@@ -1,6 +1,15 @@
 import { http, HttpResponse, ws } from 'msw';
 import type { AlertScheduleReason } from '../types';
-import { mockStatus, mockConfig, mockInputs, mockWifiNetworks, mockAlpacaDevices, mockRecentAlerts, mockCalibration } from './data';
+import {
+  mockStatus,
+  mockConfig,
+  mockInputs,
+  mockWifiNetworks,
+  mockAlpacaDevices,
+  mockRecentAlerts,
+  mockCalibration,
+  mockTeach,
+} from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
 import { mockDiagLive, mockDiagMove, mockDiagMoves } from './diag';
 
@@ -97,6 +106,11 @@ export const handlers = [
   http.post('/api/roof/calibration/start', () => HttpResponse.json({ success: true, state: 'running' })),
   http.post('/api/roof/calibration/abort', () => HttpResponse.json({ success: true, state: 'stopped' })),
   http.post('/api/roof/calibration/confirm', () => HttpResponse.json({ success: true, state: 'open' })),
+  http.get('/api/roof/teach', () => HttpResponse.json(mockTeach)),
+  http.post('/api/roof/jog', () => HttpResponse.json({ success: true, state: 'opening', id: 1, holdMs: 500, keepAliveMs: 150 })),
+  http.post('/api/roof/teach/mark', () => HttpResponse.json({ success: true, state: 'closed' })),
+  http.post('/api/roof/teach/confirm', () => HttpResponse.json({ success: true })),
+  http.post('/api/roof/teach/discard', () => HttpResponse.json({ success: true })),
   http.get('/api/settings/effective', () =>
     HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) }),
   ),

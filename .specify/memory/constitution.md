@@ -1,6 +1,14 @@
 <!--
 Sync Impact Report
-- Version: 1.0.0 -> 2.0.0 (MAJOR: Principle I's timeout rule gains an exception, which relaxes it).
+- Version: 2.0.0 -> 2.0.1 (PATCH: wording). Principle II's park rule now reads "N.I.N.A. reports
+  AtPark AND every fitted park switch (park.switches) is closed". The park switches were always
+  optional (the roadmap's design decision, park.switches none/one/two since spec 004, and
+  ParkRule confirming on N.I.N.A. alone with none fitted); the old text named GPIO32/33 as if both
+  were always fitted. Disagreement or an unreadable source still means not parked. No rule, and no
+  behaviour, changes.
+- Templates: no change. Docs: specs/ROADMAP.md's design decision, docs/user-guide/safety-inputs.md
+  and the setup wizard's park inputs present the switches as an optional second check (spec 019).
+- Earlier: 1.0.0 -> 2.0.0 (MAJOR: Principle I's timeout rule gains an exception, which relaxes it).
 - Modified: I. Motion Safety, the hard-timeout rule. During an attended calibration run (spec
   016), before travel and speed are measured, a leg's hard timeout is roof.calibrationLimitSeconds
   (30-600 s), enforced by the motion code; later legs are bounded by the times already measured;
@@ -76,14 +84,15 @@ nothing has gone wrong.
 Closing onto an unparked telescope is the most expensive failure this device can cause.
 
 - The roof MUST NOT close unless the mount is confirmed parked: N.I.N.A. reports `AtPark` AND
-  the park switches on GPIO32/33 are closed, both fresh at the moment the close starts. If the two
-  sources disagree, or either can't be read, the mount counts as not parked.
+  every fitted park switch (`park.switches`) is closed, all fresh at the moment the close starts.
+  The switches are optional, a second check on the mount itself. If the sources disagree, or any
+  of them can't be read, the mount counts as not parked.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed.
 - Every close request is checked the same way, whatever its source: Alpaca `CloseShutter`, the
   web UI, MQTT, Home Assistant or the automatic close. No path skips the check.
-- The park interlock is re-checked throughout the close. A mount that reports unparked, or a park
-  switch that opens, stops the motor as a motion fault.
+- The park interlock is re-checked throughout the close. A mount that reports unparked, or a fitted
+  park switch that opens, stops the motor as a motion fault.
 
 ### III. Unsafe Ends Closed (Fail-Safe Safety Inputs)
 
@@ -237,7 +246,7 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   | GPIO34 / GPIO35 | R_IS / L_IS current sense (optional, 10k/20k dividers) |
   | GPIO36 | 12 V supply sense (100k/22k divider) |
   | GPIO39 | SS49E Hall output |
-  | GPIO32 / GPIO33 | park switches (internal pull-ups) |
+  | GPIO32 / GPIO33 | park switches (optional, internal pull-ups) |
   | GPIO4 | rain contact (optional) |
 
   Analog inputs use ADC1 only. Travel length, speed and Hall thresholds are settings, never
@@ -285,4 +294,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 2.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-11
+**Version**: 2.0.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-18

@@ -206,7 +206,7 @@ export const setupConfigSchema = z.object({
     .number()
     .int()
     .min(0, t('validation.configSchema.setupStepMustBe'))
-    .max(10, t('validation.configSchema.setupStepMustBe'))
+    .max(11, t('validation.configSchema.setupStepMustBe'))
     .optional(),
 });
 

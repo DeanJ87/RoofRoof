@@ -20,7 +20,10 @@
   Stop. The deadline is taken from the first step after the jog command or renewal (a renewal sets
   a flag; the step stamps it), never from the caller's clock.
 - **Rationale**: Principle I: "a busy network can delay a command; it can never prolong a move".
-  With the deadline in the step, a stalled network or browser can only end a jog early. 500 ms
+  With the deadline in the step, a stalled network or browser ends a jog; a keep-alive held up in
+  the network carries it on by at most its own delay, within the jog's limit. Release is its own
+  request (`release: true` with the id), so it stops only that jog and isn't counted as a person's
+  Stop by the close sequence. 500 ms
   lets two keep-alives go missing (normal Wi-Fi jitter) without a stutter; at the default slow
   duty the roof moves about 8 mm after the last one. A shorter bound stutters on a phone; a longer
   one moves the roof further after a dropped link.

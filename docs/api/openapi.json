@@ -1400,6 +1400,558 @@
         }
       }
     },
+    "/api/roof/jog": {
+      "post": {
+        "operationId": "post_roof_jog",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Jog the roof (hold to run)",
+        "description": "Spec 019: a person at the roof moves it at the slow duty while they hold a button. Without `id` it starts a jog toward `direction`; with the `id` it answered, it renews that jog. The device stops the jog by itself `holdMs` (500 ms) after the last renewal reached it, by its own control steps, at the first magnet after leaving the one it started on, and after 30 s (or a move from an unknown position's timeout, if shorter) with the `timeout` fault; every motion fault and the drive budget apply. Release with the `id` and `release: true`, which stops that jog only (a person's `POST /api/roof/stop` stops it too). Both directions need the weather safe, daylight not wanting the roof closed and the mount confirmed parked (the motor direction setting may still be wrong), and the park interlock watches every jog. Start refusals (409): `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `notStarted`, or the motion logic's (`supplyLow`, `supplyUnreadable`, `currentUnreadable`, `hallNotSettled`, `settingsInvalid`). A renewal or release of a jog that has ended is refused with `jogEnded` and never starts one. While a jog runs, open and close are refused with `jogging`. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the request."
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "The jog running, to renew it with (200 only)."
+                    },
+                    "holdMs": {
+                      "type": "integer",
+                      "description": "The device stops the jog when it hasn't been renewed for this long (200 only)."
+                    },
+                    "keepAliveMs": {
+                      "type": "integer",
+                      "description": "How often to renew it while the button is held (200 only)."
+                    },
+                    "limitMs": {
+                      "type": "integer",
+                      "description": "The jog's hard timeout (200 only); the page releases a second before it."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the request."
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "The jog running, to renew it with (200 only)."
+                    },
+                    "holdMs": {
+                      "type": "integer",
+                      "description": "The device stops the jog when it hasn't been renewed for this long (200 only)."
+                    },
+                    "keepAliveMs": {
+                      "type": "integer",
+                      "description": "How often to renew it while the button is held (200 only)."
+                    },
+                    "limitMs": {
+                      "type": "integer",
+                      "description": "The jog's hard timeout (200 only); the page releases a second before it."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "close"
+                    ],
+                    "description": "Toward the open or the closed end (through `roof.openDirection`)."
+                  },
+                  "attended": {
+                    "type": "boolean",
+                    "description": "The person confirms they are at the roof and can see it; must be true to start a jog."
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Renew this jog instead of starting one."
+                  },
+                  "release": {
+                    "type": "boolean",
+                    "description": "With `id`: the button was let go; stop that jog."
+                  }
+                },
+                "required": [
+                  "direction",
+                  "attended"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "direction": "open",
+                "attended": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roof/teach/mark": {
+      "post": {
+        "operationId": "post_roof_teach_mark",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Mark where the roof is",
+        "description": "Spec 019: records the Hall reading over the last second at rest (count, mean, lowest, highest, noise) as the closed end, the open end or a place part-way. Refused (409) with `notAtRest` while the roof moves or a jog runs or before it has been still for a second, `hallNotSettled` while the reading is unsettled or at a rail, and `calibrating` during a calibration run. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the request."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "unknown",
+                        "closed",
+                        "open",
+                        "opening",
+                        "closing",
+                        "stopped",
+                        "error"
+                      ],
+                      "description": "The roof's state after the request."
+                    },
+                    "reason": {
+                      "type": "string",
+                      "description": "Why it was refused (409 only); see the operation's description."
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "string",
+                    "enum": [
+                      "closed",
+                      "open",
+                      "partWay"
+                    ],
+                    "description": "Where the person says the roof is."
+                  }
+                },
+                "required": [
+                  "at"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "at": "closed"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roof/teach/confirm": {
+      "post": {
+        "operationId": "post_roof_teach_confirm",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Save the taught Hall settings",
+        "description": "Spec 019: saves the proposal of `GET /api/roof/teach` (`roof.hallHighEnd`, `roof.hallHighCounts`, `roof.hallLowCounts`) over the current settings through the settings save, when the values sent are the proposal (409 `proposalChanged`, or `noProposal`). Refused like every settings save while the roof moves or a platform action holds it (409), and 400 if the result isn't valid. Then the marks are cleared, and once the settings are applied the roof's position follows the magnet it sits on. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hallHighEnd": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  },
+                  "hallHighCounts": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4095
+                  },
+                  "hallLowCounts": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4095
+                  }
+                },
+                "required": [
+                  "hallHighEnd",
+                  "hallHighCounts",
+                  "hallLowCounts"
+                ],
+                "additionalProperties": false
+              },
+              "example": {
+                "hallHighEnd": "open",
+                "hallHighCounts": 2725,
+                "hallLowCounts": 1381
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roof/teach/discard": {
+      "post": {
+        "operationId": "post_roof_teach_discard",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Discard the marks",
+        "description": "Spec 019: drops the marks and the proposal; changes no setting. Always accepted. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ]
+      }
+    },
+    "/api/roof/teach": {
+      "get": {
+        "operationId": "get_roof_teach",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Jog and teach",
+        "description": "Spec 019: the jog under way (its id, direction, time driven, limit, keep-alive deadline and interval), whether the roof has been still for the one-second reading window and its mean, the three marks, and the proposal (`null` until all three are marked; `ok` false with the reason when the ends can't be told apart or the part-way reading overlaps one). Read-only, kept in memory only.\n\nOpen: Read-only: the jog under way, the Hall readings marked at the ends and the proposal; no address or secret; changes nothing.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoofTeach"
+                },
+                "example": {
+                  "jog": {
+                    "active": false,
+                    "id": 0,
+                    "direction": null,
+                    "elapsedMs": 0,
+                    "limitMs": 30000,
+                    "holdMs": 500,
+                    "keepAliveMs": 150
+                  },
+                  "rest": {
+                    "ready": true,
+                    "counts": 565
+                  },
+                  "marks": {
+                    "closed": null,
+                    "open": null,
+                    "partWay": null
+                  },
+                  "proposal": null
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/roof/inputs": {
       "get": {
         "operationId": "get_roof_inputs",
@@ -6018,6 +6570,211 @@
           "nina",
           "park",
           "weather"
+        ],
+        "additionalProperties": false
+      },
+      "RoofTeach": {
+        "title": "roof-teach",
+        "type": "object",
+        "properties": {
+          "jog": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "direction": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "elapsedMs": {
+                "type": "number"
+              },
+              "holdMs": {
+                "type": "number"
+              },
+              "id": {
+                "type": "number"
+              },
+              "keepAliveMs": {
+                "type": "number"
+              },
+              "limitMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "active",
+              "direction",
+              "elapsedMs",
+              "holdMs",
+              "id",
+              "keepAliveMs",
+              "limitMs"
+            ],
+            "additionalProperties": false
+          },
+          "marks": {
+            "type": "object",
+            "properties": {
+              "closed": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "noise": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "count",
+                  "max",
+                  "mean",
+                  "min",
+                  "noise"
+                ],
+                "additionalProperties": false
+              },
+              "open": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "noise": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "count",
+                  "max",
+                  "mean",
+                  "min",
+                  "noise"
+                ],
+                "additionalProperties": false
+              },
+              "partWay": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "mean": {
+                    "type": "number"
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "noise": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "count",
+                  "max",
+                  "mean",
+                  "min",
+                  "noise"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "closed",
+              "open",
+              "partWay"
+            ],
+            "additionalProperties": false
+          },
+          "proposal": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "properties": {
+              "hallHighCounts": {
+                "type": "number"
+              },
+              "hallHighEnd": {
+                "type": "string"
+              },
+              "hallLowCounts": {
+                "type": "number"
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "ok"
+            ],
+            "additionalProperties": false
+          },
+          "rest": {
+            "type": "object",
+            "properties": {
+              "counts": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "ready": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "counts",
+              "ready"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "jog",
+          "marks",
+          "proposal",
+          "rest"
         ],
         "additionalProperties": false
       },

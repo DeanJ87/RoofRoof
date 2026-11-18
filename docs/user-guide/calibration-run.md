@@ -23,11 +23,49 @@ wizard's **Calibration run** page.
 - The motor's direction is right: a first short **Open** from the closed end moves the roof toward
   open ([commissioning stage 8](../hardware/commissioning.md#stage-8-first-attended-moves-on-the-real-roof)).
 - The Hall thresholds already see both magnets. The sensor only sees the ends, so the run stops each
-  leg where the current thresholds say a magnet is. Set rough thresholds from the live reading
-  first ([Calibration](../hardware/calibration.md#hall-sensor)); the run then checks and tightens
-  them. A run that can't see a magnet stops at its time limit with a `timeout` fault.
+  leg where the current thresholds say a magnet is. [Teach the ends](#teach-the-ends) first (or set
+  rough thresholds from the live reading, [Calibration](../hardware/calibration.md#hall-sensor));
+  the run then checks and tightens them. A run that can't see a magnet stops at its time limit with
+  a `timeout` fault.
 - Measure the travel between the two magnets' trigger points with a tape. The sensor can't measure
   distance, so the run proposes the speed that fits the travel you give.
+
+## Teach the ends
+
+On a new roof the Hall settings are guesses, so the run can't yet stop at the magnets. The **Teach
+the ends** card at the top of the calibration page sets them from where the magnets really are:
+you move the roof by hand and tell the device where each end is.
+
+1. Turn on **I am at the roof, watching it**. The card lists the same checks as the run: the
+   weather safe (and daylight not wanting the roof closed), the mount parked, no fault, the
+   automatic close idle, the supply and a settled Hall reading.
+2. **Hold to open** or **Hold to close** moves the roof at the slow duty for as long as you hold
+   the button (mouse, finger, or Space or Enter held). Letting go stops it. If the page, the phone
+   or the network goes, the device stops the roof within half a second by itself. A jog also
+   stops at the first magnet the current settings see after it leaves the one it started on, and a
+   hold is released a second before the jog's limit (30 s, or less on a short roof; reaching the
+   limit itself is a `timeout` fault): press again to
+   carry on. **Stop** shows while the roof moves.
+3. With the roof still at the closed end, press **This is closed**; jog part-way and press **This
+   is part-way**; jog to the open end and press **This is open**. Each takes the Hall reading over
+   the last second at rest. Marks are refused while the roof moves or before it has been still for a
+   second.
+4. With all three marked, the card **proposes** which end reads high and both thresholds, each
+   beside the saved value: halfway between the part-way reading and each end's, kept clear of the
+   part-way readings and read at rest at the end (the same rule the run uses). If the ends read on
+   the same side of the part-way reading, an end is less than 300 counts from it, or no threshold
+   fits, nothing is proposed and the card says why.
+5. **Confirm and save** saves the three values through the settings save; **Discard** changes
+   nothing. Once saved, the roof at an end reads as that end: that is how the device learns where
+   it is (it knows its position only at a magnet).
+
+Both directions need the weather safe and the mount parked, and the park interlock watches every
+jog: on a new roof the motor direction setting may still be wrong, so **Hold to open** may close the
+roof. If it moves the wrong way, let go and fix **Settings → Roof → Roof motion → Opening direction** (`roof.openDirection`). A jog
+stops when the weather or daylight turns, and the automatic close stops it before it makes its
+own checks. Nothing is kept across a restart, and nothing moves after one.
+
+Then start the run below to measure the times.
 
 ## Starting it
 

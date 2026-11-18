@@ -1,0 +1,206 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "roof-teach",
+  "type": "object",
+  "properties": {
+    "jog": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "direction": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "elapsedMs": {
+          "type": "number"
+        },
+        "holdMs": {
+          "type": "number"
+        },
+        "id": {
+          "type": "number"
+        },
+        "keepAliveMs": {
+          "type": "number"
+        },
+        "limitMs": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "active",
+        "direction",
+        "elapsedMs",
+        "holdMs",
+        "id",
+        "keepAliveMs",
+        "limitMs"
+      ],
+      "additionalProperties": false
+    },
+    "marks": {
+      "type": "object",
+      "properties": {
+        "closed": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "count": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "mean": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "noise": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "count",
+            "max",
+            "mean",
+            "min",
+            "noise"
+          ],
+          "additionalProperties": false
+        },
+        "open": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "count": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "mean": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "noise": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "count",
+            "max",
+            "mean",
+            "min",
+            "noise"
+          ],
+          "additionalProperties": false
+        },
+        "partWay": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "count": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            },
+            "mean": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            },
+            "noise": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "count",
+            "max",
+            "mean",
+            "min",
+            "noise"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "closed",
+        "open",
+        "partWay"
+      ],
+      "additionalProperties": false
+    },
+    "proposal": {
+      "type": [
+        "null",
+        "object"
+      ],
+      "properties": {
+        "hallHighCounts": {
+          "type": "number"
+        },
+        "hallHighEnd": {
+          "type": "string"
+        },
+        "hallLowCounts": {
+          "type": "number"
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "rest": {
+      "type": "object",
+      "properties": {
+        "counts": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "counts",
+        "ready"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "jog",
+    "marks",
+    "proposal",
+    "rest"
+  ],
+  "additionalProperties": false
+}

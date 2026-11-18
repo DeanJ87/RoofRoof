@@ -4,6 +4,8 @@ import { useState } from 'preact/hooks';
 import type { CalibrationStatus, CalibrationWhere, RoofConfig, RoofStatus, SystemStatus } from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useCalibration } from '../hooks/useCalibration';
+import { useTeach } from '../hooks/useTeach';
+import TeachCard from './calibrate/TeachCard';
 import { useConfigEditor } from '../hooks/useConfigEditor';
 import { abortCalibration, confirmCalibration, startCalibration } from '../lib/calibrationApi';
 import {
@@ -285,6 +287,7 @@ const Calibrate: FunctionalComponent = () => {
   const editor = useConfigEditor();
   const { data: live, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
   const { status: run, refresh } = useCalibration();
+  const { status: teach, refresh: refreshTeach } = useTeach();
   const roof = live?.roof ?? editor.status?.roof;
   const config = editor.saved?.roof;
   if (editor.loading) return <div class="empty-state">{t('settings.loadingSettings')}</div>;
@@ -296,9 +299,25 @@ const Calibrate: FunctionalComponent = () => {
   };
   const stop = () => void abortCalibration().then(refresh);
   const fresh = isFresh(live, connected, lastMessageAt);
+  // Spec 019: a jog needs what a run needs; "still" doesn't apply while one is held.
+  const jogChecks = calibrationChecks(roof).filter((check) => check.id !== 'still');
+  const jogBlocked = startBlocked(jogChecks, true, fresh);
   return (
     <div class="panel-page settings-page page-enter" data-calibrate-page>
       <h2>{t('calibrate.title')}</h2>
+      {!run?.active && (
+        <TeachCard
+          teach={teach}
+          roof={roof}
+          config={config}
+          checks={<Checks checks={jogChecks} />}
+          blocked={jogBlocked}
+          onChanged={() => {
+            refreshTeach();
+            editor.reload();
+          }}
+        />
+      )}
       <Note>{t('calibrate.intro')}</Note>
       {run?.active ? (
         <Running run={run} roof={roof} config={config} onStop={stop} onAnswer={refresh} />

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { http, HttpResponse } from 'msw';
 import Calibrate from '../Calibrate';
 import type { CalibrationStatus, SystemStatus } from '../../types';
@@ -34,6 +34,9 @@ const running: CalibrationStatus = {
   leg: { index: 1, count: 2, name: 'slowOpen', phase: 'drive', elapsedMs: 12000, limitMs: 180000 },
 };
 
+// The run's start card (the Teach card above it shows the same checks).
+const startCard = () => within(document.getElementById('calibrate-start')!);
+
 const serve = (status: CalibrationStatus) => server.use(http.get('/api/roof/calibration', () => HttpResponse.json(status)));
 
 describe('Calibrate', () => {
@@ -57,7 +60,7 @@ describe('Calibrate', () => {
     render(<Calibrate />);
     const start = await screen.findByRole('button', { name: 'Start calibration' });
     expect(start).toBeDisabled();
-    expect(screen.getByText('Confirm that you are at the roof first')).toBeInTheDocument();
+    expect(startCard().getByText('Confirm that you are at the roof first')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('switch', { name: 'I am at the roof and can see it' }));
     await waitFor(() => expect(start).toBeEnabled());
     fireEvent.click(start);
@@ -74,8 +77,8 @@ describe('Calibrate', () => {
     render(<Calibrate />);
     fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof and can see it' }));
     expect(screen.getByRole('button', { name: 'Start calibration' })).toBeDisabled();
-    expect(screen.getByText('Not ready: Weather safe')).toBeInTheDocument();
-    expect(screen.getByText('unsafe: rain')).toBeInTheDocument();
+    expect(startCard().getByText('Not ready: Weather safe')).toBeInTheDocument();
+    expect(startCard().getByText('unsafe: rain')).toBeInTheDocument();
   });
 
   it('shows the device refusal', async () => {

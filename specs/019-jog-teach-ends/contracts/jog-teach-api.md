@@ -14,10 +14,11 @@ Start a jog, or renew one.
 ```
 
 - Without `id`: starts a jog toward `direction` (`open` or `close`). `200`:
-  `{"success": true, "id": 7, "state": "opening", "holdMs": 500, "keepAliveMs": 150, "limitMs": 30000}`.
+  `{"success": true, "state": "opening", "id": 7, "holdMs": 500, "keepAliveMs": 150, "limitMs": 30000}`.
 - With `id`: renews jog `id` for another `holdMs`. `200` as above; `409 jogEnded` when that jog is
   no longer running (it never starts a new one).
-- Release: `POST /api/roof/stop` (a person's Stop).
+- Release: the same body with `"release": true` stops jog `id` only (`409 jogEnded` if it has
+  ended). The answer to a start carries `limitMs`, the jog's hard timeout.
 - Start refusals: `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`,
   `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`,
   `hotspot`, `restarting`, `notStarted`, or the motion logic's (`supplyLow`, `supplyUnreadable`,

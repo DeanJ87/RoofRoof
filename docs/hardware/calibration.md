@@ -23,6 +23,8 @@ The controller reads the SS49E on GPIO39 as raw 12-bit counts (0-4095), the medi
 
 In the web UI, the **Hall reading** on the dashboard's Roof card and in **Settings → Roof → Hall sensor** is drawn on its 0-4095 scale with the two thresholds marked; in Settings the marks follow the thresholds as you type them, before you save, so you can see each end's reading fall past its mark.
 
+With the motor connected and the roof built, [Teach the ends](../user-guide/calibration-run.md#teach-the-ends) does this for you: you jog the roof to each end and part-way, and it proposes the high end and both thresholds by the rule below. The steps here are for a roof without its motor yet.
+
 The worm gear holds the roof wherever it stops, so with the motor disconnected the roof doesn't move by hand. Take the end readings by bringing the sensor to each magnet instead: on a sensor that isn't fixed yet, hold it where it will sit at each end; on a fixed sensor, unbolt each magnet in turn and hold it at its stopping position in front of the sensor.
 
 1. **Between the magnets.** With no magnet near the sensor, note `roof.hall.counts`: the resting value, typically about 2000 with a 10k/20k divider.
