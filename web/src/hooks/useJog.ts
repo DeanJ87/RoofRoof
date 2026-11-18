@@ -55,7 +55,7 @@ export const useJog = (onProblem: (text: string, reason: string) => void) => {
 
   const press = (direction: JogDirection) => {
     if (held.current) return;
-    const now: Held = { direction, pressedAt: Date.now(), id: null, released: false, renewing: false };
+    const now: Held = { direction, pressedAt: performance.now(), id: null, released: false, renewing: false };
     held.current = now;
     setActive(direction);
     void startJog(direction).then((answer) => {
@@ -71,7 +71,7 @@ export const useJog = (onProblem: (text: string, reason: string) => void) => {
       now.id = answer.id;
       timers.current.push(window.setInterval(renew, JOG_KEEPALIVE_MS));
       const limitMs = answer.limitMs ?? JOG_FALLBACK_LIMIT_MS;
-      const left = limitMs - JOG_RELEASE_BEFORE_LIMIT_MS - (Date.now() - now.pressedAt);
+      const left = limitMs - JOG_RELEASE_BEFORE_LIMIT_MS - (performance.now() - now.pressedAt);
       timers.current.push(window.setTimeout(release, Math.max(0, left)));
     });
   };

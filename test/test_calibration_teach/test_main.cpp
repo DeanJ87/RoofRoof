@@ -489,6 +489,9 @@ void test_a_release_body(void)
     TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
     TEST_ASSERT_TRUE(jog.release);
     TEST_ASSERT_EQUAL_UINT32(7, jog.id);
+    deserializeJson(doc, R"({"id":9,"release":true})"); // a release needs only the id
+    TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
+    TEST_ASSERT_EQUAL_UINT32(9, jog.id);
     deserializeJson(doc, R"({"direction":"open","attended":true,"release":true})");
     TEST_ASSERT_FALSE(parseJog(doc.as<JsonVariantConst>(), jog, error));
     deserializeJson(doc, R"({"direction":"open","attended":true,"id":7,"release":1})");

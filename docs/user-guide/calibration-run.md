@@ -65,6 +65,8 @@ roof. If it moves the wrong way, let go and fix **Settings → Roof → Roof mot
 stops when the weather or daylight turns, and the automatic close stops it before it makes its
 own checks. Nothing is kept across a restart, and nothing moves after one.
 
+Until the ends are taught, the state the dashboard shows at a magnet comes from the old settings and may name the wrong end: trust what you see at the roof.
+
 Then start the run below to measure the times.
 
 ## Starting it

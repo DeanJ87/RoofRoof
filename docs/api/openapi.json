@@ -1572,7 +1572,7 @@
                       "open",
                       "close"
                     ],
-                    "description": "Toward the open or the closed end (through `roof.openDirection`)."
+                    "description": "Toward the open or the closed end (through `roof.openDirection`). Needed to start or renew a jog."
                   },
                   "attended": {
                     "type": "boolean",
@@ -1585,13 +1585,10 @@
                   },
                   "release": {
                     "type": "boolean",
-                    "description": "With `id`: the button was let go; stop that jog."
+                    "description": "With `id` alone: the button was let go; stop that jog."
                   }
                 },
-                "required": [
-                  "direction",
-                  "attended"
-                ],
+                "required": [],
                 "additionalProperties": false
               },
               "example": {

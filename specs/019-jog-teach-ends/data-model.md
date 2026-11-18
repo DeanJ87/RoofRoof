@@ -12,6 +12,7 @@
 | `Controller::checkJog(End, Origin)` | `CommandResult` | person, no fault, not moving, readiness, valid settings |
 | `Controller::jog(End, Origin)` | `CommandResult` | starts it; `jogId()` names it |
 | `Controller::holdJog(uint32_t id)` | `bool` | renews the active jog with this id; false otherwise |
+| `Controller::releaseJog(uint32_t id)` | `bool` | stops the active jog with this id (as a Stop); false otherwise |
 | `Controller::jogId()` | `uint32_t` | the id of the last jog started (1, 2, ...) |
 | `Controller::jogLimitMs()` | `uint32_t` | `min(JOG_MAX_MS, unknownMoveTimeoutMs(settings))` |
 
@@ -34,20 +35,28 @@ Move fields: `jog`, `holdPending`, `holdUntilMs`. A jog is `calibration = true` 
 - `class Teach`:
   - `Answer jog(Roof::Controller &, Roof::End, bool attended, bool calibrating, const StartInputs &)`;
   - `Answer hold(Roof::Controller &, uint32_t id)`: `jogEnded` unless the controller renews it;
+  - `Answer release(Roof::Controller &, uint32_t id)`: stops that jog only, never counted as a
+    person's stop; `jogEnded` otherwise;
+  - `bool yieldToClose(Roof::Controller &)`: the automatic close stops a jog under way first;
   - `void step(const Roof::Status &, uint16_t counts)`: the window;
   - `Answer mark(Where, const Roof::Status &, bool calibrating)`: `notAtRest`, `hallNotSettled`,
     `calibrating`;
   - `Answer checkConfirm(Roof::End, uint16_t high, uint16_t low) const`: `noProposal`,
     `proposalChanged`;
   - `void clear()`;
-  - `TeachReport report(const Roof::Controller &, uint32_t nowMs) const`.
+  - `TeachReport report(const Roof::Controller &) const`.
 - `TeachReport`: jog (active, id, target, elapsedMs, limitMs), window (ready, mean), marks
   (`Stats[3]`, `bool marked[3]`), proposal.
 - `void writeTeachDocument(JsonObject, const TeachReport &)`; `TEACH_DOCUMENT_CAPACITY`.
+- `JogRequest {target, attended, id, release}`, `parseJog`, `parseMark`, `TeachValues`,
+  `parseConfirm`: the request bodies. The start answer carries `id`, `holdMs`, `keepAliveMs` and
+  `limitMs` (`Controller::jogLimitMs`).
 
 ## lib/RoofIoLogic
 
-- `CommandContext::jogging`; `JOGGING_REASON` = `"jogging"`.
+- `JOGGING_REASON` = `"jogging"`: `checkCommand` refuses open and close with it while
+  `Status::jogging`, for every origin but the automatic close (the controller itself refuses
+  that one with `moving`, so a close never takes a jog over).
 - `openMustStop(status, gates)`: also when `status.jogging`.
 
 ## Status of a jog
@@ -55,7 +64,7 @@ Move fields: `jog`, `holdPending`, `holdUntilMs`. A jog is `calibration = true` 
 ```text
 idle --jog()--> active (dead time, then driving at the slow duty)
 active --holdJog(id)--> active (deadline moved)
-active --deadline passed / Stop / Abort / weather or daylight turns--> stopped (position unknown unless at a magnet)
+active --deadline passed / release / Stop / Abort / weather or daylight turns--> stopped (position unknown unless at a magnet)
 active --first magnet after leaving the start one--> arrived (position from the magnet)
 active --timeout / budget / any fault / park lost--> fault latched
 ```

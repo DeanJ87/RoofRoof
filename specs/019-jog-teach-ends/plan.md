@@ -15,7 +15,7 @@
   factored out of `Run::startRefusal`); and a new `Calib::Teach`: the jog's start and renewal
   checks, the one-second reading window, the three marks, the proposal (`proposeTeach`) and the
   document writer for `GET /api/roof/teach`.
-- `lib/RoofIoLogic`: `CommandContext::jogging` (open and close refused with `jogging`),
+- `lib/RoofIoLogic`: open and close refused with `jogging` while `Status::jogging`,
   `openMustStop` also stops a jog in either direction. The interlock already watches every
   calibration-type move, so it covers a jog.
 - Firmware: `RoofControl` owns the `Teach` under its lock and steps its window after each control

@@ -110,25 +110,25 @@ namespace SQM
             writeProposal(out, r.proposal);
         }
 
+        // A release needs only the id: a stop must never wait on the rest of the body.
         bool parseJog(JsonVariantConst body, JogRequest &out, const char *&error)
         {
+            out = JogRequest{};
+            JsonVariantConst id = body["id"];
+            JsonVariantConst release = body["release"];
+            if (!release.isNull() && !release.is<bool>())
+                return fail(error, "release must be true or false");
+            out.release = release.as<bool>();
+            if (!id.isNull() && (!id.is<long long>() || id.as<long long>() < 1 || id.as<long long>() > static_cast<long long>(UINT32_MAX)))
+                return fail(error, "id must be a positive whole number");
+            out.id = id.isNull() ? 0 : static_cast<uint32_t>(id.as<long long>());
+            if (out.release)
+                return out.id != 0 || fail(error, "release needs the jog's id");
             if (!parseEnd(body["direction"].as<const char *>(), "open", "close", out.target))
                 return fail(error, "direction must be open or close");
             if (!body["attended"].is<bool>())
                 return fail(error, "attended must be true or false");
             out.attended = body["attended"].as<bool>();
-            out.id = 0;
-            out.release = false;
-            JsonVariantConst id = body["id"];
-            if (id.isNull())
-                return body["release"].isNull() || fail(error, "release needs the jog's id");
-            if (!id.is<long long>() || id.as<long long>() < 1 || id.as<long long>() > static_cast<long long>(UINT32_MAX))
-                return fail(error, "id must be a positive whole number");
-            out.id = static_cast<uint32_t>(id.as<long long>());
-            JsonVariantConst release = body["release"];
-            if (!release.isNull() && !release.is<bool>())
-                return fail(error, "release must be true or false");
-            out.release = release.as<bool>();
             return true;
         }
 
