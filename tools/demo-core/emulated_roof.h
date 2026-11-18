@@ -31,6 +31,7 @@
 #include "RoofPlant.h"
 #include "RoofStatus.h"
 #include "SafetyInput.h"
+#include "Teach.h"
 
 namespace DemoRoof
 {
@@ -103,6 +104,12 @@ namespace DemoRoof
         const Calib::Report &calibrationReport() const { return calibration.report(); }
         bool calibrating() const { return calibration.active(); }
         uint32_t clockMs() const { return static_cast<uint32_t>(nowMs); }
+        // Spec 019 (emulated_roof_teach.cpp): RoofControl's jog and teach (the same library), as a person.
+        Outcome jog(const Calib::JogRequest &request, uint32_t &id, uint32_t &limitMs);
+        Outcome teachMark(Calib::Where where);
+        Outcome teachConfirmable(const Calib::TeachValues &values) const;
+        void teachClear() { teach.clear(); }
+        Calib::TeachReport teachReport() const { return teach.report(controller); }
         Alpaca::DomeStatus domeStatus() const;
         Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action);
 
@@ -196,6 +203,7 @@ namespace DemoRoof
         Daylight::Settings daylightCfg;
         CloseSeq::Policy policy;       // spec 014: autoClose.*
         Calib::Run calibration;        // spec 016
+        Calib::Teach teach;            // spec 019
         bool remoteStopsClose = false; // spec 014: autoClose.remoteStop
         Daylight::Watch daylightWatch;
         Daylight::View daylightView;

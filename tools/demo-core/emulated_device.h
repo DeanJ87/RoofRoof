@@ -83,6 +83,8 @@ public:
     std::string roofCommand(const std::string &name);
     // Spec 016: POST /api/roof/calibration/start (`body`) and /abort, GET /api/roof/calibration.
     std::string calibration(const std::string &action, const std::string &body);
+    // Spec 019: POST /api/roof/jog ("jog"), /api/roof/teach/mark, /confirm and /discard, GET /api/roof/teach ("status").
+    std::string teach(const std::string &action, const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);
@@ -237,4 +239,5 @@ private:
     void collectDiag();
     Diag::Clock diagClock() const { return Diag::Clock{nowMs, static_cast<uint32_t>(validEpoch())}; }
     void runRoof();
+    std::string teachConfirm(const std::string &body);
 };

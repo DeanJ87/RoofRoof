@@ -5,6 +5,7 @@
 
 #include "CalibrationDocument.h"
 #include "PlatformHold.h"
+#include "Teach.h"
 #include "RoofStatus.h"
 
 using namespace DemoCore;
@@ -85,6 +86,96 @@ std::string EmulatedDevice::calibration(const std::string &action, const std::st
         doc["error"] = outcome.text;
     }
     return response(outcome.accepted ? 200 : 409, serialize(doc));
+}
+
+namespace
+{
+    // The device's sendAnswer (src/WebServerTeach.cpp).
+    std::string teachBody(const DemoRoof::Outcome &outcome, uint32_t jogId = 0, uint32_t limitMs = 0)
+    {
+        StaticJsonDocument<512> doc;
+        doc["success"] = outcome.accepted;
+        doc["state"] = Roof::stateName(outcome.state);
+        if (jogId != 0 && outcome.accepted)
+        {
+            doc["id"] = jogId;
+            doc["holdMs"] = Roof::JOG_HOLD_MS;
+            doc["keepAliveMs"] = Roof::JOG_KEEPALIVE_MS;
+            doc["limitMs"] = limitMs;
+        }
+        if (!outcome.accepted)
+        {
+            doc["reason"] = outcome.reason;
+            doc["error"] = outcome.text;
+        }
+        std::string body;
+        serializeJson(doc, body);
+        return body;
+    }
+} // namespace
+
+// Spec 019: WebServer::handleTeachConfirm: the proposal checked, then saved as a settings save.
+std::string EmulatedDevice::teachConfirm(const std::string &body)
+{
+    StaticJsonDocument<256> in;
+    Calib::TeachValues values;
+    const char *error = "The body must be JSON";
+    if (deserializeJson(in, body) || !Calib::parseConfirm(in.as<JsonVariantConst>(), values, error))
+        return response(400, errorJson(error));
+    const DemoRoof::Outcome check = roof.teachConfirmable(values);
+    if (!check.accepted)
+        return response(409, teachBody(check));
+    const std::string held = platformHold("flashWrite");
+    if (!held.empty())
+        return response(409, errorJson(held));
+    Config next = cfg;
+    next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
+    next.roof.hallHighCounts = values.highCounts;
+    next.roof.hallLowCounts = values.lowCounts;
+    std::string reason;
+    if (!next.validate(&reason))
+        return response(400, errorJson(reason));
+    cfg = next;
+    roof.settingsChanged(cfg);
+    roof.teachClear();
+    return response(200, "{\"success\":true}");
+}
+
+std::string EmulatedDevice::teach(const std::string &action, const std::string &body)
+{
+    runRoof();
+    if (action == "status")
+    {
+        DynamicJsonDocument doc(Calib::TEACH_DOCUMENT_CAPACITY);
+        Calib::writeTeachDocument(doc.to<JsonObject>(), roof.teachReport());
+        return response(200, serialize(doc));
+    }
+    if (action == "discard")
+    {
+        roof.teachClear();
+        return response(200, "{\"success\":true}");
+    }
+    if (action == "confirm")
+        return teachConfirm(body);
+    StaticJsonDocument<256> in;
+    const char *error = "The body must be JSON";
+    if (action == "mark")
+    {
+        Calib::Where at = Calib::Where::Closed;
+        if (deserializeJson(in, body) || !Calib::parseMark(in.as<JsonVariantConst>(), at, error))
+            return response(400, errorJson(error));
+        const DemoRoof::Outcome outcome = roof.teachMark(at);
+        return response(outcome.accepted ? 200 : 409, teachBody(outcome));
+    }
+    if (action != "jog")
+        return response(404, errorJson("Not found"));
+    Calib::JogRequest wanted;
+    if (deserializeJson(in, body) || !Calib::parseJog(in.as<JsonVariantConst>(), wanted, error))
+        return response(400, errorJson(error));
+    uint32_t id = 0;
+    uint32_t limitMs = 0;
+    const DemoRoof::Outcome outcome = roof.jog(wanted, id, limitMs);
+    return response(outcome.accepted ? 200 : 409, teachBody(outcome, id, limitMs));
 }
 
 std::string EmulatedDevice::roofInject(const std::string &json)
