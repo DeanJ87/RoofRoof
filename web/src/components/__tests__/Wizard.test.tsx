@@ -28,7 +28,7 @@ const recordSaves = (reply: () => Response = () => HttpResponse.json({ success: 
   return bodies;
 };
 
-const heading = () => screen.findByRole('heading', { level: 2, name: /^Step \d+ of 11/ });
+const heading = () => screen.findByRole('heading', { level: 2, name: /^Step \d+ of 12/ });
 const pageButton = (name: string) => within(screen.getByRole('navigation', { name: 'Setup pages' })).getByRole('button', { name });
 
 describe('Wizard', () => {
@@ -38,7 +38,7 @@ describe('Wizard', () => {
   it('opens at the page saved last while setup is new', async () => {
     mockDevice({ config: { setup: { state: 'new', step: 3 } } });
     render(<Wizard />);
-    expect(await heading()).toHaveTextContent('Step 4 of 11: Hall sensor');
+    expect(await heading()).toHaveTextContent('Step 4 of 12: Hall sensor');
     expect(pageButton('4. Hall sensor')).toHaveAttribute('aria-current', 'step');
   });
 
@@ -46,7 +46,7 @@ describe('Wizard', () => {
     mockDevice({ config: { setup: { state: 'new', step: 6 } } });
     window.history.replaceState(null, '', '/wizard?step=1');
     render(<Wizard />);
-    expect(await heading()).toHaveTextContent('Step 1 of 11: Device');
+    expect(await heading()).toHaveTextContent('Step 1 of 12: Device');
   });
 
   it('starts with password protection on, and warns when it is turned off', async () => {
@@ -67,13 +67,14 @@ describe('Wizard', () => {
       '2. Site and time',
       '3. Hardware',
       '4. Hall sensor',
-      '5. Calibration run',
-      '6. Roof motion',
-      '7. Weather',
-      '8. N.I.N.A.',
-      '9. Alerts',
-      '10. Daylight',
-      '11. Review',
+      '5. Teach the ends',
+      '6. Calibration run',
+      '7. Roof motion',
+      '8. Weather',
+      '9. N.I.N.A.',
+      '10. Alerts',
+      '11. Daylight',
+      '12. Review',
     ];
     for (const page of pages) {
       fireEvent.click(pageButton(page));
@@ -90,13 +91,13 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     const advanced = ['autoClose.', 'daylight.bandDeg', 'mqtt.changeMinSeconds', 'ui.confirmOpenClose', 'daylight.advanced'];
-    for (let page = 1; page <= 11; page++) {
+    for (let page = 1; page <= 12; page++) {
       const button = within(screen.getByRole('navigation', { name: 'Setup pages' })).getAllByRole('button')[page - 1];
       fireEvent.click(button);
-      await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent(`Step ${page} of 11`));
+      await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent(`Step ${page} of 12`));
       for (const field of advanced) expect(document.querySelector(`[data-field^="${field}"]`), `page ${page}: ${field}`).toBeNull();
     }
-    fireEvent.click(pageButton('8. N.I.N.A.'));
+    fireEvent.click(pageButton('9. N.I.N.A.'));
     const link = await screen.findByRole('link', { name: 'How N.I.N.A. opens and closes the roof' });
     expect(link.getAttribute('href')).toMatch(/docs\/user-guide\/alpaca\.md#nina-opens-and-closes-the-roof$/);
   });
@@ -108,13 +109,13 @@ describe('Wizard', () => {
     await heading();
     fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Backyard roof' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Step 2 of 11: Site and time' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Step 2 of 12: Site and time' })).toBeInTheDocument();
     expect(saves).toHaveLength(1);
     expect(saves[0].deviceName).toBe('Backyard roof');
     expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
     // The saved edit stays: the next page's save sends it, not the value from before.
     fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
-    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 3 of 11'));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 3 of 12'));
     expect(screen.queryByRole('button', { name: 'Save', exact: true })).toBeNull(); // nothing unsaved
     fireEvent.change(screen.getByLabelText('Park switches fitted', { selector: 'select' }), { target: { value: 'one' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
@@ -132,7 +133,7 @@ describe('Wizard', () => {
     fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Backyard roof' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     expect(await screen.findByText('The roof is moving: wait until it stops')).toBeInTheDocument();
-    expect(await heading()).toHaveTextContent('Step 1 of 11');
+    expect(await heading()).toHaveTextContent('Step 1 of 12');
   });
 
   it('an unchanged page only records the step', async () => {
@@ -141,14 +142,14 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
-    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 11'));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 12'));
     expect(saves).toEqual([{ setup: { state: 'new', step: 1 } }]);
   });
 
   it('leaving a page drops its unsaved edits: a later save never carries them (FR-007)', async () => {
     mockDevice({
       config: {
-        setup: { state: 'new', step: 5 },
+        setup: { state: 'new', step: 6 },
         roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
       },
     });
@@ -157,7 +158,7 @@ describe('Wizard', () => {
     await heading();
     fireEvent.click(screen.getByRole('button', { name: 'Use first-run values' }));
     fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
-    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 7 of 11'));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 8 of 12'));
     fireEvent.click(screen.getByRole('switch', { name: 'SQMeter over MQTT' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
     await waitFor(() => expect(saves).toHaveLength(1));
@@ -171,9 +172,9 @@ describe('Wizard', () => {
     await waitFor(() => expect(toggle).toBeChecked());
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
-    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 11'));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 2 of 12'));
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 1 of 11'));
+    await waitFor(() => expect(document.querySelector('.wizard-heading')).toHaveTextContent('Step 1 of 12'));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.getByLabelText('Password-protect changes')).not.toBeChecked();
   });
@@ -184,14 +185,14 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
-    expect(await heading()).toHaveTextContent('Step 2 of 11');
+    expect(await heading()).toHaveTextContent('Step 2 of 12');
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(await heading()).toHaveTextContent('Step 1 of 11');
+    expect(await heading()).toHaveTextContent('Step 1 of 12');
     expect(saves).toHaveLength(0);
   });
 
   it('Test on the weather page shows the verdict and each source', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 6 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 7 } } });
     render(<Wizard />);
     expect(await heading()).toHaveTextContent('Weather');
     fireEvent.click(screen.getByRole('button', { name: 'Test' }));
@@ -201,7 +202,7 @@ describe('Wizard', () => {
   });
 
   it('Test on the N.I.N.A. page waits for the saved address, then shows the mount', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 7 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 8 } } });
     const saves = recordSaves();
     let generation = 1;
     server.use(http.get('/api/roof/inputs', () => HttpResponse.json({ ...mockInputs, nina: { ...mockInputs.nina, generation } })));
@@ -230,7 +231,7 @@ describe('Wizard', () => {
   });
 
   it('the review lists every check and Finish sets setup done', async () => {
-    mockDevice({ config: { setup: { state: 'offered', step: 10 } } });
+    mockDevice({ config: { setup: { state: 'offered', step: 11 } } });
     const saves = recordSaves();
     render(<Wizard />);
     expect(await heading()).toHaveTextContent('Review');
@@ -251,7 +252,7 @@ describe('Wizard', () => {
     render(<Wizard />);
     await heading();
     fireEvent.click(screen.getByRole('button', { name: 'Skip page' }));
-    await waitFor(() => expect(document.activeElement).toHaveTextContent('Step 2 of 11: Site and time'));
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Step 2 of 12: Site and time'));
   });
 
   it('Hall sensor not fitted explains and links the bench test', async () => {
@@ -269,7 +270,7 @@ describe('Wizard', () => {
   it('first-run values set the top duty to 40% while the motion is the factory default', async () => {
     mockDevice({
       config: {
-        setup: { state: 'new', step: 5 },
+        setup: { state: 'new', step: 6 },
         roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
       },
     });
@@ -284,10 +285,27 @@ describe('Wizard', () => {
 
   // Spec 016: the wizard offers the calibration run but never moves the roof itself.
   it('the calibration run page links the attended page and has no motion control', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 5 } } });
     render(<Wizard />);
-    expect(await heading()).toHaveTextContent('Step 5 of 11: Calibration run');
+    expect(await heading()).toHaveTextContent('Step 6 of 12: Calibration run');
     expect(screen.getByRole('button', { name: 'Open the calibration page' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^(Start calibration|Open|Close|Stop calibration)$/ })).toBeNull();
+  });
+
+  // Spec 019: the wizard offers teaching the ends but never jogs the roof itself.
+  it('the teach page links the Teach card and has no motion control', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
+    render(<Wizard />);
+    expect(await heading()).toHaveTextContent('Step 5 of 12: Teach the ends');
+    expect(screen.getByRole('button', { name: 'Open the Teach card' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Hold to open|Hold to close|This is closed|Stop)$/ })).toBeNull();
+  });
+
+  // Spec 019: the park switches are an optional second check.
+  it('the park inputs say the switches are optional', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    render(<Wizard />);
+    expect(await heading()).toHaveTextContent('Hardware');
+    expect(screen.getByText(/Park switches are optional/)).toBeInTheDocument();
   });
 });

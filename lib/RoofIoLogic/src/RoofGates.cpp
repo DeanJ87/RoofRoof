@@ -77,7 +77,8 @@ namespace SQM
 
         bool openMustStop(const Roof::Status &status, const GateInputs &in)
         {
-            return status.state == Roof::State::Opening && openRefusal(in) != GateRefusal::None;
+            // Spec 019: a jog in either direction (the motor direction may be wrong).
+            return (status.state == Roof::State::Opening || status.jogging) && openRefusal(in) != GateRefusal::None;
         }
 
         GateRefusal openRefusal(const GateInputs &in)

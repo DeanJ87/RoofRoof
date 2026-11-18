@@ -29,6 +29,7 @@
 #include "RoofStatus.h"
 #include "SafetyInput.h"
 #include "SwitchInput.h"
+#include "Teach.h"
 #include "DiagDocuments.h"
 #include "MoveLog.h"
 #if ROOFROOF_BENCH
@@ -82,6 +83,17 @@ namespace SQM
         Calib::Report calibrationReport(uint32_t &nowMs) const;
         // Any task: a run is under way (pauses included).
         bool calibrating() const { return calibratingNow.load(); }
+
+        // Spec 019 (src/RoofTeach.cpp): a person's jog (started, or renewed by
+        // `request.id`; `id` names the jog running after it), the marks, the
+        // check of a proposal the person confirms, and a copy of the teach's
+        // report. The caller saves a confirmed proposal through the settings
+        // save, then clears the marks with teachClear().
+        Outcome jog(const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id, uint32_t &limitMs);
+        Outcome teachMark(Calib::Where where);
+        Outcome teachConfirmable(const Calib::TeachValues &values) const;
+        void teachClear();
+        Calib::TeachReport teachReport() const;
 
         // Any task: latch an External fault with this cause (the output goes off).
         void raiseFault(RoofIo::FaultCause cause, float measured, float limit);
@@ -258,6 +270,7 @@ namespace SQM
         uint32_t maxBeatAgeMs = 0;                      // the oldest watchdog heartbeat a step has seen
         std::string notice;                             // logged by the control task outside the lock
         Calib::Run calibration;                         // spec 016: the attended calibration run
+        Calib::Teach teach;                             // spec 019: jog and teach the ends
         Diag::MoveLog *diagLog = nullptr;               // spec 017: owned by the main loop's Diagnostics
         Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
 

@@ -400,6 +400,62 @@ The status document's `roof.calibrating` is `true` for the whole run, pauses inc
 
 ---
 
+### `POST /api/roof/jog`
+
+Hold-to-run: a person at the roof moves it at the slow duty while they hold a button ([Teach the ends](../user-guide/calibration-run.md#teach-the-ends), spec 019). Login and the `X-RoofRoof: 1` header. Start a jog:
+
+```json
+{ "direction": "open", "attended": true }
+```
+
+`200 {"success": true, "state": "opening", "id": 7, "holdMs": 500, "keepAliveMs": 150, "limitMs": 30000}`. While the button is held, send the same body with `"id": 7` every `keepAliveMs`; let go with `{"id": 7, "release": true}` (nothing else needed), which stops that jog only. The device stops the jog by itself `holdMs` after the last keep-alive reached it, by its own control steps (a closed tab or a lost link stops it), at the first magnet after leaving the one it started on, and after 30 s with the `timeout` fault (the page releases the button a second before). Every motion fault and the drive budget apply.
+
+Both directions need the weather safe, daylight not wanting the roof closed and the mount confirmed parked, because the motor direction setting may still be wrong on a roof being taught; the park interlock watches every jog, and a jog stops when the weather or daylight turns. `409` with `reason` and `error` when refused: `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `notStarted`, or the motion logic's refusals. A renewal or release of a jog that has ended is refused with `jogEnded` and never starts a new one. [`POST /api/roof/stop`](#post-apiroofstop) stops a jog too. While a jog runs, open and close from anyone are refused with `jogging`; the automatic close stops the jog and then makes its usual checks.
+
+### `POST /api/roof/teach/mark`
+
+`{"at": "closed"}` (or `open`, `partWay`): records the Hall reading over the last second as that place. Login and `X-RoofRoof: 1`. `409` with `notAtRest` (moving, jogging, or not still for a second yet), `hallNotSettled` (unsettled or at a rail) or `calibrating`. A new mark replaces the old one for the same place.
+
+### `POST /api/roof/teach/confirm`
+
+Saves the proposal of `GET /api/roof/teach` through the settings save. Send the three values shown:
+
+```json
+{ "hallHighEnd": "open", "hallHighCounts": 2725, "hallLowCounts": 1381 }
+```
+
+`200 {"success": true}`; `409` with `noProposal` or `proposalChanged`, or the settings save's own refusal while the roof moves; `400` if the result isn't valid. Only those three settings change; the marks are then cleared, and once the settings are applied the roof's position follows the magnet it sits on.
+
+### `POST /api/roof/teach/discard`
+
+Drops the marks and the proposal; changes no setting. Login and `X-RoofRoof: 1`.
+
+### `GET /api/roof/teach`
+
+The jog under way, the reading window, the marks and the proposal. Open, like `/api/status`; kept in memory only.
+
+```json
+{
+  "jog": { "active": false, "id": 7, "direction": null, "elapsedMs": 0, "limitMs": 30000, "holdMs": 500, "keepAliveMs": 150 },
+  "rest": { "ready": true, "counts": 3399.5 },
+  "marks": {
+    "closed": { "count": 50, "mean": 712.4, "min": 709, "max": 716, "noise": 1.6 },
+    "open": { "count": 50, "mean": 3399.6, "min": 3397, "max": 3402, "noise": 1.4 },
+    "partWay": { "count": 50, "mean": 2050.1, "min": 2047, "max": 2053, "noise": 1.2 }
+  },
+  "proposal": { "ok": true, "hallHighEnd": "open", "hallHighCounts": 2725, "hallLowCounts": 1381 }
+}
+```
+
+| Field | |
+|---|---|
+| `jog` | `active`, the `id` of the last jog started, its `direction` (`open`, `close`, or `null`), the time it has driven and its `limitMs`, and the keep-alive deadline (`holdMs`) and interval (`keepAliveMs`) |
+| `rest` | `ready` once the roof has been still for a second, with the mean reading over it (`counts`) |
+| `marks` | Each place's reading at rest (`null` until marked): readings taken, mean, lowest, highest and noise (standard deviation) |
+| `proposal` | `null` until all three are marked; then the high end and both thresholds, or `ok: false` with `reason` (`samePole`, `weakEnd`, `noRoom`) and its text |
+
+---
+
 ## Diagnostics
 
 The [advanced diagnostics](../user-guide/diagnostics.md) routes. They are open (readings only, no password), like `/api/status`, except clearing the log. With `diag.enabled` off, each read answers `200 {"enabled": false}` (a move by id answers `404`) and records nothing. A value the device can't read is `null`.

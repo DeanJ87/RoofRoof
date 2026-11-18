@@ -48,6 +48,7 @@ namespace SQM
 
     void WebServer::setupRoofRoutes()
     {
+        setupTeachRoutes(); // spec 019: /api/roof/jog and /api/roof/teach*
         // Spec 016: before every shorter /api/roof route they could prefix-match.
         AsyncCallbackJsonWebHandler *calibrate = new AsyncCallbackJsonWebHandler(
             "/api/roof/calibration/start",

@@ -470,6 +470,28 @@ void test_moves_refused_while_calibrating(void)
     TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Open, Origin::Person, gates, b.roof, c).accepted);
 }
 
+// Spec 019: open and close refused with `jogging` for everyone but the
+// automatic close (which RoofControl lets stop the jog first); stops pass.
+void test_moves_refused_while_jogging(void)
+{
+    Bench b;
+    const RoofIo::GateInputs gates = safeAndParked();
+    TEST_ASSERT_TRUE(b.roof.jog(End::Open, Origin::Person).accepted);
+    b.steps(1);
+    for (Origin origin : {Origin::Person, Origin::Client, Origin::Mqtt})
+        for (Command command : {Command::Open, Command::Close})
+        {
+            const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, b.roof, ctx());
+            TEST_ASSERT_FALSE(check.accepted);
+            TEST_ASSERT_EQUAL_STRING("jogging", check.reason.c_str());
+        }
+    const RoofIo::CommandCheck automatic = RoofIo::checkCommand(Command::Close, Origin::Automatic, gates, b.roof, ctx());
+    TEST_ASSERT_FALSE(automatic.accepted); // the controller never lets a move take over a jog
+    TEST_ASSERT_EQUAL_STRING("moving", automatic.reason.c_str());
+    for (Origin origin : {Origin::Person, Origin::Client, Origin::Mqtt, Origin::Automatic})
+        TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, origin, gates, b.roof, ctx()).accepted);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -511,4 +533,5 @@ static void runRemoteTests()
     RUN_TEST(test_client_cannot_stop_a_close_in_bad_weather);
     RUN_TEST(test_client_cannot_reopen_a_stopped_close);
     RUN_TEST(test_moves_refused_while_calibrating);
+    RUN_TEST(test_moves_refused_while_jogging);
 }

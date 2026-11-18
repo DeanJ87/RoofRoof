@@ -1,0 +1,21 @@
+{
+  "jog": {
+    "active": false,
+    "id": 0,
+    "direction": null,
+    "elapsedMs": 0,
+    "limitMs": 30000,
+    "holdMs": 500,
+    "keepAliveMs": 150
+  },
+  "rest": {
+    "ready": true,
+    "counts": 565
+  },
+  "marks": {
+    "closed": null,
+    "open": null,
+    "partWay": null
+  },
+  "proposal": null
+}

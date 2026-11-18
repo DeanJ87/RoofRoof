@@ -161,9 +161,7 @@ namespace SQM
 
             uint16_t clampInto(uint16_t old, Window w)
             {
-                const double lo = std::ceil(w.lo);
-                const double hi = std::floor(w.hi);
-                return static_cast<uint16_t>(std::min(hi, std::max(lo, static_cast<double>(old))));
+                return clampCounts(static_cast<double>(old), w.lo, w.hi);
             }
 
             double restMargin(const Stats &rest)
@@ -221,35 +219,14 @@ namespace SQM
 
             void proposeHall(const Measurements &m, const Roof::Settings &old, Proposal &p)
             {
-                if (m.between.empty() || m.closedRest.empty() || m.openRest.empty())
-                {
-                    p.hallProblem = Problem{"noRoom", "The Hall readings at both ends and in between weren't all taken"};
-                    return;
-                }
-                const double between = m.between.mean();
-                const bool closedHigh = m.closedRest.mean() > between;
-                if (closedHigh == (m.openRest.mean() > between))
-                {
-                    p.hallProblem = samePole(m, closedHigh);
-                    return;
-                }
-                const Roof::End highEnd = closedHigh ? Roof::End::Closed : Roof::End::Open;
-                p.hallProblem = weakEnd(m);
+                HallFit fit;
+                p.hallProblem = fitHall(m.closedRest, m.openRest, m.between, fit);
                 if (!p.hallProblem.reason.empty())
                     return;
-                const Stats &highRest = closedHigh ? m.closedRest : m.openRest;
-                const Stats &lowRest = closedHigh ? m.openRest : m.closedRest;
-                const double clearance = std::max(MIN_CLEARANCE_COUNTS, CLEARANCE_SIGMAS * m.between.sigma());
-                const Window high = clipped(Window{m.between.max + clearance, highRest.min - restMargin(highRest)});
-                const Window low = clipped(Window{lowRest.max + restMargin(lowRest), m.between.min - clearance});
-                if (std::ceil(high.lo) > std::floor(high.hi))
-                    return void(p.hallProblem = noRoom("high", high));
-                if (std::ceil(low.lo) > std::floor(low.hi))
-                    return void(p.hallProblem = noRoom("low", low));
                 p.hall = true;
-                p.hallHighEnd = highEnd;
-                p.hallHighCounts = clampInto(old.hallHighCounts, high);
-                p.hallLowCounts = clampInto(old.hallLowCounts, low);
+                p.hallHighEnd = fit.highEnd;
+                p.hallHighCounts = clampInto(old.hallHighCounts, Window{fit.highLo, fit.highHi});
+                p.hallLowCounts = clampInto(old.hallLowCounts, Window{fit.lowLo, fit.lowHi});
             }
 
             void warnCurrent(const Measurements &m, Proposal &p)
@@ -269,6 +246,45 @@ namespace SQM
                             m.maxCurrentAmps)});
             }
         } // namespace
+
+        Problem fitHall(const Stats &closedRest, const Stats &openRest, const Stats &between, HallFit &out)
+        {
+            if (between.empty() || closedRest.empty() || openRest.empty())
+                return Problem{"noRoom", "The Hall readings at both ends and in between weren't all taken"};
+            Measurements m;
+            m.closedRest = closedRest;
+            m.openRest = openRest;
+            m.between = between;
+            const double mid = between.mean();
+            const bool closedHigh = closedRest.mean() > mid;
+            if (closedHigh == (openRest.mean() > mid))
+                return samePole(m, closedHigh);
+            Problem weak = weakEnd(m);
+            if (!weak.reason.empty())
+                return weak;
+            const Stats &highRest = closedHigh ? closedRest : openRest;
+            const Stats &lowRest = closedHigh ? openRest : closedRest;
+            const double clearance = std::max(MIN_CLEARANCE_COUNTS, CLEARANCE_SIGMAS * between.sigma());
+            const Window high = clipped(Window{between.max + clearance, highRest.min - restMargin(highRest)});
+            const Window low = clipped(Window{lowRest.max + restMargin(lowRest), between.min - clearance});
+            if (std::ceil(high.lo) > std::floor(high.hi))
+                return noRoom("high", high);
+            if (std::ceil(low.lo) > std::floor(low.hi))
+                return noRoom("low", low);
+            out.highEnd = closedHigh ? Roof::End::Closed : Roof::End::Open;
+            out.highLo = high.lo;
+            out.highHi = high.hi;
+            out.lowLo = low.lo;
+            out.lowHi = low.hi;
+            return Problem{};
+        }
+
+        uint16_t clampCounts(double counts, double lo, double hi)
+        {
+            const double l = std::ceil(lo);
+            const double h = std::floor(hi);
+            return static_cast<uint16_t>(std::min(h, std::max(l, std::round(counts))));
+        }
 
         const char *legName(LegKind kind)
         {

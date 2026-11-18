@@ -26,6 +26,7 @@ const EXAMPLES: Record<string, string> = {
   'alert-test': 'action-result',
   'roof-inputs': 'roof-inputs',
   calibration: 'calibration',
+  'roof-teach': 'roof-teach',
 };
 
 // The demo marks simulated actions `demo: true`; a device never sends it.
@@ -41,6 +42,7 @@ const fromDemo = (): Record<string, unknown> => ({
   'alert-test': asDevice(JSON.parse(demoDevice.testAlert({ channel: 'all' }).body)),
   'roof-inputs': JSON.parse(demoDevice.inputsDocument()),
   calibration: JSON.parse(demoDevice.calibration('status').body),
+  'roof-teach': JSON.parse(demoDevice.teach('status').body),
 });
 
 describe('OpenAPI examples come from the demo and match the contract', () => {

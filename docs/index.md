@@ -22,7 +22,7 @@ There is no public docs site: these docs and the [live demo](live-demo.md) are b
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: e7dd3a50e3aaed71
+fingerprint: c097224256ea89e5
 -->
 <figure class="diagram" markdown>
 
@@ -58,7 +58,7 @@ flowchart LR
 
     - **The ESP32** keeps its settings in NVS and the web UI's files in LittleFS.
     - **The motor driver** (IBT-2): the firmware sets GPIO27 (EN), GPIO25 (RPWM) and GPIO26 (LPWM) low as the first thing at boot. EN also has a hardware 10 kΩ pull-down, so the driver stays off before the firmware runs. The roof's control task drives it on a person's command (web UI or REST), on an imaging app's command over Alpaca, on an MQTT command when those are switched on, or to close the roof onto a parked mount when the weather turns unsafe or, with the daylight close set, after sunrise ([Close on unsafe weather](user-guide/close-on-unsafe.md)), every 20 ms, with a watchdog that drops EN if the task stalls.
-    - **Roof sensors:** the Hall sensor, the 12 V supply and (when fitted) the motor current on the ADC, the park switches and the rain contact on GPIO inputs ([Wiring](hardware/wiring.md)).
+    - **Roof sensors:** the Hall sensor, the 12 V supply and (when fitted) the motor current on the ADC, the park switches (when fitted) and the rain contact on GPIO inputs ([Wiring](hardware/wiring.md)).
     - **Outputs:**
         - Browsers get the dashboard, the REST API and live WebSocket status.
         - An MQTT broker gets the roof's state, availability and alerts, with Home Assistant discovery of a roof cover and its sensors; it can also switch alerts on and off and, when switched on, open, close and stop the roof within the same safety rules.

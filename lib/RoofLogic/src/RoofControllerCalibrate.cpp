@@ -1,5 +1,7 @@
 #include "RoofController.h"
 
+#include <algorithm>
+
 #include "MotionProfile.h"
 
 // Spec 016: a calibration leg (research R1). It is a move like any other:
@@ -75,6 +77,72 @@ namespace SQM
             return CommandResult{};
         }
 
+        // Spec 019: a jog is a slow leg toward `target` that stops at any magnet
+        // after leaving its start one, bounded by jogLimitMs() (research R1).
+        CalibrationLeg Controller::jogLeg(End target) const
+        {
+            CalibrationLeg leg;
+            leg.target = target;
+            leg.dutyPercent = config.slowDutyPercent;
+            leg.limitMs = jogLimitMs();
+            return leg;
+        }
+
+        uint32_t Controller::jogLimitMs() const
+        {
+            return std::min(JOG_MAX_MS, unknownMoveTimeoutMs(config));
+        }
+
+        CommandResult Controller::checkJog(End target, Origin origin) const
+        {
+            return checkCalibrate(jogLeg(target), origin);
+        }
+
+        // A jog never keeps an estimate: stopped part-way, the position is
+        // unknown; at a magnet it is that magnet's end.
+        CommandResult Controller::jog(End target, Origin origin)
+        {
+            const CommandResult answer = calibrate(jogLeg(target), origin);
+            if (!answer.accepted)
+                return answer;
+            move.jog = true;
+            move.holdPending = true; // the first step stamps the deadline
+            move.fromUnknown = true;
+            current.fromUnknown = true;
+            current.positionKnown = false; // until it stops at a magnet
+            current.jogging = true;
+            ++jogCount;
+            return CommandResult{};
+        }
+
+        bool Controller::holdJog(uint32_t id)
+        {
+            if (!move.active || !move.jog || id != jogCount)
+                return false;
+            move.holdPending = true;
+            return true;
+        }
+
+        bool Controller::releaseJog(uint32_t id)
+        {
+            if (!move.active || !move.jog || id != jogCount)
+                return false;
+            stopMove(true);
+            return true;
+        }
+
+        // The deadline is taken from the step's clock, never a caller's: a
+        // delayed renewal can only end a jog sooner (constitution I).
+        bool Controller::jogExpired(uint32_t nowMs)
+        {
+            if (move.holdPending)
+            {
+                move.holdUntilMs = nowMs + JOG_HOLD_MS;
+                move.holdPending = false;
+            }
+            return static_cast<int32_t>(nowMs - move.holdUntilMs) >= 0;
+        }
+
         // At the drive's start (after the dead time). The estimate is kept only
         // when the saved polarity agrees with the direction (the leg leaves the
         // other end's magnet): otherwise a stop part-way leaves the position
@@ -117,10 +185,11 @@ namespace SQM
         }
 
         // A calibration leg's budget is its own limit: the settings' budget comes
-        // from the travel and speed the run is measuring (research R3).
+        // from the travel and speed the run is measuring (research R3). A jog's
+        // is every move's, counted across jogs (spec 019).
         uint32_t Controller::budgetLimitMs() const
         {
-            return move.calibration ? move.leg.limitMs : driveBudgetMs(config);
+            return move.calibration && !move.jog ? move.leg.limitMs : driveBudgetMs(config);
         }
 
         void Controller::endLeg(bool arrived)
@@ -135,6 +204,7 @@ namespace SQM
             legReport.drivenMs = move.driving ? last.nowMs - move.driveStartMs : 0;
             legReport.dutyMs = move.dutyMs;
             current.calibrating = false;
+            current.jogging = false;
         }
     } // namespace Roof
 } // namespace SQM

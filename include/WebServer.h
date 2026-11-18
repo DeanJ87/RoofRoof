@@ -331,6 +331,13 @@ namespace SQM
         void handleCalibrationAbort(AsyncWebServerRequest *request);
         void handleCalibrationConfirm(AsyncWebServerRequest *request, JsonVariant &json);
         void handleCalibrationStatus(AsyncWebServerRequest *request);
+        // Spec 019: jog and teach the ends (src/WebServerTeach.cpp).
+        void setupTeachRoutes();
+        void handleJog(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleTeachMark(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleTeachConfirm(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleTeachDiscard(AsyncWebServerRequest *request);
+        void handleTeachStatus(AsyncWebServerRequest *request);
         // Answers 409 with the reason and returns true while `action` must wait
         // (spec 010, RoofIo::platformHold): the roof moves, a close waits, or
         // for restarts, firmware and Wi-Fi changes the close sequence is busy.

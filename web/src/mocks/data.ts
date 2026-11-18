@@ -1,4 +1,4 @@
-import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, CalibrationStatus, RoofInputs, WiFiNetwork } from '../types';
+import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, CalibrationStatus, RoofInputs, TeachStatus, WiFiNetwork } from '../types';
 
 export { mockConfig } from './config';
 
@@ -233,4 +233,16 @@ export const mockCalibration: CalibrationStatus = {
     hallProblem: null,
     warnings: [],
   },
+};
+
+// GET /api/roof/teach (spec 019): the closed end and part-way marked, at rest.
+export const mockTeach: TeachStatus = {
+  jog: { active: false, id: 2, direction: null, elapsedMs: 0, limitMs: 30000, holdMs: 500, keepAliveMs: 150 },
+  rest: { ready: true, counts: 2050 },
+  marks: {
+    closed: { count: 50, mean: 712.4, min: 709, max: 716, noise: 1.6 },
+    open: null,
+    partWay: { count: 50, mean: 2050.1, min: 2047, max: 2053, noise: 1.2 },
+  },
+  proposal: null,
 };

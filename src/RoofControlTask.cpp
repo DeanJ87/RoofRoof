@@ -191,7 +191,8 @@ namespace SQM
         controller.tick(readings);
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
-        stepCalibration(readings); // spec 016: after the tick, under the same lock
+        stepCalibration(readings);                            // spec 016: after the tick, under the same lock
+        teach.step(controller.status(), readings.hallCounts); // spec 019: the reading window
         refreshSnapshot();
         // Spec 017: after the output is applied, so recording can't delay it.
         if (diagLog != nullptr)

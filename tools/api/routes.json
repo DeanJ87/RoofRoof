@@ -15,6 +15,11 @@
     { "path": "/api/roof/calibration/abort", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration/confirm", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration", "method": "GET", "auth": "open", "why": "Read-only: the calibration run's readings and proposal; no address or secret; changes nothing" },
+    { "path": "/api/roof/jog", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/teach/mark", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/teach/confirm", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/teach/discard", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/teach", "method": "GET", "auth": "open", "why": "Read-only: the jog under way, the Hall readings marked at the ends and the proposal; no address or secret; changes nothing" },
     { "path": "/api/roof/inputs", "method": "GET", "auth": "open", "why": "Read-only: the weather sources, the park and N.I.N.A. as the device last polled them; no address or secret; sends nothing" },
     {
       "path": "/api/diag",

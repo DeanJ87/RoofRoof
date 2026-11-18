@@ -155,6 +155,7 @@ namespace DemoRoof
         controller.tick(in);
         syncFault();
         stepCalibration(in);
+        teach.step(controller.status(), in.hallCounts); // spec 019: the reading window
         if (diagLog != nullptr)
             recordDiag(in); // spec 017: after the output, as RoofControl::stepLocked
         stepMount();
@@ -487,7 +488,8 @@ namespace DemoRoof
                 CloseSeq::PERSON_STOP_REASON,
                 "A person stopped the roof: the automatic close is withdrawn",
                 controller.status().state};
-        calibration.yieldToClose(controller); // spec 016: the automatic close always wins
+        calibration.yieldToClose(controller);   // spec 016: the automatic close always wins
+        Calib::Teach::yieldToClose(controller); // spec 019: a jog is stopped first
         return runChecked(Roof::Command::Close, Roof::Origin::Automatic);
     }
 

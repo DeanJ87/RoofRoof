@@ -38,6 +38,8 @@ The mount counts as parked only when **all** of these hold:
 1. N.I.N.A.'s latest reading, at most 10 s old, says the mount is connected, at park and not slewing;
 2. every fitted park switch (`park.switches`: none, one on GPIO32, or two on GPIO32 and GPIO33) is closed.
 
+The park switches are optional. With none fitted (the default) N.I.N.A.'s park alone confirms it; fitted switches are a second check on the mount itself, and both must agree.
+
 Anything else is "not parked", with the reasons. When N.I.N.A. and the switches point opposite ways (N.I.N.A. says parked and a switch is open, or N.I.N.A. says not parked and every switch is closed), the result also says they **disagree**. The mount then counts as not parked, so the [close on unsafe weather](close-on-unsafe.md) waits, and its alert names the disagreement.
 
 ### N.I.N.A.

@@ -254,6 +254,13 @@ namespace SQM
                 // Spec 016: the automatic close always wins; a closing leg carries on as its close.
                 if (calibration.active())
                     endCalibrationFor(true, "");
+                // Spec 019: a person's jog is stopped first; the close then has its normal checks.
+                if (Calib::Teach::yieldToClose(controller))
+                {
+                    applyOutput();
+                    refreshSnapshot();
+                    notice = "Jog stopped: the automatic close takes over";
+                }
                 outcome = commandLocked(Roof::Command::Close, Roof::Origin::Automatic, now);
             }
         }

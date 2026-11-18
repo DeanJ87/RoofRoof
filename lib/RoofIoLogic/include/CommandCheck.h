@@ -41,6 +41,9 @@ namespace SQM
         };
 
         constexpr const char *CALIBRATING_REASON = "calibrating";
+        // Spec 019: open and close from anyone but the automatic close while a
+        // person jogs the roof (the automatic close stops the jog first).
+        constexpr const char *JOGGING_REASON = "jogging";
 
         // An origin with no login that isn't the controller: an Alpaca client
         // (spec 006) or MQTT (spec 008). Each gets every rule below that

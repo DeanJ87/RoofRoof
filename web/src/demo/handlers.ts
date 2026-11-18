@@ -198,6 +198,12 @@ export const demoHandlers = [
   http.post('/api/roof/calibration/start', async ({ request }) => reply(demoDevice.calibration('start', await request.text()))),
   http.post('/api/roof/calibration/abort', () => reply(demoDevice.calibration('abort'))),
   http.post('/api/roof/calibration/confirm', async ({ request }) => reply(demoDevice.calibration('confirm', await request.text()))),
+  // Jog and teach the ends (spec 019): the device's own jog, its keep-alive deadline and the teach, on the simulated roof
+  http.get('/api/roof/teach', () => reply(demoDevice.teach('status'))),
+  http.post('/api/roof/jog', async ({ request }) => reply(demoDevice.teach('jog', await request.text()))),
+  http.post('/api/roof/teach/mark', async ({ request }) => reply(demoDevice.teach('mark', await request.text()))),
+  http.post('/api/roof/teach/confirm', async ({ request }) => reply(demoDevice.teach('confirm', await request.text()))),
+  http.post('/api/roof/teach/discard', () => reply(demoDevice.teach('discard'))),
 
   // Advanced diagnostics (spec 017): the firmware's documents, from the simulated roof
   http.get('/api/diag', () => json(demoDevice.diagDocument())),

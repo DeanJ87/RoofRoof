@@ -28,6 +28,8 @@ export interface Core extends BackupCore {
   roofCommand(name: string): string;
   // Spec 016: start (with the body), abort, status.
   calibration(action: string, body: string): string;
+  // Spec 019: jog, mark, confirm, discard (with their bodies), status.
+  teach(action: string, body: string): string;
   roofInject(json: string): string;
   roofPanel(): string;
   platformHold(action: string): string;

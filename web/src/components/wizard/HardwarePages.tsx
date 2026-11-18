@@ -63,6 +63,7 @@ const InputsCard: FunctionalComponent<WizardPageProps> = (props) => {
   return (
     <SettingsCard id="inputs" title={t('wizard.hardware.inputsTitle')} hint={t('wizard.hardware.inputsHint')}>
       {park && <ParkSwitchesField {...props} park={park} />}
+      <Note>{t('wizard.hardware.parkOptional')}</Note>
       {fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof?.parkSwitches.switch1)} />}
       {fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof?.parkSwitches.switch2)} />}
       {safety && <RainContactToggle {...props} safety={safety} />}
@@ -110,6 +111,19 @@ export const HallPage: FunctionalComponent<WizardPageProps> = (props) => (
     </SettingsCard>
     {!props.hallNotFitted && props.config.roof && <HallCard {...props} roof={props.config.roof} />}
   </>
+);
+
+// Spec 019: teaching the ends is offered here, but the jog runs on the
+// calibration page's Teach card (with Stop): this page moves nothing.
+export const TeachPage: FunctionalComponent<WizardPageProps> = () => (
+  <SettingsCard id="teach" title={t('wizard.teach.title')} hint={t('wizard.teach.hint')}>
+    <Note>{t('wizard.teach.what')}</Note>
+    <Note tone="warn">{t('wizard.teach.needs')}</Note>
+    <div class="btn-row">
+      <Button onClick={() => route('/calibrate')}>{t('wizard.teach.open')}</Button>
+    </div>
+    <Note>{t('wizard.teach.later')}</Note>
+  </SettingsCard>
 );
 
 // Spec 016: the calibration run is offered here, but runs on its own attended

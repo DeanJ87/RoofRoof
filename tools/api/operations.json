@@ -1131,6 +1131,343 @@
         "403": "error",
         "409": "error"
       }
+    },
+    "POST /api/roof/jog": {
+      "tag": "Roof",
+      "summary": "Jog the roof (hold to run)",
+      "description": "Spec 019: a person at the roof moves it at the slow duty while they hold a button. Without `id` it starts a jog toward `direction`; with the `id` it answered, it renews that jog. The device stops the jog by itself `holdMs` (500 ms) after the last renewal reached it, by its own control steps, at the first magnet after leaving the one it started on, and after 30 s (or a move from an unknown position's timeout, if shorter) with the `timeout` fault; every motion fault and the drive budget apply. Release with the `id` and `release: true`, which stops that jog only (a person's `POST /api/roof/stop` stops it too). Both directions need the weather safe, daylight not wanting the roof closed and the mount confirmed parked (the motor direction setting may still be wrong), and the park interlock watches every jog. Start refusals (409): `notAttended`, `calibrating`, `closeSequence`, `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `notStarted`, or the motion logic's (`supplyLow`, `supplyUnreadable`, `currentUnreadable`, `hallNotSettled`, `settingsInvalid`). A renewal or release of a jog that has ended is refused with `jogEnded` and never starts one. While a jog runs, open and close are refused with `jogging`. Needs the header `X-RoofRoof: 1`.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": [
+                "open",
+                "close"
+              ],
+              "description": "Toward the open or the closed end (through `roof.openDirection`). Needed to start or renew a jog."
+            },
+            "attended": {
+              "type": "boolean",
+              "description": "The person confirms they are at the roof and can see it; must be true to start a jog."
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Renew this jog instead of starting one."
+            },
+            "release": {
+              "type": "boolean",
+              "description": "With `id` alone: the button was let go; stop that jog."
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "example": {
+          "direction": "open",
+          "attended": true
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the request."
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The jog running, to renew it with (200 only)."
+              },
+              "holdMs": {
+                "type": "integer",
+                "description": "The device stops the jog when it hasn't been renewed for this long (200 only)."
+              },
+              "keepAliveMs": {
+                "type": "integer",
+                "description": "How often to renew it while the button is held (200 only)."
+              },
+              "limitMs": {
+                "type": "integer",
+                "description": "The jog's hard timeout (200 only); the page releases a second before it."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "400": "error",
+        "403": "error",
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the request."
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The jog running, to renew it with (200 only)."
+              },
+              "holdMs": {
+                "type": "integer",
+                "description": "The device stops the jog when it hasn't been renewed for this long (200 only)."
+              },
+              "keepAliveMs": {
+                "type": "integer",
+                "description": "How often to renew it while the button is held (200 only)."
+              },
+              "limitMs": {
+                "type": "integer",
+                "description": "The jog's hard timeout (200 only); the page releases a second before it."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "POST /api/roof/teach/mark": {
+      "tag": "Roof",
+      "summary": "Mark where the roof is",
+      "description": "Spec 019: records the Hall reading over the last second at rest (count, mean, lowest, highest, noise) as the closed end, the open end or a place part-way. Refused (409) with `notAtRest` while the roof moves or a jog runs or before it has been still for a second, `hallNotSettled` while the reading is unsettled or at a rail, and `calibrating` during a calibration run. Needs the header `X-RoofRoof: 1`.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "string",
+              "enum": [
+                "closed",
+                "open",
+                "partWay"
+              ],
+              "description": "Where the person says the roof is."
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "at": "closed"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the request."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "400": "error",
+        "403": "error",
+        "409": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "closed",
+                  "open",
+                  "opening",
+                  "closing",
+                  "stopped",
+                  "error"
+                ],
+                "description": "The roof's state after the request."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Why it was refused (409 only); see the operation's description."
+              },
+              "error": {
+                "type": "string",
+                "description": "The refusal for people, with the measured value and the limit or the input that failed (409 only)."
+              }
+            },
+            "required": [
+              "success",
+              "state"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    "POST /api/roof/teach/confirm": {
+      "tag": "Roof",
+      "summary": "Save the taught Hall settings",
+      "description": "Spec 019: saves the proposal of `GET /api/roof/teach` (`roof.hallHighEnd`, `roof.hallHighCounts`, `roof.hallLowCounts`) over the current settings through the settings save, when the values sent are the proposal (409 `proposalChanged`, or `noProposal`). Refused like every settings save while the roof moves or a platform action holds it (409), and 400 if the result isn't valid. Then the marks are cleared, and once the settings are applied the roof's position follows the magnet it sits on. Needs the header `X-RoofRoof: 1`.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "hallHighEnd": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "hallHighCounts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4095
+            },
+            "hallLowCounts": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4095
+            }
+          },
+          "required": [
+            "hallHighEnd",
+            "hallHighCounts",
+            "hallLowCounts"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "hallHighEnd": "open",
+          "hallHighCounts": 2725,
+          "hallLowCounts": 1381
+        }
+      },
+      "responses": {
+        "200": "action-result",
+        "400": "error",
+        "403": "error",
+        "409": "error"
+      }
+    },
+    "POST /api/roof/teach/discard": {
+      "tag": "Roof",
+      "summary": "Discard the marks",
+      "description": "Spec 019: drops the marks and the proposal; changes no setting. Always accepted. Needs the header `X-RoofRoof: 1`.",
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/roofCommand"
+        }
+      ],
+      "responses": {
+        "200": "action-result",
+        "403": "error"
+      }
+    },
+    "GET /api/roof/teach": {
+      "tag": "Roof",
+      "summary": "Jog and teach",
+      "description": "Spec 019: the jog under way (its id, direction, time driven, limit, keep-alive deadline and interval), whether the roof has been still for the one-second reading window and its mean, the three marks, and the proposal (`null` until all three are marked; `ok` false with the reason when the ends can't be told apart or the part-way reading overlaps one). Read-only, kept in memory only.",
+      "responses": {
+        "200": "roof-teach"
+      },
+      "example": "roof-teach"
     }
   }
 }

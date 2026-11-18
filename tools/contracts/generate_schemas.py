@@ -29,6 +29,7 @@ DOCUMENTS = {
     "config": "config",
     "roof_inputs": "roof-inputs",
     "calibration": "calibration",
+    "roof_teach": "roof-teach",
     "alerts_recent": "alerts-recent",
     "alerts_armed": "alerts-armed",
     "management_v1_description": "alpaca-description",

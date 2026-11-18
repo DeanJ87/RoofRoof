@@ -210,6 +210,19 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** Jog and teach the ends (spec 019): `jog`, `mark` and `confirm` with their JSON bodies, `discard`, `status`. */
+  teach(action: 'jog' | 'mark' | 'confirm' | 'discard' | 'status', body = ''): Reply {
+    // The device's clock up to now first: its control steps keep the jog's
+    // 500 ms keep-alive deadline, finer than the demo's own tick.
+    if (action === 'jog') this.step();
+    const reply = JSON.parse(this.core.teach(action, body));
+    if (action !== 'status') {
+      this.persist();
+      this.notify();
+    }
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** GET /api/diag, /api/diag/moves and /api/diag/moves/{id} (spec 017); a move not held is "". */
   diagDocument = () => this.core.diagDocument();
   diagMoves = () => this.core.diagMoves();

@@ -77,8 +77,8 @@ namespace SQM
         bool interlockLost(const Roof::Status &status, const GateInputs &in);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
-        // An open is under way and the verdict is no longer safe, or daylight
-        // wants the roof closed: stop it.
+        // An open (or, spec 019, a jog either way) is under way and the verdict
+        // is no longer safe, or daylight wants the roof closed: stop it.
         bool openMustStop(const Roof::Status &status, const GateInputs &in);
         // Why an open would be refused now (None, WeatherNotSafe or Daylight):
         // the reason an open under way was stopped.
