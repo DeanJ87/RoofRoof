@@ -334,6 +334,26 @@ void test_abort_and_faults_end_a_jog(void)
     TEST_ASSERT_FALSE(f.roof.holdJog(f.roof.jogId()));
 }
 
+void test_a_release_stops_only_its_own_jog(void)
+{
+    Bench b(Settings(), 900.0f);
+    TEST_ASSERT_FALSE(b.roof.releaseJog(1)); // nothing running
+    TEST_ASSERT_TRUE(b.roof.jog(End::Open, Origin::Person).accepted);
+    holdFor(b, 20);
+    TEST_ASSERT_FALSE(b.roof.releaseJog(b.roof.jogId() + 1));
+    TEST_ASSERT_TRUE(b.roof.status().jogging);
+    TEST_ASSERT_TRUE(b.roof.releaseJog(b.roof.jogId()));
+    TEST_ASSERT_FALSE(b.roof.status().jogging);
+    TEST_ASSERT_TRUE(b.roof.output().command == Driver::Command::Off);
+    TEST_ASSERT_FALSE(b.roof.releaseJog(b.roof.jogId())); // already ended
+
+    Bench moving;
+    TEST_ASSERT_TRUE(moving.command(Command::Open).accepted);
+    moving.steps(30);
+    TEST_ASSERT_FALSE(moving.roof.releaseJog(0)); // a normal move is never released as a jog
+    TEST_ASSERT_TRUE(moving.state() == State::Opening);
+}
+
 void test_a_low_supply_stops_a_jog_as_a_fault(void)
 {
     Bench b(Settings(), 900.0f);
@@ -364,6 +384,7 @@ int main(int, char **)
     RUN_TEST(test_a_jog_into_its_own_magnets_end_is_bounded_by_the_leave_time);
     RUN_TEST(test_a_jog_stopped_part_way_leaves_the_position_unknown);
     RUN_TEST(test_abort_and_faults_end_a_jog);
+    RUN_TEST(test_a_release_stops_only_its_own_jog);
     RUN_TEST(test_a_low_supply_stops_a_jog_as_a_fault);
     return UNITY_END();
 }

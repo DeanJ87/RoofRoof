@@ -105,7 +105,7 @@ namespace SQM
         // Then the roof's own readiness (roofRefusal).
         Answer Run::startRefusal(const Roof::Controller &controller, const Request &request, const StartInputs &in) const
         {
-            const Answer common = attendedRefusal(controller, request.attended, active(), in);
+            Answer common = attendedRefusal(controller, request.attended, active(), in);
             if (!common.accepted)
                 return common;
             return roofRefusal(controller, request, in);

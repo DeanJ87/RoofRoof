@@ -88,10 +88,7 @@ namespace
             roof.command(Roof::Command::Stop, Roof::Origin::Person);
         }
 
-        Answer mark(Where where)
-        {
-            return teach.mark(where, roof.status(), false);
-        }
+        Answer mark(Where where) { return teach.mark(where, roof.status(), false); }
     };
 
     void assertRefused(const char *reason, const Answer &answer)
@@ -431,8 +428,11 @@ void test_the_request_bodies(void)
     TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
     TEST_ASSERT_TRUE(jog.target == End::Open);
     TEST_ASSERT_EQUAL_UINT32(7, jog.id);
-    for (const char *body : {R"({"direction":"closed","attended":true})", R"({"direction":"open"})",
-                             R"({"direction":"open","attended":true,"id":0})", R"({"direction":"open","attended":true,"id":"7"})"})
+    for (const char *body :
+         {R"({"direction":"closed","attended":true})",
+          R"({"direction":"open"})",
+          R"({"direction":"open","attended":true,"id":0})",
+          R"({"direction":"open","attended":true,"id":"7"})"})
     {
         deserializeJson(doc, body);
         TEST_ASSERT_FALSE_MESSAGE(parseJog(doc.as<JsonVariantConst>(), jog, error), body);
@@ -452,6 +452,47 @@ void test_the_request_bodies(void)
     TEST_ASSERT_FALSE(parseConfirm(doc.as<JsonVariantConst>(), values, error));
     deserializeJson(doc, R"({"hallHighEnd":"close","hallHighCounts":2725,"hallLowCounts":1375})");
     TEST_ASSERT_FALSE(parseConfirm(doc.as<JsonVariantConst>(), values, error));
+}
+
+// The release and the automatic close's take-over (src/RoofControl.cpp and the demo call these).
+void test_release_and_the_automatic_close_end_a_jog(void)
+{
+    Rig r(900.0f);
+    assertRefused("jogEnded", Teach::release(r.roof, 1));
+    TEST_ASSERT_FALSE(Teach::yieldToClose(r.roof));
+    TEST_ASSERT_TRUE(r.jog(End::Open).accepted);
+    r.steps(100);
+    assertRefused("jogEnded", Teach::release(r.roof, r.roof.jogId() + 1));
+    TEST_ASSERT_TRUE(Teach::release(r.roof, r.roof.jogId()).accepted);
+    TEST_ASSERT_FALSE(r.roof.status().jogging);
+
+    // The automatic close stops the jog, then makes its own checks: part-way the
+    // position is unknown, so its close is refused (constitution I).
+    TEST_ASSERT_TRUE(r.jog(End::Closed).accepted);
+    r.steps(100);
+    TEST_ASSERT_FALSE(r.roof.command(Roof::Command::Close, Roof::Origin::Automatic).accepted);
+    TEST_ASSERT_TRUE(r.roof.status().jogging); // a close never takes a jog over
+    TEST_ASSERT_TRUE(Teach::yieldToClose(r.roof));
+    TEST_ASSERT_FALSE(r.roof.status().jogging);
+    TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+    const Roof::CommandResult close = r.roof.command(Roof::Command::Close, Roof::Origin::Automatic);
+    TEST_ASSERT_FALSE(close.accepted);
+    TEST_ASSERT_EQUAL_STRING("positionUnknown", Roof::refusalName(close.reason));
+}
+
+void test_a_release_body(void)
+{
+    StaticJsonDocument<256> doc;
+    const char *error = nullptr;
+    JogRequest jog;
+    deserializeJson(doc, R"({"direction":"open","attended":true,"id":7,"release":true})");
+    TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
+    TEST_ASSERT_TRUE(jog.release);
+    TEST_ASSERT_EQUAL_UINT32(7, jog.id);
+    deserializeJson(doc, R"({"direction":"open","attended":true,"release":true})");
+    TEST_ASSERT_FALSE(parseJog(doc.as<JsonVariantConst>(), jog, error));
+    deserializeJson(doc, R"({"direction":"open","attended":true,"id":7,"release":1})");
+    TEST_ASSERT_FALSE(parseJog(doc.as<JsonVariantConst>(), jog, error));
 }
 
 int main(int, char **)
@@ -474,5 +515,7 @@ int main(int, char **)
     RUN_TEST(test_confirm_refuses_values_that_arent_the_proposal);
     RUN_TEST(test_the_document);
     RUN_TEST(test_the_request_bodies);
+    RUN_TEST(test_release_and_the_automatic_close_end_a_jog);
+    RUN_TEST(test_a_release_body);
     return UNITY_END();
 }

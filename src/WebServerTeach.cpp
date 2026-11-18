@@ -15,7 +15,7 @@ namespace SQM
 {
     namespace
     {
-        void sendAnswer(AsyncWebServerRequest *request, const RoofControl::Outcome &outcome, uint32_t jogId = 0)
+        void sendAnswer(AsyncWebServerRequest *request, const RoofControl::Outcome &outcome, uint32_t jogId = 0, uint32_t limitMs = 0)
         {
             StaticJsonDocument<512> doc;
             doc["success"] = outcome.accepted;
@@ -25,6 +25,7 @@ namespace SQM
                 doc["id"] = jogId;
                 doc["holdMs"] = Roof::JOG_HOLD_MS;
                 doc["keepAliveMs"] = Roof::JOG_KEEPALIVE_MS;
+                doc["limitMs"] = limitMs;
             }
             if (!outcome.accepted)
             {
@@ -73,9 +74,10 @@ namespace SQM
         if (roof == nullptr)
             return sendAnswer(request, NOT_RUNNING);
         uint32_t id = 0;
+        uint32_t limitMs = 0;
         const RoofControl::Outcome outcome =
-            roof->jog(wanted, [] { return PlatformGuard::sequence() == RoofIo::SequenceState::Idle; }, id);
-        sendAnswer(request, outcome, id);
+            roof->jog(wanted, [] { return PlatformGuard::sequence() == RoofIo::SequenceState::Idle; }, id, limitMs);
+        sendAnswer(request, outcome, id, limitMs);
     }
 
     void WebServer::handleTeachMark(AsyncWebServerRequest *request, JsonVariant &json)
@@ -124,7 +126,12 @@ namespace SQM
         if (!saveAsFlashWrite(request, next))
             return;
         roof->teachClear();
-        Logger::info(TAG, "Hall ends taught by a person: high end %s, %u/%u counts", Roof::endName(values.highEnd), values.highCounts, values.lowCounts);
+        Logger::info(
+            TAG,
+            "Hall ends taught by a person: high end %s, %u/%u counts",
+            Roof::endName(values.highEnd),
+            values.highCounts,
+            values.lowCounts);
         request->send(200, "application/json", "{\"success\":true}");
     }
 

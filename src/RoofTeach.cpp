@@ -13,7 +13,8 @@
 
 namespace SQM
 {
-    RoofControl::Outcome RoofControl::jog(const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id)
+    RoofControl::Outcome RoofControl::jog(
+        const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id, uint32_t &limitMs)
     {
         if (lock == nullptr || !started.load())
             return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
@@ -21,7 +22,9 @@ namespace SQM
         {
             RoofLocked held(lock);
             Calib::Answer answer;
-            if (request.id != 0)
+            if (request.id != 0 && request.release)
+                answer = Calib::Teach::release(controller, request.id);
+            else if (request.id != 0)
                 answer = Calib::Teach::hold(controller, request.id);
             else
             {
@@ -44,6 +47,7 @@ namespace SQM
             applyOutput();
             refreshSnapshot();
             id = controller.jogId();
+            limitMs = controller.jogLimitMs();
             outcome = Outcome{answer.accepted, answer.reason, answer.text, controller.status().state};
         }
         if (request.id == 0)

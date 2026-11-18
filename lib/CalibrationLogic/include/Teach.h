@@ -64,6 +64,12 @@ namespace SQM
             Answer jog(Roof::Controller &controller, Roof::End target, bool attended, bool calibrating, const StartInputs &in);
             // A keep-alive for jog `id`: `jogEnded` when it isn't the one running.
             static Answer hold(Roof::Controller &controller, uint32_t id);
+            // The button let go: stops jog `id` only (never counted as a
+            // person's stop by the close sequence); `jogEnded` if it isn't running.
+            static Answer release(Roof::Controller &controller, uint32_t id);
+            // The automatic close takes over: a jog under way is stopped first
+            // (true), so the close then makes its own checks (constitution I).
+            static bool yieldToClose(Roof::Controller &controller);
             // After each tick: the window fills while the roof is at rest.
             void step(const Roof::Status &status, uint16_t counts);
             Answer mark(Where where, const Roof::Status &status, bool calibrating);
@@ -94,7 +100,8 @@ namespace SQM
         {
             Roof::End target = Roof::End::Closed;
             bool attended = false;
-            uint32_t id = 0; // 0: start a jog; else renew this one
+            uint32_t id = 0;      // 0: start a jog; else renew (or release) this one
+            bool release = false; // with `id`: the button was let go
         };
         bool parseJog(JsonVariantConst body, JogRequest &out, const char *&error);
         // POST /api/roof/teach/mark: {"at": "closed"|"open"|"partWay"}.

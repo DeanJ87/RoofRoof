@@ -118,12 +118,17 @@ namespace SQM
                 return fail(error, "attended must be true or false");
             out.attended = body["attended"].as<bool>();
             out.id = 0;
+            out.release = false;
             JsonVariantConst id = body["id"];
             if (id.isNull())
-                return true;
+                return body["release"].isNull() || fail(error, "release needs the jog's id");
             if (!id.is<long long>() || id.as<long long>() < 1 || id.as<long long>() > static_cast<long long>(UINT32_MAX))
                 return fail(error, "id must be a positive whole number");
             out.id = static_cast<uint32_t>(id.as<long long>());
+            JsonVariantConst release = body["release"];
+            if (!release.isNull() && !release.is<bool>())
+                return fail(error, "release must be true or false");
+            out.release = release.as<bool>();
             return true;
         }
 

@@ -89,7 +89,7 @@ namespace SQM
         // check of a proposal the person confirms, and a copy of the teach's
         // report. The caller saves a confirmed proposal through the settings
         // save, then clears the marks with teachClear().
-        Outcome jog(const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id);
+        Outcome jog(const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id, uint32_t &limitMs);
         Outcome teachMark(Calib::Where where);
         Outcome teachConfirmable(const Calib::TeachValues &values) const;
         void teachClear();

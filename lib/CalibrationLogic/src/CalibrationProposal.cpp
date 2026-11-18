@@ -259,7 +259,7 @@ namespace SQM
             const bool closedHigh = closedRest.mean() > mid;
             if (closedHigh == (openRest.mean() > mid))
                 return samePole(m, closedHigh);
-            const Problem weak = weakEnd(m);
+            Problem weak = weakEnd(m);
             if (!weak.reason.empty())
                 return weak;
             const Stats &highRest = closedHigh ? closedRest : openRest;

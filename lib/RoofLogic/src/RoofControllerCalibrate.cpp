@@ -123,6 +123,14 @@ namespace SQM
             return true;
         }
 
+        bool Controller::releaseJog(uint32_t id)
+        {
+            if (!move.active || !move.jog || id != jogCount)
+                return false;
+            stopMove(true);
+            return true;
+        }
+
         // The deadline is taken from the step's clock, never a caller's: a
         // delayed renewal can only end a jog sooner (constitution I).
         bool Controller::jogExpired(uint32_t nowMs)

@@ -65,6 +65,9 @@ namespace SQM
             // Renews the jog `id` (from jogId() after its start): false, and
             // nothing changes, when no jog or another one is active.
             bool holdJog(uint32_t id);
+            // The person lets go of jog `id`: stops it as a Stop does (true), or
+            // nothing when no jog or another one is active (false).
+            bool releaseJog(uint32_t id);
             uint32_t jogId() const { return jogCount; }
             // The smaller of JOG_MAX_MS and a move from an unknown position's timeout.
             uint32_t jogLimitMs() const;

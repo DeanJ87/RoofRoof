@@ -255,10 +255,10 @@ namespace SQM
                 if (calibration.active())
                     endCalibrationFor(true, "");
                 // Spec 019: a person's jog is stopped first; the close then has its normal checks.
-                if (controller.status().jogging)
+                if (Calib::Teach::yieldToClose(controller))
                 {
-                    controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
                     applyOutput();
+                    refreshSnapshot();
                     notice = "Jog stopped: the automatic close takes over";
                 }
                 outcome = commandLocked(Roof::Command::Close, Roof::Origin::Automatic, now);

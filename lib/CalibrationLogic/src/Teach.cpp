@@ -44,7 +44,7 @@ namespace SQM
 
         Answer Teach::jog(Roof::Controller &controller, Roof::End target, bool attended, bool calibrating, const StartInputs &in)
         {
-            const Answer common = attendedRefusal(controller, attended, calibrating, in);
+            Answer common = attendedRefusal(controller, attended, calibrating, in);
             if (!common.accepted)
                 return common;
             const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person);
@@ -58,6 +58,21 @@ namespace SQM
             if (controller.holdJog(id))
                 return Answer{};
             return refuse("jogEnded", "The jog has ended: press and hold the button again");
+        }
+
+        Answer Teach::release(Roof::Controller &controller, uint32_t id)
+        {
+            if (controller.releaseJog(id))
+                return Answer{};
+            return refuse("jogEnded", "The jog has already ended");
+        }
+
+        bool Teach::yieldToClose(Roof::Controller &controller)
+        {
+            if (!controller.status().jogging)
+                return false;
+            controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
+            return true;
         }
 
         // At rest: no move, no jog, no leg, the driver off, the reading off the
