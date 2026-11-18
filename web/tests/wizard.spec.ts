@@ -11,7 +11,7 @@ const restartWizard = async (page: Page) => {
   await expect(page.locator('main')).toBeVisible();
   await page.getByRole('button', { name: /Demo/ }).click();
   await page.getByRole('button', { name: 'Restart setup wizard' }).click();
-  await expect(heading(page)).toHaveText('Step 1 of 11: Device', { timeout: 15_000 });
+  await expect(heading(page)).toHaveText('Step 1 of 12: Device', { timeout: 15_000 });
 };
 
 const heading = (page: Page) => page.locator('.wizard-heading');
@@ -31,14 +31,14 @@ test('a new device walks through every page and finishes on the review', async (
   await saveAndContinue(page);
 
   // 2 Site and time.
-  await expect(heading(page)).toHaveText('Step 2 of 11: Site and time');
+  await expect(heading(page)).toHaveText('Step 2 of 12: Site and time');
   await page.getByRole('switch', { name: 'Location set' }).check();
   await page.locator('[data-field="location.latitude"]').fill('51.5');
   await page.locator('[data-field="location.longitude"]').fill('-0.1');
   await saveAndContinue(page);
 
   // 3 Hardware: the live supply, compared with a meter reading.
-  await expect(heading(page)).toHaveText('Step 3 of 11: Hardware');
+  await expect(heading(page)).toHaveText('Step 3 of 12: Hardware');
   await expect(page.locator('#supply')).toContainText(/\d+\.\d+ V/);
   await page.locator('[data-field="wizard.meter"]').fill('12.6');
   await page.locator('[data-field="wizard.meter"]').blur();
@@ -47,27 +47,32 @@ test('a new device walks through every page and finishes on the review', async (
   await saveAndContinue(page);
 
   // 4 Hall sensor: the live reading against the thresholds.
-  await expect(heading(page)).toHaveText('Step 4 of 11: Hall sensor');
+  await expect(heading(page)).toHaveText('Step 4 of 12: Hall sensor');
   await expect(page.getByRole('img', { name: /^Hall reading \d+ of 4095; low threshold/ })).toBeVisible();
   await saveAndContinue(page);
 
-  // 5 Calibration run (spec 016): offered, linked, nothing moves here.
-  await expect(heading(page)).toHaveText('Step 5 of 11: Calibration run');
+  // 5 Teach the ends (spec 019): offered, linked, nothing moves here.
+  await expect(heading(page)).toHaveText('Step 5 of 12: Teach the ends');
+  await expect(page.getByRole('button', { name: 'Open the Teach card' })).toBeVisible();
+  await saveAndContinue(page);
+
+  // 6 Calibration run (spec 016): offered, linked, nothing moves here.
+  await expect(heading(page)).toHaveText('Step 6 of 12: Calibration run');
   await expect(page.getByRole('button', { name: 'Open the calibration page' })).toBeVisible();
   await saveAndContinue(page);
 
-  // 6 Roof motion.
-  await expect(heading(page)).toHaveText('Step 6 of 11: Roof motion');
+  // 7 Roof motion.
+  await expect(heading(page)).toHaveText('Step 7 of 12: Roof motion');
   await saveAndContinue(page);
 
-  // 7 Weather: Test shows the simulated SQMeter's answer.
-  await expect(heading(page)).toHaveText('Step 7 of 11: Weather');
+  // 8 Weather: Test shows the simulated SQMeter's answer.
+  await expect(heading(page)).toHaveText('Step 8 of 12: Weather');
   await page.getByRole('button', { name: 'Test', exact: true }).click();
   await expect(page.locator('[data-test-result="weather"]')).toContainText('Safe', { timeout: 20_000 });
   await saveAndContinue(page);
 
-  // 8 N.I.N.A.: Test shows the mount.
-  await expect(heading(page)).toHaveText('Step 8 of 11: N.I.N.A.');
+  // 9 N.I.N.A.: Test shows the mount.
+  await expect(heading(page)).toHaveText('Step 9 of 12: N.I.N.A.');
   await expect(page.locator('#alpaca')).toContainText('this device is the failsafe');
   await page.getByRole('button', { name: 'Test', exact: true }).click();
   const nina = page.locator('[data-test-result="nina"]');
@@ -75,18 +80,18 @@ test('a new device walks through every page and finishes on the review', async (
   await expect(nina).toContainText('At park');
   await saveAndContinue(page);
 
-  // 9 Alerts: the demo's ntfy channel is on; a test goes out.
-  await expect(heading(page)).toHaveText('Step 9 of 11: Alerts');
+  // 10 Alerts: the demo's ntfy channel is on; a test goes out.
+  await expect(heading(page)).toHaveText('Step 10 of 12: Alerts');
   await page.getByRole('button', { name: 'Send test' }).first().click();
   await saveAndContinue(page);
 
-  // 10 Daylight.
-  await expect(heading(page)).toHaveText('Step 10 of 11: Daylight');
+  // 11 Daylight.
+  await expect(heading(page)).toHaveText('Step 11 of 12: Daylight');
   await page.locator('[data-field="daylight.mode"]').selectOption('close');
   await saveAndContinue(page);
 
-  // 11 Review, then Finish.
-  await expect(heading(page)).toHaveText('Step 11 of 11: Review');
+  // 12 Review, then Finish.
+  await expect(heading(page)).toHaveText('Step 12 of 12: Review');
   await expect(page.locator('[data-check]')).toHaveCount(13);
   await expect(page.locator('[data-check="password"]')).toHaveAttribute('data-state', 'ok');
   await expect(page.locator('[data-check="weather"]')).toHaveAttribute('data-state', 'ok');
@@ -110,12 +115,12 @@ test('a new device walks through every page and finishes on the review', async (
 
 test('no page offers a roof command', async ({ page }) => {
   await restartWizard(page);
-  for (let n = 1; n <= 11; n++) {
+  for (let n = 1; n <= 12; n++) {
     await page
       .locator('nav[aria-label="Setup pages"] button')
       .nth(n - 1)
       .click();
-    await expect(heading(page)).toContainText(`Step ${n} of 11`);
+    await expect(heading(page)).toContainText(`Step ${n} of 12`);
     const main = page.locator('main');
     for (const name of [/^Open$/, /^Close$/, /Clear fault/, /^Stop$/]) await expect(main.getByRole('button', { name })).toHaveCount(0);
   }
@@ -131,7 +136,7 @@ test('a save while the roof moves is refused, with the Stop bar on the page', as
   // The Stop bar sits over the bottom of the page while the roof moves: click without a pointer.
   await page.getByRole('button', { name: 'Save and continue' }).evaluate((el: HTMLElement) => el.click());
   await expect(page.locator('#wizard-problem')).toBeVisible();
-  await expect(heading(page)).toHaveText('Step 1 of 11: Device');
+  await expect(heading(page)).toHaveText('Step 1 of 12: Device');
   await page.locator('.stop-bar').getByRole('button', { name: 'Stop' }).click();
 });
 
@@ -139,11 +144,11 @@ test('the wizard resumes where it was left, and opens by itself once per page lo
   await restartWizard(page);
   await page.getByRole('switch', { name: 'Password-protect changes' }).uncheck();
   await saveAndContinue(page);
-  await expect(heading(page)).toHaveText('Step 2 of 11: Site and time');
+  await expect(heading(page)).toHaveText('Step 2 of 12: Site and time');
   // A new page load on the dashboard opens the wizard at the saved page.
   await page.goto('./#/');
   await page.reload();
-  await expect(heading(page)).toHaveText('Step 2 of 11: Site and time', { timeout: 15_000 });
+  await expect(heading(page)).toHaveText('Step 2 of 12: Site and time', { timeout: 15_000 });
   // Back on the dashboard in the same load: the banner instead.
   await page
     .getByRole('button', { name: 'Home' })
@@ -153,7 +158,7 @@ test('the wizard resumes where it was left, and opens by itself once per page lo
   const banner = page.locator('[data-inventory="setup-banner"]');
   await expect(banner).toContainText("Setup isn't finished");
   await banner.getByRole('button', { name: 'Continue setup' }).click();
-  await expect(heading(page)).toHaveText('Step 2 of 11: Site and time');
+  await expect(heading(page)).toHaveText('Step 2 of 12: Site and time');
 });
 
 test('skipping setup warns first; System runs it again', async ({ page }) => {
@@ -166,5 +171,5 @@ test('skipping setup warns first; System runs it again', async ({ page }) => {
   expect((await deviceConfig(page)).setup.state).toBe('done');
   await page.goto('./#/system');
   await page.getByRole('button', { name: 'Run setup wizard' }).click();
-  await expect(heading(page)).toHaveText('Step 1 of 11: Device');
+  await expect(heading(page)).toHaveText('Step 1 of 12: Device');
 });
