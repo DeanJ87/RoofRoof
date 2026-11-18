@@ -96,7 +96,7 @@ simpler, reads at 48 px and needs fewer paths.
 
 ## R5. Progress
 
-- Decision: extend `ProgressMeter` with `valueText` (`aria-valuetext`, "Screen 3 of 20") instead of
+- Decision: extend `ProgressMeter` with `valueText` (`aria-valuetext`, "Screen 3 of 21") instead of
   adding a second progress component; the wizard's bar is the same component with a slimmer style
   in the dialog header.
 

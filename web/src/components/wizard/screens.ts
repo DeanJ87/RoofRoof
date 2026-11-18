@@ -4,6 +4,7 @@ import { WIZARD_PAGES, pageIndex, type WizardPageId } from './pages';
 import { NameScreen, PasswordScreen, SiteScreen, TimeScreen } from './DevicePages';
 import {
   CalibrationScreen,
+  TeachScreen,
   CurrentScreen,
   HallFittedScreen,
   HallScreen,
@@ -37,6 +38,7 @@ export type ScreenId =
   | 'rain'
   | 'hallFitted'
   | 'hall'
+  | 'teach'
   | 'calibrate'
   | 'motion'
   | 'weatherSource'
@@ -84,6 +86,7 @@ export const SCREENS: Screen[] = [
   { id: 'rain', page: 'hardware', Body: RainScreen, choice: true },
   { id: 'hallFitted', page: 'hall', Body: HallFittedScreen, choice: true },
   { id: 'hall', page: 'hall', Body: HallScreen, shows: hallFitted },
+  { id: 'teach', page: 'teach', Body: TeachScreen },
   { id: 'calibrate', page: 'calibrate', Body: CalibrationScreen },
   { id: 'motion', page: 'motion', Body: MotionScreen },
   { id: 'weatherSource', page: 'weather', Body: WeatherSourceScreen, choice: true, answered: hasSource },

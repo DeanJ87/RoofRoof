@@ -48,7 +48,7 @@ The wizard doesn't open from the setup hotspot: joining the network is the hotsp
 
 ## The questions
 
-The questions are grouped in the same eleven parts as before; the part you reach is what the
+The questions are grouped in twelve parts (spec 015's pages, with spec 019's Teach the ends); the part you reach is what the
 wizard resumes at.
 
 1. **Device**: the name N.I.N.A. shows; then whether to protect changes with a password. **Set a
@@ -63,33 +63,38 @@ wizard resumes at.
       the two agree within 0.2 V. The meter reading is only compared, never saved;
     - whether **current sense** is fitted, and its scaling with the live motor current when it is;
     - how many **park switches** are fitted (none, one or two), each with its live state. Operate
-      each by hand and watch it change;
+      each by hand and watch it change. The switches are optional: N.I.N.A.'s park alone confirms
+      the mount is parked, and fitted switches are a second check that must agree
+      ([Safety inputs](safety-inputs.md));
     - whether a **rain contact** is fitted, with its live state.
 4. **Hall sensor**: whether it is fitted. **Not fitted yet** leaves the thresholds as they are,
    says that without it the roof finds neither end (so the automatic close can't work), links the
    [quick bench test](../hardware/quick-bench-test.md), and skips the next screen. Otherwise, which
    end reads high and the two thresholds, with the live reading drawn against them as you type
    ([Calibration](../hardware/calibration.md)).
-5. **Calibration run**: what the [calibration run](calibration-run.md) does and what it needs,
+5. **Teach the ends**: what [teaching the ends](calibration-run.md#teach-the-ends) does and what
+   it needs, with **Open the Teach card**, which leaves the wizard for the calibration page's
+   attended Teach card with Stop. This screen itself moves nothing.
+6. **Calibration run**: what the [calibration run](calibration-run.md) does and what it needs,
    with **Open the calibration page**, which leaves the wizard for the run's own attended page
    with Stop. Skip it until the motor is connected and its direction checked.
-6. **Roof motion**: travel, speed and top duty. While they are still the factory values,
+7. **Roof motion**: travel, speed and top duty. While they are still the factory values,
    **Use first-run values** sets the top duty to 40 %, the commissioning guide's first-move duty.
    Travel and speed are measured during commissioning (stage 8).
-7. **Weather**: where the verdict comes from (**SQMeter's web address**, **SQMeter over MQTT** or
+8. **Weather**: where the verdict comes from (**SQMeter's web address**, **SQMeter over MQTT** or
    **Both**); then the address or topic, with **Test**.
-8. **N.I.N.A.**: the Advanced API address, with **Test**; then whether N.I.N.A. opens and closes
+9. **N.I.N.A.**: the Advanced API address, with **Test**; then whether N.I.N.A. opens and closes
    the roof over Alpaca (**Yes, over Alpaca** is recommended). N.I.N.A.'s sequence drives the roof
    through the Alpaca Dome; RoofRoof is the failsafe behind it. Changing Alpaca needs a restart,
    which the last screen offers.
-9. **Alerts**: where alerts should reach you (ntfy, Pushover, a webhook or MQTT); then that
+10. **Alerts**: where alerts should reach you (ntfy, Pushover, a webhook or MQTT); then that
    channel's details, with **Send test** once saved. With no channel, critical alerts (the roof
    didn't close, the mount didn't park) would reach no one.
-10. **Daylight**: what to do with a roof open after sunrise: **Do nothing**, **Alert me**
+11. **Daylight**: what to do with a roof open after sunrise: **Do nothing**, **Alert me**
    (recommended) or **Alert and close**, and the sun altitude threshold
    ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)). Without the site's location the
    screen says so, and **Set location** saves your answer and goes back to the Site screen.
-11. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
+12. **Review**: one row per essential, each **OK**, **Attention**, **Problem** or **Unknown** (no
     reading yet), with what to do and **Change**, which opens that part. **Finish** ends setup
     and shows the last screen, with the commissioning guide.
 
@@ -135,7 +140,7 @@ MQTT and Home Assistant) stay in **Settings**.
 
 ## The setup state
 
-`setup.state` (`new`, `offered` or `done`) and `setup.step` (the part to resume at, 0 to 10) are
+`setup.state` (`new`, `offered` or `done`) and `setup.step` (the part to resume at, 0 to 11) are
 ordinary settings ([Configuration](configuration.md#setup-wizard)). They move nothing and need no
 restart. **Settings** never sends them, so a save there leaves them as they are.
 
@@ -148,5 +153,5 @@ The demo starts set up. **Demo → Restart setup wizard** sets it back to `new` 
 
 The wizard is a modal dialog named by its question. Tab stays inside it (the Stop bar included,
 while the roof moves); the choices are a radio group the arrow keys move through; the progress bar
-reads as "Screen 3 of 20". Each new screen moves focus to its question. Closing gives focus back
+reads as "Screen 3 of 21". Each new screen moves focus to its question. Closing gives focus back
 to where you were. With reduced motion set, nothing fades.

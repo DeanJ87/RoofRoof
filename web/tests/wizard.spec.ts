@@ -83,6 +83,10 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await expect(dialog(page).getByRole('img', { name: /^Hall reading \d+ of 4095; low threshold/ })).toBeVisible();
   await proceed(page);
 
+  // Spec 019: teaching the ends is offered and linked; nothing moves here.
+  await onScreen(page, 'teach');
+  await expect(page.getByRole('button', { name: 'Open the Teach card' })).toBeVisible();
+  await proceed(page);
   await onScreen(page, 'calibrate');
   await expect(page.getByRole('button', { name: 'Open the calibration page' })).toBeVisible();
   await proceed(page);

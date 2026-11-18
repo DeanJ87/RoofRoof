@@ -110,6 +110,8 @@ export const ParkSwitchesScreen: FunctionalComponent<WizardPageProps> = (props) 
           { value: 'two', icon: 'switch', title: t('wizard.hardware.switchesTwo'), detail: t('wizard.hardware.switchesTwoDetail') },
         ]}
       />
+      {/* Spec 019: the switches are an optional second check. */}
+      <Note>{t('wizard.hardware.parkOptional')}</Note>
       {choice.value && fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof?.parkSwitches.switch1)} />}
       {choice.value && fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof?.parkSwitches.switch2)} />}
     </>
@@ -161,6 +163,19 @@ export const HallFittedScreen: FunctionalComponent<WizardPageProps> = (props) =>
 
 export const HallScreen: FunctionalComponent<WizardPageProps> = (props) =>
   props.config.roof ? <HallFields {...props} roof={props.config.roof} /> : <Note>{t('settings.roof.notSent')}</Note>;
+
+// Spec 019: teaching the ends is offered here, but the jog runs on the
+// calibration page's Teach card (with Stop): this screen moves nothing.
+export const TeachScreen: FunctionalComponent<WizardPageProps> = () => (
+  <>
+    <Note>{t('wizard.teach.what')}</Note>
+    <Note tone="warn">{t('wizard.teach.needs')}</Note>
+    <div class="btn-row">
+      <Button onClick={() => route('/calibrate')}>{t('wizard.teach.open')}</Button>
+    </div>
+    <Note>{t('wizard.teach.later')}</Note>
+  </>
+);
 
 // Spec 016: the calibration run is offered here, but runs on its own attended
 // page (with Stop): this screen has no motion control of its own.

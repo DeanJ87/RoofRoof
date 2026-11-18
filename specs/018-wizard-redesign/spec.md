@@ -27,7 +27,7 @@ an onboarding flow over the app:
   answered, and Skip for now beside it where a screen may be skipped;
 - on a wide screen, a side panel that says why the question matters.
 
-The long pages are split into short screens: the eleven pages of spec 015 become about twenty
+The long pages are split into short screens: the twelve pages of specs 015 and 019 become about twenty
 screens, grouped under the same pages, so the saved resume point (`setup.step`, a page) keeps its
 meaning. The flow ends on the review, then a quiet "done" screen linking the commissioning guide.
 
@@ -254,7 +254,8 @@ Unchanged from spec 015: the banner offers it, nothing opens by itself, Dismiss 
   | Hardware | Rain contact | choice: fitted / not fitted, live state | `safety.rainContact` |
   | Hall sensor | Fitted? | choice: fitted / not fitted yet | (wizard only) |
   | Hall sensor | Thresholds (only if fitted) | fields + live scale | `roof.hall*` |
-  | Calibration run | Calibrate | link to the attended page | none |
+  | Teach the ends | Teach (spec 019) | link to the calibration page's attended Teach card | none |
+| Calibration run | Calibrate | link to the attended page | none |
   | Roof motion | Travel | fields | `roof.travelMm`, `roof.speedMmPerSecond`, `roof.topDutyPercent` |
   | Weather | Source | choice: SQMeter over HTTP / MQTT / both | `safety.http.enabled`, `safety.mqtt.enabled` |
   | Weather | Address (only with a source) | fields + Test | `safety.http.url`, `safety.mqtt.topic` |
@@ -304,7 +305,7 @@ Unchanged from spec 015: the banner offers it, nothing opens by itself, Dismiss 
   or card style is added.
 - **FR-018**: The dialog MUST be announced as a modal dialog named by the screen's question; the
   choices MUST be a radio group with arrow keys that move and wrap; the progress bar MUST expose
-  its value and a text such as "Screen 3 of 20".
+  its value and a text such as "Screen 3 of 21".
 - **FR-019**: With reduced motion requested, nothing in the dialog MUST move or fade.
 - **FR-020**: The mascot MUST be an original, simple dog drawn as a small inline image (under 3 KB),
   coloured from the design tokens, hidden from assistive technology.
@@ -393,7 +394,12 @@ Each was an open choice; the safest option the constitution allows was taken.
    still marks the missing source as a problem.
 10. **The constitution is amended (MINOR)** to admit the onboarding components and to require the
     Stop bar inside any modal; spec 015's rules otherwise stand.
-11. **The UI mockup review is pending**: the owner reviews the screenshots in the PR and the demo
+11. **Teach the ends stays a link** (spec 019, rebased in): the screen before the calibration run
+    links the calibration page's Teach card, where the hold-to-run jog and the teach steps run
+    with Stop. The jog's hold-to-run buttons are not brought into the dialog, because the wizard
+    never moves the roof (spec 015 FR-013, FR-013 here). `setup.step` covers spec 019's twelve
+    pages (0 to 11, `SetupConfig::STEP_COUNT` 12); each screen saves its page's index.
+12. **The UI mockup review is pending**: the owner reviews the screenshots in the PR and the demo
     before merging.
 
 ## Out of scope

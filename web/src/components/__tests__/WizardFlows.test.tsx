@@ -58,7 +58,7 @@ describe('Wizard: choices, skips and refusals', () => {
   });
 
   it('Skip for now picks the next screen from the settings as saved', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 8 }, alerts: { ...mockConfig.alerts!, enabled: false } } });
+    mockDevice({ config: { setup: { state: 'new', step: 9 }, alerts: { ...mockConfig.alerts!, enabled: false } } });
     render(<Wizard />);
     await onScreen('alertChannel');
     fireEvent.click(screen.getByRole('radio', { name: 'ntfy' }));
@@ -79,7 +79,7 @@ describe('Wizard: choices, skips and refusals', () => {
   });
 
   it('without a location, the daylight screen says where it is set and goes there, keeping the answer', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 9 }, location: { ...mockConfig.location!, set: false } } });
+    mockDevice({ config: { setup: { state: 'new', step: 10 }, location: { ...mockConfig.location!, set: false } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('daylight');
@@ -90,5 +90,27 @@ describe('Wizard: choices, skips and refusals', () => {
     expect(saves).toHaveLength(1);
     expect(saves[0].daylight).toMatchObject({ mode: 'close' });
     expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
+  });
+
+  // Spec 019: the wizard offers teaching the ends but never jogs the roof itself.
+  it('the teach screen comes before the calibration run, links the Teach card and has no motion control', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
+    const saves = recordSaves();
+    render(<Wizard />);
+    await onScreen('teach');
+    expect(button('Open the Teach card')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(Open|Close|Hold to open|Hold to close)$/i })).toBeNull();
+    fireEvent.click(button('Continue'));
+    await onScreen('calibrate');
+    expect(saves).toEqual([{ setup: { state: 'new', step: 5 } }]);
+  });
+
+  // Spec 019: the park switches are an optional second check.
+  it('the park switches screen says the switches are optional', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    window.history.replaceState(null, '', '/wizard?screen=parkSwitches');
+    render(<Wizard />);
+    await onScreen('parkSwitches');
+    expect(screen.getByText(/Park switches are optional/)).toBeInTheDocument();
   });
 });

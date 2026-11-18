@@ -18,6 +18,7 @@ const SCREENS = [
   'rain',
   'hallFitted',
   'hall',
+  'teach',
   'calibrate',
   'motion',
   'weatherSource',

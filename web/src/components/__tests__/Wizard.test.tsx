@@ -52,7 +52,7 @@ describe('Wizard', () => {
     expect(await question()).toHaveTextContent('What should we call this roof?');
     const dialog = screen.getByRole('dialog', { name: 'What should we call this roof?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 20');
+    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 21');
     expect(within(dialog).getByRole('complementary')).toHaveTextContent('Why this matters');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull(); // the first screen
   });
@@ -254,7 +254,7 @@ describe('Wizard', () => {
     await onScreen('name');
     fireEvent.click(button('Skip for now'));
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Protect changes with a password?'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 20');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 21');
   });
 
   it('Test on the weather address screen shows the verdict and each source', async () => {
@@ -269,7 +269,7 @@ describe('Wizard', () => {
   });
 
   it('Test on the N.I.N.A. screen waits for the saved address, then shows the mount', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 7 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 8 } } });
     const saves = recordSaves();
     let generation = 1;
     server.use(http.get('/api/roof/inputs', () => HttpResponse.json({ ...mockInputs, nina: { ...mockInputs.nina, generation } })));
@@ -315,7 +315,7 @@ describe('Wizard', () => {
   });
 
   it('the review lists every check; Finish sets setup done and links commissioning', async () => {
-    mockDevice({ config: { setup: { state: 'offered', step: 10 } } });
+    mockDevice({ config: { setup: { state: 'offered', step: 11 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('review');
@@ -353,13 +353,13 @@ describe('Wizard', () => {
       expect.stringContaining('quick-bench-test.md'),
     );
     fireEvent.click(button('Continue'));
-    await onScreen('calibrate');
+    await onScreen('teach');
   });
 
   it('first-run values set the top duty to 40% while the motion is the factory default', async () => {
     mockDevice({
       config: {
-        setup: { state: 'new', step: 5 },
+        setup: { state: 'new', step: 6 },
         roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
       },
     });
@@ -374,7 +374,7 @@ describe('Wizard', () => {
 
   // Spec 016: the wizard offers the calibration run but never moves the roof itself.
   it('the calibration run screen links the attended page and has no motion control', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 5 } } });
     render(<Wizard />);
     await onScreen('calibrate');
     expect(button('Open the calibration page')).toBeInTheDocument();
@@ -384,7 +384,7 @@ describe('Wizard', () => {
   it('one alert channel is chosen, and its details follow', async () => {
     mockDevice({
       config: {
-        setup: { state: 'new', step: 8 },
+        setup: { state: 'new', step: 9 },
         alerts: { ...mockConfig.alerts!, enabled: false, pushover: { ...mockConfig.alerts!.pushover, enabled: false } },
       },
     });
