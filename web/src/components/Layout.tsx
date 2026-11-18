@@ -1,4 +1,4 @@
-import { FunctionalComponent } from 'preact';
+import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route, useRouter } from 'preact-router';
 import { Toaster } from './toast';
 import AlertsBell from './AlertsBell';
@@ -12,6 +12,9 @@ import SetupPrompt from './SetupPrompt';
 interface LayoutProps {
   path?: string;
   default?: boolean;
+  // A dialog over the page (spec 018): the rest of the app is inert behind it,
+  // and the dialog carries the Stop bar (Modal's stopBar).
+  modal?: ComponentChildren;
 }
 
 const navItems: { path: string; label: string; short?: string; icon: string }[] = [
@@ -68,12 +71,14 @@ const TinyIcon: FunctionalComponent<{ name: string }> = ({ name }) => {
   );
 };
 
-const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
+const Layout: FunctionalComponent<LayoutProps> = ({ children, modal }) => {
   const [router] = useRouter();
+  const behind = Boolean(modal);
 
   return (
     <div class="app-shell">
       <a
+        inert={behind}
         class="skip-link"
         href="#main"
         onClick={(event) => {
@@ -84,7 +89,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
       >
         {t('layout.skipToMainContent')}
       </a>
-      <header class="app-header">
+      <header class="app-header" inert={behind}>
         <div class="app-header-inner">
           <div class="brand">
             <BrandMark />
@@ -119,12 +124,13 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <main class="app-main" id="main" tabIndex={-1}>
+      <main class="app-main" id="main" tabIndex={-1} inert={behind}>
         <BenchBanner />
         <SetupPrompt />
         {children}
-        <RoofStopBar />
+        {!behind && <RoofStopBar />}
       </main>
+      {modal}
       <Toaster />
       {/* Verdict changes, new alerts and connection loss (SQMeter spec 022 FR-009). */}
       <div id={LIVE_REGION_ID} class="sr-only" role="status" aria-live="polite" />

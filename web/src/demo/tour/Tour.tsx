@@ -186,11 +186,27 @@ const TourOffer: FunctionalComponent = () => {
   );
 };
 
+// A modal dialog is open (spec 018: the setup wizard marks the body): the
+// offer would sit on top of it, outside its focus loop, so it waits until the
+// dialog closes. Nothing is dismissed, so a pending offer comes back.
+const useModalOpen = () => {
+  const [open, setOpen] = useState(() => document.body.classList.contains('has-modal'));
+  useEffect(() => {
+    const check = () => setOpen(document.body.classList.contains('has-modal'));
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    check();
+    return () => observer.disconnect();
+  }, []);
+  return open;
+};
+
 const Tour: FunctionalComponent = () => {
   const rerender = useRerender();
+  const modalOpen = useModalOpen();
   useEffect(() => tour.onChange(rerender), [rerender]);
   if (tour.step !== null) return <TourCard index={tour.step} />;
-  return tour.offered ? <TourOffer /> : null;
+  return tour.offered && !modalOpen ? <TourOffer /> : null;
 };
 
 export default Tour;
