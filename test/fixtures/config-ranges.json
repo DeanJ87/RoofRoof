@@ -177,7 +177,7 @@
       "path": "setup.step",
       "int": true,
       "min": 0,
-      "max": 10
+      "max": 11
     },
     {
       "path": "mqtt.changeMinSeconds",

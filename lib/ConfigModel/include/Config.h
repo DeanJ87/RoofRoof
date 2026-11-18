@@ -359,7 +359,7 @@ namespace SQM
         };
         State state = State::New;
         uint8_t step = 0;                         // 0 to STEP_COUNT - 1
-        static constexpr uint8_t STEP_COUNT = 11; // spec 016 added the calibration run page
+        static constexpr uint8_t STEP_COUNT = 12; // spec 016 added the calibration run page, spec 019 the teach page
     };
 
     // Advanced diagnostics (spec 017): the live document, the stream and the
