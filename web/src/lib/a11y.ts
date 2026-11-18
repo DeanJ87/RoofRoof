@@ -17,7 +17,11 @@ let last = { text: '', at: 0 };
 export const announce = (text: string, now: number = Date.now()) => {
   if (!text || (text === last.text && now - last.at < DEDUPE_MS)) return false;
   last = { text, at: now };
-  const region = typeof document === 'undefined' ? null : document.getElementById(LIVE_REGION_ID);
+  // Inside an open modal dialog (spec 018) its own region, which screen readers keep reading.
+  const region =
+    typeof document === 'undefined'
+      ? null
+      : (document.querySelector('[aria-modal="true"] [data-modal-live]') ?? document.getElementById(LIVE_REGION_ID));
   if (region) {
     // Clear first so a repeated message is read again.
     region.textContent = '';

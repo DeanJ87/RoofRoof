@@ -19,29 +19,34 @@ export const TIMEZONE_OPTIONS = [
 
 const knownZone = (timezone: string) => TIMEZONE_OPTIONS.some((tz) => tz.value === timezone);
 
-export const TimeZoneCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => (
-  <SettingsCard title={t('settings.time.timeZone')}>
-    <div class="form-grid">
-      <Field label={t('settings.time.timeZone')}>
-        <SelectInput
-          dataField="ntp.timezone"
-          value={knownZone(config.ntp.timezone) ? config.ntp.timezone : 'custom'}
-          options={[...TIMEZONE_OPTIONS, { value: 'custom', label: t('common.custom') }]}
-          onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
-        />
+// The zone and its POSIX string (also the setup wizard's time screen, spec 018).
+export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error'>> = ({ config, update, error }) => (
+  <div class="form-grid">
+    <Field label={t('settings.time.timeZone')}>
+      <SelectInput
+        dataField="ntp.timezone"
+        value={knownZone(config.ntp.timezone) ? config.ntp.timezone : 'custom'}
+        options={[...TIMEZONE_OPTIONS, { value: 'custom', label: t('common.custom') }]}
+        onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
+      />
+    </Field>
+    {!knownZone(config.ntp.timezone) && (
+      <Field label={t('settings.time.posixTimeZone')} hint={t('settings.time.eGPst8pdtM32')} error={error('ntp.timezone')}>
+        <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
       </Field>
-      {!knownZone(config.ntp.timezone) && (
-        <Field label={t('settings.time.posixTimeZone')} hint={t('settings.time.eGPst8pdtM32')} error={error('ntp.timezone')}>
-          <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
-        </Field>
-      )}
-    </div>
+    )}
+  </div>
+);
+
+export const TimeZoneCard: FunctionalComponent<SettingsTabProps> = (props) => (
+  <SettingsCard title={t('settings.time.timeZone')}>
+    <TimeZoneFields {...props} />
   </SettingsCard>
 );
 
 // NTP is the device's only clock source (spec 001 research R11).
-export const NtpCard: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => (
-  <SettingsCard id="ntp" title="NTP">
+export const NtpFields: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => (
+  <>
     <DepToggle
       entry={deps.get('ntp.enabled')}
       onFix={fix}
@@ -80,6 +85,12 @@ export const NtpCard: FunctionalComponent<SettingsTabProps> = ({ config, update,
         </Field>
       </div>
     )}
+  </>
+);
+
+export const NtpCard: FunctionalComponent<SettingsTabProps> = (props) => (
+  <SettingsCard id="ntp" title="NTP">
+    <NtpFields {...props} />
   </SettingsCard>
 );
 

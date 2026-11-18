@@ -263,6 +263,24 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** any decision from diagnostics (wear alerts, limits); Home Assistant entities;
   the calibration run itself (spec 016); its legs are recorded and tagged as calibration moves.
 
+### 018 Setup wizard redesign (base: 017, rebased on 019)
+
+- **Scope:**
+  - The setup wizard as a modal dialog over the dashboard: a dimmed, blurred backdrop, a progress
+    bar with Back and Close, one question per screen in a speech bubble beside RoofRoof's dog
+    mascot, choice cards for the enumerated answers and compact fields beside live readings for
+    the rest, a sticky Continue that waits for an answer, Skip for now, and a "Why this matters"
+    panel; a review and a done screen.
+  - The modal, progress bar, choice card group, speech bubble and mascot as documented
+    design-system components; constitution VII amended (2.1.0) to admit them and to require the
+    Stop bar inside any modal.
+  - Every spec 015 guarantee kept: the same settings and save path, saves refused while moving,
+    Tests from the device's own poll, no roof command, resume, skip, run again, the banner.
+  - Accessibility (focus trap, Escape asks, focus restored, radio groups, reduced motion) tested
+    on every screen at 320 px and desktop with light and dark browser preferences.
+- **Out of scope:** any device, setting or API change; a light theme.
+  - Spec 019's Teach the ends page becomes a screen before the calibration run screen.
+
 ### 019 Jog and teach the ends (base: 016)
 
 - **Scope:**
@@ -288,8 +306,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
-                                                                  └─ 015 ─┬─ 016 ── 019
-                                                                          └─ 017
+                                                                  └─ 015 ─┬─ 016 ── 019 ─┐
+                                                                          └─ 017 ────────┴─ 018
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.
