@@ -49,7 +49,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 23c79987f56e9112
+fingerprint: 5005acd37ba72661
 -->
 <figure class="diagram" markdown>
 
@@ -82,7 +82,7 @@ stateDiagram-v2
     Error --> Unknown: a person clears it (or the end, at a magnet)
 ```
 
-<figcaption>The roof's states. Any state can go to error on a Hall sensor fault or a fault raised from outside. A <a href="../calibration-run/">calibration run</a>'s legs are opening and closing moves too.</figcaption>
+<figcaption>The roof's states. Any state can go to error on a Hall sensor fault or a fault raised from outside. A <a href="../calibration-run/">calibration run</a>'s legs and a person's <a href="../calibration-run/#teach-the-ends">jog</a> are opening and closing moves too; a jog keeps no estimate, so one that stops part-way (let go, or not renewed) leaves the roof unknown.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
