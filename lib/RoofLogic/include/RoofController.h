@@ -54,6 +54,21 @@ namespace SQM
             // person cleared it before the run's next step (spec 016).
             uint32_t faultCount() const { return faultsLatched; }
 
+            // Spec 019: a person's jog toward `target` (RoofControllerCalibrate.cpp):
+            // a calibration leg at the slow duty that stops at the first magnet
+            // after leaving its start magnet, with jogLimitMs() as its hard
+            // timeout and every move's drive budget. It runs only while renewed:
+            // the step stops it once JOG_HOLD_MS of step time pass without a
+            // holdJog(). Refused as calibrate() refuses a leg.
+            CommandResult jog(End target, Origin origin);
+            CommandResult checkJog(End target, Origin origin) const;
+            // Renews the jog `id` (from jogId() after its start): false, and
+            // nothing changes, when no jog or another one is active.
+            bool holdJog(uint32_t id);
+            uint32_t jogId() const { return jogCount; }
+            // The smaller of JOG_MAX_MS and a move from an unknown position's timeout.
+            uint32_t jogLimitMs() const;
+
             // A person clears the latched fault; automatic origins are refused.
             CommandResult clearFault(Origin origin);
 
@@ -90,6 +105,10 @@ namespace SQM
                 CalibrationLeg leg;
                 HallLevel startLevel = HallLevel::Unsettled;
                 float dutyMs = 0.0f;
+                // Spec 019: a jog, and when it stops unless renewed.
+                bool jog = false;
+                bool holdPending = false; // renewed since the last step: stamped by the next
+                uint32_t holdUntilMs = 0;
             };
 
             // When a condition that must last CONFIRM_MS was first seen.
@@ -107,6 +126,8 @@ namespace SQM
             bool checkLegMagnets();
             void startLeg(bool leavesOtherEnd, bool onMagnet);
             uint32_t budgetLimitMs() const;
+            CalibrationLeg jogLeg(End target) const;
+            bool jogExpired(uint32_t nowMs);
             void endLeg(bool arrived);
             bool checkTimes(uint32_t nowMs);
             bool checkElectrical(const Readings &readings);
@@ -155,6 +176,7 @@ namespace SQM
             Pending currentUnreadable;
             CalibrationReport legReport;
             uint32_t faultsLatched = 0;
+            uint32_t jogCount = 0;
         };
     } // namespace Roof
 } // namespace SQM

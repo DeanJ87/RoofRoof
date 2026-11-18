@@ -50,6 +50,13 @@ namespace SQM
         constexpr uint32_t MIN_CALIBRATION_LEG_MS = 1000;
         constexpr uint32_t MAX_CALIBRATION_LEG_MS = 600000;
 
+        // Spec 019: a jog stops when it hasn't been renewed for JOG_HOLD_MS of
+        // step time (the page renews it every JOG_KEEPALIVE_MS while the button
+        // is held), and after JOG_MAX_MS at most.
+        constexpr uint32_t JOG_HOLD_MS = 500;
+        constexpr uint32_t JOG_KEEPALIVE_MS = 150;
+        constexpr uint32_t JOG_MAX_MS = 30000;
+
         // Whether a supply reading can be believed: finite and at most MAX_SUPPLY_READING_VOLTS.
         bool supplyReadable(float volts);
         // Whether a current reading can be believed: finite and at least MIN_CURRENT_READING_AMPS.

@@ -68,6 +68,7 @@ namespace SQM
             current.driving = move.driving;
             current.moveElapsedMs = move.driving ? readings.nowMs - move.driveStartMs : 0;
             current.calibrating = move.active && move.calibration;
+            current.jogging = move.active && move.jog;
             return out;
         }
 
@@ -107,6 +108,8 @@ namespace SQM
                 return CommandResult{};
             if (current.fault.kind != FaultKind::None)
                 return refused(Refusal::FaultLatched);
+            if (move.active && move.jog)
+                return refused(Refusal::Moving); // spec 019: a jog is never taken over
             const End target = command == Command::Open ? End::Open : End::Closed;
             End at = End::Closed;
             if (move.active ? move.target == target : (magnetEnd(at) && at == target))
@@ -141,6 +144,8 @@ namespace SQM
         {
             if (current.fault.kind != FaultKind::None)
                 return refused(Refusal::FaultLatched);
+            if (move.active && move.jog)
+                return refused(Refusal::Moving); // spec 019: a jog is never taken over
             End at = End::Closed;
             if (move.active ? move.target == target : (magnetEnd(at) && at == target))
                 return CommandResult{}; // already there, or already on its way

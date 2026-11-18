@@ -140,7 +140,8 @@ namespace SQM
             Fault fault;
             HallLevel hall = HallLevel::Unsettled;
             uint16_t hallCounts = 0;
-            bool calibrating = false; // spec 016: the active move is a calibration leg
+            bool calibrating = false; // spec 016: the active move is a calibration leg (or a jog)
+            bool jogging = false;     // spec 019: the active move is a person's jog
         };
 
         // Spec 016: one leg of an attended calibration run (Controller::calibrate).

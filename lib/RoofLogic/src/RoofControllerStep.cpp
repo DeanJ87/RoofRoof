@@ -15,6 +15,12 @@ namespace SQM
     {
         void Controller::stepMove(const Readings &readings)
         {
+            // Spec 019: a jog not renewed in time stops, in the dead time too.
+            if (move.jog && jogExpired(readings.nowMs))
+            {
+                stopMove(true);
+                return;
+            }
             if (!move.driving)
             {
                 // A calibration leg always drives: its end is the next magnet (spec 016).
