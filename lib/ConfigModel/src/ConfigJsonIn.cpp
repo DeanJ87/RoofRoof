@@ -386,7 +386,9 @@ namespace SQM
                 return setError(error, "Location: source must be sqmeter or manual");
             else if (location.has("set"))
                 loc.source = loc.set ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
-            if (!strict || before.source != LocationConfig::Source::Sqmeter || loc.source != LocationConfig::Source::Sqmeter)
+            // With nothing kept yet there is nothing stale to protect: a restored
+            // backup's location then stands until SQMeter answers.
+            if (!strict || !before.set || before.source != LocationConfig::Source::Sqmeter || loc.source != LocationConfig::Source::Sqmeter)
                 return true;
             // What was sent is still checked, so a wrong value is never accepted silently.
             if (!validateLocation(loc, error))

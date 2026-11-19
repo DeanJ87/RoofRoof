@@ -6,6 +6,7 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
+#include <mutex>
 
 #include "CloseOnUnsafe.h"
 #include "Diagnostics.h"
@@ -44,6 +45,10 @@ static Diagnostics diagnostics; // spec 017: off unless diag.enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 bool roofBusy(); // spec 020, below
+// Spec 020: one settings save at a time. The web server's saves (async TCP
+// task) and the loop's location save each copy, save and assign `config`
+// under it, so neither can undo the other's.
+static std::mutex configSaveLock;
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
 // processing, config saves). 4 KB more is cheap insurance against a
@@ -58,6 +63,7 @@ const Config &getConfigCallback()
 
 bool saveConfigCallback(const Config &newConfig)
 {
+    const std::lock_guard<std::mutex> held(configSaveLock);
     config = newConfig;
     const bool saved = config.save();
     if (!saved)
@@ -358,6 +364,10 @@ void handleSite()
     uint32_t generation = 0;
     const Site::LocationRead read = safetyPoller.locationRead(generation);
     if (!read.good() || read.atMs == handledAtMs)
+        return;
+    // A settings save under way: try again next second (the loop never waits for it).
+    std::unique_lock<std::mutex> held(configSaveLock, std::try_to_lock);
+    if (!held.owns_lock())
         return;
     const time_t epoch = time(nullptr);
     const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);

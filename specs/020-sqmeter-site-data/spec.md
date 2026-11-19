@@ -70,8 +70,8 @@ Each answer takes the safest option the constitution allows and is also listed u
   set stays `manual`, with the same value, so nothing changes for anyone who typed one in; settings
   with no location set become `sqmeter`. Any settings document without `location.source` follows
   the same rule.
-- Q: Who owns the location fields while the source is `sqmeter`? → A: The device. A settings save
-  that keeps the source on `sqmeter` keeps the device's location, whatever latitude and longitude
+- Q: Who owns the location fields while the source is `sqmeter`? → A: The device, once it keeps
+  one. A settings save that keeps the source on `sqmeter` keeps the device's location, whatever latitude and longitude
   the page sent, so a page opened before the last read can't put an older value back. Switching
   to `manual` takes the latitude and longitude sent with it (the page shows the kept value, so
   switching keeps it unless the person edits it).
@@ -124,6 +124,7 @@ Each answer takes the safest option the constitution allows and is also listed u
 | VI | Persisted config validated before saving, within NVS limits | FR-006, FR-007 |
 | VIII | Endpoints that send something call `requireAuth`; secrets masked and never leaked | FR-011, FR-014, FR-015 |
 | IX | Docs move with behaviour | FR-022 |
+| XI | SQMeter-specific features (GPS among them) are not carried over | RoofRoof has no GPS of its own: it reads the location SQMeter uses and only records that it was SQMeter's GPS fix |
 | Compatibility | Old config loads without a reset; a migration never turns on a motion feature that was off | FR-006 |
 
 ## User Scenarios & Testing *(mandatory)*
@@ -267,8 +268,9 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
   (true), `location.sqmeter.gps` and `location.sqmeter.savedAt` (Unix seconds, 0 when the clock
   isn't set) only when no location is set, the GPS flag differs, or either coordinate differs by
   0.001° or more; through the flash-write guard, and not while the roof moves or a close waits.
-- **FR-008**: While the source is `sqmeter`, a settings save from the API that keeps it `sqmeter`
-  MUST keep the device's location fields; `location.sqmeter.*` are never taken from the API.
+- **FR-008**: While the source is `sqmeter` and a location is kept, a settings save from the API that
+  keeps it `sqmeter` MUST keep the device's location fields (with none kept, the sent one stands,
+  so a restored backup brings its location); `location.sqmeter.*` are never taken from the API.
 - **FR-009**: SQMeter's location MUST be used only as the daylight failsafe's location. It MUST
   never change the weather verdict, the park check, or any other gate.
 - **FR-010**: `GET /api/status` (and `/ws/status`) MUST carry a `location` section: the source,

@@ -98,7 +98,7 @@ namespace SQM
         void pollLocation(const std::string &url, uint32_t generation);
         // Spec 020: a location read in this pass, if due (never in a pass that
         // polled SQMeter's safety, never while the roof is busy).
-        void maybeReadLocation(bool safetyPolled);
+        void maybeReadLocation(bool safetyPolled, bool safetyOn);
         Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
@@ -114,7 +114,8 @@ namespace SQM
         // Connect and header wait, and the whole read (research R7): never
         // longer than one safety poll, and never in the same pass.
         static constexpr uint32_t LOCATION_CONNECT_MS = 1500;
-        static constexpr uint32_t LOCATION_TOTAL_MS = 3000;
+        static constexpr uint32_t LOCATION_TOTAL_MS = Site::LocationSchedule::READ_MS;
+        std::string siteStatusUrl; // SQMeter's /api/status while the location follows it, else empty
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).
         uint64_t nextSqmeterMs = 0;

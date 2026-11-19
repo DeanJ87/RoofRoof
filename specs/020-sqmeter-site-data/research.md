@@ -41,8 +41,9 @@ settings fixtures `test/fixtures/config-releases/` (v0.1.0 to v0.3.3).
   `auth.password`, `ble.passkey`, `alerts.webhook.authHeader`, never read).
 - **Rationale**: SQMeter's `secretOut()` returns `"********"` for a non-empty secret and `""` for
   none (`ConfigJsonOut.cpp`). The Pushover user key is masked too, so Pushover can't be copied.
-  The parse filter never asks ArduinoJson for a secret's text beyond its emptiness, and the site
-  document has only booleans for them.
+  The parse filter keeps each secret field (ArduinoJson copies its text into the short-lived
+  parse document, freed when the fetch ends), the parser reads only whether it is empty, and the
+  site document, the reply and the logs carry only booleans for them.
 
 ## R5. Older SQMeter settings
 
@@ -72,7 +73,10 @@ settings fixtures `test/fixtures/config-releases/` (v0.1.0 to v0.3.3).
   is unreachable it costs one bounded attempt every 2 minutes, in a pass of its own.
 - **Rationale**: the poller polls N.I.N.A. every 2 s (each up to 6 s) and SQMeter's safety every
   5 s (up to 6 s). Today's longest pass is N.I.N.A. plus SQMeter's safety. A read (≤ 3 s) never
-  shares a pass with the safety poll, so the longest pass stays N.I.N.A. plus 6 s at most.
+  shares a pass with the safety poll, and none starts when the safety poll is due within 3 s, so
+  it never delays that poll and the longest pass stays N.I.N.A. plus 6 s at most. As for the
+  safety poll, the bound covers connecting and the body: a host name lookup has no timeout of its
+  own, and a server that sends its header lines slowly can hold a read longer.
 - **Busy**: the roof moving (`RoofControl::moving`), a close waiting (`closeWaiting`), or the
   close sequence working (`SequenceState::Working`); set by the main loop each pass, as spec 008's
   MQTT keeps its writes down then.
@@ -91,7 +95,7 @@ settings fixtures `test/fixtures/config-releases/` (v0.1.0 to v0.3.3).
 
 ## R9. The copy's task
 
-- **Decision**: a short-lived FreeRTOS task (`site_job`, core 0, priority 1, 6 KB) per request, as
+- **Decision**: a short-lived FreeRTOS task (`site_job`, core 1 beside the loop task, priority 1, 6 KB) per request, as
   spec 008's backup job; the request is paused and answered from the task through its weak
   pointer. One at a time (an atomic flag).
 - **Rationale**: constitution VI keeps the async TCP task off the network. The poller's loop must

@@ -11,7 +11,7 @@
 | `gps` | bool | `location.sqmeter.gps` | device-owned: the kept value was SQMeter's GPS fix |
 | `savedAt` | uint32 | `location.sqmeter.savedAt` | device-owned: Unix seconds of the last save from SQMeter; 0 = never or no clock |
 
-API save (strict): with the source `sqmeter` before and after, `set`, `latitude`, `longitude`,
+API save (strict): with the source `sqmeter` before and after and a location already kept, `set`, `latitude`, `longitude`,
 `gps` and `savedAt` keep the device's values. `location.sqmeter` is never read from the API. An
 unknown `source` is refused ("Location: source must be sqmeter or manual").
 
@@ -30,7 +30,8 @@ unknown `source` is refused ("Location: source must be sqmeter or manual").
 
 Input per pass: `nowMs`, `enabled` (source `sqmeter` and an address), `busy`, `safetyPolled` (this
 pass), `generation` (bumped by a change of address or source). State: the next due time, the
-generation seen. `due()` is true when enabled, not busy, the safety poll didn't run this pass, and
+generation seen. `due()` is true when enabled, not busy, the safety poll didn't run this pass and isn't due within
+`READ_MS` (3 s; `safetyNextMs`, 0 when that source is off), and
 `nowMs` has reached the due time.
 `done(good, nowMs)` sets the next due time (+10 min good, +2 min failed). A new generation makes it
 due at once; the first is due at `start + 15 s`.

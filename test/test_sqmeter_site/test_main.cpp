@@ -246,6 +246,19 @@ void test_never_while_busy_or_in_a_safety_poll_pass()
     TEST_ASSERT_TRUE(schedule.due(p));
 }
 
+// A read never delays SQMeter's safety poll: none starts within READ_MS of it.
+void test_never_when_the_safety_poll_is_due_within_a_read()
+{
+    LocationSchedule schedule = startedAtZero();
+    LocationSchedule::Pass p = pass(20000);
+    p.safetyNextMs = 20000 + LocationSchedule::READ_MS - 1;
+    TEST_ASSERT_FALSE(schedule.due(p));
+    p.safetyNextMs = 20000 + LocationSchedule::READ_MS;
+    TEST_ASSERT_TRUE(schedule.due(p));
+    p.safetyNextMs = 0; // the safety source is off
+    TEST_ASSERT_TRUE(schedule.due(p));
+}
+
 void test_never_when_not_following_sqmeter()
 {
     LocationSchedule schedule;
@@ -438,6 +451,7 @@ int main(int, char **)
     RUN_TEST(test_reads_repeat_after_10_min_when_good_and_2_min_when_failed);
     RUN_TEST(test_a_change_of_address_or_source_makes_a_read_due_at_once);
     RUN_TEST(test_never_while_busy_or_in_a_safety_poll_pass);
+    RUN_TEST(test_never_when_the_safety_poll_is_due_within_a_read);
     RUN_TEST(test_never_when_not_following_sqmeter);
     RUN_TEST(test_a_manual_location_is_never_saved_over);
     RUN_TEST(test_a_failed_read_is_never_saved);

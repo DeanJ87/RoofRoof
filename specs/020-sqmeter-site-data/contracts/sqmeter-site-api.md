@@ -35,7 +35,7 @@ appears, masked or not.
 
 | Status | When |
 |---|---|
-| 400 | no address set, or not `http://` ("SQMeter's address isn't set", "Only http:// is supported") |
+| 400 | a body that isn't JSON or is over 512 bytes; no address set, or not `http://` ("SQMeter's address isn't set", "Only http:// is supported") |
 | 401 | protection on, wrong or no password |
 | 409 | the roof moving, a close waiting, the automatic close working, or another copy running |
 | 502 | SQMeter not answering, not 200, or not SQMeter's settings document ("SQMeter not answering: connection refused", "SQMeter answered HTTP 404") |

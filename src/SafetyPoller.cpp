@@ -269,6 +269,7 @@ namespace SQM
         {
             siteAddress = address;
             siteFollows = followLocation;
+            siteStatusUrl = followLocation ? Site::siteUrl(address, Site::STATUS_PATH) : std::string();
             state.location = Site::LocationRead{};
             ++state.siteGeneration;
         }
@@ -355,7 +356,7 @@ namespace SQM
                 nextSqmeterMs = nowMs() + SQMETER_POLL_MS;
                 pollSqmeter(now, sqmeterGeneration);
             }
-            maybeReadLocation(safetyPolled);
+            maybeReadLocation(safetyPolled, now.sqmeterEnabled);
             // Constitution VI: stack headroom is measured on the bench.
             const UBaseType_t stackFree = uxTaskGetStackHighWaterMark(nullptr);
             if (stackFree < lowestStackFree)
@@ -377,20 +378,25 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::maybeReadLocation(bool safetyPolled)
+    void SafetyPoller::maybeReadLocation(bool safetyPolled, bool safetyOn)
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
-        const std::string url = siteFollows ? Site::siteUrl(siteAddress, Site::STATUS_PATH) : std::string();
+        const bool follows = !siteStatusUrl.empty();
         const uint32_t generation = state.siteGeneration;
         xSemaphoreGive(mutex);
         Site::LocationSchedule::Pass pass;
         pass.nowMs = nowMs();
-        pass.enabled = !url.empty();
+        pass.enabled = follows;
         pass.busy = roofBusy.load();
         pass.safetyPolled = safetyPolled;
+        pass.safetyNextMs = safetyOn ? (nextSqmeterMs == 0 ? 1 : nextSqmeterMs) : 0;
         pass.generation = generation;
-        if (locationSchedule.due(pass))
-            pollLocation(url, generation);
+        if (!locationSchedule.due(pass))
+            return;
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        const std::string url = siteStatusUrl;
+        xSemaphoreGive(mutex);
+        pollLocation(url, generation);
     }
 
     // Only sky's three fields are kept, whatever else the status holds.

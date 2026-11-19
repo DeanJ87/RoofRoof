@@ -88,6 +88,23 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 `stackFree.roof` is the roof control task's unused stack in bytes.
 
+`location` says where the daylight failsafe's site comes from ([Site from SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)):
+
+```json
+"location": { "source": "sqmeter", "set": true, "gps": true, "savedAt": 1763540000, "readAgeSeconds": 180, "problem": null }
+```
+
+| Field | Meaning |
+|---|---|
+| `source` | `sqmeter` (read from the SQMeter at the weather source's address) or `manual` (typed in) |
+| `set` | a location is known; without one daylight's state is unknown ("Location not set") |
+| `gps` | the kept location was SQMeter's GPS fix |
+| `savedAt` | Unix seconds when the location read from SQMeter was last saved; `null` when never, when the clock wasn't set, or with `manual` |
+| `readAgeSeconds` | seconds since SQMeter's location was last read in this run; `null` before the first good read, or with `manual` |
+| `problem` | why SQMeter's location isn't being read now: `noAddress` (the weather source address isn't set), `waiting` (not read yet), `unreachable`, `unreadable` or `noLocation` (SQMeter has none); `null` when the last read was good, or with `manual` |
+
+SQMeter's location is never a safety input: it only sets where the sun's altitude is worked out for.
+
 ---
 
 ### `GET /api/config`
@@ -133,6 +150,44 @@ Successful saves return:
 While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. A save is also refused while a close is waiting to start (`"A close is waiting to start: try again once the roof has closed"`), and while it is being written an open is refused (`busy`) and a close waits for it. Restores, uploads, WiFi changes and restarts are refused the same way; restarts, uploads, WiFi changes and scans also while the automatic close is waiting for the park or closing (`"The automatic close is under way: try again once the roof has closed or the weather is safe"`). The full table is in [Roof motion](../user-guide/roof-motion.md#while-the-roof-moves). Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
+
+While `location.source` is and stays `sqmeter` and the device has a location set, a save keeps the device's own `location.set`, `latitude` and `longitude` (the values are still checked); `location.sqmeter` is the device's and is never read from a save. A `location` without `source` is `manual` when `set` is true, else `sqmeter`.
+
+---
+
+### `POST /api/sqmeter/site`
+
+Reads the SQMeter's settings for the copy in Settings and the setup wizard ([Site from SQMeter](../user-guide/close-on-unsafe.md#copy-from-sqmeter)). The device fetches the SQMeter's `GET /api/config` itself (SQMeter sends no CORS headers, so a browser can't) and answers with only what can be copied. Needs the password when protection is on. Nothing is saved.
+
+```bash
+curl -u admin:password -X POST http://roofroof.local/api/sqmeter/site \
+  -H "Content-Type: application/json" -d '{"url": "http://192.168.1.50/api/safety"}'
+```
+
+`url` is optional: without it, the saved `safety.http.url`. Only its scheme, host and port are used, with SQMeter's own path.
+
+```json
+{
+  "address": "http://192.168.1.50",
+  "device": { "name": "SQMeter" },
+  "location": { "set": true, "latitude": 51.5074, "longitude": -0.1278 },
+  "time": { "timezone": "GMT0BST,M3.5.0/1,M10.5.0", "server1": "pool.ntp.org", "server2": "time.nist.gov" },
+  "mqtt": { "broker": "192.168.1.10", "port": 1883, "username": "observatory", "topic": "sqmeter", "passwordSet": true },
+  "ntfy": { "server": "https://ntfy.sh", "topic": "my-observatory", "tokenSet": false },
+  "pushover": { "userKeySet": true, "appTokenSet": true }
+}
+```
+
+A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKeySet`, `appTokenSet`): its value never appears, even from an SQMeter old enough not to mask it. A part an older SQMeter doesn't have is `null`; SQMeter v0.1's top-level `timezone` is read as the time zone.
+
+| Status | When |
+|---|---|
+| 400 | no address set, or not `http://` |
+| 409 | the roof moving, a close waiting, the automatic close working, or another copy running |
+| 502 | SQMeter not answering (`"SQMeter not answering: connection refused"`), another HTTP status, or not SQMeter's settings |
+| 503 | not enough memory to start the fetch |
+
+The fetch runs on its own short-lived task for at most about 5 s; the web server answers when it is done.
 
 ---
 

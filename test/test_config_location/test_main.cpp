@@ -220,6 +220,36 @@ void test_a_save_without_a_location_section_changes_nothing()
     TEST_ASSERT_TRUE(near(51.5074, cfg->location.latitude));
 }
 
+// A restored backup onto a device that has kept no location yet (a new board)
+// brings its location: there is nothing stale to protect.
+void test_a_save_onto_a_device_with_no_kept_location_takes_the_sent_one()
+{
+    const auto cfg =
+        fromUi("{\"location\":{\"source\":\"sqmeter\",\"set\":true,\"latitude\":10,\"longitude\":20}}", Config::createDefault());
+    TEST_ASSERT_TRUE(cfg.has_value());
+    TEST_ASSERT_EQUAL(Source::Sqmeter, cfg->location.source);
+    TEST_ASSERT_TRUE(cfg->location.set);
+    TEST_ASSERT_TRUE(near(10, cfg->location.latitude));
+}
+
+// FR-017: the copy sends null for the MQTT password and the ntfy token when
+// it changes where they would be sent; null clears them, the mask keeps them.
+void test_a_secret_sent_as_null_is_cleared_and_the_mask_keeps_it()
+{
+    Config base = Config::createDefault();
+    base.mqtt.password = "old-broker-secret";
+    base.alerts.ntfyToken = "old-server-token";
+    const auto kept = fromUi(R"({"mqtt":{"password":"********"},"alerts":{"ntfy":{"token":"********"}}})", base);
+    TEST_ASSERT_TRUE(kept.has_value());
+    TEST_ASSERT_EQUAL_STRING("old-broker-secret", kept->mqtt.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("old-server-token", kept->alerts.ntfyToken.c_str());
+    const auto cleared = fromUi(
+        R"({"mqtt":{"broker":"192.168.1.10","password":null},"alerts":{"ntfy":{"server":"https://ntfy.example","token":null}}})", base);
+    TEST_ASSERT_TRUE(cleared.has_value());
+    TEST_ASSERT_EQUAL_STRING("", cleared->mqtt.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("", cleared->alerts.ntfyToken.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -238,5 +268,7 @@ int main(int, char **)
     RUN_TEST(test_switching_to_sqmeter_keeps_the_typed_value_until_sqmeter_answers);
     RUN_TEST(test_the_api_never_sets_the_device_owned_fields_on_a_manual_location);
     RUN_TEST(test_a_save_without_a_location_section_changes_nothing);
+    RUN_TEST(test_a_secret_sent_as_null_is_cleared_and_the_mask_keeps_it);
+    RUN_TEST(test_a_save_onto_a_device_with_no_kept_location_takes_the_sent_one);
     return UNITY_END();
 }

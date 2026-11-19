@@ -209,7 +209,8 @@ namespace SQM
                 started = true;
                 seenGeneration = pass.generation;
             }
-            return !pass.busy && !pass.safetyPolled && pass.nowMs >= nextMs;
+            const bool safetySoon = pass.safetyNextMs != 0 && pass.nowMs + READ_MS > pass.safetyNextMs;
+            return !pass.busy && !pass.safetyPolled && !safetySoon && pass.nowMs >= nextMs;
         }
 
         void LocationSchedule::done(bool good, uint64_t nowMs)

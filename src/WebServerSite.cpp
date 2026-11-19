@@ -34,17 +34,24 @@ namespace SQM
         }
 
         // The address to use: the body's "url", else the weather source's.
-        std::string addressFrom(AsyncWebServerRequest *request, const std::string &saved)
+        // False when a body was sent but can't be read (too long, not JSON):
+        // never another SQMeter's settings by mistake.
+        bool addressFrom(AsyncWebServerRequest *request, const std::string &saved, std::string &address)
         {
-            std::string address = saved;
+            address = saved;
+            if (request->contentLength() == 0)
+                return true;
             if (request->_tempObject == nullptr)
-                return address;
-            StaticJsonDocument<MAX_BODY_BYTES> in;
-            if (!deserializeJson(in, static_cast<const char *>(request->_tempObject)) && in["url"].is<const char *>())
-                address = in["url"].as<const char *>();
+                return false;
+            DynamicJsonDocument in(MAX_BODY_BYTES * 2);
+            const bool read = !deserializeJson(in, static_cast<const char *>(request->_tempObject)) && in.is<JsonObject>();
             free(request->_tempObject);
             request->_tempObject = nullptr;
-            return address;
+            if (!read)
+                return false;
+            if (in["url"].is<const char *>())
+                address = in["url"].as<const char *>();
+            return true;
         }
 
         std::string errorBody(const std::string &message)
@@ -75,6 +82,11 @@ namespace SQM
             {
                 DynamicJsonDocument out(SITE_DOCUMENT_BYTES);
                 Site::writeSiteDocument(out.to<JsonObject>(), address, site);
+                if (out.overflowed())
+                {
+                    body = errorBody("SQMeter's settings are too long to copy");
+                    return 502;
+                }
                 body.clear();
                 serializeJson(out, body);
                 return 200;
@@ -99,7 +111,13 @@ namespace SQM
     {
         if (!requireAuth(request))
             return;
-        const std::string address = addressFrom(request, getConfigCallback().safety.httpUrl);
+        std::string address;
+        if (!addressFrom(request, getConfigCallback().safety.httpUrl, address))
+        {
+            request->send(
+                400, "application/json", errorBody("The body must be JSON, at most 512 bytes: {\"url\": \"http://...\"}").c_str());
+            return;
+        }
         if (address.empty() || Site::siteUrl(address, Site::CONFIG_PATH).empty())
         {
             const char *why = address.empty() ? "SQMeter's address isn't set" : "SQMeter's address must be an http:// address";

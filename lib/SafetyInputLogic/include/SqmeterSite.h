@@ -85,6 +85,9 @@ namespace SQM
             static constexpr uint32_t FIRST_MS = 15000;   // after the poller starts
             static constexpr uint32_t GOOD_MS = 600000;   // after a good read
             static constexpr uint32_t FAILED_MS = 120000; // after a failed one
+            // A read's longest time: none starts when the safety poll is due
+            // within it, so it never delays that poll (SafetyPoller::LOCATION_TOTAL_MS).
+            static constexpr uint32_t READ_MS = 3000;
 
             struct Pass
             {
@@ -92,6 +95,7 @@ namespace SQM
                 bool enabled = false;      // the source is SQMeter and its address is set
                 bool busy = false;         // the roof moves, a close waits or the close sequence works
                 bool safetyPolled = false; // SQMeter's safety was polled in this pass
+                uint64_t safetyNextMs = 0; // when SQMeter's safety poll is next due; 0 = that source is off
                 uint32_t generation = 0;   // bumped by a change of the address or the source
             };
 
