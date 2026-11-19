@@ -3,7 +3,10 @@ import { useLayoutEffect } from 'preact/hooks';
 import { choiceOf, type WizardPageProps } from './context';
 import { DeviceNameField, PasswordInputs } from '../settings/DeviceTab';
 import { NtpFields, TimeZoneFields } from '../settings/TimeTab';
-import { LocationFields } from '../settings/RoofTab';
+import { LocationFields, SqmeterUrlField } from '../settings/RoofTab';
+import SqmeterCopy from '../settings/SqmeterCopy';
+import { locationSource } from '../../lib/sqmeterCopy';
+import { pageIndex } from './pages';
 import { ChoiceGroup, Note } from '../ui';
 import { t } from '../../i18n';
 
@@ -41,15 +44,38 @@ export const PasswordScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
-export const SiteScreen: FunctionalComponent<WizardPageProps> = (props) =>
-  props.config.location ? (
-    <>
-      <LocationFields location={props.config.location} update={props.update} error={props.error} />
-      {!props.config.location.set && <Note tone="warn">{t('wizard.site.notSet')}</Note>}
-    </>
-  ) : (
-    <Note>{t('settings.roof.notSent')}</Note>
+// Spec 020: SQMeter's address first, and a copy of its site settings (applied to
+// the form; Continue saves them). An empty address means no SQMeter.
+export const SqmeterScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const { safety } = props.config;
+  if (!safety) return <Note>{t('settings.roof.notSent')}</Note>;
+  return (
+    <div id="sqmeter" class="card-group">
+      <div class="form-grid">
+        <SqmeterUrlField safety={safety} update={props.update} error={props.error} />
+      </div>
+      <SqmeterCopy {...props} url={safety.http.url} wizard />
+    </div>
   );
+};
+
+export const SiteScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const { location } = props.config;
+  if (!location) return <Note>{t('settings.roof.notSent')}</Note>;
+  return (
+    <>
+      <LocationFields
+        location={location}
+        update={props.update}
+        error={props.error}
+        status={props.status}
+        sqmeterUrl={props.config.safety?.http.url ?? ''}
+        onSetAddress={() => void props.goToPage(pageIndex('site'))}
+      />
+      {locationSource(location) === 'manual' && !location.set && <Note tone="warn">{t('wizard.site.notSet')}</Note>}
+    </>
+  );
+};
 
 export const TimeScreen: FunctionalComponent<WizardPageProps> = (props) => (
   <>

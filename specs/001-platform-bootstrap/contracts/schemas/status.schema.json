@@ -235,6 +235,59 @@
         "additionalProperties": false
       }
     },
+    "location": {
+      "type": "object",
+      "properties": {
+        "gps": {
+          "type": "boolean"
+        },
+        "problem": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "enum": [
+            "noAddress",
+            "waiting",
+            "unreachable",
+            "unreadable",
+            "noLocation",
+            null
+          ]
+        },
+        "readAgeSeconds": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "savedAt": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "set": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "sqmeter",
+            "manual"
+          ]
+        }
+      },
+      "required": [
+        "gps",
+        "problem",
+        "readAgeSeconds",
+        "savedAt",
+        "set",
+        "source"
+      ],
+      "additionalProperties": false
+    },
     "maxAllocHeap": {
       "type": "number"
     },
@@ -828,6 +881,7 @@
     "fsUsed",
     "heapSize",
     "heapStages",
+    "location",
     "maxAllocHeap",
     "minFreeHeap",
     "partitions",

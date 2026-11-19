@@ -32,6 +32,7 @@ export interface RoofPanel {
   jam: boolean;
   supplyLow: boolean;
   sunUp: boolean; // spec 013: the daylight state is day whatever the location and clock
+  sqmeterOffline: boolean; // spec 020: the simulated SQMeter doesn't answer (weather, location and the copy)
   daylight: string; // the device's daylight text
   mount: 'parked' | 'unparked' | 'slewing';
   state: string;
@@ -40,7 +41,7 @@ export interface RoofPanel {
   phase: string;
 }
 
-export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp'>> & {
+export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp' | 'sqmeterOffline'>> & {
   mount?: 'park' | 'unpark';
 };
 
@@ -207,6 +208,12 @@ class DemoDevice {
       this.persist();
       this.notify();
     }
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** Copy from SQMeter (spec 020): the site document from the simulated SQMeter's settings. */
+  sqmeterSite(body = ''): Reply {
+    const reply = JSON.parse(this.core.sqmeterSite(body));
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 

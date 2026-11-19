@@ -47,12 +47,24 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await page.locator('[data-field="auth.password"]').fill('night-sky');
   await proceed(page);
 
+  // Spec 020: SQMeter first; its site settings fill the Time screen (MQTT left as it is).
+  await onScreen(page, 'sqmeter');
+  await expect(question(page)).toHaveText('Where is SQMeter?');
+  await dialog(page).getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(dialog(page).getByRole('switch', { name: 'Time servers' })).toBeChecked({ timeout: 15_000 });
+  await dialog(page).getByRole('switch', { name: 'MQTT broker' }).uncheck();
+  await dialog(page).getByRole('button', { name: 'Apply ticked' }).click();
+  await expect(dialog(page)).toContainText('Applied: Continue saves them.');
+  await proceed(page);
+
   await onScreen(page, 'site');
+  await page.locator('[data-field="location.source"]').selectOption('manual');
   await page.getByRole('switch', { name: 'Location set' }).check();
   await page.locator('[data-field="location.latitude"]').fill('51.5');
   await page.locator('[data-field="location.longitude"]').fill('-0.1');
   await proceed(page);
   await onScreen(page, 'time');
+  await expect(page.locator('[data-field="ntp.server1"]')).toHaveValue('uk.pool.ntp.org');
   await proceed(page);
 
   // The live supply, compared with a meter reading.
@@ -136,7 +148,8 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   const config = await deviceConfig(page);
   expect(config.deviceName).toBe('Backyard roof');
   expect(config.auth.enabled).toBe(true);
-  expect(config.location).toMatchObject({ set: true, latitude: 51.5 });
+  expect(config.location).toMatchObject({ source: 'manual', set: true, latitude: 51.5 });
+  expect(config.ntp.server1).toBe('uk.pool.ntp.org');
   expect(config.park.switches).toBe('one');
   expect(config.daylight.mode).toBe('close');
   expect(config.setup).toEqual({ state: 'done', step: 0 });
@@ -235,17 +248,18 @@ test('the wizard resumes where it was left, and opens by itself once per page lo
   await proceed(page); // the name
   await choose(page, 'No password');
   await proceed(page);
-  await onScreen(page, 'site');
+  // Spec 020: the Site and time page starts with SQMeter.
+  await onScreen(page, 'sqmeter');
   // A new page load on the dashboard opens the wizard at the saved page.
   await page.goto('./#/');
   await page.reload();
-  await expect(page.locator('[data-wizard-screen]')).toHaveAttribute('data-wizard-screen', 'site', { timeout: 15_000 });
+  await expect(page.locator('[data-wizard-screen]')).toHaveAttribute('data-wizard-screen', 'sqmeter', { timeout: 15_000 });
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Leave for now' }).click();
   const banner = page.locator('[data-inventory="setup-banner"]');
   await expect(banner).toContainText("Setup isn't finished");
   await banner.getByRole('button', { name: 'Continue setup' }).click();
-  await onScreen(page, 'site');
+  await onScreen(page, 'sqmeter');
 });
 
 test('skipping setup warns first; System runs it again', async ({ page }) => {

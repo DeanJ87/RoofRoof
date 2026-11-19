@@ -5,6 +5,8 @@ import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
 import { Button, Note } from '../ui';
+import SqmeterCopy from './SqmeterCopy';
+import { DegreesField, LocationFields } from './LocationFields';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -219,6 +221,20 @@ export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, up
   />
 );
 
+// Settings → Roof's card, by the weather sources (whose address it uses). The
+// address shows here too while the HTTP weather source is off: the location
+// and the copy use it either way.
+export const SqmeterCopyCard: FunctionalComponent<SafetyProps> = (props) => (
+  <SettingsCard id="sqmeterCopy" title={t('settings.sqmeterCopy.title')} hint={t('settings.sqmeterCopy.hint')}>
+    {!props.safety.http.enabled && (
+      <div class="form-grid">
+        <SqmeterUrlField safety={props.safety} update={props.update} error={props.error} />
+      </div>
+    )}
+    <SqmeterCopy {...props} />
+  </SettingsCard>
+);
+
 const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
   <SettingsCard id="safety" title={t('settings.roof.weatherSources')} hint={t('settings.roof.weatherSourcesHint')}>
     <WeatherSourceFields {...props} />
@@ -288,20 +304,7 @@ const ParkCard: FunctionalComponent<ParkProps> = (props) => (
 );
 
 export type DaylightProps = SettingsTabProps & { daylight: DaylightConfig; location: LocationConfig };
-
-// A degrees field that can be negative (the sun's altitude, latitude, longitude).
-const DegreesField: FunctionalComponent<{
-  at: string[];
-  label: string;
-  hint: string;
-  value: number;
-  update: SettingsTabProps['update'];
-  error: SettingsTabProps['error'];
-}> = ({ at, label, hint, value, update, error }) => (
-  <Field label={label} hint={hint} error={error(at.join('.'))}>
-    <NumberInput dataField={at.join('.')} value={value} unit="°" onChange={(v) => update(at, v)} />
-  </Field>
-);
+export { LocationFields };
 
 // The daylight failsafe and where the roof is (spec 013). The site and the
 // threshold only matter while the check is on; the fields stay editable.
@@ -344,43 +347,14 @@ export const SunAltitudeField: FunctionalComponent<Pick<DaylightProps, 'daylight
   />
 );
 
-// Where the roof is (also the setup wizard's site page).
-export const LocationFields: FunctionalComponent<Pick<DaylightProps, 'location' | 'update' | 'error'>> = ({ location, update, error }) => (
-  <>
-    <Toggle
-      dataField="location.set"
-      label={t('settings.roof.locationSet')}
-      hint={t('settings.roof.locationSetHint')}
-      checked={location.set}
-      onChange={(v) => update(['location', 'set'], v)}
-    />
-    {(location.set || error('location.latitude') !== undefined || error('location.longitude') !== undefined) && (
-      <div class="form-grid indent">
-        <DegreesField
-          at={['location', 'latitude']}
-          label={t('settings.roof.latitude')}
-          hint={t('settings.roof.latitudeHint')}
-          value={location.latitude}
-          update={update}
-          error={error}
-        />
-        <DegreesField
-          at={['location', 'longitude']}
-          label={t('settings.roof.longitude')}
-          hint={t('settings.roof.longitudeHint')}
-          value={location.longitude}
-          update={update}
-          error={error}
-        />
-      </div>
-    )}
-  </>
-);
-
 const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
   <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
     <DaylightModeFields {...props} />
-    <LocationFields {...props} />
+    <LocationFields
+      {...props}
+      sqmeterUrl={props.config.safety?.http.url ?? ''}
+      onSetAddress={() => props.goTo('roof', props.config.safety?.http.enabled ? 'safety' : 'sqmeterCopy')}
+    />
     {/* Spec 014: Settings only, not the setup wizard's daylight page. */}
     <Fold label={t('settings.roof.advanced')} open={props.error('daylight.bandDeg') !== undefined} dataField="daylight.advanced">
       <div class="form-grid">
@@ -442,6 +416,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
         <Note>{t('settings.roof.notSent')}</Note>
       )}
       {safety && <SafetyCard {...props} safety={safety} />}
+      {safety && <SqmeterCopyCard {...props} safety={safety} />}
       {park && <ParkCard {...props} park={park} />}
       {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}

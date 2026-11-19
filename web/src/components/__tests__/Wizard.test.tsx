@@ -52,7 +52,7 @@ describe('Wizard', () => {
     expect(await question()).toHaveTextContent('What should we call this roof?');
     const dialog = screen.getByRole('dialog', { name: 'What should we call this roof?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 21');
+    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 22');
     expect(within(dialog).getByRole('complementary')).toHaveTextContent('Why this matters');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull(); // the first screen
   });
@@ -122,7 +122,7 @@ describe('Wizard', () => {
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Set a password' })).toBeChecked());
     fireEvent.click(screen.getByRole('radio', { name: 'No password' }));
     fireEvent.click(button('Skip for now'));
-    await onScreen('site');
+    await onScreen('sqmeter');
     fireEvent.click(button('Back'));
     await onScreen('password');
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -179,12 +179,15 @@ describe('Wizard', () => {
     expect(saves[0].setup).toEqual({ state: 'new', step: 0 }); // the password screen is still page 1
     // The saved edit stays: a later save sends it, not the value from before.
     fireEvent.click(button('Skip for now'));
+    await onScreen('sqmeter');
+    fireEvent.click(button('Continue'));
     await onScreen('site');
+    const before = saves.length;
     fireEvent.click(screen.getByRole('switch', { name: 'Location set' }));
     fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(2));
-    expect(saves[1].deviceName).toBe('Backyard roof');
-    expect(saves[1].setup).toEqual({ state: 'new', step: 1 });
+    await waitFor(() => expect(saves).toHaveLength(before + 1));
+    expect(saves[before].deviceName).toBe('Backyard roof');
+    expect(saves[before].setup).toEqual({ state: 'new', step: 1 });
   });
 
   it('keeps the screen and says why when the device refuses the save (the roof moving)', async () => {
@@ -254,7 +257,7 @@ describe('Wizard', () => {
     await onScreen('name');
     fireEvent.click(button('Skip for now'));
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Protect changes with a password?'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 21');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 22');
   });
 
   it('Test on the weather address screen shows the verdict and each source', async () => {

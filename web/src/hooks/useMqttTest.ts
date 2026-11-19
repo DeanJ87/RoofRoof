@@ -19,7 +19,7 @@ export const useMqttTest = (config: Config) => {
         broker: config.mqtt.broker,
         port: config.mqtt.port,
         username: config.mqtt.username,
-        password: config.mqtt.password,
+        password: config.mqtt.password ?? '',
         clientId: `RoofRoof-${config.deviceName || 'ESP32'}-Test`,
       });
       const result = await response.json();

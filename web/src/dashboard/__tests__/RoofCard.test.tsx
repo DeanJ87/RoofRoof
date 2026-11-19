@@ -72,6 +72,34 @@ describe('RoofCard', () => {
     expect(document.querySelector('[data-inventory="roof-daylight"]')).toBeNull();
   });
 
+  it('says under the daylight line where the location came from and how old it is, never as a verdict (spec 020)', () => {
+    // inventory: roof-daylight
+    const s = status();
+    s.location = { source: 'sqmeter', set: true, gps: true, savedAt: 1763540000, readAgeSeconds: 180, problem: null };
+    const { unmount } = show(live(s));
+    const row = document.querySelector('[data-inventory="roof-daylight"]') as HTMLElement;
+    const line = within(row).getByText("Location from SQMeter's GPS, read 3 min ago");
+    expect(line).toHaveClass('note-muted');
+    unmount();
+    s.location = { ...s.location, problem: 'unreachable', readAgeSeconds: 7200 };
+    show(live(s));
+    const problem = screen.getByText('SQMeter not answering: using the location read 2 h 0 min ago');
+    expect(problem).toHaveClass('note-muted');
+    expect(problem.className).not.toMatch(/bad|ok|red|green/);
+  });
+
+  it('says a typed-in location, and nothing more for older firmware', () => {
+    const s = status();
+    s.location = { source: 'manual', set: true, gps: false, savedAt: null, readAgeSeconds: null, problem: null };
+    const { unmount } = show(live(s));
+    expect(screen.getByText('Typed-in location')).toBeInTheDocument();
+    unmount();
+    const old = status();
+    delete old.location;
+    show(live(old));
+    expect(document.querySelector('[data-inventory="roof-daylight"] .note')).toBeNull();
+  });
+
   it('never disables Stop, also with no live data, and says why Open and Close are', () => {
     // inventory: roof-buttons
     show(live(status({ state: 'opening' }), { connected: false }));

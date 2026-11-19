@@ -267,8 +267,9 @@ test('unsafe weather: the close phase on the Roof card; a person stopping it sho
 test('daylight: with alert and close and the sun up the open roof closes, and Open says why', async ({ page }) => {
   // inventory: roof-daylight
   await open(page);
-  // No location: the demo's "Sun up" switch makes it day whatever the site and clock, and nothing else does.
-  await setConfig(page, { 'daylight.mode': 'close' });
+  // No location (typed in, not set; spec 020's SQMeter location would follow the wall clock): the demo's
+  // "Sun up" switch makes it day whatever the site and clock, and nothing else does.
+  await setConfig(page, { 'daylight.mode': 'close', 'location.source': 'manual', 'location.set': false });
   await roofReady(page);
   await fast(page);
   expect(await roofCommand(page, 'open')).toBe(200);
@@ -283,6 +284,21 @@ test('daylight: with alert and close and the sun up the open roof closes, and Op
   // The sun is down again: Open is back.
   await panelChoice(page, 'Sun up: Off');
   await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeEnabled({ timeout: 20_000 });
+});
+
+// Spec 020: under the daylight line, where the location came from and how old it is; a dead SQMeter keeps the last one.
+test('daylight: the location from SQMeter, its age, and SQMeter offline', async ({ page }) => {
+  // inventory: roof-daylight
+  // The next read is due 10 min after a good one: about a minute at 10x.
+  test.setTimeout(180_000);
+  await open(page);
+  await fast(page);
+  const daylight = item(page, 'roof-daylight');
+  await expect(daylight).toContainText("Location from SQMeter's GPS, read", { timeout: 30_000 });
+  await panelChoice(page, 'SQMeter offline: On');
+  await expect(daylight).toContainText('SQMeter not answering: using the location read', { timeout: 90_000 });
+  await expect(daylight.locator('.tone-red, .note-bad')).toHaveCount(0);
+  await panelChoice(page, 'SQMeter offline: Off');
 });
 
 test('Device & Network: one address per row, local name and MQTT', async ({ page }) => {

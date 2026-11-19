@@ -70,7 +70,7 @@ export const mockConfig: Config = {
     minSupplyVolts: 11,
   },
   daylight: { mode: 'alert', sunAltitudeDeg: 0, bandDeg: 0.5 },
-  location: { set: false, latitude: 0, longitude: 0 },
+  location: { source: 'manual', set: false, latitude: 0, longitude: 0, sqmeter: { gps: false, savedAt: 0 } },
   autoClose: {
     rearmMinutes: 10,
     parkRequestSeconds: 30,

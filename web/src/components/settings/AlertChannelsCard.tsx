@@ -90,7 +90,7 @@ const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
             <Field label={t('settings.alerts.token')}>
               <TextInput
                 type="password"
-                value={alerts.ntfy.token}
+                value={alerts.ntfy.token ?? ''}
                 placeholder={t('settings.alerts.optional')}
                 onInput={(v) => set(['ntfy', 'token'], v)}
               />

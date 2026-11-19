@@ -22,6 +22,8 @@ test('Settings → Roof has the Daylight card, and a save reaches the device', a
   await expect(card).toBeVisible({ timeout: 15_000 });
   await expect(card.locator('[data-field="daylight.mode"]')).toBeVisible();
   await card.locator('[data-field="daylight.mode"]').selectOption('close');
+  // Spec 020: the location is typed in here, not followed from SQMeter.
+  await card.locator('[data-field="location.source"]').selectOption('manual');
   // The save bar covers the last card, so the switch is clicked without a pointer.
   await card.getByRole('switch', { name: 'Location set' }).evaluate((el: HTMLElement) => el.click());
   await card.locator('[data-field="location.latitude"]').fill('51.5');
@@ -31,8 +33,36 @@ test('Settings → Roof has the Daylight card, and a save reaches the device', a
     .poll(() =>
       page.evaluate(async () => {
         const config = await (await fetch('/api/config')).json();
-        return `${config.daylight.mode}:${config.location.set}:${config.location.latitude}`;
+        return `${config.daylight.mode}:${config.location.source}:${config.location.set}:${config.location.latitude}`;
       }),
     )
-    .toBe('close:true:51.5');
+    .toBe('close:manual:true:51.5');
+});
+
+// Spec 020: Copy from SQMeter lists what differs, applies the ticked rows to the form, and Save keeps them.
+test('Settings → Roof copies site settings from SQMeter, and Save keeps them', async ({ page }) => {
+  await page.goto('./#/settings?tab=roof&section=sqmeterCopy');
+  const card = page.locator('#sqmeterCopy');
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(card.getByRole('switch', { name: 'Time servers' })).toBeChecked({ timeout: 15_000 });
+  await expect(card).toContainText('SQMeter: uk.pool.ntp.org, time.cloudflare.com');
+  // The MQTT broker is applied too: its password is cleared and asked for.
+  await expect(card.getByRole('switch', { name: 'MQTT broker' })).toBeChecked();
+  await expect(card).toContainText('Enter the MQTT password');
+  await card.getByRole('switch', { name: 'ntfy topic' }).uncheck();
+  await card.getByRole('button', { name: 'Apply ticked' }).click();
+  await expect(card).toContainText('Applied: save to keep them.');
+  // Applied to the form only: nothing saved yet.
+  const before = await page.evaluate(async () => (await (await fetch('/api/config')).json()).ntp.server1);
+  expect(before).not.toBe('uk.pool.ntp.org');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const config = await (await fetch('/api/config')).json();
+        return `${config.ntp.server1}|${config.mqtt.username}|${config.mqtt.topic}|${config.alerts.ntfy.topic === 'darkskylab-sqm'}`;
+      }),
+    )
+    .toBe('uk.pool.ntp.org|observatory|roofroof|false');
 });

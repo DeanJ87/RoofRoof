@@ -9,6 +9,7 @@ import {
   mockRecentAlerts,
   mockCalibration,
   mockTeach,
+  mockSqmeterSite,
 } from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
 import { mockDiagLive, mockDiagMove, mockDiagMoves } from './diag';
@@ -115,6 +116,8 @@ export const handlers = [
     HttpResponse.json({ facts: mockFacts, settings: evaluate(mockConfig, mockFacts).map(({ blockedBy: _blockedBy, ...entry }) => entry) }),
   ),
   http.post('/api/config', () => HttpResponse.json({ success: true })),
+  // Spec 020: SQMeter's site settings for the copy (a typed address answers the same).
+  http.post('/api/sqmeter/site', () => HttpResponse.json(mockSqmeterSite)),
   http.put('/api/config', () => HttpResponse.json({ success: true })),
 
   // REST — settings backup and restore (SQMeter spec 033): a file without secrets, a preview that changes the MQTT broker
