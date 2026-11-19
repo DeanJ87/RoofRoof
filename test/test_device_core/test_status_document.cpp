@@ -4,6 +4,7 @@
 
 #include "DeviceCore.h"
 #include "RoofStatus.h"
+#include "SqmeterSite.h"
 
 #include <cstdio>
 #include <string>
@@ -170,6 +171,14 @@ namespace
         alerts["recentRevision"] = 4294967295U;
         const std::vector<Alpaca::DeviceInfo> devices(Alpaca::MAX_DEVICES, Alpaca::DeviceInfo{"Dome", "dome", 0, LONG, LONG, 3});
         Core::writeClientWatch(doc.createNestedObject("alpaca"), Alpaca::ClientWatch{}, devices, cfg, now);
+        // Spec 020: the location section, every field filled.
+        LocationConfig location;
+        location.set = location.gps = true;
+        location.savedAt = 4294967295U;
+        Site::LocationRead read;
+        read.problem = Site::Problem::NoLocation;
+        read.goodAtMs = 1;
+        Site::writeLocationStatus(doc.createNestedObject("location"), location, read, true, now);
     }
 } // namespace
 
