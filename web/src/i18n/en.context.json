@@ -1047,6 +1047,7 @@
   "settings.sqmeterCopy.failed": "Settings -> Roof -> Site from SQMeter: error; a one-line note (a sentence); max 90 chars.",
   "settings.sqmeterCopy.fetching": "Settings -> Roof -> Site from SQMeter: a busy button label; max 32 chars.",
   "settings.sqmeterCopy.hint": "Settings -> Roof -> Site from SQMeter: the ? tip; max 160 chars.",
+  "settings.sqmeterCopy.liveLocation": "Shown as SQMeter's value in the copy's location row when SQMeter has no typed location: the device reads its live (often GPS) location once the source is SQMeter.",
   "settings.sqmeterCopy.noAddress": "Settings -> Roof -> Site from SQMeter: warning; a one-line note (a sentence); max 90 chars.",
   "settings.sqmeterCopy.noneTicked": "Settings -> Roof -> Site from SQMeter: says why Apply is unavailable; a one-line note (a sentence); max 90 chars.",
   "settings.sqmeterCopy.notSet": "Settings -> Roof -> Site from SQMeter: a value label for a setting with no value; max 32 chars.",

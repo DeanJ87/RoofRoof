@@ -90,15 +90,24 @@ describe('copyRows', () => {
     const otherServer = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'my-observatory' }));
     const r = row(mockSqmeterSite, otherServer, 'ntfy')!;
     expect(r.changes).toContainEqual([['alerts', 'ntfy', 'token'], null]);
-    expect(r.secrets).toEqual(['ntfyToken']);
+    // No token on either side: nothing to enter.
+    expect(r.secrets).toEqual([]);
+    const withToken = config(
+      (c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'x', token: '********' }),
+    );
+    expect(row(mockSqmeterSite, withToken, 'ntfy')!.secrets).toEqual(['ntfyToken']);
   });
 
-  it("offers following SQMeter's location only when it is typed in and SQMeter has one", () => {
+  it("offers following SQMeter's location while it is typed in and SQMeter has a location section", () => {
     const r = row(mockSqmeterSite, config(), 'location')!;
     expect(r.changes).toContainEqual([['location', 'source'], 'sqmeter']);
     expect(r.theirs).toBe('51.4769 N, 0.0005 W');
     expect(ids(mockSqmeterSite, matching())).not.toContain('location');
-    expect(ids(site({ location: { set: false, latitude: 0, longitude: 0 } }), config())).not.toContain('location');
+    // GPS only: its typed location unset, the row still offered, only the source sent.
+    const live = row(site({ location: { set: false, latitude: 0, longitude: 0 } }), config(), 'location')!;
+    expect(live.changes).toEqual([[['location', 'source'], 'sqmeter']]);
+    expect(live.theirs).toBe('its live location');
+    expect(ids(site({ location: null }), config())).not.toContain('location');
   });
 
   it('leaves out what an older SQMeter lacks, and empty values', () => {

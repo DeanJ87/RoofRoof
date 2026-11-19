@@ -51,18 +51,18 @@ const broker = (host: string, port: number, user: string) =>
 const locationRow = (site: SqmeterSite, config: Config): CopyRow | null => {
   const ours = config.location;
   const theirs = site.location;
-  if (!ours || !theirs?.set || locationSource(ours) !== 'manual') return null;
+  // Offered whenever SQMeter has a location section: with GPS only, its typed one may be unset
+  // while the device would still read its live fix.
+  if (!ours || !theirs || locationSource(ours) !== 'manual') return null;
+  const changes: [ConfigPath, unknown][] = [[['location', 'source'], 'sqmeter']];
+  // Its typed location until the device's first read, when it has one.
+  if (theirs.set)
+    changes.push([['location', 'set'], true], [['location', 'latitude'], theirs.latitude], [['location', 'longitude'], theirs.longitude]);
   return {
     id: 'location',
     ours: ours.set ? formatCoordinates(ours.latitude, ours.longitude, 4) : t('settings.sqmeterCopy.notSet'),
-    theirs: formatCoordinates(theirs.latitude, theirs.longitude, 4),
-    // Follow SQMeter from now on; its location now, until the device's first read.
-    changes: [
-      [['location', 'source'], 'sqmeter'],
-      [['location', 'set'], true],
-      [['location', 'latitude'], theirs.latitude],
-      [['location', 'longitude'], theirs.longitude],
-    ],
+    theirs: theirs.set ? formatCoordinates(theirs.latitude, theirs.longitude, 4) : t('settings.sqmeterCopy.liveLocation'),
+    changes,
     secrets: [],
   };
 };
@@ -112,7 +112,8 @@ const mqttRows = (site: SqmeterSite, config: Config): CopyRow[] => {
         [['mqtt', 'username'], mqtt.username],
         [['mqtt', 'password'], null],
       ],
-      secrets: ['mqttPassword'],
+      // Only when there is a password to enter: SQMeter's, or the one RoofRoof had.
+      secrets: mqtt.passwordSet || (ours.password ?? '') !== '' ? ['mqttPassword'] : [],
     });
   // SQMeter's base topic is where the MQTT weather source reads <base>/safe.
   const safety = config.safety;
@@ -144,7 +145,7 @@ const ntfyRow = (site: SqmeterSite, config: Config): CopyRow | null => {
     ours: ours.topic.trim() === '' ? t('settings.sqmeterCopy.notSet') : `${ours.server}/${ours.topic}`,
     theirs: `${ntfy.server}/${ntfy.topic}`,
     changes,
-    secrets: newServer || ntfy.tokenSet ? ['ntfyToken'] : [],
+    secrets: ntfy.tokenSet || (newServer && (ours.token ?? '') !== '') ? ['ntfyToken'] : [],
   };
 };
 

@@ -236,6 +236,12 @@ namespace SQM
             return next;
         }
 
+        void keepDeviceLocation(const LocationConfig &live, LocationConfig &next)
+        {
+            if (live.set && live.source == LocationConfig::Source::Sqmeter && next.source == LocationConfig::Source::Sqmeter)
+                next = live;
+        }
+
         void writeLocationStatus(JsonObject out, const LocationConfig &config, const LocationRead &read, bool addressSet, uint64_t nowMs)
         {
             const bool sqmeter = config.source == LocationConfig::Source::Sqmeter;

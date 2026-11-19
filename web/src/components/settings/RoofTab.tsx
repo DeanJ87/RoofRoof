@@ -231,7 +231,8 @@ export const SqmeterCopyCard: FunctionalComponent<SafetyProps> = (props) => (
         <SqmeterUrlField safety={props.safety} update={props.update} error={props.error} />
       </div>
     )}
-    <SqmeterCopy {...props} />
+    {/* The address as typed, saved or not (as the wizard does). */}
+    <SqmeterCopy {...props} url={props.safety.http.url} />
   </SettingsCard>
 );
 

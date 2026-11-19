@@ -183,8 +183,9 @@ void test_switching_to_manual_takes_the_sent_values()
     TEST_ASSERT_EQUAL(Source::Manual, cfg->location.source);
     TEST_ASSERT_TRUE(near(10, cfg->location.latitude));
     TEST_ASSERT_TRUE(near(20, cfg->location.longitude));
-    // The device-owned fields are never read from the API.
-    TEST_ASSERT_TRUE(cfg->location.gps);
+    // A typed location is no longer SQMeter's GPS fix (and the API never sets these).
+    TEST_ASSERT_FALSE(cfg->location.gps);
+    TEST_ASSERT_EQUAL_UINT32(0, cfg->location.savedAt);
 }
 
 void test_switching_to_sqmeter_keeps_the_typed_value_until_sqmeter_answers()

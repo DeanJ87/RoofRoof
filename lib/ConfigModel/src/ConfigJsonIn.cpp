@@ -399,7 +399,15 @@ namespace SQM
             // backup's location then stands until SQMeter answers.
             const bool deviceOwns = before.set && before.source == LocationConfig::Source::Sqmeter;
             if (!strict || !deviceOwns || loc.source != LocationConfig::Source::Sqmeter)
+            {
+                // A location sent from the UI/API that stands was typed, not read from SQMeter.
+                if (strict && (loc.latitude != before.latitude || loc.longitude != before.longitude || loc.set != before.set))
+                {
+                    loc.gps = false;
+                    loc.savedAt = 0;
+                }
                 return true;
+            }
             // What was sent is still checked, so a wrong value is never accepted silently.
             if (!validateLocation(loc, error))
                 return false;

@@ -118,6 +118,12 @@ namespace SQM
         std::optional<LocationConfig> locationToSave(
             const LocationConfig &current, const LocationRead &read, int64_t epochSeconds, bool clockSet);
 
+        // FR-008 at the moment of saving: while the live settings keep a location
+        // from SQMeter and the new ones still follow it, the new ones take the
+        // live location (a settings copy taken before the last location save,
+        // such as a staged restore, can't put an older one back).
+        void keepDeviceLocation(const LocationConfig &live, LocationConfig &next);
+
         // The status document's "location" section (FR-010).
         void writeLocationStatus(JsonObject out, const LocationConfig &config, const LocationRead &read, bool addressSet, uint64_t nowMs);
 

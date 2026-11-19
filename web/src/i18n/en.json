@@ -1067,6 +1067,7 @@
   "settings.sqmeterCopy.failed": "SQMeter's settings couldn't be read.",
   "settings.sqmeterCopy.fetching": "Reading SQMeter...",
   "settings.sqmeterCopy.hint": "Copies SQMeter's time zone, time servers, MQTT broker and ntfy topic once. Passwords and keys are never copied.",
+  "settings.sqmeterCopy.liveLocation": "its live location",
   "settings.sqmeterCopy.noAddress": "SQMeter's address isn't set: enter it to copy from SQMeter.",
   "settings.sqmeterCopy.noneTicked": "Nothing ticked: tick a setting to apply it.",
   "settings.sqmeterCopy.notSet": "Not set",

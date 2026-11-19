@@ -49,8 +49,11 @@ namespace SQM
             request->_tempObject = nullptr;
             if (!read)
                 return false;
-            if (in["url"].is<const char *>())
-                address = in["url"].as<const char *>();
+            if (in["url"].isNull())
+                return true;
+            if (!in["url"].is<const char *>())
+                return false;
+            address = in["url"].as<const char *>();
             return true;
         }
 

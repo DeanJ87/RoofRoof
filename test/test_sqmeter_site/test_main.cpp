@@ -322,6 +322,22 @@ void test_without_a_clock_the_time_is_zero()
     TEST_ASSERT_EQUAL_UINT32(0, next->savedAt);
 }
 
+// FR-008 at the save: an older copy of the settings can't put an older location back.
+void test_a_save_keeps_the_live_location_while_both_follow_sqmeter()
+{
+    LocationConfig next = kept(10, 20, false);
+    keepDeviceLocation(kept(51.5, -0.1, true), next);
+    TEST_ASSERT_TRUE(near(51.5, next.latitude));
+    TEST_ASSERT_TRUE(next.gps);
+    LocationConfig manual = kept(10, 20, false);
+    manual.source = LocationConfig::Source::Manual;
+    keepDeviceLocation(kept(51.5, -0.1, true), manual);
+    TEST_ASSERT_TRUE(near(10, manual.latitude));
+    LocationConfig restored = kept(10, 20, false);
+    keepDeviceLocation(LocationConfig{}, restored); // nothing kept: the sent one stands
+    TEST_ASSERT_TRUE(near(10, restored.latitude));
+}
+
 // --- The status section (FR-010) ---------------------------------------------------
 
 void test_the_status_names_the_source_age_and_problem()
@@ -460,6 +476,7 @@ int main(int, char **)
     RUN_TEST(test_a_move_of_a_thousandth_of_a_degree_is_saved);
     RUN_TEST(test_a_change_of_the_gps_flag_is_saved);
     RUN_TEST(test_without_a_clock_the_time_is_zero);
+    RUN_TEST(test_a_save_keeps_the_live_location_while_both_follow_sqmeter);
     RUN_TEST(test_the_status_names_the_source_age_and_problem);
     RUN_TEST(test_the_status_before_any_read_and_without_an_address);
     RUN_TEST(test_a_manual_location_has_no_sqmeter_status);

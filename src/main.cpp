@@ -64,7 +64,9 @@ const Config &getConfigCallback()
 bool saveConfigCallback(const Config &newConfig)
 {
     const std::lock_guard<std::mutex> held(configSaveLock);
-    config = newConfig;
+    Config next = newConfig;
+    Site::keepDeviceLocation(config.location, next.location); // spec 020 FR-008, against the live settings
+    config = next;
     const bool saved = config.save();
     if (!saved)
         return false;
