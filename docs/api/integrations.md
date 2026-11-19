@@ -11,14 +11,14 @@ RoofRoof exposes the device's data through these integration paths. The roof's s
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: false
-fingerprint: f0f11802d1d5d594
+fingerprint: bfa177935fc74645
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: Integration paths
-    accDescr: The device status feeds four paths. REST is pulled by scripts and can command the roof; WebSocket pushes the status live to the dashboard and apps; MQTT publishes the roof's state, availability and alerts to a broker for Home Assistant and, when switched on, takes its open, close and stop commands; Alpaca serves the roof as a Dome that N.I.N.A. and other clients can open, close and stop; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict and N.I.N.A.'s mount state.
+    accDescr: The device status feeds four paths. REST is pulled by scripts and can command the roof; WebSocket pushes the status live to the dashboard and apps; MQTT publishes the roof's state, availability and alerts to a broker for Home Assistant and, when switched on, takes its open, close and stop commands; Alpaca serves the roof as a Dome that N.I.N.A. and other clients can open, close and stop; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict, its location and (on request) its site settings, and N.I.N.A.'s mount state.
     DATA["Device status<br/>and alerts"]
     DATA --> REST["REST API<br/>pull, any time;<br/>roof open, close, stop"]
     DATA --> WS["WebSocket<br/>push: status every 2 s<br/>and on a roof change"]
@@ -30,7 +30,7 @@ flowchart LR
     MQTT --> HA["Home Assistant,<br/>Node-RED"]
     ALPACA --> NINA["N.I.N.A. and other<br/>Alpaca clients"]
     ALERTS --> PHONES["Pushover, ntfy,<br/>webhook, MQTT"]
-    SQM["SQMeter<br/>/api/safety or MQTT"] -->|weather in| DATA
+    SQM["SQMeter<br/>/api/safety or MQTT;<br/>/api/status, /api/config"] -->|weather, site in| DATA
     NAPI["N.I.N.A. Advanced API<br/>mount info, park"] -->|park state in| DATA
 ```
 
@@ -47,7 +47,7 @@ flowchart LR
     - **ASCOM Alpaca**: the roof as a Dome for N.I.N.A. and other Alpaca clients: the shutter state, and open, close and stop through the same checks as the web UI's.
     - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook or MQTT.
 
-    Two paths come in: SQMeter's weather verdict (polled over HTTP or read from MQTT) and N.I.N.A.'s mount state through its Advanced API (see [Safety inputs](../user-guide/safety-inputs.md)).
+    Two paths come in: SQMeter's weather verdict (polled over HTTP or read from MQTT), with its location and, when you copy them, its site settings over HTTP ([Site from SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)), and N.I.N.A.'s mount state through its Advanced API (see [Safety inputs](../user-guide/safety-inputs.md)).
 
 ### REST API
 

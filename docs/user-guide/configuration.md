@@ -145,7 +145,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "minSupplyVolts": 11
   },
   "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
-  "location": { "set": false, "latitude": 0, "longitude": 0 },
+  "location": { "source": "sqmeter", "set": false, "latitude": 0, "longitude": 0, "sqmeter": { "gps": false, "savedAt": 0 } },
   "autoClose": {
     "rearmMinutes": 10,
     "parkRequestSeconds": 30,
@@ -295,9 +295,12 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 | `daylight.mode` | string | `"alert"` | `off` (nothing), `alert` (an alert, nothing moves) or `close` (shown as "Alert and close": park and close as for unsafe weather, and refuse opening while the sun is up). Any other value is refused |
 | `daylight.sunAltitudeDeg` | number | `0` | The sun counts as up at or above this altitude, in degrees (-18 to 30); it counts as down again `bandDeg` below it |
 | `daylight.bandDeg` | number | `0.5` | Once it is day, night comes again only this far below the threshold, so a sun lingering at it can't flicker the state (0.1 to 2 degrees) |
-| `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes |
-| `location.latitude` | number | `0` | Degrees, north positive (-90 to 90) |
-| `location.longitude` | number | `0` | Degrees, east positive (-180 to 180) |
+| `location.source` | string | `sqmeter` | `sqmeter`: read from the SQMeter at `safety.http.url` and kept here ([Site from SQMeter](close-on-unsafe.md#site-from-sqmeter)); `manual`: typed in. Settings saved before it existed load as `manual` when `location.set` was true, else `sqmeter` |
+| `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes. While the source is `sqmeter` the device sets it, and a save keeps the device's value |
+| `location.latitude` | number | `0` | Degrees, north positive (-90 to 90); with `sqmeter`, the last location read from SQMeter |
+| `location.longitude` | number | `0` | Degrees, east positive (-180 to 180); with `sqmeter`, the last location read from SQMeter |
+| `location.sqmeter.gps` | bool | `false` | Set by the device: the kept location was SQMeter's GPS fix. Never read from a save |
+| `location.sqmeter.savedAt` | number | `0` | Set by the device: Unix seconds when the location read from SQMeter was saved (0: never, or the clock wasn't set). Never read from a save |
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
 

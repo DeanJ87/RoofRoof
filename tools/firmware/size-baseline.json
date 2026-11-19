@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1534000,
-  "overBudgetReason": "spec 019: jog and teach the ends (hold-to-run jog, reading window, marks, proposal, five routes)"
+  "esp32dev": 1555264,
+  "overBudgetReason": "spec 020: site data from SQMeter (location read and its filtered JSON fetch on the safety poller, the copy route and its job task, the site parser, the location save)"
 }

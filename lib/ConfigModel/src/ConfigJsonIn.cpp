@@ -364,6 +364,20 @@ namespace SQM
         // source is and stays SQMeter the device keeps its own location (a page
         // opened before the last read can't put an older one back), and the
         // device-owned "sqmeter" fields are never read.
+        // The source sent, or the rule for a section without one. False on a
+        // name that isn't one of the two, from the UI/API.
+        bool applyLocationSource(const Section &location, LocationConfig &loc, std::string *error)
+        {
+            const std::string source = location["source"].is<const char *>() ? location["source"].as<const char *>() : "";
+            if (source == "sqmeter" || source == "manual")
+                loc.source = source == "manual" ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
+            else if (location.reader().strict() && location.has("source"))
+                return setError(error, "Location: source must be sqmeter or manual");
+            else if (location.has("set"))
+                loc.source = loc.set ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
+            return true;
+        }
+
         bool applyLocation(const Section &location, LocationConfig &loc, std::string *error)
         {
             if (location.isNull())
@@ -379,16 +393,12 @@ namespace SQM
                 kept.take("gps", loc.gps);
                 kept.take("savedAt", loc.savedAt);
             }
-            const std::string source = location["source"].is<const char *>() ? location["source"].as<const char *>() : "";
-            if (source == "sqmeter" || source == "manual")
-                loc.source = source == "manual" ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
-            else if (strict && location.has("source"))
-                return setError(error, "Location: source must be sqmeter or manual");
-            else if (location.has("set"))
-                loc.source = loc.set ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
+            if (!applyLocationSource(location, loc, error))
+                return false;
             // With nothing kept yet there is nothing stale to protect: a restored
             // backup's location then stands until SQMeter answers.
-            if (!strict || !before.set || before.source != LocationConfig::Source::Sqmeter || loc.source != LocationConfig::Source::Sqmeter)
+            const bool deviceOwns = before.set && before.source == LocationConfig::Source::Sqmeter;
+            if (!strict || !deviceOwns || loc.source != LocationConfig::Source::Sqmeter)
                 return true;
             // What was sent is still checked, so a wrong value is never accepted silently.
             if (!validateLocation(loc, error))

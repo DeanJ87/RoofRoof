@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794427152,
-                    "iso": "2026-11-11T19:59:12+0000",
+                    "epoch": 1795072354,
+                    "iso": "2026-11-19T07:12:34+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794423550410,
-                    "nextSync": 1794430750410,
+                    "lastSync": 1795068752348,
+                    "nextSync": 1795075952348,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794427090410,
+                    "lastPublish": 1795072292348,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -272,7 +272,15 @@
                       "closes": false
                     }
                   },
-                  "configRevision": 388206608
+                  "location": {
+                    "source": "sqmeter",
+                    "set": false,
+                    "gps": false,
+                    "savedAt": null,
+                    "readAgeSeconds": null,
+                    "problem": "waiting"
+                  },
+                  "configRevision": 115671020
                 }
               }
             }
@@ -4956,12 +4964,37 @@
               },
               "set": {
                 "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              },
+              "sqmeter": {
+                "type": "object",
+                "properties": {
+                  "gps": {
+                    "type": "boolean"
+                  },
+                  "savedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "gps",
+                  "savedAt"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "latitude",
               "longitude",
-              "set"
+              "set",
+              "source",
+              "sqmeter"
             ],
             "additionalProperties": false
           },
@@ -5760,6 +5793,25 @@
               },
               "set": {
                 "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              },
+              "sqmeter": {
+                "type": "object",
+                "properties": {
+                  "gps": {
+                    "type": "boolean"
+                  },
+                  "savedAt": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -7322,6 +7374,59 @@
               "additionalProperties": false
             }
           },
+          "location": {
+            "type": "object",
+            "properties": {
+              "gps": {
+                "type": "boolean"
+              },
+              "problem": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "enum": [
+                  "noAddress",
+                  "waiting",
+                  "unreachable",
+                  "unreadable",
+                  "noLocation",
+                  null
+                ]
+              },
+              "readAgeSeconds": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "savedAt": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "set": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              }
+            },
+            "required": [
+              "gps",
+              "problem",
+              "readAgeSeconds",
+              "savedAt",
+              "set",
+              "source"
+            ],
+            "additionalProperties": false
+          },
           "maxAllocHeap": {
             "type": "number"
           },
@@ -7915,6 +8020,7 @@
           "fsUsed",
           "heapSize",
           "heapStages",
+          "location",
           "maxAllocHeap",
           "minFreeHeap",
           "partitions",
