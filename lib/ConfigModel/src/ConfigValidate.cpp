@@ -239,11 +239,7 @@ namespace SQM
                 return setError(error, "Daylight: sun altitude must be between -18 and 30 degrees");
             if (!inRange(c.daylight.bandDeg, DaylightConfig::MIN_BAND_DEG, DaylightConfig::MAX_BAND_DEG))
                 return setError(error, "Daylight: band must be between 0.1 and 2 degrees");
-            if (!std::isfinite(c.location.latitude) || c.location.latitude < -90.0 || c.location.latitude > 90.0)
-                return setError(error, "Location: latitude must be between -90 and 90 degrees");
-            if (!std::isfinite(c.location.longitude) || c.location.longitude < -180.0 || c.location.longitude > 180.0)
-                return setError(error, "Location: longitude must be between -180 and 180 degrees");
-            return true;
+            return validateLocation(c.location, error);
         }
 
         // Spec 014: each policy value within the range that keeps constitution I-III.
@@ -295,6 +291,15 @@ namespace SQM
 
     namespace ConfigDetail
     {
+        bool validateLocation(const LocationConfig &location, std::string *error)
+        {
+            if (!std::isfinite(location.latitude) || location.latitude < -90.0 || location.latitude > 90.0)
+                return setError(error, "Location: latitude must be between -90 and 90 degrees");
+            if (!std::isfinite(location.longitude) || location.longitude < -180.0 || location.longitude > 180.0)
+                return setError(error, "Location: longitude must be between -180 and 180 degrees");
+            return true;
+        }
+
         bool validateAddresses(const Config &cfg, std::string *error)
         {
             if (!cfg.mqtt.broker.empty())

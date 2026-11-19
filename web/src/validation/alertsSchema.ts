@@ -47,7 +47,7 @@ export const alertsConfigSchema = z
       appToken: z.string(),
       sound: z.string(),
     }),
-    ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string() }),
+    ntfy: z.object({ enabled: z.boolean(), server: z.string(), topic: z.string(), token: z.string().nullable() }), // null clears the token (spec 020)
     webhook: z.object({ enabled: z.boolean(), url: z.string(), authHeader: z.string(), insecureTls: z.boolean() }),
     mqtt: z.object({ enabled: z.boolean() }),
   })

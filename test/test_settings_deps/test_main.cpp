@@ -200,7 +200,7 @@ void test_report_document()
     std::string json;
     serializeJson(doc, json);
     printf("settings report %u bytes\n", static_cast<unsigned>(json.size()));
-    TEST_ASSERT_LESS_THAN(2500, json.size());
+    TEST_ASSERT_LESS_THAN(2600, json.size()); // 2500 until spec 020 added location.source
 
     TEST_ASSERT_FALSE(doc["facts"]["mqttConnected"].as<bool>());
     JsonObject mqtt;

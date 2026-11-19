@@ -335,6 +335,7 @@ namespace SQM
         appendMqttStatus(doc);
         appendConnections(doc);
         appendRoof(doc);
+        appendLocation(doc);
         // A full pool drops the trailing sections silently: say so.
         if (doc.overflowed())
             Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));

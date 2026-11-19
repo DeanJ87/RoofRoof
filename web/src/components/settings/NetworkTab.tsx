@@ -138,7 +138,7 @@ const MqttFields: FunctionalComponent<SettingsTabProps> = ({ config, update, err
       <Field label={t('settings.network.password')}>
         <TextInput
           type="password"
-          value={config.mqtt.password}
+          value={config.mqtt.password ?? ''}
           placeholder={t('settings.network.optional')}
           onInput={(v) => update(['mqtt', 'password'], v)}
         />

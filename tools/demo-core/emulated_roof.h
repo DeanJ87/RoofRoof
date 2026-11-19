@@ -31,6 +31,7 @@
 #include "RoofPlant.h"
 #include "RoofStatus.h"
 #include "SafetyInput.h"
+#include "SqmeterSource.h"
 #include "Teach.h"
 
 namespace DemoRoof
@@ -52,12 +53,13 @@ namespace DemoRoof
     // The Demo panel's settings.
     struct Injectors
     {
-        bool unsafe = false;    // SQMeter: unsafe for a reason other than rain
-        bool rain = false;      // SQMeter (and a fitted rain contact): rain
-        bool parkFails = false; // the mount never reaches park
-        bool jam = false;       // the roof can't move
-        bool supplyLow = false; // the 12 V supply at LOW_SUPPLY_VOLTS
-        bool sunUp = false;     // spec 013: the sun well above the daylight threshold
+        bool unsafe = false;         // SQMeter: unsafe for a reason other than rain
+        bool rain = false;           // SQMeter (and a fitted rain contact): rain
+        bool parkFails = false;      // the mount never reaches park
+        bool jam = false;            // the roof can't move
+        bool supplyLow = false;      // the 12 V supply at LOW_SUPPLY_VOLTS
+        bool sunUp = false;          // spec 013: the sun well above the daylight threshold
+        bool sqmeterOffline = false; // spec 020: SQMeter answers nothing (weather, location, settings)
     };
 
     // The simulated mount as N.I.N.A. reports it.

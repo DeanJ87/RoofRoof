@@ -207,9 +207,16 @@
         "status.roof.daylight.sunAltitudeDeg",
         "status.roof.daylight.limitDeg",
         "status.roof.daylight.text",
-        "status.roof.daylight.closes"
+        "status.roof.daylight.closes",
+        "status.location",
+        "status.location.source",
+        "status.location.set",
+        "status.location.gps",
+        "status.location.savedAt",
+        "status.location.readAgeSeconds",
+        "status.location.problem"
       ],
-      "requiredBy": "013 FR-019",
+      "requiredBy": "013 FR-019, 020 FR-020",
       "visibility": {
         "rule": "when",
         "when": "the device reports the daylight check (older firmware doesn't)"

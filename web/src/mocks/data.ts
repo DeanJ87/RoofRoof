@@ -1,4 +1,13 @@
-import type { SystemStatus, AlpacaConfiguredDevice, AlertRecord, CalibrationStatus, RoofInputs, TeachStatus, WiFiNetwork } from '../types';
+import type {
+  SystemStatus,
+  AlpacaConfiguredDevice,
+  AlertRecord,
+  CalibrationStatus,
+  RoofInputs,
+  SqmeterSite,
+  TeachStatus,
+  WiFiNetwork,
+} from '../types';
 
 export { mockConfig } from './config';
 
@@ -136,6 +145,19 @@ export const mockStatus: SystemStatus = {
     maxWatchdogBeatAgeMs: 12,
     simulation: 'off',
   },
+  // Spec 020: the location is typed in (and not yet set).
+  location: { source: 'manual', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: null },
+};
+
+// What POST /api/sqmeter/site answers (spec 020): SQMeter's site settings, its secrets only as "set".
+export const mockSqmeterSite: SqmeterSite = {
+  address: 'http://sqmeter.local',
+  device: { name: 'SQMeter' },
+  location: { set: true, latitude: 51.4769, longitude: -0.0005 },
+  time: { timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server1: 'pool.ntp.org', server2: 'time.nist.gov' },
+  mqtt: { broker: '192.168.1.10', port: 1883, username: 'observatory', topic: 'sqmeter', passwordSet: true },
+  ntfy: { server: 'https://ntfy.sh', topic: 'my-observatory', tokenSet: false },
+  pushover: { userKeySet: true, appTokenSet: true },
 };
 
 export const mockWifiNetworks: WiFiNetwork[] = [

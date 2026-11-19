@@ -4,7 +4,7 @@
 Reads web/src/i18n/en.json with each key's context note (en.context.json) and
 fails on:
   - a string longer than its type allows: badge/pill 16, label/title/button 32,
-    note/sentence 90, "?" hint 160 characters (English; translations follow);
+    a guided flow's question 60, note/sentence 90, "?" hint 160 characters (English; translations follow);
   - a banned filler phrase (DS-25);
   - a run-on status line joined with " · ", or a label joined with " - " (DS-24).
 The type comes from the context note's wording. Strings that can't follow a
@@ -30,9 +30,11 @@ ENGLISH = "web/src/i18n/en.json"
 CONTEXT = "web/src/i18n/en.context.json"
 EXCEPTIONS = "tools/ui/copy-exceptions.json"
 
-LIMITS = {"pill": 16, "label": 32, "note": 90, "hint": 160}
+LIMITS = {"pill": 16, "label": 32, "question": 60, "note": 90, "hint": 160}
 # Read in this order: the first match wins.
 TYPES = [
+    # A guided flow's one question per screen (DS-29, spec 018).
+    ("question", re.compile(r"\bspeech bubble\b", re.I)),
     ("hint", re.compile(r"'\?' tip|\? tip|help text|tooltip", re.I)),
     ("pill", re.compile(r"\bbadge\b|\bpill\b", re.I)),
     ("note", re.compile(r"\bsentence\b", re.I)),

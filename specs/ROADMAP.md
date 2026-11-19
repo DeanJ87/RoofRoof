@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-019
+# RoofRoof roadmap: specs 002-020
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -263,6 +263,24 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** any decision from diagnostics (wear alerts, limits); Home Assistant entities;
   the calibration run itself (spec 016); its legs are recorded and tagged as calibration moves.
 
+### 018 Setup wizard redesign (base: 017, rebased on 019)
+
+- **Scope:**
+  - The setup wizard as a modal dialog over the dashboard: a dimmed, blurred backdrop, a progress
+    bar with Back and Close, one question per screen in a speech bubble beside RoofRoof's dog
+    mascot, choice cards for the enumerated answers and compact fields beside live readings for
+    the rest, a sticky Continue that waits for an answer, Skip for now, and a "Why this matters"
+    panel; a review and a done screen.
+  - The modal, progress bar, choice card group, speech bubble and mascot as documented
+    design-system components; constitution VII amended (2.1.0) to admit them and to require the
+    Stop bar inside any modal.
+  - Every spec 015 guarantee kept: the same settings and save path, saves refused while moving,
+    Tests from the device's own poll, no roof command, resume, skip, run again, the banner.
+  - Accessibility (focus trap, Escape asks, focus restored, radio groups, reduced motion) tested
+    on every screen at 320 px and desktop with light and dark browser preferences.
+- **Out of scope:** any device, setting or API change; a light theme.
+  - Spec 019's Teach the ends page becomes a screen before the calibration run screen.
+
 ### 019 Jog and teach the ends (base: 016)
 
 - **Scope:**
@@ -281,6 +299,26 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** proposing travel, speed or margin (016); jogging from Alpaca, MQTT or Home
   Assistant, above the slow duty, or in bad weather; any change to the park rule.
 
+### 020 Site data from SQMeter (base: 018, stacked on its PR)
+
+- **Scope:**
+  - RoofRoof and SQMeter share a site, and RoofRoof already has SQMeter's address (the weather
+    source's `safety.http.url`). A `location.source` setting, `sqmeter` or `manual`: with `sqmeter`
+    the device reads SQMeter's location (`GET /api/status` → `sky`, a GPS fix when it has one) on
+    the safety poller's task every 10 minutes, never while the roof is busy and never in the same
+    pass as the safety poll, and keeps the last good one in its settings for the daylight failsafe.
+    A new device follows SQMeter; an upgrade keeps a typed location typed. The status, the
+    dashboard's daylight row and Settings show where it came from and how old it is. It is never a
+    safety input.
+  - "Copy from SQMeter" in Settings and on a new first screen of the wizard's Site and time page:
+    the device fetches SQMeter's settings (`POST /api/sqmeter/site`; SQMeter sends no CORS headers)
+    and the page lists what differs (time zone, NTP, MQTT broker, SQMeter's base topic as the MQTT
+    weather topic, ntfy) to tick and apply, saved through the normal save. No password, token or key
+    is ever copied or forwarded; a copied broker or ntfy server clears the matching saved secret.
+  - The demo's simulated SQMeter (a GPS fix and settings), with an "SQMeter offline" injector.
+- **Out of scope:** copying the device name, host name, Wi-Fi, language or any on/off switch;
+  SQMeter's MQTT for the location; any safety decision from SQMeter's location.
+
 ## Merge order
 
 ```text
@@ -288,8 +326,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
      └─ 004 ────────┴─ 005 ─┬─ 006 ─┐
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
-                                                                  └─ 015 ─┬─ 016 ── 019
-                                                                          └─ 017
+                                                                  └─ 015 ─┬─ 016 ── 019 ─┐
+                                                                          └─ 017 ────────┴─ 018 ── 020
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

@@ -1,6 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useId, useState } from 'preact/hooks';
-import type { RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
+import type { LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
+import { locationLine } from '../lib/locationView';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
 import {
   clearFaultReason,
@@ -188,23 +189,28 @@ const HintRow: FunctionalComponent<{ label: string; hint: string; value: string;
 );
 
 // The daylight check (spec 013): what the sun is doing as the device words it, the mode behind "?".
-const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight }> = ({ daylight }) => (
-  <div data-inventory="roof-daylight">
-    <HintRow
-      label={t('roof.daylight.label')}
-      hint={t('roof.daylight.hint', { mode: t(`roof.daylight.mode.${daylight.mode}`) })}
-      value={deviceText(daylight.text)}
-    />
-  </div>
-);
+// Spec 020: under it, where the location came from and how old it is; never a verdict (FR-011).
+export const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight; location?: LocationStatus }> = ({ daylight, location }) => {
+  const line = locationLine(location);
+  return (
+    <div data-inventory="roof-daylight">
+      <HintRow
+        label={t('roof.daylight.label')}
+        hint={t('roof.daylight.hint', { mode: t(`roof.daylight.mode.${daylight.mode}`) })}
+        value={deviceText(daylight.text)}
+      />
+      {line && <Note>{line.text}</Note>}
+    </div>
+  );
+};
 
-const Checks: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
+const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus }> = ({ roof, location }) => {
   const phase = closePhasePill(roof.closePhase);
   return (
     <div data-inventory="roof-checks">
       <PillRow label={t('roof.weather.label')} pill={weatherPill(roof)} />
       <PillRow label={t('roof.park.label')} pill={parkPill(roof)} />
-      {roof.daylight && <DaylightRow daylight={roof.daylight} />}
+      {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
     </div>
   );
@@ -261,7 +267,7 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = 
         <Position view={view} />
         <Buttons view={view} send={send} confirm={confirm} />
         {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
-        {roof && <Checks roof={roof} />}
+        {roof && <Checks roof={roof} location={live.status?.location} />}
         {roof && <Readings roof={roof} />}
         {roof && <Hall roof={roof} config={config} />}
       </Card>

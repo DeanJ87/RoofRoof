@@ -92,3 +92,17 @@ test('the tour card passes the accessibility checks', async ({ page }) => {
   const results = await new AxeBuilder({ page }).include('.tour-card').withTags(AXE_TAGS).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 });
+
+// Spec 018: the offer never sits on top of the setup wizard's dialog; it comes back once the dialog closes.
+test('the tour offer waits while the setup wizard is open', async ({ page }) => {
+  await page.goto('./');
+  const offer = page.getByRole('region', { name: 'Tour' });
+  await expect(offer).toBeVisible();
+  await page.goto('./#/wizard');
+  await expect(page.locator('[data-wizard-screen]')).toBeVisible({ timeout: 15_000 });
+  await expect(offer).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Leave for now' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(offer).toBeVisible();
+});

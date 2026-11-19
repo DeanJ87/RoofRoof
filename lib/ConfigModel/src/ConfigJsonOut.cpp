@@ -150,9 +150,13 @@ namespace SQM
             daylight["sunAltitudeDeg"] = c.daylight.sunAltitudeDeg;
             daylight["bandDeg"] = c.daylight.bandDeg;
             JsonObject location = doc.createNestedObject("location");
+            location["source"] = c.location.source == LocationConfig::Source::Manual ? "manual" : "sqmeter";
             location["set"] = c.location.set;
             location["latitude"] = c.location.latitude;
             location["longitude"] = c.location.longitude;
+            JsonObject kept = location.createNestedObject("sqmeter");
+            kept["gps"] = c.location.gps;
+            kept["savedAt"] = c.location.savedAt;
         }
 
         void appendAutoClose(JsonDocument &doc, const Config &c)

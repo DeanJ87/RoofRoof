@@ -198,6 +198,9 @@ export const demoHandlers = [
   http.post('/api/roof/calibration/start', async ({ request }) => reply(demoDevice.calibration('start', await request.text()))),
   http.post('/api/roof/calibration/abort', () => reply(demoDevice.calibration('abort'))),
   http.post('/api/roof/calibration/confirm', async ({ request }) => reply(demoDevice.calibration('confirm', await request.text()))),
+  // Copy from SQMeter (spec 020): the device fetches the simulated SQMeter's settings.
+  http.post('/api/sqmeter/site', async ({ request }) => reply(demoDevice.sqmeterSite(await request.text()))),
+
   // Jog and teach the ends (spec 019): the device's own jog, its keep-alive deadline and the teach, on the simulated roof
   http.get('/api/roof/teach', () => reply(demoDevice.teach('status'))),
   http.post('/api/roof/jog', async ({ request }) => reply(demoDevice.teach('jog', await request.text()))),

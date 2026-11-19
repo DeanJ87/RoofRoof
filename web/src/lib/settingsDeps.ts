@@ -124,6 +124,8 @@ const addDaylight = (c: Context) => {
   // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
   const remote = on(c.config, 'alpaca.enabled') || (on(c.config, 'mqtt.enabled') && on(c.config, 'mqtt.roofCommands'));
   c.add('autoClose.remoteStop', 'D-45', on(c.config, 'autoClose.remoteStop'), [['D-45', 'remote-off', remote]]);
+  // Spec 020: where the site comes from matters only while daylight is on.
+  c.add('location.source', 'D-44', true, [daylightOn]);
   for (const setting of ['location.set', 'location.latitude', 'location.longitude']) c.add(setting, 'D-44', located, [daylightOn]);
 };
 

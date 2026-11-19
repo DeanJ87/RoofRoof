@@ -27,7 +27,7 @@ export interface AlertsConfig {
   clientSilentSeconds: number; // 30..3600
   cooldownSeconds: number;
   pushover: { enabled: boolean; userKey: string; appToken: string; sound: string };
-  ntfy: { enabled: boolean; server: string; topic: string; token: string };
+  ntfy: { enabled: boolean; server: string; topic: string; token: string | null }; // null clears the saved token (spec 020)
   webhook: { enabled: boolean; url: string; authHeader: string; insecureTls: boolean };
   mqtt: { enabled: boolean };
 }

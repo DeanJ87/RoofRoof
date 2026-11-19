@@ -31,6 +31,10 @@ namespace SQM::ConfigDetail
         return false;
     }
 
+    // The location's ranges (ConfigValidate.cpp), also checked on a save the
+    // device's own location overrides (spec 020).
+    bool validateLocation(const LocationConfig &location, std::string *error);
+
     inline bool inRange(float value, float min, float max)
     {
         return std::isfinite(value) && value >= min && value <= max;

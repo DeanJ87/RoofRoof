@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1794427152,
-                    "iso": "2026-11-11T19:59:12+0000",
+                    "epoch": 1795072354,
+                    "iso": "2026-11-19T07:12:34+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1794423550410,
-                    "nextSync": 1794430750410,
+                    "lastSync": 1795068752348,
+                    "nextSync": 1795075952348,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1794427090410,
+                    "lastPublish": 1795072292348,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -272,7 +272,15 @@
                       "closes": false
                     }
                   },
-                  "configRevision": 388206608
+                  "location": {
+                    "source": "sqmeter",
+                    "set": false,
+                    "gps": false,
+                    "savedAt": null,
+                    "readAgeSeconds": null,
+                    "problem": "waiting"
+                  },
+                  "configRevision": 115671020
                 }
               }
             }
@@ -442,6 +450,250 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ConfigUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sqmeter/site": {
+      "post": {
+        "operationId": "post_sqmeter_site",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Read SQMeter's site settings",
+        "description": "Spec 020: the device fetches the SQMeter's `GET /api/config` (SQMeter sends no CORS headers, so a browser can't) and answers with what the setup wizard and Settings can copy: its location, time zone and NTP servers, MQTT broker, port, user name and base topic, and ntfy server and topic. Each secret (MQTT password, ntfy token, Pushover user key and app token) is only ever reported as set or not: its value never appears, even from an SQMeter that doesn't mask it. Parts an older SQMeter lacks are `null`. Nothing is saved. The address is the body's `url`, else `safety.http.url`; only its scheme, host and port are used. Refused (409) while the roof moves, a close waits or the automatic close works, and while another copy runs; 502 when SQMeter doesn't answer or the reply isn't SQMeter's settings.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "description": "The SQMeter's scheme, host and port, e.g. http://192.168.1.50."
+                    },
+                    "device": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "location": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "set": {
+                          "type": "boolean"
+                        },
+                        "latitude": {
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "set",
+                        "latitude",
+                        "longitude"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "time": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "server1": {
+                          "type": "string"
+                        },
+                        "server2": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "timezone",
+                        "server1",
+                        "server2"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "mqtt": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "broker": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "type": "integer"
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "topic": {
+                          "type": "string"
+                        },
+                        "passwordSet": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "broker",
+                        "port",
+                        "username",
+                        "topic",
+                        "passwordSet"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "ntfy": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "server": {
+                          "type": "string"
+                        },
+                        "topic": {
+                          "type": "string"
+                        },
+                        "tokenSet": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "server",
+                        "topic",
+                        "tokenSet"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "pushover": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "userKeySet": {
+                          "type": "boolean"
+                        },
+                        "appTokenSet": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "userKeySet",
+                        "appTokenSet"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "device",
+                    "location",
+                    "time",
+                    "mqtt",
+                    "ntfy",
+                    "pushover"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The broker didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "An http:// address of the SQMeter (e.g. its /api/safety URL). Optional: the saved weather source address when left out."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "url": "http://192.168.1.50/api/safety"
               }
             }
           }
@@ -4712,12 +4964,37 @@
               },
               "set": {
                 "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              },
+              "sqmeter": {
+                "type": "object",
+                "properties": {
+                  "gps": {
+                    "type": "boolean"
+                  },
+                  "savedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "gps",
+                  "savedAt"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "latitude",
               "longitude",
-              "set"
+              "set",
+              "source",
+              "sqmeter"
             ],
             "additionalProperties": false
           },
@@ -5516,6 +5793,25 @@
               },
               "set": {
                 "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              },
+              "sqmeter": {
+                "type": "object",
+                "properties": {
+                  "gps": {
+                    "type": "boolean"
+                  },
+                  "savedAt": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -7078,6 +7374,59 @@
               "additionalProperties": false
             }
           },
+          "location": {
+            "type": "object",
+            "properties": {
+              "gps": {
+                "type": "boolean"
+              },
+              "problem": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "enum": [
+                  "noAddress",
+                  "waiting",
+                  "unreachable",
+                  "unreadable",
+                  "noLocation",
+                  null
+                ]
+              },
+              "readAgeSeconds": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "savedAt": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "set": {
+                "type": "boolean"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "sqmeter",
+                  "manual"
+                ]
+              }
+            },
+            "required": [
+              "gps",
+              "problem",
+              "readAgeSeconds",
+              "savedAt",
+              "set",
+              "source"
+            ],
+            "additionalProperties": false
+          },
           "maxAllocHeap": {
             "type": "number"
           },
@@ -7671,6 +8020,7 @@
           "fsUsed",
           "heapSize",
           "heapStages",
+          "location",
           "maxAllocHeap",
           "minFreeHeap",
           "partitions",

@@ -29,7 +29,8 @@ export const mqttConfigSchema = z
     port: z.number().int().min(1, t('validation.configSchema.portMustBeAtLeast')).max(65535, t('validation.configSchema.portMustBeAtMost')),
     topic: z.string(),
     username: z.string(),
-    password: z.string(),
+    // null clears the saved password (spec 020: a broker copied from SQMeter).
+    password: z.string().nullable(),
     publishIntervalMs: z
       .number()
       .int()
@@ -188,6 +189,9 @@ export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });
 export const diagConfigSchema = z.object({ enabled: z.boolean(), keepSummaries: z.boolean(), mqtt: z.boolean() });
 
 export const locationConfigSchema = z.object({
+  // Spec 020: optional, as older firmware doesn't send it; `sqmeter` is the device's and never checked here.
+  source: z.enum(['sqmeter', 'manual'], t('validation.configSchema.locationSourceMustBe')).optional(),
+  sqmeter: z.object({ gps: z.boolean(), savedAt: z.number() }).optional(),
   set: z.boolean(),
   latitude: z
     .number()

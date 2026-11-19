@@ -112,6 +112,10 @@ CONSTRAINTS = {
             "external",
         ]
     },
+    # Spec 020: lib/SafetyInputLogic SqmeterSite (writeLocationStatus, problemName).
+    ("status", ("location", "source")): {"enum": ["sqmeter", "manual"]},
+    ("status", ("location", "problem")): {"enum": ["noAddress", "waiting", "unreachable", "unreadable", "noLocation", None]},
+    ("config", ("location", "source")): {"enum": ["sqmeter", "manual"]},
     ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},
     ("alerts-armed", ("reason",)): {"enum": SCHEDULE_REASONS},
     ("config", ("alerts", "sendMode")): {"enum": SCHEDULE_MODES},

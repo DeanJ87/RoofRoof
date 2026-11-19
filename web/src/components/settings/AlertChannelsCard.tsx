@@ -90,7 +90,7 @@ const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
             <Field label={t('settings.alerts.token')}>
               <TextInput
                 type="password"
-                value={alerts.ntfy.token}
+                value={alerts.ntfy.token ?? ''}
                 placeholder={t('settings.alerts.optional')}
                 onInput={(v) => set(['ntfy', 'token'], v)}
               />
@@ -151,22 +151,34 @@ const WebhookGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   );
 };
 
+const MqttGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => (
+  <Group>
+    <DepToggle
+      entry={view.dep('alerts.mqtt.enabled')}
+      onFix={view.fix}
+      label="MQTT"
+      checked={view.alerts.mqtt.enabled}
+      onChange={(v) => view.set(['mqtt', 'enabled'], v)}
+      hint={t('settings.alerts.publishesEachAlertToTopic', { topic: view.config.mqtt.topic })}
+    />
+    <TestButton view={view} channel="mqtt" />
+  </Group>
+);
+
+// Each channel's group (also the setup wizard's alert details screen, spec 018).
+export const CHANNEL_GROUPS: Record<AlertChannelName, FunctionalComponent<{ view: AlertsView }>> = {
+  pushover: PushoverGroup,
+  ntfy: NtfyGroup,
+  webhook: WebhookGroup,
+  mqtt: MqttGroup,
+};
+
 // Where alerts go: Pushover, ntfy, a webhook and MQTT.
 export const AlertChannelsCard: FunctionalComponent<{ view: AlertsView }> = ({ view }) => (
   <SettingsCard title={t('settings.alerts.channels')} hint={t('settings.alerts.testsUseTheSavedSettings')}>
     <PushoverGroup view={view} />
     <NtfyGroup view={view} />
     <WebhookGroup view={view} />
-    <Group>
-      <DepToggle
-        entry={view.dep('alerts.mqtt.enabled')}
-        onFix={view.fix}
-        label="MQTT"
-        checked={view.alerts.mqtt.enabled}
-        onChange={(v) => view.set(['mqtt', 'enabled'], v)}
-        hint={t('settings.alerts.publishesEachAlertToTopic', { topic: view.config.mqtt.topic })}
-      />
-      <TestButton view={view} channel="mqtt" />
-    </Group>
+    <MqttGroup view={view} />
   </SettingsCard>
 );

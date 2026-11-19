@@ -358,6 +358,63 @@ namespace SQM
             return setError(error, "Park switches must be none, one or two");
         }
 
+        // Spec 020. A section without a source (saved before spec 020, or an
+        // older page) is Manual when a location is set, else Sqmeter: a typed
+        // location never starts following SQMeter. From the UI/API, while the
+        // source is and stays SQMeter the device keeps its own location (a page
+        // opened before the last read can't put an older one back), and the
+        // device-owned "sqmeter" fields are never read.
+        // The source sent, or the rule for a section without one. False on a
+        // name that isn't one of the two, from the UI/API.
+        bool applyLocationSource(const Section &location, LocationConfig &loc, std::string *error)
+        {
+            const std::string source = location["source"].is<const char *>() ? location["source"].as<const char *>() : "";
+            if (source == "sqmeter" || source == "manual")
+                loc.source = source == "manual" ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
+            else if (location.reader().strict() && location.has("source"))
+                return setError(error, "Location: source must be sqmeter or manual");
+            else if (location.has("set"))
+                loc.source = loc.set ? LocationConfig::Source::Manual : LocationConfig::Source::Sqmeter;
+            return true;
+        }
+
+        bool applyLocation(const Section &location, LocationConfig &loc, std::string *error)
+        {
+            if (location.isNull())
+                return true;
+            const LocationConfig before = loc;
+            const bool strict = location.reader().strict();
+            location.take("set", loc.set);
+            location.take("latitude", loc.latitude);
+            location.take("longitude", loc.longitude);
+            if (!strict)
+            {
+                const Section kept = location.child("sqmeter");
+                kept.take("gps", loc.gps);
+                kept.take("savedAt", loc.savedAt);
+            }
+            if (!applyLocationSource(location, loc, error))
+                return false;
+            // With nothing kept yet there is nothing stale to protect: a restored
+            // backup's location then stands until SQMeter answers.
+            const bool deviceOwns = before.set && before.source == LocationConfig::Source::Sqmeter;
+            if (!strict || !deviceOwns || loc.source != LocationConfig::Source::Sqmeter)
+            {
+                // A location sent from the UI/API that stands was typed, not read from SQMeter.
+                if (strict && (loc.latitude != before.latitude || loc.longitude != before.longitude || loc.set != before.set))
+                {
+                    loc.gps = false;
+                    loc.savedAt = 0;
+                }
+                return true;
+            }
+            // What was sent is still checked, so a wrong value is never accepted silently.
+            if (!validateLocation(loc, error))
+                return false;
+            loc = before;
+            return true;
+        }
+
         // A mode that isn't one of the three names is refused, never read as a
         // default (a typo must not turn the daylight close on or off).
         bool applyDaylight(const Section &root, Config &cfg, std::string *error)
@@ -365,10 +422,8 @@ namespace SQM
             const Section daylight = root.child("daylight");
             daylight.take("sunAltitudeDeg", cfg.daylight.sunAltitudeDeg);
             daylight.take("bandDeg", cfg.daylight.bandDeg);
-            const Section location = root.child("location");
-            location.take("set", cfg.location.set);
-            location.take("latitude", cfg.location.latitude);
-            location.take("longitude", cfg.location.longitude);
+            if (!applyLocation(root.child("location"), cfg.location, error))
+                return false;
             if (!daylight.has("mode"))
                 return true;
             const std::string mode = daylight["mode"].is<const char *>() ? daylight["mode"].as<const char *>() : "";

@@ -21,6 +21,7 @@
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
+#include "SqmeterSite.h"
 #include "SummaryList.h"
 #include <memory>
 #include "emulated_roof.h"
@@ -85,7 +86,10 @@ public:
     std::string calibration(const std::string &action, const std::string &body);
     // Spec 019: POST /api/roof/jog ("jog"), /api/roof/teach/mark, /confirm and /discard, GET /api/roof/teach ("status").
     std::string teach(const std::string &action, const std::string &body);
-    // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow} (any subset)
+    // Spec 020: POST /api/sqmeter/site, from the simulated SQMeter's settings
+    // through the firmware's own parser. {status, body} like the device.
+    std::string sqmeterSite(const std::string &body);
+    // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);
     // The panel's view: the injectors, the mount, and what the device sees.
@@ -240,4 +244,14 @@ private:
     Diag::Clock diagClock() const { return Diag::Clock{nowMs, static_cast<uint32_t>(validEpoch())}; }
     void runRoof();
     std::string teachConfirm(const std::string &body);
+    // Spec 020: the location read from the simulated SQMeter, on the
+    // firmware's schedule and save rule (SafetyPoller, main.cpp handleSite).
+    Site::LocationSchedule siteSchedule;
+    Site::LocationRead siteRead;
+    uint32_t siteGeneration = 0;
+    std::string siteAddress;
+    LocationConfig::Source siteSource = LocationConfig::Source::Sqmeter;
+    void runSite();
+    void resetSite();
+    void writeLocation(JsonObject out) const;
 };

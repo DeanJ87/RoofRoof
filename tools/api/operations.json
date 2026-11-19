@@ -77,6 +77,217 @@
       },
       "example": "config-change"
     },
+    "POST /api/sqmeter/site": {
+      "tag": "Settings",
+      "summary": "Read SQMeter's site settings",
+      "description": "Spec 020: the device fetches the SQMeter's `GET /api/config` (SQMeter sends no CORS headers, so a browser can't) and answers with what the setup wizard and Settings can copy: its location, time zone and NTP servers, MQTT broker, port, user name and base topic, and ntfy server and topic. Each secret (MQTT password, ntfy token, Pushover user key and app token) is only ever reported as set or not: its value never appears, even from an SQMeter that doesn't mask it. Parts an older SQMeter lacks are `null`. Nothing is saved. The address is the body's `url`, else `safety.http.url`; only its scheme, host and port are used. Refused (409) while the roof moves, a close waits or the automatic close works, and while another copy runs; 502 when SQMeter doesn't answer or the reply isn't SQMeter's settings.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "An http:// address of the SQMeter (e.g. its /api/safety URL). Optional: the saved weather source address when left out."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "url": "http://192.168.1.50/api/safety"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "The SQMeter's scheme, host and port, e.g. http://192.168.1.50."
+              },
+              "device": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "location": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "set": {
+                    "type": "boolean"
+                  },
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "set",
+                  "latitude",
+                  "longitude"
+                ],
+                "additionalProperties": false
+              },
+              "time": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "server1": {
+                    "type": "string"
+                  },
+                  "server2": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "timezone",
+                  "server1",
+                  "server2"
+                ],
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "broker": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "integer"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "passwordSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "broker",
+                  "port",
+                  "username",
+                  "topic",
+                  "passwordSet"
+                ],
+                "additionalProperties": false
+              },
+              "ntfy": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "server": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "tokenSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "server",
+                  "topic",
+                  "tokenSet"
+                ],
+                "additionalProperties": false
+              },
+              "pushover": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "userKeySet": {
+                    "type": "boolean"
+                  },
+                  "appTokenSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "userKeySet",
+                  "appTokenSet"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "address",
+              "device",
+              "location",
+              "time",
+              "mqtt",
+              "ntfy",
+              "pushover"
+            ],
+            "additionalProperties": false
+          },
+          "example": {
+            "address": "http://192.168.1.50",
+            "device": {
+              "name": "SQMeter"
+            },
+            "location": {
+              "set": true,
+              "latitude": 51.5074,
+              "longitude": -0.1278
+            },
+            "time": {
+              "timezone": "GMT0BST,M3.5.0/1,M10.5.0",
+              "server1": "pool.ntp.org",
+              "server2": "time.nist.gov"
+            },
+            "mqtt": {
+              "broker": "192.168.1.10",
+              "port": 1883,
+              "username": "observatory",
+              "topic": "sqmeter",
+              "passwordSet": true
+            },
+            "ntfy": {
+              "server": "https://ntfy.sh",
+              "topic": "my-observatory",
+              "tokenSet": false
+            },
+            "pushover": {
+              "userKeySet": true,
+              "appTokenSet": true
+            }
+          }
+        },
+        "400": "error",
+        "401": "error",
+        "409": "error",
+        "502": "error",
+        "503": "error"
+      }
+    },
     "PUT /api/config": {
       "tag": "Settings",
       "summary": "Change settings (PUT)",

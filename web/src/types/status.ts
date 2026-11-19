@@ -99,6 +99,18 @@ export interface SystemStatus {
   };
   // The roof as its control task last saw it (spec 003, docs/api/rest.md).
   roof?: RoofStatus;
+  // Where the daylight check's location came from (spec 020). Absent on older firmware.
+  location?: LocationStatus;
+}
+
+export type LocationProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'noLocation';
+export interface LocationStatus {
+  source: 'sqmeter' | 'manual';
+  set: boolean;
+  gps: boolean; // the kept value is SQMeter's GPS fix
+  savedAt: number | null; // Unix seconds of the last save from SQMeter
+  readAgeSeconds: number | null; // the last good read in this run
+  problem: LocationProblem | null; // the last read's problem
 }
 
 export type RoofState = 'unknown' | 'closed' | 'open' | 'opening' | 'closing' | 'stopped' | 'error';

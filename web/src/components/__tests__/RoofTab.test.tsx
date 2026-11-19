@@ -175,7 +175,7 @@ describe('Roof tab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(sent).not.toBeNull());
     expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6, bandDeg: 0.5 });
-    expect(sent!.location).toEqual({ set: true, latitude: 51.5, longitude: -0.12 });
+    expect(sent!.location).toMatchObject({ source: 'manual', set: true, latitude: 51.5, longitude: -0.12 });
   });
 
   it('says saves are refused while the roof moves, and what a save does while stopped part-way', async () => {

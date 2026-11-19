@@ -3,6 +3,8 @@
 #include "NinaApi.h"
 #include "SafetyInput.h"
 #include "SafetySettings.h"
+#include "SqmeterSite.h"
+#include <ArduinoJson.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -42,6 +44,10 @@ namespace SQM
             // settings is dropped.
             uint32_t sqmeterGeneration = 0;
             uint32_t ninaGeneration = 0;
+            // Spec 020: SQMeter's location (GET /api/status), and the site
+            // generation it was read under.
+            Site::LocationRead location;
+            uint32_t siteGeneration = 0;
         };
 
         // Milliseconds since start, 64-bit (never wraps). The time base of
@@ -62,6 +68,22 @@ namespace SQM
         void requestPark();
         Snapshot snapshot() const;
 
+        // Spec 020: where SQMeter is (the weather source's address) and
+        // whether the location follows it. A change reads again at once.
+        void setSite(const std::string &address, bool followLocation);
+        // Set by the main loop every pass: the roof moves, a close waits or
+        // the close sequence works. No location read starts meanwhile.
+        void setRoofBusy(bool busy) { roofBusy.store(busy); }
+        // The latest location read and its site generation, under the lock.
+        Site::LocationRead locationRead(uint32_t &generation) const;
+
+        // One GET of a JSON document from `url`, parsed through `filter`
+        // into `doc` as it arrives (no body buffer). Connecting and the
+        // headers wait at most `connectMs` each; the body is read until
+        // `totalMs` after the start. Any task but the async TCP one.
+        static Site::Fetch fetchJson(
+            const std::string &url, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs);
+
     private:
         static constexpr uint32_t SQMETER_POLL_MS = 5000;
         static constexpr uint32_t NINA_POLL_MS = 2000;
@@ -73,6 +95,10 @@ namespace SQM
         void pollSqmeter(const Targets &targets, uint32_t generation);
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
         void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation);
+        void pollLocation(const std::string &url, uint32_t generation);
+        // Spec 020: a location read in this pass, if due (never in a pass that
+        // polled SQMeter's safety, never while the roof is busy).
+        void maybeReadLocation(bool safetyPolled, bool safetyOn);
         Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
@@ -80,6 +106,16 @@ namespace SQM
         Targets targets;
         Snapshot state;
         std::atomic<bool> parkRequested{false};
+        std::atomic<bool> roofBusy{false};
+        // Spec 020: the site, under the lock; the schedule is the task's own.
+        std::string siteAddress;
+        bool siteFollows = false;
+        Site::LocationSchedule locationSchedule;
+        // Connect and header wait, and the whole read (research R7): never
+        // longer than one safety poll, and never in the same pass.
+        static constexpr uint32_t LOCATION_CONNECT_MS = 1500;
+        static constexpr uint32_t LOCATION_TOTAL_MS = Site::LocationSchedule::READ_MS;
+        std::string siteStatusUrl; // SQMeter's /api/status while the location follows it, else empty
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).
         uint64_t nextSqmeterMs = 0;

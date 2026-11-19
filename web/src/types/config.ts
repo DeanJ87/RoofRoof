@@ -16,7 +16,7 @@ export interface MQTTConfig {
   broker: string;
   port: number;
   username: string;
-  password: string;
+  password: string | null; // null clears the saved password (spec 020: a copied broker)
   topic: string; // base topic
   publishIntervalMs: number;
   homeAssistant?: { enabled: boolean; discoveryPrefix: string };
@@ -94,10 +94,15 @@ export interface DaylightConfig {
   sunAltitudeDeg: number; // -18..30
   bandDeg?: number; // spec 014: night again only this far below the threshold (0.1..2)
 }
+// Spec 020: the location follows SQMeter's (`sqmeter`, the default) or is typed in (`manual`).
+export type LocationSource = 'sqmeter' | 'manual';
 export interface LocationConfig {
+  source?: LocationSource; // absent before spec 020: `manual` when set, else `sqmeter`
   set: boolean;
   latitude: number; // -90..90
   longitude: number; // -180..180
+  // Written by the device, ignored on a save: the kept value was SQMeter's GPS fix, and when it was saved (Unix s, 0 never).
+  sqmeter?: { gps: boolean; savedAt: number };
 }
 
 // The setup wizard (spec 015): new (opens once per page load), offered (a

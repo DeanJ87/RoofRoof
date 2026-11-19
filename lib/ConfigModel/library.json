@@ -1,0 +1,8 @@
+{
+  "name": "ConfigModel",
+  "version": "0.1.0",
+  "description": "The settings: defaults, JSON in and out, validation and migration (pure logic, copied from SQMeter)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}
