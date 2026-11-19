@@ -23,6 +23,7 @@
 #include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
+#include "SqmeterSite.h"
 #include "TimeManager.h"
 #include "WebServer.h"
 #include "WiFiManager.h"
@@ -42,6 +43,7 @@ static CloseOnUnsafe closeOnUnsafe;
 static Diagnostics diagnostics; // spec 017: off unless diag.enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
+bool roofBusy(); // spec 020, below
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
 // processing, config saves). 4 KB more is cheap insurance against a
@@ -67,6 +69,7 @@ bool saveConfigCallback(const Config &newConfig)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
         safetyInputs->updateConfig(config);
+    safetyPoller.setSite(config.safety.httpUrl, config.location.source == LocationConfig::Source::Sqmeter); // spec 020
     roofControl.updateConfig(config); // taken by the roof once no move is active
     closeOnUnsafe.updateConfig(config);
     diagnostics.updateConfig(config.diag); // applied by the main loop
@@ -283,6 +286,7 @@ void startServices()
 
     // Spec 004: the weather verdict and park confirmation.
     safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
+    safetyPoller.setSite(config.safety.httpUrl, config.location.source == LocationConfig::Source::Sqmeter); // spec 020
     safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
 
@@ -294,6 +298,16 @@ void startServices()
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
     webServer->setInputs([]() { return safetyInputs->report(); });
+    // Spec 020: the location's source and age, and the copy refused while busy.
+    webServer->setLocationStatus(
+        [](JsonObject out)
+        {
+            uint32_t generation = 0;
+            const Site::LocationRead read = safetyPoller.locationRead(generation);
+            const bool addressSet = !Site::siteUrl(config.safety.httpUrl, Site::STATUS_PATH).empty();
+            Site::writeLocationStatus(out, config.location, read, addressSet, SafetyPoller::nowMs());
+        });
+    webServer->setRoofBusy(roofBusy);
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out
@@ -318,6 +332,53 @@ void startServices()
     // Spec 007: the roof's non-critical events, read once a second by the alert pass.
     webServer->setRoofConditions([]() { return closeOnUnsafe.conditions(); });
     HeapTrace::mark("setup complete");
+}
+
+// Spec 020: the roof moves, a close waits or the automatic close works. No
+// SQMeter read or copy starts, and no location is saved, meanwhile (spec 010).
+bool roofBusy()
+{
+    return roofControl.moving() || roofControl.closeWaiting() || closeOnUnsafe.platformState() == RoofIo::SequenceState::Working;
+}
+
+// Spec 020: saves the location read from SQMeter when Site::locationToSave
+// says so (a real change only), as a flash write (spec 010: never while the
+// roof moves or a close waits; tried again next time). Only the location and
+// daylight change: nothing else is applied again.
+void handleSite()
+{
+    const bool busy = roofBusy();
+    safetyPoller.setRoofBusy(busy);
+    static uint32_t lastCheck = 0;
+    static uint64_t handledAtMs = 0;
+    const uint32_t now = millis();
+    if (busy || now - lastCheck < 1000)
+        return;
+    lastCheck = now;
+    uint32_t generation = 0;
+    const Site::LocationRead read = safetyPoller.locationRead(generation);
+    if (!read.good() || read.atMs == handledAtMs)
+        return;
+    const time_t epoch = time(nullptr);
+    const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
+    if (next)
+    {
+        const PlatformGuard::FlashWrite write;
+        if (write.refused() != RoofIo::HoldReason::None)
+            return; // the roof needs the flash: next time
+        Config updated = config;
+        updated.location = *next;
+        if (!updated.save())
+            Logger::error("Main", "Couldn't save the location read from SQMeter");
+        else
+        {
+            config.location = *next;
+            closeOnUnsafe.updateConfig(config);
+            webServer->noteConfigSaved();
+            Logger::info("Main", "Location from SQMeter%s saved: %.4f, %.4f", next->gps ? " (GPS)" : "", next->latitude, next->longitude);
+        }
+    }
+    handledAtMs = read.atMs;
 }
 
 // The roof's switch readings into the safety inputs (spec 004), their verdict
@@ -446,6 +507,7 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     handleSafety();
+    handleSite();
     diagnostics.handle();
     diagnostics.passEnded();
 

@@ -105,6 +105,47 @@ namespace SQM
             return reply;
         }
 
+        // Spec 020: the socket as ArduinoJson reads it, until a total deadline
+        // (a server that drips its reply can't hold the caller longer).
+        class DeadlineReader
+        {
+        public:
+            DeadlineReader(WiFiClient &stream, uint64_t deadlineMs)
+                : stream(stream),
+                  deadlineMs(deadlineMs)
+            {
+            }
+
+            int read()
+            {
+                char c = 0;
+                return readBytes(&c, 1) == 1 ? static_cast<unsigned char>(c) : -1;
+            }
+
+            size_t readBytes(char *buffer, size_t length)
+            {
+                size_t got = 0;
+                while (got < length && SafetyPoller::nowMs() < deadlineMs)
+                {
+                    if (stream.available() <= 0)
+                    {
+                        if (!stream.connected())
+                            break;
+                        delay(5);
+                        continue;
+                    }
+                    const int n = stream.read(reinterpret_cast<uint8_t *>(buffer + got), length - got);
+                    if (n > 0)
+                        got += static_cast<size_t>(n);
+                }
+                return got;
+            }
+
+        private:
+            WiFiClient &stream;
+            uint64_t deadlineMs;
+        };
+
         std::string joinUrl(const std::string &base, const std::string &path)
         {
             const bool slash = !base.empty() && base.back() == '/';
@@ -128,6 +169,44 @@ namespace SQM
     uint64_t SafetyPoller::nowMs()
     {
         return static_cast<uint64_t>(esp_timer_get_time() / 1000);
+    }
+
+    Site::Fetch SafetyPoller::fetchJson(
+        const std::string &url, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
+    {
+        Site::Fetch fetch;
+        if (WiFi.status() != WL_CONNECTED)
+        {
+            fetch.error = "WiFi not connected";
+            return fetch;
+        }
+        const uint64_t deadline = nowMs() + totalMs;
+        DualStackClient client;
+        HTTPClient http;
+        http.setTimeout(static_cast<uint16_t>(connectMs));
+        http.setConnectTimeout(static_cast<int32_t>(connectMs));
+        http.setReuse(false);
+        http.useHTTP10(true); // no chunked replies: the body is parsed as it comes
+        if (!beginRequest(http, client, url))
+        {
+            fetch.error = "invalid URL";
+            return fetch;
+        }
+        const int code = http.GET();
+        if (code <= 0)
+            fetch.error = HTTPClient::errorToString(code).c_str();
+        else
+        {
+            fetch.status = code;
+            WiFiClient *stream = http.getStreamPtr();
+            if (code == 200 && stream != nullptr)
+            {
+                DeadlineReader reader(*stream, deadline);
+                fetch.parsed = deserializeJson(doc, reader, DeserializationOption::Filter(filter)) == DeserializationError::Ok;
+            }
+        }
+        http.end();
+        return fetch;
     }
 
     SafetyPoller::SafetyPoller()
@@ -179,6 +258,32 @@ namespace SQM
         }
         targets = newTargets;
         xSemaphoreGive(mutex);
+    }
+
+    void SafetyPoller::setSite(const std::string &address, bool followLocation)
+    {
+        if (mutex == nullptr)
+            return;
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        if (address != siteAddress || followLocation != siteFollows)
+        {
+            siteAddress = address;
+            siteFollows = followLocation;
+            state.location = Site::LocationRead{};
+            ++state.siteGeneration;
+        }
+        xSemaphoreGive(mutex);
+    }
+
+    Site::LocationRead SafetyPoller::locationRead(uint32_t &generation) const
+    {
+        if (mutex == nullptr)
+            return Site::LocationRead{};
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        Site::LocationRead copy = state.location;
+        generation = state.siteGeneration;
+        xSemaphoreGive(mutex);
+        return copy;
     }
 
     void SafetyPoller::requestPark()
@@ -244,11 +349,13 @@ namespace SQM
                 nextNinaMs = nowMs() + NINA_POLL_MS;
                 pollNina(*api, now, ninaGeneration);
             }
-            if (now.sqmeterEnabled && nowMs() >= nextSqmeterMs)
+            const bool safetyPolled = now.sqmeterEnabled && nowMs() >= nextSqmeterMs;
+            if (safetyPolled)
             {
                 nextSqmeterMs = nowMs() + SQMETER_POLL_MS;
                 pollSqmeter(now, sqmeterGeneration);
             }
+            maybeReadLocation(safetyPolled);
             // Constitution VI: stack headroom is measured on the bench.
             const UBaseType_t stackFree = uxTaskGetStackHighWaterMark(nullptr);
             if (stackFree < lowestStackFree)
@@ -267,6 +374,40 @@ namespace SQM
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.sqmeterGeneration)
             Safety::recordHttpReply(state.sqmeter, reply, nowMs());
+        xSemaphoreGive(mutex);
+    }
+
+    void SafetyPoller::maybeReadLocation(bool safetyPolled)
+    {
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        const std::string url = siteFollows ? Site::siteUrl(siteAddress, Site::STATUS_PATH) : std::string();
+        const uint32_t generation = state.siteGeneration;
+        xSemaphoreGive(mutex);
+        Site::LocationSchedule::Pass pass;
+        pass.nowMs = nowMs();
+        pass.enabled = !url.empty();
+        pass.busy = roofBusy.load();
+        pass.safetyPolled = safetyPolled;
+        pass.generation = generation;
+        if (locationSchedule.due(pass))
+            pollLocation(url, generation);
+    }
+
+    // Only sky's three fields are kept, whatever else the status holds.
+    void SafetyPoller::pollLocation(const std::string &url, uint32_t generation)
+    {
+        DynamicJsonDocument filter(Site::STATUS_FILTER_BYTES);
+        Site::statusFilter(filter);
+        DynamicJsonDocument doc(Site::STATUS_DOC_BYTES);
+        const Site::Fetch fetch = fetchJson(url, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const uint64_t at = nowMs();
+        const Site::LocationRead fresh = Site::readLocation(fetch, doc, at);
+        locationSchedule.done(fresh.good(), at);
+        if (!fresh.good())
+            Logger::debug(TAG, "SQMeter location not read: %s", fresh.detail.c_str());
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        if (generation == state.siteGeneration)
+            Site::record(state.location, fresh);
         xSemaphoreGive(mutex);
     }
 
