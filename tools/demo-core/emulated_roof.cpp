@@ -284,11 +284,12 @@ namespace DemoRoof
         polled = true;
         if (http.enabled && (first || nowMs - lastSqmeterMs >= SQMETER_POLL_MS))
         {
-            lastSqmeterMs = nowMs;
-            http.recordGood(sqmeterReply(), nowMs);
+            lastSqmeterMs = nowMs; // spec 020: an SQMeter that is offline answers nothing (stale is unsafe)
+            inject.sqmeterOffline ? Safety::recordHttpReply(http, Safety::HttpOutcome{0, "", "connection refused"}, nowMs)
+                                  : http.recordGood(sqmeterReply(), nowMs);
         }
-        // SQMeter publishes on a change, and again every minute (retained).
-        if (mqtt.enabled && mqttOn && (first || weatherChanged || nowMs - lastMqttMs >= MQTT_REPUBLISH_MS))
+        // SQMeter publishes on a change, and again every minute (retained); nothing while offline.
+        if (mqtt.enabled && mqttOn && !inject.sqmeterOffline && (first || weatherChanged || nowMs - lastMqttMs >= MQTT_REPUBLISH_MS))
         {
             lastMqttMs = nowMs;
             mqtt.recordGood(sqmeterReply(), nowMs);
