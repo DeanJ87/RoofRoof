@@ -287,7 +287,7 @@ where SQMeter is: its weather source address (`safety.http.url`, SQMeter's `/api
 - **Typed in** (`manual`): the latitude and longitude you enter, as before.
 
 A new device starts on **From SQMeter**. After an update, a location you typed in stays **Typed
-in**, unchanged; with no location set, the device starts following SQMeter.
+in**, unchanged; with no location set, the device starts following SQMeter. The daylight failsafe then starts working once SQMeter's location arrives, in the mode you chose: with **Alert and close** it can park and close the roof after sunrise. To keep it inactive, set **Location from** to **Typed in** and leave the location unset.
 
 **Kept on the device.** RoofRoof saves the location it read in its settings, so daylight keeps
 working while SQMeter is switched off or out of reach. It saves only a real change: a move of 0.001

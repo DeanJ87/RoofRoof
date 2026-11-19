@@ -363,13 +363,14 @@ void handleSite()
     if (busy || now - lastCheck < 1000)
         return;
     lastCheck = now;
+    // A settings save under way: try again next second (the loop never waits for it).
+    // The read is taken under the lock, so it belongs to the address saved now.
+    std::unique_lock<std::mutex> held(configSaveLock, std::try_to_lock);
+    if (!held.owns_lock())
+        return;
     uint32_t generation = 0;
     const Site::LocationRead read = safetyPoller.locationRead(generation);
     if (!read.good() || read.atMs == handledAtMs)
-        return;
-    // A settings save under way: try again next second (the loop never waits for it).
-    std::unique_lock<std::mutex> held(configSaveLock, std::try_to_lock);
-    if (!held.owns_lock())
         return;
     const time_t epoch = time(nullptr);
     const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
