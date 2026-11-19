@@ -139,6 +139,8 @@ namespace SQM
                 // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
                 const bool remote = cfg.alpaca.enabled || (cfg.mqtt.enabled && cfg.mqtt.roofCommands);
                 c.add("autoClose.remoteStop", "D-45", cfg.autoClose.remoteStop, {{"D-45", "remote-off", remote}});
+                // Spec 020: where the site comes from matters only while daylight is on.
+                c.add("location.source", "D-44", true, {daylightOn});
                 c.add("location.set", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.latitude", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.longitude", "D-44", cfg.location.set, {daylightOn});

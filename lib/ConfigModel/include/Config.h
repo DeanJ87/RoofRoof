@@ -337,12 +337,24 @@ namespace SQM
     };
 
     // The observing site, for the sun's altitude (spec 013; SQMeter's names,
-    // without its GPS and sun-and-moon card).
+    // without its GPS and sun-and-moon card). Spec 020: it can follow the
+    // SQMeter at the same site; the device then keeps the last good location
+    // here (and owns these fields while the source stays SQMeter).
     struct LocationConfig
     {
+        enum class Source : uint8_t
+        {
+            Sqmeter = 0, // read from SQMeter's GET /api/status (sky) and kept here
+            Manual = 1,  // typed in
+        };
         bool set = false;
         double latitude = 0.0;  // degrees, north positive
         double longitude = 0.0; // degrees, east positive
+        // A new device follows SQMeter; settings saved before spec 020 load as
+        // Manual when a location was set (Config::applyJson).
+        Source source = Source::Sqmeter;
+        bool gps = false;     // the kept location was SQMeter's GPS fix (device-owned)
+        uint32_t savedAt = 0; // Unix seconds it was saved from SQMeter; 0 = never or no clock (device-owned)
     };
 
     // The setup wizard (spec 015): whether it still has to be offered, and
