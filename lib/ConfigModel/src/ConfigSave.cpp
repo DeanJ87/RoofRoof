@@ -97,6 +97,19 @@ namespace SQM
                 if (!sameValue(base, current))
                     out.push_back(path);
             }
+
+            // A deserialisation filter keeping only what `base` names: a leaf keeps
+            // the device's value whole, an object keeps the keys it names.
+            void keepOnly(JsonObjectConst base, JsonObject filter)
+            {
+                for (JsonPairConst kv : base)
+                {
+                    if (kv.value().is<JsonObjectConst>())
+                        keepOnly(kv.value().as<JsonObjectConst>(), filter.createNestedObject(kv.key()));
+                    else
+                        filter[kv.key()] = true;
+                }
+            }
         } // namespace
 
         Check checkSave(const std::string &body, uint32_t currentRevision, const std::string &currentJson)
@@ -119,9 +132,13 @@ namespace SQM
             JsonVariantConst values = sent["baseValues"];
             if (!values.is<JsonObjectConst>())
                 return check;
+            // Only the compared fields are kept: their structure is no bigger than
+            // what was sent, their text no longer than the whole document.
+            DynamicJsonDocument filter(values.memoryUsage() + 512);
+            keepOnly(values.as<JsonObjectConst>(), filter.to<JsonObject>());
             const std::string shown = currentJson();
-            DynamicJsonDocument current(capacityFor(shown));
-            if (deserializeJson(current, shown))
+            DynamicJsonDocument current(sent.memoryUsage() + shown.size() + 1024);
+            if (filter.overflowed() || deserializeJson(current, shown, DeserializationOption::Filter(filter)))
                 return check; // couldn't compare: refused, never saved blind
             collect(values, current.as<JsonVariantConst>(), "", check.conflicts);
             check.stale = !check.conflicts.empty();

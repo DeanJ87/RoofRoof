@@ -140,6 +140,20 @@ void test_round_trip_of_the_device_document(void)
     TEST_ASSERT_FALSE_MESSAGE(c.stale, ConfigSave::conflictText(c).c_str());
 }
 
+// A long text set on the device where the page saw none still compares (and conflicts).
+void test_a_long_value_changed_on_the_device_is_named(void)
+{
+    const std::string longText(2000, 'x');
+    const std::string current = std::string(R"({"alerts":{"events":{"roof_fault":{"message":")") + longText + R"("}}}})";
+    const auto c = checkSave(
+        body(R"("alerts":{"events":{"roof_fault":{"message":"mine"}}})", R"({"alerts":{"events":{"roof_fault":{"message":""}}}})"),
+        REV,
+        current);
+    TEST_ASSERT_TRUE(c.stale);
+    TEST_ASSERT_EQUAL(1, c.conflicts.size());
+    TEST_ASSERT_EQUAL_STRING("alerts.events.roof_fault.message", c.conflicts[0].c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -154,5 +168,6 @@ int main(int, char **)
     RUN_TEST(test_not_an_object_is_left_to_the_settings_checks);
     RUN_TEST(test_base_keys_do_not_change_settings);
     RUN_TEST(test_round_trip_of_the_device_document);
+    RUN_TEST(test_a_long_value_changed_on_the_device_is_named);
     return UNITY_END();
 }
