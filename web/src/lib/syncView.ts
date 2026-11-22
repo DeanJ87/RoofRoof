@@ -9,6 +9,13 @@ import { t } from '../i18n';
 /** The group follows SQMeter in the settings as edited (older firmware: never). */
 export const follows = (config: Config, group: SyncGroup): boolean => config.sqmeterSync?.[group]?.follow ?? false;
 
+/**
+ * The group's fields are read-only: it follows SQMeter, SQMeter's address is set, and (MQTT) roof
+ * commands are off. Otherwise the device never syncs it, so the person's values stand.
+ */
+export const locked = (config: Config, group: SyncGroup): boolean =>
+  follows(config, group) && Boolean(config.safety?.http.url.trim()) && !(group === 'mqtt' && config.mqtt.roofCommands);
+
 /** The group a secret belongs to. */
 export const NEED_GROUP: Record<SyncNeed, SyncGroup> = { mqttPassword: 'mqtt', ntfyToken: 'alerts', pushoverKeys: 'alerts' };
 

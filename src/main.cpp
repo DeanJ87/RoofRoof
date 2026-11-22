@@ -25,6 +25,7 @@
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
 #include "SqmeterSite.h"
+#include "SiteSync.h"
 #include "SqmeterSync.h"
 #include "TimeManager.h"
 #include "WebServer.h"
@@ -49,8 +50,8 @@ bool roofBusy(); // spec 020, below
 // Spec 020: one settings save at a time (the web server's saves on the async
 // TCP task, the loop's SQMeter saves), so neither can undo the other's.
 static std::mutex configSaveLock;
-static std::mutex siteStatusLock; // spec 020: guards syncState, the last sync's refusals for the status
-static Site::SyncState syncState;
+void siteSaved(bool settingsUnchanged); // spec 020, below
+static SiteSync siteSync(config, configSaveLock, safetyPoller, siteSaved);
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
 // processing, config saves). 4 KB more is cheap insurance against a
@@ -326,22 +327,7 @@ void startServices()
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
     webServer->setInputs([]() { return safetyInputs->report(); });
     // Spec 020: the location's source and age, and the copy refused while busy.
-    webServer->setSiteStatus(
-        [](JsonDocument &doc)
-        {
-            uint32_t generation = 0;
-            const Site::LocationRead read = safetyPoller.locationRead(generation);
-            const bool addressSet = !Site::siteUrl(config.safety.httpUrl, Site::STATUS_PATH).empty();
-            Site::writeLocationStatus(doc.createNestedObject("location"), config.location, read, addressSet, SafetyPoller::nowMs());
-            Site::SyncState shown;
-            {
-                const std::lock_guard<std::mutex> held(siteStatusLock);
-                shown = syncState;
-            }
-            const Site::ConfigRead settings = safetyPoller.settingsRead();
-            Site::writeSyncStatus(
-                doc.createNestedObject("sync"), Site::SyncView{config, settings, shown, addressSet, SafetyPoller::nowMs()});
-        });
+    webServer->setSiteStatus([](JsonDocument &doc) { siteSync.writeStatus(doc); });
     webServer->setRoofBusy(roofBusy);
     webServer->begin();
 
@@ -375,94 +361,16 @@ bool roofBusy()
     return roofControl.moving() || roofControl.closeWaiting() || closeOnUnsafe.platformState() == RoofIo::SequenceState::Working;
 }
 
-// Spec 020: the location read from SQMeter, saved when Site::locationToSave says so.
-// Under configSaveLock. False when the flash is held (try again next time).
-bool saveSiteLocation(const Site::LocationRead &read, time_t epoch)
+// Spec 020: a save of what was read from SQMeter. Only the location or a
+// group's syncedAt: daylight takes it; a synced group: applied as any save.
+void siteSaved(bool settingsUnchanged)
 {
-    const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
-    if (!next)
-        return true;
-    const PlatformGuard::FlashWrite write;
-    if (write.refused() != RoofIo::HoldReason::None)
-        return false;
-    Config updated = config;
-    updated.location = *next;
-    if (!updated.save())
-        Logger::error("Main", "Couldn't save the location read from SQMeter");
-    else
-    {
-        config.location = *next;
+    if (settingsUnchanged)
         closeOnUnsafe.updateConfig(config);
-        webServer->noteConfigSaved();
-        Logger::info("Main", "Location from SQMeter%s saved: %.4f, %.4f", next->gps ? " (GPS)" : "", next->latitude, next->longitude);
-    }
-    return true;
-}
-
-// The groups that follow SQMeter take its settings, each through the
-// settings' own validation (a refused value keeps the old one). Under
-// configSaveLock. False when the flash is held (try again next time).
-bool syncSiteSettings(const Site::ConfigRead &read, time_t epoch)
-{
-    // On the heap: settings copies would crowd the loop task's stack.
-    const auto outcome = std::make_unique<Site::SyncOutcome>(
-        Site::syncFromSite(config, read.site, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH));
-    {
-        const std::lock_guard<std::mutex> shown(siteStatusLock);
-        for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
-        {
-            const std::string &why = outcome->groups[i].refused;
-            if (!why.empty() && why != syncState.refused[i])
-                Logger::warn("Main", "SQMeter's %s settings not taken: %s", Site::groupName(static_cast<Site::Group>(i)), why.c_str());
-            syncState.refused[i] = why;
-        }
-    }
-    if (!outcome->any())
-        return true;
-    const PlatformGuard::FlashWrite write;
-    if (write.refused() != RoofIo::HoldReason::None)
-        return false;
-    if (!outcome->next.save())
-    {
-        Logger::error("Main", "Couldn't save the settings synced from SQMeter");
-        return true;
-    }
-    const std::string changed = outcome->changedNames();
-    config = outcome->next;
-    if (!changed.empty())
-    {
+    else
         applySavedConfig();
-        Logger::info("Main", "Settings synced from SQMeter: %s", changed.c_str());
-    }
-    webServer->noteConfigSaved();
-    return true;
-}
-
-// Spec 020: saves what was read from SQMeter (the location, the followed
-// groups) as flash writes (spec 010), once a second, never while the roof is
-// busy, and never waiting for a settings save.
-void handleSite()
-{
-    const bool busy = roofBusy();
-    safetyPoller.setRoofBusy(busy);
-    static uint32_t lastCheck = 0;
-    static uint64_t locationAtMs = 0;
-    static uint64_t settingsAtMs = 0;
-    const uint32_t now = millis();
-    if (busy || now - lastCheck < 1000)
-        return;
-    lastCheck = now;
-    std::unique_lock<std::mutex> held(configSaveLock, std::try_to_lock);
-    if (!held.owns_lock())
-        return;
-    const time_t epoch = time(nullptr);
-    uint32_t generation = 0;
-    const Site::LocationRead location = safetyPoller.locationRead(generation);
-    if (location.good() && location.atMs != locationAtMs && saveSiteLocation(location, epoch))
-        locationAtMs = location.atMs;
-    const Site::ConfigRead settings = safetyPoller.settingsRead();
-    if (settings.good() && settings.atMs != settingsAtMs && syncSiteSettings(settings, epoch))
-        settingsAtMs = settings.atMs;
+    if (webServer)
+        webServer->noteConfigSaved();
 }
 
 // The roof's switch readings into the safety inputs (spec 004), their verdict
@@ -591,7 +499,7 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     handleSafety();
-    handleSite();
+    siteSync.handle(roofBusy()); // spec 020
     diagnostics.handle();
     diagnostics.passEnded();
 

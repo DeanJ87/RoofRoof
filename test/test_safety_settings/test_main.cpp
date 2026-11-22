@@ -99,6 +99,19 @@ void test_new_nina_url_restarts_nina_only(void)
     TEST_ASSERT_FALSE(c.sqmeterHttp || c.sqmeterMqtt || c.window);
 }
 
+// Spec 020: a new broker (synced from SQMeter or typed) restarts the MQTT
+// source, so a reading from the old broker never counts.
+void test_a_new_broker_restarts_the_mqtt_source()
+{
+    const SourceSettings before = base();
+    SourceSettings after = before;
+    after.mqttBroker = "192.168.1.99:1883@obs";
+    const SettingsChange c = settingsChange(&before, after);
+    TEST_ASSERT_TRUE(c.sqmeterMqtt);
+    TEST_ASSERT_TRUE(c.window);
+    TEST_ASSERT_FALSE(c.sqmeterHttp);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -109,5 +122,6 @@ int main(int, char **)
     RUN_TEST(test_switching_a_source_on_or_off_restarts_it);
     RUN_TEST(test_stale_time_or_contact_restart_the_window_only);
     RUN_TEST(test_new_nina_url_restarts_nina_only);
+    RUN_TEST(test_a_new_broker_restarts_the_mqtt_source);
     return UNITY_END();
 }

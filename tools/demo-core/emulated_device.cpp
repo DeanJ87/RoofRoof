@@ -10,6 +10,7 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     auto next = Config::fromJson(json, &cfg, &reason);
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
+    Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
     cfg = *next;
     if (roofBooted)
         roof.settingsChanged(cfg);

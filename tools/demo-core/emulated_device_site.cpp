@@ -57,11 +57,16 @@ void EmulatedDevice::runSettingsSync(bool busy)
         settingsSchedule.done(fresh.good(), nowMs);
         if (fresh.good() && !busy)
         {
-            const Site::SyncOutcome out = Site::syncFromSite(cfg, settingsRead.site, epoch, validEpoch() != 0);
+            Site::SyncOutcome out;
+            Site::syncFromSite(out, cfg, settingsRead.site, epoch, validEpoch() != 0);
             for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
                 syncState.refused[i] = out.groups[i].refused;
             if (out.any())
-                cfg = out.next;
+            {
+                Site::applyOutcome(out, cfg);
+                if (roofBooted)
+                    roof.settingsChanged(cfg);
+            }
         }
     }
 }

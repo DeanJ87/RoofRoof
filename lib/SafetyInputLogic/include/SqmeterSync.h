@@ -73,18 +73,28 @@ namespace SQM
         // saved MQTT password; a changed ntfy server clears the saved token.
         // `syncedAt` is set to `epochSeconds` (1 without a clock) when a group
         // changes or is confirmed for the first time.
-        SyncOutcome syncFromSite(const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet);
+        // `out` is filled in place (the firmware keeps it on the heap: two
+        // settings copies would crowd the loop task's stack).
+        void syncFromSite(SyncOutcome &out, const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet);
+
+        // Copies only what a sync changed (each changed group's fields and
+        // cleared secret, and every group's syncedAt) from `out.next` into
+        // `live`, so the live settings aren't reassigned as a whole.
+        void applyOutcome(const SyncOutcome &out, Config &live);
 
         // FR-008 and FR-028 at the moment of saving: each group (and the
         // location) that follows SQMeter in both the live and the new settings,
         // and that the device has synced, keeps the live values (a settings copy
-        // taken before the last sync can't put older ones back). Includes
-        // keepDeviceLocation.
+        // taken before the last sync can't put older ones back). A secret sent
+        // with a server the rule puts back is put back with it. The MQTT group
+        // isn't kept while MQTT roof commands are on (it doesn't sync then).
+        // Includes keepDeviceLocation.
         void keepFollowed(const Config &live, Config &next);
 
         // The secrets a following group needs the person to type
-        // ("mqttPassword", "ntfyToken", "pushoverKeys"): SQMeter has one set and
-        // RoofRoof's is empty.
+        // ("mqttPassword", "ntfyToken"): SQMeter has one set, RoofRoof's is
+        // empty, and RoofRoof's server is SQMeter's (a secret is only ever asked
+        // for the server it belongs to).
         std::vector<const char *> secretsNeeded(const Config &config, const SiteConfig &site, Group group);
 
         // The status document's "sync" section (FR-030).

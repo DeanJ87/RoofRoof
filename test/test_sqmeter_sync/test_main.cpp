@@ -53,13 +53,20 @@ namespace
     }
 
     constexpr int64_t NOW = 1763540000;
+
+    SyncOutcome sync(const Config &live, const SiteConfig &site, int64_t epoch, bool clockSet)
+    {
+        SyncOutcome out;
+        syncFromSite(out, live, site, epoch, clockSet);
+        return out;
+    }
 } // namespace
 
 // --- Every followed group takes SQMeter's values ----------------------------
 
 void test_each_followed_group_takes_sqmeters_values()
 {
-    const SyncOutcome out = syncFromSite(live(), sqmeter(), NOW, true);
+    const SyncOutcome out = sync(live(), sqmeter(), NOW, true);
     TEST_ASSERT_TRUE(out.any());
     TEST_ASSERT_EQUAL_STRING("CET-1CEST,M3.5.0,M10.5.0/3", out.next.ntp.timezone.c_str());
     TEST_ASSERT_EQUAL_STRING("time.cloudflare.com", out.next.ntp.server1.c_str());
@@ -78,7 +85,7 @@ void test_each_followed_group_takes_sqmeters_values()
 void test_nothing_outside_the_groups_changes()
 {
     const Config before = live();
-    SyncOutcome out = syncFromSite(before, sqmeter(), NOW, true);
+    SyncOutcome out = sync(before, sqmeter(), NOW, true);
     TEST_ASSERT_EQUAL_STRING(before.mqtt.topic.c_str(), out.next.mqtt.topic.c_str());
     // Put back what the groups may change: the rest must be identical.
     out.next.ntp = before.ntp;
@@ -97,7 +104,7 @@ void test_a_local_group_is_never_touched()
     c.sqmeterSync.time.follow = false;
     c.sqmeterSync.mqtt.follow = false;
     c.sqmeterSync.alerts.follow = false;
-    const SyncOutcome out = syncFromSite(c, sqmeter(), NOW, true);
+    const SyncOutcome out = sync(c, sqmeter(), NOW, true);
     TEST_ASSERT_FALSE(out.any());
     TEST_ASSERT_EQUAL_STRING(c.toJson(false).c_str(), out.next.toJson(false).c_str());
 }
@@ -106,7 +113,7 @@ void test_a_local_group_is_never_touched()
 
 void test_a_new_broker_or_ntfy_server_clears_the_saved_secret()
 {
-    const SyncOutcome out = syncFromSite(live(), sqmeter(), NOW, true);
+    const SyncOutcome out = sync(live(), sqmeter(), NOW, true);
     TEST_ASSERT_EQUAL_STRING("", out.next.mqtt.password.c_str());
     TEST_ASSERT_EQUAL_STRING("", out.next.alerts.ntfyToken.c_str());
 }
@@ -118,14 +125,14 @@ void test_the_same_broker_and_server_keep_their_secrets()
     c.mqtt.port = 1884;
     c.mqtt.username = "obs";
     c.alerts.ntfyServer = "https://ntfy.example";
-    const SyncOutcome out = syncFromSite(c, sqmeter(), NOW, true);
+    const SyncOutcome out = sync(c, sqmeter(), NOW, true);
     TEST_ASSERT_EQUAL_STRING("old-broker-secret", out.next.mqtt.password.c_str());
     TEST_ASSERT_EQUAL_STRING("old-server-token", out.next.alerts.ntfyToken.c_str());
 }
 
 void test_the_secrets_still_needed_are_named()
 {
-    Config c = syncFromSite(live(), sqmeter(), NOW, true).next;
+    Config c = sync(live(), sqmeter(), NOW, true).next;
     TEST_ASSERT_EQUAL(1, secretsNeeded(c, sqmeter(), Group::Mqtt).size());
     TEST_ASSERT_EQUAL_STRING("mqttPassword", secretsNeeded(c, sqmeter(), Group::Mqtt)[0]);
     TEST_ASSERT_EQUAL(0, secretsNeeded(c, sqmeter(), Group::Alerts).size()); // SQMeter has no ntfy token
@@ -149,7 +156,7 @@ void test_an_invalid_value_from_sqmeter_is_refused_and_the_old_one_kept()
     bad.server1 = "fd00::10"; // NTP over IPv6 is refused
     Config c = live();
     c.alerts.ntfyEnabled = true; // the ntfy server is checked when ntfy is on
-    const SyncOutcome out = syncFromSite(c, bad, NOW, true);
+    const SyncOutcome out = sync(c, bad, NOW, true);
     TEST_ASSERT_EQUAL_STRING("10.0.0.5", out.next.mqtt.broker.c_str());
     TEST_ASSERT_EQUAL_STRING("old-broker-secret", out.next.mqtt.password.c_str());
     TEST_ASSERT_EQUAL_STRING("https://ntfy.sh", out.next.alerts.ntfyServer.c_str());
@@ -166,7 +173,7 @@ void test_the_mqtt_group_is_held_while_mqtt_roof_commands_are_on()
 {
     Config c = live();
     c.mqtt.roofCommands = true;
-    const SyncOutcome out = syncFromSite(c, sqmeter(), NOW, true);
+    const SyncOutcome out = sync(c, sqmeter(), NOW, true);
     TEST_ASSERT_EQUAL_STRING("10.0.0.5", out.next.mqtt.broker.c_str());
     TEST_ASSERT_EQUAL_STRING("sqmeter", out.next.safety.mqttTopic.c_str());
     TEST_ASSERT_NOT_NULL(std::strstr(out.groups[1].refused.c_str(), "roof commands"));
@@ -178,7 +185,7 @@ void test_an_older_sqmeter_without_a_part_leaves_its_group_alone()
     old.name = "Old";
     old.hasTime = true;
     old.timezone = "PST8PDT";
-    const SyncOutcome out = syncFromSite(live(), old, NOW, true);
+    const SyncOutcome out = sync(live(), old, NOW, true);
     TEST_ASSERT_EQUAL_STRING("PST8PDT", out.next.ntp.timezone.c_str());
     TEST_ASSERT_EQUAL_STRING("pool.ntp.org", out.next.ntp.server1.c_str()); // no servers: kept
     TEST_ASSERT_EQUAL_STRING("10.0.0.5", out.next.mqtt.broker.c_str());
@@ -189,11 +196,11 @@ void test_an_older_sqmeter_without_a_part_leaves_its_group_alone()
 
 void test_matching_values_are_marked_once_then_nothing_is_saved()
 {
-    Config c = syncFromSite(live(), sqmeter(), NOW, true).next;
-    TEST_ASSERT_FALSE(syncFromSite(c, sqmeter(), NOW + 600, true).any());
+    Config c = sync(live(), sqmeter(), NOW, true).next;
+    TEST_ASSERT_FALSE(sync(c, sqmeter(), NOW + 600, true).any());
     Config fresh = c;
     fresh.sqmeterSync.time.syncedAt = 0;
-    const SyncOutcome marked = syncFromSite(fresh, sqmeter(), NOW + 600, true);
+    const SyncOutcome marked = sync(fresh, sqmeter(), NOW + 600, true);
     TEST_ASSERT_TRUE(marked.any());
     TEST_ASSERT_TRUE(marked.marked);
     TEST_ASSERT_EQUAL_UINT32(NOW + 600, marked.next.sqmeterSync.time.syncedAt);
@@ -201,27 +208,33 @@ void test_matching_values_are_marked_once_then_nothing_is_saved()
 
 void test_without_a_clock_synced_at_is_one()
 {
-    TEST_ASSERT_EQUAL_UINT32(1, syncFromSite(live(), sqmeter(), 5, false).next.sqmeterSync.time.syncedAt);
+    TEST_ASSERT_EQUAL_UINT32(1, sync(live(), sqmeter(), 5, false).next.sqmeterSync.time.syncedAt);
 }
 
 // --- The keep rule at a save (FR-028) ------------------------------------------
 
 void test_a_save_keeps_the_synced_values_of_a_followed_group()
 {
-    const Config synced = syncFromSite(live(), sqmeter(), NOW, true).next;
+    const Config synced = sync(live(), sqmeter(), NOW, true).next;
     Config stale = live(); // a copy taken before the sync, still following
     stale.mqtt.password = "typed-now";
     keepFollowed(synced, stale);
     TEST_ASSERT_EQUAL_STRING("192.168.1.10", stale.mqtt.broker.c_str());
     TEST_ASSERT_EQUAL_STRING("obs/sqm", stale.safety.mqttTopic.c_str());
     TEST_ASSERT_EQUAL_STRING("CET-1CEST,M3.5.0,M10.5.0/3", stale.ntp.timezone.c_str());
-    TEST_ASSERT_EQUAL_STRING("typed-now", stale.mqtt.password.c_str()); // a typed secret stands
+    // A secret sent with the old broker goes back with it: never paired with SQMeter's broker.
+    TEST_ASSERT_EQUAL_STRING("", stale.mqtt.password.c_str());
     TEST_ASSERT_EQUAL_UINT32(NOW, stale.sqmeterSync.mqtt.syncedAt);
+    // A password typed for the synced broker stands.
+    Config typed = synced;
+    typed.mqtt.password = "typed-now";
+    keepFollowed(synced, typed);
+    TEST_ASSERT_EQUAL_STRING("typed-now", typed.mqtt.password.c_str());
 }
 
 void test_edit_here_instead_takes_the_sent_values()
 {
-    const Config synced = syncFromSite(live(), sqmeter(), NOW, true).next;
+    const Config synced = sync(live(), sqmeter(), NOW, true).next;
     Config edited = synced;
     edited.sqmeterSync.mqtt.follow = false;
     edited.mqtt.broker = "10.9.9.9";
@@ -237,6 +250,64 @@ void test_a_group_never_synced_takes_the_sent_values()
     copied.ntp.timezone = "PST8PDT";
     keepFollowed(fresh, copied);
     TEST_ASSERT_EQUAL_STRING("PST8PDT", copied.ntp.timezone.c_str());
+}
+
+// A secret is only asked for the server it belongs to.
+void test_no_secret_is_asked_for_a_server_roofroof_doesnt_use()
+{
+    Config c = live();
+    c.mqtt.password.clear();
+    c.alerts.ntfyToken.clear();
+    SiteConfig withToken = sqmeter();
+    withToken.ntfyTokenSet = true;
+    TEST_ASSERT_EQUAL(0, secretsNeeded(c, withToken, Group::Mqtt).size()); // RoofRoof's broker isn't SQMeter's
+    TEST_ASSERT_EQUAL(0, secretsNeeded(c, withToken, Group::Alerts).size());
+    c.mqtt.roofCommands = true; // held: the broker stays RoofRoof's own
+    TEST_ASSERT_EQUAL(0, secretsNeeded(sync(c, sqmeter(), NOW, true).next, sqmeter(), Group::Mqtt).size());
+}
+
+// A secret sent with a server the keep rule puts back goes back with it.
+void test_a_secret_stays_with_its_server_under_the_keep_rule()
+{
+    const Config synced = sync(live(), sqmeter(), NOW, true).next; // broker 192.168.1.10, password cleared
+    Config restored = synced;
+    restored.mqtt.broker = "10.0.0.5"; // a backup's broker and its password
+    restored.mqtt.password = "backup-secret";
+    restored.alerts.ntfyServer = "https://ntfy.sh";
+    restored.alerts.ntfyToken = "backup-token";
+    keepFollowed(synced, restored);
+    TEST_ASSERT_EQUAL_STRING("192.168.1.10", restored.mqtt.broker.c_str());
+    TEST_ASSERT_EQUAL_STRING("", restored.mqtt.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("https://ntfy.example", restored.alerts.ntfyServer.c_str());
+    TEST_ASSERT_EQUAL_STRING("", restored.alerts.ntfyToken.c_str());
+}
+
+// While MQTT roof commands are on the device doesn't sync the broker, so it doesn't own it.
+void test_the_held_mqtt_group_takes_the_sent_values()
+{
+    Config synced = sync(live(), sqmeter(), NOW, true).next;
+    synced.mqtt.roofCommands = true;
+    Config typed = synced;
+    typed.mqtt.broker = "10.9.9.9";
+    keepFollowed(synced, typed);
+    TEST_ASSERT_EQUAL_STRING("10.9.9.9", typed.mqtt.broker.c_str());
+}
+
+// The loop copies only what changed into the live settings.
+void test_apply_outcome_copies_only_the_changed_groups()
+{
+    Config c = live();
+    c.sqmeterSync.alerts.follow = false;
+    const SyncOutcome out = sync(c, sqmeter(), NOW, true);
+    Config target = c;
+    target.deviceName = "Kept";
+    applyOutcome(out, target);
+    TEST_ASSERT_EQUAL_STRING("Kept", target.deviceName.c_str());
+    TEST_ASSERT_EQUAL_STRING("192.168.1.10", target.mqtt.broker.c_str());
+    TEST_ASSERT_EQUAL_STRING("", target.mqtt.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("roof", target.alerts.ntfyTopic.c_str());
+    TEST_ASSERT_EQUAL_STRING("old-server-token", target.alerts.ntfyToken.c_str());
+    TEST_ASSERT_EQUAL_UINT32(NOW, target.sqmeterSync.time.syncedAt);
 }
 
 // --- The upgrade's follow switches (FR-029) -------------------------------------
@@ -286,7 +357,9 @@ void test_the_switches_round_trip_and_the_api_never_sets_synced_at()
     const auto api = Config::fromJson(R"({"sqmeterSync":{"time":{"follow":false,"syncedAt":7}}})", &c);
     TEST_ASSERT_TRUE(api.has_value());
     TEST_ASSERT_FALSE(api->sqmeterSync.time.follow);
-    TEST_ASSERT_EQUAL_UINT32(42, api->sqmeterSync.time.syncedAt);
+    TEST_ASSERT_EQUAL_UINT32(0, api->sqmeterSync.time.syncedAt); // made local: no longer the device's
+    const auto keep = Config::fromJson(R"({"sqmeterSync":{"time":{"follow":true,"syncedAt":7}}})", &c);
+    TEST_ASSERT_EQUAL_UINT32(42, keep->sqmeterSync.time.syncedAt);
     // From the API a missing section changes nothing (no upgrade rule).
     const auto none = Config::fromJson(R"({"ntp":{"timezone":"PST8PDT"}})", &c);
     TEST_ASSERT_TRUE(none->sqmeterSync.time.follow);
@@ -319,7 +392,7 @@ void test_the_settings_read_and_a_failed_one_keeps_the_last_good()
 
 void test_the_status_section()
 {
-    Config c = syncFromSite(live(), sqmeter(), NOW, true).next;
+    Config c = sync(live(), sqmeter(), NOW, true).next;
     c.sqmeterSync.alerts.follow = false;
     ConfigRead read;
     read.problem = Problem::None;
@@ -387,6 +460,10 @@ int main(int, char **)
     RUN_TEST(test_a_save_keeps_the_synced_values_of_a_followed_group);
     RUN_TEST(test_edit_here_instead_takes_the_sent_values);
     RUN_TEST(test_a_group_never_synced_takes_the_sent_values);
+    RUN_TEST(test_no_secret_is_asked_for_a_server_roofroof_doesnt_use);
+    RUN_TEST(test_a_secret_stays_with_its_server_under_the_keep_rule);
+    RUN_TEST(test_the_held_mqtt_group_takes_the_sent_values);
+    RUN_TEST(test_apply_outcome_copies_only_the_changed_groups);
     RUN_TEST(test_a_new_device_follows_in_every_group);
     RUN_TEST(test_an_upgrade_keeps_groups_the_person_set_local);
     RUN_TEST(test_the_switches_round_trip_and_the_api_never_sets_synced_at);

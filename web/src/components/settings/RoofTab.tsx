@@ -7,7 +7,7 @@ import AutoCloseCard from './AutoCloseCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { follows } from '../../lib/syncView';
+import { locked as isLocked } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
@@ -214,7 +214,7 @@ export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<Safe
       <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
         <TextInput
           dataField="safety.mqtt.topic"
-          disabled={follows(config, 'mqtt')}
+          disabled={isLocked(config, 'mqtt')}
           value={safety.mqtt.topic}
           onInput={(v) => update(['safety', 'mqtt', 'topic'], v)}
         />

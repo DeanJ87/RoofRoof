@@ -4,7 +4,7 @@ import { isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepToggle, Field, Group, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
-import { follows } from '../../lib/syncView';
+import { locked as isLocked } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // Send test, for a channel that is on (tests use the saved settings).
@@ -73,7 +73,7 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
 // Spec 020: the server and topic are read-only while the alerts group follows SQMeter.
 const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   const { alerts, set, err, dep, fix, config, status, update } = view;
-  const locked = follows(config, 'alerts');
+  const locked = isLocked(config, 'alerts');
   return (
     <Group>
       <DepToggle

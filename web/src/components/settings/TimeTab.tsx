@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import type { SettingsTabProps } from './context';
 import { DepToggle, Field, NumberInput, SelectInput, SettingsCard, TextInput } from './controls';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { follows } from '../../lib/syncView';
+import { locked as isLocked } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // Common time zones in POSIX TZ format
@@ -25,7 +25,7 @@ const knownZone = (timezone: string) => TIMEZONE_OPTIONS.some((tz) => tz.value =
 // Spec 020: read-only while the time group follows SQMeter.
 export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error' | 'status'>> = (props) => {
   const { config, update, error } = props;
-  const locked = follows(config, 'time');
+  const locked = isLocked(config, 'time');
   return (
     <>
       <FollowsSqmeter group="time" {...props} />
@@ -64,7 +64,7 @@ export const TimeZoneCard: FunctionalComponent<SettingsTabProps> = (props) => (
 // `followNote`: false where the time zone above already says the group follows SQMeter (the wizard's Time screen).
 export const NtpFields: FunctionalComponent<SettingsTabProps & { followNote?: boolean }> = (props) => {
   const { config, update, error, deps, fix, followNote = true } = props;
-  const locked = follows(config, 'time');
+  const locked = isLocked(config, 'time');
   return (
     <>
       {followNote && <FollowsSqmeter group="time" {...props} />}

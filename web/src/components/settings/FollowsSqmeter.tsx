@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import type { SyncGroup, SyncNeed } from '../../types';
 import type { SettingsTabProps } from './context';
 import { Note } from '../ui';
-import { follows, needs, syncLine } from '../../lib/syncView';
+import { follows, locked, needs, syncLine } from '../../lib/syncView';
 import { deviceText } from '../../i18n/deviceMessage';
 import { t } from '../../i18n';
 
@@ -20,6 +20,8 @@ export const FollowsSqmeter: FunctionalComponent<Props> = ({ group, config, stat
     if (!config.safety?.http.url.trim()) return null;
     return <Note action={{ label: t('sync.follow'), onClick: () => setFollow(true) }}>{t('sync.local')}</Note>;
   }
+  // Without SQMeter's address (D-47 says so) or held by MQTT roof commands, nothing is synced: the fields stay editable.
+  if (!locked(config, group)) return null;
   const line = syncLine(status?.sync, group);
   const refused = status?.sync?.[group]?.follow ? status.sync[group].refused : null;
   return (

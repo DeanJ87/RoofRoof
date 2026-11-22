@@ -510,3 +510,9 @@ Each was an open choice; the safest option the constitution allows was taken.
 20. **A synced weather topic or broker restarts the MQTT weather source** as any settings change does
     (unknown, so not safe, until SQMeter's next message): the fail-safe direction. The verdict itself
     is never written by the sync.
+21. **The device owns a group only while it can sync it**: with SQMeter's address set and, for MQTT,
+    roof commands off; otherwise its fields stay editable and a save takes what is sent. When the
+    keep rule puts a server back, the secret sent with another server goes back with it, and a secret
+    is only ever asked for the server it belongs to. A restore's preview shows what the save keeps.
+22. **The loop copies only the groups a sync changed into the live settings**, under the save lock,
+    as the location save does, rather than replacing the settings as a whole.

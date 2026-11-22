@@ -1,5 +1,7 @@
 #include "SqmeterSync.h"
 
+#include <memory>
+
 // Spec 020: keeping the shared settings in step with SQMeter (see SqmeterSync.h).
 
 namespace SQM
@@ -92,6 +94,13 @@ namespace SQM
                 }
             }
 
+            bool sameMqttServer(const MQTTConfig &a, const MQTTConfig &b)
+            {
+                return a.broker == b.broker && a.port == b.port && a.username == b.username;
+            }
+
+            // The group's fields, its syncedAt, and its secret when the server
+            // changes with it (a secret stays with the server it was saved for).
             void copyGroup(const Config &from, Config &to, Group group)
             {
                 switch (group)
@@ -102,12 +111,16 @@ namespace SQM
                     to.ntp.server2 = from.ntp.server2;
                     break;
                 case Group::Mqtt:
+                    if (!sameMqttServer(from.mqtt, to.mqtt))
+                        to.mqtt.password = from.mqtt.password;
                     to.mqtt.broker = from.mqtt.broker;
                     to.mqtt.port = from.mqtt.port;
                     to.mqtt.username = from.mqtt.username;
                     to.safety.mqttTopic = from.safety.mqttTopic;
                     break;
                 default:
+                    if (from.alerts.ntfyServer != to.alerts.ntfyServer)
+                        to.alerts.ntfyToken = from.alerts.ntfyToken;
                     to.alerts.ntfyServer = from.alerts.ntfyServer;
                     to.alerts.ntfyTopic = from.alerts.ntfyTopic;
                     break;
@@ -121,12 +134,14 @@ namespace SQM
                 GroupOutcome &result = out.groups[static_cast<size_t>(group)];
                 if (group == Group::Mqtt && out.next.mqtt.roofCommands)
                 {
-                    Config probe = out.next;
-                    if (applyMqtt(probe, site) && !sameGroup(probe, out.next, group))
-                        result.refused = "MQTT roof commands are on: SQMeter's broker isn't taken; set it here";
+                    const std::unique_ptr<Config> probe = std::make_unique<Config>(out.next);
+                    if (applyMqtt(*probe, site) && !sameGroup(*probe, out.next, group))
+                        result.refused = "MQTT roof commands are on: set the broker here, not from SQMeter";
                     return;
                 }
-                Config candidate = out.next;
+                // On the heap: a settings copy is about 2 KB.
+                const std::unique_ptr<Config> held = std::make_unique<Config>(out.next);
+                Config &candidate = *held;
                 if (!applyGroup(candidate, site, group))
                     return; // SQMeter has nothing for this group
                 SqmeterSyncConfig::Group &mark = groupOf(candidate.sqmeterSync, group);
@@ -212,16 +227,31 @@ namespace SQM
             return names;
         }
 
-        SyncOutcome syncFromSite(const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet)
+        void syncFromSite(SyncOutcome &out, const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet)
         {
-            SyncOutcome out;
+            out = SyncOutcome{};
             out.next = live;
             const uint32_t stamp =
                 clockSet && epochSeconds > 0 && epochSeconds <= INT64_C(0xFFFFFFFF) ? static_cast<uint32_t>(epochSeconds) : 1;
             for (Group group : GROUPS)
                 if (groupOf(live.sqmeterSync, group).follow)
                     syncGroup(out, site, group, stamp);
-            return out;
+        }
+
+        void applyOutcome(const SyncOutcome &out, Config &live)
+        {
+            for (Group group : GROUPS)
+            {
+                if (out.groups[static_cast<size_t>(group)].changed)
+                {
+                    copyGroup(out.next, live, group);
+                    if (group == Group::Mqtt)
+                        live.mqtt.password = out.next.mqtt.password;
+                    else if (group == Group::Alerts)
+                        live.alerts.ntfyToken = out.next.alerts.ntfyToken;
+                }
+                groupOf(live.sqmeterSync, group).syncedAt = groupOf(out.next.sqmeterSync, group).syncedAt;
+            }
         }
 
         void keepFollowed(const Config &live, Config &next)
@@ -230,7 +260,8 @@ namespace SQM
             for (Group group : GROUPS)
             {
                 const SqmeterSyncConfig::Group &was = groupOf(live.sqmeterSync, group);
-                if (was.follow && was.syncedAt != 0 && groupOf(next.sqmeterSync, group).follow)
+                const bool held = group == Group::Mqtt && next.mqtt.roofCommands; // never synced then: the person's values stand
+                if (was.follow && was.syncedAt != 0 && groupOf(next.sqmeterSync, group).follow && !held)
                     copyGroup(live, next, group);
             }
         }
@@ -240,9 +271,12 @@ namespace SQM
             std::vector<const char *> needs;
             if (!groupOf(config.sqmeterSync, group).follow)
                 return needs;
-            if (group == Group::Mqtt && site.hasMqtt && site.passwordSet && config.mqtt.password.empty())
+            const bool sameBroker =
+                config.mqtt.broker == site.broker && config.mqtt.port == site.port && config.mqtt.username == site.username;
+            if (group == Group::Mqtt && site.hasMqtt && site.passwordSet && config.mqtt.password.empty() && sameBroker)
                 needs.push_back("mqttPassword");
-            if (group == Group::Alerts && site.hasNtfy && site.ntfyTokenSet && config.alerts.ntfyToken.empty())
+            if (group == Group::Alerts && site.hasNtfy && site.ntfyTokenSet && config.alerts.ntfyToken.empty() &&
+                config.alerts.ntfyServer == site.ntfyServer)
                 needs.push_back("ntfyToken");
             return needs;
         }

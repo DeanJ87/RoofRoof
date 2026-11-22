@@ -73,6 +73,9 @@ namespace SQM::ConfigDetail
         {
             const Section in = sync.child(group.first);
             in.take("follow", group.second->follow);
+            // Made local from the UI/API: the device no longer owns it.
+            if (sync.reader().strict() && !group.second->follow)
+                group.second->syncedAt = 0;
             if (!sync.reader().strict())
                 in.take("syncedAt", group.second->syncedAt);
         }

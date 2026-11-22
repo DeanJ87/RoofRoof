@@ -20,7 +20,7 @@ import {
   Toggle,
 } from './controls';
 import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
-import { follows } from '../../lib/syncView';
+import { locked as isLocked } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
@@ -112,7 +112,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
 const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
   const { config, update, error, status } = props;
   const base = config.mqtt.topic || 'roofroof';
-  const locked = follows(config, 'mqtt');
+  const locked = isLocked(config, 'mqtt');
   return (
     <>
       <FollowsSqmeter group="mqtt" {...props} />

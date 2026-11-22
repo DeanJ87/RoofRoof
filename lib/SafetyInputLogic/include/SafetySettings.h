@@ -14,7 +14,7 @@ namespace SQM
         struct SettingsChange
         {
             bool sqmeterHttp = true; // URL or on/off: the HTTP record restarts
-            bool sqmeterMqtt = true; // topic or on/off: the MQTT record restarts, topics re-watched
+            bool sqmeterMqtt = true; // topic, broker or on/off: the MQTT record restarts, topics re-watched
             bool nina = true;        // URL or API: the mount reading and park reply restart
             bool window = true;      // any weather-source setting: the start-up window restarts
         };
@@ -26,6 +26,7 @@ namespace SQM
             std::string httpUrl;
             bool mqttEnabled = false;
             std::string mqttTopic;
+            std::string mqttBroker; // RoofRoof's broker, port and user name (spec 020: a reading from the old broker never counts)
             uint32_t staleSeconds = 0;
             bool rainContact = false;
             std::string ninaUrl;

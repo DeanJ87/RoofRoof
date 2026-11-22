@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { follows, needs, syncLine } from '../syncView';
+import { follows, locked, needs, syncLine } from '../syncView';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import type { SyncStatus } from '../../types';
 
@@ -17,6 +17,21 @@ describe('syncView', () => {
     expect(follows({ ...mockConfig, sqmeterSync: { ...mockConfig.sqmeterSync!, time: { follow: true, syncedAt: 0 } } }, 'time')).toBe(true);
     const { sqmeterSync: _sync, ...older } = mockConfig;
     expect(follows(older, 'mqtt')).toBe(false);
+  });
+
+  it("locks a followed group only with SQMeter's address, and MQTT only with roof commands off", () => {
+    const following = structuredClone(mockConfig);
+    following.sqmeterSync = {
+      time: { follow: true, syncedAt: 0 },
+      mqtt: { follow: true, syncedAt: 0 },
+      alerts: { follow: true, syncedAt: 0 },
+    };
+    following.safety!.http.url = '';
+    expect(locked(following, 'time')).toBe(false);
+    following.safety!.http.url = 'http://sqmeter.local/api/safety';
+    expect(locked(following, 'time')).toBe(true);
+    following.mqtt.roofCommands = true;
+    expect(locked(following, 'mqtt')).toBe(false);
   });
 
   it('says how the sync is going', () => {
