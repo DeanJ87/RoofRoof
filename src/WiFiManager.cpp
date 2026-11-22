@@ -282,9 +282,17 @@ namespace SQM
         switch (event)
         {
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-            Logger::info(TAG, "WiFi connected: channel %u, BSSID %02x:%02x:%02x:%02x:%02x:%02x, RSSI %d dBm", info.wifi_sta_connected.channel,
-                         info.wifi_sta_connected.bssid[0], info.wifi_sta_connected.bssid[1], info.wifi_sta_connected.bssid[2],
-                         info.wifi_sta_connected.bssid[3], info.wifi_sta_connected.bssid[4], info.wifi_sta_connected.bssid[5], WiFi.RSSI());
+            Logger::info(
+                TAG,
+                "WiFi connected: channel %u, BSSID %02x:%02x:%02x:%02x:%02x:%02x, RSSI %d dBm",
+                info.wifi_sta_connected.channel,
+                info.wifi_sta_connected.bssid[0],
+                info.wifi_sta_connected.bssid[1],
+                info.wifi_sta_connected.bssid[2],
+                info.wifi_sta_connected.bssid[3],
+                info.wifi_sta_connected.bssid[4],
+                info.wifi_sta_connected.bssid[5],
+                WiFi.RSSI());
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP6:
@@ -300,9 +308,12 @@ namespace SQM
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            Logger::warn(TAG, "WiFi disconnected: reason %u (%s), RSSI %d dBm", info.wifi_sta_disconnected.reason,
-                         WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)),
-                         info.wifi_sta_disconnected.rssi);
+            Logger::warn(
+                TAG,
+                "WiFi disconnected: reason %u (%s), RSSI %d dBm",
+                info.wifi_sta_disconnected.reason,
+                WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)),
+                info.wifi_sta_disconnected.rssi);
             break;
 
         default:
