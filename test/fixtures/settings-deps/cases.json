@@ -886,6 +886,52 @@
           "id": "D-46"
         }
       }
+    },
+    {
+      "name": "sync: a group follows SQMeter only with SQMeter's address set (D-47)",
+      "config": {},
+      "facts": {},
+      "expect": {
+        "sqmeterSync.time.follow": {
+          "state": "inactive",
+          "id": "D-47",
+          "reason": "no-sqmeter-address",
+          "text": "SQMeter's address not set",
+          "fix": "roof#safety"
+        },
+        "sqmeterSync.alerts.follow": {
+          "state": "inactive",
+          "id": "D-47",
+          "reason": "no-sqmeter-address"
+        }
+      }
+    },
+    {
+      "name": "sync: with SQMeter's address a following group is in effect, a local one is off (D-47)",
+      "config": {
+        "safety": {
+          "http": {
+            "enabled": true,
+            "url": "http://sqmeter.local/api/safety"
+          }
+        },
+        "sqmeterSync": {
+          "mqtt": {
+            "follow": false
+          }
+        }
+      },
+      "facts": {},
+      "expect": {
+        "sqmeterSync.time.follow": {
+          "state": "active",
+          "id": "D-47"
+        },
+        "sqmeterSync.mqtt.follow": {
+          "state": "off",
+          "id": "D-47"
+        }
+      }
     }
   ]
 }

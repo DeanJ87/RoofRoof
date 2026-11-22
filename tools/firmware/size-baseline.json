@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1555264,
-  "overBudgetReason": "spec 020: site data from SQMeter (location read and its filtered JSON fetch on the safety poller, the copy route and its job task, the site parser, the location save)"
+  "esp32dev": 1570688,
+  "overBudgetReason": "spec 020: site data from SQMeter (location read, copy route and job task, site parser; and the per-group sync of SQMeter's settings with its second filtered read and validation)"
 }

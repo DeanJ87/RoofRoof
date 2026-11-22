@@ -69,7 +69,10 @@ describe('copyRows', () => {
         config((c) => (c.safety!.mqtt.topic = 'old')),
         'weatherTopic',
       )!.changes,
-    ).toEqual([[['safety', 'mqtt', 'topic'], 'sqmeter']]);
+    ).toEqual([
+      [['safety', 'mqtt', 'topic'], 'sqmeter'],
+      [['sqmeterSync', 'mqtt', 'follow'], true],
+    ]);
   });
 
   it('clears the MQTT password for a different broker, port or user name, and asks for it', () => {
@@ -84,7 +87,11 @@ describe('copyRows', () => {
 
   it('clears the ntfy token only for a different server; asks for it then or when SQMeter has one', () => {
     const topicOnly = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.sh', topic: 'old' }));
-    expect(row(mockSqmeterSite, topicOnly, 'ntfy')!.changes.map(([p]) => p.join('.'))).toEqual(['alerts.ntfy.server', 'alerts.ntfy.topic']);
+    expect(row(mockSqmeterSite, topicOnly, 'ntfy')!.changes.map(([p]) => p.join('.'))).toEqual([
+      'alerts.ntfy.server',
+      'alerts.ntfy.topic',
+      'sqmeterSync.alerts.follow',
+    ]);
     expect(row(mockSqmeterSite, topicOnly, 'ntfy')!.secrets).toEqual([]);
     expect(row(site({ ntfy: { ...mockSqmeterSite.ntfy!, tokenSet: true } }), topicOnly, 'ntfy')!.secrets).toEqual(['ntfyToken']);
     const otherServer = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'my-observatory' }));
@@ -131,8 +138,34 @@ describe('copyNotes, changesOf, locationSource', () => {
 
   it('applies only the ticked rows', () => {
     const rows = copyRows(mockSqmeterSite, config());
-    expect(changesOf(rows, new Set<CopyRowId>(['timezone']))).toEqual([[['ntp', 'timezone'], 'GMT0BST,M3.5.0/1,M10.5.0']]);
+    expect(changesOf(rows, new Set<CopyRowId>(['timezone']))).toEqual([
+      [['ntp', 'timezone'], 'GMT0BST,M3.5.0/1,M10.5.0'],
+      [['sqmeterSync', 'time', 'follow'], true],
+    ]);
     expect(changesOf(rows, new Set())).toEqual([]);
+  });
+
+  it('a copied group keeps following SQMeter; the location has its own source; older firmware has no sync', () => {
+    const rows = copyRows(
+      mockSqmeterSite,
+      config((c) => (c.safety!.mqtt.topic = 'old')),
+    );
+    const follow = (id: CopyRowId) =>
+      rows
+        .find((r) => r.id === id)!
+        .changes.filter(([p]) => p[0] === 'sqmeterSync')
+        .map(([p, v]) => [p.join('.'), v]);
+    expect(follow('timezone')).toEqual([['sqmeterSync.time.follow', true]]);
+    expect(follow('ntp')).toEqual([['sqmeterSync.time.follow', true]]);
+    expect(follow('mqttBroker')).toEqual([['sqmeterSync.mqtt.follow', true]]);
+    expect(follow('weatherTopic')).toEqual([['sqmeterSync.mqtt.follow', true]]);
+    expect(follow('ntfy')).toEqual([['sqmeterSync.alerts.follow', true]]);
+    expect(follow('location')).toEqual([]);
+    const old = copyRows(
+      mockSqmeterSite,
+      config((c) => delete c.sqmeterSync),
+    );
+    expect(old.flatMap((r) => r.changes).filter(([p]) => p[0] === 'sqmeterSync')).toEqual([]);
   });
 
   it('reads settings from before spec 020: typed in when set, else SQMeter', () => {

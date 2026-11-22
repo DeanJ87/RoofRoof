@@ -90,8 +90,9 @@ namespace SQM
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
         // Spec 020: the status document's "location" section (any task; it
         // only copies), and whether the roof is busy (the copy is refused then).
-        using LocationStatus = std::function<void(JsonObject)>;
-        void setLocationStatus(LocationStatus source) { locationStatus = std::move(source); }
+        // It writes "location" and "sync" into the status document.
+        using SiteStatus = std::function<void(JsonDocument &)>;
+        void setSiteStatus(SiteStatus source) { siteStatus = std::move(source); }
         using BusyProbe = std::function<bool()>;
         void setRoofBusy(BusyProbe probe) { roofBusy = std::move(probe); }
         // Spec 020: the device saved its own settings (the location it keeps
@@ -367,12 +368,12 @@ namespace SQM
         // Spec 020: POST /api/sqmeter/site (src/WebServerSite.cpp).
         struct SiteJob;
         static inline std::atomic<bool> siteJobRunning{false};
-        LocationStatus locationStatus;
+        SiteStatus siteStatus;
         BusyProbe roofBusy;
         void setupSiteRoutes();
         void handleSqmeterSite(AsyncWebServerRequest *request);
         static void runSiteJob(void *arg);
-        void appendLocation(JsonDocument &doc) const;
+        void appendSite(JsonDocument &doc) const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;

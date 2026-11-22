@@ -338,6 +338,8 @@ class DemoDevice {
         park: { nina: { url: 'http://192.168.1.20:1888' } },
         // Set up already (spec 015): the Demo panel restarts the setup wizard.
         setup: { state: 'done', step: 0 },
+        // Spec 020: the time follows the simulated SQMeter; the broker and the ntfy topic stay the demo's own.
+        sqmeterSync: { mqtt: { follow: false }, alerts: { follow: false } },
       }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with

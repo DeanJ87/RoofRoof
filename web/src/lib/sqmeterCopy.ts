@@ -1,4 +1,4 @@
-import type { Config, LocationConfig, LocationSource, SqmeterSite } from '../types';
+import type { Config, LocationConfig, LocationSource, SqmeterSite, SyncGroup } from '../types';
 import type { ConfigPath } from '../components/settings/context';
 import { bodyOf, postJson } from './api';
 import { deviceError } from '../i18n/deviceMessage';
@@ -150,10 +150,25 @@ const ntfyRow = (site: SqmeterSite, config: Config): CopyRow | null => {
 };
 
 /** One row for each copyable setting that differs from the settings as edited (FR-016). */
+// Spec 020: a copied group keeps following SQMeter (the location has its own source).
+export const ROW_GROUP: Partial<Record<CopyRowId, SyncGroup>> = {
+  timezone: 'time',
+  ntp: 'time',
+  mqttBroker: 'mqtt',
+  weatherTopic: 'mqtt',
+  ntfy: 'alerts',
+};
+
+const withFollow = (row: CopyRow, config: Config): CopyRow => {
+  const group = ROW_GROUP[row.id];
+  if (!group || !config.sqmeterSync) return row;
+  return { ...row, changes: [...row.changes, [['sqmeterSync', group, 'follow'], true]] };
+};
+
 export const copyRows = (site: SqmeterSite, config: Config): CopyRow[] =>
-  [locationRow(site, config), ...timeRows(site, config), ...mqttRows(site, config), ntfyRow(site, config)].filter(
-    (row): row is CopyRow => row !== null,
-  );
+  [locationRow(site, config), ...timeRows(site, config), ...mqttRows(site, config), ntfyRow(site, config)]
+    .filter((row): row is CopyRow => row !== null)
+    .map((row) => withFollow(row, config));
 
 /** What can't be copied but is worth saying: SQMeter's Pushover keys are never copied. */
 export const copyNotes = (site: SqmeterSite): CopyNote[] =>

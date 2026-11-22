@@ -47,11 +47,11 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await page.locator('[data-field="auth.password"]').fill('night-sky');
   await proceed(page);
 
-  // Spec 020: SQMeter first; its site settings fill the Time screen (MQTT left as it is).
+  // Spec 020: SQMeter first; its ntfy topic is copied and then follows SQMeter (MQTT left as it is).
   await onScreen(page, 'sqmeter');
   await expect(question(page)).toHaveText('Where is SQMeter?');
   await dialog(page).getByRole('button', { name: 'Copy from SQMeter' }).click();
-  await expect(dialog(page).getByRole('switch', { name: 'Time servers' })).toBeChecked({ timeout: 15_000 });
+  await expect(dialog(page).getByRole('switch', { name: 'ntfy topic' })).toBeChecked({ timeout: 15_000 });
   await dialog(page).getByRole('switch', { name: 'MQTT broker' }).uncheck();
   await dialog(page).getByRole('button', { name: 'Apply ticked' }).click();
   await expect(dialog(page)).toContainText('Applied: Continue saves them.');
@@ -63,8 +63,10 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await page.locator('[data-field="location.latitude"]').fill('51.5');
   await page.locator('[data-field="location.longitude"]').fill('-0.1');
   await proceed(page);
+  // The demo's time follows SQMeter: read-only here, with SQMeter's servers once synced.
   await onScreen(page, 'time');
-  await expect(page.locator('[data-field="ntp.server1"]')).toHaveValue('uk.pool.ntp.org');
+  await expect(page.locator('[data-field="ntp.server1"]')).toBeDisabled();
+  await expect(page.locator('[data-field="ntp.server1"]')).toHaveValue('uk.pool.ntp.org', { timeout: 30_000 });
   await proceed(page);
 
   // The live supply, compared with a meter reading.
@@ -129,6 +131,8 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await choose(page, 'ntfy');
   await proceed(page);
   await onScreen(page, 'alertDetails');
+  // The copied ntfy topic follows SQMeter: read-only here.
+  await expect(page.locator('[data-field="alerts.ntfy.topic"]')).toBeDisabled();
   await page.getByRole('button', { name: 'Send test' }).first().click();
   await proceed(page);
 
@@ -150,6 +154,8 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   expect(config.auth.enabled).toBe(true);
   expect(config.location).toMatchObject({ source: 'manual', set: true, latitude: 51.5 });
   expect(config.ntp.server1).toBe('uk.pool.ntp.org');
+  expect(config.alerts.ntfy.topic).toBe('darkskylab-sqm');
+  expect(config.sqmeterSync).toMatchObject({ time: { follow: true }, mqtt: { follow: false }, alerts: { follow: true } });
   expect(config.park.switches).toBe('one');
   expect(config.daylight.mode).toBe('close');
   expect(config.setup).toEqual({ state: 'done', step: 0 });

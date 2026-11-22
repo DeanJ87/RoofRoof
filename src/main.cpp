@@ -25,6 +25,7 @@
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
 #include "SqmeterSite.h"
+#include "SqmeterSync.h"
 #include "TimeManager.h"
 #include "WebServer.h"
 #include "WiFiManager.h"
@@ -45,10 +46,11 @@ static Diagnostics diagnostics; // spec 017: off unless diag.enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
 bool roofBusy(); // spec 020, below
-// Spec 020: one settings save at a time. The web server's saves (async TCP
-// task) and the loop's location save each copy, save and assign `config`
-// under it, so neither can undo the other's.
+// Spec 020: one settings save at a time (the web server's saves on the async
+// TCP task, the loop's SQMeter saves), so neither can undo the other's.
 static std::mutex configSaveLock;
+static std::mutex siteStatusLock; // spec 020: guards syncState, the last sync's refusals for the status
+static Site::SyncState syncState;
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
 // processing, config saves). 4 KB more is cheap insurance against a
@@ -61,23 +63,26 @@ const Config &getConfigCallback()
     return config;
 }
 
-bool saveConfigCallback(const Config &newConfig)
+// Spec 020: whether any settings group follows SQMeter, and where it is.
+void tellPollerTheSite()
 {
-    const std::lock_guard<std::mutex> held(configSaveLock);
-    Config next = newConfig;
-    Site::keepDeviceLocation(config.location, next.location); // spec 020 FR-008, against the live settings
-    config = next;
-    const bool saved = config.save();
-    if (!saved)
-        return false;
+    const SqmeterSyncConfig &s = config.sqmeterSync;
+    safetyPoller.setSite(
+        config.safety.httpUrl,
+        config.location.source == LocationConfig::Source::Sqmeter,
+        s.time.follow || s.mqtt.follow || s.alerts.follow);
+}
 
+// What a saved change applies without a restart. Under configSaveLock.
+void applySavedConfig()
+{
     if (mqttClient)
         mqttClient->updateConfig(config.mqtt);
     if (timeManager)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
         safetyInputs->updateConfig(config);
-    safetyPoller.setSite(config.safety.httpUrl, config.location.source == LocationConfig::Source::Sqmeter); // spec 020
+    tellPollerTheSite();              // spec 020
     roofControl.updateConfig(config); // taken by the roof once no move is active
     closeOnUnsafe.updateConfig(config);
     diagnostics.updateConfig(config.diag); // applied by the main loop
@@ -86,6 +91,20 @@ bool saveConfigCallback(const Config &newConfig)
         arduinoOTAEnabled = false;
     else if (!arduinoOTAEnabled)
         Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
+}
+
+bool saveConfigCallback(const Config &newConfig)
+{
+    const std::lock_guard<std::mutex> held(configSaveLock);
+    Config next = newConfig;
+    // Spec 020 FR-008, FR-028: against the live settings, a copy taken before
+    // the last location save or sync can't put older values back.
+    Site::keepFollowed(config, next);
+    config = next;
+    const bool saved = config.save();
+    if (!saved)
+        return false;
+    applySavedConfig();
     return true;
 }
 
@@ -294,7 +313,7 @@ void startServices()
 
     // Spec 004: the weather verdict and park confirmation.
     safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
-    safetyPoller.setSite(config.safety.httpUrl, config.location.source == LocationConfig::Source::Sqmeter); // spec 020
+    tellPollerTheSite(); // spec 020
     safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
 
@@ -307,13 +326,21 @@ void startServices()
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
     webServer->setInputs([]() { return safetyInputs->report(); });
     // Spec 020: the location's source and age, and the copy refused while busy.
-    webServer->setLocationStatus(
-        [](JsonObject out)
+    webServer->setSiteStatus(
+        [](JsonDocument &doc)
         {
             uint32_t generation = 0;
             const Site::LocationRead read = safetyPoller.locationRead(generation);
             const bool addressSet = !Site::siteUrl(config.safety.httpUrl, Site::STATUS_PATH).empty();
-            Site::writeLocationStatus(out, config.location, read, addressSet, SafetyPoller::nowMs());
+            Site::writeLocationStatus(doc.createNestedObject("location"), config.location, read, addressSet, SafetyPoller::nowMs());
+            Site::SyncState shown;
+            {
+                const std::lock_guard<std::mutex> held(siteStatusLock);
+                shown = syncState;
+            }
+            const Site::ConfigRead settings = safetyPoller.settingsRead();
+            Site::writeSyncStatus(
+                doc.createNestedObject("sync"), Site::SyncView{config, settings, shown, addressSet, SafetyPoller::nowMs()});
         });
     webServer->setRoofBusy(roofBusy);
     webServer->begin();
@@ -342,56 +369,100 @@ void startServices()
     HeapTrace::mark("setup complete");
 }
 
-// Spec 020: the roof moves, a close waits or the automatic close works. No
-// SQMeter read or copy starts, and no location is saved, meanwhile (spec 010).
+// Spec 020: no SQMeter read, copy or save while the roof is busy (spec 010).
 bool roofBusy()
 {
     return roofControl.moving() || roofControl.closeWaiting() || closeOnUnsafe.platformState() == RoofIo::SequenceState::Working;
 }
 
-// Spec 020: saves the location read from SQMeter when Site::locationToSave
-// says so (a real change only), as a flash write (spec 010: never while the
-// roof moves or a close waits; tried again next time). Only the location and
-// daylight change: nothing else is applied again.
+// Spec 020: the location read from SQMeter, saved when Site::locationToSave says so.
+// Under configSaveLock. False when the flash is held (try again next time).
+bool saveSiteLocation(const Site::LocationRead &read, time_t epoch)
+{
+    const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
+    if (!next)
+        return true;
+    const PlatformGuard::FlashWrite write;
+    if (write.refused() != RoofIo::HoldReason::None)
+        return false;
+    Config updated = config;
+    updated.location = *next;
+    if (!updated.save())
+        Logger::error("Main", "Couldn't save the location read from SQMeter");
+    else
+    {
+        config.location = *next;
+        closeOnUnsafe.updateConfig(config);
+        webServer->noteConfigSaved();
+        Logger::info("Main", "Location from SQMeter%s saved: %.4f, %.4f", next->gps ? " (GPS)" : "", next->latitude, next->longitude);
+    }
+    return true;
+}
+
+// The groups that follow SQMeter take its settings, each through the
+// settings' own validation (a refused value keeps the old one). Under
+// configSaveLock. False when the flash is held (try again next time).
+bool syncSiteSettings(const Site::ConfigRead &read, time_t epoch)
+{
+    // On the heap: settings copies would crowd the loop task's stack.
+    const auto outcome = std::make_unique<Site::SyncOutcome>(
+        Site::syncFromSite(config, read.site, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH));
+    {
+        const std::lock_guard<std::mutex> shown(siteStatusLock);
+        for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
+        {
+            const std::string &why = outcome->groups[i].refused;
+            if (!why.empty() && why != syncState.refused[i])
+                Logger::warn("Main", "SQMeter's %s settings not taken: %s", Site::groupName(static_cast<Site::Group>(i)), why.c_str());
+            syncState.refused[i] = why;
+        }
+    }
+    if (!outcome->any())
+        return true;
+    const PlatformGuard::FlashWrite write;
+    if (write.refused() != RoofIo::HoldReason::None)
+        return false;
+    if (!outcome->next.save())
+    {
+        Logger::error("Main", "Couldn't save the settings synced from SQMeter");
+        return true;
+    }
+    const std::string changed = outcome->changedNames();
+    config = outcome->next;
+    if (!changed.empty())
+    {
+        applySavedConfig();
+        Logger::info("Main", "Settings synced from SQMeter: %s", changed.c_str());
+    }
+    webServer->noteConfigSaved();
+    return true;
+}
+
+// Spec 020: saves what was read from SQMeter (the location, the followed
+// groups) as flash writes (spec 010), once a second, never while the roof is
+// busy, and never waiting for a settings save.
 void handleSite()
 {
     const bool busy = roofBusy();
     safetyPoller.setRoofBusy(busy);
     static uint32_t lastCheck = 0;
-    static uint64_t handledAtMs = 0;
+    static uint64_t locationAtMs = 0;
+    static uint64_t settingsAtMs = 0;
     const uint32_t now = millis();
     if (busy || now - lastCheck < 1000)
         return;
     lastCheck = now;
-    // A settings save under way: try again next second (the loop never waits for it).
-    // The read is taken under the lock, so it belongs to the address saved now.
     std::unique_lock<std::mutex> held(configSaveLock, std::try_to_lock);
     if (!held.owns_lock())
         return;
-    uint32_t generation = 0;
-    const Site::LocationRead read = safetyPoller.locationRead(generation);
-    if (!read.good() || read.atMs == handledAtMs)
-        return;
     const time_t epoch = time(nullptr);
-    const auto next = Site::locationToSave(config.location, read, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
-    if (next)
-    {
-        const PlatformGuard::FlashWrite write;
-        if (write.refused() != RoofIo::HoldReason::None)
-            return; // the roof needs the flash: next time
-        Config updated = config;
-        updated.location = *next;
-        if (!updated.save())
-            Logger::error("Main", "Couldn't save the location read from SQMeter");
-        else
-        {
-            config.location = *next;
-            closeOnUnsafe.updateConfig(config);
-            webServer->noteConfigSaved();
-            Logger::info("Main", "Location from SQMeter%s saved: %.4f, %.4f", next->gps ? " (GPS)" : "", next->latitude, next->longitude);
-        }
-    }
-    handledAtMs = read.atMs;
+    uint32_t generation = 0;
+    const Site::LocationRead location = safetyPoller.locationRead(generation);
+    if (location.good() && location.atMs != locationAtMs && saveSiteLocation(location, epoch))
+        locationAtMs = location.atMs;
+    const Site::ConfigRead settings = safetyPoller.settingsRead();
+    if (settings.good() && settings.atMs != settingsAtMs && syncSiteSettings(settings, epoch))
+        settingsAtMs = settings.atMs;
 }
 
 // The roof's switch readings into the safety inputs (spec 004), their verdict

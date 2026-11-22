@@ -135,6 +135,23 @@ describe('Wizard: choices, skips and refusals', () => {
     await onScreen('site');
   });
 
+  it('the Time screen follows SQMeter read-only, with one note, until Edit here instead (spec 020)', async () => {
+    const sqmeterSync = { ...mockConfig.sqmeterSync!, time: { follow: true, syncedAt: 1763540000 } };
+    mockDevice({ config: { ...PASSWORD_SET, setup: { state: 'new', step: 1 }, sqmeterSync } });
+    const saves = recordSaves();
+    at('screen=time');
+    render(<Wizard />);
+    await onScreen('time');
+    const server1 = document.querySelector<HTMLInputElement>('[data-field="ntp.server1"]')!;
+    expect(server1).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'Edit here instead' })).toHaveLength(1);
+    fireEvent.click(button('Edit here instead'));
+    await waitFor(() => expect(server1).toBeEnabled());
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect((saves[0].sqmeterSync as typeof sqmeterSync).time.follow).toBe(false);
+  });
+
   // Spec 019: the wizard offers teaching the ends but never jogs the roof itself.
   it('the teach screen comes before the calibration run, links the Teach card and has no motion control', async () => {
     mockDevice({ config: { setup: { state: 'new', step: 4 } } });

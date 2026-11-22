@@ -6,6 +6,8 @@ import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard
 import AutoCloseCard from './AutoCloseCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
+import { FollowsSqmeter } from './FollowsSqmeter';
+import { follows } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
@@ -160,7 +162,7 @@ export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
 export type SafetyProps = SettingsTabProps & { safety: SafetyConfig };
 
 // SQMeter over HTTP and MQTT (also the setup wizard's weather page, spec 015).
-export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix }) => (
+export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix, config, status }) => (
   <>
     <Toggle
       dataField="safety.http.enabled"
@@ -184,7 +186,7 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
     />
     {safety.mqtt.enabled && (
       <div class="form-grid indent">
-        <SqmeterTopicField safety={safety} update={update} error={error} />
+        <SqmeterTopicField safety={safety} update={update} error={error} config={config} status={status} />
       </div>
     )}
   </>
@@ -204,11 +206,23 @@ export const SqmeterUrlField: FunctionalComponent<SourceFieldProps> = ({ safety,
   </Field>
 );
 
-export const SqmeterTopicField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
-  <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
-    <TextInput dataField="safety.mqtt.topic" value={safety.mqtt.topic} onInput={(v) => update(['safety', 'mqtt', 'topic'], v)} />
-  </Field>
-);
+// Spec 020: read-only while the MQTT group follows SQMeter (SQMeter's base topic is where it publishes `<base>/safe`).
+export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<SafetyProps, 'config' | 'status'>> = (props) => {
+  const { safety, update, error, config } = props;
+  return (
+    <>
+      <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
+        <TextInput
+          dataField="safety.mqtt.topic"
+          disabled={follows(config, 'mqtt')}
+          value={safety.mqtt.topic}
+          onInput={(v) => update(['safety', 'mqtt', 'topic'], v)}
+        />
+      </Field>
+      <FollowsSqmeter group="mqtt" {...props} />
+    </>
+  );
+};
 
 // The rain contact on GPIO4 (also the setup wizard's hardware page).
 export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, update }) => (

@@ -80,6 +80,6 @@ export const SiteScreen: FunctionalComponent<WizardPageProps> = (props) => {
 export const TimeScreen: FunctionalComponent<WizardPageProps> = (props) => (
   <>
     <TimeZoneFields {...props} />
-    <NtpFields {...props} />
+    <NtpFields {...props} followNote={false} />
   </>
 );

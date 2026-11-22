@@ -1,5 +1,5 @@
 import type { MutableRef } from 'preact/hooks';
-import type { AlertEventKey, AlertsConfig, Config } from '../../types';
+import type { AlertEventKey, AlertsConfig, Config, SystemStatus } from '../../types';
 import type { DepEntry } from '../../lib/settingsDeps';
 import type { AlertTestResult, useAlertTest } from '../../hooks/useAlertTest';
 import type { ConfigPath } from './context';
@@ -15,6 +15,8 @@ export interface AlertsView {
   pushoverOn: boolean;
   channelCount: number;
   set: (path: string[], value: unknown) => void;
+  update: (path: ConfigPath, value: unknown) => void; // any setting (spec 020: the alerts group's sync)
+  status: SystemStatus | null;
   updateMany: (changes: [ConfigPath, unknown][]) => void;
   err: (key: string) => string | undefined;
   dep: (setting: string) => DepEntry;

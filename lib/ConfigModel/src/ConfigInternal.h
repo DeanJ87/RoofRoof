@@ -243,4 +243,10 @@ namespace SQM::ConfigDetail
         std::string sectionPath;
     };
 
+    // Spec 020 (ConfigJsonSite.cpp): the location section, the follow
+    // switches, and their upgrade rule for settings saved before them.
+    bool applyLocation(const Section &location, LocationConfig &loc, std::string *error);
+    void applySync(const Section &sync, SqmeterSyncConfig &s);
+    void migrateSync(Config &cfg);
+
 } // namespace SQM::ConfigDetail

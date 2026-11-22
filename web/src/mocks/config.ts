@@ -71,6 +71,12 @@ export const mockConfig: Config = {
   },
   daylight: { mode: 'alert', sunAltitudeDeg: 0, bandDeg: 0.5 },
   location: { source: 'manual', set: false, latitude: 0, longitude: 0, sqmeter: { gps: false, savedAt: 0 } },
+  // Spec 020: an upgraded device whose own values stay set here.
+  sqmeterSync: {
+    time: { follow: false, syncedAt: 0 },
+    mqtt: { follow: false, syncedAt: 0 },
+    alerts: { follow: false, syncedAt: 0 },
+  },
   autoClose: {
     rearmMinutes: 10,
     parkRequestSeconds: 30,

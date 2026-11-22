@@ -58,7 +58,7 @@ wizard resumes at.
 2. **Site and time**: first **SQMeter's address** (its `/api/safety` URL, the weather source's
    address) with **Copy site settings from SQMeter**, which lists what SQMeter has that differs
    (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy) for you to tick and apply; the
-   later screens then arrive filled in, and passwords and tokens are never copied
+   later screens then arrive filled in, the copied groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show **Follows SQMeter**, with **Edit here instead**), and passwords and tokens are never copied
    ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
    SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
    for the daylight check); then the time zone and NTP.

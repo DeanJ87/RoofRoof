@@ -908,6 +908,65 @@
       ],
       "additionalProperties": false
     },
+    "sqmeterSync": {
+      "type": "object",
+      "properties": {
+        "alerts": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "time": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "alerts",
+        "mqtt",
+        "time"
+      ],
+      "additionalProperties": false
+    },
     "ui": {
       "type": "object",
       "properties": {
@@ -977,6 +1036,7 @@
     "roof",
     "safety",
     "setup",
+    "sqmeterSync",
     "ui",
     "wifi"
   ],

@@ -164,9 +164,9 @@ namespace SQM
         vTaskDelete(nullptr);
     }
 
-    void WebServer::appendLocation(JsonDocument &doc) const
+    void WebServer::appendSite(JsonDocument &doc) const
     {
-        if (locationStatus)
-            locationStatus(doc.createNestedObject("location"));
+        if (siteStatus)
+            siteStatus(doc);
     }
 } // namespace SQM

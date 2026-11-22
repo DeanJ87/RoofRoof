@@ -203,6 +203,10 @@ export const locationConfigSchema = z.object({
     .max(180, t('validation.configSchema.longitudeMustBeBetween')),
 });
 
+// Spec 020: which groups follow SQMeter; `syncedAt` is the device's.
+const syncGroupSchema = z.object({ follow: z.boolean(), syncedAt: z.number() });
+export const sqmeterSyncSchema = z.object({ time: syncGroupSchema, mqtt: syncGroupSchema, alerts: syncGroupSchema });
+
 // Spec 015: the setup wizard's state and page.
 export const setupConfigSchema = z.object({
   state: z.enum(['new', 'offered', 'done'], t('validation.configSchema.setupStateMustBe')).optional(),
@@ -227,6 +231,7 @@ export const configSchema = z.object({
   roof: roofConfigSchema.optional(),
   daylight: daylightConfigSchema.optional(),
   location: locationConfigSchema.optional(),
+  sqmeterSync: sqmeterSyncSchema.optional(),
   autoClose: autoCloseConfigSchema.optional(),
   ui: uiConfigSchema.optional(),
   diag: diagConfigSchema.optional(),

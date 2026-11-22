@@ -159,6 +159,19 @@ namespace SQM
             kept["savedAt"] = c.location.savedAt;
         }
 
+        void appendSync(JsonDocument &doc, const SqmeterSyncConfig &s)
+        {
+            JsonObject sync = doc.createNestedObject("sqmeterSync");
+            const std::pair<const char *, const SqmeterSyncConfig::Group *> groups[] = {
+                {"time", &s.time}, {"mqtt", &s.mqtt}, {"alerts", &s.alerts}};
+            for (const auto &group : groups)
+            {
+                JsonObject out = sync.createNestedObject(group.first);
+                out["follow"] = group.second->follow;
+                out["syncedAt"] = group.second->syncedAt;
+            }
+        }
+
         void appendAutoClose(JsonDocument &doc, const Config &c)
         {
             const AutoCloseConfig &a = c.autoClose;
@@ -220,6 +233,7 @@ namespace SQM
         appendSafety(doc, *this);
         appendRoof(doc, roof);
         appendDaylight(doc, *this);
+        appendSync(doc, sqmeterSync);
         JsonObject setupOut = doc.createNestedObject("setup");
         setupOut["state"] = setupStateName(setup.state);
         setupOut["step"] = setup.step;

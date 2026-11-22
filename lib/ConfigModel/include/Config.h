@@ -357,6 +357,24 @@ namespace SQM
         uint32_t savedAt = 0; // Unix seconds it was saved from SQMeter; 0 = never or no clock (device-owned)
     };
 
+    // Spec 020: which shared settings keep following the SQMeter at the same
+    // site, re-read from its settings every 10 minutes. `syncedAt` is the
+    // device's own (Unix seconds of the last change from SQMeter; 1 without a
+    // clock; 0 never synced) and is never read from the API. A new device
+    // follows in every group; settings saved before this load each group as
+    // local when its values were already set (Config::applyJson).
+    struct SqmeterSyncConfig
+    {
+        struct Group
+        {
+            bool follow = true;
+            uint32_t syncedAt = 0;
+        };
+        Group time;   // ntp.timezone, ntp.server1, ntp.server2
+        Group mqtt;   // mqtt.broker, mqtt.port, mqtt.username, safety.mqttTopic
+        Group alerts; // alerts.ntfyServer, alerts.ntfyTopic
+    };
+
     // The setup wizard (spec 015): whether it still has to be offered, and
     // the page to resume at. New for a device with no stored settings;
     // Offered for settings saved before this existed (an upgraded device gets
@@ -398,6 +416,7 @@ namespace SQM
         RoofConfig roof;
         DaylightConfig daylight;
         LocationConfig location;
+        SqmeterSyncConfig sqmeterSync;
         SetupConfig setup;
         DiagConfig diag;
         AutoCloseConfig autoClose;
@@ -436,6 +455,9 @@ namespace SQM
         // validate() without the stored-size check, for settings read back
         // from NVS (spec 007: an upgrade that adds events must still load).
         bool validateLoaded(std::string *error = nullptr) const;
+        // validate() plus the rules a change from the UI/API also meets (host and
+        // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
+        bool validateChange(std::string *error = nullptr) const;
         // Spec 015: a stored document with no "setup" object was saved by a
         // release before the setup wizard; Config::load then marks it offered.
         static bool storedBeforeSetup(const std::string &storedJson);

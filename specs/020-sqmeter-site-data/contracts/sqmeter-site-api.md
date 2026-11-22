@@ -59,3 +59,10 @@ See [data-model.md](../data-model.md#status-location-section-get-apistatus-wssta
 
 `location.sqmeter` is written by the device and ignored on a save. While the source is and stays
 `sqmeter`, a save keeps the device's `set`, `latitude` and `longitude`.
+
+## Settings: `sqmeterSync`; status: `sync`
+
+See [data-model.md](../data-model.md#sqmetersyncconfig-libconfigmodel-persisted). While a group
+follows and the device has synced it, a save that keeps it following keeps the device's values for
+its fields (what was sent is still validated); `follow: false` takes the sent values. `syncedAt` is
+never read from a save.

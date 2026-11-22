@@ -70,10 +70,16 @@ describe('a fresh device (SC-005)', () => {
     // A device that has just joined WiFi, with no Alpaca device (as the demo).
     const standard: DepFacts = { ...fixtures.baseFacts, alpacaDevices: 0 };
     const warnings = evaluate(defaults, standard).filter(
-      (e) => e.state === 'inactive' && !e.neutral && e.reason !== 'alerts-off' && e.reason !== 'location-unknown',
+      (e) =>
+        e.state === 'inactive' &&
+        !e.neutral &&
+        e.reason !== 'alerts-off' &&
+        e.reason !== 'location-unknown' &&
+        e.reason !== 'no-sqmeter-address',
     );
     // "Alerts are off" is shown once, by the Send alerts switch, not as a warning per row.
     // Daylight is on by default but waits for the site (D-42): the Daylight card says so.
+    // Spec 020: every group follows SQMeter by default and waits for its address (D-47): the setup wizard asks for it first.
     expect(warnings.map((e) => `${e.setting}: ${e.text}`)).toEqual([]);
   });
 });

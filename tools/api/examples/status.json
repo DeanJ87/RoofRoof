@@ -89,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1795072354,
-    "iso": "2026-11-19T07:12:34+0000",
+    "epoch": 1795367177,
+    "iso": "2026-11-22T17:06:17+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1795068752348,
-    "nextSync": 1795075952348,
+    "lastSync": 1795363575390,
+    "nextSync": 1795370775390,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -130,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1795072292348,
+    "lastPublish": 1795367115390,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -193,5 +193,27 @@
     "readAgeSeconds": null,
     "problem": "waiting"
   },
-  "configRevision": 115671020
+  "sync": {
+    "problem": "waiting",
+    "readAgeSeconds": null,
+    "time": {
+      "follow": true,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    },
+    "mqtt": {
+      "follow": false,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    },
+    "alerts": {
+      "follow": false,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    }
+  },
+  "configRevision": 651411734
 }

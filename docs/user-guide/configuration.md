@@ -146,6 +146,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   },
   "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
   "location": { "source": "sqmeter", "set": false, "latitude": 0, "longitude": 0, "sqmeter": { "gps": false, "savedAt": 0 } },
+  "sqmeterSync": { "time": { "follow": true, "syncedAt": 0 }, "mqtt": { "follow": true, "syncedAt": 0 }, "alerts": { "follow": true, "syncedAt": 0 } },
   "autoClose": {
     "rearmMinutes": 10,
     "parkRequestSeconds": 30,
@@ -300,6 +301,10 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 | `location.latitude` | number | `0` | Degrees, north positive (-90 to 90); with `sqmeter`, the last location read from SQMeter |
 | `location.longitude` | number | `0` | Degrees, east positive (-180 to 180); with `sqmeter`, the last location read from SQMeter |
 | `location.sqmeter.gps` | bool | `false` | Set by the device: the kept location was SQMeter's GPS fix. Never read from a save |
+| `sqmeterSync.time.follow` | bool | `true` | The time zone and NTP servers follow SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step)); while following, a save keeps the synced values. Settings saved before it: `true` only if `ntp.timezone`, `ntp.server1` and `ntp.server2` were still the defaults |
+| `sqmeterSync.mqtt.follow` | bool | `true` | `mqtt.broker`, `mqtt.port`, `mqtt.username` and `safety.mqtt.topic` follow SQMeter; never while `mqtt.roofCommands` is on. Before: `true` only with no broker or user name, port 1883 and the topic `sqmeter` |
+| `sqmeterSync.alerts.follow` | bool | `true` | `alerts.ntfy.server` and `alerts.ntfy.topic` follow SQMeter. Before: `true` only with the default server and no topic |
+| `sqmeterSync.*.syncedAt` | number | `0` | Set by the device: Unix seconds of the group's last change from SQMeter (1 without a clock; 0 never). Never read from a save |
 | `location.sqmeter.savedAt` | number | `0` | Set by the device: Unix seconds when the location read from SQMeter was saved (0: never, or the clock wasn't set). Never read from a save |
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.

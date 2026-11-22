@@ -84,3 +84,51 @@ absent parts as `null`. No secret text is ever stored in `SiteConfig`.
 | `secrets` | i18n keys of what the person must enter (`mqttPassword`, `ntfyToken`) |
 
 Plus `notes`: `pushover` when SQMeter has Pushover keys set ("enter the user key and app token").
+
+## SqmeterSyncConfig (lib/ConfigModel, persisted)
+
+```json
+"sqmeterSync": {
+  "time":   { "follow": true, "syncedAt": 0 },
+  "mqtt":   { "follow": true, "syncedAt": 0 },
+  "alerts": { "follow": true, "syncedAt": 0 }
+}
+```
+
+| Group | Fields it owns while following | Secret cleared on a server change |
+|---|---|---|
+| `time` | `ntp.timezone`, `ntp.server1`, `ntp.server2` | none |
+| `mqtt` | `mqtt.broker`, `mqtt.port`, `mqtt.username`, `safety.mqttTopic` | `mqtt.password` |
+| `alerts` | `alerts.ntfyServer`, `alerts.ntfyTopic` | `alerts.ntfyToken` |
+
+`syncedAt` (Unix seconds of the last change from SQMeter, 1 without a clock, 0 never) is the
+device's and never read from the API. Defaults: every `follow` true. Stored settings without the
+section: a group follows only when its fields still have their defaults (`UTC0`, `pool.ntp.org`,
+`time.nist.gov`; no broker or user name, port 1883, weather topic `sqmeter`; ntfy `https://ntfy.sh`
+with no topic).
+
+## Site::ConfigRead, Site::SyncOutcome, Site::SyncState (lib/SafetyInputLogic SqmeterSync.h)
+
+- `ConfigRead`: the last read of SQMeter's settings (`problem`, `site`, `atMs`, `goodAtMs`, `detail`);
+  a failed read keeps the last good site and its time.
+- `syncFromSite(live, site, epoch, clockSet)` → `SyncOutcome {next, groups[3] {changed, refused},
+  marked}`: each followed group applied to a copy and checked with `Config::validateChange`; MQTT held
+  while `mqtt.roofCommands`.
+- `keepFollowed(live, next)`: the save-time keep rule for the location and every synced group.
+- `secretsNeeded(config, site, group)`: `mqttPassword`, `ntfyToken`.
+- `SyncState`: the last refusal per group (RAM, for the status).
+
+## Status `sync` section
+
+```json
+"sync": {
+  "problem": null,
+  "readAgeSeconds": 180,
+  "time":   { "follow": true,  "syncedAt": 1763540000, "refused": null, "needs": [] },
+  "mqtt":   { "follow": true,  "syncedAt": 1763540000, "refused": null, "needs": ["mqttPassword"] },
+  "alerts": { "follow": false, "syncedAt": null,       "refused": null, "needs": [] }
+}
+```
+
+`problem` (`noAddress`, `waiting`, `unreachable`, `unreadable`, or `null`) is `null` while no group
+follows.

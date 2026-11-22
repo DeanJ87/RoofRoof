@@ -117,6 +117,7 @@ export const SqmeterCopy: FunctionalComponent<SettingsTabProps & { url?: string;
           </div>
         ))}
         <SecretNotes secrets={[]} notes={notes} />
+        {config.sqmeterSync && <Note>{t('settings.sqmeterCopy.keepsFollowing')}</Note>}
         <div class="btn-row">
           <Button variant="primary" onClick={apply} disabled={ticked.size === 0}>
             {t('settings.sqmeterCopy.apply')}

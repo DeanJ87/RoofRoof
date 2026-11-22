@@ -147,6 +147,14 @@ export const mockStatus: SystemStatus = {
   },
   // Spec 020: the location is typed in (and not yet set).
   location: { source: 'manual', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: null },
+  // Spec 020: no group follows SQMeter.
+  sync: {
+    problem: null,
+    readAgeSeconds: null,
+    time: { follow: false, syncedAt: null, refused: null, needs: [] },
+    mqtt: { follow: false, syncedAt: null, refused: null, needs: [] },
+    alerts: { follow: false, syncedAt: null, refused: null, needs: [] },
+  },
 };
 
 // What POST /api/sqmeter/site answers (spec 020): SQMeter's site settings, its secrets only as "set".

@@ -1,4 +1,5 @@
-import type { AlertSchedule, Config, RoofClosePhase, SystemStatus } from '../types';
+import type { AlertSchedule, Config, RoofClosePhase, SyncNeed, SystemStatus } from '../types';
+import { needs } from '../lib/syncView';
 import { REASONS, type DepEntry, type EffectiveReport } from '../lib/settingsDeps';
 import { describeSchedule } from '../components/settings/alertSchedule';
 import { describeClient, type ClientView } from '../lib/alpacaClients';
@@ -50,6 +51,7 @@ const PRIORITY: Record<string, number> = {
   'roof-close': 2,
   'imaging-app': 4,
   'clock-location': 7,
+  'sqmeter-needs': 8,
 };
 
 interface Parts {
@@ -182,6 +184,20 @@ const clockItem = ({ status }: GlanceInput): GlanceItem | null =>
       })
     : null;
 
+// Spec 020: a secret SQMeter has and RoofRoof lacks (after a synced broker change, say). A note, never a problem.
+const NEED_TAB: Record<SyncNeed, string> = { mqttPassword: 'network', ntfyToken: 'alerts', pushoverKeys: 'alerts' };
+const needItems = ({ status }: GlanceInput): GlanceItem[] =>
+  (['mqttPassword', 'ntfyToken', 'pushoverKeys'] as const)
+    .filter((need) => needs(status?.sync, need))
+    .map((need) =>
+      item('sqmeter-needs', 'note', {
+        label: t(`glance.needs.${need}`),
+        state: t('glance.needs.state'),
+        detail: t(`sync.needs.${need}`),
+        fix: settingsLink(NEED_TAB[need]),
+      }),
+    );
+
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
@@ -193,6 +209,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     roofCloseItem(input),
     ...imagingAppItems(input),
     clockItem(input),
+    ...needItems(input),
   ].filter((entry): entry is GlanceItem => Boolean(entry));
   const rank = { problem: 0, note: 1, ok: 2, idle: 3 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);

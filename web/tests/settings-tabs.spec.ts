@@ -39,30 +39,53 @@ test('Settings → Roof has the Daylight card, and a save reaches the device', a
     .toBe('close:manual:true:51.5');
 });
 
-// Spec 020: Copy from SQMeter lists what differs, applies the ticked rows to the form, and Save keeps them.
+// Spec 020: Copy from SQMeter lists what differs, applies the ticked rows to the form, and Save keeps them;
+// a copied group keeps following SQMeter. (The demo's time already follows SQMeter; its MQTT and ntfy are its own.)
 test('Settings → Roof copies site settings from SQMeter, and Save keeps them', async ({ page }) => {
   await page.goto('./#/settings?tab=roof&section=sqmeterCopy');
   const card = page.locator('#sqmeterCopy');
   await expect(card).toBeVisible({ timeout: 15_000 });
   await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
-  await expect(card.getByRole('switch', { name: 'Time servers' })).toBeChecked({ timeout: 15_000 });
-  await expect(card).toContainText('SQMeter: uk.pool.ntp.org, time.cloudflare.com');
-  // The MQTT broker is applied too: its password is cleared and asked for.
-  await expect(card.getByRole('switch', { name: 'MQTT broker' })).toBeChecked();
+  // The MQTT broker's user name differs: applying it clears the password and asks for it.
+  await expect(card.getByRole('switch', { name: 'MQTT broker' })).toBeChecked({ timeout: 15_000 });
+  await expect(card).toContainText('SQMeter: observatory@192.168.1.10:1883');
   await expect(card).toContainText('Enter the MQTT password');
+  await expect(card).toContainText('Copied settings keep following SQMeter');
   await card.getByRole('switch', { name: 'ntfy topic' }).uncheck();
   await card.getByRole('button', { name: 'Apply ticked' }).click();
   await expect(card).toContainText('Applied: save to keep them.');
-  // Applied to the form only: nothing saved yet.
-  const before = await page.evaluate(async () => (await (await fetch('/api/config')).json()).ntp.server1);
-  expect(before).not.toBe('uk.pool.ntp.org');
+  // Applied to the form only: nothing saved yet; the weather topic now follows SQMeter, read-only.
+  const before = await page.evaluate(async () => (await (await fetch('/api/config')).json()).mqtt.username);
+  expect(before).not.toBe('observatory');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect
     .poll(() =>
       page.evaluate(async () => {
         const config = await (await fetch('/api/config')).json();
-        return `${config.ntp.server1}|${config.mqtt.username}|${config.mqtt.topic}|${config.alerts.ntfy.topic === 'darkskylab-sqm'}`;
+        const sync = config.sqmeterSync;
+        return `${config.mqtt.username}|${config.mqtt.topic}|${config.alerts.ntfy.topic}|${sync.mqtt.follow}|${sync.alerts.follow}`;
       }),
     )
-    .toBe('uk.pool.ntp.org|observatory|roofroof|false');
+    .toBe('observatory|roofroof|roofroof-demo|true|false');
+});
+
+// Spec 020: a group that follows SQMeter is read-only; "Edit here instead" unlocks it and Save keeps it set here.
+test('Settings → Time follows SQMeter read-only until Edit here instead, which saves follow false', async ({ page }) => {
+  await page.goto('./#/settings?tab=time');
+  const server = page.locator('[data-field="ntp.server1"]');
+  await expect(server).toBeDisabled({ timeout: 15_000 });
+  await expect(page.locator('[data-sync="time"]').first()).toContainText('Follows SQMeter');
+  await page.getByRole('button', { name: 'Edit here instead' }).first().click();
+  await expect(server).toBeEnabled();
+  await server.fill('time.example.org');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const config = await (await fetch('/api/config')).json();
+        return `${config.sqmeterSync.time.follow}|${config.ntp.server1}`;
+      }),
+    )
+    .toBe('false|time.example.org');
+  await expect(page.getByRole('button', { name: 'Follow SQMeter' }).first()).toBeVisible();
 });

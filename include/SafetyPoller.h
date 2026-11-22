@@ -4,6 +4,7 @@
 #include "SafetyInput.h"
 #include "SafetySettings.h"
 #include "SqmeterSite.h"
+#include "SqmeterSync.h"
 #include <ArduinoJson.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -47,6 +48,7 @@ namespace SQM
             // Spec 020: SQMeter's location (GET /api/status), and the site
             // generation it was read under.
             Site::LocationRead location;
+            Site::ConfigRead settings; // SQMeter's settings, for the groups that follow it
             uint32_t siteGeneration = 0;
         };
 
@@ -70,12 +72,14 @@ namespace SQM
 
         // Spec 020: where SQMeter is (the weather source's address) and
         // whether the location follows it. A change reads again at once.
-        void setSite(const std::string &address, bool followLocation);
+        void setSite(const std::string &address, bool followLocation, bool followSettings);
         // Set by the main loop every pass: the roof moves, a close waits or
         // the close sequence works. No location read starts meanwhile.
         void setRoofBusy(bool busy) { roofBusy.store(busy); }
         // The latest location read and its site generation, under the lock.
         Site::LocationRead locationRead(uint32_t &generation) const;
+        // The latest read of SQMeter's settings (spec 020's sync), under the lock.
+        Site::ConfigRead settingsRead() const;
 
         // One GET of a JSON document from `url`, parsed through `filter`
         // into `doc` as it arrives (no body buffer). Connecting and the
@@ -98,7 +102,9 @@ namespace SQM
         void pollLocation(const std::string &url, uint32_t generation);
         // Spec 020: a location read in this pass, if due (never in a pass that
         // polled SQMeter's safety, never while the roof is busy).
-        void maybeReadLocation(bool safetyPolled, bool safetyOn);
+        // At most one SQMeter site read per pass: the location, else the settings.
+        void maybeReadSite(bool safetyPolled, bool safetyOn);
+        void pollSettings(const std::string &url, uint32_t generation);
         Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
@@ -110,12 +116,15 @@ namespace SQM
         // Spec 020: the site, under the lock; the schedule is the task's own.
         std::string siteAddress;
         bool siteFollows = false;
+        bool settingsFollow = false;
         Site::LocationSchedule locationSchedule;
+        Site::LocationSchedule settingsSchedule; // the same schedule rules, its own times
         // Connect and header wait, and the whole read (research R7): never
         // longer than one safety poll, and never in the same pass.
         static constexpr uint32_t LOCATION_CONNECT_MS = 1500;
         static constexpr uint32_t LOCATION_TOTAL_MS = Site::LocationSchedule::READ_MS;
-        std::string siteStatusUrl; // SQMeter's /api/status while the location follows it, else empty
+        std::string siteStatusUrl;   // SQMeter's /api/status while the location follows it, else empty
+        std::string siteSettingsUrl; // SQMeter's /api/config while any settings group follows it, else empty
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).
         uint64_t nextSqmeterMs = 0;

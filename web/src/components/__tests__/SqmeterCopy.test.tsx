@@ -55,6 +55,7 @@ describe('Copy from SQMeter', () => {
     expect(within(site).getByText('SQMeter: GMT0BST,M3.5.0/1,M10.5.0; RoofRoof: GMT0')).toBeInTheDocument();
     expect(within(site).getByText('Enter the MQTT password in Settings, Network: it is never copied.')).toBeInTheDocument();
     expect(within(site).getByText(/SQMeter uses Pushover/)).toBeInTheDocument();
+    expect(within(site).getByText('Copied settings keep following SQMeter: Edit here instead stops it.')).toBeInTheDocument();
     for (const name of ["Follow SQMeter's location", 'Time servers', 'MQTT broker', 'ntfy topic'])
       fireEvent.click(within(site).getByRole('switch', { name }));
     expect(within(site).queryByText(/Enter the MQTT password/)).toBeNull();
@@ -66,6 +67,8 @@ describe('Copy from SQMeter', () => {
     expect(saves[0].ntp).toEqual({ ...mockConfig.ntp, timezone: 'GMT0BST,M3.5.0/1,M10.5.0' });
     expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: mockConfig.mqtt.broker, password: '' }));
     expect(saves[0].location).toEqual(mockConfig.location);
+    // Spec 020: the copied time group keeps following SQMeter; the others stay set here.
+    expect(saves[0].sqmeterSync).toEqual({ ...mockConfig.sqmeterSync, time: { follow: true, syncedAt: 0 } });
   });
 
   it('clears the MQTT password when the broker is applied', async () => {

@@ -142,6 +142,10 @@ const addDevice = (c: Context) => {
 const addDiag = (c: Context) => {
   const diagOn: Link = ['D-46', 'diag-off', on(c.config, 'diag.enabled')];
   c.add('diag.keepSummaries', 'D-46', on(c.config, 'diag.keepSummaries'), [diagOn]);
+  // Spec 020: a group follows SQMeter's settings only with SQMeter's address set (the device's order).
+  const address: Link = ['D-47', 'no-sqmeter-address', read(c.config, 'safety.http.url', '').trim() !== ''];
+  for (const group of ['time', 'mqtt', 'alerts'])
+    c.add(`sqmeterSync.${group}.follow`, 'D-47', on(c.config, `sqmeterSync.${group}.follow`), [address]);
   c.add('diag.mqtt', 'D-46', on(c.config, 'diag.mqtt'), [diagOn, ['D-46', 'mqtt-off', on(c.config, 'mqtt.enabled')]]);
 };
 

@@ -105,6 +105,15 @@ export interface LocationConfig {
   sqmeter?: { gps: boolean; savedAt: number };
 }
 
+// Spec 020: each group of site settings follows SQMeter's, or is set here.
+// `syncedAt` is the device's (Unix s of the last sync, 0 never) and ignored on a save.
+export type SyncGroup = 'time' | 'mqtt' | 'alerts';
+export interface SyncGroupConfig {
+  follow: boolean;
+  syncedAt: number;
+}
+export type SqmeterSyncConfig = Record<SyncGroup, SyncGroupConfig>;
+
 // The setup wizard (spec 015): new (opens once per page load), offered (a
 // banner, after an upgrade) or done, and the page to resume at (0-9).
 export type SetupState = 'new' | 'offered' | 'done';
@@ -148,6 +157,7 @@ export interface Config {
   roof?: RoofConfig;
   daylight?: DaylightConfig;
   location?: LocationConfig;
+  sqmeterSync?: SqmeterSyncConfig; // absent before spec 020's sync: every group set here
   autoClose?: AutoCloseConfig;
   ui?: UiConfig;
   alerts?: AlertsConfig;

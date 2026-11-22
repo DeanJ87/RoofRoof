@@ -101,6 +101,24 @@ export interface SystemStatus {
   roof?: RoofStatus;
   // Where the daylight check's location came from (spec 020). Absent on older firmware.
   location?: LocationStatus;
+  // Each group's sync with SQMeter's settings (spec 020). Absent on older firmware.
+  sync?: SyncStatus;
+}
+
+export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable';
+export type SyncNeed = 'mqttPassword' | 'ntfyToken' | 'pushoverKeys';
+export interface SyncGroupStatus {
+  follow: boolean;
+  syncedAt: number | null; // Unix s of the last sync
+  refused: string | null; // why SQMeter's value wasn't taken (the device's words)
+  needs: SyncNeed[]; // secrets SQMeter has and RoofRoof lacks
+}
+export interface SyncStatus {
+  problem: SyncProblem | null;
+  readAgeSeconds: number | null; // since the last good read of SQMeter's settings in this run
+  time: SyncGroupStatus;
+  mqtt: SyncGroupStatus;
+  alerts: SyncGroupStatus;
 }
 
 export type LocationProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'noLocation';

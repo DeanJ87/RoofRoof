@@ -25,17 +25,60 @@ void EmulatedDevice::resetSite()
 {
     siteSchedule = Site::LocationSchedule();
     siteRead = Site::LocationRead();
+    settingsSchedule = Site::LocationSchedule();
+    settingsRead = Site::ConfigRead();
+    syncState = Site::SyncState();
+}
+
+// The settings read (SafetyPoller::pollSettings) and the sync (main.cpp
+// syncSiteSettings): the firmware's own rules, one read per pass.
+void EmulatedDevice::runSettingsSync(bool busy)
+{
+    Site::LocationSchedule::Pass pass;
+    pass.nowMs = nowMs;
+    pass.enabled = settingsFollow && !Site::siteUrl(siteAddress, Site::CONFIG_PATH).empty();
+    pass.busy = busy;
+    pass.generation = siteGeneration;
+    if (settingsSchedule.due(pass))
+    {
+        DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
+        Site::configFilter(filter);
+        DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
+        Site::Fetch fetch;
+        if (roof.injectors().sqmeterOffline)
+            fetch.error = OFFLINE;
+        else
+        {
+            fetch.status = 200;
+            fetch.parsed = !deserializeJson(doc, DEMO_SQMETER_CONFIG, DeserializationOption::Filter(filter));
+        }
+        const Site::ConfigRead fresh = Site::readConfig(fetch, doc, nowMs);
+        Site::record(settingsRead, fresh);
+        settingsSchedule.done(fresh.good(), nowMs);
+        if (fresh.good() && !busy)
+        {
+            const Site::SyncOutcome out = Site::syncFromSite(cfg, settingsRead.site, epoch, validEpoch() != 0);
+            for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
+                syncState.refused[i] = out.groups[i].refused;
+            if (out.any())
+                cfg = out.next;
+        }
+    }
 }
 
 // SafetyPoller::run's location read and main.cpp handleSite's save, in one pass.
 void EmulatedDevice::runSite()
 {
-    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource)
+    const SqmeterSyncConfig &sync = cfg.sqmeterSync;
+    const bool follows = sync.time.follow || sync.mqtt.follow || sync.alerts.follow;
+    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource || follows != settingsFollow)
     {
         siteAddress = cfg.safety.httpUrl;
         siteSource = cfg.location.source;
+        settingsFollow = follows;
         ++siteGeneration;
         siteRead = Site::LocationRead();
+        settingsRead = Site::ConfigRead();
     }
     const bool busy = !platformHold("flashWrite").empty();
     Site::LocationSchedule::Pass pass;
@@ -43,7 +86,10 @@ void EmulatedDevice::runSite()
     pass.enabled = cfg.location.source == LocationConfig::Source::Sqmeter && !Site::siteUrl(siteAddress, Site::STATUS_PATH).empty();
     pass.busy = busy;
     pass.generation = siteGeneration;
-    if (siteSchedule.due(pass))
+    const bool locationDue = siteSchedule.due(pass);
+    if (!locationDue)
+        runSettingsSync(busy); // one site read per pass, as the poller
+    if (locationDue)
     {
         DynamicJsonDocument filter(Site::STATUS_FILTER_BYTES);
         Site::statusFilter(filter);
@@ -72,6 +118,12 @@ void EmulatedDevice::runSite()
     cfg = updated;
     if (roofBooted)
         roof.settingsChanged(cfg);
+}
+
+void EmulatedDevice::writeSync(JsonObject out) const
+{
+    Site::writeSyncStatus(
+        out, Site::SyncView{cfg, settingsRead, syncState, !Site::siteUrl(cfg.safety.httpUrl, Site::STATUS_PATH).empty(), nowMs});
 }
 
 void EmulatedDevice::writeLocation(JsonObject out) const

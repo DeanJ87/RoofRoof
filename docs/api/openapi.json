@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795072354,
-                    "iso": "2026-11-19T07:12:34+0000",
+                    "epoch": 1795367177,
+                    "iso": "2026-11-22T17:06:17+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795068752348,
-                    "nextSync": 1795075952348,
+                    "lastSync": 1795363575390,
+                    "nextSync": 1795370775390,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795072292348,
+                    "lastPublish": 1795367115390,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -280,7 +280,29 @@
                     "readAgeSeconds": null,
                     "problem": "waiting"
                   },
-                  "configRevision": 115671020
+                  "sync": {
+                    "problem": "waiting",
+                    "readAgeSeconds": null,
+                    "time": {
+                      "follow": true,
+                      "syncedAt": null,
+                      "refused": null,
+                      "needs": []
+                    },
+                    "mqtt": {
+                      "follow": false,
+                      "syncedAt": null,
+                      "refused": null,
+                      "needs": []
+                    },
+                    "alerts": {
+                      "follow": false,
+                      "syncedAt": null,
+                      "refused": null,
+                      "needs": []
+                    }
+                  },
+                  "configRevision": 651411734
                 }
               }
             }
@@ -5289,6 +5311,65 @@
             ],
             "additionalProperties": false
           },
+          "sqmeterSync": {
+            "type": "object",
+            "properties": {
+              "alerts": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "follow",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "follow",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "follow",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "alerts",
+              "mqtt",
+              "time"
+            ],
+            "additionalProperties": false
+          },
           "ui": {
             "type": "object",
             "properties": {
@@ -5358,6 +5439,7 @@
           "roof",
           "safety",
           "setup",
+          "sqmeterSync",
           "ui",
           "wifi"
         ],
@@ -6029,6 +6111,48 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9
+              }
+            },
+            "additionalProperties": false
+          },
+          "sqmeterSync": {
+            "type": "object",
+            "properties": {
+              "alerts": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "syncedAt": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -7899,6 +8023,133 @@
             ],
             "additionalProperties": false
           },
+          "sync": {
+            "type": "object",
+            "properties": {
+              "alerts": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "needs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "mqttPassword",
+                        "ntfyToken"
+                      ]
+                    }
+                  },
+                  "refused": {
+                    "type": "null"
+                  },
+                  "syncedAt": {
+                    "type": "null"
+                  }
+                },
+                "required": [
+                  "follow",
+                  "needs",
+                  "refused",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "needs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "mqttPassword",
+                        "ntfyToken"
+                      ]
+                    }
+                  },
+                  "refused": {
+                    "type": "null"
+                  },
+                  "syncedAt": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "follow",
+                  "needs",
+                  "refused",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              },
+              "problem": {
+                "type": [
+                  "null",
+                  "string"
+                ],
+                "enum": [
+                  "noAddress",
+                  "waiting",
+                  "unreachable",
+                  "unreadable",
+                  null
+                ]
+              },
+              "readAgeSeconds": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "time": {
+                "type": "object",
+                "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  },
+                  "needs": {
+                    "type": "array"
+                  },
+                  "refused": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "syncedAt": {
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  }
+                },
+                "required": [
+                  "follow",
+                  "needs",
+                  "refused",
+                  "syncedAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "alerts",
+              "mqtt",
+              "problem",
+              "readAgeSeconds",
+              "time"
+            ],
+            "additionalProperties": false
+          },
           "time": {
             "type": "object",
             "properties": {
@@ -8028,6 +8279,7 @@
           "roof",
           "sketchSize",
           "stackFree",
+          "sync",
           "time",
           "uptime",
           "wifi"

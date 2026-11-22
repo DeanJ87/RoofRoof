@@ -109,3 +109,22 @@ settings fixtures `test/fixtures/config-releases/` (v0.1.0 to v0.3.3).
 - **Rationale**: the saved secret was saved for a server; keeping it would send it to SQMeter's
   broker or server, which may be someone else's (constitution VIII; the same rule as
   `Config::mqttTestPassword`).
+
+## R11. Keeping in step (sync)
+
+- **Decision**: re-read SQMeter's `GET /api/config` through the copy's filter on the poller, with a
+  second `LocationSchedule` (same rules, own times); the location read has priority and a pass does
+  at most one SQMeter read. The loop applies a good read under `configSaveLock` (try-lock) and the
+  flash-write guard: `Site::syncFromSite` applies each followed group to a copy and checks it with
+  `Config::validateChange` (the save's validation plus the UI-only host and URL rules).
+- **Rationale**: the same lean, non-blocking path as the location; the filter keeps the parsed
+  document to the few fields used whatever SQMeter's alert templates hold (20 templates of 480
+  characters, over 10 KB, parse into 90 bytes on the host; the document is 3 KB). Peak heap is
+  logged per read (`SQMeter settings read: … heap free … lowest …`, debug) and checked on the bench.
+- **Writes**: a save only when a group's values change, or once when a following group is first
+  confirmed (`syncedAt` set); so an unchanged SQMeter writes nothing.
+- **MQTT roof commands**: the group is held while they are on (constitution VIII: commands only from
+  the configured broker; a broker changed from elsewhere would change who may move the roof).
+- **Alternatives**: a sync per group on its own schedule (three reads instead of one); syncing from
+  the browser (CORS); a separate NVS record of synced values (the settings are where every
+  subsystem already looks).

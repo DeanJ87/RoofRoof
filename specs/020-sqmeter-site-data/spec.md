@@ -19,7 +19,7 @@ SQMeter serves two documents without a password:
   `locationSource`: `manual`, `gps` or `none`). With a GPS receiver it is a live fix.
 - `GET /api/config`: every setting, with each secret replaced by a mask.
 
-This spec makes RoofRoof take its site from SQMeter in two ways:
+This spec makes RoofRoof take its site from SQMeter in three ways:
 
 1. **The location follows SQMeter.** A new setting `location.source` is `sqmeter` or `manual`.
    With `sqmeter`, RoofRoof reads SQMeter's location every ten minutes and keeps the last good one
@@ -32,7 +32,15 @@ This spec makes RoofRoof take its site from SQMeter in two ways:
    Passwords, tokens and keys are never copied: SQMeter masks them, and the list says which ones
    the person must type in.
 
-The demo simulates SQMeter's two documents, so both features work there (spec 011).
+3. **The shared settings keep following SQMeter.** Each shareable group (time; MQTT broker and
+   SQMeter's base topic; the ntfy alert channel) has a "follows SQMeter" switch
+   (`sqmeterSync.<group>.follow`). A followed group is re-read from SQMeter's settings on the
+   location's schedule and changed through the normal validation and save when SQMeter's values
+   change. Settings and the wizard show a followed group read-only ("Follows SQMeter"), with "Edit
+   here instead" to make it local again. Secrets still never sync: a synced server change clears the
+   matching saved secret and RoofRoof asks for it.
+
+The demo simulates SQMeter's two documents, so all three work there (spec 011).
 
 ## Clarifications
 
@@ -108,6 +116,41 @@ Each answer takes the safest option the constitution allows and is also listed u
   address, so the later Weather screens arrive filled in, and the Site, Time and Alerts screens
   show what was copied. The page count and `setup.step` don't change. The wizard still offers no
   roof command.
+### Session 2026-11-22 (keeping in step)
+
+- Q: Which groups can follow SQMeter? → A: Time (`ntp.timezone`, `ntp.server1`, `ntp.server2`);
+  MQTT (`mqtt.broker`, `mqtt.port`, `mqtt.username`, and SQMeter's base topic as
+  `safety.mqttTopic`); alerts (`alerts.ntfy.server`, `alerts.ntfy.topic`); and the location
+  (`location.source`, unchanged). The Pushover user key is masked by SQMeter, so it can't follow;
+  RoofRoof's own MQTT topic, MQTT on/off, the channels' on/off, the device and host names, WiFi,
+  Alpaca and everything about motion, the weather verdict and the park never follow.
+- Q: What are the defaults? → A: A new device follows SQMeter in every group (it does nothing until
+  SQMeter's address is set). Settings saved before this load each group as local when its values
+  were already changed from the defaults, else following. Copying a group in Settings or the
+  wizard switches it to follow.
+- Q: When is SQMeter re-read? → A: On the location's schedule and rules, with its own times: 15 s
+  after a start or a change, then every 10 minutes (2 after a failure), at most one SQMeter read in
+  a poller pass, never in a pass that polls SQMeter's safety or within 3 s of it, never while the
+  roof moves, a close waits or the automatic close works. The settings are read through the same
+  filter as the copy, so only the few fields used are kept, however long SQMeter's alert templates.
+- Q: How is a change applied? → A: On the loop, under the settings save lock (try-lock, never
+  waiting), through the flash-write guard: each followed group takes SQMeter's values on a copy of
+  the live settings, which must pass the same validation as a save from the UI (host and URL forms
+  included). A group that fails keeps its old values and its status shows why; the others still
+  apply. A change is saved once and applied as any save is (MQTT reconnects to a new broker, NTP
+  resyncs), and the device logs which groups changed. Values that already match write nothing; a
+  group's first confirmation records when it was synced (one write).
+- Q: Who owns a followed group's fields? → A: The device, once it has synced the group: a settings
+  save that keeps the group following keeps the live values (checked again under the save lock, so
+  a staged restore or an older page can't put older ones back). "Edit here instead" (follow off)
+  takes the sent values. A group never synced takes the sent values (so the wizard's copy stands).
+- Q: What about secrets? → A: Never synced. A synced change of the MQTT broker, port or user name
+  clears the saved MQTT password; of the ntfy server, the saved token. While SQMeter has a secret set
+  and RoofRoof's is empty, the status names it (`needs`), and Settings and the dashboard's Status
+  card show a plain note asking for it. It is not an alert and never a safety event.
+- Q: Can a synced broker change who may move the roof? → A: Not without a person. While MQTT roof
+  commands are on, the MQTT group isn't synced: its status says "MQTT roof commands are on: set the
+  broker here", and the old broker stays.
 - Q: What about SQMeter's language and its night threshold? → A: Not offered. RoofRoof ships in
   English only, and SQMeter's `alerts.nightSunAltitudeDeg` means "night below", which is not
   RoofRoof's daylight threshold ("close at or above").
@@ -118,11 +161,11 @@ Each answer takes the safest option the constitution allows and is also listed u
 |---|---|---|
 | I | Motion control runs in its own task, independent of the network; a busy network can never prolong a move | FR-004, FR-005: the reads run on the poller task and a short-lived job task, never the motion task; none of them is waited for by a move |
 | I | Settings that change motion are refused while moving | FR-007, FR-016: the location save waits under the flash-write guard; the copy saves through the normal save |
-| III | Alerts, MQTT and the UI never change the verdict; doubt is unsafe | FR-009: SQMeter's location never enters the weather verdict or the park |
+| III | Alerts, MQTT and the UI never change the verdict; doubt is unsafe | FR-009: SQMeter's location never enters the weather verdict or the park; FR-029: the sync never writes a verdict, and a synced weather topic restarts that source as unknown (not safe) |
 | III | Refusals and problems state the input that failed | FR-010, FR-013 |
 | VI | Request handlers never block on the network; outgoing HTTP on its own task | FR-012: the copy's fetch runs on its own task with a paused request |
 | VI | Persisted config validated before saving, within NVS limits | FR-006, FR-007 |
-| VIII | Endpoints that send something call `requireAuth`; secrets masked and never leaked | FR-011, FR-014, FR-015 |
+| VIII | Endpoints that send something call `requireAuth`; secrets masked and never leaked; MQTT commands only from the configured broker | FR-011, FR-014, FR-015; FR-027: no secret syncs, a synced server clears the saved secret, and the MQTT group never syncs while MQTT roof commands are on |
 | IX | Docs move with behaviour | FR-022 |
 | XI | SQMeter-specific features (GPS among them) are not carried over | RoofRoof has no GPS of its own: it reads the location SQMeter uses and only records that it was SQMeter's GPS fix |
 | Compatibility | Old config loads without a reset; a migration never turns on a motion feature that was off | FR-006 |
@@ -213,6 +256,31 @@ zone is SQMeter's, the weather address is set, the ntfy channel has its server a
 
 **Independent Test**: In the demo wizard, enter the address, copy, apply; the Time screen shows
 SQMeter's time zone and the Weather address screen shows the address.
+
+---
+
+### User Story 6 - Settings keep following SQMeter (Priority: P2)
+
+The owner moves the MQTT broker and changes the time zone on SQMeter. Within ten minutes RoofRoof
+has the same broker and time zone, logs it, and asks for the new broker's password. In Settings
+the followed fields say "Follows SQMeter · checked 3 min ago"; "Edit here instead" makes a group
+local again.
+
+**Independent Test**: With a simulated SQMeter whose settings change, the followed groups change
+once, the local ones don't, an invalid value is refused with the old one kept, and the status
+names the secret to enter.
+
+**Acceptance Scenarios**:
+
+1. **Given** the time group follows, **When** SQMeter's time zone changes, **Then** RoofRoof saves it
+   at the next read and NTP uses it.
+2. **Given** the MQTT group follows, **When** SQMeter's broker changes, **Then** RoofRoof saves the new
+   broker, clears the old password and asks for the new one.
+3. **Given** SQMeter sends a broker name that isn't valid, **Then** the old broker stays and the
+   group's status says why.
+4. **Given** a group is local, **Then** nothing in it ever changes from SQMeter.
+5. **Given** the roof moving, **Then** no read and no sync save happens until it is still.
+6. **Given** MQTT roof commands on, **Then** the broker isn't synced and the status says so.
 
 ---
 
@@ -319,6 +387,31 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
 - **FR-024**: The parsing of SQMeter's documents, the read schedule, the save rule, the migration and
   the site document MUST live in `lib/` with native tests.
 
+**Keeping in step**
+
+- **FR-025**: The settings MUST gain `sqmeterSync.time`, `.mqtt` and `.alerts`, each with `follow` and
+  a device-owned `syncedAt`; a new device follows in every group; settings without the section load
+  each group as local when its values differ from the defaults, else following.
+- **FR-026**: With any group following and SQMeter's address set, the device MUST re-read SQMeter's
+  `GET /api/config` through the copy's filter on the location's schedule rules (FR-004, FR-005), at
+  most one SQMeter read per poller pass.
+- **FR-027**: Each followed group MUST take SQMeter's values only through the validation a UI save
+  meets; a group that fails MUST keep its old values and report why; a changed broker, port or user
+  name MUST clear the saved MQTT password and a changed ntfy server the saved ntfy token; the MQTT
+  group MUST NOT sync while MQTT roof commands are on.
+- **FR-028**: A sync MUST save under the settings save lock and the flash-write guard, apply like
+  any save, and log the groups that changed; matching values MUST write nothing after the group's
+  first confirmation. A settings save MUST keep the live values of a group that follows in both the
+  live and the new settings once the device has synced it.
+- **FR-029**: Nothing synced MUST touch motion, the weather verdict, the park, Alpaca, WiFi, the device
+  or host name, RoofRoof's own MQTT topic, any on/off switch, or any secret's value.
+- **FR-030**: The status MUST carry a `sync` section: the last read's problem and age, and per group
+  whether it follows, when it was synced, why its last sync was refused, and the secrets it needs.
+- **FR-031**: Settings and the wizard MUST show a followed group's fields read-only with "Follows
+  SQMeter" and the read's age, an "Edit here instead" control that unfollows it, a way to follow
+  again, and a note asking for each needed secret; the dashboard's Status card a non-critical note
+  per needed secret. The copy MUST switch the copied groups to follow.
+
 ### Key Entities
 
 - **Location setting**: source (`sqmeter`/`manual`), set, latitude, longitude, and the device-owned
@@ -328,6 +421,8 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
 - **Site document**: what the copy can use from SQMeter's settings, with secrets reduced to "set".
 - **Copy row**: one setting group SQMeter can fill, with both values, the secrets it needs, and
   whether it is ticked.
+- **Sync group**: time, MQTT or alerts: whether it follows, when the device last changed it from
+  SQMeter, the last refusal, and the secrets it needs.
 
 ## Design *(mandatory for UI changes)*
 
@@ -357,6 +452,11 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
   SQMeter plus N.I.N.A.'s own), shown by the schedule's native tests.
 - **SC-007**: Copying from SQMeter in the wizard fills the Time, Weather and Alerts screens in one
   step (Playwright in the demo).
+- **SC-008**: A change on SQMeter reaches a following group within 10 minutes and 15 s, with one
+  save; a week of unchanged settings writes nothing after the first confirmation.
+- **SC-009**: SQMeter's settings with 20 alert templates of 480 characters (over 10 KB) parse into
+  the filtered document without overflow (native test); the peak heap of a read is logged and
+  checked on the bench.
 
 ## Assumptions decided for the owner
 
@@ -390,3 +490,23 @@ Each was an open choice; the safest option the constitution allows was taken.
     different meaning), the device and host names, Wi-Fi, Alpaca, OTA, webhooks.
 12. **The wizard asks for SQMeter's address first on the Site and time page** (a new screen, not a
     new page), so `setup.step` and resuming are unchanged.
+13. **Three groups follow besides the location: time, MQTT (with SQMeter's base topic for the MQTT
+    weather source) and the ntfy channel.** Pushover can't follow: SQMeter masks its user key.
+14. **A new device follows everywhere; an upgrade keeps any group the person already changed
+    local**, judged against the defaults (time zone and NTP servers; broker, port, user name and the
+    weather topic; ntfy server and topic).
+15. **Settings are re-read on the location's schedule with their own times** (one SQMeter read per
+    poller pass, so the pass bound of assumption 2 holds); a change is saved once, matching values
+    never write after the first confirmation.
+16. **A value SQMeter sends that RoofRoof's validation refuses keeps the old value**, and that group's
+    status says why; the other groups still sync.
+17. **The device owns a followed group once it has synced it**; "Edit here instead" makes it local.
+    A group never synced yet takes what is sent, so a copy in the wizard stands.
+18. **No sync while MQTT roof commands are on** for the MQTT group: a broker from elsewhere must not
+    change who may move the roof without a person.
+19. **A missing secret is a note, not an alert**: the status names it, and Settings and the Status card
+    ask for it. A synced server change clears the matching saved secret, so it is never sent to a
+    server it wasn't saved for.
+20. **A synced weather topic or broker restarts the MQTT weather source** as any settings change does
+    (unknown, so not safe, until SQMeter's next message): the fail-safe direction. The verdict itself
+    is never written by the sync.

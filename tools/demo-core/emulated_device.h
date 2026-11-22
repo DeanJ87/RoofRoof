@@ -22,6 +22,7 @@
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
 #include "SqmeterSite.h"
+#include "SqmeterSync.h"
 #include "SummaryList.h"
 #include <memory>
 #include "emulated_roof.h"
@@ -251,7 +252,13 @@ private:
     uint32_t siteGeneration = 0;
     std::string siteAddress;
     LocationConfig::Source siteSource = LocationConfig::Source::Sqmeter;
+    bool settingsFollow = false;
+    Site::LocationSchedule settingsSchedule;
+    Site::ConfigRead settingsRead;
+    Site::SyncState syncState;
+    void runSettingsSync(bool busy);
     void runSite();
     void resetSite();
     void writeLocation(JsonObject out) const;
+    void writeSync(JsonObject out) const;
 };

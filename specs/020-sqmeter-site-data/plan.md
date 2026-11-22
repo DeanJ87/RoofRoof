@@ -40,6 +40,19 @@ Stacked on spec 018 (PR #20, the wizard redesign); rebased once it merges.
   (`location.source` depends on `safety.http.url`), config ranges fixture, user guide, REST and
   WebSocket references, configuration reference, heritage note, CHANGELOG, ROADMAP entry.
 
+## Keeping in step (2026-11-22)
+
+- `lib/ConfigModel`: `SqmeterSyncConfig` (`sqmeterSync.{time,mqtt,alerts}.{follow,syncedAt}`), JSON
+  in and out, the upgrade rule, `Config::validateChange`.
+- `lib/SafetyInputLogic/SqmeterSync`: `readConfig`, `syncFromSite`, `keepFollowed`, `secretsNeeded`,
+  `writeSyncStatus` (native `test_sqmeter_sync`).
+- Firmware: `SafetyPoller::pollSettings` and a second schedule (one SQMeter read per pass);
+  `main.cpp` `syncSiteSettings` under `configSaveLock` and the flash-write guard, `applySavedConfig`
+  shared with the settings save, `keepFollowed` in `saveConfigCallback`; the status's `sync`.
+- Demo core: the same sync on the simulated SQMeter. Web: the follow switches, read-only followed
+  fields with "Edit here instead", needed-secret notes, the copy switching groups to follow.
+- Settings-deps D-47 (a follow switch needs SQMeter's address).
+
 ## Technical Context
 
 | | |

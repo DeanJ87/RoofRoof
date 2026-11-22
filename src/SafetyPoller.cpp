@@ -260,20 +260,33 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::setSite(const std::string &address, bool followLocation)
+    void SafetyPoller::setSite(const std::string &address, bool followLocation, bool followSettings)
     {
         if (mutex == nullptr)
             return;
         xSemaphoreTake(mutex, portMAX_DELAY);
-        if (address != siteAddress || followLocation != siteFollows)
+        if (address != siteAddress || followLocation != siteFollows || followSettings != settingsFollow)
         {
             siteAddress = address;
             siteFollows = followLocation;
+            settingsFollow = followSettings;
             siteStatusUrl = followLocation ? Site::siteUrl(address, Site::STATUS_PATH) : std::string();
+            siteSettingsUrl = followSettings ? Site::siteUrl(address, Site::CONFIG_PATH) : std::string();
             state.location = Site::LocationRead{};
+            state.settings = Site::ConfigRead{};
             ++state.siteGeneration;
         }
         xSemaphoreGive(mutex);
+    }
+
+    Site::ConfigRead SafetyPoller::settingsRead() const
+    {
+        if (mutex == nullptr)
+            return Site::ConfigRead{};
+        xSemaphoreTake(mutex, portMAX_DELAY);
+        Site::ConfigRead copy = state.settings;
+        xSemaphoreGive(mutex);
+        return copy;
     }
 
     Site::LocationRead SafetyPoller::locationRead(uint32_t &generation) const
@@ -356,7 +369,7 @@ namespace SQM
                 nextSqmeterMs = nowMs() + SQMETER_POLL_MS;
                 pollSqmeter(now, sqmeterGeneration);
             }
-            maybeReadLocation(safetyPolled, now.sqmeterEnabled);
+            maybeReadSite(safetyPolled, now.sqmeterEnabled);
             // Constitution VI: stack headroom is measured on the bench.
             const UBaseType_t stackFree = uxTaskGetStackHighWaterMark(nullptr);
             if (stackFree < lowestStackFree)
@@ -378,25 +391,52 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::maybeReadLocation(bool safetyPolled, bool safetyOn)
+    void SafetyPoller::maybeReadSite(bool safetyPolled, bool safetyOn)
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
-        const bool follows = !siteStatusUrl.empty();
+        const std::string statusUrl = siteStatusUrl;
+        const std::string settingsUrl = siteSettingsUrl;
         const uint32_t generation = state.siteGeneration;
         xSemaphoreGive(mutex);
         Site::LocationSchedule::Pass pass;
         pass.nowMs = nowMs();
-        pass.enabled = follows;
+        pass.enabled = !statusUrl.empty();
         pass.busy = roofBusy.load();
         pass.safetyPolled = safetyPolled;
         pass.safetyNextMs = safetyOn ? (nextSqmeterMs == 0 ? 1 : nextSqmeterMs) : 0;
         pass.generation = generation;
-        if (!locationSchedule.due(pass))
-            return;
+        if (locationSchedule.due(pass))
+        {
+            pollLocation(statusUrl, generation);
+            return; // one site read per pass, so the pass stays within its bound
+        }
+        pass.enabled = !settingsUrl.empty();
+        if (settingsSchedule.due(pass))
+            pollSettings(settingsUrl, generation);
+    }
+
+    // Only the parts the sync uses are kept, whatever the alert templates hold.
+    void SafetyPoller::pollSettings(const std::string &url, uint32_t generation)
+    {
+        DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
+        Site::configFilter(filter);
+        DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
+        const Site::Fetch fetch = fetchJson(url, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const uint64_t at = nowMs();
+        const Site::ConfigRead fresh = Site::readConfig(fetch, doc, at);
+        settingsSchedule.done(fresh.good(), at);
+        // Constitution VI: the heap this read needs is measured on the bench.
+        Logger::debug(
+            TAG,
+            "SQMeter settings read: %s, %u bytes parsed, heap free %u (lowest %u)",
+            fresh.good() ? "good" : fresh.detail.c_str(),
+            static_cast<unsigned>(doc.memoryUsage()),
+            static_cast<unsigned>(ESP.getFreeHeap()),
+            static_cast<unsigned>(ESP.getMinFreeHeap()));
         xSemaphoreTake(mutex, portMAX_DELAY);
-        const std::string url = siteStatusUrl;
+        if (generation == state.siteGeneration)
+            Site::record(state.settings, fresh);
         xSemaphoreGive(mutex);
-        pollLocation(url, generation);
     }
 
     // Only sky's three fields are kept, whatever else the status holds.

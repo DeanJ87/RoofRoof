@@ -105,6 +105,24 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 SQMeter's location is never a safety input: it only sets where the sun's altitude is worked out for.
 
+`sync` says how the settings groups that follow SQMeter stand ([Keeping in step](../user-guide/close-on-unsafe.md#keeping-in-step)):
+
+```json
+"sync": { "problem": null, "readAgeSeconds": 180,
+  "time": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": [] },
+  "mqtt": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": ["mqttPassword"] },
+  "alerts": { "follow": false, "syncedAt": null, "refused": null, "needs": [] } }
+```
+
+| Field | Meaning |
+|---|---|
+| `problem` | why SQMeter's settings aren't being read now (`noAddress`, `waiting`, `unreachable`, `unreadable`), `null` when the last read was good or no group follows |
+| `readAgeSeconds` | seconds since SQMeter's settings were last read in this run, `null` before the first |
+| `<group>.follow` | the group follows SQMeter (`sqmeterSync.<group>.follow`) |
+| `<group>.syncedAt` | Unix seconds of the group's last change from SQMeter, `null` when never |
+| `<group>.refused` | why the last sync didn't take SQMeter's values (the old ones are kept), e.g. a value the settings' validation refuses or "MQTT roof commands are on: set the broker here"; `null` otherwise |
+| `<group>.needs` | secrets to enter because SQMeter has one set and RoofRoof's is empty: `mqttPassword`, `ntfyToken` |
+
 ---
 
 ### `GET /api/config`

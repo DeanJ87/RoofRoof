@@ -80,7 +80,10 @@
     "autoClose.notStarted",
     "autoClose.remindMinutes",
     "ui.confirmOpenClose",
-    "diag.enabled"
+    "diag.enabled",
+    "sqmeterSync.time.syncedAt",
+    "sqmeterSync.mqtt.syncedAt",
+    "sqmeterSync.alerts.syncedAt"
   ],
   "reasons": {
     "alerts-off": {
@@ -130,6 +133,10 @@
     "diag-off": {
       "text": "Advanced diagnostics is off",
       "fix": "device#diagnostics"
+    },
+    "no-sqmeter-address": {
+      "text": "SQMeter's address not set",
+      "fix": "roof#safety"
     }
   },
   "entries": [
@@ -411,6 +418,20 @@
       "reasons": [
         "diag-off",
         "mqtt-off"
+      ]
+    },
+    {
+      "id": "D-47",
+      "class": "dependency",
+      "kind": "setting",
+      "settings": [
+        "sqmeterSync.time.follow",
+        "sqmeterSync.mqtt.follow",
+        "sqmeterSync.alerts.follow"
+      ],
+      "dependsOn": "SQMeter's address (the weather source's address) set - a group can only follow SQMeter's settings when RoofRoof knows where SQMeter is (spec 020)",
+      "reasons": [
+        "no-sqmeter-address"
       ]
     }
   ]

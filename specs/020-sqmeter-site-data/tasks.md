@@ -48,3 +48,13 @@ Tests come first for every `lib/` change (constitution V). `[P]`: can run in par
 - [x] T021 Route registry and OpenAPI: `tools/api/routes.json`, `operations.json`, `docs/api/openapi.json`, contract schemas (`tools/contracts/generate_schemas.py`)
 - [x] T022 Docs: the daylight section (`docs/user-guide/close-on-unsafe.md`), `configuration.md`, `setup-wizard.md`, `dashboard.md`, `docs/api/rest.md`, `websocket.md`; `docs/development/heritage.md`; `CHANGELOG.md`
 - [x] T023 Quality gate, `tools/dashboard/check.py`, i18n checks, docs build, flash budget, demo-core source hash
+
+## Phase 8: Keeping in step (2026-11-22)
+
+- [x] T024 Native tests in `test/test_sqmeter_sync/test_main.cpp` (sync per group, local groups untouched, nothing outside the groups, secrets cleared and named, refused values kept, MQTT held with roof commands, older SQMeter, writes only on change or first confirmation, keep rule, upgrade defaults, status, a 10 KB settings document through the filter)
+- [x] T025 `SqmeterSyncConfig`, JSON, upgrade rule, `Config::validateChange` in `lib/ConfigModel`; `SqmeterSync.h/.cpp` in `lib/SafetyInputLogic`
+- [x] T026 `SafetyPoller::pollSettings` and the second schedule; `main.cpp` sync, `applySavedConfig`, `keepFollowed`; the status's `sync` (`include/`, `src/`)
+- [x] T027 Demo core sync; WASM rebuilt
+- [x] T028 Web: types, schema, mocks, follow controls and read-only followed fields in Settings and the wizard, needed-secret notes (Settings, Status card), the copy switching groups to follow; Vitest; Playwright
+- [x] T029 Settings-deps D-47 (catalogue, lib, web, fixtures, docs)
+- [x] T030 Docs (Site from SQMeter: keeping in step; configuration; REST and WebSocket `sync`; CHANGELOG), contract schemas and OpenAPI example, status document size test, flash and UI size

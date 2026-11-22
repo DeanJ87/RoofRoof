@@ -337,7 +337,50 @@ different ntfy server clears the saved ntfy token, so a saved secret is never se
 wasn't saved for.
 
 The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the copy is refused while
-the roof is busy. An older SQMeter that lacks a part simply has no row for it.
+the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
+switches it to follow SQMeter (below).
+
+### Keeping in step
+
+Three groups of settings can keep following SQMeter, besides the location
+(`sqmeterSync.<group>.follow`):
+
+| Group | Follows | Secret it never takes |
+|---|---|---|
+| Time | the time zone and both NTP servers | - |
+| MQTT | the broker, port and user name, and SQMeter's base topic as the MQTT weather topic (`safety.mqtt.topic`; RoofRoof's own base topic stays its own) | the MQTT password |
+| Alerts | the ntfy server and topic | the ntfy token; Pushover (SQMeter doesn't share its keys) |
+
+A new device follows SQMeter in every group. After an update, a group you had already changed from
+its defaults stays **local**; one still at its defaults follows.
+
+**How often.** RoofRoof re-reads SQMeter's settings on the location's schedule: about 15 s after a
+restart or a change, then every 10 minutes (2 minutes after a failed read), never while the roof is
+busy, never alongside SQMeter's safety poll, at most one read of SQMeter per pass of the task that
+polls SQMeter and N.I.N.A. Only the few fields above are kept from SQMeter's reply.
+
+**What a change does.** When SQMeter's values change, RoofRoof checks them exactly as it checks a
+save from Settings, saves them once and applies them (a new broker reconnects MQTT, new NTP servers
+resync the clock), and logs which groups changed. A value it can't accept (a broker name that isn't
+valid, for example) is refused: the old value stays and Settings says why. Values that already match
+write nothing.
+
+**In Settings and the wizard**, a followed group's fields are read-only and say **Follows SQMeter**,
+with when SQMeter was last read. **Edit here instead** makes the group local (save to keep it);
+**Follow SQMeter** makes it follow again. While a group follows, a settings save keeps the values
+RoofRoof synced, so an older page can't put old ones back.
+
+**Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
+clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
+has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it.
+This is a note, not an alert.
+
+**Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
+Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT
+roof commands are on, the MQTT group doesn't sync at all ("MQTT roof commands are on: set the broker
+here"): a broker changed elsewhere must not change who may move the roof. A synced weather topic or
+broker restarts the MQTT weather source as any settings change does, so it reads unknown (not safe)
+until SQMeter's next message.
 
 ## In the log
 

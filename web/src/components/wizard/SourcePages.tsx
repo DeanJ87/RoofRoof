@@ -52,7 +52,7 @@ export const WeatherAddressScreen: FunctionalComponent<WizardPageProps> = (props
     <div id="weather" class="card-group">
       <div class="form-grid">
         {safety.http.enabled && <SqmeterUrlField safety={safety} update={props.update} error={props.error} />}
-        {safety.mqtt.enabled && <SqmeterTopicField safety={safety} update={props.update} error={props.error} />}
+        {safety.mqtt.enabled && <SqmeterTopicField {...props} safety={safety} />}
       </div>
       <TestPanel part="weather" save={props.saveForTest(WEATHER_FIELDS)} dirty={props.dirty} />
     </div>

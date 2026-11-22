@@ -106,6 +106,14 @@ function writeSamples(dir: string) {
   const unread = (s: ReturnType<typeof status>) => ({
     ...s,
     location: { source: 'sqmeter', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: 'unreachable' },
+    // The sync after a refused value and a cleared secret (writeSyncStatus), SQMeter now unreachable.
+    sync: {
+      problem: 'unreachable',
+      readAgeSeconds: null,
+      time: { follow: true, syncedAt: null, refused: "SQMeter's value refused: NTP server: NTP over IPv6 isn't supported yet", needs: [] },
+      mqtt: { follow: true, syncedAt: 1795366349, refused: null, needs: ['mqttPassword'] },
+      alerts: { follow: false, syncedAt: null, refused: null, needs: ['ntfyToken'] },
+    },
     roof: {
       ...s.roof,
       daylight: { ...(s.roof as { daylight: object }).daylight, state: 'unknown', sunAltitudeDeg: null, text: 'Location not set' },
