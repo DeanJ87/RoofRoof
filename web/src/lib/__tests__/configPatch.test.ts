@@ -84,10 +84,12 @@ describe('spec 021 review fixes', () => {
   });
 
   it('records a saved secret as the device shows it', () => {
-    expect(asShown({ mqtt: { password: 'typed', broker: 'b' }, alerts: { ntfy: { token: null } } })).toEqual({
+    expect(asShown({ mqtt: { password: 'typed', broker: 'b' }, alerts: { ntfy: { token: null } } }, loaded)).toEqual({
       mqtt: { password: '********', broker: 'b' },
       alerts: { ntfy: { token: '' } },
     });
+    // A placeholder kept what the page loaded.
+    expect(asShown({ wifi: { password: '' } }, loaded)).toEqual({ wifi: { password: '********' } });
   });
 
   it('keeps no edit when the device named none or as many as it lists', () => {

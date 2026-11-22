@@ -100,7 +100,7 @@ const loadInto = (take: (data: Fetched) => void, done: () => void) =>
 // save came in between is the new revision its own; otherwise it keeps the old
 // one, so its next save is checked field by field.
 const afterSave = (before: Loaded, patch: unknown, revision?: number): Loaded => ({
-  document: applyPatch(before.document, asShown(patch)),
+  document: applyPatch(before.document, asShown(patch, before.document)),
   revision: before.revision !== undefined && revision === before.revision + 1 ? revision : before.revision,
 });
 

@@ -78,17 +78,19 @@ const pathPatch = (path: string, value: unknown): Node => {
 const SECRET_KEYS = ['password', 'token', 'userKey', 'appToken', 'authHeader'];
 const MASK = '********';
 
-/** A saved patch as the device now shows it: a secret set is masked, a secret cleared is "". */
-export const asShown = (patch: unknown): unknown => {
+/**
+ * A saved patch as the device now shows it: a secret set is masked, a secret cleared (null) is "",
+ * and a placeholder ("", the mask) kept the secret the page loaded.
+ */
+export const asShown = (patch: unknown, loaded: unknown): unknown => {
   let shown = patch;
   leafPaths(patch)
     .filter((path) => SECRET_KEYS.includes(path.split('.').pop() ?? ''))
     .forEach((path) => {
       const value = valueAt(patch, path);
-      shown = applyPatch(
-        shown,
-        pathPatch(path, typeof value === 'string' && value !== '' && value !== '***' ? MASK : value === null ? '' : value),
-      );
+      const kept = value === '' || value === '***' || value === MASK;
+      const now = value === null ? '' : kept ? (valueAt(loaded, path) ?? '') : MASK;
+      shown = applyPatch(shown, pathPatch(path, now));
     });
   return shown;
 };

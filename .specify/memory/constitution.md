@@ -15,7 +15,7 @@ Sync Impact Report
   can see the roof keep closing until the last good reading is 10 s old. Before, it stopped at the
   first failed reply: typically 2-3 s after that reading when N.I.N.A.'s host refuses the
   connection, up to about 9 s when the request times out (the poller's 2 s period and 6 s request
-  limit). So the typical added exposure is about 7 s, the worst about 1 s. Park switches still
+  limit). So the added exposure is typically about 7 s, at least about 1 s, and up to about 8 s. Park switches still
   stop it at once. Judged a clarification, not a relaxation: no
   reading is used past the freshness limit Principle II already sets, and every named trigger still
   stops the close at once; the owner may choose to treat it as MAJOR.
