@@ -68,8 +68,8 @@ describe('Following SQMeter', () => {
     expect(field('ntp.timezone')).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].sqmeterSync!.time.follow).toBe(false);
-    expect(saves[0].sqmeterSync!.mqtt.follow).toBe(false);
+    // Spec 021: only the switch that changed is sent.
+    expect(saves[0].sqmeterSync).toEqual({ time: { follow: false } });
   });
 
   it('a group set here follows SQMeter again with its button, once an address is set', async () => {

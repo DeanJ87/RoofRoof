@@ -24,6 +24,7 @@ import HallScale from '../dashboard/HallScale';
 import { t } from '../i18n';
 import { formatNumber } from '../i18n/format';
 import { deviceText } from '../i18n/deviceMessage';
+import { listReasons } from './settings/restart';
 
 // The attended calibration run (spec 016): what it needs, the start form, the
 // run with Stop always shown, and the result with the proposal beside the
@@ -295,6 +296,11 @@ const Calibrate: FunctionalComponent = () => {
   const accept = async (next: RoofConfig) => {
     const outcome = await editor.save({ roof: next });
     if (outcome.kind === 'saved') return null;
+    if (outcome.kind === 'conflict') {
+      // Spec 021: the roof's settings changed on the device; the proposal is compared with them again.
+      await editor.rebase(outcome.fields);
+      return t('calibrate.changedOnDevice', { fields: listReasons(outcome.fields) });
+    }
     return outcome.kind === 'refused' ? outcome.message : t('calibrate.notSaved');
   };
   const stop = () => void abortCalibration().then(refresh);

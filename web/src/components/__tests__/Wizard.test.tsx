@@ -186,7 +186,8 @@ describe('Wizard', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Location set' }));
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(before + 1));
-    expect(saves[before].deviceName).toBe('Backyard roof');
+    // Spec 021: never sent again, so it can't be put back.
+    expect(saves[before].deviceName).toBeUndefined();
     expect(saves[before].setup).toEqual({ state: 'new', step: 1 });
   });
 
@@ -235,8 +236,8 @@ describe('Wizard', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Both' }));
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect((saves[0].roof as { topDutyPercent: number }).topDutyPercent).toBe(100);
-    expect(saves[0].safety).toMatchObject({ http: { enabled: true }, mqtt: { enabled: true } });
+    expect(saves[0].roof).toBeUndefined(); // the skipped screen's edits are never sent
+    expect(saves[0].safety).toEqual({ mqtt: { enabled: true } }); // http was already on: not sent
   });
 
   it('Skip for now and Back never save', async () => {
@@ -399,12 +400,8 @@ describe('Wizard', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Pushover' })); // a change of mind turns ntfy back off
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].alerts).toMatchObject({
-      enabled: true,
-      pushover: { enabled: true },
-      ntfy: { enabled: false },
-      webhook: { enabled: false },
-    });
+    // Spec 021: only what changed; ntfy on then off again is no change.
+    expect(saves[0].alerts).toEqual({ enabled: true, pushover: { enabled: true } });
     await onScreen('alertDetails');
     expect(screen.getByText('User key')).toBeInTheDocument();
   });
