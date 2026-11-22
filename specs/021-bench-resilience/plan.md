@@ -39,7 +39,7 @@ contract in [contracts/config-save.md](contracts/config-save.md).
 | **Language/Version** | C++17 (GCC 14, Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5); TypeScript strict |
 | **Primary Dependencies** | spec 004's park rule and poller; spec 003's gates and interlock; spec 016/019's calibration and jog; spec 009/015's settings editor; spec 020's SiteSync and `keepFollowed` |
 | **Storage** | none new; the revision lives in RAM |
-| **Testing** | `pio test -e native` (new `test_park_grace`, `test_config_save`; `test_roof_gates` extended); Vitest (`configPatch`, `useConfigEditor`, Settings); Playwright (settings) |
+| **Testing** | `pio test -e native` (new `test_park_grace`, `test_config_save`; `test_roof_gates` extended); Vitest (`configPatch`, `ConfigConflict`: two editors against one stateful mock device, and the Settings toast); the Playwright suite unchanged (the demo sends no revision) |
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + web UI + docs |
 | **Performance Goals** | the hold is O(1) per evaluation; the stale check runs only on a save with an old revision |

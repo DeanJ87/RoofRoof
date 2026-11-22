@@ -9,12 +9,12 @@
 ## Web
 
 ```bash
-cd web && npx vitest run configPatch useConfigEditor Settings Wizard Calibrate && npx playwright test tests/settings.spec.ts
+cd web && npx vitest run configPatch ConfigConflict Settings Wizard Calibrate SqmeterCopy && npx playwright test
 ```
 
 ## Two tabs against the mock device
 
-The Vitest suite `configConflict` posts from two editors loaded at the same revision: different
+The Vitest suite `ConfigConflict` posts from two editors loaded at the same revision: different
 fields both save; the same field gets 409, and Reload keeps the other edits.
 
 ## Bench (pending, real board and roof)
