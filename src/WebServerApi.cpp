@@ -68,21 +68,55 @@ namespace SQM
         if (!requireAuth(request))
             return;
 
-        String jsonStr;
-        serializeJson(json, jsonStr);
-        const Config &currentConfig = getConfigCallback();
+        std::string body;
+        serializeJson(json, body);
+        // Spec 021: checked and merged onto the live settings under the save
+        // lock, so no other save lands in between; a page's stale fields refused.
         std::string reason;
-        auto configOpt = Config::fromJson(jsonStr.c_str(), &currentConfig, &reason);
-        if (!configOpt)
-        {
-            Logger::warn(TAG, "Config rejected: %s", reason.c_str());
-            request->send(400, "application/json", createErrorJson(reason.empty() ? "Invalid configuration" : reason.c_str()).c_str());
-            return;
-        }
+        ConfigSave::Check stale;
+        const bool saved = editAsFlashWrite(
+            request,
+            [&](const Config &live, Config &next)
+            {
+                stale = ConfigSave::checkSave(body, configRevision.load(), [&live]() { return live.toJson(true); });
+                if (stale.stale)
+                    return false;
+                auto merged = Config::fromJson(body, &live, &reason);
+                if (merged)
+                    next = std::move(*merged);
+                else
+                    reason = reason.empty() ? "Invalid configuration" : reason;
+                return merged.has_value();
+            });
+        if (saved || !reason.empty() || stale.stale)
+            answerConfigSave(request, saved, reason, stale);
+    }
 
-        if (!saveAsFlashWrite(request, *configOpt))
-            return;
-        request->send(200, "application/json", "{\"success\":true}");
+    void WebServer::answerConfigSave(AsyncWebServerRequest *request, bool saved, const std::string &reason, const ConfigSave::Check &stale)
+    {
+        DynamicJsonDocument doc(512 + 64 * stale.conflicts.size());
+        doc["success"] = saved;
+        doc["revision"] = configRevision.load();
+        int code = 200;
+        if (stale.stale)
+        {
+            code = 409;
+            const std::string text = ConfigSave::conflictText(stale);
+            Logger::warn(TAG, "Config save refused: %s", text.c_str());
+            doc["error"] = text;
+            JsonArray names = doc.createNestedArray("conflicts");
+            for (const std::string &name : stale.conflicts)
+                names.add(name);
+        }
+        else if (!saved)
+        {
+            code = 400;
+            Logger::warn(TAG, "Config rejected: %s", reason.c_str());
+            doc["error"] = reason;
+        }
+        std::string out;
+        serializeJson(doc, out);
+        request->send(code, "application/json", out.c_str());
     }
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
@@ -150,9 +184,14 @@ namespace SQM
 
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
     {
+        // Spec 021: the revision first, so a save in between only makes the
+        // page's copy look older, never newer.
+        const uint32_t revision = configRevision.load();
         const Config &cfg = getConfigCallback();
         std::string json = cfg.toJson(true);
-        request->send(200, "application/json", json.c_str());
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json.c_str());
+        response->addHeader("X-Config-Revision", String(revision));
+        request->send(response);
     }
 
     void WebServer::handleRestart(AsyncWebServerRequest *request)
@@ -252,10 +291,15 @@ namespace SQM
                 const PlatformGuard::FlashWrite write;
                 if (write.refused() != RoofIo::HoldReason::None)
                     return;
-                Config config = getConfigCallback();
-                config.wifi.ssid = pendingWifiSSID;
-                config.wifi.password = pendingWifiPassword;
-                wifiConnectConfigSaved = saveConfigCallback(config);
+                // Spec 021: onto the live settings under the save lock, so a
+                // settings save meanwhile is neither undone nor undoes this.
+                wifiConnectConfigSaved = updateConfigCallback(
+                    [this](const Config &, Config &next)
+                    {
+                        next.wifi.ssid = pendingWifiSSID;
+                        next.wifi.password = pendingWifiPassword;
+                        return true;
+                    });
                 if (!wifiConnectConfigSaved)
                 {
                     Logger::error(TAG, "Connected to WiFi but failed to save config");

@@ -113,22 +113,19 @@ namespace SQM
         return client != nullptr && client->localIP() == WiFi.softAPIP();
     }
 
-    WebServer::WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig)
+    WebServer::WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, UpdateConfigCallback updateConfig)
         : server(PORT),
           wsStatus("/ws/status"),
           timeManager(timeMgr),
           mqttClient(mqtt),
           getConfigCallback(getConfig),
-          // A save bumps configRevision (/api/status): open pages reload the settings.
-          saveConfigCallback(
-              [this, saveConfig](const Config &cfg)
-              {
-                  const bool saved = saveConfig(cfg);
-                  if (saved)
-                      ++configRevision;
-                  return saved;
-              })
+          // A save bumps configRevision (/api/status), under the save lock
+          // (src/main.cpp): open pages reload the settings.
+          updateConfigCallback(std::move(updateConfig))
     {
+        // Spec 021: from a random value, so a page loaded before a restart never
+        // matches a later revision by chance and skips the stale check.
+        configRevision = esp_random() >> 1;
         // Alerts wait while an upload is written: TLS and flash writes together
         // stall the upload (SQMeter spec 012 FR-003a).
         alertDispatcher = std::make_unique<AlertDispatcher>(mqttClient, [] { return uploadActive.load(); });

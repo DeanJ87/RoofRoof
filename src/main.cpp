@@ -94,10 +94,15 @@ void applySavedConfig()
         Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
 }
 
-bool saveConfigCallback(const Config &newConfig)
+// Every web save: `edit` builds the settings from the live ones under the save
+// lock (spec 021: the stale check and the merge see what is saved), and the
+// revision is counted before the lock is let go, so the next save sees it.
+bool updateConfigCallback(const WebServer::EditConfig &edit)
 {
     const std::lock_guard<std::mutex> held(configSaveLock);
-    Config next = newConfig;
+    Config next = config;
+    if (!edit(config, next))
+        return false;
     // Spec 020 FR-008, FR-028: against the live settings, a copy taken before
     // the last location save or sync can't put older values back.
     Site::keepFollowed(config, next);
@@ -106,6 +111,8 @@ bool saveConfigCallback(const Config &newConfig)
     if (!saved)
         return false;
     applySavedConfig();
+    if (webServer)
+        webServer->noteConfigSaved();
     return true;
 }
 
@@ -318,7 +325,7 @@ void startServices()
     safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
 
-    webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, saveConfigCallback);
+    webServer = std::make_unique<WebServer>(timeManager.get(), mqttClient.get(), getConfigCallback, updateConfigCallback);
     webServer->setRoof(&roofControl);
     webServer->setDiagnostics(&diagnostics);
     // Spec 008: the automatic close's phase in the status and the MQTT document.
