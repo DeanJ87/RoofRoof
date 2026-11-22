@@ -27,6 +27,10 @@ namespace SQM
     void WiFiManager::begin()
     {
         WiFi.mode(WIFI_STA);
+        // Modem sleep makes the station miss beacons and buffered frames on busy
+        // or multi-AP networks: replies arrive seconds late and the AP drops it.
+        // The controller is mains-powered, so keep the radio awake.
+        WiFi.setSleep(false);
         WiFi.setHostname(config.hostname.c_str());
         ipv6Wanted = config.ipv6;
         // Arduino 3.x starts IPv6 (link-local, then SLAAC addresses from
@@ -227,6 +231,7 @@ namespace SQM
 
     void WiFiManager::connectToWiFi()
     {
+        WiFi.setSleep(false);
         WiFi.begin(config.ssid.c_str(), config.password.c_str());
         lastReconnectAttempt = millis();
     }
@@ -277,7 +282,17 @@ namespace SQM
         switch (event)
         {
         case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-            Logger::info(TAG, "WiFi connected");
+            Logger::info(
+                TAG,
+                "WiFi connected: channel %u, BSSID %02x:%02x:%02x:%02x:%02x:%02x, RSSI %d dBm",
+                info.wifi_sta_connected.channel,
+                info.wifi_sta_connected.bssid[0],
+                info.wifi_sta_connected.bssid[1],
+                info.wifi_sta_connected.bssid[2],
+                info.wifi_sta_connected.bssid[3],
+                info.wifi_sta_connected.bssid[4],
+                info.wifi_sta_connected.bssid[5],
+                WiFi.RSSI());
             break;
 
         case ARDUINO_EVENT_WIFI_STA_GOT_IP6:
@@ -293,7 +308,12 @@ namespace SQM
             break;
 
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            Logger::warn(TAG, "WiFi disconnected");
+            Logger::warn(
+                TAG,
+                "WiFi disconnected: reason %u (%s), RSSI %d dBm",
+                info.wifi_sta_disconnected.reason,
+                WiFi.disconnectReasonName(static_cast<wifi_err_reason_t>(info.wifi_sta_disconnected.reason)),
+                info.wifi_sta_disconnected.rssi);
             break;
 
         default:
