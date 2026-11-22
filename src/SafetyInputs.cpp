@@ -177,6 +177,10 @@ namespace SQM
         park.switch2 = switch2;
         park.nowMs = nowMs;
         parkResult = Safety::evaluatePark(park);
+        // Spec 021: the last good reading, kept across failed reads, and the hold
+        // a move under way may ride on.
+        Safety::rememberNina(ninaMemory, snap.nina, snap.ninaGeneration);
+        hold = Safety::closeHold(park, parkResult, ninaMemory);
 
         // Spec 015: a copy for GET /api/roof/inputs (the web server's task reads it).
         Safety::InputsReport next{verdict, parkResult, snap.nina, nowMs, snap.sqmeterGeneration, mqttGeneration, snap.ninaGeneration};
@@ -203,8 +207,13 @@ namespace SQM
             Logger::info(TAG, "Weather %s", Safety::describe(verdict).c_str());
         if (!logged || parkResult.parked != loggedPark.parked || parkResult.reasons != loggedPark.reasons)
             Logger::info(TAG, "Park: %s", Safety::describe(parkResult).c_str());
+        if (hold.riding && !loggedRiding)
+            Logger::warn(TAG, "N.I.N.A. read failed: a move under way is %s", Safety::describe(hold, Safety::NINA_FRESH_MS).c_str());
+        else if (!hold.riding && loggedRiding)
+            Logger::info(TAG, "N.I.N.A. ride-through over: %s", hold.parked ? "parked reading again" : "park not confirmed");
         logged = true;
         loggedVerdict = verdict;
         loggedPark = parkResult;
+        loggedRiding = hold.riding;
     }
 } // namespace SQM

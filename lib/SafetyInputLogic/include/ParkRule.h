@@ -67,5 +67,37 @@ namespace SQM
         ParkResult evaluatePark(const ParkInputs &inputs);
         // "parked" or "not parked: N.I.N.A. stale: reading 12 s old > 10 s; park switch 1 open".
         std::string describe(const ParkResult &result);
+
+        // Spec 021: N.I.N.A.'s latest good reading, kept across failed reads, and
+        // the poller's address generation it came from.
+        struct NinaMemory
+        {
+            Nina::MountReading lastGood;
+            uint32_t generation = 0;
+            bool known = false;
+        };
+
+        // A good reading replaces the memory; a failed read (no reply, an
+        // unreadable reply, an API error) keeps it; "not configured", "not read
+        // yet" and a new address generation forget it.
+        void rememberNina(NinaMemory &memory, const Nina::MountReading &reading, uint32_t generation);
+
+        // Spec 021 (constitution II, re-checked throughout the close): whether a
+        // move the park interlock watches may go on, and until when.
+        struct CloseHold
+        {
+            bool parked = false; // the park result says parked
+            // Not parked only because N.I.N.A.'s latest read failed, and the
+            // remembered good reading, with the switches as read now, confirms the park.
+            bool riding = false;
+            uint64_t freshUntilMs = 0; // the relied-on reading's takenAtMs + ninaMaxAgeMs; 0 when neither
+            uint32_t ageMs = 0;        // that reading's age now
+        };
+
+        // `result` is evaluatePark(inputs). A ride-through never starts a move:
+        // only the park result confirms a park for a start.
+        CloseHold closeHold(const ParkInputs &inputs, const ParkResult &result, const NinaMemory &memory);
+        // "riding on a parked reading 3.2 s old (limit 10 s)", or "" when not riding.
+        std::string describe(const CloseHold &hold, uint32_t limitMs);
     } // namespace Safety
 } // namespace SQM

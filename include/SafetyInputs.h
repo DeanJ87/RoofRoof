@@ -46,6 +46,9 @@ namespace SQM
         // Main loop.
         const Safety::WeatherVerdict &weather() const { return verdict; }
         const Safety::ParkResult &park() const { return parkResult; }
+        // Spec 021: whether a move the park interlock watches may go on (a
+        // missed N.I.N.A. reply rides on the last good reading while fresh).
+        const Safety::CloseHold &closeHold() const { return hold; }
         // Ask N.I.N.A. to park (spec 005). The answer is in the poller's
         // snapshot; only park() says the mount is parked.
         void requestPark() { poller.requestPark(); }
@@ -96,9 +99,12 @@ namespace SQM
 
         Safety::WeatherVerdict verdict;
         Safety::ParkResult parkResult;
+        Safety::NinaMemory ninaMemory; // spec 021
+        Safety::CloseHold hold;
         // What was last logged.
         bool logged = false;
         Safety::WeatherVerdict loggedVerdict;
         Safety::ParkResult loggedPark;
+        bool loggedRiding = false;
     };
 } // namespace SQM

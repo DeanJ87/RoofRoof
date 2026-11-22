@@ -50,6 +50,7 @@ namespace SQM
                 add(InterlockParkResult, "park not confirmed");
                 add(InterlockSwitch1, "park switch 1 not closed");
                 add(InterlockSwitch2, "park switch 2 not closed");
+                add(InterlockNinaStale, "N.I.N.A. not read within its freshness limit");
                 return text.empty() ? "park not confirmed" : text;
             }
 

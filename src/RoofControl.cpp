@@ -16,6 +16,7 @@
 #include "RoofReadings.h"
 #include "RoofSettings.h"
 #include "RoofText.h"
+#include "SafetyPoller.h"
 #include "SettingsGuard.h"
 #include "StepWatchdog.h"
 
@@ -446,7 +447,11 @@ namespace SQM
     }
 
     void RoofControl::setSafety(
-        const Safety::WeatherVerdict &weather, const Safety::ParkResult &park, bool daylightCloses, const std::string &daylightText)
+        const Safety::WeatherVerdict &weather,
+        const Safety::ParkResult &park,
+        const Safety::CloseHold &hold,
+        bool daylightCloses,
+        const std::string &daylightText)
     {
         if (lock == nullptr)
             return;
@@ -457,6 +462,8 @@ namespace SQM
         gates.weatherText = weatherText;
         gates.parked = park.parked;
         gates.parkText = parkText;
+        gates.ninaGrace = hold.riding;
+        gates.parkFreshUntilMs = hold.freshUntilMs;
         gates.daylightCloses = daylightCloses;
         gates.daylightText = daylightText;
         safetyHandedOver = true;
@@ -511,7 +518,11 @@ namespace SQM
 
     RoofIo::GateInputs RoofControl::currentGates() const
     {
-        return RoofIo::currentGates(gates, safetyHandedOver, millis() - safetyAtMs);
+        RoofIo::GateInputs now = RoofIo::currentGates(gates, safetyHandedOver, millis() - safetyAtMs);
+        // Spec 021: the clock N.I.N.A.'s readings are stamped with, so the
+        // control step bounds the reading's freshness itself.
+        now.nowMs = SafetyPoller::nowMs();
+        return now;
     }
 
     Safety::SwitchReading RoofControl::parkSwitch(uint8_t index) const

@@ -399,7 +399,10 @@ void handleSafety()
     if (now - lastHandOver >= 250 || (handedSafe && !safeNow) || (closesNow && !handedCloses))
     {
         roofControl.setSafety(
-            safetyInputs->weather(), safetyInputs->park(), closesNow, closesNow ? Daylight::describe(closeOnUnsafe.daylight()) : "");
+            safetyInputs->weather(),
+            safetyInputs->park(),
+            safetyInputs->closeHold(),
+            closesNow, closesNow ? Daylight::describe(closeOnUnsafe.daylight()) : "");
         lastHandOver = now;
         handedSafe = safeNow;
         handedCloses = closesNow;

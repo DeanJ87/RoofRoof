@@ -105,10 +105,12 @@ namespace SQM
         void updateConfig(const Config &config);
 
         // Main loop, after SafetyInputs::handle(): what the gates look at,
-        // with whether daylight wants the roof closed (spec 013) and why.
+        // with the hold a move under way may ride on (spec 021) and whether
+        // daylight wants the roof closed (spec 013) and why.
         void setSafety(
             const Safety::WeatherVerdict &weather,
             const Safety::ParkResult &park,
+            const Safety::CloseHold &hold,
             bool daylightCloses = false,
             const std::string &daylightText = "");
         // Main loop: the switch and contact readings, for SafetyInputs.

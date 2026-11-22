@@ -34,6 +34,13 @@ namespace SQM
             // and why ("Sun 3.2° ≥ 0.0°"), handed over with the verdict.
             bool daylightCloses = false;
             std::string daylightText;
+            // Spec 021: Safety::CloseHold, handed over with the park result. A
+            // move the interlock watches may ride through a missed N.I.N.A.
+            // reply (`ninaGrace`) and never runs on a reading past
+            // `parkFreshUntilMs` (0: no bound, as in the demo and the tests).
+            bool ninaGrace = false;
+            uint64_t parkFreshUntilMs = 0;
+            uint64_t nowMs = 0; // when checked, on the clock N.I.N.A.'s readings are stamped with
         };
 
         // The main loop hands the verdict and park result over every 250 ms. If
@@ -57,6 +64,7 @@ namespace SQM
             InterlockParkResult = 1u << 0, // spec 004's park result is not "parked"
             InterlockSwitch1 = 1u << 1,    // fitted switch 1 doesn't read closed
             InterlockSwitch2 = 1u << 2,    // fitted switch 2 doesn't read closed
+            InterlockNinaStale = 1u << 3,  // spec 021: the relied-on N.I.N.A. reading is past its freshness
         };
 
         // `in` as the checks may use it: unchanged when the verdict and park
@@ -72,8 +80,13 @@ namespace SQM
         // wanting the roof closed (Daylight; the weather is named first).
         // Close: only while the park holds. Stop and abort are never gated.
         GateRefusal gateCommand(Roof::Command command, const GateInputs &in);
+        // Spec 021: a move under way may go on: the park result says parked, or it
+        // rides through a missed N.I.N.A. reply (ninaGrace); every fitted switch
+        // reads closed now; and the reading relied on is still fresh at `nowMs`.
+        // Never used to start a move (gateCommand uses parkHolds).
+        bool closeMayContinue(const GateInputs &in);
         // A close (or, spec 016, any calibration leg) is under way, including its
-        // dead time, and the park no longer holds.
+        // dead time, and the park no longer holds (closeMayContinue).
         bool interlockLost(const Roof::Status &status, const GateInputs &in);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);

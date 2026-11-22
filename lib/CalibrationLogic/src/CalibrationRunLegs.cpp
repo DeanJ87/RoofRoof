@@ -131,7 +131,7 @@ namespace SQM
                 endAfterText = RoofIo::describeGate(open, in.gates);
             }
             // A backstop: the park interlock (checkGates) latches first for any leg.
-            if (opening && !RoofIo::parkHolds(in.gates))
+            if (opening && !RoofIo::closeMayContinue(in.gates))
             {
                 controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
                 return finish(Ending::Park, RoofIo::describeGate(RoofIo::GateRefusal::MountNotParked, in.gates));

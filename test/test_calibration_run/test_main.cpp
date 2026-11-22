@@ -347,6 +347,28 @@ void test_the_park_lost_while_opening_is_the_interlock_fault(void)
     TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
 }
 
+// Spec 021: a missed N.I.N.A. reply during an open leg rides on the last good
+// reading (the backstop and the interlock agree) until it is stale.
+void test_a_missed_nina_reply_during_a_leg_rides_until_stale(void)
+{
+    Rig r;
+    TEST_ASSERT_TRUE(r.start().accepted);
+    TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
+    r.steps(3000);
+    r.gates.parked = false;
+    r.gates.ninaGrace = true;
+    r.gates.parkFreshUntilMs = 20000;
+    r.gates.nowMs = 12000;
+    r.step();
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::None);
+    TEST_ASSERT_TRUE(r.rep().ending == Ending::None);
+    TEST_ASSERT_TRUE(r.roof.status().calibrating);
+    r.gates.nowMs = 20001;
+    r.step();
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::External);
+    TEST_ASSERT_TRUE(r.rep().ending == Ending::Fault);
+}
+
 void test_disagreeing_slow_legs_skip_the_top_pass(void)
 {
     Rig r;
@@ -523,6 +545,7 @@ int main(int, char **)
     RUN_TEST(test_unsafe_weather_while_closing_lets_the_close_finish);
     RUN_TEST(test_daylight_in_a_pause_ends_the_run);
     RUN_TEST(test_the_park_lost_while_opening_is_the_interlock_fault);
+    RUN_TEST(test_a_missed_nina_reply_during_a_leg_rides_until_stale);
     RUN_TEST(test_disagreeing_slow_legs_skip_the_top_pass);
     RUN_TEST(test_the_park_lost_in_a_pause_ends_the_run);
     RUN_TEST(test_the_park_lost_while_closing_is_the_interlock_fault);
