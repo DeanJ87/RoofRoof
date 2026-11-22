@@ -123,6 +123,27 @@ describe('two pages editing one device (spec 021)', () => {
     expect(device.bodies[3].baseValues).toEqual({ wifi: { mdns: mockConfig.wifi.mdns } });
   });
 
+  it("the wizard's own progress saved elsewhere doesn't block its next screen", async () => {
+    const device = statefulDevice({ ...mockConfig, setup: { state: 'new', step: 1 } } as Config);
+    const { a } = await twoEditors();
+    device.config = { ...device.config, setup: { state: 'new', step: 2 } }; // Next on an unchanged screen
+    device.revision += 1;
+    act(() => a.current.applyChanges([[['deviceName'], 'obs']]));
+    expect((await a.current.save({ setup: { state: 'new', step: 3 } })).kind).toBe('saved');
+    expect(device.config.setup).toEqual({ state: 'new', step: 3 });
+  });
+
+  it('a secret it saved is not a conflict on its next save', async () => {
+    const device = statefulDevice(mockConfig);
+    const { a } = await twoEditors();
+    act(() => a.current.applyChanges([[['mqtt', 'password'], 'typed']]));
+    await a.current.save();
+    device.config = { ...device.config, mqtt: { ...(device.config.mqtt as Node), password: '********' }, deviceName: 'sync' };
+    device.revision += 1; // the device saved something else meanwhile
+    act(() => a.current.applyChanges([[['mqtt', 'broker'], 'other']]));
+    expect((await a.current.save()).kind).toBe('saved');
+  });
+
   it('a device without a revision gets a plain partial save', async () => {
     mockDevice();
     let sent: Node | null = null;

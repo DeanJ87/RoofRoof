@@ -6,7 +6,7 @@ import { toConfigPayload } from '../components/settings/payload';
 import { restartReasons } from '../components/settings/restart';
 import { fetchEffectiveReport, type EffectiveReport } from '../lib/settingsDeps';
 import { fetchConfigWithRevision, fetchStatus, saveConfig } from '../lib/settingsApi';
-import { applyPatch, baseValuesFor, diffConfig, rebaseEdits } from '../lib/configPatch';
+import { applyPatch, asShown, baseValuesFor, diffConfig, rebaseEdits } from '../lib/configPatch';
 import { deviceError } from '../i18n/deviceMessage';
 import { t } from '../i18n';
 
@@ -100,7 +100,7 @@ const loadInto = (take: (data: Fetched) => void, done: () => void) =>
 // save came in between is the new revision its own; otherwise it keeps the old
 // one, so its next save is checked field by field.
 const afterSave = (before: Loaded, patch: unknown, revision?: number): Loaded => ({
-  document: applyPatch(before.document, patch),
+  document: applyPatch(before.document, asShown(patch)),
   revision: before.revision !== undefined && revision === before.revision + 1 ? revision : before.revision,
 });
 

@@ -65,7 +65,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   the Wi-Fi network and password, the MQTT broker, port, user name and password, the ntfy server,
   topic and token, the Pushover keys, the webhook address and header, and the web user name and
   password. Changing one of them from an old page is refused if any partner changed, so a password
-  never lands on a network or server it wasn't typed for.
+  typed on that page never lands on a network or server changed elsewhere.
 - Q: What happens after a 409? → A: Settings says which settings changed on the device and offers
   Reload. Reload reads the device's settings and puts back every edit the person made except those
   to the changed fields, which now show the device's values. The wizard and the calibration page do
@@ -275,10 +275,11 @@ Each was an open choice; the safest option the constitution allows was taken.
 6. **Principle II gets a PATCH clarification (2.1.1)**, not a MAJOR change: the start rule is
    unchanged, the during-close triggers it names still stop at once, and no reading is used past
    its freshness. The residual risk: if N.I.N.A. stops answering and the mount unparks in the same
-   seconds, a roof without park switches keeps closing until the last good reading is 10 s old
-   (before: until the first failed reply arrived, which with the poller's 2 s period and 6 s
-   request limit was already up to about 9 s after the last good reading). Park switches still
-   stop it at once. The owner may prefer to treat this as MAJOR.
+   seconds, a roof without park switches keeps closing until the last good reading is 10 s old.
+   Before, it stopped at the first failed reply: typically 2-3 s after that reading when the
+   connection is refused, up to about 9 s on a timeout. Park switches still stop it at once. A
+   reviewer judged this a relaxation that the governance rule reserves for MAJOR; **the owner
+   decides** between PATCH (as written) and a 3.0.0 bump with the same text.
 7. **Field-level stale check by compare-and-save of loaded values**, not a history on the device:
    no memory kept between saves, and a sync or another page's change elsewhere never blocks a save.
 8. **Credential partners are checked together**, so a password can't be saved against a network or
@@ -287,4 +288,16 @@ Each was an open choice; the safest option the constitution allows was taken.
 10. **The revision travels in a header on GET** (not in the settings document), so a script that
     reads, edits and posts the document back keeps today's behaviour.
 11. **A changed secret can't be told from another changed secret** (both are masked); setting or
-    clearing one is detected, and its partners are checked with it.
+    clearing one is detected, and its partners are checked with it. So a page that changes only a
+    network name or server, after another page changed only that password, still saves; this is
+    no worse than the whole-document save before.
+12. **An unreadable N.I.N.A. reply rides like no reply**, including a well-formed reply missing
+    `AtPark` or `Slewing`, and an API error: none is a report that the mount moved, and the ride
+    is bounded by the 10 s limit.
+13. **A calibration run's pause between legs stays strict**: a missed reply during a pause ends
+    the run (the next leg is a start). Legs themselves ride.
+14. **The wizard's progress (`setup`) is never checked**: the page owns it, and Next on an
+    unchanged screen saves it on its own.
+15. **A refusal that names no field, or 16 (the device's limit), keeps none of the page's edits**
+    on Reload: the list may be incomplete, and a password must not be put back onto a network or
+    server that changed.

@@ -298,7 +298,7 @@ const Calibrate: FunctionalComponent = () => {
     if (outcome.kind === 'saved') return null;
     if (outcome.kind === 'conflict') {
       // Spec 021: the roof's settings changed on the device; the proposal is compared with them again.
-      await editor.rebase(outcome.fields);
+      if ((await editor.rebase(outcome.fields)) === null) return t('settings.couldNotReachTheDevice');
       return t('calibrate.changedOnDevice', { fields: listReasons(outcome.fields) });
     }
     return outcome.kind === 'refused' ? outcome.message : t('calibrate.notSaved');

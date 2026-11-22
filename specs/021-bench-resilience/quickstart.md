@@ -29,5 +29,7 @@ fields both save; the same field gets 409, and Reload keeps the other edits.
 - Two browser tabs on Settings: change the N.I.N.A. address in one and IPv6 in the other (loaded
   first); both changes stay. Change the N.I.N.A. address in both: the second save is refused naming
   it; Reload keeps its other edits.
+- Free heap (Diagnostics) before and during a save from a page loaded before another save: the
+  stale check's peak stays well clear of the minimum.
 - Wi-Fi setup in one tab, a Wi-Fi password typed in an older tab: the older save is refused naming
   `wifi.ssid`; the device stays on the new network.

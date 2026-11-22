@@ -56,12 +56,45 @@ const withPartners = (paths: string[]): string[] => [
   ...new Set([...paths, ...CREDENTIAL_PARTNERS.filter((group) => group.some((path) => paths.includes(path))).flat()]),
 ];
 
-/** The loaded value (null when the device didn't send it) of every field the patch changes and of its partners. */
+/**
+ * The loaded value (null when the device didn't send it) of every field the patch changes and of
+ * its partners. Not the setup wizard's progress (`setup`): the page owns it, and Next on an
+ * unchanged screen saves it on its own.
+ */
 export const baseValuesFor = (loaded: unknown, patch: unknown): Node => {
   const base: Node = {};
-  withPartners(leafPaths(patch)).forEach((path) => setAt(base, path, valueAt(loaded, path) ?? null));
+  withPartners(leafPaths(patch))
+    .filter((path) => !path.startsWith('setup.') && path !== 'setup')
+    .forEach((path) => setAt(base, path, valueAt(loaded, path) ?? null));
   return base;
 };
+
+const pathPatch = (path: string, value: unknown): Node => {
+  const out: Node = {};
+  setAt(out, path, value);
+  return out;
+};
+
+const SECRET_KEYS = ['password', 'token', 'userKey', 'appToken', 'authHeader'];
+const MASK = '********';
+
+/** A saved patch as the device now shows it: a secret set is masked, a secret cleared is "". */
+export const asShown = (patch: unknown): unknown => {
+  let shown = patch;
+  leafPaths(patch)
+    .filter((path) => SECRET_KEYS.includes(path.split('.').pop() ?? ''))
+    .forEach((path) => {
+      const value = valueAt(patch, path);
+      shown = applyPatch(
+        shown,
+        pathPatch(path, typeof value === 'string' && value !== '' && value !== '***' ? MASK : value === null ? '' : value),
+      );
+    });
+  return shown;
+};
+
+/** The device names at most this many changed fields (lib/ConfigModel ConfigSave MAX_CONFLICTS). */
+export const MAX_CONFLICTS = 16;
 
 /** `patch` written over a copy of `target`. */
 export const applyPatch = <T>(target: T, patch: unknown): T => {
@@ -83,10 +116,12 @@ const overlaps = (path: string, field: string) => path === field || path.startsW
 export const rebaseEdits = <T>(fresh: T, loaded: T, edited: T, changedFields: string[]): { config: T; replaced: string[] } => {
   const changed = withPartners(changedFields);
   const edits = diffConfig(loaded, edited);
+  // No names, or as many as the device lists: the list may be incomplete, so nothing is kept.
+  const unknown = changedFields.length === 0 || changedFields.length >= MAX_CONFLICTS;
   const kept: Node = {};
   const replaced: string[] = [];
   leafPaths(edits).forEach((path) => {
-    if (changed.some((field) => overlaps(path, field))) replaced.push(path);
+    if (unknown || changed.some((field) => overlaps(path, field))) replaced.push(path);
     else setAt(kept, path, valueAt(edits, path));
   });
   return { config: applyPatch(fresh, kept), replaced };

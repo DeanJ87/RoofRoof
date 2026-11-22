@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPatch, baseValuesFor, diffConfig, leafPaths, rebaseEdits } from '../configPatch';
+import { applyPatch, asShown, baseValuesFor, diffConfig, leafPaths, rebaseEdits } from '../configPatch';
 
 const loaded = {
   deviceName: 'roof',
@@ -75,5 +75,27 @@ describe('rebaseEdits', () => {
     const { config, replaced } = rebaseEdits(fresh, loaded, edited, ['wifi.ssid']);
     expect(config.wifi).toEqual(fresh.wifi);
     expect(replaced).toEqual(['wifi.password']);
+  });
+});
+
+describe('spec 021 review fixes', () => {
+  it("leaves the wizard's progress out of the base", () => {
+    expect(baseValuesFor({ setup: { step: 2 } }, { setup: { step: 3 }, deviceName: 'x' })).toEqual({ deviceName: null });
+  });
+
+  it('records a saved secret as the device shows it', () => {
+    expect(asShown({ mqtt: { password: 'typed', broker: 'b' }, alerts: { ntfy: { token: null } } })).toEqual({
+      mqtt: { password: '********', broker: 'b' },
+      alerts: { ntfy: { token: '' } },
+    });
+  });
+
+  it('keeps no edit when the device named none or as many as it lists', () => {
+    const edited = { ...loaded, deviceName: 'obs', wifi: { ...loaded.wifi, password: 'typed' } };
+    for (const names of [[], Array.from({ length: 16 }, (_, i) => `k${i}`)]) {
+      const { config, replaced } = rebaseEdits(loaded, loaded, edited, names);
+      expect(config).toEqual(loaded);
+      expect(replaced.sort()).toEqual(['deviceName', 'wifi.password']);
+    }
   });
 });

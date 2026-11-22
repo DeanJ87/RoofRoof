@@ -12,9 +12,11 @@ Sync Impact Report
   triggers (a mount that reports unparked, a switch that opens) but not what a failed read means;
   the code had read the start rule's "can't be read" into it.
 - Risk stated: with no park switches fitted, a mount that unparks while N.I.N.A. stops answering
-  can see the roof keep closing until the last good reading is 10 s old. Before, the first failed
-  reply (with the poller's 2 s period and 6 s request limit) already arrived up to about 9 s after
-  that reading. Park switches still stop it at once. Judged a clarification, not a relaxation: no
+  can see the roof keep closing until the last good reading is 10 s old. Before, it stopped at the
+  first failed reply: typically 2-3 s after that reading when N.I.N.A.'s host refuses the
+  connection, up to about 9 s when the request times out (the poller's 2 s period and 6 s request
+  limit). So the typical added exposure is about 7 s, the worst about 1 s. Park switches still
+  stop it at once. Judged a clarification, not a relaxation: no
   reading is used past the freshness limit Principle II already sets, and every named trigger still
   stops the close at once; the owner may choose to treat it as MAJOR.
 - Templates: no change (they read the principles from this file).
