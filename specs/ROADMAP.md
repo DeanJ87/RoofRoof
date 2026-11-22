@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-020
+# RoofRoof roadmap: specs 002-021
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -319,6 +319,23 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** copying the device name, host name, Wi-Fi, language or any on/off switch;
   SQMeter's MQTT for the location; any safety decision from SQMeter's location.
 
+### 021 Bench resilience (base: 020, stacked on its PR)
+
+- **Scope:**
+  - Two defects found on the first real board.
+  - The park interlock during a close, a calibration leg or a jog rides through a missed N.I.N.A.
+    reply (no answer, unreadable, API error) on the last good reading, only while that reading
+    said parked, agrees with the switches as read now and is within N.I.N.A.'s freshness limit
+    (10 s), measured by the control task itself. Any report of not parked, a switch open or
+    unreadable, N.I.N.A. not configured or re-addressed, or a stalled hand-over still stops it at
+    once. Starting a move is unchanged. Constitution 2.1.1 words this in Principle II.
+  - Settings saves send only what changed. `GET /api/config` sends its revision; a save with
+    `baseRevision` and `baseValues` is refused (409, naming the fields) only when one of its
+    fields, or a credential's partner, changed on the device since; Settings offers Reload and
+    keeps the other edits. Every settings save checks and merges under the one save lock.
+- **Out of scope:** any new setting; a longer freshness limit; a history of changes on the device;
+  changing the backup restore's own revision check.
+
 ## Merge order
 
 ```text
@@ -327,7 +344,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
                                                                   └─ 015 ─┬─ 016 ── 019 ─┐
-                                                                          └─ 017 ────────┴─ 018 ── 020
+                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

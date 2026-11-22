@@ -33,7 +33,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `main.cpp` | `src/main.cpp` | Changed: sensor, display, BLE, battery and update-check setup and tasks removed; the motor driver is held off first thing in `setup()` | No |
 | `WebServer.cpp`, `WebServer.h` | same | Changed: sensor, safety, display, language and release routes removed; restarts, uploads, settings saves and WiFi changes go through `PlatformGuard` (spec 010) | No |
 | `WebServerAlpaca.cpp` | same | Changed: serves the generic device list with the roof's Dome (spec 006), commanded through `RoofControl` | With `lib/AlpacaLogic` |
-| `WebServerApi.cpp`, `WebServerStatus.cpp`, `WebServerLive.cpp` | same | Changed: sensor and safety documents removed; `/ws/status` only | No |
+| `WebServerApi.cpp`, `WebServerStatus.cpp`, `WebServerLive.cpp` | same | Changed: sensor and safety documents removed; `/ws/status` only. Spec 021: `GET /api/config` sends `X-Config-Revision`; a save is checked field by field against it (`lib/ConfigModel` `ConfigSave`) and merged onto the live settings under the save lock, as the WiFi setup save is | Yes (the stale-save check) |
 | `WebServerAlerts.cpp` | same | Changed: battery and sensor events removed | No |
 | `WebServerUpdates.cpp` | same | Changed: GitHub release check removed; upload auth moved before the flash write | Yes (auth fix) |
 | `WebServerBackup.cpp`, `WebServerShared.h` | same | Changed: small edits for the removed settings | No |

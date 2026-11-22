@@ -10,6 +10,8 @@ All settings are stored in NVS (Non-Volatile Storage) and survive firmware and f
 
 The [setup wizard](setup-wizard.md) walks through the essential settings once, with live readings and a review; it saves through the same settings API. **Settings** has five tabs. Changes are kept until you **Save**; a tab with a problem shows a red dot, and settings that only take effect after a restart ask for one when you save.
 
+A save sends only the settings you changed, so two browser tabs (or a phone and a laptop) can change different settings without undoing each other, and a page left open doesn't put back settings changed since, by another page or by the device following SQMeter. If a setting you changed was also changed on the device since your page loaded it, the save is refused and a message names it; **Reload** reads the device's settings again and keeps your other changes, and the named ones show the device's values (a WiFi, MQTT or alert password you typed is dropped if its network or server changed). The setup wizard and the calibration page reload at once and say so.
+
 Some settings only work when something else is on - MQTT alerts need MQTT, internet alerts need WiFi. Such a setting can't be switched on while what it needs is off, and if you switch the other thing off later the setting is kept exactly as it was but marked **Inactive** with the reason and a button that takes you to the fix. The device doesn't act on it until then, and nothing has to be set up again when you switch the other thing back on. Before you save, a note lists anything the change would make inactive. Every such setting is listed in [Settings dependencies](../reference/settings-dependencies.md).
 
 === "Device"

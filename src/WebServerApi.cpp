@@ -94,8 +94,10 @@ namespace SQM
 
     void WebServer::answerConfigSave(AsyncWebServerRequest *request, bool saved, const std::string &reason, const ConfigSave::Check &stale)
     {
+        // An action's answer (contracts/action-result): `success` only when saved.
         DynamicJsonDocument doc(512 + 64 * stale.conflicts.size());
-        doc["success"] = saved;
+        if (saved)
+            doc["success"] = true;
         doc["revision"] = configRevision.load();
         int code = 200;
         if (stale.stale)

@@ -55,7 +55,7 @@
     "GET /api/config": {
       "tag": "Settings",
       "summary": "Settings",
-      "description": "Every setting. Passwords and keys are masked.",
+      "description": "Every setting. Passwords and keys are masked. The `X-Config-Revision` response header carries the settings revision, read before the settings (spec 021): it changes on every save, starts from a random value at each start, and a save can send it back as `baseRevision`.",
       "responses": {
         "200": "config"
       }
@@ -63,7 +63,7 @@
     "POST /api/config": {
       "tag": "Settings",
       "summary": "Change settings",
-      "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.",
+      "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. Spec 021: a page sends `baseRevision` (the revision it loaded) and `baseValues` (the values it loaded for the fields it changes). At the current revision the save goes through; at another one, only if each base value still matches the device's (secrets compare masked); otherwise 409 with `conflicts` (the dotted names, at most 16) and `revision`, and nothing is saved. Without `baseRevision` nothing is checked. The answer carries the new `revision`. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.",
       "requestBody": {
         "schema": "config-update",
         "example": {
@@ -291,7 +291,7 @@
     "PUT /api/config": {
       "tag": "Settings",
       "summary": "Change settings (PUT)",
-      "description": "The same as `POST /api/config`, for clients that use PUT. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.",
+      "description": "The same as `POST /api/config`, for clients that use PUT, including the `baseRevision` check (spec 021). Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.",
       "requestBody": {
         "schema": "config-update"
       },

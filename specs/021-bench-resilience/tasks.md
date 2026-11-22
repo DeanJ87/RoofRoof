@@ -32,7 +32,7 @@
 
 - [ ] T017 Constitution 2.1.1 (Principle II clarification) with its Sync Impact Report
 - [ ] T018 OpenAPI: `tools/api/operations.json` (header, base keys, 409 body), `docs/api/openapi.json` regenerated; docs/api/rest.md
-- [ ] T019 User docs: docs/user-guide/safety-inputs.md and close-on-unsafe.md (ride-through), configuration.md (two pages, Reload); heritage note for the save handler; CHANGELOG.md
+- [ ] T019 User docs: docs/user-guide/safety-inputs.md (ride-through), configuration.md (two pages, Reload); heritage note for the save handler; CHANGELOG.md
 
 ## Phase 5: Verify
 

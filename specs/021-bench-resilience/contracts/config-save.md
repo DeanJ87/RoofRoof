@@ -39,7 +39,6 @@ Refused (409):
 
 ```json
 {
-  "success": false,
   "error": "Settings changed on the device since this page loaded them: park.nina.url",
   "conflicts": ["park.nina.url"],
   "revision": 1834201980
