@@ -229,8 +229,11 @@ namespace SQM
 
         void syncFromSite(SyncOutcome &out, const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet)
         {
-            out = SyncOutcome{};
+            // Reset in place: a fresh SyncOutcome would put another settings copy on the stack.
             out.next = live;
+            out.marked = false;
+            for (GroupOutcome &g : out.groups)
+                g = GroupOutcome{};
             const uint32_t stamp =
                 clockSet && epochSeconds > 0 && epochSeconds <= INT64_C(0xFFFFFFFF) ? static_cast<uint32_t>(epochSeconds) : 1;
             for (Group group : GROUPS)

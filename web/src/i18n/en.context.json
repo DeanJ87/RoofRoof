@@ -1164,6 +1164,8 @@
   "sync.follow": "Settings and the setup wizard: a button label on the 'Set here' note; max 32 chars. Starts following SQMeter for this group (an unsaved edit).",
   "sync.follows": "Settings (Time, Network, Roof, Alerts) and the setup wizard: a note above a group of site settings; a sentence; max 90 chars.",
   "sync.followsProblem": "Settings (Time, Network, Roof, Alerts) and the setup wizard: a note above a group of site settings; a sentence; max 90 chars. {problem} is one of location.problem.* (e.g. \"SQMeter not answering\").",
+  "sync.heldNoAddress": "Note on a group that follows SQMeter but isn't synced yet because SQMeter's address isn't set; Edit here instead makes it local.",
+  "sync.heldRoofCommands": "Note on a group that follows SQMeter but isn't synced while MQTT roof commands are on; Edit here instead makes it local.",
   "sync.local": "Settings (Time, Network, Roof, Alerts) and the setup wizard: a note above a group of site settings; a sentence; max 90 chars.",
   "sync.needs.mqttPassword": "Settings -> Network (and the Status card's ? tip): warning under the MQTT password field; a one-line note (a sentence); max 90 chars.",
   "sync.needs.ntfyToken": "Settings -> Alerts (and the Status card's ? tip): warning under the ntfy token field; a one-line note (a sentence); max 90 chars.",

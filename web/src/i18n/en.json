@@ -1187,6 +1187,8 @@
   "sync.follow": "Follow SQMeter",
   "sync.follows": "Follows SQMeter",
   "sync.followsProblem": "Follows SQMeter: {problem}",
+  "sync.heldNoAddress": "Follows SQMeter once its address is set; what you type here is replaced then",
+  "sync.heldRoofCommands": "Follows SQMeter once MQTT roof commands are off; what you type here is replaced then",
   "sync.local": "Set here, not from SQMeter",
   "sync.needs.mqttPassword": "SQMeter's broker needs a password: enter it here.",
   "sync.needs.ntfyToken": "SQMeter's ntfy server needs a token: enter it here.",

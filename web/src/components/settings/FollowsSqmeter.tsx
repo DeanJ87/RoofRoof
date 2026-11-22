@@ -20,8 +20,18 @@ export const FollowsSqmeter: FunctionalComponent<Props> = ({ group, config, stat
     if (!config.safety?.http.url.trim()) return null;
     return <Note action={{ label: t('sync.follow'), onClick: () => setFollow(true) }}>{t('sync.local')}</Note>;
   }
-  // Without SQMeter's address (D-47 says so) or held by MQTT roof commands, nothing is synced: the fields stay editable.
-  if (!locked(config, group)) return null;
+  // Without SQMeter's address or held by MQTT roof commands nothing is synced and the fields stay
+  // editable; say that what is typed is replaced once it syncs, unless the group is made local.
+  if (!locked(config, group)) {
+    const why = config.safety?.http.url.trim() ? t('sync.heldRoofCommands') : t('sync.heldNoAddress');
+    return (
+      <div data-sync={group}>
+        <Note tone="warn" action={{ label: t('sync.editHere'), onClick: () => setFollow(false) }}>
+          {why}
+        </Note>
+      </div>
+    );
+  }
   const line = syncLine(status?.sync, group);
   const refused = status?.sync?.[group]?.follow ? status.sync[group].refused : null;
   return (
