@@ -67,7 +67,8 @@ void test_numbers_by_value_null_equals_missing_masks_compare_as_masks(void)
     TEST_ASSERT_FALSE(
         checkSave(body(R"("roof":{"travelMm":1900})", R"({"roof":{"travelMm":1850.0,"speedMmPerSecond":38.5}})"), REV, CURRENT).stale);
     TEST_ASSERT_FALSE(checkSave(body(R"("daylight":{"mode":"alert"})", R"({"daylight":{"mode":null},"x":null})"), REV, CURRENT).stale);
-    TEST_ASSERT_FALSE(checkSave(body(R"("wifi":{"password":"pw"})", R"({"wifi":{"password":"********","ssid":"New"}})"), REV, CURRENT).stale);
+    TEST_ASSERT_FALSE(
+        checkSave(body(R"("wifi":{"password":"pw"})", R"({"wifi":{"password":"********","ssid":"New"}})"), REV, CURRENT).stale);
     // A secret set where the page saw none.
     const auto c = checkSave(body(R"("wifi":{"password":"pw"})", R"({"wifi":{"password":""}})"), REV, CURRENT);
     TEST_ASSERT_TRUE(c.stale);

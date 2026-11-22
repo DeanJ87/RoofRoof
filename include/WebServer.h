@@ -404,6 +404,7 @@ namespace SQM
         void setupBackupRoutes();
         void handleBackupStart(AsyncWebServerRequest *request, bool preview);
         void handleBackupApply(AsyncWebServerRequest *request);
+        std::unique_ptr<StagedRestore> takeStaged(const std::string &token);
         static void runBackupJob(void *arg);
         static std::string makeBackupFile(BackupJob &job, int &status);
         std::string previewRestore(BackupJob &job, int &status);

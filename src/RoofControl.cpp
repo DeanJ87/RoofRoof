@@ -16,7 +16,6 @@
 #include "RoofReadings.h"
 #include "RoofSettings.h"
 #include "RoofText.h"
-#include "SafetyPoller.h"
 #include "SettingsGuard.h"
 #include "StepWatchdog.h"
 
@@ -514,15 +513,6 @@ namespace SQM
     bool RoofControl::moving() const
     {
         return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load())) || calibratingNow.load();
-    }
-
-    RoofIo::GateInputs RoofControl::currentGates() const
-    {
-        RoofIo::GateInputs now = RoofIo::currentGates(gates, safetyHandedOver, millis() - safetyAtMs);
-        // Spec 021: the clock N.I.N.A.'s readings are stamped with, so the
-        // control step bounds the reading's freshness itself.
-        now.nowMs = SafetyPoller::nowMs();
-        return now;
     }
 
     Safety::SwitchReading RoofControl::parkSwitch(uint8_t index) const

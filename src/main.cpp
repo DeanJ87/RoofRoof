@@ -409,7 +409,8 @@ void handleSafety()
             safetyInputs->weather(),
             safetyInputs->park(),
             safetyInputs->closeHold(),
-            closesNow, closesNow ? Daylight::describe(closeOnUnsafe.daylight()) : "");
+            closesNow,
+            closesNow ? Daylight::describe(closeOnUnsafe.daylight()) : "");
         lastHandOver = now;
         handedSafe = safeNow;
         handedCloses = closesNow;

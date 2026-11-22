@@ -82,9 +82,7 @@ describe('Copy from SQMeter', () => {
     fireEvent.click(within(site).getByRole('button', { name: 'Apply ticked' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].mqtt).toEqual(
-      expect.objectContaining({ broker: '192.168.1.10', username: 'observatory', password: null }),
-    );
+    expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: '192.168.1.10', username: 'observatory', password: null }));
     expect(saves[0].mqtt.enabled).toBeUndefined();
     expect(saves[0].alerts!.ntfy).toEqual({ topic: 'my-observatory' }); // never switched on by a copy
     expect(saves[0].location).toEqual(expect.objectContaining({ source: 'sqmeter', set: true, latitude: 51.4769 }));

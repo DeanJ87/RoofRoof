@@ -96,7 +96,29 @@ const loadInto = (take: (data: Fetched) => void, done: () => void) =>
     .catch(() => undefined)
     .finally(done);
 
-export const useConfigEditor = () => {
+// The page now knows the device as before plus this save. Only when no other
+// save came in between is the new revision its own; otherwise it keeps the old
+// one, so its next save is checked field by field.
+const afterSave = (before: Loaded, patch: unknown, revision?: number): Loaded => ({
+  document: applyPatch(before.document, patch),
+  revision: before.revision !== undefined && revision === before.revision + 1 ? revision : before.revision,
+});
+
+// Spec 021, after a `conflict`: the device's settings, with every edit made here
+// put back except those to the fields that changed there (and their credential
+// partners), and which edits were replaced. Null when the device couldn't be read.
+const rebaseOnto = async (saved: Config, config: Config, changed: string[]) => {
+  try {
+    const fresh = await fetchConfigWithRevision();
+    const { config: next, replaced } = rebaseEdits(toConfigPayload(fresh.config), saved, config, changed);
+    return { fresh, next: toConfigPayload(next), replaced };
+  } catch {
+    return null;
+  }
+};
+
+// The settings as loaded and as edited, and what the page loaded (spec 021).
+const useLoadedConfig = () => {
   const [config, setConfig] = useState<Config | null>(null);
   const [saved, setSaved] = useState<Config | null>(null);
   // The setup state as loaded (spec 015): kept out of the edited settings (a Settings save never sends it).
@@ -104,8 +126,8 @@ export const useConfigEditor = () => {
   const [loading, setLoading] = useState(true);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [originalWifiSsid, setOriginalWifiSsid] = useState<string | null>(null);
-  const { status, effective, loadStatus } = useDeviceState();
   const loaded = useRef<Loaded>({ document: null, revision: undefined });
+  // `edited`: what the editor shows instead of the device's settings (a rebase).
   const take = ({ config: data, revision }: Fetched, edited?: Config) => {
     const normalized = toConfigPayload(data);
     loaded.current = { document: data, revision };
@@ -118,7 +140,28 @@ export const useConfigEditor = () => {
   const load = () => loadInto(take, () => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps -- loaded once on mount; reload() loads again
   useEffect(() => void load(), []);
+  return {
+    config,
+    setConfig,
+    saved,
+    setSaved,
+    setup,
+    setSetup,
+    loading,
+    validationErrors,
+    setValidationErrors,
+    originalWifiSsid,
+    loaded,
+    take,
+    load,
+  };
+};
 
+export const useConfigEditor = () => {
+  const state = useLoadedConfig();
+  const { config, setConfig, saved, setSaved, setup, setSetup, loading, validationErrors, setValidationErrors, originalWifiSsid } = state;
+  const { loaded, take, load } = state;
+  const { status, effective, loadStatus } = useDeviceState();
   const applyChanges = (changes: [ConfigPath, unknown][]) => {
     setConfig((current) => {
       if (!current) return current;
@@ -137,11 +180,7 @@ export const useConfigEditor = () => {
     const { outcome, patch, revision } = await submit(config, saved, extra, before);
     setValidationErrors(outcome.kind === 'invalid' ? outcome.errors : {});
     if (outcome.kind !== 'saved') return outcome;
-    // The page now knows the device as before plus this save. Only when no other
-    // save came in between is the new revision its own; otherwise it keeps the
-    // old one, so its next save is checked field by field.
-    const own = before.revision !== undefined && revision === before.revision + 1;
-    loaded.current = { document: applyPatch(before.document, patch), revision: own ? revision : before.revision };
+    loaded.current = afterSave(before, patch, revision);
     setSaved(outcome.payload);
     setConfig(outcome.payload);
     if (extra.setup) setSetup(extra.setup);
@@ -154,20 +193,11 @@ export const useConfigEditor = () => {
     setValidationErrors({});
   };
 
-  // Spec 021, after a `conflict`: the device's settings, with every edit made
-  // here put back except those to the fields that changed there (and their
-  // credential partners). The fields whose edits were replaced; null when the
-  // device couldn't be read.
+  // Spec 021: after a `conflict`, the fields whose edits were replaced (null: unreachable).
   const rebase = async (changed: string[]): Promise<string[] | null> => {
-    if (!config || !saved) return null;
-    try {
-      const fresh = await fetchConfigWithRevision();
-      const { config: next, replaced } = rebaseEdits(toConfigPayload(fresh.config), saved, config, changed);
-      take(fresh, toConfigPayload(next));
-      return replaced;
-    } catch {
-      return null;
-    }
+    const rebased = config && saved ? await rebaseOnto(saved, config, changed) : null;
+    if (rebased) take(rebased.fresh, rebased.next);
+    return rebased?.replaced ?? null;
   };
 
   return {

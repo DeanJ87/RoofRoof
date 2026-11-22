@@ -237,6 +237,17 @@ namespace SQM
         return document;
     }
 
+    // The previewed restore `token` names, while its preview is fresh; taken, so it applies once.
+    std::unique_ptr<WebServer::StagedRestore> WebServer::takeStaged(const std::string &token)
+    {
+        std::lock_guard<std::mutex> lock(stagedRestoreLock);
+        if (stagedRestore && millis() - stagedRestore->stagedAtMs > PREVIEW_TTL_MS)
+            stagedRestore.reset();
+        if (stagedRestore && !token.empty() && stagedRestore->token == token)
+            return std::move(stagedRestore);
+        return nullptr;
+    }
+
     void WebServer::handleBackupApply(AsyncWebServerRequest *request)
     {
         if (!requireAuth(request))
@@ -244,15 +255,7 @@ namespace SQM
         std::string body;
         if (!takeBody(request, body))
             return;
-        const std::string token = Backup::readApplyRequest(body);
-        std::unique_ptr<StagedRestore> staged;
-        {
-            std::lock_guard<std::mutex> lock(stagedRestoreLock);
-            if (stagedRestore && millis() - stagedRestore->stagedAtMs > PREVIEW_TTL_MS)
-                stagedRestore.reset();
-            if (stagedRestore && !token.empty() && stagedRestore->token == token)
-                staged = std::move(stagedRestore);
-        }
+        std::unique_ptr<StagedRestore> staged = takeStaged(Backup::readApplyRequest(body));
         // What is applied is exactly what was previewed, against the settings it was previewed on (SQMeter spec 033 FR-013).
         if (!staged || staged->revision != configRevision.load())
         {

@@ -16,8 +16,7 @@ namespace SQM
             // A poll that got no usable answer: absence of evidence, not a report.
             bool readFailed(ReadingStatus status)
             {
-                return status == ReadingStatus::Unreachable || status == ReadingStatus::Unreadable ||
-                       status == ReadingStatus::ApiError;
+                return status == ReadingStatus::Unreachable || status == ReadingStatus::Unreadable || status == ReadingStatus::ApiError;
             }
 
             constexpr uint32_t READ_FAILURES = ParkNinaUnreachable | ParkNinaUnreadable | ParkNinaApiError;

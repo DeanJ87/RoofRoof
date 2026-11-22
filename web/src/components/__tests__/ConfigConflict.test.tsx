@@ -91,7 +91,7 @@ describe('two pages editing one device (spec 021)', () => {
     expect(device.config.deviceName).toBe('obs');
   });
 
-  it("never saves a Wi-Fi password against a network changed elsewhere, and drops it on Reload", async () => {
+  it('never saves a Wi-Fi password against a network changed elsewhere, and drops it on Reload', async () => {
     const device = statefulDevice(mockConfig);
     const { b } = await twoEditors();
     device.config = { ...device.config, wifi: { ...(device.config.wifi as Node), ssid: 'NewNet' } };
@@ -106,7 +106,7 @@ describe('two pages editing one device (spec 021)', () => {
     expect(b.current.dirty).toBe(false);
   });
 
-  it("keeps its own revision after its own save, the old one when another save came between", async () => {
+  it('keeps its own revision after its own save, the old one when another save came between', async () => {
     const device = statefulDevice(mockConfig);
     const { a, b } = await twoEditors();
     act(() => a.current.applyChanges([[['deviceName'], 'one']]));
@@ -154,7 +154,7 @@ describe('two pages editing one device (spec 021)', () => {
     fireEvent.input(name, { target: { value: 'here' } });
     fireEvent.change(name, { target: { value: 'here' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
-    expect(await screen.findByText(/Settings changed on the device since this page loaded them: deviceName/)).toBeInTheDocument();
+    expect(await screen.findByText(/Changed on the device since this page loaded: deviceName/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(await screen.findByText(/These now show the device's values: deviceName/)).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector<HTMLInputElement>('[data-field="deviceName"]')!.value).toBe('elsewhere'));

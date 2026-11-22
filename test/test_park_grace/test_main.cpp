@@ -78,6 +78,23 @@ namespace
         s.state = Roof::State::Closing;
         return s;
     }
+    RoofIo::GateInputs parkedGates(uint8_t fitted)
+    {
+        RoofIo::GateInputs in;
+        in.weather = Verdict::Safe;
+        in.parked = true;
+        in.fittedSwitches = fitted;
+        in.switch1 = RoofIo::Contact::Closed;
+        in.switch2 = RoofIo::Contact::Closed;
+        return in;
+    }
+
+    Roof::Status inState(Roof::State state)
+    {
+        Roof::Status s;
+        s.state = state;
+        return s;
+    }
 } // namespace
 
 // --- The memory -------------------------------------------------------------
@@ -291,6 +308,64 @@ void test_the_ride_never_starts_a_close(void)
     TEST_ASSERT_FALSE(RoofIo::parkHolds(g));
 }
 
+// --- The gates' rule (RoofGates closeMayContinue) -----------------------------
+
+// Spec 021: a move rides through a missed N.I.N.A. reply only while the
+// reading it relies on is fresh, with every fitted switch closed now.
+void test_close_may_continue_on_a_fresh_ride_through(void)
+{
+    RoofIo::GateInputs riding = parkedGates(1);
+    riding.parked = false;
+    riding.ninaGrace = true;
+    riding.parkFreshUntilMs = 60000;
+    riding.nowMs = 60000;
+    TEST_ASSERT_TRUE(RoofIo::closeMayContinue(riding));
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(inState(Roof::State::Closing), riding));
+    riding.nowMs = 60001;
+    TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), riding));
+    TEST_ASSERT_EQUAL_UINT32(RoofIo::InterlockNinaStale, RoofIo::interlockBits(riding));
+    riding.nowMs = 1000;
+    riding.switch1 = RoofIo::Contact::Unreadable;
+    TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), riding));
+    TEST_ASSERT_EQUAL_UINT32(RoofIo::InterlockSwitch1, RoofIo::interlockBits(riding));
+    // A ride-through without a bound handed over never holds.
+    RoofIo::GateInputs unbounded = parkedGates(0);
+    unbounded.parked = false;
+    unbounded.ninaGrace = true;
+    TEST_ASSERT_FALSE(RoofIo::closeMayContinue(unbounded));
+}
+
+void test_a_parked_reading_is_bounded_during_a_move(void)
+{
+    RoofIo::GateInputs in = parkedGates(0);
+    in.parkFreshUntilMs = 30000;
+    in.nowMs = 30000;
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(inState(Roof::State::Closing), in));
+    in.nowMs = 30001;
+    TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), in));
+    TEST_ASSERT_EQUAL_UINT32(RoofIo::InterlockNinaStale, RoofIo::interlockBits(in));
+    // The start check is unchanged: the hand-over's park result alone.
+    TEST_ASSERT_EQUAL(RoofIo::GateRefusal::None, RoofIo::gateCommand(Roof::Command::Close, in));
+}
+
+void test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it(void)
+{
+    RoofIo::GateInputs riding = parkedGates(0);
+    riding.parked = false;
+    riding.ninaGrace = true;
+    riding.parkFreshUntilMs = 60000;
+    riding.nowMs = 1000;
+    TEST_ASSERT_EQUAL(RoofIo::GateRefusal::MountNotParked, RoofIo::gateCommand(Roof::Command::Close, riding));
+    const RoofIo::GateInputs stale = RoofIo::currentGates(riding, true, RoofIo::SAFETY_HANDOVER_STALE_MS + 1);
+    TEST_ASSERT_FALSE(stale.ninaGrace);
+    TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), stale));
+    TEST_ASSERT_TRUE(RoofIo::currentGates(riding, true, RoofIo::SAFETY_HANDOVER_STALE_MS).ninaGrace);
+    Roof::Status leg = inState(Roof::State::Opening);
+    leg.calibrating = true;
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(leg, riding));
+    TEST_ASSERT_TRUE(RoofIo::interlockLost(leg, stale));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -308,5 +383,8 @@ int main(int, char **)
     RUN_TEST(test_a_good_reading_is_bounded_by_the_control_task_too);
     RUN_TEST(test_a_switch_opening_during_the_ride_stops_in_that_step);
     RUN_TEST(test_the_ride_never_starts_a_close);
+    RUN_TEST(test_close_may_continue_on_a_fresh_ride_through);
+    RUN_TEST(test_a_parked_reading_is_bounded_during_a_move);
+    RUN_TEST(test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it);
     return UNITY_END();
 }

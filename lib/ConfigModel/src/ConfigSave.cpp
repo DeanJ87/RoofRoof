@@ -36,19 +36,51 @@ namespace SQM
                 return true;
             }
 
+            enum class Kind : uint8_t
+            {
+                Null,
+                Bool,
+                Number, // integers and floats alike: 1850 equals 1850.0
+                Text,
+                Array,
+                Object,
+            };
+
+            Kind kindOf(JsonVariantConst v)
+            {
+                if (v.isNull())
+                    return Kind::Null;
+                if (v.is<bool>())
+                    return Kind::Bool;
+                if (v.is<double>())
+                    return Kind::Number;
+                if (v.is<const char *>())
+                    return Kind::Text;
+                return v.is<JsonArrayConst>() ? Kind::Array : Kind::Object;
+            }
+
+            // Values of different kinds never match ("1" isn't 1).
             bool sameValue(JsonVariantConst a, JsonVariantConst b)
             {
-                if (a.isNull() || b.isNull())
-                    return a.isNull() && b.isNull();
-                if (a.is<bool>() || b.is<bool>())
-                    return a.is<bool>() && b.is<bool>() && a.as<bool>() == b.as<bool>();
-                if (a.is<double>() || b.is<double>())
-                    return a.is<double>() && b.is<double>() && a.as<double>() == b.as<double>();
-                if (a.is<const char *>() || b.is<const char *>())
-                    return a.is<const char *>() && b.is<const char *>() && std::strcmp(a.as<const char *>(), b.as<const char *>()) == 0;
-                if (a.is<JsonArrayConst>() || b.is<JsonArrayConst>())
-                    return a.is<JsonArrayConst>() && b.is<JsonArrayConst>() && sameArray(a.as<JsonArrayConst>(), b.as<JsonArrayConst>());
-                return a.is<JsonObjectConst>() && b.is<JsonObjectConst>() && sameObject(a.as<JsonObjectConst>(), b.as<JsonObjectConst>());
+                const Kind kind = kindOf(a);
+                if (kind != kindOf(b))
+                    return false;
+                switch (kind)
+                {
+                case Kind::Null:
+                    return true;
+                case Kind::Bool:
+                    return a.as<bool>() == b.as<bool>();
+                case Kind::Number:
+                    return a.as<double>() == b.as<double>();
+                case Kind::Text:
+                    return std::strcmp(a.as<const char *>(), b.as<const char *>()) == 0;
+                case Kind::Array:
+                    return sameArray(a.as<JsonArrayConst>(), b.as<JsonArrayConst>());
+                case Kind::Object:
+                    break;
+                }
+                return sameObject(a.as<JsonObjectConst>(), b.as<JsonObjectConst>());
             }
 
             // Each leaf of `base` (objects are walked, anything else is a leaf).

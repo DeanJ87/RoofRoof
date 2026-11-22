@@ -162,62 +162,6 @@ void test_interlock_bits_name_the_input(void)
     TEST_ASSERT_EQUAL_UINT32(0, interlockBits(one));
 }
 
-// Spec 021: a move rides through a missed N.I.N.A. reply only while the
-// reading it relies on is fresh, with every fitted switch closed now.
-void test_close_may_continue_on_a_fresh_ride_through(void)
-{
-    GateInputs riding = parkedWith(1);
-    riding.parked = false;
-    riding.ninaGrace = true;
-    riding.parkFreshUntilMs = 60000;
-    riding.nowMs = 60000;
-    TEST_ASSERT_TRUE(closeMayContinue(riding));
-    TEST_ASSERT_FALSE(interlockLost(inState(Roof::State::Closing), riding));
-    riding.nowMs = 60001;
-    TEST_ASSERT_TRUE(interlockLost(inState(Roof::State::Closing), riding));
-    TEST_ASSERT_EQUAL_UINT32(InterlockNinaStale, interlockBits(riding));
-    riding.nowMs = 1000;
-    riding.switch1 = Contact::Unreadable;
-    TEST_ASSERT_TRUE(interlockLost(inState(Roof::State::Closing), riding));
-    TEST_ASSERT_EQUAL_UINT32(InterlockSwitch1, interlockBits(riding));
-    // A ride-through without a bound handed over never holds.
-    GateInputs unbounded = parkedWith(0);
-    unbounded.parked = false;
-    unbounded.ninaGrace = true;
-    TEST_ASSERT_FALSE(closeMayContinue(unbounded));
-}
-
-void test_a_parked_reading_is_bounded_during_a_move(void)
-{
-    GateInputs in = parkedWith(0);
-    in.parkFreshUntilMs = 30000;
-    in.nowMs = 30000;
-    TEST_ASSERT_FALSE(interlockLost(inState(Roof::State::Closing), in));
-    in.nowMs = 30001;
-    TEST_ASSERT_TRUE(interlockLost(inState(Roof::State::Closing), in));
-    TEST_ASSERT_EQUAL_UINT32(InterlockNinaStale, interlockBits(in));
-    // The start check is unchanged: the hand-over's park result alone.
-    TEST_ASSERT_EQUAL(GateRefusal::None, gateCommand(Roof::Command::Close, in));
-}
-
-void test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it(void)
-{
-    GateInputs riding = parkedWith(0);
-    riding.parked = false;
-    riding.ninaGrace = true;
-    riding.parkFreshUntilMs = 60000;
-    riding.nowMs = 1000;
-    TEST_ASSERT_EQUAL(GateRefusal::MountNotParked, gateCommand(Roof::Command::Close, riding));
-    const GateInputs stale = currentGates(riding, true, SAFETY_HANDOVER_STALE_MS + 1);
-    TEST_ASSERT_FALSE(stale.ninaGrace);
-    TEST_ASSERT_TRUE(interlockLost(inState(Roof::State::Closing), stale));
-    TEST_ASSERT_TRUE(currentGates(riding, true, SAFETY_HANDOVER_STALE_MS).ninaGrace);
-    Roof::Status leg = inState(Roof::State::Opening);
-    leg.calibrating = true;
-    TEST_ASSERT_FALSE(interlockLost(leg, riding));
-    TEST_ASSERT_TRUE(interlockLost(leg, stale));
-}
-
 void test_open_stops_when_not_safe(void)
 {
     GateInputs unsafe;
@@ -580,9 +524,6 @@ int main(int, char **)
     RUN_TEST(test_interlock_lost_only_while_closing);
     RUN_TEST(test_interlock_lost_during_any_calibration_leg);
     RUN_TEST(test_interlock_bits_name_the_input);
-    RUN_TEST(test_close_may_continue_on_a_fresh_ride_through);
-    RUN_TEST(test_a_parked_reading_is_bounded_during_a_move);
-    RUN_TEST(test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it);
     RUN_TEST(test_open_stops_when_not_safe);
     RUN_TEST(test_a_jog_stops_when_not_safe_or_daylight_and_is_interlocked);
     RUN_TEST(test_stale_safety_handover_is_not_safe_and_not_parked);

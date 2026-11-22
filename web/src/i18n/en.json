@@ -843,7 +843,7 @@
   "settings.backup.title": "Backup & restore",
   "settings.backup.unknownToThisFirmware": "Unknown to this firmware",
   "settings.backup.willChange": "Will change",
-  "settings.changedOnDevice": "Settings changed on the device since this page loaded them: {fields}. Reload to see them; your other changes are kept.",
+  "settings.changedOnDevice": "Changed on the device since this page loaded: {fields}. Reload keeps your other changes.",
   "settings.controls.setUp": "Set up",
   "settings.couldNotReachTheDevice": "Could not reach the device",
   "settings.depLabels.aWeatherSourceIsLost": "\"A weather source is lost\" alerts",
