@@ -138,8 +138,13 @@ namespace SQM
             doc["heapSize"] = ESP.getHeapSize();
             doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
             doc["flashSize"] = ESP.getFlashChipSize();
-            doc["sketchSize"] = ESP.getSketchSize();
-            doc["freeSketchSpace"] = ESP.getFreeSketchSpace();
+            // getSketchSize() maps and verifies the whole app image (about a
+            // second, and two at once fail with "bootloader_mmap twice"); the
+            // image can't change while running, so read it once.
+            static const uint32_t sketchSize = ESP.getSketchSize();
+            static const uint32_t freeSketchSpace = ESP.getFreeSketchSpace();
+            doc["sketchSize"] = sketchSize;
+            doc["freeSketchSpace"] = freeSketchSpace;
             doc["resetReason"] = static_cast<int>(esp_reset_reason());
             doc["bootCount"] = ::bootCount;
 
