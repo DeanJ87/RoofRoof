@@ -23,21 +23,21 @@ export const startFrom = (setup: SetupConfig | undefined, query: URLSearchParams
   return { index: firstScreenOf(clampStep(setup?.step ?? 0)), explicit: false };
 };
 
-const fieldOnScreen = (key: string): boolean => {
+const fieldOf = (key: string): Element | null => {
   const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === key)?.[0];
-  return Boolean(document.querySelector(`[data-field="${key}"]`) ?? (alias && document.querySelector(`[data-field="${alias}"]`)));
+  return document.querySelector(`[data-field="${key}"]`) ?? (alias ? document.querySelector(`[data-field="${alias}"]`) : null);
 };
 
+// A field's label on this screen, or (not on this screen) the error, which names its field.
+const fieldName = (key: string, message: string): string =>
+  fieldOf(key)?.closest('.field')?.querySelector('.field-label span')?.textContent?.trim() || message;
+
 /**
- * FR-023: a refused save's note. Each error on the screen sits under its field; the note names
- * any that aren't on this screen (their messages name the field), or says to fix those marked.
+ * FR-023: a refused save's note names every field to fix; each error on the screen also sits
+ * under its own field.
  */
-export const invalidText = (errors: Record<string, string>): string => {
-  const elsewhere = Object.entries(errors)
-    .filter(([key]) => !fieldOnScreen(key))
-    .map(([, message]) => message);
-  return elsewhere.length > 0 ? t('wizard.fixFields', { fields: listReasons(elsewhere) }) : t('wizard.fixMarked');
-};
+export const invalidText = (errors: Record<string, string>): string =>
+  t('wizard.fixFields', { fields: listReasons(Object.entries(errors).map(([key, message]) => fieldName(key, message))) });
 
 export const outcomeText = (outcome: SaveOutcome): string | null => {
   if (outcome.kind === 'invalid') return invalidText(outcome.errors);

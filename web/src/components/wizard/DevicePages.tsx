@@ -53,18 +53,14 @@ const SqmeterDone: FunctionalComponent<WizardPageProps> = (props) => {
   return (
     <>
       {locationFromSqmeter(props.config) && (
-        <div data-sqmeter-done="location">
-          <Note tone="ok" action={edit}>
-            {t('wizard.sqmeter.locationDone')}
-          </Note>
-        </div>
+        <Note tone="ok" id="sqmeter-done-location" action={edit}>
+          {t('wizard.sqmeter.locationDone')}
+        </Note>
       )}
       {locked(props.config, 'time') && (
-        <div data-sqmeter-done="time">
-          <Note tone="ok" action={edit}>
-            {t('wizard.sqmeter.timeDone')}
-          </Note>
-        </div>
+        <Note tone="ok" id="sqmeter-done-time" action={edit}>
+          {t('wizard.sqmeter.timeDone')}
+        </Note>
       )}
     </>
   );

@@ -82,7 +82,7 @@ describe('Wizard alerts', () => {
       expect(screen.getByText('No alert channel: critical alerts will reach no one.')).toBeInTheDocument();
       fireEvent.click(button('Continue'));
       await onScreen('password');
-      expect(saves[0].alerts).toEqual({ pushover: { enabled: false } });
+      expect(saves[0].alerts).toEqual({ enabled: false, pushover: { enabled: false } });
     });
 
     it('Pushover shows its keys here; a refused Continue puts each error under its field and says so', async () => {
@@ -96,7 +96,7 @@ describe('Wizard alerts', () => {
       const key = screen.getByLabelText('User key', { selector: 'input' });
       const token = screen.getByLabelText('App token', { selector: 'input' });
       fireEvent.click(button('Continue'));
-      expect(await screen.findByText('Fix the fields marked below.')).toBeInTheDocument();
+      expect(await screen.findByText('Check User key and App token.')).toBeInTheDocument();
       expect(saves).toHaveLength(0);
       expect(key.closest('.field')).toHaveTextContent('The user key is the 30-character key on your Pushover dashboard');
       expect(token.closest('.field')).toHaveTextContent('The app token is the 30-character API token of your Pushover application');

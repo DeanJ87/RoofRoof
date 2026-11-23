@@ -361,10 +361,10 @@ describe('Wizard', () => {
     render(<Wizard />);
     await onScreen('sqmeter');
     expect(screen.getAllByLabelText("SQMeter's address", { selector: 'input' })).toHaveLength(1);
-    expect(document.querySelector('[data-sqmeter-done="location"]')).toHaveTextContent('The location comes from SQMeter.');
-    expect(document.querySelector('[data-sqmeter-done="time"]')).toHaveTextContent('The time zone and time servers come from SQMeter.');
+    expect(document.getElementById('sqmeter-done-location')).toHaveTextContent('The location comes from SQMeter.');
+    expect(document.getElementById('sqmeter-done-time')).toHaveTextContent('The time zone and time servers come from SQMeter.');
     expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('Screen 5 of 14'); // no site screen
-    fireEvent.click(within(document.querySelector('[data-sqmeter-done="time"]') as HTMLElement).getByRole('button', { name: 'Edit' }));
+    fireEvent.click(within(document.getElementById('sqmeter-done-time') as HTMLElement).getByRole('button', { name: 'Edit' }));
     await onScreen('site');
     fireEvent.click(button('Continue'));
     await onScreen('daylight');

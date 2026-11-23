@@ -43,6 +43,7 @@ import { t } from '../i18n';
 // page without saving first (leaveTo), and resumes at the saved part.
 
 const QUESTION_ID = 'wizard-question';
+const MOTOR_PARTS = ['direction', 'teach', 'calibrate'];
 
 // Where the dialog was opened from, so Leave for now goes back there.
 let returnTo = '/';
@@ -130,7 +131,8 @@ const DialogContent: FunctionalComponent<{ view: View; title: string }> = ({ vie
       <SpeechBubble id={QUESTION_ID} headingRef={view.heading}>
         {title}
       </SpeechBubble>
-      <MotionNote status={props.status} />
+      {/* Not on the motor screens: a note appearing above a held button would move it (spec 025). */}
+      {!MOTOR_PARTS.includes(screen.page) && <MotionNote status={props.status} />}
       {mode === 'screen' && <Body {...props} />}
       {(mode === 'leave' || mode === 'skip') && (
         <LeaveChoices
@@ -332,9 +334,9 @@ const Wizard: FunctionalComponent = () => {
     if (await save(at)) go(to, true);
   };
   // FR-002: Skip for now drops the screen's edits but records the next part, so a reload resumes there.
-  const skipScreen = () => {
+  const skipScreen = async () => {
     const to = nextScreen(index, { ...props, config: saved });
-    void saveSetup({ state, step: stepOf(to) });
+    await saveSetup({ state, step: stepOf(to) }); // in order, as Continue
     go(to);
   };
   const finish = async () => {
@@ -367,7 +369,7 @@ const Wizard: FunctionalComponent = () => {
     restart,
     heading,
     go,
-    skipScreen,
+    skipScreen: () => void skipScreen(),
     keepGoing,
     // Escape and Close ask first (FR-004); on the leave screen Escape keeps going; once done, they close.
     close: () => (busy ? undefined : mode === 'done' ? route('/') : mode === 'screen' ? setMode('leave') : keepGoing()),

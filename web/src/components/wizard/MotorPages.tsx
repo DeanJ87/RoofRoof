@@ -1,6 +1,6 @@
 import { FunctionalComponent, type ComponentChildren } from 'preact';
 import type { RoofConfig, RoofStatus } from '../../types';
-import { choiceOf, type WizardPageProps } from './context';
+import type { WizardPageProps } from './context';
 import TeachCard, { JogPanel } from '../calibrate/TeachCard';
 import { Checks, Result, Running, StartForm, jogGate } from '../Calibrate';
 import { useCalibration } from '../../hooks/useCalibration';
@@ -57,7 +57,13 @@ const MotorFrame: FunctionalComponent<WizardPageProps & { render: (motor: Motor)
 
 // Does holding Open open the roof? The first short move, attended (FR-010).
 export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => {
-  const choice = choiceOf(props, 'direction', props.direction ?? 'yes', (v) => props.setDirection(v as 'yes' | 'no'));
+  // Only what the person saw in this visit (FR-005): never chosen for them, also on a re-run.
+  const choice = {
+    name: 'direction',
+    labelledBy: props.questionId,
+    value: props.direction,
+    onChange: (v: string) => props.setDirection(v as 'yes' | 'no'),
+  };
   return (
     <MotorFrame
       {...props}
@@ -84,10 +90,13 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
 // Mark the closed end, part-way and the open end; confirm the proposed Hall settings (FR-011).
 export const TeachScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { status: teach, refresh } = useTeach();
+  const { status: run } = useCalibration();
   return (
     <MotorFrame
       {...props}
       render={({ roof, config }) => {
+        // As the Calibrate page: no jog while a run is under way (the device refuses one anyway).
+        if (run?.active) return <Note tone="warn">{t('wizard.motor.runActive')}</Note>;
         const gate = jogGate(roof, props.fresh);
         return (
           <TeachCard

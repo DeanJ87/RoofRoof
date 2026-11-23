@@ -55,12 +55,23 @@ const restartWizard = async (page: Page, before?: Record<string, unknown>) => {
 // A short simulated roof, so the moves take seconds.
 const SHORT_ROOF = { roof: { travelMm: 200, speedMmPerSecond: 38, topDutyPercent: 100, slowDutyPercent: 40 } };
 
+// A mouse hold, as a person does; the roof must really move while it is held (a note or Stop
+// appearing must not move the button from under the pointer and end the hold).
 const holdFor = async (page: Page, name: string, ms: number) => {
   await dialog(page).getByRole('button', { name }).hover();
   await page.mouse.down();
+  await expect.poll(() => roofState(page), { timeout: 3_000, intervals: [100] }).toMatch(/opening|closing/);
   await page.waitForTimeout(ms);
   await page.mouse.up();
   await expect.poll(() => roofState(page), { timeout: 5_000 }).not.toMatch(/opening|closing/);
+};
+// Held until the roof stops at `end` by itself (its magnet), as a person would hold it.
+const holdTo = async (page: Page, name: string, end: 'open' | 'closed') => {
+  if ((await roofState(page)) === end) return;
+  await dialog(page).getByRole('button', { name }).hover();
+  await page.mouse.down();
+  await expect.poll(() => roofState(page), { timeout: 30_000, intervals: [200] }).toBe(end);
+  await page.mouse.up();
 };
 const mark = async (page: Page, name: string) => {
   const button = dialog(page).getByRole('button', { name });
@@ -79,20 +90,23 @@ const motorPart = async (page: Page) => {
   await proceed(page);
 
   await onScreen(page, 'teach');
+  const before = (await deviceConfig(page)).roof;
   await atTheRoof(page, 'I am at the roof, watching it');
-  await holdFor(page, 'Hold to close', 15_000); // stops at the closed magnet by itself
+  await holdTo(page, 'Hold to close', 'closed'); // stops at the closed magnet by itself
   await mark(page, 'This is closed');
   await holdFor(page, 'Hold to open', 2500);
   await mark(page, 'This is part-way');
-  await holdFor(page, 'Hold to open', 15_000);
+  await holdTo(page, 'Hold to open', 'open');
   await mark(page, 'This is open');
   await dialog(page).getByRole('button', { name: 'Confirm and save' }).click({ timeout: 10_000 });
   await expect(dialog(page).locator('#teach')).toContainText('Saved.');
+  const taught = (await deviceConfig(page)).roof;
+  expect([taught.hallLowCounts, taught.hallHighCounts]).not.toEqual([before.hallLowCounts, before.hallHighCounts]);
   await proceed(page);
 
   await onScreen(page, 'calibrate');
   await atTheRoof(page, 'I am at the roof and can see it');
-  await page.locator('[data-field="calibrate.travelMm"]').fill('200');
+  await page.locator('[data-field="calibrate.travelMm"]').fill('210'); // the tape's travel, not the 200 mm the roof had
   await page.locator('[data-field="calibrate.travelMm"]').blur();
   const start = dialog(page).getByRole('button', { name: 'Start calibration' });
   await expect(start).toBeEnabled({ timeout: 20_000 });
@@ -138,8 +152,8 @@ test('the real observatory branch: every screen answered in the wizard, the moto
   await dialog(page).getByRole('button', { name: 'Apply ticked' }).click();
   await expect(dialog(page).getByRole('switch', { name: 'Weather from SQMeter' })).toBeChecked();
   // The demo's location and time follow SQMeter: shown as done, with Edit, and not asked again.
-  await expect(dialog(page).locator('[data-sqmeter-done="location"]')).toBeVisible();
-  await expect(dialog(page).locator('[data-sqmeter-done="time"]')).toBeVisible();
+  await expect(dialog(page).locator('#sqmeter-done-location')).toBeVisible();
+  await expect(dialog(page).locator('#sqmeter-done-time')).toBeVisible();
   await proceed(page);
   await onScreen(page, 'daylight');
   await choose(page, 'Alert and close');
@@ -184,7 +198,7 @@ test('the real observatory branch: every screen answered in the wizard, the moto
   expect(config.alerts.ntfy).toMatchObject({ enabled: true, topic: 'darkskylab-sqm' });
   expect(config.park.switches).toBe('one');
   expect(config.daylight.mode).toBe('close');
-  expect(config.roof.travelMm).toBe(200); // measured by the run, accepted in the wizard
+  expect(config.roof.travelMm).toBe(210); // the run's proposal, accepted in the wizard
   expect(config.setup).toEqual({ state: 'done', step: 0 });
   // SC-001: the address never left the wizard.
   expect((await addresses(page)).filter((hash) => !hash.startsWith('#/wizard'))).toEqual([]);

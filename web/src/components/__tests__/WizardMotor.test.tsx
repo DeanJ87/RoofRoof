@@ -171,4 +171,59 @@ describe('Wizard: the motor screens', () => {
     fireEvent.click(button('Start calibration'));
     await waitFor(() => expect(body).toMatchObject({ attended: true }));
   });
+
+  // Review round 1 (S1, FR-005): the direction answer is asked in every visit, also on a re-run.
+  it('direction: nothing is chosen for the person, also once setup is done', async () => {
+    mockDevice({ config: { setup: { state: 'done', step: 0 } } });
+    at('screen=direction');
+    render(<Wizard />);
+    await onScreen('direction');
+    expect(screen.getByRole('radio', { name: /Yes, it opened/ })).not.toBeChecked();
+    expect(button('Continue')).toBeDisabled();
+  });
+
+  // S4: live data that has gone quiet blocks a move here as on the Calibrate page.
+  it('stale live data blocks the jog and the run', async () => {
+    vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data: ready(), connected: true, lastMessageAt: Date.now() - 60_000 });
+    at('screen=direction');
+    render(<Wizard />);
+    await onScreen('direction');
+    fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof, watching it' }));
+    expect(await holdOpen()).toBeDisabled();
+    expect(screen.getByText('No live data from the device: calibration needs it')).toBeInTheDocument();
+  });
+
+  // S4: leaving the screen mid-hold sends the release (the device would stop it anyway after 500 ms).
+  it('a hold is released when its screen closes', async () => {
+    const releases: unknown[] = [];
+    server.use(
+      http.post('/api/roof/jog', async ({ request }) => {
+        const body = (await request.json()) as { release?: boolean };
+        if (body.release) releases.push(body);
+        return HttpResponse.json({ success: true, state: 'opening', id: 1, holdMs: 500, keepAliveMs: 150, limitMs: 30000 });
+      }),
+    );
+    at('screen=direction');
+    render(<Wizard />);
+    await onScreen('direction');
+    fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof, watching it' }));
+    const open = await holdOpen();
+    await waitFor(() => expect(open).toBeEnabled());
+    fireEvent.pointerDown(open);
+    await waitFor(() => expect(open).toHaveAttribute('aria-pressed', 'true'));
+    await new Promise((resolve) => setTimeout(resolve, 100)); // the start is answered
+    fireEvent.click(button('Skip for now'));
+    await onScreen('teach');
+    await waitFor(() => expect(releases).toHaveLength(1));
+  });
+
+  // S5: as the Calibrate page, no jog is offered while a run is under way.
+  it('the teach screen offers no jog while a calibration run is active', async () => {
+    server.use(http.get('/api/roof/calibration', () => HttpResponse.json({ ...mockCalibration, active: true, state: 'running' })));
+    at('screen=teach');
+    render(<Wizard />);
+    await onScreen('teach');
+    expect(await screen.findByText('A calibration run is under way: let it finish or stop it first.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Hold to open' })).toBeNull();
+  });
 });

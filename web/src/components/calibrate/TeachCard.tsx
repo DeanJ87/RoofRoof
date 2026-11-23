@@ -43,7 +43,11 @@ const HoldButton: FunctionalComponent<{
 }> = ({ direction, held, disabled, describedBy, onPress, onRelease, children }) => {
   const down = (event: Event) => {
     event.preventDefault();
-    if (!disabled) onPress(direction);
+    if (disabled) return;
+    // A mouse hold keeps the button however the page moves under it (a note or Stop showing),
+    // as a touch already does; letting go, cancelling or losing the capture releases it.
+    if (event instanceof PointerEvent) (event.currentTarget as Element | null)?.setPointerCapture?.(event.pointerId);
+    onPress(direction);
   };
   const keyDown = (event: KeyboardEvent) => {
     if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) down(event);
@@ -63,6 +67,7 @@ const HoldButton: FunctionalComponent<{
       onPointerUp={onRelease}
       onPointerCancel={onRelease}
       onPointerLeave={onRelease}
+      onLostPointerCapture={onRelease}
       onBlur={onRelease}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
@@ -251,7 +256,13 @@ const TeachCard: FunctionalComponent<TeachCardProps> = (props) => {
   return (
     <SettingsCard id="teach" title={t('teach.title')} hint={t('teach.hint')} plain={plain}>
       {!plain && <Note>{t('teach.intro')}</Note>}
-      <JogPanel {...props} onPress={() => setOutcome(null)} />
+      <JogPanel
+        {...props}
+        onPress={() => {
+          setOutcome(null);
+          setProblem('');
+        }}
+      />
       {problem && <Note tone="bad">{problem}</Note>}
       <Marks teach={teach} ready={teach?.rest.ready === true && !moving} onMark={(at) => void mark(at)} />
       {teach?.proposal && <Proposal proposal={teach.proposal} config={config} onDone={done} />}

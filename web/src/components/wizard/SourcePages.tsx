@@ -76,17 +76,15 @@ export const alertChannelsOn = (props: Pick<WizardPageProps, 'config'>): AlertCh
 // the MQTT channel, FR-022), or "No alerts for now", which turns every channel off.
 const tickChanges = (props: WizardPageProps, value: string): [string[], unknown][] => {
   const weatherMqtt = Boolean(props.config.safety?.mqtt.enabled);
-  if (value === 'none')
-    return [
-      ...CHANNELS.map((channel): [string[], unknown] => [['alerts', channel, 'enabled'], false]),
-      mqttChange(props, false, weatherMqtt),
-    ];
+  const now = alertChannelsOn(props);
   const channel = value as AlertChannelName;
-  const on = !alertChannelsOn(props).includes(channel);
+  const on = value !== 'none' && !now.includes(channel);
+  const next = value === 'none' ? [] : on ? [...now, channel] : now.filter((c) => c !== channel);
+  // Every channel set as ticked (one left on while alerts were off doesn't come back), alerts on with any.
   return [
-    ...(on ? [[['alerts', 'enabled'], true] as [string[], unknown]] : []),
-    [['alerts', channel, 'enabled'], on],
-    ...(channel === 'mqtt' ? [mqttChange(props, on, weatherMqtt)] : []),
+    [['alerts', 'enabled'], next.length > 0],
+    ...CHANNELS.map((c): [string[], unknown] => [['alerts', c, 'enabled'], next.includes(c)]),
+    mqttChange(props, next.includes('mqtt'), weatherMqtt),
   ];
 };
 

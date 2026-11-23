@@ -65,7 +65,7 @@ export const SCREENS: Screen[] = [
   { id: 'parkSwitches', page: 'park', Body: ParkSwitchesScreen, choice: true },
   { id: 'nina', page: 'park', Body: NinaScreen, shows: noParkBypass },
   // Specs 019 and 016 inside the wizard: each move attended, every gate kept.
-  { id: 'direction', page: 'direction', Body: DirectionScreen, choice: true, answered: (p) => p.direction !== 'no' },
+  { id: 'direction', page: 'direction', Body: DirectionScreen, answered: (p) => p.direction === 'yes' },
   { id: 'teach', page: 'teach', Body: TeachScreen },
   { id: 'calibrate', page: 'calibrate', Body: CalibrationScreen },
   // "Enter manually instead": opened from the motor screens only.
