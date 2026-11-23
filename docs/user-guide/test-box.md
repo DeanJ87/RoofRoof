@@ -36,7 +36,7 @@ first (or turn the bypass off)"*.
     box or not. A bench box pointed at the N.I.N.A. that drives your real mount will park it
     mid-session. On a bench, leave the N.I.N.A. address empty, or turn off **May ask N.I.N.A. to
     park the mount** (`park.requestPark`, on by default; also offered on the wizard's test box
-    screen). While a bypass is set, the red banner says when unsafe weather would ask N.I.N.A. to
+    screen). While a bypass is set, the banner says when unsafe weather would ask N.I.N.A. to
     park.
 
 ## What is never bypassed
@@ -50,24 +50,31 @@ first (or turn the bypass off)"*.
 ## The deadline
 
 - One deadline covers all three bypasses. It is set by the **device**, not by you.
-- It is stamped when you turn a bypass on, and again when you press **Renew**. **Turn off after**
+- It is stamped when you turn a bypass on, and again when you press **Extend**. **Turn off after**
   is 1 to 720 hours (default 72).
 - It needs the **clock to be set** ([Settings → Time](configuration.md#ntp)). Without a clock a
   bypass can't be turned on, and one that is already set does nothing until the clock is set
   (the status says it is waiting for the clock).
 - When the deadline passes, every check is back at once. The switches still show as set and the
-  page says **expired**. **Renew** stamps a new deadline.
+  banner says **expired**. **Extend** stamps a new deadline.
 - A [backup](configuration.md#backup-restore) restore never brings a deadline back. A restored
-  bypass comes in with no deadline and does nothing until you renew it.
+  bypass comes in with no deadline and does nothing until you extend it (the banner says **not
+  started**).
 
 ## Where it shows
 
 You can't miss it:
 
-- a red banner on every page of the web UI;
+- a banner on every page of the web UI, under the header and in line with the page: red while a
+  check is bypassed (**Test box: park check bypassed**, with when it ends), amber while it is
+  set but every check applies (expired, waiting for the clock, not in effect, not started).
+  **Manage** opens the test box page;
 - `roof.testBox` in [`/api/status`](../api/rest.md#get-apistatus), `/ws/status` and the MQTT
   [state document](mqtt.md#the-roof-document);
 - on the dashboard, the Weather and Mount park rows say **Test box bypass**;
+- on the Calibrate page, the checklists say **Mount park check bypassed (test box)** (and the same
+  for the weather and daylight checks) with an amber **Bypassed**, never **OK**. The check still
+  passes, because the device allows the move;
 - the Alpaca Dome's description starts `TEST BOX (bypassed: ...): `;
 - Home Assistant has a **Test box bypass** sensor ([MQTT](mqtt.md#home-assistant));
 - an alert, **Test box mode on**, goes out when a bypass comes into effect and again after every
@@ -77,9 +84,18 @@ You can't miss it:
 
 ## Turn it on
 
-**Settings → Roof → Test box** has three switches (**No telescope under this roof**, **No weather
-station**, **No daylight close**), **Turn off after** (the hours), the deadline, and **Renew**.
-Save to start the deadline.
+The test box has its own page. Open it from the banner's **Manage**, or from **Settings → Roof →
+Test box** (**Open test box**); the setup wizard turns it on for a bench setup.
+
+![The test box page while the park check is bypassed](../assets/screenshots/test-box.png)
+
+- **Status** says whether it is on and, while it is, when it ends and which checks are
+  **Bypassed** or **Checked**. **Turn off test box** turns every bypass off at once. **Extend by
+  72 h** (your **Turn off after**) starts the deadline again from now.
+- **Bypasses** has the three switches (**No telescope under this roof**, **No weather station**,
+  **No daylight close**) and **Turn off after** (the hours). A switch that can't be turned on says
+  why in one line, with a link to the setting in the way. **Turn on test box** (or **Save**)
+  starts the deadline.
 
 The [setup wizard](setup-wizard.md) can do the same: its first Hardware screen asks whether a
 telescope is, or will be, under this roof. **No telescope yet (bench setup)** turns on all
@@ -89,11 +105,11 @@ Over the API, see [`POST /api/config`](../api/rest.md#post-apiconfig).
 
 ## Before it goes on the roof
 
-1. In **Settings → Roof → Test box**, turn off every bypass and save.
+1. Press **Manage** on the banner, then **Turn off test box**.
 2. Set up N.I.N.A. (**Mount park**) and SQMeter (**Weather sources**), or run the
    [setup wizard](setup-wizard.md) again and answer **Yes, or there will be** on its first
    Hardware screen (that turns every bypass off).
-3. Check the dashboard: the red banner is gone, and Weather and Mount park show real readings.
+3. Check the dashboard: the banner is gone, and Weather and Mount park show real readings.
 
 The device refuses a N.I.N.A. address or SQMeter while the matching bypass is on, so clearing the
 bypass first is required.
