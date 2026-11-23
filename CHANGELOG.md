@@ -26,6 +26,7 @@ All notable changes to RoofRoof are documented here.
 ### Changed
 
 - Setup wizard redesign: the wizard opens as a dialog over the dashboard (dimmed and blurred behind) and asks one question per screen, about twenty short screens in place of twelve long pages (spec 019's Teach the ends is one of them, still only a link to its attended card): large choice cards for what is fitted or chosen (park switches, current sense, rain contact, Hall sensor, weather source, Alpaca, the alert channel, daylight), a few fields beside the live readings for the rest, a progress bar, Back and Close, a sticky **Continue** that waits for an answer and **Skip for now**, and a **Why this matters** panel. A small dog, RoofRoof's mascot, asks the questions. **Close** or **Escape** asks before leaving (**Keep going**, **Leave for now**, **Skip setup**). The saves, the refusal while the roof moves, the Tests, resume, skip and run again are unchanged, and the wizard still moves nothing; while the roof moves, the Stop bar sits inside the dialog, above everything. The design system gains the onboarding components (constitution 2.1.0) (spec 018).
+- New logo: RoofRoof's dog, the wizard's mascot, replaces the observatory mark in the web UI header, the browser tab icon, the docs, the app icon, the social cards, banners and stickers. The same dog is used at every size, down to the 16 px tab icon (spec 018).
 
 ## [0.0.0] - 2026-11-10
 
