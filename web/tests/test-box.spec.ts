@@ -35,6 +35,8 @@ test('a test box: bypasses in effect, shown on every page, and off again', async
   });
   expect(saved.status).toBe(200);
   await expect.poll(async () => (await testBox(page)).active, { timeout: 5000 }).toBe(true);
+  // As a save from this page does: the banner reads the status at once.
+  await page.evaluate(() => window.dispatchEvent(new Event('roofroof:config-saved')));
   const box = await testBox(page);
   expect(box).toMatchObject({ set: true, park: true, weather: true, daylight: false, expired: false });
   expect(box.until).toBeGreaterThan(Date.now() / 1000 + 23 * 3600);
@@ -43,7 +45,10 @@ test('a test box: bypasses in effect, shown on every page, and off again', async
   const banner = page.locator('.test-box-banner');
   await expect(banner).toContainText('park check (no telescope), weather check (no weather source) bypassed until', { timeout: 8000 });
   await expect(page.locator('[data-inventory="roof-card"]').getByText('Test box bypass').first()).toBeVisible();
-  await page.getByRole('navigation').getByRole('button', { name: /System/ }).click();
+  await page
+    .getByRole('navigation')
+    .getByRole('button', { name: /System/ })
+    .click();
   await expect(banner).toBeVisible();
 
   // Off again: the banner goes and the checks are back.
