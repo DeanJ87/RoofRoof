@@ -389,7 +389,7 @@ Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `setup.state` | string | `"new"` | `new` (the wizard opens on the first dashboard visit of a page load), `offered` (a dashboard banner offers it) or `done`. Settings saved by a release before the wizard load as `offered`, so an upgraded roof is never interrupted. Any other value is refused |
-| `setup.step` | integer | `0` | The page to resume at, 0 (Device) to 9 (Review) |
+| `setup.step` | integer | `0` | The part to resume at, 0 to 11: network, board, wiring, test box, SQMeter, mount park, direction, teach, calibration, alerts, password, review |
 
 ### Automatic close
 

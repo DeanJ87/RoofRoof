@@ -151,7 +151,7 @@ If the saved network can't be joined within 45 seconds of power-on (for example 
 
 ## Next: the setup wizard, then commission the roof
 
-The first time you open the dashboard after joining, the [setup wizard](../user-guide/setup-wizard.md) opens over the dashboard and asks one question at a time: the device name and password, the site and time, the hardware (the board and its pins, then a wiring check) with its live readings, the Hall sensor, the roof's travel and speed, the weather sources and N.I.N.A. (each with a Test), the alert channel and daylight, then a review of every check. It never moves the roof. You can leave it and carry on later, skip it, or run it again from **System → Setup**.
+The first time you open the dashboard after joining, the [setup wizard](../user-guide/setup-wizard.md) opens over the dashboard and asks one question at a time: the device name and network, the board and its pins, a wiring check with its live readings, whether a telescope is under the roof yet, SQMeter (address, login, Test, weather, site and time, daylight), the park switches and N.I.N.A. (with a Test), then the roof's direction, teach and calibration run, attended and inside the wizard, the alert channels, a password and a review of every check. You can leave it and carry on later, skip it, or run it again from **System → Setup**.
 
 A device that has joined your network is not ready to move a roof. Follow the [commissioning guide](../hardware/commissioning.md) in order, with the motor disconnected, and print the [checklist](../hardware/commissioning-checklist.md) to tick off as you go.
 

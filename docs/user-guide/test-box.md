@@ -81,9 +81,12 @@ You can't miss it:
 station**, **No daylight close**), **Turn off after** (the hours), the deadline, and **Renew**.
 Save to start the deadline.
 
-The [setup wizard](setup-wizard.md) can do the same: its first Hardware screen asks whether a
-telescope is, or will be, under this roof. **No telescope yet (bench setup)** turns on all
-three bypasses and skips the weather source and N.I.N.A. screens.
+The [setup wizard](setup-wizard.md) can do the same: its test box screen, a part of its own after
+the wiring check, asks whether a telescope is, or will be, under this roof. **No telescope yet
+(bench setup)** turns on all three bypasses and skips the N.I.N.A. screen; the SQMeter screen then
+supplies site data only. On a test box the direction, teach and calibration screens still move the
+roof, attended, and each names the bypassed checks (faults, the supply and the time limits still
+stop the roof).
 
 Over the API, see [`POST /api/config`](../api/rest.md#post-apiconfig).
 
@@ -91,8 +94,8 @@ Over the API, see [`POST /api/config`](../api/rest.md#post-apiconfig).
 
 1. In **Settings → Roof → Test box**, turn off every bypass and save.
 2. Set up N.I.N.A. (**Mount park**) and SQMeter (**Weather sources**), or run the
-   [setup wizard](setup-wizard.md) again and answer **Yes, or there will be** on its first
-   Hardware screen (that turns every bypass off).
+   [setup wizard](setup-wizard.md) again and answer **Yes, or there will be** on its test box
+   screen (that turns every bypass off).
 3. Check the dashboard: the red banner is gone, and Weather and Mount park show real readings.
 
 The device refuses a N.I.N.A. address or SQMeter while the matching bypass is on, so clearing the

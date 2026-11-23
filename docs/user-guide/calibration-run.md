@@ -11,7 +11,7 @@ stopwatch and reading the Hall sensor by hand, the controller can measure them: 
 each beside the one saved now. Nothing changes until you accept.
 
 Open it from **Settings → Roof → Calibration run → Open the calibration page**, or from the setup
-wizard's **Calibration run** page.
+wizard's direction, teach and calibration screens, which run the same attended jog, teach and calibration run inside the wizard.
 
 !!! danger "Only with you at the roof"
     The run moves the roof with only its time limit and the magnets to stop it. Start it only when

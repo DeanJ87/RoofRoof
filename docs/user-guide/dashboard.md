@@ -8,7 +8,7 @@ The dashboard is the web UI's home page, updated live over a WebSocket. Try it w
 
 The cards are **Status**, **Roof** and **Device & Network**.
 
-While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good.
+While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good. **Continue setup** resumes at the part you reached.
 
 ![Dashboard](../assets/screenshots/dashboard.png)
 

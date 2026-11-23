@@ -177,7 +177,7 @@ The WT32 carrier's preset has two of these warnings, both expected: LPWM on IO15
 
 ## The wiring check
 
-Run it from the Pins page, or from the **Check wiring** screen of the [setup wizard](setup-wizard.md)'s hardware part. Do it at the first power-up, with the motor's leads disconnected ([commissioning stage 2](../hardware/commissioning.md#stage-2-first-power-up-motor-still-disconnected)), and again whenever you change the wiring or the pins. It takes under a second, never moves the roof and changes no setting.
+Run it from the Pins page, or from the **Check wiring** screen of the [setup wizard](setup-wizard.md)'s wiring part. Do it at the first power-up, with the motor's leads disconnected ([commissioning stage 2](../hardware/commissioning.md#stage-2-first-power-up-motor-still-disconnected)), and again whenever you change the wiring or the pins. It takes under a second, never moves the roof and changes no setting.
 
 It is refused (`409` with the reason) while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running; while the pins are invalid or no board is chosen; while a saved pin change waits for a restart (it would check the old pins: *"Restart first: the saved pins aren't in effect yet"*); and while another check runs.
 
