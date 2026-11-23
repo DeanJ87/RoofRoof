@@ -33,6 +33,7 @@ A problem no other card shows is one row under the tiles: its name, a pill, and 
 | **Alert channels** | **None on**, or **Can't send** (every channel that is on can't work right now, e.g. MQTT alerts with MQTT off) | When it happens |
 | **Clock** | **Not set**: the time isn't known yet | When it happens |
 | **Roof** | **Fault**: a motion fault is latched; "?" says what happened, with the measured value and the limit. Clear it on the Roof card | While a fault is latched |
+| **Test box** | **Bypassed**: a [test box](test-box.md) bypass is in effect, so the card never reads **All good**; the row opens the test box page | While a bypass is in effect |
 | **Automatic close** | **Held** (someone pressed Stop during it), **Can't move** (a fault or an unknown position) or **Halted** (a close took too long) - see [Close on unsafe weather](close-on-unsafe.md) | While the automatic close is in one of those states |
 
 Settings that are switched on but can't work are shown in **Settings**, where you set them: each reads **Not in effect** with the reason.
@@ -43,7 +44,7 @@ What's shown, and where each piece of device state appears (or why it doesn't), 
 
 ![Roof card](../assets/screenshots/roof-card.png)
 
-While a [test box](test-box.md) bypass is set, a red banner runs across the top of every page and says which checks are bypassed and until when (or that they have expired, or are waiting for the clock).
+While a [test box](test-box.md) bypass is set, a banner above every page says which checks are bypassed and when it ends (red), or that they have expired or are waiting for the clock (amber). **Manage** opens the test box page.
 
 The **Roof** card shows the roof as its control task sees it, live:
 

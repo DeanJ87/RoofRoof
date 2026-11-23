@@ -64,6 +64,23 @@ test first).
 
 Phase 2 before Phases 3 to 7; T009 before T011; T010 before T012 to T021; Phase 8 last.
 
+## Phase 9: Merge and follow-ups
+
+- [x] T030 Merge origin/main (the test box banner and page); reuse its bypass-aware checklist rows in the motor screens
+- [x] T031 [P] FR-028 muted reason under a failing check in `web/src/components/Calibrate.tsx`; FR-029 muted note in `web/src/components/TestBox.tsx`
+- [x] T032 FR-030 the Status card's test box row in `web/src/dashboard/glance.ts`, `inventory.json`, unit and demo tests, `docs/user-guide/dashboard.md`
+
 ## Review rounds
 
-(recorded as they happen)
+- Round 1 (opus, code + demo walk + screenshots): not safe to merge. Blocker: a mouse hold in the
+  wizard ended about 30 ms after it started (a note appearing above the held button moved it from
+  under the pointer). Fixed: pointer capture on the hold buttons, no motion note above the motor
+  screens, the Playwright holds now prove the roof moved. Also fixed: the direction answer was
+  pre-chosen on a re-run; the teach screen offered a jog during a run; the refused-save note now
+  names the fields; "No alerts for now" turns alerts off; Skip for now saves in order; the
+  end-to-end test checks the taught thresholds and the accepted travel; tests for the release on
+  leaving, stale data and flow.ts; doc and spacing nits.
+
+## Converge
+
+- After round 1: every FR-001 to FR-030 has code and a test; no remaining tasks.

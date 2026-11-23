@@ -42,8 +42,8 @@ The wizard doesn't open from the setup hotspot: joining the network is the hotsp
   the next question. It stays unavailable, with a note saying what is missing, until the screen is
   answered: a choice made, a name or a password typed. A refused save keeps the screen open with
   the device's reason.
-- **Skip for now** moves on without saving. **Back** (the arrow) steps back without saving. Either
-  drops what you changed on the screen.
+- **Skip for now** moves on and saves nothing but the part you reached. **Back** (the arrow) steps
+  back without saving. Either drops what you changed on the screen.
 - The bar across the top shows how far along you are.
 - On a new device, a question about your hardware starts with nothing chosen: say what is fitted.
   When you run the wizard again, your current settings are chosen.
@@ -77,7 +77,8 @@ and a test box 16.
 4. **Test box**: **Is there a telescope under this roof yet?** **Yes, or there will be** turns every
    [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each
    only where its source isn't already set up, with a deadline) and warns never to use it with a
-   telescope. The answer decides the two branches below.
+   telescope. The answer decides the two branches below. Turn it off later from the banner's
+   **Manage** ([Before it goes on the roof](test-box.md#before-it-goes-on-the-roof)).
 5. **SQMeter**: **Where is SQMeter?** SQMeter's address and login are asked once, here (e.g.
    `192.168.1.50` or `sqmeter.local`; RoofRoof adds `/api/safety` itself), with **Test**, which
    reads SQMeter through the device, and **Copy from SQMeter**, which lists what SQMeter has that
@@ -224,6 +225,7 @@ The demo starts set up. **Demo → Restart setup wizard** sets it back to `new` 
 ## Using it with a keyboard or screen reader
 
 The wizard is a modal dialog named by its question. Tab stays inside it (the Stop bar included,
-while the roof moves); the choices are a radio group the arrow keys move through; the progress bar
+while the roof moves); the choices are a radio group the arrow keys move through (the alert channels, which take several
+answers, are a group of checkboxes); the progress bar
 reads as "Screen 3 of 17". Each new screen moves focus to its question. Closing gives focus back
 to where you were. With reduced motion set, nothing fades.

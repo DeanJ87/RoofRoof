@@ -84,8 +84,8 @@ describe('Wizard: the motor screens', () => {
     await onScreen('direction');
     await holdOpen();
     const note = screen.getByText(/^Test box:/);
-    expect(note).toHaveTextContent('park check (no telescope)');
-    expect(note).toHaveTextContent('weather check (no weather source)');
+    expect(note).toHaveTextContent('park check');
+    expect(note).toHaveTextContent('weather check');
     expect(note).not.toHaveTextContent('daylight close');
     expect(note).toHaveTextContent('faults, low supply and time limits still stop the roof');
   });

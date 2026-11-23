@@ -47,6 +47,55 @@ describe('Calibrate', () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  // Spec 022: a test box bypass reads as Bypassed, never OK; a failing check keeps its pill short, the reason below it.
+  it('a bypassed park check says so with an amber Bypassed pill, and Start can still be pressed', async () => {
+    const status = ready();
+    status.roof = {
+      ...status.roof!,
+      testBox: {
+        set: true,
+        active: true,
+        park: true,
+        weather: false,
+        daylight: false,
+        until: 1,
+        expired: false,
+        waitingForClock: false,
+        parkRequests: false,
+        text: '',
+      },
+    };
+    live(status);
+    render(<Calibrate />);
+    const row = await waitFor(() => {
+      const el = document.querySelector('#calibrate-start [data-check="park"]');
+      if (!el) throw new Error('no checks yet');
+      return el as HTMLElement;
+    });
+    expect(row).toHaveAttribute('data-state', 'bypassed');
+    expect(row).toHaveTextContent('Mount park check bypassed (test box)');
+    expect(within(row).getByText('Bypassed')).toHaveClass('pill-amber');
+    expect(within(row).queryByText('OK')).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'I am at the roof and can see it' }));
+    expect(startCard().getByRole('button', { name: 'Start calibration' })).toBeEnabled();
+  });
+
+  it("a failing check shows Not yet, with the device's reason on its own line", async () => {
+    const status = ready();
+    status.roof = { ...status.roof!, weather: 'unsafe', weatherText: 'unsafe: rain' };
+    live(status);
+    render(<Calibrate />);
+    const row = await waitFor(() => {
+      const el = document.querySelector('#calibrate-start [data-check="weather"]');
+      if (!el) throw new Error('no checks yet');
+      return el as HTMLElement;
+    });
+    expect(within(row).getByText('Not yet')).toHaveClass('pill');
+    // Muted, under the row (DS-04): the pill carries the state, never bare red text.
+    expect(row.querySelector('.note-muted')).toHaveTextContent(/rain/);
+    expect(row.querySelector('.note-bad')).toBeNull();
+  });
+
   it('starts only once the person confirms they are at the roof, and sends what they said', async () => {
     const bodies: unknown[] = [];
     const headers: (string | null)[] = [];

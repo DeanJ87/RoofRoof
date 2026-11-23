@@ -388,6 +388,19 @@ site and time screen doesn't show; the SQMeter screen lists them as from SQMeter
 - The owner's mockup review is replaced by the screenshots in the pull request.
 - Spec 024's park question, if merged first, replaces the park switches screen in part 5 unchanged.
 
+## Design-system follow-ups carried in this change
+
+Found while reviewing the test box banner (merged just before this spec), and fixed here because
+the motor screens reuse the same parts:
+
+- **FR-028**: A failing calibration or jog check's reason sits under its row as a muted `Note`;
+  the row's pill already says "Not yet". No bare red text line.
+- **FR-029**: The test box page's "Turn it off before a telescope goes under the roof." is a muted
+  `Note`; the page's banner and the Turn off button carry the urgency.
+- **FR-030**: The dashboard's Status card never reads "All good" while a test box bypass is in
+  effect: a "Test box: Bypassed" row links to the test box page (constitution 4.1.0: a bypassed
+  check is never shown as passing).
+
 ## Out of scope
 
 - Any setting, API, firmware or safety rule change.

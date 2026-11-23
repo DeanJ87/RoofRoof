@@ -1,6 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { Note } from './ui';
+import { Banner } from './ui';
 import { fetchStatus } from '../lib/settingsApi';
 import { t } from '../i18n';
 
@@ -30,9 +30,9 @@ const BenchBanner: FunctionalComponent = () => {
   }, []);
   if (!bench) return null;
   return (
-    <div class="bench-banner" role="status" data-inventory="bench-banner">
-      <Note tone="warn">{t('layout.benchMode')}</Note>
-    </div>
+    <Banner tone="warn" title={t('layout.benchModeTitle')} inventory="bench-banner" className="bench-banner">
+      {t('layout.benchModeDetail')}
+    </Banner>
   );
 };
 

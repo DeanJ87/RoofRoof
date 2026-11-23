@@ -138,6 +138,20 @@
       "demoCannot": "The demo keeps its MQTT and alerts groups set locally, so it never needs a secret"
     },
     {
+      "id": "test-box",
+      "label": "testBox.check.bypassed",
+      "sources": ["status.roof.testBox.active"],
+      "requiredBy": "022 (test box), constitution 4.1.0",
+      "visibility": {
+        "rule": "when",
+        "when": "a test box bypass is in effect"
+      },
+      "priority": 2,
+      "location": "card:status",
+      "test": "test-box",
+      "note": "A note row linking to the test box page: the card never says All good while a check is bypassed."
+    },
+    {
       "id": "roof-fault",
       "label": "roof.state.fault",
       "sources": ["status.roof.fault", "status.roof.fault.text"],

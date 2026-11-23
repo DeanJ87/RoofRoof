@@ -206,6 +206,32 @@ export const Note: FunctionalComponent<{
   </p>
 );
 
+/**
+ * A state that holds on every page (DS-14): bench firmware, test box bypasses.
+ * A short headline, a detail line and at most one action, in the page's own
+ * column under the header. Not for news (a toast) or a card's own problem (a Note).
+ */
+export const Banner: FunctionalComponent<{
+  tone: 'warn' | 'bad';
+  title: string;
+  action?: { label: string; ariaLabel?: string; onClick: () => void };
+  inventory?: string; // data-inventory (the dashboard inventory check)
+  className?: string;
+}> = ({ tone, title, action, inventory, className, children }) => (
+  <div class={`banner banner-${tone}${className ? ` ${className}` : ''}`} role="status" data-inventory={inventory}>
+    <Icon name="warning" tone={tone === 'bad' ? 'red' : 'amber'} size={20} />
+    <div class="banner-body">
+      <p class="banner-title">{title}</p>
+      {children && <p class="banner-detail">{children}</p>}
+    </div>
+    {action && (
+      <Button small onClick={action.onClick} ariaLabel={action.ariaLabel}>
+        {action.label}
+      </Button>
+    )}
+  </div>
+);
+
 /* ==== Onboarding (spec 018; constitution VII as amended in 2.1.0) =========
    The modal dialog, the choice cards, the speech bubble and the mascot, for a
    guided flow such as the setup wizard. Tokens only (index.css). */

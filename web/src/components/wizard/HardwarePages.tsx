@@ -21,6 +21,7 @@ const TestBoxNotes: FunctionalComponent<WizardPageProps & { hours: number; ninaS
     <Note tone="bad">{t('wizard.testBox.warning', { hours: props.hours })}</Note>
     {props.ninaSet && <Note tone="warn">{t('wizard.testBox.ninaSet')}</Note>}
     {props.sqmeterOn && <Note tone="warn">{t('wizard.testBox.sqmeterOn')}</Note>}
+    <Note>{t('wizard.testBox.later')}</Note>
     {props.config.park && <RequestParkToggle park={props.config.park} update={props.update} />}
   </>
 );
@@ -46,7 +47,7 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
       <ChoiceGroup
         {...choice}
         options={[
-          { value: 'telescope', icon: 'home', title: t('wizard.testBox.telescope'), detail: t('wizard.testBox.telescopeDetail') },
+          { value: 'telescope', icon: 'scope', title: t('wizard.testBox.telescope'), detail: t('wizard.testBox.telescopeDetail') },
           { value: 'testBox', icon: 'warning', title: t('wizard.testBox.testBox'), detail: t('wizard.testBox.testBoxDetail') },
         ]}
       />

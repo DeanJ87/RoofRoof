@@ -13,6 +13,7 @@ import Wizard, { noteRoute } from './components/Wizard';
 import Calibrate from './components/Calibrate';
 import Diagnostics from './components/Diagnostics';
 import Pins from './components/Pins';
+import TestBox from './components/TestBox';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -66,6 +67,10 @@ const App: FunctionalComponent = () => (
     {/* The board and its pins (spec 023): from Settings → Roof and System, not the main nav. */}
     <Layout path="/pins">
       <Pins />
+    </Layout>
+    {/* Test box mode (spec 022): from its banner, Settings → Roof and the setup wizard. */}
+    <Layout path="/test-box">
+      <TestBox />
     </Layout>
     <Layout path="/wifi">
       <WifiSetup />

@@ -112,6 +112,9 @@ code {
   --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.55);
   --radius-choice: 0.75rem;
   --radius-check: 0.3rem; /* a checkbox choice card's mark (DS-12) */
+  /* A banner's wash (DS-14): its tone at 8 %, over --panel-2. */
+  --tint-red: rgba(242, 107, 98, 0.08);
+  --tint-amber: rgba(244, 193, 93, 0.07);
   /* One theme, the night one, whatever the browser prefers (spec 018): its own
      controls and scrollbars follow. */
   color-scheme: dark;
@@ -622,6 +625,23 @@ a.status-row-main:focus-visible .status-row-label {
 
 .reading-row:last-child {
   border-bottom: 0;
+}
+
+/* A calibration check (spec 016): its row, then the device's reason when it fails. */
+.calibrate-check {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.calibrate-check:last-child {
+  border-bottom: 0;
+}
+
+.calibrate-check > .reading-row {
+  border-bottom: 0;
+}
+
+.calibrate-check > .note {
+  padding-bottom: 0.55rem;
 }
 
 .reading-label {
@@ -1319,6 +1339,79 @@ a.status-row-main:focus-visible .status-row-label {
 
 .note-action:hover {
   text-decoration: underline;
+}
+
+/* A banner (DS-14): a state that holds on every page, in the page's own
+   column under the header, above its title. */
+.banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0 auto 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--amber);
+  border-radius: 0.85rem;
+  background: linear-gradient(var(--tint-amber), var(--tint-amber)), var(--panel-2);
+}
+
+.banner-bad {
+  border-inline-start-color: var(--red);
+  background: linear-gradient(var(--tint-red), var(--tint-red)), var(--panel-2);
+}
+
+.banner > .ui-icon {
+  margin-top: 0.05rem;
+}
+
+.banner-body {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.banner-title {
+  color: var(--amber);
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.banner-bad .banner-title {
+  color: var(--red);
+}
+
+.banner-detail {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.banner > .btn {
+  align-self: center;
+}
+
+/* The same column as the page below it. */
+.app-main:has(> .panel-page) > .banner {
+  width: min(100%, 58rem);
+}
+
+.app-main:has(> .compact-page) > .banner {
+  width: min(100%, 42rem);
+}
+
+@media (max-width: 599px) {
+  .banner {
+    grid-template-columns: auto minmax(0, 1fr);
+    margin-bottom: 0.75rem;
+  }
+
+  /* Under the text, in line with it. */
+  .banner > .btn {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .toaster {

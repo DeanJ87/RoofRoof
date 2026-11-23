@@ -33,12 +33,22 @@ import { listReasons } from './settings/restart';
 
 const seconds = (ms: number) => formatNumber(ms / 1000, 1);
 
+// A pill per check (DS-21: one or two words): OK, Bypassed (spec 022: a test
+// box bypass, never "OK") or Not yet, with the device's reason on its own line.
+const checkBadge = (check: CalibrationCheck) => {
+  if (check.bypassed) return <StatusBadge tone="warn" label={t('calibrate.bypassed')} />;
+  return check.ok ? <StatusBadge tone="ok" label={t('calibrate.ok')} /> : <StatusBadge tone="bad" label={t('calibrate.notReady')} />;
+};
+
 export const Checks: FunctionalComponent<{ checks: CalibrationCheck[] }> = ({ checks }) => (
   <div data-calibrate-checks>
     {checks.map((check) => (
-      <div class="reading-row" key={check.id}>
-        <span>{check.label}</span>
-        <StatusBadge tone={check.ok ? 'ok' : 'bad'} label={check.ok ? t('calibrate.ok') : check.text || t('calibrate.notReady')} />
+      <div class="calibrate-check" key={check.id} data-check={check.id} data-state={check.bypassed ? 'bypassed' : check.ok ? 'ok' : 'bad'}>
+        <div class="reading-row">
+          <span>{check.label}</span>
+          {checkBadge(check)}
+        </div>
+        {!check.ok && check.text && <Note>{check.text}</Note>}
       </div>
     ))}
   </div>
@@ -320,7 +330,7 @@ const Calibrate: FunctionalComponent = () => {
   const { checks: jogChecks, blocked: jogBlocked } = jogGate(roof, fresh);
   return (
     <div class="panel-page settings-page page-enter" data-calibrate-page>
-      <h2>{t('calibrate.title')}</h2>
+      <h2 class="page-title">{t('calibrate.title')}</h2>
       {!run?.active && (
         <TeachCard
           teach={teach}

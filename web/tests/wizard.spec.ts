@@ -239,9 +239,7 @@ test('the test box branch: SQMeter for site data only, no N.I.N.A., the bypasses
 
   // No N.I.N.A. screen: the park check is bypassed, and the motor screens say so.
   await onScreen(page, 'direction');
-  await expect(dialog(page).locator('[data-motor]')).toContainText(
-    'Test box: park check (no telescope), weather check (no weather source)',
-  );
+  await expect(dialog(page).locator('[data-motor]')).toContainText('Test box: park check, weather check');
   await atTheRoof(page, 'I am at the roof, watching it');
   await expect(dialog(page).getByRole('button', { name: 'Hold to open' })).toBeEnabled({ timeout: 20_000 });
   await holdFor(page, 'Hold to open', 1500);

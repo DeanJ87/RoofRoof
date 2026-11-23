@@ -370,7 +370,7 @@ A value out of range is refused with the range. They are edited in **Settings �
 
 ### Test box
 
-[Test box mode](test-box.md): three bypasses for a box with no telescope or weather source yet, with one deadline. All off by default. Edited in **Settings → Roof → Test box**.
+[Test box mode](test-box.md): three bypasses for a box with no telescope or weather source yet, with one deadline. All off by default. Edited on the test box page (**Settings → Roof → Test box**, **Open test box**).
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -380,7 +380,7 @@ A value out of range is refused with the range. They are edited in **Settings �
 | `testBox.hours` | int | `72` | How long a bypass lasts from when it is turned on or this is sent (1-720) |
 | `testBox.until` | int | `0` | The deadline, Unix seconds. Read-only: the device sets it, and a value in a save or a restore is ignored |
 
-Turning a bypass on, or sending `testBox.hours` while one is on, needs the clock to be set and stamps a new deadline (that is how to renew). A restore never brings a deadline back.
+Turning a bypass on, or sending `testBox.hours` while one is on, needs the clock to be set and stamps a new deadline (that is what **Extend** does). A restore never brings a deadline back.
 
 ### Setup wizard
 

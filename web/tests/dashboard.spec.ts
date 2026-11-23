@@ -99,6 +99,16 @@ test('no alert channel can send', async ({ page }) => {
   await expect(item(page, 'no-channel')).toContainText("Can't send");
 });
 
+// Spec 022 (constitution 4.1.0): never "All good" while a check is bypassed.
+test('a test box bypass in effect is a row, and the card never says All good', async ({ page }) => {
+  // inventory: test-box
+  await open(page);
+  await expect(item(page, 'test-box')).toHaveCount(0);
+  await setConfig(page, { 'park.nina.url': '', 'testBox.park': true });
+  await expect(item(page, 'test-box')).toContainText('Bypassed', { timeout: 15_000 });
+  await expect(pill(page)).not.toHaveText('All good');
+});
+
 test('clock not set is one row; it is absent while the clock is set', async ({ page }) => {
   // inventory: clock-location
   await open(page);
