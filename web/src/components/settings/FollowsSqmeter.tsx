@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import type { SyncGroup, SyncNeed } from '../../types';
 import type { SettingsTabProps } from './context';
 import { Note } from '../ui';
-import { follows, fromCopy, locked, needs, syncLine } from '../../lib/syncView';
+import { follows, fromCopy, keepsSecrets, locked, needs, secretsProblem, syncLine } from '../../lib/syncView';
 import { deviceText } from '../../i18n/deviceMessage';
 import { t } from '../../i18n';
 
@@ -32,14 +32,23 @@ export const FollowsSqmeter: FunctionalComponent<Props> = ({ group, config, stat
       </div>
     );
   }
+  return <Followed group={group} status={status} onLocal={() => setFollow(false)} />;
+};
+
+// A followed group's line, the device's refusal, and (spec 024) the passwords it keeps or couldn't read.
+const Followed: FunctionalComponent<Pick<Props, 'group' | 'status'> & { onLocal: () => void }> = ({ group, status, onLocal }) => {
   const line = syncLine(status?.sync, group);
   const refused = status?.sync?.[group]?.follow ? status.sync[group].refused : null;
+  const secrets = secretsProblem(status?.sync, group);
   return (
     <div data-sync={group}>
-      <Note tone={line.problem ? 'warn' : 'muted'} action={{ label: t('sync.editHere'), onClick: () => setFollow(false) }}>
+      <Note tone={line.problem ? 'warn' : 'muted'} action={{ label: t('sync.editHere'), onClick: onLocal }}>
         {line.text}
       </Note>
       {refused && <Note tone="warn">{deviceText(refused)}</Note>}
+      {/* Spec 024: the passwords and switches follow too (switches only ever turn on). */}
+      {keepsSecrets(group) && <Note tone="muted">{t('sync.keepsSecrets')}</Note>}
+      {secrets && <Note tone="warn">{t(`sqmeterSecrets.${secrets}`)}</Note>}
     </div>
   );
 };

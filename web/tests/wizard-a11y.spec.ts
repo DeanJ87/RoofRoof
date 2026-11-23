@@ -19,6 +19,7 @@ const SCREENS = [
   'supply',
   'current',
   'parkSwitches',
+  'parkSwitchCount',
   'wiring',
   'hallFitted',
   'hall',

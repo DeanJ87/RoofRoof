@@ -94,7 +94,11 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await expect(dialog(page).getByRole('button', { name: 'Continue' })).toBeDisabled();
   await choose(page, 'Not fitted yet');
   await proceed(page);
+  // Spec 024: how the park is known, then how many switches.
   await onScreen(page, 'parkSwitches');
+  await choose(page, 'N.I.N.A. and park switches');
+  await proceed(page);
+  await onScreen(page, 'parkSwitchCount');
   await choose(page, 'One switch');
   await expect(dialog(page)).toContainText('Park switch 1');
   await proceed(page);
@@ -171,7 +175,7 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   expect(config.ntp.server1).toBe('uk.pool.ntp.org');
   expect(config.alerts.ntfy.topic).toBe('darkskylab-sqm');
   expect(config.sqmeterSync).toMatchObject({ time: { follow: true }, mqtt: { follow: false }, alerts: { follow: true } });
-  expect(config.park.switches).toBe('one');
+  expect(config.park).toMatchObject({ source: 'ninaAndSwitches', switches: 'one' });
   expect(config.daylight.mode).toBe('close');
   expect(config.setup).toEqual({ state: 'done', step: 0 });
 

@@ -165,12 +165,51 @@ describe('Wizard: choices, skips and refusals', () => {
     expect(saves).toEqual([{ setup: { state: 'new', step: 5 } }]);
   });
 
-  // Spec 019: the park switches are an optional second check.
-  it('the park switches screen says the switches are optional', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
-    window.history.replaceState(null, '', '/wizard?screen=parkSwitches');
+  // Spec 024: how the park is known, then (a switch source only) how many switches.
+  it('asks the park source, then the switch count with its readings and warnings, and saves both', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 2 }, testBox: { ...mockConfig.testBox!, park: true } } });
+    const saves = recordSaves();
+    at('screen=parkSwitches');
     render(<Wizard />);
     await onScreen('parkSwitches');
-    expect(screen.getByText(/Park switches are optional/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /^Park switches only/ }));
+    fireEvent.click(button('Continue'));
+    await onScreen('parkSwitchCount');
+    expect(screen.getByRole('dialog', { name: 'How many park switches are fitted?' })).toBeInTheDocument();
+    expect(button('Continue')).toBeDisabled(); // a fact only the owner knows
+    fireEvent.click(screen.getByRole('radio', { name: /^One switch/ }));
+    expect(screen.getByText('Park switch 1')).toBeInTheDocument();
+    expect(document.querySelector('[data-park-note="oneSwitch"]')).toHaveTextContent(/fit two on separate cables/);
+    expect(document.querySelector('[data-park-note="wiring"]')).toHaveTextContent(/3 roof openings/);
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves.length).toBeGreaterThanOrEqual(1));
+    const park = saves.map((body) => body.park).find(Boolean) as Record<string, unknown>;
+    expect(park).toMatchObject({ source: 'switches', switches: 'one' });
+    // The test box's park bypass stands in for N.I.N.A., which switches only don't use.
+    expect(saves.map((body) => body.testBox).find(Boolean)).toMatchObject({ park: false });
+  });
+
+  it('N.I.N.A. only skips the switch count', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    at('screen=parkSwitches');
+    render(<Wizard />);
+    await onScreen('parkSwitches');
+    fireEvent.click(screen.getByRole('radio', { name: /^N.I.N.A. only/ }));
+    fireEvent.click(button('Continue'));
+    await onScreen('wiring');
+  });
+
+  it('with park switches only the N.I.N.A. address is optional', async () => {
+    mockDevice({
+      config: {
+        setup: { state: 'done', step: 0 },
+        park: { ...mockConfig.park!, source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } },
+      },
+    });
+    at('screen=nina');
+    render(<Wizard />);
+    await onScreen('nina');
+    expect(screen.getByText(/Address optional with switches only/)).toBeInTheDocument();
+    expect(screen.queryByText(/No address: the park can't be confirmed/)).toBeNull();
   });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mockConfig, mockSqmeterSite } from '../../mocks/data';
 import { toConfigPayload } from '../../components/settings/payload';
-import { changesOf, copyNotes, copyRows, locationSource, type CopyRowId } from '../sqmeterCopy';
-import type { Config, SqmeterSite } from '../../types';
+import { COPIED_SECRET, changesOf, copyNotes, copyRows, locationSource, secretsOutcome, type CopyRowId } from '../sqmeterCopy';
+import type { Config, SqmeterSecrets, SqmeterSite } from '../../types';
 
 // Copy site settings from SQMeter (spec 020 FR-014 to FR-018).
 
@@ -183,5 +183,116 @@ describe('copyNotes, changesOf, locationSource', () => {
     const sent = JSON.parse(JSON.stringify(payload)) as Config;
     expect(sent.mqtt.password).toBeNull();
     expect(sent.alerts!.ntfy.token).toBeNull();
+  });
+});
+
+// Spec 024: SQMeter's shared secrets (never their values) and its on/off switches.
+describe('copyRows: shared secrets and switches', () => {
+  const shared = (over: Partial<SqmeterSecrets> = {}, siteOver: Partial<SqmeterSite> = {}): SqmeterSite =>
+    site({
+      ...siteOver,
+      secrets: { problem: null, http: true, mqttPassword: 'received', ntfyToken: 'received', pushover: 'received', ...over },
+    });
+  const value = (r: { changes: [string[], unknown][] } | undefined, path: string) => r?.changes.find(([p]) => p.join('.') === path)?.[1];
+
+  it("the broker row carries SQMeter's password, received or the same, with nothing to enter", () => {
+    for (const state of ['received', 'same'] as const) {
+      const r = row(shared({ mqttPassword: state }), config(), 'mqttBroker')!;
+      expect(value(r, 'mqtt.password')).toBe(COPIED_SECRET);
+      expect(r.secrets).toEqual([]);
+      expect(r.asks).toEqual([]);
+    }
+    // Not received: cleared and asked for, as before.
+    expect(value(row(shared({ mqttPassword: 'none' }), config(), 'mqttBroker'), 'mqtt.password')).toBeNull();
+  });
+
+  it('offers the MQTT password for the same broker, only when received and different', () => {
+    const r = row(shared(), matching(), 'mqttPassword')!;
+    expect(r.changes).toEqual([
+      [['mqtt', 'password'], COPIED_SECRET],
+      [['sqmeterSync', 'mqtt', 'follow'], true],
+    ]);
+    expect(ids(shared({ mqttPassword: 'same' }), matching())).not.toContain('mqttPassword');
+    expect(ids(shared(), config())).not.toContain('mqttPassword'); // another broker: the broker row carries it
+    const applied = matching();
+    applied.mqtt.password = COPIED_SECRET;
+    expect(ids(shared(), applied)).not.toContain('mqttPassword');
+  });
+
+  it("turns RoofRoof's MQTT, ntfy and Pushover on when SQMeter's are, never off", () => {
+    const on = shared(
+      {},
+      {
+        mqtt: { ...mockSqmeterSite.mqtt!, enabled: true },
+        ntfy: { ...mockSqmeterSite.ntfy!, enabled: true },
+        pushover: { ...mockSqmeterSite.pushover!, enabled: true },
+      },
+    );
+    const off = matching();
+    off.mqtt.enabled = false;
+    off.alerts!.pushover.enabled = false;
+    expect(row(on, off, 'mqttEnabled')!.changes[0]).toEqual([['mqtt', 'enabled'], true]);
+    expect(row(on, off, 'ntfyEnabled')!.changes[0]).toEqual([['alerts', 'ntfy', 'enabled'], true]);
+    expect(row(on, off, 'pushoverEnabled')!.changes[0]).toEqual([['alerts', 'pushover', 'enabled'], true]);
+    // Already on here, or off at SQMeter: no row, and nothing ever turned off.
+    const already = matching();
+    expect(ids(on, already)).not.toContain('mqttEnabled');
+    for (const r of copyRows(shared(), off)) for (const [p, v] of r.changes) if (p[p.length - 1] === 'enabled') expect(v).toBe(true);
+    expect(ids(shared(), off)).not.toContain('mqttEnabled');
+    // Pushover on needs keys: received, or RoofRoof's own.
+    const noKeys = matching();
+    noKeys.alerts!.pushover = { ...noKeys.alerts!.pushover, enabled: false, userKey: '', appToken: '' };
+    expect(ids({ ...on, secrets: { ...on.secrets!, pushover: 'none' } }, noKeys)).not.toContain('pushoverEnabled');
+    expect(ids(on, noKeys)).toContain('pushoverEnabled');
+  });
+
+  it('carries the ntfy token with a new server, offers it for the same server, and the Pushover keys', () => {
+    const otherServer = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'x' }));
+    const r = row(shared(), otherServer, 'ntfy')!;
+    expect(value(r, 'alerts.ntfy.token')).toBe(COPIED_SECRET);
+    expect(r.secrets).toEqual([]);
+    expect(ids(shared(), otherServer)).not.toContain('ntfyToken');
+    expect(value(row(shared(), matching(), 'ntfyToken'), 'alerts.ntfy.token')).toBe(COPIED_SECRET);
+    expect(ids(shared({ ntfyToken: 'same' }), matching())).not.toContain('ntfyToken');
+    const keys = row(shared(), matching(), 'pushoverKeys')!;
+    expect(value(keys, 'alerts.pushover.userKey')).toBe(COPIED_SECRET);
+    expect(value(keys, 'alerts.pushover.appToken')).toBe(COPIED_SECRET);
+    expect(value(keys, 'sqmeterSync.alerts.follow')).toBe(true);
+    expect(ids(shared({ pushover: 'same' }), matching())).not.toContain('pushoverKeys');
+  });
+
+  it('notes the Pushover keys only when SQMeter has them and did not share them', () => {
+    expect(copyNotes(shared())).toEqual([]);
+    expect(copyNotes(shared({ pushover: 'same' }))).toEqual([]);
+    expect(copyNotes(shared({ problem: 'sharingOff', pushover: 'none' }))).toEqual(['pushover']);
+  });
+
+  it('says what became of the secrets: received (and over http), or why not', () => {
+    expect(secretsOutcome(shared())).toEqual({ received: true, http: true, problem: null });
+    expect(secretsOutcome(shared({ http: false }))).toEqual({ received: true, http: false, problem: null });
+    const problem = (p: SqmeterSecrets['problem']) =>
+      secretsOutcome(shared({ problem: p, mqttPassword: 'none', ntfyToken: 'none', pushover: 'none' })).problem;
+    for (const p of [
+      'notSaved',
+      'notSupported',
+      'sharingOff',
+      'noWebPassword',
+      'loginNeeded',
+      'loginRefused',
+      'tooManyLogins',
+      'unreachable',
+    ] as const)
+      expect(problem(p)).toBe(p);
+    expect(problem('waiting')).toBeNull();
+    // Nothing set at SQMeter: nothing to say. Older firmware: no secrets part.
+    const bare = shared(
+      { problem: 'notSupported' },
+      {
+        mqtt: { ...mockSqmeterSite.mqtt!, passwordSet: false },
+        pushover: { userKeySet: false, appTokenSet: false },
+      },
+    );
+    expect(secretsOutcome(bare).problem).toBeNull();
+    expect(secretsOutcome({ ...mockSqmeterSite, secrets: undefined })).toEqual({ received: false, http: false, problem: null });
   });
 });

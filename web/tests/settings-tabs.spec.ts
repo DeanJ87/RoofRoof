@@ -131,6 +131,47 @@ test('a locked SQMeter: the copy asks for its password; with the login saved it 
     .toBe('safe');
 });
 
+// Spec 024: SQMeter shares its passwords with its login; the copy brings the MQTT password across
+// as a placeholder the device fills in, and no response ever carries the password itself.
+test("SQMeter's passwords: why not without a web password; with its login, received and saved unseen", async ({ page }) => {
+  test.setTimeout(120_000);
+  const bodies: string[] = [];
+  page.on('response', async (response) => {
+    if (response.url().includes('/api/')) bodies.push(await response.text().catch(() => ''));
+  });
+  await page.goto('./#/settings?tab=roof&section=sqmeterCopy');
+  const card = page.locator('#sqmeterCopy');
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(card).toContainText('SQMeter has no web password', { timeout: 15_000 });
+  await expect(card).toContainText('Enter the MQTT password');
+  await card.getByRole('button', { name: 'Cancel' }).click();
+
+  const toggle = page.locator('.demo-panel-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await page.getByRole('button', { name: 'SQMeter password: On', exact: true }).click();
+  await toggle.click();
+  const safety = page.locator('#safety');
+  await safety.locator('[data-field="safety.http.username"]').fill('admin');
+  await safety.locator('[data-field="safety.http.password"]').fill('sqmeter');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/config')).json()).safety.http))
+    .toMatchObject({ username: 'admin', password: '********' });
+
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(card).toContainText('Passwords received from SQMeter', { timeout: 15_000 });
+  await expect(card).toContainText('unencrypted');
+  await expect(card.getByRole('switch', { name: 'MQTT broker' })).toBeChecked();
+  await expect(card).not.toContainText('Enter the MQTT password');
+  await card.getByRole('button', { name: 'Apply ticked' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/config')).json()).mqtt))
+    .toMatchObject({ username: 'observatory', password: '********' });
+  expect(bodies.some((body) => body.includes('demo-broker-pass'))).toBe(false);
+});
+
 // Spec 020 FR-036, FR-038: SQMeter's address only (a URL of another SQMeter page is taken as it),
 // and Test reads the simulated SQMeter once, through the device's own code.
 test("SQMeter's address: a full URL saves as the address, and Test reads SQMeter once", async ({ page }) => {

@@ -1,7 +1,9 @@
 import { FunctionalComponent } from 'preact';
-import type { ParkConfig } from '../../types';
+import type { ParkConfig, ParkSource, ParkSwitches } from '../../types';
 import type { SettingsTabProps } from './context';
 import { Field, SelectInput, TextInput } from './controls';
+import { Note } from '../ui';
+import { ninaCounts, parkSource, parkSourceChanges, parkSwitchesChanges, parkWarnings } from '../../lib/parkSource';
 import { t } from '../../i18n';
 
 // The park settings' fields, shared by Settings → Roof and the setup wizard.
@@ -21,17 +23,46 @@ export const NinaUrlField: FunctionalComponent<ParkProps> = ({ park, update, err
   </Field>
 );
 
-export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, update }) => (
-  <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')}>
+// Spec 024: how the park is known (N.I.N.A., the switches, or both); the source and the count always change together.
+export const ParkSourceField: FunctionalComponent<ParkProps> = ({ park, updateMany, error }) => (
+  <Field label={t('settings.roof.parkSource')} hint={t('settings.roof.parkSourceHint')} error={error('park.source')}>
     <SelectInput
-      dataField="park.switches"
-      value={park.switches}
+      dataField="park.source"
+      value={parkSource(park)}
       options={[
-        { value: 'none', label: t('settings.roof.switchesNone') },
-        { value: 'one', label: t('settings.roof.switchesOne') },
-        { value: 'two', label: t('settings.roof.switchesTwo') },
+        { value: 'nina', label: t('settings.roof.sourceNina') },
+        { value: 'switches', label: t('settings.roof.sourceSwitches') },
+        { value: 'ninaAndSwitches', label: t('settings.roof.sourceBoth') },
       ]}
-      onChange={(v) => update(['park', 'switches'], v)}
+      onChange={(v) => updateMany(parkSourceChanges(park, v as ParkSource))}
     />
   </Field>
+);
+
+// How many switches are fitted: shown only for a switch source (N.I.N.A. only fits none).
+export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, updateMany, error }) =>
+  parkSource(park) === 'nina' ? null : (
+    <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')} error={error('park.switches')}>
+      <SelectInput
+        dataField="park.switches"
+        value={park.switches}
+        options={[
+          { value: 'one', label: t('settings.roof.switchesOne') },
+          { value: 'two', label: t('settings.roof.switchesTwo') },
+        ]}
+        onChange={(v) => updateMany(parkSwitchesChanges(park, v as ParkSwitches))}
+      />
+    </Field>
+  );
+
+// Spec 024: with switches only, the wiring guards and the optional N.I.N.A. address (Settings and the wizard).
+export const ParkNotes: FunctionalComponent<ParkProps & { nina?: boolean }> = ({ park, config, nina = true }) => (
+  <>
+    {parkWarnings(park, config.testBox).map((warning) => (
+      <Note key={warning} tone={warning === 'wiring' ? 'muted' : 'warn'}>
+        <span data-park-note={warning}>{t(`settings.roof.parkNote.${warning}`)}</span>
+      </Note>
+    ))}
+    {nina && !ninaCounts(park) && <Note>{t('settings.roof.ninaOptional')}</Note>}
+  </>
 );

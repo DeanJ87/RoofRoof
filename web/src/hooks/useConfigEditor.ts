@@ -6,7 +6,7 @@ import { toConfigPayload } from '../components/settings/payload';
 import { restartReasons } from '../components/settings/restart';
 import { fetchEffectiveReport, type EffectiveReport } from '../lib/settingsDeps';
 import { TEST_BOX_CHANGED, fetchConfigWithRevision, fetchStatus, saveConfig } from '../lib/settingsApi';
-import { applyPatch, asShown, baseValuesFor, diffConfig, rebaseEdits } from '../lib/configPatch';
+import { applyPatch, asShown, baseValuesFor, diffConfig, rebaseEdits, withSentTogether } from '../lib/configPatch';
 import { deviceError } from '../i18n/deviceMessage';
 import { t } from '../i18n';
 
@@ -53,7 +53,7 @@ const submit = async (config: Config, saved: Config, extra: Partial<Config>, loa
   const full = { ...payload, ...extra };
   const errors = getConfigValidationErrors(full, saved);
   if (hasConfigValidationErrors(errors)) return { outcome: { kind: 'invalid', errors }, patch: undefined };
-  const patch = diffConfig(saved, full) ?? {};
+  const patch = withSentTogether(diffConfig(saved, full) ?? {}, full);
   const base = loaded.revision === undefined ? {} : { baseRevision: loaded.revision, baseValues: baseValuesFor(loaded.document, patch) };
   try {
     const { ok, body } = await saveConfig({ ...(patch as object), ...base });

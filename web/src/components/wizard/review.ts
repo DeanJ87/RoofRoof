@@ -3,6 +3,7 @@ import { t } from '../../i18n';
 import { formatDateTime, formatNumber } from '../../i18n/format';
 import type { WizardPageId } from './pages';
 import { pinsRestartNeeded, presetLabel } from '../../lib/pinsView';
+import { ninaCounts, parkSource } from '../../lib/parkSource';
 
 // The review page's checks (spec 015 FR-010): one per essential, from the
 // saved settings and the live readings. A missing reading is "unknown", never OK.
@@ -55,12 +56,16 @@ const supply = ({ status }: ReviewInput): Check => {
   return ok(t('wizard.review.supplyOk', { volts }));
 };
 
+// Spec 024: names the park source; one switch alone is attention.
 const parkSwitches = ({ config, status }: ReviewInput): Check => {
-  if ((config.park?.switches ?? 'none') === 'none') return warn(t('wizard.review.noParkSwitches'));
+  const source = config.park ? parkSource(config.park) : 'nina';
+  if (source === 'nina' || config.park?.switches === 'none') return warn(t('wizard.review.noParkSwitches'));
   const switches = status?.roof?.parkSwitches;
   if (!switches) return unknown();
   const readings = [switches.switch1, switches.switch2].slice(0, switches.fitted);
-  return readings.includes('unreadable') ? bad(t('wizard.review.parkSwitchUnreadable')) : ok(t('wizard.review.parkSwitchesRead'));
+  if (readings.includes('unreadable')) return bad(t('wizard.review.parkSwitchUnreadable'));
+  if (source === 'ninaAndSwitches') return ok(t('wizard.review.parkBothRead'));
+  return config.park?.switches === 'one' ? warn(t('wizard.review.parkOneSwitchOnly')) : ok(t('wizard.review.parkSwitchesOnlyRead'));
 };
 
 // Spec 023: a board chosen and its pins in effect and valid.
@@ -97,7 +102,10 @@ const weather = ({ config, inputs }: ReviewInput): Check => {
 };
 
 const nina = ({ config, inputs }: ReviewInput): Check => {
-  if (!config.park?.nina.url) return config.testBox?.park ? warn(t('wizard.review.parkBypassed')) : bad(t('wizard.review.noNina'));
+  if (!config.park?.nina.url) {
+    if (config.park && !ninaCounts(config.park)) return ok(t('wizard.review.ninaOptional'));
+    return config.testBox?.park ? warn(t('wizard.review.parkBypassed')) : bad(t('wizard.review.noNina'));
+  }
   if (!inputs) return unknown();
   if (inputs.nina.state !== 'good') return warn(t('wizard.review.ninaNotAnswering', { text: inputs.nina.text || inputs.nina.state }));
   return inputs.nina.connected ? ok(t('wizard.review.ninaConnected')) : warn(t('wizard.review.mountNotConnected'));

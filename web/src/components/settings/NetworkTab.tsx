@@ -2,6 +2,7 @@ import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useWifiScan } from '../../hooks/useWifiScan';
 import { useMqttTest } from '../../hooks/useMqttTest';
+import { isCopiedSecret } from '../../lib/copiedSecret';
 import { defaultAlpacaConfig, defaultHomeAssistant } from './defaults';
 import type { SettingsTabProps } from './context';
 import { Button, Note } from '../ui';
@@ -203,18 +204,23 @@ const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
 
 const MqttTest: FunctionalComponent<{ config: SettingsTabProps['config']; test: ReturnType<typeof useMqttTest> }> = ({ config, test }) => {
   const { testingMqtt, mqttResult, testMqtt } = test;
+  // Spec 024: SQMeter's password is filled in only at the save, so the test waits for it.
+  const copied = isCopiedSecret(config.mqtt.password);
   return (
-    <div class="btn-row">
-      <ActionButton
-        onClick={testMqtt}
-        busy={testingMqtt}
-        busyLabel={t('common.testing')}
-        disabled={!config.mqtt.broker || !config.mqtt.port}
-      >
-        {t('settings.network.testConnection')}
-      </ActionButton>
-      <ResultNote result={mqttResult} />
-    </div>
+    <>
+      <div class="btn-row">
+        <ActionButton
+          onClick={testMqtt}
+          busy={testingMqtt}
+          busyLabel={t('common.testing')}
+          disabled={!config.mqtt.broker || !config.mqtt.port || copied}
+        >
+          {t('settings.network.testConnection')}
+        </ActionButton>
+        <ResultNote result={mqttResult} />
+      </div>
+      {copied && <Note>{t('settings.network.testAfterCopy')}</Note>}
+    </>
   );
 };
 

@@ -9,12 +9,14 @@ import {
   HallFittedScreen,
   HallScreen,
   MotionScreen,
+  ParkSwitchCountScreen,
   ParkSwitchesScreen,
   TestBoxScreen,
   SupplyScreen,
 } from './HardwarePages';
 import { BoardScreen, NetworkScreen, WiringScreen } from './BoardPages';
 import { hasEthernet } from '../../lib/pinsView';
+import { parkSource } from '../../lib/parkSource';
 import {
   AlertChannelScreen,
   AlertDetailsScreen,
@@ -41,6 +43,7 @@ export type ScreenId =
   | 'supply'
   | 'current'
   | 'parkSwitches'
+  | 'parkSwitchCount'
   | 'wiring'
   | 'hallFitted'
   | 'hall'
@@ -74,6 +77,7 @@ const hasSource = (p: WizardPageProps) => Boolean(p.config.safety?.http.enabled 
 // Spec 022: a test box skips the sources its bypasses stand in for.
 const noParkBypass = (p: WizardPageProps) => !p.config.testBox?.park;
 const noWeatherBypass = (p: WizardPageProps) => !p.config.testBox?.weather;
+const usesSwitches = (p: WizardPageProps) => Boolean(p.config.park && parkSource(p.config.park) !== 'nina');
 const alertsOn = (p: WizardPageProps) => {
   const a = p.config.alerts;
   return Boolean(a?.enabled && (a.ntfy.enabled || a.pushover.enabled || a.webhook.enabled || a.mqtt.enabled));
@@ -100,7 +104,9 @@ export const SCREENS: Screen[] = [
   { id: 'testBox', page: 'hardware', Body: TestBoxScreen, choice: true },
   { id: 'supply', page: 'hardware', Body: SupplyScreen },
   { id: 'current', page: 'hardware', Body: CurrentScreen, choice: true },
+  // Spec 024: how the park is known, then how many switches (a switch source only).
   { id: 'parkSwitches', page: 'hardware', Body: ParkSwitchesScreen, choice: true },
+  { id: 'parkSwitchCount', page: 'hardware', Body: ParkSwitchCountScreen, choice: true, shows: usesSwitches },
   { id: 'wiring', page: 'hardware', Body: WiringScreen },
   { id: 'hallFitted', page: 'hall', Body: HallFittedScreen, choice: true },
   { id: 'hall', page: 'hall', Body: HallScreen, shows: hallFitted },

@@ -32,7 +32,7 @@ const FIELDS = [
   'safety.mqtt.enabled',
   'safety.staleSeconds',
   'park.nina.url',
-  'park.switches',
+  'park.source',
   'park.timeoutSeconds',
   'daylight.mode',
   'daylight.sunAltitudeDeg',
@@ -303,5 +303,59 @@ describe('Settings → Roof → Calibration run', () => {
     expect(card).not.toBeNull();
     const limit = await findField('roof.calibrationLimitSeconds');
     expect(limit.closest('details')).not.toBeNull();
+  });
+
+  // Spec 024: the park source; the switch count only for a switch source, always saved with the source.
+  it('sets the park source with the switch count, warns about one switch only, and saves both together', async () => {
+    mockDevice();
+    const saves: Config[] = [];
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        saves.push((await request.json()) as Config);
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    const source = (await findField('park.source')) as unknown as HTMLSelectElement;
+    expect(source.value).toBe('nina');
+    expect(field('park.switches')).toBeNull();
+    fireEvent.change(source, { target: { value: 'switches' } });
+    const count = (await findField('park.switches')) as unknown as HTMLSelectElement;
+    expect(count.value).toBe('one'); // none was fitted
+    expect(Array.from(count.options).map((o) => o.value)).toEqual(['one', 'two']);
+    expect(document.querySelector('[data-park-note="oneSwitch"]')).toHaveTextContent(/fit two on separate cables/);
+    expect(document.querySelector('[data-park-note="wiring"]')).toHaveTextContent(/3 roof openings/);
+    expect(screen.getByText(/Address optional with switches only/)).toBeInTheDocument();
+    fireEvent.change(count, { target: { value: 'two' } });
+    expect(document.querySelector('[data-park-note="oneSwitch"]')).toBeNull();
+    fireEvent.change(field('park.source')!, { target: { value: 'ninaAndSwitches' } });
+    expect(document.querySelector('[data-park-note="wiring"]')).toBeNull();
+    expect((field('park.switches') as unknown as HTMLSelectElement).value).toBe('two'); // kept
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].park).toEqual({ source: 'ninaAndSwitches', switches: 'two' });
+  });
+
+  it('choosing N.I.N.A. only fits no switch; a switch count change still sends the source', async () => {
+    mockDevice({ config: { park: { ...mockConfig.park!, source: undefined, switches: 'one' } } });
+    const saves: Config[] = [];
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        saves.push((await request.json()) as Config);
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    // Settings from before spec 024: one switch reads as N.I.N.A. and park switches.
+    expect(((await findField('park.source')) as unknown as HTMLSelectElement).value).toBe('ninaAndSwitches');
+    fireEvent.change(field('park.switches')!, { target: { value: 'two' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].park).toEqual({ source: 'ninaAndSwitches', switches: 'two' });
+    fireEvent.change(field('park.source')!, { target: { value: 'nina' } });
+    expect(field('park.switches')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(2));
+    expect(saves[1].park).toEqual({ source: 'nina', switches: 'none' });
   });
 });

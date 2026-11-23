@@ -6,8 +6,8 @@ import { Toaster } from '../toast';
 import { server } from '../../test/mswServer';
 import { mockDevice } from '../../test/mockDevice';
 import { mockConfig, mockSqmeterSite, mockStatus } from '../../mocks/data';
-import { fetchSqmeterSite } from '../../lib/sqmeterCopy';
-import type { Config, LocationStatus } from '../../types';
+import { COPIED_SECRET, fetchSqmeterSite } from '../../lib/sqmeterCopy';
+import type { Config, LocationStatus, SqmeterSecrets, SqmeterSite } from '../../types';
 
 // Settings → Roof: Copy from SQMeter and the location's source (spec 020 FR-016, FR-019).
 
@@ -53,7 +53,7 @@ describe('Copy from SQMeter', () => {
     // SQMeter's base topic already matches the weather source's.
     expect(within(site).queryByRole('switch', { name: 'Weather topic' })).toBeNull();
     expect(within(site).getByText('SQMeter: GMT0BST,M3.5.0/1,M10.5.0; RoofRoof: GMT0')).toBeInTheDocument();
-    expect(within(site).getByText('Enter the MQTT password in Settings, Network: it is never copied.')).toBeInTheDocument();
+    expect(within(site).getByText("Enter the MQTT password in Settings, Network: SQMeter didn't share it.")).toBeInTheDocument();
     expect(within(site).getByText(/SQMeter uses Pushover/)).toBeInTheDocument();
     expect(within(site).getByText('Copied settings keep following SQMeter: Edit here instead stops it.')).toBeInTheDocument();
     for (const name of ["Follow SQMeter's location", 'Time servers', 'MQTT broker', 'ntfy topic'])
@@ -215,5 +215,74 @@ describe('fetchSqmeterSite', () => {
     // Older firmware's config has no login: nothing is sent.
     await fetchSqmeterSite('http://10.0.0.5', {});
     expect(body).toEqual({ url: 'http://10.0.0.5' });
+  });
+});
+
+// Spec 024: SQMeter's shared passwords reach the settings as a placeholder the device fills in.
+describe('Copy from SQMeter: shared passwords and switches', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+  const answer = (secrets: Partial<SqmeterSecrets>, over: Partial<SqmeterSite> = {}) =>
+    server.use(
+      http.post('/api/sqmeter/site', () =>
+        HttpResponse.json({
+          ...mockSqmeterSite,
+          ...over,
+          secrets: { problem: null, http: true, mqttPassword: 'received', ntfyToken: 'none', pushover: 'none', ...secrets },
+        }),
+      ),
+    );
+  const copy = async () => {
+    await openRoofTab();
+    const site = await card();
+    fireEvent.click(within(site).getByRole('button', { name: 'Copy from SQMeter' }));
+    await within(site).findByRole('button', { name: 'Apply ticked' });
+    return site;
+  };
+
+  it('received: says so (and over http), turns MQTT on, and saves the placeholder, never a value', async () => {
+    mockDevice({ config: { mqtt: { ...mockConfig.mqtt, enabled: false } } });
+    answer({}, { mqtt: { ...mockSqmeterSite.mqtt!, enabled: true } });
+    const saves = recordSaves();
+    const site = await copy();
+    expect(within(site).getByText('Passwords received from SQMeter; they are never shown here.')).toBeInTheDocument();
+    expect(within(site).getByText(/crossed your network unencrypted/)).toBeInTheDocument();
+    expect(within(site).getByRole('switch', { name: 'MQTT on' })).toBeChecked();
+    expect(within(site).queryByText(/Enter the MQTT password/)).toBeNull();
+    fireEvent.click(within(site).getByRole('button', { name: 'Apply ticked' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: '192.168.1.10', password: COPIED_SECRET, enabled: true }));
+    expect(saves[0].sqmeterSync).toEqual(expect.objectContaining({ mqtt: { follow: true } }));
+  });
+
+  it('shows a password field holding the placeholder as received, not as a mask', async () => {
+    mockDevice({ config: { mqtt: { ...mockConfig.mqtt, password: COPIED_SECRET } } });
+    window.history.replaceState(null, '', '/settings?tab=network');
+    render(<Settings />);
+    const input = await findField('mqtt.password');
+    expect(input.value).toBe('');
+    expect(await screen.findByText('Received from SQMeter; never shown here.')).toBeInTheDocument();
+    // The device fills it in at the save: no connection test with the placeholder.
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    expect(screen.getByText('The password from SQMeter is filled in at the save: save first, then test.')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['notSupported', "This SQMeter can't share passwords: update it, or enter them here."],
+    ['sharingOff', "SQMeter's password sharing is off: turn it on in its Settings, or enter them here."],
+    ['noWebPassword', "SQMeter has no web password, so it won't share passwords: set one in SQMeter first."],
+    ['loginNeeded', 'SQMeter needs its login to share passwords: enter it in Settings, Roof.'],
+    ['loginRefused', "SQMeter refused the login: check SQMeter's user name and password in Settings, Roof."],
+    ['tooManyLogins', 'SQMeter locked sharing for a minute after failed logins: check its login, then retry.'],
+    ['notSaved', "Passwords come only from SQMeter's saved address: save it, then copy again."],
+    ['unreachable', "SQMeter's passwords couldn't be read: enter them here."],
+    ['unreadable', "SQMeter's passwords couldn't be read: enter them here."],
+  ] as const)('%s: says why, and still asks for the password', async (problem, text) => {
+    mockDevice();
+    answer({ problem, mqttPassword: 'none' });
+    const site = await copy();
+    expect(within(site).getByText(text)).toBeInTheDocument();
+    expect(within(site).queryByText(/Passwords received/)).toBeNull();
+    expect(within(site).getByText("Enter the MQTT password in Settings, Network: SQMeter didn't share it.")).toBeInTheDocument();
   });
 });

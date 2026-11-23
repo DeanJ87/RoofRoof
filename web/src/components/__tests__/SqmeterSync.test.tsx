@@ -138,4 +138,23 @@ describe('Following SQMeter', () => {
     const note = screen.getByText('Follows SQMeter, checked 30 s ago');
     expect(within(note).getByRole('button', { name: 'Edit here instead' })).toBeInTheDocument();
   });
+
+  // Spec 024: the sync keeps the passwords and switches too, and says why it couldn't read the passwords.
+  it("Network: a following MQTT group says the sync keeps SQMeter's passwords, and why it couldn't read them", async () => {
+    mockDevice({ config: { sqmeterSync: following('mqtt') } });
+    liveSync({ readAgeSeconds: 30, secrets: 'loginRefused', mqtt: groupStatus(true) });
+    await openTab('network', 'Network');
+    expect(await screen.findByText(/The sync also keeps SQMeter's passwords/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("SQMeter refused the login: check SQMeter's user name and password in Settings, Roof."),
+    ).toBeInTheDocument();
+  });
+
+  it('Network: no password note once received, nor for the time group', async () => {
+    mockDevice({ config: { sqmeterSync: following('mqtt', 'time') } });
+    liveSync({ readAgeSeconds: 30, secrets: 'received', mqtt: groupStatus(true), time: groupStatus(true) });
+    await openTab('network', 'Network');
+    expect(await screen.findByText(/The sync also keeps SQMeter's passwords/)).toBeInTheDocument();
+    expect(screen.queryByText(/SQMeter refused the login/)).toBeNull();
+  });
 });

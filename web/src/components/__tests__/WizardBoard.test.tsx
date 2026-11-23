@@ -51,6 +51,7 @@ describe('Wizard: board, network and wiring', () => {
       'supply',
       'current',
       'parkSwitches',
+      'parkSwitchCount', // spec 024
       'wiring',
     ]);
   });
