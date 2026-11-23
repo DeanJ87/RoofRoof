@@ -66,3 +66,5 @@
 ## Phase 8: Review rounds
 
 - [x] T040 Round 1 (firmware): the probe's pins reserved on every board; MDIO sampled after the falling edge with one turnaround bit; an Alpaca stop with invalid pins answered OK; the default route follows the Wi-Fi fallback; a board whose LAN8720 answered refuses a non-WT32 map; GPIO 37/38 refused; a stored unknown network mode loads as Auto; Ethernet only as in effect; a busy EN check says so; a backup never restores the pins; the pin fault names its reason
+- [x] T041 Round 2: GPIO16/17 reserved on every board; `boardDetected` in validation and saves (a WT32 in WiFi only probed at boot); the Ethernet check skipped in WiFi only and when busy; `ethernet.mode` in the status; the web UI's empty-SSID rule, the detected-WT32 DevKit card, Clear fault for the pin fault, restart refusals, neutral WiFi beside Ethernet, live regions; settings saves merged on the heap with the async_tcp low-water logged
+- [x] T042 Round 3: the WiFi-only Settings note, the wiring check refused when the controller didn't start, Ethernet before PSRAM in the rules, wording (reviewer: safe to merge)
