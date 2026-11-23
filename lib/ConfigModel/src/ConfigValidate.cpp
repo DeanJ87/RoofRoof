@@ -386,14 +386,37 @@ namespace SQM
         return first == nullptr || setError(error, first->text);
     }
 
-    // Spec 023: the dividers and trims (errors only; a divider that could put
-    // over 3.3 V on a pin is a warning the Pins page shows).
-    bool Config::validateAnalog(std::string *error) const
+    Board::AnalogGates RoofConfig::analogGates() const
     {
-        for (const Board::AnalogIssue &issue : Board::checkAnalog(analog))
+        Board::AnalogGates g;
+        g.currentSense = currentSenseEnabled;
+        g.maxCurrentAmps = maxCurrentAmps;
+        g.ampsPerVolt = currentAmpsPerVolt;
+        g.minRunningAmps = minRunningAmps;
+        g.minSupplyVolts = minSupplyVolts;
+        g.slowDutyPercent = static_cast<float>(slowDutyPercent);
+        return g;
+    }
+
+    Board::AnalogGates Config::analogGates() const
+    {
+        return roof.analogGates();
+    }
+
+    bool analogUsable(const Board::AnalogConfig &analog, const RoofConfig &roof, std::string *error)
+    {
+        for (const Board::AnalogIssue &issue : Board::checkAnalog(analog, roof.analogGates()))
             if (issue.error)
                 return setError(error, issue.text);
         return true;
+    }
+
+    // Spec 023: the dividers and trims, also against the roof's gates (errors
+    // only; a divider that could put over 3.3 V on a pin is a warning the Pins
+    // page shows). Part of every save, so a roof setting change re-checks them.
+    bool Config::validateAnalog(std::string *error) const
+    {
+        return analogUsable(analog, roof, error);
     }
 
     bool Config::validate(std::string *error) const

@@ -261,6 +261,15 @@ void test_every_roof_and_park_field_counts_as_a_change(void)
         [](Config &c) { c.roof.minSupplyVolts += 0.5f; },
         [](Config &c) { c.park.ninaUrl = "http://192.168.1.20:1888"; },
         [](Config &c) { c.park.switches = ParkConfig::Switches::Two; },
+        // Spec 023: the dividers and trims feed the same gates.
+        [](Config &c) { c.analog.preset = Board::AnalogPreset::Custom; },
+        [](Config &c) { c.analog.supply.bottomOhms += 1; },
+        [](Config &c) { c.analog.supplyTrim.offset = 0.3f; },
+        [](Config &c) { c.analog.hall.topOhms += 1; },
+        [](Config &c) { c.analog.currentR.bottomOhms += 1; },
+        [](Config &c) { c.analog.currentRTrim.gain = 1.1f; },
+        [](Config &c) { c.analog.currentL.topOhms += 1; },
+        [](Config &c) { c.analog.currentLTrim.offset = 0.1f; },
     };
     for (auto change : changes)
     {

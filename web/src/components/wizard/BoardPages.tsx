@@ -4,7 +4,6 @@ import { useEffect } from 'preact/hooks';
 import type { NetworkMode, PinsConfig } from '../../types';
 import type { WizardPageProps } from './context';
 import { usePinsDocument, usePinValidation } from '../../hooks/usePins';
-import { analogForBoard } from '../../lib/analogView';
 import { pinsRestartNeeded, suggestedPreset, withPreset, wt32Detected } from '../../lib/pinsView';
 import { IssueNotes, PresetChoice, UnsetNotes } from '../pins/PinFields';
 import { WiringCheckPanel } from '../pins/WiringCheck';
@@ -35,18 +34,9 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
   // The device's verdict on the board as chosen: an error (a board it found to be a WT32-ETH01
   // set up as another) is shown here, and the device refuses to save it.
   const check = usePinValidation(pins);
-  // A board preset chosen: a named analog preset follows it (a Custom analog setup stays).
-  const choose = (next: PinsConfig) => {
-    const analog = analogForBoard(doc, props.config.analog, next.preset);
-    props.updateMany(
-      analog
-        ? [
-            [['pins'], next],
-            [['analog'], analog],
-          ]
-        : [[['pins'], next]],
-    );
-  };
+  // A board preset chosen. The analog setup doesn't follow it: the pins apply at a restart and
+  // the analog setup at once, and the board preset can't tell a carrier v1 from a v1.1 (its diode).
+  const choose = (next: PinsConfig) => props.updateMany([[['pins'], next]]);
   // A new device: the board its boot probe suggests is chosen for the person to confirm.
   useEffect(() => {
     if (doc && unset && pins?.preset === 'unset') choose(withPreset(doc, pins, suggestedPreset(doc)));

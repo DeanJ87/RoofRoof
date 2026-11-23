@@ -134,15 +134,20 @@ describe('Pins page: Advanced', () => {
     expect(saves[0].analog).toEqual({ preset: 'custom' });
   });
 
-  it('a named analog preset follows the board preset, and back', async () => {
+  it('the analog preset never follows the board preset (pins apply at a restart, a carrier v1 has no diode)', async () => {
     mockBoard('wt32');
     await openPage();
     expect(analogRadio(/^WT32 carrier v1\.1/)).toBeChecked();
     expect(row(inputRows('supply'), 'Offset')).toHaveTextContent('0.30 V');
-    fireEvent.click(boardRadio(/^Custom/));
+    fireEvent.click(boardRadio(/^ESP32 DevKit/));
     expect(analogRadio(/^WT32 carrier v1\.1/)).toBeChecked();
+  });
+
+  it('choosing the WT32 board leaves the DevKit analog preset (no +0.3 V for a carrier without the diode)', async () => {
+    mockBoard('devkit');
+    await openPage();
     fireEvent.click(boardRadio(/^WT32-ETH01/));
-    expect(analogRadio(/^WT32 carrier v1\.1/)).toBeChecked();
+    expect(analogRadio(/^DevKit bench wiring/)).toBeChecked();
   });
 
   it('calibrates the supply to a measured voltage: the gain set, the preset Custom, to save', async () => {
@@ -161,6 +166,18 @@ describe('Pins page: Advanced', () => {
     fireEvent.click(button('Save pins'));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].analog).toEqual({ preset: 'custom', supply: { gain: 1.0273 } });
+  });
+
+  // The reading was scaled with the saved setup: an unsaved +0.3 V (the WT32 preset) is made room for, not added twice.
+  it('calibrates from the saved setup while the analog setup is edited', async () => {
+    mockBoard('devkit');
+    await openPage();
+    fireEvent.click(analogRadio(/^WT32 carrier v1\.1/));
+    type('analog.calibrate.measured', '12.46');
+    fireEvent.click(button('Set the gain'));
+    // (12.46 - 0.3) / 12.46
+    expect(await screen.findByText('Gain set to 0.9759, as Custom. Save to keep it.')).toBeInTheDocument();
+    expect(field('analog.supply.offsetVolts')!.value).toBe('0.3');
   });
 
   it('refuses to calibrate with no supply reading', async () => {

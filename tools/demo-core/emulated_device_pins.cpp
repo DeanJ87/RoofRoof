@@ -58,7 +58,11 @@ std::string EmulatedDevice::pins(const std::string &action, const std::string &b
             return response(400, DemoCore::errorJson(error));
         DynamicJsonDocument out(ConfigPins::PINS_DOCUMENT_BYTES / 2);
         ConfigPins::writeValidation(
-            out.to<JsonObject>(), map, Board::check(map, Board::facts(map.board, false)), withAnalog ? &analog : nullptr);
+            out.to<JsonObject>(),
+            map,
+            Board::check(map, Board::facts(map.board, false)),
+            withAnalog ? &analog : nullptr,
+            cfg.analogGates());
         return response(200, serialize(out));
     }
     const Board::BootPins boot = Board::bootPins(runningPins, facts, false);
@@ -87,6 +91,7 @@ std::string EmulatedDevice::pins(const std::string &action, const std::string &b
     view.boot = boot;
     view.probed = runningPins.preset == Board::Preset::Unset;
     view.analog = cfg.analog;
+    view.gates = cfg.analogGates();
     view.board = runningPins.preset == Board::Preset::Unset ? Board::BoardId::Esp32Devkit : runningPins.board;
     DynamicJsonDocument out(ConfigPins::PINS_DOCUMENT_BYTES);
     ConfigPins::writePinsDocument(out.to<JsonObject>(), view);

@@ -308,14 +308,14 @@ The analog inputs' dividers and trims ([Advanced: the analog front end](pins.md#
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `analog.preset` | string | `"devkit-bench"` | `devkit-bench` (the DevKit bench wiring; the default on every device, new or upgraded), `wt32-carrier-v1.1` (the same, with the supply offset +0.3 V for the carrier's reverse-polarity diode) or `custom`. A named preset fixes every value: sent alone it fills them in; sent with a value that differs from it, it is refused (*"These values belong to a named preset; choose Custom to change one"*) |
+| `analog.preset` | string | `"devkit-bench"` | `devkit-bench` (the DevKit bench wiring; the default on every device, new or upgraded), `wt32-carrier-v1.1` (the same, with the supply offset +0.3 V for the v1.1 carrier's reverse-polarity diode; a carrier v1 has none) or `custom`. It doesn't follow `pins.preset`. A named preset fixes every value: sent alone it fills them in; sent with a value that differs from it (by more than 0.0001), it is refused (*"These values belong to a named preset; choose Custom to change one"*) |
 | `analog.supply.top`, `analog.supply.bottom` | int | `100000`, `22000` | The supply sense divider, in ohms (100 to 10000000 each) |
-| `analog.supply.gain`, `analog.supply.offsetVolts` | number | `1`, `0` | The supply trim: gain 0.5-2, offset within ±2 V. Supply volts = pin volts × (top + bottom) / bottom × gain + offsetVolts |
+| `analog.supply.gain`, `analog.supply.offsetVolts` | number | `1`, `0` | The supply trim: gain 0.8-1.25, offset within ±1 V, and at `roof.minSupplyVolts` it may raise the reading by 1 V at most. Supply volts = pin volts × (top + bottom) / bottom × gain + offsetVolts |
 | `analog.hall.top`, `analog.hall.bottom` | int | `10000`, `20000` | The Hall sensor's divider. Checked for the pin's voltage only: the Hall thresholds are ADC counts |
 | `analog.currentR.top`, `.bottom`, `analog.currentL.top`, `.bottom` | int | `10000`, `20000` | The R_IS and L_IS dividers |
-| `analog.currentR.gain`, `.offsetAmps`, `analog.currentL.gain`, `.offsetAmps` | number | `1`, `0` | Each side's trim: gain 0.5-2, offset within ±5 A. Amps = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offsetAmps |
+| `analog.currentR.gain`, `.offsetAmps`, `analog.currentL.gain`, `.offsetAmps` | number | `1`, `0` | Each side's trim: gain 0.8-1.25, offset within ±0.5 A (an idle input must not read below −0.5 A). With `roof.currentSenseEnabled`, each side must reach `roof.maxCurrentAmps` (at 2.9 V on the pin, or 5 V from IS if lower), and its offset scaled by about 100 / `roof.slowDutyPercent` (255 / the slow duty's step out of 255) must be below `roof.minRunningAmps` when that is set and not below −0.5 A. Amps = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offsetAmps |
 
-A resistor or trim out of range is refused with its text. A divider that would put more than 3.3 V on its pin at its sensor's highest (supply 15 V, Hall 4.2 V, IS 5 V) is a warning, not an error: the defaults carry two, on R_IS and L_IS (3.33 V at 5 V). The warnings are in [`GET /api/pins`](../api/rest.md#get-apipins) (`analogIssues`).
+A resistor or trim out of range, or one that would stop an over-current or low-supply check tripping ([A trim can't defeat a safety check](pins.md#a-trim-cant-defeat-a-safety-check)), is refused with its text; the same checks run when a `roof` setting they use changes. Each input's values must be an object (*"Analog: supply must be an object"*). A backup never restores `analog` ([Backup & Restore](#backup-restore)). A divider that would put more than 3.3 V on its pin at its sensor's highest (supply 15 V, Hall 4.2 V, IS 5 V) is a warning, not an error: the defaults carry two, on R_IS and L_IS (3.33 V at 5 V). The warnings are in [`GET /api/pins`](../api/rest.md#get-apipins) (`analogIssues`).
 
 An empty `wifi.ssid` is never an error in itself (a new device has none, and on a board with Ethernet it is a normal state); only clearing a network that is already saved is refused, *"WiFi network can't be blank; use WiFi setup to change networks"* ([Network](network.md#wifi-is-optional)).
 
@@ -521,6 +521,11 @@ you carry between devices. A backup whose `pins` differ from this device's (made
 or before a pin change) lists them under **Can't apply here**, and this device keeps its own; set
 them on the [Pins](pins.md) page if you mean to change them. A backup made before the pins were a
 setting has no `pins` group at all. Either way its old `safety.rainContact` is dropped.
+
+The analog setup (`analog`: the dividers and trims under **Advanced** on the Pins page) is treated the
+same way: it describes this board's resistors, so another board's values would scale the supply and
+current checks wrongly. A restore never changes it; a backup whose `analog` differs lists it under
+**Can't apply here** (*"Kept: this board's analog setup"*), and this device keeps its own.
 
 ### From a script
 

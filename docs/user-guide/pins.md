@@ -65,11 +65,11 @@ Each analog input reaches its pin through a resistor divider, and the device tur
 
 The divider values are the **top** resistor (from the input to the pin) and the **bottom** one (from the pin to GND). A named preset fixes every value, and the page shows them read-only; choose **Custom** to change one. On the WT32 carrier v1.1 the supply sense sits after the carrier's reverse-polarity diode, so the divider sees the supply less about 0.3 V: the preset adds it back.
 
-Choosing a board preset (**ESP32 DevKit** or **WT32-ETH01 + RoofRoof carrier v1**) while the analog preset is a named one switches it to the matching one (**DevKit bench wiring** or **WT32 carrier v1.1**). A **Custom** analog setup is left as it is.
+Choosing a board preset never changes the analog preset: choose it yourself. The board preset **WT32-ETH01 + RoofRoof carrier v1** fits both carrier revisions, but only the v1.1 has the supply diode, so **WT32 carrier v1.1** is for a v1.1 carrier only; a carrier v1 uses **DevKit bench wiring** (the same dividers, no offset). And the two apply at different times: a board change at the next restart, an analog change at once.
 
 ### Dividers and trims
 
-For each input the page shows the divider's **ratio** ((top + bottom) / bottom) and the pin's voltage with the input at its sensor's highest: 15 V for the supply, 4.2 V for the Hall sensor (the SS49E on 5 V) and 5 V for R_IS and L_IS (the BTS7960's IS output). The supply, R_IS and L_IS also have a **trim**: a **gain** (0.5 to 2) and an **offset** (within 2 V for the supply, within 5 A for each current input):
+For each input the page shows the divider's **ratio** ((top + bottom) / bottom) and the pin's voltage with the input at its sensor's highest: 15 V for the supply, 4.2 V for the Hall sensor (the SS49E on 5 V) and 5 V for R_IS and L_IS (the BTS7960's IS output). The supply, R_IS and L_IS also have a **trim**, for a part's tolerance: a **gain** (0.8 to 1.25) and an **offset** (within 1 V for the supply, within 0.5 A for each current input):
 
 - supply volts = pin volts × ratio × gain + offset;
 - motor amps, per side = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offset.
@@ -77,6 +77,17 @@ For each input the page shows the divider's **ratio** ((top + bottom) / bottom) 
 The Hall sensor has no trim: its thresholds are raw ADC counts ([Calibration](../hardware/calibration.md)), so its divider only matters for the voltage at the pin.
 
 Each resistor must be a whole number of ohms from 100 Ω to 10 MΩ; values outside that, or a trim out of range, are errors and Save is refused.
+
+### A trim can't defeat a safety check
+
+The dividers and trims feed the roof's own checks, so the device also refuses a setup that would weaken one. It checks them against the roof's saved settings (**Settings → Roof → Current and supply**), and checks again whenever those change:
+
+- **Over-current.** With current sense on, each side must be able to read at least the current limit (`roof.maxCurrentAmps`). The device counts on the ADC reading up to 2.9 V on the pin (a little under the ESP32's typical 3.1 V, which varies by chip), and on the IS output reaching 5 V at most. So a side can read at most the lower of 2.9 V × ratio and 5 V, × `roof.currentAmpsPerVolt` × gain + offset: 37.0 A with the defaults. A lower reach is refused, for example *"R_IS: it can read at most 24.6 A, below the current limit (29.0 A), so over-current could never trip"*. Fit a larger divider ratio or lower the limit.
+- **The offset while driving.** While the motor runs, the device scales the reading back by the duty (the share of time the motor is on), so at the slow duty (`roof.slowDutyPercent`) the offset counts about 100 / slow duty times over (exactly 255 / the duty's step out of 255): +0.2 A at a 20 % slow duty reads 1 A. A sense wire that comes off reads exactly that. With `roof.minRunningAmps` set, that driven offset must be below it, or a broken wire would pass. A negative offset, scaled the same way, must stay within −0.5 A, or a running motor could read as broken (and the over-current point would move up).
+- **An idle reading.** A current input at rest reads its offset, and a current reading below −0.5 A counts as broken and stops every move. That is why the offset stays within 0.5 A.
+- **A low supply.** At the minimum supply (`roof.minSupplyVolts`), the supply trim may raise the reading by 1 V at most: (gain − 1) × minimum + offset ≤ 1 V. The WT32 carrier v1.1's +0.3 V fits. A trim that reads low is always allowed, because it stops the roof sooner.
+
+A roof setting that breaks one of these is refused on **Settings → Roof** with the same text. Values saved by an earlier build that break a rule still load, but the roof refuses every move (*"Roof settings invalid: fix them on the settings page (or the analog setup on the Pins page)"*, with the reason in the log and in this page's checks) until the analog setup is fixed here.
 
 ### The 3.3 V warnings
 
@@ -89,7 +100,9 @@ The checks run as you edit (the page asks the device, as for the pins).
 
 ### Calibrate the supply to a measured voltage
 
-Under **Calibrate the supply**: measure the supply with a multimeter at the controller's supply terminals, type it into **Measured at the supply** and choose **Set the gain**. The page takes the device's live reading (**Supply reading now**) and the current trim, works out the gain that makes the reading match, keeping the offset, switches the analog preset to **Custom** and sets the supply gain. Then save. It is refused with no supply reading (or one under 1 V), a measured voltage not above the offset, or a gain that would fall outside 0.5 to 2 (check the divider values instead).
+Under **Calibrate the supply**: measure the supply with a multimeter at the controller's supply terminals, type it into **Measured at the supply** and choose **Set the gain**. The page takes the device's live reading (**Supply reading now**) and works out the gain that makes it match. Then it switches the analog preset to **Custom** and sets the supply gain; save to keep it.
+
+The device scaled that reading with the **saved** analog setup, so the page first takes it back to the pin's voltage with the saved divider and trim. It then works out the gain for the values as shown, keeping their offset. An unsaved change, such as the WT32 carrier v1.1 preset's +0.3 V or another divider, is therefore taken into account once, not twice. The gain is refused when there is no supply reading (or one under 1 V), when the measured voltage isn't above the offset, or when the gain would fall outside 0.8 to 1.25 (check the divider values instead).
 
 ### The park switches' pull-ups
 
@@ -99,7 +112,7 @@ Each park switch input has a pull-up choice, **Internal** (the chip's own; the d
 
 The analog setup and the pins are saved together, with **Save pins**.
 
-- **Analog changes** (presets, dividers, trims) need **no restart**: the roof applies them at its next reading once no move is under way.
+- **Analog changes** (presets, dividers, trims) need **no restart**: the roof applies them at its next reading. Like every settings save, a save is refused while the roof moves or a calibration run is under way, so one move or run never mixes two scalings.
 - **Pull-up and pin changes** apply at the **next restart**, like any pin change ([Saving a change](#saving-a-change)).
 
 ---

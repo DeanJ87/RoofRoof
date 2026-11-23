@@ -194,9 +194,9 @@ describe('Pins page', () => {
     fireEvent.click(button('Save pins'));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].pins).toMatchObject({ preset: 'wt32-carrier-v1', board: 'wt32-eth01', rpwm: 14 });
-    // The named analog preset follows the board: the carrier's, with its supply diode's 0.3 V.
-    expect(saves[0].analog).toEqual({ preset: 'wt32-carrier-v1.1', supply: { offsetVolts: 0.3 } });
-    expect(await screen.findByText('Saved: analog changes apply once the roof is still, pins at the next restart.')).toBeInTheDocument();
+    // The analog setup doesn't follow the board: the pins apply at the restart, and a carrier v1 has no supply diode.
+    expect(saves[0].analog).toBeUndefined();
+    expect(await screen.findByText('Pins saved. They apply at the next restart.')).toBeInTheDocument();
     expect(await inEffect().findByText('The saved pins apply at a restart.')).toBeInTheDocument();
     expect(inEffect().getByText('RPWM').closest('.reading-row')).toHaveTextContent('GPIO25, then GPIO14');
     expect(inEffect().getByRole('button', { name: 'Restart now' })).toBeEnabled();

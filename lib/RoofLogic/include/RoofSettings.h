@@ -80,6 +80,9 @@ namespace SQM
             bool currentSenseEnabled = false;
             float maxCurrentAmps = 10.0f;
             float minSupplyVolts = 11.0f;
+            // Spec 023 review: the analog setup that scales the readings passes its
+            // checks (Config's analogUsable); false refuses every move.
+            bool analogUsable = true;
         };
 
         // Whether `settings` are within the ranges RoofConfig documents. The

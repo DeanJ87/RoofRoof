@@ -1,6 +1,9 @@
 <!--
 Sync Impact Report
-- Version: 3.0.0 -> 4.0.0 (MAJOR: Principle III loses a weather source; Principle I's pin and boot
+- Version: 4.0.0 -> 4.0.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
+  below no longer name the rain contact that 4.0.0 removed: the bypass never overrides a reading
+  (a configured source that says unsafe or rain). No rule changes.
+- Earlier: 3.0.0 -> 4.0.0 (MAJOR: Principle III loses a weather source; Principle I's pin and boot
   wording changes with the pins becoming settings).
 - Modified: I. Motion Safety. EN, RPWM and LPWM are the pins in effect (a board preset or a
   checked custom map, spec 023), not fixed GPIO numbers. Boot reads the saved settings, then sets EN
@@ -38,8 +41,8 @@ Sync Impact Report
   becomes an owner setting, `park.requestPark`, on by default and after an upgrade: off, the
   unsafe close only waits for a park confirmed some other way (a bench box pointed at a live
   N.I.N.A. need not park that mount). Neither can be set alongside the source it stands
-  in for (a N.I.N.A. address, an SQMeter source); fitted park switches and a rain contact still
-  count; no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
+  in for (a N.I.N.A. address, an SQMeter source); fitted park switches still count (and, until
+  4.0.0, the rain contact); no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
 - New risk (park requests): on a real roof with `park.requestPark` off, rain leaves the roof open
   unless the mount is parked some other way (by hand, or by N.I.N.A.'s own safety monitor); the
   critical "mount not parked" alert says no park was asked for, and the Mount park card warns
@@ -229,8 +232,8 @@ Doubt about the weather MUST resolve to "unsafe".
 - Every unsafe reason, fault and refusal MUST state the measured value and the limit, or the
   input that failed (`Supply 10.9 V < 11.5 V`, `Park switch open`, `N.I.N.A. not responding`).
 - **Test-box exception.** With no weather source configured at all, the same owner-set test-box
-  settings (Principle II) may bypass "no weather source". They never bypass a reading (a rain
-  contact that is wet or unreadable) or the doubt of a source that is configured, and can't be set
+  settings (Principle II) may bypass "no weather source". They never bypass a reading (a source
+  that reports unsafe or rain) or the doubt of a source that is configured, and can't be set
   while an SQMeter source is on.
 
 ### IV. Standards Conformance (ASCOM Alpaca Dome)
@@ -413,4 +416,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 4.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
+**Version**: 4.0.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23

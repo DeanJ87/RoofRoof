@@ -47,9 +47,9 @@ namespace SQM
                     }
                 }
             }
-            void writeAnalogIssues(JsonArray out, const Board::AnalogConfig &analog, bool &valid)
+            void writeAnalogIssues(JsonArray out, const Board::AnalogConfig &analog, const Board::AnalogGates &gates, bool &valid)
             {
-                for (const Board::AnalogIssue &issue : Board::checkAnalog(analog))
+                for (const Board::AnalogIssue &issue : Board::checkAnalog(analog, gates))
                 {
                     JsonObject item = out.createNestedObject();
                     item["input"] = issue.input;
@@ -72,7 +72,7 @@ namespace SQM
             // Spec 023 Advanced: the dividers and trims, their warnings, and the presets.
             writeAnalog(out.createNestedObject("analog"), view.analog);
             bool analogValid = true;
-            writeAnalogIssues(out.createNestedArray("analogIssues"), view.analog, analogValid);
+            writeAnalogIssues(out.createNestedArray("analogIssues"), view.analog, view.gates, analogValid);
             JsonArray analogPresets = out.createNestedArray("analogPresets");
             for (Board::AnalogPreset preset : {Board::AnalogPreset::DevkitBench, Board::AnalogPreset::Wt32CarrierV11})
                 writeAnalog(analogPresets.createNestedObject(), Board::analogPreset(preset));
@@ -88,7 +88,12 @@ namespace SQM
             writeBoards(out.createNestedArray("boards"));
         }
 
-        void writeValidation(JsonObject out, const Board::PinMap &map, const Board::PinReport &report, const Board::AnalogConfig *analog)
+        void writeValidation(
+            JsonObject out,
+            const Board::PinMap &map,
+            const Board::PinReport &report,
+            const Board::AnalogConfig *analog,
+            const Board::AnalogGates &gates)
         {
             bool valid = report.valid();
             write(out.createNestedObject("pins"), map);
@@ -96,7 +101,7 @@ namespace SQM
             if (analog != nullptr)
             {
                 writeAnalog(out.createNestedObject("analog"), *analog);
-                writeAnalogIssues(out.createNestedArray("analogIssues"), *analog, valid);
+                writeAnalogIssues(out.createNestedArray("analogIssues"), *analog, gates, valid);
             }
             out["valid"] = valid;
         }
@@ -154,11 +159,22 @@ namespace SQM
                 out[offsetKey] = t.offset;
             }
 
+            // An input's sub-object; false (with the reason) when it isn't one.
+            bool inputObject(JsonObjectConst in, const char *key, JsonObjectConst &o, std::string *error)
+            {
+                if (!in[key].is<JsonObjectConst>())
+                    return setError(error, std::string("Analog: ") + key + " must be an object");
+                o = in[key];
+                return true;
+            }
+
             bool readDivider(JsonObjectConst in, const char *key, Board::Divider &d, std::string *error)
             {
                 if (!in.containsKey(key))
                     return true;
-                JsonObjectConst o = in[key];
+                JsonObjectConst o;
+                if (!inputObject(in, key, o, error))
+                    return false;
                 for (const auto &field : {std::make_pair("top", &d.topOhms), std::make_pair("bottom", &d.bottomOhms)})
                 {
                     if (!o.containsKey(field.first))
@@ -174,7 +190,9 @@ namespace SQM
             {
                 if (!in.containsKey(key))
                     return true;
-                JsonObjectConst o = in[key];
+                JsonObjectConst o;
+                if (!inputObject(in, key, o, error))
+                    return false;
                 for (const auto &field : {std::make_pair("gain", &t.gain), std::make_pair(offsetKey, &t.offset)})
                 {
                     if (!o.containsKey(field.first))
