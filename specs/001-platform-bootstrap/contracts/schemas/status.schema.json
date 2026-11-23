@@ -692,6 +692,50 @@
             null
           ]
         },
+        "testBox": {
+          "type": "object",
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "daylight": {
+              "type": "boolean"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "park": {
+              "type": "boolean"
+            },
+            "set": {
+              "type": "boolean"
+            },
+            "text": {
+              "type": "string"
+            },
+            "until": {
+              "type": "number"
+            },
+            "waitingForClock": {
+              "type": "boolean"
+            },
+            "weather": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "active",
+            "daylight",
+            "expired",
+            "park",
+            "set",
+            "text",
+            "until",
+            "waitingForClock",
+            "weather"
+          ],
+          "additionalProperties": false
+        },
         "watchdogTrips": {
           "type": "number"
         },
@@ -731,6 +775,7 @@
         "supplyLow",
         "supplyVolts",
         "target",
+        "testBox",
         "watchdogTrips",
         "weather",
         "weatherText"

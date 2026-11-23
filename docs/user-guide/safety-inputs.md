@@ -31,6 +31,9 @@ The verdict comes from [SQMeter](https://github.com/DeanJ87/SQMeter), over HTTP,
 
 Every reason says what was measured and what the limit was, for example `SQMeter HTTP stale: no good reply for 75 s > 30 s`.
 
+!!! note "Test box exception"
+    For a box with no weather source yet, the owner can switch on the weather bypass of [test box mode](test-box.md): "No weather source" then counts as safe, until a deadline. It never stands in for a source you have set up, and a wet or unreadable rain contact still makes the weather unsafe.
+
 ## Park
 
 The mount counts as parked only when **all** of these hold:
@@ -43,6 +46,9 @@ The park switches are optional. With none fitted (the default) N.I.N.A.'s park a
 Anything else is "not parked", with the reasons. A close starts only on a park confirmed this way.
 
 While the roof closes (and during every calibration leg and jog), the park is checked again at every control step, and anything that says the mount isn't parked stops the motor with the latched fault "Park lost during the close": N.I.N.A. saying not at park, slewing or not connected; N.I.N.A. and the switches disagreeing; a fitted switch opening or becoming unreadable; N.I.N.A.'s address being removed or changed; or the safety inputs not being handed to the roof for 5 s. A **missed N.I.N.A. reply** on its own (no answer, a reply that can't be read, an API error) is not a report that the mount moved: the close carries on with N.I.N.A.'s last good reading, as long as that reading said parked, agrees with the switches as they read now, and is no more than 10 s old. Once it is older, the close stops with "Park lost during the close: N.I.N.A. not read within its freshness limit". The roof's control task measures that age itself, so the limit holds even when the rest of the device is slow. The log says when a close rides on the last reading (`N.I.N.A. read failed: a move under way is riding on a parked reading 2.1 s old (limit 10 s)`) and when that ends. When N.I.N.A. and the switches point opposite ways (N.I.N.A. says parked and a switch is open, or N.I.N.A. says not parked and every switch is closed), the result also says they **disagree**. The mount then counts as not parked, so the [close on unsafe weather](close-on-unsafe.md) waits, and its alert names the disagreement.
+
+!!! note "Test box exception"
+    For a box with no telescope yet, the park bypass of [test box mode](test-box.md) acts as a park source saying "no telescope under this roof", until a deadline. It is refused while a N.I.N.A. address is set, and fitted park switches still count.
 
 ### N.I.N.A.
 

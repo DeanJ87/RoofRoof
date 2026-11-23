@@ -16,6 +16,9 @@ Use it to:
   only in bench mode or with a person at the roof);
 - check a firmware change's motion and safety behaviour on the bench before it runs on the roof.
 
+Want to try a real board with a motor before the telescope or SQMeter is in place? That is
+[test box mode](test-box.md), not bench mode.
+
 !!! danger "Never on the roof"
     A bench board reports a roof that isn't there. On the roof, it would tell N.I.N.A. the roof had
     closed while the real one stood open. Bench firmware is for a board with **nothing connected**.

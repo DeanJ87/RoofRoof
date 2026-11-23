@@ -3,14 +3,14 @@
 ## Native tests
 
 ```bash
-~/.platformio/penv/bin/pio test -e native -f test_test_box -f test_daylight -f test_roof_alert_events \
+~/.platformio/penv/bin/pio test -e native -f test_test_box -f test_test_box_surfaces -f test_daylight -f test_roof_alert_events \
   -f test_ha_discovery -f test_roof_status -f test_alpaca_description -f test_config_model -f test_roof_gates
 ```
 
 ## Web
 
 ```bash
-cd web && npx vitest run DeviceBanner TestBoxCard roofView Wizard configSchema && npx playwright test test-box
+cd web && npx vitest run TestBox Wizard review configSchema settingsDeps && npx playwright test test-box
 ```
 
 ## The demo

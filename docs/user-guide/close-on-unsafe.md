@@ -215,6 +215,8 @@ unsafe weather; the sequence then parks and closes. When the weather is also uns
 reason is the one named. **Off** and **Alert** never refuse or stop anything. To open the roof in
 daylight, set the mode to Alert or Off first.
 
+**Test box.** With the daylight bypass of [test box mode](test-box.md) in effect, there is no daylight close and no refusal to open in daylight, until its deadline. Unsafe weather is not affected.
+
 **A person's Stop.** A person's Stop (web UI, REST) stands a daylight close down, exactly as it
 does a weather close. An Alpaca or MQTT client's stop of a close in daylight is refused
 (`unsafeClose`), as in bad weather. The stand-down lasts while the sun is up. It ends once the sun

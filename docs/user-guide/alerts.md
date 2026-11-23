@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 0f4dcc44ef23ddef
+fingerprint: 90c4657ae393c3f1
 -->
 <figure class="diagram" markdown>
 
@@ -83,6 +83,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Roof open in daylight | The sun is up, the roof isn't closed and the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) is on (alert, or alert and close) | Urgent |
 | Roof closed after daylight | The roof reached closed during a daylight close | Normal |
 | Daylight check not working | The daylight check couldn't run for 10 minutes (no location, or no clock) | Normal |
+| Test box mode on | A [test box](test-box.md) bypass has come into effect, and again after every restart while one is in effect | Urgent |
 | A weather source is lost | SQMeter or the rain contact stopped answering for 30 s | Normal |
 | The imaging app stops checking | No request reached a device for the **Silent for** time. See [The imaging app](#the-imaging-app) | Urgent |
 | The imaging app is back | It started checking again | Quiet |
@@ -172,6 +173,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, or after a stop or a halted close, whoever closed it; at most once per cooldown.
 - **Roof open in daylight** (`daylight_open`, default Urgent): the sun is at or above the threshold, the roof isn't closed and the daylight mode is **Alert** or **Alert and close**. It goes out once, after the condition has held for 30 seconds, with the sun's altitude against the threshold (`{reason}`, "Sun 3.2° ≥ 0.0°") and what happens next (`{action}`: "The mount is being parked and the roof closed.", "Daylight is set to alert only, so nothing closes it.", or "The automatic close can't close it now: see the roof's other alerts."). Not again until the roof has been closed or the sun has set and it starts again. It is not critical: with **Alert and close**, the critical alerts above cover every way the close can fail, worded "It is daylight". It isn't sent while the weather close is already closing the roof.
 - **Roof closed after daylight** (`daylight_closed`, default Normal): the roof reached closed during a close that began because of daylight; `{reason}` is the sun.
+- **Test box mode on** (`test_box`, default Urgent): a bypass of [test box mode](test-box.md) has come into effect (turned on, or a new one added), and it goes out again after every restart while one is in effect. `{reason}` is the bypass text ("Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"), and the message ends "Faults still stop the roof." It can't be switched off: its level can be lowered to Quiet at the lowest. Like the other roof events it waits out the start-up minute.
 - **Daylight check not working** (`daylight_unknown`, default Normal): the mode is on and the check couldn't run for 10 minutes without a break: `{reason}` is "Location not set" or "Clock not set". A clock set by NTP within 10 minutes of a restart never sends it. Nothing moves, refuses or closes meanwhile.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, or the rain contact unreadable, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 
@@ -244,7 +246,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"RoofRoof","event":"client_lost","title":"The imaging app stopped checking","message":"No request reached the device for 2 min.","level":"urgent","timestamp":1759500000}
 ```
 
-`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 

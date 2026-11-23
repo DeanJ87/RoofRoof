@@ -117,6 +117,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
       "daylight_closed": { "level": 2, "sound": "", "title": "", "message": "" },
       "daylight_unknown": { "level": 2, "sound": "", "title": "", "message": "" },
       "safety_lost": { "level": 2, "sound": "", "title": "", "message": "" },
+      "test_box": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
       "client_disconnected": { "level": 0, "sound": "", "title": "", "message": "" }
@@ -160,6 +161,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "remindMinutes": 30,
     "remoteStop": false
   },
+  "testBox": { "park": false, "weather": false, "daylight": false, "hours": 72, "until": 0 },
   "ui": { "confirmOpenClose": false },
   "diag": { "enabled": false, "keepSummaries": false, "mqtt": false }
 }
@@ -311,6 +313,20 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
 
+### Test box
+
+[Test box mode](test-box.md): three bypasses for a box with no telescope or weather source yet, with one deadline. All off by default. Edited in **Settings → Roof → Test box**.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `testBox.park` | bool | `false` | Stand in for N.I.N.A. ("no telescope under this roof"). Refused while `park.nina.url` is set |
+| `testBox.weather` | bool | `false` | Stand in for a missing weather source. Refused while `safety.http.enabled` or `safety.mqtt.enabled` is on |
+| `testBox.daylight` | bool | `false` | No daylight close and no refusal to open in daylight |
+| `testBox.hours` | int | `72` | How long a bypass lasts from when it is turned on or this is sent (1-720) |
+| `testBox.until` | int | `0` | The deadline, Unix seconds. Read-only: the device sets it, and a value in a save or a restore is ignored |
+
+Turning a bypass on, or sending `testBox.hours` while one is on, needs the clock to be set and stamps a new deadline (that is how to renew). A restore never brings a deadline back.
+
 ### Setup wizard
 
 Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing and need no restart. **Settings** never sends them, so a save there keeps them.
@@ -366,7 +382,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`; the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box` (urgent by default and never off); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

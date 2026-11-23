@@ -306,6 +306,30 @@
               ],
               "additionalProperties": false
             },
+            "test_box": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
             "unsafe_closing": {
               "type": "object",
               "properties": {
@@ -344,6 +368,7 @@
             "roof_not_closed",
             "safety_lost",
             "supply_low",
+            "test_box",
             "unsafe_closing"
           ],
           "additionalProperties": false
@@ -967,6 +992,34 @@
       ],
       "additionalProperties": false
     },
+    "testBox": {
+      "type": "object",
+      "properties": {
+        "daylight": {
+          "type": "boolean"
+        },
+        "hours": {
+          "type": "number"
+        },
+        "park": {
+          "type": "boolean"
+        },
+        "until": {
+          "type": "number"
+        },
+        "weather": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "daylight",
+        "hours",
+        "park",
+        "until",
+        "weather"
+      ],
+      "additionalProperties": false
+    },
     "ui": {
       "type": "object",
       "properties": {
@@ -1037,6 +1090,7 @@
     "safety",
     "setup",
     "sqmeterSync",
+    "testBox",
     "ui",
     "wifi"
   ],

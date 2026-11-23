@@ -18,7 +18,7 @@ Constitution 3.0.0 amends Principles II and III to allow exactly this.
 | **Language/Version** | C++17 (GCC 14, Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5); TypeScript strict |
 | **Primary Dependencies** | spec 004's verdict and park rule, spec 021's close hold, spec 013's daylight watch, spec 007's alert engine, spec 008's status/MQTT/HA, spec 006's Dome, spec 018's wizard |
 | **Storage** | the `testBox` settings group (JSON in NVS, with the rest of the settings) |
-| **Testing** | `pio test -e native` (new `test_test_box`; extended `test_daylight`, `test_roof_alert_events`, `test_ha_discovery`, `test_roof_status`, `test_alpaca_description`, `test_config_model`); Vitest (banner, Test box card, pills, wizard screen, schema); Playwright (demo: turn on, banner, open accepted) |
+| **Testing** | `pio test -e native` (new `test_test_box` and `test_test_box_surfaces`; extended `test_ha_discovery`, `test_config_backup`, `test_settings_deps`, `test_device_core`, `test_roof_mqtt`, `test_roof_status`); Vitest (banner, Test box card, pills, wizard screen, schema); Playwright (demo: turn on, banner, open accepted) |
 | **Target Platform** | ESP32 DevKit (WROOM, 4 MB) |
 | **Project Type** | Embedded firmware + web UI + docs |
 | **Performance Goals** | O(1) per evaluation; no flash writes outside a save |
@@ -38,7 +38,7 @@ Constitution 3.0.0 amends Principles II and III to allow exactly this.
 | VIII. Security | `POST /api/config` (requireAuth) is the only setter; `until` never from a body | `test_test_box` |
 | IX. Docs | new user guide page; configuration, REST, MQTT, Alpaca, safety inputs, daylight, alerts, wizard pages; OpenAPI and contracts | `mkdocs build --strict` |
 | X. Quality | check.py, function limits | check.py |
-| XI. Heritage | the bench banner (copied from SQMeter's pattern) diverges: it polls | heritage.md |
+| XI. Heritage | no copied module changes behaviour beyond RoofRoof's own sections | - |
 
 **Gate**: pass with the MAJOR amendment (governance: Principles I-III are relaxed only by a MAJOR
 amendment that states the new risk; spec, constitution Sync Impact Report).
@@ -50,7 +50,7 @@ specs/022-test-box-bypass/ spec, plan, research, data-model, quickstart, tasks, 
 .specify/memory/constitution.md (3.0.0), specs/ROADMAP.md, CHANGELOG.md
 lib/ConfigModel/ Config.h (TestBoxConfig, AlertsConfig::testBox), ConfigJsonIn/Out, ConfigValidate, ConfigModel, ConfigInternal, TestBoxSave.cpp (new)
 lib/SafetyInputLogic/ TestBox.h, TestBox.cpp (new); ParkRule.h, SafetyInput.h (bypassed flags and texts)
-lib/DaylightLogic/ Daylight.h/.cpp (testBox, bypassed)
+lib/DaylightLogic/ Daylight.h/.cpp (testBox, bypassed); lib/ConfigBackup (a restore brings no deadline)
 lib/RoofIoLogic/ RoofStatus.h/.cpp (TestBoxStatus)
 lib/AlertLogic/ AlertEngine.h, RoofEvents.cpp (TestBox event); lib/DeviceCore/ DeviceAlerts.cpp, AlertDelivery.cpp
 lib/AlpacaLogic/ AlpacaRouter.h, AlpacaDome.cpp (description); lib/HaDiscovery (test_box sensor)
@@ -58,7 +58,7 @@ lib/SettingsDeps (entries for testBox)
 include/, src/: SafetyInputs, CloseOnUnsafe, WebServerApi (stamp), WebServerStatus, WebServerAlpaca, main (boot log)
 tools/demo-core: emulated_roof (apply), emulated_device (stamp, status, description)
 test/test_test_box (new) and the extended suites
-web/src: types, validation, settings/TestBoxCard.tsx (new), BenchBanner → DeviceBanner, roofView pills, wizard screen, alerts, i18n, mocks
+web/src: types, validation, settings/TestBoxCard.tsx and TestBoxBanner.tsx (new, beside the bench banner), roofView pills, wizard screen, alerts, i18n, mocks
 docs: user-guide/test-box.md (new) and the pages above; docs/api/openapi.json; contract schemas
 ```
 

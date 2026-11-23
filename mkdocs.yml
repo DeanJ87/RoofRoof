@@ -95,6 +95,7 @@ nav:
     - ASCOM Alpaca: user-guide/alpaca.md
     - Alerts: user-guide/alerts.md
     - Bench mode: user-guide/bench-mode.md
+    - Test box mode: user-guide/test-box.md
     - Advanced diagnostics: user-guide/diagnostics.md
   - Hardware:
     - Wiring: hardware/wiring.md

@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795367177,
-                    "iso": "2026-11-22T17:06:17+0000",
+                    "epoch": 1795462053,
+                    "iso": "2026-11-23T19:27:33+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795363575390,
-                    "nextSync": 1795370775390,
+                    "lastSync": 1795458451240,
+                    "nextSync": 1795465651240,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795367115390,
+                    "lastPublish": 1795461991240,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -263,6 +263,17 @@
                     "maxStepGapMs": 20,
                     "maxWatchdogBeatAgeMs": 0,
                     "simulation": "demo",
+                    "testBox": {
+                      "set": false,
+                      "active": false,
+                      "park": false,
+                      "weather": false,
+                      "daylight": false,
+                      "until": 0,
+                      "expired": false,
+                      "waitingForClock": false,
+                      "text": ""
+                    },
                     "daylight": {
                       "mode": "alert",
                       "state": "unknown",
@@ -302,7 +313,7 @@
                       "needs": []
                     }
                   },
-                  "configRevision": 651411734
+                  "configRevision": 3948242669
                 }
               }
             }
@@ -4709,6 +4720,30 @@
                     ],
                     "additionalProperties": false
                   },
+                  "test_box": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
                   "unsafe_closing": {
                     "type": "object",
                     "properties": {
@@ -4747,6 +4782,7 @@
                   "roof_not_closed",
                   "safety_lost",
                   "supply_low",
+                  "test_box",
                   "unsafe_closing"
                 ],
                 "additionalProperties": false
@@ -5370,6 +5406,34 @@
             ],
             "additionalProperties": false
           },
+          "testBox": {
+            "type": "object",
+            "properties": {
+              "daylight": {
+                "type": "boolean"
+              },
+              "hours": {
+                "type": "number"
+              },
+              "park": {
+                "type": "boolean"
+              },
+              "until": {
+                "type": "number"
+              },
+              "weather": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "daylight",
+              "hours",
+              "park",
+              "until",
+              "weather"
+            ],
+            "additionalProperties": false
+          },
           "ui": {
             "type": "object",
             "properties": {
@@ -5440,6 +5504,7 @@
           "safety",
           "setup",
           "sqmeterSync",
+          "testBox",
           "ui",
           "wifi"
         ],
@@ -5663,6 +5728,24 @@
                     "additionalProperties": false
                   },
                   "supply_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "test_box": {
                     "type": "object",
                     "properties": {
                       "level": {
@@ -6153,6 +6236,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "testBox": {
+            "type": "object",
+            "properties": {
+              "daylight": {
+                "type": "boolean"
+              },
+              "hours": {
+                "type": "number"
+              },
+              "park": {
+                "type": "boolean"
+              },
+              "until": {
+                "type": "number"
+              },
+              "weather": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -7964,6 +8068,50 @@
                   null
                 ]
               },
+              "testBox": {
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "daylight": {
+                    "type": "boolean"
+                  },
+                  "expired": {
+                    "type": "boolean"
+                  },
+                  "park": {
+                    "type": "boolean"
+                  },
+                  "set": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "until": {
+                    "type": "number"
+                  },
+                  "waitingForClock": {
+                    "type": "boolean"
+                  },
+                  "weather": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "active",
+                  "daylight",
+                  "expired",
+                  "park",
+                  "set",
+                  "text",
+                  "until",
+                  "waitingForClock",
+                  "weather"
+                ],
+                "additionalProperties": false
+              },
               "watchdogTrips": {
                 "type": "number"
               },
@@ -8003,6 +8151,7 @@
               "supplyLow",
               "supplyVolts",
               "target",
+              "testBox",
               "watchdogTrips",
               "weather",
               "weatherText"

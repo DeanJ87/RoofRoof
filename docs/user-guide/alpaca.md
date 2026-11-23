@@ -103,7 +103,7 @@ If you are often at the roof with N.I.N.A. to hand, you can turn on **Settings â
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand
 blocking: true
-fingerprint: 95823063481c1ab2
+fingerprint: b7415f80653065da
 -->
 <figure class="diagram" markdown>
 
@@ -159,6 +159,10 @@ sequenceDiagram
     6. `AbortSlew` stops the roof at once, connected or not, except a close while the weather isn't safe, whoever started it: that is refused with InvalidOperation and the close carries on (Stop in the web UI can stop it). It is never a person's stop.
 
 ---
+
+## Test box
+
+While a [test box](test-box.md) bypass is in effect, the Dome's description starts `TEST BOX (bypassed: park check, weather check, daylight close): `, naming the bypasses in effect, so an imaging app's device list shows it.
 
 ## ConformU
 

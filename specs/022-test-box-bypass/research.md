@@ -80,8 +80,8 @@
 
 - Status/MQTT: `roof.testBox` from `RoofIo::writeStatus` (shared by `/api/status`, `/ws/status` and
   the MQTT state document), filled by the caller like `daylight`.
-- Banner: the bench banner component becomes the device banner, polling `/api/status` every 5 s
-  and at once on a settings save (a window event), so no extra WebSocket per page.
+- Banner: a test box banner beside the bench banner, polling `/api/status` every 5 s and at once
+  on a settings save (a window event), so no extra WebSocket per page.
 - Dome description: `Alpaca::domeDeviceInfo(simulation, testBoxText)`.
 - Home Assistant: a `test_box` binary sensor (device class problem) whose state is
   `roof.testBox.active` and whose attributes are the `testBox` object.
