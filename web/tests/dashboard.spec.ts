@@ -104,7 +104,16 @@ test('a test box bypass in effect is a row, and the card never says All good', a
   // inventory: test-box
   await open(page);
   await expect(item(page, 'test-box')).toHaveCount(0);
-  await setConfig(page, { 'park.nina.url': '', 'testBox.park': true });
+  // A patch, as Settings saves (the device refuses the park bypass beside a N.I.N.A. address);
+  // the card follows the live status, no reload.
+  await page.waitForTimeout(2500); // the demo device's first seconds
+  await page.evaluate(() =>
+    fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ park: { nina: { url: '' } }, testBox: { park: true, hours: 24 } }),
+    }),
+  );
   await expect(item(page, 'test-box')).toContainText('Bypassed', { timeout: 15_000 });
   await expect(pill(page)).not.toHaveText('All good');
 });
