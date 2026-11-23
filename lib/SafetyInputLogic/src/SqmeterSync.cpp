@@ -1,4 +1,5 @@
 #include "SqmeterSync.h"
+#include "SqmeterSource.h"
 
 #include <memory>
 
@@ -186,7 +187,13 @@ namespace SQM
             if (fetch.status <= 0)
                 return failedRead(Problem::Unreachable, fetch.error.empty() ? "no reply" : fetch.error, atMs);
             if (fetch.status != 200)
-                return failedRead(Problem::Unreadable, "HTTP " + std::to_string(fetch.status), atMs);
+            {
+                const char *login = Safety::loginRefusalText(fetch.status, fetch.credentials);
+                return failedRead(
+                    problemOfStatus(fetch.status, fetch.credentials),
+                    login != nullptr ? std::string(login) : "HTTP " + std::to_string(fetch.status),
+                    atMs);
+            }
             ConfigRead read;
             std::string why = "not SQMeter's settings";
             if (!fetch.parsed || !readSiteConfig(doc, read.site, why))

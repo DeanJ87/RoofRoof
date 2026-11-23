@@ -83,7 +83,9 @@
     "diag.enabled",
     "sqmeterSync.time.syncedAt",
     "sqmeterSync.mqtt.syncedAt",
-    "sqmeterSync.alerts.syncedAt"
+    "sqmeterSync.alerts.syncedAt",
+    "safety.http.username",
+    "safety.http.password"
   ],
   "reasons": {
     "alerts-off": {

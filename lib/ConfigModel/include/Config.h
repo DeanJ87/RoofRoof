@@ -77,7 +77,14 @@ namespace SQM
     struct SafetyConfig
     {
         bool httpEnabled = false;
-        std::string httpUrl;               // SQMeter's GET /api/safety, http:// only
+        std::string httpUrl; // SQMeter's GET /api/safety, http:// only
+        // Spec 020: SQMeter's login (HTTP Basic), sent on every request to it:
+        // the weather poll, the location and settings reads and the copy. Both
+        // optional; the password is a secret (masked, cleared when the address
+        // moves to another host or port unless a new one is typed with it).
+        std::string httpUsername;
+        std::string httpPassword;
+        static constexpr size_t MAX_LOGIN_LENGTH = 64;
         bool mqttEnabled = false;          // on RoofRoof's own broker
         std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
         uint32_t staleSeconds = 30;        // SQMeter HTTP: unsafe after this long without a good reply

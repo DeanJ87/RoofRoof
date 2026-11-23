@@ -74,9 +74,26 @@ namespace SQM
             return readBody(*stream, http.getSize(), out, deadlineMs);
         }
 
-        Safety::HttpOutcome httpGet(const std::string &url)
+        // One GET set up: the timeouts, no reuse, HTTP/1.0 (no chunked replies:
+        // the body is read as it comes), and SQMeter's login (spec 020: HTTP
+        // Basic on every request when one is set; never logged).
+        bool startGet(HTTPClient &http, WiFiClient &client, const Site::Endpoint &to, uint32_t timeoutMs)
+        {
+            http.setTimeout(static_cast<uint16_t>(timeoutMs));
+            http.setConnectTimeout(static_cast<int32_t>(timeoutMs));
+            http.setReuse(false);
+            http.useHTTP10(true);
+            if (!beginRequest(http, client, to.url))
+                return false;
+            if (to.hasLogin())
+                http.setAuthorization(to.username.c_str(), to.password.c_str());
+            return true;
+        }
+
+        Safety::HttpOutcome httpGet(const Site::Endpoint &to)
         {
             Safety::HttpOutcome reply;
+            reply.credentials = to.hasLogin();
             if (WiFi.status() != WL_CONNECTED)
             {
                 reply.error = "WiFi not connected";
@@ -85,11 +102,7 @@ namespace SQM
             const uint64_t deadline = SafetyPoller::nowMs() + HTTP_TOTAL_MS;
             DualStackClient client;
             HTTPClient http;
-            http.setTimeout(HTTP_TIMEOUT_MS);
-            http.setConnectTimeout(HTTP_TIMEOUT_MS);
-            http.setReuse(false);
-            http.useHTTP10(true); // no chunked replies: the body is read as it comes
-            if (!beginRequest(http, client, url))
+            if (!startGet(http, client, to, HTTP_TIMEOUT_MS))
             {
                 reply.error = "invalid URL";
                 return reply;
@@ -162,7 +175,7 @@ namespace SQM
                 refused.error = "request type not supported yet";
                 return refused;
             }
-            return httpGet(joinUrl(base, request.path));
+            return httpGet(Site::Endpoint{joinUrl(base, request.path), "", ""});
         }
     } // namespace
 
@@ -172,9 +185,10 @@ namespace SQM
     }
 
     Site::Fetch SafetyPoller::fetchJson(
-        const std::string &url, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
+        const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
     {
         Site::Fetch fetch;
+        fetch.credentials = from.hasLogin();
         if (WiFi.status() != WL_CONNECTED)
         {
             fetch.error = "WiFi not connected";
@@ -183,11 +197,7 @@ namespace SQM
         const uint64_t deadline = nowMs() + totalMs;
         DualStackClient client;
         HTTPClient http;
-        http.setTimeout(static_cast<uint16_t>(connectMs));
-        http.setConnectTimeout(static_cast<int32_t>(connectMs));
-        http.setReuse(false);
-        http.useHTTP10(true); // no chunked replies: the body is parsed as it comes
-        if (!beginRequest(http, client, url))
+        if (!startGet(http, client, from, connectMs))
         {
             fetch.error = "invalid URL";
             return fetch;
@@ -260,18 +270,19 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::setSite(const std::string &address, bool followLocation, bool followSettings)
+    void SafetyPoller::setSite(const SiteTarget &target)
     {
         if (mutex == nullptr)
             return;
         xSemaphoreTake(mutex, portMAX_DELAY);
-        if (address != siteAddress || followLocation != siteFollows || followSettings != settingsFollow)
+        if (target.address != site.address || target.username != site.username || target.password != site.password ||
+            target.followLocation != site.followLocation || target.followSettings != site.followSettings)
         {
-            siteAddress = address;
-            siteFollows = followLocation;
-            settingsFollow = followSettings;
-            siteStatusUrl = followLocation ? Site::siteUrl(address, Site::STATUS_PATH) : std::string();
-            siteSettingsUrl = followSettings ? Site::siteUrl(address, Site::CONFIG_PATH) : std::string();
+            site = target;
+            siteStatus = Site::Endpoint{
+                target.followLocation ? Site::siteUrl(target.address, Site::STATUS_PATH) : std::string(), target.username, target.password};
+            siteSettings = Site::Endpoint{
+                target.followSettings ? Site::siteUrl(target.address, Site::CONFIG_PATH) : std::string(), target.username, target.password};
             state.location = Site::LocationRead{};
             state.settings = Site::ConfigRead{};
             ++state.siteGeneration;
@@ -384,7 +395,7 @@ namespace SQM
     // Replies are dropped if that part's settings changed while the request ran.
     void SafetyPoller::pollSqmeter(const Targets &now, uint32_t generation)
     {
-        const Safety::HttpOutcome reply = httpGet(now.sqmeterUrl);
+        const Safety::HttpOutcome reply = httpGet(Site::Endpoint{now.sqmeterUrl, now.sqmeterUsername, now.sqmeterPassword});
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.sqmeterGeneration)
             Safety::recordHttpReply(state.sqmeter, reply, nowMs());
@@ -394,34 +405,34 @@ namespace SQM
     void SafetyPoller::maybeReadSite(bool safetyPolled, bool safetyOn)
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
-        const std::string statusUrl = siteStatusUrl;
-        const std::string settingsUrl = siteSettingsUrl;
+        const Site::Endpoint status = siteStatus;
+        const Site::Endpoint settings = siteSettings;
         const uint32_t generation = state.siteGeneration;
         xSemaphoreGive(mutex);
         Site::LocationSchedule::Pass pass;
         pass.nowMs = nowMs();
-        pass.enabled = !statusUrl.empty();
+        pass.enabled = !status.url.empty();
         pass.busy = roofBusy.load();
         pass.safetyPolled = safetyPolled;
         pass.safetyNextMs = safetyOn ? (nextSqmeterMs == 0 ? 1 : nextSqmeterMs) : 0;
         pass.generation = generation;
         if (locationSchedule.due(pass))
         {
-            pollLocation(statusUrl, generation);
+            pollLocation(status, generation);
             return; // one site read per pass, so the pass stays within its bound
         }
-        pass.enabled = !settingsUrl.empty();
+        pass.enabled = !settings.url.empty();
         if (settingsSchedule.due(pass))
-            pollSettings(settingsUrl, generation);
+            pollSettings(settings, generation);
     }
 
     // Only the parts the sync uses are kept, whatever the alert templates hold.
-    void SafetyPoller::pollSettings(const std::string &url, uint32_t generation)
+    void SafetyPoller::pollSettings(const Site::Endpoint &from, uint32_t generation)
     {
         DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
         Site::configFilter(filter);
         DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
-        const Site::Fetch fetch = fetchJson(url, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const Site::Fetch fetch = fetchJson(from, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
         const uint64_t at = nowMs();
         const Site::ConfigRead fresh = Site::readConfig(fetch, doc, at);
         settingsSchedule.done(fresh.good(), at);
@@ -440,12 +451,12 @@ namespace SQM
     }
 
     // Only sky's three fields are kept, whatever else the status holds.
-    void SafetyPoller::pollLocation(const std::string &url, uint32_t generation)
+    void SafetyPoller::pollLocation(const Site::Endpoint &from, uint32_t generation)
     {
         DynamicJsonDocument filter(Site::STATUS_FILTER_BYTES);
         Site::statusFilter(filter);
         DynamicJsonDocument doc(Site::STATUS_DOC_BYTES);
-        const Site::Fetch fetch = fetchJson(url, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const Site::Fetch fetch = fetchJson(from, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
         const uint64_t at = nowMs();
         const Site::LocationRead fresh = Site::readLocation(fetch, doc, at);
         locationSchedule.done(fresh.good(), at);

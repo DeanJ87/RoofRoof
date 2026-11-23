@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include <cmath>
+#include <cstring>
 #include <string>
 
 #include "Config.h"
@@ -251,6 +252,32 @@ void test_a_secret_sent_as_null_is_cleared_and_the_mask_keeps_it()
     TEST_ASSERT_EQUAL_STRING("", cleared->alerts.ntfyToken.c_str());
 }
 
+// Spec 020: SQMeter's login. The password is a secret: masked, kept when the
+// mask comes back, and cleared when the address moves to another host or port
+// unless a new one is typed with it.
+void test_the_sqmeter_password_is_masked_kept_and_cleared_with_a_new_host()
+{
+    Config base = Config::createDefault();
+    base.safety.httpUrl = "http://192.168.1.50/api/safety";
+    base.safety.httpUsername = "admin";
+    base.safety.httpPassword = "sqm-secret";
+    TEST_ASSERT_NULL(std::strstr(base.toJson(true).c_str(), "sqm-secret"));
+    TEST_ASSERT_NOT_NULL(std::strstr(base.toJson(true).c_str(), R"("username":"admin","password":"********")"));
+    const auto kept = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.50/api/safety","password":"********"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("sqm-secret", kept->safety.httpPassword.c_str());
+    const auto samePath = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.50/other"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("sqm-secret", samePath->safety.httpPassword.c_str());
+    const auto moved = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.60/api/safety","password":"********"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("", moved->safety.httpPassword.c_str());
+    const auto movedPort = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.50:8080/api/safety"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("", movedPort->safety.httpPassword.c_str());
+    const auto movedTyped = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.60/api/safety","password":"new-secret"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("new-secret", movedTyped->safety.httpPassword.c_str());
+    std::string error;
+    TEST_ASSERT_FALSE(fromUi(R"({"safety":{"http":{"username":"a:b"}}})", base, &error).has_value());
+    TEST_ASSERT_EQUAL_STRING("SQMeter login: the user name can't contain ':'", error.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -271,5 +298,6 @@ int main(int, char **)
     RUN_TEST(test_a_save_without_a_location_section_changes_nothing);
     RUN_TEST(test_a_secret_sent_as_null_is_cleared_and_the_mask_keeps_it);
     RUN_TEST(test_a_save_onto_a_device_with_no_kept_location_takes_the_sent_one);
+    RUN_TEST(test_the_sqmeter_password_is_masked_kept_and_cleared_with_a_new_host);
     return UNITY_END();
 }

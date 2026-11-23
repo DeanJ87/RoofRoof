@@ -340,6 +340,24 @@ The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the cop
 the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
 switches it to follow SQMeter (below).
 
+### A password-protected SQMeter
+
+If SQMeter has a password, enter its user name and password with its address (**Settings → Roof →
+Weather sources**, or the wizard's SQMeter screen; `safety.http.username`, `safety.http.password`).
+RoofRoof then sends them (HTTP Basic, SQMeter's own scheme) with every request it makes to SQMeter:
+the weather poll, the location read, the settings sync and the copy. SQMeter leaves the readings
+RoofRoof uses open even with its password on, but a later release, or a proxy in front of it, may
+not.
+
+The password is a secret: shown as `********`, never logged, and only sent to the SQMeter it was
+saved for. Changing the address to another host or port clears it unless you type it again; the
+copy only uses the saved password with the saved address's host and port.
+
+When SQMeter turns a request away (401 or 403), RoofRoof says why instead of a bare HTTP status:
+**SQMeter wants a password** (none was sent) or **SQMeter refused the password**. The weather source
+then counts as unreadable, so it goes stale and the weather reads unsafe as for any other failed
+poll; the dashboard's daylight line, Settings and the copy show the same reason.
+
 ### Keeping in step
 
 Three groups of settings can keep following SQMeter, besides the location

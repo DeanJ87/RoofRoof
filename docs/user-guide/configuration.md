@@ -90,7 +90,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "auth": { "enabled": false, "username": "admin", "password": "" },
   "alpaca": { "enabled": false },
   "safety": {
-    "http": { "enabled": false, "url": "" },
+    "http": { "enabled": false, "url": "", "username": "", "password": "" },
     "mqtt": { "enabled": false, "topic": "sqmeter" },
     "staleSeconds": 30,
     "rainContact": false
@@ -251,6 +251,8 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 |-------|------|---------|-------------|
 | `safety.http.enabled` | bool | `false` | Poll SQMeter's `GET /api/safety` every 5 s |
 | `safety.http.url` | string | `""` | Its full URL, `http://` only, e.g. `http://sqmeter.local/api/safety` |
+| `safety.http.username` | string | `""` | SQMeter's user name, when SQMeter has a password; sent (HTTP Basic, with the password) on every request to SQMeter: the weather poll, the location and settings reads and the copy ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)). At most 64 characters, no `:` |
+| `safety.http.password` | string | `""` | SQMeter's password. A secret: shown as `********`, kept when that comes back, `null` clears it, encrypted in a backup with a passphrase. Saving an address with another host or port clears it unless a new one is sent with it. At most 64 characters |
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |

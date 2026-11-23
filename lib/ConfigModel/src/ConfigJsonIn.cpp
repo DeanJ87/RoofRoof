@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "NetAddress.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstring>
@@ -317,11 +318,28 @@ namespace SQM
             return true;
         }
 
-        void applySafety(const Section &safety, SafetyConfig &s)
+        // Spec 020: SQMeter's host and port ("" when not an http(s) URL).
+        std::string sqmeterHost(const std::string &url)
+        {
+            Net::HttpUrl parsed;
+            if (Net::parseHttpUrl(url, parsed) != Net::UrlError::None)
+                return "";
+            return Net::hostForUrl(parsed.host) + ":" + std::to_string(parsed.port);
+        }
+
+        void applySafety(const Section &safety, SafetyConfig &s, bool keepSecrets)
         {
             const Section http = safety.child("http");
             http.take("enabled", s.httpEnabled);
+            const std::string hostBefore = sqmeterHost(s.httpUrl);
+            const std::string passwordBefore = s.httpPassword;
             http.take("url", s.httpUrl);
+            http.take("username", s.httpUsername);
+            assignSecret(http, "password", s.httpPassword, keepSecrets);
+            // Spec 020: SQMeter's saved password is never sent to another host:
+            // a new host or port clears it unless a new one comes with it.
+            if (keepSecrets && sqmeterHost(s.httpUrl) != hostBefore && s.httpPassword == passwordBefore)
+                s.httpPassword.clear();
             const Section mqtt = safety.child("mqtt");
             mqtt.take("enabled", s.mqttEnabled);
             mqtt.take("topic", s.mqttTopic);
@@ -472,7 +490,7 @@ namespace SQM
             diag.take("enabled", cfg.diag.enabled);
             diag.take("keepSummaries", cfg.diag.keepSummaries);
             diag.take("mqtt", cfg.diag.mqtt);
-            applySafety(root.child("safety"), cfg.safety);
+            applySafety(root.child("safety"), cfg.safety, keep);
             if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error) ||
                 !applySetup(root.child("setup"), cfg.setup, error) || !applyAutoClose(root, cfg, error))
                 return false;

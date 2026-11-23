@@ -101,7 +101,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `gps` | the kept location was SQMeter's GPS fix |
 | `savedAt` | Unix seconds when the location read from SQMeter was last saved; `null` when never, when the clock wasn't set, or with `manual` |
 | `readAgeSeconds` | seconds since SQMeter's location was last read in this run; `null` before the first good read, or with `manual` |
-| `problem` | why SQMeter's location isn't being read now: `noAddress` (the weather source address isn't set), `waiting` (not read yet), `unreachable`, `unreadable` or `noLocation` (SQMeter has none); `null` when the last read was good, or with `manual` |
+| `problem` | why SQMeter's location isn't being read now: `noAddress` (the weather source address isn't set), `waiting` (not read yet), `unreachable`, `unreadable`, `noLocation` (SQMeter has none), `passwordNeeded` (SQMeter wants a password) or `passwordRefused` (SQMeter refused the password); `null` when the last read was good, or with `manual` |
 
 SQMeter's location is never a safety input: it only sets where the sun's altitude is worked out for.
 
@@ -116,7 +116,7 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 
 | Field | Meaning |
 |---|---|
-| `problem` | why SQMeter's settings aren't being read now (`noAddress`, `waiting`, `unreachable`, `unreadable`), `null` when the last read was good or no group follows |
+| `problem` | why SQMeter's settings aren't being read now (`noAddress`, `waiting`, `unreachable`, `unreadable`, `passwordNeeded`, `passwordRefused`), `null` when the last read was good or no group follows |
 | `readAgeSeconds` | seconds since SQMeter's settings were last read in this run, `null` before the first |
 | `<group>.follow` | the group follows SQMeter (`sqmeterSync.<group>.follow`) |
 | `<group>.syncedAt` | Unix seconds of the group's last change from SQMeter, `null` when never |
@@ -182,7 +182,7 @@ curl -u admin:password -X POST http://roofroof.local/api/sqmeter/site \
   -H "Content-Type: application/json" -d '{"url": "http://192.168.1.50/api/safety"}'
 ```
 
-`url` is optional: without it, the saved `safety.http.url`. Only its scheme, host and port are used, with SQMeter's own path.
+`url` is optional: without it, the saved `safety.http.url`. Only its scheme, host and port are used, with SQMeter's own path. `username` and `password` are optional too: SQMeter's login for this request (typed in the wizard before saving). Without them the saved login is used, and an empty or masked (`********`) password means the saved one, but only when `url` has the saved address's host and port: a saved password is never sent to another device. The login goes as HTTP Basic, as on every request RoofRoof makes to SQMeter.
 
 ```json
 {
@@ -202,7 +202,7 @@ A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKe
 |---|---|
 | 400 | no address set, or not `http://` |
 | 409 | the roof moving, a close waiting, the automatic close working, or another copy running |
-| 502 | SQMeter not answering (`"SQMeter not answering: connection refused"`), another HTTP status, or not SQMeter's settings |
+| 502 | SQMeter not answering (`"SQMeter not answering: connection refused"`), turning the request away (`"SQMeter wants a password"` with no login sent, `"SQMeter refused the password"` with one), another HTTP status, or not SQMeter's settings |
 | 503 | not enough memory to start the fetch |
 
 The fetch runs on its own short-lived task for at most about 5 s; the web server answers when it is done.

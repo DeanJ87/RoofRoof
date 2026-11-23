@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "NetAddress.h"
+#include "SqmeterSource.h"
 
 // Spec 020: site data from SQMeter (see SqmeterSite.h).
 
@@ -136,6 +137,17 @@ namespace SQM
             return origin;
         }
 
+        Endpoint copyEndpoint(const SafetyConfig &saved, const std::string &address, const TypedLogin &typed)
+        {
+            Endpoint to;
+            to.url = siteUrl(address, CONFIG_PATH);
+            const bool sameHost = !siteOrigin(address).empty() && siteOrigin(address) == siteOrigin(saved.httpUrl);
+            to.username = typed.username ? *typed.username : (sameHost ? saved.httpUsername : std::string());
+            const bool typedPassword = typed.password && !typed.password->empty() && *typed.password != "********";
+            to.password = typedPassword ? *typed.password : (sameHost ? saved.httpPassword : std::string());
+            return to;
+        }
+
         std::string siteUrl(const std::string &address, const char *path)
         {
             const std::string origin = siteOrigin(address);
@@ -156,9 +168,20 @@ namespace SQM
                 return "unreadable";
             case Problem::NoLocation:
                 return "noLocation";
+            case Problem::PasswordNeeded:
+                return "passwordNeeded";
+            case Problem::PasswordRefused:
+                return "passwordRefused";
             default:
                 return nullptr;
             }
+        }
+
+        Problem problemOfStatus(int status, bool credentialsSent)
+        {
+            if (status != 401 && status != 403)
+                return Problem::Unreadable;
+            return credentialsSent ? Problem::PasswordRefused : Problem::PasswordNeeded;
         }
 
         void statusFilter(JsonDocument &filter)
@@ -174,7 +197,13 @@ namespace SQM
             if (fetch.status <= 0)
                 return failed(Problem::Unreachable, fetch.error.empty() ? "no reply" : fetch.error, atMs);
             if (fetch.status != 200)
-                return failed(Problem::Unreadable, "HTTP " + std::to_string(fetch.status), atMs);
+            {
+                const char *login = Safety::loginRefusalText(fetch.status, fetch.credentials);
+                return failed(
+                    problemOfStatus(fetch.status, fetch.credentials),
+                    login != nullptr ? std::string(login) : "HTTP " + std::to_string(fetch.status),
+                    atMs);
+            }
             if (!fetch.parsed || !doc.is<JsonObjectConst>())
                 return failed(Problem::Unreadable, "not SQMeter's status", atMs);
             JsonVariantConst sky = doc["sky"];

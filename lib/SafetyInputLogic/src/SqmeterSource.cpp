@@ -60,6 +60,13 @@ namespace SQM
             }
         } // namespace
 
+        const char *loginRefusalText(int status, bool credentialsSent)
+        {
+            if (status != 401 && status != 403)
+                return nullptr;
+            return credentialsSent ? "SQMeter refused the password" : "SQMeter wants a password";
+        }
+
         void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs)
         {
             if (outcome.status <= 0)
@@ -69,7 +76,9 @@ namespace SQM
             }
             if (outcome.status != HTTP_OK)
             {
-                record.recordFailure(Failure::Unreadable, "HTTP " + std::to_string(outcome.status), nowMs);
+                const char *login = loginRefusalText(outcome.status, outcome.credentials);
+                record.recordFailure(
+                    Failure::Unreadable, login != nullptr ? std::string(login) : "HTTP " + std::to_string(outcome.status), nowMs);
                 return;
             }
             SqmeterReply reply;

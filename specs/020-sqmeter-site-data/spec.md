@@ -151,6 +151,30 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: Can a synced broker change who may move the roof? → A: Not without a person. While MQTT roof
   commands are on, the MQTT group isn't synced: its status says "MQTT roof commands are on: set the
   broker here", and the old broker stays.
+### Session 2026-11-23 (a password-protected SQMeter)
+
+- Q: How does SQMeter protect its API? → A: HTTP Basic, with the device's user name and password,
+  when its protection is on (SQMeter's `requireAuth`, `request->authenticate`, realm "SQMeter"). Today
+  it protects only the routes that change something: `GET /api/safety`, `/api/status` and
+  `/api/config` stay open by design. RoofRoof must still work when a release, or a proxy in front of
+  SQMeter, protects them, so it sends the login on every request it makes to SQMeter.
+- Q: Where is the login kept? → A: With SQMeter's address: `safety.http.username` and
+  `safety.http.password`, both optional. The password is a secret: masked in `GET /api/config`,
+  never logged or echoed, kept when the mask comes back, cleared by `null`, and in an encrypted backup.
+  A new host or port in the address clears the saved password unless a new one is typed in the same
+  save, so it is never sent to another device.
+- Q: Which requests carry it? → A: Every request to SQMeter: the weather poll, the location read,
+  the settings sync and the copy. The copy can take a typed login (the wizard, before saving); a
+  masked or empty typed password means the saved one, which is only sent to the host and port it was
+  saved for.
+- Q: What does a 401 or 403 look like? → A: "SQMeter wants a password" when no login was sent,
+  "SQMeter refused the password" when one was: the weather source's reason (it then goes stale, so
+  unsafe, as any unreadable reply does), the location's and the sync's problem (`passwordNeeded`,
+  `passwordRefused`) on the dashboard and in Settings, and the copy's error.
+- Q: Do copied values stay ordinary settings? → A: Yes: the copy only changes the page's settings,
+  each on its own Settings page afterwards, editable there; a group that follows SQMeter shows
+  "Follows SQMeter" with "Edit here instead". Where SQMeter has a secret set, the matching password or
+  token field is shown on its page with a prompt to type it.
 - Q: What about SQMeter's language and its night threshold? → A: Not offered. RoofRoof ships in
   English only, and SQMeter's `alerts.nightSunAltitudeDeg` means "night below", which is not
   RoofRoof's daylight threshold ("close at or above").
@@ -407,6 +431,16 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
   or host name, RoofRoof's own MQTT topic, any on/off switch, or any secret's value.
 - **FR-030**: The status MUST carry a `sync` section: the last read's problem and age, and per group
   whether it follows, when it was synced, why its last sync was refused, and the secrets it needs.
+- **FR-032**: The settings MUST gain SQMeter's login (`safety.http.username`, `safety.http.password`,
+  at most 64 characters, no ':' in the user name); the password MUST be masked, kept on the mask,
+  backed up as a secret, and cleared when the address's host or port changes unless typed again.
+- **FR-033**: Every request to SQMeter MUST carry the login (HTTP Basic) when one is set; the copy's
+  saved login MUST only go to the host and port it was saved for.
+- **FR-034**: A 401 or 403 from SQMeter MUST read "SQMeter wants a password" (no login sent) or
+  "SQMeter refused the password" (login sent) in the weather source's reason, the status's location
+  and sync problems, the dashboard, Settings and the copy.
+- **FR-035**: Every copied value MUST land as an ordinary setting, editable on its Settings page, marked
+  "Follows SQMeter" while its group follows; a secret SQMeter has set MUST be asked for at its field.
 - **FR-031**: Settings and the wizard MUST show a followed group's fields read-only with "Follows
   SQMeter" and the read's age, an "Edit here instead" control that unfollows it, a way to follow
   again, and a note asking for each needed secret; the dashboard's Status card a non-critical note
@@ -516,3 +550,9 @@ Each was an open choice; the safest option the constitution allows was taken.
     is only ever asked for the server it belongs to. A restore's preview shows what the save keeps.
 22. **The loop copies only the groups a sync changed into the live settings**, under the save lock,
     as the location save does, rather than replacing the settings as a whole.
+23. **SQMeter's login is HTTP Basic, sent on every request** (SQMeter's own scheme), though SQMeter
+    leaves the reads RoofRoof uses open today: a later release or a proxy may not.
+24. **The login lives with SQMeter's address** (`safety.http.username`, `.password`); a new host or port
+    clears the saved password unless one is typed with it, as a saved secret is never sent elsewhere.
+25. **A refused login is an unreadable weather source** (unsafe once stale, as any unreadable reply)
+    with its own reason, never a separate alert.

@@ -19,7 +19,13 @@ namespace SQM
             int status = 0;
             std::string body;
             std::string error;
+            bool credentials = false; // spec 020: SQMeter's login was sent
         };
+
+        // Spec 020: what a 401 or 403 from SQMeter means, for people: "SQMeter
+        // wants a password" (none was sent) or "SQMeter refused the password";
+        // nullptr for any other status.
+        const char *loginRefusalText(int status, bool credentialsSent);
 
         // No reply: unreachable. Not 200, or not the documented document:
         // unreadable, naming why. Otherwise a good reply.

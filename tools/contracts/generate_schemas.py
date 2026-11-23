@@ -114,9 +114,9 @@ CONSTRAINTS = {
     },
     # Spec 020: lib/SafetyInputLogic SqmeterSite (writeLocationStatus, problemName).
     ("status", ("location", "source")): {"enum": ["sqmeter", "manual"]},
-    ("status", ("location", "problem")): {"enum": ["noAddress", "waiting", "unreachable", "unreadable", "noLocation", None]},
+    ("status", ("location", "problem")): {"enum": ["noAddress", "waiting", "unreachable", "unreadable", "noLocation", "passwordNeeded", "passwordRefused", None]},
     ("config", ("location", "source")): {"enum": ["sqmeter", "manual"]},
-    ("status", ("sync", "problem")): {"enum": ["noAddress", "waiting", "unreachable", "unreadable", None]},
+    ("status", ("sync", "problem")): {"enum": ["noAddress", "waiting", "unreachable", "unreadable", "passwordNeeded", "passwordRefused", None]},
     ("status", ("sync", "mqtt", "needs", "[]")): {"enum": ["mqttPassword", "ntfyToken"]},
     ("status", ("sync", "alerts", "needs", "[]")): {"enum": ["mqttPassword", "ntfyToken"]},
     ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},

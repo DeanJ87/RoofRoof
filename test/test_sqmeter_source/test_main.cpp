@@ -57,6 +57,17 @@ void test_http_non_200_is_unreadable(void)
     TEST_ASSERT_EQUAL_STRING("HTTP 404", r.detail.c_str());
 }
 
+// Spec 020: a 401 or 403 names the login problem, not a bare HTTP status.
+void test_http_login_refusals_are_named(void)
+{
+    SourceRecord r = liveRecord();
+    recordHttpReply(r, HttpOutcome{401, "", "", false}, NOW_MS);
+    TEST_ASSERT_TRUE(r.failure == Failure::Unreadable);
+    TEST_ASSERT_EQUAL_STRING("SQMeter wants a password", r.detail.c_str());
+    recordHttpReply(r, HttpOutcome{403, "", "", true}, NOW_MS);
+    TEST_ASSERT_EQUAL_STRING("SQMeter refused the password", r.detail.c_str());
+}
+
 void test_http_bad_document_is_unreadable(void)
 {
     SourceRecord r = liveRecord();
@@ -163,6 +174,7 @@ int main(int, char **)
     RUN_TEST(test_topics_under_base);
     RUN_TEST(test_http_no_reply_is_unreachable);
     RUN_TEST(test_http_non_200_is_unreadable);
+    RUN_TEST(test_http_login_refusals_are_named);
     RUN_TEST(test_http_bad_document_is_unreadable);
     RUN_TEST(test_http_good_reply_is_recorded);
     RUN_TEST(test_availability_sets_and_rejects);

@@ -452,6 +452,55 @@ void test_the_filter_drops_everything_else()
     TEST_ASSERT_FALSE(doc.overflowed());
 }
 
+// --- SQMeter's login (spec 020) ----------------------------------------------
+
+void test_a_401_or_403_says_whether_a_password_is_wanted_or_refused()
+{
+    Fetch noLogin;
+    noLogin.status = 401;
+    DynamicJsonDocument doc(64);
+    LocationRead read = readLocation(noLogin, doc, 1);
+    TEST_ASSERT_EQUAL(Problem::PasswordNeeded, read.problem);
+    TEST_ASSERT_EQUAL_STRING("SQMeter wants a password", read.detail.c_str());
+    TEST_ASSERT_EQUAL_STRING("passwordNeeded", problemName(read.problem));
+    Fetch refused;
+    refused.status = 403;
+    refused.credentials = true;
+    read = readLocation(refused, doc, 1);
+    TEST_ASSERT_EQUAL(Problem::PasswordRefused, read.problem);
+    TEST_ASSERT_EQUAL_STRING("SQMeter refused the password", read.detail.c_str());
+    TEST_ASSERT_EQUAL_STRING("passwordRefused", problemName(read.problem));
+    TEST_ASSERT_EQUAL(Problem::Unreadable, problemOfStatus(500, true));
+}
+
+void test_the_copy_sends_the_saved_login_only_to_its_own_host()
+{
+    SafetyConfig saved;
+    saved.httpUrl = "http://192.168.1.50/api/safety";
+    saved.httpUsername = "admin";
+    saved.httpPassword = "saved-secret";
+    Endpoint same = copyEndpoint(saved, "http://192.168.1.50", TypedLogin{});
+    TEST_ASSERT_EQUAL_STRING("http://192.168.1.50/api/config", same.url.c_str());
+    TEST_ASSERT_EQUAL_STRING("admin", same.username.c_str());
+    TEST_ASSERT_EQUAL_STRING("saved-secret", same.password.c_str());
+    TypedLogin masked;
+    masked.password = "********";
+    TEST_ASSERT_EQUAL_STRING("saved-secret", copyEndpoint(saved, "http://192.168.1.50/x", masked).password.c_str());
+    // Another host: never the saved password (nor user name).
+    const Endpoint other = copyEndpoint(saved, "http://192.168.1.51/api/safety", masked);
+    TEST_ASSERT_EQUAL_STRING("", other.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("", other.username.c_str());
+    TEST_ASSERT_FALSE(other.hasLogin());
+    TypedLogin typed;
+    typed.username = "obs";
+    typed.password = "typed";
+    const Endpoint typedOther = copyEndpoint(saved, "http://192.168.1.51", typed);
+    TEST_ASSERT_EQUAL_STRING("obs", typedOther.username.c_str());
+    TEST_ASSERT_EQUAL_STRING("typed", typedOther.password.c_str());
+    // Another port is another host.
+    TEST_ASSERT_EQUAL_STRING("", copyEndpoint(saved, "http://192.168.1.50:8080", TypedLogin{}).password.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -487,5 +536,7 @@ int main(int, char **)
     RUN_TEST(test_a_document_that_isnt_sqmeters_settings_is_refused);
     RUN_TEST(test_a_bad_mqtt_port_reads_as_the_default);
     RUN_TEST(test_the_filter_drops_everything_else);
+    RUN_TEST(test_a_401_or_403_says_whether_a_password_is_wanted_or_refused);
+    RUN_TEST(test_the_copy_sends_the_saved_login_only_to_its_own_host);
     return UNITY_END();
 }

@@ -171,6 +171,16 @@ namespace SQM
             return true;
         }
 
+        // Spec 020: SQMeter's login (HTTP Basic: no ':' in the user name).
+        bool validateSqmeterLogin(const SafetyConfig &s, std::string *error)
+        {
+            if (s.httpUsername.size() > SafetyConfig::MAX_LOGIN_LENGTH || s.httpPassword.size() > SafetyConfig::MAX_LOGIN_LENGTH)
+                return setError(error, "SQMeter login: user name and password must be at most 64 characters");
+            if (s.httpUsername.find(':') != std::string::npos)
+                return setError(error, "SQMeter login: the user name can't contain ':'");
+            return true;
+        }
+
         bool validateAlertChannels(const AlertsConfig &a, std::string *error)
         {
             if (a.pushoverEnabled && (a.pushoverUserKey.empty() || a.pushoverAppToken.empty()))
@@ -351,6 +361,7 @@ namespace SQM
             validateAlertEvents,
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
             validateSafety,
+            [](const Config &c, std::string *e) { return validateSqmeterLogin(c.safety, e); },
             validateDaylight,
             validateAutoClose,
         };
