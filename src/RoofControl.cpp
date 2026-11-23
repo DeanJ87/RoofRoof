@@ -40,11 +40,10 @@ namespace SQM
         HardwareSettings s;
         s.roof = config.roof;
         s.fittedSwitches = static_cast<uint8_t>(config.park.switches);
-        s.rainFitted = config.safety.rainContact;
         return s;
     }
 
-    bool RoofControl::begin(const Config &config)
+    bool RoofControl::begin(const Config &config, const Board::PinMap &pinsInEffect, bool valid, const std::string &reason)
     {
         lock = xSemaphoreCreateMutex();
         if (lock == nullptr)
@@ -52,10 +51,24 @@ namespace SQM
             Logger::error(TAG, "No memory for the roof's lock; the motor stays off");
             return false;
         }
+        pins = pinsInEffect;
+        pinsValid = valid;
+        pinsReason = reason;
         settings = settingsOf(config);
         remoteStopsClose.store(config.autoClose.remoteStop); // spec 014
         controller.applySettings(Roof::settingsFromConfig(settings.roof));
         gates.fittedSwitches = settings.fittedSwitches;
+        if (!pinsValid)
+        {
+            // Spec 023 FR-011: nothing attached, read or driven; never stored
+            // (the task that saves faults never starts), so a valid set and a
+            // restart clear it.
+            controller.raiseFault(RoofIo::externalRecord(RoofIo::FaultCause::PinSetup, 0.0f, 0.0f).fault);
+            fault = RoofIo::externalRecord(RoofIo::FaultCause::PinSetup, 0.0f, 0.0f);
+            refreshSnapshot();
+            Logger::error(TAG, "Pin setup invalid: the roof's control task doesn't start; nothing moves");
+            return false;
+        }
         if (!MotorDriver::begin())
             Logger::error(TAG, "PWM not available; the motor stays off");
         setupPins();
@@ -66,6 +79,32 @@ namespace SQM
 #endif
         refreshSnapshot();
         return startTask();
+    }
+
+    RoofControl::Outcome RoofControl::notStarted() const
+    {
+        if (!pinsValid)
+            return Outcome{false, "pinSetup", RoofIo::pinSetupText(pinsReason), Roof::State::Unknown};
+        return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+    }
+
+    MotorDriver::EnableProbe RoofControl::probeEnable(std::string &why)
+    {
+        if (lock == nullptr || !started.load())
+        {
+            why = notStarted().text;
+            return MotorDriver::EnableProbe::NotRun;
+        }
+        RoofLocked held(lock);
+        const Roof::Status &status = controller.status();
+        const bool still = !RoofIo::roofMoving(status.state) && !closePending && !calibration.active() &&
+                           controller.output().command == Driver::Command::Off;
+        if (!still)
+        {
+            why = "The roof is busy";
+            return MotorDriver::EnableProbe::NotRun;
+        }
+        return MotorDriver::probeEnable();
     }
 
     void RoofControl::restoreFault()
@@ -217,7 +256,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::command(Roof::Command command, Roof::Origin origin)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         Outcome outcome;
         {
             RoofLocked held(lock);
@@ -238,7 +277,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::automaticClose(uint32_t personStopsSeen)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         Outcome outcome;
         {
             RoofLocked held(lock);
@@ -296,7 +335,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::clearFault(Roof::Origin origin)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         bool hadFault = false;
         Outcome outcome;
         {
@@ -390,8 +429,6 @@ namespace SQM
         s.fittedSwitches = settings.fittedSwitches;
         s.switch1 = gates.switch1;
         s.switch2 = gates.switch2;
-        s.rainFitted = settings.rainFitted;
-        s.rain = static_cast<RoofIo::Contact>(rainReading.load());
         s.closePending = closePending;
         s.calibrating = calibration.active();
         s.personStops = personStops;
@@ -519,11 +556,6 @@ namespace SQM
     {
         const uint8_t raw = index == 0 ? park1Reading.load() : park2Reading.load();
         return RoofIo::parkReading(static_cast<RoofIo::Contact>(raw));
-    }
-
-    Safety::RainContact RoofControl::rainContact() const
-    {
-        return RoofIo::rainReading(static_cast<RoofIo::Contact>(rainReading.load()));
     }
 
     RoofIo::Snapshot RoofControl::snapshot() const

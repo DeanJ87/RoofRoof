@@ -29,7 +29,6 @@ namespace SQM
             s.mqttTopic = safety.mqttTopic;
             s.mqttBroker = broker;
             s.staleSeconds = safety.staleSeconds;
-            s.rainContact = safety.rainContact;
             s.ninaUrl = park.ninaUrl;
             s.ninaApi = static_cast<uint8_t>(park.ninaApi);
             return s;
@@ -164,7 +163,6 @@ namespace SQM
         Safety::WeatherInputs in;
         in.http = snap.sqmeter;
         in.mqtt = mqttRecord;
-        in.rainContact = settings.safety.rainContact ? rainReading : Safety::RainContact::NotFitted;
         in.httpLimitMs = settings.safety.staleSeconds * 1000;
         in.startedAtMs = startedAtMs;
         in.nowMs = nowMs;

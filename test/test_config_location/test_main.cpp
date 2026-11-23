@@ -37,7 +37,7 @@ namespace
 
     std::string locationJson(const Config &cfg)
     {
-        DynamicJsonDocument doc(8192);
+        DynamicJsonDocument doc(16384);
         TEST_ASSERT_FALSE(deserializeJson(doc, cfg.toJson()));
         std::string out;
         serializeJson(doc["location"], out);
@@ -117,7 +117,7 @@ void test_a_full_pre_020_document_keeps_its_typed_location()
     before.location.set = true;
     before.location.latitude = -33.8688;
     before.location.longitude = 151.2093;
-    DynamicJsonDocument doc(8192);
+    DynamicJsonDocument doc(16384);
     TEST_ASSERT_FALSE(deserializeJson(doc, before.toJson(false, false)));
     doc["location"].remove("source");
     doc["location"].remove("sqmeter");

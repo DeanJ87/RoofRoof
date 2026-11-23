@@ -137,9 +137,6 @@ void test_switch_mappings(void)
     TEST_ASSERT_EQUAL(Safety::SwitchReading::Closed, parkReading(Contact::Closed));
     TEST_ASSERT_EQUAL(Safety::SwitchReading::Open, parkReading(Contact::Open));
     TEST_ASSERT_EQUAL(Safety::SwitchReading::Unreadable, parkReading(Contact::Unreadable));
-    TEST_ASSERT_EQUAL(Safety::RainContact::Raining, rainReading(Contact::Closed));
-    TEST_ASSERT_EQUAL(Safety::RainContact::Dry, rainReading(Contact::Open));
-    TEST_ASSERT_EQUAL(Safety::RainContact::Unreadable, rainReading(Contact::Unreadable));
     TEST_ASSERT_EQUAL_STRING("closed", contactName(Contact::Closed));
     TEST_ASSERT_EQUAL_STRING("open", contactName(Contact::Open));
     TEST_ASSERT_EQUAL_STRING("unreadable", contactName(Contact::Unreadable));
@@ -254,7 +251,7 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(2, 2, true));     // version
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 6, true));     // cause out of range
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 7, true));     // cause out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 1, true));     // reserved byte
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(14, 0, false));   // checksum itself

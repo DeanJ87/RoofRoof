@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "ConfigPins.h"
 #include <ArduinoJson.h>
 
 // Settings as JSON, out: toJson() and alertsToJson(). One function per
@@ -133,7 +134,6 @@ namespace SQM
             mqtt["enabled"] = c.safety.mqttEnabled;
             mqtt["topic"] = c.safety.mqttTopic;
             safety["staleSeconds"] = c.safety.staleSeconds;
-            safety["rainContact"] = c.safety.rainContact;
 
             JsonObject park = doc.createNestedObject("park");
             JsonObject nina = park.createNestedObject("nina");
@@ -232,6 +232,10 @@ namespace SQM
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
         appendSafety(doc, *this);
         appendRoof(doc, roof);
+        ConfigPins::write(doc.createNestedObject("pins"), pins);
+        doc.createNestedObject("network")["mode"] = network.mode == NetworkConfig::Mode::Ethernet ? "ethernet"
+                                                    : network.mode == NetworkConfig::Mode::Wifi   ? "wifi"
+                                                                                                  : "auto";
         appendDaylight(doc, *this);
         appendSync(doc, sqmeterSync);
         JsonObject setupOut = doc.createNestedObject("setup");

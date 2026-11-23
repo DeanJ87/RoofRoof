@@ -2,6 +2,7 @@
 
 #include "Logger.h"
 #include "NetAddress.h"
+#include "NetState.h"
 #include "WiFiManager.h"
 
 #include <cstring>
@@ -52,7 +53,7 @@ namespace SQM
                         const ip6_addr_t remote = client->getRemoteAddress6();
                         Net::Ipv6 peer{};
                         memcpy(peer.data(), remote.addr, peer.size());
-                        if (!Net::allowedPeer(peer, WiFiManager::ipv6Addresses()))
+                        if (!Net::allowedPeer(peer, NetState::ipv6Addresses()))
                         {
                             Logger::warn(TAG, "Refused a connection from %s (outside the local network)", Net::formatIpv6(peer).c_str());
                             client->write(REFUSED, sizeof(REFUSED) - 1);
@@ -75,7 +76,7 @@ namespace SQM
 
         bool joinAlpacaDiscoveryGroup()
         {
-            if (!WiFiManager::ipv6Running() || WiFiManager::ipv6Addresses().empty())
+            if (!WiFiManager::ipv6Running() || NetState::ipv6Addresses().empty())
                 return false;
             static volatile bool joined = false;
             if (tcpip_callback(joinOnTcpipTask, const_cast<bool *>(&joined)) != ERR_OK)
@@ -95,7 +96,7 @@ namespace SQM
             packet.remoteIP().to_ip_addr_t(&remote);
             Net::Ipv6 peer{};
             memcpy(peer.data(), remote.u_addr.ip6.addr, peer.size());
-            return Net::allowedPeer(peer, WiFiManager::ipv6Addresses());
+            return Net::allowedPeer(peer, NetState::ipv6Addresses());
         }
 
         void appendStatus(JsonObject wifi)

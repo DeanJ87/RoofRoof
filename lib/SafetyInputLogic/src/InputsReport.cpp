@@ -52,7 +52,6 @@ namespace SQM
             weather["text"] = clip(describe(r.weather));
             writeSource(weather.createNestedObject("http"), r.weather.http, r.httpGeneration);
             writeSource(weather.createNestedObject("mqtt"), r.weather.mqtt, r.mqttGeneration);
-            weather["rainContact"] = rainContactName(r.weather.rainContact);
             JsonObject park = out.createNestedObject("park");
             park["parked"] = r.park.parked;
             park["text"] = clip(describe(r.park));
@@ -79,22 +78,6 @@ namespace SQM
                 break;
             }
             return "offline";
-        }
-
-        const char *rainContactName(RainContact contact)
-        {
-            switch (contact)
-            {
-            case RainContact::NotFitted:
-                return "notFitted";
-            case RainContact::Dry:
-                return "dry";
-            case RainContact::Raining:
-                return "raining";
-            case RainContact::Unreadable:
-                break;
-            }
-            return "unreadable";
         }
 
         const char *ninaStateName(Nina::ReadingStatus status)

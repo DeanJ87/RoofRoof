@@ -15,7 +15,7 @@ namespace
 {
     std::string diagJson(const Config &cfg)
     {
-        DynamicJsonDocument doc(8192);
+        DynamicJsonDocument doc(16384);
         TEST_ASSERT_FALSE(deserializeJson(doc, cfg.toJson()));
         std::string out;
         serializeJson(doc["diag"], out);

@@ -333,7 +333,6 @@ void test_state_document_fits(void)
     s.currentSense = true;
     s.motorAmps = 123.45f;
     s.fittedSwitches = 2;
-    s.rainFitted = true;
     s.closePending = true;
     s.watchdogTrips = s.maxStepGapMs = s.maxWatchdogBeatAgeMs = 4294967295u;
     s.closePhase = "heldByPerson";

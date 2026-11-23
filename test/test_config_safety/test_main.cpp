@@ -43,7 +43,6 @@ void test_defaults_are_off()
     TEST_ASSERT_FALSE(c.safety.mqttEnabled);
     TEST_ASSERT_EQUAL_STRING("sqmeter", c.safety.mqttTopic.c_str());
     TEST_ASSERT_EQUAL_UINT32(30, c.safety.staleSeconds);
-    TEST_ASSERT_FALSE(c.safety.rainContact);
     TEST_ASSERT_TRUE(c.park.ninaUrl.empty());
     TEST_ASSERT_TRUE(c.park.switches == ParkConfig::Switches::None);
     TEST_ASSERT_EQUAL_UINT32(240, c.park.timeoutSeconds);
@@ -51,13 +50,13 @@ void test_defaults_are_off()
 
 void test_settings_json_shape()
 {
-    DynamicJsonDocument doc(8192);
+    DynamicJsonDocument doc(16384);
     TEST_ASSERT_FALSE(deserializeJson(doc, Config::createDefault().toJson()));
     TEST_ASSERT_FALSE(doc["safety"]["http"]["enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("", doc["safety"]["http"]["url"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("sqmeter", doc["safety"]["mqtt"]["topic"].as<const char *>());
     TEST_ASSERT_EQUAL_UINT32(30, doc["safety"]["staleSeconds"].as<uint32_t>());
-    TEST_ASSERT_FALSE(doc["safety"]["rainContact"].as<bool>());
+    TEST_ASSERT_FALSE(doc["safety"].containsKey("rainContact"));
     TEST_ASSERT_EQUAL_STRING("", doc["park"]["nina"]["url"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("v2", doc["park"]["nina"]["api"].as<const char *>());
     TEST_ASSERT_EQUAL_STRING("none", doc["park"]["switches"].as<const char *>());
@@ -75,7 +74,6 @@ void test_full_settings_round_trip()
     TEST_ASSERT_TRUE(c.safety.mqttEnabled);
     TEST_ASSERT_EQUAL_STRING("obs/sqmeter", c.safety.mqttTopic.c_str());
     TEST_ASSERT_EQUAL_UINT32(120, c.safety.staleSeconds);
-    TEST_ASSERT_TRUE(c.safety.rainContact);
     TEST_ASSERT_EQUAL_STRING("http://[fd00::20]:1888", c.park.ninaUrl.c_str());
     TEST_ASSERT_TRUE(c.park.switches == ParkConfig::Switches::Two);
     TEST_ASSERT_EQUAL_UINT32(600, c.park.timeoutSeconds);
@@ -83,6 +81,21 @@ void test_full_settings_round_trip()
     const auto again = Config::fromJson(c.toJson());
     TEST_ASSERT_TRUE(again.has_value());
     TEST_ASSERT_EQUAL_STRING(c.toJson().c_str(), again->toJson().c_str());
+}
+
+// The local rain contact was removed: an old stored or API value is dropped
+// silently (never an error) and is not written back out.
+void test_old_rain_contact_key_is_ignored()
+{
+    for (const char *json : {R"({"safety":{"rainContact":true}})", R"({"safety":{"rainContact":"yes"}})"})
+    {
+        const Config c = applied(json);
+        TEST_ASSERT_EQUAL_UINT32(30, c.safety.staleSeconds);
+        DynamicJsonDocument doc(16384);
+        TEST_ASSERT_FALSE(deserializeJson(doc, c.toJson()));
+        TEST_ASSERT_FALSE(doc["safety"].containsKey("rainContact"));
+        TEST_ASSERT_TRUE(c.toJson().find("rainContact") == std::string::npos);
+    }
 }
 
 void test_switch_choices()
@@ -104,8 +117,6 @@ void test_rejections_say_why()
     TEST_ASSERT_EQUAL_STRING("N.I.N.A. API version must be v2", rejectReason(R"({"park":{"nina":{"api":"v3"}}})").c_str());
     TEST_ASSERT_EQUAL_STRING("Park switches must be none, one or two", rejectReason(R"({"park":{"switches":"both"}})").c_str());
     TEST_ASSERT_EQUAL_STRING("Park switches must be none, one or two", rejectReason(R"({"park":{"switches":2}})").c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        "Settings: safety.rainContact must be true or false", rejectReason(R"({"safety":{"rainContact":"yes"}})").c_str());
 }
 
 void test_url_host_errors_are_named()
@@ -168,7 +179,6 @@ void test_pre_004_config_loads_with_sources_off()
     TEST_ASSERT_TRUE(loaded.mqtt.enabled);
     TEST_ASSERT_FALSE(loaded.safety.httpEnabled);
     TEST_ASSERT_FALSE(loaded.safety.mqttEnabled);
-    TEST_ASSERT_FALSE(loaded.safety.rainContact);
     TEST_ASSERT_TRUE(loaded.park.ninaUrl.empty());
     TEST_ASSERT_TRUE(loaded.park.switches == ParkConfig::Switches::None);
     TEST_ASSERT_EQUAL_UINT32(240, loaded.park.timeoutSeconds);
@@ -209,6 +219,7 @@ int main(int, char **)
     RUN_TEST(test_defaults_are_off);
     RUN_TEST(test_settings_json_shape);
     RUN_TEST(test_full_settings_round_trip);
+    RUN_TEST(test_old_rain_contact_key_is_ignored);
     RUN_TEST(test_switch_choices);
     RUN_TEST(test_rejections_say_why);
     RUN_TEST(test_url_host_errors_are_named);

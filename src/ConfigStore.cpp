@@ -64,9 +64,11 @@ namespace SQM
         }
     } // namespace
 
-    bool Config::load(Config &out)
+    bool Config::load(Config &out, bool *storedRejected)
     {
         Logger::info(TAG, "Loading configuration from NVS");
+        if (storedRejected != nullptr)
+            *storedRejected = false;
 
         std::string json;
         if (!readNvsBlob(KEY_CONFIG, json) || json.empty())
@@ -112,6 +114,10 @@ namespace SQM
             Logger::info(TAG, "Config parsed successfully - SSID: '%s'", out.wifi.ssid.c_str());
         else
             Logger::error(TAG, "Failed to parse config JSON");
+        // Spec 023: settings were stored but can't be read, so their pins
+        // are unknown: the boot drives no motor pin.
+        if (!ok && storedRejected != nullptr)
+            *storedRejected = true;
 
         return ok;
     }

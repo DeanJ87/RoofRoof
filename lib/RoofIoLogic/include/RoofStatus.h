@@ -45,8 +45,6 @@ namespace SQM
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;
             Contact switch2 = Contact::Unreadable;
-            bool rainFitted = false;
-            Contact rain = Contact::Unreadable;
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
             bool calibrating = false;  // spec 016: a calibration run is under way (pauses included)
             uint32_t remoteStops = 0;  // spec 014: of personStops, the remote stops honoured by autoClose.remoteStop

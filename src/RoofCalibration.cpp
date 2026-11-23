@@ -16,7 +16,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::startCalibration(const Calib::Request &request, const std::function<bool()> &sequenceIdle)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         Outcome outcome;
         {
             RoofLocked held(lock);
@@ -48,7 +48,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::confirmCalibration(bool atOpenEnd)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         Outcome outcome;
         {
             RoofLocked held(lock);

@@ -32,6 +32,9 @@
 #include "Teach.h"
 #include "DiagDocuments.h"
 #include "MoveLog.h"
+#include "MotorDriver.h"
+#include "PinMap.h"
+#include "WiringCheck.h"
 #if ROOFROOF_BENCH
 #include "BenchGuard.h"
 #include "RoofPlant.h"
@@ -56,11 +59,14 @@ namespace SQM
         RoofControl(const RoofControl &) = delete;
         RoofControl &operator=(const RoofControl &) = delete;
 
-        // setup(), after the config is loaded: the controller with the saved
-        // settings and any saved fault latched, the PWM and inputs, then the
-        // control task and the watchdog timer. False if the task or timer
-        // couldn't start (the driver then stays off).
-        bool begin(const Config &config);
+        // setup(), after the config is loaded and the pins set up (spec 023,
+        // src/PinSetup.cpp): the controller with the saved settings and any
+        // saved fault latched, the PWM and inputs on the pins in effect, then
+        // the control task and the watchdog timer. False if the task or timer
+        // couldn't start (the driver then stays off). With pins that failed
+        // the rules nothing is attached or read and the task never starts: the
+        // "Pin setup invalid" fault shows and every command is refused.
+        bool begin(const Config &config, const Board::PinMap &pins, bool pinsValid, const std::string &pinsReason);
 
         // Any task. Open and close pass the weather and park gates first. A
         // stop is refused only for an Alpaca client while a close runs or waits
@@ -113,9 +119,8 @@ namespace SQM
             const Safety::CloseHold &hold,
             bool daylightCloses = false,
             const std::string &daylightText = "");
-        // Main loop: the switch and contact readings, for SafetyInputs.
+        // Main loop: the park switch readings, for SafetyInputs.
         Safety::SwitchReading parkSwitch(uint8_t index) const;
-        Safety::RainContact rainContact() const;
 
         // Any task: the roof is opening or closing. Flash writes (settings,
         // uploads, NVS) and restarts wait while it is (RoofIo::platformActionRefused).
@@ -143,6 +148,17 @@ namespace SQM
 
         // Any task: the control task and watchdog started (else nothing can move).
         bool running() const { return started.load(); }
+        // Spec 023: the answer to any command while not running: the pin
+        // setup's reason when the pins in effect are invalid.
+        Outcome notStarted() const;
+        // Spec 023, the wiring check (main loop): EN's pull-down, read only
+        // while running, stopped with the driver off, no calibration run and
+        // no jog, under the lock. NotRun otherwise (`why` says which).
+        MotorDriver::EnableProbe probeEnable(std::string &why);
+        // Spec 023, the wiring check (src/RoofWiring.cpp): the roof's inputs
+        // as the check reads them (the last step's Hall and supply, both
+        // current-sense pins read now, the park switches), under the lock.
+        void wiringReadings(Board::WiringInputs &in) const;
         // Any task.
         RoofIo::Snapshot snapshot() const;
         // Any task: the snapshot plus the weather and park as a command's checks
@@ -189,7 +205,6 @@ namespace SQM
         {
             RoofConfig roof;
             uint8_t fittedSwitches = 0;
-            bool rainFitted = false;
         };
 
         // One step's readings beyond the logic's.
@@ -249,6 +264,11 @@ namespace SQM
         TaskHandle_t task = nullptr;
         esp_timer_handle_t watchdogTimer = nullptr;
 
+        // Set in begin(), read-only after (spec 023).
+        Board::PinMap pins;
+        bool pinsValid = true;
+        std::string pinsReason;
+
         // Guarded by `lock`.
         Roof::Controller controller;
         HardwareSettings settings;
@@ -285,7 +305,6 @@ namespace SQM
         // The control task only.
         RoofIo::SwitchInput park1;
         RoofIo::SwitchInput park2;
-        RoofIo::SwitchInput rain;
         Roof::State loggedState = Roof::State::Unknown;
         Roof::FaultKind loggedFault = Roof::FaultKind::None;
         uint32_t saveFailedAtMs = 0; // when saving the fault last failed (0: it didn't)
@@ -295,7 +314,6 @@ namespace SQM
         std::atomic<uint32_t> revisionCount{0};
         std::atomic<uint8_t> park1Reading{0}; // RoofIo::Contact
         std::atomic<uint8_t> park2Reading{0};
-        std::atomic<uint8_t> rainReading{0};
         std::atomic<bool> started{false};
         std::atomic<bool> remoteStopsClose{false}; // spec 014: autoClose.remoteStop
         std::atomic<uint8_t> stateNow{0};          // Roof::State, as of the last snapshot

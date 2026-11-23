@@ -6,7 +6,6 @@
 #include "MotorDriver.h"
 #include "RoofControl.h"
 #include "RoofLocked.h"
-#include "RoofPins.h"
 #include "RoofReadings.h"
 #include "RoofText.h"
 #include "SafetyPoller.h"
@@ -19,11 +18,11 @@ namespace SQM
 {
     namespace
     {
-        uint16_t hallCounts()
+        uint16_t hallCounts(uint8_t pin)
         {
             uint16_t samples[RoofIo::HALL_SAMPLES];
             for (uint16_t &sample : samples)
-                sample = static_cast<uint16_t>(analogRead(Pins::HALL_SENSOR));
+                sample = static_cast<uint16_t>(analogRead(pin));
             return RoofIo::medianCounts(samples, RoofIo::HALL_SAMPLES);
         }
 
@@ -44,10 +43,11 @@ namespace SQM
     void RoofControl::setupPins()
     {
         analogReadResolution(12);
-        for (uint8_t pin : {Pins::HALL_SENSOR, Pins::SUPPLY_SENSE, Pins::CURRENT_R, Pins::CURRENT_L})
+        // The pins in effect (spec 023), checked by the pin rules at boot.
+        for (uint8_t pin : {pins.hall, pins.supply, pins.currentR, pins.currentL})
             analogSetPinAttenuation(pin, ADC_11db);
-        // Contacts to ground; GPIO34-39 have no pull-ups, these pins do.
-        for (uint8_t pin : {Pins::PARK_A, Pins::PARK_B, Pins::RAIN})
+        // Contacts to ground; the rules keep them off GPIO34-39 (no pull-ups).
+        for (uint8_t pin : {pins.parkA, pins.parkB})
             pinMode(pin, INPUT_PULLUP);
     }
 
@@ -135,17 +135,16 @@ namespace SQM
         }
         StepInputs in;
         in.readings.nowMs = nowMs;
-        in.readings.hallCounts = hallCounts();
-        in.readings.supplyVolts = RoofIo::supplyVolts(pinMillivolts(Pins::SUPPLY_SENSE));
+        in.readings.hallCounts = hallCounts(pins.hall);
+        in.readings.supplyVolts = RoofIo::supplyVolts(pinMillivolts(pins.supply));
         in.readings.motorAmps = NAN; // "no reading" while current sense is off (spec 002 contract)
         if (now.roof.currentSenseEnabled)
             in.readings.motorAmps = RoofIo::motorAmps(
-                pinMillivolts(Pins::CURRENT_R, RoofIo::CURRENT_SAMPLES),
-                pinMillivolts(Pins::CURRENT_L, RoofIo::CURRENT_SAMPLES),
+                pinMillivolts(pins.currentR, RoofIo::CURRENT_SAMPLES),
+                pinMillivolts(pins.currentL, RoofIo::CURRENT_SAMPLES),
                 now.roof.currentAmpsPerVolt);
-        park1Reading.store(static_cast<uint8_t>(park1.update(levelLow(Pins::PARK_A), nowMs)));
-        park2Reading.store(static_cast<uint8_t>(park2.update(levelLow(Pins::PARK_B), nowMs)));
-        rainReading.store(static_cast<uint8_t>(rain.update(levelLow(Pins::RAIN), nowMs)));
+        park1Reading.store(static_cast<uint8_t>(park1.update(levelLow(pins.parkA), nowMs)));
+        park2Reading.store(static_cast<uint8_t>(park2.update(levelLow(pins.parkB), nowMs)));
         return in;
     }
 

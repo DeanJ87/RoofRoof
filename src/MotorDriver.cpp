@@ -6,7 +6,7 @@
 
 #include "BenchMode.h"
 #include "MotionGuards.h"
-#include "RoofPins.h"
+#include <esp_rom_sys.h>
 
 namespace SQM
 {
@@ -37,6 +37,13 @@ namespace SQM
             std::atomic<uint8_t> dutyR{0};
             std::atomic<uint8_t> dutyL{0};
 
+            // Spec 023: the pins in effect, set once in setup() before any
+            // other task runs. Without them nothing is written anywhere.
+            bool configured = false;
+            uint8_t pinRpwm = 255;
+            uint8_t pinLpwm = 255;
+            uint8_t pinEnable = 255;
+
             // The one place a level reaches EN (spec 011 FR-021): always low in
             // a bench build.
             void writeEnable(bool level)
@@ -44,7 +51,8 @@ namespace SQM
                 Driver::Outputs logical;
                 logical.enable = level;
                 const Driver::Outputs pins = Driver::physicalOutputs(logical, Bench::BUILD);
-                gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), pins.enable ? 1 : 0);
+                if (configured)
+                    gpio_set_level(static_cast<gpio_num_t>(pinEnable), pins.enable ? 1 : 0);
             }
 
             ApplyResult setEnable(bool on)
@@ -69,49 +77,66 @@ namespace SQM
 
             // The one place a duty reaches RPWM or LPWM: never in a bench build,
             // where PWM isn't even attached (the pins stay plain outputs, low).
-            void setPwm(uint8_t pin, uint8_t duty)
+            void setPwm(bool right, uint8_t duty)
             {
-                (pin == Pins::RPWM ? dutyR : dutyL).store(duty);
+                (right ? dutyR : dutyL).store(duty);
                 Driver::Outputs logical;
-                (pin == Pins::RPWM ? logical.rpwm : logical.lpwm) = duty;
+                (right ? logical.rpwm : logical.lpwm) = duty;
                 const Driver::Outputs pins = Driver::physicalOutputs(logical, Bench::BUILD);
-                if (pwmReady && !Bench::BUILD)
-                    ledcWrite(pin, pin == Pins::RPWM ? pins.rpwm : pins.lpwm);
+                if (pwmReady && configured && !Bench::BUILD)
+                    ledcWrite(right ? pinRpwm : pinLpwm, right ? pins.rpwm : pins.lpwm);
             }
         } // namespace
 
+        void configure(uint8_t rpwm, uint8_t lpwm, uint8_t enable)
+        {
+            pinRpwm = rpwm;
+            pinLpwm = lpwm;
+            pinEnable = enable;
+            configured = true;
+        }
+
+        void disable()
+        {
+            configured = false;
+        }
+
         void holdOff()
         {
+            if (!configured)
+                return;
             const Driver::Outputs off = Driver::outputsFor(Driver::Command::Off, 0);
             // EN first: with it low the bridge ignores the PWM inputs. Each
             // level goes into the output register before the pin becomes an
             // output, so it never drives high for an instant (gpio_set_level
             // works on a pin not yet configured; Arduino's digitalWrite doesn't).
-            gpio_set_level(static_cast<gpio_num_t>(Pins::ENABLE), off.enable ? 1 : 0);
-            pinMode(Pins::ENABLE, OUTPUT);
-            gpio_set_level(static_cast<gpio_num_t>(Pins::RPWM), off.rpwm > 0 ? 1 : 0);
-            pinMode(Pins::RPWM, OUTPUT);
-            gpio_set_level(static_cast<gpio_num_t>(Pins::LPWM), off.lpwm > 0 ? 1 : 0);
-            pinMode(Pins::LPWM, OUTPUT);
+            gpio_set_level(static_cast<gpio_num_t>(pinEnable), off.enable ? 1 : 0);
+            pinMode(pinEnable, OUTPUT);
+            gpio_set_level(static_cast<gpio_num_t>(pinRpwm), off.rpwm > 0 ? 1 : 0);
+            pinMode(pinRpwm, OUTPUT);
+            gpio_set_level(static_cast<gpio_num_t>(pinLpwm), off.lpwm > 0 ? 1 : 0);
+            pinMode(pinLpwm, OUTPUT);
         }
 
         bool begin()
         {
+            if (!configured)
+                return false; // no pins: pwmReady stays false, so EN is never set high
             setEnable(false);
             if (Bench::BUILD)
             {
                 // Spec 011: no PWM on the pins at all. The logical driver
                 // works as on the roof so the simulated roof can follow it.
                 pwmReady = true;
-                setPwm(Pins::RPWM, 0);
-                setPwm(Pins::LPWM, 0);
+                setPwm(true, 0);
+                setPwm(false, 0);
                 return true;
             }
-            const bool right = ledcAttach(Pins::RPWM, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
-            const bool left = ledcAttach(Pins::LPWM, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+            const bool right = ledcAttach(pinRpwm, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
+            const bool left = ledcAttach(pinLpwm, PWM_FREQUENCY_HZ, PWM_RESOLUTION_BITS);
             pwmReady = right && left;
-            setPwm(Pins::RPWM, 0);
-            setPwm(Pins::LPWM, 0);
+            setPwm(true, 0);
+            setPwm(false, 0);
             return pwmReady;
         }
 
@@ -121,20 +146,20 @@ namespace SQM
             if (!outputs.enable || !pwmReady)
             {
                 setEnable(false);
-                setPwm(Pins::RPWM, 0);
-                setPwm(Pins::LPWM, 0);
+                setPwm(true, 0);
+                setPwm(false, 0);
                 return outputs.enable ? ApplyResult::HeldUnarmed : ApplyResult::Applied;
             }
             // lib/DriverLogic never sets both; the zero goes first anyway.
             if (outputs.rpwm > 0)
             {
-                setPwm(Pins::LPWM, 0);
-                setPwm(Pins::RPWM, outputs.rpwm);
+                setPwm(false, 0);
+                setPwm(true, outputs.rpwm);
             }
             else
             {
-                setPwm(Pins::RPWM, 0);
-                setPwm(Pins::LPWM, outputs.lpwm);
+                setPwm(true, 0);
+                setPwm(false, outputs.lpwm);
             }
             return setEnable(true);
         }
@@ -189,6 +214,30 @@ namespace SQM
         void clearTripMark()
         {
             tripMark = 0;
+        }
+
+        EnableProbe probeEnable()
+        {
+            if (!configured || Bench::BUILD)
+                return EnableProbe::NotRun;
+            const auto en = static_cast<gpio_num_t>(pinEnable);
+            portENTER_CRITICAL(&enableLock);
+            // With either duty set the bridge could drive if EN floated high.
+            if (enOn.load() || dutyR.load() != 0 || dutyL.load() != 0)
+            {
+                portEXIT_CRITICAL(&enableLock);
+                return EnableProbe::NotRun;
+            }
+            gpio_set_pull_mode(en, GPIO_PULLUP_ONLY);
+            gpio_set_direction(en, GPIO_MODE_INPUT);
+            esp_rom_delay_us(50);
+            const int level = gpio_get_level(en);
+            // Low into the output register first, so EN never drives high.
+            gpio_set_level(en, 0);
+            gpio_set_direction(en, GPIO_MODE_OUTPUT);
+            gpio_set_pull_mode(en, GPIO_FLOATING);
+            portEXIT_CRITICAL(&enableLock);
+            return level != 0 ? EnableProbe::High : EnableProbe::Low;
         }
 
         bool enabled()

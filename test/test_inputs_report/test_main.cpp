@@ -40,7 +40,6 @@ namespace
         r.weather.http = source(SourceKind::SqmeterHttp, SourceState::Good);
         r.weather.http.sqmeterSafe = true;
         r.weather.mqtt = source(SourceKind::SqmeterMqtt, SourceState::Off);
-        r.weather.rainContact = RainContact::NotFitted;
         r.park.parked = true;
         r.nina.status = Nina::ReadingStatus::Good;
         r.nina.connected = true;
@@ -73,7 +72,7 @@ void test_safe_and_parked()
     TEST_ASSERT_FALSE(doc["weather"]["mqtt"]["enabled"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("off", doc["weather"]["mqtt"]["state"]);
     TEST_ASSERT_EQUAL_UINT32(1, doc["weather"]["mqtt"]["generation"]);
-    TEST_ASSERT_EQUAL_STRING("notFitted", doc["weather"]["rainContact"]);
+    TEST_ASSERT_FALSE(doc["weather"].containsKey("rainContact"));
     TEST_ASSERT_TRUE(doc["park"]["parked"].as<bool>());
     TEST_ASSERT_EQUAL_STRING("parked", doc["park"]["text"]);
     TEST_ASSERT_EQUAL_STRING("good", doc["nina"]["state"]);
@@ -120,22 +119,6 @@ void test_unsafe_names_the_reason()
     TEST_ASSERT_EQUAL_STRING(describe(r.weather).c_str(), doc["weather"]["text"]);
     r.weather.verdict = Verdict::Unknown;
     TEST_ASSERT_EQUAL_STRING("unknown", write(r)["weather"]["verdict"]);
-}
-
-void test_every_rain_contact_has_its_name()
-{
-    const std::pair<RainContact, const char *> names[] = {
-        {RainContact::NotFitted, "notFitted"},
-        {RainContact::Dry, "dry"},
-        {RainContact::Raining, "raining"},
-        {RainContact::Unreadable, "unreadable"},
-    };
-    for (const auto &[contact, name] : names)
-    {
-        InputsReport r = safeAndParked();
-        r.weather.rainContact = contact;
-        TEST_ASSERT_EQUAL_STRING(name, write(r)["weather"]["rainContact"]);
-    }
 }
 
 void test_every_nina_state_has_its_name_and_flags_only_when_good()
@@ -191,10 +174,9 @@ void test_no_address_or_topic_and_long_texts_fit()
     InputsReport r = safeAndParked();
     const std::string longText(2000, 'x');
     r.weather.verdict = Verdict::Unsafe;
-    r.weather.reasons = ReasonSourceUnreadable | ReasonSourceStale | ReasonRainContactUnreadable;
+    r.weather.reasons = ReasonSourceUnreadable | ReasonSourceStale;
     r.weather.http = source(SourceKind::SqmeterHttp, SourceState::Unreadable, longText);
     r.weather.mqtt = source(SourceKind::SqmeterMqtt, SourceState::Stale, longText);
-    r.weather.rainContact = RainContact::Unreadable;
     r.park.parked = false;
     r.park.reasons = 0x3FFF;
     r.park.ninaDetail = longText;
@@ -227,7 +209,6 @@ int main()
     RUN_TEST(test_safe_and_parked);
     RUN_TEST(test_every_source_state_has_its_name);
     RUN_TEST(test_unsafe_names_the_reason);
-    RUN_TEST(test_every_rain_contact_has_its_name);
     RUN_TEST(test_every_nina_state_has_its_name_and_flags_only_when_good);
     RUN_TEST(test_the_nina_age_never_goes_negative);
     RUN_TEST(test_the_park_text_is_the_park_rule_s);

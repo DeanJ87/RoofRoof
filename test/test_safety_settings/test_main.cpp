@@ -75,18 +75,14 @@ void test_switching_a_source_on_or_off_restarts_it(void)
     TEST_ASSERT_TRUE(c.sqmeterHttp && c.sqmeterMqtt && c.window);
 }
 
-void test_stale_time_or_contact_restart_the_window_only(void)
+void test_stale_time_restarts_the_window_only(void)
 {
     const SourceSettings before = base();
     SourceSettings after = before;
     after.staleSeconds = 60;
-    SettingsChange c = settingsChange(&before, after);
+    const SettingsChange c = settingsChange(&before, after);
     TEST_ASSERT_TRUE(c.window);
     TEST_ASSERT_FALSE(c.sqmeterHttp || c.sqmeterMqtt || c.nina);
-    after = before;
-    after.rainContact = true;
-    c = settingsChange(&before, after);
-    TEST_ASSERT_TRUE(c.window);
 }
 
 void test_new_nina_url_restarts_nina_only(void)
@@ -120,7 +116,7 @@ int main(int, char **)
     RUN_TEST(test_new_sqmeter_url_restarts_http_and_window);
     RUN_TEST(test_new_topic_restarts_mqtt);
     RUN_TEST(test_switching_a_source_on_or_off_restarts_it);
-    RUN_TEST(test_stale_time_or_contact_restart_the_window_only);
+    RUN_TEST(test_stale_time_restarts_the_window_only);
     RUN_TEST(test_new_nina_url_restarts_nina_only);
     RUN_TEST(test_a_new_broker_restarts_the_mqtt_source);
     return UNITY_END();

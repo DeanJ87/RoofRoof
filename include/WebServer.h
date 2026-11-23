@@ -381,6 +381,15 @@ namespace SQM
         SiteStatus siteStatus;
         BusyProbe roofBusy;
         void setupSiteRoutes();
+        // Spec 023 (src/WebServerPins.cpp): the pin setup and the wiring check.
+        void setupPinRoutes();
+        void handleGetPins(AsyncWebServerRequest *request);
+        void handleValidatePins(AsyncWebServerRequest *request, JsonVariant &json);
+        void handleStartWiringCheck(AsyncWebServerRequest *request);
+        void appendPinsStatus(JsonDocument &doc) const;
+        // A save that changes the pins or Wi-Fi's role while the roof is busy: why not ("" when fine).
+        std::string pinChangeHeld(const Config &live, const Config &next) const;
+        bool refuseIfWifiOff(AsyncWebServerRequest *request);
         void handleSqmeterSite(AsyncWebServerRequest *request);
         static void runSiteJob(void *arg);
         void appendSite(JsonDocument &doc) const;

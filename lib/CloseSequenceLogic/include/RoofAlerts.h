@@ -67,8 +67,7 @@ namespace SQM
             const SequenceView &sequence);
 
         // Every weather source that is on and lost, with why ("" when none):
-        // SQMeter stale, unreachable, unreadable or offline; the rain contact
-        // unreadable. Waiting for a first reply and switched off don't count.
+        // SQMeter stale, unreachable, unreadable or offline. Waiting for a first reply and switched off don't count.
         std::string lostSources(const Safety::WeatherVerdict &weather);
 
         // Spec 013: the daylight events' conditions. Open in daylight: the

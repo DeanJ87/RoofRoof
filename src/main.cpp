@@ -10,6 +10,9 @@
 
 #include "CloseOnUnsafe.h"
 #include "Diagnostics.h"
+#include "EthernetLink.h"
+#include "NetState.h"
+#include "PinSetup.h"
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
@@ -30,6 +33,7 @@
 #include "TimeManager.h"
 #include "WebServer.h"
 #include "WiFiManager.h"
+#include "WiringRun.h"
 
 using namespace SQM;
 
@@ -132,9 +136,10 @@ void setupWatchdog()
     esp_task_wdt_add(NULL);
 }
 
-void loadConfig()
+// Spec 023: `storedRejected` when settings were stored but couldn't be read.
+void loadConfig(bool &storedRejected)
 {
-    if (Config::load(config))
+    if (Config::load(config, &storedRejected))
     {
         Logger::info("Main", "Configuration loaded");
     }
@@ -154,14 +159,30 @@ void mountFilesystem()
         Logger::info("Main", "LittleFS mounted successfully");
 }
 
-// Join the saved network, or open the setup hotspot (captive portal).
+// Join the saved network, or open the setup hotspot (captive portal). Spec
+// 023: on the WT32-ETH01 Ethernet first, Wi-Fi as the plan says.
 void startWifi()
 {
+    EthernetLink::begin(config);
     // The network is RoofRoof's own setting (config.wifi): the WiFi driver
     // keeps no copy in NVS, so a reconnect while the roof moves writes no flash.
     WiFi.persistent(false);
-    wifiManager = std::make_unique<WiFiManager>(config.wifi);
+    const Net::NetMode mode = !EthernetLink::present()                           ? Net::NetMode::Wifi
+                              : config.network.mode == NetworkConfig::Mode::Ethernet ? Net::NetMode::Ethernet
+                                                                                     : Net::NetMode::Auto;
+    wifiManager = std::make_unique<WiFiManager>(config.wifi, mode);
     wifiManager->begin();
+    if (EthernetLink::present())
+    {
+        // Most boots have an address over the cable within a few seconds.
+        for (int waited = 0; waited < 50 && !EthernetLink::hasAddress(); ++waited)
+            delay(100);
+        if (!EthernetLink::hasAddress())
+            Logger::warn("Main", "No Ethernet address yet; still trying");
+        wifiManager->startMdns();
+        HeapTrace::mark("network");
+        return;
+    }
 
     // Give the saved network a moment so most boots start fully connected. If
     // it isn't joined yet, start anyway: WiFiManager keeps trying, and opens
@@ -260,10 +281,9 @@ void onArduinoOtaError(ota_error_t error)
 }
 
 // ArduinoOTA for command-line firmware uploads, only when configured securely.
+// Spec 023: once, when the device is first on a network (Wi-Fi or Ethernet).
 void startArduinoOta()
 {
-    if (!wifiManager->isConnected())
-        return;
     if (!config.ota.enabled || config.ota.password.empty())
     {
         Logger::warn("Main", "ArduinoOTA disabled; configure ota.enabled and ota.password to enable command-line OTA");
@@ -307,8 +327,7 @@ void startArduinoOta()
 void startServices()
 {
     timeManager = std::make_unique<TimeManager>(config.ntp);
-    if (wifiManager->isConnected())
-        timeManager->begin();
+    // Spec 023: begun once on a network (Wi-Fi or Ethernet); see startWhenOnline().
     HeapTrace::mark("ota + time");
 
     mqttClient = std::make_unique<MQTTClient>(config.mqtt);
@@ -336,6 +355,8 @@ void startServices()
     // Spec 020: the location's source and age, and the copy refused while busy.
     webServer->setSiteStatus([](JsonDocument &doc) { siteSync.writeStatus(doc); });
     webServer->setRoofBusy(roofBusy);
+    // Spec 023: the wiring check, run on this loop; busy as for a site copy.
+    WiringRun::begin(&roofControl, roofBusy, []() { return config.pins != PinSetup::running(); });
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out
@@ -389,7 +410,6 @@ void handleSafety()
     if (!safetyInputs)
         return;
     safetyInputs->setParkSwitches(roofControl.parkSwitch(0), roofControl.parkSwitch(1));
-    safetyInputs->setRainContact(roofControl.rainContact());
     safetyInputs->handle();
     static uint32_t lastHandOver = 0;
     static bool handedSafe = false;
@@ -418,16 +438,33 @@ void handleSafety()
     closeOnUnsafe.handle(*safetyInputs, roofControl);
 }
 
+// Spec 023: NTP and command-line OTA start the first time the device is on a
+// network, whichever it is and whenever it happens.
+void startWhenOnline()
+{
+    static bool started = false;
+    if (started || !NetState::online())
+        return;
+    started = true;
+    if (timeManager)
+        timeManager->begin();
+    startArduinoOta();
+}
+
 void setup()
 {
-    // Before anything else: the motor driver off (constitution Principle I).
-    MotorDriver::holdOff();
-
+    // Constitution I (3.0.0): the pins are settings (spec 023), so the
+    // settings are read first; until EN is driven low the EN pull-down holds
+    // the driver off, as it does through reset and the boot loader. Serial
+    // and the log use UART0 only.
     Serial.begin(115200);
+    Logger::init();
+    bool storedRejected = false;
+    loadConfig(storedRejected);
+    PinSetup::begin(config, storedRejected); // EN, then RPWM and LPWM low; or nothing driven
     delay(100);
     bootCount++;
 
-    Logger::init();
     Logger::info("Main", "=== RoofRoof Starting ===");
     // A reset mid-move (brown-out, crash, watchdog) leaves the position unknown
     // between the magnets; the reason helps tell which (spec 010 FR-015).
@@ -439,11 +476,11 @@ void setup()
     HeapTrace::mark("boot");
 
     setupWatchdog();
-    loadConfig();
     // Spec 003: the roof's control task, independent of WiFi and the web
     // server. Any fault saved before the restart is latched before its first
     // step; between the magnets the position is unknown and nothing moves.
-    roofControl.begin(config);
+    // Spec 023: on the pins in effect; not started with invalid ones.
+    roofControl.begin(config, PinSetup::running(), PinSetup::valid(), PinSetup::boot().reason);
     // Spec 010: which platform actions wait for the roof and the close sequence.
     // The close sequence's record (spec 005) is restored first, so its busy
     // flag is right before any request can ask.
@@ -454,8 +491,8 @@ void setup()
     // Spec 017: the diagnostics log (only while on) and its kept summaries.
     diagnostics.begin(config, &roofControl);
     startWifi();
-    startArduinoOta();
     startServices();
+    startWhenOnline();
 
 #ifdef RR_TEST_BOOT_CRASH
     // Rollback test build only (SQMeter spec 027 device check): a firmware that
@@ -476,6 +513,7 @@ void loop()
 
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
+    startWhenOnline(); // spec 023
 
     // Joined a network from the setup hotspot: restart so time, MQTT, Alpaca
     // discovery and OTA start normally. The delay lets the setup screen show
@@ -484,7 +522,7 @@ void loop()
     // hotspot, and the refusal to open while it is on, last until the restart.
     if (wifiManager->connectedFromHotspotFor(15000) && !WebServer::restartScheduled())
     {
-        Logger::info("Main", "Connected to WiFi from the setup hotspot; restarting");
+        Logger::info("Main", "On a network while the setup hotspot is open; restarting");
         WebServer::scheduleRestart(1000);
     }
 
@@ -511,6 +549,7 @@ void loop()
         mqttClient->handle();
     handleSafety();
     siteSync.handle(roofBusy()); // spec 020
+    WiringRun::handle();         // spec 023
     diagnostics.handle();
     diagnostics.passEnded();
 

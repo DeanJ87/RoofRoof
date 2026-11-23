@@ -103,6 +103,21 @@ namespace
             entry["scope"] = "global";
         }
 
+        // Spec 023: the Ethernet and pins blocks.
+        JsonObject eth = doc.createNestedObject("ethernet");
+        for (const char *key : {"present", "started", "phyFound", "link", "speedMbps", "fullDuplex"})
+            eth[key] = 100;
+        eth["ip"] = std::string("255.255.255.255");
+        eth["mac"] = std::string("AA:BB:CC:DD:EE:FF");
+        JsonArray ethIpv6 = eth.createNestedArray("ipv6");
+        for (int i = 0; i < 3; ++i)
+            ethIpv6.add(std::string("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"));
+        JsonObject pins = doc.createNestedObject("pins");
+        pins["preset"] = "wt32-carrier-v1";
+        pins["board"] = "esp32-devkit";
+        pins["valid"] = true;
+        pins["restartNeeded"] = true;
+
         JsonObject mqtt = doc.createNestedObject("mqtt");
         for (const char *key : {"enabled", "connected", "state", "lastPublish", "lastReconnectAttempt", "port"})
             mqtt[key] = 4294967295U;
@@ -128,7 +143,6 @@ namespace
         roof.motorAmps = 12.34f;
         roof.supplyVolts = 12.34f;
         roof.fittedSwitches = 2;
-        roof.rainFitted = true;
         roof.maxWatchdogBeatAgeMs = 4294967295U;
         // Spec 008: the longest phase name and the capped check texts.
         roof.closePhase = "heldByPerson";

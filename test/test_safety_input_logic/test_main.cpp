@@ -332,7 +332,6 @@ void test_safe_when_every_source_safe(void)
 {
     WeatherInputs in = httpSafe();
     in.mqtt = goodRecord(true, 0, NOW_MS - 2000);
-    in.rainContact = RainContact::Dry;
     const WeatherVerdict v = evaluateWeather(in);
     TEST_ASSERT_TRUE(v.safe());
     TEST_ASSERT_EQUAL_UINT32(0, v.reasons);
@@ -394,35 +393,6 @@ void test_rain_reason_kept_when_other_sources_stale(void)
     TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
     TEST_ASSERT_TRUE(v.reasons & ReasonRain);
     TEST_ASSERT_TRUE(v.reasons & ReasonSourceStale);
-}
-
-void test_rain_contact_raining_is_unsafe(void)
-{
-    WeatherInputs in = httpSafe();
-    in.rainContact = RainContact::Raining;
-    const WeatherVerdict v = evaluateWeather(in);
-    TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
-    TEST_ASSERT_EQUAL_UINT32(ReasonRain, v.reasons);
-    TEST_ASSERT_EQUAL_STRING("unsafe: Rain contact wet", describe(v).c_str());
-}
-
-void test_rain_contact_unreadable_is_unsafe(void)
-{
-    WeatherInputs in = httpSafe();
-    in.rainContact = RainContact::Unreadable;
-    const WeatherVerdict v = evaluateWeather(in);
-    TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
-    TEST_ASSERT_EQUAL_UINT32(ReasonRainContactUnreadable, v.reasons);
-}
-
-void test_rain_contact_alone_is_no_weather_source(void)
-{
-    WeatherInputs in;
-    in.rainContact = RainContact::Dry;
-    in.nowMs = NOW_MS;
-    const WeatherVerdict v = evaluateWeather(in);
-    TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
-    TEST_ASSERT_EQUAL_UINT32(ReasonNoWeatherSource, v.reasons);
 }
 
 void test_no_source_configured_is_unsafe(void)
@@ -494,20 +464,16 @@ namespace
 
 void test_never_safe_with_a_bad_source_exhaustive(void)
 {
-    const RainContact contacts[] = {RainContact::NotFitted, RainContact::Dry, RainContact::Raining, RainContact::Unreadable};
     for (int h = 0; h < SWEEP_KINDS; ++h)
         for (int m = 0; m < SWEEP_KINDS; ++m)
-            for (RainContact contact : contacts)
-                for (TimeMs now : {TimeMs{START_MS + 1000}, TimeMs{NOW_MS}})
+            for (TimeMs now : {TimeMs{START_MS + 1000}, TimeMs{NOW_MS}})
                 {
                     WeatherInputs in;
                     in.http = sweepRecord(h, false, now);
                     in.mqtt = sweepRecord(m, true, now);
-                    in.rainContact = contact;
                     in.startedAtMs = START_MS;
                     in.nowMs = now;
-                    const bool contactOk = contact == RainContact::NotFitted || contact == RainContact::Dry;
-                    const bool expectSafe = sweepOk(h, false) && sweepOk(m, true) && contactOk && (h != 0 || m != 0);
+                    const bool expectSafe = sweepOk(h, false) && sweepOk(m, true) && (h != 0 || m != 0);
                     const WeatherVerdict v = evaluateWeather(in);
                     TEST_ASSERT_EQUAL_MESSAGE(expectSafe, v.safe(), describe(v).c_str());
                     if (!v.safe())
@@ -550,9 +516,6 @@ int main(int, char **)
     RUN_TEST(test_rain_bit9_gives_rain);
     RUN_TEST(test_rain_sensor_fault_bit10_unsafe);
     RUN_TEST(test_rain_reason_kept_when_other_sources_stale);
-    RUN_TEST(test_rain_contact_raining_is_unsafe);
-    RUN_TEST(test_rain_contact_unreadable_is_unsafe);
-    RUN_TEST(test_rain_contact_alone_is_no_weather_source);
     RUN_TEST(test_no_source_configured_is_unsafe);
     RUN_TEST(test_describe_stale_states_age_and_limit);
     RUN_TEST(test_format_seconds);

@@ -2,6 +2,7 @@
 
 #include "Config.h"
 #include "NetAddress.h"
+#include "NetworkPlan.h"
 #include <WiFi.h>
 #include <AsyncUDP.h>
 #include <functional>
@@ -17,7 +18,10 @@ namespace SQM
         using OnConnectedCallback = std::function<void()>;
         using OnDisconnectedCallback = std::function<void()>;
 
-        explicit WiFiManager(const WiFiConfig &config);
+        // Spec 023: `ethernetMode` is the network mode while Ethernet runs
+        // (Auto: the station and hotspot follow Net::wifiPlan; Ethernet only:
+        // the radio stays off); Wi-Fi keeps the rules of a board without Ethernet.
+        WiFiManager(const WiFiConfig &config, Net::NetMode ethernetMode);
         ~WiFiManager();
 
         // Delete copy operations
@@ -46,8 +50,8 @@ namespace SQM
         // While the setup hotspot is up, the saved network is retried in the
         // background; pause that while the setup screen tries new credentials.
         void setRetryPaused(bool paused) { retryPaused = paused; }
-        // True once the station has been connected for `ms` while the hotspot
-        // is still up - time to restart into normal operation.
+        // True once the station (or, spec 023, Ethernet) has been connected
+        // for `ms` while the hotspot is still up - time to restart into normal operation.
         bool connectedFromHotspotFor(uint32_t ms) const;
 
         // Starts mDNS (<hostname>.local + HTTP service) if enabled; idempotent.
@@ -77,6 +81,12 @@ namespace SQM
         // network has been joined since boot.
         uint32_t startedTryingAt = 0;
         bool connectedSinceBoot = false;
+        // Spec 023: a board with Ethernet starts its station only when the plan says.
+        bool ethernetBoard = false;
+        Net::NetMode mode = Net::NetMode::Wifi;
+        bool stationStarted = true;
+
+        void followPlan();
 
         // Answers DNS from the network task, so phones get replies at once
         // even while the main loop is busy (a slow task in the loop, such as a TLS

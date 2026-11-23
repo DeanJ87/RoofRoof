@@ -37,7 +37,6 @@ namespace SQM
         void writeInputsReport(JsonObject out, const InputsReport &report);
         // "good", "stale", ... (the document's names).
         const char *sourceStateName(SourceState state);
-        const char *rainContactName(RainContact contact);
         const char *ninaStateName(Nina::ReadingStatus status);
     } // namespace Safety
 } // namespace SQM

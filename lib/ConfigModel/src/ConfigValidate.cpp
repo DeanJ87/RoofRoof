@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "PinRules.h"
 #include "NetAddress.h"
 #include <cctype>
 #include <cmath>
@@ -334,9 +335,18 @@ namespace SQM
         }
     } // namespace ConfigDetail
 
+    // Spec 023: not part of validateLoaded(), so stored pins that break a
+    // rule still load; the device then holds every motor pin (src/PinSetup.cpp).
+    bool Config::validatePins(bool psram, std::string *error) const
+    {
+        const Board::PinReport report = Board::check(pins, Board::facts(pins.board, psram));
+        const Board::Issue *first = report.firstError();
+        return first == nullptr || setError(error, first->text);
+    }
+
     bool Config::validate(std::string *error) const
     {
-        return validateLoaded(error) && validateStoredSize(*this, error);
+        return validateLoaded(error) && validatePins(false, error) && validateStoredSize(*this, error);
     }
 
     bool Config::validateLoaded(std::string *error) const

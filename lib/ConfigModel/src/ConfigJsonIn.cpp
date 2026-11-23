@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "ConfigPins.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstring>
@@ -135,6 +136,26 @@ namespace SQM
             wifi.take("autoReconnect", w.autoReconnect);
             wifi.take("reconnectDelayMs", w.reconnectDelayMs);
             wifi.take("maxReconnectDelayMs", w.maxReconnectDelayMs);
+        }
+
+        // Spec 023. An unknown mode is refused, never read as a default.
+        bool applyNetwork(const Section &network, NetworkConfig &n, std::string *error)
+        {
+            if (!network.has("mode"))
+                return true;
+            const std::string mode = network["mode"].is<const char *>() ? network["mode"].as<const char *>() : "";
+            const std::pair<const char *, NetworkConfig::Mode> modes[] = {
+                {"auto", NetworkConfig::Mode::Auto},
+                {"ethernet", NetworkConfig::Mode::Ethernet},
+                {"wifi", NetworkConfig::Mode::Wifi},
+            };
+            for (const auto &choice : modes)
+                if (mode == choice.first)
+                {
+                    n.mode = choice.second;
+                    return true;
+                }
+            return setError(error, "Network: mode must be auto, ethernet or wifi");
         }
 
         void applyMqtt(const Section &mqtt, MQTTConfig &m, bool keepSecrets)
@@ -326,7 +347,7 @@ namespace SQM
             mqtt.take("enabled", s.mqttEnabled);
             mqtt.take("topic", s.mqttTopic);
             safety.take("staleSeconds", s.staleSeconds);
-            safety.take("rainContact", s.rainContact);
+            // "rainContact" (removed by spec 023) is ignored: a saved value is dropped.
         }
 
         // Named choices: anything but the documented names is refused, never
@@ -433,6 +454,22 @@ namespace SQM
             return setError(error, "Automatic close: notStarted must be halt or retry");
         }
 
+        // Spec 023 (ConfigPins::read): an unknown name is refused, stored or
+        // not, so settings whose pins can't be read hold every motor pin at boot.
+        bool applyPins(const Section &root, Board::PinMap &map, std::string *error)
+        {
+            // Stored by a release before spec 023: that device runs the DevKit
+            // map, so it keeps it (a new device's settings always have pins).
+            if (!root.has("pins") && !root.reader().strict())
+                map = Board::presetMap(Board::Preset::Devkit);
+            if (!root.has("pins"))
+                return true;
+            JsonVariant pins = root["pins"];
+            if (!pins.is<JsonObject>())
+                return setError(error, "Settings: pins must be an object");
+            return ConfigPins::read(pins.as<JsonObjectConst>(), map, error);
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -464,6 +501,9 @@ namespace SQM
         {
             applyRoot(root, cfg);
             applyWifi(root.child("wifi"), cfg.wifi, keep);
+            if (!applyPins(root, cfg.pins, error) ||
+                !applyNetwork(root.child("network"), cfg.network, error))
+                return false;
             applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);
@@ -490,7 +530,7 @@ namespace SQM
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
-        DynamicJsonDocument doc(json.size() + 5120 > 8192 ? json.size() + 5120 : 8192);
+        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

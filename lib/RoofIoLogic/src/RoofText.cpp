@@ -84,6 +84,8 @@ namespace SQM
                     return "Stored fault unreadable: the fault saved before the restart couldn't be read back";
                 case FaultCause::BenchSupply:
                     return benchSupplyText(r.fault.measured, r.fault.limit);
+                case FaultCause::PinSetup:
+                    return "Pin setup invalid: nothing is driven until a valid pin setup is saved and the device restarts";
                 default:
                     return format("Fault raised: %g (limit %g)", static_cast<double>(r.fault.measured), static_cast<double>(r.fault.limit));
                 }
@@ -118,6 +120,11 @@ namespace SQM
                 }
             }
         } // namespace
+
+        std::string pinSetupText(const std::string &reason)
+        {
+            return "Pin setup invalid: " + reason;
+        }
 
         std::string describeSupply(float volts, float minimum)
         {

@@ -5,6 +5,8 @@
 #include <optional>
 #include <string>
 
+#include "PinMap.h"
+
 namespace SQM
 {
 
@@ -18,6 +20,19 @@ namespace SQM
         bool autoReconnect;
         uint32_t reconnectDelayMs;
         uint32_t maxReconnectDelayMs;
+    };
+
+    // Spec 023: which network a board with Ethernet uses (a board without
+    // Ethernet is always on Wi-Fi). Applied at boot.
+    struct NetworkConfig
+    {
+        enum class Mode : uint8_t
+        {
+            Auto = 0,     // Ethernet; a saved Wi-Fi network once Ethernet has been down 30 s
+            Ethernet = 1, // Ethernet only: the radio off, never a setup hotspot
+            Wifi = 2,     // Wi-Fi only: Ethernet isn't started
+        };
+        Mode mode = Mode::Auto;
     };
 
     struct MQTTConfig
@@ -73,7 +88,8 @@ namespace SQM
     };
 
     // Where the weather verdict comes from (spec 004): SQMeter over HTTP
-    // and/or MQTT, plus the optional rain contact on GPIO4.
+    // and/or MQTT. Spec 023 removed the local rain contact: rain comes from
+    // SQMeter's rain gauge.
     struct SafetyConfig
     {
         bool httpEnabled = false;
@@ -81,7 +97,6 @@ namespace SQM
         bool mqttEnabled = false;          // on RoofRoof's own broker
         std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
         uint32_t staleSeconds = 30;        // SQMeter HTTP: unsafe after this long without a good reply
-        bool rainContact = false;          // a rain contact is fitted on GPIO4
         static constexpr uint32_t MIN_STALE_SECONDS = 10;
         static constexpr uint32_t MAX_STALE_SECONDS = 600;
     };
@@ -96,7 +111,7 @@ namespace SQM
             V2 = 0,
         };
         NinaApi ninaApi = NinaApi::V2;
-        // Park switches fitted: none, one (GPIO32) or two (GPIO32 and GPIO33).
+        // Park switches fitted: none, one (park switch A) or two (A and B); their pins are in `pins` (spec 023).
         enum class Switches : uint8_t
         {
             None = 0,
@@ -421,6 +436,11 @@ namespace SQM
         DiagConfig diag;
         AutoCloseConfig autoClose;
         UiConfig ui;
+        // Spec 023: the board and the roof's pins, applied at boot only. A new
+        // device has none chosen (nothing driven); settings saved before spec
+        // 023 load as the DevKit preset (Config::applyJson).
+        Board::PinMap pins = Board::presetMap(Board::Preset::Unset);
+        NetworkConfig network;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
@@ -428,8 +448,9 @@ namespace SQM
 
         // Persistence (src/ConfigStore.cpp, firmware only).
         // Loads the stored config into `out`. False (with `out` unspecified)
-        // if nothing valid is stored.
-        static bool load(Config &out);
+        // if nothing valid is stored. `storedRejected` (spec 023): settings
+        // were stored but couldn't be read, so their pins are unknown.
+        static bool load(Config &out, bool *storedRejected = nullptr);
         bool save() const;
         static Config createDefault();
 
@@ -455,6 +476,9 @@ namespace SQM
         // validate() without the stored-size check, for settings read back
         // from NVS (spec 007: an upgrade that adds events must still load).
         bool validateLoaded(std::string *error = nullptr) const;
+        // Spec 023: the pins against the rules for a chip with or without
+        // PSRAM (validate() assumes none; the device checks its own chip too).
+        bool validatePins(bool psram, std::string *error = nullptr) const;
         // validate() plus the rules a change from the UI/API also meets (host and
         // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
         bool validateChange(std::string *error = nullptr) const;

@@ -28,7 +28,6 @@ namespace SQM
             std::string mqttTopic;
             std::string mqttBroker; // RoofRoof's broker, port and user name (spec 020: a reading from the old broker never counts)
             uint32_t staleSeconds = 0;
-            bool rainContact = false;
             std::string ninaUrl;
             uint8_t ninaApi = 0;
         };

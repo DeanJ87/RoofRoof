@@ -47,19 +47,6 @@ namespace SQM
             }
         }
 
-        Safety::RainContact rainReading(Contact contact)
-        {
-            switch (contact)
-            {
-            case Contact::Closed:
-                return Safety::RainContact::Raining;
-            case Contact::Open:
-                return Safety::RainContact::Dry;
-            default:
-                return Safety::RainContact::Unreadable;
-            }
-        }
-
         const char *contactName(Contact contact)
         {
             switch (contact)

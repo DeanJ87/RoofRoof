@@ -1,7 +1,7 @@
 #pragma once
 
 // The weather verdict (constitution III; spec 004 US1): SQMeter over HTTP
-// and/or MQTT plus the optional rain contact, combined into safe, unsafe (with
+// and/or MQTT (spec 023 removed the local rain contact), combined into safe, unsafe (with
 // reasons) or unknown. Doubt is unsafe: a source that is stale, unreachable,
 // unreadable, offline or lost makes the verdict unsafe. Unknown only covers
 // the start-up window, and is never safe. Rules: specs/004-safety-inputs/data-model.md.
@@ -101,15 +101,6 @@ namespace SQM
 
         SourceStatus assessSource(const SourceRecord &record, SourceKind kind, const SourceClock &clock);
 
-        // The local rain contact as spec 003 reads it.
-        enum class RainContact : uint8_t
-        {
-            NotFitted,
-            Dry,
-            Raining,
-            Unreadable,
-        };
-
         enum class Verdict : uint8_t
         {
             Safe,
@@ -128,14 +119,14 @@ namespace SQM
             ReasonSourceUnreadable = 1u << 5,
             ReasonSourceOffline = 1u << 6,
             ReasonNoWeatherSource = 1u << 7,
-            ReasonRainContactUnreadable = 1u << 8,
+            // 1u << 8 was the rain contact (removed by spec 023); left unused so
+            // the other bits keep their values.
         };
 
         struct WeatherInputs
         {
             SourceRecord http;
             SourceRecord mqtt;
-            RainContact rainContact = RainContact::NotFitted;
             uint32_t httpLimitMs = 30000; // the stale-time setting
             uint32_t mqttLimitMs = MQTT_STALE_MS;
             TimeMs startedAtMs = 0;
@@ -148,7 +139,6 @@ namespace SQM
             uint32_t reasons = 0;
             SourceStatus http;
             SourceStatus mqtt;
-            RainContact rainContact = RainContact::NotFitted;
 
             bool safe() const { return verdict == Verdict::Safe; }
         };

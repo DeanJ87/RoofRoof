@@ -132,8 +132,6 @@ namespace
         s.supplyVolts = 12.437f;
         s.fittedSwitches = 1;
         s.switch1 = Contact::Closed;
-        s.rainFitted = true;
-        s.rain = Contact::Open;
         return s;
     }
 
@@ -169,7 +167,8 @@ void test_status_closed_roof(void)
     TEST_ASSERT_EQUAL(1, roof["parkSwitches"]["fitted"].as<int>());
     TEST_ASSERT_EQUAL_STRING("closed", roof["parkSwitches"]["switch1"]);
     TEST_ASSERT_EQUAL_STRING("notFitted", roof["parkSwitches"]["switch2"]);
-    TEST_ASSERT_EQUAL_STRING("dry", roof["rainContact"]);
+    // The local rain contact was removed: the document no longer carries it.
+    TEST_ASSERT_FALSE(roof.containsKey("rainContact"));
     TEST_ASSERT_TRUE(roof["fault"].isNull());
     TEST_ASSERT_FALSE(roof["closePending"].as<bool>());
     TEST_ASSERT_TRUE(roof.containsKey("closePending"));
@@ -223,7 +222,6 @@ void test_status_unknown_and_unreadable_are_null(void)
     s.currentSense = true;
     s.motorAmps = NAN;
     s.switch1 = Contact::Unreadable;
-    s.rain = Contact::Unreadable;
     DynamicJsonDocument doc = write(s);
     JsonObject roof = doc["roof"];
     TEST_ASSERT_TRUE(roof["positionMm"].isNull());
@@ -232,7 +230,6 @@ void test_status_unknown_and_unreadable_are_null(void)
     TEST_ASSERT_TRUE(roof["supplyLow"].as<bool>());
     TEST_ASSERT_TRUE(roof["motorAmps"].isNull());
     TEST_ASSERT_EQUAL_STRING("unreadable", roof["parkSwitches"]["switch1"]);
-    TEST_ASSERT_EQUAL_STRING("unreadable", roof["rainContact"]);
 }
 
 void test_status_supply_low_boundary(void)
@@ -282,17 +279,13 @@ void test_status_fault_measured_nan_is_null(void)
     TEST_ASSERT_EQUAL_STRING("Supply unreadable (minimum 11.0 V)", doc["roof"]["fault"]["text"]);
 }
 
-void test_status_rain_not_fitted(void)
+void test_status_no_switches_fitted(void)
 {
     Snapshot s = closedRoof();
-    s.rainFitted = false;
     s.fittedSwitches = 0;
     DynamicJsonDocument doc = write(s);
-    TEST_ASSERT_EQUAL_STRING("notFitted", doc["roof"]["rainContact"]);
+    TEST_ASSERT_FALSE(doc["roof"].containsKey("rainContact"));
     TEST_ASSERT_EQUAL_STRING("notFitted", doc["roof"]["parkSwitches"]["switch1"]);
-    s.rainFitted = true;
-    s.rain = Contact::Closed;
-    TEST_ASSERT_EQUAL_STRING("raining", write(s)["roof"]["rainContact"]);
 }
 
 // Spec 008 FR-011: the checks the commands use, and the automatic close's phase.
@@ -388,7 +381,7 @@ int main(int, char **)
     RUN_TEST(test_status_supply_low_boundary);
     RUN_TEST(test_status_fault_with_cause_and_text);
     RUN_TEST(test_status_fault_measured_nan_is_null);
-    RUN_TEST(test_status_rain_not_fitted);
+    RUN_TEST(test_status_no_switches_fitted);
     RUN_TEST(test_status_checks_and_phase);
     RUN_TEST(test_apply_checks_follows_the_gates);
     RUN_TEST(test_apply_checks_caps_long_texts);

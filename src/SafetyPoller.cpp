@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+
+#include "NetState.h"
 #include <esp_timer.h>
 
 namespace SQM
@@ -77,9 +79,9 @@ namespace SQM
         Safety::HttpOutcome httpGet(const std::string &url)
         {
             Safety::HttpOutcome reply;
-            if (WiFi.status() != WL_CONNECTED)
+            if (!NetState::online())
             {
-                reply.error = "WiFi not connected";
+                reply.error = "Not connected to a network";
                 return reply;
             }
             const uint64_t deadline = SafetyPoller::nowMs() + HTTP_TOTAL_MS;
@@ -175,9 +177,9 @@ namespace SQM
         const std::string &url, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
     {
         Site::Fetch fetch;
-        if (WiFi.status() != WL_CONNECTED)
+        if (!NetState::online())
         {
-            fetch.error = "WiFi not connected";
+            fetch.error = "Not connected to a network";
             return fetch;
         }
         const uint64_t deadline = nowMs() + totalMs;

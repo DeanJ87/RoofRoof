@@ -10,6 +10,8 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+
+#include "NetState.h"
 #include <WiFiClientSecure.h>
 #include "DualStackClient.h"
 #include "NetAddress.h"
@@ -351,9 +353,9 @@ namespace SQM
             if (!(job.channelMask & alertChannelBit(sender.channel)))
                 continue;
 
-            if (WiFi.status() != WL_CONNECTED)
+            if (!NetState::online())
             {
-                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "WiFi not connected");
+                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Not connected to a network");
                 continue;
             }
             if (networkBusy && networkBusy())

@@ -1,6 +1,6 @@
 #pragma once
 
-// A park switch or the rain contact on a GPIO with its pull-up (spec 003
+// A park switch on a GPIO with its pull-up (spec 003
 // FR-004, research R6): a contact to ground, so low means closed. A level
 // counts once read INPUT_CONFIRM_READINGS times in a row; before that, and
 // after INPUT_CHATTER_MS without such a run, the input is unreadable, which
@@ -44,8 +44,6 @@ namespace SQM
 
         // A park switch: closed = parked.
         Safety::SwitchReading parkReading(Contact contact);
-        // The rain contact: closed = raining.
-        Safety::RainContact rainReading(Contact contact);
         // "closed", "open", "unreadable".
         const char *contactName(Contact contact);
     } // namespace RoofIo
