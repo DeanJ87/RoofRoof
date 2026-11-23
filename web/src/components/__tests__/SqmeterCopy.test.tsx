@@ -253,6 +253,11 @@ describe('Copy from SQMeter: shared passwords and switches', () => {
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: '192.168.1.10', password: COPIED_SECRET, enabled: true }));
     expect(saves[0].sqmeterSync).toEqual(expect.objectContaining({ mqtt: { follow: true } }));
+    // Saved: the password is the device's own now, shown masked, and Test connection works again.
+    fireEvent.click(screen.getByRole('tab', { name: 'Network' }));
+    await waitFor(() => expect(field('mqtt.password')?.value).toBe('********'));
+    expect(screen.queryByText('Received from SQMeter; never shown here.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 
   it('shows a password field holding the placeholder as received, not as a mask', async () => {
@@ -261,6 +266,8 @@ describe('Copy from SQMeter: shared passwords and switches', () => {
     render(<Settings />);
     const input = await findField('mqtt.password');
     expect(input.value).toBe('');
+    const note = screen.getByText('Received from SQMeter; never shown here.').closest('[id]')!;
+    expect(input.getAttribute('aria-describedby')).toContain(note.id);
     expect(await screen.findByText('Received from SQMeter; never shown here.')).toBeInTheDocument();
     // The device fills it in at the save: no connection test with the placeholder.
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
@@ -274,7 +281,7 @@ describe('Copy from SQMeter: shared passwords and switches', () => {
     ['loginNeeded', 'SQMeter needs its login to share passwords: enter it in Settings, Roof.'],
     ['loginRefused', "SQMeter refused the login: check SQMeter's user name and password in Settings, Roof."],
     ['tooManyLogins', 'SQMeter locked sharing for a minute after failed logins: check its login, then retry.'],
-    ['notSaved', "Passwords come only from SQMeter's saved address: save it, then copy again."],
+    ['notSaved', "SQMeter's address isn't saved yet, so no passwords came: copy again once it's saved."],
     ['unreachable', "SQMeter's passwords couldn't be read: enter them here."],
     ['unreadable', "SQMeter's passwords couldn't be read: enter them here."],
   ] as const)('%s: says why, and still asks for the password', async (problem, text) => {

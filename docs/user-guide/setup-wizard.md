@@ -60,9 +60,9 @@ wizard resumes at.
    (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy, and MQTT, ntfy and Pushover
    switched on) for you to tick and apply; the later screens then arrive filled in, and the copied
    groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their
-   fields show **Follows SQMeter**, with **Edit here instead**). Once SQMeter's address is saved,
-   SQMeter's MQTT password, ntfy token and Pushover keys come too when SQMeter shares them (the
-   device reads them; the page only says they were received); otherwise the copy says why and asks
+   fields show **Follows SQMeter**, with **Edit here instead**). The copy saves SQMeter's address
+   first, so SQMeter's MQTT password, ntfy token and Pushover keys come too when SQMeter shares
+   them (the device reads them; the page only says they were received); otherwise the copy says why and asks
    for them ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
    SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
    for the daylight check); then the time zone and NTP.

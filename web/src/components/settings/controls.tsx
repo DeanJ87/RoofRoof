@@ -284,9 +284,11 @@ export const TextInput: FunctionalComponent<{
 }> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField, ariaLabel }) => {
   // Spec 024: a password to take from SQMeter at the save shows empty, with a note, not a mask.
   const copied = type === 'password' && isCopiedSecret(value);
+  const noteId = useId();
+  const aria = useFieldAria(ariaLabel, error);
   const input = (
     <input
-      {...useFieldAria(ariaLabel, error)}
+      {...(copied ? withNotes(aria, noteId) : aria)}
       type={type}
       data-field={dataField}
       name={dataField}
@@ -306,7 +308,9 @@ export const TextInput: FunctionalComponent<{
   return copied ? (
     <>
       {input}
-      <Note tone="ok">{t('settings.controls.fromSqmeter')}</Note>
+      <Note tone="ok" id={noteId}>
+        {t('settings.controls.fromSqmeter')}
+      </Note>
     </>
   ) : (
     input

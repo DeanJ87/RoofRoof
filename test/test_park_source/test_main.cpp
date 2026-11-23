@@ -122,7 +122,7 @@ void test_switches_alone_keep_their_old_meaning(void)
 void test_combinations_a_save_refuses(void)
 {
     TEST_ASSERT_EQUAL_STRING(
-        "Park: N.I.N.A. only uses no park switch; choose N.I.N.A. and park switches",
+        "Park: N.I.N.A. only has no park switches; choose N.I.N.A. and park switches",
         rejectReason(R"({"park":{"source":"nina","switches":"one"}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "Park: park switches need one or two fitted; choose N.I.N.A. only for none",
@@ -348,8 +348,7 @@ void test_stuck_switch_refuses_open_only(void)
     TEST_ASSERT_EQUAL(RoofIo::GateRefusal::SwitchCheck, RoofIo::gateCommand(Roof::Command::Open, gates));
     TEST_ASSERT_EQUAL_STRING("parkSwitchCheck", RoofIo::gateRefusalName(RoofIo::GateRefusal::SwitchCheck));
     TEST_ASSERT_EQUAL_STRING(
-        "Park switch 2 hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the mount off its park (or take "
-        "the magnet away) once to check it",
+        "Park switch 2 hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park once",
         RoofIo::describeGate(RoofIo::GateRefusal::SwitchCheck, gates).c_str());
     // The weather is named first; an open under way, a jog and a close are never stopped by it.
     gates.weather = Verdict::Unsafe;

@@ -57,17 +57,16 @@ const SecretsNotes: FunctionalComponent<{ site: SqmeterSite }> = ({ site }) => {
 
 const secretsOf = (rows: CopyRow[]): CopySecret[] => [...new Set(rows.flatMap((row) => row.secrets))];
 
-export const SqmeterCopy: FunctionalComponent<SettingsTabProps & { url?: string; wizard?: boolean }> = ({
-  config,
-  updateMany,
-  url,
-  wizard,
-}) => {
+// `beforeFetch` (the wizard): saves the typed address first, as SQMeter's passwords come only from the saved one (spec 024).
+type CopyProps = SettingsTabProps & { url?: string; wizard?: boolean; beforeFetch?: () => Promise<boolean> };
+
+export const SqmeterCopy: FunctionalComponent<CopyProps> = ({ config, updateMany, url, wizard, beforeFetch }) => {
   const [view, setView] = useState<View>({ kind: 'idle' });
   const address = (url ?? config.safety?.http.url ?? '').trim();
 
   const fetchSite = async () => {
     setView({ kind: 'busy' });
+    if (beforeFetch && !(await beforeFetch())) return setView({ kind: 'idle' });
     const http = config.safety?.http;
     const answer = await fetchSqmeterSite(url?.trim() || undefined, { username: http?.username, password: http?.password });
     if (!answer.ok) return setView({ kind: 'failed', error: answer.error, password: answer.password });

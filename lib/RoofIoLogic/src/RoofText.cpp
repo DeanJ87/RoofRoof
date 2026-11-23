@@ -177,8 +177,7 @@ namespace SQM
                 return "";
             static_assert(Safety::STUCK_OPENINGS == 3, "the text names the count");
             return format(
-                "Park switch %u hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the mount off its park (or "
-                "take the magnet away) once to check it",
+                "Park switch %u hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park once",
                 static_cast<unsigned>(which));
         }
 

@@ -241,9 +241,7 @@ void test_without_a_held_copy_the_placeholder_is_refused(void)
     Config cfg = Config::createDefault();
     const std::string error =
         saveError(R"j({"mqtt":{"broker":"192.168.1.10","port":1883,"username":"obs","password":"(from SQMeter)"}})j", cfg, nullptr);
-    TEST_ASSERT_EQUAL_STRING(
-        "A password from SQMeter is no longer held (copied over 30 minutes ago, or the device restarted): copy again, or type it",
-        error.c_str());
+    TEST_ASSERT_EQUAL_STRING("A password from SQMeter is no longer held: copy again, or type it", error.c_str());
     // A restore, or any other parse from the UI/API, never holds one.
     TEST_ASSERT_FALSE(Config::fromJson(R"j({"alerts":{"pushover":{"userKey":"(from SQMeter)"}}})j", &cfg).has_value());
 }

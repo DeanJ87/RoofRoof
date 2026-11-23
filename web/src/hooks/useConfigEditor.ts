@@ -6,6 +6,7 @@ import { toConfigPayload } from '../components/settings/payload';
 import { restartReasons } from '../components/settings/restart';
 import { fetchEffectiveReport, type EffectiveReport } from '../lib/settingsDeps';
 import { TEST_BOX_CHANGED, fetchConfigWithRevision, fetchStatus, saveConfig } from '../lib/settingsApi';
+import { maskCopiedSecrets } from '../lib/copiedSecret';
 import { applyPatch, asShown, baseValuesFor, diffConfig, rebaseEdits, withSentTogether } from '../lib/configPatch';
 import { deviceError } from '../i18n/deviceMessage';
 import { t } from '../i18n';
@@ -181,8 +182,10 @@ export const useConfigEditor = () => {
     setValidationErrors(outcome.kind === 'invalid' ? outcome.errors : {});
     if (outcome.kind !== 'saved') return outcome;
     loaded.current = afterSave(before, patch, revision);
-    setSaved(outcome.payload);
-    setConfig(outcome.payload);
+    // Spec 024: a password taken from SQMeter is saved now; it shows masked, as the device has it.
+    const shown = maskCopiedSecrets(outcome.payload);
+    setSaved(shown);
+    setConfig(shown);
     if (extra.setup) setSetup(extra.setup);
     loadStatus();
     window.dispatchEvent(new Event(TEST_BOX_CHANGED)); // spec 022: the banner reads the status again

@@ -358,4 +358,25 @@ describe('Settings → Roof → Calibration run', () => {
     await waitFor(() => expect(saves).toHaveLength(2));
     expect(saves[1].park).toEqual({ source: 'nina', switches: 'none' });
   });
+
+  it('choosing park switches only turns the test box park bypass off, saying so', async () => {
+    mockDevice({
+      config: { park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } }, testBox: { ...mockConfig.testBox!, park: true } },
+    });
+    const saves: Config[] = [];
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        saves.push((await request.json()) as Config);
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    fireEvent.change(await findField('park.source'), { target: { value: 'switches' } });
+    expect(document.querySelector('[data-park-note="testBoxCleared"]')).toHaveTextContent(/park bypass is now off/);
+    expect(document.querySelector('[data-park-note="testBox"]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].testBox).toEqual({ park: false });
+    expect(saves[0].park).toEqual({ source: 'switches', switches: 'one' });
+  });
 });

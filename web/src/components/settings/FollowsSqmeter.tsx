@@ -47,7 +47,7 @@ const Followed: FunctionalComponent<Pick<Props, 'group' | 'status'> & { onLocal:
       </Note>
       {refused && <Note tone="warn">{deviceText(refused)}</Note>}
       {/* Spec 024: the passwords and switches follow too (switches only ever turn on). */}
-      {keepsSecrets(group) && <Note tone="muted">{t('sync.keepsSecrets')}</Note>}
+      {keepsSecrets(group) && !secrets && <Note tone="muted">{t('sync.keepsSecrets')}</Note>}
       {secrets && <Note tone="warn">{t(`sqmeterSecrets.${secrets}`)}</Note>}
     </div>
   );

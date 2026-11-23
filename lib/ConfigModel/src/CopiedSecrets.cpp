@@ -76,9 +76,7 @@ namespace SQM::ConfigDetail
         if (!anyCopied(cfg))
             return true;
         if (copied == nullptr)
-            return setError(
-                error,
-                "A password from SQMeter is no longer held (copied over 30 minutes ago, or the device restarted): copy again, or type it");
+            return setError(error, "A password from SQMeter is no longer held: copy again, or type it");
         return fillMqtt(cfg.mqtt, *copied, error) && fillNtfy(cfg.alerts, *copied, error) && fillPushover(cfg.alerts, *copied, error);
     }
 } // namespace SQM::ConfigDetail

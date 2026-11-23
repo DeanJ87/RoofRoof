@@ -73,7 +73,7 @@ namespace SQM::ConfigDetail
     {
         const bool fitted = cfg.park.switches != ParkConfig::Switches::None;
         if (cfg.park.source == ParkConfig::Source::Nina && fitted)
-            return setError(error, "Park: N.I.N.A. only uses no park switch; choose N.I.N.A. and park switches");
+            return setError(error, "Park: N.I.N.A. only has no park switches; choose N.I.N.A. and park switches");
         if (cfg.park.source != ParkConfig::Source::Nina && !fitted)
             return setError(error, "Park: park switches need one or two fitted; choose N.I.N.A. only for none");
         if (cfg.testBox.park && cfg.park.switchesOnly())

@@ -335,7 +335,7 @@ time screen, read SQMeter's settings and list what differs, SQMeter's value besi
 | ntfy token | `alerts.ntfy.token`, when the server is already SQMeter's and its token differs |
 | ntfy on | `alerts.ntfy.enabled`, while SQMeter's is on and RoofRoof's is off |
 | Pushover keys | `alerts.pushover.userKey`, `alerts.pushover.appToken`, when SQMeter shares both and they differ |
-| Pushover on | `alerts.pushover.enabled`, while SQMeter's is on and RoofRoof's is off |
+| Pushover on | `alerts.pushover.enabled`, while SQMeter's is on and RoofRoof's is off, once its keys are here (or come with the row) |
 
 Tick the rows you want, **Apply ticked**, then **Save**: the settings are checked and saved as if
 you had typed them. Nothing is saved by the copy itself.
@@ -345,8 +345,8 @@ with a client that logs in with its web password (`GET /api/secrets` on SQMeter,
 sharing turned on). The device reads them itself during the copy, with SQMeter's saved or typed
 login, and only from the **saved** SQMeter address (its scheme, host and port): a typed address that
 isn't saved yet gets the settings but not the secrets. The page never sees them: the list only says
-**Password received from SQMeter**. Ticking a row with a secret puts a placeholder in that field
-(`(from SQMeter)`, shown as "Received from SQMeter"); at **Save** the device swaps it for what it
+"Passwords received from SQMeter; they are never shown here". Ticking a row with a secret puts a placeholder in that field
+(`(from SQMeter)`, shown as "Received from SQMeter; never shown here."); at **Save** the device swaps it for what it
 received, but only while the field's server is still the one SQMeter uses it for (the MQTT broker,
 port and user name; the ntfy server). Change the broker or server after ticking and the save is
 refused: copy again, or type the password. The device holds what it received for 30 minutes, in
@@ -355,13 +355,13 @@ and the list says so.
 
 When SQMeter can't share them, the list says exactly why, and asks for each secret as before:
 
-| SQMeter answers | Shown |
+| SQMeter answers | The copy says |
 |---|---|
-| 404 (an older SQMeter) | Update SQMeter to share passwords |
-| 403 "Password sharing is off" | SQMeter's password sharing is off: turn it on in SQMeter's Settings |
-| 403 "Set a web password" | Set a web password in SQMeter first: it guards the passwords it shares |
-| 401 | SQMeter needs its login, or refused it: check SQMeter's user name and password |
-| 429 (five failed logins in a row) | SQMeter locked password sharing for a minute: check the login, then try again |
+| 404 (an older SQMeter) | "This SQMeter can't share passwords: update it, or enter them here." |
+| 403 "Password sharing is off" | "SQMeter's password sharing is off: turn it on in its Settings, or enter them here." |
+| 403 "Set a web password" | "SQMeter has no web password, so it won't share passwords: set one in SQMeter first." |
+| 401 | "SQMeter needs its login to share passwords: enter it in Settings, Roof." or "SQMeter refused the login: check SQMeter's user name and password in Settings, Roof." |
+| 429 (five failed logins in a row) | "SQMeter locked sharing for a minute after failed logins: check its login, then retry." |
 
 While SQMeter's own settings say sharing is off, RoofRoof doesn't ask at all. After a 401 the sync
 never asks again until you change SQMeter's user name or password here, so a wrong saved login

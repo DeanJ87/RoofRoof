@@ -246,6 +246,36 @@ describe('copyRows: shared secrets and switches', () => {
     expect(ids(on, noKeys)).toContain('pushoverEnabled');
   });
 
+  it('a switch row brings what the switch needs when RoofRoof lacks it, so no tick combination is refused', () => {
+    const on = shared(
+      {},
+      {
+        mqtt: { ...mockSqmeterSite.mqtt!, enabled: true },
+        ntfy: { ...mockSqmeterSite.ntfy!, enabled: true },
+        pushover: { ...mockSqmeterSite.pushover!, enabled: true },
+      },
+    );
+    const empty = config((c) => {
+      c.mqtt = { ...c.mqtt, enabled: false, broker: '', username: '', password: '' };
+      c.alerts!.ntfy = { ...c.alerts!.ntfy, enabled: false, topic: '' };
+      c.alerts!.pushover = { ...c.alerts!.pushover, enabled: false, userKey: '', appToken: '' };
+    });
+    const mqtt = row(on, empty, 'mqttEnabled')!;
+    expect(value(mqtt, 'mqtt.broker')).toBe('192.168.1.10');
+    expect(value(mqtt, 'mqtt.password')).toBe(COPIED_SECRET);
+    expect(value(row(on, empty, 'ntfyEnabled'), 'alerts.ntfy.topic')).toBe('my-observatory');
+    const pushover = row(on, empty, 'pushoverEnabled')!;
+    expect(value(pushover, 'alerts.pushover.userKey')).toBe(COPIED_SECRET);
+    expect(value(pushover, 'alerts.pushover.appToken')).toBe(COPIED_SECRET);
+    // RoofRoof has its own: only the switch.
+    const own = matching();
+    own.mqtt.enabled = false;
+    own.alerts!.pushover.enabled = false;
+    expect(value(row(on, own, 'mqttEnabled'), 'mqtt.broker')).toBeUndefined();
+    expect(value(row(on, own, 'ntfyEnabled'), 'alerts.ntfy.topic')).toBeUndefined();
+    expect(value(row(on, own, 'pushoverEnabled'), 'alerts.pushover.userKey')).toBeUndefined();
+  });
+
   it('carries the ntfy token with a new server, offers it for the same server, and the Pushover keys', () => {
     const otherServer = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'x' }));
     const r = row(shared(), otherServer, 'ntfy')!;

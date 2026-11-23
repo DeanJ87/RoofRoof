@@ -158,11 +158,13 @@ const secretShown = (value: string | null | undefined) =>
   (value ?? '') === '' ? t('settings.sqmeterCopy.notSet') : t('settings.sqmeterCopy.secretSet');
 const onOff = (on: boolean) => (on ? t('settings.sqmeterCopy.on') : t('settings.sqmeterCopy.off'));
 // A row that turns a switch on (spec 024: a copy never turns one off).
-const switchRow = (id: CopyRowId, path: ConfigPath): CopyRow => ({
+// `needs`: what the switch can't be on without when RoofRoof lacks it (the broker, the topic, the keys),
+// so no combination of ticks makes a save the device refuses.
+const switchRow = (id: CopyRowId, path: ConfigPath, needs: [ConfigPath, unknown][] = []): CopyRow => ({
   id,
   ours: onOff(false),
   theirs: onOff(true),
-  changes: [[path, true]],
+  changes: [[path, true], ...needs],
   secrets: [],
 });
 // A row that takes SQMeter's received secret into `paths`.
@@ -206,7 +208,10 @@ const mqttSecretRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   const sameBroker = mqtt.broker === ours.broker && mqtt.port === ours.port && mqtt.username === ours.username;
   if (sameBroker && sharedOf(site)?.mqttPassword === 'received' && !isCopiedSecret(ours.password))
     rows.push(secretRow('mqttPassword', ours.password, [['mqtt', 'password']]));
-  if (mqtt.enabled && !ours.enabled && mqtt.broker.trim() !== '') rows.push(switchRow('mqttEnabled', ['mqtt', 'enabled']));
+  if (mqtt.enabled && !ours.enabled && mqtt.broker.trim() !== '') {
+    const needs = ours.broker.trim() === '' ? (brokerRow(site, config)?.changes ?? []) : [];
+    rows.push(switchRow('mqttEnabled', ['mqtt', 'enabled'], needs));
+  }
   return rows;
 };
 
@@ -264,7 +269,10 @@ const ntfyRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   const topicSet = ntfy.topic.trim() !== '';
   if (topicSet && ntfy.server === ours.server && sharedOf(site)?.ntfyToken === 'received' && !isCopiedSecret(ours.token))
     rows.push(secretRow('ntfyToken', ours.token, [['alerts', 'ntfy', 'token']]));
-  if (ntfy.enabled && !ours.enabled && topicSet) rows.push(switchRow('ntfyEnabled', ['alerts', 'ntfy', 'enabled']));
+  if (ntfy.enabled && !ours.enabled && topicSet) {
+    const needs = ours.topic.trim() === '' ? (ntfyRow(site, config)?.changes ?? []) : [];
+    rows.push(switchRow('ntfyEnabled', ['alerts', 'ntfy', 'enabled'], needs));
+  }
   return rows;
 };
 
@@ -282,8 +290,16 @@ const pushoverRows = (site: SqmeterSite, config: Config): CopyRow[] => {
         ['alerts', 'pushover', 'appToken'],
       ]),
     );
-  const keys = held(state) || (ours.userKey.trim() !== '' && ours.appToken.trim() !== '');
-  if (theirs.enabled && !ours.enabled && keys) rows.push(switchRow('pushoverEnabled', ['alerts', 'pushover', 'enabled']));
+  const own = ours.userKey.trim() !== '' && ours.appToken.trim() !== '';
+  if (theirs.enabled && !ours.enabled && (held(state) || own)) {
+    const needs: [ConfigPath, unknown][] = own
+      ? []
+      : [
+          [['alerts', 'pushover', 'userKey'], COPIED_SECRET],
+          [['alerts', 'pushover', 'appToken'], COPIED_SECRET],
+        ];
+    rows.push(switchRow('pushoverEnabled', ['alerts', 'pushover', 'enabled'], needs));
+  }
   return rows;
 };
 

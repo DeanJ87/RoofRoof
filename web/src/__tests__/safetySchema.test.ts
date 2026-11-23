@@ -55,7 +55,7 @@ describe('safety and park settings', () => {
   // Spec 024 FR-002: the park source's rules, as the device's.
   it('takes N.I.N.A. only with no switch, a switch source with one or two', () => {
     expect(withPark({ source: 'nina', switches: 'none' })).toEqual({});
-    expect(withPark({ source: 'nina', switches: 'one' })['park.switches']).toMatch(/N.I.N.A. only uses no park switch/);
+    expect(withPark({ source: 'nina', switches: 'one' })['park.switches']).toMatch(/N.I.N.A. only has no park switches/);
     expect(withPark({ source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } })).toEqual({});
     expect(withPark({ source: 'switches', switches: 'none' })['park.switches']).toMatch(/one or two/);
     expect(withPark({ source: 'ninaAndSwitches', switches: 'none' })['park.switches']).toMatch(/one or two/);

@@ -251,8 +251,8 @@ The owner copies from SQMeter; MQTT ends up on, with SQMeter's broker and passwo
 - **FR-007**: With `switches` and one switch, Settings and the wizard warn and recommend two.
 - **FR-008**: With `switches`, each fitted switch keeps a count of roof openings (the roof reaching
   open, not during a calibration run) since it last read open. At 3 or more, Open is refused with
-  "Park switch N hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the
-  mount off its park (or take the magnet away) once to check it". Reading open sets the count to 0.
+  "Park switch N hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park
+  once". Reading open sets the count to 0.
   The counts are kept across restarts (written only while the roof is still).
 - **FR-009**: The status reports each switch's count and whether the check refuses Open.
 - **FR-010**: The copy's site document gains SQMeter's MQTT, ntfy and Pushover on/off states, and

@@ -113,13 +113,15 @@ describe('Wizard: choices, skips and refusals', () => {
     expect(copied).toEqual({ url: 'http://10.0.0.5/api/safety', username: '', password: '' });
     fireEvent.click(button('Apply ticked'));
     expect(await screen.findByText('Applied: Continue saves them.')).toBeInTheDocument();
-    expect(saves).toHaveLength(0);
+    // Spec 024: the address was saved before the copy (SQMeter shares its passwords only with the saved one).
+    expect(saves).toHaveLength(1);
+    expect((saves[0].safety as { http: { url: string } }).http.url).toBe('http://10.0.0.5/api/safety');
+    expect(saves[0].ntp).toBeUndefined();
     fireEvent.click(button('Continue'));
     await onScreen('site');
-    expect(saves).toHaveLength(1);
-    expect(saves[0].ntp).toMatchObject({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server2: 'time.nist.gov' });
-    expect((saves[0].safety as { http: { url: string } }).http.url).toBe('http://10.0.0.5/api/safety');
-    expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
+    expect(saves).toHaveLength(2);
+    expect(saves[1].ntp).toMatchObject({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server2: 'time.nist.gov' });
+    expect(saves[1].setup).toEqual({ state: 'new', step: 1 });
   });
 
   it('lets Continue go on from the SQMeter screen with no address', async () => {
