@@ -4,6 +4,7 @@
 #include <atomic>
 #include <mutex>
 
+#include "ConfigPins.h"
 #include "EthernetLink.h"
 #include "EthernetProbe.h"
 #include "Logger.h"
@@ -120,27 +121,8 @@ namespace SQM
 
         void writeDocument(JsonDocument &doc)
         {
-            const auto now = static_cast<State>(state.load());
-            doc["state"] = now == State::Running ? "running" : now == State::Done ? "done" : "idle";
-            JsonArray checks = doc.createNestedArray("checks");
             const std::lock_guard<std::mutex> held(resultLock);
-            if (now != State::Done)
-                return;
-            for (const Board::Check &check : result.checks)
-            {
-                JsonObject item = checks.createNestedObject();
-                item["id"] = Board::checkIdName(check.id);
-                item["level"] = Board::levelName(check.level);
-                if (std::isfinite(check.value))
-                    item["value"] = check.value;
-                else
-                    item["value"] = nullptr;
-                item["unit"] = check.unit;
-                item["text"] = check.text;
-            }
-            if (result.suggestWt32)
-                doc["suggestPreset"] = Board::presetName(Board::Preset::Wt32CarrierV1);
-            doc["finishedAt"] = finishedAtMs;
+            ConfigPins::writeWiring(doc.to<JsonObject>(), static_cast<ConfigPins::CheckState>(state.load()), result, finishedAtMs);
         }
     } // namespace WiringRun
 } // namespace SQM

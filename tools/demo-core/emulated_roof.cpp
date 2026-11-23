@@ -313,8 +313,6 @@ namespace DemoRoof
         Safety::WeatherInputs in;
         in.http = http;
         in.mqtt = mqtt;
-        if (safetyCfg.rainContact)
-            in.rainContact = inject.rain ? Safety::RainContact::Raining : Safety::RainContact::Dry;
         in.httpLimitMs = safetyCfg.staleSeconds * 1000;
         in.startedAtMs = bootMs;
         in.nowMs = nowMs;
@@ -539,8 +537,6 @@ namespace DemoRoof
         s.fittedSwitches = gates.fittedSwitches;
         s.switch1 = gates.switch1;
         s.switch2 = gates.switch2;
-        s.rainFitted = safetyCfg.rainContact;
-        s.rain = inject.rain ? RoofIo::Contact::Closed : RoofIo::Contact::Open;
         s.personStops = personStops;
         s.calibrating = calibration.active();
         s.maxStepGapMs = STEP_MS;

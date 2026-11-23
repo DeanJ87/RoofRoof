@@ -18,47 +18,6 @@ namespace SQM
 {
     using namespace WebShared;
 
-    namespace
-    {
-        constexpr size_t PINS_DOCUMENT_BYTES = 4096;
-        constexpr size_t CHECK_DOCUMENT_BYTES = 3072;
-
-        void writeIssues(JsonArray out, const Board::PinReport &report)
-        {
-            for (const Board::Issue &issue : report.issues)
-            {
-                JsonObject item = out.createNestedObject();
-                if (issue.function == Board::Function::None)
-                    item["function"] = nullptr;
-                else
-                    item["function"] = Board::functionName(issue.function);
-                item["pin"] = issue.pin;
-                item["code"] = Board::issueCodeName(issue.code);
-                item["error"] = issue.error;
-                item["text"] = issue.text;
-            }
-        }
-
-        void writeBoards(JsonArray out)
-        {
-            for (Board::BoardId board : {Board::BoardId::Esp32Devkit, Board::BoardId::Wt32Eth01})
-            {
-                const Board::Facts facts = Board::facts(board, false);
-                JsonObject item = out.createNestedObject();
-                item["board"] = Board::boardName(board);
-                JsonArray ethernet = item.createNestedArray("ethernet");
-                JsonArray header = item.createNestedArray("header");
-                for (unsigned pin = 0; pin < 40; ++pin)
-                {
-                    if (Board::Facts::has(facts.ethernet, pin))
-                        ethernet.add(pin);
-                    if (Board::Facts::has(facts.header, pin))
-                        header.add(pin);
-                }
-            }
-        }
-    } // namespace
-
     void WebServer::setupPinRoutes()
     {
         // Specific routes first: handlers match by prefix.
@@ -68,7 +27,7 @@ namespace SQM
             HTTP_GET,
             [](AsyncWebServerRequest *request)
             {
-                DynamicJsonDocument doc(CHECK_DOCUMENT_BYTES);
+                DynamicJsonDocument doc(ConfigPins::CHECK_DOCUMENT_BYTES);
                 WiringRun::writeDocument(doc);
                 std::string out;
                 serializeJson(doc, out);
@@ -83,26 +42,16 @@ namespace SQM
 
     void WebServer::handleGetPins(AsyncWebServerRequest *request)
     {
-        DynamicJsonDocument doc(PINS_DOCUMENT_BYTES);
-        const Board::PinMap &running = PinSetup::running();
-        const Board::PinMap saved = getConfigCallback().pins;
-        ConfigPins::write(doc.createNestedObject("running"), running);
-        ConfigPins::write(doc.createNestedObject("saved"), saved);
-        doc["restartNeeded"] = saved != running;
-        doc["valid"] = PinSetup::valid();
-        doc["reason"] = PinSetup::boot().reason;
-        writeIssues(doc.createNestedArray("issues"), PinSetup::boot().report);
-        doc["psram"] = PinSetup::psram();
-        // FR-034: with no board chosen, what the boot probe found (null: it couldn't run).
-        if (PinSetup::boardProbed())
-            doc["detected"] = Board::boardName(PinSetup::detectedBoard());
-        else
-            doc["detected"] = nullptr;
-        doc["board"] = Board::boardName(PinSetup::board());
-        JsonArray presets = doc.createNestedArray("presets");
-        for (Board::Preset preset : {Board::Preset::Devkit, Board::Preset::Wt32CarrierV1})
-            ConfigPins::write(presets.createNestedObject(), Board::presetMap(preset));
-        writeBoards(doc.createNestedArray("boards"));
+        ConfigPins::PinsView view;
+        view.running = PinSetup::running();
+        view.saved = getConfigCallback().pins;
+        view.boot = PinSetup::boot();
+        view.psram = PinSetup::psram();
+        view.probed = PinSetup::boardProbed();
+        view.detected = PinSetup::detectedBoard();
+        view.board = PinSetup::board();
+        DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES);
+        ConfigPins::writePinsDocument(doc.to<JsonObject>(), view);
         std::string out;
         serializeJson(doc, out);
         request->send(200, "application/json", out.c_str());
@@ -123,10 +72,8 @@ namespace SQM
             return;
         }
         const Board::PinReport report = Board::check(map, Board::facts(map.board, PinSetup::psram()));
-        DynamicJsonDocument doc(PINS_DOCUMENT_BYTES / 2);
-        doc["valid"] = report.valid();
-        ConfigPins::write(doc.createNestedObject("pins"), map);
-        writeIssues(doc.createNestedArray("issues"), report);
+        DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES / 2);
+        ConfigPins::writeValidation(doc.to<JsonObject>(), map, report);
         std::string out;
         serializeJson(doc, out);
         request->send(200, "application/json", out.c_str());
