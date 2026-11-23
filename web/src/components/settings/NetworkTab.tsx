@@ -20,7 +20,7 @@ import {
   Toggle,
 } from './controls';
 import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
-import { locked as isLocked } from '../../lib/syncView';
+import { locked as isLocked, mqttShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
@@ -154,7 +154,7 @@ const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
             placeholder={t('settings.network.optional')}
             onInput={(v) => update(['mqtt', 'password'], v)}
           />
-          <NeedsNote status={status} need="mqttPassword" />
+          <NeedsNote status={status} need="mqttPassword" filled={!!config.mqtt.password} cleared={config.mqtt.password === null} />
         </Field>
         <Field label={t('settings.network.baseTopic')} error={error('mqttTopic')} hint={t('settings.network.topicsGoUnderBase', { base })}>
           <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="roofroof" onInput={(v) => update(['mqtt', 'topic'], v)} />
@@ -278,7 +278,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
           checked={config.mqtt.enabled}
           onChange={(v) => update(['mqtt', 'enabled'], v)}
         />
-        {config.mqtt.enabled && (
+        {config.mqtt.enabled ? (
           <>
             <MqttFields {...props} />
             <MqttTest config={config} test={mqttTest} />
@@ -286,6 +286,9 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
             <RoofCommandsGroup {...props} />
             <HomeAssistantGroup {...props} />
           </>
+        ) : (
+          // Spec 020: what was copied or synced from SQMeter stays visible and editable while MQTT is off.
+          mqttShown(config, props.status?.sync) && <MqttFields {...props} />
         )}
       </SettingsCard>
 

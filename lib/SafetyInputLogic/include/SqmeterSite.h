@@ -19,12 +19,14 @@ namespace SQM
 {
     namespace Site
     {
+        constexpr const char *SAFETY_PATH = "/api/safety"; // the weather poll and the Test (spec 020 FR-036)
         constexpr const char *STATUS_PATH = "/api/status";
         constexpr const char *CONFIG_PATH = "/api/config";
 
-        // SQMeter's own `path` on the host of the weather source's address
-        // (scheme, host and port of `safety.httpUrl`): "http://192.168.1.50/api/status".
-        // Empty when the address isn't a valid http:// URL.
+        // SQMeter's own `path` at SQMeter's address (scheme, host and port of
+        // `safety.httpUrl`, typed in any form Config::sqmeterAddress takes):
+        // "http://192.168.1.50/api/status". http or https (spec 020 FR-039);
+        // empty when the address isn't valid.
         std::string siteUrl(const std::string &address, const char *path);
 
         // One fetch: the HTTP status (0 = no reply, with `error`) and whether
@@ -34,20 +36,51 @@ namespace SQM
             int status = 0;
             bool parsed = false;
             std::string error;
+            bool credentials = false; // SQMeter's login was sent
         };
+
+        // Where to reach SQMeter: a full URL and its login (HTTP Basic, sent on
+        // every request when the user name or password is set).
+        struct Endpoint
+        {
+            std::string url;
+            std::string username;
+            std::string password;
+            bool hasLogin() const { return !username.empty() || !password.empty(); }
+            // A password was sent: a 401 or 403 then means it was refused.
+            bool sendsPassword() const { return !password.empty(); }
+        };
+
+        // Spec 020: where the copy reads SQMeter's settings, and with which login.
+        // A typed user name or password (the wizard, before saving) wins; an
+        // empty or masked typed password means the saved one. The saved password
+        // is only ever sent to the host and port it was saved for.
+        struct TypedLogin
+        {
+            std::optional<std::string> username;
+            std::optional<std::string> password;
+        };
+        // `path`: the settings for the copy, /api/safety for the Test (FR-038).
+        Endpoint copyEndpoint(
+            const SafetyConfig &saved, const std::string &address, const TypedLogin &typed, const char *path = CONFIG_PATH);
 
         // Why there is no good location from SQMeter.
         enum class Problem : uint8_t
         {
             None,
-            Waiting,     // not read yet
-            NoAddress,   // SQMeter's address isn't set (or isn't http://)
-            Unreachable, // no reply
-            Unreadable,  // not 200, or not SQMeter's status
-            NoLocation,  // SQMeter has no location (locationSource "none", or no sky section)
+            Waiting,         // not read yet
+            NoAddress,       // SQMeter's address isn't set (or isn't http://)
+            Unreachable,     // no reply
+            Unreadable,      // not 200, or not SQMeter's status
+            NoLocation,      // SQMeter has no location (locationSource "none", or no sky section)
+            PasswordNeeded,  // 401/403 with no login sent
+            PasswordRefused, // 401/403 with the login sent
         };
-        // "waiting", "noAddress", "unreachable", "unreadable", "noLocation"; nullptr for None.
+        // "waiting", "noAddress", "unreachable", "unreadable", "noLocation",
+        // "passwordNeeded", "passwordRefused"; nullptr for None.
         const char *problemName(Problem problem);
+        // Problem::PasswordNeeded or PasswordRefused for a 401 or 403, else Unreadable.
+        Problem problemOfStatus(int status, bool credentialsSent);
 
         struct LocationRead
         {

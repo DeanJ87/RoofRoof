@@ -100,4 +100,10 @@ describe('spec 021 review fixes', () => {
       expect(replaced.sort()).toEqual(['deviceName', 'wifi.password']);
     }
   });
+  it("sends SQMeter's address and user name with a typed SQMeter password", () => {
+    const withSqm = { ...loaded, safety: { http: { enabled: true, url: 'http://a', username: 'u', password: '********' } } };
+    expect(baseValuesFor(withSqm, { safety: { http: { password: 'x' } } })).toEqual({
+      safety: { http: { password: '********', url: 'http://a', username: 'u' } },
+    });
+  });
 });

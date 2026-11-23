@@ -1,15 +1,20 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
-import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConfig } from '../../types';
+import type { DaylightConfig, LocationConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
 import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
+import { SqmeterLoginFields } from './SqmeterLoginFields';
+import { SqmeterAddressTest } from './SqmeterAddressTest';
+import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { locked as isLocked } from '../../lib/syncView';
+import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
+import { NinaUrlField, ParkSwitchesField, type ParkProps } from './ParkFields';
+export { NinaUrlField, ParkSwitchesField, type ParkProps };
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -185,7 +190,8 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
       checked={safety.mqtt.enabled}
       onChange={(v) => update(['safety', 'mqtt', 'enabled'], v)}
     />
-    {safety.mqtt.enabled && (
+    {/* Spec 020: also while off when SQMeter's topic came in (a copy, or the MQTT group synced). */}
+    {(safety.mqtt.enabled || fromCopy('weatherTopic') || synced(config, 'mqtt')) && (
       <div class="form-grid indent">
         <SqmeterTopicField safety={safety} update={update} error={error} config={config} status={status} />
       </div>
@@ -195,16 +201,24 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
 
 // SQMeter's address and topic (also the setup wizard's weather address screen, spec 018).
 type SourceFieldProps = Pick<SafetyProps, 'safety' | 'update' | 'error'>;
-export const SqmeterUrlField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
-  <Field label={t('settings.roof.sqmeterUrl')} error={error('safety.http.url')}>
-    <TextInput
-      dataField="safety.http.url"
-      type="url"
-      value={safety.http.url}
-      placeholder="http://sqmeter.local/api/safety"
-      onInput={(v) => update(['safety', 'http', 'url'], v)}
-    />
-  </Field>
+// With SQMeter's login (spec 020): the address and the login go together everywhere.
+// The address only (FR-036): RoofRoof adds /api/safety itself; https is encrypted, its
+// certificate not checked (FR-039). `test`: the Test button (FR-038), except where a
+// page has its own Test (the wizard's weather screen).
+export const SqmeterUrlField: FunctionalComponent<SourceFieldProps & { test?: boolean }> = ({ safety, update, error, test = true }) => (
+  <>
+    <Field label={t('settings.roof.sqmeterUrl')} hint={t('settings.roof.sqmeterUrlHint')} error={error('safety.http.url')}>
+      <TextInput
+        dataField="safety.http.url"
+        value={safety.http.url}
+        placeholder={t('settings.roof.sqmeterUrlPlaceholder')}
+        onInput={(v) => update(['safety', 'http', 'url'], v)}
+      />
+      {sqmeterHttps(safety.http.url) && <Note>{t('settings.roof.sqmeterHttps')}</Note>}
+    </Field>
+    <SqmeterLoginFields safety={safety} update={update} error={error} />
+    {test && <SqmeterAddressTest safety={safety} />}
+  </>
 );
 
 // Spec 020: read-only while the MQTT group follows SQMeter (SQMeter's base topic is where it publishes `<base>/safe`).
@@ -268,36 +282,6 @@ const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
       />
     </div>
   </SettingsCard>
-);
-
-export type ParkProps = SettingsTabProps & { park: ParkConfig };
-
-// N.I.N.A.'s address and the park switches (also the setup wizard's pages, spec 015).
-export const NinaUrlField: FunctionalComponent<ParkProps> = ({ park, update, error }) => (
-  <Field label={t('settings.roof.ninaUrl')} hint={t('settings.roof.ninaUrlHint')} error={error('park.nina.url')}>
-    <TextInput
-      dataField="park.nina.url"
-      type="url"
-      value={park.nina.url}
-      placeholder="http://192.168.1.20:1888"
-      onInput={(v) => update(['park', 'nina', 'url'], v)}
-    />
-  </Field>
-);
-
-export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, update }) => (
-  <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')}>
-    <SelectInput
-      dataField="park.switches"
-      value={park.switches}
-      options={[
-        { value: 'none', label: t('settings.roof.switchesNone') },
-        { value: 'one', label: t('settings.roof.switchesOne') },
-        { value: 'two', label: t('settings.roof.switchesTwo') },
-      ]}
-      onChange={(v) => update(['park', 'switches'], v)}
-    />
-  </Field>
 );
 
 const ParkCard: FunctionalComponent<ParkProps> = (props) => (

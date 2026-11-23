@@ -58,6 +58,7 @@ export const SECRET_PATHS = [
   'alerts.pushover.appToken',
   'alerts.ntfy.token',
   'alerts.webhook.authHeader',
+  'safety.http.password', // spec 020: SQMeter's login
 ] as const;
 
 const reported = (path: string) => !(SECRET_PATHS as readonly string[]).includes(path);

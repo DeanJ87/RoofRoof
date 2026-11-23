@@ -19,6 +19,7 @@ import { t } from '../i18n';
 import { restartDevice } from '../lib/settingsApi';
 import { useTabFromUrl } from '../hooks/useTabFromUrl';
 import { useConfigEditor } from '../hooks/useConfigEditor';
+import { forgetCopy } from '../lib/syncView';
 
 // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
 const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) =>
@@ -144,7 +145,11 @@ const Settings: FunctionalComponent = () => {
     }
   };
 
-  const discard = editor.discard;
+  // Spec 020: discarding a copy from SQMeter forgets what it asked for too.
+  const discard = () => {
+    forgetCopy();
+    editor.discard();
+  };
 
   if (loading) {
     return (

@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "NetAddress.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstring>
@@ -317,11 +318,31 @@ namespace SQM
             return true;
         }
 
-        void applySafety(const Section &safety, SafetyConfig &s)
+        // Spec 020: SQMeter's host and port ("" when not an http(s) URL).
+        std::string sqmeterHost(const std::string &url)
+        {
+            Net::HttpUrl parsed;
+            if (Net::parseHttpUrl(url, parsed) != Net::UrlError::None)
+                return "";
+            // Scheme, host and port: http and https to one host are two places.
+            return std::string(parsed.https ? "https://" : "http://") + Net::hostForUrl(parsed.host) + ":" + std::to_string(parsed.port);
+        }
+
+        void applySafety(const Section &safety, SafetyConfig &s, bool keepSecrets)
         {
             const Section http = safety.child("http");
             http.take("enabled", s.httpEnabled);
+            const std::string hostBefore = sqmeterHost(s.httpUrl);
             http.take("url", s.httpUrl);
+            // Spec 020 FR-036: the address only; stored settings drop any path.
+            s.httpUrl = Config::sqmeterAddress(s.httpUrl, !safety.reader().strict());
+            http.take("username", s.httpUsername);
+            assignSecret(http, "password", s.httpPassword, keepSecrets);
+            // Spec 020: SQMeter's saved password is never sent to another host:
+            // a new scheme, host or port clears it unless a password comes with it.
+            const bool typed = http["password"].is<const char *>() && !isPlaceholderSecret(http["password"].as<const char *>());
+            if (keepSecrets && sqmeterHost(s.httpUrl) != hostBefore && !typed)
+                s.httpPassword.clear();
             const Section mqtt = safety.child("mqtt");
             mqtt.take("enabled", s.mqttEnabled);
             mqtt.take("topic", s.mqttTopic);
@@ -461,7 +482,7 @@ namespace SQM
         // and URL forms (IPv6 literals, SQMeter spec 015) and Pushover key format.
         bool validateIncoming(const Config &cfg, std::string *error)
         {
-            if (!validateAddresses(cfg, error))
+            if (!validateAddresses(cfg, error) || !validateSqmeterAddress(cfg.safety, error))
                 return false;
             // Spec 022: a bypass never sits beside the source it stands in for.
             if (cfg.testBox.park && !cfg.park.ninaUrl.empty())
@@ -495,7 +516,7 @@ namespace SQM
             diag.take("enabled", cfg.diag.enabled);
             diag.take("keepSummaries", cfg.diag.keepSummaries);
             diag.take("mqtt", cfg.diag.mqtt);
-            applySafety(root.child("safety"), cfg.safety);
+            applySafety(root.child("safety"), cfg.safety, keep);
             if (!applyPark(root.child("park"), cfg.park, error) || !applyDaylight(root, cfg, error) ||
                 !applySetup(root.child("setup"), cfg.setup, error) || !applyAutoClose(root, cfg, error))
                 return false;
@@ -545,6 +566,11 @@ namespace SQM
         if (!(reader.strict() ? cfg.validate(errorOut) : cfg.validateLoaded(errorOut)))
             return false;
         return !preserveSecretPlaceholders || validateIncoming(cfg, errorOut);
+    }
+
+    bool Config::placeholderSecret(const std::string &value)
+    {
+        return isPlaceholderSecret(value.c_str());
     }
 
     bool Config::validateChange(std::string *error) const

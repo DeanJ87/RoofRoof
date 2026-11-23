@@ -97,6 +97,7 @@ The **Roof** section of the Demo panel makes things go wrong on purpose:
 | **Jam** | the roof can't move | the move stops with a fault and motion locks out until **Clear fault** (the jam removed first) |
 | **Sun up** | forces the daylight state to day, the sun 10° above the threshold, whatever the location and the clock, until you switch it off | mode "Alert": one "Roof open in daylight" alert; mode "Alert and close": an open roof parks and closes, and opening is refused with the daylight reason. Set the mode in Settings → Roof → Daylight |
 | **SQMeter offline** | the simulated SQMeter answers nothing: no weather, no location, no settings | the weather source goes stale (unsafe), the kept location stays and the daylight row says SQMeter isn't answering, and **Copy from SQMeter** says it can't reach it. Switched on, the simulated SQMeter has a GPS fix at Greenwich, read 15 s after the demo starts; the demo's time settings follow the simulated SQMeter's, while its MQTT and alert settings are set locally ([Site from SQMeter](user-guide/close-on-unsafe.md#site-from-sqmeter)) |
+| **SQMeter password** | the simulated SQMeter wants the login user `admin`, password `sqmeter` | without it the weather source reads **SQMeter wants a password** (unsafe once stale), a wrong one **SQMeter refused the password**, and **Copy from SQMeter** asks you to check the password; enter the login under **Settings → Roof → Weather sources** and save, and the reads recover ([A password-protected SQMeter](user-guide/close-on-unsafe.md#a-password-protected-sqmeter)) |
 | **12 V supply**: Normal, Low | 12.6 V or 10.5 V | a move is refused, and one under way stops with a supply-low fault |
 
 Reloading the page restarts the demo device: a roof stopped part-way then reads *unknown*, as a
@@ -144,7 +145,7 @@ Unless you turn on real notifications, the demo only talks to itself: there is n
 <!-- diagram: DIA-12
 sources: web/src/demo/device.ts web/src/demo/handlers.ts web/src/main.tsx tools/demo-core/bridge.cpp web/vite.demo.config.ts
 blocking: false
-fingerprint: ec1711733afc88ca
+fingerprint: fc26c66ff26fccbe
 -->
 <figure class="diagram" markdown>
 

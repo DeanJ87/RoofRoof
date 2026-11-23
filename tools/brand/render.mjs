@@ -32,6 +32,8 @@ const FONTS = join(ROOT, 'docs/assets/fonts');
 // Print sizes: the sticker SVGs use 10 units per millimetre.
 const UNITS_PER_MM = 10;
 const PRINT_DPI = 600;
+// The sizes each mark is rendered at for review (brand/render/icons/).
+const ICON_SIZES = [16, 32, 48, 64, 128, 512];
 
 function fontFaces() {
   const face = (family, file) =>
@@ -163,9 +165,19 @@ async function main() {
       const dir = join(OUT, 'icons');
       mkdirSync(dir, { recursive: true });
       const icons = [
-        ['app-icon/roofroof-app-icon-512.svg', 'apple-touch-icon-180.png', 180],
+        ['app-icon/roofroof-app-icon-maskable-512.svg', 'apple-touch-icon-180.png', 180],
         ['favicon/favicon-32.svg', 'favicon-32.png', 32],
       ];
+      // Each mark at the sizes it is checked at: the starry mark, the
+      // favicon (the dog on a plain tile) and the app icon.
+      const marks = [
+        ['logo/roofroof-mark.svg', 'roofroof-mark'],
+        ['favicon/favicon.svg', 'roofroof-favicon'],
+        ['app-icon/roofroof-app-icon-512.svg', 'roofroof-app-icon'],
+      ];
+      for (const [source, base] of marks) {
+        for (const pixels of ICON_SIZES) icons.push([source, `${base}-${pixels}.png`, pixels]);
+      }
       for (const [source, file, pixels] of icons) {
         const svg = readFileSync(join(SRC, source), 'utf8');
         await renderPng(browser, svg, join(dir, file), pixels / svgSize(svg).width);

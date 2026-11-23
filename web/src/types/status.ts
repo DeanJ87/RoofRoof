@@ -105,7 +105,7 @@ export interface SystemStatus {
   sync?: SyncStatus;
 }
 
-export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable';
+export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'passwordNeeded' | 'passwordRefused';
 export type SyncNeed = 'mqttPassword' | 'ntfyToken' | 'pushoverKeys';
 export interface SyncGroupStatus {
   follow: boolean;
@@ -121,7 +121,7 @@ export interface SyncStatus {
   alerts: SyncGroupStatus;
 }
 
-export type LocationProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'noLocation';
+export type LocationProblem = SyncProblem | 'noLocation';
 export interface LocationStatus {
   source: 'sqmeter' | 'manual';
   set: boolean;

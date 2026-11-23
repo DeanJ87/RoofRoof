@@ -377,13 +377,13 @@ namespace SQM
         // Spec 022: the test box's bypasses in effect now, from the settings and the clock.
         TestBox::State testBoxState() const;
 
-        // Spec 020: POST /api/sqmeter/site (src/WebServerSite.cpp).
+        // Spec 020: POST /api/sqmeter/site and /api/sqmeter/test (src/WebServerSite.cpp).
         struct SiteJob;
         static inline std::atomic<bool> siteJobRunning{false};
         SiteStatus siteStatus;
         BusyProbe roofBusy;
         void setupSiteRoutes();
-        void handleSqmeterSite(AsyncWebServerRequest *request);
+        void handleSqmeterSite(AsyncWebServerRequest *request, bool test);
         static void runSiteJob(void *arg);
         void appendSite(JsonDocument &doc) const;
 

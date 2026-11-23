@@ -35,11 +35,21 @@ appears, masked or not.
 
 | Status | When |
 |---|---|
-| 400 | a body that isn't JSON or is over 512 bytes; no address set, or not `http://` ("SQMeter's address isn't set", "Only http:// is supported") |
+| 400 | a body that isn't JSON or is over 512 bytes; no address set, or not a valid address ("SQMeter's address isn't set", "SQMeter's address isn't valid: e.g. 192.168.1.50 or sqmeter.local") |
 | 401 | protection on, wrong or no password |
-| 409 | the roof moving, a close waiting, the automatic close working, or another copy running |
+| 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
 | 502 | SQMeter not answering, not 200, or not SQMeter's settings document ("SQMeter not answering: connection refused", "SQMeter answered HTTP 404") |
 | 503 | not enough memory to start the fetch |
+
+## POST /api/sqmeter/test (FR-038)
+
+The same body, refusals (400, 401, 409, 503) and task as the copy; the device reads `<address>/api/safety`
+once, as the weather poll does (http or https, with the login), and saves nothing.
+
+- 200: `{"safe": bool, "reasonFlags": int, "text": "SQMeter says safe" | "SQMeter says unsafe: reasonFlags 0x200 (rain)"}`
+- 502: `{"error": ...}`: "SQMeter not answering: ...", "SQMeter wants a password", "SQMeter refused the
+  password", "That address answered HTTP 404, not like SQMeter's /api/safety", "That address answered,
+  but not like SQMeter's /api/safety (missing safe)".
 
 ## GET /api/status, /ws/status: `location`
 

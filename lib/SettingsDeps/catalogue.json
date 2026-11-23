@@ -87,7 +87,9 @@
     "sqmeterSync.alerts.syncedAt",
     "park.requestPark",
     "testBox.hours",
-    "testBox.until"
+    "testBox.until",
+    "safety.http.username",
+    "safety.http.password"
   ],
   "reasons": {
     "alerts-off": {

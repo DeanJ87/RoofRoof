@@ -119,6 +119,7 @@ namespace SQM::ConfigDetail
     // MQTT broker and webhook URL forms, IPv6 literals included (SQMeter spec 015);
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);
+    bool validateSqmeterAddress(const SafetyConfig &s, std::string *error);
 
     // What a setting must be; the messages are in ConfigJsonIn.cpp.
     enum class Expected

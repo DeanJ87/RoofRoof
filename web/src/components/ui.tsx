@@ -381,9 +381,14 @@ export const ChoiceGroup: FunctionalComponent<{
   );
 };
 
-/** RoofRoof's dog (DS-13): decoration only, in token colours. */
-export const Mascot: FunctionalComponent<{ size?: number }> = ({ size = 56 }) => (
-  <svg class="mascot" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+/**
+ * RoofRoof's dog (DS-13), in its 64-unit drawing and token colours: the shapes
+ * alone, for `Mascot` and for any other svg that shows the dog. It is also the
+ * brand mark: tools/brand/build.mjs (`DOG`) draws every logo from these same
+ * paths; change both.
+ */
+export const MascotShapes: FunctionalComponent = () => (
+  <>
     <path class="mascot-ear" d="M17 15c-7 1-11 11-9 21 1 6 7 6 9 1l5-16zM47 15c7 1 11 11 9 21-1 6-7 6-9 1l-5-16z" />
     <path class="mascot-fur" d="M32 12c11 0 18 8 18 19 0 12-8 19-18 19s-18-7-18-19c0-11 7-19 18-19z" />
     <ellipse class="mascot-ear" cx="24.5" cy="28" rx="5.5" ry="6" />
@@ -394,6 +399,13 @@ export const Mascot: FunctionalComponent<{ size?: number }> = ({ size = 56 }) =>
     <path class="mascot-line" d="M32 38.6v2.6m-4 1c1.6 1.3 3 1.3 4 0 1 1.3 2.4 1.3 4 0" />
     <path class="mascot-collar" d="M20 47c7 4.5 17 4.5 24 0" />
     <path class="mascot-tag" d="m32 50 1.3 2.7 3 .4-2.2 2 .6 3-2.7-1.5-2.7 1.5.6-3-2.2-2 3-.4z" />
+  </>
+);
+
+/** RoofRoof's dog (DS-13): decoration only. */
+export const Mascot: FunctionalComponent<{ size?: number }> = ({ size = 56 }) => (
+  <svg class="mascot" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+    <MascotShapes />
   </svg>
 );
 

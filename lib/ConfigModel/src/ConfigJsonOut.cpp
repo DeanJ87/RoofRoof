@@ -123,12 +123,14 @@ namespace SQM
             ntp["syncIntervalMs"] = c.ntp.syncIntervalMs;
         }
 
-        void appendSafety(JsonDocument &doc, const Config &c)
+        void appendSafety(JsonDocument &doc, const Config &c, bool redact)
         {
             JsonObject safety = doc.createNestedObject("safety");
             JsonObject http = safety.createNestedObject("http");
             http["enabled"] = c.safety.httpEnabled;
             http["url"] = c.safety.httpUrl;
+            http["username"] = c.safety.httpUsername;
+            http["password"] = secretOut(c.safety.httpPassword, redact);
             JsonObject mqtt = safety.createNestedObject("mqtt");
             mqtt["enabled"] = c.safety.mqttEnabled;
             mqtt["topic"] = c.safety.mqttTopic;
@@ -231,7 +233,7 @@ namespace SQM
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
-        appendSafety(doc, *this);
+        appendSafety(doc, *this, redactSecrets);
         appendRoof(doc, roof);
         appendDaylight(doc, *this);
         appendSync(doc, sqmeterSync);

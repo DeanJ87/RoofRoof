@@ -69,10 +69,12 @@ const Config &getConfigCallback()
 void tellPollerTheSite()
 {
     const SqmeterSyncConfig &s = config.sqmeterSync;
-    safetyPoller.setSite(
+    safetyPoller.setSite(SafetyPoller::SiteTarget{
         config.safety.httpUrl,
+        config.safety.httpUsername,
+        config.safety.httpPassword,
         config.location.source == LocationConfig::Source::Sqmeter,
-        s.time.follow || s.mqtt.follow || s.alerts.follow);
+        s.time.follow || s.mqtt.follow || s.alerts.follow});
 }
 
 // What a saved change applies without a restart. Under configSaveLock.

@@ -89,3 +89,69 @@ test('Settings → Time follows SQMeter read-only until Edit here instead, which
     .toBe('false|time.example.org');
   await expect(page.getByRole('button', { name: 'Follow SQMeter' }).first()).toBeVisible();
 });
+
+// Spec 020: a password-protected SQMeter. Locked, the copy and the weather source say SQMeter wants a
+// password; with its login entered in Settings and saved, the copy works and the weather recovers.
+test('a locked SQMeter: the copy asks for its password; with the login saved it works again', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('./#/settings?tab=roof&section=sqmeterCopy');
+  const card = page.locator('#sqmeterCopy');
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  const toggle = page.locator('.demo-panel-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await page.getByRole('button', { name: 'SQMeter password: On', exact: true }).click();
+  await page.getByRole('button', { name: 'Clock speed 10x', exact: true }).click();
+  await toggle.click();
+
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  const alert = card.getByRole('alert');
+  await expect(alert).toContainText('SQMeter wants a password', { timeout: 15_000 });
+  await expect(alert).toContainText("Enter or check SQMeter's password in the fields above");
+  const weatherText = () => page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.weatherText as string);
+  await expect.poll(weatherText, { timeout: 60_000 }).toContain('SQMeter wants a password');
+
+  // A wrong password is refused.
+  const safety = page.locator('#safety');
+  await safety.locator('[data-field="safety.http.username"]').fill('admin');
+  await safety.locator('[data-field="safety.http.password"]').fill('wrong');
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(card.getByRole('alert')).toContainText('SQMeter refused the password', { timeout: 15_000 });
+
+  await safety.locator('[data-field="safety.http.password"]').fill('sqmeter');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/config')).json()).safety.http))
+    .toMatchObject({ username: 'admin', password: '********' });
+  await card.getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(card.getByRole('alert')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Apply ticked' }).or(card.getByText('Nothing to copy'))).toBeVisible({ timeout: 15_000 });
+  await expect.poll(weatherText, { timeout: 60_000 }).not.toContain('password');
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.weather), { timeout: 60_000 })
+    .toBe('safe');
+});
+
+// Spec 020 FR-036, FR-038: SQMeter's address only (a URL of another SQMeter page is taken as it),
+// and Test reads the simulated SQMeter once, through the device's own code.
+test("SQMeter's address: a full URL saves as the address, and Test reads SQMeter once", async ({ page }) => {
+  await page.goto('./#/settings?tab=roof&section=safety');
+  const safety = page.locator('#safety');
+  const address = safety.locator('[data-field="safety.http.url"]');
+  await expect(address).toBeVisible({ timeout: 15_000 });
+  await expect(address).toHaveAttribute('placeholder', '192.168.1.50 or sqmeter.local');
+  await address.fill('http://sqmeter.local/api/sensors');
+  await safety.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(safety.getByRole('status')).toContainText('SQMeter says', { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/config')).json()).safety.http.url))
+    .toBe('http://sqmeter.local');
+
+  // A locked SQMeter: Test says so.
+  const toggle = page.locator('.demo-panel-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await page.getByRole('button', { name: 'SQMeter password: On', exact: true }).click();
+  await toggle.click();
+  await safety.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(safety.getByRole('status')).toContainText('SQMeter wants a password', { timeout: 15_000 });
+});
