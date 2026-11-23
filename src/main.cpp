@@ -171,6 +171,7 @@ void startWifi()
     const Net::NetMode mode = !EthernetLink::present()                               ? Net::NetMode::Wifi
                               : config.network.mode == NetworkConfig::Mode::Ethernet ? Net::NetMode::Ethernet
                                                                                      : Net::NetMode::Auto;
+    NetState::setEthernetOnly(mode == Net::NetMode::Ethernet);
     wifiManager = std::make_unique<WiFiManager>(config.wifi, mode);
     wifiManager->begin();
     if (EthernetLink::present())

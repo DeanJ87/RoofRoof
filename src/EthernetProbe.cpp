@@ -27,6 +27,8 @@ namespace SQM
                 gpio_set_level(static_cast<gpio_num_t>(Board::ETH_MDC), 0);
             }
 
+            // After the falling edge (Linux mdio-bitbang): the PHY launched the
+            // bit on the rising edge, so it is stable here.
             bool mdioSample()
             {
                 const auto mdio = static_cast<gpio_num_t>(Board::ETH_MDIO);
@@ -34,9 +36,9 @@ namespace SQM
                 esp_rom_delay_us(MDC_HALF_PERIOD_US);
                 gpio_set_level(static_cast<gpio_num_t>(Board::ETH_MDC), 1);
                 esp_rom_delay_us(MDC_HALF_PERIOD_US);
-                const bool level = gpio_get_level(mdio) != 0;
                 gpio_set_level(static_cast<gpio_num_t>(Board::ETH_MDC), 0);
-                return level;
+                esp_rom_delay_us(MDC_HALF_PERIOD_US);
+                return gpio_get_level(mdio) != 0;
             }
 
             bool mdioRead(uint8_t reg, uint16_t &value)
@@ -48,6 +50,7 @@ namespace SQM
                 bool reply[Board::Mdio::REPLY_BITS];
                 for (bool &bit : reply)
                     bit = mdioSample();
+                mdioSample(); // one idle clock, as the PHY releases the line
                 return Board::Mdio::decodeRead(reply, value);
             }
 

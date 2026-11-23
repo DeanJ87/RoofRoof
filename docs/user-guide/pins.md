@@ -92,6 +92,7 @@ The same rules run on the Pins page as you type, on the device when you save (al
 | A PSRAM pin (GPIO16, 17) on a chip with PSRAM | *"… GPIO16 is used by this chip's PSRAM"* |
 | The serial port (GPIO1, 3) | *"… GPIO1 is the serial port used for the log and USB flashing"* |
 | The board's Ethernet (WT32-ETH01: GPIO0, 16, 18, 19, 21, 22, 23, 25, 26, 27) | *"… GPIO25 is used by the WT32-ETH01's Ethernet"* |
+| The WT32-ETH01 probe's pins, on every board (GPIO0, 16, 18, 23): a new device drives them at start-up before it knows its wiring | *"… GPIO16 is used to look for a WT32-ETH01 at start-up"* |
 | Not on the WT32-ETH01's header (it brings out 2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36, 39) | *"… the WT32-ETH01's header doesn't bring out GPIO13"* |
 | RPWM, LPWM or EN on an input-only pin (34 to 39) | *"RPWM on GPIO35: GPIO35 is input only and can't drive an output"* |
 | The supply, the Hall sensor or a current-sense input off ADC1 (32 to 39) | *"… an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while Wi-Fi is on"* |
@@ -108,7 +109,7 @@ Any function other than EN on a strapping pin is allowed, with a warning that sa
 
 | Pin | What it does at reset |
 |---|---|
-| GPIO0 | Held low at reset (a closed switch), the board starts in its download mode instead of the firmware. A park switch here would stop a board with a parked mount from starting |
+| GPIO0 | Refused anyway (the probe's pin). Held low at reset, the board starts in its download mode instead of the firmware |
 | GPIO2 | Must be low or floating for USB flashing; a normal start ignores it |
 | GPIO5 | Sets the SDIO timing (unused here) and pulses while the chip starts: fine for a switch input, or a PWM input while EN is held low |
 | GPIO12 | Sets the flash voltage: held high at reset, a 3.3 V flash module won't start |
@@ -140,7 +141,7 @@ Each result is **Pass**, **Check** (a warning; `warn` in the API), **Fail** or *
 
 - **On a board running Ethernet** (the WT32-ETH01): **Fail** if the LAN8720 didn't answer and Ethernet didn't start; **Check** with no link (check the cable) or a link without an address yet; **Pass** with a link and an address, with its speed.
 - **On a board set up as a DevKit**: a short probe looks for a WT32-ETH01, the same as the one at boot: the Ethernet clock on GPIO16 for about 15 ms, the clock seen on GPIO0, the PHY's ID read at address 1 over MDC (GPIO23) and MDIO (GPIO18, only ever pulled low or released), then all three back to inputs. No Ethernet PHY is the expected **Pass** on a DevKit. A LAN8720 answering is a **Check**: *"this looks like a WT32-ETH01, so choose its preset"*, and the page offers **Use that preset**. Another PHY, or a clock with no PHY, is a **Check** too.
-- The probe is **Skipped**, saying why, on a chip with PSRAM (GPIO16 is the PSRAM's) or when a Custom map uses GPIO0, 16, 18 or 23 for a roof function.
+- The probe is **Skipped**, saying why, on a chip with PSRAM (GPIO16 is the PSRAM's). The pin rules keep every roof function off GPIO0, 16, 18 and 23, so the probe never meets one.
 
 On a WT32-ETH01 still set up as a DevKit, the DevKit's motor pins (GPIO25 to 27) are driven low against the Ethernet chip's receive lines for those 15 ms; both parts tolerate it. Choose the right preset and restart to end it.
 

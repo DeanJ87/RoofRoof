@@ -42,6 +42,7 @@ namespace SQM
             NotRun, // the bench build: its pins stay low by contract
             Low,
             High,
+            Busy, // the roof became busy between the start and the check
         };
 
         enum class SwitchLevel : uint8_t

@@ -69,11 +69,13 @@ Each answer takes the safest option the constitution allows and is also listed u
   the boot loader today. Constitution I is reworded for this (3.0.0).
 - Q: Which pins are refused, and which only warned about? → A: Refused: a pin that doesn't exist;
   one reserved by the flash (6-11), by PSRAM when the chip has it (16, 17), by UART0 (1, 3) or by
-  the board's Ethernet; on the WT32-ETH01, a pin its header doesn't bring out; an output (RPWM,
+  the board's Ethernet; one the boot probe drives (0, 16, 18, 23) on any board, because a device
+  that doesn't know its wiring drives them while it looks for a WT32-ETH01; on the WT32-ETH01, a pin
+  its header doesn't bring out; an output (RPWM,
   LPWM, EN) on an input-only pin (34-39); an analog input (both current senses, the supply, the
   Hall) off ADC1 (32-39), since ADC2 can't be read while Wi-Fi runs; a park switch on 34-39 (no
   internal pull-up, so an open switch would float); two functions on one pin; and EN on a pin the
-  chip strapps or drives during boot (0, 2, 5, 12, 14, 15), since a pulse there could enable the
+  chip straps or drives during boot (0, 2, 5, 12, 14, 15), since a pulse there could enable the
   driver while the PWM pins glitch. R_EN and L_EN are one EN line by design: the setting has one
   EN pin. Warned (with what each strap does at reset): any other function on 0, 2, 5, 12 or 15.
 - Q: Which wiring checks run? → A: Only checks that can't move the roof, run by a person from the
@@ -348,7 +350,8 @@ question, the Settings row, the dashboard row and the docs for the local contact
 - **FR-004**: A named preset fixes the board and every pin: a save that names a preset without pins
   takes the preset's; a save whose pins differ from its named preset is refused.
 - **FR-005**: A pin set MUST be refused when any function's pin: doesn't exist on the ESP32 (only
-  0-5, 12-19, 21-23, 25-27, 32-36, 39 do, besides the flash pins); is a flash pin (6-11); is a PSRAM
+  0-5, 12-19, 21-23, 25-27, 32-36, 39 do, besides the flash pins; 37 and 38 aren't brought out); is
+  one of the boot probe's pins (0, 16, 18, 23) on any board; is a flash pin (6-11); is a PSRAM
   pin (16, 17) on a chip with PSRAM; is UART0 (1, 3); is used by the board's Ethernet (WT32-ETH01:
   0, 16, 18, 19, 21, 22, 23, 25, 26, 27); isn't brought out by the board's header (WT32-ETH01: 2, 4,
   5, 12, 14, 15, 17, 32, 33, 35, 36, 39); is input-only (34-39) for RPWM, LPWM or EN; isn't ADC1
@@ -362,7 +365,8 @@ question, the Settings row, the dashboard row and the docs for the local contact
   moves, a close waits, the close sequence works, a calibration run or a jog is under way. Pins
   apply only at the next start; the settings page MUST say so and offer the restart.
 - **FR-008**: The device MUST check a save's pins against its own chip (PSRAM) as well as the
-  rules above.
+  rules above, and MUST refuse a board other than the WT32-ETH01 on a device whose LAN8720 answered
+  (Ethernet started, or the boot probe found it). A backup restore never changes the pins.
 - **FR-009**: `GET /api/pins` MUST return the pins in effect, the saved pins, whether a restart is
   needed, whether the pins in effect passed at boot (with their errors and warnings), whether the
   chip has PSRAM, the presets, and each board's Ethernet and header pins. `POST /api/pins/validate`
@@ -550,3 +554,9 @@ Each was an open choice; the safest option the constitution allows was taken.
     person saves a preset and restarts.
 16. **The hotspot waits 20 s after an Ethernet link for DHCP**, on top of the 45 s from boot, so a
     slow DHCP server doesn't open a passwordless hotspot on a cabled device.
+17. **The boot probe's pins (0, 16, 18, 23) are refused for every roof function on every board.**
+    A device that doesn't know its wiring (new, or with unreadable settings) drives them while it
+    looks for a WT32-ETH01, so no map may put EN, a PWM input or a park switch there. None is on the
+    WT32 header, and the DevKit preset doesn't use them.
+18. **A backup never restores the pins**: they belong to the hardware the device runs on. A
+    restore lists different pins as not applied and keeps the device's.

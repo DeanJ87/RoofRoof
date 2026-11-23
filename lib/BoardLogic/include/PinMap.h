@@ -107,6 +107,7 @@ namespace SQM
             uint64_t adc1 = 0;       // readable while Wi-Fi runs
             uint64_t straps = 0;     // sampled at reset
             uint64_t bootPulses = 0; // driven by the chip during boot
+            uint64_t probe = 0;      // driven by the WT32-ETH01 probe at boot
 
             static bool has(uint64_t set, unsigned pin) { return pin < 64 && (set & gpioBit(pin)) != 0; }
         };

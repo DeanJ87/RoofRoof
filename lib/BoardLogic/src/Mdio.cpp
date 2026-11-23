@@ -24,11 +24,10 @@ namespace SQM
 
             bool decodeRead(const bool (&reply)[REPLY_BITS], uint16_t &value)
             {
-                // reply[0] is the released first turnaround bit (either level).
-                if (reply[1])
+                if (reply[0])
                     return false;
                 value = 0;
-                for (size_t i = 2; i < REPLY_BITS; ++i)
+                for (size_t i = 1; i < REPLY_BITS; ++i)
                     value = static_cast<uint16_t>((value << 1) | (reply[i] ? 1u : 0u));
                 return true;
             }

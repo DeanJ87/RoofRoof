@@ -41,7 +41,8 @@ namespace SQM
             }
 
             // Classic ESP32 (datasheet, research R2).
-            constexpr uint64_t ESP32_EXISTS = gpioRange(0, 19) | gpioRange(21, 23) | gpioRange(25, 27) | gpioRange(32, 39);
+            // 37 and 38 aren't brought out on the modules RoofRoof uses (WROOM/WROVER, WT32-ETH01).
+            constexpr uint64_t ESP32_EXISTS = gpioRange(0, 19) | gpioRange(21, 23) | gpioRange(25, 27) | gpioRange(32, 36) | gpioBit(39);
             constexpr uint64_t ESP32_FLASH = gpioRange(6, 11);
             constexpr uint64_t ESP32_PSRAM = gpioBit(16) | gpioBit(17);
             constexpr uint64_t ESP32_UART0 = gpioBit(1) | gpioBit(3);
@@ -174,6 +175,9 @@ namespace SQM
             f.adc1 = ESP32_ADC1;
             f.straps = ESP32_STRAPS;
             f.bootPulses = ESP32_BOOT_PULSES;
+            // The WT32-ETH01 probe's pins (GPIO0 clock, 16 power, 18 MDIO, 23 MDC) on every
+            // board: a new or unreadable device probes them before it knows its wiring.
+            f.probe = gpioBit(ETH_CLOCK) | gpioBit(ETH_POWER) | gpioBit(ETH_MDIO) | gpioBit(ETH_MDC);
             if (board == BoardId::Wt32Eth01)
             {
                 f.ethernet = WT32_ETHERNET;

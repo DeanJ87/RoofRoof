@@ -16,6 +16,9 @@ namespace SQM
         bool ethernetUp();
         bool online();
         bool hotspotOn();
+        // Spec 023: Ethernet only is in effect since boot (the radio stays off).
+        void setEthernetOnly(bool on);
+        bool ethernetOnly();
         // The device's own IPv6 addresses on the station and on Ethernet.
         std::vector<Net::Ipv6> ipv6Addresses();
     } // namespace NetState

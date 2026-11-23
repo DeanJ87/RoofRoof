@@ -41,6 +41,9 @@ namespace SQM
                         Level::Fail,
                         "EN reads high with the internal pull-up: its pull-down is missing or weaker than about 20 kOhm, so a reset or a "
                         "crash wouldn't hold the driver off");
+                case EnProbe::Busy:
+                    return make(
+                        CheckId::EnPulldown, Level::Skipped, "Not checked: the roof became busy, so run the check again once it is still");
                 default:
                     return make(
                         CheckId::EnPulldown, Level::Skipped, "Not checked by the bench firmware, which keeps EN, RPWM and LPWM low");

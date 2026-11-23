@@ -37,16 +37,17 @@ void test_read_frame_masks_to_five_bits(void)
 
 void test_decode_read(void)
 {
-    // Turnaround Z0, then 0xC0F1.
-    bool reply[Mdio::REPLY_BITS] = {true, false};
+    // The turnaround's driven 0, then 0xC0F1.
+    bool reply[Mdio::REPLY_BITS] = {false};
     const uint16_t value = 0xC0F1;
     for (size_t i = 0; i < 16; ++i)
-        reply[2 + i] = ((value >> (15 - i)) & 1u) != 0;
+        reply[1 + i] = ((value >> (15 - i)) & 1u) != 0;
+    TEST_ASSERT_EQUAL_size_t(17, Mdio::REPLY_BITS);
     uint16_t out = 0;
     TEST_ASSERT_TRUE(Mdio::decodeRead(reply, out));
     TEST_ASSERT_EQUAL_HEX16(0xC0F1, out);
     // Nobody drove the turnaround: the pull-up reads high.
-    reply[1] = true;
+    reply[0] = true;
     TEST_ASSERT_FALSE(Mdio::decodeRead(reply, out));
 }
 

@@ -29,6 +29,8 @@ namespace SQM
                     return format("%s on GPIO%u: GPIO%u is the serial port used for the log and USB flashing", what, pin, pin);
                 case IssueCode::Ethernet:
                     return format("%s on GPIO%u: GPIO%u is used by the WT32-ETH01's Ethernet", what, pin, pin);
+                case IssueCode::Probe:
+                    return format("%s on GPIO%u: GPIO%u is used to look for a WT32-ETH01 at start-up", what, pin, pin);
                 case IssueCode::Header:
                     return format("%s on GPIO%u: the WT32-ETH01's header doesn't bring out GPIO%u", what, pin, pin);
                 case IssueCode::InputOnly:

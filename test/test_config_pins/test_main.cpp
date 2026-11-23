@@ -170,11 +170,11 @@ void test_stored_pins_with_an_unknown_name_are_rejected()
 
 void test_psram_pins_are_checked_against_the_chip()
 {
-    Config c = applied(R"({"pins":{"preset":"custom","rpwm":16,"lpwm":17}})");
+    Config c = applied(R"({"pins":{"preset":"custom","rpwm":17,"lpwm":13}})");
     TEST_ASSERT_TRUE(c.validatePins(false));
     std::string error;
     TEST_ASSERT_FALSE(c.validatePins(true, &error));
-    TEST_ASSERT_EQUAL_STRING("RPWM on GPIO16: GPIO16 is used by this chip's PSRAM", error.c_str());
+    TEST_ASSERT_EQUAL_STRING("RPWM on GPIO17: GPIO17 is used by this chip's PSRAM", error.c_str());
 }
 
 void test_network_mode_values()

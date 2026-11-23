@@ -1,7 +1,7 @@
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
-#include "EthernetLink.h"
+#include "NetState.h"
 #include "PinSetup.h"
 #include "PlatformGuard.h"
 #include "WebServer.h"
@@ -94,7 +94,8 @@ namespace SQM
                 // Spec 023: pins apply at the next start, checked against this chip
                 // too; a change waits while the roof is busy (FR-007, FR-008).
                 held = pinChangeHeld(live, *merged);
-                if (!held.empty() || !merged->validatePins(PinSetup::psram(), &reason))
+                reason = pinBoardRefused(live, *merged);
+                if (!held.empty() || !reason.empty() || !merged->validatePins(PinSetup::psram(), &reason))
                     return false;
                 next = std::move(*merged);
                 return true;
@@ -220,7 +221,7 @@ namespace SQM
     // Spec 023: in Ethernet only the radio stays off until the mode changes (and a restart).
     bool WebServer::refuseIfWifiOff(AsyncWebServerRequest *request)
     {
-        if (!EthernetLink::present() || getConfigCallback().network.mode != NetworkConfig::Mode::Ethernet)
+        if (!NetState::ethernetOnly())
             return false;
         request->send(409, "application/json", createErrorJson("Wi-Fi is off: the network mode is Ethernet only").c_str());
         return true;

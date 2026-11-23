@@ -17,14 +17,17 @@ namespace SQM
             // opcode, PHY address, register), then the PHY's turnaround and data.
             constexpr size_t PREAMBLE_BITS = 32;
             constexpr size_t DRIVEN_BITS = PREAMBLE_BITS + 2 + 2 + 5 + 5; // 46
-            constexpr size_t REPLY_BITS = 2 + 16;                         // turnaround and data
+            // Read as Linux's mdio-bitbang does: each bit after the falling MDC
+            // edge that follows the PHY launching it, so the first sample is the
+            // turnaround's second bit (the PHY's 0), then 16 data bits.
+            constexpr size_t REPLY_BITS = 1 + 16;
 
             // The bits the station drives, first to last (true = released/high).
             void readFrame(uint8_t phyAddress, uint8_t reg, bool (&bits)[DRIVEN_BITS]);
 
-            // The PHY's reply as sampled: the turnaround's second bit must be
-            // driven low by the PHY (a missing PHY leaves the line pulled
-            // high), then 16 data bits, most significant first.
+            // The PHY's reply as sampled: the turnaround's bit must be driven
+            // low by the PHY (a missing PHY leaves the line pulled high), then
+            // 16 data bits, most significant first.
             bool decodeRead(const bool (&reply)[REPLY_BITS], uint16_t &value);
 
             // The ID registers (2 and 3).

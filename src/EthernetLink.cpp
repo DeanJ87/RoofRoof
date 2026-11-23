@@ -62,8 +62,6 @@ namespace SQM
                 {
                     addressed = true;
                     addressedOnce = true;
-                    // Outbound traffic (N.I.N.A., SQMeter, alerts) prefers the cable over a fallback Wi-Fi.
-                    esp_netif_set_default_netif(netif);
                     const auto *got = static_cast<const ip_event_got_ip_t *>(data);
                     Logger::info(TAG, "Got IP address: " IPSTR, IP2STR(&got->ip_info.ip));
                 }
@@ -119,6 +117,21 @@ namespace SQM
                 Logger::info(TAG, "Started (LAN8720 at address %u)", static_cast<unsigned>(Board::ETH_PHY_ADDRESS));
             else
                 Logger::error(TAG, "Didn't start: the LAN8720 didn't answer");
+        }
+
+        void keepDefaultRoute(bool wifiUp)
+        {
+            // Outbound traffic (N.I.N.A., SQMeter, alerts) prefers the cable,
+            // and goes over a fallback Wi-Fi while the cable has no address.
+            // Setting a default overrides lwIP's own choice, so it is kept right both ways.
+            static esp_netif_t *chosen = nullptr;
+            esp_netif_t *station = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+            esp_netif_t *want = hasAddress() ? netif : (wifiUp ? station : nullptr);
+            if (want != nullptr && want != chosen)
+            {
+                esp_netif_set_default_netif(want);
+                chosen = want;
+            }
         }
 
         bool present()

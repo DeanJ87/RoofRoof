@@ -84,6 +84,9 @@ void test_en_pulldown(void)
     assertLevel(Level::Fail, in, CheckId::EnPulldown);
     in.en = EnProbe::NotRun;
     assertLevel(Level::Skipped, in, CheckId::EnPulldown);
+    in.en = EnProbe::Busy;
+    assertLevel(Level::Skipped, in, CheckId::EnPulldown);
+    TEST_ASSERT_NOT_NULL(std::strstr(evaluate(in).checks.front().text.c_str(), "busy"));
 }
 
 void test_hall_rails_and_range(void)

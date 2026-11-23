@@ -14,6 +14,7 @@ namespace SQM
                 "psram",
                 "uart",
                 "ethernet",
+                "probe",
                 "header",
                 "inputOnly",
                 "notAdc1",
@@ -71,6 +72,8 @@ namespace SQM
                     code = IssueCode::Uart;
                 else if (Facts::has(f.ethernet, pin))
                     code = IssueCode::Ethernet;
+                else if (Facts::has(f.probe, pin))
+                    code = IssueCode::Probe;
                 else if (f.header != 0 && !Facts::has(f.header, pin))
                     code = IssueCode::Header;
                 else

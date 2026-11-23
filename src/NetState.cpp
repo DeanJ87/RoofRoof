@@ -24,6 +24,21 @@ namespace SQM
             return wifiUp() || ethernetUp();
         }
 
+        namespace
+        {
+            bool ethernetOnlyMode = false; // set once in setup()
+        } // namespace
+
+        void setEthernetOnly(bool on)
+        {
+            ethernetOnlyMode = on;
+        }
+
+        bool ethernetOnly()
+        {
+            return ethernetOnlyMode;
+        }
+
         bool hotspotOn()
         {
             return (WiFi.getMode() & WIFI_AP) != 0;

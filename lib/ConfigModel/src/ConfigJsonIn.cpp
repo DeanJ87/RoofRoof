@@ -155,6 +155,12 @@ namespace SQM
                     n.mode = choice.second;
                     return true;
                 }
+            // Stored by a later release with a mode this one doesn't know: Auto, never a lost store.
+            if (!network.reader().strict())
+            {
+                n.mode = NetworkConfig::Mode::Auto;
+                return true;
+            }
             return setError(error, "Network: mode must be auto, ethernet or wifi");
         }
 

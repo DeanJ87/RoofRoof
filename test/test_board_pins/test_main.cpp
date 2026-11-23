@@ -128,6 +128,22 @@ void test_missing_gpio(void)
     assertOnlyError(withPin(Function::ParkA, 255), Function::ParkA, 255, IssueCode::Missing);
 }
 
+void test_gpio_37_and_38_are_not_brought_out(void)
+{
+    assertOnlyError(withPin(Function::Hall, 37), Function::Hall, 37, IssueCode::Missing);
+    assertOnlyError(withPin(Function::Supply, 38), Function::Supply, 38, IssueCode::Missing);
+}
+
+// The boot probe drives them on a device that doesn't know its wiring yet.
+void test_probe_pins_on_every_board(void)
+{
+    for (uint8_t pin : {0, 16, 18, 23})
+    {
+        assertOnlyError(withPin(Function::Enable, pin), Function::Enable, pin, IssueCode::Probe);
+        assertOnlyError(withPin(Function::ParkA, pin), Function::ParkA, pin, IssueCode::Probe);
+    }
+}
+
 void test_flash_pins(void)
 {
     for (uint8_t pin = 6; pin <= 11; ++pin)
@@ -136,9 +152,9 @@ void test_flash_pins(void)
 
 void test_psram_pins_only_with_psram(void)
 {
-    assertOnlyError(withPin(Function::Rpwm, 16, DEVKIT_PSRAM), Function::Rpwm, 16, IssueCode::Psram);
+    assertOnlyError(withPin(Function::Rpwm, 16, DEVKIT_PSRAM), Function::Rpwm, 16, IssueCode::Psram); // PSRAM before the probe
     assertOnlyError(withPin(Function::Rpwm, 17, DEVKIT_PSRAM), Function::Rpwm, 17, IssueCode::Psram);
-    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 16, DEVKIT).valid());
+    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 17, DEVKIT).valid());
 }
 
 void test_uart0(void)
@@ -152,7 +168,7 @@ void test_wt32_ethernet_pins(void)
     for (uint8_t pin : {0, 16, 18, 19, 21, 22, 23, 25, 26, 27})
         assertOnlyError(withPin(Function::Rpwm, pin, WT32, BoardId::Wt32Eth01), Function::Rpwm, pin, IssueCode::Ethernet);
     // The same pins are fine on a DevKit (no Ethernet), 0 only with its warning.
-    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 18).valid());
+    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 19).valid());
 }
 
 void test_wt32_header(void)
@@ -166,7 +182,7 @@ void test_wt32_header(void)
 void test_output_on_input_only_pin(void)
 {
     for (Function f : {Function::Rpwm, Function::Lpwm, Function::Enable})
-        for (uint8_t pin = 34; pin <= 39; ++pin)
+        for (uint8_t pin : {34, 35, 36, 39})
         {
             PinMap map = custom();
             // Move the analog inputs out of the way first, so only the output is wrong.
@@ -213,7 +229,7 @@ void test_two_functions_on_one_pin(void)
 
 void test_en_on_a_strap_or_boot_pulse_pin(void)
 {
-    for (uint8_t pin : {0, 2, 5, 12, 14, 15})
+    for (uint8_t pin : {2, 5, 12, 14, 15}) // 0 is the probe's (test_probe_pins_on_every_board)
         assertOnlyError(withPin(Function::Enable, pin), Function::Enable, pin, IssueCode::EnStrap);
     // 4, 13 and the old 27 are quiet.
     TEST_ASSERT_TRUE(withPin(Function::Enable, 4).valid());
@@ -246,12 +262,12 @@ void test_devkit_map_on_a_wt32_is_refused(void)
 
 void test_strap_warnings(void)
 {
-    TEST_ASSERT_TRUE(hasWarning(withPin(Function::ParkA, 0), Function::ParkA, IssueCode::Strap0));
+    // GPIO0 is the probe's (an error); its strap text stays for completeness.
     TEST_ASSERT_TRUE(hasWarning(withPin(Function::ParkA, 2), Function::ParkA, IssueCode::Strap2));
     TEST_ASSERT_TRUE(hasWarning(withPin(Function::ParkA, 5), Function::ParkA, IssueCode::Strap5));
     TEST_ASSERT_TRUE(hasWarning(withPin(Function::ParkA, 12), Function::ParkA, IssueCode::Strap12));
     TEST_ASSERT_TRUE(hasWarning(withPin(Function::Rpwm, 15), Function::Rpwm, IssueCode::Strap15));
-    for (uint8_t pin : {0, 2, 5, 12})
+    for (uint8_t pin : {2, 5, 12})
         TEST_ASSERT_TRUE(withPin(Function::ParkA, pin).valid()); // warnings only
     // A warning is never an error.
     const PinReport report = withPin(Function::Lpwm, 15);
@@ -345,6 +361,8 @@ int main(int, char **)
     RUN_TEST(test_wt32_carrier_preset_and_its_two_warnings);
     RUN_TEST(test_names_round_trip);
     RUN_TEST(test_missing_gpio);
+    RUN_TEST(test_gpio_37_and_38_are_not_brought_out);
+    RUN_TEST(test_probe_pins_on_every_board);
     RUN_TEST(test_flash_pins);
     RUN_TEST(test_psram_pins_only_with_psram);
     RUN_TEST(test_uart0);

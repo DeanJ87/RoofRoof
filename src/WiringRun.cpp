@@ -71,7 +71,8 @@ namespace SQM
                 const MotorDriver::EnableProbe en = theRoof->probeEnable(why);
                 in.en = en == MotorDriver::EnableProbe::Low    ? Board::EnProbe::Low
                         : en == MotorDriver::EnableProbe::High ? Board::EnProbe::High
-                                                               : Board::EnProbe::NotRun;
+                        : why.empty()                          ? Board::EnProbe::NotRun
+                                                               : Board::EnProbe::Busy;
                 theRoof->wiringReadings(in);
                 in.ethernet = ethernetFacts();
                 Board::WiringResult out = Board::evaluate(in);

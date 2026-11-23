@@ -18,6 +18,9 @@ namespace SQM
         // none chosen, detected), unless network.mode is Wi-Fi only.
         void begin(const Config &config);
 
+        // Main loop: the default route on Ethernet while it has an address, else on the Wi-Fi station.
+        void keepDefaultRoute(bool wifiUp);
+
         bool present(); // the board in effect has Ethernet
         bool started(); // the driver started (the PHY answered)
         bool linkUp();

@@ -88,6 +88,7 @@ The device refuses a pin set (on the Pins page as you edit, and when it is saved
 - a GPIO the ESP32 doesn't have (it has 0 to 5, 12 to 19, 21 to 23, 25 to 27, 32 to 36 and 39, besides the flash pins);
 - a flash pin (GPIO6 to 11), a PSRAM pin (GPIO16 and 17, on a chip with PSRAM), or the serial port used for the log and USB flashing (GPIO1 and 3);
 - one of the board's Ethernet pins, or, on the WT32-ETH01, a pin its header doesn't bring out;
+- GPIO0, 16, 18 or 23 on any board: a new device drives them at start-up to look for a WT32-ETH01;
 - an input-only pin (GPIO34 to 39) for RPWM, LPWM or EN, which must drive;
 - a pin off ADC1 (GPIO32 to 39) for the supply, the Hall sensor or a current-sense input: ADC2 can't be read while Wi-Fi is on;
 - an input-only pin for a park switch: those pins have no pull-up, so an open switch would float;

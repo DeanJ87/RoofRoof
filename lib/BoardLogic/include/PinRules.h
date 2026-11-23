@@ -22,6 +22,7 @@ namespace SQM
             Psram,          // 16, 17 on a chip with PSRAM
             Uart,           // 1, 3
             Ethernet,       // the board's Ethernet
+            Probe,          // 0, 16, 18, 23: the WT32-ETH01 probe drives them at boot
             Header,         // not brought out by the board
             InputOnly,      // an output on 34-39
             NotAdc1,        // an analog input off 32-39

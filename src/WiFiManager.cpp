@@ -106,6 +106,7 @@ namespace SQM
     void WiFiManager::handleBesideEthernet()
     {
         followPlan();
+        EthernetLink::keepDefaultRoute(isConnected());
         // Only a started station is retried (never in Ethernet only).
         if (stationStarted && config.autoReconnect && !retryPaused && !isConnected())
             handleReconnect();
