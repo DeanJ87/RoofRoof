@@ -102,12 +102,17 @@ namespace SQM::Backup
             reasons |= RESTART_IPV6;
         if (before.alpaca.enabled != after.alpaca.enabled)
             reasons |= RESTART_ALPACA;
+        // Spec 023: the network mode is read at boot with the Wi-Fi settings; the pins too.
+        if (before.network.mode != after.network.mode)
+            reasons |= RESTART_WIFI;
+        if (before.pins != after.pins)
+            reasons |= RESTART_PINS;
         return reasons;
     }
 
     const char *restartCode(int index)
     {
-        static const char *const CODES[RESTART_REASON_COUNT] = {"wifi", "ota", "ipv6", "alpaca"};
+        static const char *const CODES[RESTART_REASON_COUNT] = {"wifi", "ota", "ipv6", "alpaca", "pins"};
         return index >= 0 && index < RESTART_REASON_COUNT ? CODES[index] : "";
     }
 
@@ -115,6 +120,8 @@ namespace SQM::Backup
     {
         switch (reason)
         {
+        case NotApplicableReason::BoardPins:
+            return "board-pins";
         case NotApplicableReason::PushoverKeys:
             break;
         }

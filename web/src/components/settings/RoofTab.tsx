@@ -4,8 +4,9 @@ import type { DaylightConfig, LocationConfig, RoofConfig, SafetyConfig } from '.
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
+import { Button, Note, ReadingRow } from '../ui';
+import { presetLabel } from '../../lib/pinsView';
 import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
-import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
 import { SqmeterLoginFields } from './SqmeterLoginFields';
 import { SqmeterAddressTest } from './SqmeterAddressTest';
@@ -239,17 +240,6 @@ export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<Safe
   );
 };
 
-// The rain contact on GPIO4 (also the setup wizard's hardware page).
-export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, update }) => (
-  <Toggle
-    dataField="safety.rainContact"
-    label={t('settings.roof.rainContact')}
-    hint={t('settings.roof.rainContactHint')}
-    checked={safety.rainContact}
-    onChange={(v) => update(['safety', 'rainContact'], v)}
-  />
-);
-
 // Settings → Roof's card, by the weather sources (whose address it uses). The
 // address shows here too while the HTTP weather source is off: the location
 // and the copy use it either way.
@@ -268,7 +258,6 @@ export const SqmeterCopyCard: FunctionalComponent<SafetyProps> = (props) => (
 const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
   <SettingsCard id="safety" title={t('settings.roof.weatherSources')} hint={t('settings.roof.weatherSourcesHint')}>
     <WeatherSourceFields {...props} />
-    <RainContactToggle {...props} />
     <div class="form-grid">
       <Num
         at={['safety', 'staleSeconds']}
@@ -394,6 +383,17 @@ export const CalibrateCard: FunctionalComponent<RoofProps> = (props) => (
   </SettingsCard>
 );
 
+// Spec 023: the board and its pins, set on their own page; they apply at a restart.
+export const PinsCard: FunctionalComponent<SettingsTabProps> = ({ config }) => (
+  <SettingsCard id="pins" title={t('pins.title')} hint={t('settings.roof.pinsHint')}>
+    {config.pins && <ReadingRow label={t('pins.presetLabel')} value={presetLabel(config.pins.preset)} />}
+    {config.pins?.preset === 'unset' && <Note tone="warn">{t('pins.unsetNote')}</Note>}
+    <div class="btn-row">
+      <Button onClick={() => route('/pins')}>{t('pins.open')}</Button>
+    </div>
+  </SettingsCard>
+);
+
 // The device refuses every save while the roof moves; a save while it is
 // stopped part-way makes its position unknown (FR-021).
 export const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> = ({ status }) => {
@@ -408,6 +408,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
   return (
     <>
       <MotionNote status={props.status} />
+      <PinsCard {...props} />
       {roof ? (
         <>
           <MotionCard {...props} roof={roof} />

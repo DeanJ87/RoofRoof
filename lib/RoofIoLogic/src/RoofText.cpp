@@ -14,7 +14,7 @@ namespace SQM
             // printf into a std::string (the texts are short).
             template <typename... Args> std::string format(const char *pattern, Args... args)
             {
-                char buffer[160];
+                char buffer[256];
                 std::snprintf(buffer, sizeof(buffer), pattern, args...);
                 return buffer;
             }
@@ -84,6 +84,8 @@ namespace SQM
                     return "Stored fault unreadable: the fault saved before the restart couldn't be read back";
                 case FaultCause::BenchSupply:
                     return benchSupplyText(r.fault.measured, r.fault.limit);
+                case FaultCause::PinSetup:
+                    return "Pin setup invalid: nothing is driven until a valid pin setup is saved and the device restarts";
                 default:
                     return format("Fault raised: %g (limit %g)", static_cast<double>(r.fault.measured), static_cast<double>(r.fault.limit));
                 }
@@ -118,6 +120,11 @@ namespace SQM
                 }
             }
         } // namespace
+
+        std::string pinSetupText(const std::string &reason, bool unset)
+        {
+            return unset ? reason : format("Pin setup invalid: %s", reason.c_str());
+        }
 
         std::string describeSupply(float volts, float minimum)
         {

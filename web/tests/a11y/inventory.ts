@@ -41,6 +41,8 @@ export const INVENTORY: InventoryEntry[] = [
   { id: 'wifi', route: '#/wifi', component: 'WifiSetup (captive portal)', states: ['default'] },
   // Spec 016: the calibration page.
   { id: 'calibrate', route: '#/calibrate', component: 'Calibrate', states: ['default'] },
+  // Spec 023: the board, its pins and the wiring check.
+  { id: 'pins', route: '#/pins', component: 'Pins', states: ['default'] },
   { id: 'not-found', route: '#/no-such-page', component: 'NotFound', states: ['default'] },
   // The setup wizard's screens (spec 018): tests/wizard-a11y.spec.ts, also in light.
 ];

@@ -54,7 +54,7 @@ namespace DemoRoof
     struct Injectors
     {
         bool unsafe = false;         // SQMeter: unsafe for a reason other than rain
-        bool rain = false;           // SQMeter (and a fitted rain contact): rain
+        bool rain = false;           // SQMeter: rain
         bool parkFails = false;      // the mount never reaches park
         bool jam = false;            // the roof can't move
         bool supplyLow = false;      // the 12 V supply at LOW_SUPPLY_VOLTS

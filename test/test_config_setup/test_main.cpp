@@ -19,7 +19,7 @@ namespace
 
     std::string setupJson(const Config &cfg)
     {
-        DynamicJsonDocument doc(12288);
+        DynamicJsonDocument doc(16384);
         TEST_ASSERT_FALSE(deserializeJson(doc, cfg.toJson()));
         std::string out;
         serializeJson(doc["setup"], out);

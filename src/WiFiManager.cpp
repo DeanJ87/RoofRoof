@@ -4,17 +4,23 @@
 #include <ESPmDNS.h>
 #include "CaptiveDns.h"
 #include "CaptivePortal.h"
+#include "EthernetLink.h"
+#include "NetState.h"
+#include "NetworkPlan.h"
 #include <esp_netif.h>
 
 namespace SQM
 {
     bool WiFiManager::ipv6Wanted = false;
 
-    WiFiManager::WiFiManager(const WiFiConfig &config)
+    WiFiManager::WiFiManager(const WiFiConfig &config, Net::NetMode ethernetMode)
         : config(config),
           apMode(false),
           lastReconnectAttempt(0),
-          currentReconnectDelay(config.reconnectDelayMs)
+          currentReconnectDelay(config.reconnectDelayMs),
+          ethernetBoard(ethernetMode != Net::NetMode::Wifi),
+          mode(ethernetMode),
+          stationStarted(ethernetMode == Net::NetMode::Wifi)
     {
     }
 
@@ -39,6 +45,19 @@ namespace SQM
         WiFi.onEvent(onWiFiEvent);
         startedTryingAt = millis();
 
+        if (ethernetBoard)
+        {
+            // Spec 023: Ethernet first; in Auto, followPlan() may start the
+            // station or the hotspot; in Ethernet only, the radio stays off.
+            WiFi.mode(WIFI_OFF);
+            Logger::info(
+                TAG,
+                "Ethernet: Wi-Fi %s",
+                mode == Net::NetMode::Ethernet ? "off"
+                : config.ssid.empty()          ? "not set up (optional)"
+                                               : "as a fallback");
+            return;
+        }
         if (!config.ssid.empty())
         {
             Logger::info(TAG, "Connecting to WiFi: %s", config.ssid.c_str());
@@ -51,9 +70,54 @@ namespace SQM
         }
     }
 
+    void WiFiManager::followPlan()
+    {
+        const uint32_t now = millis();
+        Net::PlanInputs in;
+        in.mode = mode;
+        in.hasCredentials = !config.ssid.empty();
+        in.ethernetLink = EthernetLink::linkUp();
+        in.msSinceLink = EthernetLink::msSinceLink(now);
+        in.ethernetUp = EthernetLink::hasAddress();
+        in.msEthernetDown = EthernetLink::msWithoutAddress(now);
+        in.msSinceBoot = now - startedTryingAt;
+        in.joinedSinceBoot = connectedSinceBoot;
+        in.stationStarted = stationStarted;
+        in.hotspotOpen = apMode;
+        const Net::Plan plan = Net::wifiPlan(in);
+        if (plan.startStation)
+        {
+            Logger::warn(
+                TAG,
+                "No Ethernet address for %lu s: joining the saved Wi-Fi network",
+                static_cast<unsigned long>(in.msEthernetDown / 1000));
+            stationStarted = true;
+            if (!apMode)
+                WiFi.mode(WIFI_STA);
+            connectToWiFi();
+        }
+        if (plan.openHotspot)
+        {
+            Logger::warn(TAG, "No network after %lu s, opening the setup hotspot", static_cast<unsigned long>(in.msSinceBoot / 1000));
+            startCaptivePortal();
+        }
+    }
+
+    void WiFiManager::handleBesideEthernet()
+    {
+        followPlan();
+        EthernetLink::keepDefaultRoute(isConnected());
+        // Only a started station is retried (never in Ethernet only).
+        if (stationStarted && config.autoReconnect && !retryPaused && !isConnected())
+            handleReconnect();
+        else if (isConnected())
+            currentReconnectDelay = config.reconnectDelayMs;
+    }
+
     void WiFiManager::handle()
     {
-        if (isConnected())
+        // Spec 023: Ethernet counts as being on a network.
+        if (NetState::online())
         {
             if (stationConnectedAt == 0)
                 stationConnectedAt = millis() | 1;
@@ -63,6 +127,12 @@ namespace SQM
         else
         {
             stationConnectedAt = 0;
+        }
+
+        if (ethernetBoard)
+        {
+            handleBesideEthernet();
+            return;
         }
 
         // Saved network not joined since boot: open the hotspot too, but only
@@ -146,12 +216,12 @@ namespace SQM
 
     bool WiFiManager::connectedFromHotspotFor(uint32_t ms) const
     {
-        return apMode && stationConnectedAt != 0 && isConnected() && millis() - stationConnectedAt >= ms;
+        return apMode && stationConnectedAt != 0 && NetState::online() && millis() - stationConnectedAt >= ms;
     }
 
     void WiFiManager::startMdns()
     {
-        if (mdnsStarted || !config.mdns || !isConnected())
+        if (mdnsStarted || !config.mdns || !NetState::online())
             return;
         if (!MDNS.begin(config.hostname.c_str()))
         {

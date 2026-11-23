@@ -112,8 +112,6 @@ namespace SQM
                 append(text, Safety::describeSource(weather.http));
             if (lost(weather.mqtt))
                 append(text, Safety::describeSource(weather.mqtt));
-            if (weather.rainContact == Safety::RainContact::Unreadable)
-                append(text, "Rain contact unreadable");
             return text;
         }
 

@@ -36,6 +36,10 @@ The device picks these up by itself (SLAAC) from your router's announcements; th
 configure. When the provider changes the prefix the device follows. The same list is in
 [`GET /api/status`](../api/rest.md#get-apistatus) as `wifi.ipv6`.
 
+On a WT32-ETH01 running Ethernet the same setting turns IPv6 on for the cable too: its addresses are
+in the status as `ethernet.ipv6` ([Network](network.md#ethernet-in-the-status)), and they count as
+the device's own for the local-network check below.
+
 ---
 
 ## Reaching the device over IPv6
@@ -50,7 +54,7 @@ configure. When the provider changes the prefix the device follows. The same lis
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: 5ed2919a404e3e4e
+fingerprint: a1b5706d03967126
 -->
 <figure class="diagram" markdown>
 

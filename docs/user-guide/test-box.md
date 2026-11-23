@@ -22,7 +22,7 @@ It is three separate switches, all off by default, and **all end at one deadline
 | Bypass | What it stands in for | When it is refused |
 |---|---|---|
 | **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | While a N.I.N.A. address is set. Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
-| **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A wet or unreadable rain contact still makes the weather unsafe, and a configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside |
+| **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside |
 | **Daylight** | The sun: no [daylight close](close-on-unsafe.md#daylight-failsafe), and with **Alert and close** no refusal to open while the sun is up | Never refused. It only matters with the daylight mode on |
 
 A save that would put a bypass beside the source it stands in for is refused with a message, for
@@ -45,7 +45,6 @@ first (or turn the bypass off)"*.
   the park interlock still watches every fitted park switch.
 - The 12 V supply check. There is no supply bypass: a board powered over USB reads about 5.5 V, so
   it stays "low". If you need that, use the [bench build](bench-mode.md).
-- A rain contact that reads wet or can't be read.
 - Any doubt from a source you have set up.
 
 ## The deadline

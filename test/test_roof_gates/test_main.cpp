@@ -277,7 +277,6 @@ void test_other_sections_are_not_motion_settings(void)
     next.deviceName = "Observatory";
     next.mqtt.enabled = !base.mqtt.enabled;
     next.safety.staleSeconds = base.safety.staleSeconds + 10;
-    next.safety.rainContact = !base.safety.rainContact;
     next.alerts.enabled = !base.alerts.enabled;
     TEST_ASSERT_FALSE(motionSettingsChanged(base, next));
 }

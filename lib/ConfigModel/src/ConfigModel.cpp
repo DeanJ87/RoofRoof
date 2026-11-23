@@ -146,8 +146,9 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)
     {
-        // No temporary: a ternary of `*baseConfig` and `createDefault()` built a
-        // third ~2 KB Config on the caller's stack (spec 022).
+        // Not a ternary of `*baseConfig` and `createDefault()`, which built an
+        // extra ~2 KB Config on the caller's stack (spec 022); the settings save
+        // on the device doesn't use fromJson at all.
         std::optional<Config> cfg;
         if (baseConfig != nullptr)
             cfg.emplace(*baseConfig);

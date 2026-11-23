@@ -66,7 +66,35 @@
     "safety.http.url",
     "safety.mqtt.topic",
     "safety.staleSeconds",
-    "safety.rainContact",
+    "pins.preset",
+    "pins.board",
+    "pins.rpwm",
+    "pins.lpwm",
+    "pins.enable",
+    "pins.currentR",
+    "pins.currentL",
+    "pins.supply",
+    "pins.hall",
+    "pins.parkA",
+    "pins.parkB",
+    "network.mode",
+    "analog.preset",
+    "analog.supply.top",
+    "analog.supply.bottom",
+    "analog.supply.gain",
+    "analog.supply.offsetVolts",
+    "analog.hall.top",
+    "analog.hall.bottom",
+    "analog.currentR.top",
+    "analog.currentR.bottom",
+    "analog.currentR.gain",
+    "analog.currentR.offsetAmps",
+    "analog.currentL.top",
+    "analog.currentL.bottom",
+    "analog.currentL.gain",
+    "analog.currentL.offsetAmps",
+    "pins.parkAPullup",
+    "pins.parkBPullup",
     "park.nina.url",
     "park.nina.api",
     "park.switches",
@@ -105,7 +133,7 @@
       "fix": "network#mqtt"
     },
     "wifi-disconnected": {
-      "text": "Not connected to WiFi",
+      "text": "Not connected to a network",
       "fix": "network#wifi"
     },
     "alpaca-off": {
@@ -181,7 +209,7 @@
         "alerts.ntfy.enabled",
         "alerts.webhook.enabled"
       ],
-      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "dependsOn": "WiFi or Ethernet connected to a network (not the setup hotspot)",
       "reasons": [
         "wifi-disconnected"
       ]
@@ -257,7 +285,7 @@
       "settings": [
         "ntp.enabled"
       ],
-      "dependsOn": "WiFi connected to a network",
+      "dependsOn": "WiFi or Ethernet connected to a network",
       "reasons": [
         "wifi-disconnected"
       ]
@@ -325,7 +353,7 @@
         "wifi.mdns",
         "wifi.ipv6"
       ],
-      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "dependsOn": "WiFi or Ethernet connected to a network (not the setup hotspot)",
       "reasons": [
         "wifi-disconnected"
       ]

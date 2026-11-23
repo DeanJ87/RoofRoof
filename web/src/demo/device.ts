@@ -239,6 +239,16 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** The pin routes (spec 023): `status`, `validate` with a pin map, the wiring `check` and its `checkStatus`. */
+  pins(action: 'status' | 'validate' | 'check' | 'checkStatus', body = ''): Reply {
+    const reply = JSON.parse(this.core.pins(action, body));
+    if (action === 'check') {
+      this.persist();
+      this.notify();
+    }
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** GET /api/diag, /api/diag/moves and /api/diag/moves/{id} (spec 017); a move not held is "". */
   diagDocument = () => this.core.diagDocument();
   diagMoves = () => this.core.diagMoves();

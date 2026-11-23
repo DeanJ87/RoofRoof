@@ -1,5 +1,5 @@
 ---
-description: "Configure RoofRoof from the web UI or REST API: device name, network, MQTT, time, password protection and alerts. Settings live in NVS."
+description: "Configure RoofRoof from the web UI or REST API: device name, network and Ethernet, the board and its pins, MQTT, time, password protection and alerts. Settings live in NVS."
 ---
 
 # Configuration
@@ -25,18 +25,19 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     - **Roof motion**: travel, speed, timeout margin, the time to leave a magnet, ramps, top and slow duty, and the opening direction - see [Roof motion](roof-motion.md).
     - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
     - **Current and supply**: current sense and its limits, and the minimum supply.
-    - **Weather sources**: SQMeter over HTTP and over MQTT, the rain contact and the stale time - see [Safety inputs](safety-inputs.md).
+    - **Weather sources**: SQMeter over HTTP and over MQTT and the stale time - see [Safety inputs](safety-inputs.md).
     - **Mount park**: the N.I.N.A. address, the park switches fitted and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
     - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe). The **Daylight band** is under **Advanced**.
     - **Automatic close**: how the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) behaves - the safe spell that re-arms it after a Stop, the reminder interval, what happens when a close doesn't start and whether a Stop from an imaging app or MQTT calls it off. The timings that rarely need changing are under **Advanced**. While Alpaca is off a note says imaging apps can't open or close the roof, with a button to the [ASCOM Alpaca](alpaca.md#nina-opens-and-closes-the-roof) card.
     - **Ask before Open and Close** (in **Roof motion**): Open and Close on the dashboard ask once before they are sent. Stop never asks.
+    - **Pins**: a link to the [Pins](pins.md) page, where the board, its pins and the wiring check are (also reached from the **System** page).
 
     While the roof is opening or closing the tab says so: the device refuses every save until it stops. Saving while the roof is stopped part-way makes its position unknown, and the tab says that too.
 
     ![Roof settings](../assets/screenshots/settings-roof.png)
 
 === "Network"
-    WiFi, mDNS, IPv6, MQTT including Home Assistant discovery - see [MQTT](mqtt.md) - and ASCOM Alpaca - see [ASCOM Alpaca](alpaca.md).
+    WiFi, mDNS, IPv6, MQTT including Home Assistant discovery - see [MQTT](mqtt.md) - and ASCOM Alpaca - see [ASCOM Alpaca](alpaca.md). On a board with Ethernet (the WT32-ETH01) it also shows the Ethernet status and the network mode, and says WiFi is optional - see [Network](network.md).
 
     ![Network settings](../assets/screenshots/settings-network.png)
 
@@ -94,8 +95,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "safety": {
     "http": { "enabled": false, "url": "", "username": "", "password": "" },
     "mqtt": { "enabled": false, "topic": "sqmeter" },
-    "staleSeconds": 30,
-    "rainContact": false
+    "staleSeconds": 30
   },
   "park": {
     "nina": { "url": "", "api": "v2" },
@@ -147,6 +147,22 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "currentAmpsPerVolt": 8.5,
     "minRunningAmps": 0,
     "minSupplyVolts": 11
+  },
+  "pins": {
+    "preset": "unset",
+    "board": "esp32-devkit",
+    "rpwm": 25, "lpwm": 26, "enable": 27,
+    "currentR": 34, "currentL": 35, "supply": 36, "hall": 39,
+    "parkA": 32, "parkB": 33,
+    "parkAPullup": "internal", "parkBPullup": "internal"
+  },
+  "network": { "mode": "auto" },
+  "analog": {
+    "preset": "devkit-bench",
+    "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0 },
+    "hall": { "top": 10000, "bottom": 20000 },
+    "currentR": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 },
+    "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 }
   },
   "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
   "location": { "source": "sqmeter", "set": false, "latitude": 0, "longitude": 0, "sqmeter": { "gps": false, "savedAt": 0 } },
@@ -261,12 +277,47 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
-| `safety.rainContact` | bool | `false` | A rain contact is fitted on GPIO4 |
 | `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` only, e.g. `http://192.168.1.20:1888`; empty means not configured, so the mount never counts as parked |
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
-| `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (GPIO32) or `two` (GPIO32 and GPIO33) |
+| `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (park switch A) or `two` (A and B); their pins are in [`pins`](#pins-and-network) |
 | `park.timeoutSeconds` | int | `240` | How long the [close on unsafe weather](close-on-unsafe.md) waits for the park to be confirmed before a critical alert (30-1800). Set it a little above the longest time your mount takes to park |
 | `park.requestPark` | bool | `true` | The [close on unsafe weather](close-on-unsafe.md) may ask N.I.N.A. to park the mount. Off: it only waits for the park. Turn it off for a bench box pointed at a N.I.N.A. that drives a real mount ([test box](test-box.md)) |
+
+Rain comes from SQMeter only (its rain gauge: `reasonFlags` bit 9 rain, bit 10 a failed gauge; or its MQTT safe topic). The local rain contact and its `safety.rainContact` setting are gone; a saved or restored value is dropped without an error, and a save that still sends it is accepted with the key ignored.
+
+### Pins and network
+
+The board, the roof's pins and the network mode ([Pins](pins.md), [Network](network.md), spec 023). Edited on the **Pins** page and in **Settings → Network**. They apply **at the next restart**, and a save that changes them is refused with `409` while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `pins.preset` | string | `"unset"` | `devkit` (ESP32 DevKit), `wt32-carrier-v1` (WT32-ETH01 + RoofRoof carrier v1), `custom`, or `unset` (no board chosen: nothing is driven and every move is refused). Settings saved before pins were a setting load as `devkit`, with the DevKit's pins. A named preset fixes the board and every pin: sent alone it fills them in, and sent with different pins it is refused |
+| `pins.board` | string | `"esp32-devkit"` | `esp32-devkit` or `wt32-eth01`. Decides which pins are reserved (the WT32's Ethernet and header) and whether Ethernet starts |
+| `pins.rpwm`, `pins.lpwm`, `pins.enable` | int | `25`, `26`, `27` | The motor driver's outputs (R_EN and L_EN joined on `enable`) |
+| `pins.currentR`, `pins.currentL` | int | `34`, `35` | The R_IS and L_IS current-sense inputs |
+| `pins.supply`, `pins.hall` | int | `36`, `39` | The 12 V supply sense and the Hall sensor |
+| `pins.parkA`, `pins.parkB` | int | `32`, `33` | Park switches A and B |
+| `pins.parkAPullup`, `pins.parkBPullup` | string | `"internal"` | Each park switch input's pull-up: `internal` (the chip's) or `external` (fitted on the board). With `external` the switch may be on GPIO34-39, which have no internal pull-up; with `internal` that is refused (*"… has no internal pull-up"*). Not part of a preset: kept when the preset changes. A change applies at the next restart, like a pin |
+| `network.mode` | string | `"auto"` | On a board with Ethernet: `auto` (Ethernet, with a saved WiFi network as a fallback after 30 s without an Ethernet address), `ethernet` (WiFi radio off, no setup hotspot) or `wifi` (Ethernet not started). Does nothing on a DevKit. Any other value is refused |
+
+Every pin set is checked against the [pin rules](pins.md#the-pin-rules): a set that breaks one is refused with `400` and the first error's text, for example `"RPWM on GPIO35: GPIO35 is input only and can't drive an output"`. On a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it), a change to any board but the WT32-ETH01 is refused too: `"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"`. Warnings don't stop a save. The pins in effect and whether a restart is needed are in [`GET /api/pins`](../api/rest.md#get-apipins).
+
+### Analog front end
+
+The analog inputs' dividers and trims ([Advanced: the analog front end](pins.md#advanced-the-analog-front-end), spec 023), edited under **Advanced** on the **Pins** page. Unlike the pins, they need **no restart**: the roof applies a change at its next reading once no move is under way.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `analog.preset` | string | `"devkit-bench"` | `devkit-bench` (the DevKit bench wiring; the default on every device, new or upgraded), `wt32-carrier-v1.1` (the same, with the supply offset +0.3 V for the carrier's reverse-polarity diode) or `custom`. A named preset fixes every value: sent alone it fills them in; sent with a value that differs from it, it is refused (*"These values belong to a named preset; choose Custom to change one"*) |
+| `analog.supply.top`, `analog.supply.bottom` | int | `100000`, `22000` | The supply sense divider, in ohms (100 to 10000000 each) |
+| `analog.supply.gain`, `analog.supply.offsetVolts` | number | `1`, `0` | The supply trim: gain 0.5-2, offset within ±2 V. Supply volts = pin volts × (top + bottom) / bottom × gain + offsetVolts |
+| `analog.hall.top`, `analog.hall.bottom` | int | `10000`, `20000` | The Hall sensor's divider. Checked for the pin's voltage only: the Hall thresholds are ADC counts |
+| `analog.currentR.top`, `.bottom`, `analog.currentL.top`, `.bottom` | int | `10000`, `20000` | The R_IS and L_IS dividers |
+| `analog.currentR.gain`, `.offsetAmps`, `analog.currentL.gain`, `.offsetAmps` | number | `1`, `0` | Each side's trim: gain 0.5-2, offset within ±5 A. Amps = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offsetAmps |
+
+A resistor or trim out of range is refused with its text. A divider that would put more than 3.3 V on its pin at its sensor's highest (supply 15 V, Hall 4.2 V, IS 5 V) is a warning, not an error: the defaults carry two, on R_IS and L_IS (3.33 V at 5 V). The warnings are in [`GET /api/pins`](../api/rest.md#get-apipins) (`analogIssues`).
+
+An empty `wifi.ssid` is never an error in itself (a new device has none, and on a board with Ethernet it is a normal state); only clearing a network that is already saved is refused, *"WiFi network can't be blank; use WiFi setup to change networks"* ([Network](network.md#wifi-is-optional)).
 
 ### Roof
 
@@ -464,6 +515,12 @@ RoofRoof backup is refused with the reason, and nothing changes.
 A setting this device can't use isn't applied; the device keeps its own value and the preview lists it
 under **Can't apply here**. So is Pushover switched on when its keys weren't restored.
 A plain `GET /api/config` export still restores, without secrets.
+
+A restore never changes the board or the pins: they belong to this hardware, not to the settings
+you carry between devices. A backup whose `pins` differ from this device's (made on another board,
+or before a pin change) lists them under **Can't apply here**, and this device keeps its own; set
+them on the [Pins](pins.md) page if you mean to change them. A backup made before the pins were a
+setting has no `pins` group at all. Either way its old `safety.rainContact` is dropped.
 
 ### From a script
 

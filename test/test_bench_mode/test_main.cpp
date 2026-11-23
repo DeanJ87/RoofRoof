@@ -224,6 +224,16 @@ void test_only_the_motor_driver_writes_output_pins(void)
         ++scanned;
         if (name == "MotorDriver.cpp")
             continue;
+        if (name == "EthernetProbe.cpp")
+        {
+            // Spec 023: the WT32 probe writes only the Ethernet pins (never a motor pin).
+            const std::string source = text.str();
+            for (size_t at = source.find("gpio_set_level("); at != std::string::npos; at = source.find("gpio_set_level(", at + 1))
+                TEST_ASSERT_TRUE_MESSAGE(
+                    source.compare(at, 50, "gpio_set_level(static_cast<gpio_num_t>(Board::ETH_") == 0,
+                    "EthernetProbe.cpp writes a pin that isn't Ethernet's");
+            continue;
+        }
         for (const char *write : WRITES)
             TEST_ASSERT_TRUE_MESSAGE(text.str().find(write) == std::string::npos, (name + " writes a pin: " + write).c_str());
     }
@@ -235,16 +245,19 @@ void test_only_the_motor_driver_writes_output_pins(void)
     text << in.rdbuf();
     const std::string source = text.str();
     TEST_ASSERT_TRUE(source.find("Driver::physicalOutputs(logical, Bench::BUILD)") != std::string::npos);
-    TEST_ASSERT_TRUE(source.find("if (pwmReady && !Bench::BUILD)") != std::string::npos);
+    TEST_ASSERT_TRUE(source.find("if (pwmReady && configured && !Bench::BUILD)") != std::string::npos);
     size_t count = 0;
     for (size_t at = source.find("ledcWrite("); at != std::string::npos; at = source.find("ledcWrite(", at + 1))
         ++count;
     TEST_ASSERT_EQUAL(1, count);
-    // gpio_set_level: three in holdOff() (the Off levels) and one in writeEnable().
+    // gpio_set_level: three in holdOff() (the Off levels), one in writeEnable(),
+    // and spec 023's EN probe, which only ever writes low and never runs in a bench build.
     count = 0;
     for (size_t at = source.find("gpio_set_level("); at != std::string::npos; at = source.find("gpio_set_level(", at + 1))
         ++count;
-    TEST_ASSERT_EQUAL(4, count);
+    TEST_ASSERT_EQUAL(5, count);
+    TEST_ASSERT_TRUE(source.find("gpio_set_level(en, 0);") != std::string::npos);
+    TEST_ASSERT_TRUE(source.find("if (!configured || Bench::BUILD)\n                return EnableProbe::NotRun;") != std::string::npos);
     TEST_ASSERT_TRUE(source.find("const Driver::Outputs off = Driver::outputsFor(Driver::Command::Off, 0);") != std::string::npos);
 }
 

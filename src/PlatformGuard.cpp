@@ -4,6 +4,8 @@
 
 #include <WiFi.h>
 
+#include "NetState.h"
+
 #include "FlashGuard.h"
 #include "RoofControl.h"
 
@@ -23,11 +25,11 @@ namespace SQM
                 return sequenceProbe ? sequenceProbe() : RoofIo::SequenceState::Idle;
             }
 
-            // The home network joined and the setup hotspot off: only then can
-            // a working close sequence reach N.I.N.A. (spec 010).
+            // The home network joined (Wi-Fi or, spec 023, Ethernet) and the
+            // setup hotspot off: only then can a working close sequence reach N.I.N.A. (spec 010).
             bool networkUp()
             {
-                return WiFi.status() == WL_CONNECTED && (WiFi.getMode() & WIFI_AP) == 0;
+                return NetState::online() && !NetState::hotspotOn();
             }
 
             RoofIo::PlatformState latest()

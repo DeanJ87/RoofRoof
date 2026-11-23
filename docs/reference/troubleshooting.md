@@ -125,7 +125,7 @@ The topics the device publishes are listed in [MQTT](../user-guide/mqtt.md).
 
 ## The Motor Driver Moves Briefly at Power-On
 
-Until the firmware starts, the ESP32's GPIO25, 26 and 27 float, and a floating enable pin can switch the IBT-2 on. Fit the 10 kΩ pull-down from the enable pin to GND ([Wiring](../hardware/wiring.md#the-en-pull-down)). The firmware drives all three pins low as the first thing `setup()` does, but that is roughly 300 ms after reset.
+Until the firmware starts, the ESP32's motor pins (EN, RPWM and LPWM) float, and a floating enable pin can switch the IBT-2 on. Fit the 10 kΩ pull-down from the enable pin to GND ([Wiring](../hardware/wiring.md#the-en-pull-down)), and confirm it with the [wiring check](../user-guide/pins.md#the-wiring-check). The firmware drives all three pins low as soon as `setup()` has read the saved settings (which hold the pins), roughly 300 ms after reset; with no board chosen or an invalid pin set it never drives them.
 
 ---
 

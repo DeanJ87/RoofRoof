@@ -5,9 +5,10 @@ import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
 import { sqmeterAddressError } from '../lib/sqmeterAddress';
 
+// A blank network is allowed (a new device, a board on Ethernet); only blanking a saved one is
+// refused, as the device does (getConfigValidationErrors, which knows the saved settings).
 export const wifiConfigSchema = z.object({
-  // The device refuses a blank network while one is saved (SQMeter spec 011 FR-009).
-  ssid: z.string().refine((v) => v.trim() !== '', t('validation.configSchema.wifiSsidIsRequired')),
+  ssid: z.string(),
   password: z.string(),
   hostname: z
     .string()
@@ -141,7 +142,6 @@ export const safetyConfigSchema = z
       .int()
       .min(10, t('validation.configSchema.staleTimeMustBeBetween'))
       .max(600, t('validation.configSchema.staleTimeMustBeBetween')),
-    rainContact: z.boolean(),
   })
   // Spec 020 FR-036, FR-039: SQMeter's address only (http or https), checked when set, as the device does.
   .superRefine((data, ctx) => {
@@ -253,7 +253,54 @@ export const setupConfigSchema = z.object({
     .optional(),
 });
 
-export const configSchema = z.object({
+// Spec 023: the board and each function's GPIO; whether a set is allowed is the device's call
+// (POST /api/pins/validate), as is a named preset's consistency.
+const gpio = z
+  .number()
+  .int(t('validation.configSchema.gpioMustBeBetween'))
+  .min(0, t('validation.configSchema.gpioMustBeBetween'))
+  .max(255, t('validation.configSchema.gpioMustBeBetween'));
+export const pinsConfigSchema = z.object({
+  preset: z.enum(['devkit', 'wt32-carrier-v1', 'custom', 'unset']),
+  board: z.enum(['esp32-devkit', 'wt32-eth01']),
+  rpwm: gpio,
+  lpwm: gpio,
+  enable: gpio,
+  currentR: gpio,
+  currentL: gpio,
+  supply: gpio,
+  hall: gpio,
+  parkA: gpio,
+  parkB: gpio,
+  parkAPullup: z.enum(['internal', 'external']).optional(),
+  parkBPullup: z.enum(['internal', 'external']).optional(),
+});
+
+// Spec 023 Advanced: the analog front end, with the device's ranges (lib/BoardLogic Analog.h).
+// Whether a named preset's values match it, and the 3.3 V warnings, are the device's call.
+const ohms = z
+  .number()
+  .int(t('validation.configSchema.resistorMustBeBetween'))
+  .min(100, t('validation.configSchema.resistorMustBeBetween'))
+  .max(10000000, t('validation.configSchema.resistorMustBeBetween'));
+const divider = { top: ohms, bottom: ohms };
+const gain = z.number().min(0.5, t('validation.configSchema.gainMustBeBetween')).max(2, t('validation.configSchema.gainMustBeBetween'));
+const offset = (most: number, message: string) => z.number().min(-most, message).max(most, message);
+const currentTrim = z.object({
+  ...divider,
+  gain,
+  offsetAmps: offset(5, t('validation.configSchema.currentOffsetWithin')),
+});
+export const analogConfigSchema = z.object({
+  preset: z.enum(['devkit-bench', 'wt32-carrier-v1.1', 'custom']),
+  supply: z.object({ ...divider, gain, offsetVolts: offset(2, t('validation.configSchema.supplyOffsetWithin')) }),
+  hall: z.object(divider),
+  currentR: currentTrim,
+  currentL: currentTrim,
+});
+export const networkConfigSchema = z.object({ mode: z.enum(['auto', 'ethernet', 'wifi']) });
+
+const configShape = z.object({
   deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
@@ -273,16 +320,35 @@ export const configSchema = z.object({
   testBox: testBoxConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
   setup: setupConfigSchema.optional(),
+  pins: pinsConfigSchema.optional(),
+  network: networkConfigSchema.optional(),
+  analog: analogConfigSchema.optional(),
 });
+
+export const configSchema = configShape;
 
 export type ConfigSchema = z.infer<typeof configSchema>;
 export type ValidationErrors = Record<string, string>;
 
-export const getConfigValidationErrors = (candidate: unknown): ValidationErrors => {
-  const result = configSchema.safeParse(candidate);
-  if (result.success) return {};
+type SavedWifi = { wifi?: { ssid?: unknown } } | null | undefined;
+const ssidOf = (value: unknown): string => {
+  const ssid = (value as SavedWifi)?.wifi?.ssid;
+  return typeof ssid === 'string' ? ssid.trim() : '';
+};
 
-  return Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.') || 'config', issue.message]));
+/**
+ * The settings' validation errors. With `saved` (the settings as loaded), a saved WiFi network
+ * can't be blanked: the device refuses that ("use WiFi setup to change networks", SQMeter spec
+ * 011 FR-009) but never requires a network (a new device, a board on Ethernet: spec 023).
+ */
+export const getConfigValidationErrors = (candidate: unknown, saved?: unknown): ValidationErrors => {
+  const result = configSchema.safeParse(candidate);
+  const errors: ValidationErrors = result.success
+    ? {}
+    : Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.') || 'config', issue.message]));
+  if (ssidOf(saved) !== '' && ssidOf(candidate) === '' && !errors['wifi.ssid'])
+    errors['wifi.ssid'] = t('validation.configSchema.wifiCantBeBlank');
+  return errors;
 };
 
 export const hasConfigValidationErrors = (errors: ValidationErrors): boolean => Object.keys(errors).length > 0;

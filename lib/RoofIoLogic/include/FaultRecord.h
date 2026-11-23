@@ -23,6 +23,7 @@ namespace SQM
             StoredUnreadable, // the saved record couldn't be read back
             WatchdogStopped,  // the watchdog timer itself stopped with the driver on (beat age ms / limit ms)
             BenchSupply,      // bench firmware on a powered roof (spec 011): real supply volts or NaN / limit volts
+            PinSetup,         // spec 023: the pins in effect failed the rules at boot (0 / 0); never stored
         };
 
         struct FaultRecord

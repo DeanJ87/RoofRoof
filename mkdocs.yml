@@ -84,6 +84,8 @@ nav:
     - Setup wizard: user-guide/setup-wizard.md
     - Dashboard: user-guide/dashboard.md
     - Configuration: user-guide/configuration.md
+    - Pins and the wiring check: user-guide/pins.md
+    - Network and Ethernet: user-guide/network.md
     - Roof motion: user-guide/roof-motion.md
     - Calibration run: user-guide/calibration-run.md
     - Safety inputs: user-guide/safety-inputs.md

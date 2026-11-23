@@ -212,7 +212,6 @@ describe('RoofCard', () => {
           currentSense: true,
           motorAmps: 3.2,
           parkSwitches: { fitted: 2, switch1: 'closed', switch2: 'open' },
-          rainContact: 'dry',
           supplyLow: true,
           supplyVolts: 10.9,
           minSupplyVolts: 11.5,
@@ -224,7 +223,6 @@ describe('RoofCard', () => {
     expect(screen.getByText("Minimum 11.5 V: below it the roof won't start, and a move stops with a fault.")).toBeInTheDocument();
     expect(screen.getByText('Limit 10.0 A: above it a move stops with a fault.')).toBeInTheDocument();
     expect(screen.getByText('Park switch 2')).toBeInTheDocument();
-    expect(screen.getByText('Dry')).toBeInTheDocument();
     expect(screen.getByText('Open: Supply 10.9 V is below 11.5 V')).toBeInTheDocument();
   });
 
@@ -284,5 +282,22 @@ describe('RoofCard', () => {
     fireEvent.click(button('Open'));
     expect(screen.queryByRole('group', { name: 'Open the roof?' })).toBeNull();
     await waitFor(() => expect(sent).toEqual(['open']));
+  });
+
+  it('links the Pins page while the pin setup is invalid (spec 023)', () => {
+    // inventory: roof-pins
+    const { unmount } = show(live(status()));
+    expect(screen.queryByRole('button', { name: 'Fix the pin setup' })).toBeNull();
+    unmount();
+    const invalid = status({
+      state: 'error',
+      fault: { ...FAULT, kind: 'pinSetup', cause: 'pinSetup', text: 'Pin setup invalid: RPWM on GPIO35: GPIO35 is input only' },
+    });
+    invalid.pins = { preset: 'custom', board: 'esp32-devkit', valid: false, restartNeeded: false };
+    show(live(invalid));
+    expect(button('Fix the pin setup')).toBeInTheDocument();
+    // The device always refuses to clear it: the way out is the pins and a restart.
+    expect(button('Clear fault')).toBeDisabled();
+    expect(screen.getByText('Clear fault: Fix the pins on the Pins page, then restart')).toBeInTheDocument();
   });
 });

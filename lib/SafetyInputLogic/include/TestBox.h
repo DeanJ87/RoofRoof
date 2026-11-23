@@ -5,8 +5,8 @@
 // only by the owner in the settings (TestBoxConfig), in effect only while the
 // clock is set and before their deadline, and never beside the source they
 // stand in for: the park bypass replaces N.I.N.A. (fitted park switches still
-// count), the weather bypass replaces a missing SQMeter (a rain contact still
-// counts). No fault, the watchdog or the supply check is touched. Applied
+// count), the weather bypass replaces a missing SQMeter (rain from any source
+// still counts; spec 023 removed the local rain contact). No fault, the watchdog or the supply check is touched. Applied
 // once, where the verdict and the park result are made, so every check sees
 // the same thing. Pure: the clock comes in as parameters (constitution V).
 

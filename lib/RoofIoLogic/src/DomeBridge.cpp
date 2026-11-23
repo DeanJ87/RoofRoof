@@ -85,7 +85,8 @@ namespace SQM
         {
             Alpaca::DomeAnswer answer;
             const bool stop = command == Roof::Command::Stop || command == Roof::Command::Abort;
-            if (accepted || (stop && reason == "notStarted"))
+            // Spec 023: with invalid pins ("pinSetup") nothing is driven either.
+            if (accepted || (stop && (reason == "notStarted" || reason == "pinSetup")))
                 return answer;
             answer.accepted = false;
             answer.message = domeRefusalText(reason, text, fault);

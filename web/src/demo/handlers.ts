@@ -202,6 +202,11 @@ export const demoHandlers = [
   http.post('/api/sqmeter/site', async ({ request }) => reply(demoDevice.sqmeterSite(await request.text()))),
   http.post('/api/sqmeter/test', async ({ request }) => reply(demoDevice.sqmeterTest(await request.text()))),
 
+  // The board and its pins (spec 023): the firmware's rules and documents; the wiring check reads the simulated roof
+  http.get('/api/pins', () => reply(demoDevice.pins('status'))),
+  http.post('/api/pins/validate', async ({ request }) => reply(demoDevice.pins('validate', await request.text()))),
+  http.post('/api/pins/check', () => reply(demoDevice.pins('check'))),
+  http.get('/api/pins/check', () => reply(demoDevice.pins('checkStatus'))),
   // Jog and teach the ends (spec 019): the device's own jog, its keep-alive deadline and the teach, on the simulated roof
   http.get('/api/roof/teach', () => reply(demoDevice.teach('status'))),
   http.post('/api/roof/jog', async ({ request }) => reply(demoDevice.teach('jog', await request.text()))),

@@ -1,0 +1,6 @@
+{
+  "name": "BoardLogic",
+  "version": "0.1.0",
+  "description": "Board presets, pin rules, the wiring check's verdicts, MDIO frames and the Wi-Fi plan beside Ethernet (pure logic, spec 023)",
+  "dependencies": {}
+}

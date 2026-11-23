@@ -1,5 +1,6 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useId, useState } from 'preact/hooks';
+import { route } from 'preact-router';
 import type { LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
 import { locationLine } from '../lib/locationView';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
@@ -237,7 +238,6 @@ const Readings: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => (
     )}
     {roof.parkSwitches.fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof.parkSwitches.switch1)} />}
     {roof.parkSwitches.fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof.parkSwitches.switch2)} />}
-    {roof.rainContact !== 'notFitted' && <ReadingRow label={t('roof.rainContact')} value={t(`roof.rain.${roof.rainContact}`)} />}
   </div>
 );
 
@@ -248,6 +248,16 @@ const Hall: FunctionalComponent<{ roof: RoofStatus; config?: RoofConfig }> = ({ 
     <Note>{t(`roof.hall.level.${roof.hall.level}`)}</Note>
   </div>
 );
+
+// Spec 023: with an invalid pin setup the fault above says why; this is the way to the fix.
+const PinsLink: FunctionalComponent<{ valid?: boolean }> = ({ valid }) =>
+  valid === false ? (
+    <div class="btn-row" data-inventory="roof-pins">
+      <Button variant="link" onClick={() => route('/pins')}>
+        {t('roof.pinsLink')}
+      </Button>
+    </div>
+  ) : null;
 
 export interface RoofCardProps {
   live: LiveState;
@@ -267,6 +277,7 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = 
         <Position view={view} />
         <Buttons view={view} send={send} confirm={confirm} />
         {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
+        <PinsLink valid={live.status?.pins?.valid} />
         {roof && <Checks roof={roof} location={live.status?.location} />}
         {roof && <Readings roof={roof} />}
         {roof && <Hall roof={roof} config={config} />}

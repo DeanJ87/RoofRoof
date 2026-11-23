@@ -8,7 +8,6 @@
 #include "MotorDriver.h"
 #include "RoofControl.h"
 #include "RoofLocked.h"
-#include "RoofPins.h"
 #include "RoofReadings.h"
 #include "RoofSettings.h"
 
@@ -23,12 +22,12 @@ namespace SQM
 {
     namespace
     {
-        float realSupplyVolts()
+        float realSupplyVolts(uint8_t pin, const Board::AnalogConfig &analog)
         {
             uint32_t samples[RoofIo::ANALOG_SAMPLES];
             for (uint32_t &sample : samples)
-                sample = analogReadMilliVolts(Pins::SUPPLY_SENSE);
-            return RoofIo::supplyVolts(RoofIo::averageMillivolts(samples, RoofIo::ANALOG_SAMPLES));
+                sample = analogReadMilliVolts(pin);
+            return Board::scaledSupplyVolts(RoofIo::averageMillivolts(samples, RoofIo::ANALOG_SAMPLES), analog);
         }
     } // namespace
 
@@ -45,11 +44,11 @@ namespace SQM
         uint32_t now = millis();
         for (uint32_t waited = 0; waited <= RoofPlant::BenchSupplyGuard::CONFIRM_MS; waited += RoofIo::CONTROL_PERIOD_MS)
         {
-            benchGuard.update(realSupplyVolts(), now);
+            benchGuard.update(realSupplyVolts(pins.supply, settings.analog), now);
             delay(RoofIo::CONTROL_PERIOD_MS);
             now = millis();
         }
-        if (!benchGuard.update(realSupplyVolts(), now))
+        if (!benchGuard.update(realSupplyVolts(pins.supply, settings.analog), now))
             return;
         raiseFault(RoofIo::FaultCause::BenchSupply, benchGuard.measured(), RoofPlant::BenchSupplyGuard::LIMIT_VOLTS);
         Logger::error(TAG, "Bench firmware on a powered board: nothing will move. Flash the standard firmware for a roof.");

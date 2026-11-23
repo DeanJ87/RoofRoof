@@ -4,7 +4,9 @@ import { useWifiScan } from '../../hooks/useWifiScan';
 import { useMqttTest } from '../../hooks/useMqttTest';
 import { defaultAlpacaConfig, defaultHomeAssistant } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Button } from '../ui';
+import { Button, Note } from '../ui';
+import { EthernetCard } from './EthernetCard';
+import { hasEthernet } from '../../lib/pinsView';
 import {
   ActionButton,
   DepNote,
@@ -25,8 +27,25 @@ import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
 
+const WIFI_OFF_ID = 'wifi-off-note';
+
+// WiFi is off while the network mode in effect (since boot) is Ethernet only: the device refuses a scan.
+const wifiOff = (status: NetworkTabProps['status']) => status?.ethernet?.mode === 'ethernet';
+
+// Spec 023: on a board with Ethernet, WiFi is optional (or off in Ethernet-only mode, as in effect).
+const WifiRole: FunctionalComponent<NetworkTabProps> = ({ status }) => {
+  // In WiFi only Ethernet isn't started: WiFi is the network, not an option.
+  if (!hasEthernet(status) || status?.ethernet?.mode === 'wifi') return null;
+  return wifiOff(status) ? (
+    <Note id={WIFI_OFF_ID}>{t('settings.network.wifiOff')}</Note>
+  ) : (
+    <Note>{t('settings.network.wifiOptional')}</Note>
+  );
+};
+
 // The WiFi network, hostname, mDNS and IPv6.
-const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, updateMany, error, originalWifiSsid, deps, fix }) => {
+const WifiCard: FunctionalComponent<NetworkTabProps> = (props) => {
+  const { config, update, updateMany, error, originalWifiSsid, deps, fix } = props;
   const { networks, scanning, error: scanError, scan } = useWifiScan();
   const selectNetwork = (ssid: string) =>
     updateMany([
@@ -45,6 +64,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
   ];
   return (
     <SettingsCard id="wifi" title="WiFi">
+      <WifiRole {...props} />
       <div class="form-grid">
         <Field label={t('settings.network.network')} error={error('wifi.ssid')}>
           <div class="input-row">
@@ -54,7 +74,13 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
               options={networkOptions}
               onChange={(v) => selectNetwork(v === 'OTHER' ? '' : v)}
             />
-            <ActionButton onClick={scan} busy={scanning} busyLabel={t('common.scanning')}>
+            <ActionButton
+              onClick={scan}
+              busy={scanning}
+              busyLabel={t('common.scanning')}
+              disabled={wifiOff(props.status)}
+              describedBy={wifiOff(props.status) ? WIFI_OFF_ID : undefined}
+            >
               {t('settings.network.scan')}
             </ActionButton>
           </div>
@@ -270,6 +296,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
   const mqttTest = useMqttTest(config);
   return (
     <>
+      {hasEthernet(props.status) && <EthernetCard {...props} />}
       <WifiCard {...props} />
 
       <SettingsCard id="mqtt" title="MQTT" hint={t('settings.network.mqttHint')} badge={mqttBadge(props)}>

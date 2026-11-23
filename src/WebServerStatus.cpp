@@ -11,6 +11,9 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+
+#include "EthernetLink.h"
+#include "NetState.h"
 #include <cstring>
 #include <ctime>
 #include <esp_ota_ops.h>
@@ -97,7 +100,7 @@ namespace SQM
     Deps::Facts WebServer::settingsFacts() const
     {
         Deps::Facts facts;
-        facts.wifiConnected = WiFi.status() == WL_CONNECTED;
+        facts.wifiConnected = NetState::online(); // spec 023: Ethernet counts
         facts.mqttConnected = mqttClient != nullptr && mqttClient->isConnected();
         facts.clockSet = static_cast<int64_t>(time(nullptr)) >= Core::CLOCK_VALID_EPOCH;
         facts.alpacaDevices = static_cast<uint8_t>(alpacaBackend.devices().size());
@@ -337,6 +340,8 @@ namespace SQM
         appendPartitions(doc);
         appendTime(doc);
         appendWifi(doc);
+        EthernetLink::appendStatus(doc); // spec 023
+        appendPinsStatus(doc);
         appendMqttStatus(doc);
         appendConnections(doc);
         appendRoof(doc);

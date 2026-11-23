@@ -32,6 +32,8 @@ export interface Core extends BackupCore {
   teach(action: string, body: string): string;
   // Spec 020: POST /api/sqmeter/site from the simulated SQMeter's settings (the JSON body or "").
   sqmeterSite(body: string): string;
+  // Spec 023: GET /api/pins ("status"), POST /api/pins/validate (with the body), and the wiring check ("check", "checkStatus").
+  pins(action: string, body: string): string;
   // Spec 020: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
   sqmeterTest(body: string): string;
   roofInject(json: string): string;

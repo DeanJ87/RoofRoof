@@ -359,4 +359,10 @@ describe('live data and results over time', () => {
     expect(clearFaultReason(input({ live: live(status(), { connected: false }) }))).toBe('No live data');
     expect(clearFaultReason(input())).toBe('');
   });
+
+  it("a pin setup fault can't be cleared: the pins need fixing and a restart (spec 023)", () => {
+    const pinFault = { kind: 'pinSetup', cause: 'pinSetup' as const, measured: null, limit: null, text: 'Pin setup invalid: x' };
+    expect(clearFaultReason(input({ live: live(status({ fault: pinFault })) }))).toBe('Fix the pins on the Pins page, then restart');
+    expect(clearFaultReason(input({ live: live(status({ fault: FAULT })) }))).toBe('');
+  });
 });

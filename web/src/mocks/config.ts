@@ -46,7 +46,6 @@ export const mockConfig: Config = {
     http: { enabled: true, url: 'http://sqmeter.local', username: '', password: '' },
     mqtt: { enabled: false, topic: 'sqmeter' },
     staleSeconds: 30,
-    rainContact: false,
   },
   park: { nina: { url: 'http://192.168.1.20:1888', api: 'v2' }, switches: 'none', timeoutSeconds: 240, requestPark: true },
   roof: {
@@ -90,6 +89,31 @@ export const mockConfig: Config = {
   },
   ui: { confirmOpenClose: false },
   diag: { enabled: false, keepSummaries: false, mqtt: false },
+  // Spec 023: an ESP32 DevKit with its preset chosen (mocks/pins.ts serves a WT32 or a new device for tests).
+  pins: {
+    preset: 'devkit',
+    board: 'esp32-devkit',
+    rpwm: 25,
+    lpwm: 26,
+    enable: 27,
+    currentR: 34,
+    currentL: 35,
+    supply: 36,
+    hall: 39,
+    parkA: 32,
+    parkB: 33,
+    parkAPullup: 'internal',
+    parkBPullup: 'internal',
+  },
+  network: { mode: 'auto' },
+  // Spec 023 Advanced: the DevKit bench wiring's dividers, no trim.
+  analog: {
+    preset: 'devkit-bench',
+    supply: { top: 100000, bottom: 22000, gain: 1, offsetVolts: 0 },
+    hall: { top: 10000, bottom: 20000 },
+    currentR: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+    currentL: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+  },
   testBox: { park: false, weather: false, daylight: false, hours: 72, until: 0 },
   alerts: {
     enabled: true,

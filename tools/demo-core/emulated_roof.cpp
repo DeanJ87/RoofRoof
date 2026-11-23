@@ -314,8 +314,6 @@ namespace DemoRoof
         Safety::WeatherInputs in;
         in.http = http;
         in.mqtt = mqtt;
-        if (safetyCfg.rainContact)
-            in.rainContact = inject.rain ? Safety::RainContact::Raining : Safety::RainContact::Dry;
         in.httpLimitMs = safetyCfg.staleSeconds * 1000;
         in.startedAtMs = bootMs;
         in.nowMs = nowMs;

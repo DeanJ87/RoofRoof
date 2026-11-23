@@ -73,15 +73,6 @@ namespace SQM
                 return reasons;
             }
 
-            uint32_t rainContactReasons(RainContact contact)
-            {
-                if (contact == RainContact::Raining)
-                    return ReasonRain;
-                if (contact == RainContact::Unreadable)
-                    return ReasonRainContactUnreadable;
-                return 0;
-            }
-
             std::string hex(uint32_t value)
             {
                 char text[16];
@@ -184,9 +175,7 @@ namespace SQM
             WeatherVerdict v;
             v.http = assessSource(in.http, SourceKind::SqmeterHttp, SourceClock{in.httpLimitMs, in.startedAtMs, in.nowMs});
             v.mqtt = assessSource(in.mqtt, SourceKind::SqmeterMqtt, SourceClock{in.mqttLimitMs, in.startedAtMs, in.nowMs});
-            v.rainContact = in.rainContact;
-
-            v.reasons = sourceReasons(v.http) | sourceReasons(v.mqtt) | rainContactReasons(in.rainContact);
+            v.reasons = sourceReasons(v.http) | sourceReasons(v.mqtt);
             if (!in.http.enabled && !in.mqtt.enabled)
                 v.reasons |= ReasonNoWeatherSource;
 
@@ -237,10 +226,6 @@ namespace SQM
             std::string problems;
             append(problems, describeSource(v.http));
             append(problems, describeSource(v.mqtt));
-            if (v.rainContact == RainContact::Raining)
-                append(problems, "Rain contact wet");
-            if (v.rainContact == RainContact::Unreadable)
-                append(problems, "Rain contact unreadable");
             if (v.reasons & ReasonNoWeatherSource)
                 append(problems, "No weather source: SQMeter HTTP and MQTT are both off");
             if (v.verdict == Verdict::Safe)

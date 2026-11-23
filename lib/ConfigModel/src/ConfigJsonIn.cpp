@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "ConfigPins.h"
 #include "NetAddress.h"
 #include <ArduinoJson.h>
 #include <cctype>
@@ -347,7 +348,7 @@ namespace SQM
             mqtt.take("enabled", s.mqttEnabled);
             mqtt.take("topic", s.mqttTopic);
             safety.take("staleSeconds", s.staleSeconds);
-            safety.take("rainContact", s.rainContact);
+            // "rainContact" (removed by spec 023) is ignored: a saved value is dropped.
         }
 
         // Named choices: anything but the documented names is refused, never
@@ -455,18 +456,6 @@ namespace SQM
             return setError(error, "Automatic close: notStarted must be halt or retry");
         }
 
-        // Spec 022. The deadline is the device's: read from stored settings
-        // only, never from a request or a restore (strict).
-        void applyTestBox(const Section &t, TestBoxConfig &c)
-        {
-            t.take("park", c.park);
-            t.take("weather", c.weather);
-            t.take("daylight", c.daylight);
-            t.take("hours", c.hours);
-            if (!t.reader().strict())
-                t.take("until", c.until);
-        }
-
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -508,6 +497,9 @@ namespace SQM
         {
             applyRoot(root, cfg);
             applyWifi(root.child("wifi"), cfg.wifi, keep);
+            if (!applyPins(root, cfg.pins, error) || !applyNetwork(root.child("network"), cfg.network, error) ||
+                !applyAnalog(root, cfg.analog, error))
+                return false;
             applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
             applyAccess(root, cfg, keep);
             applyTime(root, cfg);

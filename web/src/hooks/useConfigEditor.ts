@@ -51,7 +51,7 @@ const conflictsOf = (body: { conflicts?: unknown } | null): string[] | null =>
 const submit = async (config: Config, saved: Config, extra: Partial<Config>, loaded: Loaded): Promise<Submitted> => {
   const payload = toConfigPayload(config);
   const full = { ...payload, ...extra };
-  const errors = getConfigValidationErrors(full);
+  const errors = getConfigValidationErrors(full, saved);
   if (hasConfigValidationErrors(errors)) return { outcome: { kind: 'invalid', errors }, patch: undefined };
   const patch = diffConfig(saved, full) ?? {};
   const base = loaded.revision === undefined ? {} : { baseRevision: loaded.revision, baseValues: baseValuesFor(loaded.document, patch) };
@@ -135,7 +135,7 @@ const useLoadedConfig = () => {
     setSaved(normalized);
     setSetup(data.setup);
     setOriginalWifiSsid(data.wifi?.ssid ?? '');
-    if (edited) setValidationErrors(getConfigValidationErrors(edited));
+    if (edited) setValidationErrors(getConfigValidationErrors(edited, normalized));
   };
   const load = () => loadInto(take, () => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps -- loaded once on mount; reload() loads again
@@ -166,7 +166,7 @@ export const useConfigEditor = () => {
     setConfig((current) => {
       if (!current) return current;
       const next = toConfigPayload(changes.reduce((acc, [path, value]) => setPath(acc, path, value), current));
-      setValidationErrors(getConfigValidationErrors(next));
+      setValidationErrors(getConfigValidationErrors(next, saved));
       return next;
     });
   };

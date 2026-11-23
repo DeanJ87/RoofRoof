@@ -1,15 +1,17 @@
 ---
-description: "First boot of an RoofRoof: join its setup hotspot, connect it to your WiFi and open the dashboard."
+description: "First boot of a RoofRoof: join its setup hotspot and connect it to your WiFi, or plug a WT32-ETH01 into your network, then open the dashboard and choose the board."
 ---
 
 # First Boot
 
 RoofRoof ships with no WiFi credentials. On first power-on it starts in **hotspot mode** — it broadcasts its own open WiFi network so you can configure it from any phone or laptop.
 
+That is the way in for an ESP32 DevKit. A WT32-ETH01 on a network cable needs no hotspot: see [Ethernet on the WT32-ETH01](#ethernet-on-the-wt32-eth01).
+
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: 10aee493c6e936f8
+fingerprint: 5a0502a527d473a4
 -->
 <figure class="diagram" markdown>
 
@@ -52,6 +54,18 @@ sequenceDiagram
     3. You choose a network and enter its password. The device joins it while keeping the hotspot up.
     4. **Joined within 10 seconds**: the device saves the network, the screen shows `roofroof.local` and the IP, and about 15 seconds later the device restarts on your network and the hotspot goes. Rejoin your own network and open that address.
     5. **Wrong password or no answer**: the screen says it didn't join, and you can try again.
+
+---
+
+## Ethernet on the WT32-ETH01
+
+A new WT32-ETH01 has no board chosen yet, so it drives none of the roof's pins. At its first start it looks for its own Ethernet chip, finds it and starts Ethernet ([Pins](../user-guide/pins.md#a-new-device-no-board-chosen)). With a cable to your network:
+
+1. Plug in the cable and power the board. It takes an address by DHCP within a few seconds.
+2. Open `http://roofroof.local`, or the address your router's DHCP client list shows for `roofroof`.
+3. The [setup wizard](../user-guide/setup-wizard.md) opens over Ethernet. Its board question has **WT32-ETH01 + RoofRoof carrier v1** preselected: confirm it, save, and restart when asked. Its WiFi question can be skipped (*"You're on Ethernet"*): WiFi is optional on this board.
+
+No setup hotspot opens while the cable works. Without a cable (or a network) the hotspot opens 45 seconds after power-on, and the steps below apply; see [Network](../user-guide/network.md#the-setup-hotspot) for the rules on a board with Ethernet.
 
 ---
 
@@ -128,7 +142,7 @@ Open the web UI. The Dashboard shows the **Status**, **Roof** and **Device & Net
 
 ## If the WiFi is Down at Startup
 
-If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), RoofRoof also opens the **RoofRoof-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network (once the roof is at rest and any automatic close has finished). A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed.
+If the saved network can't be joined within 45 seconds of power-on (for example the router is slower to start after a power cut), RoofRoof also opens the **RoofRoof-Setup** hotspot so you can change the network, and keeps retrying the saved one in the background. As soon as it reconnects, it restarts onto your network (once the roof is at rest and any automatic close has finished). A shorter outage at boot, or any outage later on, only reconnects: the hotspot stays closed. A board running Ethernet has its own rules ([Network](../user-guide/network.md#the-setup-hotspot)).
 
 !!! warning "The hotspot can't open the roof"
     The setup hotspot has no password, so anyone in range can join it. The roof can't be opened while it is on, from any network: an open is refused (`409`, reason `hotspot`). Stop, close and clearing a fault work as usual, so you can still close the roof when the router is down. Opening needs a safe weather verdict from SQMeter on your home network anyway. Trying a new network from the setup screen is refused while the roof moves or an automatic close is waiting for the park or closing: it would drop the connection N.I.N.A. is reached over.
@@ -137,7 +151,7 @@ If the saved network can't be joined within 45 seconds of power-on (for example 
 
 ## Next: the setup wizard, then commission the roof
 
-The first time you open the dashboard after joining, the [setup wizard](../user-guide/setup-wizard.md) opens over the dashboard and asks one question at a time: the device name and password, the site and time, the hardware with its live readings, the Hall sensor, the roof's travel and speed, the weather sources and N.I.N.A. (each with a Test), the alert channel and daylight, then a review of every check. It never moves the roof. You can leave it and carry on later, skip it, or run it again from **System → Setup**.
+The first time you open the dashboard after joining, the [setup wizard](../user-guide/setup-wizard.md) opens over the dashboard and asks one question at a time: the device name and password, the site and time, the hardware (the board and its pins, then a wiring check) with its live readings, the Hall sensor, the roof's travel and speed, the weather sources and N.I.N.A. (each with a Test), the alert channel and daylight, then a review of every check. It never moves the roof. You can leave it and carry on later, skip it, or run it again from **System → Setup**.
 
 A device that has joined your network is not ready to move a roof. Follow the [commissioning guide](../hardware/commissioning.md) in order, with the motor disconnected, and print the [checklist](../hardware/commissioning-checklist.md) to tick off as you go.
 

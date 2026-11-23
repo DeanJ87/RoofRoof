@@ -11,6 +11,9 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
     Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
+    // Spec 023: pins and the network mode wait while the roof is busy, as on the device.
+    if ((next->pins != cfg.pins || next->network.mode != cfg.network.mode) && !platformHold("restart").empty())
+        return errorJson("Pins and the network mode can't change while the roof is busy");
     // Spec 022: the test box's deadline, as WebServer::handleSetConfig.
     if (!ConfigSave::stampTestBox(
             cfg.testBox,
@@ -31,6 +34,7 @@ bool EmulatedDevice::loadConfig(const std::string &json)
     if (!next)
         return false;
     cfg = *next;
+    runningPins = cfg.pins;
     roofBooted = false; // what the hardware boots with
     return true;
 }
@@ -46,8 +50,10 @@ void EmulatedDevice::restart(double nowMsIn)
     clientWatch.reset();
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
-    roofBooted = false; // boots on the next tick: unknown between the magnets
-    resetSite();        // the location read starts again (the kept location stays)
+    roofBooted = false;     // boots on the next tick: unknown between the magnets
+    runningPins = cfg.pins; // spec 023: pins apply at a start
+    wiringState = ConfigPins::CheckState::Idle;
+    resetSite(); // the location read starts again (the kept location stays)
     // Spec 017: a restart loses the log; only kept summaries stay.
     roof.attachDiag(nullptr);
     diagLog.reset();

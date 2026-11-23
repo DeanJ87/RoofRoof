@@ -89,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1795463411,
-    "iso": "2026-11-23T19:50:11+0000",
+    "epoch": 1795469809,
+    "iso": "2026-11-23T21:36:49+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1795459809811,
-    "nextSync": 1795467009811,
+    "lastSync": 1795466207709,
+    "nextSync": 1795473407709,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -130,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1795463349811,
+    "lastPublish": 1795469747709,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -163,7 +163,6 @@
       "switch1": "notFitted",
       "switch2": "notFitted"
     },
-    "rainContact": "notFitted",
     "closePending": false,
     "calibrating": false,
     "closePhase": "idle",
@@ -227,5 +226,23 @@
       "needs": []
     }
   },
-  "configRevision": 1465469608
+  "ethernet": {
+    "present": false,
+    "mode": "wifi",
+    "started": false,
+    "phyFound": false,
+    "link": false,
+    "speedMbps": 0,
+    "fullDuplex": false,
+    "ip": "",
+    "mac": "",
+    "ipv6": []
+  },
+  "pins": {
+    "preset": "devkit",
+    "board": "esp32-devkit",
+    "valid": true,
+    "restartNeeded": false
+  },
+  "configRevision": 3932332023
 }

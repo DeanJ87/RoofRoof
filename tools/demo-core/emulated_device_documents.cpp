@@ -18,6 +18,23 @@ std::string EmulatedDevice::statusParts() const
     RoofIo::writeDaylight(roofOut, snapshot);
     writeLocation(doc.createNestedObject("location")); // spec 020
     writeSync(doc.createNestedObject("sync"));
+    // Spec 023: the demo board is a DevKit on Wi-Fi.
+    JsonObject pins = doc.createNestedObject("pins");
+    pins["preset"] = Board::presetName(runningPins.preset);
+    pins["board"] = Board::boardName(runningPins.board);
+    pins["valid"] = Board::bootPins(runningPins, Board::facts(runningPins.board, false), false).valid;
+    pins["restartNeeded"] = cfg.pins != runningPins;
+    JsonObject eth = doc.createNestedObject("ethernet");
+    eth["present"] = false;
+    eth["mode"] = "wifi";
+    eth["started"] = false;
+    eth["phyFound"] = false;
+    eth["link"] = false;
+    eth["speedMbps"] = 0;
+    eth["fullDuplex"] = false;
+    eth["ip"] = "";
+    eth["mac"] = "";
+    eth.createNestedArray("ipv6");
     return serialize(doc);
 }
 

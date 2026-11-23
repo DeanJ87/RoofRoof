@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 60d005361826366a
+fingerprint: 89d221cefdd4333f
 -->
 <figure class="diagram" markdown>
 
@@ -39,11 +39,11 @@ flowchart TB
     CRITICAL(["Critical roof alert<br/>the mount didn't park,<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me"]
     CWORDING -->|"never paused, never switched off"| INEFFECT
     SENT --> AGAIN["Critical alert no channel took:<br/>sent again after 1 min, doubling to 30 min"]
-    INEFFECT -->|"no: MQTT off,<br/>no WiFi"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
+    INEFFECT -->|"no: MQTT off,<br/>no network"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
     INEFFECT -->|yes| MQTT["MQTT: published at once"]
     INEFFECT -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
     HTTP --> CANSEND{"Network free?"}
-    CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>WiFi down, a firmware update,<br/>or another HTTPS request"]
+    CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>no network, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
     MQTT --> RECENT["Recent alerts: each channel's result"]
     INACTIVE --> RECENT
@@ -62,8 +62,8 @@ flowchart TB
     4. The alert gets its default or custom wording; events raised in the same second become one notification.
     5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical roof alerts.
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
-    7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without WiFi) is **skipped** with the reason, and nothing is attempted.
-    8. A background send is **skipped** when WiFi is down, a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
+    7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without a network: WiFi or Ethernet) is **skipped** with the reason, and nothing is attempted.
+    8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
     10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts) and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me, and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
     11. The **test box reminder** ([test box mode](test-box.md)) is held back in the start-up minute like any event, then skips steps 5 and 6: it goes out on its own, never stacked, whether alerts are paused, outside the send mode or **Send alerts** is off.
@@ -86,7 +86,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Roof closed after daylight | The roof reached closed during a daylight close | Normal |
 | Daylight check not working | The daylight check couldn't run for 10 minutes (no location, or no clock) | Normal |
 | Test box mode on | A [test box](test-box.md) bypass has come into effect, and again after every restart while one is in effect | Urgent |
-| A weather source is lost | SQMeter or the rain contact stopped answering for 30 s | Normal |
+| A weather source is lost | SQMeter stopped answering for 30 s | Normal |
 | The imaging app stops checking | No request reached a device for the **Silent for** time. See [The imaging app](#the-imaging-app) | Urgent |
 | The imaging app is back | It started checking again | Quiet |
 | The imaging app disconnects | An imaging app disconnected normally, e.g. at the end of a session | Off |
@@ -177,7 +177,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **Roof closed after daylight** (`daylight_closed`, default Normal): the roof reached closed during a close that began because of daylight; `{reason}` is the sun.
 - **Test box mode on** (`test_box`, default Urgent): a bypass of [test box mode](test-box.md) has come into effect (turned on, or a new one added), and it goes out again after every restart while one is in effect. `{reason}` is the bypass text ("Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"), and the message ends "Faults still stop the roof." It can't be switched off: its level can be lowered to Quiet at the lowest. Like the critical alerts it goes out with alerts off, paused or outside the send mode, on its own (never stacked with other events), on every channel that is set up. Like the other roof events it waits out the start-up minute.
 - **Daylight check not working** (`daylight_unknown`, default Normal): the mode is on and the check couldn't run for 10 minutes without a break: `{reason}` is "Location not set" or "Clock not set". A clock set by NTP within 10 minutes of a restart never sends it. Nothing moves, refuses or closes meanwhile.
-- **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, or the rain contact unreadable, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
+- **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 
 A custom title or message that comes out longer than Pushover allows (200 / 1,024 characters) is replaced by the built-in one.
 
@@ -266,7 +266,7 @@ Alert delivery by MQTT needs MQTT switched on - see [MQTT](mqtt.md#topics).
 
 **Clear** in the flyout empties the list on the device.
 
-A bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's result: **Sent**, **Failed** or **Skipped** (e.g. no WiFi, MQTT off, or an OTA update in progress), with the reason on hover. New alerts appear as soon as the device records them; the page doesn't need reloading. A channel that can't deliver shows as **Inactive** with the reason under its switch, isn't counted in the channels badge, and has no **Send test** until it can. **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
+A bell in the header shows how many alerts arrived since you last looked, and opens the last 20 alerts since boot with each channel's result: **Sent**, **Failed** or **Skipped** (e.g. no network, MQTT off, or an OTA update in progress), with the reason on hover. New alerts appear as soon as the device records them; the page doesn't need reloading. A channel that can't deliver shows as **Inactive** with the reason under its switch, isn't counted in the channels badge, and has no **Send test** until it can. **Send test** waits for that status and shows the actual result. The list is also available from `GET /api/alerts/recent`.
 
 ## Pushover keys
 

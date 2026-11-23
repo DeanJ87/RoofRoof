@@ -78,7 +78,7 @@
           "state": "inactive",
           "id": "D-03",
           "reason": "wifi-disconnected",
-          "text": "Not connected to WiFi",
+          "text": "Not connected to a network",
           "fix": "network#wifi"
         },
         "ntp.enabled": {

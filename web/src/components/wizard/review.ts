@@ -2,6 +2,7 @@ import type { Config, RoofInputs, SystemStatus } from '../../types';
 import { t } from '../../i18n';
 import { formatDateTime, formatNumber } from '../../i18n/format';
 import type { WizardPageId } from './pages';
+import { pinsRestartNeeded, presetLabel } from '../../lib/pinsView';
 
 // The review page's checks (spec 015 FR-010): one per essential, from the
 // saved settings and the live readings. A missing reading is "unknown", never OK.
@@ -62,11 +63,14 @@ const parkSwitches = ({ config, status }: ReviewInput): Check => {
   return readings.includes('unreadable') ? bad(t('wizard.review.parkSwitchUnreadable')) : ok(t('wizard.review.parkSwitchesRead'));
 };
 
-const rainContact = ({ config, status }: ReviewInput): Check => {
-  if (!config.safety?.rainContact) return ok(t('wizard.review.noRainContact'));
-  const reading = status?.roof?.rainContact;
-  if (!reading) return unknown();
-  return reading === 'unreadable' ? bad(t('wizard.review.rainContactUnreadable')) : ok(t('wizard.review.rainContactRead'));
+// Spec 023: a board chosen and its pins in effect and valid.
+const board = ({ config, status }: ReviewInput): Check => {
+  if (config.pins?.preset === 'unset') return bad(t('wizard.review.noBoard'));
+  const pins = status?.pins;
+  if (!pins) return unknown();
+  if (pinsRestartNeeded(config.pins, status)) return warn(t('wizard.review.boardRestart'));
+  if (!pins.valid) return bad(t('wizard.review.pinsInvalid'));
+  return ok(t('wizard.review.boardOk', { board: presetLabel(pins.preset) }));
 };
 
 const hall = ({ status, hallNotFitted }: ReviewInput): Check => {
@@ -135,9 +139,9 @@ const CHECKS: [string, string, WizardPageId, (input: ReviewInput) => Check][] = 
   ['password', 'wizard.review.password', 'device', password],
   ['site', 'wizard.review.site', 'site', site],
   ['clock', 'wizard.review.clock', 'site', clock],
+  ['board', 'wizard.review.board', 'hardware', board],
   ['supply', 'wizard.review.supply', 'hardware', supply],
   ['parkSwitches', 'wizard.review.parkSwitches', 'hardware', parkSwitches],
-  ['rainContact', 'wizard.review.rainContact', 'hardware', rainContact],
   ['hall', 'wizard.review.hall', 'hall', hall],
   ['motion', 'wizard.review.motion', 'motion', motion],
   ['weather', 'wizard.review.weather', 'weather', weather],

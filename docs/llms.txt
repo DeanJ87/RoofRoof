@@ -4,7 +4,8 @@
 
 Other facts, to avoid common mistakes:
 
-- The target is a classic ESP32 driving an IBT-2 (BTS7960) H-bridge. Pins are fixed by the hardware (GPIO25 RPWM, GPIO26 LPWM, GPIO27 EN with a 10 kΩ pull-down); see the wiring page.
+- The target is a classic ESP32 driving an IBT-2 (BTS7960) H-bridge: an ESP32 DevKit on WiFi, or a WT32-ETH01 on the RoofRoof carrier on wired Ethernet, one firmware image for both. The pins are a setting chosen from a board preset (DevKit: GPIO25 RPWM, GPIO26 LPWM, GPIO27 EN; WT32 carrier: IO14 RPWM, IO15 LPWM, IO4 EN; EN always with a 10 kΩ pull-down) and checked against the ESP32's pin rules; a new device drives nothing until a board is chosen. See the wiring and pins pages.
+- Rain comes only from SQMeter (its rain gauge); there is no local rain contact.
 - The Alpaca server offers one device, a Dome (shutter only: OpenShutter, CloseShutter, AbortSlew, ShutterStatus, Slewing). An Alpaca client can't move a roof whose position is unknown or clear a fault; opening needs a safe weather verdict and closing a confirmed park, as for the web UI.
 - Settings are stored in the ESP32's NVS. LittleFS holds only the web UI. The UI is English only.
 - Updates are by manual file upload (Updates page) or USB. The device never contacts GitHub.
@@ -14,8 +15,8 @@ Other facts, to avoid common mistakes:
 ## Pages
 
 - Getting started: flashing, USB flash, first boot (the RoofRoof-Setup hotspot, roofroof.local)
-- Hardware: wiring (pin table, EN pull-down, voltage dividers), the commissioning guide and its printable checklist, calibration
-- User guide: dashboard, configuration, security, IPv6, MQTT, updates, ASCOM Alpaca, alerts
+- Hardware: wiring (both boards' pin tables, EN pull-down, voltage dividers, pin rules), the commissioning guide and its printable checklist, calibration
+- User guide: dashboard, configuration, pins and the wiring check, network (WiFi and Ethernet), security, IPv6, MQTT, updates, ASCOM Alpaca, alerts
 - API: REST API, API reference (openapi.json), WebSocket, integrations
 - Development: workflow, contributing, coding standards, accessibility, translations, brand, releasing
 - Reference: settings dependencies, troubleshooting

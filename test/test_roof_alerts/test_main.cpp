@@ -232,14 +232,12 @@ void test_conditions_lost_sources(void)
         weather.http.state = state;
         TEST_ASSERT_EQUAL_STRING("", lostSources(weather).c_str());
     }
-    // Two sources and the rain contact, all named.
+    // Both sources, named.
     weather.http.state = Safety::SourceState::Unreachable;
     weather.mqtt.state = Safety::SourceState::Offline;
-    weather.rainContact = Safety::RainContact::Unreadable;
     const std::string text = lostSources(weather);
     TEST_ASSERT_NOT_NULL(strstr(text.c_str(), Safety::describeSource(weather.http).c_str()));
     TEST_ASSERT_NOT_NULL(strstr(text.c_str(), Safety::describeSource(weather.mqtt).c_str()));
-    TEST_ASSERT_NOT_NULL(strstr(text.c_str(), "Rain contact unreadable"));
 }
 
 void test_conditions_no_source_on_is_not_lost(void)
@@ -250,9 +248,6 @@ void test_conditions_no_source_on_is_not_lost(void)
     weather.http.state = Safety::SourceState::Off;
     weather.mqtt.state = Safety::SourceState::Off;
     Alerts::RoofInputs roof;
-    updateConditions(roof, healthy(), weather, SequenceView{});
-    TEST_ASSERT_FALSE(roof.sourceLost);
-    weather.rainContact = Safety::RainContact::Raining;
     updateConditions(roof, healthy(), weather, SequenceView{});
     TEST_ASSERT_FALSE(roof.sourceLost);
 }

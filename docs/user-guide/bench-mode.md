@@ -38,6 +38,11 @@ The bench image isn't published with the releases. Build it from a checkout.
     DevKit, GPIO36 (the supply sense input) floats and can read high. Fit the 100k/22k divider or
     tie GPIO36 to GND with a jumper or a 10k resistor.
 
+Like the standard firmware, a new bench board has no board chosen: nothing is driven and the
+simulated roof doesn't run until you choose **ESP32 DevKit** on the [Pins](pins.md) page (or in the
+setup wizard) and restart. The wiring check's EN pull-down test is skipped in the bench build,
+which never changes its motor pins.
+
 To leave bench mode, install the standard firmware: over USB, or through **Updates** in the web UI
 (a bench board accepts the standard image).
 
@@ -50,7 +55,7 @@ To leave bench mode, install the standard firmware: over USB, or through **Updat
 | The weather and park gates, the close sequence, the alerts | The 12 V supply (12.6 V, sagging a little while moving) |
 | REST, WebSocket, MQTT, Home Assistant, the Alpaca Dome | The motor current, when current sense is on |
 | The fault store: a latched fault survives a restart | |
-| SQMeter, N.I.N.A., the park switches and the rain contact, if you connect them | |
+| SQMeter, N.I.N.A. and the park switches, if you connect them | |
 
 The simulated roof starts **half-way** after every restart, so it reads *unknown* (and the Dome
 reports a shutter error) until you move it: open or close it from the web UI (a person's command
@@ -62,8 +67,8 @@ jams, a low supply and unsafe weather in the [demo](../live-demo.md#the-roof).
 
 - **A separate build.** The standard firmware contains no bench code. No setting, command, backup
   restore, MQTT message or Alpaca call can switch a roof controller into bench mode.
-- **The motor driver's pins stay low.** In the bench build, EN (GPIO27), RPWM (GPIO25) and LPWM
-  (GPIO26) are set low at start-up and never written high, and PWM is never attached to them. The
+- **The motor driver's pins stay low.** In the bench build, EN, RPWM and LPWM (GPIO27, 25 and 26
+  on the DevKit preset) are set low at start-up and never written high, and PWM is never attached to them. The
   rule is one function with a native test over every command and duty.
 - **The standard firmware refuses a bench image** over the network:
     - **Updates** in the web UI refuses it before anything is installed: *"This is a bench-mode
@@ -89,5 +94,5 @@ jams, a low supply and unsafe weather in the [demo](../live-demo.md#the-roof).
 
 ## Check it on your board
 
-Before you rely on a bench board, measure GPIO27, GPIO25 and GPIO26 with a meter or a scope while
+Before you rely on a bench board, measure EN, RPWM and LPWM (GPIO27, 25 and 26 on a DevKit) with a meter or a scope while
 you open and close the simulated roof: all three stay at 0 V.

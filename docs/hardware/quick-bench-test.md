@@ -14,7 +14,7 @@ This page is for a first look at the real controller moving the real motor on th
 - The motor sits on the bench, **unloaded**, fixed so it can't jump, with a hand near the 12 V switch. A switch is the real stop; the software Stop is a second one.
 - Know where **Stop** is: on the dashboard's Roof card, and the **Stop roof** bar pinned to the bottom of every page while the roof moves.
 - Leave the Alpaca Dome and MQTT roof commands off (`alpaca.enabled` and `mqtt.roofCommands`, both off by default), so nothing but your own clicks in the web UI can move the motor.
-- Fit and measure the EN pull-down before the first power-up, exactly as in [commissioning stage 1](commissioning.md#stage-1-wiring-and-the-en-pull-down-everything-off): with the ESP32 unpowered, 8 to 11 kΩ from GPIO27 to GND.
+- Fit and measure the EN pull-down before the first power-up, exactly as in [commissioning stage 1](commissioning.md#stage-1-wiring-and-the-en-pull-down-everything-off): with the ESP32 unpowered, 8 to 11 kΩ from GPIO27 to GND. Then choose the **ESP32 DevKit** preset on the [Pins](../user-guide/pins.md) page (or in the setup wizard) and restart: a new board drives nothing until a board is chosen.
 
 ## Wiring
 
@@ -26,7 +26,7 @@ This page is for a first look at the real controller moving the real motor on th
 | 36 | 12 V supply through the 100 kΩ / 22 kΩ divider | see below |
 | 39 | the stand-in for the Hall sensor | see the two options below |
 
-The full pin list is in [Wiring](wiring.md#pin-table).
+These are the ESP32 DevKit preset's pins; the full list, and the WT32-ETH01 carrier's, is in [Wiring](wiring.md#pin-table).
 
 **The supply must be readable.** Every move is refused while the controller can't read the 12 V supply or reads it below `roof.minSupplyVolts` (default 11 V). On the dashboard, `roof.supplyVolts` in `GET /api/status` is empty when the supply can't be read, and `roof.supplyLow` is true when it is unreadable or low. Feed the divider from the motor supply, with the motor supply on, and check the Supply reading on the Roof card before trying a move. A bench supply that sags under 11 V needs a lower minimum, within 6 to 15 V.
 

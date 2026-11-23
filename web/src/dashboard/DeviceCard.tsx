@@ -85,16 +85,26 @@ const Ipv6Rows: FunctionalComponent<{ ipv6: NonNullable<SystemStatus['wifi']['ip
 };
 
 type Wifi = SystemStatus['wifi'] | undefined;
+type Ethernet = SystemStatus['ethernet'];
 
-const WifiTiles: FunctionalComponent<{ wifi: Wifi; uptime?: number }> = ({ wifi, uptime }) => {
-  const rssi = rssiTone(wifi?.rssi);
+// WiFi that isn't connected has no signal to show. On a board running Ethernet (spec 023) that
+// is normal, so it reads neutral: off in Ethernet-only mode, else just not connected.
+const wifiPill = (wifi: Wifi, ethernet: Ethernet) => {
+  if (!wifi || wifi.connected) return rssiTone(wifi?.rssi);
+  if (!ethernet?.present) return { tone: 'pill-amber', label: t('glance.wifiNotConnected') };
+  return { tone: 'pill-dim', label: ethernet.mode === 'ethernet' ? t('glance.wifiOffEthernet') : t('glance.wifiNotConnected') };
+};
+
+const WifiTiles: FunctionalComponent<{ wifi: Wifi; ethernet: Ethernet; uptime?: number }> = ({ wifi, ethernet, uptime }) => {
+  const pill = wifiPill(wifi, ethernet);
+  const connected = !wifi || wifi.connected;
   return (
     <div class="tile-grid two">
       <div class="metric-tile left">
         <div class="metric-label">{t('dashboard.wifi')}</div>
-        <Pill tone={rssi.tone}>{rssi.label}</Pill>
-        <div class="metric-sub mono">{wifi?.rssi ?? '--'} dBm</div>
-        <div class="metric-sub">{wifi?.ssid ?? '--'}</div>
+        <Pill tone={pill.tone}>{pill.label}</Pill>
+        {connected && <div class="metric-sub mono">{wifi?.rssi ?? '--'} dBm</div>}
+        {(connected || wifi?.ssid) && <div class="metric-sub">{wifi?.ssid || '--'}</div>}
       </div>
       <div class="metric-tile left">
         <div class="metric-label">{t('dashboard.uptime')}</div>
@@ -124,11 +134,28 @@ const FirmwareRow: FunctionalComponent<{ version?: string }> = ({ version }) =>
     </Row>
   ) : null;
 
+// Spec 023: on a board running Ethernet, its link and address (the WiFi rows stay while WiFi is connected).
+const EthernetRows: FunctionalComponent<{ ethernet: SystemStatus['ethernet'] }> = ({ ethernet }) =>
+  ethernet?.present ? (
+    <div data-inventory="ethernet">
+      <Row label={t('glance.ethernet')}>
+        <Pill tone={ethernet.link ? 'pill-green' : 'pill-amber'}>{ethernet.link ? t('dashboard.connected') : t('glance.noLink')}</Pill>
+      </Row>
+      <Row label={t('glance.ethernetIp')} value={ethernet.ip || '--'} mono />
+    </div>
+  ) : null;
+
+// WiFi's own IPv4 address, only while WiFi is connected (an unconnected WiFi has none, not 0.0.0.0).
+// Beside Ethernet's address it says whose it is.
+const WifiIpRow: FunctionalComponent<{ wifi: Wifi; ethernet: Ethernet }> = ({ wifi, ethernet }) =>
+  wifi && !wifi.connected ? null : <Row label={ethernet?.present ? t('glance.wifiIp') : t('glance.ipv4')} value={wifi?.ip ?? '--'} mono />;
+
 const DeviceCard: FunctionalComponent<{ status: SystemStatus | null }> = ({ status }) => (
   <Card title={t('dashboard.deviceNetwork')} icon="wifi" tone="cyan">
-    <WifiTiles wifi={status?.wifi} uptime={status?.uptime} />
+    <WifiTiles wifi={status?.wifi} ethernet={status?.ethernet} uptime={status?.uptime} />
     <div class="device-rows">
-      <Row label={t('glance.ipv4')} value={status?.wifi?.ip ?? '--'} mono />
+      <EthernetRows ethernet={status?.ethernet} />
+      <WifiIpRow wifi={status?.wifi} ethernet={status?.ethernet} />
       {status?.wifi?.ipv6?.enabled && <Ipv6Rows ipv6={status.wifi.ipv6} />}
       <LocalName wifi={status?.wifi} />
       <MqttRow mqtt={status?.mqtt} />

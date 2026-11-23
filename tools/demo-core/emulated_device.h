@@ -19,6 +19,7 @@
 #include "AlpacaRouter.h"
 #include "Config.h"
 #include "ConfigBackup.h"
+#include "ConfigPins.h"
 #include "ConfigSave.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
@@ -68,6 +69,9 @@ public:
           firmwareVersion(identity(identityJson).version)
     {
         cfg = Config::createDefault();
+        // The demo is a DevKit with its board chosen (spec 023: a real new device starts with none).
+        cfg.pins = Board::presetMap(Board::Preset::Devkit);
+        runningPins = cfg.pins;
     }
 
     // --- Alpaca::Backend ---------------------------------------------------
@@ -94,6 +98,10 @@ public:
     // Spec 020: POST /api/sqmeter/site, from the simulated SQMeter's settings
     // through the firmware's own parser. {status, body} like the device.
     std::string sqmeterSite(const std::string &body);
+    // Spec 023 (emulated_device_pins.cpp): GET /api/pins ("status"), POST
+    // /api/pins/validate ("validate"), POST /api/pins/check ("check"), GET
+    // /api/pins/check ("checkStatus"). {status, body} like the device.
+    std::string pins(const std::string &action, const std::string &body);
     // Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
     std::string sqmeterTest(const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
@@ -243,6 +251,11 @@ private:
     std::string firmwareVersion;
     DemoRoof::EmulatedRoof roof;
     bool roofBooted = false; // the roof boots on the first tick after a (re)start
+    // Spec 023: the pins read at the last (re)start, and the last wiring check.
+    Board::PinMap runningPins;
+    ConfigPins::CheckState wiringState = ConfigPins::CheckState::Idle;
+    Board::WiringResult wiring;
+    uint32_t wiringAtMs = 0;
     // Spec 017: the log and the summary list while diag.enabled (the device's Diagnostics).
     std::unique_ptr<Diag::MoveLog> diagLog;
     std::unique_ptr<Diag::SummaryList> diagList;

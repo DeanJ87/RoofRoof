@@ -25,6 +25,8 @@ const SECTION_TO_TAB: Record<string, SettingsTabId> = {
   daylight: 'roof',
   autoClose: 'roof',
   diagnostics: 'device',
+  pins: 'roof',
+  ethernet: 'network',
 };
 
 export const isSettingsTab = (value: string | null): value is SettingsTabId => SETTINGS_TABS.some((tab) => tab.id === value);
@@ -60,6 +62,8 @@ const ERROR_ROOT_TAB: Record<string, SettingsTabId> = {
   roof: 'roof',
   safety: 'roof',
   park: 'roof',
+  pins: 'roof',
+  network: 'network',
 };
 
 export const tabForErrorPath = (path: string): SettingsTabId => {

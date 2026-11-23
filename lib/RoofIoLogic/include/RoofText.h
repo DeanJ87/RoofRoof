@@ -21,6 +21,10 @@ namespace SQM
         // The supply against its minimum: "Supply 10.9 V < 11.0 V", or
         // "Supply unreadable (minimum 11.0 V)" (spec 007's supply alert).
         std::string describeSupply(float volts, float minimum);
+        // Spec 023: a command refused, and the fault's text, while the pins in
+        // effect failed the rules ("Pin setup invalid: ..."), or no board is
+        // chosen yet (`unset`: the reason alone).
+        std::string pinSetupText(const std::string &reason, bool unset);
         // A gate refusal: "Weather not safe: unsafe: rain", "Mount not parked: ...".
         std::string describeGate(GateRefusal refusal, const GateInputs &in);
     } // namespace RoofIo

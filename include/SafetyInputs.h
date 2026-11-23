@@ -40,8 +40,7 @@ namespace SQM
         void handle();
 
         // The GPIO inputs (spec 003), main loop. Until they are supplied, a
-        // fitted rain contact or park switch reads Unreadable: unsafe and not parked.
-        void setRainContact(Safety::RainContact reading) { rainReading = reading; }
+        // fitted park switch reads Unreadable: not parked.
         void setParkSwitches(Safety::SwitchReading first, Safety::SwitchReading second);
 
         // Main loop.
@@ -96,7 +95,6 @@ namespace SQM
         Safety::MqttTopics topics;
         Safety::SourceRecord mqttRecord;
         uint32_t seenConnections = 0; // MQTT (re)connects already handled
-        Safety::RainContact rainReading = Safety::RainContact::Unreadable;
         Safety::SwitchReading switch1 = Safety::SwitchReading::Unreadable;
         Safety::SwitchReading switch2 = Safety::SwitchReading::Unreadable;
         uint64_t startedAtMs = 0;

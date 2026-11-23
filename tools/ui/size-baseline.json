@@ -1,4 +1,4 @@
 {
-  "jsCssGzipBytes": 146230,
-  "overBudgetReason": "merge of 021 (with 020) into 022"
+  "jsCssGzipBytes": 159136,
+  "overBudgetReason": "Spec 023: the Pins page (board presets, pin fields, the wiring check, the Advanced analog section) and the Ethernet settings"
 }

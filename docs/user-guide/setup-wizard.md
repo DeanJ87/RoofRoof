@@ -1,10 +1,10 @@
 ---
-description: "The setup wizard: once RoofRoof has joined your WiFi, a dialog asks one question per screen about the essential settings, with live readings, tests of SQMeter and N.I.N.A., and a review of every check. It never moves the roof."
+description: "The setup wizard: once RoofRoof is on your network (WiFi or Ethernet), a dialog asks one question per screen about the essential settings, the board and a wiring check included, with live readings, tests of SQMeter and N.I.N.A., and a review of every check. It never moves the roof."
 ---
 
 # Setup wizard
 
-The first boot only joins your WiFi ([First Boot](../getting-started/first-setup.md)). The rest of
+The first boot only joins your network: WiFi from the setup hotspot, or Ethernet on a WT32-ETH01 with a cable ([First Boot](../getting-started/first-setup.md)). The rest of
 the essentials are spread over the **Settings** tabs. The setup wizard walks through them once, in
 a sensible order, with the live readings each one needs, and ends with a review that lists every
 check.
@@ -26,7 +26,7 @@ screen, under it on a phone) says why it is asked.
 
 | Device | What you see |
 |---|---|
-| New, or after a factory reset, once it has joined your WiFi | The wizard opens the first time you open the dashboard, at the part you reached last. If you leave it, a banner on the dashboard says **Setup isn't finished**, with **Continue setup** and **Dismiss**. |
+| New, or after a factory reset, once it is on your network (WiFi, or Ethernet on a WT32-ETH01) | The wizard opens the first time you open the dashboard, at the part you reached last. If you leave it, a banner on the dashboard says **Setup isn't finished**, with **Continue setup** and **Dismiss**. |
 | Upgraded from a release before the wizard | A banner on the dashboard offers it (**Run setup wizard**, **Dismiss**). Nothing opens by itself. |
 | Setup done (finished, skipped or dismissed) | Nothing. **System → Setup → Run setup wizard** runs it again at any time. |
 
@@ -62,7 +62,25 @@ wizard resumes at.
    ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
    SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
    for the daylight check); then the time zone and NTP.
-3. **Hardware**. The first screen asks **Is there a telescope under this roof yet?**: **Yes, or there will be** turns every [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each only where its source isn't already set up, with a deadline), offers **May ask N.I.N.A. to park**, and skips the Weather and N.I.N.A. screens, so setup never asks you to park a mount. The N.I.N.A. screen also links back to it and warns not to point a bench box at a live N.I.N.A. Then the live readings:
+3. **Hardware**, with the live readings:
+    - **Which board is RoofRoof on?**: **ESP32 DevKit**, **WT32-ETH01 + RoofRoof carrier v1** or
+      **Custom** (which links to the [Pins](pins.md) page), as choice cards. On a new device the
+      one the device found at boot is preselected (the WT32 carrier when its Ethernet chip
+      answered); you still confirm it. Until a board is saved and the device restarts, nothing is
+      driven and every move is refused, so the screen offers the restart ([Pins](pins.md#a-new-device-no-board-chosen));
+    - on a board with Ethernet, **How should RoofRoof join your network?**: *"You're on Ethernet
+      at …"*, with the [network mode](network.md#the-network-mode) and an optional WiFi fallback.
+      Skippable: WiFi is optional there;
+    - **Is there a telescope under this roof yet?**: **Yes, or there will be** turns every
+      [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each
+      only where its source isn't already set up, with a deadline), offers **May ask N.I.N.A. to
+      park**, and skips the Weather and N.I.N.A. screens, so setup never asks you to park a mount.
+      The N.I.N.A. screen also links back to it and warns not to point a bench box at a live N.I.N.A.;
+    - **Does the wiring check pass?**: **Check wiring** runs the [wiring check](pins.md#the-wiring-check) and shows each result
+      (the EN pull-down, the Hall sensor, the supply, the park inputs, current sense at rest and
+      Ethernet) with the value it read. It moves nothing; direction and travel are left to
+      **Teach the ends** and the commissioning guide. It is refused until the chosen pins are in
+      effect (after the restart);
     - the **12 V supply** as the device reads it through its fixed 100k/22k divider, and the
       minimum supply. Type what your meter shows at the driver's input: the screen says whether
       the two agree within 0.2 V. The meter reading is only compared, never saved;
@@ -70,8 +88,10 @@ wizard resumes at.
     - how many **park switches** are fitted (none, one or two), each with its live state. Operate
       each by hand and watch it change. The switches are optional: N.I.N.A.'s park alone confirms
       the mount is parked, and fitted switches are a second check that must agree
-      ([Safety inputs](safety-inputs.md));
-    - whether a **rain contact** is fitted, with its live state.
+      ([Safety inputs](safety-inputs.md)).
+
+    There is no rain question: rain comes from SQMeter's rain gauge ([Safety inputs](safety-inputs.md#weather)).
+
 4. **Hall sensor**: whether it is fitted. **Not fitted yet** leaves the thresholds as they are,
    says that without it the roof finds neither end (so the automatic close can't work), links the
    [quick bench test](../hardware/quick-bench-test.md), and skips the next screen. Otherwise, which

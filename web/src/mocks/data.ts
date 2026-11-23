@@ -130,7 +130,6 @@ export const mockStatus: SystemStatus = {
     motorAmps: null,
     maxCurrentAmps: 10,
     parkSwitches: { fitted: 0, switch1: 'notFitted', switch2: 'notFitted' },
-    rainContact: 'notFitted',
     closePending: false,
     calibrating: false,
     closePhase: 'idle',
@@ -167,6 +166,20 @@ export const mockStatus: SystemStatus = {
     mqtt: { follow: false, syncedAt: null, refused: null, needs: [] },
     alerts: { follow: false, syncedAt: null, refused: null, needs: [] },
   },
+  // Spec 023: a DevKit (no Ethernet) with its preset in effect.
+  ethernet: {
+    mode: 'wifi',
+    present: false,
+    started: false,
+    phyFound: false,
+    link: false,
+    speedMbps: 0,
+    fullDuplex: false,
+    ip: '',
+    mac: '',
+    ipv6: [],
+  },
+  pins: { preset: 'devkit', board: 'esp32-devkit', valid: true, restartNeeded: false },
 };
 
 // What POST /api/sqmeter/site answers (spec 020): SQMeter's site settings, its secrets only as "set".
@@ -220,7 +233,6 @@ export const mockInputs: RoofInputs = {
     text: 'safe',
     http: { enabled: true, state: 'good', generation: 1, ageMs: 2100, limitMs: 30000, safe: true, flags: 0, text: '' },
     mqtt: { enabled: false, state: 'off', generation: 0, ageMs: 0, limitMs: 150000, safe: false, flags: 0, text: '' },
-    rainContact: 'notFitted',
   },
   park: { parked: true, text: 'parked' },
   nina: { state: 'good', generation: 1, connected: true, atPark: true, slewing: false, ageMs: 900, text: '' },

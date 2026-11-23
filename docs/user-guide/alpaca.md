@@ -103,7 +103,7 @@ If you are often at the roof with N.I.N.A. to hand, you can turn on **Settings â
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand
 blocking: true
-fingerprint: b7415f80653065da
+fingerprint: 6689d8207e6ff74a
 -->
 <figure class="diagram" markdown>
 

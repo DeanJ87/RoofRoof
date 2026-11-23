@@ -29,7 +29,7 @@ namespace SQM
         // memory, partitions, time, WiFi, MQTT, connections, roof), pinned by
         // test/test_device_core (test_status_document_fits).
         constexpr size_t STATUS_DOC_CAPACITY = 6656; // 4096 until spec 003 added the roof section, 5120 until spec 008 added its checks,
-                                                     // 6144 until spec 022 added the test box
+                                                     // 6144 until spec 022 added the test box and spec 023 Ethernet and the pins
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

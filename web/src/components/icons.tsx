@@ -48,12 +48,6 @@ export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: n
         <path {...common} d="M12 19h.01" />
       </>
     ),
-    rain: (
-      <>
-        <path {...common} d="M18 15H8.4a3.6 3.6 0 0 1 .9-7 5.2 5.2 0 0 1 9.5 2.9A2.4 2.4 0 0 1 18 15Z" />
-        <path {...common} d="M8 19v1M12 18v2M16 19v1" />
-      </>
-    ),
     cpu: (
       <>
         <rect {...common} x="5" y="5" width="14" height="14" rx="2" />

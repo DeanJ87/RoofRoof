@@ -1,6 +1,31 @@
 <!--
 Sync Impact Report
-- Version: 2.1.1 -> 3.0.0 (MAJOR: Principles II and III gain a test-box exception, which relaxes
+- Version: 3.0.0 -> 4.0.0 (MAJOR: Principle III loses a weather source; Principle I's pin and boot
+  wording changes with the pins becoming settings).
+- Modified: I. Motion Safety. EN, RPWM and LPWM are the pins in effect (a board preset or a
+  checked custom map, spec 023), not fixed GPIO numbers. Boot reads the saved settings, then sets EN
+  low and both PWM low before anything else; until then the EN pull-down holds the driver off, as it
+  does through reset, flashing and the boot loader. A pin set that breaks the pin rules, settings
+  that can't be read, or a new device with no board chosen drive nothing: every candidate motor pin
+  stays an input and motion is locked out until a valid set is saved and the device restarts. A pin
+  change applies only at a restart and is refused while the roof is busy.
+- Modified: III. Unsafe Ends Closed. The local rain contact (GPIO4) is removed; rain comes from
+  SQMeter (its rain gauge, `reasonFlags` bits 9 and 10, or its MQTT safe topic).
+- New risk (III): rain is seen through SQMeter alone. A gauge that misses rain while SQMeter
+  stays reachable, fresh and reports no sensor fault is no longer backed by a local contact. A
+  SQMeter outage, a stale or unreadable reply, or a reported rain-sensor fault still make the
+  verdict unsafe, exactly as before.
+- New risk (I): EN is driven low a few tens of milliseconds later in the boot (after the settings
+  are read). The driver's off state in that window rests on the EN pull-down, as it already did
+  for the several hundred milliseconds of reset and boot loader before it.
+- Modified: Platform Constraints. The reserved-pin table becomes the two board presets (ESP32
+  DevKit; WT32-ETH01 on the RoofRoof carrier v1, with its Ethernet pins); one image for both.
+- Why: spec 023. The roof's controller is a WT32-ETH01 on wired Ethernet, whose Ethernet uses the
+  DevKit's motor pins, and the bench stays a DevKit; rain now comes from SQMeter's RG-15 gauge.
+- Templates: no change (they read the principles from this file).
+- Docs: docs/hardware/wiring.md, docs/user-guide/pins.md, docs/user-guide/safety-inputs.md,
+  specs/023-wt32-eth01-board/spec.md.
+- Earlier: 2.1.1 -> 3.0.0 (MAJOR: Principles II and III gain a test-box exception, which relaxes
   them).
 - Modified: II. Close Only Onto a Parked Mount and III. Unsafe Ends Closed. On a box with no
   telescope under it and no weather station (a controller tried out on a desk), the owner may set
@@ -106,11 +131,18 @@ of guessing.
 The motor moves only when the firmware knows where the roof is, why it is moving, and that
 nothing has gone wrong.
 
-- The driver MUST be off whenever the firmware is not deliberately driving it. EN (GPIO27) low
-  means off; both PWM outputs low means stop. EN has a hardware pull-down, so a reset, a crash, a
-  brown-out or flashing leaves the driver off. Boot sets EN low and both PWM low before anything
-  else runs.
-- RPWM (GPIO25) and LPWM (GPIO26) MUST NEVER be driven at the same time. A change of direction
+- The driver MUST be off whenever the firmware is not deliberately driving it. EN low means off;
+  both PWM outputs low means stop. EN has a hardware pull-down, so a reset, a crash, a brown-out or
+  flashing leaves the driver off.
+- EN, RPWM and LPWM are the pins in effect: a board preset, or a custom map that passes the pin
+  rules in `lib/` (no reserved, input-only or strapping pin for EN; outputs only where the chip can
+  drive). Boot reads the saved settings and then sets EN low and both PWM low before anything else
+  runs; until then the EN pull-down holds the driver off, as through reset. Pins change only at a
+  restart, and a change is refused while the roof is busy.
+- A pin set that breaks the rules, settings that can't be read, or a new device with no board chosen
+  MUST drive nothing: every candidate motor pin stays an input, and motion is locked out until a
+  valid set is saved and the device restarts.
+- RPWM and LPWM MUST NEVER be driven at the same time. A change of direction
   goes through stop (both low) and a dead time first. One function in one module sets the outputs,
   and a native test proves it can never produce both at once.
 - The roof MUST NEVER move by itself while its position is unknown. Position is known only at a
@@ -181,8 +213,7 @@ Doubt about the weather MUST resolve to "unsafe".
   Every step has a timeout. A step that times out stops the sequence where it is and raises a
   critical alert naming the step.
 - The weather verdict comes from SQMeter: `GET /api/safety` (its `safe` flag and `reasonFlags`,
-  bit 9 rain and bit 10 rain-sensor fault) and/or its retained MQTT `<base>/safe`, plus the local
-  rain contact on GPIO4 when fitted. Any source that says unsafe makes the verdict unsafe. A
+  bit 9 rain and bit 10 rain-sensor fault) and/or its retained MQTT `<base>/safe`. Any source that says unsafe makes the verdict unsafe. A
   missing, stale or unparseable source counts as unsafe, and so does a rain sensor that has failed.
 - Rain from any source MUST be acted on even if every other input is stale.
 - **Park requests are an owner setting** (`park.requestPark`, on by default and after an
@@ -315,7 +346,8 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
 ## Platform Constraints
 
 - **Firmware:** C++17 on Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5 (the pinned pioarduino platform;
-  PlatformIO Core 6.2 or newer), ESP32 DevKit (WROOM, 4 MB).
+  PlatformIO Core 6.2 or newer), ESP32 DevKit (WROOM, 4 MB) or WT32-ETH01 (wired Ethernet), one
+  image for both.
   - ESP-IDF options live in `custom_sdkconfig`, and the build fails if one doesn't apply.
   - One build, one partition layout with two OTA slots.
   - ESPAsyncWebServer (handlers match by prefix, so register specific routes before general
@@ -324,19 +356,19 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
     code.
 - **Web UI:** Preact + Vite, TypeScript strict (no `any`), Zod validation of config, served from
   LittleFS. Firmware and web UI ship as a matched pair.
-- **Hardware (reserved pins):**
+- **Hardware (board presets; spec 023):**
 
-  | Pin | Use |
-  |---|---|
-  | GPIO25 / GPIO26 | RPWM / LPWM |
-  | GPIO27 | R_EN and L_EN, joined, with a pull-down |
-  | GPIO34 / GPIO35 | R_IS / L_IS current sense (optional, 10k/20k dividers) |
-  | GPIO36 | 12 V supply sense (100k/22k divider) |
-  | GPIO39 | SS49E Hall output |
-  | GPIO32 / GPIO33 | park switches (optional, internal pull-ups) |
-  | GPIO4 | rain contact (optional) |
+  | Function | ESP32 DevKit | WT32-ETH01 + RoofRoof carrier v1 |
+  |---|---|---|
+  | RPWM / LPWM | GPIO25 / GPIO26 | IO14 / IO15 |
+  | R_EN and L_EN, joined, with a pull-down | GPIO27 | IO4 |
+  | R_IS / L_IS current sense (optional, 10k/20k dividers) | GPIO34 / GPIO35 | IO35 / IO32 |
+  | 12 V supply sense (100k/22k divider) | GPIO36 | IO36 |
+  | SS49E Hall output | GPIO39 | IO39 |
+  | park switches A / B (optional, internal pull-ups) | GPIO32 / GPIO33 | IO33 / IO5 |
+  | Ethernet (LAN8720, reserved) | none | IO0, 16, 18, 19, 21, 22, 23, 25, 26, 27 |
 
-  Analog inputs use ADC1 only. Travel length, speed and Hall thresholds are settings, never
+  A custom map is checked by the same rules. Analog inputs use ADC1 only. Travel length, speed and Hall thresholds are settings, never
   constants.
 - **Compatibility:** config saved by an older release MUST load and be migrated without a factory
   reset, and a migration MUST NOT turn on any motion feature that was off.
@@ -381,4 +413,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 3.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
+**Version**: 4.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23

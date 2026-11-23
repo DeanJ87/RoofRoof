@@ -44,6 +44,7 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/update/fs` | POST | Flash filesystem OTA |
 | `/api/wifi/scan` | GET | Scan for WiFi networks (starts a radio scan) |
 | `/api/wifi/connect` | POST | Change WiFi network |
+| `/api/pins/check` | POST | Run the wiring check (reads the inputs and, for a moment, the EN pull-down; never moves the roof) |
 | `/api/mqtt/test` | POST | Test MQTT broker connection |
 | `/api/alerts/test` | POST | Send a test alert |
 | `/api/alerts/arm`, `/api/alerts/disarm` | POST | Resume / pause alerts |
@@ -58,6 +59,8 @@ HTTP Basic Auth can be enabled to require credentials on mutation endpoints. Thi
 | `/api/config` | GET | Read config (passwords, keys and tokens masked) |
 | `/api/alerts/recent`, `/api/alerts/armed` | GET | Recent alerts, sending or paused and why |
 | `/api/settings/effective` | GET | Which settings are in effect, and why not (no secrets) |
+| `/api/pins`, `/api/pins/check` | GET | The pins in effect and saved, the presets; the last wiring check's results |
+| `/api/pins/validate` | POST | Check a pin map against the pin rules; saves nothing |
 | `/api/v1/...`, `/management/...` | GET / PUT | ASCOM Alpaca (the Alpaca spec has no auth). The Dome's open and close pass the same weather and park checks as the REST commands; an Alpaca client can't move a roof of unknown position or clear a fault ([ASCOM Alpaca](alpaca.md)) |
 | `/ws/status` | WS | Live status stream |
 

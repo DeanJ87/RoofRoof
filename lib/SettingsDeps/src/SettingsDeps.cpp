@@ -15,7 +15,7 @@ namespace SQM
                 {"alerts-off", "Alerts are off", "alerts#alerts"},
                 {"mqtt-off", "MQTT is off", "network#mqtt"},
                 {"mqtt-disconnected", "Broker not connected", "network#mqtt"},
-                {"wifi-disconnected", "Not connected to WiFi", "network#wifi"},
+                {"wifi-disconnected", "Not connected to a network", "network#wifi"},
                 {"alpaca-off", "Alpaca is off", "network#alpaca"},
                 {"no-alpaca-device", "No Alpaca device", "network#alpaca"},
                 {"ota-no-password", "Set an upload password", "device#security"},

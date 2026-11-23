@@ -28,21 +28,6 @@ namespace SQM
                 return fitted > index ? contactName(contact) : "notFitted";
             }
 
-            const char *rainName(const Snapshot &s)
-            {
-                if (!s.rainFitted)
-                    return "notFitted";
-                switch (s.rain)
-                {
-                case Contact::Closed:
-                    return "raining";
-                case Contact::Open:
-                    return "dry";
-                default:
-                    return "unreadable";
-                }
-            }
-
             // `text` cut to MAX_CHECK_TEXT bytes, never inside a UTF-8 character.
             std::string capped(const std::string &text)
             {
@@ -89,7 +74,7 @@ namespace SQM
                 fault["cause"] = causeName(record.cause);
                 putReading(fault, "measured", record.fault.measured, 2);
                 putReading(fault, "limit", record.fault.limit, 2);
-                fault["text"] = describeFault(record);
+                fault["text"] = record.cause == FaultCause::PinSetup && !s.pinSetupText.empty() ? s.pinSetupText : describeFault(record);
             }
         } // namespace
 
@@ -128,7 +113,6 @@ namespace SQM
             park["fitted"] = s.fittedSwitches;
             park["switch1"] = switchName(s.fittedSwitches, 0, s.switch1);
             park["switch2"] = switchName(s.fittedSwitches, 1, s.switch2);
-            out["rainContact"] = rainName(s);
             out["closePending"] = s.closePending;
             out["calibrating"] = s.calibrating;
             out["closePhase"] = s.closePhase != nullptr ? s.closePhase : "idle";

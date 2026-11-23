@@ -1,3 +1,4 @@
+#include "ConfigPins.h"
 #include "BackupInternal.h"
 #include "ConfigBackup.h"
 
@@ -26,6 +27,25 @@ namespace SQM::Backup
                 return;
             out.push_back({"alerts.pushover.enabled", "true", NotApplicableReason::PushoverKeys});
             pushover.remove("enabled");
+        }
+
+        // Spec 023: the pins belong to the hardware the device runs on, not to
+        // the backup: a DevKit's map restored on a WT32-ETH01 would drive its
+        // Ethernet lines. Never restored; listed when they differ from this device's.
+        void markPins(JsonObject settings, const Config &current, std::vector<NotApplicable> &out)
+        {
+            if (!settings.containsKey("pins"))
+                return;
+            Board::PinMap backup = current.pins;
+            const bool readable =
+                settings["pins"].is<JsonObject>() && ConfigPins::read(settings["pins"].as<JsonObjectConst>(), backup, nullptr);
+            if (!readable || backup != current.pins)
+            {
+                std::string value;
+                serializeJson(settings["pins"], value);
+                out.push_back({"pins", value, NotApplicableReason::BoardPins});
+            }
+            settings.remove("pins");
         }
 
         // Where a secret goes in the settings document, made if missing.
@@ -77,6 +97,7 @@ namespace SQM::Backup
                 return Error::Damaged;
             JsonObject settings = doc.as<JsonObject>();
             markPushover(settings, in, current, out.notApplicable);
+            markPins(settings, current, out.notApplicable);
             if (in.secrets)
                 injectSecrets(settings, *in.secrets);
             serializeJson(settings, applyText);

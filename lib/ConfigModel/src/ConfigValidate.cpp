@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "PinRules.h"
 #include "NetAddress.h"
 #include <cctype>
 #include <cmath>
@@ -374,9 +375,30 @@ namespace SQM
         }
     } // namespace ConfigDetail
 
+    // Spec 023: not part of validateLoaded(), so stored pins that break a
+    // rule still load; the device then holds every motor pin (src/PinSetup.cpp).
+    bool Config::validatePins(bool psram, std::string *error, bool requireWt32) const
+    {
+        Board::Facts facts = Board::facts(pins.board, psram);
+        facts.requireWt32 = requireWt32 && pins.preset != Board::Preset::Unset;
+        const Board::PinReport report = Board::check(pins, facts);
+        const Board::Issue *first = report.firstError();
+        return first == nullptr || setError(error, first->text);
+    }
+
+    // Spec 023: the dividers and trims (errors only; a divider that could put
+    // over 3.3 V on a pin is a warning the Pins page shows).
+    bool Config::validateAnalog(std::string *error) const
+    {
+        for (const Board::AnalogIssue &issue : Board::checkAnalog(analog))
+            if (issue.error)
+                return setError(error, issue.text);
+        return true;
+    }
+
     bool Config::validate(std::string *error) const
     {
-        return validateLoaded(error) && validateStoredSize(*this, error);
+        return validateLoaded(error) && validatePins(false, error) && validateAnalog(error) && validateStoredSize(*this, error);
     }
 
     bool Config::validateLoaded(std::string *error) const

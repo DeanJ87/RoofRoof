@@ -253,14 +253,13 @@
         "status.roof.parkSwitches.fitted",
         "status.roof.parkSwitches.switch1",
         "status.roof.parkSwitches.switch2",
-        "status.roof.rainContact",
         "status.roof.maxCurrentAmps",
         "status.roof.minSupplyVolts"
       ],
       "requiredBy": "009 FR-011",
       "visibility": {
         "rule": "when",
-        "when": "the supply always; the motor current while current sense is on; the park switches and the rain contact when fitted"
+        "when": "the supply always; the motor current while current sense is on; the park switches when fitted"
       },
       "priority": 2,
       "location": "card:roof",
@@ -290,6 +289,22 @@
       "priority": 2,
       "location": "card:roof",
       "test": "roof-fault-card"
+    },
+    {
+      "id": "roof-pins",
+      "label": "roof.pinsLink",
+      "sources": ["status.pins.valid"],
+      "requiredBy": "023 FR-011, FR-026",
+      "visibility": {
+        "rule": "when",
+        "when": "the pin setup is invalid (the fault above says why)"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-pins",
+      "note": "A link to the Pins page under the roof's fault.",
+      "testIn": "unit",
+      "demoCannot": "The demo device refuses an invalid pin set, so its pins are always valid"
     },
     {
       "id": "roof-close-phase",
@@ -324,6 +339,22 @@
       "priority": 10,
       "location": "card:device",
       "test": "device-network-card"
+    },
+    {
+      "id": "ethernet",
+      "label": "glance.ethernet",
+      "sources": ["status.ethernet.**"],
+      "requiredBy": "023 FR-028",
+      "visibility": {
+        "rule": "when",
+        "when": "the board in effect has Ethernet"
+      },
+      "priority": 10,
+      "location": "card:device",
+      "test": "ethernet",
+      "note": "The link as a pill and the Ethernet address; speed, MAC and IPv6 are on the System page and Settings -> Network.",
+      "testIn": "unit",
+      "demoCannot": "The demo's board is an ESP32 DevKit, which has no Ethernet"
     },
     {
       "id": "ipv6",
@@ -740,6 +771,26 @@
     {
       "match": "deps.D-47",
       "reason": "Shown on the followed groups' Settings rows (Time, Network, Roof, Alerts); a setting, not state the dashboard reports"
+    },
+    {
+      "match": "status.pins",
+      "reason": "Spec 023: the board and pins in effect are on the Pins page and the System page; the dashboard links the Pins page only while they are invalid",
+      "shownOn": "Pins, System"
+    },
+    {
+      "match": "status.pins.preset",
+      "reason": "Spec 023: the board and pins in effect are on the Pins page and the System page",
+      "shownOn": "Pins, System"
+    },
+    {
+      "match": "status.pins.board",
+      "reason": "Spec 023: the board and pins in effect are on the Pins page and the System page",
+      "shownOn": "Pins, System"
+    },
+    {
+      "match": "status.pins.restartNeeded",
+      "reason": "Spec 023: the board and pins in effect are on the Pins page and the System page",
+      "shownOn": "Pins, System"
     },
     {
       "match": "status.roof.testBox.**",

@@ -1,5 +1,5 @@
 ---
-description: "How RoofRoof decides whether the weather is safe (SQMeter over HTTP or MQTT, the rain contact) and whether the mount is parked (N.I.N.A. and the park switches). Doubt always counts as unsafe or not parked."
+description: "How RoofRoof decides whether the weather is safe (SQMeter over HTTP or MQTT, rain from its gauge) and whether the mount is parked (N.I.N.A. and the park switches). Doubt always counts as unsafe or not parked."
 ---
 
 # Safety inputs
@@ -15,34 +15,36 @@ Doubt always lands on the safe side: a source that stops answering, answers late
 
 ## Weather
 
-The verdict comes from [SQMeter](https://github.com/DeanJ87/SQMeter), over HTTP, MQTT or both, plus an optional rain contact.
+The verdict comes from [SQMeter](https://github.com/DeanJ87/SQMeter), over HTTP, MQTT or both. Rain comes from SQMeter too: its RG-15 rain gauge sets `reasonFlags` bit 9 when it rains and bit 10 when the gauge has failed. Nothing about the weather is wired to the roof controller.
 
 | Source | How it's read | Counts as unsafe when |
 |---|---|---|
 | SQMeter over HTTP | `GET /api/safety` every 5 s at SQMeter's address (3 s timeouts, and 3 s for an https handshake; a reply's body is read for at most 6 s) | it says `safe: false`, or any `reasonFlags` bit is set; or no good reply for the stale time (`safety.staleSeconds`, default 30 s) |
 | SQMeter over MQTT | SQMeter's `availability`, `safe` and `safety` topics on this device's broker | it says unsafe; it is `offline` (SQMeter's last will); it has never said `online`; or nothing good for 150 s (SQMeter repeats its safe topic every minute). After each (re)connect the broker's stored copy only counts if it says unsafe, so an old "safe" left on the broker is never trusted |
-| Rain contact (GPIO4) | read by the roof hardware | it is wet, or it can't be read |
 
 - **Any** source that says unsafe makes the verdict unsafe.
-- Rain (SQMeter reason bit 9, or the contact) and a failed rain sensor (bit 10) are always acted on, even if every other source has gone quiet.
+- Rain (SQMeter reason bit 9) and a failed rain sensor (bit 10) are always acted on, even if every other source has gone quiet.
 - A single failed poll doesn't change anything: the last good reply stands until the stale time has passed. Then the source counts as unsafe, named by its latest failure ("unreachable: connection refused", "unreadable: missing reasonFlags", "unreadable: SQMeter wants a password", "unreadable: SQMeter refused the password") or "stale". If SQMeter has a password, enter its user name and password with its address ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)).
 - **SQMeter's address** (`safety.http.url`) is just the address: `192.168.1.50`, `sqmeter.local` or `http://192.168.1.50`. RoofRoof adds `/api/safety` itself (and SQMeter's other paths for the [site data](close-on-unsafe.md#site-from-sqmeter)). A URL ending in one of SQMeter's API paths (`/api/safety`, `/api/sensors`, `/api/status`, `/api/config`) is taken as its address; any other path is refused. **Test**, next to the address, reads SQMeter once at the address and login typed and says what came back: safe, unsafe and why, or why not.
 - When the address answers but not like SQMeter's `/api/safety` (another of SQMeter's pages, another device, a 404), the source says so ("that address answered HTTP 404, not like SQMeter's /api/safety"), also in the first seconds when it would otherwise be waiting for a first reply.
 - **https:** an `https://` address is read over TLS. The link is encrypted, but SQMeter's certificate isn't checked: a device on your network has a self-signed one. Only one HTTPS request runs at a time on the device, and none while a firmware or web UI upload is written; when a poll can't start within a second (an alert is being sent, say), it fails and counts toward the stale time, so a long hold makes the source unsafe, never safe. https to an IPv6 address isn't supported; use a host name.
-- With neither SQMeter source switched on, the verdict is unsafe ("No weather source"). The rain contact alone isn't enough.
+- With neither SQMeter source switched on, the verdict is unsafe ("No weather source").
 - **Unknown** only happens just after a start or a settings change, while a source hasn't answered yet and its stale time hasn't run out. Unknown is never safe.
 
 Every reason says what was measured and what the limit was, for example `SQMeter HTTP stale: no good reply for 75 s > 30 s`.
 
+!!! warning "Rain is seen only through SQMeter"
+    Earlier firmware could also read a local rain contact; it has been removed (constitution 4.0.0), and an old `safety.rainContact` setting is dropped when the settings load. An SQMeter that stops answering, answers late or unreadably, or reports its rain gauge failed still makes the verdict unsafe, exactly as before. What is no longer backed up is a gauge that misses rain while SQMeter itself stays healthy: keep the gauge clean and check it on SQMeter's side.
+
 !!! note "Test box exception"
-    For a box with no weather source yet, the owner can switch on the weather bypass of [test box mode](test-box.md): "No weather source" then counts as safe, until a deadline. It never stands in for a source you have set up, and a wet or unreadable rain contact still makes the weather unsafe.
+    For a box with no weather source yet, the owner can switch on the weather bypass of [test box mode](test-box.md): "No weather source" then counts as safe, until a deadline. It never stands in for a source you have set up.
 
 ## Park
 
 The mount counts as parked only when **all** of these hold:
 
 1. N.I.N.A.'s latest reading, at most 10 s old, says the mount is connected, at park and not slewing;
-2. every fitted park switch (`park.switches`: none, one on GPIO32, or two on GPIO32 and GPIO33) is closed.
+2. every fitted park switch (`park.switches`: none, one (park switch A), or two (A and B); their pins are on the [Pins](pins.md) page) is closed.
 
 The park switches are optional. With none fitted (the default) N.I.N.A.'s park alone confirms it; fitted switches are a second check on the mount itself, and both must agree.
 

@@ -1,6 +1,8 @@
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
+#include "NetState.h"
+#include "PinSetup.h"
 #include "PlatformGuard.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
@@ -22,6 +24,7 @@ namespace SQM
         setupRoofRoutes();
         setupDiagRoutes();
         setupSiteRoutes();
+        setupPinRoutes();
         server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGetStatus(request); });
         // What's actually in effect (SQMeter spec 020).
         server.on("/api/settings/effective", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSettingsEffective(request); });
@@ -99,6 +102,7 @@ namespace SQM
         // Spec 021: checked and merged onto the live settings under the save
         // lock, so no other save lands in between; a page's stale fields refused.
         std::string reason;
+        std::string held;
         ConfigSave::Check stale;
         const bool saved = editAsFlashWrite(
             request,
@@ -115,11 +119,20 @@ namespace SQM
                     reason = reason.empty() ? "Invalid configuration" : reason;
                     return false;
                 }
+                // Spec 023: pins apply at the next start, checked against this chip
+                // too; a change waits while the roof is busy (FR-007, FR-008).
+                held = pinChangeHeld(live, next);
+                // A board that has shown its LAN8720 keeps a WT32-ETH01 map (only when the pins change).
+                const bool requireWt32 = next.pins != live.pins && PinSetup::wt32Evidence();
+                if (!held.empty() || !next.validatePins(PinSetup::psram(), &reason, requireWt32))
+                    return false;
                 return stampTestBox(live, next, body, reason);
             });
         // Spec 022 bench: a save once overflowed this task's stack; log the headroom it left.
         Logger::info(TAG, "Config save: async_tcp stack low-water %u B", static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
-        if (saved || !reason.empty() || stale.stale)
+        if (!held.empty())
+            request->send(409, "application/json", createErrorJson(held.c_str()).c_str());
+        else if (saved || !reason.empty() || stale.stale)
             answerConfigSave(request, saved, reason, stale);
     }
 
@@ -156,7 +169,7 @@ namespace SQM
     {
         // It drops the current network for up to 10 s: never while the roof
         // moves, a close waits or the close sequence needs N.I.N.A. (spec 010).
-        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiChange))
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiChange) || refuseIfWifiOff(request))
             return;
 
         JsonObject jsonObj = json.as<JsonObject>();
@@ -235,13 +248,22 @@ namespace SQM
         scheduleRestart(500);
     }
 
+    // Spec 023: in Ethernet only the radio stays off until the mode changes (and a restart).
+    bool WebServer::refuseIfWifiOff(AsyncWebServerRequest *request)
+    {
+        if (!NetState::ethernetOnly())
+            return false;
+        request->send(409, "application/json", createErrorJson("WiFi is off: the network mode is Ethernet only").c_str());
+        return true;
+    }
+
     void WebServer::handleWiFiScan(AsyncWebServerRequest *request)
     {
         // Starting a radio scan is an action, like joining a network
         // (/api/wifi/connect): both need the password when protection is on.
         // A scan takes the radio off channel for about 2 s: a lost N.I.N.A.
         // poll during a close stops it with a fault (spec 010).
-        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiScan))
+        if (!requireAuth(request) || refuseIfHeld(request, RoofIo::PlatformAction::WifiScan) || refuseIfWifiOff(request))
             return;
 
         int n = WiFi.scanComplete();

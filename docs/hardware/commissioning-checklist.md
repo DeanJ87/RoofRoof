@@ -11,6 +11,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | Roof / site | |
 | Date and who | |
 | Firmware version | |
+| Board (preset) | |
 
 !!! danger "Order matters"
     Motor **disconnected** through stage 7. Nobody leaves the roof running unattended until stage 11 is ticked: an alert has reached your phone, and the close-on-unsafe dry run has passed, first with the motor disconnected and then attended on the real roof.
@@ -19,23 +20,25 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 1.1 | Wiring continuity against the pin table (GPIO25, 26, 27, 34, 35, 36, 39, 32, 33, 4) | |
-| ☐ 1.2 | **EN pull-down**: 8 to 11 kΩ from R_EN/L_EN to GND at the IBT-2, and at GPIO27 | kΩ |
-| ☐ 1.3 | Optional 10 kΩ pull-downs on GPIO25, 26 (if fitted) | |
+| ☐ 1.1 | Wiring continuity against your board's pin table (DevKit: GPIO25, 26, 27, 34, 35, 36, 39, 32, 33; WT32 carrier: IO14, 15, 4, 35, 32, 36, 39, 33, 5) | |
+| ☐ 1.2 | **EN pull-down**: 8 to 11 kΩ from R_EN/L_EN to GND at the IBT-2, and at the EN pin (GPIO27 / IO4) | kΩ |
+| ☐ 1.3 | Optional 10 kΩ pull-downs on RPWM, LPWM (if fitted) | |
 | ☐ 1.4 | Dividers: 100k/22k supply, 10k/20k current sense and Hall; Hall at 5 V, output through its divider | |
-| ☐ 1.5 | Park switches close when parked; rain contact closes when it rains | |
+| ☐ 1.5 | Park switches close when parked | |
 | ☐ 1.6 | Motor supply switch within reach; motor leads off the IBT-2 and insulated | |
 
 ## Stage 2: First power-up (motor still disconnected)
 
 | | Check | Result |
 |---|---|---|
-| ☐ 2.1 | Flashed from USB, 12 V off: GPIO27 reads 0 V throughout; on WiFi, address noted | |
-| ☐ 2.2 | GPIO25, 26, 27 read 0 V before, during and after start-up, and while held in reset | |
+| ☐ 2.1 | Flashed (USB, or a USB-serial adapter on a WT32), 12 V off: the EN pin reads 0 V throughout; on the network, address noted | |
+| ☐ 2.1a | Board's preset chosen and the device restarted; the log names the pins, `pins.valid` true | |
+| ☐ 2.2 | EN, RPWM, LPWM read 0 V before, during and after start-up (only the WT32's start-up pulses on RPWM, LPWM), EN also while held in reset | |
+| ☐ 2.2a | Wiring check (12 V on, motor disconnected): **EN pull-down passes**; Hall, supply, park, current sense and Ethernet results noted | |
 | ☐ 2.3 | Password protection on | |
 | ☐ 2.4 | Boot between the magnets: `unknown`, EN low. At a magnet after a restart: that end | |
 | ☐ 2.5 | `supplyVolts` within 0.2 V of the meter | V / V |
-| ☐ 2.6 | Park switches and rain contact read `closed`/`open` and `raining`/`dry` over the real cable (external pull-up if not) | |
+| ☐ 2.6 | Park switches read `closed`/`open` over the real cable (external pull-up if not) | |
 | ☐ 2.7 | Current sense left off until stage 8 | |
 
 ## Stage 3: Hall calibration (motor disconnected)
@@ -57,7 +60,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 4.2 | SQMeter unsafe: `Weather unsafe` within 5 s; SQMeter unplugged: unsafe within 35 s | |
 | ☐ 4.3 | Wrong URL path: unreadable, no reboot | |
 | ☐ 4.4 | SQMeter MQTT (if used): offline at once; a retained `safe=1` alone isn't safe | |
-| ☐ 4.5 | Rain contact (if fitted) makes it unsafe | |
+| ☐ 4.5 | Rain on SQMeter's gauge makes it unsafe (bit 9); gauge unplugged, unsafe once SQMeter reports it failed (bit 10) | |
 | ☐ 4.6 | N.I.N.A. 2.2.15+ Advanced API: `Park: parked`; unparked and slewing correct; closing N.I.N.A. gives `not responding` in about 4 s | |
 | ☐ 4.7 | Park switches vs N.I.N.A.: one switch open gives "disagree" | |
 | ☐ 4.8 | An unrelated settings save doesn't reset the verdict or the park result | |

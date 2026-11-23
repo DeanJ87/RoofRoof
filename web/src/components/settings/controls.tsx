@@ -182,6 +182,13 @@ const useFieldAria = (ariaLabel?: string, error?: string, ownErrorId?: string) =
   };
 };
 
+// The field's ARIA plus notes elsewhere on the page about the value (and whether one is an error).
+const withNotes = (aria: ReturnType<typeof useFieldAria>, describedBy?: string, invalid?: boolean) => ({
+  ...aria,
+  'aria-describedby': [aria['aria-describedby'], describedBy].filter(Boolean).join(' ') || undefined,
+  'aria-invalid': aria['aria-invalid'] ?? (invalid ? true : undefined),
+});
+
 const inputClass = (error?: string) => `input${error ? ' is-invalid' : ''}`;
 
 // Messages for a number that couldn't be read, with an example in the
@@ -207,13 +214,16 @@ export const NumberInput: FunctionalComponent<{
   integer?: boolean;
   ariaLabel?: string;
   unit?: string;
-}> = ({ value, onChange, min, disabled, error, dataField, integer, ariaLabel, unit }) => {
+  // Notes elsewhere on the page about this value (the device's pin issues), and whether one is an error.
+  describedBy?: string;
+  invalid?: boolean;
+}> = ({ value, onChange, min, disabled, error, dataField, integer, ariaLabel, unit, describedBy, invalid }) => {
   const [draft, setDraft] = useState<string | null>(null);
   const [problem, setProblem] = useState<NumberProblem | null>(null);
   const problemId = useId();
   const localError = problem ? numberProblemText(problem, integer) : undefined;
   const shownError = localError ?? error;
-  const aria = useFieldAria(ariaLabel, shownError, localError ? problemId : undefined);
+  const aria = withNotes(useFieldAria(ariaLabel, shownError, localError ? problemId : undefined), describedBy, invalid);
   const commit = (raw: string) => {
     const parsed = parseNumber(raw, { integer });
     if (parsed.ok || parsed.problem === 'empty') {
@@ -234,7 +244,7 @@ export const NumberInput: FunctionalComponent<{
       autoComplete="off"
       data-field={dataField}
       {...aria}
-      class={inputClass(shownError)}
+      class={inputClass(shownError || (invalid ? 'invalid' : undefined))}
       value={draft ?? formatInputNumber(value)}
       disabled={disabled}
       onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
@@ -324,8 +334,18 @@ export const ActionButton: FunctionalComponent<{
   busyLabel?: string;
   title?: string;
   variant?: 'default' | 'danger';
-}> = ({ onClick, disabled, busy, busyLabel, title, variant, children }) => (
-  <Button small onClick={onClick} disabled={disabled} busy={busy} busyLabel={busyLabel} title={title} variant={variant}>
+  describedBy?: string; // the id of the Note that says why it's disabled
+}> = ({ onClick, disabled, busy, busyLabel, title, variant, describedBy, children }) => (
+  <Button
+    small
+    onClick={onClick}
+    disabled={disabled}
+    busy={busy}
+    busyLabel={busyLabel}
+    title={title}
+    variant={variant}
+    describedBy={describedBy}
+  >
     {children}
   </Button>
 );

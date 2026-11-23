@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { listReasons } from '../settings/restart';
-import { restartDevice } from '../../lib/settingsApi';
 import { Button, Icon, Note, ProgressMeter } from '../ui';
+import { restartWithToast } from '../toast';
 import { t } from '../../i18n';
 
 // The wizard dialog's own parts (spec 018): its header, footer and leave screen.
@@ -63,7 +63,7 @@ export const LeaveChoices: FunctionalComponent<{
 );
 
 export const RestartNote: FunctionalComponent<{ restart: string[] }> = ({ restart }) => (
-  <Note tone="warn" action={{ label: t('settings.restart'), onClick: () => void restartDevice().catch(() => undefined) }}>
+  <Note tone="warn" action={{ label: t('settings.restart'), onClick: () => void restartWithToast() }}>
     {t('wizard.restartToApply', { listReasons: listReasons(restart) })}
   </Note>
 );

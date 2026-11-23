@@ -12,17 +12,17 @@ Some settings only work when something else is on: MQTT alerts need MQTT, Home A
 |---|---|---|---|---|
 | D-01 | `alerts.mqtt.enabled` | MQTT on | Dependency | MQTT is off (mqtt-off) |
 | D-02 | `alerts.mqtt.enabled` | MQTT broker connected | Dependency, runtime | Broker not connected (mqtt-disconnected) |
-| D-03 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
+| D-03 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled` | WiFi or Ethernet connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to a network (wifi-disconnected) |
 | D-04 | `alerts.pushover.enabled`, `alerts.ntfy.enabled`, `alerts.webhook.enabled`, `alerts.mqtt.enabled`, `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level`, `alerts.events.move_fault.level`, `alerts.events.supply_low.level`, `alerts.events.unsafe_closing.level`, `alerts.events.roof_closed.level`, `alerts.events.safety_lost.level`, `alerts.events.daylight_open.level`, `alerts.events.daylight_closed.level`, `alerts.events.daylight_unknown.level`, `alerts.sendMode` | Alerts on (Send alerts); channels are push only. The roof's critical alerts (mount not parked, roof didn't close) don't depend on it | Dependency | Alerts are off (alerts-off) |
 | D-12 | `alerts.sendMode` | Alpaca on - "Only while an imaging app is connected" (SQMeter spec 021); while Alpaca is off, alerts go out any time | Dependency | Alpaca is off (alpaca-off) |
 | D-13 | `mqtt.homeAssistant.enabled`, `mqtt.homeAssistant.alertsSwitch` | MQTT on; the Alerts switch also needs alerts on | Dependency | MQTT is off (mqtt-off); Alerts are off (alerts-off) |
 | D-20 | `alpaca.enabled` | Alpaca on - discovery and the devices are served; the Alpaca page explains when it is off | Dependency | - |
-| D-28 | `ntp.enabled` | WiFi connected to a network | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
+| D-28 | `ntp.enabled` | WiFi or Ethernet connected to a network | Dependency, runtime | Not connected to a network (wifi-disconnected) |
 | D-32 | `ota.enabled` | An OTA upload password set | Dependency | Set an upload password (ota-no-password) |
 | D-33 | `mqtt.broker`, `mqtt.topic` | MQTT on needs a broker and a topic | Constraint | - |
 | D-34 | `auth.password` | HTTP auth on needs a password | Constraint | - |
 | D-37 | `alerts.events.client_lost.level`, `alerts.events.client_back.level`, `alerts.events.client_disconnected.level` | Alpaca on, with a device to connect to - imaging apps connect over Alpaca (SQMeter spec 021); the device offers the roof's Dome (spec 006), the demo none | Dependency | Alpaca is off (alpaca-off); No Alpaca device (no-alpaca-device) |
-| D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to WiFi (wifi-disconnected) |
+| D-36 | `wifi.mdns`, `wifi.ipv6` | WiFi or Ethernet connected to a network (not the setup hotspot) | Dependency, runtime | Not connected to a network (wifi-disconnected) |
 | D-40 | `safety.mqtt.enabled` | MQTT on - SQMeter's safe topics are read from RoofRoof's own broker (spec 004) | Dependency | MQTT is off (mqtt-off) |
 | D-41 | `safety.mqtt.enabled` | MQTT broker connected; while it isn't, the SQMeter MQTT source goes stale and counts as unsafe | Dependency, runtime | Broker not connected (mqtt-disconnected) |
 | D-42 | `daylight.mode` | The site's latitude and longitude set (Location set) - without them the daylight check can't tell day from night and does nothing (spec 013) | Dependency | Location not set (location-unknown) |

@@ -6,12 +6,14 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
 
 ## Hardware (fixed facts)
 
-- ESP32 DevKit (WROOM).
+- ESP32 DevKit (WROOM) on the bench; the roof's controller is a WT32-ETH01 (wired Ethernet) on the
+  RoofRoof carrier. One firmware image serves both (spec 023).
 - IBT-2 (BTS7960) H-bridge driving a 12 V, 20 rpm worm-gear motor. The worm can't be back-driven, so the roof holds wherever it stops.
 - Travel is about 1850 mm at about 38 mm/s, so about 50 s end to end. **These are settings**, measured once the roof is built.
 - One SS49E linear Hall sensor reads two magnets on the roof, one at closed and one at open. The magnets have opposite poles, so the reading is high at one end and low at the other. **Which end is high is a setting**, and so are the thresholds. Nothing reads position in between.
 - Rubber end stops at both ends.
-- Pins (see `include/RoofPins.h`):
+- Pins (spec 023 made them a setting with board presets; the DevKit's are below, the WT32 carrier's
+  in `docs/hardware/wiring.md`):
 
   | GPIO | Use |
   |---|---|
@@ -23,7 +25,6 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
   | 36 | 12 V sense (100k/22k divider) |
   | 39 | SS49E (5 V supply, so it needs a divider) |
   | 32, 33 | PARK inputs, optional |
-  | 4 | RAIN contact, optional |
 
 - Current sense (34/35) has 10k/20k dividers but **isn't fitted yet**. It's a setting; while it's off, jam detection is "no magnet before the timeout".
 - Never drive RPWM and LPWM at the same time. EN low means the driver is off. Both PWM low means stop. `lib/DriverLogic` and `MotorDriver` already enforce this; `MotorDriver` is the only writer of 25/26/27.
@@ -38,7 +39,7 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
   - Target v2 (2.2.x): `GET /v2/api/equipment/mount/park`, then poll `/v2/api/equipment/mount/info` for `AtPark`.
   - Put it behind an interface, so v3 (`POST`, 202, Basic auth) can be added later.
   - Check the current docs and record the exact endpoints and fields in that spec's research.md.
-- **Safety source:** SQMeter `GET /api/safety` (a `safe` flag plus `reasonFlags`; bit 9 is rain, bit 10 is a rain-sensor fault; fail-safe) and/or SQMeter's MQTT safe topic. The local RAIN contact on GPIO4 is optional. Read SQMeter's spec 013 contract in ~/Projects/SQMeter for the exact payloads.
+- **Safety source:** SQMeter `GET /api/safety` (a `safe` flag plus `reasonFlags`; bit 9 is rain, bit 10 is a rain-sensor fault; fail-safe) and/or SQMeter's MQTT safe topic. Spec 023 removed the local rain contact: rain comes from SQMeter's rain gauge. Read SQMeter's spec 013 contract in ~/Projects/SQMeter for the exact payloads.
 - **Home Assistant MQTT discovery: yes**, extending `lib/HaDiscovery`, with a `cover` entity for the roof.
 - **English only** (the i18n framework stays). **Manual updates only** (upload, no GitHub check). The repo is private, and docs and demo are CI artifacts.
 
@@ -356,6 +357,21 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     3.0.0 amends Principles II and III.
 - **Out of scope:** a supply bypass; any change to the bench build; bypassing a configured source's
   doubt or a reading.
+### 023 WT32-ETH01 board and pin setup (base: 022)
+
+- **Scope:**
+  - The roof's pins as a setting with board presets (ESP32 DevKit; WT32-ETH01 + RoofRoof carrier
+    v1; Custom), checked by pure pin rules (reserved, input-only, ADC1, strapping pins, shared
+    pins); applied only at a restart, refused while the roof is busy. A new device has no board
+    chosen and drives nothing; a boot probe finds a WT32-ETH01 and preselects it; upgraded devices
+    keep the DevKit map. An invalid or unreadable set drives nothing and shows "Pin setup invalid".
+  - A wiring check that can't move the roof (EN pull-down, Hall, supply, park switches, current
+    sense at rest, Ethernet), on a Pins page and in the setup wizard.
+  - The WT32-ETH01's Ethernet with a network mode (Auto, Ethernet only, Wi-Fi only); everything
+    that keyed off Wi-Fi works over Ethernet; one image for both boards.
+  - The local rain contact removed; constitution 4.0.0.
+- **Out of scope:** the carrier PCB itself; checking direction and travel (spec 019's jog and
+  teach); a second Ethernet chip.
 
 ## Merge order
 
@@ -365,7 +381,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
                                                                   └─ 015 ─┬─ 016 ── 019 ─┐
-                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 022
+                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 022 ── 023
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

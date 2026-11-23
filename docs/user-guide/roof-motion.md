@@ -149,7 +149,8 @@ is treated as unreadable.
 The controller runs in its own task on the ESP32, apart from WiFi, the web server and MQTT:
 
 - **Every 20 ms** it reads the Hall sensor (the median of five readings), the 12 V supply and,
-  with current sense on, the motor current, plus the park switches and the rain contact. It steps
+  with current sense on, the motor current, plus the park switches, on the pins in effect
+  ([Pins](pins.md)). It steps
   the motion logic and sets the motor driver at once. A busy network can delay a command; it can
   never prolong a move. The web server runs below it (priority 3 against the task's 5), so a
   burst of requests can't starve a step.

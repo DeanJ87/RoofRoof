@@ -11,7 +11,7 @@ RoofRoof exposes the device's data through these integration paths. The roof's s
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: false
-fingerprint: ecaa42894b411776
+fingerprint: 728b4a5a2152472f
 -->
 <figure class="diagram" markdown>
 

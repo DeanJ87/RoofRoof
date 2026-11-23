@@ -160,12 +160,36 @@ describe('frontend settings validation', () => {
     expect(getConfigValidationMessage(errors)).toBe('Please fix 1 validation error: Device name is required');
   });
 
-  it('never sends a blank WiFi network (SQMeter spec 011 FR-009)', () => {
+  it('refuses blanking a saved WiFi network, as the device does (SQMeter spec 011 FR-009)', () => {
     for (const ssid of ['', '   ']) {
-      const errors = getConfigValidationErrors(setPath(mockConfig, 'wifi.ssid', ssid));
-      expect(errors['wifi.ssid']).toBe('WiFi SSID is required');
+      const errors = getConfigValidationErrors(setPath(mockConfig, 'wifi.ssid', ssid), mockConfig);
+      expect(errors['wifi.ssid']).toBe("WiFi network can't be blank; use WiFi setup to change networks");
       expect(hasConfigValidationErrors(errors)).toBe(true);
     }
+  });
+
+  it('never requires a WiFi network: a new device and a DevKit with none save (spec 023)', () => {
+    const none = setPath(mockConfig, 'wifi.ssid', '');
+    // A new WT32-ETH01: no board chosen yet, the DevKit's pins as placeholders, no network.
+    const unset = { ...none, pins: { ...mockConfig.pins!, preset: 'unset' as const, board: 'esp32-devkit' as const } };
+    expect(getConfigValidationErrors(unset, unset)).toEqual({});
+    expect(getConfigValidationErrors(none, none)).toEqual({});
+    expect(getConfigValidationErrors(none)).toEqual({});
+    // A board on Ethernet too.
+    const wt32 = { ...none, pins: { ...mockConfig.pins!, board: 'wt32-eth01' as const } };
+    expect(getConfigValidationErrors(wt32, wt32)).toEqual({});
+  });
+
+  it('pins are a preset, a board and GPIO numbers 0 to 255; the network mode one of three (spec 023)', () => {
+    expect(getConfigValidationErrors(mockConfig)).toEqual({});
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.rpwm', 256))['pins.rpwm']).toBe(
+      'A pin must be a GPIO number from 0 to 255.',
+    );
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.hall', 1.5))['pins.hall']).toBeDefined();
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.preset', 'other'))['pins.preset']).toBeDefined();
+    expect(getConfigValidationErrors(setPath(mockConfig, 'network.mode', 'both'))['network.mode']).toBeDefined();
+    // The rain contact is gone: an old page's value is ignored, never an error.
+    expect(getConfigValidationErrors(setPath(mockConfig, 'safety.rainContact', true))).toEqual({});
   });
 });
 

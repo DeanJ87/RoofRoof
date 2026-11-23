@@ -40,11 +40,10 @@ namespace
         return TestBox::evaluate(t, sources, true, NOW);
     }
 
-    // Both SQMeter sources off and no rain contact: "no weather source".
-    Safety::WeatherVerdict noSource(Safety::RainContact rain = Safety::RainContact::NotFitted)
+    // Both SQMeter sources off: "no weather source" (spec 023 removed the rain contact).
+    Safety::WeatherVerdict noSource()
     {
         Safety::WeatherInputs in;
-        in.rainContact = rain;
         in.nowMs = 100000;
         return Safety::evaluateWeather(in);
     }
@@ -283,21 +282,16 @@ void test_the_weather_bypass_stands_in_for_a_missing_source(void)
     TEST_ASSERT_TRUE(v.safe());
     TEST_ASSERT_TRUE(v.bypassed);
     TEST_ASSERT_EQUAL_STRING("bypassed (test box): no weather source", Safety::describe(v).c_str());
-    // A dry rain contact is fine too.
-    v = noSource(Safety::RainContact::Dry);
-    TestBox::applyWeather(v, inEffect());
-    TEST_ASSERT_TRUE(v.safe());
 }
 
-void test_a_wet_or_unreadable_rain_contact_still_counts(void)
+// Any reason besides "no weather source" (rain from any source) is never bypassed.
+void test_rain_with_no_source_still_counts(void)
 {
-    for (Safety::RainContact rain : {Safety::RainContact::Raining, Safety::RainContact::Unreadable})
-    {
-        Safety::WeatherVerdict v = noSource(rain);
-        TestBox::applyWeather(v, inEffect());
-        TEST_ASSERT_TRUE(v.verdict == Safety::Verdict::Unsafe);
-        TEST_ASSERT_FALSE(v.bypassed);
-    }
+    Safety::WeatherVerdict v = noSource();
+    v.reasons |= Safety::ReasonRain;
+    TestBox::applyWeather(v, inEffect());
+    TEST_ASSERT_TRUE(v.verdict == Safety::Verdict::Unsafe);
+    TEST_ASSERT_FALSE(v.bypassed);
 }
 
 void test_a_configured_sources_doubt_is_never_bypassed(void)
@@ -531,7 +525,7 @@ int main(int, char **)
     RUN_TEST(test_in_effect_only_before_the_deadline_and_with_the_clock);
     RUN_TEST(test_a_bypass_beside_its_source_has_no_effect);
     RUN_TEST(test_the_weather_bypass_stands_in_for_a_missing_source);
-    RUN_TEST(test_a_wet_or_unreadable_rain_contact_still_counts);
+    RUN_TEST(test_rain_with_no_source_still_counts);
     RUN_TEST(test_a_configured_sources_doubt_is_never_bypassed);
     RUN_TEST(test_the_weather_bypass_out_of_effect_changes_nothing);
     RUN_TEST(test_the_park_bypass_stands_in_for_nina);

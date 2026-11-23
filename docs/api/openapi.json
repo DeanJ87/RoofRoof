@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795463411,
-                    "iso": "2026-11-23T19:50:11+0000",
+                    "epoch": 1795469809,
+                    "iso": "2026-11-23T21:36:49+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795459809811,
-                    "nextSync": 1795467009811,
+                    "lastSync": 1795466207709,
+                    "nextSync": 1795473407709,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795463349811,
+                    "lastPublish": 1795469747709,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -250,7 +250,6 @@
                       "switch1": "notFitted",
                       "switch2": "notFitted"
                     },
-                    "rainContact": "notFitted",
                     "closePending": false,
                     "calibrating": false,
                     "closePhase": "idle",
@@ -314,7 +313,25 @@
                       "needs": []
                     }
                   },
-                  "configRevision": 1465469608
+                  "ethernet": {
+                    "present": false,
+                    "mode": "wifi",
+                    "started": false,
+                    "phyFound": false,
+                    "link": false,
+                    "speedMbps": 0,
+                    "fullDuplex": false,
+                    "ip": "",
+                    "mac": "",
+                    "ipv6": []
+                  },
+                  "pins": {
+                    "preset": "devkit",
+                    "board": "esp32-devkit",
+                    "valid": true,
+                    "restartNeeded": false
+                  },
+                  "configRevision": 3932332023
                 }
               }
             }
@@ -736,6 +753,756 @@
               },
               "example": {
                 "url": "192.168.1.50"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pins/check": {
+      "post": {
+        "operationId": "post_pins_check",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Start the wiring check",
+        "description": "Spec 023: starts the wiring check on the device's main loop; read the result with `GET /api/pins/check`. Nothing can move the roof: EN is read for about 50 µs as an input with the internal pull-up while both PWM stay low. Refused (409) while the roof moves, a close waits, the close sequence works, a calibration run or a jog is under way, while the pins in effect are invalid or no board is chosen, while a pin change waits for a restart, and while a check runs.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "started": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "started"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        }
+      },
+      "get": {
+        "operationId": "get_pins_check",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "The wiring check's result",
+        "description": "Spec 023: the last wiring check since start-up (`idle` before any): each check's level, reading and text, and `suggestPreset` when the Ethernet probe found a WT32-ETH01 on a board set up without Ethernet. Direction and travel aren't checked (the `motion` item points to the calibration page's jog and teach).\n\nOpen: Read-only: the last wiring check's readings and verdicts; no address or secret; changes nothing.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "idle",
+                        "running",
+                        "done"
+                      ]
+                    },
+                    "checks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "pass",
+                              "warn",
+                              "fail",
+                              "skipped"
+                            ]
+                          },
+                          "value": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "unit": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "level",
+                          "value",
+                          "unit",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "suggestPreset": {
+                      "type": "string"
+                    },
+                    "finishedAt": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "checks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pins/validate": {
+      "post": {
+        "operationId": "post_pins_validate",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Check a pin map",
+        "description": "Spec 023: the pin rules' errors and warnings for a pin map on this chip, without saving it. A named preset alone fills in its pins; pins sent with a named preset that differ from it are an error. Save a map through `POST /api/config` (`pins`).\n\nOpen: Checks a pin map against the pin rules and saves nothing; no address or secret.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "pins": {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "type": "string",
+                          "enum": [
+                            "devkit",
+                            "wt32-carrier-v1",
+                            "custom",
+                            "unset"
+                          ]
+                        },
+                        "board": {
+                          "type": "string",
+                          "enum": [
+                            "esp32-devkit",
+                            "wt32-eth01"
+                          ]
+                        },
+                        "rpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "lpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "enable": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentR": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentL": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "supply": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "hall": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkA": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkB": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "preset",
+                        "board",
+                        "rpwm",
+                        "lpwm",
+                        "enable",
+                        "currentR",
+                        "currentL",
+                        "supply",
+                        "hall",
+                        "parkA",
+                        "parkB"
+                      ]
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "function": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pin": {
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "boolean"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "function",
+                          "pin",
+                          "code",
+                          "error",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "valid",
+                    "pins",
+                    "issues"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "preset": {
+                    "type": "string",
+                    "enum": [
+                      "devkit",
+                      "wt32-carrier-v1",
+                      "custom",
+                      "unset"
+                    ]
+                  },
+                  "board": {
+                    "type": "string",
+                    "enum": [
+                      "esp32-devkit",
+                      "wt32-eth01"
+                    ]
+                  },
+                  "rpwm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "lpwm": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "enable": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "currentR": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "currentL": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "supply": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "hall": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "parkA": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "parkB": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "preset": "custom",
+                "board": "esp32-devkit",
+                "rpwm": 35
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pins": {
+      "get": {
+        "operationId": "get_pins",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "The pin setup",
+        "description": "Spec 023: the pins in effect since the last start (`running`) and as saved, whether a restart is needed to apply the saved ones, whether the pins in effect passed the pin rules at boot (with the reason and every error and warning), whether the chip has PSRAM, the board in effect and, with no board chosen, the board the boot probe found (`detected`; `null` when it didn't run), the presets, and each board's Ethernet and header pins. Read-only.\n\nOpen: Read-only: the pins in effect and saved, the rules' report and the presets; no address or secret.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "running": {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "type": "string",
+                          "enum": [
+                            "devkit",
+                            "wt32-carrier-v1",
+                            "custom",
+                            "unset"
+                          ]
+                        },
+                        "board": {
+                          "type": "string",
+                          "enum": [
+                            "esp32-devkit",
+                            "wt32-eth01"
+                          ]
+                        },
+                        "rpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "lpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "enable": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentR": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentL": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "supply": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "hall": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkA": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkB": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "preset",
+                        "board",
+                        "rpwm",
+                        "lpwm",
+                        "enable",
+                        "currentR",
+                        "currentL",
+                        "supply",
+                        "hall",
+                        "parkA",
+                        "parkB"
+                      ]
+                    },
+                    "saved": {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "type": "string",
+                          "enum": [
+                            "devkit",
+                            "wt32-carrier-v1",
+                            "custom",
+                            "unset"
+                          ]
+                        },
+                        "board": {
+                          "type": "string",
+                          "enum": [
+                            "esp32-devkit",
+                            "wt32-eth01"
+                          ]
+                        },
+                        "rpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "lpwm": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "enable": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentR": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "currentL": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "supply": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "hall": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkA": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "parkB": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "preset",
+                        "board",
+                        "rpwm",
+                        "lpwm",
+                        "enable",
+                        "currentR",
+                        "currentL",
+                        "supply",
+                        "hall",
+                        "parkA",
+                        "parkB"
+                      ]
+                    },
+                    "restartNeeded": {
+                      "type": "boolean"
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "function": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "pin": {
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "boolean"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "function",
+                          "pin",
+                          "code",
+                          "error",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "psram": {
+                      "type": "boolean"
+                    },
+                    "board": {
+                      "type": "string"
+                    },
+                    "detected": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "presets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "preset": {
+                            "type": "string",
+                            "enum": [
+                              "devkit",
+                              "wt32-carrier-v1",
+                              "custom",
+                              "unset"
+                            ]
+                          },
+                          "board": {
+                            "type": "string",
+                            "enum": [
+                              "esp32-devkit",
+                              "wt32-eth01"
+                            ]
+                          },
+                          "rpwm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "lpwm": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "enable": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "currentR": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "currentL": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "supply": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "hall": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "parkA": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          },
+                          "parkB": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 255
+                          }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                          "preset",
+                          "board",
+                          "rpwm",
+                          "lpwm",
+                          "enable",
+                          "currentR",
+                          "currentL",
+                          "supply",
+                          "hall",
+                          "parkA",
+                          "parkB"
+                        ]
+                      }
+                    },
+                    "boards": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "board": {
+                            "type": "string"
+                          },
+                          "ethernet": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "header": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "required": [
+                          "board",
+                          "ethernet",
+                          "header"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "running",
+                    "saved",
+                    "restartNeeded",
+                    "valid",
+                    "reason",
+                    "issues",
+                    "psram",
+                    "board",
+                    "detected",
+                    "presets",
+                    "boards"
+                  ],
+                  "additionalProperties": false
+                }
               }
             }
           }
@@ -2408,8 +3175,7 @@
                       "safe": false,
                       "flags": 0,
                       "text": ""
-                    },
-                    "rainContact": "notFitted"
+                    }
                   },
                   "park": {
                     "parked": true,
@@ -5038,6 +5804,115 @@
             ],
             "additionalProperties": false
           },
+          "analog": {
+            "type": "object",
+            "properties": {
+              "currentL": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetAmps",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "currentR": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetAmps",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit-bench",
+                  "wt32-carrier-v1.1",
+                  "custom"
+                ]
+              },
+              "supply": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetVolts": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetVolts",
+                  "top"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "currentL",
+              "currentR",
+              "hall",
+              "preset",
+              "supply"
+            ],
+            "additionalProperties": false
+          },
           "auth": {
             "type": "object",
             "properties": {
@@ -5251,6 +6126,23 @@
             ],
             "additionalProperties": false
           },
+          "network": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "additionalProperties": false
+          },
           "ntp": {
             "type": "object",
             "properties": {
@@ -5329,6 +6221,84 @@
               "requestPark",
               "switches",
               "timeoutSeconds"
+            ],
+            "additionalProperties": false
+          },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "currentL": {
+                "type": "number"
+              },
+              "currentR": {
+                "type": "number"
+              },
+              "enable": {
+                "type": "number"
+              },
+              "hall": {
+                "type": "number"
+              },
+              "lpwm": {
+                "type": "number"
+              },
+              "parkA": {
+                "type": "number"
+              },
+              "parkAPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "parkB": {
+                "type": "number"
+              },
+              "parkBPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "rpwm": {
+                "type": "number"
+              },
+              "supply": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "board",
+              "currentL",
+              "currentR",
+              "enable",
+              "hall",
+              "lpwm",
+              "parkA",
+              "parkAPullup",
+              "parkB",
+              "parkBPullup",
+              "preset",
+              "rpwm",
+              "supply"
             ],
             "additionalProperties": false
           },
@@ -5455,9 +6425,6 @@
                 ],
                 "additionalProperties": false
               },
-              "rainContact": {
-                "type": "boolean"
-              },
               "staleSeconds": {
                 "type": "number"
               }
@@ -5465,7 +6432,6 @@
             "required": [
               "http",
               "mqtt",
-              "rainContact",
               "staleSeconds"
             ],
             "additionalProperties": false
@@ -5636,6 +6602,7 @@
         "required": [
           "alerts",
           "alpaca",
+          "analog",
           "auth",
           "autoClose",
           "daylight",
@@ -5643,9 +6610,11 @@
           "diag",
           "location",
           "mqtt",
+          "network",
           "ntp",
           "ota",
           "park",
+          "pins",
           "roof",
           "safety",
           "setup",
@@ -6012,6 +6981,86 @@
             },
             "additionalProperties": false
           },
+          "analog": {
+            "type": "object",
+            "properties": {
+              "currentL": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "currentR": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit-bench",
+                  "wt32-carrier-v1.1",
+                  "custom"
+                ]
+              },
+              "supply": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetVolts": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
           "auth": {
             "type": "object",
             "properties": {
@@ -6172,6 +7221,20 @@
             },
             "additionalProperties": false
           },
+          "network": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "ntp": {
             "type": "object",
             "properties": {
@@ -6227,6 +7290,69 @@
                 "type": "string"
               },
               "timeoutSeconds": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "currentL": {
+                "type": "number"
+              },
+              "currentR": {
+                "type": "number"
+              },
+              "enable": {
+                "type": "number"
+              },
+              "hall": {
+                "type": "number"
+              },
+              "lpwm": {
+                "type": "number"
+              },
+              "parkA": {
+                "type": "number"
+              },
+              "parkAPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "parkB": {
+                "type": "number"
+              },
+              "parkBPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "rpwm": {
+                "type": "number"
+              },
+              "supply": {
                 "type": "number"
               }
             },
@@ -6324,9 +7450,6 @@
                   }
                 },
                 "additionalProperties": false
-              },
-              "rainContact": {
-                "type": "boolean"
               },
               "staleSeconds": {
                 "type": "number"
@@ -7220,15 +8343,6 @@
                 ],
                 "additionalProperties": false
               },
-              "rainContact": {
-                "type": "string",
-                "enum": [
-                  "notFitted",
-                  "dry",
-                  "raining",
-                  "unreadable"
-                ]
-              },
               "text": {
                 "type": "string"
               },
@@ -7244,7 +8358,6 @@
             "required": [
               "http",
               "mqtt",
-              "rainContact",
               "text",
               "verdict"
             ],
@@ -7688,6 +8801,61 @@
           "cpuFreqMHz": {
             "type": "number"
           },
+          "ethernet": {
+            "type": "object",
+            "properties": {
+              "fullDuplex": {
+                "type": "boolean"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "ipv6": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "link": {
+                "type": "boolean"
+              },
+              "mac": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
+              },
+              "phyFound": {
+                "type": "boolean"
+              },
+              "present": {
+                "type": "boolean"
+              },
+              "speedMbps": {
+                "type": "number"
+              },
+              "started": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "fullDuplex",
+              "ip",
+              "ipv6",
+              "link",
+              "mac",
+              "phyFound",
+              "present",
+              "speedMbps",
+              "started"
+            ],
+            "additionalProperties": false
+          },
           "firmware": {
             "type": "object",
             "properties": {
@@ -7966,6 +9134,40 @@
             "required": [],
             "additionalProperties": false
           },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "restartNeeded": {
+                "type": "boolean"
+              },
+              "valid": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "board",
+              "preset",
+              "restartNeeded",
+              "valid"
+            ],
+            "additionalProperties": false
+          },
           "resetReason": {
             "type": "number"
           },
@@ -8036,7 +9238,8 @@
                       "parkInterlock",
                       "storedUnreadable",
                       "watchdogStopped",
-                      "benchSupply"
+                      "benchSupply",
+                      "pinSetup"
                     ]
                   },
                   "kind": {
@@ -8176,15 +9379,6 @@
                   "number"
                 ]
               },
-              "rainContact": {
-                "type": "string",
-                "enum": [
-                  "notFitted",
-                  "dry",
-                  "raining",
-                  "unreadable"
-                ]
-              },
               "simulation": {
                 "type": "string",
                 "enum": [
@@ -8306,7 +9500,6 @@
               "positionKnown",
               "positionMm",
               "positionPercent",
-              "rainContact",
               "simulation",
               "state",
               "supplyLow",
@@ -8585,6 +9778,7 @@
           "configRevision",
           "connections",
           "cpuFreqMHz",
+          "ethernet",
           "firmware",
           "flashSize",
           "freeHeap",
@@ -8597,6 +9791,7 @@
           "maxAllocHeap",
           "minFreeHeap",
           "partitions",
+          "pins",
           "resetReason",
           "roof",
           "sketchSize",

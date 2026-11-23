@@ -189,7 +189,15 @@ void test_a_stop_with_the_controller_down_is_done(void)
     {
         const Alpaca::DomeAnswer a = RoofIo::domeAnswer(c, false, "notStarted", "The roof controller didn't start", {});
         TEST_ASSERT_TRUE(a.accepted);
+        // Spec 023: nor with an invalid pin setup (nothing is driven).
+        TEST_ASSERT_TRUE(RoofIo::domeAnswer(c, false, "pinSetup", "Pin setup invalid: ...", {}).accepted);
     }
+}
+
+// An open with an invalid pin setup is refused, saying why.
+void test_an_open_with_invalid_pins_is_refused(void)
+{
+    TEST_ASSERT_FALSE(RoofIo::domeAnswer(Command::Open, false, "pinSetup", "Pin setup invalid: x", {}).accepted);
 }
 
 // ...but a stop the roof refused (a client's, during the close on unsafe weather) is reported.
@@ -508,6 +516,7 @@ int main(int, char **)
     RUN_TEST(test_refusal_text_otherwise_unchanged);
     RUN_TEST(test_answer_carries_the_refusal);
     RUN_TEST(test_a_stop_with_the_controller_down_is_done);
+    RUN_TEST(test_an_open_with_invalid_pins_is_refused);
     RUN_TEST(test_a_refused_stop_is_reported);
     RUN_TEST(test_every_dome_action_is_the_client_s);
     RUN_TEST(test_remote_origins);

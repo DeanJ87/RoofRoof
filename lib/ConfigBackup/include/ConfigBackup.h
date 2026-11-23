@@ -106,7 +106,8 @@ namespace SQM::Backup
     constexpr uint8_t RESTART_OTA = 1U << 1;
     constexpr uint8_t RESTART_IPV6 = 1U << 2;
     constexpr uint8_t RESTART_ALPACA = 1U << 3;
-    constexpr int RESTART_REASON_COUNT = 4;
+    constexpr uint8_t RESTART_PINS = 1U << 4; // spec 023
+    constexpr int RESTART_REASON_COUNT = 5;
     uint8_t restartReasons(const Config &before, const Config &after);
     // "wifi", "ota", "ipv6", "alpaca" for bit `index`.
     const char *restartCode(int index);
@@ -114,6 +115,7 @@ namespace SQM::Backup
     enum class NotApplicableReason : uint8_t
     {
         PushoverKeys, // Pushover on, but its keys are neither restored nor set here
+        BoardPins,    // spec 023: a backup never changes the board or pins (they belong to this hardware)
     };
     const char *reasonCode(NotApplicableReason reason);
 

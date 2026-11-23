@@ -15,8 +15,15 @@ namespace SQM
         constexpr uint32_t PWM_FREQUENCY_HZ = 20000;
         constexpr uint8_t PWM_RESOLUTION_BITS = 8;
 
-        // EN, RPWM and LPWM as outputs, all low. First thing in setup(): until
-        // then the pins float and only the EN pull-down holds the driver off.
+        // Spec 023: the pins in effect (src/PinSetup.cpp), before holdOff(). Or
+        // none: with disable() nothing is ever written to any pin and begin()
+        // fails, so the driver can't be armed.
+        void configure(uint8_t rpwm, uint8_t lpwm, uint8_t enable);
+        void disable();
+
+        // EN, RPWM and LPWM as outputs, all low. As early in setup() as the
+        // pins are known (after the settings are read): until then the pins
+        // float and only the EN pull-down holds the driver off.
         void holdOff();
 
         // Attaches the PWM to RPWM and LPWM at duty 0 (EN stays low). After
@@ -59,6 +66,19 @@ namespace SQM
         // reset that isn't a power cut). Cleared once the fault is in NVS.
         bool tripMarked();
         void clearTripMark();
+
+        // Spec 023, the wiring check: EN read as an input with the internal
+        // pull-up for about 50 µs, then low and an output again, in EN's
+        // critical section. Only with EN off and both duties 0 (the bridge
+        // can't drive with both PWM low, whatever EN does); the caller holds
+        // the roof's lock. NotRun in a bench build or with no pins.
+        enum class EnableProbe : uint8_t
+        {
+            NotRun,
+            Low,
+            High,
+        };
+        EnableProbe probeEnable();
 
         // EN is high (the driver is on). In a bench build (spec 011): EN as
         // the logic set it; the pin itself stays low.

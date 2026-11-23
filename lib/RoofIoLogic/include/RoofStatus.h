@@ -41,13 +41,12 @@ namespace SQM
             float supplyVolts = 0.0f; // NaN when unreadable
             float minSupplyVolts = 11.0f;
             bool currentSense = false;
-            float motorAmps = 0.0f; // NaN when off or unreadable
+            std::string pinSetupText; // spec 023: the fault's text while the pins in effect are invalid
+            float motorAmps = 0.0f;   // NaN when off or unreadable
             float maxCurrentAmps = 10.0f;
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;
             Contact switch2 = Contact::Unreadable;
-            bool rainFitted = false;
-            Contact rain = Contact::Unreadable;
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
             bool calibrating = false;  // spec 016: a calibration run is under way (pauses included)
             uint32_t remoteStops = 0;  // spec 014: of personStops, the remote stops honoured by autoClose.remoteStop

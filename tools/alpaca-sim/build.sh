@@ -11,7 +11,7 @@ PIO=${PIO:-pio}
 [ -d "$ARDUINOJSON" ] || "$PIO" pkg install -e native
 c++ -std=gnu++17 -O1 -Wall -Wextra -Werror \
     -Ilib/AlpacaLogic/include -Ilib/RoofLogic/include -Ilib/RoofPlantLogic/include -Ilib/RoofIoLogic/include -Ilib/DriverLogic/include \
-    -Ilib/ConfigModel/include -Ilib/SafetyInputLogic/include -Ilib/NinaLogic/include -Itest/roof_sim -I"$ARDUINOJSON" \
+    -Ilib/ConfigModel/include -Ilib/BoardLogic/include -Ilib/CaptiveDns/include -Ilib/SafetyInputLogic/include -Ilib/NinaLogic/include -Itest/roof_sim -I"$ARDUINOJSON" \
     lib/AlpacaLogic/src/*.cpp lib/RoofLogic/src/*.cpp lib/DriverLogic/src/*.cpp lib/RoofPlantLogic/src/RoofPlant.cpp \
     lib/RoofIoLogic/src/CommandCheck.cpp lib/RoofIoLogic/src/DomeBridge.cpp lib/RoofIoLogic/src/RoofGates.cpp lib/RoofIoLogic/src/RoofText.cpp \
     lib/RoofIoLogic/src/FaultRecord.cpp \

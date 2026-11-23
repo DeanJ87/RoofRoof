@@ -17,7 +17,7 @@ namespace SQM
         const Calib::JogRequest &request, const std::function<bool()> &sequenceIdle, uint32_t &id, uint32_t &limitMs)
     {
         if (lock == nullptr || !started.load())
-            return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+            return notStarted();
         Outcome outcome;
         {
             RoofLocked held(lock);

@@ -251,4 +251,11 @@ namespace SQM::ConfigDetail
     void applySync(const Section &sync, SqmeterSyncConfig &s);
     void migrateSync(Config &cfg);
 
+    // Spec 023 (ConfigJsonBoard.cpp): the pins, the analog front end and the network mode.
+    bool applyPins(const Section &root, Board::PinMap &map, std::string *error);
+    bool applyAnalog(const Section &root, Board::AnalogConfig &analog, std::string *error);
+    bool applyNetwork(const Section &network, NetworkConfig &n, std::string *error);
+    // Spec 022.
+    void applyTestBox(const Section &t, TestBoxConfig &c);
+
 } // namespace SQM::ConfigDetail

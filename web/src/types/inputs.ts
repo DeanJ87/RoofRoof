@@ -21,7 +21,6 @@ export interface RoofInputs {
     text: string;
     http: InputsSource;
     mqtt: InputsSource;
-    rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
   };
   park: { parked: boolean; text: string };
   nina: {
