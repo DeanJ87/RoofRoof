@@ -49,7 +49,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted" }, "closePending": false, "calibrating": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted", "switchesOnly": false, "openings": [0, 0], "check": null }, "closePending": false, "calibrating": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
 }
 ```
 
@@ -80,7 +80,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `hall.level`, `hall.counts` | `unsettled`, `low`, `between`, `high` or `rail`, and the raw 12-bit reading ([calibration](../hardware/calibration.md)) |
 | `supplyVolts`, `supplyLow`, `minSupplyVolts` | the 12 V supply (`null` when unreadable), whether it is unreadable or below the minimum, and the minimum |
 | `currentSense`, `motorAmps`, `maxCurrentAmps` | current sense on, the motor current (`null` while off or unreadable) and its limit |
-| `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted` |
+| `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted`; `switchesOnly`: the park switches are the only park source (`park.source` `switches`); `openings`: for each switch, roof openings since it last read open (kept across restarts); `check`: with the switches only, why Open is refused because a switch hasn't opened in the last 3 roof openings (`parkSwitchCheck`), else `null` ([Safety inputs](../user-guide/safety-inputs.md#park-switches-only)) |
 | `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
 | `calibrating` | a [calibration run](../user-guide/calibration-run.md) is under way, pauses at each end included; open and close are refused (`calibrating`) and the Stop bar shows |
 | `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
@@ -126,7 +126,7 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 `sync` says how the settings groups that follow SQMeter stand ([Keeping in step](../user-guide/close-on-unsafe.md#keeping-in-step)):
 
 ```json
-"sync": { "problem": null, "readAgeSeconds": 180,
+"sync": { "problem": null, "readAgeSeconds": 180, "secrets": "received",
   "time": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": [] },
   "mqtt": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": ["mqttPassword"] },
   "alerts": { "follow": false, "syncedAt": null, "refused": null, "needs": [] } }
@@ -136,6 +136,7 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 |---|---|
 | `problem` | why SQMeter's settings aren't being read now (`noAddress`, `waiting`, `unreachable`, `unreadable`, `passwordNeeded`, `passwordRefused`), `null` when the last read was good or no group follows |
 | `readAgeSeconds` | seconds since SQMeter's settings were last read in this run, `null` before the first |
+| `secrets` | the last read of SQMeter's passwords (`GET /api/secrets`) while the MQTT or alerts group follows: `received`, or why not (`waiting`, `notSupported` (an older SQMeter), `sharingOff`, `noWebPassword`, `loginNeeded`, `loginRefused` (not asked again until SQMeter's saved login changes), `tooManyLogins` (SQMeter's 429), `unreachable`, `unreadable`); `null` while neither group follows or SQMeter's address isn't set |
 | `<group>.follow` | the group follows SQMeter (`sqmeterSync.<group>.follow`) |
 | `<group>.syncedAt` | Unix seconds of the group's last change from SQMeter, `null` when never |
 | `<group>.refused` | why the last sync didn't take SQMeter's values (the old ones are kept), e.g. a value the settings' validation refuses or "MQTT roof commands are on: set the broker here, not from SQMeter"; `null` otherwise |
@@ -171,6 +172,10 @@ curl -X POST http://roofroof.local/api/config \
 ```
 
 Masked or empty password fields preserve the existing stored password. Send `null` for `wifi.password`, `mqtt.password`, or `ota.password` only when you intentionally want to clear that password.
+
+`mqtt.password`, `alerts.ntfy.token`, `alerts.pushover.userKey` and `alerts.pushover.appToken` may be sent as `"(from SQMeter)"`: the save then takes the secret the device received in the last [copy from SQMeter](#post-apisqmetersite), held for 30 minutes, but only while the field's server is the one SQMeter uses it for (the MQTT broker, port and user name; the ntfy server). Otherwise the save is refused with `400`, e.g. `{"error": "The MQTT password from SQMeter is for SQMeter's own broker, not this one: copy again, or type it"}` or `{"error": "A password from SQMeter is no longer held (copied over 30 minutes ago, or the device restarted): copy again, or type it"}`. The placeholder is never stored.
+
+`park.source` and `park.switches` must agree: `nina` with `none`, `switches` or `ninaAndSwitches` with `one` or `two` (`{"error": "Park: park switches need one or two fitted; choose N.I.N.A. only for none"}`). A body with `park.switches` but no `park.source` sets the source the switches meant before it existed (`none`: `nina`, otherwise `ninaAndSwitches`).
 
 Every value must have the setting's type: text for names and addresses, `true`/`false` for switches, numbers for numbers. A value of the wrong type, `null` included (other than `null` to clear a password), is rejected with `400` and an error naming the setting, e.g. `{"error": "Settings: wifi.ssid must be a string"}`; it is never replaced by a default. A setting you leave out keeps its current value.
 
@@ -252,13 +257,16 @@ curl -u admin:password -X POST http://roofroof.local/api/sqmeter/site \
   "device": { "name": "SQMeter" },
   "location": { "set": true, "latitude": 51.5074, "longitude": -0.1278 },
   "time": { "timezone": "GMT0BST,M3.5.0/1,M10.5.0", "server1": "pool.ntp.org", "server2": "time.nist.gov" },
-  "mqtt": { "broker": "192.168.1.10", "port": 1883, "username": "observatory", "topic": "sqmeter", "passwordSet": true },
-  "ntfy": { "server": "https://ntfy.sh", "topic": "my-observatory", "tokenSet": false },
-  "pushover": { "userKeySet": true, "appTokenSet": true }
+  "mqtt": { "broker": "192.168.1.10", "port": 1883, "username": "observatory", "topic": "sqmeter", "passwordSet": true, "enabled": true },
+  "ntfy": { "server": "https://ntfy.sh", "topic": "my-observatory", "tokenSet": false, "enabled": true },
+  "pushover": { "userKeySet": true, "appTokenSet": true, "enabled": false },
+  "secrets": { "problem": null, "http": true, "mqttPassword": "received", "ntfyToken": "none", "pushover": "same" }
 }
 ```
 
-A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKeySet`, `appTokenSet`): its value never appears, even from an SQMeter old enough not to mask it. A part an older SQMeter doesn't have is `null`; SQMeter v0.1's top-level `timezone` is read as the time zone.
+A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKeySet`, `appTokenSet`): its value never appears, even from an SQMeter old enough not to mask it. `enabled` is SQMeter's own on/off switch for MQTT and each channel.
+
+`secrets`: when `url` is the saved SQMeter address (its scheme, host and port), the device also reads SQMeter's `GET /api/secrets` with the same login and holds what it gets, in memory, for 30 minutes. Each of `mqttPassword`, `ntfyToken` and `pushover` (both keys) is `received` (held, and different from RoofRoof's saved one), `same` (equal to it) or `none` (not received, or not set on SQMeter). `problem` is `null` when they were received, else why not: `notSaved` (the address isn't the saved one), `notSupported` (SQMeter answered 404: it is older), `sharingOff` or `noWebPassword` (SQMeter's two 403s), `loginNeeded` or `loginRefused` (401), `tooManyLogins` (429: SQMeter locked it for a minute after failed logins), `unreachable`, `unreadable`; with SQMeter's `sharing.secrets` off nothing is asked and it is `sharingOff`. `http` is true when they crossed the network unencrypted. To use a held secret, save its field as `"(from SQMeter)"` ([`POST /api/config`](#post-apiconfig)). A part an older SQMeter doesn't have is `null`; SQMeter v0.1's top-level `timezone` is read as the time zone.
 
 | Status | When |
 |---|---|
@@ -595,7 +603,7 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`: "No board chosen yet: choose the board and its pins", or "Pin setup invalid: " and the first broken pin rule or "The saved pin setup couldn't be read"; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true.
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`parkSwitchCheck`) with the park switches only while `roof.parkSwitches.check` is set (a switch hasn't opened in the last 3 roof openings), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`: "No board chosen yet: choose the board and its pins", or "Pin setup invalid: " and the first broken pin rule or "The saved pin setup couldn't be read"; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true.
 
 
 ### `POST /api/roof/close`
@@ -651,7 +659,7 @@ Starts an attended [calibration run](../user-guide/calibration-run.md) (spec 016
 { "attended": true, "at": "closed", "travelMm": 1850, "topPass": false }
 ```
 
-`attended` must be `true` (the person is at the roof and can see it); `at` is where the roof is now (`closed`, `open` or `partWay`), checked against the Hall reading; `travelMm` the travel between the magnets' trigger points, measured with a tape (100-20000); `topPass` adds an open and a close at the top duty. `200 {"success": true, "state": "running"}`; `400` for a body of another shape; `409` with `reason` and `error` when refused: `notAttended`, `calibrating`, `closeSequence` (the automatic close isn't idle), `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's refusals. Nothing is saved by the run.
+`attended` must be `true` (the person is at the roof and can see it); `at` is where the roof is now (`closed`, `open` or `partWay`), checked against the Hall reading; `travelMm` the travel between the magnets' trigger points, measured with a tape (100-20000); `topPass` adds an open and a close at the top duty. `200 {"success": true, "state": "running"}`; `400` for a body of another shape; `409` with `reason` and `error` when refused: `notAttended`, `calibrating`, `closeSequence` (the automatic close isn't idle), `faultLatched`, `moving`, `closeWaiting`, `settingsPending`, `weatherNotSafe`, `daylight`, `mountNotParked`, `parkSwitchCheck` (an open leg), `busy`, `hotspot`, `restarting`, `invalid`, `hallDisagrees`, `notStarted`, or the motion logic's refusals. Nothing is saved by the run.
 
 ### `POST /api/roof/calibration/confirm`
 

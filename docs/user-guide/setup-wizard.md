@@ -57,9 +57,13 @@ wizard resumes at.
    connected ([Security](security.md)).
 2. **Site and time**: first **SQMeter's address** (e.g. `192.168.1.50` or `sqmeter.local`, the
    weather source's address; RoofRoof adds `/api/safety` itself) with **Copy site settings from SQMeter**, which lists what SQMeter has that differs
-   (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy) for you to tick and apply; the
-   later screens then arrive filled in, the copied groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show **Follows SQMeter**, with **Edit here instead**), and passwords and tokens are never copied
-   ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
+   (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy, and MQTT, ntfy and Pushover
+   switched on) for you to tick and apply; the later screens then arrive filled in, and the copied
+   groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their
+   fields show **Follows SQMeter**, with **Edit here instead**). Once SQMeter's address is saved,
+   SQMeter's MQTT password, ntfy token and Pushover keys come too when SQMeter shares them (the
+   device reads them; the page only says they were received); otherwise the copy says why and asks
+   for them ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
    SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
    for the daylight check); then the time zone and NTP.
 3. **Hardware**, with the live readings:
@@ -85,10 +89,11 @@ wizard resumes at.
       minimum supply. Type what your meter shows at the driver's input: the screen says whether
       the two agree within 0.2 V. The meter reading is only compared, never saved;
     - whether **current sense** is fitted, and its scaling with the live motor current when it is;
-    - how many **park switches** are fitted (none, one or two), each with its live state. Operate
-      each by hand and watch it change. The switches are optional: N.I.N.A.'s park alone confirms
-      the mount is parked, and fitted switches are a second check that must agree
-      ([Safety inputs](safety-inputs.md)).
+    - **How does RoofRoof know the mount is parked?** N.I.N.A. only, park switches only, or
+      N.I.N.A. and park switches; with switches, how many are fitted (one or two), each with its
+      live state. Operate each by hand and watch it change. With the switches only, N.I.N.A. is
+      not needed, two switches on separate cables are recommended and one gets a warning
+      ([Safety inputs](safety-inputs.md#park)).
 
     There is no rain question: rain comes from SQMeter's rain gauge ([Safety inputs](safety-inputs.md#weather)).
 

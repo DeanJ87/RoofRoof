@@ -1,5 +1,5 @@
 ---
-description: "How RoofRoof decides whether the weather is safe (SQMeter over HTTP or MQTT, rain from its gauge) and whether the mount is parked (N.I.N.A. and the park switches). Doubt always counts as unsafe or not parked."
+description: "How RoofRoof decides whether the weather is safe (SQMeter over HTTP or MQTT, rain from its gauge) and whether the mount is parked (N.I.N.A., the park switches, or both). Doubt always counts as unsafe or not parked."
 ---
 
 # Safety inputs
@@ -41,19 +41,42 @@ Every reason says what was measured and what the limit was, for example `SQMeter
 
 ## Park
 
-The mount counts as parked only when **all** of these hold:
+What confirms the park is the **park source** (`park.source`, **Settings → Roof → Mount park**, or the setup wizard's question "How does RoofRoof know the mount is parked?"):
 
-1. N.I.N.A.'s latest reading, at most 10 s old, says the mount is connected, at park and not slewing;
-2. every fitted park switch (`park.switches`: none, one (park switch A), or two (A and B); their pins are on the [Pins](pins.md) page) is closed.
+| Park source | The mount counts as parked when |
+|---|---|
+| **N.I.N.A. only** (`nina`, the default) | N.I.N.A.'s latest reading, at most 10 s old, says the mount is connected, at park and not slewing. |
+| **N.I.N.A. and park switches** (`ninaAndSwitches`) | that, **and** every fitted park switch is closed. Both must agree. |
+| **Park switches only** (`switches`) | every fitted park switch is closed (with two, both), and no N.I.N.A. reading from the last 10 s says the mount is slewing. N.I.N.A. is not needed. |
 
-The park switches are optional. With none fitted (the default) N.I.N.A.'s park alone confirms it; fitted switches are a second check on the mount itself, and both must agree.
+`park.switches` says how many switches are fitted: none, one (park switch A) or two (A and B); their pins are on the [Pins](pins.md) page. N.I.N.A. only uses none; the two switch sources need one or two, and a save that mixes them up is refused. Settings saved before the park source existed keep their rule: no switch means N.I.N.A. only, one or two mean N.I.N.A. and switches.
+
+### Park switches only
+
+With the switches as the only source, N.I.N.A.'s address is optional. Without one, the [close on unsafe weather](close-on-unsafe.md) asks nobody to park and only waits for the switches (up to `park.timeoutSeconds`); with one, it still asks N.I.N.A. to park first (unless **May ask N.I.N.A. to park** is off). A reading from N.I.N.A. counts only against the park: if it says the mount is slewing, the mount is not parked whatever the switches say. N.I.N.A. being unreachable, stale, disconnected or reporting "not at park" doesn't hold the roof open.
+
+A switch is a single wire, and its faults are not symmetric:
+
+| Fault | What the switch reads | Result |
+|---|---|---|
+| Broken wire, loose connector | open | not parked (safe) |
+| Short to ground, switch stuck closed | closed | **parked, whatever the mount does** |
+
+So RoofRoof guards against the second kind:
+
+- **Wiring**: a switch closes to ground when the mount is at park (normally open). Normally-closed wiring is not supported: it would turn the commoner fault, a broken wire, into "parked". See [Wiring](../hardware/wiring.md#which-way-round-the-switches-read).
+- **Two switches recommended**: fit two, at different points of the mount and on separate cables. A short or a stuck switch then disagrees with the other one, and the mount counts as not parked. With one switch, Settings and the wizard warn that such a fault can't be told from a parked mount.
+- **Stuck-switch check**: RoofRoof counts, for each fitted switch, the roof openings since the switch last read open. When a switch hasn't opened over **3 roof openings in a row**, Open is refused: "Park switch 1 hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the mount off its park (or take the magnet away) once to check it". The count clears as soon as the switch reads open, and it is kept across restarts. On a normal night the mount leaves its park, so this never shows; three cloudy-night openings in a row without unparking will ask for that one check. The roof is closed whenever this refuses, so it never leaves the roof open in the rain. It counts only with the park switches as the source, and only full openings (not a calibration run); an attended jog or teach toward open isn't refused by it. The status shows the counts (`roof.parkSwitches.openings`) and the refusal (`roof.parkSwitches.check`).
+
+!!! warning "The risk you take with one switch"
+    A short or a stuck switch that happens during a night, with one switch and no N.I.N.A. in the rule, reads "parked" while the mount is not, and the roof can close onto it. The stuck-switch check catches a fault that lasts, at the next openings, not one that starts mid-night. Two switches on separate cables, or N.I.N.A. and park switches, close that gap.
 
 Anything else is "not parked", with the reasons. A close starts only on a park confirmed this way.
 
 While the roof closes (and during every calibration leg and jog), the park is checked again at every control step, and anything that says the mount isn't parked stops the motor with the latched fault "Park lost during the close": N.I.N.A. saying not at park, slewing or not connected; N.I.N.A. and the switches disagreeing; a fitted switch opening or becoming unreadable; N.I.N.A.'s address being removed or changed; or the safety inputs not being handed to the roof for 5 s. A **missed N.I.N.A. reply** on its own (no answer, a reply that can't be read, an API error) is not a report that the mount moved: the close carries on with N.I.N.A.'s last good reading, as long as that reading said parked, agrees with the switches as they read now, and is no more than 10 s old. Once it is older, the close stops with "Park lost during the close: N.I.N.A. not read within its freshness limit". The roof's control task measures that age itself, so the limit holds even when the rest of the device is slow. The log says when a close rides on the last reading (`N.I.N.A. read failed: a move under way is riding on a parked reading 2.1 s old (limit 10 s)`) and when that ends. When N.I.N.A. and the switches point opposite ways (N.I.N.A. says parked and a switch is open, or N.I.N.A. says not parked and every switch is closed), the result also says they **disagree**. The mount then counts as not parked, so the [close on unsafe weather](close-on-unsafe.md) waits, and its alert names the disagreement.
 
 !!! note "Test box exception"
-    For a box with no telescope yet, the park bypass of [test box mode](test-box.md) acts as a park source saying "no telescope under this roof", until a deadline. It is refused while a N.I.N.A. address is set, and fitted park switches still count.
+    For a box with no telescope yet, the park bypass of [test box mode](test-box.md) acts as a park source saying "no telescope under this roof", until a deadline. It is refused while a N.I.N.A. address is set or with park switches only (there is no N.I.N.A. to stand in for), and fitted park switches still count.
 
 ### N.I.N.A.
 
@@ -74,7 +97,7 @@ Set the sources in **Settings → Roof → Weather sources** and the park in **S
 ```bash
 curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json" -d '{
   "safety": { "http": { "enabled": true, "url": "http://sqmeter.local" } },
-  "park":   { "nina": { "url": "http://192.168.1.20:1888" }, "switches": "none" }
+  "park":   { "source": "nina", "nina": { "url": "http://192.168.1.20:1888" }, "switches": "none" }
 }'
 ```
 

@@ -21,7 +21,7 @@ It is three separate switches, all off by default, and **all end at one deadline
 
 | Bypass | What it stands in for | When it is refused |
 |---|---|---|
-| **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | While a N.I.N.A. address is set. Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
+| **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | While a N.I.N.A. address is set, or with the park switches as the only park source (there is no N.I.N.A. to stand in for). Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
 | **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside |
 | **Daylight** | The sun: no [daylight close](close-on-unsafe.md#daylight-failsafe), and with **Alert and close** no refusal to open while the sun is up | Never refused. It only matters with the daylight mode on |
 

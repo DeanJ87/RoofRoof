@@ -6,9 +6,10 @@ description: "What RoofRoof does when the weather turns unsafe, or the sun is up
 
 When the weather is not safe and the roof is not closed, RoofRoof closes it by itself:
 
-1. it asks N.I.N.A. to park the mount;
-2. it waits until the park is **confirmed**: the [park rule](safety-inputs.md#park) (N.I.N.A. says
-   parked AND every fitted park switch is closed) has said parked for 4 s without a break;
+1. it asks N.I.N.A. to park the mount (when a N.I.N.A. address is set);
+2. it waits until the park is **confirmed**: the [park rule](safety-inputs.md#park) (as the park
+   source says: N.I.N.A. says parked, every fitted park switch is closed, or both) has said parked
+   for 4 s without a break;
 3. it closes the roof through the same checks as any other close (the park is checked at the
    start and on every control step while closing), and watches it reach the closed magnet.
 
@@ -217,7 +218,7 @@ daylight, set the mode to Alert or Off first.
 
 **Test box.** With the daylight bypass of [test box mode](test-box.md) in effect, there is no daylight close and no refusal to open in daylight, until its deadline. Unsafe weather is not affected.
 
-**Asking N.I.N.A. to park** is a setting, **May ask N.I.N.A. to park** (`park.requestPark`, on by default, Settings → Roof → Mount park). Off, the sequence sends no park request and only waits for the park: with the test box's park bypass in effect it closes at once; otherwise, unless the mount is parked some other way, the roof stays open and the critical "mount didn't park" alert goes out.
+**Asking N.I.N.A. to park** is a setting, **May ask N.I.N.A. to park** (`park.requestPark`, on by default, Settings → Roof → Mount park), and only ever happens with a N.I.N.A. address set: with the [park switches only](safety-inputs.md#park-switches-only) and no address, the sequence only waits for the switches. Off, the sequence sends no park request and only waits for the park: with the test box's park bypass in effect it closes at once; otherwise, unless the mount is parked some other way, the roof stays open and the critical "mount didn't park" alert goes out.
 
 **A person's Stop.** A person's Stop (web UI, REST) stands a daylight close down, exactly as it
 does a weather close. An Alpaca or MQTT client's stop of a close in daylight is refused
@@ -326,20 +327,53 @@ time screen, read SQMeter's settings and list what differs, SQMeter's value besi
 | Location | follow SQMeter's location (`location.source`) |
 | Time zone | `ntp.timezone` |
 | NTP servers | `ntp.server1`, `ntp.server2` |
-| MQTT broker | `mqtt.broker`, `mqtt.port`, `mqtt.username` |
+| MQTT broker | `mqtt.broker`, `mqtt.port`, `mqtt.username`, and SQMeter's MQTT password when it shares it |
+| MQTT password | `mqtt.password`, when the broker is already SQMeter's and its password differs |
+| MQTT on | `mqtt.enabled`: offered while SQMeter's MQTT is on and RoofRoof's is off |
 | MQTT weather topic | `safety.mqtt.topic`: SQMeter's base topic, where RoofRoof reads `<base>/safe`. RoofRoof's own base topic (`mqtt.topic`) stays its own |
-| ntfy | `alerts.ntfy.server`, `alerts.ntfy.topic` |
+| ntfy | `alerts.ntfy.server`, `alerts.ntfy.topic`, and SQMeter's ntfy token when it shares it |
+| ntfy token | `alerts.ntfy.token`, when the server is already SQMeter's and its token differs |
+| ntfy on | `alerts.ntfy.enabled`, while SQMeter's is on and RoofRoof's is off |
+| Pushover keys | `alerts.pushover.userKey`, `alerts.pushover.appToken`, when SQMeter shares both and they differ |
+| Pushover on | `alerts.pushover.enabled`, while SQMeter's is on and RoofRoof's is off |
 
 Tick the rows you want, **Apply ticked**, then **Save**: the settings are checked and saved as if
 you had typed them. Nothing is saved by the copy itself.
 
-**Never copied:** passwords, tokens and keys (SQMeter doesn't share them), the device name and host
-name (the two devices must differ), WiFi, Alpaca, OTA, and the on and off switches of MQTT and each
-alert channel (turn those on where their Test is). The list says which secret to enter: "Enter the
-MQTT password", "Enter the ntfy token", and, when SQMeter uses Pushover, its user key and app token.
-Copying a different MQTT broker, port or user name clears RoofRoof's saved MQTT password, and a
-different ntfy server clears the saved ntfy token, so a saved secret is never sent to a server it
-wasn't saved for.
+**Passwords, tokens and keys.** SQMeter shares its own MQTT password, ntfy token and Pushover keys
+with a client that logs in with its web password (`GET /api/secrets` on SQMeter, with its password
+sharing turned on). The device reads them itself during the copy, with SQMeter's saved or typed
+login, and only from the **saved** SQMeter address (its scheme, host and port): a typed address that
+isn't saved yet gets the settings but not the secrets. The page never sees them: the list only says
+**Password received from SQMeter**. Ticking a row with a secret puts a placeholder in that field
+(`(from SQMeter)`, shown as "Received from SQMeter"); at **Save** the device swaps it for what it
+received, but only while the field's server is still the one SQMeter uses it for (the MQTT broker,
+port and user name; the ntfy server). Change the broker or server after ticking and the save is
+refused: copy again, or type the password. The device holds what it received for 30 minutes, in
+memory only. Over `http://` the secrets cross your network unencrypted, as MQTT's own login does,
+and the list says so.
+
+When SQMeter can't share them, the list says exactly why, and asks for each secret as before:
+
+| SQMeter answers | Shown |
+|---|---|
+| 404 (an older SQMeter) | Update SQMeter to share passwords |
+| 403 "Password sharing is off" | SQMeter's password sharing is off: turn it on in SQMeter's Settings |
+| 403 "Set a web password" | Set a web password in SQMeter first: it guards the passwords it shares |
+| 401 | SQMeter needs its login, or refused it: check SQMeter's user name and password |
+| 429 (five failed logins in a row) | SQMeter locked password sharing for a minute: check the login, then try again |
+
+While SQMeter's own settings say sharing is off, RoofRoof doesn't ask at all. After a 401 the sync
+never asks again until you change SQMeter's user name or password here, so a wrong saved login
+can't run into SQMeter's lock; after a 429 it waits for the next read of SQMeter's settings.
+
+**On and off switches.** SQMeter's MQTT, ntfy and Pushover switches are offered only to turn
+RoofRoof's on (Pushover once its keys are here); nothing from SQMeter ever turns one off.
+
+**Never copied:** the device name and host name (the two devices must differ), WiFi, Alpaca, OTA,
+the webhook, and any secret SQMeter didn't share. Copying a different MQTT broker, port or user name
+without SQMeter's password clears RoofRoof's saved MQTT password, and a different ntfy server clears
+the saved ntfy token, so a saved secret is never sent to a server it wasn't saved for.
 
 Every copied value is an ordinary RoofRoof setting: it shows on its own Settings page (Time, Network,
 Alerts, Roof), marked **Follows SQMeter** while its group follows, and stays editable there. That
@@ -375,11 +409,11 @@ poll; the dashboard's daylight line, Settings and the copy show the same reason.
 Three groups of settings can keep following SQMeter, besides the location
 (`sqmeterSync.<group>.follow`):
 
-| Group | Follows | Secret it never takes |
+| Group | Follows | When SQMeter shares its secrets |
 |---|---|---|
 | Time | the time zone and both NTP servers | - |
-| MQTT | the broker, port and user name, and SQMeter's base topic as the MQTT weather topic (`safety.mqtt.topic`; RoofRoof's own base topic stays its own) | the MQTT password |
-| Alerts | the ntfy server and topic | the ntfy token; Pushover (SQMeter doesn't share its keys) |
+| MQTT | the broker, port and user name, and SQMeter's base topic as the MQTT weather topic (`safety.mqtt.topic`; RoofRoof's own base topic stays its own); MQTT turned on while SQMeter's is on | the MQTT password |
+| Alerts | the ntfy server and topic; ntfy and Pushover turned on while SQMeter's are (Pushover once both keys are here) | the ntfy token and the Pushover keys |
 
 A new device follows SQMeter in every group. After an update, a group you had already changed from
 its defaults stays **local**; one still at its defaults follows.
@@ -400,12 +434,21 @@ with when SQMeter was last read. **Edit here instead** makes the group local (sa
 **Follow SQMeter** makes it follow again. While a group follows, a settings save keeps the values
 RoofRoof synced, so an older page can't put old ones back.
 
-**Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
-clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
-has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it,
-also with that channel off. Pushover never syncs (SQMeter masks its keys): while the alerts group
-follows and SQMeter uses Pushover, its user key and app token are asked for until both are set here.
-Following alone shows no channel that is off. This is a note, not an alert.
+**Secrets.** While the MQTT or the alerts group follows, RoofRoof also reads SQMeter's secrets, in
+the pass after each good read of its settings, from the saved address with the saved login. A
+secret SQMeter has set is saved for the server it belongs to (SQMeter's broker, port and user name;
+its ntfy server; Pushover's), and kept current while the group follows. An empty one never clears
+RoofRoof's, and a secret typed here is not put back by a later save. When the sync can't read them
+(`sync.secrets` in the status: `notSupported`, `sharingOff`, `noWebPassword`, `loginNeeded`,
+`loginRefused`, `tooManyLogins`, `unreachable` or `unreadable`), Settings says why, and today's rule applies: a
+synced change of the MQTT broker, port or user name clears RoofRoof's saved MQTT password, and of
+the ntfy server the saved ntfy token; while SQMeter has that secret set and RoofRoof's is empty,
+Settings and the dashboard's Status card ask for it, also with that channel off; and while SQMeter
+uses Pushover, its keys are asked for until both are set here. This is a note, not an alert.
+
+**Switches only turn on.** While a group follows, a switch SQMeter has on (MQTT, ntfy, Pushover) is
+turned on here at the next sync; nothing turns one off. To keep one off while SQMeter's is on, make
+the group local (**Edit here instead**).
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
 Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT
