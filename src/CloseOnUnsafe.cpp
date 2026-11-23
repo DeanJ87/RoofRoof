@@ -279,8 +279,10 @@ namespace SQM
         switch (decision.action)
         {
         case CloseSeq::Action::RequestPark:
-            Logger::info(TAG, "Asking N.I.N.A. to park the mount");
-            safety.requestPark();
+            if (safety.requestPark())
+                Logger::info(TAG, "Asking N.I.N.A. to park the mount");
+            else
+                Logger::warn(TAG, "No park request sent: asking N.I.N.A. to park is off (park.requestPark)");
             break;
         case CloseSeq::Action::Close:
         {

@@ -62,7 +62,7 @@ wizard resumes at.
    ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
    SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
    for the daylight check); then the time zone and NTP.
-3. **Hardware**. The first screen asks **Is there a telescope under this roof?**: **Yes, or there will be** turns every [test box](test-box.md) bypass off; **A test box: no telescope yet** turns them on (each only where its source isn't already set up, with a deadline) and skips the Weather and N.I.N.A. screens. Then the live readings:
+3. **Hardware**. The first screen asks **Is there a telescope under this roof yet?**: **Yes, or there will be** turns every [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each only where its source isn't already set up, with a deadline), offers **May ask N.I.N.A. to park**, and skips the Weather and N.I.N.A. screens, so setup never asks you to park a mount. The N.I.N.A. screen also links back to it and warns not to point a bench box at a live N.I.N.A. Then the live readings:
     - the **12 V supply** as the device reads it through its fixed 100k/22k divider, and the
       minimum supply. Type what your meter shows at the driver's input: the screen says whether
       the two agree within 0.2 V. The meter reading is only compared, never saved;

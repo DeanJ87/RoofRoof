@@ -9,6 +9,7 @@
 #include "AlertEngine.h"
 #include "AlpacaRouter.h"
 #include "Config.h"
+#include "DeviceCore.h"
 #include "RoofStatus.h"
 #include "TestBox.h"
 
@@ -58,6 +59,10 @@ void test_texts(void)
         "Test box bypasses set but not in effect: a N.I.N.A. address or weather source is set",
         TestBox::describe(TestBox::evaluate(parkOnly, TestBox::Sources{true, false}, true, NOW)).c_str());
     TEST_ASSERT_EQUAL_STRING("", TestBox::describe(TestBox::State{}).c_str());
+    // A restore brings no deadline: never "expired at 1970".
+    TEST_ASSERT_EQUAL_STRING(
+        "Test box bypasses set but not started (restored settings): save or Renew to start them",
+        TestBox::describe(TestBox::evaluate(allOn(0), {}, true, NOW)).c_str());
 }
 
 void test_the_status_object(void)
@@ -161,9 +166,28 @@ void test_the_alert_rule_off_sends_nothing(void)
     TEST_ASSERT_EQUAL_STRING("test_box", Alerts::alertTypeName(Alerts::AlertType::TestBox));
 }
 
+// Past the master switch, the pause and the send mode, on its own (not stacked).
+void test_the_alert_goes_out_with_alerts_off_or_paused(void)
+{
+    AlertsConfig off = Config::createDefault().alerts;
+    off.enabled = false;
+    Alerts::Alert box;
+    box.type = Alerts::AlertType::TestBox;
+    Alerts::Alert fault;
+    fault.type = Alerts::AlertType::MoveFault;
+    const std::vector<Alerts::Alert> sent = Core::alertsToSend({fault, box}, off, false);
+    TEST_ASSERT_EQUAL_size_t(1, sent.size());
+    TEST_ASSERT_TRUE(sent[0].type == Alerts::AlertType::TestBox);
+    AlertsConfig on = off;
+    on.enabled = true;
+    TEST_ASSERT_EQUAL_size_t(2, Core::alertsToSend({fault, box}, on, true).size());
+    TEST_ASSERT_TRUE(Core::alertGoesOut(Alerts::AlertType::TestBox, off, false));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_the_alert_goes_out_with_alerts_off_or_paused);
     RUN_TEST(test_texts);
     RUN_TEST(test_the_status_object);
     RUN_TEST(test_the_status_section_carries_it);

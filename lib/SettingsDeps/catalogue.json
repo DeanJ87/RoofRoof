@@ -49,6 +49,7 @@
     "alerts.cooldownSeconds",
     "alerts.events.mount_not_parked.level",
     "alerts.events.roof_not_closed.level",
+    "alerts.events.test_box.level",
     "alerts.pushover.userKey",
     "alerts.pushover.appToken",
     "alerts.pushover.sound",
@@ -84,6 +85,7 @@
     "sqmeterSync.time.syncedAt",
     "sqmeterSync.mqtt.syncedAt",
     "sqmeterSync.alerts.syncedAt",
+    "park.requestPark",
     "testBox.hours",
     "testBox.until"
   ],
@@ -202,7 +204,6 @@
         "alerts.events.daylight_open.level",
         "alerts.events.daylight_closed.level",
         "alerts.events.daylight_unknown.level",
-        "alerts.events.test_box.level",
         "alerts.sendMode"
       ],
       "dependsOn": "Alerts on (Send alerts); channels are push only. The roof's critical alerts (mount not parked, roof didn't close) don't depend on it",

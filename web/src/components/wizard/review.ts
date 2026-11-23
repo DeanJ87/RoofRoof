@@ -1,6 +1,6 @@
 import type { Config, RoofInputs, SystemStatus } from '../../types';
 import { t } from '../../i18n';
-import { formatNumber } from '../../i18n/format';
+import { formatDateTime, formatNumber } from '../../i18n/format';
 import type { WizardPageId } from './pages';
 
 // The review page's checks (spec 015 FR-010): one per essential, from the
@@ -119,9 +119,14 @@ const daylight = ({ config }: ReviewInput): Check => {
 };
 
 // Spec 022: the bypasses are never "OK".
-const testBox = ({ config }: ReviewInput): Check => {
+const testBox = ({ config, status }: ReviewInput): Check => {
   const box = config.testBox;
   if (!box || !(box.park || box.weather || box.daylight)) return ok(t('wizard.review.testBoxOff'));
+  const live = status?.roof?.testBox;
+  if (live?.active && live.until > 0) {
+    const until = formatDateTime(new Date(live.until * 1000), { dateStyle: 'medium', timeStyle: 'short' });
+    return bad(t('wizard.review.testBoxUntil', { until }));
+  }
   return bad(t('wizard.review.testBoxOn', { hours: box.hours }));
 };
 

@@ -4,7 +4,7 @@ import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConf
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
-import TestBoxCard from './TestBoxCard';
+import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
 import { FollowsSqmeter } from './FollowsSqmeter';
@@ -302,9 +302,12 @@ export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, update
 
 const ParkCard: FunctionalComponent<ParkProps> = (props) => (
   <SettingsCard id="park" title={t('settings.roof.park')} hint={t('settings.roof.parkHint')}>
+    {/* Spec 022: a RoofRoof pointed at a N.I.N.A. asks it to park when unsafe. */}
+    <Note tone="warn">{t('settings.roof.liveNinaWarning')}</Note>
     <div class="form-grid">
       <NinaUrlField {...props} />
       <ParkSwitchesField {...props} />
+      <RequestParkToggle {...props} />
       <Num
         at={['park', 'timeoutSeconds']}
         label={t('settings.roof.parkTimeLimit')}

@@ -67,15 +67,19 @@ Each answer takes the safest option the constitution allows and is also listed u
   it ends (or that they expired); a `testBox` object in the roof section of `/api/status`,
   `/ws/status` and the MQTT state document; the dashboard's park and weather rows say "Bypassed
   (test box)" instead of "Parked" or "Safe"; the Alpaca Dome's description starts with "TEST BOX";
-  a Home Assistant "Test box" problem sensor with the bypasses as attributes; a log warning at boot
+  a Home Assistant "Test box bypass" problem sensor with the bypasses as attributes; a log warning at boot
   and on every change; and a new "Test box mode on" alert.
 - Q: When does the alert go out? → A: When a bypass comes into effect (turned on, or a new one
   added) and again after every boot while one is in effect (after the alert start-up grace). Its
   level is a setting (default urgent) that can't be off.
-- Q: What does the wizard offer? → A: A first screen on its Hardware page: "Is there a telescope under this roof?", answered "Yes, or there will
-  be" or "A test box: no telescope yet". The second sets all three
+- Q: What does the wizard offer? → A: A first screen on its Hardware page: "Is there a telescope under this roof yet?", answered "Yes, or there will
+  be" or "No telescope yet (bench setup)". The second sets all three
   bypasses with a red warning and skips the weather source and N.I.N.A. screens; the review says
   the checks are bypassed and until when.
+- Q: Can a test box park a real mount? → A: Only if the owner lets it. A box pointed at a live
+  N.I.N.A. asks it to park when the weather turns unsafe, as a real install does; a new setting,
+  "May ask N.I.N.A. to park" (`park.requestPark`, on by default), turns that off. The
+  status and the banner say when it would happen.
 - Q: Who can change it? → A: Only an authenticated settings save (`POST /api/config`, which calls
   `requireAuth`). No MQTT, Home Assistant, Alpaca or SQMeter sync path sets it, and a backup restore
   brings no deadline.
@@ -245,7 +249,15 @@ Every surface shows the bypass while it is in effect.
   the Dome description prefix "TEST BOX (bypassed: ...)"; a Home Assistant `test_box` binary
   sensor (problem) with the `testBox` object as attributes; log warnings at boot and on change.
 - **FR-012**: A "Test box mode on" alert event (`test_box`), default urgent, never off, sent when a
-  bypass comes into effect and once after each boot while one is in effect.
+  bypass comes into effect and once after each boot while one is in effect, on its own and past the
+  master switch, the pause and the send mode (like the critical alerts, at its own level).
+- **FR-015**: A setting `park.requestPark` ("May ask N.I.N.A. to park", on by default
+  and after an upgrade) decides whether the automatic close sends N.I.N.A. a park request; off, it
+  only waits for the park. It is on the Mount park card and on the wizard's test box screen; the
+  status (`roof.testBox.parkRequests`) and the banner say when unsafe weather would ask a
+  configured N.I.N.A. to park. Settings → Roof → Mount park, the wizard's N.I.N.A. screen and the
+  docs warn that a RoofRoof pointed at a live N.I.N.A. can park that mount; the N.I.N.A. screen
+  links to the test box screen, so setup never needs a mount parked.
 - **FR-013**: The decisions (in effect, the park, verdict and daylight effects, the save stamp, the
   status text, the alert) are pure `lib/` code with native tests; the demo uses the same code.
 - **FR-014**: Settings → Roof gets a Test box card (the three bypasses, hours, the deadline, Renew,
@@ -296,15 +308,11 @@ Each was an open choice; the safest option the constitution allows was taken.
    the clock is set (NTP usually takes seconds). A restored backup brings no deadline.
 7. **The test box alert can't be off** (lowest level quiet) and defaults to urgent; it is sent on
    each bypass coming into effect and after every boot while one is in effect, not on expiry (the
-   banner, status and log say that).
+   banner, status and log say that). It goes out past the master switch, the pause and the send
+   mode, so a test box with alerts off or no imaging app still gets it on any channel set up.
 8. **The wizard's test box choice sets the bypasses** (park only with no N.I.N.A. address,
    weather only with no SQMeter source on, saying so when one stays off) and skips the weather
    source and N.I.N.A. screens; choosing "a telescope" turns them all off.
-12. **The dashboard pill reads "Test box bypass"**, not "Bypassed (test box)": the design system
-    caps pills at 16 characters (DS copy rules); the pill's text line carries the device's
-    "bypassed (test box): ..." wording.
-13. **Larger JSON pools**: the status document's pool grows from 6144 to 6656 bytes, the MQTT state
-    document's from 2048 to 2560 and the settings parse margin by 1 KB, all transient per request.
 9. **The UI was not mocked up for owner review before building** (constitution workflow); it uses
    only existing components (Note, Toggle, NumberInput, ChoiceGroup), and the owner reviews it on
    the PR.
@@ -312,3 +320,22 @@ Each was an open choice; the safest option the constitution allows was taken.
     this becomes 4.0.0 with the same text.
 11. **With authentication off**, "authenticated save" means the device's normal settings save, as
     for every other setting; the bypass adds no separate password.
+12. **The dashboard pill reads "Test box bypass"**, not "Bypassed (test box)": the design system
+    caps pills at 16 characters (DS copy rules); the pill's text line carries the device's
+    "bypassed (test box): ..." wording.
+13. **Larger JSON pools**: the status document's pool grows from 6144 to 6656 bytes, the MQTT state
+    document's from 2048 to 2560 and the settings parse margin by 1 KB, all transient per request.
+14. **The expiry is wall-clock time.** A clock stepped back repeatedly (a misbehaving time server)
+    could keep a bypass alive past its hours; the banner and the status show the deadline, and a
+    restart without a clock suspends every bypass.
+15. **Park requests are a setting, not a test-box ban.** `park.requestPark` ("May ask N.I.N.A. to
+    park", on by default and after an upgrade) applies to every install; off, the
+    automatic close only waits for the park (it closes at once with the park bypass in effect,
+    otherwise the roof stays open and the critical alert goes out). Parking a real mount when the
+    weather turns unsafe is acceptable to the owner, so the default stays on; the setting is on the
+    Mount park card and the wizard's test box screen, and the status and banner say when unsafe
+    weather would ask a configured N.I.N.A. to park. Making step 2 of Principle III switchable is
+    part of the 3.0.0 amendment.
+16. **The wizard never needs a parked mount**: the test box question comes first on the Hardware
+    page (before teach and the calibration run, which need the park), and the N.I.N.A. screen links
+    back to it and warns about a live N.I.N.A.

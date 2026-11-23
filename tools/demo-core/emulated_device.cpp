@@ -298,8 +298,8 @@ void EmulatedDevice::runAlerts()
 
     const Core::AlertSources sources{cfg};
     Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});
-    if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
-        record(Alerts::stackAlerts(step.outgoing), 0x0F);
+    for (const Alerts::Alert &alert : Core::alertsToSend(step.outgoing, cfg.alerts, schedule.state().sending))
+        record(alert, 0x0F);
 
     // After this pass's alerts: "disconnected" goes out before it pauses.
     const bool wasSending = schedule.state().sending;

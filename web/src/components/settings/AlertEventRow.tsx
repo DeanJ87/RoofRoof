@@ -56,7 +56,8 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
 }) => {
   const { set } = view;
   const critical = isCriticalEvent(key);
-  const off = view.off && !critical;
+  // Spec 022: the test box reminder also goes out with alerts off or paused.
+  const off = view.off && !critical && key !== 'test_box';
   const event = view.alerts.events[key];
   const entry = view.dep(`alerts.events.${key}.level`);
   // Can't be raised from Off while what it needs is missing (FR-005).

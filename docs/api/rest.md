@@ -94,12 +94,12 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 ```json
 "testBox": {
   "set": true, "active": true, "park": true, "weather": true, "daylight": false,
-  "until": 1764160000, "expired": false, "waitingForClock": false,
+  "until": 1764160000, "expired": false, "waitingForClock": false, "parkRequests": false,
   "text": "Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"
 }
 ```
 
-`park`, `weather` and `daylight` are the bypasses in effect now; `set` is true when any is set in the settings; `until` is the deadline in Unix seconds (`0` with nothing set). When the deadline has passed, `expired` is true and the checks are back; while the clock isn't set, `waitingForClock` is true and the checks apply. `text` is empty with nothing set; otherwise it names the bypasses and the deadline, or says they expired or wait for the clock. With nothing set every boolean is false. While a bypass is in effect, `weatherText` and `parkText` end in "bypassed (test box): no weather source" and "bypassed (test box): no telescope under this roof", `weather` is `safe` and `parkConfirmed` is true.
+`park`, `weather` and `daylight` are the bypasses in effect now; `set` is true when any is set in the settings; `until` is the deadline in Unix seconds (`0` with nothing set). When the deadline has passed, `expired` is true and the checks are back; while the clock isn't set, `waitingForClock` is true and the checks apply. `text` is empty with nothing set; otherwise it names the bypasses and the deadline, or says they expired or wait for the clock. With nothing set every bypass boolean is false. `parkRequests` is true when unsafe weather would ask a configured N.I.N.A. to park its mount (`park.requestPark` on and an address set), whatever the bypasses. While a bypass is in effect, `weatherText` and `parkText` end in "bypassed (test box): no weather source" and "bypassed (test box): no telescope under this roof", `weather` is `safe` and `parkConfirmed` is true.
 
 `location` says where the daylight failsafe's site comes from ([Site from SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)):
 

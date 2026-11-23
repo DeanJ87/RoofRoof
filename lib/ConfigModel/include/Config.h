@@ -109,6 +109,10 @@ namespace SQM
         uint32_t timeoutSeconds = 240;
         static constexpr uint32_t MIN_TIMEOUT_SECONDS = 30;
         static constexpr uint32_t MAX_TIMEOUT_SECONDS = 1800;
+        // Spec 022: the automatic close may ask N.I.N.A. to park the mount
+        // when unsafe (Principle III step 2). On by default and after an
+        // upgrade; the owner may turn it off (a bench box pointed at a live N.I.N.A.).
+        bool requestPark = true;
     };
 
     // Push notifications. Persisted under their own NVS keys (see

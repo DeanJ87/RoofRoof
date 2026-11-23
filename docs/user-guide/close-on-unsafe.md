@@ -217,6 +217,8 @@ daylight, set the mode to Alert or Off first.
 
 **Test box.** With the daylight bypass of [test box mode](test-box.md) in effect, there is no daylight close and no refusal to open in daylight, until its deadline. Unsafe weather is not affected.
 
+**Asking N.I.N.A. to park** is a setting, **May ask N.I.N.A. to park** (`park.requestPark`, on by default, Settings → Roof → Mount park). Off, the sequence sends no park request and only waits for the park: with the test box's park bypass in effect it closes at once; otherwise, unless the mount is parked some other way, the roof stays open and the critical "mount didn't park" alert goes out.
+
 **A person's Stop.** A person's Stop (web UI, REST) stands a daylight close down, exactly as it
 does a weather close. An Alpaca or MQTT client's stop of a close in daylight is refused
 (`unsafeClose`), as in bad weather. The stand-down lasts while the sun is up. It ends once the sun

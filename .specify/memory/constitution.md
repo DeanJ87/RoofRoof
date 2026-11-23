@@ -6,9 +6,13 @@ Sync Impact Report
   telescope under it and no weather station (a controller tried out on a desk), the owner may set
   test-box bypasses: a "no telescope" park source that stands in for N.I.N.A., and a weather bypass
   that stands in for a missing weather source. They exist only as explicit, visible, owner-set
-  test-box settings: off by default, changed only by an authenticated settings save, shown on every
+  test-box settings: off by default, changed only by an authenticated settings save (with
+  authentication off, as for every setting, any LAN client can make it), shown on every
   page, in the status, MQTT, Home Assistant, the Alpaca description and an alert, and ending at a
-  deadline of at most 720 h that needs the clock. Neither can be set alongside the source it stands
+  deadline of at most 720 h that needs the clock. Principle III's step 2 (ask N.I.N.A. to park)
+  becomes an owner setting, `park.requestPark`, on by default and after an upgrade: off, the
+  unsafe close only waits for a park confirmed some other way (a bench box pointed at a live
+  N.I.N.A. need not park that mount). Neither can be set alongside the source it stands
   in for (a N.I.N.A. address, an SQMeter source); fitted park switches and a rain contact still
   count; no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
 - New risk: a telescope put under a roof still in test-box mode, with no N.I.N.A. address and no
@@ -166,7 +170,7 @@ Doubt about the weather MUST resolve to "unsafe".
 
 - Unsafe or raining MUST always end with the mount parked and the roof closed:
   1. stop the running sequence;
-  2. ask N.I.N.A. to park;
+  2. ask N.I.N.A. to park (unless the owner turned park requests off, `park.requestPark`);
   3. wait for the park to be confirmed (Principle II);
   4. close.
 

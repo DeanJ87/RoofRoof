@@ -301,8 +301,8 @@ describe('Wizard', () => {
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('testBox');
-    expect(await question()).toHaveTextContent('Is there a telescope under this roof?');
-    fireEvent.click(screen.getByRole('radio', { name: /A test box: no telescope yet/ }));
+    expect(await question()).toHaveTextContent('Is there a telescope under this roof yet?');
+    fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
     expect(screen.getByText(/Never with a telescope/)).toBeInTheDocument();
     fireEvent.click(button('Continue'));
     await onScreen('supply');
@@ -313,7 +313,7 @@ describe('Wizard', () => {
     mockDevice({ config: { setup: { state: 'new', step: 2 } } });
     render(<Wizard />);
     await onScreen('testBox');
-    fireEvent.click(screen.getByRole('radio', { name: /A test box: no telescope yet/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
     expect(screen.getByText('A N.I.N.A. address is set, so the park check stays on.')).toBeInTheDocument();
     expect(screen.getByText('A weather source is on, so the weather check stays on.')).toBeInTheDocument();
   });

@@ -157,7 +157,23 @@ namespace SQM
         {
             // The roof's critical alerts: past the master switch, the pause,
             // the send mode and the grace (spec 005 FR-014, spec 007 FR-004).
-            return Alerts::isCritical(type) || (alerts.enabled && sending);
+            return Alerts::isCritical(type) || type == Alerts::AlertType::TestBox || (alerts.enabled && sending);
+        }
+
+        std::vector<Alerts::Alert> alertsToSend(const std::vector<Alerts::Alert> &outgoing, const AlertsConfig &alerts, bool sending)
+        {
+            std::vector<Alerts::Alert> scheduled;
+            std::vector<Alerts::Alert> out;
+            for (const Alerts::Alert &alert : outgoing)
+            {
+                if (alert.type == Alerts::AlertType::TestBox)
+                    out.push_back(alert);
+                else if (alertGoesOut(alert.type, alerts, sending))
+                    scheduled.push_back(alert);
+            }
+            if (!scheduled.empty())
+                out.insert(out.begin(), Alerts::stackAlerts(scheduled));
+            return out;
         }
 
         Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)

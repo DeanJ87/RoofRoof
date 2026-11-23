@@ -63,6 +63,7 @@ export interface ParkConfig {
   nina: { url: string; api: 'v2' };
   switches: ParkSwitches;
   timeoutSeconds: number; // spec 005: the close sequence's wait for the park, 30-1800 s
+  requestPark?: boolean; // spec 022: the automatic close may ask N.I.N.A. to park (absent on older firmware: on)
 }
 
 // The roll-off roof's motion settings (spec 002).

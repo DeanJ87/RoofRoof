@@ -124,8 +124,6 @@ namespace SQM
                 c.add("alerts.events.daylight_open.level", "D-04", a.daylightOpen.level != 0, {alertsOn, daylightOn});
                 c.add("alerts.events.daylight_closed.level", "D-04", a.daylightClosed.level != 0, {alertsOn, daylightOn});
                 c.add("alerts.events.daylight_unknown.level", "D-04", a.daylightUnknown.level != 0, {alertsOn, daylightOn});
-                // Spec 022: never off, but sent only with alerts on.
-                c.add("alerts.events.test_box.level", "D-04", a.testBox.level != 0, {alertsOn});
             }
 
             // Spec 013: the daylight check needs the site and the clock; its

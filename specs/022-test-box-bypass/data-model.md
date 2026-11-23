@@ -13,13 +13,13 @@
 Settings saved before this spec have no `testBox`: every bypass off (a migration never turns on a
 relaxation).
 
-### The save stamp (`TestBox::stamp`)
+### The save stamp (`ConfigSave::stampTestBox`)
 
 Inputs: the live settings, the merged settings, whether the body sent `testBox.hours`, the clock.
 
 1. No bypass set after the merge → `until = 0`.
 2. A bypass set after the merge that was not set before, or `hours` sent → needs the clock (else
-   refused: "Test box: set the clock first ..."); `until = now + hours × 3600`.
+   refused: "Test box: the clock isn't set yet ..."); `until = now + hours × 3600`.
 3. Otherwise `until` keeps the live value.
 
 ## TestBox::State (derived each evaluation, never stored)
@@ -31,6 +31,7 @@ Inputs: the live settings, the merged settings, whether the body sent `testBox.h
 | expired | set, the clock set, and now ≥ until (or until = 0) |
 | waitingForClock | set and the clock not set |
 | until | the deadline |
+| parkRequests | `park.requestPark` on and a N.I.N.A. address set |
 
 In effect = set ∧ clock set ∧ now < until; park also ∧ no N.I.N.A. address; weather also ∧ both
 SQMeter sources off.
@@ -55,3 +56,9 @@ SQMeter sources off.
 `AlertsConfig::testBox` (level 1-4, default 3; 0 refused on save, raised to 1 on load).
 `Alerts::RoofInputs::testBox` (bits) and `testBoxText`. The engine sends when a bit appears that it
 has not seen since boot.
+
+## ParkConfig::requestPark (`park.requestPark`)
+
+bool, default true (also after an upgrade). The automatic close sends N.I.N.A. a park request only
+while it is on; off, it only waits for the park. Shown on the Mount park card and the wizard's test
+box screen; `roof.testBox.parkRequests` and the banner say when it would be sent.

@@ -165,6 +165,7 @@ export interface RoofTestBox {
   until: number; // the deadline, Unix seconds (0: none)
   expired: boolean;
   waitingForClock: boolean;
+  parkRequests: boolean; // unsafe weather would ask a configured N.I.N.A. to park its mount
   text: string; // the device's text naming them, "" when none is set
 }
 

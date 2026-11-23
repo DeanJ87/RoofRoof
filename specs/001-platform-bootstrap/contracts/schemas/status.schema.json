@@ -707,6 +707,9 @@
             "park": {
               "type": "boolean"
             },
+            "parkRequests": {
+              "type": "boolean"
+            },
             "set": {
               "type": "boolean"
             },
@@ -728,6 +731,7 @@
             "daylight",
             "expired",
             "park",
+            "parkRequests",
             "set",
             "text",
             "until",

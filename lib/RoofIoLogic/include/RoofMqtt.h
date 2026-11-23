@@ -133,6 +133,9 @@ namespace SQM
                 std::string closePhase;
                 Safety::Verdict weather = Safety::Verdict::Unknown;
                 bool parkConfirmed = false;
+                // Spec 022: the test box's bypasses in effect, set, expired or waiting.
+                uint8_t testBox = 0;
+                uint8_t testBoxFlags = 0;
 
                 bool operator==(const StateKey &other) const;
                 bool operator!=(const StateKey &other) const { return !(*this == other); }

@@ -23,6 +23,7 @@ const box = (change: Partial<RoofTestBox> = {}): RoofTestBox => ({
   until: UNTIL,
   expired: false,
   waitingForClock: false,
+  parkRequests: false,
   text: '',
   ...change,
 });
@@ -38,10 +39,17 @@ describe('TestBoxBanner', () => {
     expect(banner.querySelector('.note-bad')).not.toBeNull();
   });
 
+  it('says when unsafe weather would ask N.I.N.A. to park its mount', () => {
+    expect(testBoxText(box({ parkRequests: true }))).toMatch(/Unsafe weather asks N\.I\.N\.A\. to park its mount\.$/);
+    expect(testBoxText(box({ parkRequests: false }))).not.toMatch(/asks N\.I\.N\.A\./);
+  });
+
   it('says when they expired or wait for the clock', () => {
     expect(testBoxText(box({ active: false, park: false, weather: false, expired: true }))).toMatch(/expired at .*every check is back/);
     expect(testBoxText(box({ active: false, park: false, weather: false, waitingForClock: true }))).toMatch(/wait for the clock/);
     expect(testBoxText(box({ active: false, park: false, weather: false }))).toMatch(/not in effect/);
+    // A restore brings no deadline: never "expired" in 1970.
+    expect(testBoxText(box({ active: false, park: false, weather: false, expired: true, until: 0 }))).toMatch(/not started/);
   });
 
   it('shows nothing with no bypass set, or on older firmware', async () => {
@@ -86,6 +94,15 @@ describe('Settings → Roof → Test box', () => {
     await openRoofTab();
     expect(screen.getByText('Clear the N.I.N.A. address first: this stands in for N.I.N.A.')).toBeInTheDocument();
     expect(screen.getByText('Turn SQMeter HTTP and MQTT off first: this stands in for a missing weather source.')).toBeInTheDocument();
+  });
+
+  it('asking N.I.N.A. to park is a switch on the Mount park card, on by default', async () => {
+    mockDevice();
+    await openRoofTab();
+    const toggle = document.querySelector<HTMLInputElement>('[data-field="park.requestPark"] input, input[data-field="park.requestPark"]');
+    expect(toggle).not.toBeNull();
+    expect(toggle!.checked).toBe(true);
+    expect(screen.getAllByText(/Never point a bench box at a live N\.I\.N\.A\./).length).toBeGreaterThan(0);
   });
 
   it('saves the bypasses; Renew sends only the hours', async () => {

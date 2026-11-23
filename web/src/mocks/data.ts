@@ -153,6 +153,7 @@ export const mockStatus: SystemStatus = {
       until: 0,
       expired: false,
       waitingForClock: false,
+      parkRequests: true,
       text: '',
     },
   },

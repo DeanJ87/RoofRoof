@@ -4,6 +4,7 @@ import { useState } from 'preact/hooks';
 import type { RoofStatus } from '../../types';
 import { choiceOf, type WizardPageProps } from './context';
 import { CurrentFields, HallFields, roofNum } from '../settings/RoofTab';
+import { RequestParkToggle } from '../settings/TestBoxCard';
 import { ActionButton, Field, NumberInput } from '../settings/controls';
 import { Button, ChoiceGroup, Note, ReadingRow } from '../ui';
 import { docsLink } from '../../lib/docsLinks';
@@ -94,6 +95,16 @@ export const CurrentScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
+// What a test box answer says, and whether it may ask N.I.N.A. to park.
+const TestBoxNotes: FunctionalComponent<WizardPageProps & { hours: number; ninaSet: boolean; sqmeterOn: boolean }> = (props) => (
+  <>
+    <Note tone="bad">{t('wizard.testBox.warning', { hours: props.hours })}</Note>
+    {props.ninaSet && <Note tone="warn">{t('wizard.testBox.ninaSet')}</Note>}
+    {props.sqmeterOn && <Note tone="warn">{t('wizard.testBox.sqmeterOn')}</Note>}
+    {props.config.park && <RequestParkToggle park={props.config.park} update={props.update} />}
+  </>
+);
+
 // Spec 022: a test box (no telescope, no weather station yet) gets the
 // bypasses, each only where its source isn't set up; a telescope gets none.
 export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
@@ -119,9 +130,7 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
           { value: 'testBox', icon: 'warning', title: t('wizard.testBox.testBox'), detail: t('wizard.testBox.testBoxDetail') },
         ]}
       />
-      {choice.value === 'testBox' && <Note tone="bad">{t('wizard.testBox.warning', { hours: box.hours })}</Note>}
-      {choice.value === 'testBox' && ninaSet && <Note tone="warn">{t('wizard.testBox.ninaSet')}</Note>}
-      {choice.value === 'testBox' && sqmeterOn && <Note tone="warn">{t('wizard.testBox.sqmeterOn')}</Note>}
+      {choice.value === 'testBox' && <TestBoxNotes {...props} hours={box.hours} ninaSet={ninaSet} sqmeterOn={sqmeterOn} />}
     </>
   );
 };

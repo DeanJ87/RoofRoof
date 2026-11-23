@@ -33,6 +33,7 @@ namespace SQM
         {
             bool ninaConfigured = false; // a N.I.N.A. address is set
             bool sqmeterOn = false;      // SQMeter HTTP or MQTT is on
+            bool requestPark = true;     // park.requestPark: the automatic close may ask N.I.N.A. to park
         };
         Sources sourcesOf(const SafetyConfig &safety, const ParkConfig &park);
 
@@ -46,6 +47,9 @@ namespace SQM
             bool expired = false;         // set, the clock set and the deadline passed (or none)
             bool waitingForClock = false; // set and the clock not set
             uint32_t until = 0;           // the deadline, Unix seconds
+            // Unsafe weather would ask a configured N.I.N.A. to park its mount
+            // (park.requestPark on and an address set): shown with the bypasses.
+            bool parkRequests = false;
             bool active() const { return park || weather || daylight; }
             uint8_t bits() const;
         };

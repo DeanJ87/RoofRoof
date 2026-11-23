@@ -336,6 +336,7 @@ namespace SQM
             const Section nina = park.child("nina");
             nina.take("url", p.ninaUrl);
             park.take("timeoutSeconds", p.timeoutSeconds);
+            park.take("requestPark", p.requestPark);
             if (nina.has("api"))
             {
                 const char *api = nina["api"].is<const char *>() ? nina["api"].as<const char *>() : "";

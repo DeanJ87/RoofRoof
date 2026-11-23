@@ -59,6 +59,9 @@ RoofRoof talks to N.I.N.A. through the **Advanced API** plugin (version 2.2.15 o
 
 RoofRoof reads `GET /v2/api/equipment/mount/info` every 2 s and, when the close sequence asks, sends `GET /v2/api/equipment/mount/park`. N.I.N.A. answers a park request at once and parks in the background; RoofRoof only trusts the park once mount info says `AtPark`.
 
+!!! danger "A RoofRoof parks the mount its N.I.N.A. drives"
+    Whenever the weather turns unsafe, RoofRoof asks the N.I.N.A. at `park.nina.url` to park. A bench or spare RoofRoof pointed at the N.I.N.A. that is imaging with your real mount will park that mount mid-session. On a bench, leave the address empty and use [test box mode](test-box.md), or turn off **May ask N.I.N.A. to park** (`park.requestPark`, on by default): the automatic close then only waits for the park.
+
 ## Setting it up
 
 Set the sources in **Settings → Roof → Weather sources** and the park in **Settings → Roof → Mount park**, or with the settings API (fields in [Configuration](configuration.md#safety-and-park)):

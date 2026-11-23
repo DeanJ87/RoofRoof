@@ -85,8 +85,6 @@ const addAlertEvents = (c: Context) => {
   for (const key of ROOF_EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-04', level(c, key) !== 0, [alertsOn]);
   const daylightOn: Link = ['D-44', 'daylight-off', daylightActive(c.config)];
   for (const key of DAYLIGHT_EVENT_KEYS) c.add(`alerts.events.${key}.level`, 'D-04', level(c, key) !== 0, [alertsOn, daylightOn]);
-  // Spec 022: never off, but sent only with alerts on.
-  c.add('alerts.events.test_box.level', 'D-04', level(c, 'test_box') !== 0, [alertsOn]);
 };
 
 const addAlertOptions = (c: Context) => {

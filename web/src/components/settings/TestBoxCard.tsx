@@ -1,6 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useState } from 'preact/hooks';
-import type { TestBoxConfig } from '../../types';
+import type { ParkConfig, TestBoxConfig } from '../../types';
 import type { SettingsTabProps } from './context';
 import { DepNote, Field, NumberInput, SettingsCard, Toggle } from './controls';
 import { Button, Note } from '../ui';
@@ -35,6 +35,17 @@ const useRenew = (hours: number) => {
   };
   return { busy, renew };
 };
+
+// Spec 022: whether the automatic close may ask N.I.N.A. to park (also the wizard's test box screen).
+export const RequestParkToggle: FunctionalComponent<{ park: ParkConfig; update: SettingsTabProps['update'] }> = ({ park, update }) => (
+  <Toggle
+    dataField="park.requestPark"
+    label={t('settings.roof.requestPark')}
+    hint={t('settings.roof.requestParkHint')}
+    checked={park.requestPark ?? true}
+    onChange={(v) => update(['park', 'requestPark'], v)}
+  />
+);
 
 const TestBoxCard: FunctionalComponent<TestBoxProps> = (props) => {
   const { testBox, config, update, error, goTo, deps, fix } = props;
@@ -80,6 +91,7 @@ const TestBoxCard: FunctionalComponent<TestBoxProps> = (props) => {
             dataField="testBox.hours"
             value={testBox.hours}
             min={1}
+            max={720}
             unit="h"
             integer
             onChange={(v) => update(['testBox', 'hours'], v)}

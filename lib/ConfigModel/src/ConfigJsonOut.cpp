@@ -141,6 +141,7 @@ namespace SQM
             nina["api"] = "v2";
             park["switches"] = switchesName(c.park.switches);
             park["timeoutSeconds"] = c.park.timeoutSeconds;
+            park["requestPark"] = c.park.requestPark;
         }
 
         void appendDaylight(JsonDocument &doc, const Config &c)

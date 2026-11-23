@@ -99,7 +99,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   },
   "park": {
     "nina": { "url": "", "api": "v2" },
-    "switches": "none"
+    "switches": "none",
+    "requestPark": true
   },
   "alerts": {
     "enabled": false,
@@ -263,6 +264,7 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
 | `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (GPIO32) or `two` (GPIO32 and GPIO33) |
 | `park.timeoutSeconds` | int | `240` | How long the [close on unsafe weather](close-on-unsafe.md) waits for the park to be confirmed before a critical alert (30-1800). Set it a little above the longest time your mount takes to park |
+| `park.requestPark` | bool | `true` | The [close on unsafe weather](close-on-unsafe.md) may ask N.I.N.A. to park the mount. Off: it only waits for the park. Turn it off for a bench box pointed at a N.I.N.A. that drives a real mount ([test box](test-box.md)) |
 
 ### Roof
 
@@ -382,7 +384,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box` (urgent by default and never off); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box` (urgent by default and never off; sent even with alerts off or paused); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

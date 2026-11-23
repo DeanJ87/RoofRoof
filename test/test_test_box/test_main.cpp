@@ -416,9 +416,28 @@ void test_a_stalled_hand_over_still_counts_as_not_parked(void)
     TEST_ASSERT_TRUE(g.weather != Safety::Verdict::Safe);
 }
 
+// --- Asking N.I.N.A. to park ---------------------------------------------------------
+
+void test_asking_nina_to_park_is_a_setting_on_by_default(void)
+{
+    Config c = Config::createDefault();
+    TEST_ASSERT_TRUE(c.park.requestPark);
+    TEST_ASSERT_TRUE(Config::applyJson(R"({"deviceName":"Old"})", c, false)); // an upgrade keeps it on
+    TEST_ASSERT_TRUE(c.park.requestPark);
+    const auto off = Config::fromJson(R"({"park":{"requestPark":false}})", &c);
+    TEST_ASSERT_TRUE(off.has_value());
+    TEST_ASSERT_FALSE(off->park.requestPark);
+    // Shown with the bypasses: only when an address is set and asking is on.
+    Config nina = withNina();
+    TEST_ASSERT_TRUE(inEffect(allOn(), TestBox::sourcesOf(nina.safety, nina.park)).parkRequests);
+    nina.park.requestPark = false;
+    TEST_ASSERT_FALSE(inEffect(allOn(), TestBox::sourcesOf(nina.safety, nina.park)).parkRequests);
+    TEST_ASSERT_FALSE(inEffect(allOn(), TestBox::sourcesOf(c.safety, c.park)).parkRequests); // no address
+}
+
 // --- No fault can be bypassed ----------------------------------------------------------
 
-void test_faults_still_latch_with_every_bypass_on(void)
+void test_faults_still_latch_once_the_bypassed_gates_let_a_move_start(void)
 {
     using RoofTest::Bench;
     const RoofIo::GateInputs g = bypassedGates(inEffect());
@@ -499,7 +518,8 @@ int main(int, char **)
     RUN_TEST(test_a_switch_that_opens_during_a_bypassed_close_stops_it);
     RUN_TEST(test_the_bypass_ending_during_a_close_stops_it);
     RUN_TEST(test_a_stalled_hand_over_still_counts_as_not_parked);
-    RUN_TEST(test_faults_still_latch_with_every_bypass_on);
+    RUN_TEST(test_asking_nina_to_park_is_a_setting_on_by_default);
+    RUN_TEST(test_faults_still_latch_once_the_bypassed_gates_let_a_move_start);
     RUN_TEST(test_the_daylight_bypass_keeps_the_state_but_never_closes);
     return UNITY_END();
 }

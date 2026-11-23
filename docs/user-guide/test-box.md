@@ -29,6 +29,15 @@ A save that would put a bypass beside the source it stands in for is refused wit
 example *"Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address
 first (or turn the bypass off)"*.
 
+## A test box and a live N.I.N.A.
+
+!!! danger "A box pointed at a live N.I.N.A. can park that mount"
+    Whenever the weather turns unsafe, a RoofRoof asks the N.I.N.A. at its address to park, test
+    box or not. A bench box pointed at the N.I.N.A. that drives your real mount will park it
+    mid-session. On a bench, leave the N.I.N.A. address empty, or turn off **May ask N.I.N.A. to
+    park the mount** (`park.requestPark`, on by default; also offered on the wizard's test box
+    screen). While it is on and an address is set, the red banner says so.
+
 ## What is never bypassed
 
 - A latched fault, the watchdog, over-current, the Hall rail and move timeouts. During a close
@@ -62,7 +71,8 @@ You can't miss it:
 - the Alpaca Dome's description starts `TEST BOX (bypassed: ...): `;
 - Home Assistant has a **Test box bypass** sensor ([MQTT](mqtt.md#home-assistant));
 - an alert, **Test box mode on**, goes out when a bypass comes into effect and again after every
-  restart while one is in effect ([Alerts](alerts.md#the-roof)). It can't be switched off (its level never goes below Quiet);
+  restart while one is in effect ([Alerts](alerts.md#the-roof)), even with alerts off or paused, on
+  any channel that is set up. It can't be switched off (its level never goes below Quiet);
 - the log carries warnings.
 
 ## Turn it on
@@ -72,7 +82,7 @@ station**, **No daylight close**), **Turn off after** (the hours), the deadline,
 Save to start the deadline.
 
 The [setup wizard](setup-wizard.md) can do the same: its first Hardware screen asks whether a
-telescope is, or will be, under this roof. **A test box: no telescope yet** turns on all
+telescope is, or will be, under this roof. **No telescope yet (bench setup)** turns on all
 three bypasses and skips the weather source and N.I.N.A. screens.
 
 Over the API, see [`POST /api/config`](../api/rest.md#post-apiconfig).

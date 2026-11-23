@@ -155,6 +155,7 @@ namespace SQM
             box["until"] = state.until;
             box["expired"] = state.expired;
             box["waitingForClock"] = state.waitingForClock;
+            box["parkRequests"] = state.parkRequests;
             box["text"] = TestBox::describe(state);
         }
 

@@ -146,6 +146,7 @@ export const parkConfigSchema = z.object({
     api: z.literal('v2'),
   }),
   switches: z.enum(['none', 'one', 'two']),
+  requestPark: z.boolean().optional(),
   // Spec 005: how long the close sequence waits for the park to be confirmed.
   timeoutSeconds: z
     .number()

@@ -25,7 +25,7 @@ namespace SQM
 
         Sources sourcesOf(const SafetyConfig &safety, const ParkConfig &park)
         {
-            return Sources{!park.ninaUrl.empty(), safety.httpEnabled || safety.mqttEnabled};
+            return Sources{!park.ninaUrl.empty(), safety.httpEnabled || safety.mqttEnabled, park.requestPark};
         }
 
         uint8_t State::bits() const
@@ -38,6 +38,7 @@ namespace SQM
             State s;
             s.set = config.any();
             s.until = config.until;
+            s.parkRequests = sources.ninaConfigured && sources.requestPark;
             if (!s.set)
                 return s;
             if (!clockSet)
@@ -97,6 +98,8 @@ namespace SQM
                 return "";
             if (s.waitingForClock)
                 return "Test box bypasses wait for the clock: the checks apply until it is set";
+            if (s.expired && s.until == 0)
+                return "Test box bypasses set but not started (restored settings): save or Renew to start them";
             if (s.expired)
                 return "Test box bypasses expired at " + formatUtc(s.until) + ": the checks are back";
             std::string parts;
