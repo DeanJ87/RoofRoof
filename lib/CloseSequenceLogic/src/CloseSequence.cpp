@@ -520,6 +520,8 @@ namespace SQM
 
         Action Sequence::requestIfDue(uint64_t nowMs)
         {
+            if (!policy.requestPark)
+                return Action::None; // spec 022: only waits for the park
             if (requested && elapsed(lastRequestMs, nowMs) < policy.parkRequestGapMs)
                 return Action::None;
             requested = true;

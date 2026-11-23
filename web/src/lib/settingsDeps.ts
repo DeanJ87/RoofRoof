@@ -149,6 +149,12 @@ const addDiag = (c: Context) => {
   c.add('diag.mqtt', 'D-46', on(c.config, 'diag.mqtt'), [diagOn, ['D-46', 'mqtt-off', on(c.config, 'mqtt.enabled')]]);
 };
 
+// Spec 022: a test-box bypass is in effect only before its deadline, which needs the clock.
+const addTestBox = (c: Context) => {
+  const clock: Link = ['D-48', 'clock-not-set', c.fact('clockSet')];
+  for (const setting of ['testBox.park', 'testBox.weather', 'testBox.daylight']) c.add(setting, 'D-48', on(c.config, setting), [clock]);
+};
+
 /**
  * Every reported setting, in catalogue order. With `facts === null` (status
  * not loaded yet) runtime and hardware links are unknown: they never make a
@@ -168,7 +174,7 @@ export function evaluate(config: Config, facts: DepFacts | null): DepEntry[] {
       out.push(entry);
     },
   };
-  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDaylight, addDevice, addDiag].forEach((section) =>
+  [addAlertChannels, addAlertEvents, addAlertOptions, addMqtt, addSafety, addDaylight, addDevice, addDiag, addTestBox].forEach((section) =>
     section(context),
   );
   return out;

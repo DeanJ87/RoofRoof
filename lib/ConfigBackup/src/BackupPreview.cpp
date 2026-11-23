@@ -152,6 +152,9 @@ namespace SQM::Backup
         // The same rules as POST /api/config: masks keep secrets, types are strict, validate() runs.
         if (!Config::applyJson(applyText, out.candidate, true, error))
             return Error::Invalid;
+        // Spec 022: a restore brings no test-box deadline: its bypasses are out
+        // of effect until a settings save turns them on again.
+        out.candidate.testBox.until = 0;
         secretStatus(in, current, out);
         out.restart = restartReasons(current, out.candidate);
         return Error::None;

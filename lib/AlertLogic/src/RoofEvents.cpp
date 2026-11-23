@@ -41,6 +41,9 @@ namespace SQM
                 "Daylight check not working",
                 "The daylight failsafe can't tell day from night, so it won't alert or close. {reason}"};
 
+            constexpr Wording TEST_BOX = {
+                AlertType::TestBox, "Test box mode on", "Checks bypassed for a test box: {reason}. Faults still stop the roof."};
+
             Alert roofAlert(const Wording &wording, const std::string &reason, const std::string &action = std::string())
             {
                 Alert alert;
@@ -127,6 +130,23 @@ namespace SQM
             if (counted(roofClosed, roof.closedCount, roof.weather, emit(rules.onRoofClosed, 0), inGrace))
                 alerts.push_back(roofAlert(CLOSED, roofClosed.text));
             updateDaylight(roof, rules, now, alerts);
+            updateTestBox(roof, rules, inGrace, alerts);
+        }
+
+        // Spec 022: each bypass that comes into effect, and every one in effect
+        // after a boot (nothing is seen before the first pass), once the grace is
+        // over. Never held by the cooldown: each is a deliberate change.
+        void AlertEngine::updateTestBox(const RoofInputs &roof, const AlertRules &rules, bool inGrace, std::vector<Alert> &alerts)
+        {
+            if ((roof.testBox & ~testBoxSeen) != 0)
+                testBoxPending = true;
+            testBoxSeen = roof.testBox;
+            if (roof.testBox == 0 || !rules.onTestBox)
+                testBoxPending = false;
+            if (!testBoxPending || inGrace)
+                return;
+            testBoxPending = false;
+            alerts.push_back(roofAlert(TEST_BOX, roof.testBoxText));
         }
 
         // Spec 013: the roof open in daylight (settles like a supply dip, so a

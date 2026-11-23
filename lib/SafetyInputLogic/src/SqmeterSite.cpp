@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "NetAddress.h"
+#include "SqmeterSource.h"
 
 // Spec 020: site data from SQMeter (see SqmeterSite.h).
 
@@ -128,12 +129,24 @@ namespace SQM
         std::string siteOrigin(const std::string &address)
         {
             Net::HttpUrl url;
-            if (address.empty() || Net::parseHttpUrl(address, url) != Net::UrlError::None || url.https)
+            const std::string kept = Config::sqmeterAddress(address, true); // spec 020 FR-036: any form typed
+            if (kept.empty() || Net::parseHttpUrl(kept, url) != Net::UrlError::None)
                 return "";
-            std::string origin = "http://" + Net::hostForUrl(url.host);
-            if (url.port != 80)
+            std::string origin = (url.https ? "https://" : "http://") + Net::hostForUrl(url.host);
+            if (url.port != (url.https ? 443 : 80))
                 origin += ":" + std::to_string(url.port);
             return origin;
+        }
+
+        Endpoint copyEndpoint(const SafetyConfig &saved, const std::string &address, const TypedLogin &typed, const char *path)
+        {
+            Endpoint to;
+            to.url = siteUrl(address, path);
+            const bool sameHost = !siteOrigin(address).empty() && siteOrigin(address) == siteOrigin(saved.httpUrl);
+            to.username = typed.username ? *typed.username : (sameHost ? saved.httpUsername : std::string());
+            const bool typedPassword = typed.password && !Config::placeholderSecret(*typed.password);
+            to.password = typedPassword ? *typed.password : (sameHost ? saved.httpPassword : std::string());
+            return to;
         }
 
         std::string siteUrl(const std::string &address, const char *path)
@@ -156,9 +169,20 @@ namespace SQM
                 return "unreadable";
             case Problem::NoLocation:
                 return "noLocation";
+            case Problem::PasswordNeeded:
+                return "passwordNeeded";
+            case Problem::PasswordRefused:
+                return "passwordRefused";
             default:
                 return nullptr;
             }
+        }
+
+        Problem problemOfStatus(int status, bool credentialsSent)
+        {
+            if (status != 401 && status != 403)
+                return Problem::Unreadable;
+            return credentialsSent ? Problem::PasswordRefused : Problem::PasswordNeeded;
         }
 
         void statusFilter(JsonDocument &filter)
@@ -174,7 +198,13 @@ namespace SQM
             if (fetch.status <= 0)
                 return failed(Problem::Unreachable, fetch.error.empty() ? "no reply" : fetch.error, atMs);
             if (fetch.status != 200)
-                return failed(Problem::Unreadable, "HTTP " + std::to_string(fetch.status), atMs);
+            {
+                const char *login = Safety::loginRefusalText(fetch.status, fetch.credentials);
+                return failed(
+                    problemOfStatus(fetch.status, fetch.credentials),
+                    login != nullptr ? std::string(login) : "HTTP " + std::to_string(fetch.status),
+                    atMs);
+            }
             if (!fetch.parsed || !doc.is<JsonObjectConst>())
                 return failed(Problem::Unreadable, "not SQMeter's status", atMs);
             JsonVariantConst sky = doc["sky"];

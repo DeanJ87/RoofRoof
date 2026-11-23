@@ -68,7 +68,7 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
-            constexpr size_t STATE_DOC_CAPACITY = 2048;
+            constexpr size_t STATE_DOC_CAPACITY = 2560;
             constexpr size_t RESULT_DOC_CAPACITY = 1024;
 
             // How the broker delivered a message: live, or retained (left on the
@@ -133,6 +133,9 @@ namespace SQM
                 std::string closePhase;
                 Safety::Verdict weather = Safety::Verdict::Unknown;
                 bool parkConfirmed = false;
+                // Spec 022: the test box's bypasses in effect, set, expired or waiting.
+                uint8_t testBox = 0;
+                uint8_t testBoxFlags = 0;
 
                 bool operator==(const StateKey &other) const;
                 bool operator!=(const StateKey &other) const { return !(*this == other); }

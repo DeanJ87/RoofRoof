@@ -8,6 +8,7 @@
 #include "PlatformGuard.h"
 #include "RoofControl.h"
 #include "RoofReadings.h"
+#include "SafetyPoller.h"
 #include "WebServerShared.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
@@ -129,6 +130,7 @@ namespace SQM
         // Alerts wait while an upload is written: TLS and flash writes together
         // stall the upload (SQMeter spec 012 FR-003a).
         alertDispatcher = std::make_unique<AlertDispatcher>(mqttClient, [] { return uploadActive.load(); });
+        SafetyPoller::setUploadBusy([] { return uploadActive.load(); }); // spec 020: no https SQMeter read during an upload
     }
 
     WebServer::~WebServer()

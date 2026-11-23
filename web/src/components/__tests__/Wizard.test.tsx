@@ -52,7 +52,7 @@ describe('Wizard', () => {
     expect(await question()).toHaveTextContent('What should we call this roof?');
     const dialog = screen.getByRole('dialog', { name: 'What should we call this roof?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 23');
+    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 24');
     expect(within(dialog).getByRole('complementary')).toHaveTextContent('Why this matters');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull(); // the first screen
   });
@@ -258,7 +258,7 @@ describe('Wizard', () => {
     await onScreen('name');
     fireEvent.click(button('Skip for now'));
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Protect changes with a password?'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 23');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 24');
   });
 
   it('Test on the weather address screen shows the verdict and each source', async () => {
@@ -287,6 +287,37 @@ describe('Wizard', () => {
     const row = await screen.findByText('Mount connected', {}, { timeout: 4000 });
     expect(row.closest('[data-test-result]')).toHaveTextContent('At park');
     expect(saves[0].setup).toBeUndefined(); // a Test doesn't move the wizard on
+  });
+
+  // Spec 022: the test box choice sets the three bypasses and skips the sources they stand in for.
+  it('a test box sets the bypasses and skips the weather source and N.I.N.A. screens', async () => {
+    mockDevice({
+      config: {
+        setup: { state: 'new', step: 2 },
+        park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } },
+        safety: { ...mockConfig.safety!, http: { enabled: false, url: '' }, mqtt: { enabled: false, topic: 'sqmeter' } },
+      },
+    });
+    at('screen=testBox'); // after the board question (spec 023)
+    const saves = recordSaves();
+    render(<Wizard />);
+    await onScreen('testBox');
+    expect(await question()).toHaveTextContent('Is there a telescope under this roof yet?');
+    fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
+    expect(screen.getByText(/Never with a telescope/)).toBeInTheDocument();
+    fireEvent.click(button('Continue'));
+    await onScreen('supply');
+    expect(saves[0]).toMatchObject({ testBox: { park: true, weather: true, daylight: true } });
+  });
+
+  it('a test box keeps the park and weather checks where their sources are set up', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    at('screen=testBox');
+    render(<Wizard />);
+    await onScreen('testBox');
+    fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
+    expect(screen.getByText('A N.I.N.A. address is set, so the park check stays on.')).toBeInTheDocument();
+    expect(screen.getByText('A weather source is on, so the weather check stays on.')).toBeInTheDocument();
   });
 
   it('Escape and Close ask before leaving; Keep going returns; nothing is saved', async () => {
@@ -323,7 +354,7 @@ describe('Wizard', () => {
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('review');
-    expect(document.querySelectorAll('[data-check]')).toHaveLength(13);
+    expect(document.querySelectorAll('[data-check]')).toHaveLength(14);
     expect(screen.queryByRole('button', { name: 'Skip for now' })).toBeNull();
     fireEvent.click(button('Finish'));
     expect(await screen.findByText(/Setup finished/)).toBeInTheDocument();

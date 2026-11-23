@@ -60,6 +60,7 @@ namespace DemoRoof
         bool supplyLow = false;      // the 12 V supply at LOW_SUPPLY_VOLTS
         bool sunUp = false;          // spec 013: the sun well above the daylight threshold
         bool sqmeterOffline = false; // spec 020: SQMeter answers nothing (weather, location, settings)
+        bool sqmeterLocked = false;  // spec 020: SQMeter wants a login (DEMO_SQMETER_USER / DEMO_SQMETER_PASSWORD) for every request
     };
 
     // The simulated mount as N.I.N.A. reports it.
@@ -78,6 +79,21 @@ namespace DemoRoof
         std::string text;
         Roof::State state = Roof::State::Unknown;
     };
+
+    // Spec 020: the simulated SQMeter's login, when the Demo panel locks it.
+    inline constexpr const char *DEMO_SQMETER_USER = "admin";
+    inline constexpr const char *DEMO_SQMETER_PASSWORD = "sqmeter";
+
+    // The simulated SQMeter's answer to a request with this login: 0 (offline,
+    // no reply), 401 (locked and the login isn't its own), else 200.
+    inline int demoSqmeterAnswer(const Injectors &inject, const std::string &user, const std::string &password)
+    {
+        if (inject.sqmeterOffline)
+            return 0;
+        if (inject.sqmeterLocked && (user != DEMO_SQMETER_USER || password != DEMO_SQMETER_PASSWORD))
+            return 401;
+        return 200;
+    }
 
     class EmulatedRoof
     {
@@ -117,6 +133,8 @@ namespace DemoRoof
 
         // The panel.
         const Injectors &injectors() const { return inject; }
+        // Spec 020: what the simulated SQMeter's /api/safety says now (the Test).
+        Safety::SqmeterReply simulatedSafety() const { return sqmeterReply(); }
         void setInjectors(const Injectors &next);
         // The imaging app parks (a slew) or unparks the mount.
         void parkMount();
@@ -131,6 +149,8 @@ namespace DemoRoof
         Safety::InputsReport inputs() const;
         CloseSeq::Phase phase() const { return sequence.phase(); }
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
+        // Spec 022: the test box's bypasses in effect (as SafetyInputs::testBox).
+        const TestBox::State &testBox() const { return testBoxState; }
         const Daylight::View &daylight() const { return daylightView; }
         // The critical alerts raised since the last call (spec 005's sink).
         std::vector<Alerts::Alert> takeCritical();
@@ -166,10 +186,22 @@ namespace DemoRoof
         void sourcesChanged(const SafetyConfig &nextSafety, const ParkConfig &nextPark);
         Roof::Readings readings();
         Safety::SqmeterReply sqmeterReply() const;
+        // The weather poll's reply as the firmware records it (spec 020: offline, or 401 when locked).
+        void pollSqmeterHttp()
+        {
+            const int answer = demoSqmeterAnswer(inject, safetyCfg.httpUsername, safetyCfg.httpPassword);
+            if (answer == 200)
+                http.recordGood(sqmeterReply(), nowMs);
+            else
+                Safety::recordHttpReply(
+                    http, Safety::HttpOutcome{answer, "", answer == 0 ? "connection refused" : "", !safetyCfg.httpPassword.empty()}, nowMs);
+        }
         RoofIo::Contact switchContact() const;
 
         SafetyConfig safetyCfg;
         ParkConfig parkCfg;
+        TestBoxConfig testBoxCfg;    // spec 022
+        TestBox::State testBoxState; // spec 022: as last evaluated
         RoofConfig roofCfg;
         bool mqttOn = false;
         bool settingsPending = false;

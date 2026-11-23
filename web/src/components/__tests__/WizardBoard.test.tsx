@@ -47,6 +47,7 @@ describe('Wizard: board, network and wiring', () => {
     expect(SCREENS.filter((screen) => screen.page === 'hardware').map((screen) => screen.id)).toEqual([
       'board',
       'network',
+      'testBox', // spec 022
       'supply',
       'current',
       'parkSwitches',
@@ -148,7 +149,7 @@ describe('Wizard: board, network and wiring', () => {
     render(<Wizard />);
     await onScreen('board');
     fireEvent.click(button('Skip for now'));
-    await onScreen('supply');
+    await onScreen('testBox'); // spec 022's question follows the board
   });
 
   it('on Ethernet: says so, and saves the network mode chosen', async () => {

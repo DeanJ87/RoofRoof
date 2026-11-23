@@ -93,13 +93,14 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "auth": { "enabled": false, "username": "admin", "password": "" },
   "alpaca": { "enabled": false },
   "safety": {
-    "http": { "enabled": false, "url": "" },
+    "http": { "enabled": false, "url": "", "username": "", "password": "" },
     "mqtt": { "enabled": false, "topic": "sqmeter" },
     "staleSeconds": 30
   },
   "park": {
     "nina": { "url": "", "api": "v2" },
-    "switches": "none"
+    "switches": "none",
+    "requestPark": true
   },
   "alerts": {
     "enabled": false,
@@ -117,6 +118,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
       "daylight_closed": { "level": 2, "sound": "", "title": "", "message": "" },
       "daylight_unknown": { "level": 2, "sound": "", "title": "", "message": "" },
       "safety_lost": { "level": 2, "sound": "", "title": "", "message": "" },
+      "test_box": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
       "client_disconnected": { "level": 0, "sound": "", "title": "", "message": "" }
@@ -176,6 +178,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "remindMinutes": 30,
     "remoteStop": false
   },
+  "testBox": { "park": false, "weather": false, "daylight": false, "hours": 72, "until": 0 },
   "ui": { "confirmOpenClose": false },
   "diag": { "enabled": false, "keepSummaries": false, "mqtt": false }
 }
@@ -268,7 +271,9 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `safety.http.enabled` | bool | `false` | Poll SQMeter's `GET /api/safety` every 5 s |
-| `safety.http.url` | string | `""` | Its full URL, `http://` only, e.g. `http://sqmeter.local/api/safety` |
+| `safety.http.url` | string | `""` | SQMeter's address, http or https: `192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan:8443`. Kept as `scheme://host[:port]`; RoofRoof adds `/api/safety` itself. A URL ending in `/api/safety`, `/api/sensors`, `/api/status` or `/api/config` is taken as its address (also in settings saved before); another path is refused. https isn't certificate-checked |
+| `safety.http.username` | string | `""` | SQMeter's user name, when SQMeter has a password; sent (HTTP Basic, with the password) on every request to SQMeter: the weather poll, the location and settings reads and the copy ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)). At most 64 characters, no `:` |
+| `safety.http.password` | string | `""` | SQMeter's password. A secret: shown as `********`, kept when that comes back, `null` clears it, encrypted in a backup with a passphrase. Saving an address with another host or port clears it unless a new one is sent with it. At most 64 characters |
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
@@ -276,6 +281,7 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
 | `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (park switch A) or `two` (A and B); their pins are in [`pins`](#pins-and-network) |
 | `park.timeoutSeconds` | int | `240` | How long the [close on unsafe weather](close-on-unsafe.md) waits for the park to be confirmed before a critical alert (30-1800). Set it a little above the longest time your mount takes to park |
+| `park.requestPark` | bool | `true` | The [close on unsafe weather](close-on-unsafe.md) may ask N.I.N.A. to park the mount. Off: it only waits for the park. Turn it off for a bench box pointed at a N.I.N.A. that drives a real mount ([test box](test-box.md)) |
 
 Rain comes from SQMeter only (its rain gauge: `reasonFlags` bit 9 rain, bit 10 a failed gauge; or its MQTT safe topic). The local rain contact and its `safety.rainContact` setting are gone; a saved or restored value is dropped without an error, and a save that still sends it is accepted with the key ignored.
 
@@ -362,6 +368,20 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
 
+### Test box
+
+[Test box mode](test-box.md): three bypasses for a box with no telescope or weather source yet, with one deadline. All off by default. Edited in **Settings → Roof → Test box**.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `testBox.park` | bool | `false` | Stand in for N.I.N.A. ("no telescope under this roof"). Refused while `park.nina.url` is set |
+| `testBox.weather` | bool | `false` | Stand in for a missing weather source. Refused while `safety.http.enabled` or `safety.mqtt.enabled` is on |
+| `testBox.daylight` | bool | `false` | No daylight close and no refusal to open in daylight |
+| `testBox.hours` | int | `72` | How long a bypass lasts from when it is turned on or this is sent (1-720) |
+| `testBox.until` | int | `0` | The deadline, Unix seconds. Read-only: the device sets it, and a value in a save or a restore is ignored |
+
+Turning a bypass on, or sending `testBox.hours` while one is on, needs the clock to be set and stamps a new deadline (that is how to renew). A restore never brings a deadline back.
+
 ### Setup wizard
 
 Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing and need no restart. **Settings** never sends them, so a save there keeps them.
@@ -417,7 +437,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`; the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box` (urgent by default and never off; sent even with alerts off or paused); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

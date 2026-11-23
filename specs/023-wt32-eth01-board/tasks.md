@@ -48,7 +48,7 @@
 
 ## Phase 5: Contracts, docs, governance
 
-- [x] T032 Constitution 3.0.0 with its Sync Impact Report
+- [x] T032 Constitution 4.0.0 with its Sync Impact Report
 - [x] T033 `tools/api/routes.json`, `operations.json`, `docs/api/openapi.json`, contract schemas, docs/api/rest.md and websocket.md
 - [x] T034 Docs: hardware/wiring.md (both maps, carrier notes, straps), user-guide pins page, network (Ethernet), configuration, safety-inputs, commissioning and checklist; heritage; CHANGELOG
 - [x] T035 Settings-deps catalogue and `tools/settings-deps/check.py`, `tools/dashboard/check.py`

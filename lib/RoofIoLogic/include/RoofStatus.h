@@ -12,6 +12,7 @@
 #include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SwitchInput.h"
+#include "TestBox.h"
 
 namespace SQM
 {
@@ -65,6 +66,9 @@ namespace SQM
             // roof, motor never driven) or "demo" (the browser demo).
             const char *simulation = "off";
             DaylightStatus daylight;
+            // Spec 022: the test box's bypasses as the checks apply them now,
+            // filled in by the caller like the daylight.
+            TestBox::State testBox;
         };
 
         // The weather and park texts in the documents are cut to this many bytes
@@ -79,6 +83,10 @@ namespace SQM
 
         // The supply is unreadable or below its minimum.
         bool supplyLow(const Snapshot &snapshot);
+
+        // Spec 022: the roof object's "testBox" (in the status and the MQTT
+        // state document; contracts/test-box.md).
+        void writeTestBox(JsonObject out, const TestBox::State &state);
 
         // Writes the section's keys into `out` (the caller creates the "roof" object).
         void writeStatus(JsonObject out, const Snapshot &snapshot);

@@ -111,7 +111,7 @@ void test_a_setup_only_save_changes_nothing_else()
     base.alerts.ntfyEnabled = true;
     base.alerts.ntfyTopic = "roof";
     base.safety.httpEnabled = true;
-    base.safety.httpUrl = "http://sqmeter.local/api/safety";
+    base.safety.httpUrl = "http://sqmeter.local";
     const auto cfg = fromUi("{\"setup\":{\"state\":\"done\",\"step\":0}}", base);
     TEST_ASSERT_TRUE(cfg.has_value());
     TEST_ASSERT_EQUAL(SetupConfig::State::Done, cfg->setup.state);

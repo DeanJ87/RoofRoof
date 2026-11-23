@@ -29,7 +29,7 @@ namespace SQM
         // memory, partitions, time, WiFi, MQTT, connections, roof), pinned by
         // test/test_device_core (test_status_document_fits).
         constexpr size_t STATUS_DOC_CAPACITY = 6656; // 4096 until spec 003 added the roof section, 5120 until spec 008 added its checks,
-                                                     // 6144 until spec 023 added Ethernet and the pins
+                                                     // 6144 until spec 022 added the test box and spec 023 Ethernet and the pins
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);
@@ -72,7 +72,12 @@ namespace SQM
         // alerts always; the rest with the master switch on and while sending
         // (not paused, the send mode allows it). Used by the firmware's alert
         // pass and its critical sink.
+        // Spec 022: the test box reminder goes out like the critical alerts
+        // (past the master switch, the pause and the send mode), at its own level.
         bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending);
+        // What one alert pass sends: the events that may go out stacked into
+        // one notification, and each test box reminder on its own (spec 022).
+        std::vector<Alerts::Alert> alertsToSend(const std::vector<Alerts::Alert> &outgoing, const AlertsConfig &alerts, bool sending);
 
         // Spec 011 FR-026: an alert from bench firmware says so in its title
         // ("Bench: " first, once). Unchanged when `bench` is false.

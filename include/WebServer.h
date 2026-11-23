@@ -374,8 +374,10 @@ namespace SQM
         void appendRoof(JsonDocument &doc) const;
         // The roof's snapshot with the close phase filled in (not started: the default).
         RoofIo::Snapshot roofSnapshot() const;
+        // Spec 022: the test box's bypasses in effect now, from the settings and the clock.
+        TestBox::State testBoxState() const;
 
-        // Spec 020: POST /api/sqmeter/site (src/WebServerSite.cpp).
+        // Spec 020: POST /api/sqmeter/site and /api/sqmeter/test (src/WebServerSite.cpp).
         struct SiteJob;
         static inline std::atomic<bool> siteJobRunning{false};
         SiteStatus siteStatus;
@@ -387,10 +389,10 @@ namespace SQM
         void handleValidatePins(AsyncWebServerRequest *request, JsonVariant &json);
         void handleStartWiringCheck(AsyncWebServerRequest *request);
         void appendPinsStatus(JsonDocument &doc) const;
-        // A save that changes the pins or Wi-Fi's role while the roof is busy: why not ("" when fine).
+        // A save that changes the pins or the network mode while the roof is busy: why not ("" when fine).
         std::string pinChangeHeld(const Config &live, const Config &next) const;
         bool refuseIfWifiOff(AsyncWebServerRequest *request);
-        void handleSqmeterSite(AsyncWebServerRequest *request);
+        void handleSqmeterSite(AsyncWebServerRequest *request, bool test);
         static void runSiteJob(void *arg);
         void appendSite(JsonDocument &doc) const;
 

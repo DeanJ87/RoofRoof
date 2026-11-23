@@ -89,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1795469293,
-    "iso": "2026-11-23T21:28:13+0000",
+    "epoch": 1795469809,
+    "iso": "2026-11-23T21:36:49+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1795465691549,
-    "nextSync": 1795472891549,
+    "lastSync": 1795466207709,
+    "nextSync": 1795473407709,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -130,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1795469231549,
+    "lastPublish": 1795469747709,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -175,6 +175,18 @@
     "maxStepGapMs": 20,
     "maxWatchdogBeatAgeMs": 0,
     "simulation": "demo",
+    "testBox": {
+      "set": false,
+      "active": false,
+      "park": false,
+      "weather": false,
+      "daylight": false,
+      "until": 0,
+      "expired": false,
+      "waitingForClock": false,
+      "parkRequests": true,
+      "text": ""
+    },
     "daylight": {
       "mode": "alert",
       "state": "unknown",
@@ -232,5 +244,5 @@
     "valid": true,
     "restartNeeded": false
   },
-  "configRevision": 1557598532
+  "configRevision": 3932332023
 }

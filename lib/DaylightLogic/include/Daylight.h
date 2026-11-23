@@ -51,6 +51,9 @@ namespace SQM
             double latitude = 0.0;
             double longitude = 0.0;
             float bandDeg = static_cast<float>(BAND_DEG);
+            // Spec 022: the test box's daylight bypass is in effect (set by the
+            // caller from TestBox::State, not by settingsFrom: it ends with its deadline).
+            bool testBox = false;
         };
 
         struct View
@@ -62,8 +65,11 @@ namespace SQM
             double altitudeDeg = 0.0; // meaningful only when known
             float limitDeg = 0.0f;
             float bandDeg = static_cast<float>(BAND_DEG);
-            // Daylight wants the roof closed now: mode "alert and close" and day.
-            bool closes() const { return mode == Mode::Close && state == State::Day; }
+            // Spec 022: the test box's daylight bypass: no close and no open refusal.
+            bool bypassed = false;
+            // Daylight wants the roof closed now: mode "alert and close", day,
+            // and not bypassed for a test box.
+            bool closes() const { return mode == Mode::Close && state == State::Day && !bypassed; }
             // The mode is on (alert or alert and close).
             bool on() const { return mode != Mode::Off; }
         };
@@ -90,7 +96,8 @@ namespace SQM
 
         // The state's text (constitution III: the value and the limit, or the
         // input that failed): "Sun 3.2° ≥ 0.0°", "Sun -4.1° < 0.0°",
-        // "Location not set", "Clock not set", "Off".
+        // "Location not set", "Clock not set", "Off"; spec 022 adds " (close
+        // bypassed: test box)" to a day in alert-and-close mode while bypassed.
         std::string describe(const View &view);
         // What happens to an open roof in daylight: being closed, or nothing
         // because the mode only alerts.

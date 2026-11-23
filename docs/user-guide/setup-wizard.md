@@ -55,8 +55,8 @@ wizard resumes at.
    password** is recommended and starts chosen when no password is set; **No password** warns that
    anyone on your network could change settings and move the roof. Set one before the motor is
    connected ([Security](security.md)).
-2. **Site and time**: first **SQMeter's address** (its `/api/safety` URL, the weather source's
-   address) with **Copy site settings from SQMeter**, which lists what SQMeter has that differs
+2. **Site and time**: first **SQMeter's address** (e.g. `192.168.1.50` or `sqmeter.local`, the
+   weather source's address; RoofRoof adds `/api/safety` itself) with **Copy site settings from SQMeter**, which lists what SQMeter has that differs
    (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy) for you to tick and apply; the
    later screens then arrive filled in, the copied groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show **Follows SQMeter**, with **Edit here instead**), and passwords and tokens are never copied
    ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
@@ -71,6 +71,11 @@ wizard resumes at.
     - on a board with Ethernet, **How should RoofRoof join your network?**: *"You're on Ethernet
       at …"*, with the [network mode](network.md#the-network-mode) and an optional WiFi fallback.
       Skippable: WiFi is optional there;
+    - **Is there a telescope under this roof yet?**: **Yes, or there will be** turns every
+      [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each
+      only where its source isn't already set up, with a deadline), offers **May ask N.I.N.A. to
+      park**, and skips the Weather and N.I.N.A. screens, so setup never asks you to park a mount.
+      The N.I.N.A. screen also links back to it and warns not to point a bench box at a live N.I.N.A.;
     - **Does the wiring check pass?**: **Check wiring** runs the [wiring check](pins.md#the-wiring-check) and shows each result
       (the EN pull-down, the Hall sensor, the supply, the park inputs, current sense at rest and
       Ethernet) with the value it read. It moves nothing; direction and travel are left to

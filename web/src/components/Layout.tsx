@@ -6,6 +6,7 @@ import { LIVE_REGION_ID } from '../lib/a11y';
 import { t } from '../i18n';
 import BrandMark from './BrandMark';
 import BenchBanner from './BenchBanner';
+import TestBoxBanner from './TestBoxBanner';
 import RoofStopBar from './RoofStopBar';
 import SetupPrompt from './SetupPrompt';
 
@@ -126,6 +127,7 @@ const Layout: FunctionalComponent<LayoutProps> = ({ children, modal }) => {
 
       <main class="app-main" id="main" tabIndex={-1} inert={behind}>
         <BenchBanner />
+        <TestBoxBanner />
         <SetupPrompt />
         {children}
         {!behind && <RoofStopBar />}

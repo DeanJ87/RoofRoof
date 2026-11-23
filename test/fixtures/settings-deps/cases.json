@@ -932,6 +932,55 @@
           "id": "D-47"
         }
       }
+    },
+    {
+      "name": "test box: a bypass waits for the clock (a runtime fact)",
+      "config": {
+        "park": {
+          "nina": {
+            "url": ""
+          }
+        },
+        "testBox": {
+          "park": true
+        }
+      },
+      "facts": {
+        "clockSet": false
+      },
+      "expect": {
+        "testBox.park": {
+          "state": "inactive",
+          "id": "D-48",
+          "reason": "clock-not-set"
+        }
+      }
+    },
+    {
+      "name": "test box: a bypass with the clock set is in effect",
+      "config": {
+        "park": {
+          "nina": {
+            "url": ""
+          }
+        },
+        "testBox": {
+          "park": true
+        }
+      },
+      "facts": {
+        "clockSet": true
+      },
+      "expect": {
+        "testBox.park": {
+          "state": "active",
+          "id": "D-48"
+        },
+        "testBox.weather": {
+          "state": "off",
+          "id": "D-48"
+        }
+      }
     }
   ]
 }

@@ -27,6 +27,7 @@ namespace SQM
             rules.onDaylightOpen = a.daylightOpen.level != 0;
             rules.onDaylightClosed = a.daylightClosed.level != 0;
             rules.onDaylightUnknown = a.daylightUnknown.level != 0;
+            rules.onTestBox = a.testBox.level != 0;
             return rules;
         }
 
@@ -48,6 +49,7 @@ namespace SQM
                 {AlertType::DaylightOpen, &AlertsConfig::daylightOpen},
                 {AlertType::DaylightClosed, &AlertsConfig::daylightClosed},
                 {AlertType::DaylightUnknown, &AlertsConfig::daylightUnknown},
+                {AlertType::TestBox, &AlertsConfig::testBox},
             };
             for (const auto &entry : SETTINGS)
                 if (entry.first == type)
@@ -155,7 +157,23 @@ namespace SQM
         {
             // The roof's critical alerts: past the master switch, the pause,
             // the send mode and the grace (spec 005 FR-014, spec 007 FR-004).
-            return Alerts::isCritical(type) || (alerts.enabled && sending);
+            return Alerts::isCritical(type) || type == Alerts::AlertType::TestBox || (alerts.enabled && sending);
+        }
+
+        std::vector<Alerts::Alert> alertsToSend(const std::vector<Alerts::Alert> &outgoing, const AlertsConfig &alerts, bool sending)
+        {
+            std::vector<Alerts::Alert> scheduled;
+            std::vector<Alerts::Alert> out;
+            for (const Alerts::Alert &alert : outgoing)
+            {
+                if (alert.type == Alerts::AlertType::TestBox)
+                    out.push_back(alert);
+                else if (alertGoesOut(alert.type, alerts, sending))
+                    scheduled.push_back(alert);
+            }
+            if (!scheduled.empty())
+                out.insert(out.begin(), Alerts::stackAlerts(scheduled));
+            return out;
         }
 
         Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)
@@ -319,6 +337,7 @@ namespace SQM
                 {"daylight_open", Alerts::AlertType::DaylightOpen, "Roof open in daylight", "The roof is open in daylight"},
                 {"daylight_closed", Alerts::AlertType::DaylightClosed, "Roof closed after daylight", "The roof closed after daylight"},
                 {"daylight_unknown", Alerts::AlertType::DaylightUnknown, "Daylight check not working", "The daylight check can't run"},
+                {"test_box", Alerts::AlertType::TestBox, "Test box mode on", "A test box bypass comes into effect"},
             };
         } // namespace
 

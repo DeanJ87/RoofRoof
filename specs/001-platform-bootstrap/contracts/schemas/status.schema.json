@@ -307,6 +307,8 @@
             "unreachable",
             "unreadable",
             "noLocation",
+            "passwordNeeded",
+            "passwordRefused",
             null
           ]
         },
@@ -773,6 +775,54 @@
             null
           ]
         },
+        "testBox": {
+          "type": "object",
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "daylight": {
+              "type": "boolean"
+            },
+            "expired": {
+              "type": "boolean"
+            },
+            "park": {
+              "type": "boolean"
+            },
+            "parkRequests": {
+              "type": "boolean"
+            },
+            "set": {
+              "type": "boolean"
+            },
+            "text": {
+              "type": "string"
+            },
+            "until": {
+              "type": "number"
+            },
+            "waitingForClock": {
+              "type": "boolean"
+            },
+            "weather": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "active",
+            "daylight",
+            "expired",
+            "park",
+            "parkRequests",
+            "set",
+            "text",
+            "until",
+            "waitingForClock",
+            "weather"
+          ],
+          "additionalProperties": false
+        },
         "watchdogTrips": {
           "type": "number"
         },
@@ -811,6 +861,7 @@
         "supplyLow",
         "supplyVolts",
         "target",
+        "testBox",
         "watchdogTrips",
         "weather",
         "weatherText"
@@ -855,7 +906,8 @@
                 "type": "string",
                 "enum": [
                   "mqttPassword",
-                  "ntfyToken"
+                  "ntfyToken",
+                  "pushoverKeys"
                 ]
               }
             },
@@ -918,6 +970,8 @@
             "waiting",
             "unreachable",
             "unreadable",
+            "passwordNeeded",
+            "passwordRefused",
             null
           ]
         },

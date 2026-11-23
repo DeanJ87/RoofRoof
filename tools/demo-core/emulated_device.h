@@ -20,6 +20,7 @@
 #include "Config.h"
 #include "ConfigBackup.h"
 #include "ConfigPins.h"
+#include "ConfigSave.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
 #include "SqmeterSite.h"
@@ -76,7 +77,10 @@ public:
     // --- Alpaca::Backend ---------------------------------------------------
     bool alpacaEnabled() const override { return cfg.alpaca.enabled; }
     // The roof's Dome (spec 006), on the simulated roof (spec 011).
-    std::vector<Alpaca::DeviceInfo> devices() const override { return {Alpaca::domeDeviceInfo("demo")}; }
+    std::vector<Alpaca::DeviceInfo> devices() const override
+    {
+        return {Alpaca::domeDeviceInfo("demo", TestBox::domePrefix(roof.testBox()))}; // spec 022: the test box first
+    }
     std::string serverName() const override { return cfg.deviceName; }
     std::string location() const override { return ""; }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }
@@ -98,6 +102,8 @@ public:
     // /api/pins/validate ("validate"), POST /api/pins/check ("check"), GET
     // /api/pins/check ("checkStatus"). {status, body} like the device.
     std::string pins(const std::string &action, const std::string &body);
+    // Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+    std::string sqmeterTest(const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);
@@ -160,6 +166,7 @@ public:
     void setArmed(bool on, const std::string &source);
 
 private:
+    std::string sqmeterRequest(const std::string &body, std::string &address, Site::TypedLogin &login);
     int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
 
     void scheduleChanged(bool wasSending);
@@ -264,6 +271,7 @@ private:
     Site::LocationRead siteRead;
     uint32_t siteGeneration = 0;
     std::string siteAddress;
+    std::string siteLogin;
     LocationConfig::Source siteSource = LocationConfig::Source::Sqmeter;
     bool settingsFollow = false;
     Site::LocationSchedule settingsSchedule;

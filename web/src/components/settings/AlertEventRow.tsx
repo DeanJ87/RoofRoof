@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import type { AlertEventKey, AlertEventSetting } from '../../types';
 import type { DepEntry } from '../../lib/settingsDeps';
-import { CRITICAL_LEVEL_OPTIONS, LEVEL_OPTIONS, isCriticalEvent, isPending, soundOptions, type AlertsView } from './alertsShared';
+import { isCriticalEvent, levelOptionsFor, isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTemplateEditor, AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepNote, SelectInput } from './controls';
 import { InfoTip } from '../ui';
@@ -56,7 +56,8 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
 }) => {
   const { set } = view;
   const critical = isCriticalEvent(key);
-  const off = view.off && !critical;
+  // Spec 022: the test box reminder also goes out with alerts off or paused.
+  const off = view.off && !critical && key !== 'test_box';
   const event = view.alerts.events[key];
   const entry = view.dep(`alerts.events.${key}.level`);
   // Can't be raised from Off while what it needs is missing (FR-005).
@@ -75,7 +76,7 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
         <SelectInput
           value={String(event.level)}
           ariaLabel={t('settings.alerts.levelFor', { label })}
-          options={critical ? CRITICAL_LEVEL_OPTIONS : LEVEL_OPTIONS}
+          options={levelOptionsFor(key)}
           disabled={off || locked}
           onChange={(v) => set(['events', key, 'level'], Number(v))}
         />

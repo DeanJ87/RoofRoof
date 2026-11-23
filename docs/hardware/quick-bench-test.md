@@ -91,7 +91,7 @@ The hard timeout is the time the move should take plus the margin: about `travel
 
 **Alerts first.** In **Settings → Alerts** turn on **Send alerts**, set up a channel and use **Send test** ([Alerts](../user-guide/alerts.md)). The critical alerts below go nowhere otherwise.
 
-**Weather.** In **Settings → Roof → Weather sources** switch on the HTTP source and set `safety.http.url` to `http://<sqmeter>/api/safety` ([Safety inputs](../user-guide/safety-inputs.md)). Opening is refused unless the verdict is safe, so wait for `Weather safe` first. To make it unsafe, use SQMeter's manual override, or unplug SQMeter: within the stale time (`safety.staleSeconds`, default 30 s) the verdict turns unsafe.
+**Weather.** In **Settings → Roof → Weather sources** switch on the HTTP source, set SQMeter's address (`safety.http.url`, e.g. `192.168.1.50`) and press **Test** ([Safety inputs](../user-guide/safety-inputs.md)). Opening is refused unless the verdict is safe, so wait for `Weather safe` first. To make it unsafe, use SQMeter's manual override, or unplug SQMeter: within the stale time (`safety.staleSeconds`, default 30 s) the verdict turns unsafe.
 
 **Park.** The close on unsafe weather closes the roof only onto a mount that N.I.N.A. confirms is parked. To test that, run N.I.N.A. with the Advanced API plugin and a simulator mount, and set `park.nina.url` to `http://<pc>:1888`. Leave `park.switches` at `none`, as there are no switches.
 

@@ -791,6 +791,14 @@
       "match": "status.pins.restartNeeded",
       "reason": "Spec 023: the board and pins in effect are on the Pins page and the System page",
       "shownOn": "Pins, System"
+    },
+    {
+      "match": "status.roof.testBox.**",
+      "reason": "Not a dashboard item: a red banner shows it on every page instead (components/TestBoxBanner.tsx, spec 022), and the Roof card's park and weather rows say Test box bypass"
+    },
+    {
+      "match": "deps.D-48",
+      "reason": "Shown on its Settings row (Roof, Test box); the test box banner says when the bypasses wait for the clock"
     }
   ]
 }

@@ -148,6 +148,9 @@ namespace
         roof.closePhase = "heldByPerson";
         roof.weatherText = std::string(RoofIo::MAX_CHECK_TEXT, 'w');
         roof.parkText = std::string(RoofIo::MAX_CHECK_TEXT, 'p');
+        // Spec 022: every bypass in effect, the longest text.
+        roof.testBox.set = roof.testBox.park = roof.testBox.weather = roof.testBox.daylight = true;
+        roof.testBox.until = 4294967295U;
         RoofIo::writeStatus(doc.createNestedObject("roof"), roof);
     }
 

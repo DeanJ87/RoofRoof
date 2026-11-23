@@ -200,6 +200,7 @@ export const demoHandlers = [
   http.post('/api/roof/calibration/confirm', async ({ request }) => reply(demoDevice.calibration('confirm', await request.text()))),
   // Copy from SQMeter (spec 020): the device fetches the simulated SQMeter's settings.
   http.post('/api/sqmeter/site', async ({ request }) => reply(demoDevice.sqmeterSite(await request.text()))),
+  http.post('/api/sqmeter/test', async ({ request }) => reply(demoDevice.sqmeterTest(await request.text()))),
 
   // The board and its pins (spec 023): the firmware's rules and documents; the wiring check reads the simulated roof
   http.get('/api/pins', () => reply(demoDevice.pins('status'))),

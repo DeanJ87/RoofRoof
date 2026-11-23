@@ -74,7 +74,7 @@ settings, so the settings must be read first. Reading and parsing them takes ten
 milliseconds; the boot ROM, the second-stage loader and the Arduino start-up before `setup()`
 already take several hundred, during which only the EN pull-down holds the driver off. So reading
 the settings first doesn't change what the driver's safety rests on; it adds a few percent to that
-window. Constitution I is reworded (3.0.0) to say exactly this. Serial and the logger start before
+window. Constitution I is reworded (4.0.0) to say exactly this. Serial and the logger start before
 the read (they use UART0 only).
 
 If the stored settings exist but can't be read, `Config::load` reports it, the defaults are used for

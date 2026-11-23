@@ -1,6 +1,8 @@
 #include "SqmeterSource.h"
 
 #include "SqmeterReply.h"
+#include <ArduinoJson.h>
+#include <cctype>
 
 namespace SQM
 {
@@ -60,24 +62,65 @@ namespace SQM
             }
         } // namespace
 
-        void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs)
+        const char *loginRefusalText(int status, bool credentialsSent)
         {
+            if (status != 401 && status != 403)
+                return nullptr;
+            if (credentialsSent)
+                return "SQMeter refused the password";
+            return "SQMeter wants a password";
+        }
+
+        HttpCheck checkHttpReply(const HttpOutcome &outcome)
+        {
+            HttpCheck check;
             if (outcome.status <= 0)
             {
-                record.recordFailure(Failure::Unreachable, outcome.error, nowMs);
-                return;
+                check.failure = Failure::Unreachable;
+                check.detail = outcome.error;
+                return check;
             }
-            if (outcome.status != HTTP_OK)
-            {
-                record.recordFailure(Failure::Unreadable, "HTTP " + std::to_string(outcome.status), nowMs);
-                return;
-            }
-            SqmeterReply reply;
-            const ReplyError error = parseSafetyJson(outcome.body, reply);
-            if (error != ReplyError::None)
-                record.recordFailure(Failure::Unreadable, replyErrorText(error), nowMs);
+            check.failure = Failure::Unreadable;
+            const char *login = loginRefusalText(outcome.status, outcome.credentials);
+            if (login != nullptr)
+                check.detail = login;
+            else if (outcome.status != HTTP_OK)
+                // Spec 020 FR-037: an address that answers, but isn't SQMeter's /api/safety.
+                check.detail = "that address answered HTTP " + std::to_string(outcome.status) + ", not like SQMeter's /api/safety";
+            else if (const ReplyError error = parseSafetyJson(outcome.body, check.reply); error != ReplyError::None)
+                check.detail = std::string("that address answered, but not like SQMeter's /api/safety (") + replyErrorText(error) + ")";
             else
-                record.recordGood(reply, nowMs);
+                check.failure = Failure::None;
+            return check;
+        }
+
+        void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs)
+        {
+            const HttpCheck check = checkHttpReply(outcome);
+            if (check.failure != Failure::None)
+                record.recordFailure(check.failure, check.detail, nowMs);
+            else
+                record.recordGood(check.reply, nowMs);
+        }
+
+        void writeTestResult(JsonObject out, const HttpOutcome &outcome)
+        {
+            const HttpCheck check = checkHttpReply(outcome);
+            if (check.failure == Failure::Unreachable)
+                out["error"] = "SQMeter not answering: " + (check.detail.empty() ? std::string("no reply") : check.detail);
+            else if (check.failure == Failure::Unreadable)
+            {
+                std::string error = check.detail;
+                error[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(error[0])));
+                out["error"] = error;
+            }
+            else
+            {
+                out["safe"] = !check.reply.unsafe();
+                out["reasonFlags"] = check.reply.reasonFlags;
+                out["text"] =
+                    check.reply.unsafe() ? "SQMeter says unsafe: " + reasonFlagsText(check.reply.reasonFlags) : "SQMeter says safe";
+            }
         }
 
         MqttTopics MqttTopics::under(const std::string &base)

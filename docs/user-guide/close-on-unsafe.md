@@ -26,14 +26,14 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: c86d89af8fbd6030
+fingerprint: 79b2a48922f77875
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The close on unsafe weather
-    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park; a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
+    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park (unless park requests are off: then it only waits for the park); a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
     [*] --> Idle
     Idle --> WaitPark: not safe, roof not closed (park request)
     Idle --> Closing: not safe, a close already running
@@ -64,7 +64,7 @@ stateDiagram-v2
     CannotMove --> Idle: weather unsafe, daylight-only attempt (starts again)
 ```
 
-<figcaption>The close on unsafe weather (and, with the daylight close on, in daylight: "not safe" then also means the sun is up). The times shown are the defaults; each is a setting. From waiting or closing, a fault or a position unknown for 2 s also stands the sequence down (CannotMove), and the roof reading closed always ends it.</figcaption>
+<figcaption>The close on unsafe weather (and, with the daylight close on, in daylight: "not safe" then also means the sun is up). The times shown are the defaults; each is a setting. With park requests off (park.requestPark) no park request is sent: the sequence only waits for the park. From waiting or closing, a fault or a position unknown for 2 s also stands the sequence down (CannotMove), and the roof reading closed always ends it.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
@@ -72,7 +72,7 @@ stateDiagram-v2
     The times below are the defaults; each is a setting ([Settings of the automatic close](#settings-of-the-automatic-close)).
 
     1. While the weather is safe, or the roof is closed, nothing happens (`Idle`).
-    2. When the weather is not safe and the roof is open, stopped part-way or opening, an attempt starts: N.I.N.A. is asked to park (`WaitPark`). If a close is already running (a person's, or one waiting for an upload to stop), it is only watched (`Closing`).
+    2. When the weather is not safe and the roof is open, stopped part-way or opening, an attempt starts: N.I.N.A. is asked to park (`WaitPark`), unless **May ask N.I.N.A. to park** is off, when the sequence only waits for a park confirmed some other way. If a close is already running (a person's, or one waiting for an upload to stop), it is only watched (`Closing`).
     3. When the park result has said parked for 4 s without a break, the roof is closed (`Closing`). Reaching the closed magnet ends the sequence.
     4. If the park isn't confirmed within `park.timeoutSeconds` (at once if N.I.N.A. isn't set up), a critical alert says the mount didn't park and the roof stays open (`RetryWait`). For 5 minutes no park request is sent, but a confirmed park still closes the roof. Then a new attempt starts.
     5. If the close is refused or stops part-way, a critical alert says the roof didn't close, then the same 5-minute wait; no close is commanded in those 5 minutes, even if the weather clears and turns again. A close the roof doesn't run because the park stopped holding at that moment, or because the device is about to restart, isn't a failure: the sequence goes back to the step it came from, and the park must hold for 4 s again.
@@ -215,6 +215,10 @@ unsafe weather; the sequence then parks and closes. When the weather is also uns
 reason is the one named. **Off** and **Alert** never refuse or stop anything. To open the roof in
 daylight, set the mode to Alert or Off first.
 
+**Test box.** With the daylight bypass of [test box mode](test-box.md) in effect, there is no daylight close and no refusal to open in daylight, until its deadline. Unsafe weather is not affected.
+
+**Asking N.I.N.A. to park** is a setting, **May ask N.I.N.A. to park** (`park.requestPark`, on by default, Settings → Roof → Mount park). Off, the sequence sends no park request and only waits for the park: with the test box's park bypass in effect it closes at once; otherwise, unless the mount is parked some other way, the roof stays open and the critical "mount didn't park" alert goes out.
+
 **A person's Stop.** A person's Stop (web UI, REST) stands a daylight close down, exactly as it
 does a weather close. An Alpaca or MQTT client's stop of a close in daylight is refused
 (`unsafeClose`), as in bad weather. The stand-down lasts while the sun is up. It ends once the sun
@@ -273,7 +277,8 @@ can't run; see [the dashboard](dashboard.md#roof).
 ## Site from SQMeter
 
 RoofRoof and SQMeter stand at the same observatory, so they share a site. RoofRoof already knows
-where SQMeter is: its weather source address (`safety.http.url`, SQMeter's `/api/safety`).
+where SQMeter is: its weather source address (`safety.http.url`, SQMeter's address, http or
+https; RoofRoof adds SQMeter's paths itself).
 
 ### The location follows SQMeter
 
@@ -336,9 +341,34 @@ Copying a different MQTT broker, port or user name clears RoofRoof's saved MQTT 
 different ntfy server clears the saved ntfy token, so a saved secret is never sent to a server it
 wasn't saved for.
 
+Every copied value is an ordinary RoofRoof setting: it shows on its own Settings page (Time, Network,
+Alerts, Roof), marked **Follows SQMeter** while its group follows, and stays editable there. That
+holds while the channel is off too: a copied MQTT broker or ntfy topic shows its fields with MQTT or
+ntfy off. A secret SQMeter has set is asked for at its field (the MQTT password, the ntfy token, the
+Pushover user key and app token), also with that channel off, until you type it.
+
 The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the copy is refused while
 the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
 switches it to follow SQMeter (below).
+
+### A password-protected SQMeter
+
+If SQMeter has a password, enter its user name and password with its address (**Settings → Roof →
+Weather sources**, or the wizard's SQMeter screen; `safety.http.username`, `safety.http.password`).
+RoofRoof then sends them (HTTP Basic, SQMeter's own scheme) with every request it makes to SQMeter:
+the weather poll, the location read, the settings sync and the copy. SQMeter leaves the readings
+RoofRoof uses open even with its password on, but a later release, or a proxy in front of it, may
+not.
+
+The password is a secret: shown as `********`, never logged, and only sent to the SQMeter it was
+saved for. Changing the address to another scheme (http or https), host or port clears it unless
+you type it again; the copy only uses the saved password with the saved address's scheme, host and
+port. Over `https://` the login travels encrypted (the certificate isn't checked).
+
+When SQMeter turns a request away (401 or 403), RoofRoof says why instead of a bare HTTP status:
+**SQMeter wants a password** (none was sent) or **SQMeter refused the password**. The weather source
+then counts as unreadable, so it goes stale and the weather reads unsafe as for any other failed
+poll; the dashboard's daylight line, Settings and the copy show the same reason.
 
 ### Keeping in step
 
@@ -372,8 +402,10 @@ RoofRoof synced, so an older page can't put old ones back.
 
 **Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
 clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
-has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it.
-This is a note, not an alert.
+has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it,
+also with that channel off. Pushover never syncs (SQMeter masks its keys): while the alerts group
+follows and SQMeter uses Pushover, its user key and app token are asked for until both are set here.
+Following alone shows no channel that is off. This is a note, not an alert.
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
 Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT

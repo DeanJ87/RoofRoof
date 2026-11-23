@@ -119,6 +119,8 @@ namespace SQM
 
         std::string describe(const ParkResult &r)
         {
+            if (r.bypassed)
+                return "bypassed (test box): no telescope under this roof";
             if (r.parked)
                 return "parked";
             const uint32_t b = r.reasons;

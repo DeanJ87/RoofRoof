@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-021
+# RoofRoof roadmap: specs 002-022
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -337,7 +337,27 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** any new setting; a longer freshness limit; a history of changes on the device;
   changing the backup restore's own revision check.
 
-### 023 WT32-ETH01 board and pin setup (base: 021, stacked on its PR)
+### 022 Test box bypass (base: 021, stacked on its PR)
+
+- **Scope:**
+  - A test box mode for a real board with a real motor but no telescope, roof or weather station
+    yet: three owner-set bypasses in a `testBox` settings group, off by default, changed only by an
+    authenticated settings save:
+    - park: a "no telescope" park source that stands in for N.I.N.A. (never with a N.I.N.A.
+      address; fitted switches still count) for Open, Close, jog, teach, the calibration run and
+      the interlock;
+    - weather: "no weather source" only (never with an SQMeter source; a rain contact still counts);
+    - daylight: no daylight close or open refusal.
+  - One deadline for all (`testBox.hours`, 1-720 h, default 72), stamped by the device and needing
+    the clock. No fault, the watchdog or the supply limit is ever bypassed.
+  - Shown everywhere: a red banner on every page, `roof.testBox` in the status and MQTT documents,
+    "Bypassed (test box)" on the dashboard, the Dome's description, a Home Assistant problem sensor,
+    a "Test box mode on" alert at the change and after every boot.
+  - A Test box card in Settings → Roof and a wizard screen ("this is a test box"). Constitution
+    3.0.0 amends Principles II and III.
+- **Out of scope:** a supply bypass; any change to the bench build; bypassing a configured source's
+  doubt or a reading.
+### 023 WT32-ETH01 board and pin setup (base: 022)
 
 - **Scope:**
   - The roof's pins as a setting with board presets (ESP32 DevKit; WT32-ETH01 + RoofRoof carrier
@@ -349,7 +369,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     sense at rest, Ethernet), on a Pins page and in the setup wizard.
   - The WT32-ETH01's Ethernet with a network mode (Auto, Ethernet only, Wi-Fi only); everything
     that keyed off Wi-Fi works over Ethernet; one image for both boards.
-  - The local rain contact removed; constitution 3.0.0.
+  - The local rain contact removed; constitution 4.0.0.
 - **Out of scope:** the carrier PCB itself; checking direction and travel (spec 019's jog and
   teach); a second Ethernet chip.
 
@@ -361,7 +381,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
                                                                   └─ 015 ─┬─ 016 ── 019 ─┐
-                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 023
+                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 022 ── 023
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

@@ -7,6 +7,8 @@
 #include <string>
 
 #include "SafetyInput.h"
+#include "SqmeterReply.h"
+#include <ArduinoJson.h>
 
 namespace SQM
 {
@@ -19,11 +21,30 @@ namespace SQM
             int status = 0;
             std::string body;
             std::string error;
+            bool credentials = false; // spec 020: SQMeter's login was sent
         };
 
+        // Spec 020: what a 401 or 403 from SQMeter means, for people: "SQMeter
+        // wants a password" (none was sent) or "SQMeter refused the password";
+        // nullptr for any other status.
+        const char *loginRefusalText(int status, bool credentialsSent);
+
         // No reply: unreachable. Not 200, or not the documented document:
-        // unreadable, naming why. Otherwise a good reply.
+        // unreadable, naming why ("that address answered HTTP 404, not like
+        // SQMeter's /api/safety"; spec 020 FR-037). Otherwise a good reply.
+        struct HttpCheck
+        {
+            Failure failure = Failure::None;
+            std::string detail;
+            SqmeterReply reply;
+        };
+        HttpCheck checkHttpReply(const HttpOutcome &outcome);
         void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs);
+
+        // Spec 020 FR-038: one fetch for Settings' Test, as POST
+        // /api/sqmeter/test answers it: {"safe", "reasonFlags", "text"} or
+        // {"error"} (the reason, as a sentence).
+        void writeTestResult(JsonObject out, const HttpOutcome &outcome);
 
         // SQMeter's topics under its base topic.
         struct MqttTopics

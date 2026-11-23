@@ -139,6 +139,9 @@ namespace SQM
             uint32_t reasons = 0;
             SourceStatus http;
             SourceStatus mqtt;
+            // Spec 022: safe only because the test box's weather bypass stands in
+            // for a missing weather source (TestBox::applyWeather).
+            bool bypassed = false;
 
             bool safe() const { return verdict == Verdict::Safe; }
         };
@@ -151,6 +154,8 @@ namespace SQM
         // "safe", "unknown: ...", "unsafe: ...; ..." - every problem, with the
         // measured value and the limit or the input that failed (constitution III).
         std::string describe(const WeatherVerdict &verdict);
+        // "reasonFlags 0x200 (rain)": SQMeter's unsafe flags, for people.
+        std::string reasonFlagsText(uint32_t flags);
         const char *verdictName(Verdict verdict);
         // "30 s", "30.5 s".
         std::string formatSeconds(uint32_t ms);

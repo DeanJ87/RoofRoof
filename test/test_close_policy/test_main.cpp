@@ -4,6 +4,7 @@
 // range; the critical alert resend cap. The remote stop rule, the MQTT change
 // gap and the daylight band are in test_policy_inputs.
 
+#include <cstring>
 #include <unity.h>
 
 #include "../close_rig/CloseRig.h"
@@ -521,9 +522,50 @@ void test_alert_resend_cap_follows_the_reminder(void)
     TEST_ASSERT_EQUAL_UINT64(ALERT_RETRY_MS, floor.gapMs());
 }
 
+// --- Spec 022: park requests off (park.requestPark) ---
+
+void test_park_requests_off_never_asks_and_closes_on_a_confirmed_park()
+{
+    Rig r;
+    Policy policy;
+    policy.requestPark = false;
+    r.seq.setPolicy(policy);
+    const Decision d = r.startUnsafe();
+    assertEvent(d, Event::Started, Cause::None);
+    TEST_ASSERT_EQUAL(Action::None, d.action);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    TEST_ASSERT_EQUAL(0, r.runTo(T0 + 3 * PARK_REQUEST_GAP_MS, 1000).requests);
+    r.in.parked = true; // parked some other way (by hand, N.I.N.A.'s own safety monitor)
+    const uint64_t at = r.in.nowMs + 1000;
+    TEST_ASSERT_EQUAL(Action::None, r.at(at).action); // first seen parked
+    TEST_ASSERT_EQUAL(Action::None, r.at(at + PARK_SETTLE_MS - 1).action);
+    TEST_ASSERT_EQUAL(Action::Close, r.at(at + PARK_SETTLE_MS).action);
+}
+
+void test_park_requests_off_still_raises_the_critical_alert_at_the_park_timeout()
+{
+    Rig r;
+    Policy policy;
+    policy.requestPark = false;
+    r.seq.setPolicy(policy);
+    r.startUnsafe();
+    const Counts c = r.runTo(T0 + DEFAULT_PARK_TIMEOUT_MS - 1000, 1000);
+    TEST_ASSERT_EQUAL(0, c.requests);
+    TEST_ASSERT_EQUAL(0u, c.events.size());
+    const Decision d = r.at(T0 + DEFAULT_PARK_TIMEOUT_MS);
+    assertEvent(d, Event::ParkNotConfirmed, Cause::ParkTimeout);
+    TEST_ASSERT_TRUE(d.alert);
+    // The alert's reason says no park was asked for.
+    Safety::ParkResult notParked;
+    TEST_ASSERT_NOT_NULL(strstr(parkReason(notParked, false).c_str(), "N.I.N.A. not asked to park: park requests are off"));
+    TEST_ASSERT_NULL(strstr(parkReason(notParked, true).c_str(), "not asked"));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_park_requests_off_never_asks_and_closes_on_a_confirmed_park);
+    RUN_TEST(test_park_requests_off_still_raises_the_critical_alert_at_the_park_timeout);
     RUN_TEST(test_defaults_are_the_constants_of_specs_005_and_013);
     RUN_TEST(test_default_config_gives_the_default_policy);
     RUN_TEST(test_config_without_the_new_settings_loads_the_defaults);

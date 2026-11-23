@@ -196,7 +196,8 @@ namespace SQM
             case SourceState::Off:
                 return "";
             case SourceState::Waiting:
-                return name + " waiting for a first reply";
+                // Spec 020 FR-037: a reply that keeps failing says why.
+                return s.detail.empty() ? name + " waiting for a first reply" : name + ": " + s.detail;
             case SourceState::Good:
                 if (s.sqmeterSafe && s.sqmeterFlags == 0)
                     return "";
@@ -213,8 +214,15 @@ namespace SQM
             return "";
         }
 
+        std::string reasonFlagsText(uint32_t flags)
+        {
+            return flagsText(flags);
+        }
+
         std::string describe(const WeatherVerdict &v)
         {
+            if (v.bypassed)
+                return "bypassed (test box): no weather source";
             std::string problems;
             append(problems, describeSource(v.http));
             append(problems, describeSource(v.mqtt));

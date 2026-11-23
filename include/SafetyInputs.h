@@ -7,6 +7,7 @@
 #include "SafetyPoller.h"
 #include "SafetySettings.h"
 #include "SqmeterSource.h"
+#include "TestBox.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <cstdint>
@@ -48,8 +49,11 @@ namespace SQM
         // Spec 021: whether a move the park interlock watches may go on (a
         // missed N.I.N.A. reply rides on the last good reading while fresh).
         const Safety::CloseHold &closeHold() const { return hold; }
+        // Spec 022: the test box's bypasses in effect, as applied to the three above.
+        const TestBox::State &testBox() const { return testBoxState; }
         // Ask N.I.N.A. to park (spec 005). The answer is in the poller's
-        // snapshot; only park() says the mount is parked.
+        // snapshot; only park() says the mount is parked. Spec 022: the close
+        // sequence asks only while park.requestPark is on (CloseSeq::Policy).
         void requestPark() { poller.requestPark(); }
         // Any task (spec 015, GET /api/roof/inputs): the verdict, the park and
         // N.I.N.A.'s reading as last evaluated, copied under their own lock.
@@ -67,6 +71,7 @@ namespace SQM
             SafetyConfig safety;
             ParkConfig park;
             std::string mqttBroker; // spec 020: broker:port@user, so a new broker restarts the MQTT source
+            TestBoxConfig testBox;  // spec 022
         };
 
         static Settings settingsOf(const Config &config);
@@ -75,6 +80,7 @@ namespace SQM
         void onMqttMessage(const std::string &topic, const std::string &payload);
         void evaluate(uint64_t nowMs);
         void logChanges();
+        void logTestBox();
 
         SafetyPoller &poller;
         MQTTClient *mqtt;
@@ -99,10 +105,13 @@ namespace SQM
         Safety::ParkResult parkResult;
         Safety::NinaMemory ninaMemory; // spec 021
         Safety::CloseHold hold;
+        TestBox::State testBoxState; // spec 022
         // What was last logged.
         bool logged = false;
         Safety::WeatherVerdict loggedVerdict;
         Safety::ParkResult loggedPark;
         bool loggedRiding = false;
+        bool loggedTestBox = false;
+        TestBox::State loggedBox;
     };
 } // namespace SQM

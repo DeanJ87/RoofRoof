@@ -52,6 +52,12 @@ describe('restore preview details', () => {
     ]);
   });
 
+  it("never lists SQMeter's password (spec 020)", () => {
+    const before = { safety: { http: { url: 'http://a', password: '********' } } };
+    const after = { safety: { http: { url: 'http://a', password: 'new' } } };
+    expect(changedSettings(before, after)).toEqual([]);
+  });
+
   it('lists settings an older firmware lacked as kept, a whole section as one path', () => {
     const file = copy();
     delete file.wind;

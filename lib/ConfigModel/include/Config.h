@@ -94,7 +94,18 @@ namespace SQM
     struct SafetyConfig
     {
         bool httpEnabled = false;
-        std::string httpUrl;               // SQMeter's GET /api/safety, http:// only
+        // SQMeter's address (spec 020 FR-036): scheme, host and port only
+        // ("http://192.168.1.50", "https://sqmeter.lan:8443"); RoofRoof adds
+        // /api/safety and the site paths itself. https is encrypted without a
+        // certificate check (a LAN SQMeter's is self-signed).
+        std::string httpUrl;
+        // Spec 020: SQMeter's login (HTTP Basic), sent on every request to it:
+        // the weather poll, the location and settings reads and the copy. Both
+        // optional; the password is a secret (masked, cleared when the address
+        // moves to another host or port unless a new one is typed with it).
+        std::string httpUsername;
+        std::string httpPassword;
+        static constexpr size_t MAX_LOGIN_LENGTH = 64;
         bool mqttEnabled = false;          // on RoofRoof's own broker
         std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
         uint32_t staleSeconds = 30;        // SQMeter HTTP: unsafe after this long without a good reply
@@ -125,6 +136,10 @@ namespace SQM
         uint32_t timeoutSeconds = 240;
         static constexpr uint32_t MIN_TIMEOUT_SECONDS = 30;
         static constexpr uint32_t MAX_TIMEOUT_SECONDS = 1800;
+        // Spec 022: the automatic close may ask N.I.N.A. to park the mount
+        // when unsafe (Principle III step 2). On by default and after an
+        // upgrade; the owner may turn it off (a bench box pointed at a live N.I.N.A.).
+        bool requestPark = true;
     };
 
     // Push notifications. Persisted under their own NVS keys (see
@@ -176,6 +191,10 @@ namespace SQM
         EventSetting daylightOpen;
         EventSetting daylightClosed;
         EventSetting daylightUnknown;
+        // Spec 022: a test-box bypass came into effect, or is in effect after a
+        // boot. Level 1 (quiet) to 4: never off (MIN_TEST_BOX_LEVEL).
+        EventSetting testBox;
+        static constexpr uint8_t MIN_TEST_BOX_LEVEL = 1;
 
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
@@ -418,6 +437,24 @@ namespace SQM
         bool mqtt = false;          // <base>/diag and <base>/diag/move, at rest only
     };
 
+    // Spec 022: test-box bypasses for a box with no telescope and no weather
+    // station (constitution 3.0.0, Principles II and III). Off by default and
+    // after an upgrade; set only by an authenticated settings save. They share
+    // one deadline the device stamps (`until`, Unix seconds; never read from a
+    // request or a restore). In effect only while the clock is set and before
+    // `until` (lib/SafetyInputLogic TestBox).
+    struct TestBoxConfig
+    {
+        bool park = false;     // "no telescope under this roof": stands in for N.I.N.A.
+        bool weather = false;  // stands in for a missing weather source
+        bool daylight = false; // no daylight close or open refusal
+        uint32_t hours = 72;
+        uint32_t until = 0;
+        static constexpr uint32_t MIN_HOURS = 1;
+        static constexpr uint32_t MAX_HOURS = 720;
+        bool any() const { return park || weather || daylight; }
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -445,6 +482,7 @@ namespace SQM
         // Spec 023: each analog input's divider and trim (Advanced). Applied by
         // the roof once no move is under way; the default is the DevKit's.
         Board::AnalogConfig analog;
+        TestBoxConfig testBox;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
@@ -488,11 +526,20 @@ namespace SQM
         // validate() plus the rules a change from the UI/API also meets (host and
         // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
         bool validateChange(std::string *error = nullptr) const;
+        // A secret sent back as shown (the mask, or empty): "keep the saved one".
+        static bool placeholderSecret(const std::string &value);
         // Spec 015: a stored document with no "setup" object was saved by a
         // release before the setup wizard; Config::load then marks it offered.
         static bool storedBeforeSetup(const std::string &storedJson);
         void markStoredBeforeSetup();
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
+        // Spec 020 FR-036: SQMeter's address as typed ("192.168.1.50",
+        // "sqmeter.local", "http://sqm/api/sensors") as it is kept:
+        // scheme://host[:port]. No scheme means http://; a known SQMeter API
+        // path (/api/safety, /api/sensors, /api/status, /api/config), a query
+        // and a trailing "/" are dropped. Any other path stays (a save refuses
+        // it) unless `anyPath` (stored settings: dropped). Empty stays empty.
+        static std::string sqmeterAddress(const std::string &typed, bool anyPath = false);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
         static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);

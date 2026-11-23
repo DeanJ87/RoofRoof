@@ -109,7 +109,7 @@ export interface SystemStatus {
   pins?: PinsStatus;
 }
 
-export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable';
+export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'passwordNeeded' | 'passwordRefused';
 export type SyncNeed = 'mqttPassword' | 'ntfyToken' | 'pushoverKeys';
 export interface SyncGroupStatus {
   follow: boolean;
@@ -125,7 +125,7 @@ export interface SyncStatus {
   alerts: SyncGroupStatus;
 }
 
-export type LocationProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'noLocation';
+export type LocationProblem = SyncProblem | 'noLocation';
 export interface LocationStatus {
   source: 'sqmeter' | 'manual';
   set: boolean;
@@ -157,6 +157,20 @@ export interface RoofDaylight {
   limitDeg: number;
   text: string; // "Sun 3.2° ≥ 0.0°", "Location not set", "Clock not set", "Off"
   closes: boolean; // daylight wants the roof closed now (mode close and day)
+}
+
+// Spec 022: the test box's bypasses as the checks apply them now. Absent on older firmware.
+export interface RoofTestBox {
+  set: boolean; // any bypass set in the settings
+  active: boolean; // any in effect now
+  park: boolean; // each: set and in effect now
+  weather: boolean;
+  daylight: boolean;
+  until: number; // the deadline, Unix seconds (0: none)
+  expired: boolean;
+  waitingForClock: boolean;
+  parkRequests: boolean; // unsafe weather would ask a configured N.I.N.A. to park its mount
+  text: string; // the device's text naming them, "" when none is set
 }
 
 export interface RoofStatus {
@@ -192,4 +206,5 @@ export interface RoofStatus {
   maxWatchdogBeatAgeMs: number; // the oldest watchdog heartbeat a step saw since start (EN needs it <= 50 ms)
   // Spec 011: the real roof, bench firmware (simulated roof, motor never driven) or the browser demo.
   simulation: RoofSimulation;
+  testBox?: RoofTestBox;
 }

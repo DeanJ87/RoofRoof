@@ -52,4 +52,6 @@ export const toConfigPayload = (source: Config): Config => ({
       currentL: { ...source.analog.currentL },
     },
   }),
+  // The test box (spec 022).
+  ...(source.testBox && { testBox: { ...source.testBox } }),
 });

@@ -138,13 +138,14 @@ namespace
     // The section as a parsed document.
     DynamicJsonDocument write(const Snapshot &s)
     {
-        DynamicJsonDocument doc(2048);
+        DynamicJsonDocument doc(3072);
         writeStatus(doc.createNestedObject("roof"), s);
         std::string text;
         serializeJson(doc, text);
-        DynamicJsonDocument parsed(2048);
+        DynamicJsonDocument parsed(3072);
         TEST_ASSERT_FALSE(deserializeJson(parsed, text));
-        TEST_ASSERT_TRUE_MESSAGE(text.size() < 1024, "the roof section stays well under 1 KB");
+        // Spec 022 added the test box object (about 130 bytes with nothing set).
+        TEST_ASSERT_TRUE_MESSAGE(text.size() < 1280, "the roof section stays well under 1.25 KB");
         return parsed;
     }
 } // namespace

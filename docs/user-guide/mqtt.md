@@ -80,7 +80,7 @@ Booleans are `1`/`0`; availability uses Home Assistant's `online`/`offline`.
 }
 ```
 
-`timestamp` is Unix seconds (`0`, with `timeValid` false, until the clock is set). Values that can't be read are `null`, never a made-up number: the position while unknown, the supply when unreadable, the motor current while current sense is off. `closePhase` is the [automatic close](close-on-unsafe.md)'s phase; `weather` and `parkConfirmed` are what the roof's command checks use at that moment, with their reasons.
+`timestamp` is Unix seconds (`0`, with `timeValid` false, until the clock is set). Values that can't be read are `null`, never a made-up number: the position while unknown, the supply when unreadable, the motor current while current sense is off. `roof.testBox` says whether a [test box](test-box.md) bypass is set and in effect (`set`, `active`, `park`, `weather`, `daylight`, `until`, `expired`, `waitingForClock` and a `text`); it is always there, with everything false when nothing is set. `closePhase` is the [automatic close](close-on-unsafe.md)'s phase; `weather` and `parkConfirmed` are what the roof's command checks use at that moment, with their reasons.
 
 ---
 
@@ -128,7 +128,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: d2b358102aaeb4b2
+fingerprint: 7ef2c72846567202
 -->
 <figure class="diagram" markdown>
 
@@ -179,6 +179,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 - **Roof** (cover): open, opening, closed, closing or stopped; unknown while the roof's state is `unknown` or `error`. With **Accept roof commands** on it has Open, Close and Stop, which send the [roof commands](#roof-commands) with all their limits; otherwise it is read-only. It has no position slider: the roof can't be sent to a position.
 - **Roof position** (%, `null` and so unknown while the position is unknown), **Supply voltage** (V), **Hall reading** (raw counts, a diagnostic) and, only while current sense is on, **Motor current** (A).
 - **Roof fault** (binary sensor, problem): on while a fault is latched; its attributes carry the fault's kind, cause, measured value, limit and text.
+- **Test box bypass** (binary sensor, problem): on while a [test box](test-box.md) bypass is in effect. Its attributes are the `roof.testBox` object.
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send)). It is announced only while **Send alerts** is on.
 
 Every entity except Connectivity is unavailable while the device is offline. The discovery prefix defaults to `homeassistant`. Discovery is published again on every reconnect and when a setting it depends on changes (but not while the roof moves).

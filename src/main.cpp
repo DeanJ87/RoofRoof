@@ -74,10 +74,12 @@ const Config &getConfigCallback()
 void tellPollerTheSite()
 {
     const SqmeterSyncConfig &s = config.sqmeterSync;
-    safetyPoller.setSite(
+    safetyPoller.setSite(SafetyPoller::SiteTarget{
         config.safety.httpUrl,
+        config.safety.httpUsername,
+        config.safety.httpPassword,
         config.location.source == LocationConfig::Source::Sqmeter,
-        s.time.follow || s.mqtt.follow || s.alerts.follow);
+        s.time.follow || s.mqtt.follow || s.alerts.follow});
 }
 
 // What a saved change applies without a restart. Under configSaveLock.
@@ -107,7 +109,7 @@ bool updateConfigCallback(const WebServer::EditConfig &edit)
 {
     const std::lock_guard<std::mutex> held(configSaveLock);
     // On the heap: this runs on the async_tcp task, whose stack can't hold
-    // several ~2 KB settings copies (spec 022's bench: a save overflowed it).
+    // several ~2 KB settings copies (spec 022 bench: a save overflowed it).
     const std::unique_ptr<Config> next(new Config(config));
     if (!edit(config, *next))
         return false;
@@ -424,7 +426,7 @@ void handleSafety()
     // stop of a close, spec 006) never lag the sequence.
     // Spec 013: daylight is handed over with them, at once when it starts
     // wanting the roof closed.
-    closeOnUnsafe.updateDaylight();
+    closeOnUnsafe.updateDaylight(safetyInputs->testBox().daylight);
     static bool handedCloses = false;
     const bool safeNow = safetyInputs->weather().safe();
     const bool closesNow = closeOnUnsafe.daylight().closes();
@@ -458,7 +460,7 @@ void startWhenOnline()
 
 void setup()
 {
-    // Constitution I (3.0.0): the pins are settings (spec 023), so the
+    // Constitution I (4.0.0): the pins are settings (spec 023), so the
     // settings are read first; until EN is driven low the EN pull-down holds
     // the driver off, as it does through reset and the boot loader. Serial
     // and the log use UART0 only.

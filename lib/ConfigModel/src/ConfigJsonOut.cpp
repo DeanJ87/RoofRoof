@@ -124,12 +124,14 @@ namespace SQM
             ntp["syncIntervalMs"] = c.ntp.syncIntervalMs;
         }
 
-        void appendSafety(JsonDocument &doc, const Config &c)
+        void appendSafety(JsonDocument &doc, const Config &c, bool redact)
         {
             JsonObject safety = doc.createNestedObject("safety");
             JsonObject http = safety.createNestedObject("http");
             http["enabled"] = c.safety.httpEnabled;
             http["url"] = c.safety.httpUrl;
+            http["username"] = c.safety.httpUsername;
+            http["password"] = secretOut(c.safety.httpPassword, redact);
             JsonObject mqtt = safety.createNestedObject("mqtt");
             mqtt["enabled"] = c.safety.mqttEnabled;
             mqtt["topic"] = c.safety.mqttTopic;
@@ -141,6 +143,7 @@ namespace SQM
             nina["api"] = "v2";
             park["switches"] = switchesName(c.park.switches);
             park["timeoutSeconds"] = c.park.timeoutSeconds;
+            park["requestPark"] = c.park.requestPark;
         }
 
         void appendDaylight(JsonDocument &doc, const Config &c)
@@ -230,7 +233,7 @@ namespace SQM
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
-        appendSafety(doc, *this);
+        appendSafety(doc, *this, redactSecrets);
         appendRoof(doc, roof);
         ConfigPins::write(doc.createNestedObject("pins"), pins);
         ConfigPins::writeAnalog(doc.createNestedObject("analog"), analog);
@@ -247,6 +250,12 @@ namespace SQM
         diagOut["keepSummaries"] = diag.keepSummaries;
         diagOut["mqtt"] = diag.mqtt;
         appendAutoClose(doc, *this);
+        JsonObject testBoxOut = doc.createNestedObject("testBox");
+        testBoxOut["park"] = testBox.park;
+        testBoxOut["weather"] = testBox.weather;
+        testBoxOut["daylight"] = testBox.daylight;
+        testBoxOut["hours"] = testBox.hours;
+        testBoxOut["until"] = testBox.until;
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

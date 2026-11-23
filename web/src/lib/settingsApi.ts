@@ -47,3 +47,6 @@ export const saveConfig = async (payload: object): Promise<{ ok: boolean; body: 
   const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
   return { ok: response.ok, body };
 };
+
+// Spec 022: fired after a settings save, so the test box banner reads the status again at once.
+export const TEST_BOX_CHANGED = 'roofroof:config-saved';

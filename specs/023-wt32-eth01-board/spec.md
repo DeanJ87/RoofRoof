@@ -66,7 +66,7 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: Is EN still driven low before anything else? → A: Yes, as early as the pin setup allows:
   the boot reads the saved settings first (the only step before it), then drives EN low and both
   PWM low. Until then the EN pull-down holds the driver off, exactly as through reset, flashing and
-  the boot loader today. Constitution I is reworded for this (3.0.0).
+  the boot loader today. Constitution I is reworded for this (4.0.0).
 - Q: Which pins are refused, and which only warned about? → A: Refused: a pin that doesn't exist;
   one reserved by the flash (6-11), by a WROVER's PSRAM (16, 17, on every board), by UART0 (1, 3) or by
   the board's Ethernet; one the boot probe drives (0, 16, 18, 23) on any board, because a device
@@ -125,7 +125,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   saved value is dropped when the settings load, and never refused), its reading, its status field
   and verdict reason, its wizard question, Settings row, dashboard row, docs and tests. SQMeter's
   rain path (`reasonFlags` bits 9 and 10, its MQTT topic) is untouched. Constitution III loses the
-  contact (3.0.0, with the risk stated).
+  contact (4.0.0, with the risk stated).
 - Q: Where is the pin setup in the UI? → A: A Pins page (from Settings → Roof and the System page)
   with the board, the preset, each function's pin, the rules' errors and warnings as they are
   edited, the pins in effect, and the wiring check. The wizard's Hardware page gains a board
@@ -160,7 +160,7 @@ Each answer takes the safest option the constitution allows and is also listed u
 | I | Restarts and settings that change motion are refused while moving | FR-007: a pin change is refused while the roof is busy and applies only at a restart |
 | I | Any motion fault locks out motion until cleared | FR-011: an invalid pin set locks out motion (the control task never starts) until it is fixed |
 | I, V | The decisions live in `lib/` with native tests | FR-005, FR-016, FR-020, FR-024: the rules, the checks' verdicts, the probe frames and the Wi-Fi plan are pure and tested |
-| III | Doubt about the weather resolves to unsafe | FR-030: removing the contact leaves SQMeter's fail-safe path unchanged; constitution 3.0.0 states the risk |
+| III | Doubt about the weather resolves to unsafe | FR-030: removing the contact leaves SQMeter's fail-safe path unchanged; constitution 4.0.0 states the risk |
 | VI | Request handlers don't block on hardware; flash budget | FR-017: the wiring check runs on the main loop; research R1: the Ethernet driver's size |
 | VII | Design system, Stop reachable, i18n | FR-026 to FR-028 |
 | VIII | Changing endpoints call `requireAuth` | FR-019: the check and the save need auth |
@@ -501,7 +501,7 @@ question, the Settings row, the dashboard row and the docs for the local contact
 
 **Docs and governance**
 
-- **FR-031**: Constitution 3.0.0: Principle I's EN wording for configurable pins and the boot read;
+- **FR-031**: Constitution 4.0.0: Principle I's EN wording for configurable pins and the boot read;
   Principle III without the local contact, with the risk stated; the Platform Constraints' pin
   table as the two presets.
 - **FR-032**: Docs: the wiring page with both pin maps and the WT32 carrier's notes, the pin page and
@@ -571,7 +571,7 @@ Each was an open choice; the safest option the constitution allows was taken.
 12. **The wiring check's limits**: the supply is "not connected" below 3 V and implausible above
     15 V; current sense "near zero" is below 1 A (the ADC's offset at 8.5 A/V is about 0.3 A); the
     Hall reuses the rail limits of the motion logic.
-13. **Constitution 3.0.0 (MAJOR)**: removing the rain contact takes a weather source out of
+13. **Constitution 4.0.0 (MAJOR)**: removing the rain contact takes a weather source out of
     Principle III, which the governance rule counts as a relaxation. The new risk: rain is seen only
     through SQMeter's gauge; a gauge that misses rain while SQMeter stays fresh and healthy is no
     longer backed by a local contact. A SQMeter outage or a gauge fault still makes the verdict

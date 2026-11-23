@@ -63,6 +63,7 @@ namespace SQM
             a.daylightOpen = {3, "", "", ""};
             a.daylightClosed = {2, "", "", ""};
             a.daylightUnknown = {2, "", "", ""};
+            a.testBox = {3, "", "", ""};
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSeconds = 120;
             a.cooldownSeconds = 300;
@@ -86,6 +87,9 @@ namespace SQM
             if (!audibleSound(event->sound))
                 event->sound.clear();
         }
+        // Spec 022: the test box reminder is never off.
+        if (testBox.level < MIN_TEST_BOX_LEVEL)
+            testBox.level = MIN_TEST_BOX_LEVEL;
     }
 
     Config Config::createDefault()

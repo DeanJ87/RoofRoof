@@ -28,6 +28,11 @@
   dialog, keyboard, and axe on every screen × {320, 1280} × {light, dark}; screenshots.
 - Docs: the setup wizard guide, first boot, the coding standard's DS rules (new DS-11 to DS-13 and
   DS-29), the constitution amendment (2.1.0) with its sync report, CHANGELOG, roadmap.
+- Brand (FR-024, added 2026-11-23): `tools/brand/build.mjs` draws every mark from the mascot's
+  paths, unchanged at every size (starry tile from 40 px, plain tile below, app icon and its
+  maskable twin, one-colour, print, inverted and night variants); `ui.tsx` exports
+  `MascotShapes` for the demo button; `render.mjs` renders each mark at 16 to 512 px; the rebuilt SVGs and PNGs are copied to `web/public/`, `docs/assets/`,
+  `brand/png/` and `.github/`; brand README, the Brand docs page and DS-13 updated.
 
 ## Technical Context
 

@@ -353,3 +353,25 @@ describe('roofConfigSchema', () => {
     expect(roofConfigSchema.safeParse({ ...roof, hallHighEnd: 'middle' }).success).toBe(false);
   });
 });
+
+// Spec 020: SQMeter's login, as the device checks it.
+describe("SQMeter's login", () => {
+  const withLogin = (username: string, password: string | null = '') =>
+    getConfigValidationErrors({
+      ...mockConfig,
+      safety: { ...mockConfig.safety!, http: { ...mockConfig.safety!.http, username, password } },
+    });
+  it('takes a user name and password up to 64 characters, or none, and null to clear the password', () => {
+    expect(withLogin('admin', 'sqmeter')).toEqual({});
+    expect(withLogin('', null)).toEqual({});
+    expect(withLogin('a'.repeat(64), 'b'.repeat(64))).toEqual({});
+    const { safety: _safety, ...older } = mockConfig;
+    expect(getConfigValidationErrors(older)).toEqual({});
+  });
+  it("refuses a longer one, ':' or a control character in the user name", () => {
+    expect(withLogin('a'.repeat(65))['safety.http.username']).toMatch(/at most 64/);
+    expect(withLogin('admin', 'b'.repeat(65))['safety.http.password']).toMatch(/at most 64/);
+    expect(withLogin('a:b')['safety.http.username']).toMatch(/can't contain ':'/);
+    expect(withLogin('a\tb')['safety.http.username']).toMatch(/control characters/);
+  });
+});

@@ -338,6 +338,9 @@ namespace SQM
             std::string refusal; // the refused close's text
             Roof::State roof = Roof::State::Unknown;
         };
+        // The park's text for the reasons: Safety::describe(park), and while
+        // park requests are off (spec 022) a note that none was sent.
+        std::string parkReason(const Safety::ParkResult &park, bool requestPark);
         // Which of `reasons` explains `decision`'s event ("" when the event says it all).
         std::string reasonFor(const Decision &decision, const Reasons &reasons);
 

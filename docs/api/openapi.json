@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795469293,
-                    "iso": "2026-11-23T21:28:13+0000",
+                    "epoch": 1795469809,
+                    "iso": "2026-11-23T21:36:49+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795465691549,
-                    "nextSync": 1795472891549,
+                    "lastSync": 1795466207709,
+                    "nextSync": 1795473407709,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795469231549,
+                    "lastPublish": 1795469747709,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -262,6 +262,18 @@
                     "maxStepGapMs": 20,
                     "maxWatchdogBeatAgeMs": 0,
                     "simulation": "demo",
+                    "testBox": {
+                      "set": false,
+                      "active": false,
+                      "park": false,
+                      "weather": false,
+                      "daylight": false,
+                      "until": 0,
+                      "expired": false,
+                      "waitingForClock": false,
+                      "parkRequests": true,
+                      "text": ""
+                    },
                     "daylight": {
                       "mode": "alert",
                       "state": "unknown",
@@ -319,7 +331,7 @@
                     "valid": true,
                     "restartNeeded": false
                   },
-                  "configRevision": 1557598532
+                  "configRevision": 3932332023
                 }
               }
             }
@@ -502,7 +514,7 @@
           "Settings"
         ],
         "summary": "Read SQMeter's site settings",
-        "description": "Spec 020: the device fetches the SQMeter's `GET /api/config` (SQMeter sends no CORS headers, so a browser can't) and answers with what the setup wizard and Settings can copy: its location, time zone and NTP servers, MQTT broker, port, user name and base topic, and ntfy server and topic. Each secret (MQTT password, ntfy token, Pushover user key and app token) is only ever reported as set or not: its value never appears, even from an SQMeter that doesn't mask it. Parts an older SQMeter lacks are `null`. Nothing is saved. The address is the body's `url`, else `safety.http.url`; only its scheme, host and port are used. Refused (409) while the roof moves, a close waits or the automatic close works, and while another copy runs; 502 when SQMeter doesn't answer or the reply isn't SQMeter's settings.\n\nNeeds the password when protection is on.",
+        "description": "Spec 020: the device fetches the SQMeter's `GET /api/config` (SQMeter sends no CORS headers, so a browser can't) and answers with what the setup wizard and Settings can copy: its location, time zone and NTP servers, MQTT broker, port, user name and base topic, and ntfy server and topic. Each secret (MQTT password, ntfy token, Pushover user key and app token) is only ever reported as set or not: its value never appears, even from an SQMeter that doesn't mask it. Parts an older SQMeter lacks are `null`. Nothing is saved. The address is the body's `url`, else `safety.http.url`, in any form the address setting takes (`192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan`, or a URL ending in one of SQMeter's API paths); only its scheme, host and port are used. https is encrypted without a certificate check. The login sent to SQMeter (HTTP Basic) is the body's `username` and `password` when given (the password mask means the saved one), else the saved `safety.http` login, which only goes to the saved SQMeter's host and port. Refused (409) while the roof moves, a close waits or the automatic close works, and while another copy runs; 502 when SQMeter doesn't answer, wants a password (\"SQMeter wants a password\"), refuses the one sent (\"SQMeter refused the password\"), or the reply isn't SQMeter's settings.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -726,13 +738,21 @@
                 "properties": {
                   "url": {
                     "type": "string",
-                    "description": "An http:// address of the SQMeter (e.g. its /api/safety URL). Optional: the saved weather source address when left out."
+                    "description": "SQMeter's address as typed (e.g. 192.168.1.50, sqmeter.local or https://sqmeter.lan). Optional: the saved address when left out."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "SQMeter's user name (HTTP Basic), as typed. Optional: the saved one when left out and the address is the saved SQMeter's host and port."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "SQMeter's password, as typed; the mask (********) or leaving it out means the saved one, which only goes to the saved SQMeter's host and port. Never logged or echoed."
                   }
                 },
                 "additionalProperties": false
               },
               "example": {
-                "url": "http://192.168.1.50/api/safety"
+                "url": "192.168.1.50"
               }
             }
           }
@@ -1483,6 +1503,131 @@
                   ],
                   "additionalProperties": false
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sqmeter/test": {
+      "post": {
+        "operationId": "post_sqmeter_test",
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Test SQMeter's address",
+        "description": "Spec 020: the device reads SQMeter's `GET /api/safety` once, as the weather poll does, at the body's address and login (as `POST /api/sqmeter/site` takes them), and answers with SQMeter's verdict. Nothing is saved and the weather source is unchanged. 200 with `safe`, `reasonFlags` and a `text` for people; 502 with `error` when SQMeter doesn't answer (\"SQMeter not answering: ...\"), wants or refuses a password, or the address answers but not like SQMeter's /api/safety (\"That address answered HTTP 404, not like SQMeter's /api/safety\", \"That address answered, but not like SQMeter's /api/safety (missing safe)\"). Refused (409) while the roof moves, a close waits or the automatic close works, and while another read of SQMeter runs.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "safe": {
+                      "type": "boolean",
+                      "description": "SQMeter's verdict (false whenever it sets a reason flag)."
+                    },
+                    "reasonFlags": {
+                      "type": "integer",
+                      "description": "SQMeter's reason flags (0 when safe)."
+                    },
+                    "text": {
+                      "type": "string",
+                      "description": "For people: \"SQMeter says safe\" or \"SQMeter says unsafe: reasonFlags 0x200 (rain)\"."
+                    }
+                  },
+                  "required": [
+                    "safe",
+                    "reasonFlags",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The broker didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "description": "SQMeter's address as typed (e.g. 192.168.1.50, sqmeter.local or https://sqmeter.lan). Optional: the saved address when left out."
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "SQMeter's user name (HTTP Basic), as typed. Optional: the saved one when left out and the address is the saved SQMeter's host and port."
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "SQMeter's password, as typed; the mask (********) or leaving it out means the saved one, which only goes to the saved SQMeter's host and port. Never logged or echoed."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "example": {
+                "url": "192.168.1.50"
               }
             }
           }
@@ -5475,6 +5620,30 @@
                     ],
                     "additionalProperties": false
                   },
+                  "test_box": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
                   "unsafe_closing": {
                     "type": "object",
                     "properties": {
@@ -5513,6 +5682,7 @@
                   "roof_not_closed",
                   "safety_lost",
                   "supply_low",
+                  "test_box",
                   "unsafe_closing"
                 ],
                 "additionalProperties": false
@@ -6036,6 +6206,9 @@
                 ],
                 "additionalProperties": false
               },
+              "requestPark": {
+                "type": "boolean"
+              },
               "switches": {
                 "type": "string"
               },
@@ -6045,6 +6218,7 @@
             },
             "required": [
               "nina",
+              "requestPark",
               "switches",
               "timeoutSeconds"
             ],
@@ -6217,13 +6391,21 @@
                   "enabled": {
                     "type": "boolean"
                   },
+                  "password": {
+                    "type": "string"
+                  },
                   "url": {
+                    "type": "string"
+                  },
+                  "username": {
                     "type": "string"
                   }
                 },
                 "required": [
                   "enabled",
-                  "url"
+                  "password",
+                  "url",
+                  "username"
                 ],
                 "additionalProperties": false
               },
@@ -6336,6 +6518,34 @@
             ],
             "additionalProperties": false
           },
+          "testBox": {
+            "type": "object",
+            "properties": {
+              "daylight": {
+                "type": "boolean"
+              },
+              "hours": {
+                "type": "number"
+              },
+              "park": {
+                "type": "boolean"
+              },
+              "until": {
+                "type": "number"
+              },
+              "weather": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "daylight",
+              "hours",
+              "park",
+              "until",
+              "weather"
+            ],
+            "additionalProperties": false
+          },
           "ui": {
             "type": "object",
             "properties": {
@@ -6409,6 +6619,7 @@
           "safety",
           "setup",
           "sqmeterSync",
+          "testBox",
           "ui",
           "wifi"
         ],
@@ -6632,6 +6843,24 @@
                     "additionalProperties": false
                   },
                   "supply_low": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "test_box": {
                     "type": "object",
                     "properties": {
                       "level": {
@@ -7054,6 +7283,9 @@
                 },
                 "additionalProperties": false
               },
+              "requestPark": {
+                "type": "boolean"
+              },
               "switches": {
                 "type": "string"
               },
@@ -7195,7 +7427,13 @@
                   "enabled": {
                     "type": "boolean"
                   },
+                  "password": {
+                    "type": "string"
+                  },
                   "url": {
+                    "type": "string"
+                  },
+                  "username": {
                     "type": "string"
                   }
                 },
@@ -7276,6 +7514,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "testBox": {
+            "type": "object",
+            "properties": {
+              "daylight": {
+                "type": "boolean"
+              },
+              "hours": {
+                "type": "number"
+              },
+              "park": {
+                "type": "boolean"
+              },
+              "until": {
+                "type": "number"
+              },
+              "weather": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
@@ -8692,6 +8951,8 @@
                   "unreachable",
                   "unreadable",
                   "noLocation",
+                  "passwordNeeded",
+                  "passwordRefused",
                   null
                 ]
               },
@@ -9158,6 +9419,54 @@
                   null
                 ]
               },
+              "testBox": {
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "daylight": {
+                    "type": "boolean"
+                  },
+                  "expired": {
+                    "type": "boolean"
+                  },
+                  "park": {
+                    "type": "boolean"
+                  },
+                  "parkRequests": {
+                    "type": "boolean"
+                  },
+                  "set": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "until": {
+                    "type": "number"
+                  },
+                  "waitingForClock": {
+                    "type": "boolean"
+                  },
+                  "weather": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "active",
+                  "daylight",
+                  "expired",
+                  "park",
+                  "parkRequests",
+                  "set",
+                  "text",
+                  "until",
+                  "waitingForClock",
+                  "weather"
+                ],
+                "additionalProperties": false
+              },
               "watchdogTrips": {
                 "type": "number"
               },
@@ -9196,6 +9505,7 @@
               "supplyLow",
               "supplyVolts",
               "target",
+              "testBox",
               "watchdogTrips",
               "weather",
               "weatherText"
@@ -9240,7 +9550,8 @@
                       "type": "string",
                       "enum": [
                         "mqttPassword",
-                        "ntfyToken"
+                        "ntfyToken",
+                        "pushoverKeys"
                       ]
                     }
                   },
@@ -9303,6 +9614,8 @@
                   "waiting",
                   "unreachable",
                   "unreadable",
+                  "passwordNeeded",
+                  "passwordRefused",
                   null
                 ]
               },

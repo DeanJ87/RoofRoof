@@ -16,7 +16,7 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 13;
+    constexpr size_t EVENT_COUNT = 14;
     // Events from here on are the imaging-app events and the daylight events
     // (spec 013), persisted under their own key; the roof's (spec 007) come
     // first, in the main part.
@@ -57,6 +57,7 @@ namespace SQM::ConfigDetail
             {"daylight_open", &a.daylightOpen},
             {"daylight_closed", &a.daylightClosed},
             {"daylight_unknown", &a.daylightUnknown},
+            {"test_box", &a.testBox},
         }};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)
@@ -118,6 +119,7 @@ namespace SQM::ConfigDetail
     // MQTT broker and webhook URL forms, IPv6 literals included (SQMeter spec 015);
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);
+    bool validateSqmeterAddress(const SafetyConfig &s, std::string *error);
 
     // What a setting must be; the messages are in ConfigJsonIn.cpp.
     enum class Expected
@@ -248,5 +250,12 @@ namespace SQM::ConfigDetail
     bool applyLocation(const Section &location, LocationConfig &loc, std::string *error);
     void applySync(const Section &sync, SqmeterSyncConfig &s);
     void migrateSync(Config &cfg);
+
+    // Spec 023 (ConfigJsonBoard.cpp): the pins, the analog front end and the network mode.
+    bool applyPins(const Section &root, Board::PinMap &map, std::string *error);
+    bool applyAnalog(const Section &root, Board::AnalogConfig &analog, std::string *error);
+    bool applyNetwork(const Section &network, NetworkConfig &n, std::string *error);
+    // Spec 022.
+    void applyTestBox(const Section &t, TestBoxConfig &c);
 
 } // namespace SQM::ConfigDetail

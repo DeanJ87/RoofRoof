@@ -18,13 +18,18 @@ describe('safety and park settings', () => {
     expect(withPark({})).toEqual({});
   });
 
-  it('needs a plain http:// SQMeter URL only while HTTP is on', () => {
-    expect(withSafety({ http: { enabled: true, url: 'https://sqmeter.local/api/safety' } })['safety.http.url']).toBe(
-      'SQMeter safety URL must start with http://',
+  // Spec 020 FR-036, FR-039: SQMeter's address only, http or https, checked whenever it is set.
+  it("takes SQMeter's address in any common form, http or https, and refuses another path", () => {
+    expect(withSafety({ http: { enabled: true, url: 'https://sqmeter.local/api/safety' } })['safety.http.url']).toBeUndefined();
+    expect(withSafety({ http: { enabled: true, url: '192.168.4.144' } })['safety.http.url']).toBeUndefined();
+    expect(withSafety({ http: { enabled: true, url: 'http://192.168.4.144/api/sensors' } })['safety.http.url']).toBeUndefined();
+    expect(withSafety({ http: { enabled: true, url: '' } })['safety.http.url']).toBe(
+      "SQMeter's address isn't set: e.g. 192.168.1.50 or sqmeter.local",
     );
-    expect(withSafety({ http: { enabled: true, url: '' } })['safety.http.url']).toBeDefined();
     expect(withSafety({ http: { enabled: true, url: 'http://[fd00::10]/api/safety' } })['safety.http.url']).toBeUndefined();
-    expect(withSafety({ http: { enabled: false, url: 'https://old' } })['safety.http.url']).toBeUndefined();
+    expect(withSafety({ http: { enabled: false, url: 'http://sqm/weather' } })['safety.http.url']).toMatch(/address only/);
+    expect(withSafety({ http: { enabled: true, url: 'ftp://sqm' } })['safety.http.url']).toBeDefined();
+    expect(withSafety({ http: { enabled: false, url: '' } })['safety.http.url']).toBeUndefined();
   });
 
   it('checks the SQMeter topic only while MQTT is on', () => {

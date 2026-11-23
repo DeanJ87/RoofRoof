@@ -139,7 +139,10 @@ namespace SQM
             const bool daylightClosing = attempting(sequence.phase) && sequence.daylight;
             roof.daylightOpen = daylight.on() && daylight.state == Daylight::State::Day && state != Roof::State::Closed && !weatherRunning;
             roof.daylightSun = roof.daylightOpen ? Daylight::describe(daylight) : std::string();
-            roof.daylightAction = roof.daylightOpen ? Daylight::actionText(daylight.mode, daylightClosing) : std::string();
+            roof.daylightAction = !roof.daylightOpen ? std::string()
+                                  : daylight.bypassed && daylight.mode == Daylight::Mode::Close
+                                      ? "Its close is bypassed for a test box."
+                                      : Daylight::actionText(daylight.mode, daylightClosing);
             roof.daylightUnknown = daylight.on() && daylight.state == Daylight::State::Unknown;
             roof.daylightMissing = roof.daylightUnknown ? Daylight::describe(daylight) : std::string();
             if (sequence.phase != Phase::Idle && sequence.daylight)

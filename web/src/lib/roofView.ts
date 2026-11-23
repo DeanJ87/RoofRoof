@@ -172,17 +172,24 @@ export const positionOf = (roof: RoofStatus | null): { percent: number | null; t
   return { percent, text: t('roof.position.percentOpen', { percent }) };
 };
 
+// Spec 022: a check the test box bypasses never says "Safe" or "Parked".
+const BYPASSED: PillView = { label: '', tone: 'pill-red', text: '' };
+const bypassed = (text: string): PillView => ({ ...BYPASSED, label: t('roof.testBox.bypassed'), text: deviceText(text) });
+
 export const weatherPill = (roof: RoofStatus): PillView => {
   const text = deviceText(roof.weatherText);
+  if (roof.testBox?.weather && roof.weather === 'safe') return bypassed(roof.weatherText);
   if (roof.weather === 'safe') return { label: t('roof.weather.safe'), tone: 'pill-green', text };
   if (roof.weather === 'unsafe') return { label: t('roof.weather.unsafe'), tone: 'pill-red', text };
   return { label: t('roof.weather.unknown'), tone: 'pill-amber', text };
 };
 
-export const parkPill = (roof: RoofStatus): PillView =>
-  roof.parkConfirmed
+export const parkPill = (roof: RoofStatus): PillView => {
+  if (roof.testBox?.park && roof.parkConfirmed) return bypassed(roof.parkText);
+  return roof.parkConfirmed
     ? { label: t('roof.park.parked'), tone: 'pill-green', text: deviceText(roof.parkText) }
     : { label: t('roof.park.notParked'), tone: 'pill-amber', text: deviceText(roof.parkText) };
+};
 
 // The automatic close (spec 005): attempting, held by a person's Stop, or stuck.
 const ATTEMPTING: RoofClosePhase[] = ['waitPark', 'closing', 'retryWait'];

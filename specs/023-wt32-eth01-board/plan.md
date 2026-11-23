@@ -36,7 +36,7 @@
   card; status rows; rain contact UI removed; i18n; MSW mocks; Vitest; Playwright inventory.
 - Demo: the bridge answers the pin routes from the WASM core (rules and presets from lib); the
   wiring check returns the simulated roof's readings.
-- Constitution 3.0.0, roadmap, docs, OpenAPI, contracts, CHANGELOG.
+- Constitution 4.0.0, roadmap, docs, OpenAPI, contracts, CHANGELOG.
 
 ## Technical Context
 
@@ -55,7 +55,7 @@
 |---|---|---|
 | I. Motion Safety | EN low before anything but the settings read; invalid pins drive nothing and the control task doesn't start; MotorDriver still the only writer; pin changes only at boot and refused while busy; the EN probe only with both PWM low, under the lock and EN's critical section | `test_board_pins` (every rule, the boot decision), review of `PinSetup`/`MotorDriver` |
 | II. Parked mount | Unchanged; the park inputs read the pins in effect | `test_roof_gates` unchanged |
-| III. Unsafe ends closed | The local contact is removed (MAJOR 3.0.0, risk stated); SQMeter's rain and fault bits unchanged | `test_safety_input_logic` |
+| III. Unsafe ends closed | The local contact is removed (MAJOR 4.0.0, risk stated); SQMeter's rain and fault bits unchanged | `test_safety_input_logic` |
 | IV. Alpaca | Unchanged; discovery over every interface | ConformU job |
 | V. Pure logic | Rules, boot decision, verdicts, MDIO, Wi-Fi plan in `lib/BoardLogic`, tests first | native suites |
 | VI. Budgets | Ethernet within the warning line (Flash below); the wiring check on the main loop; the status capacity re-measured | build, `flash_budget.py`, `test_status_document_fits` |
@@ -65,7 +65,7 @@
 | X. Quality | check.py limits | check.py |
 | XI. Heritage | SQMeter's `BoardProfile` idea reused (recorded); WiFiManager diverges (Ethernet) | heritage.md |
 
-**Gate**: pass. Principle III is relaxed by removing a weather input: a MAJOR amendment (3.0.0)
+**Gate**: pass. Principle III is relaxed by removing a weather input: a MAJOR amendment (4.0.0)
 states the new risk (spec, assumption 13). Principle I's boot rule is reworded, not relaxed: the
 driver's off state through the settings read rests on the same pull-down it rests on through reset.
 
@@ -80,7 +80,7 @@ next spec that adds flash should look for savings first.
 
 ```text
 specs/023-wt32-eth01-board/ spec, plan, research, data-model, quickstart, tasks, contracts/, checklists/
-.specify/memory/constitution.md (3.0.0), specs/ROADMAP.md, CHANGELOG.md
+.specify/memory/constitution.md (4.0.0), specs/ROADMAP.md, CHANGELOG.md
 lib/BoardLogic/ (new) include/{PinMap,PinRules,WiringCheck,Mdio,NetworkPlan}.h, src/*.cpp
 lib/ConfigModel, lib/ConfigBackup, lib/SafetyInputLogic, lib/RoofIoLogic
 include/{PinSetup,WiringCheck,EthernetLink,NetState}.h (new); include/RoofPins.h (removed)

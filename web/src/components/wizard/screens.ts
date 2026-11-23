@@ -10,6 +10,7 @@ import {
   HallScreen,
   MotionScreen,
   ParkSwitchesScreen,
+  TestBoxScreen,
   SupplyScreen,
 } from './HardwarePages';
 import { BoardScreen, NetworkScreen, WiringScreen } from './BoardPages';
@@ -36,6 +37,7 @@ export type ScreenId =
   | 'time'
   | 'board'
   | 'network'
+  | 'testBox'
   | 'supply'
   | 'current'
   | 'parkSwitches'
@@ -69,6 +71,9 @@ export interface Screen {
 const hallFitted = (p: WizardPageProps) => !p.hallNotFitted;
 const boardChosen = (p: WizardPageProps) => !p.config.pins || p.config.pins.preset !== 'unset';
 const hasSource = (p: WizardPageProps) => Boolean(p.config.safety?.http.enabled || p.config.safety?.mqtt.enabled);
+// Spec 022: a test box skips the sources its bypasses stand in for.
+const noParkBypass = (p: WizardPageProps) => !p.config.testBox?.park;
+const noWeatherBypass = (p: WizardPageProps) => !p.config.testBox?.weather;
 const alertsOn = (p: WizardPageProps) => {
   const a = p.config.alerts;
   return Boolean(a?.enabled && (a.ntfy.enabled || a.pushover.enabled || a.webhook.enabled || a.mqtt.enabled));
@@ -91,6 +96,8 @@ export const SCREENS: Screen[] = [
   // network mode on a board with Ethernet, and the wiring check last.
   { id: 'board', page: 'hardware', Body: BoardScreen, answered: boardChosen },
   { id: 'network', page: 'hardware', Body: NetworkScreen, shows: (p) => hasEthernet(p.status) },
+  // Spec 022: is there a telescope under this roof yet? (after the board, which drives nothing until chosen)
+  { id: 'testBox', page: 'hardware', Body: TestBoxScreen, choice: true },
   { id: 'supply', page: 'hardware', Body: SupplyScreen },
   { id: 'current', page: 'hardware', Body: CurrentScreen, choice: true },
   { id: 'parkSwitches', page: 'hardware', Body: ParkSwitchesScreen, choice: true },
@@ -100,9 +107,9 @@ export const SCREENS: Screen[] = [
   { id: 'teach', page: 'teach', Body: TeachScreen },
   { id: 'calibrate', page: 'calibrate', Body: CalibrationScreen },
   { id: 'motion', page: 'motion', Body: MotionScreen },
-  { id: 'weatherSource', page: 'weather', Body: WeatherSourceScreen, choice: true, answered: hasSource },
-  { id: 'weatherAddress', page: 'weather', Body: WeatherAddressScreen, shows: hasSource },
-  { id: 'nina', page: 'nina', Body: NinaScreen },
+  { id: 'weatherSource', page: 'weather', Body: WeatherSourceScreen, choice: true, answered: hasSource, shows: noWeatherBypass },
+  { id: 'weatherAddress', page: 'weather', Body: WeatherAddressScreen, shows: (p) => hasSource(p) && noWeatherBypass(p) },
+  { id: 'nina', page: 'nina', Body: NinaScreen, shows: noParkBypass },
   { id: 'alpaca', page: 'nina', Body: AlpacaScreen, choice: true },
   { id: 'alertChannel', page: 'alerts', Body: AlertChannelScreen, choice: true, answered: alertsOn },
   { id: 'alertDetails', page: 'alerts', Body: AlertDetailsScreen, shows: alertsOn },

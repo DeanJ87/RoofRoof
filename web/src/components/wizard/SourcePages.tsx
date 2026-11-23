@@ -51,7 +51,7 @@ export const WeatherAddressScreen: FunctionalComponent<WizardPageProps> = (props
   return (
     <div id="weather" class="card-group">
       <div class="form-grid">
-        {safety.http.enabled && <SqmeterUrlField safety={safety} update={props.update} error={props.error} />}
+        {safety.http.enabled && <SqmeterUrlField safety={safety} update={props.update} error={props.error} test={false} />}
         {safety.mqtt.enabled && <SqmeterTopicField {...props} safety={safety} />}
       </div>
       <TestPanel part="weather" save={props.saveForTest(WEATHER_FIELDS)} dirty={props.dirty} />
@@ -64,6 +64,10 @@ export const NinaScreen: FunctionalComponent<WizardPageProps> = (props) => {
   if (!park) return notSent;
   return (
     <div id="nina" class="card-group">
+      <Note tone="warn">{t('settings.roof.liveNinaWarning')}</Note>
+      <Note action={{ label: t('wizard.nina.useTestBox'), onClick: () => void props.goToPage(pageIndex('hardware')) }}>
+        {t('wizard.nina.noTelescope')}
+      </Note>
       <NinaUrlField {...props} park={park} />
       {!park.nina.url && <Note tone="bad">{t('wizard.nina.noUrl')}</Note>}
       <TestPanel part="nina" save={props.saveForTest(NINA_FIELDS)} dirty={props.dirty} />
