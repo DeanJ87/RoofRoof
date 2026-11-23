@@ -399,7 +399,7 @@ void handleSafety()
     // stop of a close, spec 006) never lag the sequence.
     // Spec 013: daylight is handed over with them, at once when it starts
     // wanting the roof closed.
-    closeOnUnsafe.updateDaylight();
+    closeOnUnsafe.updateDaylight(safetyInputs->testBox().daylight);
     static bool handedCloses = false;
     const bool safeNow = safetyInputs->weather().safe();
     const bool closesNow = closeOnUnsafe.daylight().closes();

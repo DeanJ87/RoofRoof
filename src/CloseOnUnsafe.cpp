@@ -89,7 +89,7 @@ namespace SQM
         policy = CloseSeq::policyFrom(config);
     }
 
-    void CloseOnUnsafe::updateDaylight()
+    void CloseOnUnsafe::updateDaylight(bool testBox)
     {
         const uint32_t now = millis();
         if (daylightStepped && now - lastDaylightMs < DAYLIGHT_EVERY_MS)
@@ -101,6 +101,7 @@ namespace SQM
             std::lock_guard<std::mutex> held(daylightLock);
             settings = daylightSettings;
         }
+        settings.testBox = testBox;
         const int64_t epoch = static_cast<int64_t>(time(nullptr));
         const Daylight::View before = daylightView;
         daylightView = daylightWatch.update(settings, epoch >= Core::CLOCK_VALID_EPOCH, epoch);
@@ -212,6 +213,9 @@ namespace SQM
         const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
         CloseSeq::updateConditions(roofConditions, snap, safety.weather(), view);
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, snap.status.state, view);
+        // Spec 022: the test box's alert (each bypass coming into effect, and after a boot).
+        roofConditions.testBox = safety.testBox().bits();
+        roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(safety.testBox()) : std::string();
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 

@@ -374,6 +374,8 @@ namespace SQM
         void appendRoof(JsonDocument &doc) const;
         // The roof's snapshot with the close phase filled in (not started: the default).
         RoofIo::Snapshot roofSnapshot() const;
+        // Spec 022: the test box's bypasses in effect now, from the settings and the clock.
+        TestBox::State testBoxState() const;
 
         // Spec 020: POST /api/sqmeter/site (src/WebServerSite.cpp).
         struct SiteJob;

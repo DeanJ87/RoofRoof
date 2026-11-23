@@ -42,7 +42,8 @@ namespace SQM
         void updateConfig(const Config &config);
         // Main loop, before the gates are handed the verdict: works the
         // daylight state out about once a second (spec 013).
-        void updateDaylight();
+        // Spec 022: `testBox`, the test box's daylight bypass in effect (no close, no open refusal).
+        void updateDaylight(bool testBox = false);
         // Main loop: the daylight state as of the last update.
         const Daylight::View &daylight() const { return daylightView; }
         // Any task: the daylight state for the status document.

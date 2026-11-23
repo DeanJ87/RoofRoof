@@ -63,6 +63,32 @@ namespace SQM
         request->send(200, "application/json", json.c_str());
     }
 
+    namespace
+    {
+        // Spec 022: the test box's deadline is the device's (ConfigSave::stampTestBox).
+        bool stampTestBox(const Config &live, Config &merged, const std::string &body, std::string &reason)
+        {
+            const int64_t epoch = static_cast<int64_t>(time(nullptr));
+            TestBoxConfig &box = merged.testBox;
+            if (!ConfigSave::stampTestBox(
+                    live.testBox,
+                    box,
+                    ConfigSave::sendsTestBoxHours(body),
+                    ConfigSave::Clock{epoch >= Core::CLOCK_VALID_EPOCH, static_cast<uint32_t>(epoch)},
+                    &reason))
+                return false;
+            if (box.any() && box.until != live.testBox.until)
+                Logger::warn(
+                    "WebServer",
+                    "Test box bypasses saved: park %d, weather %d, daylight %d, until %s",
+                    box.park,
+                    box.weather,
+                    box.daylight,
+                    TestBox::formatUtc(box.until).c_str());
+            return true;
+        }
+    } // namespace
+
     void WebServer::handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json)
     {
         if (!requireAuth(request))
@@ -82,11 +108,15 @@ namespace SQM
                 if (stale.stale)
                     return false;
                 auto merged = Config::fromJson(body, &live, &reason);
-                if (merged)
-                    next = std::move(*merged);
-                else
+                if (!merged)
+                {
                     reason = reason.empty() ? "Invalid configuration" : reason;
-                return merged.has_value();
+                    return false;
+                }
+                if (!stampTestBox(live, *merged, body, reason))
+                    return false;
+                next = std::move(*merged);
+                return true;
             });
         if (saved || !reason.empty() || stale.stale)
             answerConfigSave(request, saved, reason, stale);

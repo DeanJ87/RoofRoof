@@ -261,7 +261,15 @@ namespace SQM
             s.closePhase = phase;
         if (daylightSource)
             s.daylight = daylightSource();
+        s.testBox = testBoxState();
         return s;
+    }
+
+    TestBox::State WebServer::testBoxState() const
+    {
+        const Config &cfg = getConfigCallback();
+        const int64_t epoch = static_cast<int64_t>(time(nullptr));
+        return TestBox::evaluate(cfg.testBox, TestBox::sourcesOf(cfg.safety, cfg.park), epoch >= Core::CLOCK_VALID_EPOCH, epoch);
     }
 
     void WebServer::appendRoof(JsonDocument &doc) const
