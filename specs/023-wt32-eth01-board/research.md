@@ -13,7 +13,7 @@
   `CONFIG_ETH_USE_ESP32_EMAC`, the LAN87xx PHY driver in `esp_eth`); linking ESP-IDF's EMAC
   driver and the LAN87xx PHY directly costs about 40 KB (Arduino's `ETH` class linked every PHY it
   supports and measured about 16 KB more, so the firmware uses `esp_eth` itself). With the rest of
-  this spec the image is 1,654,895 B, 90.2 % of the slot (plan.md).
+  this spec the image is 1,655,312 B, 90.2 % of the slot (plan.md).
 - One image keeps one release asset, one OTA path and one image check (spec 011's marker), and
   removes any chance of flashing the "wrong" build: a WT32 running as a DevKit can be switched in
   the settings without a USB cable.
