@@ -276,18 +276,41 @@ namespace SQM
             }
         }
 
+        namespace
+        {
+            // The MQTT group: SQMeter's broker has a password, RoofRoof's same broker hasn't.
+            bool mqttPasswordNeeded(const Config &config, const SiteConfig &site)
+            {
+                const bool sameBroker =
+                    config.mqtt.broker == site.broker && config.mqtt.port == site.port && config.mqtt.username == site.username;
+                return site.hasMqtt && site.passwordSet && config.mqtt.password.empty() && sameBroker;
+            }
+
+            // The alerts group: SQMeter's ntfy server has a token, RoofRoof's same server hasn't.
+            bool ntfyTokenNeeded(const Config &config, const SiteConfig &site)
+            {
+                return site.hasNtfy && site.ntfyTokenSet && config.alerts.ntfyToken.empty() && config.alerts.ntfyServer == site.ntfyServer;
+            }
+
+            // Pushover's keys are never synced: asked for while either is missing here.
+            bool pushoverKeysNeeded(const Config &config, const SiteConfig &site)
+            {
+                const bool theirs = site.pushoverUserKeySet || site.pushoverAppTokenSet;
+                return theirs && (config.alerts.pushoverUserKey.empty() || config.alerts.pushoverAppToken.empty());
+            }
+        } // namespace
+
         std::vector<const char *> secretsNeeded(const Config &config, const SiteConfig &site, Group group)
         {
             std::vector<const char *> needs;
             if (!groupOf(config.sqmeterSync, group).follow)
                 return needs;
-            const bool sameBroker =
-                config.mqtt.broker == site.broker && config.mqtt.port == site.port && config.mqtt.username == site.username;
-            if (group == Group::Mqtt && site.hasMqtt && site.passwordSet && config.mqtt.password.empty() && sameBroker)
+            if (group == Group::Mqtt && mqttPasswordNeeded(config, site))
                 needs.push_back("mqttPassword");
-            if (group == Group::Alerts && site.hasNtfy && site.ntfyTokenSet && config.alerts.ntfyToken.empty() &&
-                config.alerts.ntfyServer == site.ntfyServer)
+            if (group == Group::Alerts && ntfyTokenNeeded(config, site))
                 needs.push_back("ntfyToken");
+            if (group == Group::Alerts && pushoverKeysNeeded(config, site))
+                needs.push_back("pushoverKeys");
             return needs;
         }
 

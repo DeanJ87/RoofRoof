@@ -94,7 +94,8 @@ namespace SQM
         // The secrets a following group needs the person to type
         // ("mqttPassword", "ntfyToken"): SQMeter has one set, RoofRoof's is
         // empty, and RoofRoof's server is SQMeter's (a secret is only ever asked
-        // for the server it belongs to).
+        // for the server it belongs to); "pushoverKeys" while SQMeter has
+        // Pushover keys and RoofRoof lacks either (they are never synced).
         std::vector<const char *> secretsNeeded(const Config &config, const SiteConfig &site, Group group);
 
         // The status document's "sync" section (FR-030).

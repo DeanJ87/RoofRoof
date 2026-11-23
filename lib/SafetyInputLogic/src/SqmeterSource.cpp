@@ -64,7 +64,9 @@ namespace SQM
         {
             if (status != 401 && status != 403)
                 return nullptr;
-            return credentialsSent ? "SQMeter refused the password" : "SQMeter wants a password";
+            if (credentialsSent)
+                return "SQMeter refused the password";
+            return "SQMeter wants a password";
         }
 
         void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs)

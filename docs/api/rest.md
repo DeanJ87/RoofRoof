@@ -121,7 +121,7 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 | `<group>.follow` | the group follows SQMeter (`sqmeterSync.<group>.follow`) |
 | `<group>.syncedAt` | Unix seconds of the group's last change from SQMeter, `null` when never |
 | `<group>.refused` | why the last sync didn't take SQMeter's values (the old ones are kept), e.g. a value the settings' validation refuses or "MQTT roof commands are on: set the broker here, not from SQMeter"; `null` otherwise |
-| `<group>.needs` | secrets to enter because SQMeter has one set and RoofRoof's is empty: `mqttPassword`, `ntfyToken` |
+| `<group>.needs` | secrets to enter because SQMeter has one set and RoofRoof's is empty: `mqttPassword`, `ntfyToken`, `pushoverKeys` (Pushover is never synced, so its keys are asked for while either is missing) |
 
 ---
 
