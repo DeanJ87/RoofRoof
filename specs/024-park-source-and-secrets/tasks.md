@@ -33,19 +33,19 @@
 
 ## Phase 5: Web UI
 
-- [ ] T018 Types, zod schema (`park.source`, the placeholder accepted in secret fields), mocks, `configPatch` pair
-- [ ] T019 Settings park fields: source select and count, one-switch warning, N.I.N.A. optional note
-- [ ] T020 Wizard: the park question (three choice cards) and the switch count follow-up
-- [ ] T021 Copy: new rows, the secrets note and problems, the received placeholder in password fields; sync note
-- [ ] T022 Dashboard/roof: Open's switch-check reason; status types
-- [ ] T023 i18n and context notes; Vitest; Playwright demo flow
+- [x] T018 Types, zod schema (`park.source`, the placeholder accepted in secret fields), mocks, `configPatch` pair
+- [x] T019 Settings park fields: source select and count, one-switch warning, N.I.N.A. optional note
+- [x] T020 Wizard: the park question (three choice cards) and the switch count follow-up
+- [x] T021 Copy: new rows, the secrets note and problems, the received placeholder in password fields; sync note
+- [x] T022 Dashboard/roof: Open's switch-check reason; status types
+- [x] T023 i18n and context notes; Vitest; Playwright demo flow
 
 ## Phase 6: Docs and contracts
 
 - [x] T024 Docs: safety inputs (park source, guards), wiring (NO wiring, two switches), commissioning, configuration, REST, wizard, SQMeter site page; diagrams re-confirmed
-- [ ] T025 OpenAPI, routes/operations (unchanged routes, new fields), contract schemas, api examples
+- [x] T025 OpenAPI, routes/operations (unchanged routes, new fields), contract schemas, api examples
 - [x] T026 CHANGELOG
 
 ## Phase 7: Verify
 
-- [ ] T027 Spec 001 quickstart §1: firmware build, native tests, web typecheck/test/build, Playwright, quality gate, flash budget, docs build; demo core rebuilt; source hash
+- [x] T027 Spec 001 quickstart §1: firmware build, native tests, web typecheck/test/build, Playwright, quality gate, flash budget, docs build; demo core rebuilt; source hash
