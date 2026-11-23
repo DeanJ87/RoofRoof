@@ -273,7 +273,8 @@ can't run; see [the dashboard](dashboard.md#roof).
 ## Site from SQMeter
 
 RoofRoof and SQMeter stand at the same observatory, so they share a site. RoofRoof already knows
-where SQMeter is: its weather source address (`safety.http.url`, SQMeter's `/api/safety`).
+where SQMeter is: its weather source address (`safety.http.url`, SQMeter's address, http or
+https; RoofRoof adds SQMeter's paths itself).
 
 ### The location follows SQMeter
 
@@ -356,8 +357,9 @@ RoofRoof uses open even with its password on, but a later release, or a proxy in
 not.
 
 The password is a secret: shown as `********`, never logged, and only sent to the SQMeter it was
-saved for. Changing the address to another host or port clears it unless you type it again; the
-copy only uses the saved password with the saved address's host and port.
+saved for. Changing the address to another scheme (http or https), host or port clears it unless
+you type it again; the copy only uses the saved password with the saved address's scheme, host and
+port. Over `https://` the login travels encrypted (the certificate isn't checked).
 
 When SQMeter turns a request away (401 or 403), RoofRoof says why instead of a bare HTTP status:
 **SQMeter wants a password** (none was sent) or **SQMeter refused the password**. The weather source

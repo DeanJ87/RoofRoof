@@ -175,6 +175,29 @@ Each answer takes the safest option the constitution allows and is also listed u
   each on its own Settings page afterwards, editable there; a group that follows SQMeter shows
   "Follows SQMeter" with "Edit here instead". Where SQMeter has a secret set, the matching password or
   token field is shown on its page with a prompt to type it.
+
+### Session 2026-11-23 (SQMeter's address and https)
+
+- Q: What does SQMeter's address field take? → A: SQMeter's address only: `192.168.1.50`,
+  `sqmeter.local`, `http://192.168.1.50` or `https://sqmeter.lan:8443`. RoofRoof adds `/api/safety`
+  for the weather poll and `/api/status`, `/api/config` for the site data. An owner who typed
+  SQMeter's `/api/sensors` URL saw "waiting for a first reply" forever: nothing said the field
+  wanted `/api/safety`.
+- Q: What about a full URL? → A: One ending in a known SQMeter API path (`/api/safety`,
+  `/api/sensors`, `/api/status`, `/api/config`, with or without a trailing `/` or a query) is taken
+  as its address. Settings saved with the old full URL load as the address. Any other path is
+  refused on a save, naming the form wanted.
+- Q: What does a wrong reply say? → A: "that address answered HTTP 404, not like SQMeter's
+  /api/safety", or "that address answered, but not like SQMeter's /api/safety (missing safe)",
+  also during the start-up window that would otherwise say "waiting for a first reply". The
+  verdict is unchanged (unknown in the window, then unsafe).
+- Q: How can the owner check the address? → A: A **Test** next to it reads SQMeter's
+  `/api/safety` once through the device (`POST /api/sqmeter/test`, password-protected, with the
+  copy's typed address and login) and shows safe, unsafe with its reasons, or why not.
+- Q: https? → A: Accepted and supported (TLS on the ESP32). The certificate isn't checked: a LAN
+  SQMeter's is self-signed; the UI says the link is encrypted but the certificate not checked.
+  The login works over https too. The saved password is cleared when the scheme, host or port
+  changes.
 - Q: What about SQMeter's language and its night threshold? → A: Not offered. RoofRoof ships in
   English only, and SQMeter's `alerts.nightSunAltitudeDeg` means "night below", which is not
   RoofRoof's daylight threshold ("close at or above").
@@ -443,6 +466,24 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
   "Follows SQMeter" while its group follows, and shown while its channel is off; a secret SQMeter has
   set (MQTT password, ntfy token, Pushover keys) MUST be asked for at its field, also with the channel
   off. Following alone (a new device's default) MUST NOT show a channel that is off.
+- **FR-036**: SQMeter's address (`safety.http.url`) MUST be SQMeter's address only, kept as
+  `scheme://host[:port]`; RoofRoof MUST add `/api/safety` and the site paths itself. A typed address
+  without a scheme MUST mean `http://`; a URL ending in `/api/safety`, `/api/sensors`, `/api/status`
+  or `/api/config` MUST be taken as its address, on a save and in settings stored before; any other
+  path MUST be refused on a save. The field's placeholder and hint MUST say "SQMeter's address,
+  e.g. 192.168.1.50 or sqmeter.local".
+- **FR-037**: A reply that isn't SQMeter's `/api/safety` (another HTTP status, JSON without `safe`)
+  MUST say "that address answered ..., not like SQMeter's /api/safety", also while the source would
+  otherwise read "waiting for a first reply".
+- **FR-038**: Settings MUST offer a Test next to SQMeter's address that reads `/api/safety` once
+  through the device (`POST /api/sqmeter/test`, the copy's body and refusals) and shows safe,
+  unsafe with its reasons, or the error. Nothing is saved.
+- **FR-039**: An `https://` address MUST be accepted and read over TLS (the weather poll, the site
+  reads, the copy and the Test) without a certificate check, with the login; the UI MUST say the
+  link is encrypted but the certificate not checked. The handshake MUST be bounded (3 s). One HTTPS
+  session at a time (the device's TLS lock): a weather poll that can't get it within 1 s, and a Test
+  or copy within 8 s, fails as unreachable; none starts while a firmware or web UI upload runs. The saved SQMeter password
+  MUST be cleared when the scheme, host or port changes, unless one is typed with it.
 - **FR-031**: Settings and the wizard MUST show a followed group's fields read-only with "Follows
   SQMeter" and the read's age, an "Edit here instead" control that unfollows it, a way to follow
   again, and a note asking for each needed secret; the dashboard's Status card a non-critical note
@@ -558,3 +599,25 @@ Each was an open choice; the safest option the constitution allows was taken.
     clears the saved password unless one is typed with it, as a saved secret is never sent elsewhere.
 25. **A refused login is an unreadable weather source** (unsafe once stale, as any unreadable reply)
     with its own reason, never a separate alert.
+26. **SQMeter's address is the address only.** RoofRoof adds SQMeter's paths; a URL ending in a known
+    SQMeter API path is taken as the address (settings stored with the full `/api/safety` URL load as
+    the address), and any other path is refused on a save rather than guessed at. A set address is
+    checked on a save even with the HTTP source off, because the location, the copy and the sync use
+    it too. A stored address that isn't valid still loads, but the next save asks for it to be fixed
+    or cleared. The copy and the Test take only the scheme, host and port of the address they are sent.
+27. **https without a certificate check.** A LAN SQMeter has a self-signed certificate, so checking
+    it would refuse every one; the link is encrypted (the login doesn't travel in clear), but a
+    device impersonating SQMeter on the LAN isn't detected. The UI says so. https to an IPv6 literal
+    stays unsupported (the platform's TLS client), as for the alert channels.
+28. **An https SQMeter shares the one HTTPS session** with the alert channels, and takes none while
+    a firmware or web UI upload runs (its ~45 KB of heap, as the alert sender). A poll that can't get
+    the session within 1 s fails as unreachable and counts toward the stale time, so a long hold makes
+    the source unsafe, never safe; a person's Test or copy waits up to 8 s, and can itself hold the
+    session for about 10 s, so with a short stale time it can make the roof close (the safe direction). The handshake is bounded
+    to 3 s (the client's default is 120 s, which would hold the poller, its N.I.N.A. reads and the
+    session). The safety poller's stack grows from 6 to 8 KB for the handshake (as the copy's task);
+    its low-water mark and the heap over hours of https polling are bench items.
+29. **A wrong reply is named, not waited on.** The verdict doesn't change (unknown in the start-up
+    window, unsafe after it); only the text says what answered.
+30. **Test reads once and saves nothing**, with the copy's rules (typed address and login, the saved
+    password only to its own scheme, host and port; refused while the roof is busy).

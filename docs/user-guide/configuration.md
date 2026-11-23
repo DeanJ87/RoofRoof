@@ -250,7 +250,7 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `safety.http.enabled` | bool | `false` | Poll SQMeter's `GET /api/safety` every 5 s |
-| `safety.http.url` | string | `""` | Its full URL, `http://` only, e.g. `http://sqmeter.local/api/safety` |
+| `safety.http.url` | string | `""` | SQMeter's address, http or https: `192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan:8443`. Kept as `scheme://host[:port]`; RoofRoof adds `/api/safety` itself. A URL ending in `/api/safety`, `/api/sensors`, `/api/status` or `/api/config` is taken as its address (also in settings saved before); another path is refused. https isn't certificate-checked |
 | `safety.http.username` | string | `""` | SQMeter's user name, when SQMeter has a password; sent (HTTP Basic, with the password) on every request to SQMeter: the weather poll, the location and settings reads and the copy ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)). At most 64 characters, no `:` |
 | `safety.http.password` | string | `""` | SQMeter's password. A secret: shown as `********`, kept when that comes back, `null` clears it, encrypted in a backup with a passphrase. Saving an address with another host or port clears it unless a new one is sent with it. At most 64 characters |
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |

@@ -179,10 +179,10 @@ Reads the SQMeter's settings for the copy in Settings and the setup wizard ([Sit
 
 ```bash
 curl -u admin:password -X POST http://roofroof.local/api/sqmeter/site \
-  -H "Content-Type: application/json" -d '{"url": "http://192.168.1.50/api/safety"}'
+  -H "Content-Type: application/json" -d '{"url": "192.168.1.50"}'
 ```
 
-`url` is optional: without it, the saved `safety.http.url`. Only its scheme, host and port are used, with SQMeter's own path. `username` and `password` are optional too: SQMeter's login for this request (typed in the wizard before saving). Without them the saved login is used, and an empty or masked (`********`) password means the saved one, but only when `url` has the saved address's host and port: a saved password is never sent to another device. The login goes as HTTP Basic, as on every request RoofRoof makes to SQMeter.
+`url` is optional: without it, the saved `safety.http.url`. It takes the address setting's forms (`192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan`, or a URL ending in one of SQMeter's API paths); only its scheme, host and port are used, with SQMeter's own path. `https` is encrypted, without a certificate check. `username` and `password` are optional too: SQMeter's login for this request (typed in the wizard before saving). Without them the saved login is used, and an empty or masked (`********`) password means the saved one, but only when `url` has the saved address's host and port: a saved password is never sent to another device. The login goes as HTTP Basic, as on every request RoofRoof makes to SQMeter.
 
 ```json
 {
@@ -200,12 +200,35 @@ A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKe
 
 | Status | When |
 |---|---|
-| 400 | no address set, or not `http://` |
-| 409 | the roof moving, a close waiting, the automatic close working, or another copy running |
+| 400 | no address set, or not a valid address |
+| 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
 | 502 | SQMeter not answering (`"SQMeter not answering: connection refused"`), turning the request away (`"SQMeter wants a password"` with no login sent, `"SQMeter refused the password"` with one), another HTTP status, or not SQMeter's settings |
 | 503 | not enough memory to start the fetch |
 
 The fetch runs on its own short-lived task for at most about 5 s; the web server answers when it is done.
+
+---
+
+### `POST /api/sqmeter/test`
+
+The **Test** next to SQMeter's address in Settings: the device reads SQMeter's `GET /api/safety` once, as the weather poll does, at the body's address and login (the same body as `POST /api/sqmeter/site`; only the address's scheme, host and port are used, whatever path it has), and answers with SQMeter's verdict. Nothing is saved, and the weather source is unchanged. Needs the password when protection is on.
+
+```bash
+curl -u admin:password -X POST http://roofroof.local/api/sqmeter/test \
+  -H "Content-Type: application/json" -d '{"url": "192.168.1.50"}'
+```
+
+```json
+{ "safe": false, "reasonFlags": 512, "text": "SQMeter says unsafe: reasonFlags 0x200 (rain)" }
+```
+
+| Status | When |
+|---|---|
+| 200 | SQMeter answered: `safe`, `reasonFlags` and `text` |
+| 400 | no address set, or not a valid address |
+| 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
+| 502 | `error` says why: `"SQMeter not answering: connection refused"`, `"SQMeter wants a password"`, `"SQMeter refused the password"`, `"That address answered HTTP 404, not like SQMeter's /api/safety"`, or `"That address answered, but not like SQMeter's /api/safety (missing safe)"` (another of SQMeter's pages, say) |
+| 503 | not enough memory to start the read |
 
 ---
 
