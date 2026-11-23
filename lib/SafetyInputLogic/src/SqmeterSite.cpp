@@ -143,7 +143,7 @@ namespace SQM
             to.url = siteUrl(address, CONFIG_PATH);
             const bool sameHost = !siteOrigin(address).empty() && siteOrigin(address) == siteOrigin(saved.httpUrl);
             to.username = typed.username ? *typed.username : (sameHost ? saved.httpUsername : std::string());
-            const bool typedPassword = typed.password && !typed.password->empty() && *typed.password != "********";
+            const bool typedPassword = typed.password && !Config::placeholderSecret(*typed.password);
             to.password = typedPassword ? *typed.password : (sameHost ? saved.httpPassword : std::string());
             return to;
         }

@@ -251,6 +251,7 @@ private:
     Site::LocationRead siteRead;
     uint32_t siteGeneration = 0;
     std::string siteAddress;
+    std::string siteLogin;
     LocationConfig::Source siteSource = LocationConfig::Source::Sqmeter;
     bool settingsFollow = false;
     Site::LocationSchedule settingsSchedule;

@@ -91,7 +91,8 @@ namespace DemoRoof
     void EmulatedRoof::sourcesChanged(const SafetyConfig &nextSafety, const ParkConfig &nextPark)
     {
         bool repoll = false;
-        if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl)
+        if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl ||
+            nextSafety.httpUsername != safetyCfg.httpUsername || nextSafety.httpPassword != safetyCfg.httpPassword)
         {
             http = Safety::SourceRecord();
             http.enabled = nextSafety.httpEnabled;

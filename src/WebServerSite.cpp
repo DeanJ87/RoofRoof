@@ -135,7 +135,9 @@ namespace SQM
         if (!addressFrom(request, getConfigCallback().safety.httpUrl, address, login))
         {
             request->send(
-                400, "application/json", errorBody("The body must be JSON, at most 512 bytes: {\"url\": \"http://...\"}").c_str());
+                400,
+                "application/json",
+                errorBody("The body must be JSON, at most 512 bytes: {\"url\", \"username\", \"password\"}, each a string").c_str());
             return;
         }
         if (address.empty() || Site::siteUrl(address, Site::CONFIG_PATH).empty())

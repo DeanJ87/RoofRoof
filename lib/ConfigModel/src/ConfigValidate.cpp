@@ -178,6 +178,9 @@ namespace SQM
                 return setError(error, "SQMeter login: user name and password must be at most 64 characters");
             if (s.httpUsername.find(':') != std::string::npos)
                 return setError(error, "SQMeter login: the user name can't contain ':'");
+            for (const char c : s.httpUsername)
+                if (static_cast<unsigned char>(c) < 0x20)
+                    return setError(error, "SQMeter login: the user name can't contain control characters");
             return true;
         }
 

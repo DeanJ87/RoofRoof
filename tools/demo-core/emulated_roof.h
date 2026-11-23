@@ -190,13 +190,7 @@ namespace DemoRoof
                 http.recordGood(sqmeterReply(), nowMs);
             else
                 Safety::recordHttpReply(
-                    http,
-                    Safety::HttpOutcome{
-                        answer,
-                        "",
-                        answer == 0 ? "connection refused" : "",
-                        !safetyCfg.httpUsername.empty() || !safetyCfg.httpPassword.empty()},
-                    nowMs);
+                    http, Safety::HttpOutcome{answer, "", answer == 0 ? "connection refused" : "", !safetyCfg.httpPassword.empty()}, nowMs);
         }
         RoofIo::Contact switchContact() const;
 

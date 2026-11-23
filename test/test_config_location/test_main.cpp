@@ -273,6 +273,9 @@ void test_the_sqmeter_password_is_masked_kept_and_cleared_with_a_new_host()
     TEST_ASSERT_EQUAL_STRING("", movedPort->safety.httpPassword.c_str());
     const auto movedTyped = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.60/api/safety","password":"new-secret"}}})", base);
     TEST_ASSERT_EQUAL_STRING("new-secret", movedTyped->safety.httpPassword.c_str());
+    // The same password typed again with the new host stands.
+    const auto retyped = fromUi(R"({"safety":{"http":{"url":"http://192.168.1.60/api/safety","password":"sqm-secret"}}})", base);
+    TEST_ASSERT_EQUAL_STRING("sqm-secret", retyped->safety.httpPassword.c_str());
     std::string error;
     TEST_ASSERT_FALSE(fromUi(R"({"safety":{"http":{"username":"a:b"}}})", base, &error).has_value());
     TEST_ASSERT_EQUAL_STRING("SQMeter login: the user name can't contain ':'", error.c_str());

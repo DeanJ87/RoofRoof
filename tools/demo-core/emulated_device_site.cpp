@@ -26,7 +26,7 @@ namespace
         const DemoRoof::Injectors &inject, const Site::Endpoint &from, const char *body, const JsonDocument &filter, JsonDocument &doc)
     {
         Site::Fetch fetch;
-        fetch.credentials = from.hasLogin();
+        fetch.credentials = from.sendsPassword();
         fetch.status = DemoRoof::demoSqmeterAnswer(inject, from.username, from.password);
         if (fetch.status == 0)
             fetch.error = OFFLINE;
@@ -85,8 +85,10 @@ void EmulatedDevice::runSite()
 {
     const SqmeterSyncConfig &sync = cfg.sqmeterSync;
     const bool follows = sync.time.follow || sync.mqtt.follow || sync.alerts.follow;
-    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource || follows != settingsFollow)
+    const std::string login = cfg.safety.httpUsername + '\n' + cfg.safety.httpPassword;
+    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource || follows != settingsFollow || login != siteLogin)
     {
+        siteLogin = login;
         siteAddress = cfg.safety.httpUrl;
         siteSource = cfg.location.source;
         settingsFollow = follows;

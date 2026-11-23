@@ -45,6 +45,8 @@ namespace SQM
             std::string username;
             std::string password;
             bool hasLogin() const { return !username.empty() || !password.empty(); }
+            // A password was sent: a 401 or 403 then means it was refused.
+            bool sendsPassword() const { return !password.empty(); }
         };
 
         // Spec 020: where the copy reads SQMeter's settings, and with which login.

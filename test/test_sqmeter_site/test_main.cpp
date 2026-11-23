@@ -486,6 +486,9 @@ void test_the_copy_sends_the_saved_login_only_to_its_own_host()
     TypedLogin masked;
     masked.password = "********";
     TEST_ASSERT_EQUAL_STRING("saved-secret", copyEndpoint(saved, "http://192.168.1.50/x", masked).password.c_str());
+    TypedLogin shortMask;
+    shortMask.password = "***";
+    TEST_ASSERT_EQUAL_STRING("saved-secret", copyEndpoint(saved, "http://192.168.1.50/x", shortMask).password.c_str());
     // Another host: never the saved password (nor user name).
     const Endpoint other = copyEndpoint(saved, "http://192.168.1.51/api/safety", masked);
     TEST_ASSERT_EQUAL_STRING("", other.password.c_str());

@@ -465,6 +465,8 @@ namespace SQM
         // validate() plus the rules a change from the UI/API also meets (host and
         // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
         bool validateChange(std::string *error = nullptr) const;
+        // A secret sent back as shown (the mask, or empty): "keep the saved one".
+        static bool placeholderSecret(const std::string &value);
         // Spec 015: a stored document with no "setup" object was saved by a
         // release before the setup wizard; Config::load then marks it offered.
         static bool storedBeforeSetup(const std::string &storedJson);

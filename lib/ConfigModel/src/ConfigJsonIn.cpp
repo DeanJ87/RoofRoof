@@ -332,13 +332,13 @@ namespace SQM
             const Section http = safety.child("http");
             http.take("enabled", s.httpEnabled);
             const std::string hostBefore = sqmeterHost(s.httpUrl);
-            const std::string passwordBefore = s.httpPassword;
             http.take("url", s.httpUrl);
             http.take("username", s.httpUsername);
             assignSecret(http, "password", s.httpPassword, keepSecrets);
             // Spec 020: SQMeter's saved password is never sent to another host:
-            // a new host or port clears it unless a new one comes with it.
-            if (keepSecrets && sqmeterHost(s.httpUrl) != hostBefore && s.httpPassword == passwordBefore)
+            // a new host or port clears it unless a password comes with it.
+            const bool typed = http["password"].is<const char *>() && !isPlaceholderSecret(http["password"].as<const char *>());
+            if (keepSecrets && sqmeterHost(s.httpUrl) != hostBefore && !typed)
                 s.httpPassword.clear();
             const Section mqtt = safety.child("mqtt");
             mqtt.take("enabled", s.mqttEnabled);
@@ -539,6 +539,11 @@ namespace SQM
         if (!(reader.strict() ? cfg.validate(errorOut) : cfg.validateLoaded(errorOut)))
             return false;
         return !preserveSecretPlaceholders || validateIncoming(cfg, errorOut);
+    }
+
+    bool Config::placeholderSecret(const std::string &value)
+    {
+        return isPlaceholderSecret(value.c_str());
     }
 
     bool Config::validateChange(std::string *error) const

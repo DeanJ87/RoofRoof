@@ -93,7 +93,7 @@ namespace SQM
         Safety::HttpOutcome httpGet(const Site::Endpoint &to)
         {
             Safety::HttpOutcome reply;
-            reply.credentials = to.hasLogin();
+            reply.credentials = to.sendsPassword();
             if (WiFi.status() != WL_CONNECTED)
             {
                 reply.error = "WiFi not connected";
@@ -188,7 +188,7 @@ namespace SQM
         const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
     {
         Site::Fetch fetch;
-        fetch.credentials = from.hasLogin();
+        fetch.credentials = from.sendsPassword();
         if (WiFi.status() != WL_CONNECTED)
         {
             fetch.error = "WiFi not connected";
