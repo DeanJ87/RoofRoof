@@ -121,6 +121,12 @@ namespace SQM
             }
         } // namespace
 
+        std::string parkReason(const Safety::ParkResult &park, bool requestPark)
+        {
+            const std::string text = Safety::describe(park);
+            return requestPark || park.parked ? text : text + " (N.I.N.A. not asked to park: park requests are off)";
+        }
+
         std::string reasonFor(const Decision &decision, const Reasons &reasons)
         {
             switch (decision.cause)

@@ -22,16 +22,21 @@ const bypassNames = (box: RoofTestBox) =>
     .join(', ');
 
 /** The banner's text, or null when nothing is set. */
-export const testBoxText = (box: RoofTestBox | undefined): string | null => {
-  if (!box?.set) return null;
+const stateText = (box: RoofTestBox): string => {
   const until = formatDateTime(new Date(box.until * 1000), { dateStyle: 'medium', timeStyle: 'short' });
   if (box.waitingForClock) return t('testBox.banner.waitingForClock');
   if (box.expired && box.until === 0) return t('testBox.banner.notStarted');
   if (box.expired) return t('testBox.banner.expired', { until });
   if (!box.active) return t('testBox.banner.notInEffect');
-  const active = t('testBox.banner.active', { bypasses: bypassNames(box), until });
-  // Spec 022: whether unsafe weather would ask a configured N.I.N.A. to park its mount.
-  return box.parkRequests ? `${active} ${t('testBox.banner.parkRequests')}` : active;
+  return t('testBox.banner.active', { bypasses: bypassNames(box), until });
+};
+
+/** The banner's text, or null when nothing is set. Spec 022: in every state it
+ * says when unsafe weather would ask a configured N.I.N.A. to park its mount. */
+export const testBoxText = (box: RoofTestBox | undefined): string | null => {
+  if (!box?.set) return null;
+  const text = stateText(box);
+  return box.parkRequests ? `${text} ${t('testBox.banner.parkRequests')}` : text;
 };
 
 const TestBoxBanner: FunctionalComponent = () => {

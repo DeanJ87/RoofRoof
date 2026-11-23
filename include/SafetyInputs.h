@@ -53,9 +53,9 @@ namespace SQM
         // Spec 022: the test box's bypasses in effect, as applied to the three above.
         const TestBox::State &testBox() const { return testBoxState; }
         // Ask N.I.N.A. to park (spec 005). The answer is in the poller's
-        // snapshot; only park() says the mount is parked. Spec 022: only with
-        // park.requestPark on; false (nothing sent) when it is off.
-        bool requestPark();
+        // snapshot; only park() says the mount is parked. Spec 022: the close
+        // sequence asks only while park.requestPark is on (CloseSeq::Policy).
+        void requestPark() { poller.requestPark(); }
         // Any task (spec 015, GET /api/roof/inputs): the verdict, the park and
         // N.I.N.A.'s reading as last evaluated, copied under their own lock.
         // Waits at most REPORT_WAIT_MS for it (the loop holds it only for a

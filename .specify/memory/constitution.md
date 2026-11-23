@@ -15,6 +15,10 @@ Sync Impact Report
   N.I.N.A. need not park that mount). Neither can be set alongside the source it stands
   in for (a N.I.N.A. address, an SQMeter source); fitted park switches and a rain contact still
   count; no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
+- New risk (park requests): on a real roof with `park.requestPark` off, rain leaves the roof open
+  unless the mount is parked some other way (by hand, or by N.I.N.A.'s own safety monitor); the
+  critical "mount not parked" alert says no park was asked for, and the Mount park card warns
+  while it is off with a N.I.N.A. address set.
 - New risk: a telescope put under a roof still in test-box mode, with no N.I.N.A. address and no
   park switches, can be closed onto until the deadline. A box left in the open with the weather
   bypass on and no station is not closed for weather. Mitigations: the bypasses can't coexist with
@@ -181,6 +185,10 @@ Doubt about the weather MUST resolve to "unsafe".
   rain contact on GPIO4 when fitted. Any source that says unsafe makes the verdict unsafe. A
   missing, stale or unparseable source counts as unsafe, and so does a rain sensor that has failed.
 - Rain from any source MUST be acted on even if every other input is stale.
+- **Park requests are an owner setting** (`park.requestPark`, on by default and after an
+  upgrade). Off, step 2 is skipped and the sequence only waits for a park confirmed some other way;
+  without one the roof stays open and the critical alert names the setting. The setting MUST be
+  shown on its settings card and wherever a test-box bypass is shown.
 - Losing every way to confirm the park while unsafe leaves the roof open and raises a critical
   alert. The alert path MUST NOT depend on the device that failed where another path exists.
 - The roof MUST NOT open by itself. Opening is always a person's or a client's command, and it is

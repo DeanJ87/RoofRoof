@@ -1038,6 +1038,7 @@
   "settings.roof.remoteStopHint": "Settings → Roof → Automatic close: the \"?\" tip on a switch.",
   "settings.roof.requestPark": "Settings -> Roof -> Mount park, and the setup wizard's test box screen: a switch label (the automatic close may ask N.I.N.A. to park the mount when unsafe); max 32 chars.",
   "settings.roof.requestParkHint": "Settings -> Roof -> Mount park: tooltip.",
+  "settings.roof.requestParkOff": "Settings -> Roof -> Mount park: a warning note; max 90 chars.",
   "settings.roof.reverse": "Settings -> Roof: a label; max 32 chars. A select option.",
   "settings.roof.setSqmeterAddress": "Settings -> Roof -> Daylight: a button label on a note; max 32 chars.",
   "settings.roof.slowDuty": "Settings -> Roof: a label; max 32 chars.",

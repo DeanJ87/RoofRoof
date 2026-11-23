@@ -42,6 +42,9 @@ namespace SQM
             // A waiting close that never starts: false halts (spec 005), true
             // calls it off and backs off as for a refused close.
             bool retryNotStarted = false;
+            // Spec 022 (park.requestPark): ask N.I.N.A. to park (Principle III
+            // step 2). Off, the sequence only waits for a park confirmed some other way.
+            bool requestPark = true;
         };
 
         // The ranges (research R3), in ms. The floors and ceilings keep the

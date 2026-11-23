@@ -220,7 +220,7 @@ namespace SQM
             return; // the usual pass: nothing to do
 
         CloseSeq::Reasons reasons;
-        reasons.park = Safety::describe(safety.park());
+        reasons.park = CloseSeq::parkReason(safety.park(), policy.requestPark);
         reasons.fault = RoofIo::describeFault(snap.fault);
         reasons.roof = snap.status.state;
         const std::string weather = Safety::describe(safety.weather());
@@ -279,10 +279,8 @@ namespace SQM
         switch (decision.action)
         {
         case CloseSeq::Action::RequestPark:
-            if (safety.requestPark())
-                Logger::info(TAG, "Asking N.I.N.A. to park the mount");
-            else
-                Logger::warn(TAG, "No park request sent: asking N.I.N.A. to park is off (park.requestPark)");
+            Logger::info(TAG, "Asking N.I.N.A. to park the mount");
+            safety.requestPark();
             break;
         case CloseSeq::Action::Close:
         {

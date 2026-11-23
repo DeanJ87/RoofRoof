@@ -36,7 +36,8 @@ first (or turn the bypass off)"*.
     box or not. A bench box pointed at the N.I.N.A. that drives your real mount will park it
     mid-session. On a bench, leave the N.I.N.A. address empty, or turn off **May ask N.I.N.A. to
     park the mount** (`park.requestPark`, on by default; also offered on the wizard's test box
-    screen). While it is on and an address is set, the red banner says so.
+    screen). While a bypass is set, the red banner says when unsafe weather would ask N.I.N.A. to
+    park.
 
 ## What is never bypassed
 

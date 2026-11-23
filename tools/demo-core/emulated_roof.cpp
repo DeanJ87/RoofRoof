@@ -394,7 +394,7 @@ namespace DemoRoof
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None)
             return;
         CloseSeq::Reasons reasons;
-        reasons.park = Safety::describe(park);
+        reasons.park = CloseSeq::parkReason(park, policy.requestPark);
         reasons.fault = RoofIo::describeFault(fault);
         reasons.roof = controller.status().state;
         carryOut(decision, reasons);
@@ -405,7 +405,7 @@ namespace DemoRoof
         switch (decision.action)
         {
         case CloseSeq::Action::RequestPark:
-            if (!parkCfg.ninaUrl.empty() && parkCfg.requestPark) // spec 022: only while asking N.I.N.A. to park is on
+            if (!parkCfg.ninaUrl.empty())
                 parkMount();
             break;
         case CloseSeq::Action::Close:

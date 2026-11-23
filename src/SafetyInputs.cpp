@@ -114,14 +114,6 @@ namespace SQM
         evaluated = false;
     }
 
-    bool SafetyInputs::requestPark()
-    {
-        if (!settings.park.requestPark)
-            return false;
-        poller.requestPark();
-        return true;
-    }
-
     void SafetyInputs::watchTopics()
     {
         if (mqtt == nullptr)

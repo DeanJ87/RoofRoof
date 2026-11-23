@@ -254,8 +254,10 @@ Every surface shows the bypass while it is in effect.
 - **FR-015**: A setting `park.requestPark` ("May ask N.I.N.A. to park", on by default
   and after an upgrade) decides whether the automatic close sends N.I.N.A. a park request; off, it
   only waits for the park. It is on the Mount park card and on the wizard's test box screen; the
-  status (`roof.testBox.parkRequests`) and the banner say when unsafe weather would ask a
-  configured N.I.N.A. to park. Settings → Roof → Mount park, the wizard's N.I.N.A. screen and the
+  status (`roof.testBox.parkRequests`) and the banner (in every state while a bypass is set) say
+  when unsafe weather would ask a configured N.I.N.A. to park; with it off and an address set the
+  Mount park card warns, and the critical "mount not parked" alert says no park was asked for. The
+  decision is the close sequence's policy (`CloseSeq::Policy::requestPark`). Settings → Roof → Mount park, the wizard's N.I.N.A. screen and the
   docs warn that a RoofRoof pointed at a live N.I.N.A. can park that mount; the N.I.N.A. screen
   links to the test box screen, so setup never needs a mount parked.
 - **FR-013**: The decisions (in effect, the park, verdict and daylight effects, the save stamp, the

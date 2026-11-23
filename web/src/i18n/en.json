@@ -1058,6 +1058,7 @@
   "settings.roof.remoteStopHint": "Off: an imaging app or MQTT can't stop a close in unsafe weather. On: their Stop counts as yours, with its critical alert.",
   "settings.roof.requestPark": "May ask N.I.N.A. to park",
   "settings.roof.requestParkHint": "When the weather turns unsafe, the automatic close asks N.I.N.A. to park before it closes. Off: it only waits for the park.",
+  "settings.roof.requestParkOff": "Unsafe weather won't ask N.I.N.A. to park: the roof stays open until the mount is parked.",
   "settings.roof.reverse": "Reverse",
   "settings.roof.setSqmeterAddress": "Set address",
   "settings.roof.slowDuty": "Slow duty",

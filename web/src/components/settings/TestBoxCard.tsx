@@ -38,13 +38,17 @@ const useRenew = (hours: number) => {
 
 // Spec 022: whether the automatic close may ask N.I.N.A. to park (also the wizard's test box screen).
 export const RequestParkToggle: FunctionalComponent<{ park: ParkConfig; update: SettingsTabProps['update'] }> = ({ park, update }) => (
-  <Toggle
-    dataField="park.requestPark"
-    label={t('settings.roof.requestPark')}
-    hint={t('settings.roof.requestParkHint')}
-    checked={park.requestPark ?? true}
-    onChange={(v) => update(['park', 'requestPark'], v)}
-  />
+  <>
+    <Toggle
+      dataField="park.requestPark"
+      label={t('settings.roof.requestPark')}
+      hint={t('settings.roof.requestParkHint')}
+      checked={park.requestPark ?? true}
+      onChange={(v) => update(['park', 'requestPark'], v)}
+    />
+    {/* Off with an address set: unsafe weather won't ask N.I.N.A. to park (spec 022). */}
+    {park.requestPark === false && park.nina.url.trim() !== '' && <Note tone="warn">{t('settings.roof.requestParkOff')}</Note>}
+  </>
 );
 
 const TestBoxCard: FunctionalComponent<TestBoxProps> = (props) => {
