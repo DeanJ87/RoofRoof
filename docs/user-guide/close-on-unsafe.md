@@ -336,6 +336,12 @@ Copying a different MQTT broker, port or user name clears RoofRoof's saved MQTT 
 different ntfy server clears the saved ntfy token, so a saved secret is never sent to a server it
 wasn't saved for.
 
+Every copied value is an ordinary RoofRoof setting: it shows on its own Settings page (Time, Network,
+Alerts, Roof), marked **Follows SQMeter** while its group follows, and stays editable there. That
+holds while the channel is off too: a copied MQTT broker or ntfy topic shows its fields with MQTT or
+ntfy off. A secret SQMeter has set is asked for at its field (the MQTT password, the ntfy token, the
+Pushover user key and app token), also with that channel off, until you type it.
+
 The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the copy is refused while
 the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
 switches it to follow SQMeter (below).
@@ -390,8 +396,10 @@ RoofRoof synced, so an older page can't put old ones back.
 
 **Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
 clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
-has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it.
-This is a note, not an alert.
+has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it,
+also with that channel off. Pushover never syncs (SQMeter masks its keys): while the alerts group
+follows and SQMeter uses Pushover, its user key and app token are asked for until both are set here.
+Following alone shows no channel that is off. This is a note, not an alert.
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
 Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT

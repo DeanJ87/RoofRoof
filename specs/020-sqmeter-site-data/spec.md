@@ -440,7 +440,9 @@ from its simulated SQMeter; the demo panel's "SQMeter offline" stops both.
   "SQMeter refused the password" (login sent) in the weather source's reason, the status's location
   and sync problems, the dashboard, Settings and the copy.
 - **FR-035**: Every copied value MUST land as an ordinary setting, editable on its Settings page, marked
-  "Follows SQMeter" while its group follows; a secret SQMeter has set MUST be asked for at its field.
+  "Follows SQMeter" while its group follows, and shown while its channel is off; a secret SQMeter has
+  set (MQTT password, ntfy token, Pushover keys) MUST be asked for at its field, also with the channel
+  off. Following alone (a new device's default) MUST NOT show a channel that is off.
 - **FR-031**: Settings and the wizard MUST show a followed group's fields read-only with "Follows
   SQMeter" and the read's age, an "Edit here instead" control that unfollows it, a way to follow
   again, and a note asking for each needed secret; the dashboard's Status card a non-critical note

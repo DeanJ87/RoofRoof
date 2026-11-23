@@ -61,8 +61,8 @@ Tests come first for every `lib/` change (constitution V). `[P]`: can run in par
 
 ## Phase 9: A password-protected SQMeter (2026-11-23)
 
-- [ ] T031 `safety.http.username` and `.password` (secret, masked, backup secret, cleared on a new host or port) in `lib/ConfigModel` and `lib/ConfigBackup`; tests in `test/test_config_location`
-- [ ] T032 `Safety::loginRefusalText`, `Site::Problem::PasswordNeeded/PasswordRefused`, `Site::Endpoint`, `Site::copyEndpoint`; tests in `test_sqmeter_source`, `test_sqmeter_site`, `test_safety_settings`
-- [ ] T033 Firmware: the login on every SQMeter request (`SafetyPoller` `startGet`, `httpGet`, `fetchJson`, `setSite`; `WebServerSite` typed login); demo lock injector
-- [ ] T034 Web: the login fields, the copy sending them, the password problem texts, copied values on their Settings pages with the secret fields offered; Vitest, Playwright
-- [ ] T035 Docs, contract schemas, OpenAPI, catalogue, settings-deps, sizes
+- [x] T031 `safety.http.username` and `.password` (secret, masked, backup secret, cleared on a new host or port) in `lib/ConfigModel` and `lib/ConfigBackup`; tests in `test/test_config_location`
+- [x] T032 `Safety::loginRefusalText`, `Site::Problem::PasswordNeeded/PasswordRefused`, `Site::Endpoint`, `Site::copyEndpoint`; tests in `test_sqmeter_source`, `test_sqmeter_site`, `test_safety_settings`
+- [x] T033 Firmware: the login on every SQMeter request (`SafetyPoller` `startGet`, `httpGet`, `fetchJson`, `setSite`; `WebServerSite` typed login); demo lock injector
+- [x] T034 Web: the login fields, the copy sending them, the password problem texts, copied values on their Settings pages with the secret fields offered; Vitest, Playwright
+- [x] T035 Docs, contract schemas, OpenAPI, catalogue, settings-deps, sizes
