@@ -92,9 +92,8 @@ CONSTRAINTS = {
     ("status", ("roof", "hall", "level")): {"enum": ["unsettled", "low", "between", "high", "rail"]},
     ("status", ("roof", "parkSwitches", "switch1")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
     ("status", ("roof", "parkSwitches", "switch2")): {"enum": ["closed", "open", "unreadable", "notFitted"]},
-    ("status", ("roof", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
     ("status", ("roof", "fault", "cause")): {
-        "enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped", "benchSupply"]
+        "enum": ["logic", "watchdog", "parkInterlock", "storedUnreadable", "watchdogStopped", "benchSupply", "pinSetup"]
     },
     # Spec 011: the real roof, bench firmware or the browser demo.
     ("status", ("roof", "simulation")): {"enum": ["off", "bench", "demo"]},
@@ -125,11 +124,16 @@ CONSTRAINTS = {
     # Spec 015: the setup wizard's state (lib/ConfigModel setupStateName) and page.
     ("config", ("setup", "state")): {"enum": ["new", "offered", "done"]},
     ("config", ("setup", "step")): {"type": "integer", "minimum": 0, "maximum": 9},
+    # Spec 023: the pins and Ethernet blocks, and the settings' pins and network groups.
+    ("status", ("pins", "preset")): {"enum": ["devkit", "wt32-carrier-v1", "custom", "unset"]},
+    ("status", ("pins", "board")): {"enum": ["esp32-devkit", "wt32-eth01"]},
+    ("config", ("pins", "preset")): {"enum": ["devkit", "wt32-carrier-v1", "custom", "unset"]},
+    ("config", ("pins", "board")): {"enum": ["esp32-devkit", "wt32-eth01"]},
+    ("config", ("network", "mode")): {"enum": ["auto", "ethernet", "wifi"]},
     # GET /api/roof/inputs (lib/SafetyInputLogic InputsReport names).
     ("roof-inputs", ("weather", "verdict")): {"enum": ["safe", "unsafe", "unknown"]},
     ("roof-inputs", ("weather", "http", "state")): {"enum": SOURCE_STATES},
     ("roof-inputs", ("weather", "mqtt", "state")): {"enum": SOURCE_STATES},
-    ("roof-inputs", ("weather", "rainContact")): {"enum": ["notFitted", "dry", "raining", "unreadable"]},
     ("roof-inputs", ("nina", "state")): {"enum": ["notConfigured", "waiting", "good", "unreachable", "unreadable", "apiError"]},
 }
 

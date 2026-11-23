@@ -4,9 +4,10 @@ import { alertsConfigSchema } from './alertsSchema';
 import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
 
+// The network is required except on a board with Ethernet (spec 023), where WiFi is optional:
+// checked on the whole settings (configSchema), which know the board.
 export const wifiConfigSchema = z.object({
-  // The device refuses a blank network while one is saved (SQMeter spec 011 FR-009).
-  ssid: z.string().refine((v) => v.trim() !== '', t('validation.configSchema.wifiSsidIsRequired')),
+  ssid: z.string(),
   password: z.string(),
   hostname: z
     .string()
@@ -121,7 +122,6 @@ export const safetyConfigSchema = z
       .int()
       .min(10, t('validation.configSchema.staleTimeMustBeBetween'))
       .max(600, t('validation.configSchema.staleTimeMustBeBetween')),
-    rainContact: z.boolean(),
   })
   .superRefine((data, ctx) => {
     if (!data.http.enabled) return;
@@ -218,7 +218,29 @@ export const setupConfigSchema = z.object({
     .optional(),
 });
 
-export const configSchema = z.object({
+// Spec 023: the board and each function's GPIO; whether a set is allowed is the device's call
+// (POST /api/pins/validate), as is a named preset's consistency.
+const gpio = z
+  .number()
+  .int(t('validation.configSchema.gpioMustBeBetween'))
+  .min(0, t('validation.configSchema.gpioMustBeBetween'))
+  .max(255, t('validation.configSchema.gpioMustBeBetween'));
+export const pinsConfigSchema = z.object({
+  preset: z.enum(['devkit', 'wt32-carrier-v1', 'custom', 'unset']),
+  board: z.enum(['esp32-devkit', 'wt32-eth01']),
+  rpwm: gpio,
+  lpwm: gpio,
+  enable: gpio,
+  currentR: gpio,
+  currentL: gpio,
+  supply: gpio,
+  hall: gpio,
+  parkA: gpio,
+  parkB: gpio,
+});
+export const networkConfigSchema = z.object({ mode: z.enum(['auto', 'ethernet', 'wifi']) });
+
+const configShape = z.object({
   deviceName: z.string().min(1, t('validation.configSchema.deviceNameIsRequired')),
   wifi: wifiConfigSchema,
   mqtt: mqttConfigSchema,
@@ -237,6 +259,15 @@ export const configSchema = z.object({
   diag: diagConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
   setup: setupConfigSchema.optional(),
+  pins: pinsConfigSchema.optional(),
+  network: networkConfigSchema.optional(),
+});
+
+// The device refuses a blank network while one is saved (SQMeter spec 011 FR-009); on a board
+// with Ethernet WiFi is optional (spec 023).
+export const configSchema = configShape.superRefine((data, ctx) => {
+  if (data.wifi.ssid.trim() === '' && data.pins?.board !== 'wt32-eth01')
+    ctx.addIssue({ code: 'custom', path: ['wifi', 'ssid'], message: t('validation.configSchema.wifiSsidIsRequired') });
 });
 
 export type ConfigSchema = z.infer<typeof configSchema>;

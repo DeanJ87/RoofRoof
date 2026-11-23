@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { WiFiNetwork } from '../types';
 import { useWifiScan } from '../hooks/useWifiScan';
 import { useWifiConnect, type WifiConnectPhase } from '../hooks/useWifiConnect';
+import { useNetworkMode } from '../hooks/usePins';
 import { Button, Card, Note } from './ui';
 import { Field, TextInput } from './settings/controls';
 import { t } from '../i18n';
@@ -75,6 +76,16 @@ const NetworkOptions: FunctionalComponent<{
   </div>
 );
 
+// Spec 023: on a board with Ethernet, WiFi is optional; in Ethernet-only mode it is off.
+const EthernetNote: FunctionalComponent = () => {
+  const { ethernet, mode } = useNetworkMode();
+  if (!ethernet?.present) return null;
+  if (mode === 'ethernet') return <Note tone="warn">{t('wifiSetup.ethernetOnly')}</Note>;
+  return (
+    <Note tone="ok">{ethernet.link && ethernet.ip ? t('wifiSetup.onEthernet', { ip: ethernet.ip }) : t('wifiSetup.wifiOptional')}</Note>
+  );
+};
+
 const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ pollMs = POLL_MS }) => {
   const { networks, scanning, error: scanError, scan } = useWifiScan();
   const { phase, connect: join } = useWifiConnect(pollMs);
@@ -99,6 +110,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
       <div>
         <h2 class="page-title">{t('wifiSetup.wifiSetup')}</h2>
         <p class="muted">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
+        <EthernetNote />
       </div>
       <Card
         title={t('wifiSetup.networks')}

@@ -157,6 +157,53 @@
     "cpuFreqMHz": {
       "type": "number"
     },
+    "ethernet": {
+      "type": "object",
+      "properties": {
+        "fullDuplex": {
+          "type": "boolean"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "ipv6": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "link": {
+          "type": "boolean"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "phyFound": {
+          "type": "boolean"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "speedMbps": {
+          "type": "number"
+        },
+        "started": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fullDuplex",
+        "ip",
+        "ipv6",
+        "link",
+        "mac",
+        "phyFound",
+        "present",
+        "speedMbps",
+        "started"
+      ],
+      "additionalProperties": false
+    },
     "firmware": {
       "type": "object",
       "properties": {
@@ -433,6 +480,40 @@
       "required": [],
       "additionalProperties": false
     },
+    "pins": {
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "string",
+          "enum": [
+            "esp32-devkit",
+            "wt32-eth01"
+          ]
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "devkit",
+            "wt32-carrier-v1",
+            "custom",
+            "unset"
+          ]
+        },
+        "restartNeeded": {
+          "type": "boolean"
+        },
+        "valid": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "board",
+        "preset",
+        "restartNeeded",
+        "valid"
+      ],
+      "additionalProperties": false
+    },
     "resetReason": {
       "type": "number"
     },
@@ -503,7 +584,8 @@
                 "parkInterlock",
                 "storedUnreadable",
                 "watchdogStopped",
-                "benchSupply"
+                "benchSupply",
+                "pinSetup"
               ]
             },
             "kind": {
@@ -643,15 +725,6 @@
             "number"
           ]
         },
-        "rainContact": {
-          "type": "string",
-          "enum": [
-            "notFitted",
-            "dry",
-            "raining",
-            "unreadable"
-          ]
-        },
         "simulation": {
           "type": "string",
           "enum": [
@@ -725,7 +798,6 @@
         "positionKnown",
         "positionMm",
         "positionPercent",
-        "rainContact",
         "simulation",
         "state",
         "supplyLow",
@@ -1000,6 +1072,7 @@
     "configRevision",
     "connections",
     "cpuFreqMHz",
+    "ethernet",
     "firmware",
     "flashSize",
     "freeHeap",
@@ -1012,6 +1085,7 @@
     "maxAllocHeap",
     "minFreeHeap",
     "partitions",
+    "pins",
     "resetReason",
     "roof",
     "sketchSize",

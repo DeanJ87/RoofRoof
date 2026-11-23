@@ -12,6 +12,7 @@ import WifiSetup from './components/WifiSetup';
 import Wizard, { noteRoute } from './components/Wizard';
 import Calibrate from './components/Calibrate';
 import Diagnostics from './components/Diagnostics';
+import Pins from './components/Pins';
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
@@ -61,6 +62,10 @@ const App: FunctionalComponent = () => (
     {/* Advanced diagnostics (spec 017): from System and Settings, not the main nav. */}
     <Layout path="/diagnostics">
       <Diagnostics />
+    </Layout>
+    {/* The board and its pins (spec 023): from Settings → Roof and System, not the main nav. */}
+    <Layout path="/pins">
+      <Pins />
     </Layout>
     <Layout path="/wifi">
       <WifiSetup />

@@ -37,7 +37,7 @@ namespace SQM
                     return format("%s on GPIO%u: GPIO%u is input only and can't drive an output", what, pin, pin);
                 case IssueCode::NotAdc1:
                     return format(
-                        "%s on GPIO%u: an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while Wi-Fi is on", what, pin);
+                        "%s on GPIO%u: an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while WiFi is on", what, pin);
                 case IssueCode::NoPullup:
                     return format("%s on GPIO%u: GPIO%u has no internal pull-up, so an open switch would float", what, pin, pin);
                 case IssueCode::Shared:

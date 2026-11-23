@@ -332,7 +332,7 @@ Scan for nearby WiFi networks (needs the password when [protection](../user-guid
 curl http://roofroof.local/api/wifi/scan
 ```
 
-A board running Ethernet with the network mode **Ethernet only** keeps its WiFi radio off: the scan is refused with `409` `{"error": "Wi-Fi is off: the network mode is Ethernet only"}` ([Network](../user-guide/network.md#the-network-mode)).
+A board running Ethernet with the network mode **Ethernet only** keeps its WiFi radio off: the scan is refused with `409` `{"error": "WiFi is off: the network mode is Ethernet only"}` ([Network](../user-guide/network.md#the-network-mode)).
 
 ```json
 {
@@ -361,7 +361,7 @@ curl -X POST http://roofroof.local/api/wifi/connect \
 { "success": true, "pending": true, "message": "Connection started" }
 ```
 
-`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is waiting for the park or closing: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused the same way. While either runs (at most 15 s), an open is refused (`busy`) and a close waits for it. In **Ethernet only** both are refused with `409` `{"error": "Wi-Fi is off: the network mode is Ethernet only"}`.
+`400 {"error": "Missing SSID or password"}` if either field is absent (send `""` for an open network). `409` with the reason while the roof is opening or closing, a close is waiting to start or the automatic close is waiting for the park or closing: trying a network drops the current one, and with it N.I.N.A. A scan (`GET /api/wifi/scan`) is refused the same way. While either runs (at most 15 s), an open is refused (`busy`) and a close waits for it. In **Ethernet only** both are refused with `409` `{"error": "WiFi is off: the network mode is Ethernet only"}`.
 
 ---
 

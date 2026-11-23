@@ -95,7 +95,7 @@ The same rules run on the Pins page as you type, on the device when you save (al
 | The WT32-ETH01 probe's pins, on every board (GPIO0, 16, 18, 23): a new device drives them at start-up before it knows its wiring | *"… GPIO16 is used to look for a WT32-ETH01 at start-up"* |
 | Not on the WT32-ETH01's header (it brings out 2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36, 39) | *"… the WT32-ETH01's header doesn't bring out GPIO13"* |
 | RPWM, LPWM or EN on an input-only pin (34 to 39) | *"RPWM on GPIO35: GPIO35 is input only and can't drive an output"* |
-| The supply, the Hall sensor or a current-sense input off ADC1 (32 to 39) | *"… an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while Wi-Fi is on"* |
+| The supply, the Hall sensor or a current-sense input off ADC1 (32 to 39) | *"… an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while WiFi is on"* |
 | A park switch on an input-only pin (34 to 39) | *"… GPIO34 has no internal pull-up, so an open switch would float"* |
 | Two functions on one pin | *"LPWM on GPIO25: GPIO25 is already RPWM"* |
 | EN on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15) | *"EN on GPIO14: EN can't be on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15)"* |

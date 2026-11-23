@@ -6,6 +6,7 @@ export * from './inputs';
 export * from './calibration';
 export * from './teach';
 export * from './sqmeter';
+export * from './pins';
 
 export interface WiFiNetwork {
   ssid: string;

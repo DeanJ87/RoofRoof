@@ -30,6 +30,7 @@ const shown = (value: unknown) => (value === '' ? t('settings.backup.empty') : t
 
 const REASONS: Record<RestorePreview['notApplicable'][number]['reason'], MessageKey> = {
   'pushover-keys': 'settings.backup.needsThePushoverKeys',
+  'board-pins': 'settings.backup.pinsStayThisBoards',
 };
 
 const warningText = (warning: Warning) => {

@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw';
-import { mockConfig } from '../mocks/data';
+import { mockConfig, mockStatus } from '../mocks/data';
+import { ethernetFor, pinsDocumentFor, type MockBoard } from '../mocks/pins';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
-import type { Config } from '../types';
+import type { Config, SystemStatus } from '../types';
 import { server } from './mswServer';
 
 // A healthy device. It offers one Alpaca device, so the imaging-app alerts
@@ -34,4 +35,24 @@ export const mockDevice = ({
     ),
   );
   return merged;
+};
+
+/**
+ * Serves a device on `kind` of board (spec 023): GET /api/pins, the status's
+ * `pins` and `ethernet` blocks and the settings' `pins`. `wt32` is a WT32-ETH01
+ * on its carrier with Ethernet up; `unset` a new device whose boot probe found one.
+ */
+export const mockBoard = (kind: MockBoard, config: Partial<Config> = {}) => {
+  const document = pinsDocumentFor(kind);
+  const status: SystemStatus = {
+    ...mockStatus,
+    ethernet: ethernetFor(document.board),
+    pins: { preset: document.running.preset, board: document.board, valid: document.valid, restartNeeded: false },
+  };
+  server.use(
+    http.get('/api/pins', () => HttpResponse.json(document)),
+    http.get('/api/status', () => HttpResponse.json(status)),
+  );
+  mockDevice({ config: { pins: document.saved, ...config } });
+  return { document, status };
 };

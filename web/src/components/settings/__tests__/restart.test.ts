@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import cases from '../../../../../test/fixtures/backup/restart-cases.json';
-import { restartCodes } from '../restart';
+import { restartCodes, restartReasons } from '../restart';
 import { toConfigPayload } from '../payload';
 import { mockConfig } from '../../../mocks/data';
 import type { Config } from '../../../types';
@@ -26,4 +26,20 @@ describe('restart reasons (shared with the device)', () => {
       expect(restartCodes(withOverrides(c.before), withOverrides(c.after))).toEqual(c.reasons);
     });
   }
+});
+
+// Spec 023: the pins and the network mode are read at boot.
+describe('restart reasons for the board and the network mode', () => {
+  const base = toConfigPayload(mockConfig);
+  it('a pin change needs a restart, named "the pins"', () => {
+    const after = { ...base, pins: { ...base.pins!, preset: 'custom' as const, lpwm: 15 } };
+    expect(restartCodes(base, after)).toEqual(['pins']);
+    expect(restartReasons(base, after)).toEqual(['the pins']);
+  });
+  it('the network mode restarts with the WiFi settings', () => {
+    expect(restartCodes(base, { ...base, network: { mode: 'wifi' } })).toEqual(['wifi']);
+  });
+  it('unchanged pins and mode need none', () => {
+    expect(restartCodes(base, structuredClone(base))).toEqual([]);
+  });
 });

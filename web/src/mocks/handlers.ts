@@ -13,6 +13,7 @@ import {
 } from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
 import { mockDiagLive, mockDiagMove, mockDiagMoves } from './diag';
+import { mockValidate, mockWiring, mockWiringDone, pinsDocumentFor } from './pins';
 
 // What a healthy device would report as its facts.
 const mockFacts: DepFacts = {
@@ -156,6 +157,20 @@ export const handlers = [
     });
   }),
   http.post('/api/diag/moves/clear', () => (mockDiag.enabled ? HttpResponse.json({ success: true }) : diagOff())),
+
+  // REST — the board and its pins (spec 023): a DevKit with its preset; the check finishes at once
+  http.get('/api/pins', () => HttpResponse.json(pinsDocumentFor('devkit'))),
+  http.post('/api/pins/validate', async ({ request }) => {
+    const body: unknown = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body))
+      return HttpResponse.json({ error: 'A pin map must be a JSON object' }, { status: 400 });
+    return HttpResponse.json(mockValidate(body));
+  }),
+  http.post('/api/pins/check', () => {
+    mockWiring.state = mockWiringDone;
+    return HttpResponse.json({ started: true }, { status: 202 });
+  }),
+  http.get('/api/pins/check', () => HttpResponse.json(mockWiring.state)),
 
   // REST — wifi (returns { networks: [...] } to match firmware API shape)
   http.get('/api/wifi/scan', () => HttpResponse.json({ networks: mockWifiNetworks })),

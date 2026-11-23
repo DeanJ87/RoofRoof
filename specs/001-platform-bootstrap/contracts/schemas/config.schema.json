@@ -678,6 +678,23 @@
       ],
       "additionalProperties": false
     },
+    "network": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ethernet",
+            "wifi"
+          ]
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "additionalProperties": false
+    },
     "ntp": {
       "type": "object",
       "properties": {
@@ -752,6 +769,68 @@
         "nina",
         "switches",
         "timeoutSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "pins": {
+      "type": "object",
+      "properties": {
+        "board": {
+          "type": "string",
+          "enum": [
+            "esp32-devkit",
+            "wt32-eth01"
+          ]
+        },
+        "currentL": {
+          "type": "number"
+        },
+        "currentR": {
+          "type": "number"
+        },
+        "enable": {
+          "type": "number"
+        },
+        "hall": {
+          "type": "number"
+        },
+        "lpwm": {
+          "type": "number"
+        },
+        "parkA": {
+          "type": "number"
+        },
+        "parkB": {
+          "type": "number"
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "devkit",
+            "wt32-carrier-v1",
+            "custom",
+            "unset"
+          ]
+        },
+        "rpwm": {
+          "type": "number"
+        },
+        "supply": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "board",
+        "currentL",
+        "currentR",
+        "enable",
+        "hall",
+        "lpwm",
+        "parkA",
+        "parkB",
+        "preset",
+        "rpwm",
+        "supply"
       ],
       "additionalProperties": false
     },
@@ -870,9 +949,6 @@
           ],
           "additionalProperties": false
         },
-        "rainContact": {
-          "type": "boolean"
-        },
         "staleSeconds": {
           "type": "number"
         }
@@ -880,7 +956,6 @@
       "required": [
         "http",
         "mqtt",
-        "rainContact",
         "staleSeconds"
       ],
       "additionalProperties": false
@@ -1030,9 +1105,11 @@
     "diag",
     "location",
     "mqtt",
+    "network",
     "ntp",
     "ota",
     "park",
+    "pins",
     "roof",
     "safety",
     "setup",

@@ -110,7 +110,7 @@
       "fix": "network#mqtt"
     },
     "wifi-disconnected": {
-      "text": "Not connected to WiFi",
+      "text": "Not connected to a network",
       "fix": "network#wifi"
     },
     "alpaca-off": {
@@ -186,7 +186,7 @@
         "alerts.ntfy.enabled",
         "alerts.webhook.enabled"
       ],
-      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "dependsOn": "WiFi or Ethernet connected to a network (not the setup hotspot)",
       "reasons": [
         "wifi-disconnected"
       ]
@@ -262,7 +262,7 @@
       "settings": [
         "ntp.enabled"
       ],
-      "dependsOn": "WiFi connected to a network",
+      "dependsOn": "WiFi or Ethernet connected to a network",
       "reasons": [
         "wifi-disconnected"
       ]
@@ -330,7 +330,7 @@
         "wifi.mdns",
         "wifi.ipv6"
       ],
-      "dependsOn": "WiFi connected to a network (not the setup hotspot)",
+      "dependsOn": "WiFi or Ethernet connected to a network (not the setup hotspot)",
       "reasons": [
         "wifi-disconnected"
       ]

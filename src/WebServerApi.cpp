@@ -223,7 +223,7 @@ namespace SQM
     {
         if (!NetState::ethernetOnly())
             return false;
-        request->send(409, "application/json", createErrorJson("Wi-Fi is off: the network mode is Ethernet only").c_str());
+        request->send(409, "application/json", createErrorJson("WiFi is off: the network mode is Ethernet only").c_str());
         return true;
     }
 

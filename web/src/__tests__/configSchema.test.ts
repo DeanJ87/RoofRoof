@@ -167,6 +167,23 @@ describe('frontend settings validation', () => {
       expect(hasConfigValidationErrors(errors)).toBe(true);
     }
   });
+
+  it('WiFi is optional on a board with Ethernet (spec 023)', () => {
+    const wt32 = { ...mockConfig, pins: { ...mockConfig.pins!, board: 'wt32-eth01' as const } };
+    expect(getConfigValidationErrors(setPath(wt32, 'wifi.ssid', ''))).toEqual({});
+  });
+
+  it('pins are a preset, a board and GPIO numbers 0 to 255; the network mode one of three (spec 023)', () => {
+    expect(getConfigValidationErrors(mockConfig)).toEqual({});
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.rpwm', 256))['pins.rpwm']).toBe(
+      'A pin must be a GPIO number from 0 to 255.',
+    );
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.hall', 1.5))['pins.hall']).toBeDefined();
+    expect(getConfigValidationErrors(setPath(mockConfig, 'pins.preset', 'other'))['pins.preset']).toBeDefined();
+    expect(getConfigValidationErrors(setPath(mockConfig, 'network.mode', 'both'))['network.mode']).toBeDefined();
+    // The rain contact is gone: an old page's value is ignored, never an error.
+    expect(getConfigValidationErrors(setPath(mockConfig, 'safety.rainContact', true))).toEqual({});
+  });
 });
 
 describe('authConfigSchema', () => {

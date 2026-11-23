@@ -4,7 +4,9 @@ import { useWifiScan } from '../../hooks/useWifiScan';
 import { useMqttTest } from '../../hooks/useMqttTest';
 import { defaultAlpacaConfig, defaultHomeAssistant } from './defaults';
 import type { SettingsTabProps } from './context';
-import { Button } from '../ui';
+import { Button, Note } from '../ui';
+import { EthernetCard } from './EthernetCard';
+import { hasEthernet } from '../../lib/pinsView';
 import {
   ActionButton,
   DepNote,
@@ -25,8 +27,19 @@ import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
 
+// Spec 023: on a board with Ethernet, WiFi is optional (or off in Ethernet-only mode).
+const WifiRole: FunctionalComponent<NetworkTabProps> = ({ config, status }) => {
+  if (!hasEthernet(status)) return null;
+  return config.network?.mode === 'ethernet' ? (
+    <Note>{t('settings.network.wifiOff')}</Note>
+  ) : (
+    <Note>{t('settings.network.wifiOptional')}</Note>
+  );
+};
+
 // The WiFi network, hostname, mDNS and IPv6.
-const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, updateMany, error, originalWifiSsid, deps, fix }) => {
+const WifiCard: FunctionalComponent<NetworkTabProps> = (props) => {
+  const { config, update, updateMany, error, originalWifiSsid, deps, fix } = props;
   const { networks, scanning, error: scanError, scan } = useWifiScan();
   const selectNetwork = (ssid: string) =>
     updateMany([
@@ -45,6 +58,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
   ];
   return (
     <SettingsCard id="wifi" title="WiFi">
+      <WifiRole {...props} />
       <div class="form-grid">
         <Field label={t('settings.network.network')} error={error('wifi.ssid')}>
           <div class="input-row">
@@ -270,6 +284,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
   const mqttTest = useMqttTest(config);
   return (
     <>
+      {hasEthernet(props.status) && <EthernetCard {...props} />}
       <WifiCard {...props} />
 
       <SettingsCard id="mqtt" title="MQTT" hint={t('settings.network.mqttHint')} badge={mqttBadge(props)}>

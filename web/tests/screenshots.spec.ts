@@ -188,6 +188,7 @@ const wizardShot = async (page: import('@playwright/test').Page, screen: string,
 
 for (const [screen, name] of [
   ['parkSwitches', 'wizard-choice'],
+  ['board', 'wizard-board'],
   ['supply', 'wizard-supply'],
   ['nina', 'wizard-nina'],
   ['review', 'wizard-review'],
@@ -207,4 +208,14 @@ test('calibration page', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Start calibration' })).toBeVisible();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: save('calibrate'), fullPage: true });
+});
+
+// Spec 023: the Pins page after a wiring check on the demo's DevKit.
+test('pins page', async ({ page }) => {
+  await page.goto('./?panel=hidden#/pins');
+  await waitForDemoApp(page);
+  await page.getByRole('button', { name: 'Check wiring' }).click();
+  await expect(page.locator('[data-wiring-check="enPulldown"]')).toBeVisible({ timeout: 10_000 });
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: save('pins'), fullPage: true });
 });

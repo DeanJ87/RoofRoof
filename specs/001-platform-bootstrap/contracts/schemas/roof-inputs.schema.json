@@ -164,15 +164,6 @@
           ],
           "additionalProperties": false
         },
-        "rainContact": {
-          "type": "string",
-          "enum": [
-            "notFitted",
-            "dry",
-            "raining",
-            "unreadable"
-          ]
-        },
         "text": {
           "type": "string"
         },
@@ -188,7 +179,6 @@
       "required": [
         "http",
         "mqtt",
-        "rainContact",
         "text",
         "verdict"
       ],

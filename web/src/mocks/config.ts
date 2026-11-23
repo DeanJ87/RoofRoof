@@ -46,7 +46,6 @@ export const mockConfig: Config = {
     http: { enabled: true, url: 'http://sqmeter.local/api/safety' },
     mqtt: { enabled: false, topic: 'sqmeter' },
     staleSeconds: 30,
-    rainContact: false,
   },
   park: { nina: { url: 'http://192.168.1.20:1888', api: 'v2' }, switches: 'none', timeoutSeconds: 240 },
   roof: {
@@ -90,6 +89,21 @@ export const mockConfig: Config = {
   },
   ui: { confirmOpenClose: false },
   diag: { enabled: false, keepSummaries: false, mqtt: false },
+  // Spec 023: an ESP32 DevKit with its preset chosen (mocks/pins.ts serves a WT32 or a new device for tests).
+  pins: {
+    preset: 'devkit',
+    board: 'esp32-devkit',
+    rpwm: 25,
+    lpwm: 26,
+    enable: 27,
+    currentR: 34,
+    currentL: 35,
+    supply: 36,
+    hall: 39,
+    parkA: 32,
+    parkB: 33,
+  },
+  network: { mode: 'auto' },
   alerts: {
     enabled: true,
     events: {

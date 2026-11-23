@@ -45,7 +45,7 @@ On a board with Ethernet, **Settings → Network** has the network mode (`networ
 | Mode | Ethernet | WiFi | Setup hotspot |
 |---|---|---|---|
 | **Auto** (the default) | Starts at boot and is preferred | A saved WiFi network is joined once Ethernet has had no address for 30 s (a pulled cable, a dead switch), and stays up beside Ethernet until the next restart. Without a saved network nothing else happens | Only at boot, with no network at all ([below](#the-setup-hotspot)) |
-| **Ethernet only** | Starts at boot | The radio stays off. A WiFi scan or join is refused (`409`, *"Wi-Fi is off: the network mode is Ethernet only"*) | Never |
+| **Ethernet only** | Starts at boot | The radio stays off. A WiFi scan or join is refused (`409`, *"WiFi is off: the network mode is Ethernet only"*) | Never |
 | **WiFi only** | Not started | Exactly as on a DevKit | As on a DevKit |
 
 The mode applies at the next restart, like the WiFi settings. A save that changes it is refused while the roof is busy (moving, a close waiting, the automatic close under way, a calibration run or a jog), as a pin change is.

@@ -30,7 +30,6 @@ const FIELDS = [
   'safety.http.enabled',
   'safety.http.url',
   'safety.mqtt.enabled',
-  'safety.rainContact',
   'safety.staleSeconds',
   'park.nina.url',
   'park.switches',

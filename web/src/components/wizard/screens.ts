@@ -10,9 +10,10 @@ import {
   HallScreen,
   MotionScreen,
   ParkSwitchesScreen,
-  RainScreen,
   SupplyScreen,
 } from './HardwarePages';
+import { BoardScreen, NetworkScreen, WiringScreen } from './BoardPages';
+import { hasEthernet } from '../../lib/pinsView';
 import {
   AlertChannelScreen,
   AlertDetailsScreen,
@@ -33,10 +34,12 @@ export type ScreenId =
   | 'sqmeter'
   | 'site'
   | 'time'
+  | 'board'
+  | 'network'
   | 'supply'
   | 'current'
   | 'parkSwitches'
-  | 'rain'
+  | 'wiring'
   | 'hallFitted'
   | 'hall'
   | 'teach'
@@ -64,6 +67,7 @@ export interface Screen {
 }
 
 const hallFitted = (p: WizardPageProps) => !p.hallNotFitted;
+const boardChosen = (p: WizardPageProps) => !p.config.pins || p.config.pins.preset !== 'unset';
 const hasSource = (p: WizardPageProps) => Boolean(p.config.safety?.http.enabled || p.config.safety?.mqtt.enabled);
 const alertsOn = (p: WizardPageProps) => {
   const a = p.config.alerts;
@@ -83,10 +87,14 @@ export const SCREENS: Screen[] = [
   { id: 'sqmeter', page: 'site', Body: SqmeterScreen },
   { id: 'site', page: 'site', Body: SiteScreen },
   { id: 'time', page: 'site', Body: TimeScreen },
+  // Spec 023: the board first (nothing is driven until one is chosen), the
+  // network mode on a board with Ethernet, and the wiring check last.
+  { id: 'board', page: 'hardware', Body: BoardScreen, answered: boardChosen },
+  { id: 'network', page: 'hardware', Body: NetworkScreen, shows: (p) => hasEthernet(p.status) },
   { id: 'supply', page: 'hardware', Body: SupplyScreen },
   { id: 'current', page: 'hardware', Body: CurrentScreen, choice: true },
   { id: 'parkSwitches', page: 'hardware', Body: ParkSwitchesScreen, choice: true },
-  { id: 'rain', page: 'hardware', Body: RainScreen, choice: true },
+  { id: 'wiring', page: 'hardware', Body: WiringScreen },
   { id: 'hallFitted', page: 'hall', Body: HallFittedScreen, choice: true },
   { id: 'hall', page: 'hall', Body: HallScreen, shows: hallFitted },
   { id: 'teach', page: 'teach', Body: TeachScreen },

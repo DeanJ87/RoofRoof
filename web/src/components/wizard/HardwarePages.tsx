@@ -23,13 +23,9 @@ export const meterCheck = (reading: number | null, meter: number): 'none' | 'agr
 };
 
 const SWITCH_TEXT = { closed: 'roof.switch.closed', open: 'roof.switch.open', unreadable: 'roof.switch.unreadable' } as const;
-const RAIN_TEXT = { dry: 'roof.rain.dry', raining: 'roof.rain.raining', unreadable: 'roof.rain.unreadable' } as const;
 
 const switchText = (reading: RoofStatus['parkSwitches']['switch1'] | undefined) =>
   reading === undefined ? t('wizard.noReading') : reading === 'notFitted' ? t('wizard.saveToRead') : t(SWITCH_TEXT[reading]);
-
-const rainText = (reading: RoofStatus['rainContact'] | undefined) =>
-  reading === undefined ? t('wizard.noReading') : reading === 'notFitted' ? t('wizard.saveToRead') : t(RAIN_TEXT[reading]);
 
 // The live supply against the owner's meter (never saved), and the low limit.
 export const SupplyScreen: FunctionalComponent<WizardPageProps> = (props) => {
@@ -114,24 +110,6 @@ export const ParkSwitchesScreen: FunctionalComponent<WizardPageProps> = (props) 
       <Note>{t('wizard.hardware.parkOptional')}</Note>
       {choice.value && fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof?.parkSwitches.switch1)} />}
       {choice.value && fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof?.parkSwitches.switch2)} />}
-    </>
-  );
-};
-
-export const RainScreen: FunctionalComponent<WizardPageProps> = (props) => {
-  const { safety } = props.config;
-  if (!safety) return <Note>{t('settings.roof.notSent')}</Note>;
-  const choice = choiceOf(props, 'rain', safety.rainContact ? 'yes' : 'no', (v) => props.update(['safety', 'rainContact'], v === 'yes'));
-  return (
-    <>
-      <ChoiceGroup
-        {...choice}
-        options={[
-          { value: 'yes', icon: 'rain', title: t('wizard.fitted'), detail: t('wizard.hardware.rainYes') },
-          { value: 'no', icon: 'off', title: t('wizard.notFitted'), detail: t('wizard.hardware.rainNo') },
-        ]}
-      />
-      {choice.value === 'yes' && <ReadingRow label={t('roof.rainContact')} value={rainText(props.status?.roof?.rainContact)} />}
     </>
   );
 };

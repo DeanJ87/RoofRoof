@@ -1,0 +1,108 @@
+import { FunctionalComponent } from 'preact';
+import { route } from 'preact-router';
+import { useEffect } from 'preact/hooks';
+import type { NetworkMode } from '../../types';
+import type { WizardPageProps } from './context';
+import { usePinsDocument } from '../../hooks/usePins';
+import { restartDevice } from '../../lib/settingsApi';
+import { pinsRestartNeeded, suggestedPreset, withPreset } from '../../lib/pinsView';
+import { PresetChoice, UnsetNotes } from '../pins/PinFields';
+import { WiringCheckPanel } from '../pins/WiringCheck';
+import { modeDetail, modeLabel } from '../settings/EthernetCard';
+import { showToast } from '../toast';
+import { Button, ChoiceGroup, Note } from '../ui';
+import { t } from '../../i18n';
+
+// The Hardware page's board, network and wiring screens (spec 023 FR-027).
+// The board is saved like any screen and applies at a restart; the wiring
+// check moves nothing. Custom pins are set on the Pins page.
+
+const restart = () =>
+  void restartDevice()
+    .then(() => showToast({ message: t('common.restarting') }))
+    .catch(() => showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' }));
+
+/** The saved board isn't the one in effect: a restart applies it. */
+export const PinsRestartNote: FunctionalComponent<WizardPageProps> = ({ saved, status }) =>
+  pinsRestartNeeded(saved.pins, status) ? (
+    <Note tone="warn" action={{ label: t('settings.restart'), onClick: restart }}>
+      {t('wizard.board.restart')}
+    </Note>
+  ) : null;
+
+export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const { doc } = usePinsDocument();
+  const pins = props.config.pins;
+  const unset = props.saved.pins?.preset === 'unset';
+  // A new device: the board its boot probe suggests is chosen for the person to confirm.
+  useEffect(() => {
+    if (doc && unset && pins?.preset === 'unset') props.update(['pins'], withPreset(doc, pins, suggestedPreset(doc)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the device's pin document arrives
+  }, [doc]);
+  if (!pins) return <Note>{t('settings.roof.notSent')}</Note>;
+  return (
+    <>
+      {unset && <UnsetNotes doc={doc} />}
+      <PresetChoice
+        doc={doc}
+        pins={pins}
+        labelledBy={props.questionId}
+        newDevice={unset}
+        onChange={(next) => props.update(['pins'], next)}
+      />
+      {pins.preset === 'custom' && (
+        <>
+          <Note>{t('wizard.board.custom')}</Note>
+          <div class="btn-row">
+            <Button onClick={() => route('/pins')}>{t('pins.open')}</Button>
+          </div>
+        </>
+      )}
+      {pins.preset !== 'unset' && pins.preset !== props.saved.pins?.preset && <Note>{t('wizard.board.appliesAtRestart')}</Note>}
+      <PinsRestartNote {...props} />
+    </>
+  );
+};
+
+const MODE_ICON: Record<NetworkMode, string> = { auto: 'link', ethernet: 'link', wifi: 'wifi' };
+
+export const NetworkScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const ethernet = props.status?.ethernet;
+  const network = props.config.network;
+  return (
+    <>
+      {ethernet?.link && ethernet.ip && <Note tone="ok">{t('wizard.network.onEthernet', { ip: ethernet.ip })}</Note>}
+      {network ? (
+        <ChoiceGroup
+          name="network-mode"
+          labelledBy={props.questionId}
+          value={network.mode}
+          onChange={(mode) => props.update(['network', 'mode'], mode)}
+          options={(['auto', 'ethernet', 'wifi'] as NetworkMode[]).map((mode) => ({
+            value: mode,
+            icon: MODE_ICON[mode],
+            title: modeLabel(mode),
+            detail: modeDetail(mode),
+            badge: mode === 'auto' ? t('wizard.recommended') : undefined,
+          }))}
+        />
+      ) : (
+        <Note>{t('settings.roof.notSent')}</Note>
+      )}
+      {network && network.mode !== props.saved.network?.mode && <Note>{t('wizard.network.appliesAtRestart')}</Note>}
+      <Note>{t('wizard.network.wifiOptional')}</Note>
+    </>
+  );
+};
+
+export const WiringScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const { doc } = usePinsDocument();
+  const pins = props.config.pins;
+  return (
+    <>
+      <PinsRestartNote {...props} />
+      <WiringCheckPanel doc={doc} onChoosePreset={pins ? (preset) => props.update(['pins'], withPreset(doc, pins, preset)) : undefined} />
+      <Note>{t('wizard.wiring.later')}</Note>
+    </>
+  );
+};

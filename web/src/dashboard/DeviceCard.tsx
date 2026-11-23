@@ -124,10 +124,22 @@ const FirmwareRow: FunctionalComponent<{ version?: string }> = ({ version }) =>
     </Row>
   ) : null;
 
+// Spec 023: on a board with Ethernet, its link and address (the WiFi rows stay).
+const EthernetRows: FunctionalComponent<{ ethernet: SystemStatus['ethernet'] }> = ({ ethernet }) =>
+  ethernet?.present ? (
+    <div data-inventory="ethernet">
+      <Row label={t('glance.ethernet')}>
+        <Pill tone={ethernet.link ? 'pill-green' : 'pill-amber'}>{ethernet.link ? t('dashboard.connected') : t('glance.noLink')}</Pill>
+      </Row>
+      <Row label={t('glance.ethernetIp')} value={ethernet.ip || '--'} mono />
+    </div>
+  ) : null;
+
 const DeviceCard: FunctionalComponent<{ status: SystemStatus | null }> = ({ status }) => (
   <Card title={t('dashboard.deviceNetwork')} icon="wifi" tone="cyan">
     <WifiTiles wifi={status?.wifi} uptime={status?.uptime} />
     <div class="device-rows">
+      <EthernetRows ethernet={status?.ethernet} />
       <Row label={t('glance.ipv4')} value={status?.wifi?.ip ?? '--'} mono />
       {status?.wifi?.ipv6?.enabled && <Ipv6Rows ipv6={status.wifi.ipv6} />}
       <LocalName wifi={status?.wifi} />

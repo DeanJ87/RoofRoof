@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795367177,
-                    "iso": "2026-11-22T17:06:17+0000",
+                    "epoch": 1795464741,
+                    "iso": "2026-11-23T20:12:21+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795363575390,
-                    "nextSync": 1795370775390,
+                    "lastSync": 1795461139117,
+                    "nextSync": 1795468339117,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795367115390,
+                    "lastPublish": 1795464679117,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -250,7 +250,6 @@
                       "switch1": "notFitted",
                       "switch2": "notFitted"
                     },
-                    "rainContact": "notFitted",
                     "closePending": false,
                     "calibrating": false,
                     "closePhase": "idle",
@@ -302,7 +301,24 @@
                       "needs": []
                     }
                   },
-                  "configRevision": 651411734
+                  "ethernet": {
+                    "present": false,
+                    "started": false,
+                    "phyFound": false,
+                    "link": false,
+                    "speedMbps": 0,
+                    "fullDuplex": false,
+                    "ip": "",
+                    "mac": "",
+                    "ipv6": []
+                  },
+                  "pins": {
+                    "preset": "devkit",
+                    "board": "esp32-devkit",
+                    "valid": true,
+                    "restartNeeded": false
+                  },
+                  "configRevision": 1311696189
                 }
               }
             }
@@ -3013,8 +3029,7 @@
                       "safe": false,
                       "flags": 0,
                       "text": ""
-                    },
-                    "rainContact": "notFitted"
+                    }
                   },
                   "park": {
                     "parked": true,
@@ -5831,6 +5846,23 @@
             ],
             "additionalProperties": false
           },
+          "network": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "additionalProperties": false
+          },
           "ntp": {
             "type": "object",
             "properties": {
@@ -5905,6 +5937,68 @@
               "nina",
               "switches",
               "timeoutSeconds"
+            ],
+            "additionalProperties": false
+          },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "currentL": {
+                "type": "number"
+              },
+              "currentR": {
+                "type": "number"
+              },
+              "enable": {
+                "type": "number"
+              },
+              "hall": {
+                "type": "number"
+              },
+              "lpwm": {
+                "type": "number"
+              },
+              "parkA": {
+                "type": "number"
+              },
+              "parkB": {
+                "type": "number"
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "rpwm": {
+                "type": "number"
+              },
+              "supply": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "board",
+              "currentL",
+              "currentR",
+              "enable",
+              "hall",
+              "lpwm",
+              "parkA",
+              "parkB",
+              "preset",
+              "rpwm",
+              "supply"
             ],
             "additionalProperties": false
           },
@@ -6023,9 +6117,6 @@
                 ],
                 "additionalProperties": false
               },
-              "rainContact": {
-                "type": "boolean"
-              },
               "staleSeconds": {
                 "type": "number"
               }
@@ -6033,7 +6124,6 @@
             "required": [
               "http",
               "mqtt",
-              "rainContact",
               "staleSeconds"
             ],
             "additionalProperties": false
@@ -6183,9 +6273,11 @@
           "diag",
           "location",
           "mqtt",
+          "network",
           "ntp",
           "ota",
           "park",
+          "pins",
           "roof",
           "safety",
           "setup",
@@ -6693,6 +6785,20 @@
             },
             "additionalProperties": false
           },
+          "network": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "ntp": {
             "type": "object",
             "properties": {
@@ -6745,6 +6851,55 @@
                 "type": "string"
               },
               "timeoutSeconds": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "currentL": {
+                "type": "number"
+              },
+              "currentR": {
+                "type": "number"
+              },
+              "enable": {
+                "type": "number"
+              },
+              "hall": {
+                "type": "number"
+              },
+              "lpwm": {
+                "type": "number"
+              },
+              "parkA": {
+                "type": "number"
+              },
+              "parkB": {
+                "type": "number"
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "rpwm": {
+                "type": "number"
+              },
+              "supply": {
                 "type": "number"
               }
             },
@@ -6836,9 +6991,6 @@
                   }
                 },
                 "additionalProperties": false
-              },
-              "rainContact": {
-                "type": "boolean"
               },
               "staleSeconds": {
                 "type": "number"
@@ -7711,15 +7863,6 @@
                 ],
                 "additionalProperties": false
               },
-              "rainContact": {
-                "type": "string",
-                "enum": [
-                  "notFitted",
-                  "dry",
-                  "raining",
-                  "unreadable"
-                ]
-              },
               "text": {
                 "type": "string"
               },
@@ -7735,7 +7878,6 @@
             "required": [
               "http",
               "mqtt",
-              "rainContact",
               "text",
               "verdict"
             ],
@@ -8179,6 +8321,53 @@
           "cpuFreqMHz": {
             "type": "number"
           },
+          "ethernet": {
+            "type": "object",
+            "properties": {
+              "fullDuplex": {
+                "type": "boolean"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "ipv6": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "link": {
+                "type": "boolean"
+              },
+              "mac": {
+                "type": "string"
+              },
+              "phyFound": {
+                "type": "boolean"
+              },
+              "present": {
+                "type": "boolean"
+              },
+              "speedMbps": {
+                "type": "number"
+              },
+              "started": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "fullDuplex",
+              "ip",
+              "ipv6",
+              "link",
+              "mac",
+              "phyFound",
+              "present",
+              "speedMbps",
+              "started"
+            ],
+            "additionalProperties": false
+          },
           "firmware": {
             "type": "object",
             "properties": {
@@ -8455,6 +8644,40 @@
             "required": [],
             "additionalProperties": false
           },
+          "pins": {
+            "type": "object",
+            "properties": {
+              "board": {
+                "type": "string",
+                "enum": [
+                  "esp32-devkit",
+                  "wt32-eth01"
+                ]
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit",
+                  "wt32-carrier-v1",
+                  "custom",
+                  "unset"
+                ]
+              },
+              "restartNeeded": {
+                "type": "boolean"
+              },
+              "valid": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "board",
+              "preset",
+              "restartNeeded",
+              "valid"
+            ],
+            "additionalProperties": false
+          },
           "resetReason": {
             "type": "number"
           },
@@ -8525,7 +8748,8 @@
                       "parkInterlock",
                       "storedUnreadable",
                       "watchdogStopped",
-                      "benchSupply"
+                      "benchSupply",
+                      "pinSetup"
                     ]
                   },
                   "kind": {
@@ -8665,15 +8889,6 @@
                   "number"
                 ]
               },
-              "rainContact": {
-                "type": "string",
-                "enum": [
-                  "notFitted",
-                  "dry",
-                  "raining",
-                  "unreadable"
-                ]
-              },
               "simulation": {
                 "type": "string",
                 "enum": [
@@ -8747,7 +8962,6 @@
               "positionKnown",
               "positionMm",
               "positionPercent",
-              "rainContact",
               "simulation",
               "state",
               "supplyLow",
@@ -9022,6 +9236,7 @@
           "configRevision",
           "connections",
           "cpuFreqMHz",
+          "ethernet",
           "firmware",
           "flashSize",
           "freeHeap",
@@ -9034,6 +9249,7 @@
           "maxAllocHeap",
           "minFreeHeap",
           "partitions",
+          "pins",
           "resetReason",
           "roof",
           "sketchSize",

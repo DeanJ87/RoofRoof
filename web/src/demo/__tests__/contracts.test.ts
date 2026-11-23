@@ -78,9 +78,25 @@ function writeSamples(dir: string) {
   };
   const base = status();
   put('device-status', base);
-  put(
-    'device2-status',
-    status(
+  // Spec 023: a WT32-ETH01 on its carrier with Ethernet up (the demo's board is a DevKit), and
+  // below a custom pin set that broke a rule at boot (src/WebServerStatus writeEthernet, writePins).
+  const wt32 = {
+    ethernet: {
+      present: true,
+      started: true,
+      phyFound: true,
+      link: true,
+      speedMbps: 100,
+      fullDuplex: true,
+      ip: '192.168.1.60',
+      mac: 'A1:B2:C3:D4:E5:F7',
+      ipv6: ['fe80::a3b2:c3ff:fed4:e5f7'],
+    },
+    pins: { preset: 'wt32-carrier-v1', board: 'wt32-eth01', valid: true, restartNeeded: false },
+  };
+  const invalidPins = { pins: { preset: 'custom', board: 'esp32-devkit', valid: false, restartNeeded: true } };
+  put('device2-status', {
+    ...status(
       { since: '2026-11-10T12:00:00Z', sinceAgeMs: 1000 },
       { dome: { connected: true, watching: true, silent: false, lastCheckedAgeMs: 1500, clientId: 1234 } },
       // The roof opening part-way with current sense on (src/RoofControl, lib/RoofIoLogic writeStatus).
@@ -96,11 +112,11 @@ function writeSamples(dir: string) {
         currentSense: true,
         motorAmps: 4.26,
         parkSwitches: { fitted: 2, switch1: 'open', switch2: 'unreadable' },
-        rainContact: 'dry',
         closePending: true,
       },
     ),
-  );
+    ...wt32,
+  });
   // Spec 020: SQMeter's location not read and nothing kept, so daylight can't run (the
   // firmware's writeLocationStatus and writeDaylight in those states).
   const unread = (s: ReturnType<typeof status>) => ({
@@ -119,9 +135,8 @@ function writeSamples(dir: string) {
       daylight: { ...(s.roof as { daylight: object }).daylight, state: 'unknown', sunAltitudeDeg: null, text: 'Location not set' },
     },
   });
-  put(
-    'device3-status',
-    unread(
+  put('device3-status', {
+    ...unread(
       status(
         undefined,
         { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } },
@@ -135,13 +150,13 @@ function writeSamples(dir: string) {
           supplyVolts: null,
           supplyLow: true,
           parkSwitches: { fitted: 1, switch1: 'closed', switch2: 'notFitted' },
-          rainContact: 'raining',
           fault: { kind: 'external', cause: 'watchdog', measured: 140, limit: 100, text: 'Control step 140 ms late > 100 ms (watchdog)' },
           watchdogTrips: 1,
         },
       ),
     ),
-  );
+    ...invalidPins,
+  });
   // GET /api/roof/inputs (spec 015): the firmware's own writer on the simulated sources, and a
   // failing state the demo's SQMeter and N.I.N.A. never produce (lib/SafetyInputLogic writeInputsReport).
   const inputs = JSON.parse(demoDevice.inputsDocument());
@@ -159,7 +174,6 @@ function writeSamples(dir: string) {
         text: 'SQMeter HTTP unreachable: connection refused (no good reply for 35 s)',
       },
       mqtt: { ...inputs.weather.mqtt, enabled: true, state: 'good', safe: true },
-      rainContact: 'dry',
     },
     park: { parked: false, text: 'not parked: N.I.N.A. unreachable: connection refused' },
     nina: { ...inputs.nina, state: 'unreachable', connected: false, atPark: false, slewing: false, text: 'connection refused' },

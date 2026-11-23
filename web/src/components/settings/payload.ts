@@ -40,4 +40,7 @@ export const toConfigPayload = (source: Config): Config => ({
   ...(source.ui && { ui: { ...source.ui } }),
   // Advanced diagnostics (spec 017).
   ...(source.diag && { diag: { ...source.diag } }),
+  // The board and its pins, and the network mode (spec 023).
+  ...(source.pins && { pins: { ...source.pins } }),
+  ...(source.network && { network: { ...source.network } }),
 });

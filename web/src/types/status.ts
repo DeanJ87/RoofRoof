@@ -1,4 +1,5 @@
 import type { AlertSchedule, AlpacaClientState } from './alerts';
+import type { EthernetStatus, PinsStatus } from './pins';
 
 // GET /api/status and /ws/status (contract: specs/001-platform-bootstrap/contracts/schemas/status.schema.json).
 export interface SystemStatus {
@@ -103,6 +104,9 @@ export interface SystemStatus {
   location?: LocationStatus;
   // Each group's sync with SQMeter's settings (spec 020). Absent on older firmware.
   sync?: SyncStatus;
+  // Spec 023: Ethernet on a board that has it, and the board and pins in effect. Absent on older firmware.
+  ethernet?: EthernetStatus;
+  pins?: PinsStatus;
 }
 
 export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable';
@@ -173,7 +177,6 @@ export interface RoofStatus {
   motorAmps: number | null;
   maxCurrentAmps: number;
   parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
-  rainContact: 'notFitted' | 'dry' | 'raining' | 'unreadable';
   closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
   calibrating?: boolean; // spec 016: a calibration run is under way (pauses included)
   // Spec 008: the automatic close's phase, and the weather and park as the roof's command checks see them now.

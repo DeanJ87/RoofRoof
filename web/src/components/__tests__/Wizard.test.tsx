@@ -52,7 +52,7 @@ describe('Wizard', () => {
     expect(await question()).toHaveTextContent('What should we call this roof?');
     const dialog = screen.getByRole('dialog', { name: 'What should we call this roof?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 22');
+    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 23');
     expect(within(dialog).getByRole('complementary')).toHaveTextContent('Why this matters');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull(); // the first screen
   });
@@ -215,7 +215,7 @@ describe('Wizard', () => {
     render(<Wizard />);
     await onScreen('time');
     fireEvent.click(button('Continue'));
-    await onScreen('supply');
+    await onScreen('board');
     expect(saves).toEqual([{ setup: { state: 'new', step: 2 } }]);
   });
 
@@ -258,7 +258,7 @@ describe('Wizard', () => {
     await onScreen('name');
     fireEvent.click(button('Skip for now'));
     await waitFor(() => expect(document.activeElement).toHaveTextContent('Protect changes with a password?'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 22');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 23');
   });
 
   it('Test on the weather address screen shows the verdict and each source', async () => {
@@ -293,15 +293,15 @@ describe('Wizard', () => {
     mockDevice({ config: { setup: { state: 'new', step: 2 } } });
     const saves = recordSaves();
     render(<Wizard />);
-    await onScreen('supply');
+    await onScreen('board');
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
     expect(await question()).toHaveTextContent('Leave setup?');
     fireEvent.click(button('Keep going'));
-    await onScreen('supply');
+    await onScreen('board');
     fireEvent.click(button('Close setup'));
     expect(await question()).toHaveTextContent('Leave setup?');
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' }); // Escape on "Leave setup?" keeps going
-    await onScreen('supply');
+    await onScreen('board');
     expect(saves).toHaveLength(0);
   });
 
@@ -309,7 +309,7 @@ describe('Wizard', () => {
     mockDevice({ config: { setup: { state: 'new', step: 2 } } });
     const saves = recordSaves();
     render(<Wizard />);
-    await onScreen('supply');
+    await onScreen('board');
     fireEvent.click(button('Close setup'));
     fireEvent.click(await screen.findByRole('button', { name: 'Skip setup' }));
     expect(screen.getByText(/the roof may not close itself in bad weather or tell anyone/)).toBeInTheDocument();

@@ -29,9 +29,9 @@ describe('reviewChecks', () => {
       'password',
       'site',
       'clock',
+      'board',
       'supply',
       'parkSwitches',
-      'rainContact',
       'hall',
       'motion',
       'weather',
@@ -147,25 +147,32 @@ describe('reviewChecks', () => {
     expect(stateOf(two('unreadable'), 'parkSwitches')).toBe('bad');
   });
 
-  it('rain contact: an unreadable fitted contact is a problem', () => {
+  it('board: none chosen is a problem; one waiting for a restart needs a look', () => {
+    expect(stateOf(base(), 'board')).toBe('ok');
     expect(
       stateOf(
-        given((i) => (cfg(i).safety.rainContact = false)),
-        'rainContact',
-      ),
-    ).toBe('ok');
-    expect(
-      stateOf(
-        given((i) => ((cfg(i).safety.rainContact = true), (roof(i).rainContact = 'dry'))),
-        'rainContact',
-      ),
-    ).toBe('ok');
-    expect(
-      stateOf(
-        given((i) => ((cfg(i).safety.rainContact = true), (roof(i).rainContact = 'unreadable'))),
-        'rainContact',
+        given((i) => (cfg(i).pins.preset = 'unset')),
+        'board',
       ),
     ).toBe('bad');
+    expect(
+      stateOf(
+        given((i) => (cfg(i).pins = { ...cfg(i).pins, preset: 'custom' })),
+        'board',
+      ),
+    ).toBe('warn');
+    expect(
+      stateOf(
+        given((i) => (i.status!.pins = { ...i.status!.pins!, valid: false })),
+        'board',
+      ),
+    ).toBe('bad');
+    expect(
+      stateOf(
+        given((i) => (i.status = null)),
+        'board',
+      ),
+    ).toBe('unknown');
   });
 
   it('Hall sensor: not fitted and at a rail are problems; between the magnets needs a look', () => {

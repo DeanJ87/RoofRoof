@@ -12,6 +12,7 @@ import { post } from '../lib/api';
 import { fetchSetup } from '../lib/setupApi';
 import { fetchDiag } from '../lib/diagApi';
 import type { DiagDocument, DiagLive } from '../types/diag';
+import { boardLabel, presetLabel } from '../lib/pinsView';
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
@@ -164,6 +165,41 @@ const WifiCard: FunctionalComponent<{ wifi: Status['wifi'] }> = ({ wifi }) => (
   </Card>
 );
 
+// Spec 023: Ethernet on a board that has it (the WiFi card stays).
+const EthernetCard: FunctionalComponent<{ ethernet: NonNullable<Status['ethernet']> }> = ({ ethernet }) => (
+  <Card title={t('system.ethernet')} icon="link" tone="cyan">
+    <div class="system-list">
+      <InfoRow
+        label={t('system.status')}
+        value={ethernet.link ? t('system.connected') : t('system.noLink')}
+        tone={ethernet.link ? 'tone-green' : 'tone-amber'}
+      />
+      {ethernet.link && <InfoRow label={t('system.linkSpeed')} value={t('settings.network.speedValue', { speed: ethernet.speedMbps })} />}
+      <InfoRow label={t('system.ipAddress')} value={ethernet.ip || '--'} tone="tone-cyan" />
+      {ethernet.ipv6.map((address) => (
+        <InfoRow key={address} label="IPv6" value={address} tone="tone-cyan" />
+      ))}
+      <InfoRow label={t('system.macAddress')} value={ethernet.mac || '--'} />
+    </div>
+  </Card>
+);
+
+// Spec 023: the board and pins in effect, and the way to the Pins page.
+const PinsCard: FunctionalComponent<{ pins?: Status['pins'] }> = ({ pins }) => (
+  <Card title={t('pins.title')} icon="cpu" tone="cyan" hint={t('system.pinsHint')}>
+    {pins && (
+      <div class="system-list">
+        <InfoRow label={t('pins.presetLabel')} value={presetLabel(pins.preset)} />
+        <InfoRow label={t('pins.board')} value={boardLabel(pins.board)} />
+        {!pins.valid && pins.preset !== 'unset' && <InfoRow label={t('system.status')} value={t('pins.status.invalid')} tone="tone-red" />}
+      </div>
+    )}
+    <div class="btn-row">
+      <Button onClick={() => route('/pins')}>{t('pins.open')}</Button>
+    </div>
+  </Card>
+);
+
 // Spec 015 FR-006: run the setup wizard again, whatever its state.
 const SETUP_STATE = { new: 'system.setupNew', offered: 'system.setupOffered', done: 'system.setupDone' } as const;
 
@@ -260,7 +296,9 @@ const System: FunctionalComponent = () => {
       {status.partitions && <PartitionsCard partitions={status.partitions} />}
       {status.ntp && <NtpCard ntp={status.ntp} />}
       {status.mqtt && <MqttCard mqtt={status.mqtt} />}
+      {status.ethernet?.present && <EthernetCard ethernet={status.ethernet} />}
       <WifiCard wifi={status.wifi} />
+      <PinsCard pins={status.pins} />
       <SetupCard />
       <DiagCard />
       <ActionsCard confirming={confirmRestart} setConfirming={setConfirmRestart} />

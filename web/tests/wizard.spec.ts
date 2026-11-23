@@ -69,6 +69,12 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await expect(page.locator('[data-field="ntp.server1"]')).toHaveValue('uk.pool.ntp.org', { timeout: 30_000 });
   await proceed(page);
 
+  // Spec 023: the board first (the demo's DevKit is chosen); a DevKit has no network question.
+  await onScreen(page, 'board');
+  await expect(question(page)).toHaveText('Which board is RoofRoof on?');
+  await choose(page, 'ESP32 DevKit');
+  await proceed(page);
+
   // The live supply, compared with a meter reading.
   await onScreen(page, 'supply');
   await expect(page.locator('#supply')).toContainText(/\d+\.\d+ V/);
@@ -86,8 +92,10 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await choose(page, 'One switch');
   await expect(dialog(page)).toContainText('Park switch 1');
   await proceed(page);
-  await onScreen(page, 'rain');
-  await choose(page, 'Not fitted');
+  // Spec 023: the wiring check, which moves nothing; the rain contact question is gone.
+  await onScreen(page, 'wiring');
+  await dialog(page).getByRole('button', { name: 'Check wiring' }).click();
+  await expect(dialog(page).locator('[data-wiring-check="enPulldown"]')).toContainText('Pass', { timeout: 10_000 });
   await proceed(page);
 
   await onScreen(page, 'hallFitted');

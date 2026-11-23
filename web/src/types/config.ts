@@ -1,4 +1,5 @@
 import type { AlertsConfig } from './alerts';
+import type { NetworkConfig, PinsConfig } from './pins';
 
 export interface WiFiConfig {
   ssid: string;
@@ -53,7 +54,6 @@ export interface SafetyConfig {
   http: { enabled: boolean; url: string };
   mqtt: { enabled: boolean; topic: string };
   staleSeconds: number;
-  rainContact: boolean;
 }
 
 export type ParkSwitches = 'none' | 'one' | 'two';
@@ -162,6 +162,9 @@ export interface Config {
   ui?: UiConfig;
   alerts?: AlertsConfig;
   diag?: DiagConfig; // absent on firmware before spec 017
+  // Spec 023: the board and its pins, and the network mode on a board with Ethernet (both apply at a restart).
+  pins?: PinsConfig;
+  network?: NetworkConfig;
   // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
   setup?: SetupConfig;
 }
