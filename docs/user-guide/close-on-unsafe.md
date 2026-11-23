@@ -329,13 +329,13 @@ time screen, read SQMeter's settings and list what differs, SQMeter's value besi
 | NTP servers | `ntp.server1`, `ntp.server2` |
 | MQTT broker | `mqtt.broker`, `mqtt.port`, `mqtt.username`, and SQMeter's MQTT password when it shares it |
 | MQTT password | `mqtt.password`, when the broker is already SQMeter's and its password differs |
-| MQTT on | `mqtt.enabled`: offered while SQMeter's MQTT is on and RoofRoof's is off |
+| MQTT on | `mqtt.enabled`: offered while SQMeter's MQTT is on and RoofRoof's is off; with no broker set here, it brings SQMeter's broker too (as the MQTT broker row) |
 | MQTT weather topic | `safety.mqtt.topic`: SQMeter's base topic, where RoofRoof reads `<base>/safe`. RoofRoof's own base topic (`mqtt.topic`) stays its own |
 | ntfy | `alerts.ntfy.server`, `alerts.ntfy.topic`, and SQMeter's ntfy token when it shares it |
 | ntfy token | `alerts.ntfy.token`, when the server is already SQMeter's and its token differs |
-| ntfy on | `alerts.ntfy.enabled`, while SQMeter's is on and RoofRoof's is off |
+| ntfy alerts on | `alerts.ntfy.enabled`, while SQMeter's is on and RoofRoof's is off; with no topic set here, it brings SQMeter's server and topic too |
 | Pushover keys | `alerts.pushover.userKey`, `alerts.pushover.appToken`, when SQMeter shares both and they differ |
-| Pushover on | `alerts.pushover.enabled`, while SQMeter's is on and RoofRoof's is off, once its keys are here (or come with the row) |
+| Pushover alerts on | `alerts.pushover.enabled`, while SQMeter's is on and RoofRoof's is off, once its keys are here (or come with the row) |
 
 Tick the rows you want, **Apply ticked**, then **Save**: the settings are checked and saved as if
 you had typed them. Nothing is saved by the copy itself.
@@ -345,7 +345,7 @@ with a client that logs in with its web password (`GET /api/secrets` on SQMeter,
 sharing turned on). The device reads them itself during the copy, with SQMeter's saved or typed
 login, and only from the **saved** SQMeter address (its scheme, host and port): a typed address that
 isn't saved yet gets the settings but not the secrets. The page never sees them: the list only says
-"Passwords received from SQMeter; they are never shown here". Ticking a row with a secret puts a placeholder in that field
+"Passwords received from SQMeter; they are never shown here." Ticking a row with a secret puts a placeholder in that field
 (`(from SQMeter)`, shown as "Received from SQMeter; never shown here."); at **Save** the device swaps it for what it
 received, but only while the field's server is still the one SQMeter uses it for (the MQTT broker,
 port and user name; the ntfy server). Change the broker or server after ticking and the save is

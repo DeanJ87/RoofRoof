@@ -120,8 +120,7 @@ describe('Open', () => {
 
   // Spec 024 (parkSwitchCheck): a park switch that hasn't opened in 3 roof openings refuses Open.
   it("is refused while the stuck-switch check holds, with the device's reason", () => {
-    const check =
-      "Park switch 2 hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the mount off its park (or take the magnet away) once to check it";
+    const check = "Park switch 2 hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park once";
     const parkSwitches = {
       fitted: 2,
       switch1: 'closed' as const,

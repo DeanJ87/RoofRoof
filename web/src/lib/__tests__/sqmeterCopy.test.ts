@@ -276,6 +276,16 @@ describe('copyRows: shared secrets and switches', () => {
     expect(value(row(on, own, 'pushoverEnabled'), 'alerts.pushover.userKey')).toBeUndefined();
   });
 
+  it("a switch row that carries the broker still asks for a password SQMeter didn't share", () => {
+    const notShared = shared({ mqttPassword: 'none' }, { mqtt: { ...mockSqmeterSite.mqtt!, enabled: true, passwordSet: true } });
+    const empty = config((c) => (c.mqtt = { ...c.mqtt, enabled: false, broker: '', username: '', password: '' }));
+    const r = row(notShared, empty, 'mqttEnabled')!;
+    expect(value(r, 'mqtt.broker')).toBe('192.168.1.10');
+    expect(value(r, 'mqtt.password')).toBeNull();
+    expect(r.asks).toEqual(['mqttPassword']);
+    expect(r.secrets).toEqual(['mqttPassword']);
+  });
+
   it('carries the ntfy token with a new server, offers it for the same server, and the Pushover keys', () => {
     const otherServer = config((c) => (c.alerts!.ntfy = { ...c.alerts!.ntfy, server: 'https://ntfy.example', topic: 'x' }));
     const r = row(shared(), otherServer, 'ntfy')!;
