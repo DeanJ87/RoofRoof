@@ -101,6 +101,19 @@ code {
   --red: #f26b62;
   --font-ui: 'Inter RR', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono RR', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* Onboarding (spec 018): the dim behind a modal, the dialog's radius, the mascot. */
+  --scrim: rgba(3, 6, 10, 0.62);
+  --scrim-solid: rgba(3, 6, 10, 0.92);
+  --radius-dialog: 1rem;
+  --mascot-fur: #b9c7d4;
+  --mascot-muzzle: #dfe7ee;
+  --mascot-ear: #5f7184;
+  --choice-tint: rgba(85, 199, 242, 0.08); /* a chosen card's surface */
+  --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.55);
+  --radius-choice: 0.75rem;
+  /* One theme, the night one, whatever the browser prefers (spec 018): its own
+     controls and scrollbars follow. */
+  color-scheme: dark;
 }
 
 * {
@@ -2363,24 +2376,8 @@ main:focus {
   bottom: calc(var(--tour-dock, 0px) + var(--stop-bar, 3.25rem) + 1rem);
 }
 
-/* The setup wizard (spec 015): the page heading, the review's checks as a
-   plain list of rows, and the dashboard banner in the bench banner's slot. */
-.wizard-heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 650;
-  color: var(--text);
-}
-
-.wizard-heading:focus {
-  outline: none;
-}
-
-.wizard-heading:focus-visible {
-  outline: 2px solid var(--cyan);
-  outline-offset: 4px;
-}
-
+/* The setup wizard (spec 015): the review's checks as a plain list of rows,
+   and the dashboard banner in the bench banner's slot. */
 .note a {
   color: var(--cyan);
 }
@@ -2578,4 +2575,385 @@ main:focus {
 
 .diag-table tr.is-selected td {
   background: var(--panel-2);
+}
+
+/* ==== Onboarding (spec 018, DS-11 to DS-13) ================================
+   Modal: a backdrop (dim + blur) and the dialog as siblings, so nothing above
+   the dialog's Stop bar has a filter or transform (it stays fixed to the
+   window). The dialog fills a phone; on wider screens it is a centred panel. */
+.has-modal {
+  overflow: hidden;
+}
+
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim-solid);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .modal-backdrop {
+    background: var(--scrim);
+    -webkit-backdrop-filter: blur(6px) saturate(0.8);
+    backdrop-filter: blur(6px) saturate(0.8);
+  }
+}
+
+.modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+}
+
+/* Room for the Stop bar (and the demo's button under it) below the dialog. */
+.has-stop-bar .modal {
+  padding-bottom: calc(var(--stop-bar, 3.25rem) + 1.5rem);
+}
+
+.has-demo-panel.has-stop-bar .modal {
+  padding-bottom: calc(var(--stop-bar, 3.25rem) + 4.75rem);
+}
+
+.modal-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(60rem, 100%);
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-dialog);
+  background: var(--panel);
+  box-shadow: var(--shadow-dialog);
+  animation: modal-in 0.18s ease-out;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.modal-header .progress-meter {
+  flex: 1;
+  margin: 0;
+}
+
+.modal-header .btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+}
+
+.modal-header-spacer {
+  width: 2.75rem;
+}
+
+.modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.modal-content {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  min-width: 0;
+  animation: modal-in 0.16s ease-out;
+}
+
+.modal-aside {
+  align-self: start;
+  padding: 0.9rem 1rem;
+  border-inline-start: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.modal-aside h3 {
+  margin-bottom: 0.35rem;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+
+.modal-footer .note {
+  margin-inline-end: auto;
+}
+
+.modal-footer .btn-primary {
+  min-width: 8.5rem;
+}
+
+@media (min-width: 900px) {
+  .modal-body {
+    grid-template-columns: minmax(0, 1fr) 17.5rem;
+    gap: 2rem;
+    padding: 1.75rem 2rem;
+  }
+}
+
+@media (max-width: 599px) {
+  .modal {
+    padding: 0;
+  }
+
+  .has-stop-bar .modal {
+    padding-bottom: calc(var(--stop-bar, 3.25rem) + 1.25rem);
+  }
+
+  .has-demo-panel.has-stop-bar .modal {
+    padding-bottom: calc(var(--stop-bar, 3.25rem) + 4.5rem);
+  }
+
+  .modal-panel {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  .modal-footer {
+    padding: 0.65rem 1rem max(0.65rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* The Stop bar inside a modal sits on top of it (constitution VII). */
+.modal .stop-bar {
+  z-index: 2;
+}
+
+/* Choice cards (DS-12): one column of full-width answers. */
+.choice-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-height: 3.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--control-edge);
+  border-radius: var(--radius-choice);
+  background: var(--panel-2);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.choice:hover {
+  border-color: var(--muted);
+}
+
+.choice.is-checked {
+  border-color: var(--cyan);
+  background: var(--choice-tint);
+  box-shadow: inset 0 0 0 1px var(--cyan);
+}
+
+.choice:has(:focus-visible) {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.choice-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choice-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.6rem;
+  background: var(--panel-3);
+}
+
+.choice-text {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.choice-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.choice-detail {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.choice-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 2px solid var(--control-edge);
+  border-radius: 999px;
+}
+
+.choice.is-checked .choice-mark {
+  border-color: var(--cyan);
+  background: var(--cyan);
+}
+
+.choice.is-checked .choice-mark::after {
+  content: '';
+  width: 0.35rem;
+  height: 0.6rem;
+  margin-top: -0.12rem;
+  border: solid var(--bg);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* The mascot and its speech bubble (DS-13). */
+.speech {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.mascot {
+  flex: none;
+}
+
+.mascot-fur {
+  fill: var(--mascot-fur);
+}
+
+.mascot-muzzle {
+  fill: var(--mascot-muzzle);
+}
+
+.mascot-ear {
+  fill: var(--mascot-ear);
+}
+
+.mascot-eye {
+  fill: var(--bg);
+}
+
+.mascot-line,
+.mascot-collar {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.mascot-line {
+  stroke: var(--bg);
+  stroke-width: 1.4;
+}
+
+.mascot-collar {
+  stroke: var(--cyan);
+  stroke-width: 3;
+}
+
+.mascot-tag {
+  fill: var(--amber);
+}
+
+.speech-bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-choice);
+  background: var(--panel-2);
+}
+
+/* The tail points down-left at the dog. */
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: 0.7rem;
+  inset-inline-start: -0.45rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: solid var(--line);
+  border-width: 0 0 1px 1px;
+  background: var(--panel-2);
+  transform: rotate(45deg);
+}
+
+[dir='rtl'] .speech-bubble::before {
+  transform: rotate(-45deg);
+  border-width: 0 1px 1px 0;
+}
+
+.speech-bubble h2 {
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.speech-bubble h2:focus {
+  outline: none; /* a programmatic focus target (tabIndex -1), not a control */
+}
+
+/* A refused save's reason takes focus (it is not a control). */
+.wizard-problem:focus {
+  outline: none;
+}
+
+/* The demo tour's docked card raises the Stop bar; the dialog keeps room for both. */
+.has-tour-dock.has-stop-bar .modal {
+  padding-bottom: calc(var(--tour-dock, 0px) + var(--stop-bar, 3.25rem) + 1.5rem);
 }

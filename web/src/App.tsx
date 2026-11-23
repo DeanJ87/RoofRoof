@@ -9,7 +9,7 @@ import Updates from './components/Updates';
 import Alpaca from './components/Alpaca';
 import NotFound from './components/NotFound';
 import WifiSetup from './components/WifiSetup';
-import Wizard from './components/Wizard';
+import Wizard, { noteRoute } from './components/Wizard';
 import Calibrate from './components/Calibrate';
 import Diagnostics from './components/Diagnostics';
 
@@ -35,7 +35,7 @@ const hashHistory: CustomHistory | undefined = isDemo
   : undefined;
 
 const App: FunctionalComponent = () => (
-  <Router history={hashHistory}>
+  <Router history={hashHistory} onChange={(change) => noteRoute(change.url, change.previous)}>
     <Layout path="/">
       <Dashboard />
     </Layout>
@@ -51,8 +51,9 @@ const App: FunctionalComponent = () => (
     <Layout path="/updates">
       <Updates />
     </Layout>
-    <Layout path="/wizard">
-      <Wizard />
+    {/* The setup wizard (spec 018): a dialog over the dashboard. */}
+    <Layout path="/wizard" modal={<Wizard />}>
+      <Dashboard />
     </Layout>
     <Layout path="/calibrate">
       <Calibrate />

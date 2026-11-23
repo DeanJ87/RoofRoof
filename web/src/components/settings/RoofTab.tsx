@@ -85,10 +85,11 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
 
 // The live reading against the thresholds as edited, so calibration can be
 // checked before saving (FR-020).
-export const HallCard: FunctionalComponent<RoofProps> = (props) => {
+// The fields and the live scale (also the setup wizard's Hall screen, spec 018).
+export const HallFields: FunctionalComponent<RoofProps> = (props) => {
   const hall = props.status?.roof?.hall;
   return (
-    <SettingsCard id="hall" title={t('settings.roof.hallSensor')} hint={t('settings.roof.hallHint')}>
+    <>
       <div class="form-grid">
         <Field label={t('settings.roof.hallHighEnd')}>
           <SelectInput
@@ -112,15 +113,31 @@ export const HallCard: FunctionalComponent<RoofProps> = (props) => {
       ) : (
         <Note>{t('settings.roof.noLiveReading')}</Note>
       )}
-    </SettingsCard>
+    </>
   );
 };
+
+export const HallCard: FunctionalComponent<RoofProps> = (props) => (
+  <SettingsCard id="hall" title={t('settings.roof.hallSensor')} hint={t('settings.roof.hallHint')}>
+    <HallFields {...props} />
+  </SettingsCard>
+);
 
 // The current-sense values show while it is on, or while one of them needs fixing
 // (it is still validated and saved while off).
 const CURRENT_KEYS = ['maxCurrentAmps', 'currentAmpsPerVolt', 'minRunningAmps'] as const;
 const showCurrent = (props: RoofProps) =>
   props.roof.currentSenseEnabled || CURRENT_KEYS.some((key) => props.error(`roof.${key}`) !== undefined);
+
+// The current-sense scaling (also the setup wizard's current-sense screen, spec 018).
+export const CurrentFields: FunctionalComponent<RoofProps> = (props) =>
+  showCurrent(props) ? (
+    <>
+      {roofNum(props, 'maxCurrentAmps', t('settings.roof.maxCurrent'), { unit: 'A' })}
+      {roofNum(props, 'currentAmpsPerVolt', t('settings.roof.ampsPerVolt'), { unit: 'A/V', hint: t('settings.roof.ampsPerVoltHint') })}
+      {roofNum(props, 'minRunningAmps', t('settings.roof.minRunning'), { unit: 'A', hint: t('settings.roof.minRunningHint') })}
+    </>
+  ) : null;
 
 export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
   <SettingsCard id="current" title={t('settings.roof.currentAndSupply')}>
@@ -132,11 +149,7 @@ export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
       onChange={(v) => props.update(['roof', 'currentSenseEnabled'], v)}
     />
     <div class="form-grid">
-      {showCurrent(props) && roofNum(props, 'maxCurrentAmps', t('settings.roof.maxCurrent'), { unit: 'A' })}
-      {showCurrent(props) &&
-        roofNum(props, 'currentAmpsPerVolt', t('settings.roof.ampsPerVolt'), { unit: 'A/V', hint: t('settings.roof.ampsPerVoltHint') })}
-      {showCurrent(props) &&
-        roofNum(props, 'minRunningAmps', t('settings.roof.minRunning'), { unit: 'A', hint: t('settings.roof.minRunningHint') })}
+      <CurrentFields {...props} />
       {roofNum(props, 'minSupplyVolts', t('settings.roof.minSupply'), { unit: 'V', hint: t('settings.roof.minSupplyHint') })}
     </div>
   </SettingsCard>
@@ -155,15 +168,7 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
     />
     {safety.http.enabled && (
       <div class="form-grid indent">
-        <Field label={t('settings.roof.sqmeterUrl')} error={error('safety.http.url')}>
-          <TextInput
-            dataField="safety.http.url"
-            type="url"
-            value={safety.http.url}
-            placeholder="http://sqmeter.local/api/safety"
-            onInput={(v) => update(['safety', 'http', 'url'], v)}
-          />
-        </Field>
+        <SqmeterUrlField safety={safety} update={update} error={error} />
       </div>
     )}
     <DepToggle
@@ -177,12 +182,30 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
     />
     {safety.mqtt.enabled && (
       <div class="form-grid indent">
-        <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
-          <TextInput dataField="safety.mqtt.topic" value={safety.mqtt.topic} onInput={(v) => update(['safety', 'mqtt', 'topic'], v)} />
-        </Field>
+        <SqmeterTopicField safety={safety} update={update} error={error} />
       </div>
     )}
   </>
+);
+
+// SQMeter's address and topic (also the setup wizard's weather address screen, spec 018).
+type SourceFieldProps = Pick<SafetyProps, 'safety' | 'update' | 'error'>;
+export const SqmeterUrlField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
+  <Field label={t('settings.roof.sqmeterUrl')} error={error('safety.http.url')}>
+    <TextInput
+      dataField="safety.http.url"
+      type="url"
+      value={safety.http.url}
+      placeholder="http://sqmeter.local/api/safety"
+      onInput={(v) => update(['safety', 'http', 'url'], v)}
+    />
+  </Field>
+);
+
+export const SqmeterTopicField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
+  <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
+    <TextInput dataField="safety.mqtt.topic" value={safety.mqtt.topic} onInput={(v) => update(['safety', 'mqtt', 'topic'], v)} />
+  </Field>
 );
 
 // The rain contact on GPIO4 (also the setup wizard's hardware page).
@@ -298,18 +321,27 @@ export const DaylightModeFields: FunctionalComponent<Omit<DaylightProps, 'locati
           onChange={(v) => update(['daylight', 'mode'], v)}
         />
       </Field>
-      <DegreesField
-        at={['daylight', 'sunAltitudeDeg']}
-        label={t('settings.roof.sunAltitudeLimit')}
-        hint={t('settings.roof.sunAltitudeLimitHint')}
-        value={daylight.sunAltitudeDeg}
-        update={update}
-        error={error}
-      />
+      <SunAltitudeField daylight={daylight} update={update} error={error} />
     </div>
     <DepNote entry={deps.get('daylight.mode')} onFix={fix} />
     <DepNote entry={deps.get('daylight.sunAltitudeDeg')} onFix={fix} />
   </>
+);
+
+// The sun's altitude limit (also the setup wizard's daylight screen, spec 018).
+export const SunAltitudeField: FunctionalComponent<Pick<DaylightProps, 'daylight' | 'update' | 'error'>> = ({
+  daylight,
+  update,
+  error,
+}) => (
+  <DegreesField
+    at={['daylight', 'sunAltitudeDeg']}
+    label={t('settings.roof.sunAltitudeLimit')}
+    hint={t('settings.roof.sunAltitudeLimitHint')}
+    value={daylight.sunAltitudeDeg}
+    update={update}
+    error={error}
+  />
 );
 
 // Where the roof is (also the setup wizard's site page).
