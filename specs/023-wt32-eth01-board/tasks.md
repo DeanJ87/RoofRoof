@@ -82,6 +82,6 @@
 - [x] T048 ConfigModel: `Config::analogGates()`, `validateAnalog` against the roof settings, non-object inputs refused; pin documents and validate checked against the gates (firmware and demo); `motionSettingsChanged` counts `analog`
 - [x] T049 ConfigBackup: `analog` never restored, listed as `board-analog`
 - [x] T050 Web: the calibration from the saved setup, the analog preset no longer follows the board (Pins page, wizard, wiring suggestion), zod ranges, the backup reason; tests
-- [x] T051 Docs (pins, configuration, REST), constitution 4.0.1 (rain-contact wording), CHANGELOG
+- [x] T051 Docs (pins, configuration, REST), constitution 4.1.1 (rain-contact wording), CHANGELOG
 - [x] T052 Review round 1: the offset weighed by 100 / slow duty (broken-wire floor, −0.5 A), the reach capped by the IS output's 5 V and the ADC taken as 2.9 V, stored analog values that fail the checks refuse every move (`Roof::Settings::analogUsable`), the backup reason enum in the contract and OpenAPI, the wiring check's supply text
 - [x] T053 Review round 2: the driven offset uses the duty as driven (255 / step), the reach takes the worse offset at the slow duty, the demo core applies `analogUsable` too, the settings-invalid refusal names the Pins page

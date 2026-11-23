@@ -43,7 +43,7 @@ What's shown, and where each piece of device state appears (or why it doesn't), 
 
 ![Roof card](../assets/screenshots/roof-card.png)
 
-While a [test box](test-box.md) bypass is set, a red banner runs across the top of every page and says which checks are bypassed and until when (or that they have expired, or are waiting for the clock).
+While a [test box](test-box.md) bypass is set, a banner above every page says which checks are bypassed and when it ends (red), or that they have expired or are waiting for the clock (amber). **Manage** opens the test box page.
 
 The **Roof** card shows the roof as its control task sees it, live:
 

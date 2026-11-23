@@ -9,22 +9,44 @@ export interface CalibrationCheck {
   label: string;
   ok: boolean;
   text: string;
+  // Spec 022: passing only because a test box bypass stands in for it (never "OK").
+  bypassed?: boolean;
 }
+
+// The weather row's name while a test box bypass stands in for it, or null.
+const weatherBypass = (roof: RoofStatus): string | null => {
+  const box = roof.testBox;
+  if (box?.weather && box.daylight) return t('calibrate.check.weatherDaylightBypassed');
+  if (box?.weather) return t('calibrate.check.weatherBypassed');
+  if (box?.daylight) return t('calibrate.check.daylightBypassed');
+  return null;
+};
+
+const weatherCheck = (roof: RoofStatus): CalibrationCheck => {
+  const daylight = roof.daylight?.closes === true;
+  const ok = roof.weather === 'safe' && !daylight;
+  const bypass = ok ? weatherBypass(roof) : null;
+  if (bypass) return { id: 'weather', label: bypass, ok, text: '', bypassed: true };
+  return {
+    id: 'weather',
+    label: t('calibrate.check.weather'),
+    ok,
+    text: daylight ? deviceText(roof.daylight?.text) : deviceText(roof.weatherText),
+  };
+};
+
+const parkCheck = (roof: RoofStatus): CalibrationCheck =>
+  roof.testBox?.park && roof.parkConfirmed
+    ? { id: 'park', label: t('calibrate.check.parkBypassed'), ok: true, text: '', bypassed: true }
+    : { id: 'park', label: t('calibrate.check.park'), ok: roof.parkConfirmed, text: deviceText(roof.parkText) };
 
 /** What a run needs, from the live status (the device checks again when it starts). */
 export const calibrationChecks = (roof: RoofStatus): CalibrationCheck[] => {
-  const daylight = roof.daylight?.closes === true;
-  const weatherOk = roof.weather === 'safe' && !daylight;
   const moving = roof.state === 'opening' || roof.state === 'closing' || roof.closePending;
   const hallOk = roof.hall.level !== 'rail' && roof.hall.level !== 'unsettled';
   return [
-    {
-      id: 'weather',
-      label: t('calibrate.check.weather'),
-      ok: weatherOk,
-      text: daylight ? deviceText(roof.daylight?.text) : deviceText(roof.weatherText),
-    },
-    { id: 'park', label: t('calibrate.check.park'), ok: roof.parkConfirmed, text: deviceText(roof.parkText) },
+    weatherCheck(roof),
+    parkCheck(roof),
     { id: 'fault', label: t('calibrate.check.fault'), ok: roof.fault === null, text: roof.fault ? deviceText(roof.fault.text) : '' },
     { id: 'sequence', label: t('calibrate.check.sequence'), ok: roof.closePhase === 'idle', text: '' },
     { id: 'still', label: t('calibrate.check.still'), ok: !moving, text: '' },
