@@ -9,7 +9,8 @@
 #include <cstring>
 
 // Spec 020 (contracts/sqmeter-site-api.md): site data from SQMeter. POST
-// /api/sqmeter/site fetches SQMeter's settings for the copy. It makes the
+// /api/sqmeter/site fetches SQMeter's settings for the copy; POST
+// /api/sqmeter/test fetches its /api/safety once (Settings' Test, FR-038). Each makes the
 // device send a request, so it calls requireAuth (constitution VIII); the
 // fetch runs on its own short-lived task, never on the async TCP task
 // (constitution VI), and the reply carries no secret's value.
@@ -19,8 +20,8 @@ namespace SQM
     namespace
     {
         constexpr size_t MAX_BODY_BYTES = 512;
-        constexpr uint32_t SITE_JOB_STACK_BYTES = 6144;
-        constexpr BaseType_t SITE_JOB_CORE = 1; // beside the loop task, as the backup job
+        constexpr uint32_t SITE_JOB_STACK_BYTES = 8192; // a TLS handshake for an https:// SQMeter (FR-039)
+        constexpr BaseType_t SITE_JOB_CORE = 1;         // beside the loop task, as the backup job
         constexpr uint32_t CONNECT_MS = 2500;
         constexpr uint32_t TOTAL_MS = 5000;
         constexpr size_t SITE_DOCUMENT_BYTES = 1536;
@@ -85,7 +86,8 @@ namespace SQM
             DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
             Site::configFilter(filter);
             DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
-            const Site::Fetch fetch = SafetyPoller::fetchJson(from, filter, doc, CONNECT_MS, TOTAL_MS);
+            const Site::Fetch fetch = SafetyPoller::fetchJson(
+                from, filter, doc, SafetyPoller::FetchLimits{CONNECT_MS, TOTAL_MS, SafetyPoller::TLS_PERSON_WAIT_MS});
             Site::SiteConfig site;
             std::string why = "not SQMeter's settings";
             if (fetch.status <= 0)
@@ -111,6 +113,17 @@ namespace SQM
             }
             return 502;
         }
+
+        // Spec 020 FR-038: one read of SQMeter's /api/safety, as the weather
+        // poll makes it: 200 with the verdict, or 502 with why not.
+        int testSafety(const Site::Endpoint &to, std::string &body)
+        {
+            StaticJsonDocument<256> out;
+            Safety::writeTestResult(out.to<JsonObject>(), SafetyPoller::getOnce(to, SafetyPoller::TLS_PERSON_WAIT_MS));
+            body.clear();
+            serializeJson(out, body);
+            return out["error"].isNull() ? 200 : 502;
+        }
     } // namespace
 
     struct WebServer::SiteJob
@@ -118,15 +131,26 @@ namespace SQM
         AsyncWebServerRequestPtr request;
         std::string address;
         Site::Endpoint from; // the URL and the login (never logged)
+        bool test = false;   // /api/sqmeter/test: one weather read
     };
 
     void WebServer::setupSiteRoutes()
     {
         server.on(
-            "/api/sqmeter/site", HTTP_POST, [this](AsyncWebServerRequest *request) { handleSqmeterSite(request); }, nullptr, collectBody);
+            "/api/sqmeter/site",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request) { handleSqmeterSite(request, false); },
+            nullptr,
+            collectBody);
+        server.on(
+            "/api/sqmeter/test",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request) { handleSqmeterSite(request, true); },
+            nullptr,
+            collectBody);
     }
 
-    void WebServer::handleSqmeterSite(AsyncWebServerRequest *request)
+    void WebServer::handleSqmeterSite(AsyncWebServerRequest *request, bool test)
     {
         if (!requireAuth(request))
             return;
@@ -142,7 +166,8 @@ namespace SQM
         }
         if (address.empty() || Site::siteUrl(address, Site::CONFIG_PATH).empty())
         {
-            const char *why = address.empty() ? "SQMeter's address isn't set" : "SQMeter's address must be an http:// address";
+            const char *why =
+                address.empty() ? "SQMeter's address isn't set" : "SQMeter's address isn't valid: e.g. 192.168.1.50 or sqmeter.local";
             request->send(400, "application/json", errorBody(why).c_str());
             return;
         }
@@ -155,10 +180,11 @@ namespace SQM
         bool idle = false;
         if (!siteJobRunning.compare_exchange_strong(idle, true))
         {
-            request->send(409, "application/json", errorBody("A copy from SQMeter is already running").c_str());
+            request->send(409, "application/json", errorBody("A read of SQMeter is already running").c_str());
             return;
         }
-        auto *job = new SiteJob{request->pause(), address, Site::copyEndpoint(getConfigCallback().safety, address, login)};
+        const char *path = test ? Site::SAFETY_PATH : Site::CONFIG_PATH;
+        auto *job = new SiteJob{request->pause(), address, Site::copyEndpoint(getConfigCallback().safety, address, login, path), test};
         if (xTaskCreatePinnedToCore(runSiteJob, "site_job", SITE_JOB_STACK_BYTES, job, 1, nullptr, SITE_JOB_CORE) != pdPASS)
         {
             const AsyncWebServerRequestPtr paused = job->request;
@@ -173,9 +199,9 @@ namespace SQM
     {
         std::unique_ptr<SiteJob> job(static_cast<SiteJob *>(arg));
         std::string body;
-        const int status = fetchSite(job->address, job->from, body);
+        const int status = job->test ? testSafety(job->from, body) : fetchSite(job->address, job->from, body);
         if (status != 200)
-            Logger::info(TAG, "Copy from SQMeter: %s", body.c_str());
+            Logger::info(TAG, "%s: %s", job->test ? "Test of SQMeter" : "Copy from SQMeter", body.c_str());
         if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())
             request->send(status, "application/json", body.c_str());
         job.reset();

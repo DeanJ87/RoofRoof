@@ -4,10 +4,14 @@
 #include "Logger.h"
 #include "NetAddress.h"
 #include "SqmeterSource.h"
+#include "TlsLock.h"
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <esp_timer.h>
+#include <atomic>
+#include <memory>
 
 namespace SQM
 {
@@ -24,13 +28,55 @@ namespace SQM
         // N.I.N.A.'s full mount info is about 4 KB; SQMeter's safety document under 1 KB.
         constexpr size_t MAX_BODY_BYTES = 8192;
 
+        // Spec 020 FR-039: an https handshake is bounded like a connect (the
+        // client's own default is 120 s, which would hold this task and the
+        // one HTTPS session).
+        constexpr unsigned long TLS_HANDSHAKE_S = 3;
+        // A firmware or web UI upload is being written: no TLS session then
+        // (its ~45 KB of heap), as the alert sender does. Set once at start.
+        std::atomic<bool (*)()> uploadBusy{nullptr};
+        constexpr const char *TLS_BUSY = "the device's HTTPS link is busy (an alert, an upload or another read)";
+
+        // The client for one request. https (an https:// SQMeter, FR-039) is
+        // encrypted without a certificate check: a LAN SQMeter's certificate is
+        // self-signed (owner assumption). It holds the one HTTPS session while
+        // it lives; plain http also reaches IPv6 (DualStackClient).
+        class Connection
+        {
+        public:
+            Connection(const std::string &url, uint32_t tlsWaitMs)
+                : secure(url.rfind("https://", 0) == 0)
+            {
+                if (!secure)
+                    return;
+                bool (*busy)() = uploadBusy.load();
+                if (busy != nullptr && busy())
+                    return;
+                lock = std::make_unique<TlsLock::Guard>(tlsWaitMs);
+                if (!lock->ok())
+                    return;
+                tls = std::make_unique<WiFiClientSecure>();
+                tls->setInsecure();
+                tls->setHandshakeTimeout(TLS_HANDSHAKE_S);
+            }
+            // False: an upload runs, or another HTTPS request holds the session.
+            bool ready() const { return !secure || tls != nullptr; }
+            WiFiClient &client() { return secure ? static_cast<WiFiClient &>(*tls) : static_cast<WiFiClient &>(plain); }
+
+        private:
+            bool secure;
+            DualStackClient plain;
+            std::unique_ptr<TlsLock::Guard> lock; // released after the TLS client is gone
+            std::unique_ptr<WiFiClientSecure> tls;
+        };
+
         // HTTPClient splits "http://[fd00::10]:8080/x" at the first ':', so IPv6
         // hosts go in by parts (as AlertDispatcher does).
         bool beginRequest(HTTPClient &http, WiFiClient &client, const std::string &url)
         {
             Net::HttpUrl parsed;
             if (Net::parseHttpUrl(url, parsed) == Net::UrlError::None && parsed.host.ipv6)
-                return http.begin(client, Net::hostForUrl(parsed.host).c_str(), parsed.port, parsed.path.c_str(), false);
+                return http.begin(client, Net::hostForUrl(parsed.host).c_str(), parsed.port, parsed.path.c_str(), parsed.https);
             return http.begin(client, url.c_str());
         }
 
@@ -90,7 +136,7 @@ namespace SQM
             return true;
         }
 
-        Safety::HttpOutcome httpGet(const Site::Endpoint &to)
+        Safety::HttpOutcome httpGet(const Site::Endpoint &to, uint32_t tlsWaitMs = SafetyPoller::TLS_POLL_WAIT_MS)
         {
             Safety::HttpOutcome reply;
             reply.credentials = to.sendsPassword();
@@ -100,9 +146,14 @@ namespace SQM
                 return reply;
             }
             const uint64_t deadline = SafetyPoller::nowMs() + HTTP_TOTAL_MS;
-            DualStackClient client;
+            Connection connection(to.url, tlsWaitMs);
+            if (!connection.ready())
+            {
+                reply.error = TLS_BUSY;
+                return reply;
+            }
             HTTPClient http;
-            if (!startGet(http, client, to, HTTP_TIMEOUT_MS))
+            if (!startGet(http, connection.client(), to, HTTP_TIMEOUT_MS))
             {
                 reply.error = "invalid URL";
                 return reply;
@@ -179,13 +230,23 @@ namespace SQM
         }
     } // namespace
 
+    Safety::HttpOutcome SafetyPoller::getOnce(const Site::Endpoint &to, uint32_t tlsWaitMs)
+    {
+        return httpGet(to, tlsWaitMs);
+    }
+
+    void SafetyPoller::setUploadBusy(bool (*busy)())
+    {
+        uploadBusy.store(busy);
+    }
+
     uint64_t SafetyPoller::nowMs()
     {
         return static_cast<uint64_t>(esp_timer_get_time() / 1000);
     }
 
     Site::Fetch SafetyPoller::fetchJson(
-        const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs)
+        const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, const FetchLimits &limits)
     {
         Site::Fetch fetch;
         fetch.credentials = from.sendsPassword();
@@ -194,10 +255,15 @@ namespace SQM
             fetch.error = "WiFi not connected";
             return fetch;
         }
-        const uint64_t deadline = nowMs() + totalMs;
-        DualStackClient client;
+        const uint64_t deadline = nowMs() + limits.totalMs;
+        Connection connection(from.url, limits.tlsWaitMs);
+        if (!connection.ready())
+        {
+            fetch.error = TLS_BUSY;
+            return fetch;
+        }
         HTTPClient http;
-        if (!startGet(http, client, from, connectMs))
+        if (!startGet(http, connection.client(), from, limits.connectMs))
         {
             fetch.error = "invalid URL";
             return fetch;
@@ -432,7 +498,7 @@ namespace SQM
         DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
         Site::configFilter(filter);
         DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
-        const Site::Fetch fetch = fetchJson(from, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const Site::Fetch fetch = fetchJson(from, filter, doc, FetchLimits{LOCATION_CONNECT_MS, LOCATION_TOTAL_MS});
         const uint64_t at = nowMs();
         const Site::ConfigRead fresh = Site::readConfig(fetch, doc, at);
         settingsSchedule.done(fresh.good(), at);
@@ -456,7 +522,7 @@ namespace SQM
         DynamicJsonDocument filter(Site::STATUS_FILTER_BYTES);
         Site::statusFilter(filter);
         DynamicJsonDocument doc(Site::STATUS_DOC_BYTES);
-        const Site::Fetch fetch = fetchJson(from, filter, doc, LOCATION_CONNECT_MS, LOCATION_TOTAL_MS);
+        const Site::Fetch fetch = fetchJson(from, filter, doc, FetchLimits{LOCATION_CONNECT_MS, LOCATION_TOTAL_MS});
         const uint64_t at = nowMs();
         const Site::LocationRead fresh = Site::readLocation(fetch, doc, at);
         locationSchedule.done(fresh.good(), at);
