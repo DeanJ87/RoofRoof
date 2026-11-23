@@ -17,7 +17,7 @@ Just want to see the motor turn on the bench before the Hall sensor exists? The 
 <!-- diagram: DIA-30
 sources: include/RoofPins.h lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: 38a0e547e038cdea
+fingerprint: e8790347c5882e33
 -->
 <figure class="diagram" markdown>
 
@@ -54,6 +54,7 @@ flowchart TD
     - The roof is moved by a motor strong enough to damage a telescope. Until stage 11 passes, **someone is at the roof for every move, with a way to cut the motor supply within reach** (a switch or an unplugged lead, not a software button).
     - **Park the mount** (or take the telescope off the mount) before any move of the real roof.
     - The roof closes only onto a parked mount, and opens only while the weather is safe. Those checks are not to be worked around for a test; the procedure below tests them with real inputs.
+    - [Test box mode](../user-guide/test-box.md) bypasses the park, weather and daylight checks for a box on the desk with no telescope. Turn every bypass off before stage 4: commissioning a real roof tests the real checks.
     - A step that fails stops the procedure. Fix the cause (see [Troubleshooting](../reference/troubleshooting.md)) and repeat the step before going on.
 
 ---

@@ -82,11 +82,24 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
 | `daylight` | the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe): `mode` (`off`, `alert` or `close`), `state` (`off`, `unknown`, `night` or `day`), `sunAltitudeDeg` (`null` while off or unknown), `limitDeg` (the threshold), `text` ("Sun 3.2° ≥ 0.0°", "Sun -4.1° < 0.0°", "Location not set", "Clock not set" or "Off") and `closes` (daylight wants the roof closed now: mode `close` and state `day`) |
+| `testBox` | the [test box](../user-guide/test-box.md) bypasses, always present (see below) |
 | `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`, `benchSupply`), `measured`, `limit` and `text` |
 | `simulation` | `off` on a real roof; `bench` for the bench-mode firmware (a simulated roof, the motor never driven; see [Bench mode](../user-guide/bench-mode.md)); `demo` in the online demo |
 | `watchdogTrips`, `maxStepGapMs`, `maxWatchdogBeatAgeMs` | since the restart: how often the watchdog switched the driver off, the longest gap between control steps, and the oldest watchdog heartbeat a step saw (the driver needs it at most 50 ms old) |
 
 `stackFree.roof` is the roof control task's unused stack in bytes.
+
+`roof.testBox` says which [test box](../user-guide/test-box.md) bypasses are set and which are in effect now:
+
+```json
+"testBox": {
+  "set": true, "active": true, "park": true, "weather": true, "daylight": false,
+  "until": 1764160000, "expired": false, "waitingForClock": false, "parkRequests": false,
+  "text": "Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"
+}
+```
+
+`park`, `weather` and `daylight` are the bypasses in effect now; `set` is true when any is set in the settings; `until` is the deadline in Unix seconds (`0` with nothing set). When the deadline has passed, `expired` is true and the checks are back; while the clock isn't set, `waitingForClock` is true and the checks apply. `text` is empty with nothing set; otherwise it names the bypasses and the deadline, or says they expired or wait for the clock. With nothing set every bypass boolean is false. `parkRequests` is true when unsafe weather would ask a configured N.I.N.A. to park its mount (`park.requestPark` on and an address set), whatever the bypasses. While a bypass is in effect, `weatherText` and `parkText` end in "bypassed (test box): no weather source" and "bypassed (test box): no telescope under this roof", `weather` is `safe` and `parkConfirmed` is true.
 
 `location` says where the daylight failsafe's site comes from ([Site from SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)):
 
@@ -163,6 +176,19 @@ Successful saves return the new settings revision:
 ```json
 { "success": true, "revision": 1834201978 }
 ```
+
+#### Test box settings
+
+The `testBox` group (`park`, `weather`, `daylight`, `hours`, `until`; see [Configuration](../user-guide/configuration.md#test-box)) follows these rules:
+
+- `until` is read-only: a value in a save body is ignored. The device stamps it.
+- A bypass turning on, or `testBox.hours` sent while one is on, stamps a new deadline. To **renew**, send `{"testBox": {"hours": 72}}`.
+- A save is refused with `400` and an `error`:
+    - `Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)` when `testBox.park` would be on with `park.nina.url` set;
+    - `Test box: the weather bypass is for a box with no weather source; turn SQMeter HTTP and MQTT off first (or turn the bypass off)` when `testBox.weather` would be on with `safety.http.enabled` or `safety.mqtt.enabled`;
+    - an error naming the range when `testBox.hours` isn't 1 to 720;
+    - `Test box: the clock isn't set yet (Settings → Time); a bypass needs a deadline` when a bypass turns on while the clock isn't set.
+- A backup restore never brings a deadline.
 
 #### Saves from a page loaded earlier
 

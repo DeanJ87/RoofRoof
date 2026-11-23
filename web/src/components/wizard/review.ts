@@ -1,6 +1,6 @@
 import type { Config, RoofInputs, SystemStatus } from '../../types';
 import { t } from '../../i18n';
-import { formatNumber } from '../../i18n/format';
+import { formatDateTime, formatNumber } from '../../i18n/format';
 import type { WizardPageId } from './pages';
 
 // The review page's checks (spec 015 FR-010): one per essential, from the
@@ -85,14 +85,15 @@ const motion = ({ config }: ReviewInput): Check => {
 };
 
 const weather = ({ config, inputs }: ReviewInput): Check => {
-  if (!config.safety?.http.enabled && !config.safety?.mqtt.enabled) return bad(t('wizard.review.noWeatherSource'));
+  if (!config.safety?.http.enabled && !config.safety?.mqtt.enabled)
+    return config.testBox?.weather ? warn(t('wizard.review.weatherBypassed')) : bad(t('wizard.review.noWeatherSource'));
   if (!inputs) return unknown();
   if (inputs.weather.verdict === 'safe') return ok(t('wizard.review.weatherSafe'));
   return warn(t('wizard.review.weatherNotSafe', { text: inputs.weather.text }));
 };
 
 const nina = ({ config, inputs }: ReviewInput): Check => {
-  if (!config.park?.nina.url) return bad(t('wizard.review.noNina'));
+  if (!config.park?.nina.url) return config.testBox?.park ? warn(t('wizard.review.parkBypassed')) : bad(t('wizard.review.noNina'));
   if (!inputs) return unknown();
   if (inputs.nina.state !== 'good') return warn(t('wizard.review.ninaNotAnswering', { text: inputs.nina.text || inputs.nina.state }));
   return inputs.nina.connected ? ok(t('wizard.review.ninaConnected')) : warn(t('wizard.review.mountNotConnected'));
@@ -117,7 +118,20 @@ const daylight = ({ config }: ReviewInput): Check => {
   return ok(mode === 'close' ? t('wizard.review.daylightCloses') : t('wizard.review.daylightAlerts'));
 };
 
+// Spec 022: the bypasses are never "OK".
+const testBox = ({ config, status }: ReviewInput): Check => {
+  const box = config.testBox;
+  if (!box || !(box.park || box.weather || box.daylight)) return ok(t('wizard.review.testBoxOff'));
+  const live = status?.roof?.testBox;
+  if (live?.active && live.until > 0) {
+    const until = formatDateTime(new Date(live.until * 1000), { dateStyle: 'medium', timeStyle: 'short' });
+    return bad(t('wizard.review.testBoxUntil', { until }));
+  }
+  return bad(t('wizard.review.testBoxOn', { hours: box.hours }));
+};
+
 const CHECKS: [string, string, WizardPageId, (input: ReviewInput) => Check][] = [
+  ['testBox', 'wizard.review.testBox', 'hardware', testBox],
   ['password', 'wizard.review.password', 'device', password],
   ['site', 'wizard.review.site', 'site', site],
   ['clock', 'wizard.review.clock', 'site', clock],

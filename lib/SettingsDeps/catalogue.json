@@ -49,6 +49,7 @@
     "alerts.cooldownSeconds",
     "alerts.events.mount_not_parked.level",
     "alerts.events.roof_not_closed.level",
+    "alerts.events.test_box.level",
     "alerts.pushover.userKey",
     "alerts.pushover.appToken",
     "alerts.pushover.sound",
@@ -84,6 +85,9 @@
     "sqmeterSync.time.syncedAt",
     "sqmeterSync.mqtt.syncedAt",
     "sqmeterSync.alerts.syncedAt",
+    "park.requestPark",
+    "testBox.hours",
+    "testBox.until",
     "safety.http.username",
     "safety.http.password"
   ],
@@ -434,6 +438,21 @@
       "dependsOn": "SQMeter's address (the weather source's address) set - a group can only follow SQMeter's settings when RoofRoof knows where SQMeter is (spec 020)",
       "reasons": [
         "no-sqmeter-address"
+      ]
+    },
+    {
+      "id": "D-48",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "testBox.park",
+        "testBox.weather",
+        "testBox.daylight"
+      ],
+      "dependsOn": "The clock set by NTP - a test-box bypass is in effect only before its deadline, which needs the clock (spec 022)",
+      "reasons": [
+        "clock-not-set"
       ]
     }
   ]

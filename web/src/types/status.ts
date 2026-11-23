@@ -155,6 +155,20 @@ export interface RoofDaylight {
   closes: boolean; // daylight wants the roof closed now (mode close and day)
 }
 
+// Spec 022: the test box's bypasses as the checks apply them now. Absent on older firmware.
+export interface RoofTestBox {
+  set: boolean; // any bypass set in the settings
+  active: boolean; // any in effect now
+  park: boolean; // each: set and in effect now
+  weather: boolean;
+  daylight: boolean;
+  until: number; // the deadline, Unix seconds (0: none)
+  expired: boolean;
+  waitingForClock: boolean;
+  parkRequests: boolean; // unsafe weather would ask a configured N.I.N.A. to park its mount
+  text: string; // the device's text naming them, "" when none is set
+}
+
 export interface RoofStatus {
   state: RoofState;
   positionKnown: boolean;
@@ -189,4 +203,5 @@ export interface RoofStatus {
   maxWatchdogBeatAgeMs: number; // the oldest watchdog heartbeat a step saw since start (EN needs it <= 50 ms)
   // Spec 011: the real roof, bench firmware (simulated roof, motor never driven) or the browser demo.
   simulation: RoofSimulation;
+  testBox?: RoofTestBox;
 }

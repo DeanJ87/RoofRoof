@@ -40,4 +40,6 @@ export const toConfigPayload = (source: Config): Config => ({
   ...(source.ui && { ui: { ...source.ui } }),
   // Advanced diagnostics (spec 017).
   ...(source.diag && { diag: { ...source.diag } }),
+  // The test box (spec 022).
+  ...(source.testBox && { testBox: { ...source.testBox } }),
 });

@@ -26,6 +26,7 @@ describe('reviewChecks', () => {
   it('lists every essential once, each with its page', () => {
     const ids = reviewChecks(base()).map((check) => check.id);
     expect(ids).toEqual([
+      'testBox',
       'password',
       'site',
       'clock',

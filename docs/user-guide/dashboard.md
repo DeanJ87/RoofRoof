@@ -43,12 +43,14 @@ What's shown, and where each piece of device state appears (or why it doesn't), 
 
 ![Roof card](../assets/screenshots/roof-card.png)
 
+While a [test box](test-box.md) bypass is set, a red banner runs across the top of every page and says which checks are bypassed and until when (or that they have expired, or are waiting for the clock).
+
 The **Roof** card shows the roof as its control task sees it, live:
 
 - the state as the pill top-right (**Closed**, **Open**, **Opening**, **Closing**, **Stopped**, **Unknown**, **Fault**), and the **Position** as a bar with the percentage open (**Unknown** until the roof reaches a magnet);
 - **Open**, **Close** and **Stop**;
 - with a latched fault, its text (the measured value and the limit) and **Clear fault**;
-- **Weather** and **Mount park**: the weather verdict and the park check exactly as the roof's own command checks see them now, each with its reason behind "?"; and **Automatic close** while the [close on unsafe weather](close-on-unsafe.md) is under way or standing down;
+- **Weather** and **Mount park**: the weather verdict and the park check exactly as the roof's own command checks see them now, each with its reason behind "?" (**Test box bypass** while a [test box](test-box.md) bypass stands in); and **Automatic close** while the [close on unsafe weather](close-on-unsafe.md) is under way or standing down;
 - **Daylight**: the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) as the device sees it: its mode and the sun's altitude against the threshold ("Sun 3.2° ≥ 0.0°"), or why the check can't run ("Location not set", "Clock not set"); with the mode off it says so. Below it, where the site came from and how old it is ("Location from SQMeter (GPS), read 3 min ago", "Typed-in location"), or why SQMeter's location isn't being read ([Site from SQMeter](close-on-unsafe.md#site-from-sqmeter)); this line is information, never a safety verdict;
 - **Supply**, **Motor current** (while current sense is on), the park switches and the rain contact (when fitted);
 - the **Hall reading** on its 0-4095 scale, with the low and high thresholds marked and where the reading is (at the low magnet, between the magnets, at the high magnet). Use it to [calibrate](../hardware/calibration.md).

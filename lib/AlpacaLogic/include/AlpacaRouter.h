@@ -48,8 +48,9 @@ namespace SQM
 
         // The one Dome the device offers: number 0, interface version 3 (spec 006).
         // `simulation` (spec 011): "bench" or "demo" put that at the start of
-        // the description; the name and UniqueID never change.
-        DeviceInfo domeDeviceInfo(const char *simulation = "off");
+        // the description; the name and UniqueID never change. Spec 022:
+        // `testBox` (TestBox::domePrefix, "TEST BOX (bypassed: ...): ") goes first.
+        DeviceInfo domeDeviceInfo(const char *simulation = "off", const std::string &testBox = std::string());
 
         // What the router needs from the device.
         class Backend

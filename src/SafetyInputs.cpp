@@ -1,7 +1,9 @@
 #include "SafetyInputs.h"
 
+#include "DeviceCore.h"
 #include "Logger.h"
 #include "MQTTClient.h"
+#include <ctime>
 #include <vector>
 
 namespace SQM
@@ -65,7 +67,10 @@ namespace SQM
     SafetyInputs::Settings SafetyInputs::settingsOf(const Config &config)
     {
         return Settings{
-            config.safety, config.park, config.mqtt.broker + ":" + std::to_string(config.mqtt.port) + "@" + config.mqtt.username};
+            config.safety,
+            config.park,
+            config.mqtt.broker + ":" + std::to_string(config.mqtt.port) + "@" + config.mqtt.username,
+            config.testBox};
     }
 
     void SafetyInputs::begin(const Config &config)
@@ -184,6 +189,12 @@ namespace SQM
         // a move under way may ride on.
         Safety::rememberNina(ninaMemory, snap.nina, snap.ninaGeneration);
         hold = Safety::closeHold(park, parkResult, ninaMemory);
+        // Spec 022: the owner's test-box bypasses, where every check reads them.
+        const int64_t epoch = static_cast<int64_t>(time(nullptr));
+        testBoxState = TestBox::evaluate(
+            settings.testBox, TestBox::sourcesOf(settings.safety, settings.park), epoch >= Core::CLOCK_VALID_EPOCH, epoch);
+        TestBox::applyWeather(verdict, testBoxState);
+        TestBox::applyPark(parkResult, hold, testBoxState);
 
         // Spec 015: a copy for GET /api/roof/inputs (the web server's task reads it).
         Safety::InputsReport next{verdict, parkResult, snap.nina, nowMs, snap.sqmeterGeneration, mqttGeneration, snap.ninaGeneration};
@@ -204,6 +215,19 @@ namespace SQM
         return copy;
     }
 
+    // Spec 022: at the first evaluation after a boot while a bypass is set (the
+    // reminder), and on every change of what is in effect.
+    void SafetyInputs::logTestBox()
+    {
+        const TestBox::State &now = testBoxState;
+        const bool changed = now.bits() != loggedBox.bits() || now.expired != loggedBox.expired ||
+                             now.waitingForClock != loggedBox.waitingForClock || now.until != loggedBox.until;
+        if ((!loggedTestBox && now.set) || (loggedTestBox && changed))
+            Logger::warn(TAG, "%s", now.set ? TestBox::describe(now).c_str() : "Test box bypasses off");
+        loggedTestBox = true;
+        loggedBox = now;
+    }
+
     void SafetyInputs::logChanges()
     {
         if (!logged || !sameWeather(verdict, loggedVerdict))
@@ -214,6 +238,7 @@ namespace SQM
             Logger::warn(TAG, "N.I.N.A. read failed: a move under way is %s", Safety::describe(hold, Safety::NINA_FRESH_MS).c_str());
         else if (!hold.riding && loggedRiding)
             Logger::info(TAG, "N.I.N.A. ride-through over: %s", hold.parked ? "parked reading again" : "park not confirmed");
+        logTestBox();
         logged = true;
         loggedVerdict = verdict;
         loggedPark = parkResult;

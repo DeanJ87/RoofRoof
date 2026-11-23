@@ -740,6 +740,14 @@
     {
       "match": "deps.D-47",
       "reason": "Shown on the followed groups' Settings rows (Time, Network, Roof, Alerts); a setting, not state the dashboard reports"
+    },
+    {
+      "match": "status.roof.testBox.**",
+      "reason": "Not a dashboard item: a red banner shows it on every page instead (components/TestBoxBanner.tsx, spec 022), and the Roof card's park and weather rows say Test box bypass"
+    },
+    {
+      "match": "deps.D-48",
+      "reason": "Shown on its Settings row (Roof, Test box); the test box banner says when the bypasses wait for the clock"
     }
   ]
 }

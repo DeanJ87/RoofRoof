@@ -1,9 +1,10 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
-import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConfig } from '../../types';
+import type { DaylightConfig, LocationConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
+import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
 import { SqmeterLoginFields } from './SqmeterLoginFields';
@@ -12,6 +13,8 @@ import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
 import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
+import { NinaUrlField, ParkSwitchesField, type ParkProps } from './ParkFields';
+export { NinaUrlField, ParkSwitchesField, type ParkProps };
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -281,41 +284,14 @@ const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
   </SettingsCard>
 );
 
-export type ParkProps = SettingsTabProps & { park: ParkConfig };
-
-// N.I.N.A.'s address and the park switches (also the setup wizard's pages, spec 015).
-export const NinaUrlField: FunctionalComponent<ParkProps> = ({ park, update, error }) => (
-  <Field label={t('settings.roof.ninaUrl')} hint={t('settings.roof.ninaUrlHint')} error={error('park.nina.url')}>
-    <TextInput
-      dataField="park.nina.url"
-      type="url"
-      value={park.nina.url}
-      placeholder="http://192.168.1.20:1888"
-      onInput={(v) => update(['park', 'nina', 'url'], v)}
-    />
-  </Field>
-);
-
-export const ParkSwitchesField: FunctionalComponent<ParkProps> = ({ park, update }) => (
-  <Field label={t('settings.roof.parkSwitches')} hint={t('settings.roof.parkSwitchesHint')}>
-    <SelectInput
-      dataField="park.switches"
-      value={park.switches}
-      options={[
-        { value: 'none', label: t('settings.roof.switchesNone') },
-        { value: 'one', label: t('settings.roof.switchesOne') },
-        { value: 'two', label: t('settings.roof.switchesTwo') },
-      ]}
-      onChange={(v) => update(['park', 'switches'], v)}
-    />
-  </Field>
-);
-
 const ParkCard: FunctionalComponent<ParkProps> = (props) => (
   <SettingsCard id="park" title={t('settings.roof.park')} hint={t('settings.roof.parkHint')}>
+    {/* Spec 022: a RoofRoof pointed at a N.I.N.A. asks it to park when unsafe. */}
+    <Note tone="warn">{t('settings.roof.liveNinaWarning')}</Note>
     <div class="form-grid">
       <NinaUrlField {...props} />
       <ParkSwitchesField {...props} />
+      <RequestParkToggle {...props} />
       <Num
         at={['park', 'timeoutSeconds']}
         label={t('settings.roof.parkTimeLimit')}
@@ -447,6 +423,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
       {park && <ParkCard {...props} park={park} />}
       {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}
+      {props.config.testBox && <TestBoxCard {...props} testBox={props.config.testBox} />}
     </>
   );
 };

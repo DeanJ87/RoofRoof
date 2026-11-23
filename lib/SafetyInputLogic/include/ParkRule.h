@@ -62,6 +62,9 @@ namespace SQM
             uint32_t ninaAgeMs = 0;
             uint32_t ninaMaxAgeMs = NINA_FRESH_MS;
             std::string ninaDetail; // N.I.N.A.'s failure text, if any
+            // Spec 022: parked only because the test box's park bypass ("no
+            // telescope") stands in for N.I.N.A. (TestBox::applyPark).
+            bool bypassed = false;
         };
 
         ParkResult evaluatePark(const ParkInputs &inputs);

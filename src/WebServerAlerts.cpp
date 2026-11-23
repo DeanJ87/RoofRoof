@@ -116,10 +116,9 @@ namespace SQM
     {
         if (step.outgoing.empty())
             return;
-        const Alerts::Alert stacked = Alerts::stackAlerts(step.outgoing);
-        if (!Core::alertGoesOut(stacked.type, cfg.alerts, alertSchedule.state().sending))
-            return;
-        alertDispatcher->dispatch(stacked, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+        // Spec 022: the test box reminder goes out on its own, past the pause and the send mode.
+        for (const Alerts::Alert &alert : Core::alertsToSend(step.outgoing, cfg.alerts, alertSchedule.state().sending))
+            alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }
 
     uint32_t WebServer::raiseRoofAlert(const Alerts::Alert &alert)

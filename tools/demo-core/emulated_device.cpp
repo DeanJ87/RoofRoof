@@ -11,6 +11,14 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
     Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
+    // Spec 022: the test box's deadline, as WebServer::handleSetConfig.
+    if (!ConfigSave::stampTestBox(
+            cfg.testBox,
+            next->testBox,
+            ConfigSave::sendsTestBoxHours(json),
+            ConfigSave::Clock{validEpoch() != 0, static_cast<uint32_t>(epoch)},
+            &reason))
+        return errorJson(reason);
     cfg = *next;
     if (roofBooted)
         roof.settingsChanged(cfg);
@@ -290,8 +298,8 @@ void EmulatedDevice::runAlerts()
 
     const Core::AlertSources sources{cfg};
     Core::AlertStep step = Core::runAlerts(engine, in, Core::alertRules(cfg), sources, Core::LocalClock{clockTime, clockDate});
-    if (!step.outgoing.empty() && schedule.state().sending && cfg.alerts.enabled)
-        record(Alerts::stackAlerts(step.outgoing), 0x0F);
+    for (const Alerts::Alert &alert : Core::alertsToSend(step.outgoing, cfg.alerts, schedule.state().sending))
+        record(alert, 0x0F);
 
     // After this pass's alerts: "disconnected" goes out before it pauses.
     const bool wasSending = schedule.state().sending;

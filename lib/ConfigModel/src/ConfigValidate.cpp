@@ -124,6 +124,8 @@ namespace SQM
                 if (!AlertsConfig::audibleSound(settings[i].second->sound))
                     return setError(error, "Alerts: the roof's critical alerts can't be silent or vibrate only");
             }
+            if (a.testBox.level < AlertsConfig::MIN_TEST_BOX_LEVEL)
+                return setError(error, "Alerts: the test box alert can't be off");
             for (const auto &entry : settings)
             {
                 if (entry.second->level > 4)
@@ -257,6 +259,15 @@ namespace SQM
         }
 
         // Spec 014: each policy value within the range that keeps constitution I-III.
+        // Spec 022.
+        bool validateTestBox(const Config &c, std::string *error)
+        {
+            const TestBoxConfig &t = c.testBox;
+            if (t.hours < TestBoxConfig::MIN_HOURS || t.hours > TestBoxConfig::MAX_HOURS)
+                return setError(error, "Test box: hours must be between 1 and 720");
+            return true;
+        }
+
         bool validateAutoClose(const Config &c, std::string *error)
         {
             const AutoCloseConfig &a = c.autoClose;
@@ -383,6 +394,7 @@ namespace SQM
             [](const Config &c, std::string *e) { return validateSqmeterLogin(c.safety, e); },
             validateDaylight,
             validateAutoClose,
+            validateTestBox,
         };
         for (Check check : CHECKS)
             if (!check(*this, error))

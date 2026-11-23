@@ -160,7 +160,8 @@ namespace SQM
             bool StateKey::operator==(const StateKey &o) const
             {
                 return state == o.state && fault == o.fault && positionKnown == o.positionKnown && closePending == o.closePending &&
-                       closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed;
+                       closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed && testBox == o.testBox &&
+                       testBoxFlags == o.testBoxFlags;
             }
 
             StateKey keyOf(const Snapshot &snapshot)
@@ -173,6 +174,9 @@ namespace SQM
                 key.closePhase = snapshot.closePhase != nullptr ? snapshot.closePhase : "";
                 key.weather = snapshot.weather;
                 key.parkConfirmed = snapshot.parkConfirmed;
+                const TestBox::State &box = snapshot.testBox;
+                key.testBox = box.bits();
+                key.testBoxFlags = static_cast<uint8_t>((box.set ? 1 : 0) | (box.expired ? 2 : 0) | (box.waitingForClock ? 4 : 0));
                 return key;
             }
 

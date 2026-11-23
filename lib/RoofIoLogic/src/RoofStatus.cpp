@@ -141,6 +141,22 @@ namespace SQM
             out["maxStepGapMs"] = s.maxStepGapMs;
             out["maxWatchdogBeatAgeMs"] = s.maxWatchdogBeatAgeMs;
             out["simulation"] = s.simulation != nullptr ? s.simulation : "off";
+            writeTestBox(out, s.testBox);
+        }
+
+        void writeTestBox(JsonObject out, const TestBox::State &state)
+        {
+            JsonObject box = out.createNestedObject("testBox");
+            box["set"] = state.set;
+            box["active"] = state.active();
+            box["park"] = state.park;
+            box["weather"] = state.weather;
+            box["daylight"] = state.daylight;
+            box["until"] = state.until;
+            box["expired"] = state.expired;
+            box["waitingForClock"] = state.waitingForClock;
+            box["parkRequests"] = state.parkRequests;
+            box["text"] = TestBox::describe(state);
         }
 
         void writeDaylight(JsonObject out, const Snapshot &s)

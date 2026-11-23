@@ -96,6 +96,7 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   daylight_open: { title: t('settings.alerts.daylightOpenTitle'), message: t('settings.alerts.daylightOpenMessage') },
   daylight_closed: { title: t('settings.alerts.daylightClosedTitle'), message: t('settings.alerts.daylightClosedMessage') },
   daylight_unknown: { title: t('settings.alerts.daylightUnknownTitle'), message: t('settings.alerts.daylightUnknownMessage') },
+  test_box: { title: t('settings.alerts.testBoxTitle'), message: t('settings.alerts.testBoxMessage') },
   client_lost: {
     title: t('settings.alerts.imagingAppStoppedChecking'),
     message: t('settings.alerts.noRequestToTheDevice'),
@@ -128,6 +129,13 @@ const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_di
 export const CRITICAL_EVENTS: AlertEventKey[] = ['mount_not_parked', 'roof_not_closed'];
 export const isCriticalEvent = (key: AlertEventKey) => CRITICAL_EVENTS.includes(key);
 export const CRITICAL_LEVEL_OPTIONS = LEVEL_OPTIONS.filter((option) => Number(option.value) >= 3);
+// Spec 022: the test box reminder is never off.
+export const levelOptionsFor = (key: AlertEventKey) =>
+  isCriticalEvent(key)
+    ? CRITICAL_LEVEL_OPTIONS
+    : key === 'test_box'
+      ? LEVEL_OPTIONS.filter((option) => Number(option.value) >= 1)
+      : LEVEL_OPTIONS;
 
 export const varHelp = (key: AlertEventKey, name: string) =>
   (CLIENT_EVENTS.includes(key) ? CLIENT_VAR_HELP[name] : undefined) ?? VAR_HELP[name];

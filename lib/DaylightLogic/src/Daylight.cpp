@@ -16,6 +16,25 @@ namespace SQM
                 std::snprintf(text, sizeof(text), "%.1f°", value);
                 return text;
             }
+
+            std::string describeState(const View &view)
+            {
+                switch (view.state)
+                {
+                case State::Off:
+                    return "Off";
+                case State::Unknown:
+                    return view.missing == Missing::Clock ? "Clock not set" : "Location not set";
+                case State::Day:
+                    if (view.altitudeDeg < static_cast<double>(view.limitDeg))
+                        return "Sun " + degrees(view.altitudeDeg) + ", day until < " +
+                               degrees(static_cast<double>(view.limitDeg) - static_cast<double>(view.bandDeg));
+                    return "Sun " + degrees(view.altitudeDeg) + " ≥ " + degrees(view.limitDeg);
+                case State::Night:
+                    break;
+                }
+                return "Sun " + degrees(view.altitudeDeg) + " < " + degrees(view.limitDeg);
+            }
         } // namespace
 
         Settings settingsFrom(const Config &config)
@@ -39,6 +58,7 @@ namespace SQM
             lastLimitDeg = settings.limitDeg;
             View v;
             v.mode = settings.mode;
+            v.bypassed = settings.testBox;
             v.limitDeg = settings.limitDeg;
             // Spec 014: the band is a setting, clamped to its range (never 0: the state would flicker).
             v.bandDeg = !(settings.bandDeg >= MIN_BAND_DEG) ? MIN_BAND_DEG
@@ -86,21 +106,10 @@ namespace SQM
 
         std::string describe(const View &view)
         {
-            switch (view.state)
-            {
-            case State::Off:
-                return "Off";
-            case State::Unknown:
-                return view.missing == Missing::Clock ? "Clock not set" : "Location not set";
-            case State::Day:
-                if (view.altitudeDeg < static_cast<double>(view.limitDeg))
-                    return "Sun " + degrees(view.altitudeDeg) + ", day until < " +
-                           degrees(static_cast<double>(view.limitDeg) - static_cast<double>(view.bandDeg));
-                return "Sun " + degrees(view.altitudeDeg) + " ≥ " + degrees(view.limitDeg);
-            case State::Night:
-                break;
-            }
-            return "Sun " + degrees(view.altitudeDeg) + " < " + degrees(view.limitDeg);
+            std::string text = describeState(view);
+            if (view.bypassed && view.mode == Mode::Close && view.state == State::Day)
+                return text + " (close bypassed: test box)";
+            return text;
         }
 
         std::string actionText(Mode mode, bool closing)

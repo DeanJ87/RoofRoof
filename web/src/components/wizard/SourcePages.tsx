@@ -64,6 +64,10 @@ export const NinaScreen: FunctionalComponent<WizardPageProps> = (props) => {
   if (!park) return notSent;
   return (
     <div id="nina" class="card-group">
+      <Note tone="warn">{t('settings.roof.liveNinaWarning')}</Note>
+      <Note action={{ label: t('wizard.nina.useTestBox'), onClick: () => void props.goToPage(pageIndex('hardware')) }}>
+        {t('wizard.nina.noTelescope')}
+      </Note>
       <NinaUrlField {...props} park={park} />
       {!park.nina.url && <Note tone="bad">{t('wizard.nina.noUrl')}</Note>}
       <TestPanel part="nina" save={props.saveForTest(NINA_FIELDS)} dirty={props.dirty} />

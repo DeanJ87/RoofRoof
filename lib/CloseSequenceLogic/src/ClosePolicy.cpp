@@ -39,6 +39,7 @@ namespace SQM
             p.closeGuardSlackMs = static_cast<uint64_t>(a.closeGuardSeconds) * 1000u;
             p.remindMs = static_cast<uint64_t>(a.remindMinutes) * 60000u;
             p.retryNotStarted = a.notStarted == AutoCloseConfig::NotStarted::Retry;
+            p.requestPark = config.park.requestPark;
             return clamp(p);
         }
     } // namespace CloseSeq

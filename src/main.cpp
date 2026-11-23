@@ -6,6 +6,7 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
+#include <memory>
 #include <mutex>
 
 #include "CloseOnUnsafe.h"
@@ -102,13 +103,15 @@ void applySavedConfig()
 bool updateConfigCallback(const WebServer::EditConfig &edit)
 {
     const std::lock_guard<std::mutex> held(configSaveLock);
-    Config next = config;
-    if (!edit(config, next))
+    // On the heap: this runs on the async_tcp task, whose stack can't hold
+    // several ~2 KB settings copies (spec 022 bench: a save overflowed it).
+    const std::unique_ptr<Config> next(new Config(config));
+    if (!edit(config, *next))
         return false;
     // Spec 020 FR-008, FR-028: against the live settings, a copy taken before
     // the last location save or sync can't put older values back.
-    Site::keepFollowed(config, next);
-    config = next;
+    Site::keepFollowed(config, *next);
+    config = *next;
     const bool saved = config.save();
     if (!saved)
         return false;
@@ -401,7 +404,7 @@ void handleSafety()
     // stop of a close, spec 006) never lag the sequence.
     // Spec 013: daylight is handed over with them, at once when it starts
     // wanting the roof closed.
-    closeOnUnsafe.updateDaylight();
+    closeOnUnsafe.updateDaylight(safetyInputs->testBox().daylight);
     static bool handedCloses = false;
     const bool safeNow = safetyInputs->weather().safe();
     const bool closesNow = closeOnUnsafe.daylight().closes();

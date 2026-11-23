@@ -52,13 +52,17 @@ void test_a_change_is_due_after_the_minimum_gap(void)
     Snapshot s = closedRoof();
     schedule.published(Mqtt::keyOf(s), 1, 1000, true);
     // Every field of the key makes a change (the roof at rest).
-    Snapshot changed[6] = {s, s, s, s, s, s};
+    Snapshot changed[9] = {s, s, s, s, s, s, s, s, s};
     changed[0].status.state = Roof::State::Open;
     changed[1].status.fault.kind = Roof::FaultKind::Timeout;
     changed[2].status.positionKnown = false;
     changed[3].closePhase = "heldByPerson";
     changed[4].weather = Safety::Verdict::Unsafe;
     changed[5].parkConfirmed = false;
+    // Spec 022: a test box bypass coming into effect, being set, or expiring.
+    changed[6].testBox.set = changed[6].testBox.daylight = true;
+    changed[7].testBox.set = true;
+    changed[8].testBox.set = changed[8].testBox.expired = true;
     for (const Snapshot &c : changed)
     {
         const Mqtt::StateKey key = Mqtt::keyOf(c);

@@ -101,7 +101,7 @@ namespace SQM
     // started: a device that comes and goes would confuse clients.
     std::vector<Alpaca::DeviceInfo> WebServer::AlpacaBackend::devices() const
     {
-        return {Alpaca::domeDeviceInfo(Bench::SIMULATION)};
+        return {Alpaca::domeDeviceInfo(Bench::SIMULATION, TestBox::domePrefix(owner.testBoxState()))};
     }
 
     Alpaca::DomeStatus WebServer::AlpacaBackend::domeStatus() const

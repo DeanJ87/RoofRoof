@@ -57,6 +57,8 @@ namespace SQM
                  false},
                 {"sensor", "hall", "Hall reading", Group::Roof, "mdi:magnet", nullptr, nullptr, "value_json.roof.hall.counts", true},
                 {"binary_sensor", "fault", "Roof fault", Group::Roof, nullptr, "problem", nullptr, nullptr, false},
+                // Spec 022: on while a test-box bypass is in effect.
+                {"binary_sensor", "test_box", "Test box bypass", Group::Roof, "mdi:test-tube", "problem", nullptr, nullptr, false},
             };
 
             bool enabled(Group group, const Groups &groups)
@@ -108,6 +110,16 @@ namespace SQM
                 doc["json_attributes_template"] = "{{ (value_json.roof.fault or {}) | tojson }}";
             }
 
+            // Spec 022: on while a bypass is in effect; which, until when and
+            // the text as attributes.
+            void addTestBox(JsonDocument &doc, const std::string &base)
+            {
+                doc["state_topic"] = base + "/state";
+                doc["value_template"] = "{{ 'ON' if (value_json.roof.testBox or {}).active else 'OFF' }}";
+                doc["json_attributes_topic"] = base + "/state";
+                doc["json_attributes_template"] = "{{ (value_json.roof.testBox or {}) | tojson }}";
+            }
+
             // Where the entity's state comes from, and how to command it.
             void addStateTopic(JsonDocument &doc, const Entity &entity, const std::string &base, const Groups &groups)
             {
@@ -133,6 +145,8 @@ namespace SQM
                     addCover(doc, base, groups);
                 else if (object == "fault")
                     addFault(doc, base);
+                else if (object == "test_box")
+                    addTestBox(doc, base);
                 else
                     addSensor(doc, entity, base);
             }

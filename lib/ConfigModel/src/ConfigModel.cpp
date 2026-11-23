@@ -63,6 +63,7 @@ namespace SQM
             a.daylightOpen = {3, "", "", ""};
             a.daylightClosed = {2, "", "", ""};
             a.daylightUnknown = {2, "", "", ""};
+            a.testBox = {3, "", "", ""};
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSeconds = 120;
             a.cooldownSeconds = 300;
@@ -86,6 +87,9 @@ namespace SQM
             if (!audibleSound(event->sound))
                 event->sound.clear();
         }
+        // Spec 022: the test box reminder is never off.
+        if (testBox.level < MIN_TEST_BOX_LEVEL)
+            testBox.level = MIN_TEST_BOX_LEVEL;
     }
 
     Config Config::createDefault()
@@ -142,7 +146,13 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)
     {
-        std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
+        // No temporary: a ternary of `*baseConfig` and `createDefault()` built a
+        // third ~2 KB Config on the caller's stack (spec 022).
+        std::optional<Config> cfg;
+        if (baseConfig != nullptr)
+            cfg.emplace(*baseConfig);
+        else
+            cfg.emplace(createDefault());
         if (!applyJson(json, *cfg, baseConfig != nullptr, error))
             return std::nullopt;
         return cfg;

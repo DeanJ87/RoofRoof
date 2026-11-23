@@ -69,6 +69,12 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await expect(page.locator('[data-field="ntp.server1"]')).toHaveValue('uk.pool.ntp.org', { timeout: 30_000 });
   await proceed(page);
 
+  // Spec 022: is there a telescope under this roof yet? A real install keeps every check.
+  await onScreen(page, 'testBox');
+  await expect(dialog(page).getByRole('button', { name: 'Continue' })).toBeDisabled();
+  await choose(page, 'Yes, or there will be');
+  await proceed(page);
+
   // The live supply, compared with a meter reading.
   await onScreen(page, 'supply');
   await expect(page.locator('#supply')).toContainText(/\d+\.\d+ V/);
@@ -141,7 +147,8 @@ test('a new device answers every screen and finishes', async ({ page }) => {
   await proceed(page);
 
   await onScreen(page, 'review');
-  await expect(page.locator('[data-check]')).toHaveCount(13);
+  await expect(page.locator('[data-check]')).toHaveCount(14);
+  await expect(page.locator('[data-check="testBox"]')).toHaveAttribute('data-state', 'ok');
   await expect(page.locator('[data-check="password"]')).toHaveAttribute('data-state', 'ok');
   await expect(page.locator('[data-check="weather"]')).toHaveAttribute('data-state', 'ok');
   await expect(page.locator('[data-check="nina"]')).toHaveAttribute('data-state', 'ok');
