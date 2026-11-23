@@ -111,6 +111,7 @@ code {
   --choice-tint: rgba(85, 199, 242, 0.08); /* a chosen card's surface */
   --shadow-dialog: 0 30px 80px rgba(0, 0, 0, 0.55);
   --radius-choice: 0.75rem;
+  --radius-check: 0.3rem; /* a checkbox choice card's mark (DS-12) */
   /* One theme, the night one, whatever the browser prefers (spec 018): its own
      controls and scrollbars follow. */
   color-scheme: dark;
@@ -2856,6 +2857,10 @@ main:focus {
   height: 1.35rem;
   border: 2px solid var(--control-edge);
   border-radius: 999px;
+}
+
+.is-multiple .choice-mark {
+  border-radius: var(--radius-check);
 }
 
 .choice.is-checked .choice-mark {

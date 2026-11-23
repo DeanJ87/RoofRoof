@@ -1,59 +1,36 @@
 import type { FunctionalComponent } from 'preact';
 import type { WizardPageProps } from './context';
 import { WIZARD_PAGES, pageIndex, type WizardPageId } from './pages';
-import { NameScreen, PasswordScreen, SiteScreen, SqmeterScreen, TimeScreen } from './DevicePages';
-import {
-  CalibrationScreen,
-  TeachScreen,
-  CurrentScreen,
-  HallFittedScreen,
-  HallScreen,
-  MotionScreen,
-  ParkSwitchesScreen,
-  TestBoxScreen,
-  SupplyScreen,
-} from './HardwarePages';
+import { NameScreen, PasswordScreen, SiteScreen, SqmeterScreen, siteFromSqmeter } from './DevicePages';
+import { MotionScreen, ParkSwitchesScreen, TestBoxScreen } from './HardwarePages';
 import { BoardScreen, NetworkScreen, WiringScreen } from './BoardPages';
+import { CalibrationScreen, DirectionScreen, TeachScreen } from './MotorPages';
 import { hasEthernet } from '../../lib/pinsView';
-import {
-  AlertChannelScreen,
-  AlertDetailsScreen,
-  AlpacaScreen,
-  DaylightScreen,
-  NinaScreen,
-  WeatherAddressScreen,
-  WeatherSourceScreen,
-} from './SourcePages';
+import { AlertsScreen, DaylightScreen, NinaScreen, alertChannelsOn } from './SourcePages';
 import { ReviewScreen } from './ReviewPage';
 
-// The wizard's screens (spec 018 FR-007): one question each, grouped under
-// spec 015's pages, whose index stays `setup.step` (the resume point).
+// The wizard's screens (specs 018 and 025): one question each, in the
+// installer's order, grouped under the parts whose index is `setup.step`.
+// Whether a screen shows comes from the settings and the device's status only,
+// never from anything kept in the open page, so a reload asks the same things.
 
 export type ScreenId =
   | 'name'
-  | 'password'
+  | 'network'
+  | 'board'
+  | 'wiring'
+  | 'testBox'
   | 'sqmeter'
   | 'site'
-  | 'time'
-  | 'board'
-  | 'network'
-  | 'testBox'
-  | 'supply'
-  | 'current'
+  | 'daylight'
   | 'parkSwitches'
-  | 'wiring'
-  | 'hallFitted'
-  | 'hall'
+  | 'nina'
+  | 'direction'
   | 'teach'
   | 'calibrate'
   | 'motion'
-  | 'weatherSource'
-  | 'weatherAddress'
-  | 'nina'
-  | 'alpaca'
-  | 'alertChannel'
-  | 'alertDetails'
-  | 'daylight'
+  | 'alerts'
+  | 'password'
   | 'review';
 
 export interface Screen {
@@ -62,58 +39,40 @@ export interface Screen {
   Body: FunctionalComponent<WizardPageProps>;
   // A choice screen: answered once a choice shows (FR-006, FR-009).
   choice?: boolean;
-  // Left out (and out of the progress count) while false.
+  // Left out (and out of the progress count) while false; it still opens when asked for by id.
   shows?: (props: WizardPageProps) => boolean;
   // Continue waits for this (besides a choice).
   answered?: (props: WizardPageProps) => boolean;
 }
 
-const hallFitted = (p: WizardPageProps) => !p.hallNotFitted;
 const boardChosen = (p: WizardPageProps) => !p.config.pins || p.config.pins.preset !== 'unset';
-const hasSource = (p: WizardPageProps) => Boolean(p.config.safety?.http.enabled || p.config.safety?.mqtt.enabled);
-// Spec 022: a test box skips the sources its bypasses stand in for.
+// Spec 022: a test box skips N.I.N.A., which its park bypass stands in for.
 const noParkBypass = (p: WizardPageProps) => !p.config.testBox?.park;
-const noWeatherBypass = (p: WizardPageProps) => !p.config.testBox?.weather;
-const alertsOn = (p: WizardPageProps) => {
-  const a = p.config.alerts;
-  return Boolean(a?.enabled && (a.ntfy.enabled || a.pushover.enabled || a.webhook.enabled || a.mqtt.enabled));
-};
+const passwordAnswered = (p: WizardPageProps) => !p.config.auth.enabled || p.config.auth.password !== '';
 
 export const SCREENS: Screen[] = [
-  { id: 'name', page: 'device', Body: NameScreen, answered: (p) => p.config.deviceName.trim() !== '' },
-  {
-    id: 'password',
-    page: 'device',
-    Body: PasswordScreen,
-    choice: true,
-    answered: (p) => !p.config.auth.enabled || p.config.auth.password !== '',
-  },
-  // Spec 020: SQMeter's address and the copy of its site settings, first on the page.
-  { id: 'sqmeter', page: 'site', Body: SqmeterScreen },
-  { id: 'site', page: 'site', Body: SiteScreen },
-  { id: 'time', page: 'site', Body: TimeScreen },
-  // Spec 023: the board first (nothing is driven until one is chosen), the
-  // network mode on a board with Ethernet, and the wiring check last.
-  { id: 'board', page: 'hardware', Body: BoardScreen, answered: boardChosen },
-  { id: 'network', page: 'hardware', Body: NetworkScreen, shows: (p) => hasEthernet(p.status) },
-  // Spec 022: is there a telescope under this roof yet? (after the board, which drives nothing until chosen)
-  { id: 'testBox', page: 'hardware', Body: TestBoxScreen, choice: true },
-  { id: 'supply', page: 'hardware', Body: SupplyScreen },
-  { id: 'current', page: 'hardware', Body: CurrentScreen, choice: true },
-  { id: 'parkSwitches', page: 'hardware', Body: ParkSwitchesScreen, choice: true },
-  { id: 'wiring', page: 'hardware', Body: WiringScreen },
-  { id: 'hallFitted', page: 'hall', Body: HallFittedScreen, choice: true },
-  { id: 'hall', page: 'hall', Body: HallScreen, shows: hallFitted },
+  { id: 'name', page: 'network', Body: NameScreen, answered: (p) => p.config.deviceName.trim() !== '' },
+  { id: 'network', page: 'network', Body: NetworkScreen, shows: (p) => hasEthernet(p.status) },
+  // Spec 023: nothing is driven until a board is chosen.
+  { id: 'board', page: 'board', Body: BoardScreen, answered: boardChosen },
+  { id: 'wiring', page: 'wiring', Body: WiringScreen },
+  // Spec 022: is there a telescope under this roof yet?
+  { id: 'testBox', page: 'testBox', Body: TestBoxScreen, choice: true },
+  // Spec 020: SQMeter once (address, login, copy, weather); what it supplies isn't asked again.
+  { id: 'sqmeter', page: 'sqmeter', Body: SqmeterScreen },
+  { id: 'site', page: 'sqmeter', Body: SiteScreen, shows: (p) => !siteFromSqmeter(p.config) },
+  { id: 'daylight', page: 'sqmeter', Body: DaylightScreen, choice: true },
+  { id: 'parkSwitches', page: 'park', Body: ParkSwitchesScreen, choice: true },
+  { id: 'nina', page: 'park', Body: NinaScreen, shows: noParkBypass },
+  // Specs 019 and 016 inside the wizard: each move attended, every gate kept.
+  { id: 'direction', page: 'direction', Body: DirectionScreen, choice: true, answered: (p) => p.direction !== 'no' },
   { id: 'teach', page: 'teach', Body: TeachScreen },
   { id: 'calibrate', page: 'calibrate', Body: CalibrationScreen },
-  { id: 'motion', page: 'motion', Body: MotionScreen },
-  { id: 'weatherSource', page: 'weather', Body: WeatherSourceScreen, choice: true, answered: hasSource, shows: noWeatherBypass },
-  { id: 'weatherAddress', page: 'weather', Body: WeatherAddressScreen, shows: (p) => hasSource(p) && noWeatherBypass(p) },
-  { id: 'nina', page: 'nina', Body: NinaScreen, shows: noParkBypass },
-  { id: 'alpaca', page: 'nina', Body: AlpacaScreen, choice: true },
-  { id: 'alertChannel', page: 'alerts', Body: AlertChannelScreen, choice: true, answered: alertsOn },
-  { id: 'alertDetails', page: 'alerts', Body: AlertDetailsScreen, shows: alertsOn },
-  { id: 'daylight', page: 'daylight', Body: DaylightScreen, choice: true },
+  // "Enter manually instead": opened from the motor screens only.
+  { id: 'motion', page: 'calibrate', Body: MotionScreen, shows: () => false },
+  // Several channels or none: answered once one is on or the person ticked something.
+  { id: 'alerts', page: 'alerts', Body: AlertsScreen, answered: (p) => p.chosen || alertChannelsOn(p).length > 0 },
+  { id: 'password', page: 'password', Body: PasswordScreen, choice: true, answered: passwordAnswered },
   { id: 'review', page: 'review', Body: ReviewScreen },
 ];
 
@@ -144,16 +103,16 @@ export const progressOf = (index: number, props: WizardPageProps): [number, numb
   return [shown.filter((i) => i < index).length + 1, shown.length + extra];
 };
 
-/** The first screen of spec 015's page `page` (an index into WIZARD_PAGES). */
+/** The first screen of part `page` (an index into WIZARD_PAGES). */
 export const firstScreenOf = (page: number): number => {
-  const id = WIZARD_PAGES[page]?.id ?? 'device';
+  const id = WIZARD_PAGES[page] ?? 'network';
   return Math.max(
     0,
     SCREENS.findIndex((screen) => screen.page === id),
   );
 };
 
-/** The page a screen saves as `setup.step`. */
+/** The part a screen saves as `setup.step`. */
 export const stepOf = (index: number): number => pageIndex(SCREENS[index].page);
 
 /** Continue is available: the choice made (when a choice screen) and the screen's own rule. */

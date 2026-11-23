@@ -329,7 +329,9 @@ export interface Choice {
  * One question's answers as large cards (DS-12): a radio group of native
  * radios, so arrow keys move and wrap, Space selects and the group is one tab
  * stop. `value` null: nothing chosen yet. The checked card has an edge, a tint
- * and a check mark, never colour alone.
+ * and a check mark, never colour alone. `multiple`: a question with several
+ * answers is a group of native checkboxes (`values`); `onChange` gets the one
+ * toggled.
  */
 export const ChoiceGroup: FunctionalComponent<{
   name: string;
@@ -337,21 +339,26 @@ export const ChoiceGroup: FunctionalComponent<{
   value: string | null;
   onChange: (value: string) => void;
   options: Choice[];
-}> = ({ name, labelledBy, value, onChange, options }) => {
+  multiple?: boolean;
+  values?: string[];
+}> = ({ name, labelledBy, value, onChange, options, multiple, values }) => {
   const id = useId();
+  const on = (option: Choice) => (multiple ? Boolean(values?.includes(option.value)) : option.value === value);
   return (
-    <div class="choice-group" role="radiogroup" aria-labelledby={labelledBy} data-choice-group={name}>
+    <div
+      class={`choice-group${multiple ? ' is-multiple' : ''}`}
+      role={multiple ? 'group' : 'radiogroup'}
+      aria-labelledby={labelledBy}
+      data-choice-group={name}
+    >
       {options.map((option, index) => (
-        <label
-          key={option.value}
-          class={`choice${option.value === value ? ' is-checked' : ''}${option.unavailable ? ' is-unavailable' : ''}`}
-        >
+        <label key={option.value} class={`choice${on(option) ? ' is-checked' : ''}${option.unavailable ? ' is-unavailable' : ''}`}>
           <input
-            type="radio"
+            type={multiple ? 'checkbox' : 'radio'}
             class="choice-input"
             name={name}
             value={option.value}
-            checked={option.value === value}
+            checked={on(option)}
             disabled={Boolean(option.unavailable)}
             aria-labelledby={`${id}-${index}`}
             aria-describedby={

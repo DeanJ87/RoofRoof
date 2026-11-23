@@ -150,8 +150,8 @@ again shows the same part with the answers kept.
 
 **Acceptance Scenarios**:
 
-1. **Given** the alerts screen with MQTT ticked and MQTT off, **Then** MQTT's broker fields and its
-   on switch are on the same screen.
+1. **Given** the alerts screen with MQTT off on the device, **When** MQTT is ticked, **Then** MQTT
+   is turned on and its broker fields are on the same screen.
 2. **Given** Custom chosen on the board screen, **Then** the pin fields and the device's pin issues
    show on that screen.
 3. **Given** a save-and-leave link, **When** it is used and the person returns to the wizard,
@@ -259,8 +259,10 @@ site and time screen doesn't show; the SQMeter screen lists them as from SQMeter
 - **FR-004**: No screen MAY change a setting by itself when it opens. A choice that matches the
   factory value (no password, no park switches) MUST be shown as chosen whenever the person has
   passed that screen before (the resume point is beyond it) and stay as saved.
-- **FR-005**: No answer MAY live only in the open page. The Hall "fitted" question and the
-  single-channel alert pick are removed; the alert channels are read from the settings.
+- **FR-005**: No setting's answer MAY live only in the open page. The Hall "fitted" question and
+  the single-channel alert pick are removed; the alert channels are read from the settings. The
+  direction check's answer is a confirmation, like "I am at the roof": asked again on a screen not
+  yet passed, never saved.
 
 **Never sends you out**
 
@@ -315,7 +317,8 @@ site and time screen doesn't show; the SQMeter screen lists them as from SQMeter
 - **FR-021**: The alerts screen MUST be a multiple choice of ntfy, Pushover, webhook and MQTT, plus
   "No alerts for now", which clears the others; any choice can be unticked.
 - **FR-022**: Each ticked channel's fields MUST show on the same screen, with Send test once saved;
-  MQTT ticked shows MQTT's on switch and broker fields when MQTT is off.
+  ticking MQTT while MQTT is off turns MQTT on and shows its broker fields there (unticking puts it
+  back as the device had it, unless the weather still reads SQMeter over MQTT).
 - **FR-023**: A refused save MUST show each field's error next to the field, and the screen's note
   MUST name the fields to fix rather than only count them.
 

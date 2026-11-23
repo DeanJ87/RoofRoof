@@ -182,39 +182,29 @@ const Marks: FunctionalComponent<{ teach: TeachStatus | null; ready: boolean; on
   </>
 );
 
-interface TeachCardProps {
-  teach: TeachStatus | null;
+interface JogPanelProps {
   roof: RoofStatus;
   config: RoofConfig;
   checks: ComponentChildren;
   blocked: string; // why a jog can't start now ('' when it can, apart from the confirmation)
-  onChanged: () => void;
+  onPress?: () => void;
 }
 
-const TeachCard: FunctionalComponent<TeachCardProps> = ({ teach, roof, config, checks, blocked, onChanged }) => {
+/**
+ * The attended jog (spec 019): the checks, "I am at the roof", the live Hall reading and the
+ * hold buttons, with Stop while the roof moves. Also the setup wizard's direction screen (spec 025).
+ */
+export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, onPress }) => {
   const [attended, setAttended] = useState(false);
   const [problem, setProblem] = useState('');
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const jog = useJog((text) => setProblem(text || t('teach.jogEnded')));
-  const moving = roof.state === 'opening' || roof.state === 'closing';
   const press = (direction: JogDirection) => {
     setProblem('');
-    setOutcome(null);
+    onPress?.();
     jog.press(direction);
   };
-  const mark = async (at: TeachPlace) => {
-    const answer = await markTeach(at);
-    setProblem(answer.ok ? '' : answer.text || t('teach.notMarked'));
-    setOutcome(null);
-    onChanged();
-  };
-  const done = (next: Outcome) => {
-    setOutcome(next);
-    onChanged();
-  };
   return (
-    <SettingsCard id="teach" title={t('teach.title')} hint={t('teach.hint')}>
-      <Note>{t('teach.intro')}</Note>
+    <>
       {checks}
       <Toggle
         dataField="teach.attended"
@@ -227,16 +217,46 @@ const TeachCard: FunctionalComponent<TeachCardProps> = ({ teach, roof, config, c
       <HallScale counts={roof.hall.counts} low={config.hallLowCounts} high={config.hallHighCounts} />
       <JogControls
         why={blocked || (attended ? '' : t('calibrate.reason.notAttended'))}
-        moving={moving}
+        moving={roof.state === 'opening' || roof.state === 'closing'}
         held={jog.active}
         onPress={press}
         onRelease={jog.release}
       />
       {problem && <Note tone="bad">{problem}</Note>}
+    </>
+  );
+};
+
+interface TeachCardProps extends JogPanelProps {
+  teach: TeachStatus | null;
+  onChanged: () => void;
+  plain?: boolean; // in the setup wizard's dialog (spec 025): no card, no intro
+}
+
+const TeachCard: FunctionalComponent<TeachCardProps> = (props) => {
+  const { teach, roof, config, onChanged, plain } = props;
+  const [problem, setProblem] = useState('');
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const moving = roof.state === 'opening' || roof.state === 'closing';
+  const mark = async (at: TeachPlace) => {
+    const answer = await markTeach(at);
+    setProblem(answer.ok ? '' : answer.text || t('teach.notMarked'));
+    setOutcome(null);
+    onChanged();
+  };
+  const done = (next: Outcome) => {
+    setOutcome(next);
+    onChanged();
+  };
+  return (
+    <SettingsCard id="teach" title={t('teach.title')} hint={t('teach.hint')} plain={plain}>
+      {!plain && <Note>{t('teach.intro')}</Note>}
+      <JogPanel {...props} onPress={() => setOutcome(null)} />
+      {problem && <Note tone="bad">{problem}</Note>}
       <Marks teach={teach} ready={teach?.rest.ready === true && !moving} onMark={(at) => void mark(at)} />
       {teach?.proposal && <Proposal proposal={teach.proposal} config={config} onDone={done} />}
       {outcome && <Note tone={outcome.tone}>{outcome.text}</Note>}
-      <Note>{t('teach.next')}</Note>
+      {!plain && <Note>{t('teach.next')}</Note>}
     </SettingsCard>
   );
 };

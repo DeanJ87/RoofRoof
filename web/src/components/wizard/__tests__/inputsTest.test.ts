@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { RoofInputs } from '../../../types';
 import { mockConfig, mockInputs } from '../../../mocks/data';
 import { testAnswered as answered, type TestPart } from '../inputsTest';
-import { meterCheck } from '../HardwarePages';
 
 // Spec 015 FR-009, research R4: a Test's answer is a reading of the saved
 // settings, never one from before the save.
@@ -124,20 +123,5 @@ describe('testAnswered', () => {
     const before = doc();
     const failed = doc((d) => ((d.nina.generation += 1), (d.nina.state = 'unreachable')));
     expect(testAnswered(failed, 'nina', before, true)).toBe(true);
-  });
-});
-
-describe('meterCheck', () => {
-  it('agrees within 0.2 V, either way', () => {
-    expect(meterCheck(12.6, 12.8)).toBe('agrees');
-    expect(meterCheck(12.6, 12.4)).toBe('agrees');
-    expect(meterCheck(12.6, 12.81)).toBe('differs');
-    expect(meterCheck(12.6, 12.39)).toBe('differs');
-  });
-
-  it('says nothing without both readings', () => {
-    expect(meterCheck(null, 12.6)).toBe('none');
-    expect(meterCheck(12.6, Number.NaN)).toBe('none');
-    expect(meterCheck(12.6, 0)).toBe('none');
   });
 });

@@ -36,6 +36,8 @@ export interface WiringCheckPanelProps {
   doc: PinsDocument | null;
   // Offered when the check found Ethernet on a board set up without it.
   onChoosePreset?: (preset: 'wt32-carrier-v1') => void;
+  // The link to jog and teach (the setup wizard has its own motor screens, spec 025).
+  teachLink?: boolean;
 }
 
 const count = (results: WiringCheckResult[], level: WiringCheckResult['level']) =>
@@ -52,7 +54,16 @@ const CheckLive: FunctionalComponent<{ problem: string | null; finished: WiringC
   </div>
 );
 
-export const WiringCheckPanel: FunctionalComponent<WiringCheckPanelProps> = ({ doc, onChoosePreset }) => {
+const SuggestNote: FunctionalComponent<{ onChoosePreset: (preset: 'wt32-carrier-v1') => void }> = ({ onChoosePreset }) => (
+  <Note tone="warn" action={{ label: t('pins.check.usePreset'), onClick: () => onChoosePreset('wt32-carrier-v1') }}>
+    {t('pins.check.suggest')}
+  </Note>
+);
+
+const TeachLink: FunctionalComponent<{ shown?: boolean }> = ({ shown = true }) =>
+  !shown ? null : <Note action={{ label: t('pins.check.openTeach'), onClick: () => route('/calibrate') }}>{t('pins.check.motion')}</Note>;
+
+export const WiringCheckPanel: FunctionalComponent<WiringCheckPanelProps> = ({ doc, onChoosePreset, teachLink }) => {
   const { check, running, problem, start } = useWiringCheck();
   const blocked = checkBlocked(doc);
   const results = check?.state === 'done' ? check.checks.filter((result) => result.id !== 'motion') : [];
@@ -79,12 +90,8 @@ export const WiringCheckPanel: FunctionalComponent<WiringCheckPanelProps> = ({ d
       {results.map((result) => (
         <ResultRow key={result.id} check={result} />
       ))}
-      {check?.suggestPreset && onChoosePreset && (
-        <Note tone="warn" action={{ label: t('pins.check.usePreset'), onClick: () => onChoosePreset('wt32-carrier-v1') }}>
-          {t('pins.check.suggest')}
-        </Note>
-      )}
-      <Note action={{ label: t('pins.check.openTeach'), onClick: () => route('/calibrate') }}>{t('pins.check.motion')}</Note>
+      {check?.suggestPreset && onChoosePreset && <SuggestNote onChoosePreset={onChoosePreset} />}
+      <TeachLink shown={teachLink} />
     </div>
   );
 };

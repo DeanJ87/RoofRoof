@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
+import Router from 'preact-router';
 import Wizard from '../Wizard';
 import { SCREENS } from '../wizard/screens';
 import type { SystemStatus } from '../../types';
@@ -11,10 +12,11 @@ import { server } from '../../test/mswServer';
 vi.mock('../../hooks/useWebSocket', () => ({ useWebSocket: vi.fn() }));
 import { useWebSocket } from '../../hooks/useWebSocket';
 
-// Specs 015 and 018: the wizard as a dialog of one-question screens; every
-// spec 015 guarantee (saves through the settings API with the step, refused
-// saves, discards on leaving a screen, Test freshness, skip, finish, no roof
-// command on any screen) on the new screens.
+// Specs 015, 018 and 025: the wizard as a dialog of one-question screens in the
+// installer's order; every spec 015 guarantee (saves through the settings API
+// with the part, refused saves, discards on leaving a screen, Test freshness,
+// skip, finish); progress that survives a reload in every setup state; alerts
+// as a multiple choice with their fields inline.
 
 const live = (status: SystemStatus = mockStatus) =>
   vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data: status, connected: true, lastMessageAt: Date.now() });
@@ -41,6 +43,8 @@ const onScreen = (id: string) =>
   waitFor(() => expect(document.querySelector('[data-wizard-screen]')).toHaveAttribute('data-wizard-screen', id));
 const button = (name: string) => screen.getByRole('button', { name });
 const PASSWORD_SET = { auth: { enabled: true, username: 'admin', password: '********' } };
+const NO_PASSWORD = { auth: { enabled: false, username: 'admin', password: '' } };
+const MOTOR = ['direction', 'teach', 'calibrate'];
 
 describe('Wizard', () => {
   beforeEach(() => live());
@@ -52,22 +56,41 @@ describe('Wizard', () => {
     expect(await question()).toHaveTextContent('What should we call this roof?');
     const dialog = screen.getByRole('dialog', { name: 'What should we call this roof?' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 24');
+    // SC-002: the mock DevKit with its site typed in: 15 screens (no network question, no manual values).
+    expect(within(dialog).getByRole('progressbar', { name: 'Setup progress' })).toHaveAttribute('aria-valuetext', 'Screen 1 of 15');
     expect(within(dialog).getByRole('complementary')).toHaveTextContent('Why this matters');
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull(); // the first screen
   });
 
-  it('opens at the first screen of the page saved last while setup is new', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 3 } } });
+  it('opens at the first screen of the part saved last', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
     render(<Wizard />);
-    expect(await question()).toHaveTextContent('Is the Hall sensor fitted?');
+    expect(await question()).toHaveTextContent('Where is SQMeter?');
   });
 
-  it('opens at page 1 from the System page, and at one screen with ?screen=', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 6 } } });
+  // FR-003: a re-run from System (setup done) that was left part-way resumes, not at the start.
+  it('resumes at the saved part in every setup state', async () => {
+    for (const state of ['new', 'offered', 'done'] as const) {
+      mockDevice({ config: { setup: { state, step: 9 } } });
+      render(<Wizard />);
+      await onScreen('alerts');
+      cleanup();
+    }
+  });
+
+  it('applies an explicit start once: ?step=1 and ?screen= open there, then the address resumes', async () => {
+    mockDevice({ config: { setup: { state: 'done', step: 6 } } });
     at('step=1');
-    render(<Wizard />);
+    render(
+      <Router>
+        <Wizard path="/wizard" />
+      </Router>,
+    );
     await onScreen('name');
+    await waitFor(() => expect(window.location.search).toBe(''));
+    cleanup();
+    render(<Wizard />); // a reload: no start in the address any more
+    await onScreen('direction');
     cleanup();
     at('screen=parkSwitches');
     render(<Wizard />);
@@ -75,10 +98,9 @@ describe('Wizard', () => {
   });
 
   it('on a new device a choice waits for an answer, with the reason', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
-    at('screen=parkSwitches');
+    mockDevice({ config: { setup: { state: 'new', step: 5 } } });
     render(<Wizard />);
-    await question();
+    await onScreen('parkSwitches');
     const group = screen.getByRole('radiogroup', { name: 'How many park switches are fitted?' });
     expect(
       within(group)
@@ -102,93 +124,93 @@ describe('Wizard', () => {
     expect(button('Continue')).toBeEnabled();
   });
 
-  it('starts with a password chosen when none is set, and warns without one', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 0 } } });
-    at('screen=password');
+  // The reported bug (spec 025 R1): the screen used to turn protection back on when it opened.
+  it('never changes the password setting when its screen opens; "No password" is kept across visits', async () => {
+    mockDevice({ config: { ...NO_PASSWORD, setup: { state: 'new', step: 10 } } });
+    const saves = recordSaves();
     render(<Wizard />);
-    const on = await screen.findByRole('radio', { name: 'Set a password' });
-    await waitFor(() => expect(on).toBeChecked());
-    expect(button('Continue')).toBeDisabled(); // no password typed yet
-    expect(screen.getByText('Enter a password, or choose No password.')).toBeInTheDocument();
+    await onScreen('password');
+    expect(screen.getByRole('radio', { name: 'Set a password' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'No password' })).not.toBeChecked();
+    expect(button('Continue')).toBeDisabled();
     fireEvent.click(screen.getByRole('radio', { name: 'No password' }));
-    expect(await screen.findByText(/No password: anyone on your network can change settings and move the roof/)).toBeInTheDocument();
-    expect(button('Continue')).toBeEnabled();
-  });
+    expect(screen.getByText(/No password: anyone on your network can change settings and move the roof/)).toBeInTheDocument();
+    fireEvent.click(button('Continue'));
+    await onScreen('review');
+    expect(saves).toEqual([{ setup: { state: 'new', step: 11 } }]); // protection was off: nothing else to save
+    cleanup();
 
-  it('offers password protection once per visit, never again after it is turned off', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 0 } } });
-    at('screen=password');
+    // A reload (the device now resumes at the review), then Back to the password screen.
+    mockDevice({ config: { ...NO_PASSWORD, setup: { state: 'new', step: 11 } } });
     render(<Wizard />);
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'Set a password' })).toBeChecked());
-    fireEvent.click(screen.getByRole('radio', { name: 'No password' }));
-    fireEvent.click(button('Skip for now'));
-    await onScreen('sqmeter');
+    await onScreen('review');
     fireEvent.click(button('Back'));
     await onScreen('password');
     await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole('radio', { name: 'No password' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Set a password' })).not.toBeChecked();
+    expect(button('Continue')).toBeEnabled();
+    cleanup();
+
+    // Opened straight at the password screen (a link), it still shows what was saved.
+    at('screen=password');
+    render(<Wizard />);
+    await onScreen('password');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole('radio', { name: 'No password' })).toBeChecked();
   });
 
-  it('offers no roof command, no advanced policy setting and one question with few fields on any screen', async () => {
+  it('"Set a password" waits for one', async () => {
+    mockDevice({ config: { ...NO_PASSWORD, setup: { state: 'new', step: 10 } } });
+    render(<Wizard />);
+    await onScreen('password');
+    fireEvent.click(screen.getByRole('radio', { name: /Set a password/ }));
+    expect(button('Continue')).toBeDisabled();
+    expect(screen.getByText('Enter a password, or choose No password.')).toBeInTheDocument();
+  });
+
+  it('only the motor screens offer a move, each behind "I am at the roof"; no screen has Open, Close or Clear fault', async () => {
     const advanced = ['autoClose.', 'daylight.bandDeg', 'mqtt.changeMinSeconds', 'ui.confirmOpenClose', 'daylight.advanced'];
     for (const { id } of SCREENS) {
-      mockDevice({
-        config: {
-          setup: { state: 'done', step: 0 },
-          // One channel on, as the Channel screen leaves it.
-          alerts: {
-            ...mockConfig.alerts!,
-            ntfy: { ...mockConfig.alerts!.ntfy, enabled: true },
-            pushover: { ...mockConfig.alerts!.pushover, enabled: false },
-          },
-        },
-      });
+      mockDevice({ config: { setup: { state: 'done', step: 0 } } });
       at(`screen=${id}`);
       render(<Wizard />);
       await onScreen(id);
-      for (const name of [/^open$/i, /^close$/i, /clear fault/i, /^stop/i, /^start calibration$/i])
+      for (const name of [/^open$/i, /^close$/i, /clear fault/i])
         expect(screen.queryByRole('button', { name }), `${id}: ${name}`).toBeNull();
       for (const field of advanced) expect(document.querySelector(`[data-field^="${field}"]`), `${id}: ${field}`).toBeNull();
-      // SC-001: one question, at most one choice group and at most four fields besides on/off switches.
-      const panel = document.querySelector('.modal-panel')!;
-      expect(panel.querySelectorAll('[role="radiogroup"]').length, id).toBeLessThanOrEqual(1);
-      expect(panel.querySelectorAll('input:not([type="radio"]):not([role="switch"]), select').length, id).toBeLessThanOrEqual(4);
-      expect(panel.querySelectorAll('h2').length, id).toBe(1);
+      const moves = screen.queryAllByRole('button', { name: /^(Hold to open|Hold to close|Start calibration)$/ });
+      if (MOTOR.includes(id)) {
+        expect(moves.length, id).toBeGreaterThan(0);
+        for (const move of moves) expect(move, id).toBeDisabled(); // nobody said they are at the roof
+      } else expect(moves, id).toHaveLength(0);
+      expect(document.querySelectorAll('.modal-panel h2').length, id).toBe(1);
+      expect(document.querySelectorAll('.modal-panel [role="radiogroup"], .modal-panel [role="group"]').length, id).toBeLessThanOrEqual(1);
       cleanup();
     }
   });
 
-  it('links the N.I.N.A. docs anchor Settings uses', async () => {
+  it('links the N.I.N.A. docs anchor Settings uses; Alpaca is a switch on the N.I.N.A. screen', async () => {
     mockDevice({ config: { setup: { state: 'done', step: 0 } } });
-    at('screen=alpaca');
+    at('screen=nina');
     render(<Wizard />);
     const link = await screen.findByRole('link', { name: 'How N.I.N.A. opens and closes the roof' });
     expect(link.getAttribute('href')).toMatch(/docs\/user-guide\/alpaca\.md#nina-opens-and-closes-the-roof$/);
+    fireEvent.click(screen.getByRole('switch', { name: /Open and close over Alpaca/ }));
+    expect(screen.getByText("Alpaca is off: N.I.N.A. can't open or close the roof.")).toBeInTheDocument();
   });
 
-  it('Continue saves the screen with the next screen’s page and moves on', async () => {
+  it('Continue saves the screen with the next screen’s part and moves on', async () => {
     mockDevice({ config: { ...PASSWORD_SET, setup: { state: 'new', step: 0 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('name');
     fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Backyard roof' } });
     fireEvent.click(button('Continue'));
-    await onScreen('password');
+    await onScreen('board');
     expect(saves).toHaveLength(1);
     expect(saves[0].deviceName).toBe('Backyard roof');
-    expect(saves[0].setup).toEqual({ state: 'new', step: 0 }); // the password screen is still page 1
-    // The saved edit stays: a later save sends it, not the value from before.
-    fireEvent.click(button('Skip for now'));
-    await onScreen('sqmeter');
-    fireEvent.click(button('Continue'));
-    await onScreen('site');
-    const before = saves.length;
-    fireEvent.click(screen.getByRole('switch', { name: 'Location set' }));
-    fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(before + 1));
-    // Spec 021: never sent again, so it can't be put back.
-    expect(saves[before].deviceName).toBeUndefined();
-    expect(saves[before].setup).toEqual({ state: 'new', step: 1 });
+    expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
   });
 
   it('keeps the screen and says why when the device refuses the save (the roof moving)', async () => {
@@ -208,48 +230,45 @@ describe('Wizard', () => {
     await onScreen('name');
   });
 
-  it('an unchanged screen only records the step', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 1 } } });
-    at('screen=time');
+  it('an unchanged screen only records the part', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 4 } } });
     const saves = recordSaves();
     render(<Wizard />);
-    await onScreen('time');
+    await onScreen('sqmeter');
     fireEvent.click(button('Continue'));
-    await onScreen('board');
-    expect(saves).toEqual([{ setup: { state: 'new', step: 2 } }]);
+    await onScreen('site');
+    expect(saves).toEqual([{ setup: { state: 'new', step: 4 } }]);
   });
 
-  it('leaving a screen drops its unsaved edits: a later save never carries them (FR-007)', async () => {
-    mockDevice({
-      config: {
-        setup: { state: 'done', step: 0 },
-        roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
-      },
-    });
-    at('screen=motion');
-    const saves = recordSaves();
-    render(<Wizard />);
-    await onScreen('motion');
-    fireEvent.click(button('Use first-run values'));
-    fireEvent.click(button('Skip for now'));
-    await onScreen('weatherSource');
-    fireEvent.click(screen.getByRole('radio', { name: 'Both' }));
-    fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].roof).toBeUndefined(); // the skipped screen's edits are never sent
-    expect(saves[0].safety).toEqual({ mqtt: { enabled: true } }); // http was already on: not sent
-  });
-
-  it('Skip for now and Back never save', async () => {
+  // FR-002: a reload after Skip for now opens the next part, not the skipped one.
+  it('Skip for now records the next part and saves nothing else; Back saves nothing', async () => {
     mockDevice({ config: { setup: { state: 'new', step: 0 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('name');
+    fireEvent.input(screen.getByLabelText('Name', { selector: 'input' }), { target: { value: 'Dropped' } });
     fireEvent.click(button('Skip for now'));
-    await onScreen('password');
+    await onScreen('board');
+    await waitFor(() => expect(saves).toEqual([{ setup: { state: 'new', step: 1 } }]));
     fireEvent.click(button('Back'));
     await onScreen('name');
-    expect(saves).toHaveLength(0);
+    expect(saves).toHaveLength(1);
+  });
+
+  it('leaving a screen drops its unsaved edits: a later save never carries them', async () => {
+    mockDevice({ config: { setup: { state: 'done', step: 0 } } });
+    at('screen=parkSwitches');
+    const saves = recordSaves();
+    render(<Wizard />);
+    await onScreen('parkSwitches');
+    fireEvent.click(screen.getByRole('radio', { name: 'Two switches' }));
+    fireEvent.click(button('Skip for now'));
+    await onScreen('nina');
+    fireEvent.input(screen.getByLabelText('N.I.N.A. address', { selector: 'input' }), { target: { value: 'http://10.0.0.9:1888' } });
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves.some((save) => save.park)).toBe(true));
+    const save = saves.find((body) => body.park)!;
+    expect(save.park).toEqual({ nina: { url: 'http://10.0.0.9:1888' } }); // never the skipped switches
   });
 
   it('a screen change moves focus to its question', async () => {
@@ -257,23 +276,13 @@ describe('Wizard', () => {
     render(<Wizard />);
     await onScreen('name');
     fireEvent.click(button('Skip for now'));
-    await waitFor(() => expect(document.activeElement).toHaveTextContent('Protect changes with a password?'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 24');
-  });
-
-  it('Test on the weather address screen shows the verdict and each source', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 6 } } });
-    at('screen=weatherAddress');
-    render(<Wizard />);
-    await onScreen('weatherAddress');
-    fireEvent.click(button('Test'));
-    const result = await screen.findByText('Weather verdict', {}, { timeout: 3000 });
-    expect(result.closest('[data-test-result]')).toHaveTextContent('Safe');
-    expect(result.closest('[data-test-result]')).toHaveTextContent('Answering');
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Which board is RoofRoof on?'));
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', 'Screen 2 of 15');
   });
 
   it('Test on the N.I.N.A. screen waits for the saved address, then shows the mount', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 8 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 5 } } });
+    at('screen=nina');
     const saves = recordSaves();
     let generation = 1;
     server.use(http.get('/api/roof/inputs', () => HttpResponse.json({ ...mockInputs, nina: { ...mockInputs.nina, generation } })));
@@ -289,30 +298,51 @@ describe('Wizard', () => {
     expect(saves[0].setup).toBeUndefined(); // a Test doesn't move the wizard on
   });
 
-  // Spec 022: the test box choice sets the three bypasses and skips the sources they stand in for.
-  it('a test box sets the bypasses and skips the weather source and N.I.N.A. screens', async () => {
-    mockDevice({
-      config: {
-        setup: { state: 'new', step: 2 },
-        park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } },
-        safety: { ...mockConfig.safety!, http: { enabled: false, url: '' }, mqtt: { enabled: false, topic: 'sqmeter' } },
-      },
-    });
-    at('screen=testBox'); // after the board question (spec 023)
+  // Spec 022 on the test box branch: the bypasses set, SQMeter only for site data, N.I.N.A. skipped.
+  it('a test box sets the bypasses, keeps SQMeter for site data and skips N.I.N.A.', async () => {
+    const bench = {
+      park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } },
+      safety: { ...mockConfig.safety!, http: { ...mockConfig.safety!.http, enabled: false }, mqtt: { enabled: false, topic: 'sqmeter' } },
+    };
+    mockDevice({ config: { ...bench, setup: { state: 'new', step: 3 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('testBox');
-    expect(await question()).toHaveTextContent('Is there a telescope under this roof yet?');
     fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
     expect(screen.getByText(/Never with a telescope/)).toBeInTheDocument();
     fireEvent.click(button('Continue'));
-    await onScreen('supply');
-    expect(saves[0]).toMatchObject({ testBox: { park: true, weather: true, daylight: true } });
+    await onScreen('sqmeter');
+    expect(saves[0]).toMatchObject({ testBox: { park: true, weather: true, daylight: true }, setup: { state: 'new', step: 4 } });
+    cleanup();
+    mockDevice({
+      config: {
+        ...bench,
+        testBox: { ...mockConfig.testBox!, park: true, weather: true, daylight: true },
+        setup: { state: 'new', step: 4 },
+      },
+    });
+    render(<Wizard />);
+    await onScreen('sqmeter');
+    expect(screen.getByText('Test box: the weather check is bypassed, so SQMeter supplies only site data.')).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /Weather from SQMeter/ })).toBeNull();
+    expect(screen.getByLabelText("SQMeter's address", { selector: 'input' })).toBeInTheDocument();
+    cleanup();
+    mockDevice({
+      config: {
+        ...bench,
+        testBox: { ...mockConfig.testBox!, park: true, weather: true, daylight: true },
+        setup: { state: 'new', step: 5 },
+      },
+    });
+    render(<Wizard />);
+    await onScreen('parkSwitches');
+    fireEvent.click(screen.getByRole('radio', { name: 'None' }));
+    fireEvent.click(button('Continue'));
+    await onScreen('direction'); // no N.I.N.A. screen
   });
 
   it('a test box keeps the park and weather checks where their sources are set up', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
-    at('screen=testBox');
+    mockDevice({ config: { setup: { state: 'new', step: 3 } } });
     render(<Wizard />);
     await onScreen('testBox');
     fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
@@ -320,8 +350,28 @@ describe('Wizard', () => {
     expect(screen.getByText('A weather source is on, so the weather check stays on.')).toBeInTheDocument();
   });
 
+  // FR-017, FR-018: SQMeter once; what it answers shows as done with Edit.
+  it('asks SQMeter once and shows the site and time it supplies as done, with Edit', async () => {
+    const following = {
+      location: { ...mockConfig.location!, source: 'sqmeter' },
+      sqmeterSync: { ...mockConfig.sqmeterSync!, time: { follow: true, syncedAt: 1 } },
+      setup: { state: 'new', step: 4 },
+    };
+    mockDevice({ config: following });
+    render(<Wizard />);
+    await onScreen('sqmeter');
+    expect(screen.getAllByLabelText("SQMeter's address", { selector: 'input' })).toHaveLength(1);
+    expect(document.querySelector('[data-sqmeter-done="location"]')).toHaveTextContent('The location comes from SQMeter.');
+    expect(document.querySelector('[data-sqmeter-done="time"]')).toHaveTextContent('The time zone and time servers come from SQMeter.');
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuetext')).toBe('Screen 5 of 14'); // no site screen
+    fireEvent.click(within(document.querySelector('[data-sqmeter-done="time"]') as HTMLElement).getByRole('button', { name: 'Edit' }));
+    await onScreen('site');
+    fireEvent.click(button('Continue'));
+    await onScreen('daylight');
+  });
+
   it('Escape and Close ask before leaving; Keep going returns; nothing is saved', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 1 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('board');
@@ -337,7 +387,7 @@ describe('Wizard', () => {
   });
 
   it('warns before skipping setup, and only a confirmed skip sets it done', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
+    mockDevice({ config: { setup: { state: 'new', step: 1 } } });
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('board');
@@ -368,72 +418,30 @@ describe('Wizard', () => {
     expect(button('Go to dashboard')).toBeInTheDocument();
   });
 
-  it('the review’s Change opens the page’s first screen', async () => {
+  it('the review’s Change opens the part that sets it', async () => {
     mockDevice({ config: { setup: { state: 'done', step: 0 } } });
     at('screen=review');
     render(<Wizard />);
     await onScreen('review');
     fireEvent.click(within(document.querySelector('[data-check="hall"]') as HTMLElement).getByRole('button', { name: 'Change' }));
-    await onScreen('hallFitted');
-  });
-
-  it('Hall sensor not fitted explains, links the bench test and leaves out the thresholds', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 3 } } });
-    render(<Wizard />);
-    await onScreen('hallFitted');
-    fireEvent.click(screen.getByRole('radio', { name: 'Not fitted yet' }));
-    expect(screen.getByText(/the automatic close can't work/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Bench test without the sensor' })).toHaveAttribute(
-      'href',
-      expect.stringContaining('quick-bench-test.md'),
-    );
-    fireEvent.click(button('Continue'));
     await onScreen('teach');
   });
 
   it('first-run values set the top duty to 40% while the motion is the factory default', async () => {
     mockDevice({
       config: {
-        setup: { state: 'new', step: 6 },
+        setup: { state: 'new', step: 8 },
         roof: { ...mockConfig.roof!, travelMm: 1850, speedMmPerSecond: 38, topDutyPercent: 100 },
       },
     });
+    at('screen=motion');
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('motion');
     fireEvent.click(button('Use first-run values'));
     fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(1));
+    await onScreen('alerts');
     expect((saves[0].roof as { topDutyPercent: number }).topDutyPercent).toBe(40);
-  });
-
-  // Spec 016: the wizard offers the calibration run but never moves the roof itself.
-  it('the calibration run screen links the attended page and has no motion control', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 5 } } });
-    render(<Wizard />);
-    await onScreen('calibrate');
-    expect(button('Open the calibration page')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^(Start calibration|Open|Close|Stop calibration)$/ })).toBeNull();
-  });
-
-  it('one alert channel is chosen, and its details follow', async () => {
-    mockDevice({
-      config: {
-        setup: { state: 'new', step: 9 },
-        alerts: { ...mockConfig.alerts!, enabled: false, pushover: { ...mockConfig.alerts!.pushover, enabled: false } },
-      },
-    });
-    const saves = recordSaves();
-    render(<Wizard />);
-    await onScreen('alertChannel');
-    expect(screen.getByText('No alert channel: critical alerts will reach no one.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('radio', { name: 'ntfy' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Pushover' })); // a change of mind turns ntfy back off
-    fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(1));
-    // Spec 021: only what changed; ntfy on then off again is no change.
-    expect(saves[0].alerts).toEqual({ enabled: true, pushover: { enabled: true } });
-    await onScreen('alertDetails');
-    expect(screen.getByText('User key')).toBeInTheDocument();
+    expect(saves[0].setup).toEqual({ state: 'new', step: 9 });
   });
 });
