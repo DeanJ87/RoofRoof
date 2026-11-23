@@ -2,7 +2,7 @@ import { FunctionalComponent } from 'preact';
 import type { SyncGroup, SyncNeed } from '../../types';
 import type { SettingsTabProps } from './context';
 import { Note } from '../ui';
-import { follows, locked, needs, syncLine } from '../../lib/syncView';
+import { follows, fromCopy, locked, needs, syncLine } from '../../lib/syncView';
 import { deviceText } from '../../i18n/deviceMessage';
 import { t } from '../../i18n';
 
@@ -44,6 +44,12 @@ export const FollowsSqmeter: FunctionalComponent<Props> = ({ group, config, stat
   );
 };
 
-// At a secret's field: SQMeter has it set and RoofRoof hasn't (e.g. after a synced broker change cleared it).
-export const NeedsNote: FunctionalComponent<Pick<SettingsTabProps, 'status'> & { need: SyncNeed }> = ({ status, need }) =>
-  needs(status?.sync, need) ? <Note tone="warn">{t(`sync.needs.${need}`)}</Note> : null;
+// At a secret's field: SQMeter has it set and RoofRoof hasn't (e.g. after a synced broker change cleared it),
+// as the device says for a following group, or as a copy found it until the field is `filled`.
+// `cleared`: the form's value is null (a copied broker or ntfy server cleared it), so the old one won't be sent.
+type NeedsProps = Pick<SettingsTabProps, 'status'> & { need: SyncNeed; filled: boolean; cleared?: boolean };
+export const NeedsNote: FunctionalComponent<NeedsProps> = ({ status, need, filled, cleared }) => {
+  if (needs(status?.sync, need) || (fromCopy(need) && !filled)) return <Note tone="warn">{t(`sync.needs.${need}`)}</Note>;
+  if (cleared && need !== 'pushoverKeys') return <Note tone="warn">{t(`sync.cleared.${need}`)}</Note>;
+  return null;
+};

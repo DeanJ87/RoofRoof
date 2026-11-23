@@ -844,13 +844,21 @@
             "enabled": {
               "type": "boolean"
             },
+            "password": {
+              "type": "string"
+            },
             "url": {
+              "type": "string"
+            },
+            "username": {
               "type": "string"
             }
           },
           "required": [
             "enabled",
-            "url"
+            "password",
+            "url",
+            "username"
           ],
           "additionalProperties": false
         },

@@ -19,13 +19,16 @@ The verdict comes from [SQMeter](https://github.com/DeanJ87/SQMeter), over HTTP,
 
 | Source | How it's read | Counts as unsafe when |
 |---|---|---|
-| SQMeter over HTTP | `GET /api/safety` every 5 s (3 s timeouts; a reply's body is read for at most 6 s) | it says `safe: false`, or any `reasonFlags` bit is set; or no good reply for the stale time (`safety.staleSeconds`, default 30 s) |
+| SQMeter over HTTP | `GET /api/safety` every 5 s at SQMeter's address (3 s timeouts, and 3 s for an https handshake; a reply's body is read for at most 6 s) | it says `safe: false`, or any `reasonFlags` bit is set; or no good reply for the stale time (`safety.staleSeconds`, default 30 s) |
 | SQMeter over MQTT | SQMeter's `availability`, `safe` and `safety` topics on this device's broker | it says unsafe; it is `offline` (SQMeter's last will); it has never said `online`; or nothing good for 150 s (SQMeter repeats its safe topic every minute). After each (re)connect the broker's stored copy only counts if it says unsafe, so an old "safe" left on the broker is never trusted |
 | Rain contact (GPIO4) | read by the roof hardware | it is wet, or it can't be read |
 
 - **Any** source that says unsafe makes the verdict unsafe.
 - Rain (SQMeter reason bit 9, or the contact) and a failed rain sensor (bit 10) are always acted on, even if every other source has gone quiet.
-- A single failed poll doesn't change anything: the last good reply stands until the stale time has passed. Then the source counts as unsafe, named by its latest failure ("unreachable: connection refused", "unreadable: missing reasonFlags") or "stale".
+- A single failed poll doesn't change anything: the last good reply stands until the stale time has passed. Then the source counts as unsafe, named by its latest failure ("unreachable: connection refused", "unreadable: missing reasonFlags", "unreadable: SQMeter wants a password", "unreadable: SQMeter refused the password") or "stale". If SQMeter has a password, enter its user name and password with its address ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)).
+- **SQMeter's address** (`safety.http.url`) is just the address: `192.168.1.50`, `sqmeter.local` or `http://192.168.1.50`. RoofRoof adds `/api/safety` itself (and SQMeter's other paths for the [site data](close-on-unsafe.md#site-from-sqmeter)). A URL ending in one of SQMeter's API paths (`/api/safety`, `/api/sensors`, `/api/status`, `/api/config`) is taken as its address; any other path is refused. **Test**, next to the address, reads SQMeter once at the address and login typed and says what came back: safe, unsafe and why, or why not.
+- When the address answers but not like SQMeter's `/api/safety` (another of SQMeter's pages, another device, a 404), the source says so ("that address answered HTTP 404, not like SQMeter's /api/safety"), also in the first seconds when it would otherwise be waiting for a first reply.
+- **https:** an `https://` address is read over TLS. The link is encrypted, but SQMeter's certificate isn't checked: a device on your network has a self-signed one. Only one HTTPS request runs at a time on the device, and none while a firmware or web UI upload is written; when a poll can't start within a second (an alert is being sent, say), it fails and counts toward the stale time, so a long hold makes the source unsafe, never safe. https to an IPv6 address isn't supported; use a host name.
 - With neither SQMeter source switched on, the verdict is unsafe ("No weather source"). The rain contact alone isn't enough.
 - **Unknown** only happens just after a start or a settings change, while a source hasn't answered yet and its stale time hasn't run out. Unknown is never safe.
 
@@ -59,7 +62,7 @@ Set the sources in **Settings → Roof → Weather sources** and the park in **S
 
 ```bash
 curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json" -d '{
-  "safety": { "http": { "enabled": true, "url": "http://sqmeter.local/api/safety" } },
+  "safety": { "http": { "enabled": true, "url": "http://sqmeter.local" } },
   "park":   { "nina": { "url": "http://192.168.1.20:1888" }, "switches": "none" }
 }'
 ```

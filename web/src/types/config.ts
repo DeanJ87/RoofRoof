@@ -50,7 +50,8 @@ export interface AlpacaConfig {
 
 // Where the weather verdict comes from (spec 004).
 export interface SafetyConfig {
-  http: { enabled: boolean; url: string };
+  // Spec 020: SQMeter's login (HTTP Basic), absent on older firmware; the password is masked, null clears it.
+  http: { enabled: boolean; url: string; username?: string; password?: string | null };
   mqtt: { enabled: boolean; topic: string };
   staleSeconds: number;
   rainContact: boolean;

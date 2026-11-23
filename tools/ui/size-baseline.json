@@ -1,4 +1,4 @@
 {
-  "jsCssGzipBytes": 141170,
-  "overBudgetReason": "specs 018, 020 and 021: the wizard redesign (stacked) plus site data from SQMeter (the copy review list, the location source, the follow controls and their notes on four Settings tabs) and spec 021's partial saves with their conflict handling"
+  "jsCssGzipBytes": 143066,
+  "overBudgetReason": "merge of main (020 SQMeter login, address, https) into 021"
 }

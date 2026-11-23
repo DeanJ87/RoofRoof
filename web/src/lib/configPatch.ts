@@ -36,6 +36,7 @@ export const CREDENTIAL_PARTNERS: string[][] = [
   ['alerts.ntfy.server', 'alerts.ntfy.topic', 'alerts.ntfy.token'],
   ['alerts.pushover.userKey', 'alerts.pushover.appToken'],
   ['alerts.webhook.url', 'alerts.webhook.authHeader'],
+  ['safety.http.url', 'safety.http.username', 'safety.http.password'],
 ];
 
 const valueAt = (source: unknown, path: string): unknown =>

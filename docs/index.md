@@ -22,7 +22,7 @@ There is no public docs site: these docs and the [live demo](live-demo.md) are b
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: 3d17da99919a5a0d
+fingerprint: c4c3cf5bc0d5b7b5
 -->
 <figure class="diagram" markdown>
 
@@ -38,7 +38,7 @@ flowchart LR
     ALPACA["ASCOM Alpaca client<br/>e.g. N.I.N.A."]
     PUSH["Push alerts<br/>ntfy, Pushover, webhook"]
     NET["Internet<br/>NTP time"]
-    SQM["SQMeter<br/>weather verdict, HTTP or MQTT;<br/>site location and settings"]
+    SQM["SQMeter<br/>weather verdict, HTTP(S) or MQTT;<br/>site location and settings"]
     NAPI["N.I.N.A. Advanced API<br/>mount parked?"]
     ESP -->|"GPIO25, 26, 27"| DRIVER
     SENSE -->|"GPIO4, 32-36, 39"| ESP
@@ -65,7 +65,7 @@ flowchart LR
         - ASCOM Alpaca clients such as N.I.N.A. find the roof as a Dome, and can open, close and stop it within the safety rules.
         - Alerts go to ntfy, Pushover, a webhook or MQTT.
     - **Inputs:**
-        - SQMeter's weather verdict, over HTTP or through the MQTT broker; over HTTP also its location for the daylight check, and its shared settings (time, MQTT broker, ntfy) when you copy them or let them follow SQMeter ([Site from SQMeter](user-guide/close-on-unsafe.md#site-from-sqmeter)).
+        - SQMeter's weather verdict, over HTTP or HTTPS or through the MQTT broker; over HTTP(S) also its location for the daylight check, and its shared settings (time, MQTT broker, ntfy) when you copy them or let them follow SQMeter ([Site from SQMeter](user-guide/close-on-unsafe.md#site-from-sqmeter)).
         - N.I.N.A.'s Advanced API: whether the mount is parked, and a park request when the roof needs to close.
     - **From the internet:** NTP time only. The device never downloads updates.
 

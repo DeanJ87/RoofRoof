@@ -153,13 +153,14 @@ namespace SQM
             return true;
         }
 
-        // SQMeter and N.I.N.A. serve plain http only (spec 004 research D9):
-        // https would also take the alert task's TLS session.
+        // N.I.N.A. serves plain http only (spec 004 research D9). SQMeter's
+        // address may be https (spec 020 FR-039); its form is checked on a
+        // save (validateSqmeterAddress).
         bool validateSafety(const Config &c, std::string *error)
         {
             const SafetyConfig &s = c.safety;
-            if (s.httpEnabled && s.httpUrl.rfind("http://", 0) != 0)
-                return setError(error, "SQMeter safety URL must start with http://");
+            if (s.httpEnabled && s.httpUrl.empty())
+                return setError(error, "SQMeter's address isn't set: e.g. 192.168.1.50 or sqmeter.local");
             if (s.mqttEnabled && !validTopic(s.mqttTopic))
                 return setError(error, "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels");
             if (s.staleSeconds < SafetyConfig::MIN_STALE_SECONDS || s.staleSeconds > SafetyConfig::MAX_STALE_SECONDS)
@@ -168,6 +169,19 @@ namespace SQM
                 return setError(error, "N.I.N.A. URL must start with http://");
             if (c.park.timeoutSeconds < ParkConfig::MIN_TIMEOUT_SECONDS || c.park.timeoutSeconds > ParkConfig::MAX_TIMEOUT_SECONDS)
                 return setError(error, "Park: time limit must be between 30 and 1800 seconds");
+            return true;
+        }
+
+        // Spec 020: SQMeter's login (HTTP Basic: no ':' in the user name).
+        bool validateSqmeterLogin(const SafetyConfig &s, std::string *error)
+        {
+            if (s.httpUsername.size() > SafetyConfig::MAX_LOGIN_LENGTH || s.httpPassword.size() > SafetyConfig::MAX_LOGIN_LENGTH)
+                return setError(error, "SQMeter login: user name and password must be at most 64 characters");
+            if (s.httpUsername.find(':') != std::string::npos)
+                return setError(error, "SQMeter login: the user name can't contain ':'");
+            for (const char c : s.httpUsername)
+                if (static_cast<unsigned char>(c) < 0x20)
+                    return setError(error, "SQMeter login: the user name can't contain control characters");
             return true;
         }
 
@@ -312,7 +326,6 @@ namespace SQM
             const std::pair<bool, std::pair<const char *, const std::string *>> urls[] = {
                 {cfg.alerts.webhookEnabled, {"Alerts: webhook URL: ", &cfg.alerts.webhookUrl}},
                 {cfg.alerts.ntfyEnabled, {"Alerts: ntfy server: ", &cfg.alerts.ntfyServer}},
-                {cfg.safety.httpEnabled, {"SQMeter safety URL: ", &cfg.safety.httpUrl}},
                 {!cfg.park.ninaUrl.empty(), {"N.I.N.A. URL: ", &cfg.park.ninaUrl}},
             };
             for (const auto &entry : urls)
@@ -330,6 +343,22 @@ namespace SQM
                 if (Net::isIpv6Literal(*server))
                     return setError(error, std::string("NTP server: ") + Net::NTP_IPV6_TEXT);
             }
+            return true;
+        }
+
+        // Spec 020 FR-036: a set address (used by the weather poll, the location,
+        // the copy and the sync, on or off) is SQMeter's address only.
+        bool validateSqmeterAddress(const SafetyConfig &s, std::string *error)
+        {
+            if (s.httpUrl.empty())
+                return true;
+            Net::HttpUrl url;
+            Net::HostError hostError = Net::HostError::None;
+            const Net::UrlError urlError = Net::parseHttpUrl(s.httpUrl, url, &hostError);
+            if (urlError != Net::UrlError::None)
+                return setError(error, "SQMeter's address: " + Net::urlErrorText(urlError, hostError));
+            if (url.path != "/")
+                return setError(error, "SQMeter's address only, e.g. 192.168.1.50: RoofRoof adds /api/safety itself");
             return true;
         }
     } // namespace ConfigDetail
@@ -351,6 +380,7 @@ namespace SQM
             validateAlertEvents,
             [](const Config &c, std::string *e) { return validateAlertChannels(c.alerts, e); },
             validateSafety,
+            [](const Config &c, std::string *e) { return validateSqmeterLogin(c.safety, e); },
             validateDaylight,
             validateAutoClose,
         };

@@ -115,7 +115,7 @@ with no topic).
   marked}`: each followed group applied to a copy and checked with `Config::validateChange`; MQTT held
   while `mqtt.roofCommands`.
 - `keepFollowed(live, next)`: the save-time keep rule for the location and every synced group.
-- `secretsNeeded(config, site, group)`: `mqttPassword`, `ntfyToken`.
+- `secretsNeeded(config, site, group)`: `mqttPassword`, `ntfyToken`, and `pushoverKeys` (alerts group: SQMeter has Pushover keys, RoofRoof lacks either; never synced).
 - `SyncState`: the last refusal per group (RAM, for the status).
 
 ## Status `sync` section

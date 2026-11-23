@@ -14,7 +14,9 @@ namespace SQM
         {
             SafetyPoller::Targets targets;
             targets.sqmeterEnabled = safety.httpEnabled;
-            targets.sqmeterUrl = safety.httpUrl;
+            targets.sqmeterUrl = Site::siteUrl(safety.httpUrl, Site::SAFETY_PATH); // spec 020 FR-036: the address only
+            targets.sqmeterUsername = safety.httpUsername;
+            targets.sqmeterPassword = safety.httpPassword;
             targets.ninaUrl = park.ninaUrl;
             targets.ninaApi = Nina::ApiVersion::V2;
             return targets;
@@ -25,6 +27,7 @@ namespace SQM
             Safety::SourceSettings s;
             s.httpEnabled = safety.httpEnabled;
             s.httpUrl = safety.httpUrl;
+            s.httpLogin = safety.httpUsername + '\n' + safety.httpPassword;
             s.mqttEnabled = safety.mqttEnabled;
             s.mqttTopic = safety.mqttTopic;
             s.mqttBroker = broker;

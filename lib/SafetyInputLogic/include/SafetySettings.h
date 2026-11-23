@@ -24,6 +24,7 @@ namespace SQM
         {
             bool httpEnabled = false;
             std::string httpUrl;
+            std::string httpLogin; // spec 020: SQMeter's user name and password (a new login restarts the source)
             bool mqttEnabled = false;
             std::string mqttTopic;
             std::string mqttBroker; // RoofRoof's broker, port and user name (spec 020: a reading from the old broker never counts)

@@ -238,6 +238,19 @@ void test_unknown_at_start_and_never_safe(void)
     TEST_ASSERT_EQUAL_STRING("unknown: SQMeter HTTP waiting for a first reply", describe(v).c_str());
 }
 
+// Spec 020 FR-037: while waiting, a failing reply says why instead of "waiting".
+void test_waiting_with_a_wrong_reply_says_what_answered(void)
+{
+    WeatherInputs in = httpSafe();
+    in.http = SourceRecord();
+    in.http.enabled = true;
+    in.http.recordFailure(Failure::Unreadable, "that address answered HTTP 404, not like SQMeter's /api/safety", START_MS + 1000);
+    in.nowMs = START_MS + 5000;
+    const WeatherVerdict v = evaluateWeather(in);
+    TEST_ASSERT_TRUE(v.verdict == Verdict::Unknown);
+    TEST_ASSERT_EQUAL_STRING("unknown: SQMeter HTTP: that address answered HTTP 404, not like SQMeter's /api/safety", describe(v).c_str());
+}
+
 void test_unsafe_beats_waiting_at_start(void)
 {
     WeatherInputs in = httpSafe();
@@ -535,6 +548,7 @@ int main(int, char **)
     RUN_TEST(test_waiting_inside_the_start_window);
     RUN_TEST(test_unsafe_when_waiting_after_grace);
     RUN_TEST(test_unknown_at_start_and_never_safe);
+    RUN_TEST(test_waiting_with_a_wrong_reply_says_what_answered);
     RUN_TEST(test_unsafe_beats_waiting_at_start);
     RUN_TEST(test_future_timestamp_counts_as_fresh);
     RUN_TEST(test_stale_after_very_long_silence);

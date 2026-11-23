@@ -19,6 +19,21 @@ namespace
         R"("alerts":{"enabled":true,"ntfy":{"enabled":true,"server":"https://ntfy.sh","token":"","topic":"darkskylab-sqm"},)"
         R"("pushover":{"enabled":false,"userKey":"","appToken":"","sound":""}}})";
     const char *const OFFLINE = "connection refused (demo: SQMeter offline)";
+
+    // SafetyPoller::fetchJson on the simulated SQMeter: offline, locked (401
+    // unless the login is its own), or its document through the filter.
+    Site::Fetch demoFetch(
+        const DemoRoof::Injectors &inject, const Site::Endpoint &from, const char *body, const JsonDocument &filter, JsonDocument &doc)
+    {
+        Site::Fetch fetch;
+        fetch.credentials = from.sendsPassword();
+        fetch.status = DemoRoof::demoSqmeterAnswer(inject, from.username, from.password);
+        if (fetch.status == 0)
+            fetch.error = OFFLINE;
+        else if (fetch.status == 200)
+            fetch.parsed = !deserializeJson(doc, body, DeserializationOption::Filter(filter));
+        return fetch;
+    }
 } // namespace
 
 void EmulatedDevice::resetSite()
@@ -44,14 +59,8 @@ void EmulatedDevice::runSettingsSync(bool busy)
         DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
         Site::configFilter(filter);
         DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
-        Site::Fetch fetch;
-        if (roof.injectors().sqmeterOffline)
-            fetch.error = OFFLINE;
-        else
-        {
-            fetch.status = 200;
-            fetch.parsed = !deserializeJson(doc, DEMO_SQMETER_CONFIG, DeserializationOption::Filter(filter));
-        }
+        const Site::Endpoint from{"", cfg.safety.httpUsername, cfg.safety.httpPassword};
+        const Site::Fetch fetch = demoFetch(roof.injectors(), from, DEMO_SQMETER_CONFIG, filter, doc);
         const Site::ConfigRead fresh = Site::readConfig(fetch, doc, nowMs);
         Site::record(settingsRead, fresh);
         settingsSchedule.done(fresh.good(), nowMs);
@@ -76,8 +85,10 @@ void EmulatedDevice::runSite()
 {
     const SqmeterSyncConfig &sync = cfg.sqmeterSync;
     const bool follows = sync.time.follow || sync.mqtt.follow || sync.alerts.follow;
-    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource || follows != settingsFollow)
+    const std::string login = cfg.safety.httpUsername + '\n' + cfg.safety.httpPassword;
+    if (cfg.safety.httpUrl != siteAddress || cfg.location.source != siteSource || follows != settingsFollow || login != siteLogin)
     {
+        siteLogin = login;
         siteAddress = cfg.safety.httpUrl;
         siteSource = cfg.location.source;
         settingsFollow = follows;
@@ -99,14 +110,8 @@ void EmulatedDevice::runSite()
         DynamicJsonDocument filter(Site::STATUS_FILTER_BYTES);
         Site::statusFilter(filter);
         DynamicJsonDocument doc(Site::STATUS_DOC_BYTES);
-        Site::Fetch fetch;
-        if (roof.injectors().sqmeterOffline)
-            fetch.error = OFFLINE;
-        else
-        {
-            fetch.status = 200;
-            fetch.parsed = !deserializeJson(doc, DEMO_SQMETER_STATUS, DeserializationOption::Filter(filter));
-        }
+        const Site::Endpoint from{"", cfg.safety.httpUsername, cfg.safety.httpPassword};
+        const Site::Fetch fetch = demoFetch(roof.injectors(), from, DEMO_SQMETER_STATUS, filter, doc);
         const Site::LocationRead fresh = Site::readLocation(fetch, doc, nowMs);
         Site::record(siteRead, fresh);
         siteSchedule.done(fresh.good(), nowMs);
@@ -136,28 +141,73 @@ void EmulatedDevice::writeLocation(JsonObject out) const
     Site::writeLocationStatus(out, cfg.location, siteRead, !Site::siteUrl(cfg.safety.httpUrl, Site::STATUS_PATH).empty(), nowMs);
 }
 
-std::string EmulatedDevice::sqmeterSite(const std::string &body)
+// The body's typed address and login (WebServerSite.cpp addressFrom), or the
+// saved ones; "" when the request may go ahead, else the refusal to send.
+std::string EmulatedDevice::sqmeterRequest(const std::string &body, std::string &address, Site::TypedLogin &login)
 {
     StaticJsonDocument<512> in;
-    std::string address = cfg.safety.httpUrl;
-    if (!body.empty() && !deserializeJson(in, body) && in["url"].is<const char *>())
-        address = in["url"].as<const char *>();
-    const std::string url = Site::siteUrl(address, Site::CONFIG_PATH);
+    address = cfg.safety.httpUrl;
+    if (!body.empty() && !deserializeJson(in, body))
+    {
+        if (in["url"].is<const char *>())
+            address = in["url"].as<const char *>();
+        if (in["username"].is<const char *>())
+            login.username = in["username"].as<const char *>();
+        if (in["password"].is<const char *>())
+            login.password = in["password"].as<const char *>();
+    }
     if (address.empty())
         return response(400, errorJson("SQMeter's address isn't set"));
-    if (url.empty())
-        return response(400, errorJson("SQMeter's address must be an http:// address"));
+    if (Site::siteUrl(address, Site::CONFIG_PATH).empty())
+        return response(400, errorJson("SQMeter's address isn't valid: e.g. 192.168.1.50 or sqmeter.local"));
     const std::string held = platformHold("flashWrite");
-    if (!held.empty())
-        return response(409, errorJson(held));
-    if (roof.injectors().sqmeterOffline)
-        return response(502, errorJson(std::string("SQMeter not answering: ") + OFFLINE));
+    return held.empty() ? std::string() : response(409, errorJson(held));
+}
+
+// Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+std::string EmulatedDevice::sqmeterTest(const std::string &body)
+{
+    std::string address;
+    Site::TypedLogin login;
+    const std::string refused = sqmeterRequest(body, address, login);
+    if (!refused.empty())
+        return refused;
+    const Site::Endpoint to = Site::copyEndpoint(cfg.safety, address, login, Site::SAFETY_PATH);
+    Safety::HttpOutcome outcome{DemoRoof::demoSqmeterAnswer(roof.injectors(), to.username, to.password), "", "", to.sendsPassword()};
+    if (outcome.status == 0)
+        outcome.error = OFFLINE;
+    else if (outcome.status == 200)
+    {
+        const Safety::SqmeterReply reply = roof.simulatedSafety();
+        StaticJsonDocument<128> doc;
+        doc["safe"] = reply.safe;
+        doc["reasonFlags"] = reply.reasonFlags;
+        doc["evaluatedAgeMs"] = 5;
+        outcome.body = serialize(doc);
+    }
+    StaticJsonDocument<256> out;
+    Safety::writeTestResult(out.to<JsonObject>(), outcome);
+    return response(out["error"].isNull() ? 200 : 502, serialize(out));
+}
+
+std::string EmulatedDevice::sqmeterSite(const std::string &body)
+{
+    std::string address;
+    Site::TypedLogin login;
+    const std::string refused = sqmeterRequest(body, address, login);
+    if (!refused.empty())
+        return refused;
     DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
     Site::configFilter(filter);
     DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
+    const Site::Fetch fetch = demoFetch(roof.injectors(), Site::copyEndpoint(cfg.safety, address, login), DEMO_SQMETER_CONFIG, filter, doc);
+    if (fetch.status == 0)
+        return response(502, errorJson(std::string("SQMeter not answering: ") + OFFLINE));
+    if (const char *refused = Safety::loginRefusalText(fetch.status, fetch.credentials))
+        return response(502, errorJson(refused));
     Site::SiteConfig site;
-    std::string why;
-    if (deserializeJson(doc, DEMO_SQMETER_CONFIG, DeserializationOption::Filter(filter)) || !Site::readSiteConfig(doc, site, why))
+    std::string why = "not SQMeter's settings";
+    if (!fetch.parsed || !Site::readSiteConfig(doc, site, why))
         return response(502, errorJson("SQMeter's settings couldn't be read: " + why));
     DynamicJsonDocument out(1536);
     Site::writeSiteDocument(out.to<JsonObject>(), address, site);

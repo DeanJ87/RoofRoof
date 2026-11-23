@@ -1,7 +1,7 @@
 import type { Config, LocationConfig, LocationSource, SqmeterSite, SyncGroup } from '../types';
 import type { ConfigPath } from '../components/settings/context';
 import { bodyOf, postJson } from './api';
-import { deviceError } from '../i18n/deviceMessage';
+import { deviceError, deviceText } from '../i18n/deviceMessage';
 import { formatCoordinates } from '../i18n/format';
 import { t } from '../i18n';
 
@@ -24,17 +24,57 @@ export interface CopyRow {
   theirs: string; // SQMeter's value, for display
   changes: [ConfigPath, unknown][]; // null for a secret clears it on the device
   secrets: CopySecret[];
+  asks?: CopySecret[]; // of `secrets`, those SQMeter has set: asked for at their fields after the copy
 }
 
-export type SiteAnswer = { ok: true; site: SqmeterSite } | { ok: false; error: string };
+// `password`: the device couldn't log in to SQMeter (it wants one, or refused it).
+export type SiteAnswer = { ok: true; site: SqmeterSite } | { ok: false; error: string; password?: boolean };
 
-/** Asks the device for SQMeter's site settings; `url` is an address typed but not yet saved. */
-export const fetchSqmeterSite = async (url?: string): Promise<SiteAnswer> => {
+// The device's English text for SQMeter's 401 and 403 (spec 020).
+const PASSWORD_ERROR = /^SQMeter (wants a|refused the) password$/;
+
+/** SQMeter's login as edited: a masked or empty password means the saved one (the device decides). */
+export interface SqmeterLogin {
+  username?: string;
+  password?: string | null;
+}
+
+// The body of the device's SQMeter routes (the copy and the Test) as the form stands: an emptied
+// user name or a cleared password (null) is sent empty, so the device doesn't fall back to the
+// saved login; an untouched mask means the saved password.
+const sqmeterRequest = (url: string | undefined, login: SqmeterLogin): Record<string, string> => {
+  const request: Record<string, string> = {};
+  if (url) request.url = url;
+  if (login.username !== undefined) request.username = login.username;
+  if (login.password !== undefined) request.password = login.password ?? '';
+  return request;
+};
+
+export type TestAnswer = { ok: true; safe: boolean; text: string } | { ok: false; error: string };
+
+/** Spec 020 FR-038: one read of SQMeter's /api/safety at the typed address, through the device. */
+export const testSqmeter = async (url: string, login: SqmeterLogin = {}): Promise<TestAnswer> => {
   try {
-    const response = await postJson('/api/sqmeter/site', url ? { url } : {});
+    const response = await postJson('/api/sqmeter/test', sqmeterRequest(url.trim() || undefined, login));
+    const body = await bodyOf(response);
+    if (response.ok && typeof body.safe === 'boolean') {
+      const text = typeof body.text === 'string' ? deviceText(body.text) : '';
+      return { ok: true, safe: body.safe, text };
+    }
+    return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')) };
+  } catch {
+    return { ok: false, error: t('settings.sqmeterCopy.unreachable') };
+  }
+};
+
+/** Asks the device for SQMeter's site settings; `url` and `login` are as typed, saved or not. */
+export const fetchSqmeterSite = async (url?: string, login: SqmeterLogin = {}): Promise<SiteAnswer> => {
+  try {
+    const response = await postJson('/api/sqmeter/site', sqmeterRequest(url, login));
     const body = await bodyOf(response);
     if (response.ok && body.device) return { ok: true, site: body as unknown as SqmeterSite };
-    return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')) };
+    const password = typeof body.error === 'string' && PASSWORD_ERROR.test(body.error);
+    return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')), password };
   } catch {
     return { ok: false, error: t('settings.sqmeterCopy.unreachable') };
   }
@@ -114,6 +154,7 @@ const mqttRows = (site: SqmeterSite, config: Config): CopyRow[] => {
       ],
       // Only when there is a password to enter: SQMeter's, or the one RoofRoof had.
       secrets: mqtt.passwordSet || (ours.password ?? '') !== '' ? ['mqttPassword'] : [],
+      asks: mqtt.passwordSet ? ['mqttPassword'] : [],
     });
   // SQMeter's base topic is where the MQTT weather source reads <base>/safe.
   const safety = config.safety;
@@ -146,6 +187,7 @@ const ntfyRow = (site: SqmeterSite, config: Config): CopyRow | null => {
     theirs: `${ntfy.server}/${ntfy.topic}`,
     changes,
     secrets: ntfy.tokenSet || (newServer && (ours.token ?? '') !== '') ? ['ntfyToken'] : [],
+    asks: ntfy.tokenSet ? ['ntfyToken'] : [],
   };
 };
 

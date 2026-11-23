@@ -112,6 +112,15 @@ void test_a_new_broker_restarts_the_mqtt_source()
     TEST_ASSERT_FALSE(c.sqmeterHttp);
 }
 
+// Spec 020: a new SQMeter login restarts the HTTP source.
+void test_a_new_login_restarts_the_http_source()
+{
+    const SourceSettings before = base();
+    SourceSettings after = before;
+    after.httpLogin = "admin\nsecret";
+    TEST_ASSERT_TRUE(settingsChange(&before, after).sqmeterHttp);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -123,5 +132,6 @@ int main(int, char **)
     RUN_TEST(test_stale_time_or_contact_restart_the_window_only);
     RUN_TEST(test_new_nina_url_restarts_nina_only);
     RUN_TEST(test_a_new_broker_restarts_the_mqtt_source);
+    RUN_TEST(test_a_new_login_restarts_the_http_source);
     return UNITY_END();
 }

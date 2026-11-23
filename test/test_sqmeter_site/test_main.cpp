@@ -111,13 +111,17 @@ void test_the_site_url_keeps_the_host_and_port_and_takes_sqmeters_path()
     TEST_ASSERT_EQUAL_STRING("http://sqm.local:8080/api/config", siteUrl("http://sqm.local:8080/proxy/api/safety", CONFIG_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("http://[fd00::10]/api/status", siteUrl("http://[fd00::10]/api/safety", STATUS_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("http://192.168.1.50/api/status", siteUrl("http://192.168.1.50", STATUS_PATH).c_str());
+    // Spec 020 FR-036, FR-039: a bare address, and https (its port kept unless 443).
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local/api/safety", siteUrl("sqmeter.local", SAFETY_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("https://192.168.1.50/api/config", siteUrl("https://192.168.1.50/api/safety", CONFIG_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("https://sqm.lan:8443/api/safety", siteUrl("https://sqm.lan:8443", SAFETY_PATH).c_str());
 }
 
-void test_no_site_url_without_a_valid_http_address()
+void test_no_site_url_without_a_valid_address()
 {
     TEST_ASSERT_EQUAL_STRING("", siteUrl("", STATUS_PATH).c_str());
-    TEST_ASSERT_EQUAL_STRING("", siteUrl("https://192.168.1.50/api/safety", STATUS_PATH).c_str());
-    TEST_ASSERT_EQUAL_STRING("", siteUrl("sqmeter.local", STATUS_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("", siteUrl("ftp://192.168.1.50", STATUS_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("", siteUrl("https://[fd00::10]", STATUS_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("", siteUrl("http://", STATUS_PATH).c_str());
 }
 
@@ -452,11 +456,63 @@ void test_the_filter_drops_everything_else()
     TEST_ASSERT_FALSE(doc.overflowed());
 }
 
+// --- SQMeter's login (spec 020) ----------------------------------------------
+
+void test_a_401_or_403_says_whether_a_password_is_wanted_or_refused()
+{
+    Fetch noLogin;
+    noLogin.status = 401;
+    DynamicJsonDocument doc(64);
+    LocationRead read = readLocation(noLogin, doc, 1);
+    TEST_ASSERT_EQUAL(Problem::PasswordNeeded, read.problem);
+    TEST_ASSERT_EQUAL_STRING("SQMeter wants a password", read.detail.c_str());
+    TEST_ASSERT_EQUAL_STRING("passwordNeeded", problemName(read.problem));
+    Fetch refused;
+    refused.status = 403;
+    refused.credentials = true;
+    read = readLocation(refused, doc, 1);
+    TEST_ASSERT_EQUAL(Problem::PasswordRefused, read.problem);
+    TEST_ASSERT_EQUAL_STRING("SQMeter refused the password", read.detail.c_str());
+    TEST_ASSERT_EQUAL_STRING("passwordRefused", problemName(read.problem));
+    TEST_ASSERT_EQUAL(Problem::Unreadable, problemOfStatus(500, true));
+}
+
+void test_the_copy_sends_the_saved_login_only_to_its_own_host()
+{
+    SafetyConfig saved;
+    saved.httpUrl = "http://192.168.1.50/api/safety";
+    saved.httpUsername = "admin";
+    saved.httpPassword = "saved-secret";
+    Endpoint same = copyEndpoint(saved, "http://192.168.1.50", TypedLogin{});
+    TEST_ASSERT_EQUAL_STRING("http://192.168.1.50/api/config", same.url.c_str());
+    TEST_ASSERT_EQUAL_STRING("admin", same.username.c_str());
+    TEST_ASSERT_EQUAL_STRING("saved-secret", same.password.c_str());
+    TypedLogin masked;
+    masked.password = "********";
+    TEST_ASSERT_EQUAL_STRING("saved-secret", copyEndpoint(saved, "http://192.168.1.50/x", masked).password.c_str());
+    TypedLogin shortMask;
+    shortMask.password = "***";
+    TEST_ASSERT_EQUAL_STRING("saved-secret", copyEndpoint(saved, "http://192.168.1.50/x", shortMask).password.c_str());
+    // Another host: never the saved password (nor user name).
+    const Endpoint other = copyEndpoint(saved, "http://192.168.1.51/api/safety", masked);
+    TEST_ASSERT_EQUAL_STRING("", other.password.c_str());
+    TEST_ASSERT_EQUAL_STRING("", other.username.c_str());
+    TEST_ASSERT_FALSE(other.hasLogin());
+    TypedLogin typed;
+    typed.username = "obs";
+    typed.password = "typed";
+    const Endpoint typedOther = copyEndpoint(saved, "http://192.168.1.51", typed);
+    TEST_ASSERT_EQUAL_STRING("obs", typedOther.username.c_str());
+    TEST_ASSERT_EQUAL_STRING("typed", typedOther.password.c_str());
+    // Another port is another host.
+    TEST_ASSERT_EQUAL_STRING("", copyEndpoint(saved, "http://192.168.1.50:8080", TypedLogin{}).password.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_the_site_url_keeps_the_host_and_port_and_takes_sqmeters_path);
-    RUN_TEST(test_no_site_url_without_a_valid_http_address);
+    RUN_TEST(test_no_site_url_without_a_valid_address);
     RUN_TEST(test_a_gps_location_is_read);
     RUN_TEST(test_a_typed_sqmeter_location_is_read_as_not_gps);
     RUN_TEST(test_no_location_at_sqmeter);
@@ -487,5 +543,7 @@ int main(int, char **)
     RUN_TEST(test_a_document_that_isnt_sqmeters_settings_is_refused);
     RUN_TEST(test_a_bad_mqtt_port_reads_as_the_default);
     RUN_TEST(test_the_filter_drops_everything_else);
+    RUN_TEST(test_a_401_or_403_says_whether_a_password_is_wanted_or_refused);
+    RUN_TEST(test_the_copy_sends_the_saved_login_only_to_its_own_host);
     return UNITY_END();
 }

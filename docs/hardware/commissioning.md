@@ -144,7 +144,7 @@ The roof opens only on a safe weather verdict and closes only onto a confirmed p
 
 1. **SQMeter over HTTP.** Set it up in **Settings → Roof → Weather sources**, or with:
    ```bash
-   curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"safety":{"http":{"enabled":true,"url":"http://sqmeter.local/api/safety"}}}'
+   curl -X POST $ROOF/api/config -H "Content-Type: application/json" -d '{"safety":{"http":{"enabled":true,"url":"sqmeter.local"}}}'
    ```
    With SQMeter safe, the log shows `Weather unknown` for at most one poll after boot, then `Weather safe`.
 2. **Unsafe in, unsafe out.** Make SQMeter unsafe (its manual override): `Weather unsafe: SQMeter HTTP says unsafe: reasonFlags ...` appears within 5 s. Release the override. Then unplug SQMeter: the verdict is unsafe ("unreachable" or "stale") within 35 s.

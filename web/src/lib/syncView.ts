@@ -28,6 +28,42 @@ export interface SyncLine {
   problem: boolean; // the last read of SQMeter's settings failed
 }
 
+/** The group follows SQMeter and has synced from it at least once. */
+export const synced = (config: Config, group: SyncGroup): boolean =>
+  follows(config, group) && Boolean(config.sqmeterSync?.[group]?.syncedAt);
+
+/**
+ * Spec 020: what a copy from SQMeter brought in this page load and its field must show for, also
+ * with the channel off: a secret SQMeter has set (to be typed here), or SQMeter's weather topic.
+ */
+export type CopyShown = SyncNeed | 'weatherTopic';
+const copyShown = new Set<CopyShown>();
+export const rememberCopy = (items: CopyShown[]) => items.forEach((item) => copyShown.add(item));
+export const forgetCopy = () => copyShown.clear();
+export const fromCopy = (item: CopyShown): boolean => copyShown.has(item);
+
+/** The device (a following group) or the last copy asks for `need`. */
+export const asked = (sync: SyncStatus | null | undefined, need: SyncNeed): boolean => needs(sync, need) || fromCopy(need);
+
+/**
+ * Spec 020: MQTT's fields show while MQTT is off too when they hold something: a broker (copied
+ * from SQMeter, say), a group that synced from SQMeter, or a password to enter. Following alone
+ * (a new device's default) isn't enough: an owner without MQTT never sees them then.
+ */
+export const mqttShown = (config: Config, sync: SyncStatus | null | undefined): boolean =>
+  config.mqtt.enabled ||
+  config.mqtt.broker.trim() !== '' ||
+  synced(config, 'mqtt') ||
+  config.mqtt.password === null ||
+  asked(sync, 'mqttPassword');
+
+/** The same for ntfy's server, topic and token while the channel is off. */
+export const ntfyShown = (config: Config, sync: SyncStatus | null | undefined): boolean => {
+  const ntfy = config.alerts?.ntfy;
+  if (!ntfy) return false;
+  return ntfy.enabled || ntfy.topic.trim() !== '' || synced(config, 'alerts') || ntfy.token === null || asked(sync, 'ntfyToken');
+};
+
 /** "Follows SQMeter, checked 3 min ago", the read's problem, or that it isn't synced yet. */
 export const syncLine = (sync: SyncStatus | null | undefined, group: SyncGroup): SyncLine => {
   const live = sync?.[group];

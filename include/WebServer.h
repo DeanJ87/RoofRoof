@@ -375,13 +375,13 @@ namespace SQM
         // The roof's snapshot with the close phase filled in (not started: the default).
         RoofIo::Snapshot roofSnapshot() const;
 
-        // Spec 020: POST /api/sqmeter/site (src/WebServerSite.cpp).
+        // Spec 020: POST /api/sqmeter/site and /api/sqmeter/test (src/WebServerSite.cpp).
         struct SiteJob;
         static inline std::atomic<bool> siteJobRunning{false};
         SiteStatus siteStatus;
         BusyProbe roofBusy;
         void setupSiteRoutes();
-        void handleSqmeterSite(AsyncWebServerRequest *request);
+        void handleSqmeterSite(AsyncWebServerRequest *request, bool test);
         static void runSiteJob(void *arg);
         void appendSite(JsonDocument &doc) const;
 

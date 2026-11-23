@@ -252,6 +252,8 @@
             "unreachable",
             "unreadable",
             "noLocation",
+            "passwordNeeded",
+            "passwordRefused",
             null
           ]
         },
@@ -775,7 +777,8 @@
                 "type": "string",
                 "enum": [
                   "mqttPassword",
-                  "ntfyToken"
+                  "ntfyToken",
+                  "pushoverKeys"
                 ]
               }
             },
@@ -838,6 +841,8 @@
             "waiting",
             "unreachable",
             "unreadable",
+            "passwordNeeded",
+            "passwordRefused",
             null
           ]
         },

@@ -5,9 +5,11 @@
 //
 //   node tools/brand/build.mjs
 //
-// The mark: a small observatory under a starry sky, its roof rolled off along
-// the rails to the right and the telescope out. 24-unit grid, the tile inset
-// 2.25 units with a 2.75-unit corner radius (the same grid as SQMeter's mark).
+// The mark: RoofRoof's dog (the name is the bark a roll-off roof makes when it
+// opens), the web UI's mascot exactly as drawn, under a starry sky on a dark
+// tile. 24-unit grid, the tile inset 2.25 units with a 2.75-unit corner radius
+// (the same grid as SQMeter's mark). One dog at every size; the variants change
+// only its colours and the tile behind it.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -25,17 +27,14 @@ export const C = {
   muted: '#8b9baa',
   dim: '#768798',
   accent: '#55c7f2',
-  accentCore: '#d6f3ff',
   ok: '#5ee0a0',
   skyTop: '#0d1724',
   skyHorizon: '#25394d',
-  ground: '#13212f',
-  groundLow: '#0b141d',
-  wall: '#8b9baa',
-  wallShade: '#5d6e7f',
-  scope: '#e7edf3',
-  flatTile: '#1d2f41',
   tileEdge: '#2a3d52',
+  dogFur: '#b9c7d4',
+  dogMuzzle: '#dfe7ee',
+  dogEar: '#5f7184',
+  dogTag: '#f4c15d',
   printInk: '#0d141d',
   printAccent: '#0b78a6',
   night: '#ff4a3a',
@@ -44,163 +43,154 @@ export const C = {
 const SANS = 'Inter, system-ui, sans-serif';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
 
-// --- The drawing (24 × 24 units) --------------------------------------------
+// --- The drawing -------------------------------------------------------------
 
+// The tile every full-colour mark sits on: 24-unit grid, inset 2.25 units, 2.75-unit corners.
 const TILE = { x: 2.25, y: 2.25, w: 19.5, h: 19.5, r: 2.75 };
-const HORIZON = 18.5;
-// Building: the walls stop at the rail; the rail runs on past them to a post.
-const WALL = { x: 4, y: 12.4, w: 8.6, h: HORIZON - 12.4 };
-const RAIL = { x: 4, y: 11.4, w: 16.5, h: 1 };
-const POST = { x: 18.9, y: 12.4, w: 1.2, h: HORIZON - 12.4 };
-// The roof, rolled off: a low gable sitting on the rail beyond the walls.
-const ROOF = 'M12.1 11.4V9.9L16.3 7.5L20.5 9.9V11.4Z';
-// Telescope tube, from inside the walls up to the stars at the top left.
-const SCOPE = { x1: 8.6, y1: 11.6, x2: 6.1, y2: 7.2 };
 
-const rect = (r, fill, extra = '') => `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"${r.r ? ` rx="${r.r}"` : ''} fill="${fill}"${extra}/>`;
-const tube = (fill, width) => `<path d="M${SCOPE.x1} ${SCOPE.y1}L${SCOPE.x2} ${SCOPE.y2}" fill="none" stroke="${fill}" stroke-width="${width}" stroke-linecap="round"/>`;
+// The dog: the web UI's mascot (web/src/components/ui.tsx, `Mascot`, DS-13),
+// path for path, in its 64-unit drawing. Every mark uses all of it, at every
+// size; only the colours and the tile behind it change.
+// web/src/components/__tests__/Onboarding.test.tsx checks the two still match.
+export const DOG = {
+  ears: 'M17 15c-7 1-11 11-9 21 1 6 7 6 9 1l5-16zM47 15c7 1 11 11 9 21-1 6-7 6-9 1l-5-16z',
+  head: 'M32 12c11 0 18 8 18 19 0 12-8 19-18 19s-18-7-18-19c0-11 7-19 18-19z',
+  patch: 'cx="24.5" cy="28" rx="5.5" ry="6"',
+  muzzle: 'cx="32" cy="39" rx="9.5" ry="7"',
+  eyeLeft: 'cx="24.5" cy="29" r="2.3"',
+  eyeRight: 'cx="39.5" cy="29" r="2.3"',
+  nose: 'M28.5 35h7c0 2.2-1.6 3.6-3.5 3.6s-3.5-1.4-3.5-3.6z',
+  mouth: 'M32 38.6v2.6m-4 1c1.6 1.3 3 1.3 4 0 1 1.3 2.4 1.3 4 0',
+  collar: 'M20 47c7 4.5 17 4.5 24 0',
+  tag: 'm32 50 1.3 2.7 3 .4-2.2 2 .6 3-2.7-1.5-2.7 1.5.6-3-2.2-2 3-.4z',
+};
 
-function clip(id, inset = TILE) {
-  return `<clipPath id="${id}"><rect x="${inset.x}" y="${inset.y}" width="${inset.w}" height="${inset.h}" rx="${inset.r}"/></clipPath>`;
+// The mascot's colours (web/src/index.css: --mascot-*, --bg, --cyan, --amber).
+const MASCOT = { ear: C.dogEar, fur: C.dogFur, muzzle: C.dogMuzzle, eye: C.bg, collar: C.accent, tag: C.dogTag };
+
+// The dog in full colour, in the 64-unit drawing.
+function dog(k = MASCOT) {
+  return (
+    `<path d="${DOG.ears}" fill="${k.ear}"/>` +
+    `<path d="${DOG.head}" fill="${k.fur}"/>` +
+    `<ellipse ${DOG.patch} fill="${k.ear}"/>` +
+    `<ellipse ${DOG.muzzle} fill="${k.muzzle}"/>` +
+    `<g fill="${k.eye}"><circle ${DOG.eyeLeft}/><circle ${DOG.eyeRight}/><path d="${DOG.nose}"/></g>` +
+    `<path d="${DOG.mouth}" fill="none" stroke="${k.eye}" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<path d="${DOG.collar}" fill="none" stroke="${k.collar}" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="${DOG.tag}" fill="${k.tag}"/>`
+  );
 }
 
-// Detailed, full colour: 40 px and larger.
+// The same dog in one ink: the shapes filled, and the patch, the eye on it, the
+// other eye, the nose, the mouth, a line round the muzzle and thin gaps between
+// the head, ears, collar and tag cut out, so every feature shows in a single
+// colour. `accent` colours the collar and tag (print, inverted).
+function dogMono(p, color, accent = color) {
+  return (
+    `<mask id="${p}m" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">` +
+    `<path d="${DOG.ears}" fill="#fff"/>` +
+    `<path d="${DOG.head}" fill="#fff" stroke="#000" stroke-width="2.4" paint-order="stroke"/>` +
+    `<ellipse ${DOG.patch} fill="#000"/><circle ${DOG.eyeLeft} fill="#fff"/>` +
+    `<ellipse ${DOG.muzzle} fill="none" stroke="#000" stroke-width="1.2"/>` +
+    `<g fill="#000"><circle ${DOG.eyeRight}/><path d="${DOG.nose}"/></g>` +
+    `<path d="${DOG.mouth}" fill="none" stroke="#000" stroke-width="1.4" stroke-linecap="round"/>` +
+    `<path d="${DOG.collar}" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>` +
+    `<path d="${DOG.tag}" fill="#000" stroke="#000" stroke-width="2.4" stroke-linejoin="round"/>` +
+    `</mask>` +
+    `<rect width="64" height="64" fill="${color}" mask="url(#${p}m)"/>` +
+    `<path d="${DOG.collar}" fill="none" stroke="${accent}" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="${DOG.tag}" fill="${accent}"/>`
+  );
+}
+
+// Where the 64-unit dog sits on the 24-unit tile.
+const ON_TILE = 'translate(.48 -.6) scale(.36)';
+const tileRect = (fill) => `<rect x="${TILE.x}" y="${TILE.y}" width="${TILE.w}" height="${TILE.h}" rx="${TILE.r}" fill="${fill}"/>`;
+
+// A few stars in the night sky behind the dog: the observatory it guards.
+const STARS =
+  `<circle cx="4.6" cy="4.8" r=".5" opacity=".95"/><circle cx="7.6" cy="3.6" r=".28" opacity=".55"/>` +
+  `<circle cx="3.8" cy="9.6" r=".26" opacity=".5"/><circle cx="19.2" cy="4.6" r=".42" opacity=".85"/>` +
+  `<circle cx="16.4" cy="3.4" r=".24" opacity=".5"/><circle cx="20.2" cy="9.2" r=".24" opacity=".45"/>`;
+
+// The full mark: the dog under a starry sky, a faint cyan glow behind its head.
 export function markDetailed(p = 'rr') {
   return (
-    `<defs>${clip(`${p}c`)}` +
-    `<linearGradient id="${p}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.skyTop}"/><stop offset=".85" stop-color="${C.skyHorizon}"/></linearGradient>` +
-    `<linearGradient id="${p}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.ground}"/><stop offset="1" stop-color="${C.groundLow}"/></linearGradient>` +
-    `<linearGradient id="${p}w" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${C.wall}"/><stop offset="1" stop-color="#71818f"/></linearGradient>` +
-    `<linearGradient id="${p}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd6f6"/><stop offset="1" stop-color="${C.accent}"/></linearGradient>` +
-    `<radialGradient id="${p}h" cx="8.3" cy="12" r="4.2" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${C.accent}" stop-opacity=".35"/><stop offset="1" stop-color="${C.accent}" stop-opacity="0"/></radialGradient>` +
+    `<defs><clipPath id="${p}c"><rect x="${TILE.x}" y="${TILE.y}" width="${TILE.w}" height="${TILE.h}" rx="${TILE.r}"/></clipPath>` +
+    `<linearGradient id="${p}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.skyTop}"/><stop offset="1" stop-color="${C.skyHorizon}"/></linearGradient>` +
+    `<radialGradient id="${p}h" cx="12" cy="12.5" r="8" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${C.accent}" stop-opacity=".22"/><stop offset="1" stop-color="${C.accent}" stop-opacity="0"/></radialGradient>` +
     `</defs>` +
     `<g clip-path="url(#${p}c)">` +
     `<rect x="2.25" y="2.25" width="19.5" height="19.5" fill="url(#${p}s)"/>` +
-    `<g fill="${C.text}">` +
-    `<circle cx="4.9" cy="5" r=".55" opacity=".95"/><circle cx="8.4" cy="3.9" r=".32" opacity=".6"/>` +
-    `<circle cx="3.9" cy="8.6" r=".3" opacity=".5"/><circle cx="11.3" cy="5.6" r=".4" opacity=".75"/>` +
-    `<circle cx="14.6" cy="3.8" r=".28" opacity=".5"/><circle cx="18.9" cy="5" r=".45" opacity=".8"/>` +
-    `<circle cx="10" cy="8.4" r=".22" opacity=".4"/><circle cx="20.6" cy="2.9" r=".22" opacity=".4"/>` +
-    `</g>` +
-    `<circle cx="8.3" cy="12" r="4.2" fill="url(#${p}h)"/>` +
-    `<path d="M2.25 ${HORIZON}Q8 ${HORIZON - 0.35} 12 ${HORIZON}T21.75 ${HORIZON - 0.2}V21.75H2.25Z" fill="url(#${p}g)"/>` +
-    tube(C.scope, 1.7) +
-    `<path d="M7.2 9.15L6.5 7.9" stroke="${C.accentCore}" stroke-width="1.7" stroke-linecap="butt" opacity=".9"/>` +
-    rect(WALL, `url(#${p}w)`) +
-    `<rect x="6.9" y="14.6" width="2.4" height="${HORIZON - 14.6}" fill="${C.wallShade}"/>` +
-    rect(POST, '#71818f') +
-    rect(RAIL, C.muted) +
-    `<path d="${ROOF}" fill="url(#${p}r)"/>` +
-    `<path d="M12.1 9.9L16.3 7.5L20.5 9.9" fill="none" stroke="${C.accentCore}" stroke-width=".35" stroke-linejoin="round"/>` +
+    `<g fill="${C.text}">${STARS}</g>` +
+    `<circle cx="12" cy="12.5" r="8" fill="url(#${p}h)"/>` +
+    `<g transform="translate(1.6 1.7) scale(.325)">${dog()}</g>` +
     `</g>` +
     `<rect x="2.4" y="2.4" width="19.2" height="19.2" rx="2.6" fill="none" stroke="${C.tileEdge}" stroke-width=".3"/>`
   );
 }
 
-// Flat full colour: 17 to 39 px. Same shapes, no gradients, two stars.
-export function markFlat(p = 'rf', tile = C.flatTile) {
+// The same dog, bigger, on a plain tile: small icons (no stars to turn to specks).
+export function markFlat() {
+  return tileRect(C.skyTop) + `<g transform="${ON_TILE}">${dog()}</g>`;
+}
+
+// Favicons: the dog filling a plain tile that fills the square (64-unit grid).
+// The mascot's own colours: its ear colour stands apart from both the head
+// and the tile at 16 px.
+export function markSmall() {
   return (
-    `<defs>${clip(`${p}c`)}</defs>` +
-    `<g clip-path="url(#${p}c)">` +
-    `<rect x="2.25" y="2.25" width="19.5" height="19.5" fill="${tile}"/>` +
-    `<circle cx="4.9" cy="5" r=".7" fill="${C.muted}"/><circle cx="11.2" cy="5.2" r=".6" fill="${C.muted}"/>` +
-    `<path d="M2.25 ${HORIZON}H21.75V21.75H2.25Z" fill="${C.ground}"/>` +
-    tube(C.scope, 1.8) +
-    rect(WALL, C.wall) +
-    rect(POST, C.wall) +
-    rect(RAIL, C.wall) +
-    `<path d="${ROOF}" fill="${C.accent}"/>` +
-    `</g>`
+    `<rect width="64" height="64" rx="12" fill="${C.skyTop}"/>` +
+    `<g transform="translate(-4.8 -8.25) scale(1.15)">${dog()}</g>`
   );
 }
 
-// 16 px: fills more of the square, fewer and bolder shapes.
-export function mark16(p = 'r16') {
-  const t = { x: 0.75, y: 0.75, w: 22.5, h: 22.5, r: 3.5 };
+// The app icon (home screen, PWA): the dog on the dark starry tile filling the
+// square. `rounded` false leaves the corners square for platforms that round
+// them (maskable PWA icons, the Apple touch icon); the dog stays in the middle
+// 80 % either way.
+export function appIcon(p = 'ra', { rounded = true } = {}) {
   return (
-    `<defs>${clip(`${p}c`, t)}</defs>` +
-    `<g clip-path="url(#${p}c)">` +
-    `<rect x="0" y="0" width="24" height="24" fill="${C.flatTile}"/>` +
-    `<path d="M0 18.5H24V24H0Z" fill="${C.ground}"/>` +
-    `<path d="M8.2 11.5L5.6 6.6" fill="none" stroke="${C.scope}" stroke-width="2.6" stroke-linecap="round"/>` +
-    `<rect x="2.25" y="12.5" width="9.5" height="6" fill="${C.wall}"/>` +
-    `<rect x="2.25" y="11" width="20" height="1.5" fill="${C.wall}"/>` +
-    `<rect x="19.2" y="12.5" width="1.6" height="6" fill="${C.wall}"/>` +
-    `<path d="M11.5 11V9.2L16.6 6.2L21.7 9.2V11Z" fill="${C.accent}"/>` +
-    `</g>`
+    `<defs><linearGradient id="${p}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.skyTop}"/><stop offset="1" stop-color="${C.skyHorizon}"/></linearGradient>` +
+    `<radialGradient id="${p}h" cx="12" cy="12.6" r="9" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${C.accent}" stop-opacity=".22"/><stop offset="1" stop-color="${C.accent}" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="24" height="24"${rounded ? ' rx="3.4"' : ''} fill="url(#${p}s)"/>` +
+    `<g fill="${C.text}"><circle cx="4.4" cy="4.6" r=".5" opacity=".95"/><circle cx="7.6" cy="3" r=".28" opacity=".55"/><circle cx="19.4" cy="4.4" r=".42" opacity=".85"/>` +
+    `<circle cx="16.6" cy="2.8" r=".24" opacity=".5"/><circle cx="2.9" cy="10" r=".26" opacity=".5"/><circle cx="21.2" cy="9.6" r=".24" opacity=".45"/></g>` +
+    `<circle cx="12" cy="12.6" r="9" fill="url(#${p}h)"/>` +
+    `<g transform="translate(1.6 1.9) scale(.325)">${dog()}</g>`
   );
 }
 
-// One colour: the tile as a frame, the drawing filled. For currentColor, single
-// ink print, silkscreen and emboss. `frame` false drops the frame (silkscreen
-// at small sizes reads better without it).
-export function markMono(color = 'currentColor', { frame = true } = {}) {
-  // The drawing scaled into the frame, on a ground line.
-  const g = frame ? ' transform="translate(12 12) scale(.8) translate(-12 -12.6)"' : '';
+// One colour: the tile as a frame, the dog in one ink. For currentColor,
+// single-ink print, silkscreen and emboss. `frame` false drops the frame and
+// draws the dog larger (silkscreen at small sizes reads better without it).
+export function markMono(p, color = 'currentColor', { frame = true } = {}) {
+  const place = frame ? 'translate(3.04 2.2) scale(.28)' : 'translate(-.8 -2) scale(.4)';
   return (
     (frame ? `<rect x="3" y="3" width="18" height="18" rx="2.5" fill="none" stroke="${color}" stroke-width="1.5"/>` : '') +
-    `<g${g}>` +
-    `<circle cx="4.9" cy="5" r=".8" fill="${color}"/><circle cx="11.2" cy="5.2" r=".7" fill="${color}"/>` +
-    tube(color, 1.9) +
-    rect(WALL, color) +
-    rect(POST, color) +
-    rect(RAIL, color) +
-    `<path d="${ROOF}" fill="${color}"/>` +
-    `<rect x="3" y="${HORIZON}" width="18" height="1" fill="${color}"/>` +
-    `</g>`
+    `<g transform="${place}">${dogMono(p, color)}</g>`
   );
 }
 
-// Dark drawing on the accent: the tile is cyan, the shapes are ink.
+// Dark dog on the accent: the tile is cyan, the dog ink, the collar and tag white.
 export function markInverted(p = 'ri') {
-  return (
-    `<defs>${clip(`${p}c`)}</defs>` +
-    `<g clip-path="url(#${p}c)">` +
-    `<rect x="2.25" y="2.25" width="19.5" height="19.5" fill="${C.accent}"/>` +
-    `<circle cx="4.9" cy="5" r=".7" fill="${C.printInk}"/><circle cx="11.2" cy="5.2" r=".6" fill="${C.printInk}"/>` +
-    `<path d="M2.25 ${HORIZON}H21.75V21.75H2.25Z" fill="${C.printInk}"/>` +
-    tube(C.printInk, 1.8) +
-    rect(WALL, C.printInk) +
-    rect(POST, C.printInk) +
-    rect(RAIL, C.printInk) +
-    `<path d="${ROOF}" fill="#ffffff"/>` +
-    `</g>`
-  );
+  return tileRect(C.accent) + `<g transform="${ON_TILE}">${dogMono(p, C.printInk, '#ffffff')}</g>`;
 }
 
-// Light paper: white tile with an ink frame, ink drawing, a darker cyan roof.
+// Light paper: white tile with an ink frame, the dog in ink, a darker cyan collar and tag.
 export function markPrint(p = 'rp') {
   return (
-    `<defs>${clip(`${p}c`)}</defs>` +
-    `<g clip-path="url(#${p}c)">` +
-    `<rect x="2.25" y="2.25" width="19.5" height="19.5" fill="#ffffff"/>` +
-    `<circle cx="4.9" cy="5" r=".7" fill="${C.printInk}"/><circle cx="11.2" cy="5.2" r=".6" fill="${C.printInk}"/>` +
-    `<path d="M2.25 ${HORIZON}H21.75V21.75H2.25Z" fill="${C.printInk}"/>` +
-    tube(C.printInk, 1.8) +
-    rect(WALL, C.printInk) +
-    rect(POST, C.printInk) +
-    rect(RAIL, C.printInk) +
-    `<path d="${ROOF}" fill="${C.printAccent}"/>` +
-    `</g>` +
+    tileRect('#ffffff') +
+    `<g transform="translate(2.4 1.95) scale(.3)">${dogMono(p, C.printInk, C.printAccent)}</g>` +
     `<rect x="2.75" y="2.75" width="18.5" height="18.5" rx="2.25" fill="none" stroke="${C.printInk}" stroke-width="1"/>`
   );
 }
 
-// Night vision: the flat mark in reds only.
-export function markNight(p = 'rn') {
-  return (
-    `<defs>${clip(`${p}c`)}</defs>` +
-    `<g clip-path="url(#${p}c)">` +
-    `<rect x="2.25" y="2.25" width="19.5" height="19.5" fill="#1a0806"/>` +
-    `<circle cx="4.9" cy="5" r=".7" fill="#8a2a20"/><circle cx="11.2" cy="5.2" r=".6" fill="#8a2a20"/>` +
-    `<path d="M2.25 ${HORIZON}H21.75V21.75H2.25Z" fill="#2a0c08"/>` +
-    tube('#c23a2c', 1.8) +
-    rect(WALL, '#8a2a20') +
-    rect(POST, '#8a2a20') +
-    rect(RAIL, '#8a2a20') +
-    `<path d="${ROOF}" fill="${C.night}"/>` +
-    `</g>`
-  );
+// Night vision: the dog in reds only, on a plain tile.
+export function markNight() {
+  const tile = '#1a0806';
+  return tileRect(tile) + `<g transform="${ON_TILE}">${dog({ ear: '#8a2a20', fur: '#c23a2c', muzzle: '#e0503f', eye: tile, collar: C.night, tag: C.night })}</g>`;
 }
 
 // --- Files -----------------------------------------------------------------
@@ -236,34 +226,35 @@ export function files() {
 
   // Logo
   add('logo/roofroof-mark.svg', svg(24, 24, D('rm')));
-  add('logo/roofroof-mark-flat.svg', svg(24, 24, markFlat('rmf')));
-  add('logo/roofroof-mark-mono.svg', svg(24, 24, markMono('currentColor')));
-  add('logo/roofroof-mark-mono-light.svg', svg(24, 24, markMono(C.text)));
-  add('logo/roofroof-mark-mono-dark.svg', svg(24, 24, markMono(C.printInk)));
-  add('logo/roofroof-mark-night.svg', svg(24, 24, markNight('rmn')));
-  add('logo/roofroof-mark-night-mono.svg', svg(24, 24, markMono(C.night)));
+  add('logo/roofroof-mark-flat.svg', svg(24, 24, markFlat()));
+  add('logo/roofroof-mark-mono.svg', svg(24, 24, markMono('rmm', 'currentColor')));
+  add('logo/roofroof-mark-mono-light.svg', svg(24, 24, markMono('rml', C.text)));
+  add('logo/roofroof-mark-mono-dark.svg', svg(24, 24, markMono('rmd', C.printInk)));
+  add('logo/roofroof-mark-night.svg', svg(24, 24, markNight()));
+  add('logo/roofroof-mark-night-mono.svg', svg(24, 24, markMono('rmnm', C.night)));
   add('logo/roofroof-mark-inverted.svg', svg(24, 24, markInverted('rmi')));
   add('logo/roofroof-mark-print.svg', svg(24, 24, markPrint('rmp')));
-  add('logo/roofroof-mark-silkscreen.svg', svg(24, 24, markMono('#ffffff', { frame: false })));
-  add('logo/roofroof-mark-emboss.svg', svg(24, 24, markMono('#000000')));
+  add('logo/roofroof-mark-silkscreen.svg', svg(24, 24, markMono('rms', '#ffffff', { frame: false })));
+  add('logo/roofroof-mark-emboss.svg', svg(24, 24, markMono('rme', '#000000')));
   add('logo/roofroof-wordmark.svg', svg(160, 40, name(0, 30, 30)));
   add('logo/roofroof-wordmark-dark.svg', svg(160, 40, name(0, 30, 30, { fill: C.printInk })));
   add('logo/roofroof-lockup-horizontal.svg', svg(216, 48, place(0, 0, 48, D('rl')) + name(64, 34, 30)));
   add('logo/roofroof-lockup-horizontal-light.svg', svg(216, 48, place(0, 0, 48, markPrint('rll')) + name(64, 34, 30, { fill: C.printInk })));
-  add('logo/roofroof-lockup-horizontal-night.svg', svg(216, 48, place(0, 0, 48, markNight('rln')) + name(64, 34, 30, { fill: C.night })));
-  add('logo/roofroof-lockup-horizontal-mono.svg', svg(216, 48, place(0, 0, 48, markMono('currentColor')) + name(64, 34, 30, { fill: 'currentColor' })));
+  add('logo/roofroof-lockup-horizontal-night.svg', svg(216, 48, place(0, 0, 48, markNight()) + name(64, 34, 30, { fill: C.night })));
+  add('logo/roofroof-lockup-horizontal-mono.svg', svg(216, 48, place(0, 0, 48, markMono('rlm', 'currentColor')) + name(64, 34, 30, { fill: 'currentColor' })));
   add('logo/roofroof-lockup-stacked.svg', svg(160, 136, place(40, 0, 80, D('rs')) + name(80, 124, 30, { anchor: 'middle' })));
 
   // Icons
-  add('favicon/favicon-16.svg', svg(16, 16, mark16('f16'), '0 0 24 24'));
-  add('favicon/favicon-32.svg', svg(32, 32, markFlat('f32'), '2.25 2.25 19.5 19.5'));
-  add('favicon/favicon-48.svg', svg(48, 48, markFlat('f48'), '2.25 2.25 19.5 19.5'));
-  add('favicon/favicon.svg', svg(32, 32, markFlat('fsv'), '2.25 2.25 19.5 19.5'));
-  add('app-icon/roofroof-app-icon-512.svg', svg(512, 512, D('ra'), '2.25 2.25 19.5 19.5'));
+  add('favicon/favicon-16.svg', svg(16, 16, markSmall(), '0 0 64 64'));
+  add('favicon/favicon-32.svg', svg(32, 32, markSmall(), '0 0 64 64'));
+  add('favicon/favicon-48.svg', svg(48, 48, D('f48'), '2.25 2.25 19.5 19.5'));
+  add('favicon/favicon.svg', svg(32, 32, markSmall(), '0 0 64 64'));
+  add('app-icon/roofroof-app-icon-512.svg', svg(512, 512, appIcon('ra'), '0 0 24 24'));
+  add('app-icon/roofroof-app-icon-maskable-512.svg', svg(512, 512, appIcon('rq', { rounded: false }), '0 0 24 24'));
 
   // Docs (copied to docs/assets/)
   add('docs/logo.svg', svg(24, 24, D('dl')));
-  add('docs/favicon.svg', svg(32, 32, markFlat('df'), '2.25 2.25 19.5 19.5'));
+  add('docs/favicon.svg', svg(32, 32, markSmall(), '0 0 64 64'));
 
   // Social
   const frame = (w, h, rx) =>
@@ -402,7 +393,7 @@ export function files() {
       700,
       240,
       `<rect x="4" y="4" width="692" height="232" rx="18" fill="none" stroke="#000" stroke-width="4"/>` +
-        place(30, 30, 180, markMono('#000')) +
+        place(30, 30, 180, markMono('lem', '#000')) +
         name(240, 104, 48, { fill: '#000' }) +
         text(242, 144, 20, 'Roll-off roof controller', { fill: '#000' }) +
         text(242, 196, 16, 'S/N ________    FW ______', { fill: '#000', family: MONO }),

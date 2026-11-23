@@ -71,6 +71,19 @@ Each answer takes the safest option the constitution allows and is also listed u
   components use only the design tokens, so a future light theme changes them with the rest.
   Every wizard screen is tested with the browser set to light and to dark.
 
+### Session 2026-11-23
+
+- Q: Should the dog be the product's logo too? → A: Yes. The owner chose the dog over the
+  observatory mark. The name is a dog joke, and one character for the brand and the wizard is
+  clearer than two marks. The dog replaces the observatory everywhere the mark appears: the web
+  UI header, the favicons, the docs logo and favicon, the app icon, the lockups, the social cards,
+  the banners, the stickers and labels. It is the mascot itself, path for path, at every size down to
+  the 16 px favicon, with every feature (ears, eye patch, eyes, nose, mouth, muzzle, collar and
+  tag); no simplified small-size dog is drawn. Only the tile behind it and the colours change: a
+  starry tile from 40 px (the stars are the nod to the observatory), a plain tile below (favicons
+  fill the square), the dark tile for the app icon, and one-ink, print, inverted and night
+  colourings. A tiny roof was tried and dropped, because it read as a cloud below 64 px.
+
 ## Constitution rules this spec relies on
 
 | Principle | Rule | Where it is decided |
@@ -314,6 +327,17 @@ Unchanged from spec 015: the banner offers it, nothing opens by itself, Dismiss 
 - **FR-022**: Every screen MUST pass the accessibility scan with no violation at 320 px and
   1280 px, with the browser preferring light and dark, and fit 320 px without sideways scroll.
 
+**Brand**
+
+- **FR-024**: The product's brand mark MUST be the mascot's dog exactly as `Mascot` draws it, with
+  no feature dropped or redrawn at any size, in the brand's token colours on a dark tile so it
+  holds on light and dark pages: on a starry tile from 40 px (the header, the docs logo), filling
+  a plain tile below (the favicons, the demo button), on the dark tile as the app icon (rounded,
+  plus a square maskable twin with the dog in the middle 80 %), and in the one-colour, print,
+  inverted and night variants, lockups, social cards and stickers built by `tools/brand/build.mjs`. The
+  device's `brand-mark.svg`, `favicon.svg` and `favicon-32.png` (served from LittleFS) MUST each
+  stay within one LittleFS block (4 KB), so they take no more flash than the observatory files did. A unit test MUST fail when any mascot shape is missing from the header mark or the favicon.
+
 **Demo and docs**
 
 - **FR-023**: The demo's "Restart setup wizard" MUST open the new dialog; the docs (setup wizard
@@ -372,6 +396,9 @@ three-word labels don't fit; they get their own copy rule (one question, at most
 - **SC-005**: The web UI grows by at most 6 KB gzipped (SIZE-01's limit is 10 KB), recorded in the
   size baseline with its reason.
 - **SC-006**: The full local check passes with no new warnings.
+- **SC-007**: The brand mark renders at 16, 32, 48, 64, 128 and 512 px (`node tools/brand/render.mjs
+  --only icons`), with every mascot feature at each size, and the 16 px favicon reads as a dog; the device's three brand files stay one
+  LittleFS block each (gzipped SVGs and the PNG: now 0.8, 0.5 and 1.6 KB; before 0.8, 0.4 and 0.9 KB).
 
 ## Assumptions decided for the owner
 
@@ -401,6 +428,13 @@ Each was an open choice; the safest option the constitution allows was taken.
     pages (0 to 11, `SetupConfig::STEP_COUNT` 12); each screen saves its page's index.
 12. **The UI mockup review is pending**: the owner reviews the screenshots in the PR and the demo
     before merging.
+13. **The dog is the logo** (Session 2026-11-23): the observatory mark is retired, not kept as an
+    alternative, so the product has one mark, and the mascot is used as drawn at every size.
+    The full-colour marks keep the mascot's colours exactly: lighter ears were tried for the
+    favicon and blurred into the head at 16 px, while the mascot's own ear colour stands apart
+    from both the head and the tile. Below 40 px the stars are left off the tile (they would be
+    specks). In one ink the features are cut out of the head, with a line round the muzzle, so
+    none is lost. No roof shape is added to the dog; the stars carry the observatory.
 
 ## Out of scope
 

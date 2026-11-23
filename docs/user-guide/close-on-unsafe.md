@@ -273,7 +273,8 @@ can't run; see [the dashboard](dashboard.md#roof).
 ## Site from SQMeter
 
 RoofRoof and SQMeter stand at the same observatory, so they share a site. RoofRoof already knows
-where SQMeter is: its weather source address (`safety.http.url`, SQMeter's `/api/safety`).
+where SQMeter is: its weather source address (`safety.http.url`, SQMeter's address, http or
+https; RoofRoof adds SQMeter's paths itself).
 
 ### The location follows SQMeter
 
@@ -336,9 +337,34 @@ Copying a different MQTT broker, port or user name clears RoofRoof's saved MQTT 
 different ntfy server clears the saved ntfy token, so a saved secret is never sent to a server it
 wasn't saved for.
 
+Every copied value is an ordinary RoofRoof setting: it shows on its own Settings page (Time, Network,
+Alerts, Roof), marked **Follows SQMeter** while its group follows, and stays editable there. That
+holds while the channel is off too: a copied MQTT broker or ntfy topic shows its fields with MQTT or
+ntfy off. A secret SQMeter has set is asked for at its field (the MQTT password, the ntfy token, the
+Pushover user key and app token), also with that channel off, until you type it.
+
 The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the copy is refused while
 the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
 switches it to follow SQMeter (below).
+
+### A password-protected SQMeter
+
+If SQMeter has a password, enter its user name and password with its address (**Settings → Roof →
+Weather sources**, or the wizard's SQMeter screen; `safety.http.username`, `safety.http.password`).
+RoofRoof then sends them (HTTP Basic, SQMeter's own scheme) with every request it makes to SQMeter:
+the weather poll, the location read, the settings sync and the copy. SQMeter leaves the readings
+RoofRoof uses open even with its password on, but a later release, or a proxy in front of it, may
+not.
+
+The password is a secret: shown as `********`, never logged, and only sent to the SQMeter it was
+saved for. Changing the address to another scheme (http or https), host or port clears it unless
+you type it again; the copy only uses the saved password with the saved address's scheme, host and
+port. Over `https://` the login travels encrypted (the certificate isn't checked).
+
+When SQMeter turns a request away (401 or 403), RoofRoof says why instead of a bare HTTP status:
+**SQMeter wants a password** (none was sent) or **SQMeter refused the password**. The weather source
+then counts as unreadable, so it goes stale and the weather reads unsafe as for any other failed
+poll; the dashboard's daylight line, Settings and the copy show the same reason.
 
 ### Keeping in step
 
@@ -372,8 +398,10 @@ RoofRoof synced, so an older page can't put old ones back.
 
 **Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
 clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
-has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it.
-This is a note, not an alert.
+has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it,
+also with that channel off. Pushover never syncs (SQMeter masks its keys): while the alerts group
+follows and SQMeter uses Pushover, its user key and app token are asked for until both are set here.
+Following alone shows no channel that is off. This is a note, not an alert.
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
 Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT

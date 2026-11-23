@@ -4,6 +4,7 @@
 #include "SafetyInput.h"
 #include "SafetySettings.h"
 #include "SqmeterSite.h"
+#include "SqmeterSource.h"
 #include "SqmeterSync.h"
 #include <ArduinoJson.h>
 #include <freertos/FreeRTOS.h>
@@ -28,8 +29,10 @@ namespace SQM
         struct Targets
         {
             bool sqmeterEnabled = false;
-            std::string sqmeterUrl; // full URL of /api/safety
-            std::string ninaUrl;    // base URL; empty = not configured
+            std::string sqmeterUrl;      // full URL of /api/safety
+            std::string sqmeterUsername; // spec 020: SQMeter's login, sent with every request when set
+            std::string sqmeterPassword;
+            std::string ninaUrl; // base URL; empty = not configured
             Nina::ApiVersion ninaApi = Nina::ApiVersion::V2;
         };
 
@@ -72,7 +75,15 @@ namespace SQM
 
         // Spec 020: where SQMeter is (the weather source's address) and
         // whether the location follows it. A change reads again at once.
-        void setSite(const std::string &address, bool followLocation, bool followSettings);
+        struct SiteTarget
+        {
+            std::string address; // the weather source's address
+            std::string username;
+            std::string password;
+            bool followLocation = false;
+            bool followSettings = false;
+        };
+        void setSite(const SiteTarget &target);
         // Set by the main loop every pass: the roof moves, a close waits or
         // the close sequence works. No location read starts meanwhile.
         void setRoofBusy(bool busy) { roofBusy.store(busy); }
@@ -81,30 +92,47 @@ namespace SQM
         // The latest read of SQMeter's settings (spec 020's sync), under the lock.
         Site::ConfigRead settingsRead() const;
 
+        // Spec 020 FR-038: one GET (Settings' Test of SQMeter's address), as
+        // the weather poll makes it. Any task but the async TCP one.
+        // An https request waits this long for the one HTTPS session: the poller
+        // briefly (a missed poll counts toward stale), a person's Test or copy longer.
+        static constexpr uint32_t TLS_POLL_WAIT_MS = 1000;
+        static constexpr uint32_t TLS_PERSON_WAIT_MS = 8000;
+        static Safety::HttpOutcome getOnce(const Site::Endpoint &to, uint32_t tlsWaitMs);
+        // Spec 020 FR-039: no https request while this says an upload runs.
+        static void setUploadBusy(bool (*busy)());
+
         // One GET of a JSON document from `url`, parsed through `filter`
-        // into `doc` as it arrives (no body buffer). Connecting and the
-        // headers wait at most `connectMs` each; the body is read until
-        // `totalMs` after the start. Any task but the async TCP one.
-        static Site::Fetch fetchJson(
-            const std::string &url, const JsonDocument &filter, JsonDocument &doc, uint32_t connectMs, uint32_t totalMs);
+        // into `doc` as it arrives (no body buffer). Any task but the async
+        // TCP one. Connecting and the headers wait at most `connectMs` each; the body is
+        // read until `totalMs` after the start; an https request waits
+        // `tlsWaitMs` for the one HTTPS session.
+        struct FetchLimits
+        {
+            uint32_t connectMs;
+            uint32_t totalMs;
+            uint32_t tlsWaitMs = TLS_POLL_WAIT_MS;
+        };
+        static Site::Fetch fetchJson(const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, const FetchLimits &limits);
 
     private:
         static constexpr uint32_t SQMETER_POLL_MS = 5000;
         static constexpr uint32_t NINA_POLL_MS = 2000;
         static constexpr uint32_t TICK_MS = 100;
-        static constexpr uint32_t TASK_STACK_BYTES = 6144;
+        // Spec 020 FR-039: room for a TLS handshake (an https:// SQMeter).
+        static constexpr uint32_t TASK_STACK_BYTES = 8192;
 
         static void taskEntry(void *arg);
         void run();
         void pollSqmeter(const Targets &targets, uint32_t generation);
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
         void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation);
-        void pollLocation(const std::string &url, uint32_t generation);
+        void pollLocation(const Site::Endpoint &from, uint32_t generation);
         // Spec 020: a location read in this pass, if due (never in a pass that
         // polled SQMeter's safety, never while the roof is busy).
         // At most one SQMeter site read per pass: the location, else the settings.
         void maybeReadSite(bool safetyPolled, bool safetyOn);
-        void pollSettings(const std::string &url, uint32_t generation);
+        void pollSettings(const Site::Endpoint &from, uint32_t generation);
         Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
@@ -114,17 +142,15 @@ namespace SQM
         std::atomic<bool> parkRequested{false};
         std::atomic<bool> roofBusy{false};
         // Spec 020: the site, under the lock; the schedule is the task's own.
-        std::string siteAddress;
-        bool siteFollows = false;
-        bool settingsFollow = false;
+        SiteTarget site;
         Site::LocationSchedule locationSchedule;
         Site::LocationSchedule settingsSchedule; // the same schedule rules, its own times
         // Connect and header wait, and the whole read (research R7): never
         // longer than one safety poll, and never in the same pass.
         static constexpr uint32_t LOCATION_CONNECT_MS = 1500;
         static constexpr uint32_t LOCATION_TOTAL_MS = Site::LocationSchedule::READ_MS;
-        std::string siteStatusUrl;   // SQMeter's /api/status while the location follows it, else empty
-        std::string siteSettingsUrl; // SQMeter's /api/config while any settings group follows it, else empty
+        Site::Endpoint siteStatus;   // SQMeter's /api/status while the location follows it, else an empty URL
+        Site::Endpoint siteSettings; // SQMeter's /api/config while any settings group follows it, else an empty URL
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).
         uint64_t nextSqmeterMs = 0;

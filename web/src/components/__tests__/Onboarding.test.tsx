@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fireEvent, render, screen, within } from '@testing-library/preact';
 import { useState } from 'preact/hooks';
 import { ChoiceGroup, Mascot, Modal, ProgressMeter, SpeechBubble } from '../ui';
@@ -122,5 +124,24 @@ describe('ProgressMeter and Mascot', () => {
     const svg = container.querySelector('svg')!;
     expect(svg).toHaveAttribute('aria-hidden', 'true');
     expect(svg.outerHTML.length).toBeLessThan(3072);
+  });
+
+  it('is the same dog as the logo: the header mark and the favicon', () => {
+    // tools/brand/build.mjs draws every logo from the mascot's own shapes; a
+    // change to one without the other would give the product two dogs.
+    const { container } = render(<Mascot />);
+    const shapes = [...container.querySelectorAll('path, ellipse, circle')];
+    expect(shapes).toHaveLength(10);
+    const geometry = (shape: Element) =>
+      shape.getAttribute('d') ??
+      ['cx', 'cy', 'rx', 'ry', 'r']
+        .filter((name) => shape.hasAttribute(name))
+        .map((name) => `${name}="${shape.getAttribute(name)}"`)
+        .join(' ');
+    const files = ['public/brand-mark.svg', 'public/favicon.svg', '../docs/assets/logo.svg', '../docs/assets/favicon.svg'];
+    for (const file of files) {
+      const logo = readFileSync(join(__dirname, '../../..', file), 'utf8');
+      for (const shape of shapes) expect(logo, file).toContain(geometry(shape));
+    }
   });
 });

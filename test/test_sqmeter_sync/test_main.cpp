@@ -146,6 +146,24 @@ void test_the_secrets_still_needed_are_named()
     TEST_ASSERT_EQUAL(0, secretsNeeded(c, sqmeter(), Group::Mqtt).size());
 }
 
+// Pushover's keys are never synced: a following alerts group asks for them while either is missing here.
+void test_pushover_keys_are_asked_for_while_missing()
+{
+    Config c = sync(live(), sqmeter(), NOW, true).next;
+    SiteConfig withPushover = sqmeter();
+    withPushover.pushoverUserKeySet = true;
+    TEST_ASSERT_EQUAL(1, secretsNeeded(c, withPushover, Group::Alerts).size());
+    TEST_ASSERT_EQUAL_STRING("pushoverKeys", secretsNeeded(c, withPushover, Group::Alerts)[0]);
+    c.alerts.pushoverUserKey = "u";
+    TEST_ASSERT_EQUAL(1, secretsNeeded(c, withPushover, Group::Alerts).size()); // the app token still missing
+    c.alerts.pushoverAppToken = "a";
+    TEST_ASSERT_EQUAL(0, secretsNeeded(c, withPushover, Group::Alerts).size());
+    c.alerts.pushoverUserKey.clear();
+    TEST_ASSERT_EQUAL(0, secretsNeeded(c, sqmeter(), Group::Alerts).size()); // SQMeter has no Pushover keys
+    c.sqmeterSync.alerts.follow = false;
+    TEST_ASSERT_EQUAL(0, secretsNeeded(c, withPushover, Group::Alerts).size());
+}
+
 // --- Validation: SQMeter's value is refused, the old one kept ------------------
 
 void test_an_invalid_value_from_sqmeter_is_refused_and_the_old_one_kept()
@@ -452,6 +470,7 @@ int main(int, char **)
     RUN_TEST(test_a_new_broker_or_ntfy_server_clears_the_saved_secret);
     RUN_TEST(test_the_same_broker_and_server_keep_their_secrets);
     RUN_TEST(test_the_secrets_still_needed_are_named);
+    RUN_TEST(test_pushover_keys_are_asked_for_while_missing);
     RUN_TEST(test_an_invalid_value_from_sqmeter_is_refused_and_the_old_one_kept);
     RUN_TEST(test_the_mqtt_group_is_held_while_mqtt_roof_commands_are_on);
     RUN_TEST(test_an_older_sqmeter_without_a_part_leaves_its_group_alone);
