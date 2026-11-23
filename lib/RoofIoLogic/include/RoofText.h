@@ -27,5 +27,7 @@ namespace SQM
         std::string pinSetupText(const std::string &reason, bool unset);
         // A gate refusal: "Weather not safe: unsafe: rain", "Mount not parked: ...".
         std::string describeGate(GateRefusal refusal, const GateInputs &in);
+        // Spec 024: "Park switch 2 hasn't opened in the last 3 roof openings: ...", or "" for 0.
+        std::string describeStuck(uint8_t which);
     } // namespace RoofIo
 } // namespace SQM

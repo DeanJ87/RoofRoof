@@ -69,6 +69,7 @@ namespace SQM
         s.roof = config.roof;
         s.analog = config.analog;
         s.fittedSwitches = static_cast<uint8_t>(config.park.switches);
+        s.switchesOnly = config.park.switchesOnly();
         return s;
     }
 

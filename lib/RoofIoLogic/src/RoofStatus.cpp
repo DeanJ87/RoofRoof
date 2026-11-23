@@ -1,4 +1,5 @@
 #include "RoofStatus.h"
+#include "SwitchWatch.h"
 
 #include <cmath>
 
@@ -113,6 +114,14 @@ namespace SQM
             park["fitted"] = s.fittedSwitches;
             park["switch1"] = switchName(s.fittedSwitches, 0, s.switch1);
             park["switch2"] = switchName(s.fittedSwitches, 1, s.switch2);
+            park["switchesOnly"] = s.switchesOnly;
+            JsonArray openings = park.createNestedArray("openings");
+            openings.add(s.openings[0]);
+            openings.add(s.openings[1]);
+            if (s.stuckSwitch != 0)
+                park["check"] = describeStuck(s.stuckSwitch);
+            else
+                park["check"] = nullptr;
             out["closePending"] = s.closePending;
             out["calibrating"] = s.calibrating;
             out["closePhase"] = s.closePhase != nullptr ? s.closePhase : "idle";

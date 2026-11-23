@@ -1,4 +1,5 @@
 #include "RoofText.h"
+#include "SwitchWatch.h"
 
 #include <cmath>
 #include <cstdio>
@@ -170,6 +171,17 @@ namespace SQM
             return "Refused";
         }
 
+        std::string describeStuck(uint8_t which)
+        {
+            if (which == 0)
+                return "";
+            static_assert(Safety::STUCK_OPENINGS == 3, "the text names the count");
+            return format(
+                "Park switch %u hasn't opened in the last 3 roof openings: it may be stuck or shorted. Move the mount off its park (or "
+                "take the magnet away) once to check it",
+                static_cast<unsigned>(which));
+        }
+
         std::string describeGate(GateRefusal refusal, const GateInputs &in)
         {
             switch (refusal)
@@ -181,6 +193,8 @@ namespace SQM
                        (in.parked || in.parkText.empty() ? "" : " (" + in.parkText + ")");
             case GateRefusal::Daylight:
                 return "Daylight: " + (in.daylightText.empty() ? std::string("the sun is up") : in.daylightText);
+            case GateRefusal::SwitchCheck:
+                return describeStuck(in.stuckSwitch);
             default:
                 return "";
             }

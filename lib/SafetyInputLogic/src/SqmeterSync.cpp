@@ -53,18 +53,48 @@ namespace SQM
                     c.mqtt.password.clear(); // never sent to a broker it wasn't saved for
                 if (!site.topic.empty())
                     c.safety.mqttTopic = site.topic; // where the MQTT weather source reads <base>/safe
+                // Spec 024: SQMeter's own password for this broker (now SQMeter's),
+                // never an empty one; its switch only ever turns RoofRoof's on.
+                if (!site.secrets.mqttPassword.empty())
+                    c.mqtt.password = site.secrets.mqttPassword;
+                c.mqtt.enabled = c.mqtt.enabled || site.mqttEnabled;
                 return true;
+            }
+
+            bool applyNtfy(AlertsConfig &a, const SiteConfig &site)
+            {
+                if (!site.hasNtfy || site.ntfyTopic.empty())
+                    return false;
+                if (site.ntfyServer != a.ntfyServer)
+                    a.ntfyToken.clear(); // never sent to a server it wasn't saved for
+                a.ntfyServer = site.ntfyServer;
+                a.ntfyTopic = site.ntfyTopic;
+                if (!site.secrets.ntfyToken.empty())
+                    a.ntfyToken = site.secrets.ntfyToken; // spec 024: SQMeter's, for this server
+                a.ntfyEnabled = a.ntfyEnabled || site.ntfyEnabled;
+                return true;
+            }
+
+            // Spec 024: Pushover's keys when SQMeter shares them (its server is
+            // always Pushover's), and its switch on once both keys are here.
+            bool applyPushover(AlertsConfig &a, const SiteConfig &site)
+            {
+                const SiteSecrets &theirs = site.secrets;
+                const bool keys = !theirs.pushoverUserKey.empty() && !theirs.pushoverAppToken.empty();
+                if (keys)
+                {
+                    a.pushoverUserKey = theirs.pushoverUserKey;
+                    a.pushoverAppToken = theirs.pushoverAppToken;
+                }
+                const bool turnOn = site.pushoverEnabled && !a.pushoverUserKey.empty() && !a.pushoverAppToken.empty();
+                a.pushoverEnabled = a.pushoverEnabled || turnOn;
+                return keys || turnOn;
             }
 
             bool applyAlerts(Config &c, const SiteConfig &site)
             {
-                if (!site.hasNtfy || site.ntfyTopic.empty())
-                    return false;
-                if (site.ntfyServer != c.alerts.ntfyServer)
-                    c.alerts.ntfyToken.clear(); // never sent to a server it wasn't saved for
-                c.alerts.ntfyServer = site.ntfyServer;
-                c.alerts.ntfyTopic = site.ntfyTopic;
-                return true;
+                const bool ntfy = applyNtfy(c.alerts, site);
+                return applyPushover(c.alerts, site) || ntfy;
             }
 
             bool applyGroup(Config &c, const SiteConfig &site, Group group)
@@ -80,7 +110,20 @@ namespace SQM
                 }
             }
 
-            // The group's own fields (not its secret, not its switch).
+            // Spec 024: what a sync changes beyond the fields keepFollowed keeps:
+            // the secrets and the switches.
+            bool sameExtras(const Config &a, const Config &b, Group group)
+            {
+                if (group == Group::Mqtt)
+                    return a.mqtt.password == b.mqtt.password && a.mqtt.enabled == b.mqtt.enabled;
+                const AlertsConfig &x = a.alerts;
+                const AlertsConfig &y = b.alerts;
+                return group == Group::Time ||
+                       (x.ntfyToken == y.ntfyToken && x.ntfyEnabled == y.ntfyEnabled && x.pushoverUserKey == y.pushoverUserKey &&
+                        x.pushoverAppToken == y.pushoverAppToken && x.pushoverEnabled == y.pushoverEnabled);
+            }
+
+            // The group's own fields, its secrets and switches (spec 024).
             bool sameGroup(const Config &a, const Config &b, Group group)
             {
                 switch (group)
@@ -89,9 +132,10 @@ namespace SQM
                     return a.ntp.timezone == b.ntp.timezone && a.ntp.server1 == b.ntp.server1 && a.ntp.server2 == b.ntp.server2;
                 case Group::Mqtt:
                     return a.mqtt.broker == b.mqtt.broker && a.mqtt.port == b.mqtt.port && a.mqtt.username == b.mqtt.username &&
-                           a.safety.mqttTopic == b.safety.mqttTopic;
+                           a.safety.mqttTopic == b.safety.mqttTopic && sameExtras(a, b, group);
                 default:
-                    return a.alerts.ntfyServer == b.alerts.ntfyServer && a.alerts.ntfyTopic == b.alerts.ntfyTopic;
+                    return a.alerts.ntfyServer == b.alerts.ntfyServer && a.alerts.ntfyTopic == b.alerts.ntfyTopic &&
+                           sameExtras(a, b, group);
                 }
             }
 
@@ -248,6 +292,30 @@ namespace SQM
                     syncGroup(out, site, group, stamp);
         }
 
+        namespace
+        {
+            // The secrets and switches a sync changed (spec 024), which
+            // keepFollowed never puts back: a person may type a secret or turn
+            // a switch off while the group follows.
+            void copyExtras(const Config &from, Config &to, Group group)
+            {
+                if (group == Group::Mqtt)
+                {
+                    to.mqtt.password = from.mqtt.password;
+                    to.mqtt.enabled = from.mqtt.enabled;
+                }
+                else if (group == Group::Alerts)
+                {
+                    const AlertsConfig &a = from.alerts;
+                    to.alerts.ntfyToken = a.ntfyToken;
+                    to.alerts.ntfyEnabled = a.ntfyEnabled;
+                    to.alerts.pushoverUserKey = a.pushoverUserKey;
+                    to.alerts.pushoverAppToken = a.pushoverAppToken;
+                    to.alerts.pushoverEnabled = a.pushoverEnabled;
+                }
+            }
+        } // namespace
+
         void applyOutcome(const SyncOutcome &out, Config &live)
         {
             for (Group group : GROUPS)
@@ -255,10 +323,7 @@ namespace SQM
                 if (out.groups[static_cast<size_t>(group)].changed)
                 {
                     copyGroup(out.next, live, group);
-                    if (group == Group::Mqtt)
-                        live.mqtt.password = out.next.mqtt.password;
-                    else if (group == Group::Alerts)
-                        live.alerts.ntfyToken = out.next.alerts.ntfyToken;
+                    copyExtras(out.next, live, group);
                 }
                 groupOf(live.sqmeterSync, group).syncedAt = groupOf(out.next.sqmeterSync, group).syncedAt;
             }
@@ -292,7 +357,8 @@ namespace SQM
                 return site.hasNtfy && site.ntfyTokenSet && config.alerts.ntfyToken.empty() && config.alerts.ntfyServer == site.ntfyServer;
             }
 
-            // Pushover's keys are never synced: asked for while either is missing here.
+            // Pushover's keys, asked for while either is missing here (spec 024:
+            // the sync fills them when SQMeter shares them).
             bool pushoverKeysNeeded(const Config &config, const SiteConfig &site)
             {
                 const bool theirs = site.pushoverUserKeySet || site.pushoverAppTokenSet;
@@ -314,6 +380,19 @@ namespace SQM
             return needs;
         }
 
+        namespace
+        {
+            // Spec 024: the last read of SQMeter's secrets, while a group that uses them follows.
+            void writeSecretsStatus(JsonObject out, const SyncView &view)
+            {
+                const SqmeterSyncConfig &sync = view.config.sqmeterSync;
+                if ((sync.mqtt.follow || sync.alerts.follow) && view.addressSet && view.secrets != nullptr)
+                    out["secrets"] = secretsProblemName(view.secrets->problem);
+                else
+                    out["secrets"] = nullptr;
+            }
+        } // namespace
+
         void writeSyncStatus(JsonObject out, const SyncView &view)
         {
             const Config &config = view.config;
@@ -332,6 +411,7 @@ namespace SQM
                 out["readAgeSeconds"] = static_cast<uint32_t>((nowMs - read.goodAtMs) / 1000);
             else
                 out["readAgeSeconds"] = nullptr;
+            writeSecretsStatus(out, view);
             for (Group group : GROUPS)
             {
                 const SqmeterSyncConfig::Group &g = groupOf(config.sqmeterSync, group);

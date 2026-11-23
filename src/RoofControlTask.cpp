@@ -119,6 +119,7 @@ namespace SQM
                 noteStepTime(esp_timer_get_time() - startedUs);
             esp_task_wdt_reset();
             persistFault();
+            persistWatch();
             logChanges();
             // A step that ran long starts the next one at once rather than
             // trying to catch up on missed ones.
@@ -195,6 +196,7 @@ namespace SQM
         takePendingSettings();
         gates.switch1 = static_cast<RoofIo::Contact>(park1Reading.load());
         gates.switch2 = static_cast<RoofIo::Contact>(park2Reading.load());
+        watchSwitches();
         checkGates();
         runPendingClose();
         controller.tick(readings);

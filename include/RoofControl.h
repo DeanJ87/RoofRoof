@@ -29,6 +29,7 @@
 #include "RoofStatus.h"
 #include "SafetyInput.h"
 #include "SwitchInput.h"
+#include "SwitchWatch.h"
 #include "Teach.h"
 #include "DiagDocuments.h"
 #include "MoveLog.h"
@@ -206,6 +207,7 @@ namespace SQM
             RoofConfig roof;
             Board::AnalogConfig analog; // spec 023: the dividers and trims
             uint8_t fittedSwitches = 0;
+            bool switchesOnly = false; // spec 024: the park switches are the only park source
         };
 
         // One step's readings beyond the logic's.
@@ -258,8 +260,11 @@ namespace SQM
         void stepCalibration(const Roof::Readings &readings);
         void endCalibrationFor(bool yieldToClose, const std::string &text);
 
+        void watchSwitches(); // spec 024: the stuck-switch watch, each step
+
         // Outside the lock, in the control task.
         void persistFault();
+        void persistWatch();
         void logChanges();
 
         mutable SemaphoreHandle_t lock = nullptr;
@@ -286,6 +291,11 @@ namespace SQM
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
         RoofIo::FaultRecord savedFault; // what NVS holds
+        // Spec 024: roof openings since each park switch last read open, and what NVS holds.
+        Safety::SwitchWatch watch;
+        Safety::SwitchWatch savedWatch;
+        Roof::State watchedState = Roof::State::Unknown;
+        uint32_t watchSaveFailedAtMs = 0; // the control task's own
         RoofIo::Snapshot snap;
         float supplyVolts = 0.0f; // the last step's readings
         float motorAmps = 0.0f;

@@ -48,10 +48,15 @@ namespace SQM
             locationAtMs = location.atMs;
         // A follow switch just turned on syncs from the last read at once.
         const uint8_t follows = followMask(config.sqmeterSync);
-        const Site::ConfigRead settings = poller.settingsRead();
-        if (settings.good() && (settings.atMs != settingsAtMs || follows != syncedFollows) && syncSettings(settings, epoch))
+        Site::ConfigRead settings = poller.settingsRead();
+        // Spec 024: SQMeter's secrets, when they were read for this settings read.
+        const Site::SecretsRead secrets = poller.secretsRead();
+        Site::pairSecrets(settings.site, settings.goodAtMs, secrets);
+        const bool fresh = settings.atMs != settingsAtMs || secrets.atMs != secretsAtMs;
+        if (settings.good() && (fresh || follows != syncedFollows) && syncSettings(settings, epoch))
         {
             settingsAtMs = settings.atMs;
+            secretsAtMs = secrets.atMs;
             syncedFollows = follows;
         }
     }
@@ -125,6 +130,10 @@ namespace SQM
             shown = state;
         }
         const Site::ConfigRead settings = poller.settingsRead();
-        Site::writeSyncStatus(doc.createNestedObject("sync"), Site::SyncView{config, settings, shown, addressSet, SafetyPoller::nowMs()});
+        // Only the problem: the status never copies a secret.
+        Site::SecretsRead secrets;
+        secrets.problem = poller.secretsProblem();
+        Site::writeSyncStatus(
+            doc.createNestedObject("sync"), Site::SyncView{config, settings, shown, addressSet, SafetyPoller::nowMs(), &secrets});
     }
 } // namespace SQM

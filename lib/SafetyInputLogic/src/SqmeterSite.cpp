@@ -72,6 +72,7 @@ namespace SQM
                 out.username = text(mqtt["username"]);
                 out.topic = text(mqtt["topic"]);
                 out.passwordSet = secretSet(mqtt["password"]);
+                out.mqttEnabled = mqtt["enabled"].as<bool>();
             }
 
             void readAlerts(JsonVariantConst alerts, SiteConfig &out)
@@ -83,6 +84,7 @@ namespace SQM
                     out.ntfyServer = text(ntfy["server"]);
                     out.ntfyTopic = text(ntfy["topic"]);
                     out.ntfyTokenSet = secretSet(ntfy["token"]);
+                    out.ntfyEnabled = ntfy["enabled"].as<bool>();
                 }
                 JsonVariantConst pushover = alerts["pushover"];
                 if (pushover.is<JsonObjectConst>())
@@ -90,6 +92,7 @@ namespace SQM
                     out.hasPushover = true;
                     out.pushoverUserKeySet = secretSet(pushover["userKey"]);
                     out.pushoverAppTokenSet = secretSet(pushover["appToken"]);
+                    out.pushoverEnabled = pushover["enabled"].as<bool>();
                 }
             }
 
@@ -103,6 +106,7 @@ namespace SQM
                     mqtt["username"] = site.username;
                     mqtt["topic"] = site.topic;
                     mqtt["passwordSet"] = site.passwordSet;
+                    mqtt["enabled"] = site.mqttEnabled;
                 }
                 else
                     out["mqtt"] = nullptr;
@@ -112,6 +116,7 @@ namespace SQM
                     ntfy["server"] = site.ntfyServer;
                     ntfy["topic"] = site.ntfyTopic;
                     ntfy["tokenSet"] = site.ntfyTokenSet;
+                    ntfy["enabled"] = site.ntfyEnabled;
                 }
                 else
                     out["ntfy"] = nullptr;
@@ -120,6 +125,7 @@ namespace SQM
                     JsonObject pushover = out.createNestedObject("pushover");
                     pushover["userKeySet"] = site.pushoverUserKeySet;
                     pushover["appTokenSet"] = site.pushoverAppTokenSet;
+                    pushover["enabled"] = site.pushoverEnabled;
                 }
                 else
                     out["pushover"] = nullptr;
@@ -304,12 +310,13 @@ namespace SQM
             filter["ntp"]["timezone"] = true;
             filter["ntp"]["server1"] = true;
             filter["ntp"]["server2"] = true;
-            for (const char *key : {"broker", "port", "username", "topic", "password"})
+            for (const char *key : {"enabled", "broker", "port", "username", "topic", "password"})
                 filter["mqtt"][key] = true;
-            for (const char *key : {"server", "topic", "token"})
+            for (const char *key : {"enabled", "server", "topic", "token"})
                 filter["alerts"]["ntfy"][key] = true;
-            filter["alerts"]["pushover"]["userKey"] = true;
-            filter["alerts"]["pushover"]["appToken"] = true;
+            for (const char *key : {"enabled", "userKey", "appToken"})
+                filter["alerts"]["pushover"][key] = true;
+            filter["sharing"]["secrets"] = true;
         }
 
         bool readSiteConfig(const JsonDocument &doc, SiteConfig &out, std::string &why)
@@ -331,6 +338,8 @@ namespace SQM
                     out.latitude = out.longitude = 0.0;
             }
             readTime(doc, out);
+            out.hasSharing = doc["sharing"]["secrets"].is<bool>();
+            out.sharingSecrets = doc["sharing"]["secrets"].as<bool>();
             readMqtt(doc["mqtt"], out);
             readAlerts(doc["alerts"], out);
             return true;

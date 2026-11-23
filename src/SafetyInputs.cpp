@@ -179,6 +179,7 @@ namespace SQM
         Safety::ParkInputs park;
         park.nina = snap.nina;
         park.fittedSwitches = static_cast<uint8_t>(settings.park.switches);
+        park.switchesOnly = settings.park.switchesOnly(); // spec 024
         park.switch1 = switch1;
         park.switch2 = switch2;
         park.nowMs = nowMs;

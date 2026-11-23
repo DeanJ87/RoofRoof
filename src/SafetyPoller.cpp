@@ -277,7 +277,8 @@ namespace SQM
         {
             fetch.status = code;
             WiFiClient *stream = http.getStreamPtr();
-            if (code == 200 && stream != nullptr)
+            // Spec 024: a 403's body says which refusal it is (SQMeter's secrets).
+            if ((code == 200 || code == 403) && stream != nullptr)
             {
                 DeadlineReader reader(*stream, deadline);
                 fetch.parsed = deserializeJson(doc, reader, DeserializationOption::Filter(filter)) == DeserializationError::Ok;
@@ -344,15 +345,19 @@ namespace SQM
             return;
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (target.address != site.address || target.username != site.username || target.password != site.password ||
-            target.followLocation != site.followLocation || target.followSettings != site.followSettings)
+            target.followLocation != site.followLocation || target.followSettings != site.followSettings ||
+            target.followSecrets != site.followSecrets)
         {
             site = target;
             siteStatus = Site::Endpoint{
                 target.followLocation ? Site::siteUrl(target.address, Site::STATUS_PATH) : std::string(), target.username, target.password};
             siteSettings = Site::Endpoint{
                 target.followSettings ? Site::siteUrl(target.address, Site::CONFIG_PATH) : std::string(), target.username, target.password};
+            siteSecrets = Site::Endpoint{
+                target.followSecrets ? Site::siteUrl(target.address, Site::SECRETS_PATH) : std::string(), target.username, target.password};
             state.location = Site::LocationRead{};
             state.settings = Site::ConfigRead{};
+            secrets = Site::SecretsRead{};
             ++state.siteGeneration;
         }
         xSemaphoreGive(mutex);
@@ -475,6 +480,10 @@ namespace SQM
         xSemaphoreTake(mutex, portMAX_DELAY);
         const Site::Endpoint status = siteStatus;
         const Site::Endpoint settings = siteSettings;
+        const Site::Endpoint secretsFrom = siteSecrets;
+        const uint64_t settingsGoodAtMs = state.settings.goodAtMs;
+        const bool sharingOff = Site::sharingOff(state.settings.site);
+        const Site::SecretsRead lastSecrets = secrets;
         const uint32_t generation = state.siteGeneration;
         xSemaphoreGive(mutex);
         Site::LocationSchedule::Pass pass;
@@ -491,7 +500,14 @@ namespace SQM
         }
         pass.enabled = !settings.url.empty();
         if (settingsSchedule.due(pass))
+        {
             pollSettings(settings, generation);
+            return;
+        }
+        // Spec 024: in the pass after a good settings read, its secrets.
+        pass.enabled = !secretsFrom.url.empty();
+        if (Site::secretsDue(pass, settingsGoodAtMs, lastSecrets))
+            pollSecrets(sharingOff ? Site::Endpoint{} : secretsFrom, generation, settingsGoodAtMs);
     }
 
     // Only the parts the sync uses are kept, whatever the alert templates hold.

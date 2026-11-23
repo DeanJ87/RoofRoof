@@ -7,22 +7,24 @@ using namespace DemoCore;
 std::string EmulatedDevice::applyConfig(const std::string &json)
 {
     std::string reason;
-    auto next = Config::fromJson(json, &cfg, &reason);
-    if (!next)
+    // Spec 024: with the copy's held secrets, as WebServer::handleSetConfig.
+    const bool held = copied && nowMs - copiedAtMs <= Site::SECRETS_HELD_MS;
+    Config next = cfg;
+    if (!Config::applyJson(json, next, true, &reason, held ? &*copied : nullptr))
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
-    Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
+    Site::keepFollowed(cfg, next); // as saveConfigCallback (spec 020)
     // Spec 023: pins and the network mode wait while the roof is busy, as on the device.
-    if ((next->pins != cfg.pins || next->network.mode != cfg.network.mode) && !platformHold("restart").empty())
+    if ((next.pins != cfg.pins || next.network.mode != cfg.network.mode) && !platformHold("restart").empty())
         return errorJson("Pins and the network mode can't change while the roof is busy");
     // Spec 022: the test box's deadline, as WebServer::handleSetConfig.
     if (!ConfigSave::stampTestBox(
             cfg.testBox,
-            next->testBox,
+            next.testBox,
             ConfigSave::sendsTestBoxHours(json),
             ConfigSave::Clock{validEpoch() != 0, static_cast<uint32_t>(epoch)},
             &reason))
         return errorJson(reason);
-    cfg = *next;
+    cfg = next;
     if (roofBooted)
         roof.settingsChanged(cfg);
     return "{\"success\":true}";

@@ -504,9 +504,36 @@ void test_apply_request_reads_the_token()
     TEST_ASSERT_EQUAL_STRING("", Backup::readApplyRequest("token").c_str());
 }
 
+// Spec 024: a backup from before the park source takes it from its switches,
+// whatever the device's source is now.
+void test_restore_of_a_pre_024_backup_takes_the_source_from_its_switches()
+{
+    Config current = Config::createDefault();
+    current.park.source = ParkConfig::Source::Switches;
+    current.park.switches = ParkConfig::Switches::Two;
+    for (const auto &c :
+         {std::make_pair(ParkConfig::Switches::One, ParkConfig::Source::NinaAndSwitches),
+          std::make_pair(ParkConfig::Switches::None, ParkConfig::Source::Nina)})
+    {
+        Config old = Config::createDefault();
+        old.park.switches = c.first;
+        old.park.source = c.second;
+        std::string file = backupOf(old);
+        const std::string key = std::string("\"source\":\"") + (c.second == ParkConfig::Source::Nina ? "nina" : "ninaAndSwitches") + "\",";
+        const size_t at = file.find(key);
+        TEST_ASSERT_TRUE(at != std::string::npos);
+        file.erase(at, key.size());
+        const Restore r = restore(current, file);
+        TEST_ASSERT_EQUAL_INT(static_cast<int>(Backup::Error::None), static_cast<int>(r.error));
+        TEST_ASSERT_TRUE(r.preview.candidate.park.source == c.second);
+        TEST_ASSERT_TRUE(r.preview.candidate.park.switches == c.first);
+    }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_restore_of_a_pre_024_backup_takes_the_source_from_its_switches);
     RUN_TEST(test_restore_brings_no_test_box_deadline);
     RUN_TEST(test_backup_without_passphrase_holds_no_secret);
     RUN_TEST(test_backup_holds_every_section_and_the_header);

@@ -15,9 +15,13 @@ namespace
         R"({"deviceName":"SQMeter","language":"en","wifi":{"ssid":"DarkSkyLab","password":"********","hostname":"sqmeter"},)"
         R"("mqtt":{"enabled":true,"broker":"192.168.1.10","port":1883,"username":"observatory","password":"********","topic":"sqmeter"},)"
         R"("ntp":{"enabled":true,"server1":"uk.pool.ntp.org","server2":"time.cloudflare.com","syncIntervalMs":600000,"timezone":"GMT0BST,M3.5.0/1,M10.5.0"},)"
-        R"("location":{"set":false,"latitude":0,"longitude":0,"showSunMoon":true},)"
-        R"("alerts":{"enabled":true,"ntfy":{"enabled":true,"server":"https://ntfy.sh","token":"","topic":"darkskylab-sqm"},)"
-        R"("pushover":{"enabled":false,"userKey":"","appToken":"","sound":""}}})";
+        R"("location":{"set":false,"latitude":0,"longitude":0,"showSunMoon":true},"sharing":{"secrets":true},)"
+        R"("alerts":{"enabled":true,"ntfy":{"enabled":true,"server":"https://ntfy.sh","token":"********","topic":"darkskylab-sqm"},)"
+        R"("pushover":{"enabled":true,"userKey":"********","appToken":"********","sound":""}}})";
+    // Spec 024: its GET /api/secrets (made-up values; never shown by the copy).
+    const char *const DEMO_SQMETER_SECRETS =
+        R"({"mqtt":{"password":"demo-broker-pass"},"alerts":{"ntfy":{"token":"tk_demo0000000000"},)"
+        R"("pushover":{"userKey":"udemo000000000000000000000000a","appToken":"ademo000000000000000000000000a"}}})";
     const char *const OFFLINE = "connection refused (demo: SQMeter offline)";
 
     // SafetyPoller::fetchJson on the simulated SQMeter: offline, locked (401
@@ -36,6 +40,27 @@ namespace
     }
 } // namespace
 
+// Spec 024: the simulated SQMeter's GET /api/secrets (SafetyPoller::fetchJson
+// with secretsFilter), and its 403s' bodies.
+Site::SecretsRead EmulatedDevice::demoSecrets(const Site::Endpoint &from, uint64_t at) const
+{
+    DynamicJsonDocument filter(Site::SECRETS_FILTER_BYTES);
+    Site::secretsFilter(filter);
+    DynamicJsonDocument doc(Site::SECRETS_DOC_BYTES);
+    const DemoRoof::Injectors &inject = roof.injectors();
+    Site::Fetch fetch;
+    fetch.credentials = from.sendsPassword();
+    fetch.status = DemoRoof::demoSecretsAnswer(inject, from.username, from.password);
+    const char *body = fetch.status == 200     ? DEMO_SQMETER_SECRETS
+                       : !inject.sqmeterLocked ? R"({"error":"Set a web password in SQMeter before sharing passwords"})"
+                                               : R"({"error":"Password sharing is off in SQMeter"})";
+    if (fetch.status == 0)
+        fetch.error = OFFLINE;
+    else if (fetch.status == 200 || fetch.status == 403)
+        fetch.parsed = !deserializeJson(doc, body, DeserializationOption::Filter(filter));
+    return Site::readSecrets(fetch, doc, at);
+}
+
 void EmulatedDevice::resetSite()
 {
     siteSchedule = Site::LocationSchedule();
@@ -43,10 +68,28 @@ void EmulatedDevice::resetSite()
     settingsSchedule = Site::LocationSchedule();
     settingsRead = Site::ConfigRead();
     syncState = Site::SyncState();
+    secretsRead = Site::SecretsRead();
 }
 
-// The settings read (SafetyPoller::pollSettings) and the sync (main.cpp
-// syncSiteSettings): the firmware's own rules, one read per pass.
+// The sync (main.cpp syncSiteSettings / SiteSync::syncSettings) of the last
+// settings read, with (spec 024) the secrets read for it.
+void EmulatedDevice::syncSite()
+{
+    Site::SiteConfig site = settingsRead.site;
+    Site::pairSecrets(site, settingsRead.goodAtMs, secretsRead);
+    Site::SyncOutcome out;
+    Site::syncFromSite(out, cfg, site, epoch, validEpoch() != 0);
+    for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
+        syncState.refused[i] = out.groups[i].refused;
+    if (!out.any())
+        return;
+    Site::applyOutcome(out, cfg);
+    if (roofBooted)
+        roof.settingsChanged(cfg);
+}
+
+// The settings read (SafetyPoller::pollSettings), then (spec 024) its
+// secrets in the next pass, and the sync: the firmware's own rules, one read per pass.
 void EmulatedDevice::runSettingsSync(bool busy)
 {
     Site::LocationSchedule::Pass pass;
@@ -54,30 +97,27 @@ void EmulatedDevice::runSettingsSync(bool busy)
     pass.enabled = settingsFollow && !Site::siteUrl(siteAddress, Site::CONFIG_PATH).empty();
     pass.busy = busy;
     pass.generation = siteGeneration;
+    const Site::Endpoint from{"", cfg.safety.httpUsername, cfg.safety.httpPassword};
     if (settingsSchedule.due(pass))
     {
         DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
         Site::configFilter(filter);
         DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
-        const Site::Endpoint from{"", cfg.safety.httpUsername, cfg.safety.httpPassword};
         const Site::Fetch fetch = demoFetch(roof.injectors(), from, DEMO_SQMETER_CONFIG, filter, doc);
         const Site::ConfigRead fresh = Site::readConfig(fetch, doc, nowMs);
         Site::record(settingsRead, fresh);
         settingsSchedule.done(fresh.good(), nowMs);
         if (fresh.good() && !busy)
-        {
-            Site::SyncOutcome out;
-            Site::syncFromSite(out, cfg, settingsRead.site, epoch, validEpoch() != 0);
-            for (size_t i = 0; i < Site::GROUP_COUNT; ++i)
-                syncState.refused[i] = out.groups[i].refused;
-            if (out.any())
-            {
-                Site::applyOutcome(out, cfg);
-                if (roofBooted)
-                    roof.settingsChanged(cfg);
-            }
-        }
+            syncSite();
+        return;
     }
+    pass.enabled = pass.enabled && (cfg.sqmeterSync.mqtt.follow || cfg.sqmeterSync.alerts.follow);
+    if (!Site::secretsDue(pass, settingsRead.goodAtMs, secretsRead))
+        return;
+    secretsRead = Site::sharingOff(settingsRead.site) ? Site::sharingOffRead(nowMs) : demoSecrets(from, nowMs);
+    secretsRead.basedOnMs = settingsRead.goodAtMs;
+    if (settingsRead.good())
+        syncSite();
 }
 
 // SafetyPoller::run's location read and main.cpp handleSite's save, in one pass.
@@ -95,6 +135,7 @@ void EmulatedDevice::runSite()
         ++siteGeneration;
         siteRead = Site::LocationRead();
         settingsRead = Site::ConfigRead();
+        secretsRead = Site::SecretsRead();
     }
     const bool busy = !platformHold("flashWrite").empty();
     Site::LocationSchedule::Pass pass;
@@ -133,7 +174,8 @@ void EmulatedDevice::runSite()
 void EmulatedDevice::writeSync(JsonObject out) const
 {
     Site::writeSyncStatus(
-        out, Site::SyncView{cfg, settingsRead, syncState, !Site::siteUrl(cfg.safety.httpUrl, Site::STATUS_PATH).empty(), nowMs});
+        out,
+        Site::SyncView{cfg, settingsRead, syncState, !Site::siteUrl(cfg.safety.httpUrl, Site::STATUS_PATH).empty(), nowMs, &secretsRead});
 }
 
 void EmulatedDevice::writeLocation(JsonObject out) const
@@ -209,7 +251,20 @@ std::string EmulatedDevice::sqmeterSite(const std::string &body)
     std::string why = "not SQMeter's settings";
     if (!fetch.parsed || !Site::readSiteConfig(doc, site, why))
         return response(502, errorJson("SQMeter's settings couldn't be read: " + why));
-    DynamicJsonDocument out(1536);
+    // Spec 024: its secrets, only at the saved address, held for the save (WebServer::fetchSite).
+    Site::SecretsRead secrets;
+    secrets.problem = Site::SecretsProblem::NotSaved;
+    if (Site::savedAddress(address, cfg.safety))
+        secrets = Site::sharingOff(site) ? Site::sharingOffRead(nowMs)
+                                         : demoSecrets(Site::copyEndpoint(cfg.safety, address, login, Site::SECRETS_PATH), nowMs);
+    site.secrets = secrets.secrets;
+    if (secrets.good())
+        copied = Site::copiedFrom(site);
+    else
+        copied.reset();
+    copiedAtMs = nowMs;
+    DynamicJsonDocument out(1792);
     Site::writeSiteDocument(out.to<JsonObject>(), address, site);
+    Site::writeSecretsPart(out.as<JsonObject>(), secrets, Site::secretStates(site.secrets, cfg), address);
     return response(200, serialize(out));
 }

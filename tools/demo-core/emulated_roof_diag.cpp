@@ -3,6 +3,8 @@
 
 #include "emulated_roof.h"
 
+#include "SwitchWatchStep.h"
+
 #include "MotionProfile.h"
 #include "RoofAlerts.h"
 
@@ -40,6 +42,23 @@ namespace DemoRoof
         return live;
     }
 
+    // Spec 024: as RoofControl::watchSwitches.
+    void EmulatedRoof::watchSwitches()
+    {
+        const Roof::State state = controller.status().state;
+        gates.stuckSwitch = RoofIo::stepSwitchWatch(
+            watch,
+            RoofIo::WatchStep{
+                watchedState,
+                state,
+                calibration.active(),
+                static_cast<uint8_t>(parkCfg.switches),
+                parkCfg.switchesOnly(),
+                gates.switch1,
+                gates.switch2});
+        watchedState = state;
+    }
+
     RoofIo::Snapshot EmulatedRoof::snapshot() const
     {
         RoofIo::Snapshot s;
@@ -54,6 +73,10 @@ namespace DemoRoof
         s.fittedSwitches = gates.fittedSwitches;
         s.switch1 = gates.switch1;
         s.switch2 = gates.switch2;
+        s.switchesOnly = parkCfg.switchesOnly();
+        s.openings[0] = watch.quiet[0];
+        s.openings[1] = watch.quiet[1];
+        s.stuckSwitch = gates.stuckSwitch;
         s.personStops = personStops;
         s.calibrating = calibration.active();
         s.maxStepGapMs = STEP_MS;
