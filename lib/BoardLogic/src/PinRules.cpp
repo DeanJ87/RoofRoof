@@ -180,6 +180,7 @@ namespace SQM
             boot.report = check(map, facts);
             const Issue *error = boot.report.firstError();
             const bool unset = map.preset == Preset::Unset;
+            boot.unset = unset && !storedUnreadable;
             boot.valid = !storedUnreadable && !unset && error == nullptr;
             if (boot.valid)
                 return boot;

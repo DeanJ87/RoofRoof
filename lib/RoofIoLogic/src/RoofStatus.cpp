@@ -74,7 +74,7 @@ namespace SQM
                 fault["cause"] = causeName(record.cause);
                 putReading(fault, "measured", record.fault.measured, 2);
                 putReading(fault, "limit", record.fault.limit, 2);
-                fault["text"] = describeFault(record);
+                fault["text"] = record.cause == FaultCause::PinSetup && !s.pinSetupText.empty() ? s.pinSetupText : describeFault(record);
             }
         } // namespace
 

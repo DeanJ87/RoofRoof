@@ -60,11 +60,11 @@ std::string EmulatedDevice::pins(const std::string &action, const std::string &b
     if (action == "check")
     {
         if (!boot.valid)
-            return response(409, DemoCore::errorJson(RoofIo::pinSetupText(boot.reason)));
+            return response(409, DemoCore::errorJson(RoofIo::pinSetupText(boot.reason, boot.unset)));
         if (cfg.pins != runningPins)
             return response(409, DemoCore::errorJson("Restart first: the saved pins aren't in effect yet"));
         if (!platformHold("restart").empty())
-            return response(409, DemoCore::errorJson("The roof is busy: the wiring check runs only while it is still"));
+            return response(409, DemoCore::errorJson("The wiring check can't run while the roof is busy"));
         wiring = Board::evaluate(simulatedWiring(roof.snapshot(), cfg));
         wiringState = ConfigPins::CheckState::Done;
         wiringAtMs = nowMs;

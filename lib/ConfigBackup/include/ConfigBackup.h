@@ -115,6 +115,7 @@ namespace SQM::Backup
     enum class NotApplicableReason : uint8_t
     {
         PushoverKeys, // Pushover on, but its keys are neither restored nor set here
+        BoardPins,    // spec 023: a backup never changes the board or pins (they belong to this hardware)
     };
     const char *reasonCode(NotApplicableReason reason);
 

@@ -121,9 +121,9 @@ namespace SQM
             }
         } // namespace
 
-        std::string pinSetupText(const std::string &reason)
+        std::string pinSetupText(const std::string &reason, bool unset)
         {
-            return "Pin setup invalid: " + reason;
+            return unset ? reason : "Pin setup invalid: " + reason;
         }
 
         std::string describeSupply(float volts, float minimum)

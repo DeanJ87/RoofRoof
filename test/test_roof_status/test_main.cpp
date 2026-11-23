@@ -266,6 +266,21 @@ void test_status_fault_with_cause_and_text(void)
     TEST_ASSERT_EQUAL(1, doc["roof"]["watchdogTrips"].as<int>());
 }
 
+// Spec 023: the pin setup's fault names why (the first broken rule, or no board chosen).
+void test_status_pin_setup_fault_names_the_reason(void)
+{
+    Snapshot s = closedRoof();
+    s.status.state = Roof::State::Error;
+    s.status.fault.kind = Roof::FaultKind::External;
+    s.fault = externalRecord(FaultCause::PinSetup, 0.0f, 0.0f);
+    s.pinSetupText = pinSetupText("EN on GPIO6: GPIO6 is a flash pin", false);
+    TEST_ASSERT_EQUAL_STRING("Pin setup invalid: EN on GPIO6: GPIO6 is a flash pin", write(s)["roof"]["fault"]["text"]);
+    s.pinSetupText = pinSetupText("No board chosen yet: choose the board and its pins", true);
+    TEST_ASSERT_EQUAL_STRING("No board chosen yet: choose the board and its pins", write(s)["roof"]["fault"]["text"]);
+    s.pinSetupText.clear(); // the cause's own text without one
+    TEST_ASSERT_EQUAL_STRING("pinSetup", write(s)["roof"]["fault"]["cause"]);
+}
+
 void test_status_fault_measured_nan_is_null(void)
 {
     Snapshot s = closedRoof();
@@ -373,6 +388,7 @@ int main(int, char **)
     RUN_TEST(test_every_fault_text_has_value_and_limit);
     RUN_TEST(test_external_fault_texts_by_cause);
     RUN_TEST(test_refusal_texts);
+    RUN_TEST(test_status_pin_setup_fault_names_the_reason);
     RUN_TEST(test_gate_texts_name_the_failed_input);
     RUN_TEST(test_status_closed_roof);
     RUN_TEST(test_status_simulation);

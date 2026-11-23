@@ -97,11 +97,11 @@ namespace SQM
             if (theRoof == nullptr)
                 return "The wiring check isn't available";
             if (!PinSetup::valid())
-                return RoofIo::pinSetupText(PinSetup::boot().reason);
+                return RoofIo::pinSetupText(PinSetup::boot().reason, PinSetup::boot().unset);
             if (needsRestart && needsRestart())
                 return "Restart first: the saved pins aren't in effect yet";
             if ((roofBusy && roofBusy()) || theRoof->moving() || theRoof->calibrating())
-                return "The roof is busy: the wiring check runs only while it is still";
+                return "The wiring check can't run while the roof is busy";
             uint8_t expected = static_cast<uint8_t>(State::Idle);
             if (!state.compare_exchange_strong(expected, static_cast<uint8_t>(State::Running)))
             {

@@ -336,6 +336,24 @@ void test_an_sqmeter_backup_is_refused()
     TEST_ASSERT_EQUAL_STRING("This isn't a RoofRoof backup file", Backup::errorText(Backup::Error::NotBackup));
 }
 
+// Spec 023: a backup never changes the pins (a DevKit's map on a WT32 would
+// drive its Ethernet lines); different pins are listed, the device's kept.
+void test_pins_are_never_restored()
+{
+    Config devkit = configured();
+    devkit.pins = Board::presetMap(Board::Preset::Devkit);
+    Config wt32 = configured();
+    wt32.pins = Board::presetMap(Board::Preset::Wt32CarrierV1);
+    const Restore r = restore(wt32, backupOf(devkit));
+    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
+    TEST_ASSERT_TRUE(r.preview.candidate.pins == wt32.pins);
+    TEST_ASSERT_EQUAL(1, r.preview.notApplicable.size());
+    TEST_ASSERT_EQUAL(Backup::NotApplicableReason::BoardPins, r.preview.notApplicable[0].reason);
+    TEST_ASSERT_EQUAL_STRING("board-pins", Backup::reasonCode(Backup::NotApplicableReason::BoardPins));
+    // The same pins: nothing listed.
+    TEST_ASSERT_TRUE(restore(wt32, backupOf(wt32)).preview.notApplicable.empty());
+}
+
 void test_pushover_without_its_keys_is_not_applied()
 {
     Config other = configured();
@@ -497,6 +515,7 @@ int main(int, char **)
     RUN_TEST(test_error_json_has_code_and_text);
     RUN_TEST(test_a_restored_setting_is_saved_and_restart_needs_are_named);
     RUN_TEST(test_preview_document_shape);
+    RUN_TEST(test_pins_are_never_restored);
     RUN_TEST(test_apply_request_reads_the_token);
     return UNITY_END();
 }

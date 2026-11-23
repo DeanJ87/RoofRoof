@@ -35,14 +35,6 @@ namespace SQM
         }
     } // namespace
 
-    RoofControl::HardwareSettings RoofControl::settingsOf(const Config &config)
-    {
-        HardwareSettings s;
-        s.roof = config.roof;
-        s.fittedSwitches = static_cast<uint8_t>(config.park.switches);
-        return s;
-    }
-
     bool RoofControl::begin(const Config &config, const Board::PinMap &pinsInEffect, bool valid, const std::string &reason)
     {
         lock = xSemaphoreCreateMutex();
@@ -397,6 +389,8 @@ namespace SQM
         s.motorAmps = motorAmps;
         s.maxCurrentAmps = settings.roof.maxCurrentAmps;
         s.fittedSwitches = settings.fittedSwitches;
+        if (!pinsValid)
+            s.pinSetupText = pinsReason; // spec 023
         s.switch1 = gates.switch1;
         s.switch2 = gates.switch2;
         s.closePending = closePending;

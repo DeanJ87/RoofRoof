@@ -120,6 +120,8 @@ namespace SQM::Backup
     {
         switch (reason)
         {
+        case NotApplicableReason::BoardPins:
+            return "board-pins";
         case NotApplicableReason::PushoverKeys:
             break;
         }

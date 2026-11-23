@@ -40,7 +40,8 @@ namespace SQM
             float supplyVolts = 0.0f; // NaN when unreadable
             float minSupplyVolts = 11.0f;
             bool currentSense = false;
-            float motorAmps = 0.0f; // NaN when off or unreadable
+            std::string pinSetupText; // spec 023: the fault's text while the pins in effect are invalid
+            float motorAmps = 0.0f;   // NaN when off or unreadable
             float maxCurrentAmps = 10.0f;
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;

@@ -68,6 +68,7 @@ namespace SQM
             bool valid = false;
             PinReport report;
             std::string reason;                // why not valid ("" when valid)
+            bool unset = false;                // not valid because no board is chosen yet
             std::vector<uint8_t> holdAsInputs; // when not valid: the candidate motor pins to leave as inputs
         };
         BootPins bootPins(const PinMap &map, const Facts &facts, bool storedUnreadable);

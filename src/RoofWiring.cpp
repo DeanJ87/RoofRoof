@@ -40,7 +40,7 @@ namespace SQM
     RoofControl::Outcome RoofControl::notStarted() const
     {
         if (!pinsValid)
-            return Outcome{false, "pinSetup", RoofIo::pinSetupText(pinsReason), Roof::State::Unknown};
+            return Outcome{false, "pinSetup", pinsReason, Roof::State::Unknown};
         return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
     }
 
@@ -61,6 +61,14 @@ namespace SQM
             return MotorDriver::EnableProbe::NotRun;
         }
         return MotorDriver::probeEnable();
+    }
+
+    RoofControl::HardwareSettings RoofControl::settingsOf(const Config &config)
+    {
+        HardwareSettings s;
+        s.roof = config.roof;
+        s.fittedSwitches = static_cast<uint8_t>(config.park.switches);
+        return s;
     }
 
     void RoofControl::takePins(const Board::PinMap &inEffect, bool valid, const std::string &reason)

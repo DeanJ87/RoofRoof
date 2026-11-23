@@ -13,7 +13,7 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
     // Spec 023: pins and the network mode wait while the roof is busy, as on the device.
     if ((next->pins != cfg.pins || next->network.mode != cfg.network.mode) && !platformHold("restart").empty())
-        return errorJson("The roof is busy: pins and the network's set-up change only while it is still");
+        return errorJson("Pins and the network mode can't change while the roof is busy");
     cfg = *next;
     if (roofBooted)
         roof.settingsChanged(cfg);

@@ -107,6 +107,6 @@ namespace SQM
         if (next.pins == live.pins && next.network.mode == live.network.mode)
             return "";
         const bool busy = (roofBusy && roofBusy()) || (roof != nullptr && (roof->moving() || roof->calibrating()));
-        return busy ? "The roof is busy: pins and the network's set-up change only while it is still" : "";
+        return busy ? "Pins and the network mode can't change while the roof is busy" : "";
     }
 } // namespace SQM

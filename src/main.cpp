@@ -13,6 +13,7 @@
 #include "EthernetLink.h"
 #include "NetState.h"
 #include "PinSetup.h"
+#include "RoofText.h"
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
@@ -480,7 +481,8 @@ void setup()
     // server. Any fault saved before the restart is latched before its first
     // step; between the magnets the position is unknown and nothing moves.
     // Spec 023: on the pins in effect; not started with invalid ones.
-    roofControl.begin(config, PinSetup::running(), PinSetup::valid(), PinSetup::boot().reason);
+    roofControl.begin(
+        config, PinSetup::running(), PinSetup::valid(), RoofIo::pinSetupText(PinSetup::boot().reason, PinSetup::boot().unset));
     // Spec 010: which platform actions wait for the roof and the close sequence.
     // The close sequence's record (spec 005) is restored first, so its busy
     // flag is right before any request can ask.
