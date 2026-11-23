@@ -16,7 +16,7 @@ export interface MQTTConfig {
   broker: string;
   port: number;
   username: string;
-  password: string;
+  password: string | null; // null clears the saved password (spec 020: a copied broker)
   topic: string; // base topic
   publishIntervalMs: number;
   homeAssistant?: { enabled: boolean; discoveryPrefix: string };
@@ -50,7 +50,8 @@ export interface AlpacaConfig {
 
 // Where the weather verdict comes from (spec 004).
 export interface SafetyConfig {
-  http: { enabled: boolean; url: string };
+  // Spec 020: SQMeter's login (HTTP Basic), absent on older firmware; the password is masked, null clears it.
+  http: { enabled: boolean; url: string; username?: string; password?: string | null };
   mqtt: { enabled: boolean; topic: string };
   staleSeconds: number;
   rainContact: boolean;
@@ -94,11 +95,25 @@ export interface DaylightConfig {
   sunAltitudeDeg: number; // -18..30
   bandDeg?: number; // spec 014: night again only this far below the threshold (0.1..2)
 }
+// Spec 020: the location follows SQMeter's (`sqmeter`, the default) or is typed in (`manual`).
+export type LocationSource = 'sqmeter' | 'manual';
 export interface LocationConfig {
+  source?: LocationSource; // absent before spec 020: `manual` when set, else `sqmeter`
   set: boolean;
   latitude: number; // -90..90
   longitude: number; // -180..180
+  // Written by the device, ignored on a save: the kept value was SQMeter's GPS fix, and when it was saved (Unix s, 0 never).
+  sqmeter?: { gps: boolean; savedAt: number };
 }
+
+// Spec 020: each group of site settings follows SQMeter's, or is set here.
+// `syncedAt` is the device's (Unix s of the last sync, 0 never) and ignored on a save.
+export type SyncGroup = 'time' | 'mqtt' | 'alerts';
+export interface SyncGroupConfig {
+  follow: boolean;
+  syncedAt: number;
+}
+export type SqmeterSyncConfig = Record<SyncGroup, SyncGroupConfig>;
 
 // The setup wizard (spec 015): new (opens once per page load), offered (a
 // banner, after an upgrade) or done, and the page to resume at (0-9).
@@ -143,6 +158,7 @@ export interface Config {
   roof?: RoofConfig;
   daylight?: DaylightConfig;
   location?: LocationConfig;
+  sqmeterSync?: SqmeterSyncConfig; // absent before spec 020's sync: every group set here
   autoClose?: AutoCloseConfig;
   ui?: UiConfig;
   alerts?: AlertsConfig;

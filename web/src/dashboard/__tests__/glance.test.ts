@@ -189,4 +189,20 @@ describe('glanceItems', () => {
   it('a healthy roof adds nothing to check', () => {
     expect(toCheck(glanceItems(input({})))).toHaveLength(0);
   });
+
+  it('a secret SQMeter has and RoofRoof lacks is a note per secret, never a problem (spec 020)', () => {
+    // inventory: sqmeter-needs
+    const status = withStatus((s) => {
+      s.sync!.mqtt = { follow: true, syncedAt: 1, refused: null, needs: ['mqttPassword'] };
+      s.sync!.alerts = { follow: true, syncedAt: 1, refused: null, needs: ['ntfyToken', 'pushoverKeys'] };
+    });
+    const items = glanceItems(input({ status })).filter((item) => item.id === 'sqmeter-needs');
+    expect(items.map((item) => [item.label, item.severity])).toEqual([
+      ['MQTT password', 'note'],
+      ['ntfy token', 'note'],
+      ['Pushover keys', 'note'],
+    ]);
+    expect(items[0].fix).toEqual(expect.objectContaining({ label: 'Open settings' }));
+    expect(ids({})).not.toContain('sqmeter-needs');
+  });
 });

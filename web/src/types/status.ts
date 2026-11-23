@@ -99,6 +99,36 @@ export interface SystemStatus {
   };
   // The roof as its control task last saw it (spec 003, docs/api/rest.md).
   roof?: RoofStatus;
+  // Where the daylight check's location came from (spec 020). Absent on older firmware.
+  location?: LocationStatus;
+  // Each group's sync with SQMeter's settings (spec 020). Absent on older firmware.
+  sync?: SyncStatus;
+}
+
+export type SyncProblem = 'noAddress' | 'waiting' | 'unreachable' | 'unreadable' | 'passwordNeeded' | 'passwordRefused';
+export type SyncNeed = 'mqttPassword' | 'ntfyToken' | 'pushoverKeys';
+export interface SyncGroupStatus {
+  follow: boolean;
+  syncedAt: number | null; // Unix s of the last sync
+  refused: string | null; // why SQMeter's value wasn't taken (the device's words)
+  needs: SyncNeed[]; // secrets SQMeter has and RoofRoof lacks
+}
+export interface SyncStatus {
+  problem: SyncProblem | null;
+  readAgeSeconds: number | null; // since the last good read of SQMeter's settings in this run
+  time: SyncGroupStatus;
+  mqtt: SyncGroupStatus;
+  alerts: SyncGroupStatus;
+}
+
+export type LocationProblem = SyncProblem | 'noLocation';
+export interface LocationStatus {
+  source: 'sqmeter' | 'manual';
+  set: boolean;
+  gps: boolean; // the kept value is SQMeter's GPS fix
+  savedAt: number | null; // Unix seconds of the last save from SQMeter
+  readAgeSeconds: number | null; // the last good read in this run
+  problem: LocationProblem | null; // the last read's problem
 }
 
 export type RoofState = 'unknown' | 'closed' | 'open' | 'opening' | 'closing' | 'stopped' | 'error';

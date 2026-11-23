@@ -88,6 +88,16 @@ namespace SQM
         // Spec 013: the daylight state for the status document (any task).
         using DaylightSource = std::function<RoofIo::DaylightStatus()>;
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
+        // Spec 020: the status document's "location" section (any task; it
+        // only copies), and whether the roof is busy (the copy is refused then).
+        // It writes "location" and "sync" into the status document.
+        using SiteStatus = std::function<void(JsonDocument &)>;
+        void setSiteStatus(SiteStatus source) { siteStatus = std::move(source); }
+        using BusyProbe = std::function<bool()>;
+        void setRoofBusy(BusyProbe probe) { roofBusy = std::move(probe); }
+        // Spec 020: the device saved its own settings (the location it keeps
+        // from SQMeter): open pages see the new revision.
+        void noteConfigSaved() { ++configRevision; }
         // Spec 015: the weather sources, the park and N.I.N.A.'s reading as
         // last evaluated, for GET /api/roof/inputs (any task; it only copies).
         using InputsSource = std::function<std::optional<Safety::InputsReport>()>;
@@ -354,6 +364,16 @@ namespace SQM
         void appendRoof(JsonDocument &doc) const;
         // The roof's snapshot with the close phase filled in (not started: the default).
         RoofIo::Snapshot roofSnapshot() const;
+
+        // Spec 020: POST /api/sqmeter/site and /api/sqmeter/test (src/WebServerSite.cpp).
+        struct SiteJob;
+        static inline std::atomic<bool> siteJobRunning{false};
+        SiteStatus siteStatus;
+        BusyProbe roofBusy;
+        void setupSiteRoutes();
+        void handleSqmeterSite(AsyncWebServerRequest *request, bool test);
+        static void runSiteJob(void *arg);
+        void appendSite(JsonDocument &doc) const;
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;

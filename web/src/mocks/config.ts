@@ -43,7 +43,7 @@ export const mockConfig: Config = {
   },
   alpaca: { enabled: true },
   safety: {
-    http: { enabled: true, url: 'http://sqmeter.local/api/safety' },
+    http: { enabled: true, url: 'http://sqmeter.local', username: '', password: '' },
     mqtt: { enabled: false, topic: 'sqmeter' },
     staleSeconds: 30,
     rainContact: false,
@@ -70,7 +70,13 @@ export const mockConfig: Config = {
     minSupplyVolts: 11,
   },
   daylight: { mode: 'alert', sunAltitudeDeg: 0, bandDeg: 0.5 },
-  location: { set: false, latitude: 0, longitude: 0 },
+  location: { source: 'manual', set: false, latitude: 0, longitude: 0, sqmeter: { gps: false, savedAt: 0 } },
+  // Spec 020: an upgraded device whose own values stay set here.
+  sqmeterSync: {
+    time: { follow: false, syncedAt: 0 },
+    mqtt: { follow: false, syncedAt: 0 },
+    alerts: { follow: false, syncedAt: 0 },
+  },
   autoClose: {
     rearmMinutes: 10,
     parkRequestSeconds: 30,

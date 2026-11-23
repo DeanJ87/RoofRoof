@@ -22,14 +22,14 @@ There is no public docs site: these docs and the [live demo](live-demo.md) are b
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: c097224256ea89e5
+fingerprint: 9b50e36a99bef494
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: What RoofRoof connects to
-    accDescr: The ESP32 holds the motor driver's pins low from boot and drives it on a person's, an imaging app's or (when switched on) an MQTT command, or to close the roof when the weather turns unsafe (or, with the daylight close set, after sunrise), reads the roof's Hall, supply, current, park and rain inputs, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes the roof's state to an MQTT broker and takes its commands when switched on, serves the roof as an ASCOM Alpaca Dome to clients such as N.I.N.A., and sends alerts to push services. It reads the weather verdict from SQMeter and the mount's park state from N.I.N.A.'s Advanced API. It gets time from the internet by NTP.
+    accDescr: The ESP32 holds the motor driver's pins low from boot and drives it on a person's, an imaging app's or (when switched on) an MQTT command, or to close the roof when the weather turns unsafe (or, with the daylight close set, after sunrise), reads the roof's Hall, supply, current, park and rain inputs, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes the roof's state to an MQTT broker and takes its commands when switched on, serves the roof as an ASCOM Alpaca Dome to clients such as N.I.N.A., and sends alerts to push services. It reads the weather verdict, the site's location and its shared settings (copied on request or kept in step) from SQMeter, and the mount's park state from N.I.N.A.'s Advanced API. It gets time from the internet by NTP.
     DRIVER["<b>IBT-2 motor driver</b><br/>RPWM, LPWM, EN<br/>held off at boot;<br/>EN has a 10 kΩ pull-down"]
     SENSE["<b>Roof sensors</b><br/>Hall, 12 V supply, current,<br/>park switches, rain contact"]
     ESP["<b>ESP32 running RoofRoof</b><br/>settings in NVS,<br/>web UI in LittleFS,<br/>closes on unsafe weather<br/>and, if set, in daylight"]
@@ -38,7 +38,7 @@ flowchart LR
     ALPACA["ASCOM Alpaca client<br/>e.g. N.I.N.A."]
     PUSH["Push alerts<br/>ntfy, Pushover, webhook"]
     NET["Internet<br/>NTP time"]
-    SQM["SQMeter<br/>weather verdict, HTTP or MQTT"]
+    SQM["SQMeter<br/>weather verdict, HTTP(S) or MQTT;<br/>site location and settings"]
     NAPI["N.I.N.A. Advanced API<br/>mount parked?"]
     ESP -->|"GPIO25, 26, 27"| DRIVER
     SENSE -->|"GPIO4, 32-36, 39"| ESP
@@ -47,7 +47,7 @@ flowchart LR
     ESP <-->|roof state and commands, availability, alerts| MQTT
     ESP <-->|Dome: shutter state;<br/>open, close, stop| ALPACA
     ESP --> PUSH
-    SQM -->|safe or unsafe| ESP
+    SQM -->|"safe or unsafe; location"| ESP
     ESP <-->|mount info, park| NAPI
 ```
 
@@ -65,7 +65,7 @@ flowchart LR
         - ASCOM Alpaca clients such as N.I.N.A. find the roof as a Dome, and can open, close and stop it within the safety rules.
         - Alerts go to ntfy, Pushover, a webhook or MQTT.
     - **Inputs:**
-        - SQMeter's weather verdict, over HTTP or through the MQTT broker.
+        - SQMeter's weather verdict, over HTTP or HTTPS or through the MQTT broker; over HTTP(S) also its location for the daylight check, and its shared settings (time, MQTT broker, ntfy) when you copy them or let them follow SQMeter ([Site from SQMeter](user-guide/close-on-unsafe.md#site-from-sqmeter)).
         - N.I.N.A.'s Advanced API: whether the mount is parked, and a park request when the roof needs to close.
     - **From the internet:** NTP time only. The device never downloads updates.
 

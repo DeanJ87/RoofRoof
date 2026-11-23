@@ -6,6 +6,7 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_task_wdt.h>
+#include <mutex>
 
 #include "CloseOnUnsafe.h"
 #include "Diagnostics.h"
@@ -23,6 +24,9 @@
 #include "RoofControl.h"
 #include "SafetyInputs.h"
 #include "SafetyPoller.h"
+#include "SqmeterSite.h"
+#include "SiteSync.h"
+#include "SqmeterSync.h"
 #include "TimeManager.h"
 #include "WebServer.h"
 #include "WiFiManager.h"
@@ -42,6 +46,12 @@ static CloseOnUnsafe closeOnUnsafe;
 static Diagnostics diagnostics; // spec 017: off unless diag.enabled
 static bool arduinoOTAEnabled = false;
 RTC_DATA_ATTR uint32_t bootCount = 0;
+bool roofBusy(); // spec 020, below
+// Spec 020: one settings save at a time (the web server's saves on the async
+// TCP task, the loop's SQMeter saves), so neither can undo the other's.
+static std::mutex configSaveLock;
+void siteSaved(bool settingsUnchanged); // spec 020, below
+static SiteSync siteSync(config, configSaveLock, safetyPoller, siteSaved);
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
 // processing, config saves). 4 KB more is cheap insurance against a
@@ -54,19 +64,28 @@ const Config &getConfigCallback()
     return config;
 }
 
-bool saveConfigCallback(const Config &newConfig)
+// Spec 020: whether any settings group follows SQMeter, and where it is.
+void tellPollerTheSite()
 {
-    config = newConfig;
-    const bool saved = config.save();
-    if (!saved)
-        return false;
+    const SqmeterSyncConfig &s = config.sqmeterSync;
+    safetyPoller.setSite(SafetyPoller::SiteTarget{
+        config.safety.httpUrl,
+        config.safety.httpUsername,
+        config.safety.httpPassword,
+        config.location.source == LocationConfig::Source::Sqmeter,
+        s.time.follow || s.mqtt.follow || s.alerts.follow});
+}
 
+// What a saved change applies without a restart. Under configSaveLock.
+void applySavedConfig()
+{
     if (mqttClient)
         mqttClient->updateConfig(config.mqtt);
     if (timeManager)
         timeManager->updateConfig(config.ntp);
     if (safetyInputs)
         safetyInputs->updateConfig(config);
+    tellPollerTheSite();              // spec 020
     roofControl.updateConfig(config); // taken by the roof once no move is active
     closeOnUnsafe.updateConfig(config);
     diagnostics.updateConfig(config.diag); // applied by the main loop
@@ -75,6 +94,20 @@ bool saveConfigCallback(const Config &newConfig)
         arduinoOTAEnabled = false;
     else if (!arduinoOTAEnabled)
         Logger::warn("Main", "ArduinoOTA config saved; restart required to start command-line OTA");
+}
+
+bool saveConfigCallback(const Config &newConfig)
+{
+    const std::lock_guard<std::mutex> held(configSaveLock);
+    Config next = newConfig;
+    // Spec 020 FR-008, FR-028: against the live settings, a copy taken before
+    // the last location save or sync can't put older values back.
+    Site::keepFollowed(config, next);
+    config = next;
+    const bool saved = config.save();
+    if (!saved)
+        return false;
+    applySavedConfig();
     return true;
 }
 
@@ -283,6 +316,7 @@ void startServices()
 
     // Spec 004: the weather verdict and park confirmation.
     safetyInputs = std::make_unique<SafetyInputs>(safetyPoller, mqttClient.get());
+    tellPollerTheSite(); // spec 020
     safetyInputs->begin(config);
     HeapTrace::mark("safety inputs");
 
@@ -294,6 +328,9 @@ void startServices()
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
     webServer->setInputs([]() { return safetyInputs->report(); });
+    // Spec 020: the location's source and age, and the copy refused while busy.
+    webServer->setSiteStatus([](JsonDocument &doc) { siteSync.writeStatus(doc); });
+    webServer->setRoofBusy(roofBusy);
     webServer->begin();
 
     // Spec 005: unsafe ends parked and closed; its critical events go out
@@ -318,6 +355,24 @@ void startServices()
     // Spec 007: the roof's non-critical events, read once a second by the alert pass.
     webServer->setRoofConditions([]() { return closeOnUnsafe.conditions(); });
     HeapTrace::mark("setup complete");
+}
+
+// Spec 020: no SQMeter read, copy or save while the roof is busy (spec 010).
+bool roofBusy()
+{
+    return roofControl.moving() || roofControl.closeWaiting() || closeOnUnsafe.platformState() == RoofIo::SequenceState::Working;
+}
+
+// Spec 020: a save of what was read from SQMeter. Only the location or a
+// group's syncedAt: daylight takes it; a synced group: applied as any save.
+void siteSaved(bool settingsUnchanged)
+{
+    if (settingsUnchanged)
+        closeOnUnsafe.updateConfig(config);
+    else
+        applySavedConfig();
+    if (webServer)
+        webServer->noteConfigSaved();
 }
 
 // The roof's switch readings into the safety inputs (spec 004), their verdict
@@ -446,6 +501,7 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     handleSafety();
+    siteSync.handle(roofBusy()); // spec 020
     diagnostics.handle();
     diagnostics.passEnded();
 

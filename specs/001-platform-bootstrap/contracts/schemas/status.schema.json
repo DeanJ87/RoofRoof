@@ -235,6 +235,61 @@
         "additionalProperties": false
       }
     },
+    "location": {
+      "type": "object",
+      "properties": {
+        "gps": {
+          "type": "boolean"
+        },
+        "problem": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "enum": [
+            "noAddress",
+            "waiting",
+            "unreachable",
+            "unreadable",
+            "noLocation",
+            "passwordNeeded",
+            "passwordRefused",
+            null
+          ]
+        },
+        "readAgeSeconds": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "savedAt": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "set": {
+          "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "sqmeter",
+            "manual"
+          ]
+        }
+      },
+      "required": [
+        "gps",
+        "problem",
+        "readAgeSeconds",
+        "savedAt",
+        "set",
+        "source"
+      ],
+      "additionalProperties": false
+    },
     "maxAllocHeap": {
       "type": "number"
     },
@@ -707,6 +762,136 @@
       ],
       "additionalProperties": false
     },
+    "sync": {
+      "type": "object",
+      "properties": {
+        "alerts": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "needs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "mqttPassword",
+                  "ntfyToken",
+                  "pushoverKeys"
+                ]
+              }
+            },
+            "refused": {
+              "type": "null"
+            },
+            "syncedAt": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "follow",
+            "needs",
+            "refused",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "needs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "mqttPassword",
+                  "ntfyToken"
+                ]
+              }
+            },
+            "refused": {
+              "type": "null"
+            },
+            "syncedAt": {
+              "type": [
+                "null",
+                "number"
+              ]
+            }
+          },
+          "required": [
+            "follow",
+            "needs",
+            "refused",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "problem": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "enum": [
+            "noAddress",
+            "waiting",
+            "unreachable",
+            "unreadable",
+            "passwordNeeded",
+            "passwordRefused",
+            null
+          ]
+        },
+        "readAgeSeconds": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "time": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "needs": {
+              "type": "array"
+            },
+            "refused": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "syncedAt": {
+              "type": [
+                "null",
+                "number"
+              ]
+            }
+          },
+          "required": [
+            "follow",
+            "needs",
+            "refused",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "alerts",
+        "mqtt",
+        "problem",
+        "readAgeSeconds",
+        "time"
+      ],
+      "additionalProperties": false
+    },
     "time": {
       "type": "object",
       "properties": {
@@ -828,6 +1013,7 @@
     "fsUsed",
     "heapSize",
     "heapStages",
+    "location",
     "maxAllocHeap",
     "minFreeHeap",
     "partitions",
@@ -835,6 +1021,7 @@
     "roof",
     "sketchSize",
     "stackFree",
+    "sync",
     "time",
     "uptime",
     "wifi"

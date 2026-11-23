@@ -1,7 +1,7 @@
 import type { FunctionalComponent } from 'preact';
 import type { WizardPageProps } from './context';
 import { WIZARD_PAGES, pageIndex, type WizardPageId } from './pages';
-import { NameScreen, PasswordScreen, SiteScreen, TimeScreen } from './DevicePages';
+import { NameScreen, PasswordScreen, SiteScreen, SqmeterScreen, TimeScreen } from './DevicePages';
 import {
   CalibrationScreen,
   TeachScreen,
@@ -30,6 +30,7 @@ import { ReviewScreen } from './ReviewPage';
 export type ScreenId =
   | 'name'
   | 'password'
+  | 'sqmeter'
   | 'site'
   | 'time'
   | 'supply'
@@ -78,6 +79,8 @@ export const SCREENS: Screen[] = [
     choice: true,
     answered: (p) => !p.config.auth.enabled || p.config.auth.password !== '',
   },
+  // Spec 020: SQMeter's address and the copy of its site settings, first on the page.
+  { id: 'sqmeter', page: 'site', Body: SqmeterScreen },
   { id: 'site', page: 'site', Body: SiteScreen },
   { id: 'time', page: 'site', Body: TimeScreen },
   { id: 'supply', page: 'hardware', Body: SupplyScreen },

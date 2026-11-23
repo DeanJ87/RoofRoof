@@ -10,6 +10,7 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const SCREENS = [
   'name',
   'password',
+  'sqmeter',
   'site',
   'time',
   'supply',

@@ -5,6 +5,13 @@ import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
 import { Button, Note } from '../ui';
+import SqmeterCopy from './SqmeterCopy';
+import { SqmeterLoginFields } from './SqmeterLoginFields';
+import { SqmeterAddressTest } from './SqmeterAddressTest';
+import { sqmeterHttps } from '../../lib/sqmeterAddress';
+import { FollowsSqmeter } from './FollowsSqmeter';
+import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
+import { DegreesField, LocationFields } from './LocationFields';
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -158,7 +165,7 @@ export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
 export type SafetyProps = SettingsTabProps & { safety: SafetyConfig };
 
 // SQMeter over HTTP and MQTT (also the setup wizard's weather page, spec 015).
-export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix }) => (
+export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix, config, status }) => (
   <>
     <Toggle
       dataField="safety.http.enabled"
@@ -180,9 +187,10 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
       checked={safety.mqtt.enabled}
       onChange={(v) => update(['safety', 'mqtt', 'enabled'], v)}
     />
-    {safety.mqtt.enabled && (
+    {/* Spec 020: also while off when SQMeter's topic came in (a copy, or the MQTT group synced). */}
+    {(safety.mqtt.enabled || fromCopy('weatherTopic') || synced(config, 'mqtt')) && (
       <div class="form-grid indent">
-        <SqmeterTopicField safety={safety} update={update} error={error} />
+        <SqmeterTopicField safety={safety} update={update} error={error} config={config} status={status} />
       </div>
     )}
   </>
@@ -190,23 +198,43 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
 
 // SQMeter's address and topic (also the setup wizard's weather address screen, spec 018).
 type SourceFieldProps = Pick<SafetyProps, 'safety' | 'update' | 'error'>;
-export const SqmeterUrlField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
-  <Field label={t('settings.roof.sqmeterUrl')} error={error('safety.http.url')}>
-    <TextInput
-      dataField="safety.http.url"
-      type="url"
-      value={safety.http.url}
-      placeholder="http://sqmeter.local/api/safety"
-      onInput={(v) => update(['safety', 'http', 'url'], v)}
-    />
-  </Field>
+// With SQMeter's login (spec 020): the address and the login go together everywhere.
+// The address only (FR-036): RoofRoof adds /api/safety itself; https is encrypted, its
+// certificate not checked (FR-039). `test`: the Test button (FR-038), except where a
+// page has its own Test (the wizard's weather screen).
+export const SqmeterUrlField: FunctionalComponent<SourceFieldProps & { test?: boolean }> = ({ safety, update, error, test = true }) => (
+  <>
+    <Field label={t('settings.roof.sqmeterUrl')} hint={t('settings.roof.sqmeterUrlHint')} error={error('safety.http.url')}>
+      <TextInput
+        dataField="safety.http.url"
+        value={safety.http.url}
+        placeholder={t('settings.roof.sqmeterUrlPlaceholder')}
+        onInput={(v) => update(['safety', 'http', 'url'], v)}
+      />
+      {sqmeterHttps(safety.http.url) && <Note>{t('settings.roof.sqmeterHttps')}</Note>}
+    </Field>
+    <SqmeterLoginFields safety={safety} update={update} error={error} />
+    {test && <SqmeterAddressTest safety={safety} />}
+  </>
 );
 
-export const SqmeterTopicField: FunctionalComponent<SourceFieldProps> = ({ safety, update, error }) => (
-  <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
-    <TextInput dataField="safety.mqtt.topic" value={safety.mqtt.topic} onInput={(v) => update(['safety', 'mqtt', 'topic'], v)} />
-  </Field>
-);
+// Spec 020: read-only while the MQTT group follows SQMeter (SQMeter's base topic is where it publishes `<base>/safe`).
+export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<SafetyProps, 'config' | 'status'>> = (props) => {
+  const { safety, update, error, config } = props;
+  return (
+    <>
+      <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
+        <TextInput
+          dataField="safety.mqtt.topic"
+          disabled={isLocked(config, 'mqtt')}
+          value={safety.mqtt.topic}
+          onInput={(v) => update(['safety', 'mqtt', 'topic'], v)}
+        />
+      </Field>
+      <FollowsSqmeter group="mqtt" {...props} />
+    </>
+  );
+};
 
 // The rain contact on GPIO4 (also the setup wizard's hardware page).
 export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, update }) => (
@@ -217,6 +245,21 @@ export const RainContactToggle: FunctionalComponent<SafetyProps> = ({ safety, up
     checked={safety.rainContact}
     onChange={(v) => update(['safety', 'rainContact'], v)}
   />
+);
+
+// Settings → Roof's card, by the weather sources (whose address it uses). The
+// address shows here too while the HTTP weather source is off: the location
+// and the copy use it either way.
+export const SqmeterCopyCard: FunctionalComponent<SafetyProps> = (props) => (
+  <SettingsCard id="sqmeterCopy" title={t('settings.sqmeterCopy.title')} hint={t('settings.sqmeterCopy.hint')}>
+    {!props.safety.http.enabled && (
+      <div class="form-grid">
+        <SqmeterUrlField safety={props.safety} update={props.update} error={props.error} />
+      </div>
+    )}
+    {/* The address as typed, saved or not (as the wizard does). */}
+    <SqmeterCopy {...props} url={props.safety.http.url} />
+  </SettingsCard>
 );
 
 const SafetyCard: FunctionalComponent<SafetyProps> = (props) => (
@@ -288,20 +331,7 @@ const ParkCard: FunctionalComponent<ParkProps> = (props) => (
 );
 
 export type DaylightProps = SettingsTabProps & { daylight: DaylightConfig; location: LocationConfig };
-
-// A degrees field that can be negative (the sun's altitude, latitude, longitude).
-const DegreesField: FunctionalComponent<{
-  at: string[];
-  label: string;
-  hint: string;
-  value: number;
-  update: SettingsTabProps['update'];
-  error: SettingsTabProps['error'];
-}> = ({ at, label, hint, value, update, error }) => (
-  <Field label={label} hint={hint} error={error(at.join('.'))}>
-    <NumberInput dataField={at.join('.')} value={value} unit="°" onChange={(v) => update(at, v)} />
-  </Field>
-);
+export { LocationFields };
 
 // The daylight failsafe and where the roof is (spec 013). The site and the
 // threshold only matter while the check is on; the fields stay editable.
@@ -344,43 +374,14 @@ export const SunAltitudeField: FunctionalComponent<Pick<DaylightProps, 'daylight
   />
 );
 
-// Where the roof is (also the setup wizard's site page).
-export const LocationFields: FunctionalComponent<Pick<DaylightProps, 'location' | 'update' | 'error'>> = ({ location, update, error }) => (
-  <>
-    <Toggle
-      dataField="location.set"
-      label={t('settings.roof.locationSet')}
-      hint={t('settings.roof.locationSetHint')}
-      checked={location.set}
-      onChange={(v) => update(['location', 'set'], v)}
-    />
-    {(location.set || error('location.latitude') !== undefined || error('location.longitude') !== undefined) && (
-      <div class="form-grid indent">
-        <DegreesField
-          at={['location', 'latitude']}
-          label={t('settings.roof.latitude')}
-          hint={t('settings.roof.latitudeHint')}
-          value={location.latitude}
-          update={update}
-          error={error}
-        />
-        <DegreesField
-          at={['location', 'longitude']}
-          label={t('settings.roof.longitude')}
-          hint={t('settings.roof.longitudeHint')}
-          value={location.longitude}
-          update={update}
-          error={error}
-        />
-      </div>
-    )}
-  </>
-);
-
 const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
   <SettingsCard id="daylight" title={t('settings.roof.daylight')} hint={t('settings.roof.daylightHint')}>
     <DaylightModeFields {...props} />
-    <LocationFields {...props} />
+    <LocationFields
+      {...props}
+      sqmeterUrl={props.config.safety?.http.url ?? ''}
+      onSetAddress={() => props.goTo('roof', props.config.safety?.http.enabled ? 'safety' : 'sqmeterCopy')}
+    />
     {/* Spec 014: Settings only, not the setup wizard's daylight page. */}
     <Fold label={t('settings.roof.advanced')} open={props.error('daylight.bandDeg') !== undefined} dataField="daylight.advanced">
       <div class="form-grid">
@@ -442,6 +443,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
         <Note>{t('settings.roof.notSent')}</Note>
       )}
       {safety && <SafetyCard {...props} safety={safety} />}
+      {safety && <SqmeterCopyCard {...props} safety={safety} />}
       {park && <ParkCard {...props} park={park} />}
       {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}

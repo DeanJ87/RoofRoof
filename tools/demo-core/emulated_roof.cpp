@@ -91,7 +91,8 @@ namespace DemoRoof
     void EmulatedRoof::sourcesChanged(const SafetyConfig &nextSafety, const ParkConfig &nextPark)
     {
         bool repoll = false;
-        if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl)
+        if (nextSafety.httpEnabled != safetyCfg.httpEnabled || nextSafety.httpUrl != safetyCfg.httpUrl ||
+            nextSafety.httpUsername != safetyCfg.httpUsername || nextSafety.httpPassword != safetyCfg.httpPassword)
         {
             http = Safety::SourceRecord();
             http.enabled = nextSafety.httpEnabled;
@@ -285,10 +286,10 @@ namespace DemoRoof
         if (http.enabled && (first || nowMs - lastSqmeterMs >= SQMETER_POLL_MS))
         {
             lastSqmeterMs = nowMs;
-            http.recordGood(sqmeterReply(), nowMs);
+            pollSqmeterHttp(); // spec 020: offline or locked answers as a real SQMeter would
         }
-        // SQMeter publishes on a change, and again every minute (retained).
-        if (mqtt.enabled && mqttOn && (first || weatherChanged || nowMs - lastMqttMs >= MQTT_REPUBLISH_MS))
+        // SQMeter publishes on a change, and again every minute (retained); nothing while offline.
+        if (mqtt.enabled && mqttOn && !inject.sqmeterOffline && (first || weatherChanged || nowMs - lastMqttMs >= MQTT_REPUBLISH_MS))
         {
             lastMqttMs = nowMs;
             mqtt.recordGood(sqmeterReply(), nowMs);

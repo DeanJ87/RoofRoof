@@ -101,25 +101,45 @@ function writeSamples(dir: string) {
       },
     ),
   );
+  // Spec 020: SQMeter's location not read and nothing kept, so daylight can't run (the
+  // firmware's writeLocationStatus and writeDaylight in those states).
+  const unread = (s: ReturnType<typeof status>) => ({
+    ...s,
+    location: { source: 'sqmeter', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: 'unreachable' },
+    // The sync after a refused value and a cleared secret (writeSyncStatus), SQMeter now unreachable.
+    sync: {
+      problem: 'unreachable',
+      readAgeSeconds: null,
+      time: { follow: true, syncedAt: null, refused: "SQMeter's value refused: NTP server: NTP over IPv6 isn't supported yet", needs: [] },
+      mqtt: { follow: true, syncedAt: 1795366349, refused: null, needs: ['mqttPassword'] },
+      alerts: { follow: false, syncedAt: null, refused: null, needs: ['ntfyToken'] },
+    },
+    roof: {
+      ...s.roof,
+      daylight: { ...(s.roof as { daylight: object }).daylight, state: 'unknown', sunAltitudeDeg: null, text: 'Location not set' },
+    },
+  });
   put(
     'device3-status',
-    status(
-      undefined,
-      { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } },
-      // A latched fault: position unknown, the supply unreadable.
-      {
-        state: 'error',
-        positionKnown: false,
-        positionMm: null,
-        positionPercent: null,
-        hall: { level: 'unsettled', counts: 0 },
-        supplyVolts: null,
-        supplyLow: true,
-        parkSwitches: { fitted: 1, switch1: 'closed', switch2: 'notFitted' },
-        rainContact: 'raining',
-        fault: { kind: 'external', cause: 'watchdog', measured: 140, limit: 100, text: 'Control step 140 ms late > 100 ms (watchdog)' },
-        watchdogTrips: 1,
-      },
+    unread(
+      status(
+        undefined,
+        { dome: { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null } },
+        // A latched fault: position unknown, the supply unreadable.
+        {
+          state: 'error',
+          positionKnown: false,
+          positionMm: null,
+          positionPercent: null,
+          hall: { level: 'unsettled', counts: 0 },
+          supplyVolts: null,
+          supplyLow: true,
+          parkSwitches: { fitted: 1, switch1: 'closed', switch2: 'notFitted' },
+          rainContact: 'raining',
+          fault: { kind: 'external', cause: 'watchdog', measured: 140, limit: 100, text: 'Control step 140 ms late > 100 ms (watchdog)' },
+          watchdogTrips: 1,
+        },
+      ),
     ),
   );
   // GET /api/roof/inputs (spec 015): the firmware's own writer on the simulated sources, and a

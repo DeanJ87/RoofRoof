@@ -1,6 +1,7 @@
 #include "ConfigBackup.h"
 #include "Logger.h"
 #include "PlatformGuard.h"
+#include "SqmeterSync.h"
 #include "WebServer.h"
 #include "version.h"
 
@@ -214,6 +215,9 @@ namespace SQM
         {
             const Backup::PreviewInput input{&job.config, &parsed, restoring ? &secrets : nullptr, backupDevice()};
             error = Backup::buildPreview(input, staged->preview, &reason);
+            // Spec 020: what the save will keep from the device (followed, synced groups), so the preview shows it.
+            if (error == Backup::Error::None)
+                Site::keepFollowed(job.config, staged->preview.candidate);
         }
         if (error != Backup::Error::None)
         {

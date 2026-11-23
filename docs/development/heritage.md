@@ -48,7 +48,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
 | `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003); pin map | No |
 | `RoofControl.h`, `RoofControl.cpp`, `RoofControlTask.cpp`, `RoofLocked.h`, `RoofFaultStore.cpp/.h`, `WebServerRoof.cpp` | none | New (spec 003): the roof's control task, watchdog, inputs, stored fault, REST commands and status section | No |
-| `SafetyPoller.cpp/.h`, `SafetyInputs.cpp/.h` | none | New (spec 004): polls SQMeter and N.I.N.A. on their own task; keeps the weather verdict and park result | No |
+| `SafetyPoller.cpp/.h`, `SafetyInputs.cpp/.h` | none | New (spec 004): polls SQMeter and N.I.N.A. on their own task; keeps the weather verdict and park result. Spec 020: also reads SQMeter's location (`GET /api/status`, `sky`) on the same task, and a filter-as-you-read JSON fetch shared with the copy from SQMeter (`src/WebServerSite.cpp`) | No |
 
 ### `lib/`
 
@@ -58,7 +58,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept; the shared envelope moved to `src/RouterInternal.h`; the Dome (`AlpacaDome.h`, `src/AlpacaDome.cpp`, spec 006) and `ALPACA_ERR_INVALID_OPERATION` added | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
-| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013) | No |
+| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013); `location.source` and the device-owned `location.sqmeter.{gps,savedAt}` added, with a `library.json` declaring ArduinoJson so libraries that include `Config.h` build alone (spec 020: the location follows the SQMeter at the same site, whose `sky.locationSource` names the same choice) | No |
 | ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
 | DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
 | FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic; a second build kind, `bench`, that a standard board refuses (spec 011) | Yes |

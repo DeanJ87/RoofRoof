@@ -27,6 +27,14 @@ export const toConfigPayload = (source: Config): Config => ({
   // The daylight failsafe and the site (spec 013).
   ...(source.daylight && { daylight: { ...source.daylight } }),
   ...(source.location && { location: { ...source.location } }),
+  // Spec 020: which groups follow SQMeter.
+  ...(source.sqmeterSync && {
+    sqmeterSync: {
+      time: { ...source.sqmeterSync.time },
+      mqtt: { ...source.sqmeterSync.mqtt },
+      alerts: { ...source.sqmeterSync.alerts },
+    },
+  }),
   // The automatic close's policy and the UI options (spec 014).
   ...(source.autoClose && { autoClose: { ...source.autoClose } }),
   ...(source.ui && { ui: { ...source.ui } }),

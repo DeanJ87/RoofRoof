@@ -77,7 +77,18 @@ namespace SQM
     struct SafetyConfig
     {
         bool httpEnabled = false;
-        std::string httpUrl;               // SQMeter's GET /api/safety, http:// only
+        // SQMeter's address (spec 020 FR-036): scheme, host and port only
+        // ("http://192.168.1.50", "https://sqmeter.lan:8443"); RoofRoof adds
+        // /api/safety and the site paths itself. https is encrypted without a
+        // certificate check (a LAN SQMeter's is self-signed).
+        std::string httpUrl;
+        // Spec 020: SQMeter's login (HTTP Basic), sent on every request to it:
+        // the weather poll, the location and settings reads and the copy. Both
+        // optional; the password is a secret (masked, cleared when the address
+        // moves to another host or port unless a new one is typed with it).
+        std::string httpUsername;
+        std::string httpPassword;
+        static constexpr size_t MAX_LOGIN_LENGTH = 64;
         bool mqttEnabled = false;          // on RoofRoof's own broker
         std::string mqttTopic = "sqmeter"; // SQMeter's base topic (<base>/safe, /safety, /availability)
         uint32_t staleSeconds = 30;        // SQMeter HTTP: unsafe after this long without a good reply
@@ -337,12 +348,42 @@ namespace SQM
     };
 
     // The observing site, for the sun's altitude (spec 013; SQMeter's names,
-    // without its GPS and sun-and-moon card).
+    // without its GPS and sun-and-moon card). Spec 020: it can follow the
+    // SQMeter at the same site; the device then keeps the last good location
+    // here (and owns these fields while the source stays SQMeter).
     struct LocationConfig
     {
+        enum class Source : uint8_t
+        {
+            Sqmeter = 0, // read from SQMeter's GET /api/status (sky) and kept here
+            Manual = 1,  // typed in
+        };
         bool set = false;
         double latitude = 0.0;  // degrees, north positive
         double longitude = 0.0; // degrees, east positive
+        // A new device follows SQMeter; settings saved before spec 020 load as
+        // Manual when a location was set (Config::applyJson).
+        Source source = Source::Sqmeter;
+        bool gps = false;     // the kept location was SQMeter's GPS fix (device-owned)
+        uint32_t savedAt = 0; // Unix seconds it was saved from SQMeter; 0 = never or no clock (device-owned)
+    };
+
+    // Spec 020: which shared settings keep following the SQMeter at the same
+    // site, re-read from its settings every 10 minutes. `syncedAt` is the
+    // device's own (Unix seconds of the last change from SQMeter; 1 without a
+    // clock; 0 never synced) and is never read from the API. A new device
+    // follows in every group; settings saved before this load each group as
+    // local when its values were already set (Config::applyJson).
+    struct SqmeterSyncConfig
+    {
+        struct Group
+        {
+            bool follow = true;
+            uint32_t syncedAt = 0;
+        };
+        Group time;   // ntp.timezone, ntp.server1, ntp.server2
+        Group mqtt;   // mqtt.broker, mqtt.port, mqtt.username, safety.mqttTopic
+        Group alerts; // alerts.ntfyServer, alerts.ntfyTopic
     };
 
     // The setup wizard (spec 015): whether it still has to be offered, and
@@ -386,6 +427,7 @@ namespace SQM
         RoofConfig roof;
         DaylightConfig daylight;
         LocationConfig location;
+        SqmeterSyncConfig sqmeterSync;
         SetupConfig setup;
         DiagConfig diag;
         AutoCloseConfig autoClose;
@@ -424,11 +466,23 @@ namespace SQM
         // validate() without the stored-size check, for settings read back
         // from NVS (spec 007: an upgrade that adds events must still load).
         bool validateLoaded(std::string *error = nullptr) const;
+        // validate() plus the rules a change from the UI/API also meets (host and
+        // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
+        bool validateChange(std::string *error = nullptr) const;
+        // A secret sent back as shown (the mask, or empty): "keep the saved one".
+        static bool placeholderSecret(const std::string &value);
         // Spec 015: a stored document with no "setup" object was saved by a
         // release before the setup wizard; Config::load then marks it offered.
         static bool storedBeforeSetup(const std::string &storedJson);
         void markStoredBeforeSetup();
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
+        // Spec 020 FR-036: SQMeter's address as typed ("192.168.1.50",
+        // "sqmeter.local", "http://sqm/api/sensors") as it is kept:
+        // scheme://host[:port]. No scheme means http://; a known SQMeter API
+        // path (/api/safety, /api/sensors, /api/status, /api/config), a query
+        // and a trailing "/" are dropped. Any other path stays (a save refuses
+        // it) unless `anyPath` (stored settings: dropped). Empty stays empty.
+        static std::string sqmeterAddress(const std::string &typed, bool anyPath = false);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
         static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);

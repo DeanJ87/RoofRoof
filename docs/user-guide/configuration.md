@@ -90,7 +90,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "auth": { "enabled": false, "username": "admin", "password": "" },
   "alpaca": { "enabled": false },
   "safety": {
-    "http": { "enabled": false, "url": "" },
+    "http": { "enabled": false, "url": "", "username": "", "password": "" },
     "mqtt": { "enabled": false, "topic": "sqmeter" },
     "staleSeconds": 30,
     "rainContact": false
@@ -145,7 +145,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "minSupplyVolts": 11
   },
   "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
-  "location": { "set": false, "latitude": 0, "longitude": 0 },
+  "location": { "source": "sqmeter", "set": false, "latitude": 0, "longitude": 0, "sqmeter": { "gps": false, "savedAt": 0 } },
+  "sqmeterSync": { "time": { "follow": true, "syncedAt": 0 }, "mqtt": { "follow": true, "syncedAt": 0 }, "alerts": { "follow": true, "syncedAt": 0 } },
   "autoClose": {
     "rearmMinutes": 10,
     "parkRequestSeconds": 30,
@@ -249,7 +250,9 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `safety.http.enabled` | bool | `false` | Poll SQMeter's `GET /api/safety` every 5 s |
-| `safety.http.url` | string | `""` | Its full URL, `http://` only, e.g. `http://sqmeter.local/api/safety` |
+| `safety.http.url` | string | `""` | SQMeter's address, http or https: `192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan:8443`. Kept as `scheme://host[:port]`; RoofRoof adds `/api/safety` itself. A URL ending in `/api/safety`, `/api/sensors`, `/api/status` or `/api/config` is taken as its address (also in settings saved before); another path is refused. https isn't certificate-checked |
+| `safety.http.username` | string | `""` | SQMeter's user name, when SQMeter has a password; sent (HTTP Basic, with the password) on every request to SQMeter: the weather poll, the location and settings reads and the copy ([A password-protected SQMeter](close-on-unsafe.md#a-password-protected-sqmeter)). At most 64 characters, no `:` |
+| `safety.http.password` | string | `""` | SQMeter's password. A secret: shown as `********`, kept when that comes back, `null` clears it, encrypted in a backup with a passphrase. Saving an address with another host or port clears it unless a new one is sent with it. At most 64 characters |
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
@@ -295,9 +298,16 @@ The [daylight failsafe](close-on-unsafe.md#daylight-failsafe): what happens when
 | `daylight.mode` | string | `"alert"` | `off` (nothing), `alert` (an alert, nothing moves) or `close` (shown as "Alert and close": park and close as for unsafe weather, and refuse opening while the sun is up). Any other value is refused |
 | `daylight.sunAltitudeDeg` | number | `0` | The sun counts as up at or above this altitude, in degrees (-18 to 30); it counts as down again `bandDeg` below it |
 | `daylight.bandDeg` | number | `0.5` | Once it is day, night comes again only this far below the threshold, so a sun lingering at it can't flicker the state (0.1 to 2 degrees) |
-| `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes |
-| `location.latitude` | number | `0` | Degrees, north positive (-90 to 90) |
-| `location.longitude` | number | `0` | Degrees, east positive (-180 to 180) |
+| `location.source` | string | `sqmeter` | `sqmeter`: read from the SQMeter at `safety.http.url` and kept here ([Site from SQMeter](close-on-unsafe.md#site-from-sqmeter)); `manual`: typed in. Settings saved before it existed load as `manual` when `location.set` was true, else `sqmeter` |
+| `location.set` | bool | `false` | The latitude and longitude below are valid. Without them (or before the clock is set) the daylight check does nothing, and with the mode on it alerts after 10 minutes. While the source is `sqmeter` the device sets it, and a save keeps the device's value |
+| `location.latitude` | number | `0` | Degrees, north positive (-90 to 90); with `sqmeter`, the last location read from SQMeter |
+| `location.longitude` | number | `0` | Degrees, east positive (-180 to 180); with `sqmeter`, the last location read from SQMeter |
+| `location.sqmeter.gps` | bool | `false` | Set by the device: the kept location was SQMeter's GPS fix. Never read from a save |
+| `sqmeterSync.time.follow` | bool | `true` | The time zone and NTP servers follow SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step)); while following, a save keeps the synced values. Settings saved before it: `true` only if `ntp.timezone`, `ntp.server1` and `ntp.server2` were still the defaults |
+| `sqmeterSync.mqtt.follow` | bool | `true` | `mqtt.broker`, `mqtt.port`, `mqtt.username` and `safety.mqtt.topic` follow SQMeter; never while `mqtt.roofCommands` is on. Before: `true` only with no broker or user name, port 1883 and the topic `sqmeter` |
+| `sqmeterSync.alerts.follow` | bool | `true` | `alerts.ntfy.server` and `alerts.ntfy.topic` follow SQMeter. Before: `true` only with the default server and no topic |
+| `sqmeterSync.*.syncedAt` | number | `0` | Set by the device: Unix seconds of the group's last change from SQMeter (1 without a clock; 0 never). Never read from a save |
+| `location.sqmeter.savedAt` | number | `0` | Set by the device: Unix seconds when the location read from SQMeter was saved (0: never, or the clock wasn't set). Never read from a save |
 
 A value out of range is refused with the range. They are edited in **Settings → Roof → Daylight**.
 

@@ -90,7 +90,7 @@ const SendAlertsCard: FunctionalComponent<{ view: AlertsView; status: SystemStat
 };
 
 // The alerts settings as the cards edit them (also the setup wizard's alerts page, spec 015).
-export const useAlertsView = ({ config, update, updateMany, error, dirty, deps, fix }: SettingsTabProps) => {
+export const useAlertsView = ({ config, update, updateMany, error, dirty, deps, fix, status }: SettingsTabProps) => {
   const dep = (setting: string) => withoutAlertsOff(deps.get(setting));
   const alerts = mergeAlertsConfig(config.alerts);
   const tester = useAlertTest();
@@ -106,6 +106,8 @@ export const useAlertsView = ({ config, update, updateMany, error, dirty, deps, 
     pushoverOn: alerts.pushover.enabled,
     channelCount: channelEntries.filter((e) => e.state === 'active' || e.state === 'unknown').length,
     set: (path, value) => update(['alerts', ...path], value),
+    update,
+    status,
     updateMany,
     err: (key) => error(`alerts.${key}`),
     dep,

@@ -92,6 +92,19 @@ const RoofControls: FunctionalComponent = () => {
         onPick={(value) => inject({ supplyLow: value === 'low' })}
       />
       <Choice title="Sun up" options={OFF_ON} current={panel.sunUp ? 'on' : 'off'} onPick={(value) => inject({ sunUp: value === 'on' })} />
+      <Choice
+        title="SQMeter offline"
+        options={OFF_ON}
+        current={panel.sqmeterOffline ? 'on' : 'off'}
+        onPick={(value) => inject({ sqmeterOffline: value === 'on' })}
+      />
+      <Choice
+        title="SQMeter password"
+        options={OFF_ON}
+        current={panel.sqmeterLocked ? 'on' : 'off'}
+        onPick={(value) => inject({ sqmeterLocked: value === 'on' })}
+      />
+      {panel.sqmeterLocked && <p class="demo-roof-summary">SQMeter's login: user admin, password sqmeter.</p>}
       <p class="demo-roof-summary" data-inventory="demo-roof-summary">
         Roof {panel.state}; weather {panel.weather}; mount {panel.park}; close sequence {panel.phase}; daylight {panel.daylight}.
       </p>

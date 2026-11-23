@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
 import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
+import { sqmeterAddressError } from '../lib/sqmeterAddress';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (SQMeter spec 011 FR-009).
@@ -29,7 +30,8 @@ export const mqttConfigSchema = z
     port: z.number().int().min(1, t('validation.configSchema.portMustBeAtLeast')).max(65535, t('validation.configSchema.portMustBeAtMost')),
     topic: z.string(),
     username: z.string(),
-    password: z.string(),
+    // null clears the saved password (spec 020: a broker copied from SQMeter).
+    password: z.string().nullable(),
     publishIntervalMs: z
       .number()
       .int()
@@ -110,10 +112,29 @@ export const alpacaConfigSchema = z.object({
 // SQMeter and N.I.N.A. serve plain http only; the device's rules and messages
 // (lib/ConfigModel ConfigValidate.cpp, spec 004 contracts/settings.md).
 const isPlainHttp = (url: string) => url.startsWith('http://');
+// The device's length limits are in UTF-8 bytes.
+const utf8Bytes = (value: string) => new TextEncoder().encode(value).length;
 
 export const safetyConfigSchema = z
   .object({
-    http: z.object({ enabled: z.boolean(), url: z.string() }),
+    http: z.object({
+      enabled: z.boolean(),
+      url: z.string(),
+      // Spec 020: SQMeter's login; the device's limits and messages.
+      // The device counts UTF-8 bytes (at most 64) and refuses bytes below 0x20 in the user name.
+      username: z
+        .string()
+        .refine((v) => utf8Bytes(v) <= 64, t('validation.configSchema.sqmeterLoginTooLong'))
+        .refine((v) => !v.includes(':'), t('validation.configSchema.sqmeterUserNoColon'))
+        // eslint-disable-next-line no-control-regex -- the device refuses control characters (spec 020)
+        .refine((v) => !/[\u0000-\u001f]/.test(v), t('validation.configSchema.sqmeterUserNoControl'))
+        .optional(),
+      password: z
+        .string()
+        .refine((v) => utf8Bytes(v) <= 64, t('validation.configSchema.sqmeterLoginTooLong'))
+        .nullable()
+        .optional(),
+    }),
     mqtt: z.object({ enabled: z.boolean(), topic: z.string() }),
     staleSeconds: z
       .number()
@@ -122,12 +143,13 @@ export const safetyConfigSchema = z
       .max(600, t('validation.configSchema.staleTimeMustBeBetween')),
     rainContact: z.boolean(),
   })
+  // Spec 020 FR-036, FR-039: SQMeter's address only (http or https), checked when set, as the device does.
   .superRefine((data, ctx) => {
-    if (!data.http.enabled) return;
-    const url = parseHttpUrl(data.http.url);
-    if (url.error) ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: url.error });
-    else if (!isPlainHttp(data.http.url))
-      ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: t('validation.configSchema.sqmeterUrlMustStartWithHttp') });
+    const error =
+      data.http.enabled && data.http.url.trim() === ''
+        ? t('validation.configSchema.sqmeterAddressNotSet')
+        : sqmeterAddressError(data.http.url);
+    if (error) ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: error });
   })
   .refine((data) => !data.mqtt.enabled || MQTT_TOPIC.test(data.mqtt.topic), {
     message: t('validation.configSchema.useLettersNumbersAndWith'),
@@ -188,6 +210,9 @@ export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });
 export const diagConfigSchema = z.object({ enabled: z.boolean(), keepSummaries: z.boolean(), mqtt: z.boolean() });
 
 export const locationConfigSchema = z.object({
+  // Spec 020: optional, as older firmware doesn't send it; `sqmeter` is the device's and never checked here.
+  source: z.enum(['sqmeter', 'manual'], t('validation.configSchema.locationSourceMustBe')).optional(),
+  sqmeter: z.object({ gps: z.boolean(), savedAt: z.number() }).optional(),
   set: z.boolean(),
   latitude: z
     .number()
@@ -198,6 +223,10 @@ export const locationConfigSchema = z.object({
     .min(-180, t('validation.configSchema.longitudeMustBeBetween'))
     .max(180, t('validation.configSchema.longitudeMustBeBetween')),
 });
+
+// Spec 020: which groups follow SQMeter; `syncedAt` is the device's.
+const syncGroupSchema = z.object({ follow: z.boolean(), syncedAt: z.number() });
+export const sqmeterSyncSchema = z.object({ time: syncGroupSchema, mqtt: syncGroupSchema, alerts: syncGroupSchema });
 
 // Spec 015: the setup wizard's state and page.
 export const setupConfigSchema = z.object({
@@ -223,6 +252,7 @@ export const configSchema = z.object({
   roof: roofConfigSchema.optional(),
   daylight: daylightConfigSchema.optional(),
   location: locationConfigSchema.optional(),
+  sqmeterSync: sqmeterSyncSchema.optional(),
   autoClose: autoCloseConfigSchema.optional(),
   ui: uiConfigSchema.optional(),
   diag: diagConfigSchema.optional(),

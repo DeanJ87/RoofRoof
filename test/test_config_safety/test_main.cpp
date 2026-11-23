@@ -71,7 +71,7 @@ void test_full_settings_round_trip()
                              R"("mqtt":{"enabled":true,"broker":"10.0.0.2","topic":"roofroof"},)"
                              R"("park":{"nina":{"url":"http://[fd00::20]:1888","api":"v2"},"switches":"two","timeoutSeconds":600}})");
     TEST_ASSERT_TRUE(c.safety.httpEnabled);
-    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local/api/safety", c.safety.httpUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local", c.safety.httpUrl.c_str());
     TEST_ASSERT_TRUE(c.safety.mqttEnabled);
     TEST_ASSERT_EQUAL_STRING("obs/sqmeter", c.safety.mqttTopic.c_str());
     TEST_ASSERT_EQUAL_UINT32(120, c.safety.staleSeconds);
@@ -94,9 +94,10 @@ void test_switch_choices()
 void test_rejections_say_why()
 {
     TEST_ASSERT_EQUAL_STRING(
-        "SQMeter safety URL must start with http://",
-        rejectReason(R"({"safety":{"http":{"enabled":true,"url":"https://sqm/api/safety"}}})").c_str());
-    TEST_ASSERT_EQUAL_STRING("SQMeter safety URL must start with http://", rejectReason(R"({"safety":{"http":{"enabled":true}}})").c_str());
+        "SQMeter's address: URL must start with http:// or https://",
+        rejectReason(R"({"safety":{"http":{"enabled":true,"url":"ftp://sqm"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "SQMeter's address isn't set: e.g. 192.168.1.50 or sqmeter.local", rejectReason(R"({"safety":{"http":{"enabled":true}}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels",
         rejectReason(R"({"safety":{"mqtt":{"enabled":true,"topic":"sqm/#"}}})").c_str());
@@ -113,14 +114,45 @@ void test_url_host_errors_are_named()
     const std::string reason = rejectReason(R"({"park":{"nina":{"url":"http://"}}})");
     TEST_ASSERT_EQUAL_STRING("N.I.N.A. URL: ", reason.substr(0, 14).c_str());
     const std::string http = rejectReason(R"({"safety":{"http":{"enabled":true,"url":"http://bad host/"}}})");
-    TEST_ASSERT_EQUAL_STRING("SQMeter safety URL: ", http.substr(0, 20).c_str());
+    TEST_ASSERT_EQUAL_STRING("SQMeter's address: ", http.substr(0, 19).c_str());
 }
 
-void test_disabled_sources_keep_any_url()
+// Spec 020 FR-036: SQMeter's address only; RoofRoof adds /api/safety (and the site paths) itself.
+void test_the_address_is_kept_as_scheme_host_and_port()
 {
-    // A switched-off source isn't checked, so turning it off never needs the URL fixed first.
-    const Config c = applied(R"({"safety":{"http":{"enabled":false,"url":"https://old"}}})");
-    TEST_ASSERT_EQUAL_STRING("https://old", c.safety.httpUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING("http://192.168.4.144", Config::sqmeterAddress("192.168.4.144").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local", Config::sqmeterAddress("  sqmeter.local/ ").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://192.168.4.144", Config::sqmeterAddress("http://192.168.4.144/api/sensors").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://192.168.4.144:8080", Config::sqmeterAddress("HTTP://192.168.4.144:8080/api/safety/").c_str());
+    TEST_ASSERT_EQUAL_STRING("https://sqm.lan", Config::sqmeterAddress("https://sqm.lan/api/status?x=1").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://sqm", Config::sqmeterAddress("http://sqm/API/Config").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://[fd00::10]:8080", Config::sqmeterAddress("[fd00::10]:8080/api/safety").c_str());
+    TEST_ASSERT_EQUAL_STRING("", Config::sqmeterAddress("   ").c_str());
+    // Any other path stays, to be refused on a save; stored settings drop it.
+    TEST_ASSERT_EQUAL_STRING("http://sqm/foo", Config::sqmeterAddress("http://sqm/foo").c_str());
+    TEST_ASSERT_EQUAL_STRING("http://sqm", Config::sqmeterAddress("http://sqm/foo", true).c_str());
+
+    const Config c = applied(R"({"safety":{"http":{"enabled":true,"url":"http://192.168.4.144/api/sensors"}}})");
+    TEST_ASSERT_EQUAL_STRING("http://192.168.4.144", c.safety.httpUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "https://sqm.lan", applied(R"({"safety":{"http":{"enabled":true,"url":"https://sqm.lan"}}})").safety.httpUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "SQMeter's address only, e.g. 192.168.1.50: RoofRoof adds /api/safety itself",
+        rejectReason(R"({"safety":{"http":{"enabled":false,"url":"http://sqm/weather"}}})").c_str());
+}
+
+// Settings stored with SQMeter's full /api/safety URL load as its address.
+void test_a_stored_safety_url_loads_as_the_address()
+{
+    Config stored = Config::createDefault();
+    stored.safety.httpEnabled = true;
+    stored.safety.httpUrl = "http://sqmeter.local/api/safety";
+    Config loaded = Config::createDefault();
+    TEST_ASSERT_TRUE(Config::applyJson(stored.toJson(false, false), loaded, false));
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local", loaded.safety.httpUrl.c_str());
+    stored.safety.httpUrl = "http://sqmeter.local/custom/path";
+    TEST_ASSERT_TRUE(Config::applyJson(stored.toJson(false, false), loaded, false));
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local", loaded.safety.httpUrl.c_str());
 }
 
 void test_stale_time_boundaries()
@@ -192,7 +224,7 @@ void test_pre_005_config_loads_with_the_default_park_limit()
 
 void test_longest_settings_fit_the_stored_document()
 {
-    const std::string url = "http://" + std::string(120, 'a') + "/api/safety";
+    const std::string url = "http://" + std::string(120, 'a') + ":8080";
     Config c = Config::createDefault();
     c.safety.httpEnabled = true;
     c.safety.httpUrl = url;
@@ -212,7 +244,8 @@ int main(int, char **)
     RUN_TEST(test_switch_choices);
     RUN_TEST(test_rejections_say_why);
     RUN_TEST(test_url_host_errors_are_named);
-    RUN_TEST(test_disabled_sources_keep_any_url);
+    RUN_TEST(test_the_address_is_kept_as_scheme_host_and_port);
+    RUN_TEST(test_a_stored_safety_url_loads_as_the_address);
     RUN_TEST(test_stale_time_boundaries);
     RUN_TEST(test_park_time_limit_boundaries);
     RUN_TEST(test_pre_004_config_loads_with_sources_off);

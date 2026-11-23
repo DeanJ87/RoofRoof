@@ -89,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1794427152,
-    "iso": "2026-11-11T19:59:12+0000",
+    "epoch": 1795367177,
+    "iso": "2026-11-22T17:06:17+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1794423550410,
-    "nextSync": 1794430750410,
+    "lastSync": 1795363575390,
+    "nextSync": 1795370775390,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -130,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1794427090410,
+    "lastPublish": 1795367115390,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -185,5 +185,35 @@
       "closes": false
     }
   },
-  "configRevision": 388206608
+  "location": {
+    "source": "sqmeter",
+    "set": false,
+    "gps": false,
+    "savedAt": null,
+    "readAgeSeconds": null,
+    "problem": "waiting"
+  },
+  "sync": {
+    "problem": "waiting",
+    "readAgeSeconds": null,
+    "time": {
+      "follow": true,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    },
+    "mqtt": {
+      "follow": false,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    },
+    "alerts": {
+      "follow": false,
+      "syncedAt": null,
+      "refused": null,
+      "needs": []
+    }
+  },
+  "configRevision": 651411734
 }

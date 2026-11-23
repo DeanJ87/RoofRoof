@@ -197,9 +197,9 @@ value closes earlier, a higher one suits a site with a high horizon. The sun cou
 only once it is 0.5 degrees below the threshold, so a sun that lingers there doesn't flicker the
 state. The altitude is worked out on the device, once a second, from the site and the clock.
 
-**The site and the clock.** Enter the latitude and longitude in **Settings → Roof → Daylight**
-(`location.set`, `location.latitude`, `location.longitude`; RoofRoof has no GPS). Without the site, or
-before the clock is set by NTP, the check can't tell day from night, so it **does nothing**: no
+**The site and the clock.** The site comes from the SQMeter at the same observatory, or you type
+it in (see [Site from SQMeter](#site-from-sqmeter) below; RoofRoof has no GPS of its own). Without
+the site, or before the clock is set by NTP, the check can't tell day from night, so it **does nothing**: no
 alert, no close, no refusal. With the mode on (alert, or alert and close), it sends **Daylight check
 not working** (naming what is missing) once it has been unable to run for 10 minutes. A clock set
 within 10 minutes of a restart never alerts. With the mode off, nothing is sent.
@@ -268,6 +268,147 @@ set the site, or set the mode to Off.
 
 The Roof card's **Daylight** line shows the mode and the sun against the threshold, or why the check
 can't run; see [the dashboard](dashboard.md#roof).
+
+
+## Site from SQMeter
+
+RoofRoof and SQMeter stand at the same observatory, so they share a site. RoofRoof already knows
+where SQMeter is: its weather source address (`safety.http.url`, SQMeter's address, http or
+https; RoofRoof adds SQMeter's paths itself).
+
+### The location follows SQMeter
+
+**Settings → Roof → Daylight → Location from** (`location.source`):
+
+- **From SQMeter** (`sqmeter`): RoofRoof reads the location SQMeter uses (`GET /api/status`, its
+  `sky` section), which is a live fix when SQMeter has a GPS receiver. It reads it about 15 s after
+  a restart or a change of the address or the source, then every 10 minutes (2 minutes after a
+  failed read). It reads it whether or not the SQMeter weather source is on; the address must be
+  set.
+- **Typed in** (`manual`): the latitude and longitude you enter, as before.
+
+A new device starts on **From SQMeter**. After an update, a location you typed in stays **Typed
+in**, unchanged; with no location set, the device starts following SQMeter. The daylight failsafe then starts working once SQMeter's location arrives, in the mode you chose: with **Alert and close** it can park and close the roof after sunrise. To keep it inactive, set **Location from** to **Typed in** and leave the location unset.
+
+**Kept on the device.** RoofRoof saves the location it read in its settings, so daylight keeps
+working while SQMeter is switched off or out of reach. It saves only a real change: a move of 0.001
+degrees (about 110 m) or more, a change between SQMeter's GPS and its typed location, or the first
+location. A GPS fix that wanders in its last digit never writes the flash. While the location
+follows SQMeter, the device owns it: Settings shows it read-only, and a settings save can't put an
+older value back.
+
+**Where it shows.** The dashboard's daylight row and Settings say where the location came from
+and how old it is: "From SQMeter (GPS), read 3 min ago", or "SQMeter not answering" with the age of
+the kept location. If SQMeter has no location, or can't be reached, the kept one stays; with none
+kept, daylight shows "Location not set" and does nothing, as before. No alert is sent: the location
+isn't a safety input.
+
+**Never a safety input.** SQMeter's location only says where the sun's altitude is worked out for.
+It never enters the weather verdict, the park check or any refusal except through daylight, exactly
+like a typed location.
+
+**Never while the roof is busy.** No read starts while the roof moves, a close waits or the
+automatic close is working, and a new location is saved only once the roof is still. A read takes at
+most about 3 s on the task that polls SQMeter and N.I.N.A., never in the same pass as SQMeter's
+safety poll, and never on the roof's own control task.
+
+### Copy from SQMeter
+
+**Settings → Roof → Site from SQMeter → Copy from SQMeter**, and the setup wizard's first Site and
+time screen, read SQMeter's settings and list what differs, SQMeter's value beside RoofRoof's:
+
+| Row | What it sets |
+|---|---|
+| Location | follow SQMeter's location (`location.source`) |
+| Time zone | `ntp.timezone` |
+| NTP servers | `ntp.server1`, `ntp.server2` |
+| MQTT broker | `mqtt.broker`, `mqtt.port`, `mqtt.username` |
+| MQTT weather topic | `safety.mqtt.topic`: SQMeter's base topic, where RoofRoof reads `<base>/safe`. RoofRoof's own base topic (`mqtt.topic`) stays its own |
+| ntfy | `alerts.ntfy.server`, `alerts.ntfy.topic` |
+
+Tick the rows you want, **Apply ticked**, then **Save**: the settings are checked and saved as if
+you had typed them. Nothing is saved by the copy itself.
+
+**Never copied:** passwords, tokens and keys (SQMeter doesn't share them), the device name and host
+name (the two devices must differ), WiFi, Alpaca, OTA, and the on and off switches of MQTT and each
+alert channel (turn those on where their Test is). The list says which secret to enter: "Enter the
+MQTT password", "Enter the ntfy token", and, when SQMeter uses Pushover, its user key and app token.
+Copying a different MQTT broker, port or user name clears RoofRoof's saved MQTT password, and a
+different ntfy server clears the saved ntfy token, so a saved secret is never sent to a server it
+wasn't saved for.
+
+Every copied value is an ordinary RoofRoof setting: it shows on its own Settings page (Time, Network,
+Alerts, Roof), marked **Follows SQMeter** while its group follows, and stays editable there. That
+holds while the channel is off too: a copied MQTT broker or ntfy topic shows its fields with MQTT or
+ntfy off. A secret SQMeter has set is asked for at its field (the MQTT password, the ntfy token, the
+Pushover user key and app token), also with that channel off, until you type it.
+
+The device fetches SQMeter's settings itself (`POST /api/sqmeter/site`); the copy is refused while
+the roof is busy. An older SQMeter that lacks a part simply has no row for it. Copying a group also
+switches it to follow SQMeter (below).
+
+### A password-protected SQMeter
+
+If SQMeter has a password, enter its user name and password with its address (**Settings → Roof →
+Weather sources**, or the wizard's SQMeter screen; `safety.http.username`, `safety.http.password`).
+RoofRoof then sends them (HTTP Basic, SQMeter's own scheme) with every request it makes to SQMeter:
+the weather poll, the location read, the settings sync and the copy. SQMeter leaves the readings
+RoofRoof uses open even with its password on, but a later release, or a proxy in front of it, may
+not.
+
+The password is a secret: shown as `********`, never logged, and only sent to the SQMeter it was
+saved for. Changing the address to another scheme (http or https), host or port clears it unless
+you type it again; the copy only uses the saved password with the saved address's scheme, host and
+port. Over `https://` the login travels encrypted (the certificate isn't checked).
+
+When SQMeter turns a request away (401 or 403), RoofRoof says why instead of a bare HTTP status:
+**SQMeter wants a password** (none was sent) or **SQMeter refused the password**. The weather source
+then counts as unreadable, so it goes stale and the weather reads unsafe as for any other failed
+poll; the dashboard's daylight line, Settings and the copy show the same reason.
+
+### Keeping in step
+
+Three groups of settings can keep following SQMeter, besides the location
+(`sqmeterSync.<group>.follow`):
+
+| Group | Follows | Secret it never takes |
+|---|---|---|
+| Time | the time zone and both NTP servers | - |
+| MQTT | the broker, port and user name, and SQMeter's base topic as the MQTT weather topic (`safety.mqtt.topic`; RoofRoof's own base topic stays its own) | the MQTT password |
+| Alerts | the ntfy server and topic | the ntfy token; Pushover (SQMeter doesn't share its keys) |
+
+A new device follows SQMeter in every group. After an update, a group you had already changed from
+its defaults stays **local**; one still at its defaults follows.
+
+**How often.** RoofRoof re-reads SQMeter's settings on the location's schedule: about 15 s after a
+restart or a change, then every 10 minutes (2 minutes after a failed read), never while the roof is
+busy, never alongside SQMeter's safety poll, at most one read of SQMeter per pass of the task that
+polls SQMeter and N.I.N.A. Only the few fields above are kept from SQMeter's reply.
+
+**What a change does.** When SQMeter's values change, RoofRoof checks them exactly as it checks a
+save from Settings, saves them once and applies them (a new broker reconnects MQTT, new NTP servers
+resync the clock), and logs which groups changed. A value it can't accept (a broker name that isn't
+valid, for example) is refused: the old value stays and Settings says why. Values that already match
+write nothing.
+
+**In Settings and the wizard**, a followed group's fields are read-only and say **Follows SQMeter**,
+with when SQMeter was last read. **Edit here instead** makes the group local (save to keep it);
+**Follow SQMeter** makes it follow again. While a group follows, a settings save keeps the values
+RoofRoof synced, so an older page can't put old ones back.
+
+**Secrets never sync.** When a synced change moves the MQTT broker, port or user name, RoofRoof
+clears its saved MQTT password; when it moves the ntfy server, the saved ntfy token. While SQMeter
+has that secret set and RoofRoof's is empty, Settings and the dashboard's Status card ask for it,
+also with that channel off. Pushover never syncs (SQMeter masks its keys): while the alerts group
+follows and SQMeter uses Pushover, its user key and app token are asked for until both are set here.
+Following alone shows no channel that is off. This is a note, not an alert.
+
+**Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
+Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT
+roof commands are on, the MQTT group doesn't sync at all ("MQTT roof commands are on: set the broker
+here"): a broker changed elsewhere must not change who may move the roof. A synced weather topic or
+broker restarts the MQTT weather source as any settings change does, so it reads unknown (not safe)
+until SQMeter's next message.
 
 ## In the log
 

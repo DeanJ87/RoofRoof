@@ -31,6 +31,10 @@ namespace SQM::ConfigDetail
         return false;
     }
 
+    // The location's ranges (ConfigValidate.cpp), also checked on a save the
+    // device's own location overrides (spec 020).
+    bool validateLocation(const LocationConfig &location, std::string *error);
+
     inline bool inRange(float value, float min, float max)
     {
         return std::isfinite(value) && value >= min && value <= max;
@@ -114,6 +118,7 @@ namespace SQM::ConfigDetail
     // MQTT broker and webhook URL forms, IPv6 literals included (SQMeter spec 015);
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);
+    bool validateSqmeterAddress(const SafetyConfig &s, std::string *error);
 
     // What a setting must be; the messages are in ConfigJsonIn.cpp.
     enum class Expected
@@ -238,5 +243,11 @@ namespace SQM::ConfigDetail
         JsonObject object;
         std::string sectionPath;
     };
+
+    // Spec 020 (ConfigJsonSite.cpp): the location section, the follow
+    // switches, and their upgrade rule for settings saved before them.
+    bool applyLocation(const Section &location, LocationConfig &loc, std::string *error);
+    void applySync(const Section &sync, SqmeterSyncConfig &s);
+    void migrateSync(Config &cfg);
 
 } // namespace SQM::ConfigDetail

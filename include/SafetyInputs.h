@@ -64,6 +64,7 @@ namespace SQM
         {
             SafetyConfig safety;
             ParkConfig park;
+            std::string mqttBroker; // spec 020: broker:port@user, so a new broker restarts the MQTT source
         };
 
         static Settings settingsOf(const Config &config);

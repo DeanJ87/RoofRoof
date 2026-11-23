@@ -77,6 +77,290 @@
       },
       "example": "config-change"
     },
+    "POST /api/sqmeter/site": {
+      "tag": "Settings",
+      "summary": "Read SQMeter's site settings",
+      "description": "Spec 020: the device fetches the SQMeter's `GET /api/config` (SQMeter sends no CORS headers, so a browser can't) and answers with what the setup wizard and Settings can copy: its location, time zone and NTP servers, MQTT broker, port, user name and base topic, and ntfy server and topic. Each secret (MQTT password, ntfy token, Pushover user key and app token) is only ever reported as set or not: its value never appears, even from an SQMeter that doesn't mask it. Parts an older SQMeter lacks are `null`. Nothing is saved. The address is the body's `url`, else `safety.http.url`, in any form the address setting takes (`192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan`, or a URL ending in one of SQMeter's API paths); only its scheme, host and port are used. https is encrypted without a certificate check. The login sent to SQMeter (HTTP Basic) is the body's `username` and `password` when given (the password mask means the saved one), else the saved `safety.http` login, which only goes to the saved SQMeter's host and port. Refused (409) while the roof moves, a close waits or the automatic close works, and while another copy runs; 502 when SQMeter doesn't answer, wants a password (\"SQMeter wants a password\"), refuses the one sent (\"SQMeter refused the password\"), or the reply isn't SQMeter's settings.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "SQMeter's address as typed (e.g. 192.168.1.50, sqmeter.local or https://sqmeter.lan). Optional: the saved address when left out."
+            },
+            "username": {
+              "type": "string",
+              "description": "SQMeter's user name (HTTP Basic), as typed. Optional: the saved one when left out and the address is the saved SQMeter's host and port."
+            },
+            "password": {
+              "type": "string",
+              "description": "SQMeter's password, as typed; the mask (********) or leaving it out means the saved one, which only goes to the saved SQMeter's host and port. Never logged or echoed."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "url": "192.168.1.50"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "The SQMeter's scheme, host and port, e.g. http://192.168.1.50."
+              },
+              "device": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              },
+              "location": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "set": {
+                    "type": "boolean"
+                  },
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "set",
+                  "latitude",
+                  "longitude"
+                ],
+                "additionalProperties": false
+              },
+              "time": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "server1": {
+                    "type": "string"
+                  },
+                  "server2": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "timezone",
+                  "server1",
+                  "server2"
+                ],
+                "additionalProperties": false
+              },
+              "mqtt": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "broker": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "integer"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "passwordSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "broker",
+                  "port",
+                  "username",
+                  "topic",
+                  "passwordSet"
+                ],
+                "additionalProperties": false
+              },
+              "ntfy": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "server": {
+                    "type": "string"
+                  },
+                  "topic": {
+                    "type": "string"
+                  },
+                  "tokenSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "server",
+                  "topic",
+                  "tokenSet"
+                ],
+                "additionalProperties": false
+              },
+              "pushover": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "userKeySet": {
+                    "type": "boolean"
+                  },
+                  "appTokenSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "userKeySet",
+                  "appTokenSet"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "address",
+              "device",
+              "location",
+              "time",
+              "mqtt",
+              "ntfy",
+              "pushover"
+            ],
+            "additionalProperties": false
+          },
+          "example": {
+            "address": "http://192.168.1.50",
+            "device": {
+              "name": "SQMeter"
+            },
+            "location": {
+              "set": true,
+              "latitude": 51.5074,
+              "longitude": -0.1278
+            },
+            "time": {
+              "timezone": "GMT0BST,M3.5.0/1,M10.5.0",
+              "server1": "pool.ntp.org",
+              "server2": "time.nist.gov"
+            },
+            "mqtt": {
+              "broker": "192.168.1.10",
+              "port": 1883,
+              "username": "observatory",
+              "topic": "sqmeter",
+              "passwordSet": true
+            },
+            "ntfy": {
+              "server": "https://ntfy.sh",
+              "topic": "my-observatory",
+              "tokenSet": false
+            },
+            "pushover": {
+              "userKeySet": true,
+              "appTokenSet": true
+            }
+          }
+        },
+        "400": "error",
+        "401": "error",
+        "409": "error",
+        "502": "error",
+        "503": "error"
+      }
+    },
+    "POST /api/sqmeter/test": {
+      "tag": "Settings",
+      "summary": "Test SQMeter's address",
+      "description": "Spec 020: the device reads SQMeter's `GET /api/safety` once, as the weather poll does, at the body's address and login (as `POST /api/sqmeter/site` takes them), and answers with SQMeter's verdict. Nothing is saved and the weather source is unchanged. 200 with `safe`, `reasonFlags` and a `text` for people; 502 with `error` when SQMeter doesn't answer (\"SQMeter not answering: ...\"), wants or refuses a password, or the address answers but not like SQMeter's /api/safety (\"That address answered HTTP 404, not like SQMeter's /api/safety\", \"That address answered, but not like SQMeter's /api/safety (missing safe)\"). Refused (409) while the roof moves, a close waits or the automatic close works, and while another read of SQMeter runs.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "SQMeter's address as typed (e.g. 192.168.1.50, sqmeter.local or https://sqmeter.lan). Optional: the saved address when left out."
+            },
+            "username": {
+              "type": "string",
+              "description": "SQMeter's user name (HTTP Basic), as typed. Optional: the saved one when left out and the address is the saved SQMeter's host and port."
+            },
+            "password": {
+              "type": "string",
+              "description": "SQMeter's password, as typed; the mask (********) or leaving it out means the saved one, which only goes to the saved SQMeter's host and port. Never logged or echoed."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "url": "192.168.1.50"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "safe": {
+                "type": "boolean",
+                "description": "SQMeter's verdict (false whenever it sets a reason flag)."
+              },
+              "reasonFlags": {
+                "type": "integer",
+                "description": "SQMeter's reason flags (0 when safe)."
+              },
+              "text": {
+                "type": "string",
+                "description": "For people: \"SQMeter says safe\" or \"SQMeter says unsafe: reasonFlags 0x200 (rain)\"."
+              }
+            },
+            "required": [
+              "safe",
+              "reasonFlags",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "example": {
+            "safe": true,
+            "reasonFlags": 0,
+            "text": "SQMeter says safe"
+          }
+        },
+        "400": "error",
+        "401": "error",
+        "409": "error",
+        "502": "error",
+        "503": "error"
+      }
+    },
     "PUT /api/config": {
       "tag": "Settings",
       "summary": "Change settings (PUT)",

@@ -55,8 +55,13 @@ wizard resumes at.
    password** is recommended and starts chosen when no password is set; **No password** warns that
    anyone on your network could change settings and move the roof. Set one before the motor is
    connected ([Security](security.md)).
-2. **Site and time**: the latitude and longitude (for the daylight check); then the time zone and
-   NTP.
+2. **Site and time**: first **SQMeter's address** (e.g. `192.168.1.50` or `sqmeter.local`, the
+   weather source's address; RoofRoof adds `/api/safety` itself) with **Copy site settings from SQMeter**, which lists what SQMeter has that differs
+   (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy) for you to tick and apply; the
+   later screens then arrive filled in, the copied groups keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show **Follows SQMeter**, with **Edit here instead**), and passwords and tokens are never copied
+   ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave it empty when there is no
+   SQMeter. Then where the location comes from (**From SQMeter**, read once saved, or typed in,
+   for the daylight check); then the time zone and NTP.
 3. **Hardware**, with the live readings:
     - the **12 V supply** as the device reads it through its fixed 100k/22k divider, and the
       minimum supply. Type what your meter shows at the driver's input: the screen says whether

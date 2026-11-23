@@ -88,6 +88,41 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 `stackFree.roof` is the roof control task's unused stack in bytes.
 
+`location` says where the daylight failsafe's site comes from ([Site from SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)):
+
+```json
+"location": { "source": "sqmeter", "set": true, "gps": true, "savedAt": 1763540000, "readAgeSeconds": 180, "problem": null }
+```
+
+| Field | Meaning |
+|---|---|
+| `source` | `sqmeter` (read from the SQMeter at the weather source's address) or `manual` (typed in) |
+| `set` | a location is known; without one daylight's state is unknown ("Location not set") |
+| `gps` | the kept location was SQMeter's GPS fix |
+| `savedAt` | Unix seconds when the location read from SQMeter was last saved; `null` when never, when the clock wasn't set, or with `manual` |
+| `readAgeSeconds` | seconds since SQMeter's location was last read in this run; `null` before the first good read, or with `manual` |
+| `problem` | why SQMeter's location isn't being read now: `noAddress` (the weather source address isn't set), `waiting` (not read yet), `unreachable`, `unreadable`, `noLocation` (SQMeter has none), `passwordNeeded` (SQMeter wants a password) or `passwordRefused` (SQMeter refused the password); `null` when the last read was good, or with `manual` |
+
+SQMeter's location is never a safety input: it only sets where the sun's altitude is worked out for.
+
+`sync` says how the settings groups that follow SQMeter stand ([Keeping in step](../user-guide/close-on-unsafe.md#keeping-in-step)):
+
+```json
+"sync": { "problem": null, "readAgeSeconds": 180,
+  "time": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": [] },
+  "mqtt": { "follow": true, "syncedAt": 1763540000, "refused": null, "needs": ["mqttPassword"] },
+  "alerts": { "follow": false, "syncedAt": null, "refused": null, "needs": [] } }
+```
+
+| Field | Meaning |
+|---|---|
+| `problem` | why SQMeter's settings aren't being read now (`noAddress`, `waiting`, `unreachable`, `unreadable`, `passwordNeeded`, `passwordRefused`), `null` when the last read was good or no group follows |
+| `readAgeSeconds` | seconds since SQMeter's settings were last read in this run, `null` before the first |
+| `<group>.follow` | the group follows SQMeter (`sqmeterSync.<group>.follow`) |
+| `<group>.syncedAt` | Unix seconds of the group's last change from SQMeter, `null` when never |
+| `<group>.refused` | why the last sync didn't take SQMeter's values (the old ones are kept), e.g. a value the settings' validation refuses or "MQTT roof commands are on: set the broker here, not from SQMeter"; `null` otherwise |
+| `<group>.needs` | secrets to enter because SQMeter has one set and RoofRoof's is empty: `mqttPassword`, `ntfyToken`, `pushoverKeys` (Pushover is never synced, so its keys are asked for while either is missing) |
+
 ---
 
 ### `GET /api/config`
@@ -133,6 +168,67 @@ Successful saves return:
 While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. A save is also refused while a close is waiting to start (`"A close is waiting to start: try again once the roof has closed"`), and while it is being written an open is refused (`busy`) and a close waits for it. Restores, uploads, WiFi changes and restarts are refused the same way; restarts, uploads, WiFi changes and scans also while the automatic close is waiting for the park or closing (`"The automatic close is under way: try again once the roof has closed or the weather is safe"`). The full table is in [Roof motion](../user-guide/roof-motion.md#while-the-roof-moves). Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
+
+While `location.source` is and stays `sqmeter` and the device has a location set, a save keeps the device's own `location.set`, `latitude` and `longitude` (the values are still checked); `location.sqmeter` is the device's and is never read from a save. A `location` without `source` is `manual` when `set` is true, else `sqmeter`.
+
+---
+
+### `POST /api/sqmeter/site`
+
+Reads the SQMeter's settings for the copy in Settings and the setup wizard ([Site from SQMeter](../user-guide/close-on-unsafe.md#copy-from-sqmeter)). The device fetches the SQMeter's `GET /api/config` itself (SQMeter sends no CORS headers, so a browser can't) and answers with only what can be copied. Needs the password when protection is on. Nothing is saved.
+
+```bash
+curl -u admin:password -X POST http://roofroof.local/api/sqmeter/site \
+  -H "Content-Type: application/json" -d '{"url": "192.168.1.50"}'
+```
+
+`url` is optional: without it, the saved `safety.http.url`. It takes the address setting's forms (`192.168.1.50`, `sqmeter.local`, `https://sqmeter.lan`, or a URL ending in one of SQMeter's API paths); only its scheme, host and port are used, with SQMeter's own path. `https` is encrypted, without a certificate check. `username` and `password` are optional too: SQMeter's login for this request (typed in the wizard before saving). Without them the saved login is used, and an empty or masked (`********`) password means the saved one, but only when `url` has the saved address's host and port: a saved password is never sent to another device. The login goes as HTTP Basic, as on every request RoofRoof makes to SQMeter.
+
+```json
+{
+  "address": "http://192.168.1.50",
+  "device": { "name": "SQMeter" },
+  "location": { "set": true, "latitude": 51.5074, "longitude": -0.1278 },
+  "time": { "timezone": "GMT0BST,M3.5.0/1,M10.5.0", "server1": "pool.ntp.org", "server2": "time.nist.gov" },
+  "mqtt": { "broker": "192.168.1.10", "port": 1883, "username": "observatory", "topic": "sqmeter", "passwordSet": true },
+  "ntfy": { "server": "https://ntfy.sh", "topic": "my-observatory", "tokenSet": false },
+  "pushover": { "userKeySet": true, "appTokenSet": true }
+}
+```
+
+A secret is only ever reported as set or not (`passwordSet`, `tokenSet`, `userKeySet`, `appTokenSet`): its value never appears, even from an SQMeter old enough not to mask it. A part an older SQMeter doesn't have is `null`; SQMeter v0.1's top-level `timezone` is read as the time zone.
+
+| Status | When |
+|---|---|
+| 400 | no address set, or not a valid address |
+| 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
+| 502 | SQMeter not answering (`"SQMeter not answering: connection refused"`), turning the request away (`"SQMeter wants a password"` with no login sent, `"SQMeter refused the password"` with one), another HTTP status, or not SQMeter's settings |
+| 503 | not enough memory to start the fetch |
+
+The fetch runs on its own short-lived task for at most about 5 s; the web server answers when it is done.
+
+---
+
+### `POST /api/sqmeter/test`
+
+The **Test** next to SQMeter's address in Settings: the device reads SQMeter's `GET /api/safety` once, as the weather poll does, at the body's address and login (the same body as `POST /api/sqmeter/site`; only the address's scheme, host and port are used, whatever path it has), and answers with SQMeter's verdict. Nothing is saved, and the weather source is unchanged. Needs the password when protection is on.
+
+```bash
+curl -u admin:password -X POST http://roofroof.local/api/sqmeter/test \
+  -H "Content-Type: application/json" -d '{"url": "192.168.1.50"}'
+```
+
+```json
+{ "safe": false, "reasonFlags": 512, "text": "SQMeter says unsafe: reasonFlags 0x200 (rain)" }
+```
+
+| Status | When |
+|---|---|
+| 200 | SQMeter answered: `safe`, `reasonFlags` and `text` |
+| 400 | no address set, or not a valid address |
+| 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
+| 502 | `error` says why: `"SQMeter not answering: connection refused"`, `"SQMeter wants a password"`, `"SQMeter refused the password"`, `"That address answered HTTP 404, not like SQMeter's /api/safety"`, or `"That address answered, but not like SQMeter's /api/safety (missing safe)"` (another of SQMeter's pages, say) |
+| 503 | not enough memory to start the read |
 
 ---
 

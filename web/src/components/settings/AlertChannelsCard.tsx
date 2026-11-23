@@ -3,6 +3,8 @@ import type { AlertChannelName } from '../../types';
 import { isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepToggle, Field, Group, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
+import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
+import { asked, locked as isLocked, ntfyShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // Send test, for a channel that is on (tests use the saved settings).
@@ -24,7 +26,7 @@ const TestButton: FunctionalComponent<{ view: AlertsView; channel: AlertChannelN
 };
 
 const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
-  const { alerts, set, err, dep, fix } = view;
+  const { alerts, set, err, dep, fix, status } = view;
   return (
     <Group>
       <DepToggle
@@ -34,7 +36,8 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
         checked={alerts.pushover.enabled}
         onChange={(v) => set(['pushover', 'enabled'], v)}
       />
-      {alerts.pushover.enabled && (
+      {/* Spec 020: also while off when SQMeter has keys RoofRoof lacks, so they can be entered. */}
+      {(alerts.pushover.enabled || asked(status?.sync, 'pushoverKeys')) && (
         <>
           <div class="form-grid">
             <Field label={t('settings.alerts.userKey')} error={err('pushover.userKey')} hint={t('settings.alerts.yourUserKeyTopOf')}>
@@ -51,6 +54,7 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
               hint={t('settings.alerts.createAnApplicationAtPushover')}
             >
               <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
+              <NeedsNote status={status} need="pushoverKeys" filled={!!alerts.pushover.userKey && !!alerts.pushover.appToken} />
             </Field>
             <Field label={t('settings.alerts.defaultSound')} hint={t('settings.alerts.usedWhereAnEventS')}>
               <SelectInput
@@ -67,8 +71,10 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   );
 };
 
+// Spec 020: the server and topic are read-only while the alerts group follows SQMeter.
 const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
-  const { alerts, set, err, dep, fix } = view;
+  const { alerts, set, err, dep, fix, config, status, update } = view;
+  const locked = isLocked(config, 'alerts');
   return (
     <Group>
       <DepToggle
@@ -78,22 +84,37 @@ const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
         checked={alerts.ntfy.enabled}
         onChange={(v) => set(['ntfy', 'enabled'], v)}
       />
-      {alerts.ntfy.enabled && (
+      {/* Spec 020: also while off when it holds what was copied or synced from SQMeter, or a token to enter. */}
+      {ntfyShown(config, status?.sync) && (
         <>
+          <FollowsSqmeter group="alerts" config={config} status={status} update={update} />
           <div class="form-grid">
             <Field label={t('settings.alerts.server')} error={err('ntfy.server')}>
-              <TextInput type="url" value={alerts.ntfy.server} onInput={(v) => set(['ntfy', 'server'], v)} />
+              <TextInput
+                type="url"
+                dataField="alerts.ntfy.server"
+                disabled={locked}
+                value={alerts.ntfy.server}
+                onInput={(v) => set(['ntfy', 'server'], v)}
+              />
             </Field>
             <Field label={t('settings.alerts.topic')} error={err('ntfy.topic')} hint={t('settings.alerts.ntfyTopicsPublic')}>
-              <TextInput dataField="alerts.ntfy.topic" value={alerts.ntfy.topic} onInput={(v) => set(['ntfy', 'topic'], v)} />
+              <TextInput
+                dataField="alerts.ntfy.topic"
+                disabled={locked}
+                value={alerts.ntfy.topic}
+                onInput={(v) => set(['ntfy', 'topic'], v)}
+              />
             </Field>
             <Field label={t('settings.alerts.token')}>
               <TextInput
                 type="password"
-                value={alerts.ntfy.token}
+                dataField="alerts.ntfy.token"
+                value={alerts.ntfy.token ?? ''}
                 placeholder={t('settings.alerts.optional')}
                 onInput={(v) => set(['ntfy', 'token'], v)}
               />
+              <NeedsNote status={status} need="ntfyToken" filled={!!alerts.ntfy.token} cleared={alerts.ntfy.token === null} />
             </Field>
           </div>
           <TestButton view={view} channel="ntfy" />

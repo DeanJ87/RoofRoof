@@ -10,6 +10,7 @@ std::string EmulatedDevice::applyConfig(const std::string &json)
     auto next = Config::fromJson(json, &cfg, &reason);
     if (!next)
         return errorJson(reason.empty() ? "Invalid configuration" : reason);
+    Site::keepFollowed(cfg, *next); // as saveConfigCallback (spec 020)
     cfg = *next;
     if (roofBooted)
         roof.settingsChanged(cfg);
@@ -38,6 +39,7 @@ void EmulatedDevice::restart(double nowMsIn)
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
     roofBooted = false; // boots on the next tick: unknown between the magnets
+    resetSite();        // the location read starts again (the kept location stays)
     // Spec 017: a restart loses the log; only kept summaries stay.
     roof.attachDiag(nullptr);
     diagLog.reset();
@@ -56,6 +58,7 @@ void EmulatedDevice::tick(double nowMsIn, double epochIn, const std::string &loc
         bootMs = nowMs;
     roof.setClock(epoch);
     runRoof();
+    runSite();
     runAlerts();
 }
 

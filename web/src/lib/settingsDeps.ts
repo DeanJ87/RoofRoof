@@ -124,6 +124,8 @@ const addDaylight = (c: Context) => {
   // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
   const remote = on(c.config, 'alpaca.enabled') || (on(c.config, 'mqtt.enabled') && on(c.config, 'mqtt.roofCommands'));
   c.add('autoClose.remoteStop', 'D-45', on(c.config, 'autoClose.remoteStop'), [['D-45', 'remote-off', remote]]);
+  // Spec 020: where the site comes from matters only while daylight is on.
+  c.add('location.source', 'D-44', true, [daylightOn]);
   for (const setting of ['location.set', 'location.latitude', 'location.longitude']) c.add(setting, 'D-44', located, [daylightOn]);
 };
 
@@ -140,6 +142,10 @@ const addDevice = (c: Context) => {
 const addDiag = (c: Context) => {
   const diagOn: Link = ['D-46', 'diag-off', on(c.config, 'diag.enabled')];
   c.add('diag.keepSummaries', 'D-46', on(c.config, 'diag.keepSummaries'), [diagOn]);
+  // Spec 020: a group follows SQMeter's settings only with SQMeter's address set (the device's order).
+  const address: Link = ['D-47', 'no-sqmeter-address', read(c.config, 'safety.http.url', '').trim() !== ''];
+  for (const group of ['time', 'mqtt', 'alerts'])
+    c.add(`sqmeterSync.${group}.follow`, 'D-47', on(c.config, `sqmeterSync.${group}.follow`), [address]);
   c.add('diag.mqtt', 'D-46', on(c.config, 'diag.mqtt'), [diagOn, ['D-46', 'mqtt-off', on(c.config, 'mqtt.enabled')]]);
 };
 

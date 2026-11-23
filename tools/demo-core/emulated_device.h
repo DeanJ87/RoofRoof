@@ -21,6 +21,8 @@
 #include "ConfigBackup.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
+#include "SqmeterSite.h"
+#include "SqmeterSync.h"
 #include "SummaryList.h"
 #include <memory>
 #include "emulated_roof.h"
@@ -85,7 +87,12 @@ public:
     std::string calibration(const std::string &action, const std::string &body);
     // Spec 019: POST /api/roof/jog ("jog"), /api/roof/teach/mark, /confirm and /discard, GET /api/roof/teach ("status").
     std::string teach(const std::string &action, const std::string &body);
-    // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow} (any subset)
+    // Spec 020: POST /api/sqmeter/site, from the simulated SQMeter's settings
+    // through the firmware's own parser. {status, body} like the device.
+    std::string sqmeterSite(const std::string &body);
+    // Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+    std::string sqmeterTest(const std::string &body);
+    // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);
     // The panel's view: the injectors, the mount, and what the device sees.
@@ -147,6 +154,7 @@ public:
     void setArmed(bool on, const std::string &source);
 
 private:
+    std::string sqmeterRequest(const std::string &body, std::string &address, Site::TypedLogin &login);
     int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
 
     void scheduleChanged(bool wasSending);
@@ -240,4 +248,21 @@ private:
     Diag::Clock diagClock() const { return Diag::Clock{nowMs, static_cast<uint32_t>(validEpoch())}; }
     void runRoof();
     std::string teachConfirm(const std::string &body);
+    // Spec 020: the location read from the simulated SQMeter, on the
+    // firmware's schedule and save rule (SafetyPoller, main.cpp handleSite).
+    Site::LocationSchedule siteSchedule;
+    Site::LocationRead siteRead;
+    uint32_t siteGeneration = 0;
+    std::string siteAddress;
+    std::string siteLogin;
+    LocationConfig::Source siteSource = LocationConfig::Source::Sqmeter;
+    bool settingsFollow = false;
+    Site::LocationSchedule settingsSchedule;
+    Site::ConfigRead settingsRead;
+    Site::SyncState syncState;
+    void runSettingsSync(bool busy);
+    void runSite();
+    void resetSite();
+    void writeLocation(JsonObject out) const;
+    void writeSync(JsonObject out) const;
 };

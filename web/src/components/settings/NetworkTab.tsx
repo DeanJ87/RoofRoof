@@ -19,6 +19,8 @@ import {
   TextInput,
   Toggle,
 } from './controls';
+import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
+import { locked as isLocked, mqttShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
@@ -106,58 +108,70 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = ({ config, update, update
 };
 
 // Broker, credentials, base topic and interval.
-const MqttFields: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => {
+// Spec 020: the broker, port and user name are read-only while the MQTT group follows SQMeter.
+const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
+  const { config, update, error, status } = props;
   const base = config.mqtt.topic || 'roofroof';
+  const locked = isLocked(config, 'mqtt');
   return (
-    <div class="form-grid">
-      <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
-        <TextInput
-          dataField="mqttBroker"
-          value={config.mqtt.broker}
-          placeholder="192.168.1.100 or fd00::10"
-          onInput={(v) => update(['mqtt', 'broker'], v)}
-        />
-      </Field>
-      <Field label={t('settings.network.port')} error={error('mqttPort')}>
-        <NumberInput
-          dataField="mqttPort"
-          integer
-          min={1}
-          max={65535}
-          value={config.mqtt.port}
-          onChange={(v) => update(['mqtt', 'port'], Math.max(1, Math.min(65535, v || 1883)))}
-        />
-      </Field>
-      <Field label={t('settings.network.username')}>
-        <TextInput
-          value={config.mqtt.username}
-          placeholder={t('settings.network.optional')}
-          onInput={(v) => update(['mqtt', 'username'], v)}
-        />
-      </Field>
-      <Field label={t('settings.network.password')}>
-        <TextInput
-          type="password"
-          value={config.mqtt.password}
-          placeholder={t('settings.network.optional')}
-          onInput={(v) => update(['mqtt', 'password'], v)}
-        />
-      </Field>
-      <Field label={t('settings.network.baseTopic')} error={error('mqttTopic')} hint={t('settings.network.topicsGoUnderBase', { base })}>
-        <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="roofroof" onInput={(v) => update(['mqtt', 'topic'], v)} />
-      </Field>
-      <Field label={t('settings.network.publishEvery')} error={error('mqttInterval')}>
-        <NumberInput
-          dataField="mqttInterval"
-          integer
-          min={1}
-          max={86400}
-          unit="s"
-          value={config.mqtt.publishIntervalMs / 1000}
-          onChange={(v) => update(['mqtt', 'publishIntervalMs'], Math.max(1, v || 60) * 1000)}
-        />
-      </Field>
-    </div>
+    <>
+      <FollowsSqmeter group="mqtt" {...props} />
+      <div class="form-grid">
+        <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
+          <TextInput
+            dataField="mqttBroker"
+            disabled={locked}
+            value={config.mqtt.broker}
+            placeholder="192.168.1.100 or fd00::10"
+            onInput={(v) => update(['mqtt', 'broker'], v)}
+          />
+        </Field>
+        <Field label={t('settings.network.port')} error={error('mqttPort')}>
+          <NumberInput
+            dataField="mqttPort"
+            disabled={locked}
+            integer
+            min={1}
+            max={65535}
+            value={config.mqtt.port}
+            onChange={(v) => update(['mqtt', 'port'], Math.max(1, Math.min(65535, v || 1883)))}
+          />
+        </Field>
+        <Field label={t('settings.network.username')}>
+          <TextInput
+            dataField="mqtt.username"
+            disabled={locked}
+            value={config.mqtt.username}
+            placeholder={t('settings.network.optional')}
+            onInput={(v) => update(['mqtt', 'username'], v)}
+          />
+        </Field>
+        <Field label={t('settings.network.password')}>
+          <TextInput
+            type="password"
+            dataField="mqtt.password"
+            value={config.mqtt.password ?? ''}
+            placeholder={t('settings.network.optional')}
+            onInput={(v) => update(['mqtt', 'password'], v)}
+          />
+          <NeedsNote status={status} need="mqttPassword" filled={!!config.mqtt.password} cleared={config.mqtt.password === null} />
+        </Field>
+        <Field label={t('settings.network.baseTopic')} error={error('mqttTopic')} hint={t('settings.network.topicsGoUnderBase', { base })}>
+          <TextInput dataField="mqttTopic" value={config.mqtt.topic} placeholder="roofroof" onInput={(v) => update(['mqtt', 'topic'], v)} />
+        </Field>
+        <Field label={t('settings.network.publishEvery')} error={error('mqttInterval')}>
+          <NumberInput
+            dataField="mqttInterval"
+            integer
+            min={1}
+            max={86400}
+            unit="s"
+            value={config.mqtt.publishIntervalMs / 1000}
+            onChange={(v) => update(['mqtt', 'publishIntervalMs'], Math.max(1, v || 60) * 1000)}
+          />
+        </Field>
+      </div>
+    </>
   );
 };
 
@@ -264,7 +278,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
           checked={config.mqtt.enabled}
           onChange={(v) => update(['mqtt', 'enabled'], v)}
         />
-        {config.mqtt.enabled && (
+        {config.mqtt.enabled ? (
           <>
             <MqttFields {...props} />
             <MqttTest config={config} test={mqttTest} />
@@ -272,6 +286,9 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
             <RoofCommandsGroup {...props} />
             <HomeAssistantGroup {...props} />
           </>
+        ) : (
+          // Spec 020: what was copied or synced from SQMeter stays visible and editable while MQTT is off.
+          mqttShown(config, props.status?.sync) && <MqttFields {...props} />
         )}
       </SettingsCard>
 

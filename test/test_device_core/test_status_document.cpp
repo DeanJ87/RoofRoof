@@ -4,6 +4,8 @@
 
 #include "DeviceCore.h"
 #include "RoofStatus.h"
+#include "SqmeterSite.h"
+#include "SqmeterSync.h"
 
 #include <cstdio>
 #include <string>
@@ -170,6 +172,25 @@ namespace
         alerts["recentRevision"] = 4294967295U;
         const std::vector<Alpaca::DeviceInfo> devices(Alpaca::MAX_DEVICES, Alpaca::DeviceInfo{"Dome", "dome", 0, LONG, LONG, 3});
         Core::writeClientWatch(doc.createNestedObject("alpaca"), Alpaca::ClientWatch{}, devices, cfg, now);
+        // Spec 020: the location section, every field filled.
+        LocationConfig location;
+        location.set = location.gps = true;
+        location.savedAt = 4294967295U;
+        Site::LocationRead read;
+        read.problem = Site::Problem::NoLocation;
+        read.goodAtMs = 1;
+        Site::writeLocationStatus(doc.createNestedObject("location"), location, read, true, now);
+        // Spec 020: the sync section, every group refused and needing its secrets.
+        Config synced = cfg;
+        synced.sqmeterSync.time.syncedAt = synced.sqmeterSync.mqtt.syncedAt = synced.sqmeterSync.alerts.syncedAt = 4294967295U;
+        Site::ConfigRead settings;
+        settings.problem = Site::Problem::Unreadable;
+        settings.goodAtMs = 1;
+        settings.site.hasMqtt = settings.site.hasNtfy = settings.site.passwordSet = settings.site.ntfyTokenSet = true;
+        Site::SyncState state;
+        for (std::string &refused : state.refused)
+            refused = "SQMeter's value refused: " + LONG;
+        Site::writeSyncStatus(doc.createNestedObject("sync"), Site::SyncView{synced, settings, state, true, now});
     }
 } // namespace
 

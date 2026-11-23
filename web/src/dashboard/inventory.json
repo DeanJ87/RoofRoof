@@ -122,6 +122,22 @@
       "test": "clock-location"
     },
     {
+      "id": "sqmeter-needs",
+      "label": "glance.needs.state",
+      "sources": ["status.sync.mqtt.needs", "status.sync.alerts.needs"],
+      "requiredBy": "020 (sync with SQMeter)",
+      "visibility": {
+        "rule": "when",
+        "when": "a group follows SQMeter and SQMeter has a secret RoofRoof lacks (MQTT password, ntfy token)"
+      },
+      "priority": 8,
+      "location": "card:status",
+      "test": "sqmeter-needs",
+      "note": "A note row per secret to enter, linking to its Settings tab; never a problem.",
+      "testIn": "unit",
+      "demoCannot": "The demo keeps its MQTT and alerts groups set locally, so it never needs a secret"
+    },
+    {
       "id": "roof-fault",
       "label": "roof.state.fault",
       "sources": ["status.roof.fault", "status.roof.fault.text"],
@@ -207,9 +223,16 @@
         "status.roof.daylight.sunAltitudeDeg",
         "status.roof.daylight.limitDeg",
         "status.roof.daylight.text",
-        "status.roof.daylight.closes"
+        "status.roof.daylight.closes",
+        "status.location",
+        "status.location.source",
+        "status.location.set",
+        "status.location.gps",
+        "status.location.savedAt",
+        "status.location.readAgeSeconds",
+        "status.location.problem"
       ],
-      "requiredBy": "013 FR-019",
+      "requiredBy": "013 FR-019, 020 FR-020",
       "visibility": {
         "rule": "when",
         "when": "the device reports the daylight check (older firmware doesn't)"
@@ -363,6 +386,11 @@
     }
   ],
   "notShown": [
+    {
+      "match": "status.sync.**",
+      "reason": "Spec 020: shown on the followed groups' Settings rows (Follows SQMeter, refused values, needed secrets)",
+      "shownOn": "Settings"
+    },
     {
       "match": "status.roof.calibrating",
       "reason": "Spec 016: keeps the Stop bar shown for the whole calibration run; the run itself is on its page",
@@ -708,6 +736,10 @@
     {
       "match": "deps.D-46",
       "reason": "Shown on its Settings rows (Device, Diagnostics); a setting, not state the dashboard reports"
+    },
+    {
+      "match": "deps.D-47",
+      "reason": "Shown on the followed groups' Settings rows (Time, Network, Roof, Alerts); a setting, not state the dashboard reports"
     }
   ]
 }

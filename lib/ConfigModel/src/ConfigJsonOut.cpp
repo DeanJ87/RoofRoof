@@ -123,12 +123,14 @@ namespace SQM
             ntp["syncIntervalMs"] = c.ntp.syncIntervalMs;
         }
 
-        void appendSafety(JsonDocument &doc, const Config &c)
+        void appendSafety(JsonDocument &doc, const Config &c, bool redact)
         {
             JsonObject safety = doc.createNestedObject("safety");
             JsonObject http = safety.createNestedObject("http");
             http["enabled"] = c.safety.httpEnabled;
             http["url"] = c.safety.httpUrl;
+            http["username"] = c.safety.httpUsername;
+            http["password"] = secretOut(c.safety.httpPassword, redact);
             JsonObject mqtt = safety.createNestedObject("mqtt");
             mqtt["enabled"] = c.safety.mqttEnabled;
             mqtt["topic"] = c.safety.mqttTopic;
@@ -150,9 +152,26 @@ namespace SQM
             daylight["sunAltitudeDeg"] = c.daylight.sunAltitudeDeg;
             daylight["bandDeg"] = c.daylight.bandDeg;
             JsonObject location = doc.createNestedObject("location");
+            location["source"] = c.location.source == LocationConfig::Source::Manual ? "manual" : "sqmeter";
             location["set"] = c.location.set;
             location["latitude"] = c.location.latitude;
             location["longitude"] = c.location.longitude;
+            JsonObject kept = location.createNestedObject("sqmeter");
+            kept["gps"] = c.location.gps;
+            kept["savedAt"] = c.location.savedAt;
+        }
+
+        void appendSync(JsonDocument &doc, const SqmeterSyncConfig &s)
+        {
+            JsonObject sync = doc.createNestedObject("sqmeterSync");
+            const std::pair<const char *, const SqmeterSyncConfig::Group *> groups[] = {
+                {"time", &s.time}, {"mqtt", &s.mqtt}, {"alerts", &s.alerts}};
+            for (const auto &group : groups)
+            {
+                JsonObject out = sync.createNestedObject(group.first);
+                out["follow"] = group.second->follow;
+                out["syncedAt"] = group.second->syncedAt;
+            }
         }
 
         void appendAutoClose(JsonDocument &doc, const Config &c)
@@ -213,9 +232,10 @@ namespace SQM
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
         doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
-        appendSafety(doc, *this);
+        appendSafety(doc, *this, redactSecrets);
         appendRoof(doc, roof);
         appendDaylight(doc, *this);
+        appendSync(doc, sqmeterSync);
         JsonObject setupOut = doc.createNestedObject("setup");
         setupOut["state"] = setupStateName(setup.state);
         setupOut["step"] = setup.step;

@@ -16,6 +16,7 @@ export const REASONS: Record<string, { text: string; fix: string }> = {
   'clock-not-set': { text: t('settingsDeps.clockNotSet'), fix: 'time#ntp' },
   'remote-off': { text: t('settingsDeps.remoteCommandsAreOff'), fix: 'network#alpaca' },
   'diag-off': { text: t('settingsDeps.diagnosticsIsOff'), fix: 'device#diagnostics' },
+  'no-sqmeter-address': { text: t('settingsDeps.sqmeterAddressNotSet'), fix: 'roof#safety' },
 };
 
 // Label for the one-click fix of each reason.
@@ -32,4 +33,5 @@ export const FIX_LABEL: Record<string, string> = {
   'clock-not-set': t('settingsDeps.timeSettings'),
   'remote-off': t('settingsDeps.turnOnAlpaca'),
   'diag-off': t('settingsDeps.turnOnDiagnostics'),
+  'no-sqmeter-address': t('settingsDeps.setSqmeterAddress'),
 };

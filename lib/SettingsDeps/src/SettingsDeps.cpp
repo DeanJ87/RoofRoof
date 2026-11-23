@@ -24,6 +24,7 @@ namespace SQM
                 {"clock-not-set", "Clock not set", "time#ntp"},
                 {"remote-off", "Alpaca and MQTT roof commands are off", "network#alpaca"},
                 {"diag-off", "Advanced diagnostics is off", "device#diagnostics"},
+                {"no-sqmeter-address", "SQMeter's address not set", "roof#safety"},
             };
 
             const Reason *reason(const char *code)
@@ -139,6 +140,8 @@ namespace SQM
                 // Spec 014: a remote stop comes from an imaging app (Alpaca) or MQTT roof commands.
                 const bool remote = cfg.alpaca.enabled || (cfg.mqtt.enabled && cfg.mqtt.roofCommands);
                 c.add("autoClose.remoteStop", "D-45", cfg.autoClose.remoteStop, {{"D-45", "remote-off", remote}});
+                // Spec 020: where the site comes from matters only while daylight is on.
+                c.add("location.source", "D-44", true, {daylightOn});
                 c.add("location.set", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.latitude", "D-44", cfg.location.set, {daylightOn});
                 c.add("location.longitude", "D-44", cfg.location.set, {daylightOn});
@@ -187,6 +190,11 @@ namespace SQM
                 const DiagConfig &d = c.cfg.diag;
                 const Link diagOn{"D-46", "diag-off", d.enabled};
                 c.add("diag.keepSummaries", "D-46", d.keepSummaries, {diagOn});
+                // Spec 020: a group follows SQMeter's settings only with SQMeter's address set.
+                const Link addressSet{"D-47", "no-sqmeter-address", !c.cfg.safety.httpUrl.empty()};
+                c.add("sqmeterSync.time.follow", "D-47", c.cfg.sqmeterSync.time.follow, {addressSet});
+                c.add("sqmeterSync.mqtt.follow", "D-47", c.cfg.sqmeterSync.mqtt.follow, {addressSet});
+                c.add("sqmeterSync.alerts.follow", "D-47", c.cfg.sqmeterSync.alerts.follow, {addressSet});
                 c.add("diag.mqtt", "D-46", d.mqtt, {diagOn, {"D-46", "mqtt-off", c.cfg.mqtt.enabled}});
             }
         } // namespace

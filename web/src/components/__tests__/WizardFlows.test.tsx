@@ -3,7 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import Wizard from '../Wizard';
 import type { SystemStatus } from '../../types';
-import { mockConfig, mockStatus } from '../../mocks/data';
+import { mockConfig, mockSqmeterSite, mockStatus } from '../../mocks/data';
 import { mockDevice } from '../../test/mockDevice';
 import { server } from '../../test/mswServer';
 
@@ -86,10 +86,70 @@ describe('Wizard: choices, skips and refusals', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Alert and close' }));
     expect(screen.getByText('Daylight needs your location, which is set on the Site screen earlier in setup.')).toBeInTheDocument();
     fireEvent.click(button('Set location'));
-    await onScreen('site');
+    await onScreen('sqmeter'); // the Site and time page starts with SQMeter (spec 020)
     expect(saves).toHaveLength(1);
     expect(saves[0].daylight).toMatchObject({ mode: 'close' });
     expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
+  });
+
+  // Spec 020: SQMeter's address first on the Site and time page, and the copy fills later screens.
+  it('starts the Site and time page with SQMeter; the copy fills the Time screen and Continue saves it', async () => {
+    mockDevice({ config: { ...PASSWORD_SET, setup: { state: 'new', step: 1 } } });
+    const saves = recordSaves();
+    let copied: unknown = null;
+    server.use(
+      http.post('/api/sqmeter/site', async ({ request }) => {
+        copied = await request.json();
+        return HttpResponse.json(mockSqmeterSite);
+      }),
+    );
+    render(<Wizard />);
+    await onScreen('sqmeter');
+    expect(screen.getByText('Where is SQMeter?')).toBeInTheDocument();
+    const address = screen.getByLabelText("SQMeter's address", { selector: 'input' });
+    fireEvent.input(address, { target: { value: 'http://10.0.0.5/api/safety' } });
+    fireEvent.click(button('Copy from SQMeter'));
+    await screen.findByRole('switch', { name: 'Time zone' });
+    expect(copied).toEqual({ url: 'http://10.0.0.5/api/safety', username: '', password: '' });
+    fireEvent.click(button('Apply ticked'));
+    expect(await screen.findByText('Applied: Continue saves them.')).toBeInTheDocument();
+    expect(saves).toHaveLength(0);
+    fireEvent.click(button('Continue'));
+    await onScreen('site');
+    expect(saves).toHaveLength(1);
+    expect(saves[0].ntp).toMatchObject({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server2: 'time.nist.gov' });
+    expect((saves[0].safety as { http: { url: string } }).http.url).toBe('http://10.0.0.5/api/safety');
+    expect(saves[0].setup).toEqual({ state: 'new', step: 1 });
+  });
+
+  it('lets Continue go on from the SQMeter screen with no address', async () => {
+    mockDevice({
+      config: { ...PASSWORD_SET, setup: { state: 'new', step: 1 }, safety: { ...mockConfig.safety!, http: { enabled: false, url: '' } } },
+    });
+    recordSaves();
+    render(<Wizard />);
+    await onScreen('sqmeter');
+    expect(button('Copy from SQMeter')).toBeDisabled();
+    expect(button('Continue')).toBeEnabled();
+    fireEvent.click(button('Continue'));
+    await onScreen('site');
+  });
+
+  it('the Time screen follows SQMeter read-only, with one note, until Edit here instead (spec 020)', async () => {
+    const sqmeterSync = { ...mockConfig.sqmeterSync!, time: { follow: true, syncedAt: 1763540000 } };
+    mockDevice({ config: { ...PASSWORD_SET, setup: { state: 'new', step: 1 }, sqmeterSync } });
+    const saves = recordSaves();
+    at('screen=time');
+    render(<Wizard />);
+    await onScreen('time');
+    const server1 = document.querySelector<HTMLInputElement>('[data-field="ntp.server1"]')!;
+    expect(server1).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'Edit here instead' })).toHaveLength(1);
+    fireEvent.click(button('Edit here instead'));
+    await waitFor(() => expect(server1).toBeEnabled());
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect((saves[0].sqmeterSync as typeof sqmeterSync).time.follow).toBe(false);
   });
 
   // Spec 019: the wizard offers teaching the ends but never jogs the roof itself.

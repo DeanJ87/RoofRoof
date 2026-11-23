@@ -10,8 +10,8 @@ namespace SQM
             if (before == nullptr)
                 return change;
             const SourceSettings &b = *before;
-            change.sqmeterHttp = b.httpEnabled != after.httpEnabled || b.httpUrl != after.httpUrl;
-            change.sqmeterMqtt = b.mqttEnabled != after.mqttEnabled || b.mqttTopic != after.mqttTopic;
+            change.sqmeterHttp = b.httpEnabled != after.httpEnabled || b.httpUrl != after.httpUrl || b.httpLogin != after.httpLogin;
+            change.sqmeterMqtt = b.mqttEnabled != after.mqttEnabled || b.mqttTopic != after.mqttTopic || b.mqttBroker != after.mqttBroker;
             change.nina = b.ninaUrl != after.ninaUrl || b.ninaApi != after.ninaApi;
             change.window =
                 change.sqmeterHttp || change.sqmeterMqtt || b.staleSeconds != after.staleSeconds || b.rainContact != after.rainContact;

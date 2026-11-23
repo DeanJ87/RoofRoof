@@ -28,6 +28,11 @@ CONTEXT = ROOT / "web/src/i18n/en.context.json"
 SOURCES = {
     "lib/ConfigModel/src/ConfigJsonIn.cpp": ("settings", {"setError": [1]}),
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
+    "lib/ConfigModel/src/ConfigJsonSite.cpp": ("settings", {"setError": [1]}),
+    "lib/SafetyInputLogic/src/SqmeterSync.cpp": ("settings", {}),
+    # Spec 020: SQMeter's 401/403, in the weather text and the copy's refusal.
+    "lib/SafetyInputLogic/src/SqmeterSource.cpp": ("api", {}),
+    "src/WebServerSite.cpp": ("api", {"errorBody": [0]}),
     "lib/AlertLogic/src/AlertEngine.cpp": ("alert", {"make": [1, 2], "format": "fmt0"}),
     # The roof's alert wording (spec 007), a table of templates.
     "lib/AlertLogic/src/RoofEvents.cpp": ("alert", {}),
@@ -78,6 +83,9 @@ ASSIGN = {
     "lib/RoofIoLogic/include/PlatformHold.h": re.compile(r"\bHOTSPOT_TEXT\s*=\s*"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
+    # Spec 020: why a group's values from SQMeter weren't taken.
+    "lib/SafetyInputLogic/src/SqmeterSync.cpp": re.compile(r"\bresult\.refused\s*=\s*"),
+    "lib/SafetyInputLogic/src/SqmeterSource.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
 }
 # Text in tables of literals, per file; each group is one device text. The
 # test-alert table holds every event's title and its label.

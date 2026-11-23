@@ -62,6 +62,8 @@ std::string EmulatedDevice::restorePreview(const std::string &body, const std::s
     {
         const Backup::PreviewInput input{&cfg, &parsed, restoring ? &secrets : nullptr, backupDevice()};
         error = Backup::buildPreview(input, preview, &reason);
+        if (error == Backup::Error::None)
+            Site::keepFollowed(cfg, preview.candidate); // spec 020, as the device
     }
     if (error != Backup::Error::None)
         return response(statusFor(error), Backup::errorJson(error, reason));

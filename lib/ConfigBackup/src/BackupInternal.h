@@ -11,7 +11,7 @@
 namespace SQM::Backup::Detail
 {
     // The secret settings, by index: their paths in the settings JSON...
-    constexpr size_t SECRET_COUNT = 8;
+    constexpr size_t SECRET_COUNT = 9;
     inline constexpr const char *SECRET_PATHS[SECRET_COUNT] = {
         "wifi.password",
         "mqtt.password",
@@ -21,6 +21,7 @@ namespace SQM::Backup::Detail
         "alerts.pushover.appToken",
         "alerts.ntfy.token",
         "alerts.webhook.authHeader",
+        "safety.http.password", // spec 020: SQMeter's login
     };
 
     // ...and where each lives in Config (const or not, as `cfg` is).
@@ -42,6 +43,8 @@ namespace SQM::Backup::Detail
             return cfg.alerts.ntfyToken;
         case 7:
             return cfg.alerts.webhookAuthHeader;
+        case 8:
+            return cfg.safety.httpPassword;
         default:
             return cfg.wifi.password;
         }

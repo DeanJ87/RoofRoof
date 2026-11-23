@@ -583,12 +583,37 @@
         },
         "set": {
           "type": "boolean"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "sqmeter",
+            "manual"
+          ]
+        },
+        "sqmeter": {
+          "type": "object",
+          "properties": {
+            "gps": {
+              "type": "boolean"
+            },
+            "savedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "gps",
+            "savedAt"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
         "latitude",
         "longitude",
-        "set"
+        "set",
+        "source",
+        "sqmeter"
       ],
       "additionalProperties": false
     },
@@ -819,13 +844,21 @@
             "enabled": {
               "type": "boolean"
             },
+            "password": {
+              "type": "string"
+            },
             "url": {
+              "type": "string"
+            },
+            "username": {
               "type": "string"
             }
           },
           "required": [
             "enabled",
-            "url"
+            "password",
+            "url",
+            "username"
           ],
           "additionalProperties": false
         },
@@ -880,6 +913,65 @@
       "required": [
         "state",
         "step"
+      ],
+      "additionalProperties": false
+    },
+    "sqmeterSync": {
+      "type": "object",
+      "properties": {
+        "alerts": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "mqtt": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        },
+        "time": {
+          "type": "object",
+          "properties": {
+            "follow": {
+              "type": "boolean"
+            },
+            "syncedAt": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "follow",
+            "syncedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "alerts",
+        "mqtt",
+        "time"
       ],
       "additionalProperties": false
     },
@@ -952,6 +1044,7 @@
     "roof",
     "safety",
     "setup",
+    "sqmeterSync",
     "ui",
     "wifi"
   ],

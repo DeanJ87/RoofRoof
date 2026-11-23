@@ -11,6 +11,7 @@ import { TestPanel } from './TestPanel';
 import { NINA_FIELDS, WEATHER_FIELDS, pageIndex } from './pages';
 import { t } from '../../i18n';
 import { NINA_ROOF_DOC } from '../../lib/docsLinks';
+import { locationSource } from '../../lib/sqmeterCopy';
 
 // The Weather, N.I.N.A., Alerts and Daylight pages' screens (spec 015 FR-008,
 // FR-009; spec 018 FR-007): each source with a Test of the device's own poll,
@@ -50,8 +51,8 @@ export const WeatherAddressScreen: FunctionalComponent<WizardPageProps> = (props
   return (
     <div id="weather" class="card-group">
       <div class="form-grid">
-        {safety.http.enabled && <SqmeterUrlField safety={safety} update={props.update} error={props.error} />}
-        {safety.mqtt.enabled && <SqmeterTopicField safety={safety} update={props.update} error={props.error} />}
+        {safety.http.enabled && <SqmeterUrlField safety={safety} update={props.update} error={props.error} test={false} />}
+        {safety.mqtt.enabled && <SqmeterTopicField {...props} safety={safety} />}
       </div>
       <TestPanel part="weather" save={props.saveForTest(WEATHER_FIELDS)} dirty={props.dirty} />
     </div>
@@ -141,6 +142,12 @@ export const AlertDetailsScreen: FunctionalComponent<WizardPageProps> = (props) 
   );
 };
 
+// Spec 020: a location not set yet that the device reads from SQMeter once saved.
+const fromSqmeter = (props: WizardPageProps) => {
+  const { location, safety } = props.config;
+  return Boolean(location && locationSource(location) === 'sqmeter' && safety?.http.url.trim());
+};
+
 export const DaylightScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { daylight } = props.config;
   if (!daylight) return notSent;
@@ -168,7 +175,8 @@ export const DaylightScreen: FunctionalComponent<WizardPageProps> = (props) => {
       )}
       {/* Without the location, the note below says it and stays in the wizard; Settings' note would leave it. */}
       {props.config.location?.set && <DepNote entry={props.deps.get('daylight.mode')} onFix={props.fix} />}
-      {daylight.mode !== 'off' && !props.config.location?.set && (
+      {daylight.mode !== 'off' && !props.config.location?.set && fromSqmeter(props) && <Note>{t('wizard.daylight.fromSqmeter')}</Note>}
+      {daylight.mode !== 'off' && !props.config.location?.set && !fromSqmeter(props) && (
         <Note tone="warn" action={{ label: t('wizard.daylight.setSite'), onClick: () => void props.goToPage(pageIndex('site')) }}>
           {t('wizard.daylight.needsSite')}
         </Note>

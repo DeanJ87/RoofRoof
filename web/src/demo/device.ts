@@ -32,6 +32,8 @@ export interface RoofPanel {
   jam: boolean;
   supplyLow: boolean;
   sunUp: boolean; // spec 013: the daylight state is day whatever the location and clock
+  sqmeterOffline: boolean; // spec 020: the simulated SQMeter doesn't answer (weather, location and the copy)
+  sqmeterLocked: boolean; // spec 020: the simulated SQMeter wants the login admin / sqmeter (401 without it)
   daylight: string; // the device's daylight text
   mount: 'parked' | 'unparked' | 'slewing';
   state: string;
@@ -40,7 +42,9 @@ export interface RoofPanel {
   phase: string;
 }
 
-export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp'>> & {
+export type RoofInjection = Partial<
+  Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp' | 'sqmeterOffline' | 'sqmeterLocked'>
+> & {
   mount?: 'park' | 'unpark';
 };
 
@@ -210,6 +214,18 @@ class DemoDevice {
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 
+  /** Copy from SQMeter (spec 020): the site document from the simulated SQMeter's settings. */
+  sqmeterSite(body = ''): Reply {
+    const reply = JSON.parse(this.core.sqmeterSite(body));
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** Test SQMeter's address (spec 020): one read of the simulated SQMeter's /api/safety. */
+  sqmeterTest(body = ''): Reply {
+    const reply = JSON.parse(this.core.sqmeterTest(body));
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
   /** Jog and teach the ends (spec 019): `jog`, `mark` and `confirm` with their JSON bodies, `discard`, `status`. */
   teach(action: 'jog' | 'mark' | 'confirm' | 'discard' | 'status', body = ''): Reply {
     // The device's clock up to now first: its control steps keep the jog's
@@ -327,10 +343,12 @@ class DemoDevice {
         mqtt: { enabled: true, broker: '192.168.1.10', topic: 'roofroof' },
         alerts: { enabled: true, ntfy: { enabled: true, topic: 'roofroof-demo' } },
         // The simulated SQMeter and N.I.N.A. (spec 011): the demo starts safe and parked.
-        safety: { http: { enabled: true, url: 'http://sqmeter.local/api/safety' } },
+        safety: { http: { enabled: true, url: 'http://sqmeter.local' } },
         park: { nina: { url: 'http://192.168.1.20:1888' } },
         // Set up already (spec 015): the Demo panel restarts the setup wizard.
         setup: { state: 'done', step: 0 },
+        // Spec 020: the time follows the simulated SQMeter; the broker and the ntfy topic stay the demo's own.
+        sqmeterSync: { mqtt: { follow: false }, alerts: { follow: false } },
       }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with

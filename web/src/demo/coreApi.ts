@@ -30,6 +30,10 @@ export interface Core extends BackupCore {
   calibration(action: string, body: string): string;
   // Spec 019: jog, mark, confirm, discard (with their bodies), status.
   teach(action: string, body: string): string;
+  // Spec 020: POST /api/sqmeter/site from the simulated SQMeter's settings (the JSON body or "").
+  sqmeterSite(body: string): string;
+  // Spec 020: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+  sqmeterTest(body: string): string;
   roofInject(json: string): string;
   roofPanel(): string;
   platformHold(action: string): string;
