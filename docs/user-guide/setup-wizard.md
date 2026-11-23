@@ -113,7 +113,7 @@ and a test box 16.
    park bypass stands in for N.I.N.A.
 7. **Direction**: **Does the roof open when you hold Open?** Confirm **I am at the roof**, hold
    **Hold to open**, and watch the roof and the live Hall reading. Answer **Yes, it opened** or
-   **No, it closed**; the second says to swap the motor's two wires at the driver, and **Continue**
+   **No, it closed**; the second offers **Reverse it** (the opening direction, saved on the screen before you hold Open again), and **Continue**
    stays unavailable until it is **Yes**. The answer is a confirmation, like **I am at the roof**: it
    is never saved.
 8. **Teach**: **Where are the roof's closed and open ends?** The Teach card of the

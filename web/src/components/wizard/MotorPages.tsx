@@ -55,6 +55,20 @@ const MotorFrame: FunctionalComponent<WizardPageProps & { render: (motor: Motor)
   );
 };
 
+// The wrong way: reverse the opening direction here (FR-007), save it, then hold Open again.
+const WrongWay: FunctionalComponent<WizardPageProps & { roof: RoofConfig }> = (props) => {
+  const reverse = () => props.update(['roof', 'openDirection'], props.roof.openDirection === 'forward' ? 'reverse' : 'forward');
+  return props.dirty ? (
+    <Note tone="warn" action={{ label: t('settings.save'), onClick: props.saveHere }}>
+      {t('wizard.motor.saveDirection')}
+    </Note>
+  ) : (
+    <Note tone="warn" action={{ label: t('wizard.motor.reverse'), onClick: reverse }}>
+      {t('wizard.motor.wrongWay')}
+    </Note>
+  );
+};
+
 // Does holding Open open the roof? The first short move, attended (FR-010).
 export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => {
   // Only what the person saw in this visit (FR-005): never chosen for them, also on a re-run.
@@ -79,7 +93,7 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
                 { value: 'no', icon: 'off', title: t('wizard.motor.closed'), detail: t('wizard.motor.closedDetail') },
               ]}
             />
-            {choice.value === 'no' && <Note tone="warn">{t('wizard.motor.swapWires')}</Note>}
+            {choice.value === 'no' && <WrongWay {...props} roof={config} />}
           </>
         );
       }}

@@ -81,6 +81,11 @@ Phase 2 before Phases 3 to 7; T009 before T011; T010 before T012 to T021; Phase 
   end-to-end test checks the taught thresholds and the accepted travel; tests for the release on
   leaving, stale data and flow.ts; doc and spacing nits.
 
+- Round 2 (opus, code + demo walk at 1280x800 and 390 px): safe to merge. Should-fix items done:
+  the hold rule reworded (a captured pointer hold ends on letting go, cancelling, losing focus or a
+  hidden page; spec 019's FR-020 amended), and the jog's own Stop row scrolls into view when it
+  shows; the direction screen's "No" now offers reversing the opening direction in place.
+
 ## Converge
 
 - After round 1: every FR-001 to FR-030 has code and a test; no remaining tasks.

@@ -311,7 +311,8 @@ Playwright walk-through jogs, marks and confirms.
 - **FR-020**: The calibration page MUST start with a Teach card: what it needs and whether each
   holds now, the attended confirmation, the live Hall reading on its scale, Open-direction and
   Close-direction hold-to-run buttons (pointer and keyboard: held while pressed, released on
-  release, pointer cancel, leaving the button, losing focus or the page being hidden), the three
+  release, pointer cancel, losing focus or the page being hidden; spec 025 captures a pointer hold, so
+  moving off the button no longer ends it), the three
   mark buttons with their readings, and the proposal beside the saved values with Confirm and
   Discard, then a link to the calibration run.
 - **FR-021**: While the roof moves, the card MUST show a Stop button that is never disabled (the

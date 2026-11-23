@@ -32,7 +32,9 @@ const endText = (end: string) => (end === 'open' ? t('settings.roof.endOpen') : 
 const pair = (saved: string, proposed: string) => t(saved === proposed ? 'calibrate.same' : 'calibrate.change', { saved, proposed });
 
 // A button that runs while it is held: pointer, touch or the keyboard (Space
-// or Enter held). Leaving it, cancelling the pointer or losing focus releases it.
+// or Enter held). Letting go, cancelling the pointer, losing focus or the page
+// being hidden releases it. A pointer hold is captured (spec 025), so a layout
+// shift can't move the button from under it; moving off it doesn't end the hold.
 const HoldButton: FunctionalComponent<{
   direction: JogDirection;
   held: boolean;
@@ -153,9 +155,9 @@ const JogControls: FunctionalComponent<{
         </HoldButton>
       ))}
     </div>
-    {/* In its own row, so its showing never moves a held button from under the pointer. */}
+    {/* In its own row, scrolled into view when it shows (a dialog may shrink as its Stop bar appears). */}
     {(moving || held) && (
-      <div class="btn-row">
+      <div class="btn-row" ref={(row) => row?.scrollIntoView?.({ block: 'nearest' })}>
         <Button variant="danger" onClick={() => void roofCommand('stop').catch(() => undefined)}>
           {t('teach.stop')}
         </Button>

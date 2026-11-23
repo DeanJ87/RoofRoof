@@ -124,7 +124,8 @@ calibration's travel and speed.
 3. **Given** a test box with bypasses in effect, **When** a motor screen shows, **Then** it says
    which checks are bypassed and that faults, the supply and the time limits still stop the roof.
 4. **Given** the person answered "No, it closed" on the direction screen, **Then** the screen says
-   to swap the motor's two wires and Continue stays unavailable.
+   to reverse the opening direction (on the screen, saved before the next hold) and Continue stays
+   unavailable.
 5. **Given** the teach proposal confirmed, **Then** the device's Hall settings are the proposed
    ones and the wizard shows them saved.
 6. **Given** a finished calibration run, **When** the person accepts, **Then** the proposal is
@@ -279,7 +280,7 @@ site and time screen doesn't show; the SQMeter screen lists them as from SQMeter
 
 - **FR-010**: The direction screen MUST offer spec 019's hold-to-move jog (its checks, the
   attended confirmation, hold buttons, Stop and the live Hall reading) and ask whether holding Open
-  opened the roof. "No" says to swap the motor's two wires; Continue needs "Yes".
+  opened the roof. "No" offers reversing the opening direction there; Continue needs "Yes".
 - **FR-011**: The teach screen MUST offer spec 019's teach (jog, mark closed, part-way and open,
   the proposal, confirm or discard), the same component as the Calibrate page.
 - **FR-012**: The calibration screen MUST offer spec 016's run (its checks, attended confirmation,

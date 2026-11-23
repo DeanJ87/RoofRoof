@@ -61,6 +61,8 @@ const holdFor = async (page: Page, name: string, ms: number) => {
   await dialog(page).getByRole('button', { name }).hover();
   await page.mouse.down();
   await expect.poll(() => roofState(page), { timeout: 3_000, intervals: [100] }).toMatch(/opening|closing/);
+  // The jog's own Stop is in view while the roof moves (the dialog shrinks as its Stop bar shows).
+  await expect(dialog(page).getByRole('button', { name: 'Stop', exact: true })).toBeInViewport();
   await page.waitForTimeout(ms);
   await page.mouse.up();
   await expect.poll(() => roofState(page), { timeout: 5_000 }).not.toMatch(/opening|closing/);
@@ -244,7 +246,7 @@ test('the test box branch: SQMeter for site data only, no N.I.N.A., the bypasses
   await expect(dialog(page).getByRole('button', { name: 'Hold to open' })).toBeEnabled({ timeout: 20_000 });
   await holdFor(page, 'Hold to open', 1500);
   await choose(page, /No, it closed/);
-  await expect(dialog(page)).toContainText("swap the motor's two wires");
+  await expect(dialog(page)).toContainText('reverse the opening direction');
   await expect(dialog(page).getByRole('button', { name: 'Continue' })).toBeDisabled();
   // No motor yet? The typed values, then on to the alerts.
   await dialog(page).getByRole('button', { name: 'Enter manually instead' }).click();

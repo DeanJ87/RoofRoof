@@ -105,7 +105,10 @@ describe('Wizard: the motor screens', () => {
     await holdOpen();
     expect(button('Continue')).toBeDisabled(); // a choice, not yet made
     fireEvent.click(screen.getByRole('radio', { name: /^No, it closed/ }));
-    expect(screen.getByText("Wrong way: swap the motor's two wires at the driver, then try again.")).toBeInTheDocument();
+    expect(screen.getByText('Wrong way: reverse the opening direction, then hold Open again.')).toBeInTheDocument();
+    // Reversed here (never in Settings), then saved before the next hold.
+    fireEvent.click(button('Reverse it'));
+    expect(await screen.findByText('Save the new opening direction before you hold Open again.')).toBeInTheDocument();
     expect(button('Continue')).toBeDisabled();
     fireEvent.click(screen.getByRole('radio', { name: /^Yes, it opened/ }));
     expect(screen.queryByText(/Wrong way: swap/)).toBeNull();
