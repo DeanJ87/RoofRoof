@@ -966,7 +966,7 @@
   "settings.backup.passphraseHint": "Optional, 8 characters or more. Needed to restore passwords and keys; it can't be recovered.",
   "settings.backup.passphrasesDontMatch": "Passphrases don't match",
   "settings.backup.passwordsAndKeys": "Passwords and keys",
-  "settings.backup.pinsStayThisBoards": "Kept: the pins belong to this board",
+  "settings.backup.pinsStayThisBoards": "Kept: this board's own pins",
   "settings.backup.preview": "Preview",
   "settings.backup.repeatPassphrase": "Repeat passphrase",
   "settings.backup.restartsToApply": "Restarts to apply {listReasons}.",
