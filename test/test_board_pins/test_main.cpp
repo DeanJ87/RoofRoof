@@ -185,7 +185,7 @@ void test_uart0(void)
 
 void test_wt32_ethernet_pins(void)
 {
-    for (uint8_t pin : {0, 18, 19, 21, 22, 23, 25, 26, 27}) // 16: psram first
+    for (uint8_t pin : {0, 16, 18, 19, 21, 22, 23, 25, 26, 27})
         assertOnlyError(withPin(Function::Rpwm, pin, WT32, BoardId::Wt32Eth01), Function::Rpwm, pin, IssueCode::Ethernet);
     // The same pins are fine on a DevKit (no Ethernet), 0 only with its warning.
     TEST_ASSERT_TRUE(withPin(Function::Rpwm, 19).valid());

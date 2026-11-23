@@ -444,7 +444,7 @@ curl -X POST http://roofroof.local/api/pins/validate -H "Content-Type: applicati
 }
 ```
 
-On a device that has seen its LAN8720 answer (Ethernet started, or the boot probe found it), a map for any board but `wt32-eth01` also gets the `boardDetected` error, as a save would.
+On a device that has seen its LAN8720 answer (Ethernet started, or the boot probe found it), a map for any board but `wt32-eth01` also gets the `boardDetected` error, as a save that changes the pins would.
 
 `400` with `{"error": "..."}` for a body that isn't a pin map: not an object, an unknown preset or board, or a pin that isn't a number.
 

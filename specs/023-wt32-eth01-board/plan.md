@@ -71,7 +71,7 @@ driver's off state through the settings read rests on the same pull-down it rest
 
 ## Flash
 
-Before: 1,583,296 B (86.3 %). After: 1,651,216 B (90.0 %, under the 90 % warning by about 300 B),
+Before: 1,583,296 B (86.3 %). After: 1,647,616 B (89.8 %),
 recorded in `tools/firmware/size-baseline.json`. The largest part is ESP-IDF's EMAC and LAN87xx
 driver (about 40 KB); Arduino's `ETH` class would have added about 16 KB more (research R1). The
 next spec that adds flash should look for savings first.

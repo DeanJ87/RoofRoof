@@ -67,12 +67,12 @@ namespace SQM
                     code = IssueCode::Missing;
                 else if (Facts::has(f.flash, pin))
                     code = IssueCode::Flash;
+                else if (Facts::has(f.ethernet, pin))
+                    code = IssueCode::Ethernet; // before PSRAM: on the WT32, 16 is the oscillator's
                 else if (Facts::has(f.psram, pin))
                     code = IssueCode::Psram;
                 else if (Facts::has(f.uart, pin))
                     code = IssueCode::Uart;
-                else if (Facts::has(f.ethernet, pin))
-                    code = IssueCode::Ethernet;
                 else if (Facts::has(f.probe, pin))
                     code = IssueCode::Probe;
                 else if (f.header != 0 && !Facts::has(f.header, pin))

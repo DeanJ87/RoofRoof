@@ -34,7 +34,8 @@ const wifiOff = (status: NetworkTabProps['status']) => status?.ethernet?.mode ==
 
 // Spec 023: on a board with Ethernet, WiFi is optional (or off in Ethernet-only mode, as in effect).
 const WifiRole: FunctionalComponent<NetworkTabProps> = ({ status }) => {
-  if (!hasEthernet(status)) return null;
+  // In WiFi only Ethernet isn't started: WiFi is the network, not an option.
+  if (!hasEthernet(status) || status?.ethernet?.mode === 'wifi') return null;
   return wifiOff(status) ? (
     <Note id={WIFI_OFF_ID}>{t('settings.network.wifiOff')}</Note>
   ) : (

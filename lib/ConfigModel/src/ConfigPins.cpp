@@ -115,7 +115,7 @@ namespace SQM
                 Board::Preset preset = Board::Preset::Custom;
                 const char *name = in["preset"].is<const char *>() ? in["preset"].as<const char *>() : "";
                 if (!Board::parsePreset(name, preset))
-                    return setError(error, "Pins: preset must be devkit, wt32-carrier-v1 or custom");
+                    return setError(error, "Pins: preset must be devkit, wt32-carrier-v1, custom or unset");
                 if (Board::isNamed(preset))
                     map = Board::presetMap(preset);
                 map.preset = preset;

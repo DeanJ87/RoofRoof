@@ -103,8 +103,8 @@ namespace SQM
 
         std::string start()
         {
-            if (theRoof == nullptr)
-                return "The wiring check isn't available";
+            if (theRoof == nullptr || !theRoof->running())
+                return "The wiring check isn't available: the roof controller didn't start";
             if (!PinSetup::valid())
                 return RoofIo::pinSetupText(PinSetup::boot().reason, PinSetup::boot().unset);
             if (needsRestart && needsRestart())

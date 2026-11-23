@@ -139,7 +139,7 @@ void test_custom_is_checked_by_the_rules()
 void test_bad_names_and_values_are_refused()
 {
     TEST_ASSERT_EQUAL_STRING(
-        "Pins: preset must be devkit, wt32-carrier-v1 or custom", rejectReason(R"({"pins":{"preset":"wt32"}})").c_str());
+        "Pins: preset must be devkit, wt32-carrier-v1, custom or unset", rejectReason(R"({"pins":{"preset":"wt32"}})").c_str());
     TEST_ASSERT_EQUAL_STRING(
         "Pins: board must be esp32-devkit or wt32-eth01", rejectReason(R"({"pins":{"preset":"custom","board":"s3"}})").c_str());
     TEST_ASSERT_EQUAL_STRING("Pins: rpwm must be a GPIO number", rejectReason(R"({"pins":{"preset":"custom","rpwm":-1}})").c_str());
