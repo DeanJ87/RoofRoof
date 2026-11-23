@@ -131,6 +131,8 @@ namespace DemoRoof
         Safety::InputsReport inputs() const;
         CloseSeq::Phase phase() const { return sequence.phase(); }
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
+        // Spec 022: the test box's bypasses in effect (as SafetyInputs::testBox).
+        const TestBox::State &testBox() const { return testBoxState; }
         const Daylight::View &daylight() const { return daylightView; }
         // The critical alerts raised since the last call (spec 005's sink).
         std::vector<Alerts::Alert> takeCritical();
@@ -170,6 +172,8 @@ namespace DemoRoof
 
         SafetyConfig safetyCfg;
         ParkConfig parkCfg;
+        TestBoxConfig testBoxCfg;    // spec 022
+        TestBox::State testBoxState; // spec 022: as last evaluated
         RoofConfig roofCfg;
         bool mqttOn = false;
         bool settingsPending = false;

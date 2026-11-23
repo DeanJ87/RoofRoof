@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "Config.h"
+
 namespace SQM
 {
     namespace ConfigSave
@@ -36,5 +38,19 @@ namespace SQM
 
         // "Settings changed on the device since this page loaded them: a, b".
         std::string conflictText(const Check &check);
+
+        // Spec 022: the test box's deadline. A save that turns a bypass on, or
+        // sends `testBox.hours` with one on (a renewal), sets `next.until` to
+        // now + hours, and needs the clock (false with the reason otherwise). A
+        // save that leaves no bypass set clears it; any other keeps the live one
+        // (a request never sets it: Config::applyJson ignores `until`).
+        struct Clock
+        {
+            bool set = false;   // the clock holds a real time
+            uint32_t epoch = 0; // Unix seconds
+        };
+        bool stampTestBox(const TestBoxConfig &live, TestBoxConfig &next, bool hoursSent, const Clock &clock, std::string *error);
+        // The save body sends `testBox.hours`.
+        bool sendsTestBoxHours(const std::string &body);
     } // namespace ConfigSave
 } // namespace SQM

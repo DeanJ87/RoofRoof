@@ -167,13 +167,24 @@ void test_roof_fault_sensor(void)
     TEST_ASSERT_EQUAL_STRING("roofroof/availability", doc["availability"][0]["topic"]);
 }
 
+// Spec 022: on while a test-box bypass is in effect, which and until when as attributes.
+void test_test_box_sensor(void)
+{
+    const DynamicJsonDocument doc = parsed(announce(false), "binary_sensor", "test_box");
+    TEST_ASSERT_EQUAL_STRING("Test box bypass", doc["name"]);
+    TEST_ASSERT_EQUAL_STRING("problem", doc["device_class"]);
+    TEST_ASSERT_EQUAL_STRING("roofroof/state", doc["state_topic"]);
+    TEST_ASSERT_EQUAL_STRING("{{ 'ON' if (value_json.roof.testBox or {}).active else 'OFF' }}", doc["value_template"]);
+    TEST_ASSERT_EQUAL_STRING("{{ (value_json.roof.testBox or {}) | tojson }}", doc["json_attributes_template"]);
+}
+
 // Every entity, every time: announced or removed, never left out.
 void test_every_entity_is_published_or_removed(void)
 {
     for (const bool flag : {false, true})
     {
         const auto out = announce(flag, flag, flag);
-        TEST_ASSERT_EQUAL_size_t(8, out.size());
+        TEST_ASSERT_EQUAL_size_t(9, out.size());
         for (const auto &entry : out)
             if (!entry.second.empty())
                 TEST_ASSERT_TRUE(entry.second.size() < 1024); // well inside the 3 KB MQTT buffer
@@ -198,7 +209,7 @@ void test_long_names_fit(void)
             TEST_ASSERT_TRUE(payload.size() < 2048);
             ++seen;
         });
-    TEST_ASSERT_EQUAL(8, seen);
+    TEST_ASSERT_EQUAL(9, seen);
 }
 
 int main(int, char **)
@@ -211,6 +222,7 @@ int main(int, char **)
     RUN_TEST(test_roof_sensors);
     RUN_TEST(test_motor_current_only_with_current_sense);
     RUN_TEST(test_roof_fault_sensor);
+    RUN_TEST(test_test_box_sensor);
     RUN_TEST(test_every_entity_is_published_or_removed);
     RUN_TEST(test_long_names_fit);
     return UNITY_END();

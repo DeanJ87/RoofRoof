@@ -1,9 +1,10 @@
 // EmulatedRoof: spec 017's diagnostics recorder, stepped as RoofControl does
-// (src/RoofControlDiag.cpp).
+// (src/RoofControlDiag.cpp), and the status snapshot (RoofControl::snapshot).
 
 #include "emulated_roof.h"
 
 #include "MotionProfile.h"
+#include "RoofAlerts.h"
 
 namespace DemoRoof
 {
@@ -37,5 +38,32 @@ namespace DemoRoof
         if (diagLog != nullptr)
             live.log = diagLog->live();
         return live;
+    }
+
+    RoofIo::Snapshot EmulatedRoof::snapshot() const
+    {
+        RoofIo::Snapshot s;
+        s.status = controller.status();
+        s.fault = fault;
+        s.travelMm = roofCfg.travelMm;
+        s.supplyVolts = plant.supplyNow();
+        s.minSupplyVolts = roofCfg.minSupplyVolts;
+        s.currentSense = roofCfg.currentSenseEnabled;
+        s.motorAmps = motorAmps;
+        s.maxCurrentAmps = roofCfg.maxCurrentAmps;
+        s.fittedSwitches = gates.fittedSwitches;
+        s.switch1 = gates.switch1;
+        s.switch2 = gates.switch2;
+        s.rainFitted = safetyCfg.rainContact;
+        s.rain = inject.rain ? RoofIo::Contact::Closed : RoofIo::Contact::Open;
+        s.personStops = personStops;
+        s.calibrating = calibration.active();
+        s.maxStepGapMs = STEP_MS;
+        s.simulation = "demo";
+        RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
+        s.closePhase = CloseSeq::phaseName(sequence.phase());
+        s.daylight = CloseSeq::daylightStatus(daylightView);
+        s.testBox = testBoxState;
+        return s;
     }
 } // namespace DemoRoof

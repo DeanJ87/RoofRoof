@@ -149,6 +149,9 @@ namespace SQM
             SourceStatus http;
             SourceStatus mqtt;
             RainContact rainContact = RainContact::NotFitted;
+            // Spec 022: safe only because the test box's weather bypass stands in
+            // for a missing weather source (TestBox::applyWeather).
+            bool bypassed = false;
 
             bool safe() const { return verdict == Verdict::Safe; }
         };

@@ -160,6 +160,10 @@ namespace SQM
         EventSetting daylightOpen;
         EventSetting daylightClosed;
         EventSetting daylightUnknown;
+        // Spec 022: a test-box bypass came into effect, or is in effect after a
+        // boot. Level 1 (quiet) to 4: never off (MIN_TEST_BOX_LEVEL).
+        EventSetting testBox;
+        static constexpr uint8_t MIN_TEST_BOX_LEVEL = 1;
 
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
@@ -402,6 +406,24 @@ namespace SQM
         bool mqtt = false;          // <base>/diag and <base>/diag/move, at rest only
     };
 
+    // Spec 022: test-box bypasses for a box with no telescope and no weather
+    // station (constitution 3.0.0, Principles II and III). Off by default and
+    // after an upgrade; set only by an authenticated settings save. They share
+    // one deadline the device stamps (`until`, Unix seconds; never read from a
+    // request or a restore). In effect only while the clock is set and before
+    // `until` (lib/SafetyInputLogic TestBox).
+    struct TestBoxConfig
+    {
+        bool park = false;     // "no telescope under this roof": stands in for N.I.N.A.
+        bool weather = false;  // stands in for a missing weather source
+        bool daylight = false; // no daylight close or open refusal
+        uint32_t hours = 72;
+        uint32_t until = 0;
+        static constexpr uint32_t MIN_HOURS = 1;
+        static constexpr uint32_t MAX_HOURS = 720;
+        bool any() const { return park || weather || daylight; }
+    };
+
     struct Config
     {
         WiFiConfig wifi;
@@ -421,6 +443,7 @@ namespace SQM
         DiagConfig diag;
         AutoCloseConfig autoClose;
         UiConfig ui;
+        TestBoxConfig testBox;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";

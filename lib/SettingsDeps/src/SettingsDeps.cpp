@@ -124,6 +124,8 @@ namespace SQM
                 c.add("alerts.events.daylight_open.level", "D-04", a.daylightOpen.level != 0, {alertsOn, daylightOn});
                 c.add("alerts.events.daylight_closed.level", "D-04", a.daylightClosed.level != 0, {alertsOn, daylightOn});
                 c.add("alerts.events.daylight_unknown.level", "D-04", a.daylightUnknown.level != 0, {alertsOn, daylightOn});
+                // Spec 022: never off, but sent only with alerts on.
+                c.add("alerts.events.test_box.level", "D-04", a.testBox.level != 0, {alertsOn});
             }
 
             // Spec 013: the daylight check needs the site and the clock; its
@@ -197,6 +199,17 @@ namespace SQM
                 c.add("sqmeterSync.alerts.follow", "D-47", c.cfg.sqmeterSync.alerts.follow, {addressSet});
                 c.add("diag.mqtt", "D-46", d.mqtt, {diagOn, {"D-46", "mqtt-off", c.cfg.mqtt.enabled}});
             }
+
+            // Spec 022: a test-box bypass is in effect only before its deadline,
+            // which needs the clock.
+            void addTestBox(const Context &c)
+            {
+                const TestBoxConfig &t = c.cfg.testBox;
+                const Link clock{"D-48", "clock-not-set", c.f.clockSet};
+                c.add("testBox.park", "D-48", t.park, {clock});
+                c.add("testBox.weather", "D-48", t.weather, {clock});
+                c.add("testBox.daylight", "D-48", t.daylight, {clock});
+            }
         } // namespace
 
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
@@ -212,6 +225,7 @@ namespace SQM
             addDaylight(c);
             addDevice(c);
             addDiag(c);
+            addTestBox(c);
             return out;
         }
 

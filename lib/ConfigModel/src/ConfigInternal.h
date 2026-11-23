@@ -16,7 +16,7 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 13;
+    constexpr size_t EVENT_COUNT = 14;
     // Events from here on are the imaging-app events and the daylight events
     // (spec 013), persisted under their own key; the roof's (spec 007) come
     // first, in the main part.
@@ -57,6 +57,7 @@ namespace SQM::ConfigDetail
             {"daylight_open", &a.daylightOpen},
             {"daylight_closed", &a.daylightClosed},
             {"daylight_unknown", &a.daylightUnknown},
+            {"test_box", &a.testBox},
         }};
     }
     inline std::array<std::pair<const char *, const AlertsConfig::EventSetting *>, EVENT_COUNT> eventSettings(const AlertsConfig &a)

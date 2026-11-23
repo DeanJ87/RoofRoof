@@ -339,12 +339,15 @@ void test_state_document_fits(void)
     s.closePhase = "heldByPerson";
     s.weatherText = std::string(MAX_CHECK_TEXT, 'w'); // applyChecks caps both
     s.parkText = std::string(MAX_CHECK_TEXT, 'p');
+    s.testBox.set = s.testBox.park = s.testBox.weather = s.testBox.daylight = true; // spec 022: the longest text
+    s.testBox.until = 4294967295u;
     DynamicJsonDocument doc(Mqtt::STATE_DOC_CAPACITY);
     Mqtt::writeState(doc.to<JsonObject>(), s, 4294967295u, true);
     TEST_ASSERT_FALSE(doc.overflowed());
     std::string text;
     serializeJson(doc, text);
-    TEST_ASSERT_TRUE_MESSAGE(text.size() < 1536, text.c_str());
+    // Well inside the 3 KB MQTT buffer (spec 022's test box object took it past 1.5 KB).
+    TEST_ASSERT_TRUE_MESSAGE(text.size() < 2048, text.c_str());
 }
 
 // The longest refusal (a stop refused with the longest weather text) fits.

@@ -242,6 +242,12 @@ namespace SQM
         diagOut["keepSummaries"] = diag.keepSummaries;
         diagOut["mqtt"] = diag.mqtt;
         appendAutoClose(doc, *this);
+        JsonObject testBoxOut = doc.createNestedObject("testBox");
+        testBoxOut["park"] = testBox.park;
+        testBoxOut["weather"] = testBox.weather;
+        testBoxOut["daylight"] = testBox.daylight;
+        testBoxOut["hours"] = testBox.hours;
+        testBoxOut["until"] = testBox.until;
         if (includeAlerts)
             appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
 

@@ -83,7 +83,9 @@
     "diag.enabled",
     "sqmeterSync.time.syncedAt",
     "sqmeterSync.mqtt.syncedAt",
-    "sqmeterSync.alerts.syncedAt"
+    "sqmeterSync.alerts.syncedAt",
+    "testBox.hours",
+    "testBox.until"
   ],
   "reasons": {
     "alerts-off": {
@@ -200,6 +202,7 @@
         "alerts.events.daylight_open.level",
         "alerts.events.daylight_closed.level",
         "alerts.events.daylight_unknown.level",
+        "alerts.events.test_box.level",
         "alerts.sendMode"
       ],
       "dependsOn": "Alerts on (Send alerts); channels are push only. The roof's critical alerts (mount not parked, roof didn't close) don't depend on it",
@@ -432,6 +435,21 @@
       "dependsOn": "SQMeter's address (the weather source's address) set - a group can only follow SQMeter's settings when RoofRoof knows where SQMeter is (spec 020)",
       "reasons": [
         "no-sqmeter-address"
+      ]
+    },
+    {
+      "id": "D-48",
+      "class": "dependency",
+      "kind": "setting",
+      "runtime": true,
+      "settings": [
+        "testBox.park",
+        "testBox.weather",
+        "testBox.daylight"
+      ],
+      "dependsOn": "The clock set by NTP - a test-box bypass is in effect only before its deadline, which needs the clock (spec 022)",
+      "reasons": [
+        "clock-not-set"
       ]
     }
   ]

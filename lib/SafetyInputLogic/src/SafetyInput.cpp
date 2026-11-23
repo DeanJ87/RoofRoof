@@ -226,6 +226,8 @@ namespace SQM
 
         std::string describe(const WeatherVerdict &v)
         {
+            if (v.bypassed)
+                return "bypassed (test box): no weather source";
             std::string problems;
             append(problems, describeSource(v.http));
             append(problems, describeSource(v.mqtt));

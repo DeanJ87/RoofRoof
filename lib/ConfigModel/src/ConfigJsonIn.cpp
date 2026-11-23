@@ -433,6 +433,18 @@ namespace SQM
             return setError(error, "Automatic close: notStarted must be halt or retry");
         }
 
+        // Spec 022. The deadline is the device's: read from stored settings
+        // only, never from a request or a restore (strict).
+        void applyTestBox(const Section &t, TestBoxConfig &c)
+        {
+            t.take("park", c.park);
+            t.take("weather", c.weather);
+            t.take("daylight", c.daylight);
+            t.take("hours", c.hours);
+            if (!t.reader().strict())
+                t.take("until", c.until);
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -450,6 +462,16 @@ namespace SQM
         {
             if (!validateAddresses(cfg, error))
                 return false;
+            // Spec 022: a bypass never sits beside the source it stands in for.
+            if (cfg.testBox.park && !cfg.park.ninaUrl.empty())
+                return setError(
+                    error,
+                    "Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)");
+            if (cfg.testBox.weather && (cfg.safety.httpEnabled || cfg.safety.mqttEnabled))
+                return setError(
+                    error,
+                    "Test box: the weather bypass is for a box with no weather source; turn SQMeter HTTP and MQTT off first (or turn the "
+                    "bypass off)");
             if (!cfg.alerts.pushoverEnabled)
                 return true;
             if (!isPushoverKey(cfg.alerts.pushoverUserKey))
@@ -479,6 +501,7 @@ namespace SQM
             if (!applyRoof(root.child("roof"), cfg.roof, error) || !applyAlerts(root.child("alerts"), cfg.alerts, keep, error) ||
                 !applyAlertsClient(root.child("alertsClient"), cfg.alerts, error))
                 return false;
+            applyTestBox(root.child("testBox"), cfg.testBox);
             applySync(root.child("sqmeterSync"), cfg.sqmeterSync);
             if (!root.reader().strict() && !root.has("sqmeterSync"))
                 migrateSync(cfg);
@@ -490,7 +513,7 @@ namespace SQM
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
-        DynamicJsonDocument doc(json.size() + 5120 > 8192 ? json.size() + 5120 : 8192);
+        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

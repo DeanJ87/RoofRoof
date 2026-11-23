@@ -80,6 +80,7 @@ namespace DemoRoof
         sourcesChanged(cfg.safety, cfg.park);
         safetyCfg = cfg.safety;
         parkCfg = cfg.park;
+        testBoxCfg = cfg.testBox;
         mqttOn = cfg.mqtt.enabled;
         pendingRoof = cfg.roof;
         settingsPending = true;
@@ -336,6 +337,11 @@ namespace DemoRoof
         p.nowMs = nowMs;
         park = Safety::evaluatePark(p);
         ninaReading = p.nina;
+        // Spec 022: the test box's bypasses, as SafetyInputs::evaluate.
+        testBoxState = TestBox::evaluate(testBoxCfg, TestBox::sourcesOf(safetyCfg, parkCfg), epoch >= Core::CLOCK_VALID_EPOCH, epoch);
+        Safety::CloseHold hold;
+        TestBox::applyWeather(verdict, testBoxState);
+        TestBox::applyPark(park, hold, testBoxState);
 
         gates.weather = verdict.verdict;
         gates.weatherText = Safety::describe(verdict);
@@ -355,7 +361,9 @@ namespace DemoRoof
         if (!now && nowMs - lastDaylightMs < EVALUATE_EVERY_MS)
             return;
         lastDaylightMs = nowMs;
-        daylightView = daylightWatch.update(daylightCfg, epoch >= Core::CLOCK_VALID_EPOCH, epoch, inject.sunUp);
+        Daylight::Settings settings = daylightCfg;
+        settings.testBox = testBoxState.daylight; // spec 022
+        daylightView = daylightWatch.update(settings, epoch >= Core::CLOCK_VALID_EPOCH, epoch, inject.sunUp);
         gates.daylightCloses = daylightView.closes();
         gates.daylightText = gates.daylightCloses ? Daylight::describe(daylightView) : std::string();
     }
@@ -381,6 +389,8 @@ namespace DemoRoof
         const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
         CloseSeq::updateConditions(roofConditions, snapshot(), verdict, view);
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, controller.status().state, view);
+        roofConditions.testBox = testBoxState.bits(); // spec 022
+        roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(testBoxState) : std::string();
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None)
             return;
         CloseSeq::Reasons reasons;
@@ -523,32 +533,6 @@ namespace DemoRoof
         inject = next;
         if (sunChanged)
             stepDaylight(true);
-    }
-
-    RoofIo::Snapshot EmulatedRoof::snapshot() const
-    {
-        RoofIo::Snapshot s;
-        s.status = controller.status();
-        s.fault = fault;
-        s.travelMm = roofCfg.travelMm;
-        s.supplyVolts = plant.supplyNow();
-        s.minSupplyVolts = roofCfg.minSupplyVolts;
-        s.currentSense = roofCfg.currentSenseEnabled;
-        s.motorAmps = motorAmps;
-        s.maxCurrentAmps = roofCfg.maxCurrentAmps;
-        s.fittedSwitches = gates.fittedSwitches;
-        s.switch1 = gates.switch1;
-        s.switch2 = gates.switch2;
-        s.rainFitted = safetyCfg.rainContact;
-        s.rain = inject.rain ? RoofIo::Contact::Closed : RoofIo::Contact::Open;
-        s.personStops = personStops;
-        s.calibrating = calibration.active();
-        s.maxStepGapMs = STEP_MS;
-        s.simulation = "demo";
-        RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
-        s.closePhase = CloseSeq::phaseName(sequence.phase());
-        s.daylight = CloseSeq::daylightStatus(daylightView);
-        return s;
     }
 
     // --- sessionStorage --------------------------------------------------------------

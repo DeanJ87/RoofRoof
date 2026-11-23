@@ -28,7 +28,8 @@ namespace SQM
         // sections this library writes plus the device's own (firmware,
         // memory, partitions, time, WiFi, MQTT, connections, roof), pinned by
         // test/test_device_core (test_status_document_fits).
-        constexpr size_t STATUS_DOC_CAPACITY = 6144; // 4096 until spec 003 added the roof section, 5120 until spec 008 added its checks
+        constexpr size_t STATUS_DOC_CAPACITY = 6656; // 4096 until spec 003 added the roof section, 5120 until spec 008 added its checks,
+                                                     // 6144 until spec 022 added the test box
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

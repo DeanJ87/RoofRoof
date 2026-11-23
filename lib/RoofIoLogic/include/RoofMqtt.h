@@ -68,7 +68,7 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
-            constexpr size_t STATE_DOC_CAPACITY = 2048;
+            constexpr size_t STATE_DOC_CAPACITY = 2560;
             constexpr size_t RESULT_DOC_CAPACITY = 1024;
 
             // How the broker delivered a message: live, or retained (left on the

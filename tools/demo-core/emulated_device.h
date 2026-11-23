@@ -19,6 +19,7 @@
 #include "AlpacaRouter.h"
 #include "Config.h"
 #include "ConfigBackup.h"
+#include "ConfigSave.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
 #include "SqmeterSite.h"
@@ -72,7 +73,10 @@ public:
     // --- Alpaca::Backend ---------------------------------------------------
     bool alpacaEnabled() const override { return cfg.alpaca.enabled; }
     // The roof's Dome (spec 006), on the simulated roof (spec 011).
-    std::vector<Alpaca::DeviceInfo> devices() const override { return {Alpaca::domeDeviceInfo("demo")}; }
+    std::vector<Alpaca::DeviceInfo> devices() const override
+    {
+        return {Alpaca::domeDeviceInfo("demo", TestBox::domePrefix(roof.testBox()))}; // spec 022: the test box first
+    }
     std::string serverName() const override { return cfg.deviceName; }
     std::string location() const override { return ""; }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }

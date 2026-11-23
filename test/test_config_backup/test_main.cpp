@@ -161,6 +161,22 @@ void test_backup_holds_every_section_and_the_header()
     TEST_ASSERT_EQUAL_STRING("", doc["settings"]["ota"]["password"]);
 }
 
+// Spec 022: a restore brings the test box's bypasses but never a deadline, so
+// they are out of effect until a settings save turns them on again.
+void test_restore_brings_no_test_box_deadline()
+{
+    Config source = configured();
+    source.testBox.park = true;
+    source.testBox.until = 2000000000;
+    Config current = configured();
+    current.testBox.daylight = true;
+    current.testBox.until = 1900000000;
+    const Restore r = restore(current, backupOf(source));
+    TEST_ASSERT_TRUE(r.error == Backup::Error::None);
+    TEST_ASSERT_TRUE(r.preview.candidate.testBox.park);
+    TEST_ASSERT_EQUAL_UINT32(0, r.preview.candidate.testBox.until);
+}
+
 void test_backup_escapes_the_device_name()
 {
     Config cfg = configured();
@@ -473,6 +489,7 @@ void test_apply_request_reads_the_token()
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_restore_brings_no_test_box_deadline);
     RUN_TEST(test_backup_without_passphrase_holds_no_secret);
     RUN_TEST(test_backup_holds_every_section_and_the_header);
     RUN_TEST(test_backup_escapes_the_device_name);
