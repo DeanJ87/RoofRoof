@@ -219,3 +219,23 @@ test('pins page', async ({ page }) => {
   await page.waitForTimeout(1000);
   await page.screenshot({ path: save('pins'), fullPage: true });
 });
+
+// Spec 022: the test box page with the park check bypassed, under its banner.
+test('test box page', async ({ page }) => {
+  await page.goto('./?panel=hidden#/test-box');
+  await waitForDemoApp(page);
+  await page.waitForTimeout(2500); // the demo device starts
+  const saved = await page.evaluate(async () => {
+    const body = { park: { nina: { url: '' } }, testBox: { park: true, hours: 72 } };
+    return (await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }))
+      .status;
+  });
+  expect(saved).toBe(200);
+  await expect
+    .poll(() => page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.testBox.active), { timeout: 5000 })
+    .toBe(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('roofroof:config-saved')));
+  await expect(page.locator('.test-box-banner')).toBeVisible({ timeout: 8000 });
+  await expect(page.locator('[data-test-box-mode="on"]')).toBeVisible({ timeout: 12_000 });
+  await capturePage(page, 'test-box');
+});

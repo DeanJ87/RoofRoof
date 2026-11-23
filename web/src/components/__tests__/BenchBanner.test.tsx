@@ -16,7 +16,9 @@ describe('BenchBanner', () => {
     withSimulation('bench');
     render(<BenchBanner />);
     const banner = await screen.findByRole('status');
-    expect(banner).toHaveTextContent(/Bench mode: this roof is simulated and the motor is never driven/);
+    expect(banner).toHaveClass('banner', 'banner-warn');
+    expect(banner.querySelector('.banner-title')).toHaveTextContent('Bench mode: simulated roof');
+    expect(banner.querySelector('.banner-detail')).toHaveTextContent(/The motor is never driven/);
   });
 
   it.each(['off', 'demo'] as const)('shows nothing for %s', async (simulation) => {

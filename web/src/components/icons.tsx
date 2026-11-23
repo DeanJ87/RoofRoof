@@ -94,6 +94,8 @@ export const Icon: FunctionalComponent<{ name: string; tone?: IconTone; size?: n
       </>
     ),
     scope: <path {...common} d="m3 14 13-7 2 4-13 7-2-4Zm7 .5L8 21m2-6.5 4 6.5" />,
+    // A check that is off or bypassed (the banner, the test box).
+    warning: <path {...common} d="M12 4 2.5 20h19L12 4Zm0 6v4.5m0 3h.01" />,
   };
 
   return (
