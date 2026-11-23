@@ -79,6 +79,7 @@ wizard resumes at.
       [test box](test-box.md) bypass off; **No telescope yet (bench setup)** turns them on (each
       only where its source isn't already set up, with a deadline), offers **May ask N.I.N.A. to
       park**, and skips the Weather and N.I.N.A. screens, so setup never asks you to park a mount.
+      Turn it off later from the banner's **Manage** ([Before it goes on the roof](test-box.md#before-it-goes-on-the-roof)).
       The N.I.N.A. screen also links back to it and warns not to point a bench box at a live N.I.N.A.;
     - **Does the wiring check pass?**: **Check wiring** runs the [wiring check](pins.md#the-wiring-check) and shows each result
       (the EN pull-down, the Hall sensor, the supply, the park inputs, current sense at rest and

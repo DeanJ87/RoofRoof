@@ -325,7 +325,7 @@ Each was an open choice; the safest option the constitution allows was taken.
 9. **The sync never clears a secret from the secrets read**: an empty value from SQMeter leaves
    RoofRoof's as it is (a Pushover key set only here survives).
 10. **Secrets only from the saved address**: a typed, unsaved address gets no secrets.
-11. **Constitution 5.0.0 (MAJOR)** on top of 4.0.0 (spec 023).
+11. **Constitution 5.0.0 (MAJOR)** on top of 4.1.0 (the design-system banner on main).
 12. **No new alert event** for the stuck-switch check: it refuses Open with its reason on every
     surface that shows Open's reason; an alert can follow in a later spec if wanted.
 13. **The UI was not mocked up for owner review before building**; it reuses the choice card group,

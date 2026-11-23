@@ -1,4 +1,4 @@
 {
-  "jsCssGzipBytes": 161729,
-  "overBudgetReason": "spec 024: park source settings and wizard screens, SQMeter secrets rows and notes"
+  "jsCssGzipBytes": 161566,
+  "overBudgetReason": "The test box gets its own page (status, Turn off, Extend, the bypasses), the banner becomes a design-system Banner, and bypassed calibration checks say so"
 }

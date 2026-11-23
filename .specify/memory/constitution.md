@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version: 4.0.0 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
+- Version: 4.1.0 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
   make the fitted park switches the only park source).
 - Modified: II. Close Only Onto a Parked Mount. The park source is an owner setting
   (`park.source`): N.I.N.A. only, park switches only, or N.I.N.A. and park switches. Settings from
@@ -24,6 +24,15 @@ Sync Impact Report
 - Templates: no change (they read the principles from this file).
 - Docs: docs/user-guide/safety-inputs.md, docs/hardware/wiring.md, docs/hardware/commissioning.md,
   specs/024-park-source-and-secrets/spec.md.
+- Earlier: 4.0.0 -> 4.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
+- Modified: VII. Quiet, Consistent UI. The design system gains a second documented addition: the
+  banner (`Banner` in `web/src/components/ui.tsx`, DS-14), for a state that holds on every page
+  (bench firmware, test-box bypasses), built only from the tokens. A bypassed safety check is
+  never shown as OK or parked: it reads as bypassed wherever the check is listed.
+- Why: the test box banner (spec 022) was a bare line of text outside the page's column; the
+  calibration checklists showed "Mount parked: OK" while the park check was bypassed.
+- Templates: no change (they read the principles from this file).
+- Docs: docs/development/coding-standards.md (DS-14, DS-01), docs/user-guide/test-box.md.
 - Earlier: 3.0.0 -> 4.0.0 (MAJOR: Principle III loses a weather source; Principle I's pin and boot
   wording changes with the pins becoming settings).
 - Modified: I. Motion Safety. EN, RPWM and LPWM are the pins in effect (a board preset or a
@@ -323,9 +332,12 @@ The web UI is used in the dark, often on a phone, sometimes in a hurry.
 - The UI follows SQMeter's design system (DS rules, spec 026): the shared parts in
   `web/src/components/ui.tsx` and `settings/controls.tsx`, the tokens in `index.css`, and no new
   button or card styles.
-  - The one addition is the onboarding set for guided flows such as the setup wizard (DS-11 to
+  - The additions are the onboarding set for guided flows such as the setup wizard (DS-11 to
     DS-13): the modal dialog, its progress bar, the choice card group, the speech bubble and the
-    mascot, built only from the tokens. A flow uses these rather than a style of its own.
+    mascot; and the banner for a state that holds on every page (DS-14). Each is built only from
+    the tokens. A flow or page-wide state uses these rather than a style of its own.
+- A safety check that a test-box bypass stands in for is never shown as passing on its own (OK,
+  Parked, Safe): wherever it is listed it says it is bypassed.
 - Stop MUST be reachable on every page while the roof is moving, and is never disabled.
   - A modal over the app MUST carry the Stop bar inside it, visible above its content, in its
     focus loop and announced when it appears.
