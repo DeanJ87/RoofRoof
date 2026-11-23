@@ -318,8 +318,8 @@ safety poll, and never on the roof's own control task.
 
 ### Copy from SQMeter
 
-**Settings → Roof → Site from SQMeter → Copy from SQMeter**, and the setup wizard's first Site and
-time screen, read SQMeter's settings and list what differs, SQMeter's value beside RoofRoof's:
+**Settings → Roof → Site from SQMeter → Copy from SQMeter**, and the setup wizard's SQMeter
+screen, read SQMeter's settings and list what differs, SQMeter's value beside RoofRoof's:
 
 | Row | What it sets |
 |---|---|

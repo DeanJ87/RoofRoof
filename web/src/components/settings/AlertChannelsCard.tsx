@@ -7,6 +7,9 @@ import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
 import { asked, locked as isLocked, ntfyShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
+// `toggle` false: the group without its on switch (the setup wizard ticks channels itself, spec 025).
+type GroupProps = { view: AlertsView; toggle?: boolean };
+
 // Send test, for a channel that is on (tests use the saved settings).
 const TestButton: FunctionalComponent<{ view: AlertsView; channel: AlertChannelName }> = ({ view, channel }) => {
   const entry = view.dep(`alerts.${channel}.enabled`);
@@ -25,17 +28,19 @@ const TestButton: FunctionalComponent<{ view: AlertsView; channel: AlertChannelN
   );
 };
 
-const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
+const PushoverGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => {
   const { alerts, set, err, dep, fix, status } = view;
   return (
     <Group>
-      <DepToggle
-        entry={dep('alerts.pushover.enabled')}
-        onFix={fix}
-        label="Pushover"
-        checked={alerts.pushover.enabled}
-        onChange={(v) => set(['pushover', 'enabled'], v)}
-      />
+      {toggle && (
+        <DepToggle
+          entry={dep('alerts.pushover.enabled')}
+          onFix={fix}
+          label="Pushover"
+          checked={alerts.pushover.enabled}
+          onChange={(v) => set(['pushover', 'enabled'], v)}
+        />
+      )}
       {/* Spec 020: also while off when SQMeter has keys RoofRoof lacks, so they can be entered. */}
       {(alerts.pushover.enabled || asked(status?.sync, 'pushoverKeys')) && (
         <>
@@ -53,7 +58,12 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
               error={err('pushover.appToken')}
               hint={t('settings.alerts.createAnApplicationAtPushover')}
             >
-              <TextInput type="password" value={alerts.pushover.appToken} onInput={(v) => set(['pushover', 'appToken'], v)} />
+              <TextInput
+                dataField="alerts.pushover.appToken"
+                type="password"
+                value={alerts.pushover.appToken}
+                onInput={(v) => set(['pushover', 'appToken'], v)}
+              />
               <NeedsNote status={status} need="pushoverKeys" filled={!!alerts.pushover.userKey && !!alerts.pushover.appToken} />
             </Field>
             <Field label={t('settings.alerts.defaultSound')} hint={t('settings.alerts.usedWhereAnEventS')}>
@@ -72,18 +82,20 @@ const PushoverGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
 };
 
 // Spec 020: the server and topic are read-only while the alerts group follows SQMeter.
-const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
+const NtfyGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => {
   const { alerts, set, err, dep, fix, config, status, update } = view;
   const locked = isLocked(config, 'alerts');
   return (
     <Group>
-      <DepToggle
-        entry={dep('alerts.ntfy.enabled')}
-        onFix={fix}
-        label="ntfy"
-        checked={alerts.ntfy.enabled}
-        onChange={(v) => set(['ntfy', 'enabled'], v)}
-      />
+      {toggle && (
+        <DepToggle
+          entry={dep('alerts.ntfy.enabled')}
+          onFix={fix}
+          label="ntfy"
+          checked={alerts.ntfy.enabled}
+          onChange={(v) => set(['ntfy', 'enabled'], v)}
+        />
+      )}
       {/* Spec 020: also while off when it holds what was copied or synced from SQMeter, or a token to enter. */}
       {ntfyShown(config, status?.sync) && (
         <>
@@ -124,18 +136,20 @@ const NtfyGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   );
 };
 
-const WebhookGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
+const WebhookGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => {
   const { alerts, set, err, dep, fix } = view;
   return (
     <Group>
-      <DepToggle
-        entry={dep('alerts.webhook.enabled')}
-        onFix={fix}
-        label={t('settings.alerts.webhook')}
-        checked={alerts.webhook.enabled}
-        onChange={(v) => set(['webhook', 'enabled'], v)}
-        hint={t('settings.alerts.postsJsonDeviceEventTitle')}
-      />
+      {toggle && (
+        <DepToggle
+          entry={dep('alerts.webhook.enabled')}
+          onFix={fix}
+          label={t('settings.alerts.webhook')}
+          checked={alerts.webhook.enabled}
+          onChange={(v) => set(['webhook', 'enabled'], v)}
+          hint={t('settings.alerts.postsJsonDeviceEventTitle')}
+        />
+      )}
       {alerts.webhook.enabled && (
         <>
           <div class="form-grid">
@@ -172,22 +186,24 @@ const WebhookGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => {
   );
 };
 
-const MqttGroup: FunctionalComponent<{ view: AlertsView }> = ({ view }) => (
+const MqttGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => (
   <Group>
-    <DepToggle
-      entry={view.dep('alerts.mqtt.enabled')}
-      onFix={view.fix}
-      label="MQTT"
-      checked={view.alerts.mqtt.enabled}
-      onChange={(v) => view.set(['mqtt', 'enabled'], v)}
-      hint={t('settings.alerts.publishesEachAlertToTopic', { topic: view.config.mqtt.topic })}
-    />
+    {toggle && (
+      <DepToggle
+        entry={view.dep('alerts.mqtt.enabled')}
+        onFix={view.fix}
+        label="MQTT"
+        checked={view.alerts.mqtt.enabled}
+        onChange={(v) => view.set(['mqtt', 'enabled'], v)}
+        hint={t('settings.alerts.publishesEachAlertToTopic', { topic: view.config.mqtt.topic })}
+      />
+    )}
     <TestButton view={view} channel="mqtt" />
   </Group>
 );
 
-// Each channel's group (also the setup wizard's alert details screen, spec 018).
-export const CHANNEL_GROUPS: Record<AlertChannelName, FunctionalComponent<{ view: AlertsView }>> = {
+// Each channel's group (also the setup wizard's alerts screen, spec 025).
+export const CHANNEL_GROUPS: Record<AlertChannelName, FunctionalComponent<GroupProps>> = {
   pushover: PushoverGroup,
   ntfy: NtfyGroup,
   webhook: WebhookGroup,

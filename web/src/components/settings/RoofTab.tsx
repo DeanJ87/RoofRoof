@@ -168,7 +168,7 @@ export const CurrentCard: FunctionalComponent<RoofProps> = (props) => (
 
 export type SafetyProps = SettingsTabProps & { safety: SafetyConfig };
 
-// SQMeter over HTTP and MQTT (also the setup wizard's weather page, spec 015).
+// SQMeter over HTTP and MQTT.
 export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, update, error, deps, fix, config, status }) => (
   <>
     <Toggle
@@ -200,12 +200,12 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
   </>
 );
 
-// SQMeter's address and topic (also the setup wizard's weather address screen, spec 018).
+// SQMeter's address and topic (also the setup wizard's SQMeter screen, spec 025).
 type SourceFieldProps = Pick<SafetyProps, 'safety' | 'update' | 'error'>;
 // With SQMeter's login (spec 020): the address and the login go together everywhere.
 // The address only (FR-036): RoofRoof adds /api/safety itself; https is encrypted, its
 // certificate not checked (FR-039). `test`: the Test button (FR-038), except where a
-// page has its own Test (the wizard's weather screen).
+// page has its own Test.
 export const SqmeterUrlField: FunctionalComponent<SourceFieldProps & { test?: boolean }> = ({ safety, update, error, test = true }) => (
   <>
     <Field label={t('settings.roof.sqmeterUrl')} hint={t('settings.roof.sqmeterUrlHint')} error={error('safety.http.url')}>
