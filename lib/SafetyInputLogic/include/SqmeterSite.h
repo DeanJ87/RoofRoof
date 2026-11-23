@@ -19,12 +19,14 @@ namespace SQM
 {
     namespace Site
     {
+        constexpr const char *SAFETY_PATH = "/api/safety"; // the weather poll and the Test (spec 020 FR-036)
         constexpr const char *STATUS_PATH = "/api/status";
         constexpr const char *CONFIG_PATH = "/api/config";
 
-        // SQMeter's own `path` on the host of the weather source's address
-        // (scheme, host and port of `safety.httpUrl`): "http://192.168.1.50/api/status".
-        // Empty when the address isn't a valid http:// URL.
+        // SQMeter's own `path` at SQMeter's address (scheme, host and port of
+        // `safety.httpUrl`, typed in any form Config::sqmeterAddress takes):
+        // "http://192.168.1.50/api/status". http or https (spec 020 FR-039);
+        // empty when the address isn't valid.
         std::string siteUrl(const std::string &address, const char *path);
 
         // One fetch: the HTTP status (0 = no reply, with `error`) and whether
@@ -58,7 +60,9 @@ namespace SQM
             std::optional<std::string> username;
             std::optional<std::string> password;
         };
-        Endpoint copyEndpoint(const SafetyConfig &saved, const std::string &address, const TypedLogin &typed);
+        // `path`: the settings for the copy, /api/safety for the Test (FR-038).
+        Endpoint copyEndpoint(
+            const SafetyConfig &saved, const std::string &address, const TypedLogin &typed, const char *path = CONFIG_PATH);
 
         // Why there is no good location from SQMeter.
         enum class Problem : uint8_t

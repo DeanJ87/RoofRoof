@@ -129,18 +129,19 @@ namespace SQM
         std::string siteOrigin(const std::string &address)
         {
             Net::HttpUrl url;
-            if (address.empty() || Net::parseHttpUrl(address, url) != Net::UrlError::None || url.https)
+            const std::string kept = Config::sqmeterAddress(address, true); // spec 020 FR-036: any form typed
+            if (kept.empty() || Net::parseHttpUrl(kept, url) != Net::UrlError::None)
                 return "";
-            std::string origin = "http://" + Net::hostForUrl(url.host);
-            if (url.port != 80)
+            std::string origin = (url.https ? "https://" : "http://") + Net::hostForUrl(url.host);
+            if (url.port != (url.https ? 443 : 80))
                 origin += ":" + std::to_string(url.port);
             return origin;
         }
 
-        Endpoint copyEndpoint(const SafetyConfig &saved, const std::string &address, const TypedLogin &typed)
+        Endpoint copyEndpoint(const SafetyConfig &saved, const std::string &address, const TypedLogin &typed, const char *path)
         {
             Endpoint to;
-            to.url = siteUrl(address, CONFIG_PATH);
+            to.url = siteUrl(address, path);
             const bool sameHost = !siteOrigin(address).empty() && siteOrigin(address) == siteOrigin(saved.httpUrl);
             to.username = typed.username ? *typed.username : (sameHost ? saved.httpUsername : std::string());
             const bool typedPassword = typed.password && !Config::placeholderSecret(*typed.password);

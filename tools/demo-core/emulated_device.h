@@ -90,6 +90,8 @@ public:
     // Spec 020: POST /api/sqmeter/site, from the simulated SQMeter's settings
     // through the firmware's own parser. {status, body} like the device.
     std::string sqmeterSite(const std::string &body);
+    // Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+    std::string sqmeterTest(const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);
@@ -152,6 +154,7 @@ public:
     void setArmed(bool on, const std::string &source);
 
 private:
+    std::string sqmeterRequest(const std::string &body, std::string &address, Site::TypedLogin &login);
     int64_t validEpoch() const { return epoch >= Core::CLOCK_VALID_EPOCH ? epoch : 0; }
 
     void scheduleChanged(bool wasSending);

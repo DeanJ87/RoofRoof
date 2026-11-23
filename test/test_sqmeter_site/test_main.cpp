@@ -111,13 +111,17 @@ void test_the_site_url_keeps_the_host_and_port_and_takes_sqmeters_path()
     TEST_ASSERT_EQUAL_STRING("http://sqm.local:8080/api/config", siteUrl("http://sqm.local:8080/proxy/api/safety", CONFIG_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("http://[fd00::10]/api/status", siteUrl("http://[fd00::10]/api/safety", STATUS_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("http://192.168.1.50/api/status", siteUrl("http://192.168.1.50", STATUS_PATH).c_str());
+    // Spec 020 FR-036, FR-039: a bare address, and https (its port kept unless 443).
+    TEST_ASSERT_EQUAL_STRING("http://sqmeter.local/api/safety", siteUrl("sqmeter.local", SAFETY_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("https://192.168.1.50/api/config", siteUrl("https://192.168.1.50/api/safety", CONFIG_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("https://sqm.lan:8443/api/safety", siteUrl("https://sqm.lan:8443", SAFETY_PATH).c_str());
 }
 
-void test_no_site_url_without_a_valid_http_address()
+void test_no_site_url_without_a_valid_address()
 {
     TEST_ASSERT_EQUAL_STRING("", siteUrl("", STATUS_PATH).c_str());
-    TEST_ASSERT_EQUAL_STRING("", siteUrl("https://192.168.1.50/api/safety", STATUS_PATH).c_str());
-    TEST_ASSERT_EQUAL_STRING("", siteUrl("sqmeter.local", STATUS_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("", siteUrl("ftp://192.168.1.50", STATUS_PATH).c_str());
+    TEST_ASSERT_EQUAL_STRING("", siteUrl("https://[fd00::10]", STATUS_PATH).c_str());
     TEST_ASSERT_EQUAL_STRING("", siteUrl("http://", STATUS_PATH).c_str());
 }
 
@@ -508,7 +512,7 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_the_site_url_keeps_the_host_and_port_and_takes_sqmeters_path);
-    RUN_TEST(test_no_site_url_without_a_valid_http_address);
+    RUN_TEST(test_no_site_url_without_a_valid_address);
     RUN_TEST(test_a_gps_location_is_read);
     RUN_TEST(test_a_typed_sqmeter_location_is_read_as_not_gps);
     RUN_TEST(test_no_location_at_sqmeter);

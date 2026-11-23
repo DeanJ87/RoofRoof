@@ -77,7 +77,11 @@ namespace SQM
     struct SafetyConfig
     {
         bool httpEnabled = false;
-        std::string httpUrl; // SQMeter's GET /api/safety, http:// only
+        // SQMeter's address (spec 020 FR-036): scheme, host and port only
+        // ("http://192.168.1.50", "https://sqmeter.lan:8443"); RoofRoof adds
+        // /api/safety and the site paths itself. https is encrypted without a
+        // certificate check (a LAN SQMeter's is self-signed).
+        std::string httpUrl;
         // Spec 020: SQMeter's login (HTTP Basic), sent on every request to it:
         // the weather poll, the location and settings reads and the copy. Both
         // optional; the password is a secret (masked, cleared when the address
@@ -472,6 +476,13 @@ namespace SQM
         static bool storedBeforeSetup(const std::string &storedJson);
         void markStoredBeforeSetup();
         static std::optional<Config> fromJson(const std::string &json, const Config *baseConfig = nullptr, std::string *error = nullptr);
+        // Spec 020 FR-036: SQMeter's address as typed ("192.168.1.50",
+        // "sqmeter.local", "http://sqm/api/sensors") as it is kept:
+        // scheme://host[:port]. No scheme means http://; a known SQMeter API
+        // path (/api/safety, /api/sensors, /api/status, /api/config), a query
+        // and a trailing "/" are dropped. Any other path stays (a save refuses
+        // it) unless `anyPath` (stored settings: dropped). Empty stays empty.
+        static std::string sqmeterAddress(const std::string &typed, bool anyPath = false);
         // Applies JSON on top of `cfg` in place and validates. On failure
         // `cfg` may be partially updated.
         static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);

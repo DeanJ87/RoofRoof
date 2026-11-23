@@ -8,6 +8,7 @@
 
 #include "SafetyInput.h"
 #include "SqmeterSource.h"
+#include <ArduinoJson.h>
 
 using namespace SQM::Safety;
 
@@ -54,7 +55,36 @@ void test_http_non_200_is_unreadable(void)
     recordHttpReply(r, HttpOutcome{404, SAFE_JSON, ""}, NOW_MS);
     TEST_ASSERT_FALSE(r.haveGood);
     TEST_ASSERT_TRUE(r.failure == Failure::Unreadable);
-    TEST_ASSERT_EQUAL_STRING("HTTP 404", r.detail.c_str());
+    // Spec 020 FR-037: the address answered, but not as SQMeter's /api/safety.
+    TEST_ASSERT_EQUAL_STRING("that address answered HTTP 404, not like SQMeter's /api/safety", r.detail.c_str());
+}
+
+// Spec 020 FR-037: JSON without `safe` (SQMeter's /api/sensors, say) names what answered.
+void test_http_other_json_is_named_not_sqmeters_safety(void)
+{
+    SourceRecord r = liveRecord();
+    recordHttpReply(r, HttpOutcome{200, R"({"temperature":3.5})", ""}, NOW_MS);
+    TEST_ASSERT_TRUE(r.failure == Failure::Unreadable);
+    TEST_ASSERT_EQUAL_STRING("that address answered, but not like SQMeter's /api/safety (missing safe)", r.detail.c_str());
+}
+
+// Spec 020 FR-038: one fetch for the Test button: the verdict, or why not.
+void test_the_test_result_says_safe_unsafe_or_why_not(void)
+{
+    StaticJsonDocument<256> doc;
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{200, SAFE_JSON, ""});
+    TEST_ASSERT_TRUE(doc["safe"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("SQMeter says safe", doc["text"]);
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{200, RAIN_JSON, ""});
+    TEST_ASSERT_FALSE(doc["safe"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("SQMeter says unsafe: reasonFlags 0x200 (rain)", doc["text"]);
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{-1, "", "connection refused"});
+    TEST_ASSERT_TRUE(doc["safe"].isNull());
+    TEST_ASSERT_EQUAL_STRING("SQMeter not answering: connection refused", doc["error"]);
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{401, "", "", false});
+    TEST_ASSERT_EQUAL_STRING("SQMeter wants a password", doc["error"]);
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{404, "", ""});
+    TEST_ASSERT_EQUAL_STRING("That address answered HTTP 404, not like SQMeter's /api/safety", doc["error"]);
 }
 
 // Spec 020: a 401 or 403 names the login problem, not a bare HTTP status.
@@ -73,7 +103,7 @@ void test_http_bad_document_is_unreadable(void)
     SourceRecord r = liveRecord();
     recordHttpReply(r, HttpOutcome{200, R"({"safe":true})", ""}, NOW_MS);
     TEST_ASSERT_FALSE(r.haveGood);
-    TEST_ASSERT_EQUAL_STRING("missing reasonFlags", r.detail.c_str());
+    TEST_ASSERT_EQUAL_STRING("that address answered, but not like SQMeter's /api/safety (missing reasonFlags)", r.detail.c_str());
 }
 
 void test_http_good_reply_is_recorded(void)
@@ -174,6 +204,8 @@ int main(int, char **)
     RUN_TEST(test_topics_under_base);
     RUN_TEST(test_http_no_reply_is_unreachable);
     RUN_TEST(test_http_non_200_is_unreadable);
+    RUN_TEST(test_http_other_json_is_named_not_sqmeters_safety);
+    RUN_TEST(test_the_test_result_says_safe_unsafe_or_why_not);
     RUN_TEST(test_http_login_refusals_are_named);
     RUN_TEST(test_http_bad_document_is_unreadable);
     RUN_TEST(test_http_good_reply_is_recorded);

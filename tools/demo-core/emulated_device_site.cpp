@@ -141,11 +141,12 @@ void EmulatedDevice::writeLocation(JsonObject out) const
     Site::writeLocationStatus(out, cfg.location, siteRead, !Site::siteUrl(cfg.safety.httpUrl, Site::STATUS_PATH).empty(), nowMs);
 }
 
-std::string EmulatedDevice::sqmeterSite(const std::string &body)
+// The body's typed address and login (WebServerSite.cpp addressFrom), or the
+// saved ones; "" when the request may go ahead, else the refusal to send.
+std::string EmulatedDevice::sqmeterRequest(const std::string &body, std::string &address, Site::TypedLogin &login)
 {
     StaticJsonDocument<512> in;
-    std::string address = cfg.safety.httpUrl;
-    Site::TypedLogin login;
+    address = cfg.safety.httpUrl;
     if (!body.empty() && !deserializeJson(in, body))
     {
         if (in["url"].is<const char *>())
@@ -155,14 +156,47 @@ std::string EmulatedDevice::sqmeterSite(const std::string &body)
         if (in["password"].is<const char *>())
             login.password = in["password"].as<const char *>();
     }
-    const std::string url = Site::siteUrl(address, Site::CONFIG_PATH);
     if (address.empty())
         return response(400, errorJson("SQMeter's address isn't set"));
-    if (url.empty())
-        return response(400, errorJson("SQMeter's address must be an http:// address"));
+    if (Site::siteUrl(address, Site::CONFIG_PATH).empty())
+        return response(400, errorJson("SQMeter's address isn't valid: e.g. 192.168.1.50 or sqmeter.local"));
     const std::string held = platformHold("flashWrite");
-    if (!held.empty())
-        return response(409, errorJson(held));
+    return held.empty() ? std::string() : response(409, errorJson(held));
+}
+
+// Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
+std::string EmulatedDevice::sqmeterTest(const std::string &body)
+{
+    std::string address;
+    Site::TypedLogin login;
+    const std::string refused = sqmeterRequest(body, address, login);
+    if (!refused.empty())
+        return refused;
+    const Site::Endpoint to = Site::copyEndpoint(cfg.safety, address, login, Site::SAFETY_PATH);
+    Safety::HttpOutcome outcome{DemoRoof::demoSqmeterAnswer(roof.injectors(), to.username, to.password), "", "", to.sendsPassword()};
+    if (outcome.status == 0)
+        outcome.error = OFFLINE;
+    else if (outcome.status == 200)
+    {
+        const Safety::SqmeterReply reply = roof.simulatedSafety();
+        StaticJsonDocument<128> doc;
+        doc["safe"] = reply.safe;
+        doc["reasonFlags"] = reply.reasonFlags;
+        doc["evaluatedAgeMs"] = 5;
+        outcome.body = serialize(doc);
+    }
+    StaticJsonDocument<256> out;
+    Safety::writeTestResult(out.to<JsonObject>(), outcome);
+    return response(out["error"].isNull() ? 200 : 502, serialize(out));
+}
+
+std::string EmulatedDevice::sqmeterSite(const std::string &body)
+{
+    std::string address;
+    Site::TypedLogin login;
+    const std::string refused = sqmeterRequest(body, address, login);
+    if (!refused.empty())
+        return refused;
     DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
     Site::configFilter(filter);
     DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);

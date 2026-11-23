@@ -133,6 +133,8 @@ namespace DemoRoof
 
         // The panel.
         const Injectors &injectors() const { return inject; }
+        // Spec 020: what the simulated SQMeter's /api/safety says now (the Test).
+        Safety::SqmeterReply simulatedSafety() const { return sqmeterReply(); }
         void setInjectors(const Injectors &next);
         // The imaging app parks (a slew) or unparks the mount.
         void parkMount();
