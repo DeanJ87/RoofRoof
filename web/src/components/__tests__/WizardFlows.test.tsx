@@ -106,7 +106,7 @@ describe('Wizard: choices, skips and refusals', () => {
     render(<Wizard />);
     await onScreen('sqmeter');
     expect(screen.getByText('Where is SQMeter?')).toBeInTheDocument();
-    const address = screen.getByLabelText('SQMeter safety URL', { selector: 'input' });
+    const address = screen.getByLabelText("SQMeter's address", { selector: 'input' });
     fireEvent.input(address, { target: { value: 'http://10.0.0.5/api/safety' } });
     fireEvent.click(button('Copy from SQMeter'));
     await screen.findByRole('switch', { name: 'Time zone' });

@@ -1,7 +1,7 @@
 import type { Config, LocationConfig, LocationSource, SqmeterSite, SyncGroup } from '../types';
 import type { ConfigPath } from '../components/settings/context';
 import { bodyOf, postJson } from './api';
-import { deviceError } from '../i18n/deviceMessage';
+import { deviceError, deviceText } from '../i18n/deviceMessage';
 import { formatCoordinates } from '../i18n/format';
 import { t } from '../i18n';
 
@@ -39,16 +39,38 @@ export interface SqmeterLogin {
   password?: string | null;
 }
 
+// The body of the device's SQMeter routes (the copy and the Test) as the form stands: an emptied
+// user name or a cleared password (null) is sent empty, so the device doesn't fall back to the
+// saved login; an untouched mask means the saved password.
+const sqmeterRequest = (url: string | undefined, login: SqmeterLogin): Record<string, string> => {
+  const request: Record<string, string> = {};
+  if (url) request.url = url;
+  if (login.username !== undefined) request.username = login.username;
+  if (login.password !== undefined) request.password = login.password ?? '';
+  return request;
+};
+
+export type TestAnswer = { ok: true; safe: boolean; text: string } | { ok: false; error: string };
+
+/** Spec 020 FR-038: one read of SQMeter's /api/safety at the typed address, through the device. */
+export const testSqmeter = async (url: string, login: SqmeterLogin = {}): Promise<TestAnswer> => {
+  try {
+    const response = await postJson('/api/sqmeter/test', sqmeterRequest(url.trim() || undefined, login));
+    const body = await bodyOf(response);
+    if (response.ok && typeof body.safe === 'boolean') {
+      const text = typeof body.text === 'string' ? deviceText(body.text) : '';
+      return { ok: true, safe: body.safe, text };
+    }
+    return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')) };
+  } catch {
+    return { ok: false, error: t('settings.sqmeterCopy.unreachable') };
+  }
+};
+
 /** Asks the device for SQMeter's site settings; `url` and `login` are as typed, saved or not. */
 export const fetchSqmeterSite = async (url?: string, login: SqmeterLogin = {}): Promise<SiteAnswer> => {
   try {
-    const request: Record<string, string> = {};
-    if (url) request.url = url;
-    // As the form stands: an emptied user name or a cleared password (null) is sent empty, so the
-    // device doesn't fall back to the saved login; an untouched mask means the saved password.
-    if (login.username !== undefined) request.username = login.username;
-    if (login.password !== undefined) request.password = login.password ?? '';
-    const response = await postJson('/api/sqmeter/site', request);
+    const response = await postJson('/api/sqmeter/site', sqmeterRequest(url, login));
     const body = await bodyOf(response);
     if (response.ok && body.device) return { ok: true, site: body as unknown as SqmeterSite };
     const password = typeof body.error === 'string' && PASSWORD_ERROR.test(body.error);

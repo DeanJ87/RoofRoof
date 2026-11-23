@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import { alertsConfigSchema } from './alertsSchema';
 import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
+import { sqmeterAddressError } from '../lib/sqmeterAddress';
 
 export const wifiConfigSchema = z.object({
   // The device refuses a blank network while one is saved (SQMeter spec 011 FR-009).
@@ -142,12 +143,13 @@ export const safetyConfigSchema = z
       .max(600, t('validation.configSchema.staleTimeMustBeBetween')),
     rainContact: z.boolean(),
   })
+  // Spec 020 FR-036, FR-039: SQMeter's address only (http or https), checked when set, as the device does.
   .superRefine((data, ctx) => {
-    if (!data.http.enabled) return;
-    const url = parseHttpUrl(data.http.url);
-    if (url.error) ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: url.error });
-    else if (!isPlainHttp(data.http.url))
-      ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: t('validation.configSchema.sqmeterUrlMustStartWithHttp') });
+    const error =
+      data.http.enabled && data.http.url.trim() === ''
+        ? t('validation.configSchema.sqmeterAddressNotSet')
+        : sqmeterAddressError(data.http.url);
+    if (error) ctx.addIssue({ code: 'custom', path: ['http', 'url'], message: error });
   })
   .refine((data) => !data.mqtt.enabled || MQTT_TOPIC.test(data.mqtt.topic), {
     message: t('validation.configSchema.useLettersNumbersAndWith'),

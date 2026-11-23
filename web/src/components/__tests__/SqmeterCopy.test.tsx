@@ -119,7 +119,7 @@ describe('Copy from SQMeter', () => {
     const site = await card();
     expect(within(site).getByRole('button', { name: 'Copy from SQMeter' })).toBeDisabled();
     expect(within(site).getByText("SQMeter's address isn't set: enter it to copy from SQMeter.")).toBeInTheDocument();
-    fireEvent.input(within(site).getByRole('textbox', { name: 'SQMeter safety URL' }), { target: { value: 'http://10.0.0.5/api/safety' } });
+    fireEvent.input(within(site).getByRole('textbox', { name: "SQMeter's address" }), { target: { value: 'http://10.0.0.5/api/safety' } });
     expect(within(site).getByRole('button', { name: 'Copy from SQMeter' })).toBeEnabled();
   });
 });

@@ -111,6 +111,54 @@ describe("SQMeter's login", () => {
   });
 });
 
+describe("SQMeter's address (FR-036 to FR-039)", () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('says what to type, and Test reads SQMeter once at the address and login as typed', async () => {
+    mockDevice();
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('/api/sqmeter/test', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ safe: false, reasonFlags: 512, text: 'SQMeter says unsafe: reasonFlags 0x200 (rain)' });
+      }),
+    );
+    await open('roof', 'Roof');
+    const address = await findField('safety.http.url');
+    expect(address).toHaveAttribute('placeholder', '192.168.1.50 or sqmeter.local');
+    expect(
+      screen.getAllByText("SQMeter's address, e.g. 192.168.1.50 or sqmeter.local. RoofRoof adds /api/safety itself.").length,
+    ).toBeGreaterThan(0);
+    fireEvent.input(address, { target: { value: '192.168.4.144' } });
+    const weather = address.closest('section') as HTMLElement;
+    fireEvent.click(within(weather).getByRole('button', { name: 'Test' }));
+    expect(await within(weather).findByText('SQMeter says unsafe: reasonFlags 0x200 (rain)')).toBeInTheDocument();
+    expect(bodies[0]).toEqual({ url: '192.168.4.144', username: '', password: '' });
+  });
+
+  it("Test says what answered when it isn't SQMeter's /api/safety", async () => {
+    mockDevice();
+    server.use(
+      http.post('/api/sqmeter/test', () =>
+        HttpResponse.json({ error: "That address answered HTTP 404, not like SQMeter's /api/safety" }, { status: 502 }),
+      ),
+    );
+    await open('roof', 'Roof');
+    const weather = (await findField('safety.http.url')).closest('section') as HTMLElement;
+    fireEvent.click(within(weather).getByRole('button', { name: 'Test' }));
+    expect(await within(weather).findByText("That address answered HTTP 404, not like SQMeter's /api/safety")).toBeInTheDocument();
+  });
+
+  it('https: says the link is encrypted but the certificate not checked', async () => {
+    mockDevice();
+    await open('roof', 'Roof');
+    const address = await findField('safety.http.url');
+    expect(screen.queryByText(/certificate isn't checked/)).toBeNull();
+    fireEvent.input(address, { target: { value: 'https://sqmeter.lan' } });
+    expect((await screen.findAllByText(/encrypted, but SQMeter's certificate isn't checked/)).length).toBeGreaterThan(0);
+  });
+});
+
 describe('Copied values on their own Settings pages', () => {
   afterEach(() => window.history.replaceState(null, '', '/'));
 
