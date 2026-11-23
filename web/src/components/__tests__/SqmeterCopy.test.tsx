@@ -119,7 +119,7 @@ describe('Copy from SQMeter', () => {
     const site = await card();
     expect(within(site).getByRole('button', { name: 'Copy from SQMeter' })).toBeDisabled();
     expect(within(site).getByText("SQMeter's address isn't set: enter it to copy from SQMeter.")).toBeInTheDocument();
-    fireEvent.input(within(site).getByRole('textbox'), { target: { value: 'http://10.0.0.5/api/safety' } });
+    fireEvent.input(within(site).getByRole('textbox', { name: 'SQMeter safety URL' }), { target: { value: 'http://10.0.0.5/api/safety' } });
     expect(within(site).getByRole('button', { name: 'Copy from SQMeter' })).toBeEnabled();
   });
 });
@@ -190,6 +190,31 @@ describe('fetchSqmeterSite', () => {
 
   it("answers the device's reason when it refuses", async () => {
     server.use(http.post('/api/sqmeter/site', () => HttpResponse.json({ error: 'SQMeter answered HTTP 404' }, { status: 502 })));
-    expect(await fetchSqmeterSite()).toEqual({ ok: false, error: 'SQMeter answered HTTP 404' });
+    expect(await fetchSqmeterSite()).toEqual({ ok: false, error: 'SQMeter answered HTTP 404', password: false });
+  });
+
+  it('sends the login as typed, and says when SQMeter wants a password', async () => {
+    let body: unknown = null;
+    server.use(
+      http.post('/api/sqmeter/site', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ error: 'SQMeter wants a password' }, { status: 502 });
+      }),
+    );
+    expect(await fetchSqmeterSite('http://10.0.0.5', { username: 'admin', password: 'sqmeter' })).toEqual({
+      ok: false,
+      error: 'SQMeter wants a password',
+      password: true,
+    });
+    expect(body).toEqual({ url: 'http://10.0.0.5', username: 'admin', password: 'sqmeter' });
+    // The form as it stands: an emptied login or a cleared password is sent empty (no fallback to
+    // the saved login); the mask is sent as is (the device reads it as the saved password).
+    await fetchSqmeterSite('http://10.0.0.5', { username: '', password: null });
+    expect(body).toEqual({ url: 'http://10.0.0.5', username: '', password: '' });
+    await fetchSqmeterSite(undefined, { username: 'admin', password: '********' });
+    expect(body).toEqual({ username: 'admin', password: '********' });
+    // Older firmware's config has no login: nothing is sent.
+    await fetchSqmeterSite('http://10.0.0.5', {});
+    expect(body).toEqual({ url: 'http://10.0.0.5' });
   });
 });

@@ -43,7 +43,7 @@ export const mockConfig: Config = {
   },
   alpaca: { enabled: true },
   safety: {
-    http: { enabled: true, url: 'http://sqmeter.local/api/safety' },
+    http: { enabled: true, url: 'http://sqmeter.local/api/safety', username: '', password: '' },
     mqtt: { enabled: false, topic: 'sqmeter' },
     staleSeconds: 30,
     rainContact: false,

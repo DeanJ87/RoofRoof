@@ -36,6 +36,10 @@ describe('locationLine', () => {
     });
     expect(text({ problem: 'unreadable' })).toBe("SQMeter's answer can't be read: using the kept location");
     expect(text({ problem: 'noLocation', set: false })).toBe('SQMeter has no location');
+    expect(text({ problem: 'passwordNeeded', set: false })).toBe('SQMeter wants a password');
+    expect(text({ problem: 'passwordRefused', readAgeSeconds: 60 })).toBe(
+      'SQMeter refused the password: using the location read 1 min ago',
+    );
     expect(text({ problem: 'noAddress', set: false })).toBe("SQMeter's address isn't set");
     expect(text({ problem: 'waiting', set: false })).toBe("Waiting for SQMeter's location");
     expect(text({ problem: 'waiting', readAgeSeconds: 60 })).toBe("Location from SQMeter's GPS, read 1 min ago");

@@ -28,5 +28,13 @@ export const clampStep = (value: unknown): number => {
 };
 
 // The settings each page edits: a Test compares them before and after its save.
-export const WEATHER_FIELDS = ['safety.http.enabled', 'safety.http.url', 'safety.mqtt.enabled', 'safety.mqtt.topic'];
+// SQMeter's login too (spec 020): a login typed after "wants a password" is a change to test.
+export const WEATHER_FIELDS = [
+  'safety.http.enabled',
+  'safety.http.url',
+  'safety.http.username',
+  'safety.http.password',
+  'safety.mqtt.enabled',
+  'safety.mqtt.topic',
+];
 export const NINA_FIELDS = ['park.nina.url'];

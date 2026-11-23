@@ -13,6 +13,7 @@ import {
   type CopyRowId,
   type CopySecret,
 } from '../../lib/sqmeterCopy';
+import { rememberCopy } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // Copy site settings from SQMeter (spec 020 US3, FR-016): fetch, review the
@@ -23,7 +24,7 @@ import { t } from '../../i18n';
 type View =
   | { kind: 'idle' }
   | { kind: 'busy' }
-  | { kind: 'failed'; error: string }
+  | { kind: 'failed'; error: string; password?: boolean }
   | { kind: 'review'; rows: CopyRow[]; notes: CopyNote[]; ticked: Set<CopyRowId> }
   | { kind: 'applied'; secrets: CopySecret[]; notes: CopyNote[] };
 
@@ -53,8 +54,9 @@ export const SqmeterCopy: FunctionalComponent<SettingsTabProps & { url?: string;
 
   const fetchSite = async () => {
     setView({ kind: 'busy' });
-    const answer = await fetchSqmeterSite(url?.trim() || undefined);
-    if (!answer.ok) return setView({ kind: 'failed', error: answer.error });
+    const http = config.safety?.http;
+    const answer = await fetchSqmeterSite(url?.trim() || undefined, { username: http?.username, password: http?.password });
+    if (!answer.ok) return setView({ kind: 'failed', error: answer.error, password: answer.password });
     const rows = copyRows(answer.site, config);
     setView({ kind: 'review', rows, notes: copyNotes(answer.site), ticked: new Set(rows.map((row) => row.id)) });
   };
@@ -97,8 +99,17 @@ export const SqmeterCopy: FunctionalComponent<SettingsTabProps & { url?: string;
       setView({ ...view, ticked: next });
     };
     const apply = () => {
+      const appliedRows = rows.filter((row) => ticked.has(row.id));
+      const applied = secretsOf(appliedRows);
+      // Secrets SQMeter has set are asked for at their fields, also with the channel off (one that
+      // RoofRoof only had gets the "cleared" note instead).
+      rememberCopy([
+        ...appliedRows.flatMap((row) => row.asks ?? []),
+        ...(notes.includes('pushover') ? ['pushoverKeys' as const] : []),
+        ...(ticked.has('weatherTopic') ? ['weatherTopic' as const] : []),
+      ]);
       updateMany(changesOf(rows, ticked));
-      setView({ kind: 'applied', secrets: secretsOf(rows.filter((row) => ticked.has(row.id))), notes });
+      setView({ kind: 'applied', secrets: applied, notes });
     };
     return (
       <div data-inventory="sqmeter-copy-review">
@@ -132,7 +143,12 @@ export const SqmeterCopy: FunctionalComponent<SettingsTabProps & { url?: string;
   return (
     <>
       {fetchButton}
-      {view.kind === 'failed' && <Note tone="bad">{view.error}</Note>}
+      {view.kind === 'failed' && (
+        <div role="alert">
+          <Note tone="bad">{view.error}</Note>
+          {view.password && <Note>{t('settings.sqmeterCopy.checkPassword')}</Note>}
+        </div>
+      )}
       {view.kind === 'applied' && (
         <>
           <Note tone="ok">{t(wizard ? 'settings.sqmeterCopy.appliedWizard' : 'settings.sqmeterCopy.applied')}</Note>

@@ -33,6 +33,7 @@ export interface RoofPanel {
   supplyLow: boolean;
   sunUp: boolean; // spec 013: the daylight state is day whatever the location and clock
   sqmeterOffline: boolean; // spec 020: the simulated SQMeter doesn't answer (weather, location and the copy)
+  sqmeterLocked: boolean; // spec 020: the simulated SQMeter wants the login admin / sqmeter (401 without it)
   daylight: string; // the device's daylight text
   mount: 'parked' | 'unparked' | 'slewing';
   state: string;
@@ -41,7 +42,9 @@ export interface RoofPanel {
   phase: string;
 }
 
-export type RoofInjection = Partial<Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp' | 'sqmeterOffline'>> & {
+export type RoofInjection = Partial<
+  Pick<RoofPanel, 'unsafe' | 'rain' | 'parkFails' | 'jam' | 'supplyLow' | 'sunUp' | 'sqmeterOffline' | 'sqmeterLocked'>
+> & {
   mount?: 'park' | 'unpark';
 };
 

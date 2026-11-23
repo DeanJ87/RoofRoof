@@ -110,7 +110,7 @@ describe('Wizard: choices, skips and refusals', () => {
     fireEvent.input(address, { target: { value: 'http://10.0.0.5/api/safety' } });
     fireEvent.click(button('Copy from SQMeter'));
     await screen.findByRole('switch', { name: 'Time zone' });
-    expect(copied).toEqual({ url: 'http://10.0.0.5/api/safety' });
+    expect(copied).toEqual({ url: 'http://10.0.0.5/api/safety', username: '', password: '' });
     fireEvent.click(button('Apply ticked'));
     expect(await screen.findByText('Applied: Continue saves them.')).toBeInTheDocument();
     expect(saves).toHaveLength(0);

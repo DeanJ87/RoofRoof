@@ -111,10 +111,29 @@ export const alpacaConfigSchema = z.object({
 // SQMeter and N.I.N.A. serve plain http only; the device's rules and messages
 // (lib/ConfigModel ConfigValidate.cpp, spec 004 contracts/settings.md).
 const isPlainHttp = (url: string) => url.startsWith('http://');
+// The device's length limits are in UTF-8 bytes.
+const utf8Bytes = (value: string) => new TextEncoder().encode(value).length;
 
 export const safetyConfigSchema = z
   .object({
-    http: z.object({ enabled: z.boolean(), url: z.string() }),
+    http: z.object({
+      enabled: z.boolean(),
+      url: z.string(),
+      // Spec 020: SQMeter's login; the device's limits and messages.
+      // The device counts UTF-8 bytes (at most 64) and refuses bytes below 0x20 in the user name.
+      username: z
+        .string()
+        .refine((v) => utf8Bytes(v) <= 64, t('validation.configSchema.sqmeterLoginTooLong'))
+        .refine((v) => !v.includes(':'), t('validation.configSchema.sqmeterUserNoColon'))
+        // eslint-disable-next-line no-control-regex -- the device refuses control characters (spec 020)
+        .refine((v) => !/[\u0000-\u001f]/.test(v), t('validation.configSchema.sqmeterUserNoControl'))
+        .optional(),
+      password: z
+        .string()
+        .refine((v) => utf8Bytes(v) <= 64, t('validation.configSchema.sqmeterLoginTooLong'))
+        .nullable()
+        .optional(),
+    }),
     mqtt: z.object({ enabled: z.boolean(), topic: z.string() }),
     staleSeconds: z
       .number()
