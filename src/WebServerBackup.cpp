@@ -102,14 +102,7 @@ namespace SQM
         return device;
     }
 
-    // Saves a whole new configuration (PUT /api/config and a restore). What
-    // applies without a restart is applied by the save callback (src/main.cpp).
-    bool WebServer::saveAndApply(const Config &next)
-    {
-        return saveConfigCallback(next);
-    }
-
-    bool WebServer::saveAsFlashWrite(AsyncWebServerRequest *request, const Config &next, bool restarts)
+    bool WebServer::editAsFlashWrite(AsyncWebServerRequest *request, const EditConfig &edit, bool restarts)
     {
         // A save that restarts is refused while a restart would be held.
         if (restarts && refuseIfHeld(request, RoofIo::PlatformAction::Restart))
@@ -122,7 +115,16 @@ namespace SQM
             request->send(409, "application/json", createErrorJson(RoofIo::holdText(write.refused())).c_str());
             return false;
         }
-        if (!saveAndApply(next))
+        bool edited = false;
+        const bool saved = updateConfigCallback(
+            [&](const Config &live, Config &next)
+            {
+                edited = edit(live, next);
+                return edited;
+            });
+        if (!edited)
+            return false; // the caller answers
+        if (!saved)
         {
             request->send(500, "application/json", createErrorJson("Failed to save configuration").c_str());
             return false;
@@ -235,6 +237,17 @@ namespace SQM
         return document;
     }
 
+    // The previewed restore `token` names, while its preview is fresh; taken, so it applies once.
+    std::unique_ptr<WebServer::StagedRestore> WebServer::takeStaged(const std::string &token)
+    {
+        std::lock_guard<std::mutex> lock(stagedRestoreLock);
+        if (stagedRestore && millis() - stagedRestore->stagedAtMs > PREVIEW_TTL_MS)
+            stagedRestore.reset();
+        if (stagedRestore && !token.empty() && stagedRestore->token == token)
+            return std::move(stagedRestore);
+        return nullptr;
+    }
+
     void WebServer::handleBackupApply(AsyncWebServerRequest *request)
     {
         if (!requireAuth(request))
@@ -242,15 +255,7 @@ namespace SQM
         std::string body;
         if (!takeBody(request, body))
             return;
-        const std::string token = Backup::readApplyRequest(body);
-        std::unique_ptr<StagedRestore> staged;
-        {
-            std::lock_guard<std::mutex> lock(stagedRestoreLock);
-            if (stagedRestore && millis() - stagedRestore->stagedAtMs > PREVIEW_TTL_MS)
-                stagedRestore.reset();
-            if (stagedRestore && !token.empty() && stagedRestore->token == token)
-                staged = std::move(stagedRestore);
-        }
+        std::unique_ptr<StagedRestore> staged = takeStaged(Backup::readApplyRequest(body));
         // What is applied is exactly what was previewed, against the settings it was previewed on (SQMeter spec 033 FR-013).
         if (!staged || staged->revision != configRevision.load())
         {
@@ -258,7 +263,22 @@ namespace SQM
             return;
         }
         const bool restarting = staged->preview.restart != 0;
-        if (!saveAsFlashWrite(request, staged->preview.candidate, restarting))
+        // Spec 021: the revision checked again under the save lock, so no save
+        // can land between the check and the restore.
+        bool stale = false;
+        const bool saved = editAsFlashWrite(
+            request,
+            [&](const Config &, Config &next)
+            {
+                stale = staged->revision != configRevision.load();
+                if (!stale)
+                    next = staged->preview.candidate;
+                return !stale;
+            },
+            restarting);
+        if (stale)
+            request->send(409, "application/json", Backup::errorJson(Backup::Error::Stale).c_str());
+        if (!saved)
             return;
         Logger::info(TAG, "Settings restored from a backup%s", restarting ? "; restarting" : "");
         request->send(

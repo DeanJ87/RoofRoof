@@ -139,7 +139,7 @@ describe('Roof tab', () => {
     expect(await screen.findByRole('tab', { name: 'Roof', selected: true })).toBeInTheDocument();
   });
 
-  it('saves the edited roof section with the rest', async () => {
+  it('saves only the edited roof setting (spec 021)', async () => {
     mockDevice();
     let sent: Config | null = null;
     server.use(
@@ -152,9 +152,7 @@ describe('Roof tab', () => {
     fireEvent.change(await findField('roof.travelMm'), { target: { value: '1900' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Saved.')).toBeInTheDocument();
-    expect(sent!.roof!.travelMm).toBe(1900);
-    expect(sent!.park).toEqual(mockConfig.park);
-    expect(sent!.safety).toEqual(mockConfig.safety);
+    expect(sent).toEqual({ roof: { travelMm: 1900 } });
   });
 
   it('saves the daylight mode, the limit and the location', async () => {
@@ -174,8 +172,8 @@ describe('Roof tab', () => {
     fireEvent.change(field('location.longitude')!, { target: { value: '-0.12' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(sent).not.toBeNull());
-    expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6, bandDeg: 0.5 });
-    expect(sent!.location).toMatchObject({ source: 'manual', set: true, latitude: 51.5, longitude: -0.12 });
+    expect(sent!.daylight).toEqual({ mode: 'close', sunAltitudeDeg: -6 });
+    expect(sent!.location).toMatchObject({ set: true, latitude: 51.5, longitude: -0.12 });
   });
 
   it('says saves are refused while the roof moves, and what a save does while stopped part-way', async () => {
@@ -239,7 +237,7 @@ describe('Roof tab', () => {
     fireEvent.click(screen.getByLabelText('Ask before Open and Close'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(sent).not.toBeNull());
-    expect(sent!.autoClose).toEqual({ ...mockConfig.autoClose, rearmMinutes: 60, notStarted: 'retry', parkHoldSeconds: 30 });
+    expect(sent!.autoClose).toEqual({ rearmMinutes: 60, notStarted: 'retry', parkHoldSeconds: 30 });
     expect(sent!.ui).toEqual({ confirmOpenClose: true });
   });
 

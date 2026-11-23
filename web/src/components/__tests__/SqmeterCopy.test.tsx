@@ -64,11 +64,12 @@ describe('Copy from SQMeter', () => {
     expect(saves).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].ntp).toEqual({ ...mockConfig.ntp, timezone: 'GMT0BST,M3.5.0/1,M10.5.0' });
-    expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: mockConfig.mqtt.broker, password: '' }));
-    expect(saves[0].location).toEqual(mockConfig.location);
+    // Spec 021: only what the copy changed is sent.
+    expect(saves[0].ntp).toEqual({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0' });
+    expect(saves[0].mqtt).toBeUndefined();
+    expect(saves[0].location).toBeUndefined();
     // Spec 020: the copied time group keeps following SQMeter; the others stay set here.
-    expect(saves[0].sqmeterSync).toEqual({ ...mockConfig.sqmeterSync, time: { follow: true, syncedAt: 0 } });
+    expect(saves[0].sqmeterSync).toEqual({ time: { follow: true } });
   });
 
   it('clears the MQTT password when the broker is applied', async () => {
@@ -81,11 +82,9 @@ describe('Copy from SQMeter', () => {
     fireEvent.click(within(site).getByRole('button', { name: 'Apply ticked' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].mqtt).toEqual(
-      expect.objectContaining({ broker: '192.168.1.10', username: 'observatory', password: null, topic: 'roofroof' }),
-    );
-    expect(saves[0].mqtt.enabled).toBe(mockConfig.mqtt.enabled);
-    expect(saves[0].alerts!.ntfy).toEqual(expect.objectContaining({ topic: 'my-observatory', enabled: false }));
+    expect(saves[0].mqtt).toEqual(expect.objectContaining({ broker: '192.168.1.10', username: 'observatory', password: null }));
+    expect(saves[0].mqtt.enabled).toBeUndefined();
+    expect(saves[0].alerts!.ntfy).toEqual({ topic: 'my-observatory' }); // never switched on by a copy
     expect(saves[0].location).toEqual(expect.objectContaining({ source: 'sqmeter', set: true, latitude: 51.4769 }));
   });
 

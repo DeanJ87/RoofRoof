@@ -100,6 +100,18 @@ const Settings: FunctionalComponent = () => {
     }
   };
 
+  // Spec 021: the device's settings with this page's other edits kept.
+  const reload = async (changed: string[]) => {
+    const replaced = await editor.rebase(changed);
+    if (replaced === null) showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
+    else
+      showToast(
+        replaced.length > 0
+          ? { message: t('settings.reloadedReplaced', { fields: listReasons(replaced) }), tone: 'warn' }
+          : { message: t('settings.reloaded') },
+      );
+  };
+
   const save = async () => {
     setSaving(true);
     const outcome = await editor.save();
@@ -111,6 +123,14 @@ const Settings: FunctionalComponent = () => {
       showToast({ message: outcome.message, tone: 'bad' });
     } else if (outcome.kind === 'unreachable') {
       showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
+    } else if (outcome.kind === 'conflict') {
+      // Spec 021: another page or the device changed some of these settings.
+      showToast({
+        message: t('settings.changedOnDevice', { fields: listReasons(outcome.fields) }),
+        tone: 'warn',
+        durationMs: 0,
+        action: { label: t('settings.reload'), onClick: () => void reload(outcome.fields) },
+      });
     } else {
       showToast(
         outcome.restart.length > 0

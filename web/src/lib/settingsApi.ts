@@ -6,14 +6,28 @@ import { getJson, post, postJson, request } from './api';
 /** The stored settings, as the device sends them (normalised by the caller). Rejects when unreachable or not JSON. */
 export const fetchConfig = async (): Promise<Config> => (await request('/api/config')).json();
 
+/** The header GET /api/config carries the settings revision in (spec 021). */
+export const CONFIG_REVISION_HEADER = 'X-Config-Revision';
+
+/** The stored settings and the revision they were read at (undefined from a device that doesn't send one). */
+export const fetchConfigWithRevision = async (): Promise<{ config: Config; revision: number | undefined }> => {
+  const response = await request('/api/config');
+  const header = response.headers.get(CONFIG_REVISION_HEADER);
+  const revision = header !== null && /^\d+$/.test(header) ? Number(header) : undefined;
+  return { config: (await response.json()) as Config, revision };
+};
+
 /** The live status, or null when the device answers with an error. */
 export const fetchStatus = () => getJson<SystemStatus>('/api/status');
 
 /** Restart the device. */
 export const restartDevice = () => post('/api/restart');
 
-/** Save the settings: whether the device accepted them, and its JSON answer if it sent one. */
-export const saveConfig = async (payload: Config): Promise<{ ok: boolean; body: { success?: boolean; error?: unknown } | null }> => {
+/** The device's answer to a save; `conflicts` (spec 021) names what changed on the device since the page loaded it. */
+export type SaveAnswer = { success?: boolean; error?: unknown; revision?: unknown; conflicts?: unknown };
+
+/** Save the settings (a partial document): whether the device accepted them, and its JSON answer if it sent one. */
+export const saveConfig = async (payload: object): Promise<{ ok: boolean; body: SaveAnswer | null }> => {
   const response = await postJson('/api/config', payload);
   const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json() : null;
   return { ok: response.ok, body };

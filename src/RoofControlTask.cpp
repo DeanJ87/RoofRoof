@@ -9,6 +9,7 @@
 #include "RoofPins.h"
 #include "RoofReadings.h"
 #include "RoofText.h"
+#include "SafetyPoller.h"
 #include "StepWatchdog.h"
 
 // The roof's control task (every RoofIo::CONTROL_PERIOD_MS) and its watchdog
@@ -197,6 +198,15 @@ namespace SQM
         // Spec 017: after the output is applied, so recording can't delay it.
         if (diagLog != nullptr)
             recordDiag(in);
+    }
+
+    RoofIo::GateInputs RoofControl::currentGates() const
+    {
+        RoofIo::GateInputs now = RoofIo::currentGates(gates, safetyHandedOver, millis() - safetyAtMs);
+        // Spec 021: the clock N.I.N.A.'s readings are stamped with, so the
+        // control step bounds the reading's freshness itself.
+        now.nowMs = SafetyPoller::nowMs();
+        return now;
     }
 
     void RoofControl::checkGates()

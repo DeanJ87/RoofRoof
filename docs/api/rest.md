@@ -57,7 +57,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 `connections` shows who holds the device's TCP connections: the live-update clients on `/ws/status`, the most each endpoint takes, and how many were closed since the restart because a newer one replaced them (`replaced`) or they stopped reading (`stalledClosed`).
 
-`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved. Both only say *that* something changed, so a page fetches the details then; they restart from 0 after a restart. `alpaca.clients` has one entry per Alpaca device, keyed by its type: `dome`.
+`alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved, and starts from a random value at each start (so a page loaded before a restart never matches one after it). `recentRevision` restarts from 0 after a restart. Both only say *that* something changed, so a page fetches the details then. `alpaca.clients` has one entry per Alpaca device, keyed by its type: `dome`.
 
 `time.epoch` is Unix seconds like every other timestamp (`0` until the clock is set); `time.iso` is the device's local time with its UTC offset, for display.
 
@@ -135,6 +135,8 @@ Every field, with its default, is in the [configuration reference](../user-guide
 curl http://roofroof.local/api/config
 ```
 
+The response header `X-Config-Revision` is the settings revision the document was read at (the same counter as `configRevision` in the status). Send it back as `baseRevision` to have a save checked against changes made since ([below](#post-apiconfig)).
+
 !!! warning "LAN-sensitive endpoint"
     Password fields are redacted in this response, but the endpoint is still unauthenticated and returns operational configuration. Treat `/api/config` as LAN-sensitive and do not expose the device to guest networks or the public internet.
 
@@ -156,11 +158,38 @@ Every value must have the setting's type: text for names and addresses, `true`/`
 
 While the device has a WiFi network saved, `wifi.ssid` can't be set to `""`: the save is rejected with `"WiFi network can't be blank; use WiFi setup to change networks"`, so a settings save never takes the device off its network. Join a different network with [`POST /api/wifi/connect`](#post-apiwificonnect) (or pick it in Settings → Network); there is no endpoint that forgets the network.
 
-Successful saves return:
+Successful saves return the new settings revision:
 
 ```json
-{ "success": true }
+{ "success": true, "revision": 1834201978 }
 ```
+
+#### Saves from a page loaded earlier
+
+The web UI sends only the settings the person changed, plus two keys the device checks and never stores:
+
+```json
+{
+  "wifi": { "ipv6": false },
+  "baseRevision": 1834201977,
+  "baseValues": { "wifi": { "ipv6": true } }
+}
+```
+
+- `baseRevision`: the `X-Config-Revision` its copy was read at. When it is current, the save goes through.
+- `baseValues`: the values it read for each field it changes, shaped like the settings (`null` for one it didn't have). For a credential, its partners come too: `wifi.ssid` with `wifi.password`; the MQTT broker, port, user name and password; the web user name and password; the ntfy server, topic and token; the Pushover keys; the webhook address and header; SQMeter's address, user name and password.
+
+When the revision isn't current, the device compares each base value with its own settings as `GET /api/config` shows them (passwords masked). If all match, the save goes through: a change made elsewhere to other settings, by another page or by the device itself ([following SQMeter](../user-guide/close-on-unsafe.md#site-from-sqmeter)), is kept and doesn't block it. If any differ, nothing is saved and the answer is `409` naming them (at most 16):
+
+```json
+{
+  "error": "Settings changed on the device since this page loaded them: park.nina.url",
+  "conflicts": ["park.nina.url"],
+  "revision": 1834201980
+}
+```
+
+A save without `baseRevision` (a script, `curl`, an older page) isn't checked, as before. With `baseRevision` but no `baseValues`, any other revision is refused with an empty `conflicts`. The check and the save run under the same lock as every other settings save, so nothing can land in between.
 
 !!! note
     `POST` is the primary method. The firmware also accepts `PUT` for compatibility with full-resource settings clients.

@@ -25,7 +25,8 @@ describe('MQTT publish settings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
-    expect(saved.mqtt.homeAssistant).toEqual({ enabled: true, discoveryPrefix: 'homeassistant' });
+    // Spec 021: only what changed is sent.
+    expect(saved).toEqual({ mqtt: { homeAssistant: { enabled: true } } });
   });
 
   // Spec 008: roof commands over MQTT are off until switched on, and the switch says what they can't do.

@@ -6,6 +6,7 @@
 #include "AlpacaRouter.h"
 #include "Config.h"
 #include "ConfigBackup.h"
+#include "ConfigSave.h"
 #include "DeviceCore.h"
 #include "DiagDocuments.h"
 #include "DiagSchedule.h"
@@ -44,9 +45,14 @@ namespace SQM
     {
     public:
         using GetConfigCallback = std::function<const Config &()>;
-        using SaveConfigCallback = std::function<bool(const Config &)>;
+        // Spec 021: builds the settings to save from the live ones (`next`
+        // starts as a copy); false saves nothing.
+        using EditConfig = std::function<bool(const Config &live, Config &next)>;
+        // Runs `edit`, saves and applies under the one settings save lock, and
+        // counts the revision there. False when the edit declined or the save failed.
+        using UpdateConfigCallback = std::function<bool(const EditConfig &edit)>;
 
-        WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, SaveConfigCallback saveConfig);
+        WebServer(TimeManager *timeMgr, MQTTClient *mqtt, GetConfigCallback getConfig, UpdateConfigCallback updateConfig);
         ~WebServer();
 
         WebServer(const WebServer &) = delete;
@@ -95,8 +101,9 @@ namespace SQM
         void setSiteStatus(SiteStatus source) { siteStatus = std::move(source); }
         using BusyProbe = std::function<bool()>;
         void setRoofBusy(BusyProbe probe) { roofBusy = std::move(probe); }
-        // Spec 020: the device saved its own settings (the location it keeps
-        // from SQMeter): open pages see the new revision.
+        // Every settings save, under the settings save lock (spec 020's own
+        // saves too): open pages see the new revision, and spec 021's stale
+        // check compares against it.
         void noteConfigSaved() { ++configRevision; }
         // Spec 015: the weather sources, the park and N.I.N.A.'s reading as
         // last evaluated, for GET /api/roof/inputs (any task; it only copies).
@@ -167,7 +174,7 @@ namespace SQM
         InputsSource inputsSource;
         const char *lastClosePhase = nullptr; // as last broadcast on /ws/status
         GetConfigCallback getConfigCallback;
-        SaveConfigCallback saveConfigCallback;
+        UpdateConfigCallback updateConfigCallback;
 
         uint32_t lastStatusBroadcast = 0;
         uint32_t lastAlertPass = 0;
@@ -324,12 +331,15 @@ namespace SQM
         void setupNetworkRoutes();
         void handleSettingsEffective(AsyncWebServerRequest *request);
         void handleSetConfig(AsyncWebServerRequest *request, JsonVariant &json);
-        // Saves settings and applies what takes effect at once (a settings save and a restore).
-        bool saveAndApply(const Config &next);
-        // saveAndApply() counted as a flash write (spec 010); answers 409 when
-        // it must wait for the roof (or, with `restarts`, while a restart would
-        // be held) and 500 when the save failed. True when saved.
-        bool saveAsFlashWrite(AsyncWebServerRequest *request, const Config &next, bool restarts = false);
+        // Saves the settings `edit` builds from the live ones under the save lock
+        // (spec 021) and applies what takes effect at once (src/main.cpp),
+        // counted as a flash write (spec 010); answers 409 when it must wait for
+        // the roof (or, with `restarts`, while a restart would be held) and 500
+        // when the save failed. True when saved. When the edit declines, nothing
+        // is answered: the caller says why.
+        bool editAsFlashWrite(AsyncWebServerRequest *request, const EditConfig &edit, bool restarts = false);
+        // Spec 021: the save's answer, 409 for a save from an older page.
+        void answerConfigSave(AsyncWebServerRequest *request, bool saved, const std::string &reason, const ConfigSave::Check &stale);
 
         // The roof (src/WebServerRoof.cpp).
         void setupRoofRoutes();
@@ -394,6 +404,7 @@ namespace SQM
         void setupBackupRoutes();
         void handleBackupStart(AsyncWebServerRequest *request, bool preview);
         void handleBackupApply(AsyncWebServerRequest *request);
+        std::unique_ptr<StagedRestore> takeStaged(const std::string &token);
         static void runBackupJob(void *arg);
         static std::string makeBackupFile(BackupJob &job, int &status);
         std::string previewRestore(BackupJob &job, int &status);

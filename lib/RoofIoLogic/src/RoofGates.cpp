@@ -26,6 +26,7 @@ namespace SQM
             stale.weatherText = text;
             stale.parked = false;
             stale.parkText = text;
+            stale.ninaGrace = false;
             return stale;
         }
 
@@ -56,18 +57,37 @@ namespace SQM
             }
         }
 
+        namespace
+        {
+            // The relied-on reading is still fresh. Unbounded only without a
+            // ride-through and with no time handed over (the demo, the tests).
+            bool readingFresh(const GateInputs &in)
+            {
+                if (in.parkFreshUntilMs == 0)
+                    return !in.ninaGrace;
+                return in.nowMs <= in.parkFreshUntilMs;
+            }
+        } // namespace
+
+        bool closeMayContinue(const GateInputs &in)
+        {
+            return (in.parked || in.ninaGrace) && readingFresh(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
+        }
+
         bool interlockLost(const Roof::Status &status, const GateInputs &in)
         {
             // Spec 016: any calibration leg too. Until the person confirms the open
             // end, a leg may drive the roof the other way (a motor wired backwards).
-            return (status.state == Roof::State::Closing || status.calibrating) && !parkHolds(in);
+            return (status.state == Roof::State::Closing || status.calibrating) && !closeMayContinue(in);
         }
 
         uint32_t interlockBits(const GateInputs &in)
         {
             uint32_t bits = 0;
-            if (!in.parked)
+            if (!in.parked && !in.ninaGrace)
                 bits |= InterlockParkResult;
+            else if (!readingFresh(in))
+                bits |= InterlockNinaStale;
             if (in.fittedSwitches >= 1 && in.switch1 != Contact::Closed)
                 bits |= InterlockSwitch1;
             if (in.fittedSwitches >= 2 && in.switch2 != Contact::Closed)

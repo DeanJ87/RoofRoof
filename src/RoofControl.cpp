@@ -446,7 +446,11 @@ namespace SQM
     }
 
     void RoofControl::setSafety(
-        const Safety::WeatherVerdict &weather, const Safety::ParkResult &park, bool daylightCloses, const std::string &daylightText)
+        const Safety::WeatherVerdict &weather,
+        const Safety::ParkResult &park,
+        const Safety::CloseHold &hold,
+        bool daylightCloses,
+        const std::string &daylightText)
     {
         if (lock == nullptr)
             return;
@@ -457,6 +461,8 @@ namespace SQM
         gates.weatherText = weatherText;
         gates.parked = park.parked;
         gates.parkText = parkText;
+        gates.ninaGrace = hold.riding;
+        gates.parkFreshUntilMs = hold.freshUntilMs;
         gates.daylightCloses = daylightCloses;
         gates.daylightText = daylightText;
         safetyHandedOver = true;
@@ -507,11 +513,6 @@ namespace SQM
     bool RoofControl::moving() const
     {
         return RoofIo::roofMoving(static_cast<Roof::State>(stateNow.load())) || calibratingNow.load();
-    }
-
-    RoofIo::GateInputs RoofControl::currentGates() const
-    {
-        return RoofIo::currentGates(gates, safetyHandedOver, millis() - safetyAtMs);
     }
 
     Safety::SwitchReading RoofControl::parkSwitch(uint8_t index) const

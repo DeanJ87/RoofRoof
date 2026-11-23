@@ -246,6 +246,16 @@ def component_schemas(schemas):
     components = {schema_name(name): schema for name, schema in schemas.items()}
     components["ConfigUpdate"] = without_required(schemas["config"])
     components["ConfigUpdate"]["title"] = "Settings (partial update)"
+    # Spec 021: the optional base of a save from a page (never stored).
+    components["ConfigUpdate"]["properties"]["baseRevision"] = {
+        "type": "integer",
+        "minimum": 0,
+        "description": "The X-Config-Revision the sender's copy was read at. When it isn't current, the save goes through only if every value in baseValues still matches the device's; otherwise 409 with conflicts.",
+    }
+    components["ConfigUpdate"]["properties"]["baseValues"] = {
+        "type": "object",
+        "description": "The values the sender loaded for each field it changes (and their credential partners), shaped like the settings; null for a field it didn't have.",
+    }
     components["Error"] = ERROR_SCHEMA
     return dict(sorted(components.items()))
 

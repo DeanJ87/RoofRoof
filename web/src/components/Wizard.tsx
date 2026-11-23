@@ -7,6 +7,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import type { TestSave } from '../hooks/useInputsTest';
 import { getConfigValidationMessage } from '../validation/configSchema';
 import { fieldErrorAliases } from './settings/payload';
+import { listReasons } from './settings/restart';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
@@ -66,6 +67,7 @@ const outcomeText = (outcome: SaveOutcome): string | null => {
   if (outcome.kind === 'invalid') return getConfigValidationMessage(outcome.errors);
   if (outcome.kind === 'refused') return outcome.message;
   if (outcome.kind === 'unreachable') return t('settings.couldNotReachTheDevice');
+  if (outcome.kind === 'conflict') return t('wizard.changedOnDevice', { fields: listReasons(outcome.fields) });
   return null;
 };
 
@@ -272,6 +274,8 @@ const Wizard: FunctionalComponent = () => {
     const was = saved;
     const outcome = await editor.save(next ? { setup: next } : {});
     if (testScreen && outcome.kind === 'saved') lastSave.current = { index, before, was };
+    // Spec 021: the same settings changed on the device; show them, other answers kept.
+    if (outcome.kind === 'conflict') await editor.rebase(outcome.fields);
     setBusy(false);
     setProblem(outcomeText(outcome));
     if (outcome.kind === 'invalid') focusField(outcome.errors);

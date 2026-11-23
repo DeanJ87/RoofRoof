@@ -113,17 +113,22 @@ namespace SQM
         const RoofControl::Outcome check = roof->teachConfirmable(values);
         if (!check.accepted)
             return sendAnswer(request, check);
-        Config next = getConfigCallback();
-        next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
-        next.roof.hallHighCounts = values.highCounts;
-        next.roof.hallLowCounts = values.lowCounts;
+        // Spec 021: onto the live settings under the save lock.
         std::string reason;
-        if (!next.validate(&reason))
-        {
-            request->send(400, "application/json", createErrorJson(reason.c_str()).c_str());
-            return;
-        }
-        if (!saveAsFlashWrite(request, next))
+        bool invalid = false;
+        const bool saved = editAsFlashWrite(
+            request,
+            [&values, &reason, &invalid](const Config &, Config &next)
+            {
+                next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
+                next.roof.hallHighCounts = values.highCounts;
+                next.roof.hallLowCounts = values.lowCounts;
+                invalid = !next.validate(&reason);
+                return !invalid;
+            });
+        if (invalid)
+            request->send(400, "application/json", createErrorJson(reason.empty() ? "Invalid configuration" : reason.c_str()).c_str());
+        if (!saved)
             return;
         roof->teachClear();
         Logger::info(

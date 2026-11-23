@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1578784,
-  "overBudgetReason": "spec 020: site data from SQMeter (location read, copy route and job task, site parser; the per-group sync of SQMeter's settings with its second filtered read and validation; SQMeter's login on every request; its address normalised, the Test route and https)"
+  "esp32dev": 1592000,
+  "overBudgetReason": "merge of main (020 SQMeter login, address, https) into 021"
 }

@@ -1,6 +1,27 @@
 <!--
 Sync Impact Report
-- Version: 2.0.1 -> 2.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
+- Version: 2.1.0 -> 2.1.1 (PATCH: wording). Principle II's re-check during the close now says
+  what it checks against: the latest good reading of each source while it is fresh. A N.I.N.A.
+  reading that is good, fresh and parked stays in force across a failed read (no reply, an
+  unreadable reply, an API error) until it is older than its freshness limit; a failed read is not
+  a report that the mount moved. Any report of not parked, a fitted switch that opens or can't be
+  read, or evidence past its freshness stops the motor as a motion fault, as before. The start
+  rule ("all fresh at the moment the close starts", unreadable counts as not parked) is unchanged.
+- Why: on the first board a single N.I.N.A. read timeout during a close latched the park
+  interlock and left the roof part-way open (spec 021). The re-check bullet named its stop
+  triggers (a mount that reports unparked, a switch that opens) but not what a failed read means;
+  the code had read the start rule's "can't be read" into it.
+- Risk stated: with no park switches fitted, a mount that unparks while N.I.N.A. stops answering
+  can see the roof keep closing until the last good reading is 10 s old. Before, it stopped at the
+  first failed reply: typically 2-3 s after that reading when N.I.N.A.'s host refuses the
+  connection, up to about 9 s when the request times out (the poller's 2 s period and 6 s request
+  limit). So the added exposure is typically about 7 s, at least about 1 s, and up to about 8 s. Park switches still
+  stop it at once. Judged a clarification, not a relaxation: no
+  reading is used past the freshness limit Principle II already sets, and every named trigger still
+  stops the close at once; the owner may choose to treat it as MAJOR.
+- Templates: no change (they read the principles from this file).
+- Docs: docs/user-guide/safety-inputs.md (Park), specs/021-bench-resilience/spec.md.
+- Earlier: 2.0.1 -> 2.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
 - Modified: VII. Quiet, Consistent UI. The design system gains one documented set of onboarding
   components for guided flows (the modal dialog, the progress bar, the choice card group, the
   speech bubble and the mascot) in `web/src/components/ui.tsx`; beyond them, no new button or
@@ -104,7 +125,10 @@ Closing onto an unparked telescope is the most expensive failure this device can
 - Every close request is checked the same way, whatever its source: Alpaca `CloseShutter`, the
   web UI, MQTT, Home Assistant or the automatic close. No path skips the check.
 - The park interlock is re-checked throughout the close. A mount that reports unparked, or a fitted
-  park switch that opens, stops the motor as a motion fault.
+  park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
+  source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
+  unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
+  motor the same way.
 
 ### III. Unsafe Ends Closed (Fail-Safe Safety Inputs)
 
@@ -311,4 +335,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 2.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-18
+**Version**: 2.1.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-22

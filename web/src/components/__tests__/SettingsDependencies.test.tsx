@@ -107,7 +107,8 @@ describe('settings dependencies in Settings (FR-013b)', () => {
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() => expect(saved).not.toBeNull());
     expect(saved!.mqtt?.enabled).toBe(false);
-    expect(saved!.alerts?.mqtt?.enabled).toBe(true);
+    // Spec 021: not sent at all, so the device keeps it.
+    expect(saved!.alerts).toBeUndefined();
   });
 });
 
