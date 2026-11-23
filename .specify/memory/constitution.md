@@ -1,6 +1,30 @@
 <!--
 Sync Impact Report
-- Version: 2.1.0 -> 2.1.1 (PATCH: wording). Principle II's re-check during the close now says
+- Version: 2.1.1 -> 3.0.0 (MAJOR: Principles II and III gain a test-box exception, which relaxes
+  them).
+- Modified: II. Close Only Onto a Parked Mount and III. Unsafe Ends Closed. On a box with no
+  telescope under it and no weather station (a controller tried out on a desk), the owner may set
+  test-box bypasses: a "no telescope" park source that stands in for N.I.N.A., and a weather bypass
+  that stands in for a missing weather source. They exist only as explicit, visible, owner-set
+  test-box settings: off by default, changed only by an authenticated settings save, shown on every
+  page, in the status, MQTT, Home Assistant, the Alpaca description and an alert, and ending at a
+  deadline of at most 720 h that needs the clock. Neither can be set alongside the source it stands
+  in for (a N.I.N.A. address, an SQMeter source); fitted park switches and a rain contact still
+  count; no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
+- New risk: a telescope put under a roof still in test-box mode, with no N.I.N.A. address and no
+  park switches, can be closed onto until the deadline. A box left in the open with the weather
+  bypass on and no station is not closed for weather. Mitigations: the bypasses can't coexist with
+  N.I.N.A. or SQMeter, so wiring up the real sources forces them off first; they expire (default
+  72 h, at most 30 days); every surface shows them, and an alert goes out when one comes into effect
+  and after every restart while one is in effect.
+- Why: spec 022. Without it nothing that moves can be tried on a box with no mount and no station:
+  jog, teach, the calibration run, Open and Close are all refused, and the bench build has no motor.
+- Coordination: this is a MAJOR bump on top of 2.1.1 (spec 021). If spec 021's amendment is taken
+  as 3.0.0 instead, this one becomes 4.0.0 with the same text.
+- Templates: no change (they read the principles from this file).
+- Docs: docs/user-guide/test-box.md, docs/user-guide/safety-inputs.md,
+  specs/022-test-box-bypass/spec.md.
+- Earlier: 2.1.0 -> 2.1.1 (PATCH: wording). Principle II's re-check during the close now says
   what it checks against: the latest good reading of each source while it is fresh. A N.I.N.A.
   reading that is good, fresh and parked stays in force across a failed read (no reply, an
   unreadable reply, an API error) until it is older than its freshness limit; a failed read is not
@@ -129,6 +153,12 @@ Closing onto an unparked telescope is the most expensive failure this device can
   source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
   unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
   motor the same way.
+- **Test-box exception.** On a box with no telescope under it, the owner may set the park source
+  to "no telescope". Bypasses exist only as explicit, visible, owner-set test-box settings: off by
+  default, changed only by an authenticated settings save, shown on every page and every interface
+  while in effect, and ending at a deadline the device enforces. "No telescope" stands in for
+  N.I.N.A. only: it can't be set while a N.I.N.A. address is, fitted park switches still count,
+  and every close path uses the same park result.
 
 ### III. Unsafe Ends Closed (Fail-Safe Safety Inputs)
 
@@ -155,6 +185,10 @@ Doubt about the weather MUST resolve to "unsafe".
   motion decisions taken from it.
 - Every unsafe reason, fault and refusal MUST state the measured value and the limit, or the
   input that failed (`Supply 10.9 V < 11.5 V`, `Park switch open`, `N.I.N.A. not responding`).
+- **Test-box exception.** With no weather source configured at all, the same owner-set test-box
+  settings (Principle II) may bypass "no weather source". They never bypass a reading (a rain
+  contact that is wet or unreadable) or the doubt of a source that is configured, and can't be set
+  while an SQMeter source is on.
 
 ### IV. Standards Conformance (ASCOM Alpaca Dome)
 
@@ -335,4 +369,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 2.1.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-22
+**Version**: 3.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
