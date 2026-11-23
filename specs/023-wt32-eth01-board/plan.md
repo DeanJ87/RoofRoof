@@ -12,7 +12,7 @@
   - `Mdio`: clause-22 read frames, the read decode, the PHY identification, the clock test;
   - `NetworkPlan`: whether to start the Wi-Fi station and open the setup hotspot.
 - `lib/ConfigModel`: the `pins` group (JSON in/out, defaults, structural validation and the rules
-  with a chip without PSRAM), `wifi.withEthernet`, `safety.rainContact` removed (ignored on read);
+  with a chip without PSRAM), `network.mode`, `safety.rainContact` removed (ignored on read);
   `Config::load` says when stored settings were present but rejected.
 - `lib/ConfigBackup`: the `pins` restart reason; the restart-cases fixture.
 - `lib/SafetyInputLogic`, `lib/RoofIoLogic`: the rain contact removed (verdict input, reason bit 8
@@ -30,7 +30,7 @@
   - main: boot order (settings, pins, then the rest), NTP and command-line OTA once online;
   - WebServer: `GET /api/pins`, `POST /api/pins/validate`, `POST`/`GET /api/pins/check`; the
     config save's busy refusal for pins and the chip check; status `ethernet` and `pins`.
-- Web: types and zod for `pins` and `wifi.withEthernet`; `lib/pinsApi.ts`; a Pins page
+- Web: types and zod for `pins` and `network.mode`; `lib/pinsApi.ts`; a Pins page
   (`/pins`) with the board and preset choice cards, the pin fields, the issues, Save and Restart,
   and the wiring check; the wizard's board and Check wiring screens; Settings → Network's Ethernet
   card; status rows; rain contact UI removed; i18n; MSW mocks; Vitest; Playwright inventory.
@@ -44,7 +44,7 @@
 |---|---|
 | **Language/Version** | C++17 (GCC 14, Arduino-ESP32 3.3.12 / ESP-IDF 5.5.5); TypeScript strict |
 | **Primary Dependencies** | Arduino `ETH` (LAN8720 over the ESP32 EMAC); spec 003's MotorDriver and control task; spec 010's platform guard; spec 015/018's wizard; spec 021's partial saves |
-| **Storage** | the `pins` group and `wifi.withEthernet` in the settings document (about 170 bytes more) |
+| **Storage** | the `pins` group and `network.mode` in the settings document (about 170 bytes more) |
 | **Testing** | new `test_board_pins`, `test_wiring_check`, `test_mdio`, `test_network_plan`; `test_config_model`, `test_safety_input_logic`, `test_roof_*` updated; Vitest for the page, the wizard screens and the API; Playwright inventory |
 | **Target Platform** | ESP32 DevKit (WROOM) and WT32-ETH01, one image |
 | **Constraints** | flash 86.3 % before: Ethernet and this feature must stay under 90 % |

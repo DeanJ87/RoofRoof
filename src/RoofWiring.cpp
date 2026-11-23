@@ -1,12 +1,15 @@
 #include <Arduino.h>
 
 #include "RoofControl.h"
+#include "Logger.h"
+#include "MotionGuards.h"
 #include "RoofLocked.h"
 #include "RoofReadings.h"
 #include "RoofSettings.h"
+#include "RoofText.h"
 
-// Spec 023: what the wiring check reads from the roof's inputs. Only inputs:
-// nothing here can drive a pin.
+// Spec 023: the roof without valid pins, and what the wiring check reads: the
+// inputs, and EN's pull-down through MotorDriver (both PWM held low).
 
 namespace SQM
 {
@@ -33,6 +36,39 @@ namespace SQM
             }
         }
     } // namespace
+
+    RoofControl::Outcome RoofControl::notStarted() const
+    {
+        if (!pinsValid)
+            return Outcome{false, "pinSetup", RoofIo::pinSetupText(pinsReason), Roof::State::Unknown};
+        return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
+    }
+
+    MotorDriver::EnableProbe RoofControl::probeEnable(std::string &why)
+    {
+        if (lock == nullptr || !started.load())
+        {
+            why = notStarted().text;
+            return MotorDriver::EnableProbe::NotRun;
+        }
+        RoofLocked held(lock);
+        const Roof::Status &status = controller.status();
+        const bool still = !RoofIo::roofMoving(status.state) && !closePending && !calibration.active() &&
+                           controller.output().command == Driver::Command::Off;
+        if (!still)
+        {
+            why = "The roof is busy";
+            return MotorDriver::EnableProbe::NotRun;
+        }
+        return MotorDriver::probeEnable();
+    }
+
+    void RoofControl::takePins(const Board::PinMap &inEffect, bool valid, const std::string &reason)
+    {
+        pins = inEffect;
+        pinsValid = valid;
+        pinsReason = reason;
+    }
 
     void RoofControl::wiringReadings(Board::WiringInputs &in) const
     {

@@ -50,7 +50,12 @@ namespace SQM
             // Spec 023: Ethernet first; in Auto, followPlan() may start the
             // station or the hotspot; in Ethernet only, the radio stays off.
             WiFi.mode(WIFI_OFF);
-            Logger::info(TAG, "Ethernet: Wi-Fi %s", mode == Net::NetMode::Ethernet ? "off" : config.ssid.empty() ? "not set up (optional)" : "as a fallback");
+            Logger::info(
+                TAG,
+                "Ethernet: Wi-Fi %s",
+                mode == Net::NetMode::Ethernet ? "off"
+                : config.ssid.empty()          ? "not set up (optional)"
+                                               : "as a fallback");
             return;
         }
         if (!config.ssid.empty())
@@ -82,7 +87,10 @@ namespace SQM
         const Net::Plan plan = Net::wifiPlan(in);
         if (plan.startStation)
         {
-            Logger::warn(TAG, "No Ethernet address for %lu s: joining the saved Wi-Fi network", static_cast<unsigned long>(in.msEthernetDown / 1000));
+            Logger::warn(
+                TAG,
+                "No Ethernet address for %lu s: joining the saved Wi-Fi network",
+                static_cast<unsigned long>(in.msEthernetDown / 1000));
             stationStarted = true;
             if (!apMode)
                 WiFi.mode(WIFI_STA);
@@ -93,6 +101,16 @@ namespace SQM
             Logger::warn(TAG, "No network after %lu s, opening the setup hotspot", static_cast<unsigned long>(in.msSinceBoot / 1000));
             startCaptivePortal();
         }
+    }
+
+    void WiFiManager::handleBesideEthernet()
+    {
+        followPlan();
+        // Only a started station is retried (never in Ethernet only).
+        if (stationStarted && config.autoReconnect && !retryPaused && !isConnected())
+            handleReconnect();
+        else if (isConnected())
+            currentReconnectDelay = config.reconnectDelayMs;
     }
 
     void WiFiManager::handle()
@@ -112,12 +130,7 @@ namespace SQM
 
         if (ethernetBoard)
         {
-            followPlan();
-            // Only a started station is retried (never in Ethernet only).
-            if (stationStarted && config.autoReconnect && !retryPaused && !isConnected())
-                handleReconnect();
-            else if (isConnected())
-                currentReconnectDelay = config.reconnectDelayMs;
+            handleBesideEthernet();
             return;
         }
 

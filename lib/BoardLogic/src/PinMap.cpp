@@ -50,10 +50,9 @@ namespace SQM
             constexpr uint64_t ESP32_STRAPS = gpioBit(0) | gpioBit(2) | gpioBit(5) | gpioBit(12) | gpioBit(15);
             constexpr uint64_t ESP32_BOOT_PULSES = gpioBit(5) | gpioBit(14) | gpioBit(15);
             // WT32-ETH01 (research R2): the RMII, MDIO/MDC, clock and oscillator pins, and its header.
-            constexpr uint64_t WT32_ETHERNET =
-                gpioBit(0) | gpioBit(16) | gpioBit(18) | gpioBit(19) | gpioRange(21, 23) | gpioRange(25, 27);
-            constexpr uint64_t WT32_HEADER = gpioRange(0, 5) | gpioBit(12) | gpioBit(14) | gpioBit(15) | gpioBit(17) |
-                                             gpioBit(32) | gpioBit(33) | gpioBit(35) | gpioBit(36) | gpioBit(39);
+            constexpr uint64_t WT32_ETHERNET = gpioBit(0) | gpioBit(16) | gpioBit(18) | gpioBit(19) | gpioRange(21, 23) | gpioRange(25, 27);
+            constexpr uint64_t WT32_HEADER = gpioRange(0, 5) | gpioBit(12) | gpioBit(14) | gpioBit(15) | gpioBit(17) | gpioBit(32) |
+                                             gpioBit(33) | gpioBit(35) | gpioBit(36) | gpioBit(39);
         } // namespace
 
         uint8_t PinMap::pin(Function function) const

@@ -82,16 +82,16 @@ namespace SQM
         {
             EnProbe en = EnProbe::NotRun;
             uint16_t hallCounts = 0;
-            uint16_t hallRailLow = 30;   // Roof::HALL_RAIL_LOW_COUNTS
+            uint16_t hallRailLow = 30;    // Roof::HALL_RAIL_LOW_COUNTS
             uint16_t hallRailHigh = 4065; // Roof::HALL_RAIL_HIGH_COUNTS
             uint16_t hallMin = 100;       // the settings' range
             uint16_t hallMax = 3995;
             float supplyVolts = NAN;
-            float supplyLimit = 11.0f; // roof.minSupplyVolts
+            float supplyLimit = 11.0f;  // roof.minSupplyVolts
             uint8_t fittedSwitches = 0; // park.switches: 0, 1 (A) or 2 (A and B)
             SwitchLevel parkA = SwitchLevel::Unreadable;
             SwitchLevel parkB = SwitchLevel::Unreadable;
-            bool currentSense = false;   // roof.currentSenseEnabled
+            bool currentSense = false; // roof.currentSenseEnabled
             float currentAmps[2] = {NAN, NAN};
             float currentMillivolts[2] = {NAN, NAN};
             EthernetFacts ethernet;

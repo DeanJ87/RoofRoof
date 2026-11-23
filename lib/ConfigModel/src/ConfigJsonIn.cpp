@@ -501,8 +501,7 @@ namespace SQM
         {
             applyRoot(root, cfg);
             applyWifi(root.child("wifi"), cfg.wifi, keep);
-            if (!applyPins(root, cfg.pins, error) ||
-                !applyNetwork(root.child("network"), cfg.network, error))
+            if (!applyPins(root, cfg.pins, error) || !applyNetwork(root.child("network"), cfg.network, error))
                 return false;
             applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
             applyAccess(root, cfg, keep);

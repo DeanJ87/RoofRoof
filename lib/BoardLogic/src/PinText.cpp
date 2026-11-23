@@ -34,13 +34,15 @@ namespace SQM
                 case IssueCode::InputOnly:
                     return format("%s on GPIO%u: GPIO%u is input only and can't drive an output", what, pin, pin);
                 case IssueCode::NotAdc1:
-                    return format("%s on GPIO%u: an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while Wi-Fi is on", what, pin);
+                    return format(
+                        "%s on GPIO%u: an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while Wi-Fi is on", what, pin);
                 case IssueCode::NoPullup:
                     return format("%s on GPIO%u: GPIO%u has no internal pull-up, so an open switch would float", what, pin, pin);
                 case IssueCode::Shared:
                     return format("%s on GPIO%u: GPIO%u is already %s", what, pin, pin, functionLabel(issue.other));
                 case IssueCode::EnStrap:
-                    return format("EN on GPIO%u: EN can't be on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15)", pin);
+                    return format(
+                        "EN on GPIO%u: EN can't be on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15)", pin);
                 default:
                     return format("%s on GPIO%u: this preset's pins are fixed; choose Custom to change one", what, pin);
                 }
@@ -51,15 +53,31 @@ namespace SQM
                 switch (code)
                 {
                 case IssueCode::Strap0:
-                    return format("%s on GPIO%u: a strapping pin; held low at reset (a closed switch), the board starts in its download mode instead of the firmware", what, pin);
+                    return format(
+                        "%s on GPIO%u: a strapping pin; held low at reset (a closed switch), the board starts in its download mode instead "
+                        "of the firmware",
+                        what,
+                        pin);
                 case IssueCode::Strap2:
-                    return format("%s on GPIO%u: a strapping pin; it must be low or floating for USB flashing, a normal start ignores it", what, pin);
+                    return format(
+                        "%s on GPIO%u: a strapping pin; it must be low or floating for USB flashing, a normal start ignores it", what, pin);
                 case IssueCode::Strap5:
-                    return format("%s on GPIO%u: a strapping pin (SDIO timing, unused here) that pulses while the chip starts; fine for a switch input, or a PWM input while EN is held low", what, pin);
+                    return format(
+                        "%s on GPIO%u: a strapping pin (SDIO timing, unused here) that pulses while the chip starts; fine for a switch "
+                        "input, or a PWM input while EN is held low",
+                        what,
+                        pin);
                 case IssueCode::Strap12:
-                    return format("%s on GPIO%u: a strapping pin that sets the flash voltage; held high at reset, a 3.3 V flash module won't start", what, pin);
+                    return format(
+                        "%s on GPIO%u: a strapping pin that sets the flash voltage; held high at reset, a 3.3 V flash module won't start",
+                        what,
+                        pin);
                 default:
-                    return format("%s on GPIO%u: a strapping pin (low at reset only silences the boot log) that pulses while the chip starts; fine for a switch input, or a PWM input while EN is held low by its pull-down", what, pin);
+                    return format(
+                        "%s on GPIO%u: a strapping pin (low at reset only silences the boot log) that pulses while the chip starts; fine "
+                        "for a switch input, or a PWM input while EN is held low by its pull-down",
+                        what,
+                        pin);
                 }
             }
         } // namespace

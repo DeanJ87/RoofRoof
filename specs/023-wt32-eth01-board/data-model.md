@@ -4,7 +4,7 @@
 
 | Field | Type | Default (DevKit) | WT32 carrier v1 |
 |---|---|---|---|
-| `preset` | `Preset`: `Devkit`, `Wt32CarrierV1`, `Custom` | `Devkit` | `Wt32CarrierV1` |
+| `preset` | `Preset`: `Devkit`, `Wt32CarrierV1`, `Custom`, `Unset` | `Devkit` (`Unset` on a new device) | `Wt32CarrierV1` |
 | `board` | `BoardId`: `Esp32Devkit`, `Wt32Eth01` | `Esp32Devkit` | `Wt32Eth01` |
 | `rpwm` | GPIO (uint8) | 25 | 14 |
 | `lpwm` | GPIO | 26 | 15 |
@@ -17,7 +17,7 @@
 | `parkB` | GPIO | 33 | 5 |
 
 JSON names: `preset` `devkit` / `wt32-carrier-v1` / `custom`; `board` `esp32-devkit` /
-`wt32-eth01`. A missing `pins` group loads as the DevKit preset. A named preset fixes `board` and
+`wt32-eth01`; `unset` for no board chosen (a new device). A missing `pins` group (settings saved before spec 023) loads as the DevKit preset. A named preset fixes `board` and
 every pin.
 
 ## `Board::Facts`
@@ -64,21 +64,22 @@ by the PHY); then 16 data bits, MSB first. `identify(id1, id2)`: `None` (all one
 
 ## Network plan (`Net::wifiPlan`, lib/BoardLogic `NetworkPlan.h`)
 
-Inputs: `ethernetBoard`, `role` (`Fallback`, `Off`), `hasCredentials`, `ethernetUp`, `wifiUp`,
-`msSinceBoot`, `msEthernetDown` (since boot or since it lost its address), `joinedSinceBoot`,
-`stationStarted`, `hotspotOpen`. Outputs: `startStation`, `openHotspot`.
+Inputs: `mode` (`Auto`, `Ethernet`, `Wifi`), `hasCredentials`, `ethernetLink`, `ethernetUp`,
+`msEthernetDown` (since boot or since it lost its address), `msSinceLink`, `msSinceBoot`,
+`joinedSinceBoot`, `stationStarted`, `hotspotOpen`. Outputs: `startStation`, `openHotspot`
+(Auto only; Ethernet only never; Wi-Fi only leaves it to WiFiManager's DevKit rules).
 
 ## Settings
 
 - `pins` (new group, above).
-- `wifi.withEthernet`: `fallback` (default) or `off`.
+- `network.mode`: `auto` (default), `ethernet` or `wifi`.
 - `safety.rainContact`: removed (ignored when read).
 
 ## Status (`GET /api/status`, `/ws/status`)
 
 - New `ethernet`: `present` (the board in effect has Ethernet), `started`, `phyFound`, `link`,
   `speedMbps`, `fullDuplex`, `ip`, `mac`, `ipv6` (addresses, when on).
-- New `pins`: `preset`, `board`, `valid`, `restartNeeded`.
+- New `pins`: `preset`, `board` (in effect: chosen, or detected while none is), `valid`, `restartNeeded`.
 - Removed: `roof.rainContact`.
 
 ## Inputs document (`GET /api/roof/inputs`)

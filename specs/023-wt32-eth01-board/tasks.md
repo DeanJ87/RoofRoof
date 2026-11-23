@@ -18,9 +18,9 @@
 - [ ] T008 [US5] `Mdio.h`, src/Mdio.cpp in lib/BoardLogic
 - [ ] T009 [US4] Native tests `test/test_network_plan`: DevKit (station at once, hotspot by the existing rule), Ethernet board fallback (station after 30 s down, never before, stays), off (never), hotspot at 45 s without any join, never after a join
 - [ ] T010 [US4] `NetworkPlan.h`, src/NetworkPlan.cpp in lib/BoardLogic
-- [ ] T011 [US1] Tests in test/test_config_model: `pins` default, an old document loads as DevKit, a preset alone fills its pins, a mismatching named preset refused, a Custom set checked by the rules, JSON round trip, `wifi.withEthernet` default and values, `safety.rainContact` ignored, the stored size with the new group
-- [ ] T012 [US1] ConfigModel: `PinMap pins`, `WiFiConfig::withEthernet`; JSON in/out; validate; `Config::load` reports a rejected store; rain contact removed
-- [ ] T013 [US1] ConfigBackup restart reason `pins` (and `wifi.withEthernet` with wifi); test/fixtures/backup/restart-cases.json
+- [ ] T011 [US1] Tests in test/test_config_model: `pins` default, an old document loads as DevKit, a preset alone fills its pins, a mismatching named preset refused, a Custom set checked by the rules, JSON round trip, `network.mode` default and values, `safety.rainContact` ignored, the stored size with the new group
+- [ ] T012 [US1] ConfigModel: `PinMap pins`, `NetworkConfig::mode`; JSON in/out; validate; `Config::load` reports a rejected store; rain contact removed
+- [ ] T013 [US1] ConfigBackup restart reason `pins` (and `network.mode` with wifi); test/fixtures/backup/restart-cases.json
 - [ ] T014 [US6] Rain contact out of lib/SafetyInputLogic (RainContact, the reason bit, InputsReport, SafetySettings) and lib/RoofIoLogic (SwitchInput, RoofStatus); tests updated
 - [ ] T015 [US2] `FaultCause::PinSetup` (encode, decode, text) and test
 - [ ] T016 Demo core rebuilt (`tools/demo-core/build.sh`)
@@ -36,7 +36,7 @@
 
 ## Phase 4: Web and demo
 
-- [ ] T023 [US1] Types, zod, defaults, mocks for `pins`, `wifi.withEthernet`, status blocks; rain contact out of types, zod, mocks
+- [ ] T023 [US1] Types, zod, defaults, mocks for `pins`, `network.mode`, status blocks; rain contact out of types, zod, mocks
 - [ ] T024 [US1] `lib/pinsApi.ts` with Vitest
 - [ ] T025 [US1] Pins page (`/pins`): board and preset cards, pin fields, issues, Save and Restart; links from Settings → Roof and System; Vitest
 - [ ] T026 [US3] Wiring check panel (shared by the page and the wizard); Vitest

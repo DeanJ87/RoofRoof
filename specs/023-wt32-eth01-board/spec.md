@@ -30,14 +30,28 @@ SQMeter's rain gauge.
 Each answer takes the safest option the constitution allows and is also listed under
 "Assumptions decided for the owner".
 
-- Q: One firmware image for both boards, or a build per board? → A: One image. The board is a
-  setting read at boot; Ethernet starts only when the saved board has it. The Ethernet driver fits
+- Q: One firmware image for both boards, or a build per board? → A: One image, flashed the same
+  way on either board. The board is a setting read at boot (or, before one is chosen, found by a
+  probe); Ethernet starts only when that board has it. The Ethernet driver fits
   the flash budget (research R1), one image keeps one release asset and one update path, and a
   DevKit never starts Ethernet, so its pins are never touched by it.
 - Q: What do the presets set? → A: A preset names the board and every pin. "ESP32 DevKit" is
-  today's map without the rain contact, and stays the default, so existing devices are unchanged.
-  "WT32-ETH01 + RoofRoof carrier v1" is the carrier's map. "Custom" keeps the board choice and
-  lets each pin be set; it is checked by the same rules.
+  today's map without the rain contact. "WT32-ETH01 + RoofRoof carrier v1" is the carrier's map.
+  "Custom" keeps the board choice and lets each pin be set; it is checked by the same rules.
+- Q: Which preset does a device start with? → A: An existing device (settings saved before this
+  spec) is migrated to "ESP32 DevKit" explicitly, so it keeps working unchanged. A new device (no
+  saved settings) has no board chosen ("unset"): a WT32-ETH01's GPIO 25-27 are its Ethernet's
+  receive lines, so the DevKit's motor pins must never be driven on a board nobody has named. With
+  no board chosen nothing is driven, every candidate motor pin stays an input, and the setup wizard
+  and the Pins page ask for the board.
+- Q: How is the board found before it is chosen? → A: At boot, before any pin is touched, the
+  device probes for the WT32-ETH01's LAN8720 (oscillator power on GPIO16, MDC 23, MDIO 18, PHY
+  address 1, the clock on GPIO0). None of those pins is used by the DevKit's wiring (its motor,
+  sense and park pins are 25-27 and 32-39), so the probe can't disturb a DevKit; it is skipped on a
+  chip with PSRAM, where GPIO16 is the PSRAM's. If the PHY answers, the device runs Ethernet at
+  once (so the wizard can be reached over the cable) and the board question preselects the WT32
+  carrier preset; otherwise it suggests the DevKit. The person still confirms the preset: nothing
+  is driven until a preset is saved and the device restarts.
 - Q: When does a pin change take effect? → A: Only at the next start. A save that changes the
   board, the preset or a pin is refused while the roof moves, a close waits, the close sequence
   works, a calibration run or a jog is under way; otherwise it saves and the page asks for a
@@ -46,7 +60,8 @@ Each answer takes the safest option the constitution allows and is also listed u
   read? → A: Nothing is driven: every candidate motor pin (the saved RPWM, LPWM and EN and every
   preset's) that isn't reserved stays an input with no pull, the motor driver is never armed, the
   roof's control task doesn't start, and the roof shows the fault "Pin setup invalid" with the
-  first broken rule. The web UI, the network and the settings keep working so it can be fixed.
+  first broken rule (or "No board chosen yet"). The web UI, the network and the settings keep
+  working so it can be fixed.
   The fault isn't stored: once a valid set is saved and the device restarts, it is gone.
 - Q: Is EN still driven low before anything else? → A: Yes, as early as the pin setup allows:
   the boot reads the saved settings first (the only step before it), then drives EN low and both
@@ -70,18 +85,34 @@ Each answer takes the safest option the constitution allows and is also listed u
   the link; otherwise a short probe of the PHY's management bus that detects a WT32-ETH01 and
   suggests its preset). Direction and travel need motion and stay with spec 019's attended jog and
   teach, which the check points to.
-- Q: How does the Ethernet probe stay harmless on a DevKit? → A: It runs only when the board in
-  effect has no Ethernet, the chip has no PSRAM, and none of GPIO 0, 16, 18 or 23 is a roof
-  function. It powers the WT32's 50 MHz oscillator (GPIO16) for about 15 ms, samples GPIO0 for the
+- Q: How does the wiring check's Ethernet probe stay harmless on a DevKit? → A: It runs only when
+  the board in effect has no Ethernet, the chip has no PSRAM, and none of GPIO 0, 16, 18 or 23 is a
+  roof function. It powers the WT32's 50 MHz oscillator (GPIO16) for about 15 ms, samples GPIO0 for the
   clock, reads the PHY's two ID registers at address 1 over MDC 23 / MDIO 18 (MDIO is only ever
-  pulled low or released), then switches the oscillator off and returns the three pins to inputs.
-- Q: How does Ethernet relate to Wi-Fi on a WT32-ETH01? → A: Ethernet starts at boot and is the
-  preferred link. A new setting chooses Wi-Fi's role: "fallback" (the default) starts the Wi-Fi
-  station with the saved network once Ethernet has had no address for 30 s, and keeps it until the
-  next restart beside Ethernet, which stays the default route whenever it is up; "off" never starts
-  the station. On either, the setup hotspot opens as today when no network has been joined 45 s
-  after boot, so a board with neither a cable nor Wi-Fi can still be reached; joining a network
-  from the hotspot's Wi-Fi page sets the role back to "fallback".
+  pulled low or released), then switches the oscillator off (GPIO16 an input with its pull-down,
+  holding it off) and returns MDC and MDIO to inputs.
+- Q: How does Ethernet relate to Wi-Fi on a WT32-ETH01? → A: A network mode setting, shown only on
+  a board with Ethernet (elsewhere the mode is Wi-Fi):
+  - **Auto** (the default): Ethernet starts at boot and is preferred. A saved Wi-Fi network is
+    joined once Ethernet has had no address for 30 s (a pulled cable, a dead switch) and stays up
+    until the next restart beside Ethernet, which is the default route whenever it has an address.
+    Without a saved network nothing else happens.
+  - **Ethernet only**: the Wi-Fi radio stays off and the setup hotspot never opens.
+  - **Wi-Fi only**: Ethernet isn't started; Wi-Fi works exactly as on a DevKit.
+- Q: Are empty Wi-Fi settings an error on a board with Ethernet? → A: No. They are a normal,
+  valid state when Ethernet works: the settings, the UI and the status never call them an error
+  or "not set up"; the Wi-Fi page says Wi-Fi is optional and shows that the device is on Ethernet.
+- Q: When does the setup hotspot open on a board with Ethernet? → A: In Auto, only when no network
+  can be reached at boot: no Ethernet address and no working Wi-Fi 45 s after boot, and, when the
+  cable has a link, 20 s after the link came up (time for DHCP). A new WT32 on a cable therefore
+  never opens it: it is reachable at `roofroof.local` or its DHCP address and the setup wizard runs
+  in the browser over Ethernet, with the Wi-Fi step skippable ("You're on Ethernet"). Once any
+  network has been joined since boot, a later outage (a pulled cable) falls back to a saved Wi-Fi
+  network or keeps retrying Ethernet; it never opens the hotspot, because a passwordless hotspot on
+  a running roof controller widens who can reach it, and a power cycle without a network brings
+  the hotspot back. In Ethernet only it never opens. In Wi-Fi only the DevKit's rules apply. When
+  the hotspot is open and Ethernet or Wi-Fi comes up, the device restarts into normal operation as
+  it does today.
 - Q: What keys off "the network is up" today, and what does it key off now? → A: Everything that
   checked the Wi-Fi station (mDNS, command-line OTA, NTP's start, the SQMeter and N.I.N.A. poller,
   alert sends, the settings-dependency facts, the platform guard's "network up") now checks "any
@@ -96,8 +127,14 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: Where is the pin setup in the UI? → A: A Pins page (from Settings → Roof and the System page)
   with the board, the preset, each function's pin, the rules' errors and warnings as they are
   edited, the pins in effect, and the wiring check. The wizard's Hardware page gains a board
-  question (the three presets as choice cards) and a Check wiring screen, and loses the rain
-  question.
+  question (the three presets as choice cards, preselected from the probe), a network question on
+  a board with Ethernet (skippable, "You're on Ethernet") and a Check wiring screen, and loses the
+  rain question. Settings → Network shows the Ethernet status and the network mode on a board with
+  Ethernet.
+- Q: How is a WT32-ETH01 flashed? → A: The first time over a 3.3 V USB-serial adapter on TX0, RX0
+  and GND with IO0 held to GND at reset (the carrier has a jumper), `pio run -e esp32dev -t upload`
+  then `-t uploadfs`; after that, updates go over the network (the Updates page or command-line OTA),
+  over Ethernet as over Wi-Fi. The same image serves both boards.
 
 ## Constitution rules this spec relies on
 
@@ -214,18 +251,45 @@ WT32-ETH01 (pending).
 
 1. **Given** the WT32 board, a cable and no Wi-Fi network saved, **When** it starts, **Then** it
    has an address over Ethernet within a few seconds, and no setup hotspot opens.
-2. **Given** Wi-Fi as fallback with a saved network, **When** the cable is unplugged for 30 s,
-   **Then** the Wi-Fi station joins; when the cable returns, Ethernet is the default route again.
-3. **Given** Wi-Fi off, **When** the cable is unplugged, **Then** the station never starts; after a
-   restart without a cable, the setup hotspot opens after 45 s.
-4. **Given** the DevKit board, **Then** Ethernet never starts and Wi-Fi behaves exactly as today.
+2. **Given** Auto with a saved network, **When** the cable is unplugged for 30 s, **Then** the
+   Wi-Fi station joins; when the cable returns, Ethernet is the default route again.
+3. **Given** Auto with no saved network, **When** the cable is unplugged after boot, **Then** no
+   hotspot opens and Ethernet is retried; after a restart without a cable, the hotspot opens 45 s
+   after boot.
+4. **Given** Ethernet only, **Then** the Wi-Fi radio stays off and no hotspot ever opens.
+5. **Given** Wi-Fi only, **Then** Ethernet never starts and Wi-Fi behaves as on a DevKit.
+6. **Given** the DevKit board, **Then** Ethernet never starts, the mode isn't shown, and Wi-Fi
+   behaves exactly as today.
+7. **Given** a new WT32-ETH01 on a cable with a link but a slow DHCP server, **Then** the hotspot
+   waits 20 s after the link before opening.
 
 ---
 
-### User Story 5 - Detect a WT32-ETH01 still set up as a DevKit (Priority: P2)
+### User Story 5 - A new board is found, never guessed (Priority: P1)
 
-A WT32-ETH01 freshly flashed runs the DevKit preset. The wiring check's Ethernet probe finds the
-LAN8720 at address 1 and suggests the WT32 carrier preset.
+A WT32-ETH01 freshly flashed has no board chosen. At boot it drives nothing, probes, finds the
+LAN8720, runs Ethernet and opens the wizard over the cable with the WT32 carrier preset
+preselected. A freshly flashed DevKit finds no PHY and suggests the DevKit preset; it is reached
+over the setup hotspot as today.
+
+**Why this priority**: driving GPIO 25-27 on a WT32 fights its Ethernet PHY.
+
+**Acceptance Scenarios**:
+
+1. **Given** a WT32-ETH01 with no saved settings, **When** it starts, **Then** GPIO 25, 26 and 27
+   are never driven, Ethernet starts, and the Pins page and the wizard preselect the WT32 carrier
+   preset; moves are refused with "No board chosen yet".
+2. **Given** a DevKit with no saved settings, **Then** nothing is driven and the DevKit preset is
+   suggested.
+3. **Given** a device upgraded from the previous release, **Then** it runs the DevKit preset with
+   no question asked.
+
+---
+
+### User Story 6 - The wiring check suggests a WT32-ETH01 set up as a DevKit (Priority: P3)
+
+A WT32-ETH01 that was saved with the DevKit preset by mistake: the wiring check's Ethernet probe
+finds the LAN8720 at address 1 and suggests the WT32 carrier preset.
 
 **Acceptance Scenarios**:
 
@@ -236,7 +300,7 @@ LAN8720 at address 1 and suggests the WT32 carrier preset.
 
 ---
 
-### User Story 6 - The rain contact is gone (Priority: P2)
+### User Story 7 - The rain contact is gone (Priority: P2)
 
 Rain comes from SQMeter's rain gauge. The setting, the reading, the status field, the wizard
 question, the Settings row, the dashboard row and the docs for the local contact are removed.
@@ -273,10 +337,12 @@ question, the Settings row, the dashboard row and the docs for the local contact
 **Pin settings and presets**
 
 - **FR-001**: The settings MUST gain a `pins` group: `preset` (`devkit`, `wt32-carrier-v1`,
-  `custom`), `board` (`esp32-devkit`, `wt32-eth01`) and one GPIO per function: `rpwm`, `lpwm`,
+  `custom`, `unset`), `board` (`esp32-devkit`, `wt32-eth01`) and one GPIO per function: `rpwm`, `lpwm`,
   `enable`, `currentR`, `currentL`, `supply`, `hall`, `parkA`, `parkB`.
-- **FR-002**: The default MUST be the DevKit preset: 25, 26, 27, 34, 35, 36, 39, 32, 33 on the
-  `esp32-devkit` board. Settings saved before this spec MUST load as that preset.
+- **FR-002**: A new device (no saved settings) MUST start with `unset`: no board chosen, nothing
+  driven (FR-011). Settings saved before this spec MUST load explicitly as the DevKit preset: 25,
+  26, 27, 34, 35, 36, 39, 32, 33 on the `esp32-devkit` board. `unset` uses no pin and doesn't stop
+  other settings being saved.
 - **FR-003**: The WT32 carrier preset MUST be the `wt32-eth01` board with RPWM 14, LPWM 15, EN 4,
   R_IS 35, L_IS 32, supply 36, Hall 39, park A 33, park B 5.
 - **FR-004**: A named preset fixes the board and every pin: a save that names a preset without pins
@@ -292,7 +358,7 @@ question, the Settings row, the dashboard row and the docs for the local contact
 - **FR-006**: A pin set MUST be warned about (and still accepted) for each function other than EN
   on a strapping pin (0, 2, 5, 12, 15), with what that strap does at reset and what it means for
   that function.
-- **FR-007**: A save that changes `pins` or `wifi.withEthernet` MUST be refused while the roof
+- **FR-007**: A save that changes `pins` or `network.mode` MUST be refused while the roof
   moves, a close waits, the close sequence works, a calibration run or a jog is under way. Pins
   apply only at the next start; the settings page MUST say so and offer the restart.
 - **FR-008**: The device MUST check a save's pins against its own chip (PSRAM) as well as the
@@ -307,11 +373,12 @@ question, the Settings row, the dashboard row and the docs for the local contact
 - **FR-010**: At boot the device MUST read its saved settings and then, before anything else that
   touches a pin, set the pins in effect: EN low, then RPWM and LPWM low, each level written before
   its pin becomes an output (as today).
-- **FR-011**: If the saved pin set breaks a rule, or the stored settings exist but can't be read,
+- **FR-011**: If no board is chosen, the saved pin set breaks a rule, or the stored settings exist but can't be read,
   the device MUST drive no pin: every candidate motor pin (the saved RPWM, LPWM and EN and every
   preset's, except reserved ones) set as an input with no pull; the motor driver never attached or
   armed; the roof's control task not started; the roof's fault "Pin setup invalid" with the first
-  broken rule (or that the saved setup couldn't be read); every move refused with that text. The
+  broken rule (or that no board is chosen, or that the saved setup couldn't be read); every move
+  refused with that text. The
   web UI, the network and the settings MUST keep working.
 - **FR-012**: `MotorDriver` MUST stay the only writer of RPWM, LPWM and EN, now of the pins in
   effect; none of its rules change.
@@ -345,19 +412,30 @@ question, the Settings row, the dashboard row and the docs for the local contact
 
 **Ethernet**
 
-- **FR-021**: On the `wt32-eth01` board the device MUST start Ethernet at boot (LAN8720, PHY
-  address 1, MDC 23, MDIO 18, power 16, clock in on GPIO0) with the device's host name, and make it
-  the default route while it is up. On any other board, Ethernet MUST NOT start.
-- **FR-022**: A setting `wifi.withEthernet` (`fallback`, `off`; default `fallback`) MUST choose
-  Wi-Fi's role on a board with Ethernet: `fallback` starts the station once Ethernet has had no
-  address for 30 s and keeps it until restart; `off` never starts it. It does nothing on a board
-  without Ethernet.
-- **FR-023**: The setup hotspot MUST open on a board with Ethernet when no network has been joined
-  45 s after boot; once it is open, Ethernet or Wi-Fi coming up restarts the device as joining from
-  the hotspot does today. Joining a network from the hotspot's Wi-Fi page MUST set
-  `wifi.withEthernet` to `fallback`.
+- **FR-021**: On the `wt32-eth01` board (chosen, or found by the boot probe while none is chosen)
+  the device MUST start Ethernet at boot (LAN8720, PHY address 1, MDC 23, MDIO 18, power 16, clock
+  in on GPIO0) with the device's host name, and make it the default route while it has an address,
+  unless the network mode is Wi-Fi only. On any other board, Ethernet MUST NOT start.
+- **FR-022**: A setting `network.mode` (`auto`, `ethernet`, `wifi`; default `auto`) MUST choose
+  the network on a board with Ethernet: `auto` joins a saved Wi-Fi network once Ethernet has had no
+  address for 30 s and keeps it until restart; `ethernet` keeps the Wi-Fi radio off, refuses Wi-Fi
+  scans and joins (409), and never opens the hotspot; `wifi` doesn't start Ethernet. It does
+  nothing on a board without Ethernet, and the UI doesn't show it there. Empty Wi-Fi settings are
+  valid and never shown as an error on a board with Ethernet.
+- **FR-023**: In `auto` the setup hotspot MUST open only when no network has been joined since boot,
+  45 s after boot and, with an Ethernet link, 20 s after the link came up; never after a network
+  has been joined since boot. Once it is open, Ethernet or Wi-Fi coming up restarts the device as
+  joining from the hotspot does today.
 - **FR-024**: The Wi-Fi plan (start the station, open the hotspot) MUST be a pure function with
   native tests.
+- **FR-034**: With no board chosen, or unreadable settings, the device MUST probe for the
+  WT32-ETH01's LAN8720 at boot before touching any pin (skipped with PSRAM), use the board it finds
+  for the pin rules' reserved pins and for Ethernet, and report it (`GET /api/pins` `detected`) so
+  the Pins page and the wizard preselect the matching preset. It MUST NOT choose or save a preset
+  by itself.
+- **FR-035**: The docs MUST say how to flash a WT32-ETH01 the first time (3.3 V USB-serial on TX0,
+  RX0, GND; IO0 to GND at reset, the carrier's jumper; the pio commands) and that updates then go
+  over the network, Ethernet included.
 - **FR-025**: mDNS, command-line OTA, NTP, the SQMeter and N.I.N.A. poller, alert sends, the
   settings-dependency facts and the platform guard MUST treat "Wi-Fi joined or Ethernet with an
   address" as the network being up. The status MUST gain an `ethernet` block: `present`, `started`,
@@ -369,11 +447,13 @@ question, the Settings row, the dashboard row and the docs for the local contact
   (editable only for Custom), the errors and warnings for the edited set, the pins in effect and
   whether a restart is needed, Save and Restart, and the wiring check with its results. It is
   reached from Settings → Roof and the System page.
-- **FR-027**: The setup wizard's Hardware page MUST gain a board question (the three presets; Custom
-  links to the Pins page) and a Check wiring screen, and lose the rain contact question; the
+- **FR-027**: The setup wizard's Hardware page MUST gain a board question (the three presets,
+  preselected from the probe; Custom links to the Pins page), on a board with Ethernet a skippable
+  network question ("You're on Ethernet", the network mode), and a Check wiring screen, and lose
+  the rain contact question; the
   wizard's page indices (`setup.step`) MUST NOT change.
 - **FR-028**: Settings → Network MUST show, on a board with Ethernet, the Ethernet status and the
-  Wi-Fi role; the dashboard's and System page's network rows MUST show Ethernet when it is up. All
+  network mode, and say Wi-Fi is optional; the dashboard's and System page's network rows MUST show Ethernet when it is up. All
   new text through i18n.
 
 **Rain contact removal**
@@ -427,8 +507,8 @@ question, the Settings row, the dashboard row and the docs for the local contact
 Each was an open choice; the safest option the constitution allows was taken.
 
 1. **One firmware image** with the board chosen at runtime, not a second build (research R1).
-2. **The DevKit preset drops the rain contact** but is otherwise today's map, and stays the default
-   for new and upgraded devices.
+2. **The DevKit preset drops the rain contact** but is otherwise today's map; upgraded devices are
+   migrated to it explicitly, new devices start with no board chosen.
 3. **A named preset's pins are fixed**; Custom is the only way to change one, and is checked by the
    same rules. Custom keeps the board choice, so reserved Ethernet pins still apply.
 4. **Every function always has a pin**, fitted or not: optional park switches and current sense
@@ -447,10 +527,14 @@ Each was an open choice; the safest option the constitution allows was taken.
    the DevKit map, GPIO 25-27 stay driven low against the PHY's receive lines for that time; the
    currents involved are within both parts' limits. It never runs while the roof is busy, with
    PSRAM, or when 0, 16, 18 or 23 is a roof function.
-10. **Wi-Fi fallback starts after 30 s without an Ethernet address and stays until restart**,
-    beside Ethernet, rather than switching back and forth.
-11. **"Wi-Fi off" still allows the setup hotspot** when no network is up 45 s after boot, so the
-    device can always be reached to fix its settings.
+10. **Auto's Wi-Fi fallback starts after 30 s without an Ethernet address and stays until
+    restart**, beside Ethernet, rather than switching back and forth.
+11. **No hotspot after a network has been joined since boot**, in Auto: a later outage is retried
+    (and falls back to a saved Wi-Fi network). A passwordless hotspot on a running roof controller
+    widens who can reach it, while a power cycle without a network brings the hotspot back. In
+    Ethernet only it never opens, as asked: a board in that mode with no working cable can only be
+    reached by switching the mode before the cable is moved, or by a USB flash with the settings
+    erased.
 12. **The wiring check's limits**: the supply is "not connected" below 3 V and implausible above
     15 V; current sense "near zero" is below 1 A (the ADC's offset at 8.5 A/V is about 0.3 A); the
     Hall reuses the rail limits of the motion logic.
@@ -460,4 +544,9 @@ Each was an open choice; the safest option the constitution allows was taken.
     longer backed by a local contact. A SQMeter outage or a gauge fault still makes the verdict
     unsafe.
 14. **Restart codes**: a pin change adds a `pins` reason to the "Restart to apply" note, and
-    `wifi.withEthernet` counts with the Wi-Fi settings.
+    `network.mode` counts with the Wi-Fi settings.
+
+15. **The boot probe never chooses a preset**: it only preselects one. Nothing is driven until a
+    person saves a preset and restarts.
+16. **The hotspot waits 20 s after an Ethernet link for DHCP**, on top of the 45 s from boot, so a
+    slow DHCP server doesn't open a passwordless hotspot on a cabled device.

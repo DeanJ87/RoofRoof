@@ -55,8 +55,16 @@ namespace
 void test_all_good_passes_and_lists_every_check_in_order(void)
 {
     const WiringResult result = evaluate(good());
-    const CheckId order[] = {CheckId::EnPulldown, CheckId::Hall,     CheckId::Supply,   CheckId::ParkA, CheckId::ParkB,
-                             CheckId::CurrentR,   CheckId::CurrentL, CheckId::Ethernet, CheckId::Motion};
+    const CheckId order[] = {
+        CheckId::EnPulldown,
+        CheckId::Hall,
+        CheckId::Supply,
+        CheckId::ParkA,
+        CheckId::ParkB,
+        CheckId::CurrentR,
+        CheckId::CurrentL,
+        CheckId::Ethernet,
+        CheckId::Motion};
     TEST_ASSERT_EQUAL_size_t(9, result.checks.size());
     for (size_t i = 0; i < 9; ++i)
     {
@@ -195,7 +203,7 @@ void test_ethernet_probe(void)
     result = evaluate(in);
     TEST_ASSERT_FALSE(result.suggestWt32);
     TEST_ASSERT_NOT_NULL(std::strstr(find(result, CheckId::Ethernet).text.c_str(), "0022:1555"));
-    in.ethernet.idRead = false; // the turnaround wasn't driven: nothing answered
+    in.ethernet.idRead = false;                      // the turnaround wasn't driven: nothing answered
     assertLevel(Level::Warn, in, CheckId::Ethernet); // a clock but no PHY
     in.ethernet.clockSeen = false;
     assertLevel(Level::Pass, in, CheckId::Ethernet); // a DevKit

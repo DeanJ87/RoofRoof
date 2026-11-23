@@ -33,7 +33,10 @@ namespace SQM
                 EthernetProbe::run(facts);
                 probed = true;
                 detected = EthernetProbe::foundWt32(facts) ? Board::BoardId::Wt32Eth01 : Board::BoardId::Esp32Devkit;
-                Logger::info(TAG, "No board chosen; the probe found %s", detected == Board::BoardId::Wt32Eth01 ? "a WT32-ETH01 (LAN8720)" : "no Ethernet PHY");
+                Logger::info(
+                    TAG,
+                    "No board chosen; the probe found %s",
+                    detected == Board::BoardId::Wt32Eth01 ? "a WT32-ETH01 (LAN8720)" : "no Ethernet PHY");
             }
 
             // An input with no pull: a pin's state after reset (research R5).

@@ -467,18 +467,18 @@ void test_never_safe_with_a_bad_source_exhaustive(void)
     for (int h = 0; h < SWEEP_KINDS; ++h)
         for (int m = 0; m < SWEEP_KINDS; ++m)
             for (TimeMs now : {TimeMs{START_MS + 1000}, TimeMs{NOW_MS}})
-                {
-                    WeatherInputs in;
-                    in.http = sweepRecord(h, false, now);
-                    in.mqtt = sweepRecord(m, true, now);
-                    in.startedAtMs = START_MS;
-                    in.nowMs = now;
-                    const bool expectSafe = sweepOk(h, false) && sweepOk(m, true) && (h != 0 || m != 0);
-                    const WeatherVerdict v = evaluateWeather(in);
-                    TEST_ASSERT_EQUAL_MESSAGE(expectSafe, v.safe(), describe(v).c_str());
-                    if (!v.safe())
-                        TEST_ASSERT_TRUE(v.verdict == Verdict::Unknown || v.reasons != 0);
-                }
+            {
+                WeatherInputs in;
+                in.http = sweepRecord(h, false, now);
+                in.mqtt = sweepRecord(m, true, now);
+                in.startedAtMs = START_MS;
+                in.nowMs = now;
+                const bool expectSafe = sweepOk(h, false) && sweepOk(m, true) && (h != 0 || m != 0);
+                const WeatherVerdict v = evaluateWeather(in);
+                TEST_ASSERT_EQUAL_MESSAGE(expectSafe, v.safe(), describe(v).c_str());
+                if (!v.safe())
+                    TEST_ASSERT_TRUE(v.verdict == Verdict::Unknown || v.reasons != 0);
+            }
 }
 
 int main(int, char **)

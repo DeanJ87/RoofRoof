@@ -131,8 +131,7 @@ void test_custom_is_checked_by_the_rules()
     TEST_ASSERT_EQUAL_STRING(
         "RPWM on GPIO35: GPIO35 is input only and can't drive an output",
         rejectReason(R"({"pins":{"preset":"custom","rpwm":35}})").c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        "EN on GPIO6: GPIO6 is a flash pin", rejectReason(R"({"pins":{"preset":"custom","enable":6}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("EN on GPIO6: GPIO6 is a flash pin", rejectReason(R"({"pins":{"preset":"custom","enable":6}})").c_str());
     // A WT32 with the DevKit's pins: Ethernet's.
     TEST_ASSERT_TRUE(rejectReason(R"({"pins":{"preset":"custom","board":"wt32-eth01"}})").size() > 0);
 }
@@ -188,7 +187,8 @@ void test_network_mode_values()
 
 void test_round_trip_through_json()
 {
-    const Config c = applied(R"({"pins":{"preset":"custom","board":"wt32-eth01","rpwm":14,"lpwm":15,"enable":4,"currentR":35,"currentL":32,"supply":36,"hall":39,"parkA":33,"parkB":17},"network":{"mode":"ethernet"}})");
+    const Config c = applied(
+        R"({"pins":{"preset":"custom","board":"wt32-eth01","rpwm":14,"lpwm":15,"enable":4,"currentR":35,"currentL":32,"supply":36,"hall":39,"parkA":33,"parkB":17},"network":{"mode":"ethernet"}})");
     Config back = Config::createDefault();
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(c.toJson(), back, false, &error), error.c_str());

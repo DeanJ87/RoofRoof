@@ -42,10 +42,10 @@ void EmulatedDevice::restart(double nowMsIn)
     clientWatch.reset();
     const Alerts::ScheduleState kept = schedule.state();
     schedule.restore(kept.sending, true, static_cast<uint8_t>(kept.reason), kept.sinceEpoch);
-    roofBooted = false; // boots on the next tick: unknown between the magnets
+    roofBooted = false;     // boots on the next tick: unknown between the magnets
     runningPins = cfg.pins; // spec 023: pins apply at a start
     wiringState = ConfigPins::CheckState::Idle;
-    resetSite();        // the location read starts again (the kept location stays)
+    resetSite(); // the location read starts again (the kept location stays)
     // Spec 017: a restart loses the log; only kept summaries stay.
     roof.attachDiag(nullptr);
     diagLog.reset();

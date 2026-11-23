@@ -167,7 +167,7 @@ void startWifi()
     // The network is RoofRoof's own setting (config.wifi): the WiFi driver
     // keeps no copy in NVS, so a reconnect while the roof moves writes no flash.
     WiFi.persistent(false);
-    const Net::NetMode mode = !EthernetLink::present()                           ? Net::NetMode::Wifi
+    const Net::NetMode mode = !EthernetLink::present()                               ? Net::NetMode::Wifi
                               : config.network.mode == NetworkConfig::Mode::Ethernet ? Net::NetMode::Ethernet
                                                                                      : Net::NetMode::Auto;
     wifiManager = std::make_unique<WiFiManager>(config.wifi, mode);

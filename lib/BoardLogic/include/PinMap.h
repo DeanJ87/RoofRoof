@@ -68,7 +68,10 @@ namespace SQM
 
         // A named preset's map; Custom and Unset give the DevKit's pins with that label.
         PinMap presetMap(Preset preset);
-        constexpr bool isNamed(Preset preset) { return preset == Preset::Devkit || preset == Preset::Wt32CarrierV1; }
+        constexpr bool isNamed(Preset preset)
+        {
+            return preset == Preset::Devkit || preset == Preset::Wt32CarrierV1;
+        }
 
         // The settings' and API's names ("devkit", "esp32-devkit", "rpwm").
         const char *presetName(Preset preset);

@@ -33,14 +33,17 @@ namespace SQM
                 switch (probe)
                 {
                 case EnProbe::Low:
-                    return make(CheckId::EnPulldown, Level::Pass, "EN reads low with the internal pull-up: its pull-down holds the driver off");
+                    return make(
+                        CheckId::EnPulldown, Level::Pass, "EN reads low with the internal pull-up: its pull-down holds the driver off");
                 case EnProbe::High:
                     return make(
                         CheckId::EnPulldown,
                         Level::Fail,
-                        "EN reads high with the internal pull-up: its pull-down is missing or weaker than about 20 kOhm, so a reset or a crash wouldn't hold the driver off");
+                        "EN reads high with the internal pull-up: its pull-down is missing or weaker than about 20 kOhm, so a reset or a "
+                        "crash wouldn't hold the driver off");
                 default:
-                    return make(CheckId::EnPulldown, Level::Skipped, "Not checked by the bench firmware, which keeps EN, RPWM and LPWM low");
+                    return make(
+                        CheckId::EnPulldown, Level::Skipped, "Not checked by the bench firmware, which keeps EN, RPWM and LPWM low");
                 }
             }
 
@@ -59,7 +62,11 @@ namespace SQM
                     return make(
                         CheckId::Hall,
                         Level::Warn,
-                        format("%u counts: outside the thresholds' range (%u-%u); check the sensor's divider", counts, static_cast<unsigned>(in.hallMin), static_cast<unsigned>(in.hallMax)),
+                        format(
+                            "%u counts: outside the thresholds' range (%u-%u); check the sensor's divider",
+                            counts,
+                            static_cast<unsigned>(in.hallMin),
+                            static_cast<unsigned>(in.hallMax)),
                         value,
                         "counts");
                 return make(CheckId::Hall, Level::Pass, format("%u counts: a plausible reading", counts), value, "counts");
@@ -72,9 +79,11 @@ namespace SQM
                 if (!std::isfinite(volts))
                     return make(CheckId::Supply, Level::Fail, "The supply sense can't be read");
                 if (volts < SUPPLY_ABSENT_VOLTS)
-                    return make(CheckId::Supply, Level::Fail, format("%.1f V: no supply, or its divider isn't connected", shown), volts, "V");
+                    return make(
+                        CheckId::Supply, Level::Fail, format("%.1f V: no supply, or its divider isn't connected", shown), volts, "V");
                 if (volts > SUPPLY_MAX_VOLTS)
-                    return make(CheckId::Supply, Level::Warn, format("%.1f V: above 15 V, so check the divider (100k/22k)", shown), volts, "V");
+                    return make(
+                        CheckId::Supply, Level::Warn, format("%.1f V: above 15 V, so check the divider (100k/22k)", shown), volts, "V");
                 if (volts < in.supplyLimit)
                     return make(
                         CheckId::Supply,
@@ -118,7 +127,12 @@ namespace SQM
                     return make(id, Level::Skipped, "Not read");
                 if (mv < CURRENT_REST_MILLIVOLTS)
                     return make(id, Level::Pass, format("%.0f mV while stopped: near zero (current sense is off)", shownMv), mv, "mV");
-                return make(id, Level::Warn, format("%.0f mV while stopped (current sense is off), so check the pin and its divider", shownMv), mv, "mV");
+                return make(
+                    id,
+                    Level::Warn,
+                    format("%.0f mV while stopped (current sense is off), so check the pin and its divider", shownMv),
+                    mv,
+                    "mV");
             }
 
             Check runningEthernet(const EthernetFacts &e)
@@ -129,8 +143,18 @@ namespace SQM
                 if (!e.link)
                     return make(CheckId::Ethernet, Level::Warn, "The LAN8720 answered but there is no link, so check the cable");
                 if (!e.hasAddress)
-                    return make(CheckId::Ethernet, Level::Warn, format("Link up at %u Mbit/s, no address yet", speed), static_cast<float>(speed), "Mbit/s");
-                return make(CheckId::Ethernet, Level::Pass, format("Link up at %u Mbit/s with an address", speed), static_cast<float>(speed), "Mbit/s");
+                    return make(
+                        CheckId::Ethernet,
+                        Level::Warn,
+                        format("Link up at %u Mbit/s, no address yet", speed),
+                        static_cast<float>(speed),
+                        "Mbit/s");
+                return make(
+                    CheckId::Ethernet,
+                    Level::Pass,
+                    format("Link up at %u Mbit/s with an address", speed),
+                    static_cast<float>(speed),
+                    "Mbit/s");
             }
 
             Check probedEthernet(const EthernetFacts &e, bool &suggest)
@@ -148,7 +172,10 @@ namespace SQM
                     return make(
                         CheckId::Ethernet,
                         Level::Warn,
-                        format("An Ethernet PHY answered (ID %04X:%04X), not the WT32-ETH01's LAN8720", static_cast<unsigned>(e.id1), static_cast<unsigned>(e.id2)));
+                        format(
+                            "An Ethernet PHY answered (ID %04X:%04X), not the WT32-ETH01's LAN8720",
+                            static_cast<unsigned>(e.id1),
+                            static_cast<unsigned>(e.id2)));
                 if (e.clockSeen)
                     return make(CheckId::Ethernet, Level::Warn, "A clock on GPIO0 but no Ethernet PHY answered");
                 return make(CheckId::Ethernet, Level::Pass, "No Ethernet PHY found, as expected on an ESP32 DevKit");
@@ -163,7 +190,10 @@ namespace SQM
                 case EthernetFacts::Mode::Probed:
                     return probedEthernet(e, suggest);
                 case EthernetFacts::Mode::SkippedPin:
-                    return make(CheckId::Ethernet, Level::Skipped, format("Not probed: GPIO%u is a roof function", static_cast<unsigned>(e.usedPin)));
+                    return make(
+                        CheckId::Ethernet,
+                        Level::Skipped,
+                        format("Not probed: GPIO%u is a roof function", static_cast<unsigned>(e.usedPin)));
                 default:
                     return make(CheckId::Ethernet, Level::Skipped, "Not probed: this chip's PSRAM uses GPIO16");
                 }
@@ -181,14 +211,17 @@ namespace SQM
             result.checks.push_back(currentCheck(CheckId::CurrentR, in, 0));
             result.checks.push_back(currentCheck(CheckId::CurrentL, in, 1));
             result.checks.push_back(ethernetCheck(in.ethernet, result.suggestWt32));
-            result.checks.push_back(
-                make(CheckId::Motion, Level::Skipped, "Direction and travel need the roof to move: use Jog and teach the ends on the calibration page"));
+            result.checks.push_back(make(
+                CheckId::Motion,
+                Level::Skipped,
+                "Direction and travel need the roof to move: use Jog and teach the ends on the calibration page"));
             return result;
         }
 
         const char *checkIdName(CheckId id)
         {
-            static const char *const NAMES[] = {"enPulldown", "hall", "supply", "parkA", "parkB", "currentR", "currentL", "ethernet", "motion"};
+            static const char *const NAMES[] = {
+                "enPulldown", "hall", "supply", "parkA", "parkB", "currentR", "currentL", "ethernet", "motion"};
             const auto index = static_cast<size_t>(id);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "";
         }

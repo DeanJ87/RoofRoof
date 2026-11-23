@@ -123,18 +123,33 @@ so outbound traffic (N.I.N.A., SQMeter, alerts) prefers it over a fallback Wi-Fi
 answers on every default netif, Ethernet included. AsyncTCP, AsyncUDP (Alpaca discovery), PubSubClient
 and the HTTP clients use lwIP sockets bound to any interface, so nothing else changes.
 
-## R9. Wi-Fi's role beside Ethernet
+## R9. The network mode beside Ethernet
 
-**Decision**: `fallback` (default) or `off`. Fallback starts the station after 30 s without an
-Ethernet address and keeps it until restart; Ethernet is the default route whenever it's up.
+**Decision**: `network.mode`: `auto` (default), `ethernet`, `wifi`.
 
-**Why not switch back and forth**: a station that leaves when the cable returns drops clients that
-found the device on its Wi-Fi address, and flapping costs reconnects. Two interfaces up is ordinary
-for lwIP.
+- Auto joins a saved Wi-Fi network after 30 s without an Ethernet address and keeps it until
+  restart, beside Ethernet, which is the default route whenever it has an address. Switching back
+  and forth would drop clients that found the device on its Wi-Fi address; two interfaces up is
+  ordinary for lwIP.
+- Ethernet only keeps the radio off and never opens the hotspot (the owner's choice; Wi-Fi scans and
+  joins are refused). Wi-Fi only doesn't start Ethernet.
+- **Hotspot** (Auto): only when no network has been joined since boot, 45 s after boot
+  (`CaptivePortal::FALLBACK_AFTER_MS`) and, with an Ethernet link, 20 s after the link (DHCP).
+  After a join, an outage is retried and never answered with the hotspot: a passwordless hotspot on
+  a running roof controller widens who can reach it (spec 010 refuses opening while it is up, but
+  every other route is open to it), and a power cycle without a network brings it back. A longer
+  timeout was considered and rejected for the same reason.
 
-**Hotspot**: on a board with Ethernet it opens when no network has been joined 45 s after boot
-(the existing `CaptivePortal::FALLBACK_AFTER_MS`), whatever the Wi-Fi role, so a board with neither
-a cable nor a working network can be reached. The pure plan (`Net::wifiPlan`) decides both.
+## R12. A new device's board
+
+A WT32-ETH01's GPIO 25-27 are its PHY's receive outputs; the DevKit's motor map drives them. So a
+device with no saved settings has no board chosen and drives nothing. Before any pin is set it
+probes (R7's sequence); the DevKit's wiring uses none of GPIO 0, 16, 18, 23, so the probe meets
+only unconnected pins there, and with nothing driven yet there is no contention on a WT32 either.
+Skipped with PSRAM (GPIO16). A found LAN8720 makes the board in effect the WT32-ETH01 for the pin
+rules and Ethernet; the preset is only preselected, never saved by the device. Devices upgraded
+from an earlier release have stored settings without `pins` and are migrated to the DevKit
+explicitly in the settings reader.
 
 ## R10. Wiring check limits
 

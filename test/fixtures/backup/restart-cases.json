@@ -103,6 +103,34 @@
         "wifi",
         "ipv6"
       ]
+    },
+    {
+      "name": "the pin preset (spec 023)",
+      "before": {
+        "pins": {
+          "preset": "devkit"
+        }
+      },
+      "after": {
+        "pins": {
+          "preset": "wt32-carrier-v1"
+        }
+      },
+      "reasons": [
+        "pins"
+      ]
+    },
+    {
+      "name": "the network mode (spec 023)",
+      "before": {},
+      "after": {
+        "network": {
+          "mode": "ethernet"
+        }
+      },
+      "reasons": [
+        "wifi"
+      ]
     }
   ]
 }

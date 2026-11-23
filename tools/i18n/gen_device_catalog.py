@@ -59,6 +59,13 @@ SOURCES = {
     # Roof faults and refusals with their values and limits (spec 003).
     "lib/RoofIoLogic/src/RoofText.cpp": ("roof", {"format": "fmt0"}),
     "lib/RoofIoLogic/src/RoofGates.cpp": ("roof", {}),
+    # Spec 023: the pin rules, the wiring check's verdicts and the pin routes' refusals.
+    "lib/BoardLogic/src/PinText.cpp": ("pins", {"format": "fmt0"}),
+    "lib/BoardLogic/src/WiringCheck.cpp": ("pins", {"format": "fmt0", "make": [2]}),
+    "lib/ConfigModel/src/ConfigPins.cpp": ("settings", {"setError": [1]}),
+    "src/WebServerPins.cpp": ("api", {"createErrorJson": [0]}),
+    "src/WiringRun.cpp": ("pins", {}),
+    "tools/demo-core/emulated_device_pins.cpp": ("api", {"errorJson": [0]}),
     # Why a platform action waits for the roof, and the hotspot refusal (spec 010).
     "lib/RoofIoLogic/src/PlatformHold.cpp": ("roof", {}),
     "lib/RoofIoLogic/include/PlatformHold.h": ("roof", {}),
@@ -79,6 +86,7 @@ ASSIGN = {
     "lib/ConfigBackup/src/BackupRules.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/RoofIoLogic/src/PlatformHold.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/RoofIoLogic/include/PlatformHold.h": re.compile(r"\bHOTSPOT_TEXT\s*=\s*"),
+    "src/WiringRun.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
     # Spec 020: why a group's values from SQMeter weren't taken.

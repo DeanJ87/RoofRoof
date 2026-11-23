@@ -9,8 +9,23 @@ namespace SQM
         namespace
         {
             constexpr const char *CODE_NAMES[] = {
-                "missing", "flash",  "psram",  "uart",   "ethernet", "header",  "inputOnly", "notAdc1", "noPullup",
-                "shared",  "enStrap", "presetMismatch", "strap0", "strap2", "strap5", "strap12", "strap15"};
+                "missing",
+                "flash",
+                "psram",
+                "uart",
+                "ethernet",
+                "header",
+                "inputOnly",
+                "notAdc1",
+                "noPullup",
+                "shared",
+                "enStrap",
+                "presetMismatch",
+                "strap0",
+                "strap2",
+                "strap5",
+                "strap12",
+                "strap15"};
 
             bool isOutput(Function function)
             {
@@ -83,7 +98,11 @@ namespace SQM
             {
                 if (!Facts::has(f.straps, pin))
                     return false;
-                code = pin == 0 ? IssueCode::Strap0 : pin == 2 ? IssueCode::Strap2 : pin == 5 ? IssueCode::Strap5 : pin == 12 ? IssueCode::Strap12 : IssueCode::Strap15;
+                code = pin == 0    ? IssueCode::Strap0
+                       : pin == 2  ? IssueCode::Strap2
+                       : pin == 5  ? IssueCode::Strap5
+                       : pin == 12 ? IssueCode::Strap12
+                                   : IssueCode::Strap15;
                 return true;
             }
 

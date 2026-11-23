@@ -66,7 +66,7 @@ namespace SQM
 
         // Research R7: the WT32's oscillator on for about 15 ms, the clock
         // on GPIO0, the PHY's ID registers; then everything released.
-    void run(Board::EthernetFacts &e)
+        void run(Board::EthernetFacts &e)
         {
             e.mode = Board::EthernetFacts::Mode::Probed;
             setPin(Board::ETH_MDC, GPIO_MODE_OUTPUT, false, false);

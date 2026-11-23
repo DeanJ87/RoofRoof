@@ -51,20 +51,16 @@ namespace SQM
             Logger::error(TAG, "No memory for the roof's lock; the motor stays off");
             return false;
         }
-        pins = pinsInEffect;
-        pinsValid = valid;
-        pinsReason = reason;
+        takePins(pinsInEffect, valid, reason);
         settings = settingsOf(config);
         remoteStopsClose.store(config.autoClose.remoteStop); // spec 014
         controller.applySettings(Roof::settingsFromConfig(settings.roof));
         gates.fittedSwitches = settings.fittedSwitches;
         if (!pinsValid)
         {
-            // Spec 023 FR-011: nothing attached, read or driven; never stored
-            // (the task that saves faults never starts), so a valid set and a
-            // restart clear it.
-            controller.raiseFault(RoofIo::externalRecord(RoofIo::FaultCause::PinSetup, 0.0f, 0.0f).fault);
+            // Spec 023 FR-011: nothing attached, read or driven; never stored (no task saves it).
             fault = RoofIo::externalRecord(RoofIo::FaultCause::PinSetup, 0.0f, 0.0f);
+            controller.raiseFault(fault.fault);
             refreshSnapshot();
             Logger::error(TAG, "Pin setup invalid: the roof's control task doesn't start; nothing moves");
             return false;
@@ -79,32 +75,6 @@ namespace SQM
 #endif
         refreshSnapshot();
         return startTask();
-    }
-
-    RoofControl::Outcome RoofControl::notStarted() const
-    {
-        if (!pinsValid)
-            return Outcome{false, "pinSetup", RoofIo::pinSetupText(pinsReason), Roof::State::Unknown};
-        return Outcome{false, "notStarted", "The roof controller didn't start: the motor stays off", Roof::State::Unknown};
-    }
-
-    MotorDriver::EnableProbe RoofControl::probeEnable(std::string &why)
-    {
-        if (lock == nullptr || !started.load())
-        {
-            why = notStarted().text;
-            return MotorDriver::EnableProbe::NotRun;
-        }
-        RoofLocked held(lock);
-        const Roof::Status &status = controller.status();
-        const bool still = !RoofIo::roofMoving(status.state) && !closePending && !calibration.active() &&
-                           controller.output().command == Driver::Command::Off;
-        if (!still)
-        {
-            why = "The roof is busy";
-            return MotorDriver::EnableProbe::NotRun;
-        }
-        return MotorDriver::probeEnable();
     }
 
     void RoofControl::restoreFault()

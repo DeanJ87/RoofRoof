@@ -29,11 +29,11 @@ namespace SQM
         struct PlanInputs
         {
             NetMode mode = NetMode::Auto;
-            bool hasCredentials = false;  // a Wi-Fi network is saved
-            bool ethernetLink = false;    // the cable is in and the PHY sees a link
-            bool ethernetUp = false;      // Ethernet has an address
-            uint32_t msEthernetDown = 0;  // since boot, or since Ethernet lost its address
-            uint32_t msSinceLink = 0;     // since the link came up (with a link)
+            bool hasCredentials = false; // a Wi-Fi network is saved
+            bool ethernetLink = false;   // the cable is in and the PHY sees a link
+            bool ethernetUp = false;     // Ethernet has an address
+            uint32_t msEthernetDown = 0; // since boot, or since Ethernet lost its address
+            uint32_t msSinceLink = 0;    // since the link came up (with a link)
             uint32_t msSinceBoot = 0;
             bool joinedSinceBoot = false; // Ethernet or Wi-Fi had an address since boot
             bool stationStarted = false;

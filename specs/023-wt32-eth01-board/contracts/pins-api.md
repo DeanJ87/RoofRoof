@@ -12,6 +12,8 @@
   "reason": "",
   "issues": [{"function": "lpwm", "pin": 15, "code": "strap15", "error": false, "text": "..."}],
   "psram": false,
+  "board": "esp32-devkit",
+  "detected": null,
   "presets": [{"preset": "devkit", "board": "esp32-devkit", "rpwm": 25, "...": "..."}],
   "boards": [{"board": "esp32-devkit", "ethernet": [], "header": []},
              {"board": "wt32-eth01", "ethernet": [0, 16, 18, 19, 21, 22, 23, 25, 26, 27],
@@ -24,6 +26,10 @@
   or says the saved setup couldn't be read.
 - `issues`: the errors and warnings of `running`.
 - `header: []` means every existing GPIO is available.
+- `board`: the board in effect (the chosen one, or the detected one while none is chosen).
+- `detected`: with no board chosen (`running.preset` `unset`) or unreadable settings, what the boot
+  probe found (`esp32-devkit` when no LAN8720 answered); `null` when the probe didn't run (a board
+  was chosen, or the chip has PSRAM).
 
 ## `POST /api/pins/validate` (no auth; saves nothing)
 
@@ -66,10 +72,15 @@ a LAN8720 on a board set up without Ethernet. `level`: `pass`, `warn`, `fail`, `
 
 ## Settings (`GET`/`POST /api/config`)
 
-- `pins` group (data-model.md). A save that changes it, or `wifi.withEthernet`, is refused with 409
+- `pins` group (data-model.md). A save that changes it, or `network.mode`, is refused with 409
   and the hold's text while the roof is busy; an invalid set is refused with 400 and the first
   error's text.
 - `safety.rainContact` is gone; a body that still has it is accepted and the key ignored.
+
+## Wi-Fi in Ethernet only
+
+`GET /api/wifi/scan` and `POST /api/wifi/connect` answer 409 "Wi-Fi is off: the network mode is
+Ethernet only" on a board running Ethernet with `network.mode` `ethernet`.
 
 ## Status
 

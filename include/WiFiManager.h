@@ -87,6 +87,7 @@ namespace SQM
         bool stationStarted = true;
 
         void followPlan();
+        void handleBesideEthernet();
 
         // Answers DNS from the network task, so phones get replies at once
         // even while the main loop is busy (a slow task in the loop, such as a TLS

@@ -216,6 +216,7 @@ namespace SQM
 
         static HardwareSettings settingsOf(const Config &config);
         bool startTask();
+        void takePins(const Board::PinMap &inEffect, bool valid, const std::string &reason);
         static void taskEntry(void *self);
         static void watchdogEntry(void *self);
         void run();

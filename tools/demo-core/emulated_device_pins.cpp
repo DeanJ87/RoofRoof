@@ -23,7 +23,11 @@ namespace
         in.supplyLimit = cfg.roof.minSupplyVolts;
         in.fittedSwitches = s.fittedSwitches;
         auto level = [](RoofIo::Contact c)
-        { return c == RoofIo::Contact::Open ? Board::SwitchLevel::Open : c == RoofIo::Contact::Closed ? Board::SwitchLevel::Closed : Board::SwitchLevel::Unreadable; };
+        {
+            return c == RoofIo::Contact::Open     ? Board::SwitchLevel::Open
+                   : c == RoofIo::Contact::Closed ? Board::SwitchLevel::Closed
+                                                  : Board::SwitchLevel::Unreadable;
+        };
         in.parkA = level(s.switch1);
         in.parkB = level(s.switch2);
         in.currentSense = cfg.roof.currentSenseEnabled;

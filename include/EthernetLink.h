@@ -18,8 +18,8 @@ namespace SQM
         // none chosen, detected), unless network.mode is Wi-Fi only.
         void begin(const Config &config);
 
-        bool present();    // the board in effect has Ethernet
-        bool started();    // the driver started (the PHY answered)
+        bool present(); // the board in effect has Ethernet
+        bool started(); // the driver started (the PHY answered)
         bool linkUp();
         uint16_t speedMbps(); // 0 without a link
         bool fullDuplex();
