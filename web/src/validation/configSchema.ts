@@ -188,6 +188,19 @@ export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });
 // Spec 017: advanced diagnostics.
 export const diagConfigSchema = z.object({ enabled: z.boolean(), keepSummaries: z.boolean(), mqtt: z.boolean() });
 
+// Spec 022: the test box. `until` is the device's and never checked here.
+export const testBoxConfigSchema = z.object({
+  park: z.boolean(),
+  weather: z.boolean(),
+  daylight: z.boolean(),
+  hours: z
+    .number()
+    .int()
+    .min(1, t('validation.configSchema.testBoxHoursMustBeBetween'))
+    .max(720, t('validation.configSchema.testBoxHoursMustBeBetween')),
+  until: z.number().optional(),
+});
+
 export const locationConfigSchema = z.object({
   // Spec 020: optional, as older firmware doesn't send it; `sqmeter` is the device's and never checked here.
   source: z.enum(['sqmeter', 'manual'], t('validation.configSchema.locationSourceMustBe')).optional(),
@@ -235,6 +248,7 @@ export const configSchema = z.object({
   autoClose: autoCloseConfigSchema.optional(),
   ui: uiConfigSchema.optional(),
   diag: diagConfigSchema.optional(),
+  testBox: testBoxConfigSchema.optional(),
   alerts: alertsConfigSchema.optional(),
   setup: setupConfigSchema.optional(),
 });

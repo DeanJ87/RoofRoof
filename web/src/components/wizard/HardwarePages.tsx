@@ -94,6 +94,38 @@ export const CurrentScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
+// Spec 022: a test box (no telescope, no weather station yet) gets the
+// bypasses, each only where its source isn't set up; a telescope gets none.
+export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const box = props.config.testBox;
+  if (!box) return <Note>{t('settings.roof.notSent')}</Note>;
+  const ninaSet = Boolean(props.config.park?.nina.url.trim());
+  const sqmeterOn = Boolean(props.config.safety?.http.enabled || props.config.safety?.mqtt.enabled);
+  const current = box.park || box.weather || box.daylight ? 'testBox' : 'telescope';
+  const choice = choiceOf(props, 'testBox', current, (v) => {
+    const on = v === 'testBox';
+    props.updateMany([
+      [['testBox', 'park'], on && !ninaSet],
+      [['testBox', 'weather'], on && !sqmeterOn],
+      [['testBox', 'daylight'], on],
+    ]);
+  });
+  return (
+    <>
+      <ChoiceGroup
+        {...choice}
+        options={[
+          { value: 'telescope', icon: 'home', title: t('wizard.testBox.telescope'), detail: t('wizard.testBox.telescopeDetail') },
+          { value: 'testBox', icon: 'warning', title: t('wizard.testBox.testBox'), detail: t('wizard.testBox.testBoxDetail') },
+        ]}
+      />
+      {choice.value === 'testBox' && <Note tone="bad">{t('wizard.testBox.warning', { hours: box.hours })}</Note>}
+      {choice.value === 'testBox' && ninaSet && <Note tone="warn">{t('wizard.testBox.ninaSet')}</Note>}
+      {choice.value === 'testBox' && sqmeterOn && <Note tone="warn">{t('wizard.testBox.sqmeterOn')}</Note>}
+    </>
+  );
+};
+
 export const ParkSwitchesScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { park } = props.config;
   if (!park) return <Note>{t('settings.roof.notSent')}</Note>;

@@ -90,6 +90,7 @@ export const mockConfig: Config = {
   },
   ui: { confirmOpenClose: false },
   diag: { enabled: false, keepSummaries: false, mqtt: false },
+  testBox: { park: false, weather: false, daylight: false, hours: 72, until: 0 },
   alerts: {
     enabled: true,
     events: {
@@ -103,6 +104,7 @@ export const mockConfig: Config = {
       daylight_open: { level: 3, sound: '' },
       daylight_closed: { level: 2, sound: '' },
       daylight_unknown: { level: 2, sound: '' },
+      test_box: { level: 3, sound: '' },
       client_lost: { level: 3, sound: '' },
       client_back: { level: 1, sound: '' },
       client_disconnected: { level: 0, sound: '' },

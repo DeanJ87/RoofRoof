@@ -4,6 +4,7 @@ import type { DaylightConfig, LocationConfig, ParkConfig, RoofConfig, SafetyConf
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
+import TestBoxCard from './TestBoxCard';
 import { Button, Note } from '../ui';
 import SqmeterCopy from './SqmeterCopy';
 import { FollowsSqmeter } from './FollowsSqmeter';
@@ -435,6 +436,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
       {park && <ParkCard {...props} park={park} />}
       {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}
+      {props.config.testBox && <TestBoxCard {...props} testBox={props.config.testBox} />}
     </>
   );
 };

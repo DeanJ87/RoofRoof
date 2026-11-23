@@ -144,6 +144,17 @@ export const mockStatus: SystemStatus = {
     maxStepGapMs: 21,
     maxWatchdogBeatAgeMs: 12,
     simulation: 'off',
+    testBox: {
+      set: false,
+      active: false,
+      park: false,
+      weather: false,
+      daylight: false,
+      until: 0,
+      expired: false,
+      waitingForClock: false,
+      text: '',
+    },
   },
   // Spec 020: the location is typed in (and not yet set).
   location: { source: 'manual', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: null },

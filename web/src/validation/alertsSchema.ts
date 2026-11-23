@@ -19,6 +19,13 @@ const checkCriticalEvents = (events: EventSettings, ctx: z.RefinementCtx) => {
   }
 };
 
+// Spec 022: the test box reminder is never off.
+const checkTestBoxEvent = (events: EventSettings, ctx: z.RefinementCtx) => {
+  const event = events.test_box;
+  if (event && event.level < 1)
+    ctx.addIssue({ code: 'custom', path: ['events', 'test_box', 'level'], message: t('validation.configSchema.testBoxAlertNeverOff') });
+};
+
 export const alertsConfigSchema = z
   .object({
     enabled: z.boolean(),
@@ -53,6 +60,7 @@ export const alertsConfigSchema = z
   })
   .superRefine((data, ctx) => {
     checkCriticalEvents(data.events, ctx);
+    checkTestBoxEvent(data.events, ctx);
     // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
     const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
     if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {

@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import type { AlertEventKey, AlertEventSetting } from '../../types';
 import type { DepEntry } from '../../lib/settingsDeps';
-import { CRITICAL_LEVEL_OPTIONS, LEVEL_OPTIONS, isCriticalEvent, isPending, soundOptions, type AlertsView } from './alertsShared';
+import { isCriticalEvent, levelOptionsFor, isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTemplateEditor, AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepNote, SelectInput } from './controls';
 import { InfoTip } from '../ui';
@@ -75,7 +75,7 @@ export const AlertEventRow: FunctionalComponent<AlertEventRowProps> = ({
         <SelectInput
           value={String(event.level)}
           ariaLabel={t('settings.alerts.levelFor', { label })}
-          options={critical ? CRITICAL_LEVEL_OPTIONS : LEVEL_OPTIONS}
+          options={levelOptionsFor(key)}
           disabled={off || locked}
           onChange={(v) => set(['events', key, 'level'], Number(v))}
         />

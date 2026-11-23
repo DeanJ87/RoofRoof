@@ -144,6 +144,17 @@ export interface DiagConfig {
   mqtt: boolean; // <base>/diag and <base>/diag/move, at rest only
 }
 
+// Spec 022: the test box's bypasses (constitution 3.0.0). `until` is the
+// device's deadline (Unix seconds, 0 none): never sent, set by the save that
+// turns a bypass on or sends `hours`.
+export interface TestBoxConfig {
+  park: boolean; // no telescope under this roof: stands in for N.I.N.A.
+  weather: boolean; // stands in for a missing weather source
+  daylight: boolean; // no daylight close or open refusal
+  hours: number; // 1..720
+  until: number;
+}
+
 export interface Config {
   deviceName: string;
   wifi: WiFiConfig;
@@ -162,6 +173,7 @@ export interface Config {
   ui?: UiConfig;
   alerts?: AlertsConfig;
   diag?: DiagConfig; // absent on firmware before spec 017
+  testBox?: TestBoxConfig; // absent on firmware before spec 022
   // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
   setup?: SetupConfig;
 }

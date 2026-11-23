@@ -5,7 +5,7 @@ import type { ConfigPath } from '../components/settings/context';
 import { toConfigPayload } from '../components/settings/payload';
 import { restartReasons } from '../components/settings/restart';
 import { fetchEffectiveReport, type EffectiveReport } from '../lib/settingsDeps';
-import { fetchConfigWithRevision, fetchStatus, saveConfig } from '../lib/settingsApi';
+import { TEST_BOX_CHANGED, fetchConfigWithRevision, fetchStatus, saveConfig } from '../lib/settingsApi';
 import { applyPatch, asShown, baseValuesFor, diffConfig, rebaseEdits } from '../lib/configPatch';
 import { deviceError } from '../i18n/deviceMessage';
 import { t } from '../i18n';
@@ -185,6 +185,7 @@ export const useConfigEditor = () => {
     setConfig(outcome.payload);
     if (extra.setup) setSetup(extra.setup);
     loadStatus();
+    window.dispatchEvent(new Event(TEST_BOX_CHANGED)); // spec 022: the banner reads the status again
     return outcome;
   };
 
