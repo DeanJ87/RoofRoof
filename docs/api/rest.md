@@ -377,7 +377,7 @@ curl -X POST http://roofroof.local/api/restart
 
 ## Pins
 
-The board, the roof's pins and the wiring check ([Pins](../user-guide/pins.md)). The pins themselves are saved as `pins` with the other settings ([`POST /api/config`](#post-apiconfig)) and apply at the next restart.
+The board, the roof's pins and the wiring check ([Pins](../user-guide/pins.md)). The pins themselves are saved as `pins` with the other settings ([`POST /api/config`](#post-apiconfig)) and apply at the next restart; the analog front end is saved as `analog` and applies without a restart, once the roof is still.
 
 ### `GET /api/pins`
 
@@ -405,9 +405,26 @@ curl http://roofroof.local/api/pins
   "boards": [
     { "board": "esp32-devkit", "ethernet": [], "header": [] },
     { "board": "wt32-eth01", "ethernet": [0, 16, 18, 19, 21, 22, 23, 25, 26, 27], "header": [2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36, 39] }
+  ],
+  "analog": {
+    "preset": "devkit-bench",
+    "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0 },
+    "hall": { "top": 10000, "bottom": 20000 },
+    "currentR": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 },
+    "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 }
+  },
+  "analogIssues": [
+    { "input": "currentR", "error": false, "text": "R_IS divider: at its highest (5.0 V) the input would put 3.33 V on the pin, over 3.3 V" },
+    { "input": "currentL", "error": false, "text": "L_IS divider: at its highest (5.0 V) the input would put 3.33 V on the pin, over 3.3 V" }
+  ],
+  "analogPresets": [
+    { "preset": "devkit-bench", "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0 }, "hall": { "top": 10000, "bottom": 20000 }, "currentR": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 }, "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 } },
+    { "preset": "wt32-carrier-v1.1", "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0.3 }, "hall": { "top": 10000, "bottom": 20000 }, "currentR": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 }, "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 } }
   ]
 }
 ```
+
+The pin maps (`running`, `saved`, `presets`) also carry `parkAPullup` and `parkBPullup` (`internal` or `external`), left out above.
 
 | Field | Meaning |
 |---|---|
@@ -421,6 +438,9 @@ curl http://roofroof.local/api/pins
 | `detected` | With no board chosen (or unreadable settings), what the boot probe found: `wt32-eth01` when a LAN8720 answered, else `esp32-devkit`; `null` when the probe didn't run (a board is chosen, or the chip has PSRAM) |
 | `presets` | Each named preset's board and pins |
 | `boards` | Each board's Ethernet pins and the pins its header brings out (`[]`: every existing GPIO) |
+| `analog` | The saved [analog front end](../user-guide/pins.md#advanced-the-analog-front-end) (the settings' `analog` group). It applies without a restart, so there is no running copy |
+| `analogIssues` | The device's checks on `analog`: `input` (`supply`, `hall`, `currentR`, `currentL`, or `""` for one about the whole setup), `error` (false for a warning: a divider that would put more than 3.3 V on its pin) and `text`. The default carries two warnings, on R_IS and L_IS |
+| `analogPresets` | The named analog presets' values: `devkit-bench` and `wt32-carrier-v1.1` |
 
 Issue codes, errors: `missing`, `flash`, `psram`, `probe` (GPIO0, 16, 18 or 23, the boot probe's pins, on every board), `uart`, `ethernet`, `header`, `inputOnly`, `notAdc1`, `noPullup`, `shared`, `enStrap`, `presetMismatch`, `boardDetected` (`function` `null`: the device has seen its LAN8720 answer and the map's board isn't `wt32-eth01`, "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"); warnings: `strap0`, `strap2`, `strap5`, `strap12`, `strap15`. The texts are on [Pins](../user-guide/pins.md#the-pin-rules).
 
@@ -445,6 +465,28 @@ curl -X POST http://roofroof.local/api/pins/validate -H "Content-Type: applicati
 ```
 
 On a device that has seen its LAN8720 answer (Ethernet started, or the boot probe found it), a map for any board but `wt32-eth01` also gets the `boardDetected` error, as a save that changes the pins would.
+
+The body may also carry `analog`, an analog setup in the settings' shape (read over the saved one; a named preset fills in its values first). The answer then adds `analog` (as read) and `analogIssues`, and `valid` is false when either the pins or the analog setup has an error:
+
+```bash
+curl -X POST http://roofroof.local/api/pins/validate -H "Content-Type: application/json" \
+  -d '{"preset": "devkit", "analog": {"preset": "custom", "currentR": {"bottom": 22000}}}'
+```
+
+```json
+{
+  "valid": true,
+  "pins": { "preset": "devkit", "board": "esp32-devkit", "rpwm": 25, "lpwm": 26, "enable": 27, "currentR": 34, "currentL": 35, "supply": 36, "hall": 39, "parkA": 32, "parkB": 33, "parkAPullup": "internal", "parkBPullup": "internal" },
+  "issues": [],
+  "analog": { "preset": "custom", "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0 }, "hall": { "top": 10000, "bottom": 20000 }, "currentR": { "top": 10000, "bottom": 22000, "gain": 1, "offsetAmps": 0 }, "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 } },
+  "analogIssues": [
+    { "input": "currentR", "error": false, "text": "R_IS divider: at its highest (5.0 V) the input would put 3.44 V on the pin, over 3.3 V" },
+    { "input": "currentL", "error": false, "text": "L_IS divider: at its highest (5.0 V) the input would put 3.33 V on the pin, over 3.3 V" }
+  ]
+}
+```
+
+An `analog` value that isn't a number where one is needed, or an unknown analog preset, is a `400`.
 
 `400` with `{"error": "..."}` for a body that isn't a pin map: not an object, an unknown preset or board, or a pin that isn't a number.
 

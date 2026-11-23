@@ -151,9 +151,17 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "board": "esp32-devkit",
     "rpwm": 25, "lpwm": 26, "enable": 27,
     "currentR": 34, "currentL": 35, "supply": 36, "hall": 39,
-    "parkA": 32, "parkB": 33
+    "parkA": 32, "parkB": 33,
+    "parkAPullup": "internal", "parkBPullup": "internal"
   },
   "network": { "mode": "auto" },
+  "analog": {
+    "preset": "devkit-bench",
+    "supply": { "top": 100000, "bottom": 22000, "gain": 1, "offsetVolts": 0 },
+    "hall": { "top": 10000, "bottom": 20000 },
+    "currentR": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 },
+    "currentL": { "top": 10000, "bottom": 20000, "gain": 1, "offsetAmps": 0 }
+  },
   "daylight": { "mode": "alert", "sunAltitudeDeg": 0, "bandDeg": 0.5 },
   "location": { "source": "sqmeter", "set": false, "latitude": 0, "longitude": 0, "sqmeter": { "gps": false, "savedAt": 0 } },
   "sqmeterSync": { "time": { "follow": true, "syncedAt": 0 }, "mqtt": { "follow": true, "syncedAt": 0 }, "alerts": { "follow": true, "syncedAt": 0 } },
@@ -283,9 +291,25 @@ The board, the roof's pins and the network mode ([Pins](pins.md), [Network](netw
 | `pins.currentR`, `pins.currentL` | int | `34`, `35` | The R_IS and L_IS current-sense inputs |
 | `pins.supply`, `pins.hall` | int | `36`, `39` | The 12 V supply sense and the Hall sensor |
 | `pins.parkA`, `pins.parkB` | int | `32`, `33` | Park switches A and B |
+| `pins.parkAPullup`, `pins.parkBPullup` | string | `"internal"` | Each park switch input's pull-up: `internal` (the chip's) or `external` (fitted on the board). With `external` the switch may be on GPIO34-39, which have no internal pull-up; with `internal` that is refused (*"… has no internal pull-up"*). Not part of a preset: kept when the preset changes. A change applies at the next restart, like a pin |
 | `network.mode` | string | `"auto"` | On a board with Ethernet: `auto` (Ethernet, with a saved WiFi network as a fallback after 30 s without an Ethernet address), `ethernet` (WiFi radio off, no setup hotspot) or `wifi` (Ethernet not started). Does nothing on a DevKit. Any other value is refused |
 
 Every pin set is checked against the [pin rules](pins.md#the-pin-rules): a set that breaks one is refused with `400` and the first error's text, for example `"RPWM on GPIO35: GPIO35 is input only and can't drive an output"`. On a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it), a change to any board but the WT32-ETH01 is refused too: `"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"`. Warnings don't stop a save. The pins in effect and whether a restart is needed are in [`GET /api/pins`](../api/rest.md#get-apipins).
+
+### Analog front end
+
+The analog inputs' dividers and trims ([Advanced: the analog front end](pins.md#advanced-the-analog-front-end), spec 023), edited under **Advanced** on the **Pins** page. Unlike the pins, they need **no restart**: the roof applies a change at its next reading once no move is under way.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `analog.preset` | string | `"devkit-bench"` | `devkit-bench` (the DevKit bench wiring; the default on every device, new or upgraded), `wt32-carrier-v1.1` (the same, with the supply offset +0.3 V for the carrier's reverse-polarity diode) or `custom`. A named preset fixes every value: sent alone it fills them in; sent with a value that differs from it, it is refused (*"These values belong to a named preset; choose Custom to change one"*) |
+| `analog.supply.top`, `analog.supply.bottom` | int | `100000`, `22000` | The supply sense divider, in ohms (100 to 10000000 each) |
+| `analog.supply.gain`, `analog.supply.offsetVolts` | number | `1`, `0` | The supply trim: gain 0.5-2, offset within ±2 V. Supply volts = pin volts × (top + bottom) / bottom × gain + offsetVolts |
+| `analog.hall.top`, `analog.hall.bottom` | int | `10000`, `20000` | The Hall sensor's divider. Checked for the pin's voltage only: the Hall thresholds are ADC counts |
+| `analog.currentR.top`, `.bottom`, `analog.currentL.top`, `.bottom` | int | `10000`, `20000` | The R_IS and L_IS dividers |
+| `analog.currentR.gain`, `.offsetAmps`, `analog.currentL.gain`, `.offsetAmps` | number | `1`, `0` | Each side's trim: gain 0.5-2, offset within ±5 A. Amps = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offsetAmps |
+
+A resistor or trim out of range is refused with its text. A divider that would put more than 3.3 V on its pin at its sensor's highest (supply 15 V, Hall 4.2 V, IS 5 V) is a warning, not an error: the defaults carry two, on R_IS and L_IS (3.33 V at 5 V). The warnings are in [`GET /api/pins`](../api/rest.md#get-apipins) (`analogIssues`).
 
 An empty `wifi.ssid` is never an error in itself (a new device has none, and on a board with Ethernet it is a normal state); only clearing a network that is already saved is refused, *"WiFi network can't be blank; use WiFi setup to change networks"* ([Network](network.md#wifi-is-optional)).
 

@@ -41,12 +41,21 @@ export const suggestedPreset = (doc: PinsDocument | null): 'devkit' | 'wt32-carr
 export const wt32Detected = (doc: PinsDocument | null, status?: SystemStatus | null): boolean =>
   doc?.detected === 'wt32-eth01' || Boolean(status?.ethernet?.started);
 
+const pullupsOf = (pins: PinsConfig): Partial<PinsConfig> => ({
+  ...(pins.parkAPullup && { parkAPullup: pins.parkAPullup }),
+  ...(pins.parkBPullup && { parkBPullup: pins.parkBPullup }),
+});
+
 /**
  * The pin set after choosing `preset`: a named one's map, or the current pins made custom. Custom
  * starts on the board in effect when no board was chosen, and on the WT32-ETH01 once one is detected.
  */
 export const withPreset = (doc: PinsDocument | null, pins: PinsConfig, preset: PinPreset, detected = wt32Detected(doc)): PinsConfig => {
-  if (preset === 'devkit' || preset === 'wt32-carrier-v1') return presetPins(doc, preset) ?? { ...pins, preset };
+  if (preset === 'devkit' || preset === 'wt32-carrier-v1') {
+    // The park inputs' pull-ups aren't part of a preset: they stay as set.
+    const named = presetPins(doc, preset) ?? { ...pins, preset };
+    return { ...named, ...pullupsOf(pins) };
+  }
   if (preset !== 'custom') return { ...pins, preset };
   const board: BoardId = detected ? 'wt32-eth01' : pins.preset === 'unset' && doc ? doc.board : pins.board;
   return { ...pins, preset, board };

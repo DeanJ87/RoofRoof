@@ -102,8 +102,18 @@ export const mockConfig: Config = {
     hall: 39,
     parkA: 32,
     parkB: 33,
+    parkAPullup: 'internal',
+    parkBPullup: 'internal',
   },
   network: { mode: 'auto' },
+  // Spec 023 Advanced: the DevKit bench wiring's dividers, no trim.
+  analog: {
+    preset: 'devkit-bench',
+    supply: { top: 100000, bottom: 22000, gain: 1, offsetVolts: 0 },
+    hall: { top: 10000, bottom: 20000 },
+    currentR: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+    currentL: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+  },
   alerts: {
     enabled: true,
     events: {

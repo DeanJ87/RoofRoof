@@ -131,6 +131,9 @@ CONSTRAINTS = {
     ("config", ("pins", "preset")): {"enum": ["devkit", "wt32-carrier-v1", "custom", "unset"]},
     ("config", ("pins", "board")): {"enum": ["esp32-devkit", "wt32-eth01"]},
     ("config", ("network", "mode")): {"enum": ["auto", "ethernet", "wifi"]},
+    ("config", ("pins", "parkAPullup")): {"enum": ["internal", "external"]},
+    ("config", ("pins", "parkBPullup")): {"enum": ["internal", "external"]},
+    ("config", ("analog", "preset")): {"enum": ["devkit-bench", "wt32-carrier-v1.1", "custom"]},
     # GET /api/roof/inputs (lib/SafetyInputLogic InputsReport names).
     ("roof-inputs", ("weather", "verdict")): {"enum": ["safe", "unsafe", "unknown"]},
     ("roof-inputs", ("weather", "http", "state")): {"enum": SOURCE_STATES},

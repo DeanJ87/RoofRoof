@@ -1,9 +1,10 @@
 import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useEffect } from 'preact/hooks';
-import type { NetworkMode } from '../../types';
+import type { NetworkMode, PinsConfig } from '../../types';
 import type { WizardPageProps } from './context';
 import { usePinsDocument, usePinValidation } from '../../hooks/usePins';
+import { analogForBoard } from '../../lib/analogView';
 import { pinsRestartNeeded, suggestedPreset, withPreset, wt32Detected } from '../../lib/pinsView';
 import { IssueNotes, PresetChoice, UnsetNotes } from '../pins/PinFields';
 import { WiringCheckPanel } from '../pins/WiringCheck';
@@ -34,9 +35,21 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
   // The device's verdict on the board as chosen: an error (a board it found to be a WT32-ETH01
   // set up as another) is shown here, and the device refuses to save it.
   const check = usePinValidation(pins);
+  // A board preset chosen: a named analog preset follows it (a Custom analog setup stays).
+  const choose = (next: PinsConfig) => {
+    const analog = analogForBoard(doc, props.config.analog, next.preset);
+    props.updateMany(
+      analog
+        ? [
+            [['pins'], next],
+            [['analog'], analog],
+          ]
+        : [[['pins'], next]],
+    );
+  };
   // A new device: the board its boot probe suggests is chosen for the person to confirm.
   useEffect(() => {
-    if (doc && unset && pins?.preset === 'unset') props.update(['pins'], withPreset(doc, pins, suggestedPreset(doc)));
+    if (doc && unset && pins?.preset === 'unset') choose(withPreset(doc, pins, suggestedPreset(doc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the device's pin document arrives
   }, [doc]);
   if (!pins) return <Note>{t('settings.roof.notSent')}</Note>;
@@ -49,7 +62,7 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
         labelledBy={props.questionId}
         newDevice={unset}
         wt32={wt32Detected(doc, props.status)}
-        onChange={(next) => props.update(['pins'], next)}
+        onChange={choose}
       />
       <IssueNotes issues={(check.validation?.issues ?? []).filter((issue) => issue.error)} idPrefix="wizard-pin-issue" />
       {pins.preset === 'custom' && (

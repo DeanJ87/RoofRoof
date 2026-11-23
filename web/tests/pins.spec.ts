@@ -20,7 +20,7 @@ const typePin = async (page: Page, fn: string, value: string) => {
 test('the DevKit is chosen; Custom shows the device errors and warnings live', async ({ page }) => {
   await openPage(page);
   await expect(page.getByRole('radio', { name: 'ESP32 DevKit', exact: true })).toBeChecked();
-  await page.locator('label.choice').filter({ hasText: 'Custom' }).click();
+  await page.getByRole('radiogroup', { name: 'Board preset' }).locator('label.choice').filter({ hasText: 'Custom' }).click();
   await typePin(page, 'rpwm', '35');
   await expect(page.locator('[data-pin-issue="rpwm"][data-level="error"]')).toContainText('GPIO35 is input only');
   await expect(page.getByRole('button', { name: 'Save pins' })).toBeDisabled();
@@ -30,6 +30,32 @@ test('the DevKit is chosen; Custom shows the device errors and warnings live', a
   await expect(page.getByRole('button', { name: 'Save pins' })).toBeEnabled();
   // Nothing is saved until Save pins.
   expect((await deviceConfig(page)).pins.preset).toBe('devkit');
+});
+
+test("Advanced: the device's analog checks live, saved with no restart", async ({ page }) => {
+  await openPage(page);
+  await page.getByText('Advanced', { exact: true }).click();
+  const analog = page.getByRole('radiogroup', { name: 'Analog front end' });
+  await expect(analog.getByRole('radio', { name: 'DevKit bench wiring' })).toBeChecked();
+  // The drawn 10k/20k puts 3.33 V on R_IS and L_IS at the BTS7960's 5 V: warnings.
+  await expect(page.locator('[data-analog-issue="currentR"][data-level="warning"]')).toContainText('3.33 V');
+  await expect(page.locator('[data-analog-issue="currentL"][data-level="warning"]')).toContainText('3.33 V');
+  await analog.locator('label.choice').filter({ hasText: 'Custom' }).click();
+  await page.locator('[data-field="analog.supply.top"]').fill('50');
+  await page.locator('[data-field="analog.supply.top"]').blur();
+  await expect(page.locator('[data-analog-issue="supply"][data-level="error"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save pins' })).toBeDisabled();
+  await page.locator('[data-field="analog.supply.top"]').fill('100000');
+  await page.locator('[data-field="analog.currentR.bottom"]').fill('22000');
+  await page.locator('[data-field="analog.currentR.bottom"]').blur();
+  await expect(page.locator('[data-analog-issue="currentR"][data-level="warning"]')).toContainText('3.44 V');
+  await expect(page.getByRole('button', { name: 'Save pins' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Save pins' }).click();
+  await expect(page.getByText('Analog settings saved. They apply once the roof is still.')).toBeVisible();
+  const saved = (await deviceConfig(page)).analog;
+  expect(saved.preset).toBe('custom');
+  expect(saved.currentR.bottom).toBe(22000);
+  await expect(page.locator('[data-pins-restart]')).toHaveCount(0);
 });
 
 test('the wiring check reads the simulated roof and moves nothing', async ({ page }) => {

@@ -85,8 +85,8 @@ namespace SQM
             // What the function needs of the pin.
             bool roleError(const Facts &f, const PinMap &map, Function function, uint8_t pin, IssueCode &code)
             {
-                const bool externalPullup = (function == Function::ParkA && map.parkAExternalPullup) ||
-                                            (function == Function::ParkB && map.parkBExternalPullup);
+                const bool externalPullup =
+                    (function == Function::ParkA && map.parkAExternalPullup) || (function == Function::ParkB && map.parkBExternalPullup);
                 if (isOutput(function) && Facts::has(f.inputOnly, pin))
                     code = IssueCode::InputOnly;
                 else if (function == Function::Enable && Facts::has(EN_FORBIDDEN, pin))

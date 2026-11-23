@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795466964,
-                    "iso": "2026-11-23T20:49:24+0000",
+                    "epoch": 1795469293,
+                    "iso": "2026-11-23T21:28:13+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795463362167,
-                    "nextSync": 1795470562167,
+                    "lastSync": 1795465691549,
+                    "nextSync": 1795472891549,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795466902167,
+                    "lastPublish": 1795469231549,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -319,7 +319,7 @@
                     "valid": true,
                     "restartNeeded": false
                   },
-                  "configRevision": 1311696189
+                  "configRevision": 1557598532
                 }
               }
             }
@@ -5634,6 +5634,115 @@
             ],
             "additionalProperties": false
           },
+          "analog": {
+            "type": "object",
+            "properties": {
+              "currentL": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetAmps",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "currentR": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetAmps",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "top"
+                ],
+                "additionalProperties": false
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit-bench",
+                  "wt32-carrier-v1.1",
+                  "custom"
+                ]
+              },
+              "supply": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetVolts": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "bottom",
+                  "gain",
+                  "offsetVolts",
+                  "top"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "currentL",
+              "currentR",
+              "hall",
+              "preset",
+              "supply"
+            ],
+            "additionalProperties": false
+          },
           "auth": {
             "type": "object",
             "properties": {
@@ -5969,8 +6078,22 @@
               "parkA": {
                 "type": "number"
               },
+              "parkAPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
               "parkB": {
                 "type": "number"
+              },
+              "parkBPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
               },
               "preset": {
                 "type": "string",
@@ -5996,7 +6119,9 @@
               "hall",
               "lpwm",
               "parkA",
+              "parkAPullup",
               "parkB",
+              "parkBPullup",
               "preset",
               "rpwm",
               "supply"
@@ -6267,6 +6392,7 @@
         "required": [
           "alerts",
           "alpaca",
+          "analog",
           "auth",
           "autoClose",
           "daylight",
@@ -6626,6 +6752,86 @@
             },
             "additionalProperties": false
           },
+          "analog": {
+            "type": "object",
+            "properties": {
+              "currentL": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "currentR": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetAmps": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "hall": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "preset": {
+                "type": "string",
+                "enum": [
+                  "devkit-bench",
+                  "wt32-carrier-v1.1",
+                  "custom"
+                ]
+              },
+              "supply": {
+                "type": "object",
+                "properties": {
+                  "bottom": {
+                    "type": "number"
+                  },
+                  "gain": {
+                    "type": "number"
+                  },
+                  "offsetVolts": {
+                    "type": "number"
+                  },
+                  "top": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
           "auth": {
             "type": "object",
             "properties": {
@@ -6885,8 +7091,22 @@
               "parkA": {
                 "type": "number"
               },
+              "parkAPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
+              },
               "parkB": {
                 "type": "number"
+              },
+              "parkBPullup": {
+                "type": "string",
+                "enum": [
+                  "internal",
+                  "external"
+                ]
               },
               "preset": {
                 "type": "string",

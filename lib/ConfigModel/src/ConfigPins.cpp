@@ -126,6 +126,22 @@ namespace SQM
 
         namespace
         {
+            // The park inputs' pull-ups (not part of a preset).
+            bool readPullups(JsonObjectConst in, Board::PinMap &map, std::string *error)
+            {
+                for (const auto &pull :
+                     {std::make_pair("parkAPullup", &map.parkAExternalPullup), std::make_pair("parkBPullup", &map.parkBExternalPullup)})
+                {
+                    if (!in.containsKey(pull.first))
+                        continue;
+                    const char *value = in[pull.first].is<const char *>() ? in[pull.first].as<const char *>() : "";
+                    if (std::strcmp(value, "internal") != 0 && std::strcmp(value, "external") != 0)
+                        return setError(error, std::string("Pins: ") + pull.first + " must be internal or external");
+                    *pull.second = std::strcmp(value, "external") == 0;
+                }
+                return true;
+            }
+
             void writeDivider(JsonObject out, const Board::Divider &d)
             {
                 out["top"] = d.topOhms;
@@ -254,17 +270,7 @@ namespace SQM
                     return setError(error, std::string("Pins: ") + key + " must be a GPIO number");
                 map.setPin(function, value.as<uint8_t>());
             }
-            for (const auto &pull :
-                 {std::make_pair("parkAPullup", &map.parkAExternalPullup), std::make_pair("parkBPullup", &map.parkBExternalPullup)})
-            {
-                if (!in.containsKey(pull.first))
-                    continue;
-                const char *value = in[pull.first].is<const char *>() ? in[pull.first].as<const char *>() : "";
-                if (std::strcmp(value, "internal") != 0 && std::strcmp(value, "external") != 0)
-                    return setError(error, std::string("Pins: ") + pull.first + " must be internal or external");
-                *pull.second = std::strcmp(value, "external") == 0;
-            }
-            return true;
+            return readPullups(in, map, error);
         }
     } // namespace ConfigPins
 } // namespace SQM

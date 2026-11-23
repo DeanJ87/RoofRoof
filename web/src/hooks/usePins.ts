@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { EthernetStatus, PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
+import type { AnalogConfig, EthernetStatus, PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
 import { fetchPins, fetchWiringCheck, startWiringCheck, validatePins } from '../lib/pinsApi';
 import { fetchStatus } from '../lib/settingsApi';
 import { t } from '../i18n';
@@ -34,16 +34,19 @@ export interface PinCheck {
   problem: string | null; // the device refused the set or couldn't be reached
 }
 
-/** The device's verdict on `pins` as edited, asked `delayMs` after the last change. */
-export const usePinValidation = (pins: PinsConfig | undefined, delayMs = VALIDATE_DELAY_MS): PinCheck => {
+/**
+ * The device's verdict on `pins` as edited, and on `analog` when given (the Advanced section),
+ * asked `delayMs` after the last change.
+ */
+export const usePinValidation = (pins: PinsConfig | undefined, analog?: AnalogConfig, delayMs = VALIDATE_DELAY_MS): PinCheck => {
   const [state, setState] = useState<PinCheck>({ validation: null, checking: false, problem: null });
-  const key = JSON.stringify(pins ?? null);
+  const key = JSON.stringify([pins ?? null, analog ?? null]);
   useEffect(() => {
     if (!pins || pins.preset === 'unset') return setState({ validation: null, checking: false, problem: null });
     let live = true;
     setState((prior) => ({ ...prior, checking: true }));
     const timer = window.setTimeout(async () => {
-      const answer = await validatePins(pins);
+      const answer = await validatePins(analog ? { ...pins, analog } : pins);
       if (!live) return;
       if (answer.kind === 'checked') setState({ validation: answer.validation, checking: false, problem: null });
       else setState({ validation: null, checking: false, problem: answer.kind === 'refused' ? answer.text : t('pins.cantCheck') });
@@ -52,7 +55,7 @@ export const usePinValidation = (pins: PinsConfig | undefined, delayMs = VALIDAT
       live = false;
       window.clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` is the pins' value; a new object with the same pins asks nothing
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` is the pins' and analog values; new objects with the same values ask nothing
   }, [key, delayMs]);
   return state;
 };

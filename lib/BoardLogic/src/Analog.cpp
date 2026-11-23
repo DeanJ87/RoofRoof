@@ -52,14 +52,23 @@ namespace SQM
                              static_cast<double>(atPin))});
             }
 
-            void checkTrim(
-                std::vector<AnalogIssue> &out, const char *input, const char *label, const Trim &t, float maxOffset, const char *unit)
+            struct TrimLimits
             {
+                const char *input;
+                const char *label;
+                float maxOffset;
+                const char *unit;
+            };
+
+            void checkTrim(std::vector<AnalogIssue> &out, const TrimLimits &limits, const Trim &t)
+            {
+                const char *label = limits.label;
+                const double maxOffset = static_cast<double>(limits.maxOffset);
                 if (!(t.gain >= MIN_GAIN && t.gain <= MAX_GAIN))
-                    out.push_back({input, true, format("%s trim: the gain must be between 0.5 and 2", label)});
-                if (!(std::fabs(t.offset) <= maxOffset))
+                    out.push_back({limits.input, true, format("%s trim: the gain must be between 0.5 and 2", label)});
+                if (!(std::fabs(t.offset) <= limits.maxOffset))
                     out.push_back(
-                        {input, true, format("%s trim: the offset must be within %.0f %s", label, static_cast<double>(maxOffset), unit)});
+                        {limits.input, true, format("%s trim: the offset must be within %.0f %s", label, maxOffset, limits.unit)});
             }
         } // namespace
 
@@ -110,9 +119,9 @@ namespace SQM
             checkDivider(out, "hall", "Hall sensor", a.hall, HALL_MAX_VOLTS_IN);
             checkDivider(out, "currentR", "R_IS", a.currentR, IS_MAX_VOLTS_IN);
             checkDivider(out, "currentL", "L_IS", a.currentL, IS_MAX_VOLTS_IN);
-            checkTrim(out, "supply", "Supply sense", a.supplyTrim, MAX_SUPPLY_OFFSET_VOLTS, "V");
-            checkTrim(out, "currentR", "R_IS", a.currentRTrim, MAX_CURRENT_OFFSET_AMPS, "A");
-            checkTrim(out, "currentL", "L_IS", a.currentLTrim, MAX_CURRENT_OFFSET_AMPS, "A");
+            checkTrim(out, {"supply", "Supply sense", MAX_SUPPLY_OFFSET_VOLTS, "V"}, a.supplyTrim);
+            checkTrim(out, {"currentR", "R_IS", MAX_CURRENT_OFFSET_AMPS, "A"}, a.currentRTrim);
+            checkTrim(out, {"currentL", "L_IS", MAX_CURRENT_OFFSET_AMPS, "A"}, a.currentLTrim);
             if (isNamed(a.preset) && a != analogPreset(a.preset))
                 out.push_back({"", true, "These values belong to a named preset; choose Custom to change one"});
             return out;

@@ -1,4 +1,6 @@
 import type {
+  AnalogConfig,
+  AnalogIssue,
   BoardId,
   EthernetStatus,
   NetworkMode,
@@ -26,6 +28,8 @@ export const DEVKIT_PINS: PinsConfig = {
   hall: 39,
   parkA: 32,
   parkB: 33,
+  parkAPullup: 'internal',
+  parkBPullup: 'internal',
 };
 
 export const WT32_PINS: PinsConfig = {
@@ -40,6 +44,83 @@ export const WT32_PINS: PinsConfig = {
   hall: 39,
   parkA: 33,
   parkB: 5,
+  parkAPullup: 'internal',
+  parkBPullup: 'internal',
+};
+
+// The analog presets (lib/BoardLogic Analog.cpp): the DevKit bench wiring, and the WT32 carrier
+// v1.1's, the same with +0.3 V on the supply for its reverse-polarity diode.
+export const DEVKIT_ANALOG: AnalogConfig = {
+  preset: 'devkit-bench',
+  supply: { top: 100000, bottom: 22000, gain: 1, offsetVolts: 0 },
+  hall: { top: 10000, bottom: 20000 },
+  currentR: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+  currentL: { top: 10000, bottom: 20000, gain: 1, offsetAmps: 0 },
+};
+export const WT32_ANALOG: AnalogConfig = {
+  ...DEVKIT_ANALOG,
+  preset: 'wt32-carrier-v1.1',
+  supply: { ...DEVKIT_ANALOG.supply, offsetVolts: 0.3 },
+};
+const ANALOG_PRESETS = [DEVKIT_ANALOG, WT32_ANALOG];
+
+const ANALOG_LABELS: Record<Exclude<AnalogIssue['input'], ''>, [string, number]> = {
+  supply: ['Supply sense', 15],
+  hall: ['Hall sensor', 4.2],
+  currentR: ['R_IS', 5],
+  currentL: ['L_IS', 5],
+};
+const resistorOk = (ohms: number) => Number.isInteger(ohms) && ohms >= 100 && ohms <= 10000000;
+
+/** The device's checks on an analog setup (Analog.cpp checkAnalog), its texts included. */
+export const mockAnalogIssues = (analog: AnalogConfig): AnalogIssue[] => {
+  const issues: AnalogIssue[] = [];
+  for (const input of ['supply', 'hall', 'currentR', 'currentL'] as const) {
+    const [label, most] = ANALOG_LABELS[input];
+    const { top, bottom } = analog[input];
+    if (!resistorOk(top) || !resistorOk(bottom)) {
+      issues.push({ input, error: true, text: `${label} divider: each resistor must be between 100 Ohm and 10 MOhm` });
+      continue;
+    }
+    const atPin = most / ((top + bottom) / bottom);
+    if (atPin > 3.3)
+      issues.push({
+        input,
+        error: false,
+        text: `${label} divider: at its highest (${most.toFixed(1)} V) the input would put ${atPin.toFixed(2)} V on the pin, over 3.3 V`,
+      });
+  }
+  const trims = [
+    ['supply', analog.supply.gain, analog.supply.offsetVolts, 2, 'V'],
+    ['currentR', analog.currentR.gain, analog.currentR.offsetAmps, 5, 'A'],
+    ['currentL', analog.currentL.gain, analog.currentL.offsetAmps, 5, 'A'],
+  ] as const;
+  for (const [input, gain, offset, most, unit] of trims) {
+    const label = ANALOG_LABELS[input][0];
+    if (!(gain >= 0.5 && gain <= 2)) issues.push({ input, error: true, text: `${label} trim: the gain must be between 0.5 and 2` });
+    if (!(Math.abs(offset) <= most)) issues.push({ input, error: true, text: `${label} trim: the offset must be within ${most} ${unit}` });
+  }
+  const named = ANALOG_PRESETS.find((preset) => preset.preset === analog.preset);
+  if (named && JSON.stringify(named) !== JSON.stringify(analog))
+    issues.push({ input: '', error: true, text: 'These values belong to a named preset; choose Custom to change one' });
+  return issues;
+};
+
+type AnalogBody = Partial<Omit<AnalogConfig, 'supply' | 'hall' | 'currentR' | 'currentL'>> & {
+  [K in 'supply' | 'hall' | 'currentR' | 'currentL']?: Partial<AnalogConfig[K]>;
+};
+
+/** An analog setup as the device reads it over `saved`: a named preset fills every value first. */
+export const readAnalog = (body: AnalogBody, saved: AnalogConfig = DEVKIT_ANALOG): AnalogConfig => {
+  const named = ANALOG_PRESETS.find((preset) => preset.preset === body.preset);
+  const base = named ?? { ...saved, preset: body.preset ?? saved.preset };
+  return {
+    preset: base.preset,
+    supply: { ...base.supply, ...body.supply },
+    hall: { ...base.hall, ...body.hall },
+    currentR: { ...base.currentR, ...body.currentR },
+    currentL: { ...base.currentL, ...body.currentL },
+  };
 };
 
 const BOARDS: PinsDocument['boards'] = [
@@ -79,6 +160,9 @@ const issueOf = (map: PinsConfig, fn: PinFunction, seen: Map<number, PinFunction
       error: true,
       text: `${NAMES[fn]} on GPIO${pin}: GPIO${pin} is input only and can't drive an output`,
     };
+  const external = (fn === 'parkA' && map.parkAPullup === 'external') || (fn === 'parkB' && map.parkBPullup === 'external');
+  if ((fn === 'parkA' || fn === 'parkB') && pin >= 34 && !external)
+    return { function: fn, pin, code: 'noPullup', error: true, text: `${NAMES[fn]} on GPIO${pin}: GPIO${pin} has no internal pull-up` };
   if (fn !== 'enable' && STRAPPING.includes(pin)) return { function: fn, pin, code: `strap${pin}`, error: false, text: strapText(fn, pin) };
   return null;
 };
@@ -86,18 +170,33 @@ const issueOf = (map: PinsConfig, fn: PinFunction, seen: Map<number, PinFunction
 export const BOARD_DETECTED_TEXT = 'This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board';
 
 /**
- * A simplified version of the device's rules: input-only outputs and shared pins are errors,
- * strapping pins warnings; on a device whose Ethernet answered (`detected`), a map for
- * another board is refused (`boardDetected`).
+ * A simplified version of the device's rules: input-only outputs, shared pins and a park switch
+ * on 34-39 without an external pull-up are errors, strapping pins warnings; on a device whose
+ * Ethernet answered (`detected`), a map for another board is refused (`boardDetected`). With
+ * `analog` in the body, the analog setup (read over `savedAnalog`) is checked too.
  */
-export const mockValidate = (body: Partial<PinsConfig>, detected: BoardId | null = null): PinValidation => {
+export const mockValidate = (
+  body: Partial<PinsConfig> & { analog?: AnalogBody },
+  detected: BoardId | null = null,
+  savedAnalog: AnalogConfig = DEVKIT_ANALOG,
+): PinValidation => {
+  const { analog: analogBody, ...pinsBody } = body;
+  const pullups = { parkAPullup: pinsBody.parkAPullup ?? 'internal', parkBPullup: pinsBody.parkBPullup ?? 'internal' } as const;
   const map: PinsConfig =
-    body.preset === 'wt32-carrier-v1' ? WT32_PINS : body.preset === 'devkit' ? DEVKIT_PINS : { ...DEVKIT_PINS, ...body };
+    pinsBody.preset === 'wt32-carrier-v1'
+      ? { ...WT32_PINS, ...pullups }
+      : pinsBody.preset === 'devkit'
+        ? { ...DEVKIT_PINS, ...pullups }
+        : { ...DEVKIT_PINS, ...pinsBody };
   const seen = new Map<number, PinFunction>();
   const issues = FUNCTIONS.map((fn) => issueOf(map, fn, seen)).filter((issue): issue is PinIssue => issue !== null);
   if (detected === 'wt32-eth01' && map.board !== 'wt32-eth01')
     issues.unshift({ function: null, pin: 255, code: 'boardDetected', error: true, text: BOARD_DETECTED_TEXT });
-  return { valid: !issues.some((issue) => issue.error), pins: map, issues };
+  const valid = !issues.some((issue) => issue.error);
+  if (!analogBody || typeof analogBody !== 'object') return { valid, pins: map, issues };
+  const analog = readAnalog(analogBody, savedAnalog);
+  const analogIssues = mockAnalogIssues(analog);
+  return { valid: valid && !analogIssues.some((issue) => issue.error), pins: map, issues, analog, analogIssues };
 };
 
 export type MockBoard = 'devkit' | 'wt32' | 'unset';
@@ -112,6 +211,7 @@ const savedPins = (kind: MockBoard): PinsConfig =>
 export const pinsDocumentFor = (kind: MockBoard): PinsDocument => {
   const pins = savedPins(kind);
   const validation = mockValidate(pins);
+  const analog = kind === 'wt32' ? WT32_ANALOG : DEVKIT_ANALOG;
   return {
     running: pins,
     saved: pins,
@@ -124,6 +224,10 @@ export const pinsDocumentFor = (kind: MockBoard): PinsDocument => {
     detected: kind === 'unset' ? 'wt32-eth01' : null,
     presets: [DEVKIT_PINS, WT32_PINS],
     boards: BOARDS,
+    // The DevKit default's two warnings: 10k/20k puts 3.33 V on R_IS and L_IS at the BTS7960's 5 V.
+    analog,
+    analogIssues: mockAnalogIssues(analog),
+    analogPresets: ANALOG_PRESETS,
   };
 };
 

@@ -20,6 +20,7 @@ The Pins page (**Board and pins**) is at `/pins`, reached from **Settings → Ro
 - the **board** and the **preset**, as choice cards;
 - each function's pin (RPWM, LPWM, EN, R_IS, L_IS, supply, Hall, park switch A, park switch B), editable only with **Custom**;
 - the errors and warnings for the pins as you edit them, checked by the same rules the device uses;
+- **Advanced** (closed until you open it): the [analog front end](#advanced-the-analog-front-end) (each analog input's divider and trim) and each park switch's pull-up;
 - the **pins in effect** (the ones read at the last start) and whether a restart is needed to apply the saved ones;
 - **Save pins** and **Restart now**;
 - the [wiring check](#the-wiring-check) and its results.
@@ -47,6 +48,59 @@ Pins apply **only at the next start**. A save changes the saved pins; the page t
 - A named preset sent with pins that differ from it is refused: choose **Custom** to change one.
 - On a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it, also in **WiFi only**), any board but the WT32-ETH01 is refused: *"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"*. The Pins page and the wizard then show **ESP32 DevKit** as unavailable, saying why, and **Custom** starts on the WT32-ETH01.
 - A restart, like every restart, waits while the roof is busy.
+
+---
+
+## Advanced: the analog front end
+
+Each analog input reaches its pin through a resistor divider, and the device turns the pin's voltage back into the input's value with that divider's ratio. The dividers are settings, so a board built with other resistors, or a substituted one, reads right once you enter what is fitted. Open **Advanced** on the Pins page.
+
+### The analog presets
+
+| Preset | Supply sense | Hall sensor | R_IS, L_IS | Trim |
+|---|---|---|---|---|
+| **DevKit bench wiring** (the default, on every device, new or upgraded) | 100 kΩ / 22 kΩ | 10 kΩ / 20 kΩ | 10 kΩ / 20 kΩ | none: gain 1, offset 0 |
+| **WT32 carrier v1.1** | 100 kΩ / 22 kΩ | 10 kΩ / 20 kΩ | 10 kΩ / 20 kΩ | supply offset **+0.3 V** |
+| **Custom** | any | any | any | any |
+
+The divider values are the **top** resistor (from the input to the pin) and the **bottom** one (from the pin to GND). A named preset fixes every value, and the page shows them read-only; choose **Custom** to change one. On the WT32 carrier v1.1 the supply sense sits after the carrier's reverse-polarity diode, so the divider sees the supply less about 0.3 V: the preset adds it back.
+
+Choosing a board preset (**ESP32 DevKit** or **WT32-ETH01 + RoofRoof carrier v1**) while the analog preset is a named one switches it to the matching one (**DevKit bench wiring** or **WT32 carrier v1.1**). A **Custom** analog setup is left as it is.
+
+### Dividers and trims
+
+For each input the page shows the divider's **ratio** ((top + bottom) / bottom) and the pin's voltage with the input at its sensor's highest: 15 V for the supply, 4.2 V for the Hall sensor (the SS49E on 5 V) and 5 V for R_IS and L_IS (the BTS7960's IS output). The supply, R_IS and L_IS also have a **trim**: a **gain** (0.5 to 2) and an **offset** (within 2 V for the supply, within 5 A for each current input):
+
+- supply volts = pin volts × ratio × gain + offset;
+- motor amps, per side = pin volts × ratio × `roof.currentAmpsPerVolt` × gain + offset.
+
+The Hall sensor has no trim: its thresholds are raw ADC counts ([Calibration](../hardware/calibration.md)), so its divider only matters for the voltage at the pin.
+
+Each resistor must be a whole number of ohms from 100 Ω to 10 MΩ; values outside that, or a trim out of range, are errors and Save is refused.
+
+### The 3.3 V warnings
+
+An ESP32 input must not see more than 3.3 V. When a divider would put more on its pin at the sensor's highest, the page shows a warning, for example *"R_IS divider: at its highest (5.0 V) the input would put 3.33 V on the pin, over 3.3 V"*. Warnings don't stop a save.
+
+!!! warning "The drawn 10k/20k on R_IS and L_IS"
+    The drawn 10 kΩ / 20 kΩ on the current-sense inputs gives 3.33 V at the BTS7960's full 5 V IS output, so both presets carry two warnings, one per side. A larger top resistor keeps the pin under 3.3 V (for example 15 kΩ top / 20 kΩ bottom: 2.86 V at 5 V); fit it and enter it under **Custom**. A bench 10 kΩ / 22 kΩ (3.44 V at 5 V) still warns, and still saves.
+
+The checks run as you edit (the page asks the device, as for the pins).
+
+### Calibrate the supply to a measured voltage
+
+Under **Calibrate the supply**: measure the supply with a multimeter at the controller's supply terminals, type it into **Measured at the supply** and choose **Set the gain**. The page takes the device's live reading (**Supply reading now**) and the current trim, works out the gain that makes the reading match, keeping the offset, switches the analog preset to **Custom** and sets the supply gain. Then save. It is refused with no supply reading (or one under 1 V), a measured voltage not above the offset, or a gain that would fall outside 0.5 to 2 (check the divider values instead).
+
+### The park switches' pull-ups
+
+Each park switch input has a pull-up choice, **Internal** (the chip's own; the default) or **External (fitted)**, a resistor fitted on the board. GPIO34 to 39 have no internal pull-up, so a park switch may sit there only with **External** ([Wiring](../hardware/wiring.md#pull-ups-and-the-input-only-pins)). The pull-ups aren't part of a board preset: they stay as set when you change the preset.
+
+### What applies when
+
+The analog setup and the pins are saved together, with **Save pins**.
+
+- **Analog changes** (presets, dividers, trims) need **no restart**: the roof applies them at its next reading once no move is under way.
+- **Pull-up and pin changes** apply at the **next restart**, like any pin change ([Saving a change](#saving-a-change)).
 
 ---
 
@@ -97,7 +151,7 @@ The same rules run on the Pins page as you type (the page asks the device), on t
 | Not on the WT32-ETH01's header (it brings out 2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36, 39) | *"… the WT32-ETH01's header doesn't bring out GPIO13"* |
 | RPWM, LPWM or EN on an input-only pin (34 to 39) | *"RPWM on GPIO35: GPIO35 is input only and can't drive an output"* |
 | The supply, the Hall sensor or a current-sense input off ADC1 (32 to 39) | *"… an analog input must be on ADC1 (GPIO32-39), ADC2 can't be read while WiFi is on"* |
-| A park switch on an input-only pin (34 to 39) | *"… GPIO34 has no internal pull-up, so an open switch would float"* |
+| A park switch on an input-only pin (34 to 39) with the **internal** pull-up ([pull-ups](#the-park-switches-pull-ups)) | *"… GPIO34 has no internal pull-up, so an open switch would float"* |
 | Two functions on one pin | *"LPWM on GPIO25: GPIO25 is already RPWM"* |
 | EN on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15) | *"EN on GPIO14: EN can't be on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15)"* |
 | A named preset with different pins | *"… this preset's pins are fixed; choose Custom to change one"* |
@@ -163,4 +217,4 @@ curl -u admin:pass -X POST http://roofroof.local/api/pins/check   # start the wi
 curl http://roofroof.local/api/pins/check                # its results
 ```
 
-The pins are saved with the other settings, as `pins` in [`POST /api/config`](../api/rest.md#post-apiconfig) ([Configuration](configuration.md#pins-and-network)). The status says which preset is in effect and whether a restart is needed (`pins` in [`GET /api/status`](../api/rest.md#get-apistatus)).
+`GET /api/pins` also returns the saved analog setup, its warnings and errors, and the named analog presets; `POST /api/pins/validate` checks an `analog` object sent with the pins. The pins are saved with the other settings, as `pins` (and the analog setup as `analog`) in [`POST /api/config`](../api/rest.md#post-apiconfig) ([Configuration](configuration.md#pins-and-network)). The status says which preset is in effect and whether a restart is needed (`pins` in [`GET /api/status`](../api/rest.md#get-apistatus)).

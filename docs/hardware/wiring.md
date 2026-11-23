@@ -132,6 +132,9 @@ With EN held low by its pull-down the driver ignores RPWM and LPWM, so these are
 
 The ESP32's inputs must never see more than 3.3 V. Every analog signal that can exceed it goes through a resistor divider, with the lower resistor to GND.
 
+!!! tip "The dividers are settings"
+    The values below are the presets' (**DevKit bench wiring**, and **WT32 carrier v1.1**, which also adds back the 0.3 V of the carrier's reverse-polarity diode on the supply sense). If you fit other resistors, or substitute one, enter what is fitted under **Advanced** on the Pins page (analog preset **Custom**): the device then scales the readings with your values and warns when a divider would put more than 3.3 V on its pin ([Advanced: the analog front end](../user-guide/pins.md#advanced-the-analog-front-end)).
+
 ### 12 V supply sense
 
 The supply input (GPIO36 on both boards) reads the 12 V supply through a **100 kΩ (top) / 22 kΩ (bottom)** divider. The output is `Vin × 22 / 122`, about 0.18 of the input: 12 V reads about 2.2 V and a 14.4 V charging supply reads about 2.6 V, both under 3.3 V.
@@ -157,7 +160,7 @@ A 10 kΩ (top) / 20 kΩ (bottom) divider, the same as the current-sense inputs, 
 
 ## Pull-ups and the input-only pins
 
-**GPIO34, 35, 36 and 39 are input-only, and they have no internal pull-ups or pull-downs** (only GPIO0 to GPIO33 have them). That is fine for the analog inputs, because each one is driven by a divider or a sensor that sets its level. It matters for anything digital: never put a switch on one of these pins and rely on an internal pull-up, because there isn't one. The pin rules refuse a park switch there.
+**GPIO34, 35, 36 and 39 are input-only, and they have no internal pull-ups or pull-downs** (only GPIO0 to GPIO33 have them). That is fine for the analog inputs, because each one is driven by a divider or a sensor that sets its level. It matters for anything digital: never put a switch on one of these pins and rely on an internal pull-up, because there isn't one. The pin rules refuse a park switch there, unless you fit an external pull-up (about 10 kΩ to 3.3 V) and set that switch's pull-up to **External** under **Advanced** on the Pins page (applied at the next restart).
 
 That is why the park switches are on pins that do have pull-ups: GPIO32 and GPIO33 on a DevKit, IO33 and IO5 on the WT32 carrier. A closed park switch to GND reads low.
 

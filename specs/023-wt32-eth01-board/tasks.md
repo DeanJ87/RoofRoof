@@ -73,4 +73,4 @@
 
 - [x] T043 [US1] `lib/BoardLogic` Analog (dividers, trims, presets, checks, scaling, supply calibration) with test_analog; `analog` settings and the park pull-ups in ConfigModel with tests in test_config_pins
 - [x] T044 Firmware: the roof scales the supply and current with the configured values (applied with the roof's settings, never mid-move); the park pull-ups at boot; the pin documents and validate carry the analog values and issues; the demo too
-- [ ] T045 Web: the Advanced section, the supply calibration, mocks, tests; docs
+- [x] T045 Web: the Advanced section, the supply calibration, mocks, tests; docs

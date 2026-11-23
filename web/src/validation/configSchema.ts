@@ -237,6 +237,31 @@ export const pinsConfigSchema = z.object({
   hall: gpio,
   parkA: gpio,
   parkB: gpio,
+  parkAPullup: z.enum(['internal', 'external']).optional(),
+  parkBPullup: z.enum(['internal', 'external']).optional(),
+});
+
+// Spec 023 Advanced: the analog front end, with the device's ranges (lib/BoardLogic Analog.h).
+// Whether a named preset's values match it, and the 3.3 V warnings, are the device's call.
+const ohms = z
+  .number()
+  .int(t('validation.configSchema.resistorMustBeBetween'))
+  .min(100, t('validation.configSchema.resistorMustBeBetween'))
+  .max(10000000, t('validation.configSchema.resistorMustBeBetween'));
+const divider = { top: ohms, bottom: ohms };
+const gain = z.number().min(0.5, t('validation.configSchema.gainMustBeBetween')).max(2, t('validation.configSchema.gainMustBeBetween'));
+const offset = (most: number, message: string) => z.number().min(-most, message).max(most, message);
+const currentTrim = z.object({
+  ...divider,
+  gain,
+  offsetAmps: offset(5, t('validation.configSchema.currentOffsetWithin')),
+});
+export const analogConfigSchema = z.object({
+  preset: z.enum(['devkit-bench', 'wt32-carrier-v1.1', 'custom']),
+  supply: z.object({ ...divider, gain, offsetVolts: offset(2, t('validation.configSchema.supplyOffsetWithin')) }),
+  hall: z.object(divider),
+  currentR: currentTrim,
+  currentL: currentTrim,
 });
 export const networkConfigSchema = z.object({ mode: z.enum(['auto', 'ethernet', 'wifi']) });
 
@@ -261,6 +286,7 @@ const configShape = z.object({
   setup: setupConfigSchema.optional(),
   pins: pinsConfigSchema.optional(),
   network: networkConfigSchema.optional(),
+  analog: analogConfigSchema.optional(),
 });
 
 export const configSchema = configShape;

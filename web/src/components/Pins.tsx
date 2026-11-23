@@ -1,7 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useEffect, useState } from 'preact/hooks';
-import type { PinsConfig, PinsDocument, SystemStatus } from '../types';
+import type { AnalogConfig, AnalogIssue, PinPreset, PinsConfig, PinsDocument, SystemStatus } from '../types';
 import { useConfigEditor, type ConfigEditor, type SaveOutcome } from '../hooks/useConfigEditor';
 import { usePinsDocument, usePinValidation } from '../hooks/usePins';
 import { useWaitForReboot } from '../hooks/useWaitForReboot';
@@ -10,6 +10,8 @@ import { PIN_FUNCTIONS, errorsOf, functionLabel, presetLabel, suggestedPreset, w
 import { announce } from '../lib/a11y';
 import { getConfigValidationMessage } from '../validation/configSchema';
 import { CustomPins, IssueNotes, PinRows, PresetChoice, UnsetNotes } from './pins/PinFields';
+import { AdvancedSection } from './pins/AnalogFields';
+import { analogErrors, analogForBoard } from '../lib/analogView';
 import { WiringCheckPanel } from './pins/WiringCheck';
 import { MotionNote } from './settings/RoofTab';
 import { SettingsCard, StatusBadge } from './settings/controls';
@@ -21,15 +23,18 @@ import { deviceText } from '../i18n/deviceMessage';
 
 // The Pins page (spec 023 FR-026): the board and preset as choice cards, each
 // function's pin (editable for Custom), the device's errors and warnings for
-// the set as edited, the pins in effect beside the saved ones with Restart,
-// and the wiring check. The pins are saved through the settings save like
-// Settings; they apply at the next restart. Stop stays in the Layout's bar.
+// the set as edited, the Advanced section (the analog front end and the park
+// pull-ups), the pins in effect beside the saved ones with Restart, and the
+// wiring check. The pins and the analog setup are saved together through the
+// settings save like Settings; the pins apply at the next restart, the analog
+// setup once the roof is still. Stop stays in the Layout's bar.
 
 const PRESET_LABEL_ID = 'pins-preset-label';
 const SAVE_BLOCKED_ID = 'pins-save-blocked';
 const ISSUE_PREFIX = 'pins-issue';
 
 const samePins = (a: PinsConfig | undefined, b: PinsConfig | undefined) => JSON.stringify(a) === JSON.stringify(b);
+const sameAnalog = (a: AnalogConfig | undefined, b: AnalogConfig | undefined) => JSON.stringify(a) === JSON.stringify(b);
 
 const outcomeText = (outcome: SaveOutcome): string | null => {
   if (outcome.kind === 'invalid') return getConfigValidationMessage(outcome.errors);
@@ -43,8 +48,79 @@ const outcomeText = (outcome: SaveOutcome): string | null => {
 const saveBlocked = (pins: PinsConfig, check: ReturnType<typeof usePinValidation>): string | null => {
   if (pins.preset === 'unset') return t('pins.chooseFirst');
   if (check.checking || (!check.validation && !check.problem)) return t('pins.checking');
-  if (check.validation && errorsOf(check.validation.issues).length > 0) return t('pins.saveBlocked');
+  const validation = check.validation;
+  if (validation && (errorsOf(validation.issues).length > 0 || analogErrors(validation.analogIssues ?? []).length > 0))
+    return t('pins.saveBlocked');
   return check.problem;
+};
+
+// What the save note says applies when: the pins at the restart, the analog setup at once.
+const savedText = (pinsChanged: boolean, analogChanged: boolean) => {
+  if (pinsChanged && analogChanged) return t('pins.savedBoth');
+  return analogChanged ? t('pins.analog.saved') : t('pins.saved');
+};
+
+// The device's checks on the analog setup as edited; its saved setup's while the device hasn't answered.
+const analogIssuesOf = (doc: PinsDocument, check: ReturnType<typeof usePinValidation>, unchanged: boolean): AnalogIssue[] =>
+  check.validation?.analogIssues ?? (unchanged ? (doc.analogIssues ?? []) : []);
+
+// Applies a board preset's pins; a named analog preset follows it (a Custom analog setup stays).
+const applyBoard = (editor: ConfigEditor, doc: PinsDocument, next: PinsConfig) => {
+  const analog = analogForBoard(doc, editor.config?.analog, next.preset);
+  editor.applyChanges(
+    analog
+      ? [
+          [['pins'], next],
+          [['analog'], analog],
+        ]
+      : [[['pins'], next]],
+  );
+};
+
+// Save and Discard while something changed, and why Save is unavailable.
+const SaveRow: FunctionalComponent<{
+  dirty: boolean;
+  blocked: string | null;
+  busy: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+}> = ({ dirty, blocked, busy, onSave, onDiscard }) => (
+  <>
+    {dirty && (
+      <div class="btn-row">
+        <Button
+          variant="primary"
+          onClick={onSave}
+          disabled={blocked !== null}
+          describedBy={blocked ? SAVE_BLOCKED_ID : undefined}
+          busy={busy}
+          busyLabel={t('common.saving')}
+        >
+          {t('pins.save')}
+        </Button>
+        <Button variant="ghost" onClick={onDiscard}>
+          {t('settings.discard')}
+        </Button>
+      </div>
+    )}
+    {blocked && <Note id={SAVE_BLOCKED_ID}>{blocked}</Note>}
+  </>
+);
+
+// The pins and analog setup as edited, what changed, and the device's verdict on them.
+const useBoardEdit = (editor: ConfigEditor) => {
+  const pins = editor.config!.pins!;
+  const analog = editor.config!.analog;
+  const check = usePinValidation(pins, analog);
+  return {
+    pins,
+    saved: editor.saved?.pins,
+    analog,
+    check,
+    issues: check.validation?.issues ?? [],
+    pinsChanged: !samePins(pins, editor.saved?.pins),
+    analogChanged: !sameAnalog(analog, editor.saved?.analog),
+  };
 };
 
 const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; status: SystemStatus | null; onSaved: () => void }> = ({
@@ -53,22 +129,27 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
   status,
   onSaved,
 }) => {
-  const pins = editor.config!.pins!;
-  const saved = editor.saved?.pins;
-  const check = usePinValidation(pins);
+  const { pins, saved, analog, check, issues, pinsChanged, analogChanged } = useBoardEdit(editor);
   const wt32 = wt32Detected(doc, status);
-  const issues = check.validation?.issues ?? [];
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const dirty = !samePins(pins, saved);
+  const dirty = pinsChanged || analogChanged;
   const blocked = dirty ? saveBlocked(pins, check) : null;
   const change = (next: PinsConfig) => {
     setProblem(null);
     editor.applyChanges([[['pins'], next]]);
   };
+  const changeAnalog = (next: AnalogConfig) => {
+    setProblem(null);
+    editor.applyChanges([[['analog'], next]]);
+  };
+  const choose = (next: PinsConfig) => {
+    setProblem(null);
+    applyBoard(editor, doc, next);
+  };
   // A new device: the board its boot probe suggests is chosen for the person to confirm and save.
   useEffect(() => {
-    if (saved?.preset === 'unset' && pins.preset === 'unset') change(withPreset(doc, pins, suggestedPreset(doc)));
+    if (saved?.preset === 'unset' && pins.preset === 'unset') choose(withPreset(doc, pins, suggestedPreset(doc)));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on a device with no board chosen
   }, []);
   const save = async () => {
@@ -81,7 +162,7 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
     // Read out a refused save: the busy Save button doesn't say it (the note is a live region too).
     if (text) announce(text);
     if (outcome.kind !== 'saved') return;
-    showToast({ message: t('pins.saved') });
+    showToast({ message: savedText(pinsChanged, analogChanged) });
     onSaved();
   };
   return (
@@ -96,32 +177,25 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
         labelledBy={PRESET_LABEL_ID}
         newDevice={saved?.preset === 'unset'}
         wt32={wt32}
-        onChange={change}
+        onChange={choose}
       />
       {pins.preset === 'custom' && <CustomPins pins={pins} issues={issues} issuePrefix={ISSUE_PREFIX} onChange={change} />}
       {pins.preset !== 'custom' && pins.preset !== 'unset' && <PinRows pins={pins} />}
       <IssueNotes issues={issues} idPrefix={ISSUE_PREFIX} />
+      <AdvancedSection
+        doc={doc}
+        pins={pins}
+        analog={analog}
+        issues={analogIssuesOf(doc, check, !analogChanged)}
+        errors={editor.validationErrors}
+        supplyVolts={status?.roof?.supplyVolts}
+        onPins={change}
+        onAnalog={changeAnalog}
+      />
       <div role="status" aria-live="polite" data-pins-problem>
         {problem && <Note tone="bad">{problem}</Note>}
       </div>
-      {dirty && (
-        <div class="btn-row">
-          <Button
-            variant="primary"
-            onClick={() => void save()}
-            disabled={blocked !== null}
-            describedBy={blocked ? SAVE_BLOCKED_ID : undefined}
-            busy={busy}
-            busyLabel={t('common.saving')}
-          >
-            {t('pins.save')}
-          </Button>
-          <Button variant="ghost" onClick={editor.discard}>
-            {t('settings.discard')}
-          </Button>
-        </div>
-      )}
-      {blocked && <Note id={SAVE_BLOCKED_ID}>{blocked}</Note>}
+      <SaveRow dirty={dirty} blocked={blocked} busy={busy} onSave={() => void save()} onDiscard={editor.discard} />
     </SettingsCard>
   );
 };
@@ -185,6 +259,8 @@ const Pins: FunctionalComponent = () => {
   if (editor.loading || loading) return <div class="empty-state">{t('settings.loadingSettings')}</div>;
   const pins = editor.config?.pins;
   if (!pins || !doc) return <div class="empty-state tone-red">{t('pins.couldNotLoad')}</div>;
+  // The wiring check's suggested preset; a named analog preset follows it, as on the cards.
+  const choosePreset = (preset: PinPreset) => applyBoard(editor, doc, withPreset(doc, pins, preset));
   // Waits for the device to come back only once it accepted the restart; a refusal says why.
   const restart = () => void restartWithToast().then((accepted) => accepted && setRestarting(true));
   return (
@@ -194,7 +270,7 @@ const Pins: FunctionalComponent = () => {
       <BoardCard editor={editor} doc={doc} status={live ?? editor.status} onSaved={reload} />
       <InEffectCard doc={doc} busy={restarting} onRestart={restart} />
       <SettingsCard id="wiring" title={t('pins.check.title')} hint={t('pins.check.hint')}>
-        <WiringCheckPanel doc={doc} onChoosePreset={(preset) => editor.applyChanges([[['pins'], withPreset(doc, pins, preset)]])} />
+        <WiringCheckPanel doc={doc} onChoosePreset={choosePreset} />
       </SettingsCard>
       <div class="btn-row">
         <Button variant="link" onClick={() => route('/settings?tab=roof&section=pins')}>

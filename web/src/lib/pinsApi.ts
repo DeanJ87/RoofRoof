@@ -1,4 +1,4 @@
-import type { PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
+import type { AnalogConfig, PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
 import { bodyOf, getJson, post, postJson } from './api';
 import { deviceError } from '../i18n/deviceMessage';
 import { t } from '../i18n';
@@ -17,8 +17,8 @@ export const fetchPins = async (): Promise<PinsDocument | null> => {
 
 export type ValidateAnswer = { kind: 'checked'; validation: PinValidation } | { kind: 'refused'; text: string } | { kind: 'unreachable' };
 
-/** POST /api/pins/validate: the device's rules on a pin set it doesn't save. */
-export const validatePins = async (pins: Partial<PinsConfig>): Promise<ValidateAnswer> => {
+/** POST /api/pins/validate: the device's rules on a pin set (and, with `analog`, the analog setup) it doesn't save. */
+export const validatePins = async (pins: Partial<PinsConfig> & { analog?: AnalogConfig }): Promise<ValidateAnswer> => {
   try {
     const response = await postJson('/api/pins/validate', pins);
     const body = await bodyOf(response);

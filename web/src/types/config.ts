@@ -1,5 +1,5 @@
 import type { AlertsConfig } from './alerts';
-import type { NetworkConfig, PinsConfig } from './pins';
+import type { AnalogConfig, NetworkConfig, PinsConfig } from './pins';
 
 export interface WiFiConfig {
   ssid: string;
@@ -165,6 +165,8 @@ export interface Config {
   // Spec 023: the board and its pins, and the network mode on a board with Ethernet (both apply at a restart).
   pins?: PinsConfig;
   network?: NetworkConfig;
+  // Spec 023 Advanced: the analog inputs' dividers and trims; applied once the roof is still, no restart.
+  analog?: AnalogConfig;
   // Absent on firmware before spec 015; Settings never sends it (the device keeps it).
   setup?: SetupConfig;
 }

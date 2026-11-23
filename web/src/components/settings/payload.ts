@@ -43,4 +43,13 @@ export const toConfigPayload = (source: Config): Config => ({
   // The board and its pins, and the network mode (spec 023).
   ...(source.pins && { pins: { ...source.pins } }),
   ...(source.network && { network: { ...source.network } }),
+  ...(source.analog && {
+    analog: {
+      preset: source.analog.preset,
+      supply: { ...source.analog.supply },
+      hall: { ...source.analog.hall },
+      currentR: { ...source.analog.currentR },
+      currentL: { ...source.analog.currentL },
+    },
+  }),
 });
