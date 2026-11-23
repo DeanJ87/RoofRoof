@@ -35,7 +35,8 @@ catalogue's).
 
 Error codes: `missing` (no such GPIO), `flash`, `psram`, `uart`, `ethernet`, `header`,
 `inputOnly` (an output on 34-39), `notAdc1`, `noPullup` (a park switch on 34-39), `shared`,
-`enStrap` (EN on 0, 2, 5, 12, 14, 15), `presetMismatch`. Warning codes: `strap0`, `strap2`,
+`enStrap` (EN on 0, 2, 5, 12, 14, 15), `presetMismatch`, `probe` (0, 16, 18, 23 on every board),
+`boardDetected` (a board other than the WT32-ETH01 where a LAN8720 answered). Warning codes: `strap0`, `strap2`,
 `strap5`, `strap12`, `strap15`.
 
 ## `Board::BootPins` (the boot decision)
@@ -77,7 +78,8 @@ Inputs: `mode` (`Auto`, `Ethernet`, `Wifi`), `hasCredentials`, `ethernetLink`, `
 
 ## Status (`GET /api/status`, `/ws/status`)
 
-- New `ethernet`: `present` (the board in effect has Ethernet), `started`, `phyFound`, `link`,
+- New `ethernet`: `present` (the board in effect has Ethernet and runs it), `mode` (the network
+  mode in effect: `auto`, `ethernet`, `wifi`), `started`, `phyFound`, `link`,
   `speedMbps`, `fullDuplex`, `ip`, `mac`, `ipv6` (addresses, when on).
 - New `pins`: `preset`, `board` (in effect: chosen, or detected while none is), `valid`, `restartNeeded`.
 - Removed: `roof.rainContact`.

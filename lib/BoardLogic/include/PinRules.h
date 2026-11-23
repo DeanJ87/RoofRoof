@@ -30,6 +30,7 @@ namespace SQM
             Shared,         // two functions on one pin
             EnStrap,        // EN on a strap or a pin driven during boot
             PresetMismatch, // a named preset's pins changed
+            BoardDetected,  // a board other than the WT32-ETH01 where a LAN8720 answered
             // Warnings.
             Strap0,
             Strap2,

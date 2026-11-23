@@ -127,6 +127,7 @@ CONSTRAINTS = {
     # Spec 023: the pins and Ethernet blocks, and the settings' pins and network groups.
     ("status", ("pins", "preset")): {"enum": ["devkit", "wt32-carrier-v1", "custom", "unset"]},
     ("status", ("pins", "board")): {"enum": ["esp32-devkit", "wt32-eth01"]},
+    ("status", ("ethernet", "mode")): {"enum": ["auto", "ethernet", "wifi"]},
     ("config", ("pins", "preset")): {"enum": ["devkit", "wt32-carrier-v1", "custom", "unset"]},
     ("config", ("pins", "board")): {"enum": ["esp32-devkit", "wt32-eth01"]},
     ("config", ("network", "mode")): {"enum": ["auto", "ethernet", "wifi"]},

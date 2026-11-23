@@ -87,6 +87,7 @@ ASSIGN = {
     "lib/RoofIoLogic/src/PlatformHold.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/RoofIoLogic/include/PlatformHold.h": re.compile(r"\bHOTSPOT_TEXT\s*=\s*"),
     "src/WiringRun.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
+    "lib/BoardLogic/src/PinText.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)"),
     # Spec 020: why a group's values from SQMeter weren't taken.

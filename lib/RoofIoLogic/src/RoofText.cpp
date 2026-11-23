@@ -14,7 +14,7 @@ namespace SQM
             // printf into a std::string (the texts are short).
             template <typename... Args> std::string format(const char *pattern, Args... args)
             {
-                char buffer[160];
+                char buffer[256];
                 std::snprintf(buffer, sizeof(buffer), pattern, args...);
                 return buffer;
             }
@@ -123,7 +123,7 @@ namespace SQM
 
         std::string pinSetupText(const std::string &reason, bool unset)
         {
-            return unset ? reason : "Pin setup invalid: " + reason;
+            return unset ? reason : format("Pin setup invalid: %s", reason.c_str());
         }
 
         std::string describeSupply(float volts, float minimum)

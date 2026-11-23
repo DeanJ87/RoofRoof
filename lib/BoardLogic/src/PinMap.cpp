@@ -52,8 +52,8 @@ namespace SQM
             constexpr uint64_t ESP32_BOOT_PULSES = gpioBit(5) | gpioBit(14) | gpioBit(15);
             // WT32-ETH01 (research R2): the RMII, MDIO/MDC, clock and oscillator pins, and its header.
             constexpr uint64_t WT32_ETHERNET = gpioBit(0) | gpioBit(16) | gpioBit(18) | gpioBit(19) | gpioRange(21, 23) | gpioRange(25, 27);
-            constexpr uint64_t WT32_HEADER = gpioRange(0, 5) | gpioBit(12) | gpioBit(14) | gpioBit(15) | gpioBit(17) | gpioBit(32) |
-                                             gpioBit(33) | gpioBit(35) | gpioBit(36) | gpioBit(39);
+            constexpr uint64_t WT32_HEADER = gpioBit(2) | gpioBit(4) | gpioBit(5) | gpioBit(12) | gpioBit(14) | gpioBit(15) | gpioBit(17) |
+                                             gpioBit(32) | gpioBit(33) | gpioBit(35) | gpioBit(36) | gpioBit(39);
         } // namespace
 
         uint8_t PinMap::pin(Function function) const
@@ -169,7 +169,10 @@ namespace SQM
             f.board = board;
             f.exists = ESP32_EXISTS;
             f.flash = ESP32_FLASH;
-            f.psram = psram ? ESP32_PSRAM : 0;
+            // On every board: this build can't tell a WROVER's PSRAM from free pins
+            // (psramFound() needs CONFIG_SPIRAM), so 16 and 17 are never a roof function.
+            (void)psram;
+            f.psram = ESP32_PSRAM;
             f.uart = ESP32_UART0;
             f.inputOnly = ESP32_INPUT_ONLY;
             f.adc1 = ESP32_ADC1;

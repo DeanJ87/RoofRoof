@@ -26,6 +26,7 @@ std::string EmulatedDevice::statusParts() const
     pins["restartNeeded"] = cfg.pins != runningPins;
     JsonObject eth = doc.createNestedObject("ethernet");
     eth["present"] = false;
+    eth["mode"] = "wifi";
     eth["started"] = false;
     eth["phyFound"] = false;
     eth["link"] = false;

@@ -49,6 +49,11 @@ namespace SQM
                     e.speedMbps = EthernetLink::speedMbps();
                     return e;
                 }
+                if (PinSetup::board() == Board::BoardId::Wt32Eth01)
+                {
+                    e.mode = Board::EthernetFacts::Mode::SkippedWifiOnly; // the board's own PHY, deliberately off
+                    return e;
+                }
                 if (PinSetup::psram())
                     return e; // SkippedPsram
                 const Board::PinMap &pins = PinSetup::running();
@@ -74,7 +79,10 @@ namespace SQM
                         : why.empty()                          ? Board::EnProbe::NotRun
                                                                : Board::EnProbe::Busy;
                 theRoof->wiringReadings(in);
-                in.ethernet = ethernetFacts();
+                if (in.en == Board::EnProbe::Busy)
+                    in.ethernet.mode = Board::EthernetFacts::Mode::SkippedBusy; // nothing more is driven while busy
+                else
+                    in.ethernet = ethernetFacts();
                 Board::WiringResult out = Board::evaluate(in);
                 {
                     const std::lock_guard<std::mutex> held(resultLock);

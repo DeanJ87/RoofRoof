@@ -14,5 +14,7 @@ namespace SQM
         std::string issueText(const Issue &issue);
         std::string unreadableText();
         std::string unsetText();
+        std::string boardDetectedText();
+        std::string presetBoardText();
     } // namespace Board
 } // namespace SQM

@@ -337,9 +337,11 @@ namespace SQM
 
     // Spec 023: not part of validateLoaded(), so stored pins that break a
     // rule still load; the device then holds every motor pin (src/PinSetup.cpp).
-    bool Config::validatePins(bool psram, std::string *error) const
+    bool Config::validatePins(bool psram, std::string *error, bool requireWt32) const
     {
-        const Board::PinReport report = Board::check(pins, Board::facts(pins.board, psram));
+        Board::Facts facts = Board::facts(pins.board, psram);
+        facts.requireWt32 = requireWt32 && pins.preset != Board::Preset::Unset;
+        const Board::PinReport report = Board::check(pins, facts);
         const Board::Issue *first = report.firstError();
         return first == nullptr || setError(error, first->text);
     }

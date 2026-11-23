@@ -24,7 +24,7 @@ namespace SQM
                 case IssueCode::Flash:
                     return format("%s on GPIO%u: GPIO%u is a flash pin", what, pin, pin);
                 case IssueCode::Psram:
-                    return format("%s on GPIO%u: GPIO%u is used by this chip's PSRAM", what, pin, pin);
+                    return format("%s on GPIO%u: GPIO%u is used by the PSRAM on WROVER modules", what, pin, pin);
                 case IssueCode::Uart:
                     return format("%s on GPIO%u: GPIO%u is the serial port used for the log and USB flashing", what, pin, pin);
                 case IssueCode::Ethernet:
@@ -86,11 +86,23 @@ namespace SQM
 
         std::string issueText(const Issue &issue)
         {
+            if (issue.function == Function::None && issue.code == IssueCode::BoardDetected)
+                return boardDetectedText();
             if (issue.function == Function::None)
-                return "This preset is for another board; choose Custom to change the board";
+                return presetBoardText();
             const char *what = functionLabel(issue.function);
             const unsigned pin = issue.pin;
             return issue.error ? errorText(issue, what, pin) : warningText(what, pin, issue.code);
+        }
+
+        std::string boardDetectedText()
+        {
+            return "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board";
+        }
+
+        std::string presetBoardText()
+        {
+            return "This preset is for another board; choose Custom to change the board";
         }
 
         std::string unsetText()

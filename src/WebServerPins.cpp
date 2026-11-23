@@ -1,5 +1,4 @@
 #include "ConfigPins.h"
-#include "EthernetLink.h"
 #include "Logger.h"
 #include "PinSetup.h"
 #include "RoofControl.h"
@@ -72,7 +71,9 @@ namespace SQM
             request->send(400, "application/json", createErrorJson(error.c_str()).c_str());
             return;
         }
-        const Board::PinReport report = Board::check(map, Board::facts(map.board, PinSetup::psram()));
+        Board::Facts facts = Board::facts(map.board, PinSetup::psram());
+        facts.requireWt32 = map.preset != Board::Preset::Unset && PinSetup::wt32Evidence();
+        const Board::PinReport report = Board::check(map, facts);
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES / 2);
         ConfigPins::writeValidation(doc.to<JsonObject>(), map, report);
         std::string out;
@@ -101,19 +102,6 @@ namespace SQM
         pins["board"] = Board::boardName(PinSetup::board());
         pins["valid"] = PinSetup::valid();
         pins["restartNeeded"] = getConfigCallback().pins != running;
-    }
-
-    std::string WebServer::pinBoardRefused(const Config &live, const Config &next)
-    {
-        if (next.pins == live.pins || next.pins.preset == Board::Preset::Unset)
-            return "";
-        // The LAN8720 answered (Ethernet started, or the boot probe found it): a
-        // DevKit map here would drive GPIO 25-27 against its receive lines.
-        const bool wt32Here =
-            EthernetLink::started() || (PinSetup::boardProbed() && PinSetup::detectedBoard() == Board::BoardId::Wt32Eth01);
-        if (wt32Here && next.pins.board != Board::BoardId::Wt32Eth01)
-            return "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board";
-        return "";
     }
 
     std::string WebServer::pinChangeHeld(const Config &live, const Config &next) const

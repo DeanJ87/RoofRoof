@@ -97,22 +97,24 @@ namespace SQM
         struct Facts
         {
             BoardId board = BoardId::Esp32Devkit;
-            uint64_t exists = 0;     // GPIOs the chip has, flash pins included
-            uint64_t flash = 0;      // the SPI flash
-            uint64_t psram = 0;      // PSRAM, when the chip has it
-            uint64_t uart = 0;       // UART0: the log and USB flashing
-            uint64_t ethernet = 0;   // the board's Ethernet
-            uint64_t header = 0;     // the pins the board brings out (0: all that exist)
-            uint64_t inputOnly = 0;  // no output driver, no pull-up
-            uint64_t adc1 = 0;       // readable while Wi-Fi runs
-            uint64_t straps = 0;     // sampled at reset
-            uint64_t bootPulses = 0; // driven by the chip during boot
-            uint64_t probe = 0;      // driven by the WT32-ETH01 probe at boot
+            uint64_t exists = 0;      // GPIOs the chip has, flash pins included
+            uint64_t flash = 0;       // the SPI flash
+            uint64_t psram = 0;       // PSRAM on WROVER modules (reserved on every board)
+            bool requireWt32 = false; // the device has seen a LAN8720 here: only the WT32-ETH01 board
+            uint64_t uart = 0;        // UART0: the log and USB flashing
+            uint64_t ethernet = 0;    // the board's Ethernet
+            uint64_t header = 0;      // the pins the board brings out (0: all that exist)
+            uint64_t inputOnly = 0;   // no output driver, no pull-up
+            uint64_t adc1 = 0;        // readable while Wi-Fi runs
+            uint64_t straps = 0;      // sampled at reset
+            uint64_t bootPulses = 0;  // driven by the chip during boot
+            uint64_t probe = 0;       // driven by the WT32-ETH01 probe at boot
 
             static bool has(uint64_t set, unsigned pin) { return pin < 64 && (set & gpioBit(pin)) != 0; }
         };
 
-        // The classic ESP32's facts on `board`; `psram`: the chip has PSRAM (WROVER).
+        // The classic ESP32's facts on `board`. `psram` (the chip reports PSRAM)
+        // no longer changes them: 16 and 17 are reserved everywhere.
         Facts facts(BoardId board, bool psram);
 
         // The WT32-ETH01's Ethernet (LAN8720, research R8).

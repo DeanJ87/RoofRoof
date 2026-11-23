@@ -224,6 +224,12 @@ void test_ethernet_probe_skipped(void)
     TEST_ASSERT_NOT_NULL(std::strstr(find(result, CheckId::Ethernet).text.c_str(), "GPIO16"));
     in.ethernet.mode = EthernetFacts::Mode::SkippedPsram;
     assertLevel(Level::Skipped, in, CheckId::Ethernet);
+    in.ethernet.mode = EthernetFacts::Mode::SkippedWifiOnly;
+    result = evaluate(in);
+    TEST_ASSERT_NOT_NULL(std::strstr(find(result, CheckId::Ethernet).text.c_str(), "WiFi only"));
+    in.ethernet.mode = EthernetFacts::Mode::SkippedBusy;
+    assertLevel(Level::Skipped, in, CheckId::Ethernet);
+    TEST_ASSERT_FALSE(evaluate(in).suggestWt32);
 }
 
 void test_motion_points_to_jog_and_teach(void)

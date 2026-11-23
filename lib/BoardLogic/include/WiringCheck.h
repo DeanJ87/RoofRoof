@@ -61,7 +61,9 @@ namespace SQM
                 Running,
                 Probed,
                 SkippedPsram,
-                SkippedPin, // `usedPin` is a roof function
+                SkippedPin,      // `usedPin` is a roof function
+                SkippedWifiOnly, // a WT32-ETH01 in the WiFi only network mode
+                SkippedBusy,     // the roof became busy: the probe waits for the next check
             };
             Mode mode = Mode::SkippedPsram;
             // Running.

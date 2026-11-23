@@ -94,8 +94,9 @@ namespace SQM
                 // Spec 023: pins apply at the next start, checked against this chip
                 // too; a change waits while the roof is busy (FR-007, FR-008).
                 held = pinChangeHeld(live, *merged);
-                reason = pinBoardRefused(live, *merged);
-                if (!held.empty() || !reason.empty() || !merged->validatePins(PinSetup::psram(), &reason))
+                // A board that has shown its LAN8720 keeps a WT32-ETH01 map (only when the pins change).
+                const bool requireWt32 = merged->pins != live.pins && PinSetup::wt32Evidence();
+                if (!held.empty() || !merged->validatePins(PinSetup::psram(), &reason, requireWt32))
                     return false;
                 next = std::move(*merged);
                 return true;

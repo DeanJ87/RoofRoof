@@ -192,6 +192,11 @@ namespace SQM
                     return runningEthernet(e);
                 case EthernetFacts::Mode::Probed:
                     return probedEthernet(e, suggest);
+                case EthernetFacts::Mode::SkippedWifiOnly:
+                    return make(CheckId::Ethernet, Level::Skipped, "Not checked: the network mode is WiFi only");
+                case EthernetFacts::Mode::SkippedBusy:
+                    return make(
+                        CheckId::Ethernet, Level::Skipped, "Not checked: the roof became busy, so run the check again once it is still");
                 case EthernetFacts::Mode::SkippedPin:
                     return make(
                         CheckId::Ethernet,

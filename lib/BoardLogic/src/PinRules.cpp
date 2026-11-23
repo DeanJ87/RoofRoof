@@ -22,6 +22,7 @@ namespace SQM
                 "shared",
                 "enStrap",
                 "presetMismatch",
+                "boardDetected",
                 "strap0",
                 "strap2",
                 "strap5",
@@ -165,6 +166,8 @@ namespace SQM
             if (map.preset == Preset::Unset)
                 return report; // no pins in use, nothing to check (bootPins drives nothing)
             checkPresetMatch(map, report);
+            if (facts.requireWt32 && map.board != BoardId::Wt32Eth01)
+                add(report, Function::None, 255, IssueCode::BoardDetected);
             for (size_t i = 0; i < FUNCTION_COUNT; ++i)
             {
                 const auto function = static_cast<Function>(i);

@@ -68,7 +68,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   PWM low. Until then the EN pull-down holds the driver off, exactly as through reset, flashing and
   the boot loader today. Constitution I is reworded for this (3.0.0).
 - Q: Which pins are refused, and which only warned about? → A: Refused: a pin that doesn't exist;
-  one reserved by the flash (6-11), by PSRAM when the chip has it (16, 17), by UART0 (1, 3) or by
+  one reserved by the flash (6-11), by a WROVER's PSRAM (16, 17, on every board), by UART0 (1, 3) or by
   the board's Ethernet; one the boot probe drives (0, 16, 18, 23) on any board, because a device
   that doesn't know its wiring drives them while it looks for a WT32-ETH01; on the WT32-ETH01, a pin
   its header doesn't bring out; an output (RPWM,
@@ -77,7 +77,7 @@ Each answer takes the safest option the constitution allows and is also listed u
   internal pull-up, so an open switch would float); two functions on one pin; and EN on a pin the
   chip straps or drives during boot (0, 2, 5, 12, 14, 15), since a pulse there could enable the
   driver while the PWM pins glitch. R_EN and L_EN are one EN line by design: the setting has one
-  EN pin. Warned (with what each strap does at reset): any other function on 0, 2, 5, 12 or 15.
+  EN pin. Warned (with what each strap does at reset): any other function on 2, 5, 12 or 15 (0 is refused as a probe pin).
 - Q: Which wiring checks run? → A: Only checks that can't move the roof, run by a person from the
   setup wizard or the pin page, while the roof is idle, refused while anything else is under way:
   the EN pull-down (EN read for a moment as an input with the internal pull-up, both PWM held low
@@ -298,7 +298,7 @@ finds the LAN8720 at address 1 and suggests the WT32 carrier preset.
 1. **Given** a WT32-ETH01 on the DevKit preset, **When** the wiring check runs, **Then** the
    Ethernet check reports a LAN8720 PHY found and suggests the WT32 carrier preset.
 2. **Given** a DevKit, **Then** it reports no Ethernet PHY found, as expected for that board.
-3. **Given** a Custom map using GPIO16, **Then** the probe is skipped, saying why.
+3. **Given** a chip that reports PSRAM, **Then** the probe is skipped, saying why.
 
 ---
 
@@ -323,8 +323,8 @@ question, the Settings row, the dashboard row and the docs for the local contact
   out (e.g. 13): refused.
 - A DevKit with PSRAM (WROVER): 16 and 17 are refused; the Ethernet probe is skipped.
 - Two functions on one pin, including RPWM = LPWM: refused, naming both.
-- A park switch on GPIO0 of a DevKit: warned (a parked mount at power-on would hold the board in
-  its download mode).
+- A park switch on GPIO0 of a DevKit: refused (a probe pin; a parked mount at power-on would also
+  hold the board in its download mode).
 - The wiring check started twice: the second start is refused while the first runs.
 - Ethernet chosen on a DevKit by mistake (Custom with the WT32 board): Ethernet fails to find a
   PHY; the motor pins of that map aren't wired on a DevKit, and its EN pull-down holds the driver
@@ -352,7 +352,7 @@ question, the Settings row, the dashboard row and the docs for the local contact
 - **FR-005**: A pin set MUST be refused when any function's pin: doesn't exist on the ESP32 (only
   0-5, 12-19, 21-23, 25-27, 32-36, 39 do, besides the flash pins; 37 and 38 aren't brought out); is
   one of the boot probe's pins (0, 16, 18, 23) on any board; is a flash pin (6-11); is a PSRAM
-  pin (16, 17) on a chip with PSRAM; is UART0 (1, 3); is used by the board's Ethernet (WT32-ETH01:
+  pin (16, 17; reserved on every board, since this build can't detect a WROVER's PSRAM); is UART0 (1, 3); is used by the board's Ethernet (WT32-ETH01:
   0, 16, 18, 19, 21, 22, 23, 25, 26, 27); isn't brought out by the board's header (WT32-ETH01: 2, 4,
   5, 12, 14, 15, 17, 32, 33, 35, 36, 39); is input-only (34-39) for RPWM, LPWM or EN; isn't ADC1
   (32-39) for the current senses, the supply or the Hall; is input-only for a park switch; is shared
@@ -407,7 +407,7 @@ question, the Settings row, the dashboard row and the docs for the local contact
   the roof moves, a close waits, the close sequence works, a calibration run or a jog is under way,
   a fault forbids it (pins invalid), a pin change waits for a restart, or another check runs.
 - **FR-018**: Ethernet: on a board with Ethernet, report whether the PHY was found, the link, its
-  speed and the address. Otherwise, when the chip has no PSRAM and none of GPIO 0, 16, 18 and 23
+  speed and the address; on a WT32-ETH01 in WiFi only, report it skipped. Otherwise, when the chip has no PSRAM and none of GPIO 0, 16, 18 and 23
   is a roof function, probe for a WT32-ETH01 (oscillator on GPIO16 for about 15 ms, the clock on
   GPIO0, the PHY's ID registers at address 1 over MDC 23 and MDIO 18, then all three back to
   inputs) and suggest the WT32 carrier preset when a LAN8720 answers; otherwise skip, saying why.
@@ -522,9 +522,8 @@ Each was an open choice; the safest option the constitution allows was taken.
 6. **A park switch on an input-only pin is refused**: those pins have no pull-up, so an open
    switch would float and could read as closed.
 7. **Unreadable saved settings lock the pins**, though everything else falls back to defaults as
-   before. A later save of any settings writes the default (DevKit) pins, which then apply at the
-   next restart; on a WT32 carrier those pins aren't the motor's and its EN pull-down holds the
-   driver off.
+   before. The defaults have no board chosen, so a later save of any settings keeps "unset" and
+   the next restart still drives nothing until a person chooses the board.
 8. **The pin fault isn't stored** and can't be cleared by a person: it is a boot-time condition
    that only a valid set and a restart change.
 9. **The Ethernet probe briefly powers the WT32's oscillator** (about 15 ms). On a WT32 still on
@@ -560,3 +559,8 @@ Each was an open choice; the safest option the constitution allows was taken.
     WT32 header, and the DevKit preset doesn't use them.
 18. **A backup never restores the pins**: they belong to the hardware the device runs on. A
     restore lists different pins as not applied and keeps the device's.
+
+19. **GPIO 16 and 17 are reserved on every board**: the firmware is built without PSRAM support,
+    so it can't tell a WROVER (whose PSRAM uses them) from a WROOM. The WT32 carrier doesn't use
+    them.
+20. **A WT32-ETH01 in WiFi only is probed at boot too**, so a DevKit map can still be refused there.

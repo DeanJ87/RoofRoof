@@ -8,6 +8,7 @@
 #include <esp_netif.h>
 
 #include "Logger.h"
+#include "NetState.h"
 #include "PinMap.h"
 #include "PinSetup.h"
 
@@ -203,6 +204,7 @@ namespace SQM
         {
             JsonObject eth = doc.createNestedObject("ethernet");
             eth["present"] = isPresent;
+            eth["mode"] = NetState::ethernetOnly() ? "ethernet" : isPresent ? "auto" : "wifi"; // in effect since boot
             eth["started"] = started();
             eth["phyFound"] = started();
             eth["link"] = linkUp();

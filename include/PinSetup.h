@@ -31,6 +31,9 @@ namespace SQM
         // before any pin is touched. Probed: false when it couldn't run (PSRAM).
         bool boardProbed();
         Board::BoardId detectedBoard();
+        // A LAN8720 answered here (Ethernet started, or a boot probe found it):
+        // only a WT32-ETH01 map may be saved (FR-008).
+        bool wt32Evidence();
         // The board in effect: the chosen one, or the detected one when none is.
         Board::BoardId board();
     } // namespace PinSetup

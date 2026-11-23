@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <driver/gpio.h>
 
+#include "EthernetLink.h"
 #include "EthernetProbe.h"
 #include "Logger.h"
 #include "MotorDriver.h"
@@ -26,7 +27,7 @@ namespace SQM
             {
                 if (chipPsram)
                 {
-                    Logger::warn(TAG, "No board chosen; not probing for a WT32-ETH01 (PSRAM uses GPIO16)");
+                    Logger::warn(TAG, "Not probing for a WT32-ETH01 (PSRAM uses GPIO16)");
                     return;
                 }
                 Board::EthernetFacts facts;
@@ -35,7 +36,7 @@ namespace SQM
                 detected = EthernetProbe::foundWt32(facts) ? Board::BoardId::Wt32Eth01 : Board::BoardId::Esp32Devkit;
                 Logger::info(
                     TAG,
-                    "No board chosen; the probe found %s",
+                    "Probe for a WT32-ETH01: %s",
                     detected == Board::BoardId::Wt32Eth01 ? "a WT32-ETH01 (LAN8720)" : "no Ethernet PHY");
             }
 
@@ -57,7 +58,10 @@ namespace SQM
             chipPsram = psramFound();
             inEffect = config.pins;
             chosen = !storedRejected && inEffect.preset != Board::Preset::Unset;
-            if (!chosen)
+            // A WT32 in WiFi only doesn't start Ethernet: probe so a DevKit map can still be refused.
+            const bool wt32WifiOnly =
+                chosen && inEffect.board == Board::BoardId::Wt32Eth01 && config.network.mode == NetworkConfig::Mode::Wifi;
+            if (!chosen || wt32WifiOnly)
                 detectBoard();
             decided = Board::bootPins(inEffect, facts(), storedRejected);
             if (decided.valid)
@@ -110,6 +114,11 @@ namespace SQM
         Board::Facts facts()
         {
             return Board::facts(board(), chipPsram);
+        }
+
+        bool wt32Evidence()
+        {
+            return EthernetLink::started() || (probed && detected == Board::BoardId::Wt32Eth01);
         }
 
         bool boardProbed()

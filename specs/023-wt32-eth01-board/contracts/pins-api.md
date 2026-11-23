@@ -79,7 +79,7 @@ a LAN8720 on a board set up without Ethernet. `level`: `pass`, `warn`, `fail`, `
 
 ## Wi-Fi in Ethernet only
 
-`GET /api/wifi/scan` and `POST /api/wifi/connect` answer 409 "Wi-Fi is off: the network mode is
+`GET /api/wifi/scan` and `POST /api/wifi/connect` answer 409 "WiFi is off: the network mode is
 Ethernet only" on a board running Ethernet with `network.mode` `ethernet`.
 
 ## Status

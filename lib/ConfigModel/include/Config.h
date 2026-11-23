@@ -478,7 +478,8 @@ namespace SQM
         bool validateLoaded(std::string *error = nullptr) const;
         // Spec 023: the pins against the rules for a chip with or without
         // PSRAM (validate() assumes none; the device checks its own chip too).
-        bool validatePins(bool psram, std::string *error = nullptr) const;
+        // `requireWt32`: the device has seen a LAN8720, so only the WT32-ETH01 board is allowed.
+        bool validatePins(bool psram, std::string *error = nullptr, bool requireWt32 = false) const;
         // validate() plus the rules a change from the UI/API also meets (host and
         // URL forms, Pushover key format): what a change synced from SQMeter must pass (spec 020).
         bool validateChange(std::string *error = nullptr) const;

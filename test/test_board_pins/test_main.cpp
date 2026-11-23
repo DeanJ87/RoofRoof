@@ -137,7 +137,7 @@ void test_gpio_37_and_38_are_not_brought_out(void)
 // The boot probe drives them on a device that doesn't know its wiring yet.
 void test_probe_pins_on_every_board(void)
 {
-    for (uint8_t pin : {0, 16, 18, 23})
+    for (uint8_t pin : {0, 18, 23}) // 16 reads as psram first
     {
         assertOnlyError(withPin(Function::Enable, pin), Function::Enable, pin, IssueCode::Probe);
         assertOnlyError(withPin(Function::ParkA, pin), Function::ParkA, pin, IssueCode::Probe);
@@ -150,11 +150,31 @@ void test_flash_pins(void)
         assertOnlyError(withPin(Function::Rpwm, pin), Function::Rpwm, pin, IssueCode::Flash);
 }
 
-void test_psram_pins_only_with_psram(void)
+// This build can't detect a WROVER's PSRAM, so 16 and 17 are reserved everywhere.
+void test_psram_pins_on_every_board(void)
 {
-    assertOnlyError(withPin(Function::Rpwm, 16, DEVKIT_PSRAM), Function::Rpwm, 16, IssueCode::Psram); // PSRAM before the probe
-    assertOnlyError(withPin(Function::Rpwm, 17, DEVKIT_PSRAM), Function::Rpwm, 17, IssueCode::Psram);
-    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 17, DEVKIT).valid());
+    for (const Facts *f : {&DEVKIT, &DEVKIT_PSRAM})
+    {
+        assertOnlyError(withPin(Function::Rpwm, 16, *f), Function::Rpwm, 16, IssueCode::Psram);
+        assertOnlyError(withPin(Function::Rpwm, 17, *f), Function::Rpwm, 17, IssueCode::Psram);
+    }
+    assertOnlyError(withPin(Function::Rpwm, 17, WT32, BoardId::Wt32Eth01), Function::Rpwm, 17, IssueCode::Psram);
+}
+
+// FR-008: where a LAN8720 answered, only the WT32-ETH01 board.
+void test_a_detected_wt32_refuses_another_board(void)
+{
+    Facts seen = DEVKIT;
+    seen.requireWt32 = true;
+    const PinReport report = check(presetMap(Preset::Devkit), seen);
+    TEST_ASSERT_FALSE(report.valid());
+    TEST_ASSERT_EQUAL_STRING("boardDetected", issueCodeName(report.firstError()->code));
+    TEST_ASSERT_EQUAL_STRING(
+        "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board", report.firstError()->text.c_str());
+    Facts wt32Seen = WT32;
+    wt32Seen.requireWt32 = true;
+    TEST_ASSERT_TRUE(check(presetMap(Preset::Wt32CarrierV1), wt32Seen).valid());
+    TEST_ASSERT_EQUAL_size_t(0, check(presetMap(Preset::Unset), seen).issues.size());
 }
 
 void test_uart0(void)
@@ -165,7 +185,7 @@ void test_uart0(void)
 
 void test_wt32_ethernet_pins(void)
 {
-    for (uint8_t pin : {0, 16, 18, 19, 21, 22, 23, 25, 26, 27})
+    for (uint8_t pin : {0, 18, 19, 21, 22, 23, 25, 26, 27}) // 16: psram first
         assertOnlyError(withPin(Function::Rpwm, pin, WT32, BoardId::Wt32Eth01), Function::Rpwm, pin, IssueCode::Ethernet);
     // The same pins are fine on a DevKit (no Ethernet), 0 only with its warning.
     TEST_ASSERT_TRUE(withPin(Function::Rpwm, 19).valid());
@@ -175,8 +195,8 @@ void test_wt32_header(void)
 {
     assertOnlyError(withPin(Function::Rpwm, 13, WT32, BoardId::Wt32Eth01), Function::Rpwm, 13, IssueCode::Header);
     assertOnlyError(withPin(Function::Supply, 34, WT32, BoardId::Wt32Eth01), Function::Supply, 34, IssueCode::Header);
-    // 17 is on the header.
-    TEST_ASSERT_TRUE(withPin(Function::Rpwm, 17, WT32, BoardId::Wt32Eth01).valid());
+    // 12 is on the header (with its strap warning).
+    TEST_ASSERT_TRUE(withPin(Function::ParkB, 12, WT32, BoardId::Wt32Eth01).valid());
 }
 
 void test_output_on_input_only_pin(void)
@@ -364,7 +384,8 @@ int main(int, char **)
     RUN_TEST(test_gpio_37_and_38_are_not_brought_out);
     RUN_TEST(test_probe_pins_on_every_board);
     RUN_TEST(test_flash_pins);
-    RUN_TEST(test_psram_pins_only_with_psram);
+    RUN_TEST(test_psram_pins_on_every_board);
+    RUN_TEST(test_a_detected_wt32_refuses_another_board);
     RUN_TEST(test_uart0);
     RUN_TEST(test_wt32_ethernet_pins);
     RUN_TEST(test_wt32_header);

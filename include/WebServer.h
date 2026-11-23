@@ -389,8 +389,6 @@ namespace SQM
         void appendPinsStatus(JsonDocument &doc) const;
         // A save that changes the pins or Wi-Fi's role while the roof is busy: why not ("" when fine).
         std::string pinChangeHeld(const Config &live, const Config &next) const;
-        // A board that isn't the one this device detected or runs Ethernet on: why not ("" when fine).
-        static std::string pinBoardRefused(const Config &live, const Config &next);
         bool refuseIfWifiOff(AsyncWebServerRequest *request);
         void handleSqmeterSite(AsyncWebServerRequest *request);
         static void runSiteJob(void *arg);

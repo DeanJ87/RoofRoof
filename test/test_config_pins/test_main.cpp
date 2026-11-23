@@ -168,13 +168,28 @@ void test_stored_pins_with_an_unknown_name_are_rejected()
     TEST_ASSERT_FALSE(loadStored(R"({"pins":{"preset":"devkit2"}})", c, error));
 }
 
-void test_psram_pins_are_checked_against_the_chip()
+void test_psram_pins_and_the_detected_board()
 {
-    Config c = applied(R"({"pins":{"preset":"custom","rpwm":17,"lpwm":13}})");
-    TEST_ASSERT_TRUE(c.validatePins(false));
+    // 16 and 17 are reserved on every board (a WROVER's PSRAM can't be detected here).
     std::string error;
-    TEST_ASSERT_FALSE(c.validatePins(true, &error));
-    TEST_ASSERT_EQUAL_STRING("RPWM on GPIO17: GPIO17 is used by this chip's PSRAM", error.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "RPWM on GPIO17: GPIO17 is used by the PSRAM on WROVER modules",
+        rejectReason(R"({"pins":{"preset":"custom","rpwm":17,"lpwm":13}})").c_str());
+    // Where a LAN8720 answered, a DevKit map is refused; the WT32's is fine.
+    const Config devkit = applied(R"({"pins":{"preset":"devkit"}})");
+    TEST_ASSERT_TRUE(devkit.validatePins(false, &error, false));
+    TEST_ASSERT_FALSE(devkit.validatePins(false, &error, true));
+    TEST_ASSERT_EQUAL_STRING("This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board", error.c_str());
+    TEST_ASSERT_TRUE(applied(R"({"pins":{"preset":"wt32-carrier-v1"}})").validatePins(false, &error, true));
+    TEST_ASSERT_TRUE(Config::createDefault().validatePins(false, &error, true)); // unset: nothing chosen yet
+}
+
+void test_a_stored_unknown_network_mode_loads_as_auto()
+{
+    Config c;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(loadStored(R"({"network":{"mode":"mesh"},"pins":{"preset":"devkit"}})", c, error), error.c_str());
+    TEST_ASSERT_TRUE(c.network.mode == NetworkConfig::Mode::Auto);
 }
 
 void test_network_mode_values()
@@ -188,7 +203,7 @@ void test_network_mode_values()
 void test_round_trip_through_json()
 {
     const Config c = applied(
-        R"({"pins":{"preset":"custom","board":"wt32-eth01","rpwm":14,"lpwm":15,"enable":4,"currentR":35,"currentL":32,"supply":36,"hall":39,"parkA":33,"parkB":17},"network":{"mode":"ethernet"}})");
+        R"({"pins":{"preset":"custom","board":"wt32-eth01","rpwm":14,"lpwm":15,"enable":4,"currentR":35,"currentL":32,"supply":36,"hall":39,"parkA":33,"parkB":12},"network":{"mode":"ethernet"}})");
     Config back = Config::createDefault();
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(c.toJson(), back, false, &error), error.c_str());
@@ -229,7 +244,8 @@ int main(int, char **)
     RUN_TEST(test_bad_names_and_values_are_refused);
     RUN_TEST(test_stored_pins_that_break_a_rule_still_load);
     RUN_TEST(test_stored_pins_with_an_unknown_name_are_rejected);
-    RUN_TEST(test_psram_pins_are_checked_against_the_chip);
+    RUN_TEST(test_psram_pins_and_the_detected_board);
+    RUN_TEST(test_a_stored_unknown_network_mode_loads_as_auto);
     RUN_TEST(test_network_mode_values);
     RUN_TEST(test_round_trip_through_json);
     RUN_TEST(test_config_pins_read_and_write);
