@@ -1,10 +1,10 @@
 ---
-description: "Update RoofRoof firmware and web UI over WiFi by uploading a file, or over USB. The device never downloads updates itself."
+description: "Update RoofRoof firmware and web UI over the network (WiFi or Ethernet) by uploading a file, or over USB. The device never downloads updates itself."
 ---
 
 # Updates
 
-RoofRoof is updated by **uploading a file** to it, over WiFi from the web UI or over USB. The device never contacts GitHub or any release server: nothing is checked or downloaded for you, by design. Get the files from the release's assets (or your own build) and upload them yourself.
+RoofRoof is updated by **uploading a file** to it, over the network from the web UI (WiFi, or Ethernet on a WT32-ETH01) or over USB. The device never contacts GitHub or any release server: nothing is checked or downloaded for you, by design. Get the files from the release's assets (or your own build) and upload them yourself.
 
 ---
 
@@ -90,7 +90,7 @@ Use the same password from your upload tool. If `ota.enabled` is false or `ota.p
 
 ## Via esptool (USB)
 
-If the device is unresponsive over WiFi, fall back to USB:
+If the device is unresponsive over the network, fall back to USB (on a WT32-ETH01, the USB-serial adapter of its [first flash](../getting-started/flashing.md#wt32-eth01-the-first-flash)):
 
 ```bash
 # Firmware only

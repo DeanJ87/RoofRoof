@@ -30,7 +30,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 
 | Module | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
-| `main.cpp` | `src/main.cpp` | Changed: sensor, display, BLE, battery and update-check setup and tasks removed; the motor driver is held off first thing in `setup()` | No |
+| `main.cpp` | `src/main.cpp` | Changed: sensor, display, BLE, battery and update-check setup and tasks removed; the motor driver is held off first thing in `setup()`, since spec 023 straight after the saved settings (which hold the pins) are read; NTP and command-line OTA start once any network is up | No |
 | `WebServer.cpp`, `WebServer.h` | same | Changed: sensor, safety, display, language and release routes removed; restarts, uploads, settings saves and WiFi changes go through `PlatformGuard` (spec 010) | No |
 | `WebServerAlpaca.cpp` | same | Changed: serves the generic device list with the roof's Dome (spec 006), commanded through `RoofControl` | With `lib/AlpacaLogic` |
 | `WebServerApi.cpp`, `WebServerStatus.cpp`, `WebServerLive.cpp` | same | Changed: sensor and safety documents removed; `/ws/status` only. Spec 021: `GET /api/config` sends `X-Config-Revision`; a save is checked field by field against it (`lib/ConfigModel` `ConfigSave`) and merged onto the live settings under the save lock, as the WiFi setup save is | Yes (the stale-save check) |
@@ -42,11 +42,13 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | `MQTTClient.cpp/.h` | same | Changed: client id is `RoofRoof-%06lX` (was `SQMeter-%06lX`); buffer comment updated; `watch()` subscribes to other devices' topics (SQMeter's safety topics, spec 004), with one callback dispatching commands and watched topics; `updateConfig()` only hands the settings over and `handle()` applies them on the main loop, with the client's limits set again when MQTT is switched on (spec 010); several command subtopics, each handler told whether the message was retained, read from PubSubClient 2.8.0's receive buffer (`RoofIo::Mqtt::deliveryOf`, spec 008; the library is pinned for it) | Yes: settings applied on the loop; several command topics and the retained flag |
 | `FirmwareMarker.cpp/.h`, `BuildTarget.h` | same | Changed: marker carries `product=roofroof`; one build, no `ble` or `s3` variants | Yes (product field) |
 | `RootCertificates.cpp`, `AlertRootCA.h` | same | Changed: GitHub root dropped; alert-service roots kept | No |
-| `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`); `WiFiManager.cpp` is untouched | No |
+| `WiFiManager.cpp/.h` | same | Changed: the setup hotspot `AP_SSID` is `RoofRoof-Setup` (was `SQM-Setup`). Spec 023 diverges from SQMeter here: on a board with Ethernet it follows a network plan (`lib/BoardLogic` `NetworkPlan`): the radio off in Ethernet only, a saved network as a fallback in Auto, and the hotspot only when no network was joined since boot; "connected" means WiFi or Ethernet. A fix to SQMeter's WiFiManager needs checking against this before it is carried over | No |
 | `DualStackClient.cpp/.h` | same | Changed: an optional write budget (`setWriteBudget`), used by the MQTT client, so a write to a half-open link gives up after 250 ms while the roof is busy (1 s at rest) and closes the connection instead of waiting up to 10 s, and, with the budget set, its own non-blocking read buffer so the MQTT client never waits for the rest of a message while the roof is busy (spec 008) | Yes |
-| `Ipv6Network`, `TlsLock`, `HeapTrace`, `Logger`, `AlertDispatcher`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
+| `TlsLock`, `HeapTrace`, `Logger`, `BackupCryptoMbed` | same | Unchanged (code), comments only | No |
+| `Ipv6Network`, `AlertDispatcher` | same | Changed (spec 023): "the network is up" and the device's own IPv6 addresses include Ethernet (`NetState`) | No |
 | `version.h` | `include/version.h` | Changed: `FIRMWARE_NAME` is "RoofRoof"; version reset to 0.1.0 | No |
-| `MotorDriver.cpp/.h`, `RoofPins.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003); pin map | No |
+| `MotorDriver.cpp/.h` | none | New: the only code that writes the IBT-2 motor driver pins (PWM and the watchdog's EN trip from spec 003). Spec 023: the pins in effect come from the settings (the fixed `RoofPins.h` map is gone), and it reads EN back for the wiring check | No |
+| `PinSetup`, `EthernetLink`, `EthernetProbe`, `NetState`, `WiringRun`, `WebServerPins.cpp` | none | New (spec 023): the boot's pin decision and the WT32-ETH01 probe, the LAN8720 over ESP-IDF's Ethernet driver, "any network up", the wiring check run on the main loop, and the `/api/pins` routes | No |
 | `RoofControl.h`, `RoofControl.cpp`, `RoofControlTask.cpp`, `RoofLocked.h`, `RoofFaultStore.cpp/.h`, `WebServerRoof.cpp` | none | New (spec 003): the roof's control task, watchdog, inputs, stored fault, REST commands and status section | No |
 | `SafetyPoller.cpp/.h`, `SafetyInputs.cpp/.h` | none | New (spec 004): polls SQMeter and N.I.N.A. on their own task; keeps the weather verdict and park result. Spec 020: also reads SQMeter's location (`GET /api/status`, `sky`) on the same task, and a filter-as-you-read JSON fetch shared with the copy from SQMeter (`src/WebServerSite.cpp`) | No |
 
@@ -58,7 +60,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | AlpacaLogic | `lib/AlpacaLogic` | Changed: generic device list in the router; observing-conditions mapper and safety evaluator removed; discovery, client watch and connection memory kept; the shared envelope moved to `src/RouterInternal.h`; the Dome (`AlpacaDome.h`, `src/AlpacaDome.cpp`, spec 006) and `ALPACA_ERR_INVALID_OPERATION` added | Yes (device list) |
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
-| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013); `location.source` and the device-owned `location.sqmeter.{gps,savedAt}` added, with a `library.json` declaring ArduinoJson so libraries that include `Config.h` build alone (spec 020: the location follows the SQMeter at the same site, whose `sky.locationSource` names the same choice) | No |
+| ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; `pins` and `network.mode` added and `safety.rainContact` removed (spec 023); the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013); `location.source` and the device-owned `location.sqmeter.{gps,savedAt}` added, with a `library.json` declaring ArduinoJson so libraries that include `Config.h` build alone (spec 020: the location follows the SQMeter at the same site, whose `sky.locationSource` names the same choice) | No |
 | ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
 | DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
 | FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic; a second build kind, `bench`, that a standard board refuses (spec 011) | Yes |
@@ -71,6 +73,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | NinaLogic | none | New (spec 004): N.I.N.A. Advanced API requests and replies behind an interface (v2) | No |
 | SafetyInputLogic | none | New (spec 004): SQMeter reply parsing, the weather verdict and the park rule | No |
 | DaylightLogic | `lib/AlertLogic` (`SunPosition.h`, `SunPosition.cpp` only) | `SunPosition.h` and `SunPosition.cpp` copied unchanged from SQMeter `877208b`; `Daylight.h` and `Daylight.cpp` new (spec 013): the daylight state with its 0.5° band, the unknown inputs, the texts and the mode names | No |
+| BoardLogic | none (after SQMeter's `lib/ConfigModel/include/BoardProfile.h`) | New (spec 023): the board presets, the pin rules (`Board::Facts` keeps SQMeter's idea of a board profile as data: valid GPIOs as a bit mask, the ADC1 range, a board's reserved pins), the wiring check's verdicts, the MDIO probe frames and the network plan. SQMeter picks its board at compile time; RoofRoof picks it at boot from a setting, with one image for both boards | No |
 | RoofIoLogic | none | New (spec 003): the roof hardware layer's decisions: reading scaling, switch inputs, watchdog rule, stored fault record, park and weather gates, settings-save guard, wording, status section | No |
 
 ### `test/`
@@ -99,7 +102,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Area | SQMeter path | State | Upstream candidate |
 |---|---|---|---|
 | Docs site, mkdocs config and theme | `docs/`, `mkdocs.yml`, `overrides/` | Changed: pages for removed features deleted; user guide, API and development pages edited; stylesheet renamed `sqmeter.css` to `roofroof.css` | No |
-| Hardware docs | `docs/hardware` | Replaced: SQMeter's eight pages (BOM, PCB, enclosure, RG-15, wind and so on) by one wiring page | No |
+| Hardware docs | `docs/hardware` | Replaced: SQMeter's eight pages (BOM, PCB, enclosure, RG-15, wind and so on) by one wiring page (both boards since spec 023) | No |
 | Brand kit | `brand/` | Changed: RoofRoof mark, tokens and social images replace SQMeter's | No |
 | CI workflows | `.github/workflows` | Changed: language-pack jobs removed; build, docs, quality and diagram checks kept; the conformance job back in spec 006, for the Dome | No |
 | API contracts | `specs/001-platform-bootstrap/contracts` | New: JSON Schemas for RoofRoof's documents, generated by `tools/contracts` | No |
@@ -136,7 +139,7 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Language packs (13 languages) and their tooling | `src/LanguagePack.cpp`, `lib/LanguageLogic`, `web/src/i18n/locales`, `tools/i18n` |
 | GitHub update check and release logic | `src/OtaUpdater.cpp`, `lib/ReleaseLogic`, `lib/ReleaseUrls` |
 | Sun position and darkness rules for alerts | `lib/AlertLogic/src/SunPosition.cpp` (came back for the daylight failsafe, spec 013: see `lib/DaylightLogic`) |
-| Board profiles and ESP32-S3 builds | `include/BoardFeatures.h`, `lib/ConfigModel/include/BoardProfile.h` |
+| Board profiles and ESP32-S3 builds | `include/BoardFeatures.h`, `lib/ConfigModel/include/BoardProfile.h` (the board profile's idea came back as `lib/BoardLogic`, spec 023) |
 | Sky and weather dashboard cards, night chart, sun and moon card | `web/src/components` |
 | Demo panel's sensor inputs, conditions and imaging app | `web/src/demo` |
 | Hardware docs for the sky meter, indi-allsky guide, sky quality reference | `docs/hardware`, `docs/user-guide`, `docs/reference` |

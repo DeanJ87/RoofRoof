@@ -67,6 +67,15 @@ pio run --target uploadfs && pio run --target upload
 
 **Before wiring** the motor driver to the ESP32, fit the 10 kΩ pull-down on EN ([docs/hardware/wiring.md](docs/hardware/wiring.md)). While flashing, the driver's pins float.
 
+**WT32-ETH01:** the same `esp32dev` image runs on it; the board is a setting chosen after the first start ([docs/user-guide/pins.md](docs/user-guide/pins.md)). It has no USB port, so the first flash goes through a 3.3 V USB-serial adapter on its TX0, RX0 and GND, with IO0 held to GND while it comes out of reset (the carrier's jumper; power-cycle the board before each command):
+
+```bash
+~/.platformio/penv/bin/pio run -e esp32dev -t upload --upload-port <port>
+~/.platformio/penv/bin/pio run -e esp32dev -t uploadfs --upload-port <port>
+```
+
+Then open the jumper and power-cycle it. Later updates go over the network, Ethernet included (the Updates page or command-line OTA below). Details: [docs/getting-started/flashing.md](docs/getting-started/flashing.md#wt32-eth01-the-first-flash).
+
 ### 5. Monitor Serial Output
 
 ```bash

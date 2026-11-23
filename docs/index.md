@@ -15,23 +15,23 @@ Firmware and a web UI for an observatory roll-off roof: a safe, networked contro
 RoofRoof is firmware for an ESP32 that drives an observatory roll-off roof through an IBT-2 (BTS7960) motor driver. It was started as a copy of the author's SQMeter project, keeping its platform (WiFi setup, the web UI, the REST API, MQTT, alerts, updates, ASCOM Alpaca) and removing everything about sensors and sky quality.
 
 !!! note "Setting up a new roof"
-    The device serves its web UI, a REST API, live status, MQTT with Home Assistant discovery, an ASCOM Alpaca server and push alerts, and it holds the motor driver off from the first instruction of `setup()`. **It moves the roof on an authenticated REST command** ([REST API](api/rest.md#roof)) **an ASCOM Alpaca Dome command** ([ASCOM Alpaca](user-guide/alpaca.md)) **or, when switched on, an MQTT command** ([MQTT](user-guide/mqtt.md#roof-commands)): open only while the weather is safe, close only onto a parked mount. The roof's state goes out over MQTT, with a Home Assistant cover. The dashboard's [Roof card](user-guide/dashboard.md#roof) shows it live, with Open, Close and Stop. A new roof is brought into service with the [commissioning guide](hardware/commissioning.md).
+    The device serves its web UI, a REST API, live status, MQTT with Home Assistant discovery, an ASCOM Alpaca server and push alerts, and it holds the motor driver off from the start of `setup()`, on an ESP32 DevKit (WiFi) or a WT32-ETH01 (wired Ethernet). **It moves the roof on an authenticated REST command** ([REST API](api/rest.md#roof)) **an ASCOM Alpaca Dome command** ([ASCOM Alpaca](user-guide/alpaca.md)) **or, when switched on, an MQTT command** ([MQTT](user-guide/mqtt.md#roof-commands)): open only while the weather is safe, close only onto a parked mount. The roof's state goes out over MQTT, with a Home Assistant cover. The dashboard's [Roof card](user-guide/dashboard.md#roof) shows it live, with Open, Close and Stop. A new roof is brought into service with the [commissioning guide](hardware/commissioning.md).
 
 There is no public docs site: these docs and the [live demo](live-demo.md) are built by CI and downloaded as an artifact.
 
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: 3d17da99919a5a0d
+fingerprint: e190f429668c650a
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: What RoofRoof connects to
-    accDescr: The ESP32 holds the motor driver's pins low from boot and drives it on a person's, an imaging app's or (when switched on) an MQTT command, or to close the roof when the weather turns unsafe (or, with the daylight close set, after sunrise), reads the roof's Hall, supply, current, park and rain inputs, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes the roof's state to an MQTT broker and takes its commands when switched on, serves the roof as an ASCOM Alpaca Dome to clients such as N.I.N.A., and sends alerts to push services. It reads the weather verdict, the site's location and its shared settings (copied on request or kept in step) from SQMeter, and the mount's park state from N.I.N.A.'s Advanced API. It gets time from the internet by NTP.
+    accDescr: The ESP32 holds the motor driver's pins low from boot and drives it on a person's, an imaging app's or (when switched on) an MQTT command, or to close the roof when the weather turns unsafe (or, with the daylight close set, after sunrise), reads the roof's Hall, supply, current and park inputs, keeps its settings and web UI on the device, serves a dashboard and APIs to browsers, publishes the roof's state to an MQTT broker and takes its commands when switched on, serves the roof as an ASCOM Alpaca Dome to clients such as N.I.N.A., and sends alerts to push services. It reads the weather verdict, the site's location and its shared settings (copied on request or kept in step) from SQMeter, and the mount's park state from N.I.N.A.'s Advanced API. It gets time from the internet by NTP.
     DRIVER["<b>IBT-2 motor driver</b><br/>RPWM, LPWM, EN<br/>held off at boot;<br/>EN has a 10 kΩ pull-down"]
-    SENSE["<b>Roof sensors</b><br/>Hall, 12 V supply, current,<br/>park switches, rain contact"]
+    SENSE["<b>Roof sensors</b><br/>Hall, 12 V supply, current,<br/>park switches"]
     ESP["<b>ESP32 running RoofRoof</b><br/>settings in NVS,<br/>web UI in LittleFS,<br/>closes on unsafe weather<br/>and, if set, in daylight"]
     WEB["Browser<br/>dashboard, REST, WebSocket"]
     MQTT["MQTT broker<br/>Home Assistant discovery"]
@@ -40,8 +40,8 @@ flowchart LR
     NET["Internet<br/>NTP time"]
     SQM["SQMeter<br/>weather verdict, HTTP or MQTT;<br/>site location and settings"]
     NAPI["N.I.N.A. Advanced API<br/>mount parked?"]
-    ESP -->|"GPIO25, 26, 27"| DRIVER
-    SENSE -->|"GPIO4, 32-36, 39"| ESP
+    ESP -->|"RPWM, LPWM, EN"| DRIVER
+    SENSE -->|"ADC1 and switch inputs"| ESP
     NET -.->|time| ESP
     ESP <--> WEB
     ESP <-->|roof state and commands, availability, alerts| MQTT
@@ -57,8 +57,8 @@ flowchart LR
 ??? info "Diagram in words"
 
     - **The ESP32** keeps its settings in NVS and the web UI's files in LittleFS.
-    - **The motor driver** (IBT-2): the firmware sets GPIO27 (EN), GPIO25 (RPWM) and GPIO26 (LPWM) low as the first thing at boot. EN also has a hardware 10 kΩ pull-down, so the driver stays off before the firmware runs. The roof's control task drives it on a person's command (web UI or REST), on an imaging app's command over Alpaca, on an MQTT command when those are switched on, or to close the roof onto a parked mount when the weather turns unsafe or, with the daylight close set, after sunrise ([Close on unsafe weather](user-guide/close-on-unsafe.md)), every 20 ms, with a watchdog that drops EN if the task stalls.
-    - **Roof sensors:** the Hall sensor, the 12 V supply and (when fitted) the motor current on the ADC, the park switches (when fitted) and the rain contact on GPIO inputs ([Wiring](hardware/wiring.md)).
+    - **The motor driver** (IBT-2): the firmware reads its saved settings, which hold the pins, and then sets EN, RPWM and LPWM low before anything else (GPIO27, 25 and 26 on an ESP32 DevKit; IO4, IO14 and IO15 on the WT32-ETH01 carrier). With no board chosen yet, or an invalid pin set, it drives none of them ([Pins](user-guide/pins.md)). EN also has a hardware 10 kΩ pull-down, so the driver stays off before the firmware runs. The roof's control task drives it on a person's command (web UI or REST), on an imaging app's command over Alpaca, on an MQTT command when those are switched on, or to close the roof onto a parked mount when the weather turns unsafe or, with the daylight close set, after sunrise ([Close on unsafe weather](user-guide/close-on-unsafe.md)), every 20 ms, with a watchdog that drops EN if the task stalls.
+    - **Roof sensors:** the Hall sensor, the 12 V supply and (when fitted) the motor current on the ADC, and the park switches (when fitted) on GPIO inputs ([Wiring](hardware/wiring.md)). Rain comes from SQMeter's verdict, not from a sensor at the roof.
     - **Outputs:**
         - Browsers get the dashboard, the REST API and live WebSocket status.
         - An MQTT broker gets the roof's state, availability and alerts, with Home Assistant discovery of a roof cover and its sensors; it can also switch alerts on and off and, when switched on, open, close and stop the roof within the same safety rules.
@@ -129,4 +129,4 @@ No. The device works on its own from the browser. MQTT, with Home Assistant disc
 
 New device? Go to [Flashing Your Device](getting-started/flashing.md) — you only need a USB cable and the release files. Wire the motor driver's EN pull-down first ([Wiring](hardware/wiring.md)).
 
-Already flashed? Go to [First Boot](getting-started/first-setup.md) to configure WiFi.
+Already flashed? Go to [First Boot](getting-started/first-setup.md) to join your network (WiFi, or Ethernet on a WT32-ETH01) and choose the board.
