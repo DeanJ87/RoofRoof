@@ -107,17 +107,18 @@ namespace SQM
                 stale = ConfigSave::checkSave(body, configRevision.load(), [&live]() { return live.toJson(true); });
                 if (stale.stale)
                     return false;
-                auto merged = Config::fromJson(body, &live, &reason);
-                if (!merged)
+                // Merged straight into `next` (already a copy of the live
+                // settings, on the heap): a second ~2 KB Config here and
+                // Config::fromJson's two more overflowed the async_tcp stack (spec 022).
+                if (!Config::applyJson(body, next, true, &reason))
                 {
                     reason = reason.empty() ? "Invalid configuration" : reason;
                     return false;
                 }
-                if (!stampTestBox(live, *merged, body, reason))
-                    return false;
-                next = std::move(*merged);
-                return true;
+                return stampTestBox(live, next, body, reason);
             });
+        // Spec 022 bench: a save once overflowed this task's stack; log the headroom it left.
+        Logger::info(TAG, "Config save: async_tcp stack low-water %u B", static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
         if (saved || !reason.empty() || stale.stale)
             answerConfigSave(request, saved, reason, stale);
     }

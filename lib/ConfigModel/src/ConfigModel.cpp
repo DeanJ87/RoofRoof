@@ -146,7 +146,13 @@ namespace SQM
 
     std::optional<Config> Config::fromJson(const std::string &json, const Config *baseConfig, std::string *error)
     {
-        std::optional<Config> cfg(baseConfig != nullptr ? *baseConfig : createDefault());
+        // No temporary: a ternary of `*baseConfig` and `createDefault()` built a
+        // third ~2 KB Config on the caller's stack (spec 022).
+        std::optional<Config> cfg;
+        if (baseConfig != nullptr)
+            cfg.emplace(*baseConfig);
+        else
+            cfg.emplace(createDefault());
         if (!applyJson(json, *cfg, baseConfig != nullptr, error))
             return std::nullopt;
         return cfg;

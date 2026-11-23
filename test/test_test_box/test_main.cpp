@@ -158,6 +158,29 @@ void test_the_test_box_alert_is_never_off(void)
     TEST_ASSERT_EQUAL_UINT8(1, a.testBox.level);
 }
 
+// Bench regression: settings stored by spec 021 (no testBox, no park.requestPark),
+// then a no-op save merged into a copy of them as the firmware's save does
+// (Config::applyJson into `next`, then the stamp). It saves, and nothing turns on.
+void test_a_save_over_settings_stored_before_spec_022(void)
+{
+    Config stored = Config::createDefault();
+    const std::string before =
+        R"({"deviceName":"Bench","ota":{"enabled":true},"park":{"nina":{"url":"","api":"v2"},"switches":"none","timeoutSeconds":240},)"
+        R"("safety":{"http":{"enabled":false,"url":""},"mqtt":{"enabled":false,"topic":"sqmeter"},"staleSeconds":30,"rainContact":false}})";
+    TEST_ASSERT_TRUE(Config::applyJson(before, stored, false));
+    Config next = stored;
+    std::string reason;
+    const std::string body = R"({"ota":{"enabled":false}})";
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(body, next, true, &reason), reason.c_str());
+    TEST_ASSERT_TRUE(ConfigSave::stampTestBox(
+        stored.testBox, next.testBox, ConfigSave::sendsTestBoxHours(body), ConfigSave::Clock{true, static_cast<uint32_t>(NOW)}, &reason));
+    TEST_ASSERT_FALSE(next.ota.enabled);
+    TEST_ASSERT_FALSE(next.testBox.any());
+    TEST_ASSERT_EQUAL_UINT32(0, next.testBox.until);
+    TEST_ASSERT_TRUE(next.park.requestPark);
+    TEST_ASSERT_TRUE(next.validate(&reason));
+}
+
 // --- The deadline (the save's stamp) ---------------------------------------------
 
 void test_turning_a_bypass_on_starts_the_deadline(void)
@@ -499,6 +522,7 @@ int main(int, char **)
     RUN_TEST(test_the_weather_bypass_never_beside_an_sqmeter_source);
     RUN_TEST(test_stored_settings_with_both_still_load);
     RUN_TEST(test_the_test_box_alert_is_never_off);
+    RUN_TEST(test_a_save_over_settings_stored_before_spec_022);
     RUN_TEST(test_turning_a_bypass_on_starts_the_deadline);
     RUN_TEST(test_the_deadline_needs_the_clock);
     RUN_TEST(test_an_unrelated_save_or_turning_one_off_keeps_the_deadline);
