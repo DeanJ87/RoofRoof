@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { EthernetStatus, NetworkMode, PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
+import type { EthernetStatus, PinsConfig, PinsDocument, PinValidation, WiringCheckDocument } from '../types';
 import { fetchPins, fetchWiringCheck, startWiringCheck, validatePins } from '../lib/pinsApi';
-import { fetchConfig, fetchStatus } from '../lib/settingsApi';
+import { fetchStatus } from '../lib/settingsApi';
 import { t } from '../i18n';
 
 // The board and its pins (spec 023): GET /api/pins, live validation of an
@@ -65,20 +65,28 @@ export const useWiringCheck = (pollMs = WIRING_POLL_MS) => {
   const [starting, setStarting] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
+  // False once unmounted: a poll still in flight then neither sets state nor arms another.
+  const mounted = useRef(true);
   const poll = async () => {
     const next = await fetchWiringCheck();
+    if (!mounted.current) return;
     if (next) setCheck(next);
     if (next?.state === 'running') timer.current = window.setTimeout(() => void poll(), pollMs);
   };
   useEffect(() => {
+    mounted.current = true;
     void poll();
-    return () => window.clearTimeout(timer.current);
+    return () => {
+      mounted.current = false;
+      window.clearTimeout(timer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- read once on mount; poll() keeps itself going
   }, []);
   const start = async () => {
     setStarting(true);
     setProblem(null);
     const answer = await startWiringCheck();
+    if (!mounted.current) return;
     setStarting(false);
     if (!answer.ok) return setProblem(answer.text);
     setCheck((prior) => ({ state: 'running', checks: prior?.checks ?? [] }));
@@ -89,14 +97,19 @@ export const useWiringCheck = (pollMs = WIRING_POLL_MS) => {
   return { check, running, problem, start };
 };
 
-/** On a board with Ethernet: its status and the network mode saved (for pages outside Settings). */
+/**
+ * The status's Ethernet block (for pages outside Settings): whether the board runs Ethernet and the
+ * network mode in effect since boot (`ethernet.mode`). `loaded` once the device answered or didn't.
+ */
 export const useNetworkMode = () => {
-  const [state, setState] = useState<{ ethernet: EthernetStatus | null; mode: NetworkMode | null }>({ ethernet: null, mode: null });
+  const [state, setState] = useState<{ ethernet: EthernetStatus | null; loaded: boolean }>({ ethernet: null, loaded: false });
   useEffect(() => {
     let live = true;
-    void Promise.all([fetchStatus().catch(() => null), fetchConfig().catch(() => null)]).then(([status, config]) => {
-      if (live) setState({ ethernet: status?.ethernet ?? null, mode: config?.network?.mode ?? null });
-    });
+    void fetchStatus()
+      .catch(() => null)
+      .then((status) => {
+        if (live) setState({ ethernet: status?.ethernet ?? null, loaded: true });
+      });
     return () => {
       live = false;
     };

@@ -27,11 +27,16 @@ import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
 
-// Spec 023: on a board with Ethernet, WiFi is optional (or off in Ethernet-only mode).
-const WifiRole: FunctionalComponent<NetworkTabProps> = ({ config, status }) => {
+const WIFI_OFF_ID = 'wifi-off-note';
+
+// WiFi is off while the network mode in effect (since boot) is Ethernet only: the device refuses a scan.
+const wifiOff = (status: NetworkTabProps['status']) => status?.ethernet?.mode === 'ethernet';
+
+// Spec 023: on a board with Ethernet, WiFi is optional (or off in Ethernet-only mode, as in effect).
+const WifiRole: FunctionalComponent<NetworkTabProps> = ({ status }) => {
   if (!hasEthernet(status)) return null;
-  return config.network?.mode === 'ethernet' ? (
-    <Note>{t('settings.network.wifiOff')}</Note>
+  return wifiOff(status) ? (
+    <Note id={WIFI_OFF_ID}>{t('settings.network.wifiOff')}</Note>
   ) : (
     <Note>{t('settings.network.wifiOptional')}</Note>
   );
@@ -68,7 +73,13 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = (props) => {
               options={networkOptions}
               onChange={(v) => selectNetwork(v === 'OTHER' ? '' : v)}
             />
-            <ActionButton onClick={scan} busy={scanning} busyLabel={t('common.scanning')}>
+            <ActionButton
+              onClick={scan}
+              busy={scanning}
+              busyLabel={t('common.scanning')}
+              disabled={wifiOff(props.status)}
+              describedBy={wifiOff(props.status) ? WIFI_OFF_ID : undefined}
+            >
               {t('settings.network.scan')}
             </ActionButton>
           </div>

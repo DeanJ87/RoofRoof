@@ -7,19 +7,22 @@ import { t } from '../../i18n';
 
 // Settings → Network on a board with Ethernet (spec 023 FR-028): the link and
 // its addresses, and the network mode, which applies at a restart. Not shown
-// on a board without Ethernet.
+// on a board without Ethernet; shown in WiFi-only mode (Ethernet not started,
+// "Off") so the mode can be changed back.
 
 const MODES: NetworkMode[] = ['auto', 'ethernet', 'wifi'];
 
 export const modeLabel = (mode: NetworkMode) => t(`settings.network.mode.${mode}`);
 export const modeDetail = (mode: NetworkMode) => t(`settings.network.modeDetail.${mode}`);
 
-const linkBadge = (ethernet: EthernetStatus) =>
-  ethernet.link ? (
+const linkBadge = (ethernet: EthernetStatus) => {
+  if (!ethernet.present) return <StatusBadge tone="off" label={t('settings.network.offWifiOnly')} />;
+  return ethernet.link ? (
     <StatusBadge tone="ok" label={t('settings.network.connected')} />
   ) : (
     <StatusBadge tone="warn" label={t('settings.network.noLink')} />
   );
+};
 
 export const EthernetRows: FunctionalComponent<{ ethernet: EthernetStatus }> = ({ ethernet }) => (
   <div data-ethernet-rows>
@@ -41,7 +44,7 @@ export const EthernetCard: FunctionalComponent<SettingsTabProps> = ({ config, st
       hint={t('settings.network.ethernetHint')}
       badge={ethernet && linkBadge(ethernet)}
     >
-      {ethernet && <EthernetRows ethernet={ethernet} />}
+      {ethernet?.present && <EthernetRows ethernet={ethernet} />}
       {mode && (
         <div class="form-grid">
           <Field label={t('settings.network.modeLabel')} hint={t('settings.network.modeHint')}>

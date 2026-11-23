@@ -1,5 +1,7 @@
 import type { Config, SystemStatus } from '../types';
-import { getJson, post, postJson, request } from './api';
+import { bodyOf, getJson, post, postJson, request } from './api';
+import { deviceError } from '../i18n/deviceMessage';
+import { t } from '../i18n';
 
 // What Settings reads from and writes to the device (STRUCT-04).
 
@@ -20,8 +22,21 @@ export const fetchConfigWithRevision = async (): Promise<{ config: Config; revis
 /** The live status, or null when the device answers with an error. */
 export const fetchStatus = () => getJson<SystemStatus>('/api/status');
 
-/** Restart the device. */
-export const restartDevice = () => post('/api/restart');
+export type RestartAnswer = { ok: true } | { ok: false; text: string };
+
+/**
+ * Ask the device to restart: `ok` once it accepted; otherwise why not (its own refusal, such as
+ * the roof being busy, or that it couldn't be reached). Only an accepted restart is worth waiting for.
+ */
+export const restartDevice = async (): Promise<RestartAnswer> => {
+  try {
+    const response = await post('/api/restart');
+    if (response.ok) return { ok: true };
+    return { ok: false, text: deviceError(await bodyOf(response), t('settings.restartRefused')) };
+  } catch {
+    return { ok: false, text: t('settings.couldNotReachTheDevice') };
+  }
+};
 
 /** The device's answer to a save; `conflicts` (spec 021) names what changed on the device since the page loaded it. */
 export type SaveAnswer = { success?: boolean; error?: unknown; revision?: unknown; conflicts?: unknown };

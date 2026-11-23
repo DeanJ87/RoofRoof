@@ -155,7 +155,18 @@ export const mockStatus: SystemStatus = {
     alerts: { follow: false, syncedAt: null, refused: null, needs: [] },
   },
   // Spec 023: a DevKit (no Ethernet) with its preset in effect.
-  ethernet: { present: false, started: false, phyFound: false, link: false, speedMbps: 0, fullDuplex: false, ip: '', mac: '', ipv6: [] },
+  ethernet: {
+    mode: 'wifi',
+    present: false,
+    started: false,
+    phyFound: false,
+    link: false,
+    speedMbps: 0,
+    fullDuplex: false,
+    ip: '',
+    mac: '',
+    ipv6: [],
+  },
   pins: { preset: 'devkit', board: 'esp32-devkit', valid: true, restartNeeded: false },
 };
 

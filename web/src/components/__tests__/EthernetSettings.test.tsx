@@ -45,7 +45,32 @@ describe('Ethernet in Settings and WiFi setup', () => {
     expect(card.getByText('Ethernet, with saved WiFi taking over after 30 s without an address.')).toBeInTheDocument();
     fireEvent.change(mode, { target: { value: 'ethernet' } });
     expect(await card.findByText('Ethernet only: WiFi and the setup hotspot stay off.')).toBeInTheDocument();
-    expect(screen.getByText('WiFi is off: the network mode is Ethernet only.')).toBeInTheDocument();
+    // The mode in effect is still Auto until a restart: WiFi isn't off yet, and Scan works.
+    expect(screen.queryByText('WiFi is off: the network mode is Ethernet only.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Scan' })).toBeEnabled();
+  });
+
+  it('in Ethernet-only mode (in effect) WiFi is off and Scan says why', async () => {
+    mockBoard('wt32', { network: { mode: 'ethernet' } });
+    await openTab('network');
+    const note = await screen.findByText('WiFi is off: the network mode is Ethernet only.');
+    const scan = screen.getByRole('button', { name: 'Scan' });
+    expect(scan).toBeDisabled();
+    expect(scan).toHaveAttribute('aria-describedby', note.id);
+  });
+
+  it('in WiFi-only mode the Ethernet card stays, Off rather than No link, so the mode can change back', async () => {
+    mockBoard('wt32', { network: { mode: 'wifi' } });
+    await openTab('network');
+    const card = await waitFor(() => {
+      const el = document.getElementById('ethernet');
+      if (!el) throw new Error('no Ethernet card yet');
+      return within(el);
+    });
+    expect(card.getByText('Off (WiFi only)')).toHaveClass('pill-dim');
+    expect(card.queryByText('No link')).toBeNull();
+    expect(card.queryByText('192.168.1.60')).toBeNull();
+    expect(document.querySelector<HTMLSelectElement>('[data-field="network.mode"]')!.value).toBe('wifi');
   });
 
   it('on Ethernet an empty WiFi network is optional, not an error', async () => {
@@ -53,7 +78,7 @@ describe('Ethernet in Settings and WiFi setup', () => {
     await openTab('network');
     expect(await screen.findByText('WiFi is optional on this board: Ethernet is the main link.')).toBeInTheDocument();
     fireEvent.change(document.querySelector('[data-field="network.mode"]')!, { target: { value: 'wifi' } });
-    await waitFor(() => expect(screen.queryByText('WiFi SSID is required')).toBeNull());
+    await waitFor(() => expect(screen.queryByText("WiFi network can't be blank; use WiFi setup to change networks")).toBeNull());
   });
 
   it('Settings → Roof has the board and pins card with its preset', async () => {
@@ -79,7 +104,12 @@ describe('Ethernet in Settings and WiFi setup', () => {
       http.get('/api/wifi/scan', () => HttpResponse.json({ error: 'Wi-Fi is off: the network mode is Ethernet only' }, { status: 409 })),
     );
     render(<WifiSetup />);
-    expect(await screen.findByText('WiFi is off: the network mode is Ethernet only (Settings, Network).')).toBeInTheDocument();
+    const note = await screen.findByText('WiFi is off: the network mode is Ethernet only (Settings, Network).');
+    // Scan and Connect are off with the reason; no scan is asked for (the device would refuse it).
+    expect(screen.getByRole('button', { name: 'Scan again' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Scan again' })).toHaveAttribute('aria-describedby', note.id);
+    expect(screen.getByRole('button', { name: 'Connect' })).toBeDisabled();
+    expect(screen.queryByText('Wi-Fi is off: the network mode is Ethernet only')).toBeNull();
   });
 
   it('the WiFi setup page says nothing new on a DevKit', async () => {

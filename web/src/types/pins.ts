@@ -72,7 +72,9 @@ export interface WiringCheckDocument {
 
 /** The status's `ethernet` block (absent before spec 023). */
 export interface EthernetStatus {
-  present: boolean; // the board in effect has Ethernet
+  // The network mode in effect since boot: `wifi` on a board without Ethernet and in WiFi-only mode.
+  mode: NetworkMode;
+  present: boolean; // Ethernet is in use: false on a board without it and in WiFi-only mode
   started: boolean;
   phyFound: boolean;
   link: boolean;

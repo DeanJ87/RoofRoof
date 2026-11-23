@@ -38,6 +38,12 @@ describe('restart reasons for the board and the network mode', () => {
   });
   it('the network mode restarts with the WiFi settings', () => {
     expect(restartCodes(base, { ...base, network: { mode: 'wifi' } })).toEqual(['wifi']);
+    // Named for what changed: the mode alone, or with WiFi.
+    expect(restartReasons(base, { ...base, network: { mode: 'wifi' } })).toEqual(['the network mode']);
+    expect(restartReasons(base, { ...base, network: { mode: 'wifi' }, wifi: { ...base.wifi, hostname: 'roof2' } })).toEqual([
+      'WiFi and the network mode',
+    ]);
+    expect(restartReasons(base, { ...base, wifi: { ...base.wifi, hostname: 'roof2' } })).toEqual(['WiFi']);
   });
   it('unchanged pins and mode need none', () => {
     expect(restartCodes(base, structuredClone(base))).toEqual([]);

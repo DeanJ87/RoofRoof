@@ -34,10 +34,22 @@ export const presetPins = (doc: PinsDocument | null, preset: 'devkit' | 'wt32-ca
 export const suggestedPreset = (doc: PinsDocument | null): 'devkit' | 'wt32-carrier-v1' =>
   doc?.detected === 'wt32-eth01' ? 'wt32-carrier-v1' : 'devkit';
 
-/** The pin set after choosing `preset`: a named one's map, or the current pins made custom. */
-export const withPreset = (doc: PinsDocument | null, pins: PinsConfig, preset: PinPreset): PinsConfig => {
+/**
+ * The device has evidence it is a WT32-ETH01: its boot probe found the LAN8720, or Ethernet is
+ * running. It then refuses a pin map for another board (`boardDetected`).
+ */
+export const wt32Detected = (doc: PinsDocument | null, status?: SystemStatus | null): boolean =>
+  doc?.detected === 'wt32-eth01' || Boolean(status?.ethernet?.started);
+
+/**
+ * The pin set after choosing `preset`: a named one's map, or the current pins made custom. Custom
+ * starts on the board in effect when no board was chosen, and on the WT32-ETH01 once one is detected.
+ */
+export const withPreset = (doc: PinsDocument | null, pins: PinsConfig, preset: PinPreset, detected = wt32Detected(doc)): PinsConfig => {
   if (preset === 'devkit' || preset === 'wt32-carrier-v1') return presetPins(doc, preset) ?? { ...pins, preset };
-  return { ...pins, preset };
+  if (preset !== 'custom') return { ...pins, preset };
+  const board: BoardId = detected ? 'wt32-eth01' : pins.preset === 'unset' && doc ? doc.board : pins.board;
+  return { ...pins, preset, board };
 };
 
 export const errorsOf = (issues: PinIssue[]) => issues.filter((issue) => issue.error);

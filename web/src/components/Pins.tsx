@@ -6,15 +6,15 @@ import { useConfigEditor, type ConfigEditor, type SaveOutcome } from '../hooks/u
 import { usePinsDocument, usePinValidation } from '../hooks/usePins';
 import { useWaitForReboot } from '../hooks/useWaitForReboot';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { restartDevice } from '../lib/settingsApi';
-import { PIN_FUNCTIONS, errorsOf, functionLabel, presetLabel, suggestedPreset, withPreset } from '../lib/pinsView';
+import { PIN_FUNCTIONS, errorsOf, functionLabel, presetLabel, suggestedPreset, withPreset, wt32Detected } from '../lib/pinsView';
+import { announce } from '../lib/a11y';
 import { getConfigValidationMessage } from '../validation/configSchema';
 import { CustomPins, IssueNotes, PinRows, PresetChoice, UnsetNotes } from './pins/PinFields';
 import { WiringCheckPanel } from './pins/WiringCheck';
 import { MotionNote } from './settings/RoofTab';
 import { SettingsCard, StatusBadge } from './settings/controls';
 import { listReasons } from './settings/restart';
-import { showToast } from './toast';
+import { restartWithToast, showToast } from './toast';
 import { Button, Note, ReadingRow } from './ui';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
@@ -27,6 +27,7 @@ import { deviceText } from '../i18n/deviceMessage';
 
 const PRESET_LABEL_ID = 'pins-preset-label';
 const SAVE_BLOCKED_ID = 'pins-save-blocked';
+const ISSUE_PREFIX = 'pins-issue';
 
 const samePins = (a: PinsConfig | undefined, b: PinsConfig | undefined) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -46,10 +47,17 @@ const saveBlocked = (pins: PinsConfig, check: ReturnType<typeof usePinValidation
   return check.problem;
 };
 
-const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; onSaved: () => void }> = ({ editor, doc, onSaved }) => {
+const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; status: SystemStatus | null; onSaved: () => void }> = ({
+  editor,
+  doc,
+  status,
+  onSaved,
+}) => {
   const pins = editor.config!.pins!;
   const saved = editor.saved?.pins;
   const check = usePinValidation(pins);
+  const wt32 = wt32Detected(doc, status);
+  const issues = check.validation?.issues ?? [];
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const dirty = !samePins(pins, saved);
@@ -68,7 +76,10 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
     const outcome = await editor.save();
     if (outcome.kind === 'conflict') await editor.rebase(outcome.fields);
     setBusy(false);
-    setProblem(outcomeText(outcome));
+    const text = outcomeText(outcome);
+    setProblem(text);
+    // Read out a refused save: the busy Save button doesn't say it (the note is a live region too).
+    if (text) announce(text);
     if (outcome.kind !== 'saved') return;
     showToast({ message: t('pins.saved') });
     onSaved();
@@ -79,11 +90,20 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
       <h3 class="card-group-title" id={PRESET_LABEL_ID}>
         {t('pins.presetLabel')}
       </h3>
-      <PresetChoice doc={doc} pins={pins} labelledBy={PRESET_LABEL_ID} newDevice={saved?.preset === 'unset'} onChange={change} />
-      {pins.preset === 'custom' && <CustomPins pins={pins} onChange={change} />}
+      <PresetChoice
+        doc={doc}
+        pins={pins}
+        labelledBy={PRESET_LABEL_ID}
+        newDevice={saved?.preset === 'unset'}
+        wt32={wt32}
+        onChange={change}
+      />
+      {pins.preset === 'custom' && <CustomPins pins={pins} issues={issues} issuePrefix={ISSUE_PREFIX} onChange={change} />}
       {pins.preset !== 'custom' && pins.preset !== 'unset' && <PinRows pins={pins} />}
-      {check.validation && <IssueNotes issues={check.validation.issues} />}
-      {problem && <Note tone="bad">{problem}</Note>}
+      <IssueNotes issues={issues} idPrefix={ISSUE_PREFIX} />
+      <div role="status" aria-live="polite" data-pins-problem>
+        {problem && <Note tone="bad">{problem}</Note>}
+      </div>
       {dirty && (
         <div class="btn-row">
           <Button
@@ -165,18 +185,13 @@ const Pins: FunctionalComponent = () => {
   if (editor.loading || loading) return <div class="empty-state">{t('settings.loadingSettings')}</div>;
   const pins = editor.config?.pins;
   if (!pins || !doc) return <div class="empty-state tone-red">{t('pins.couldNotLoad')}</div>;
-  const restart = () =>
-    void restartDevice()
-      .then(() => {
-        showToast({ message: t('common.restarting') });
-        setRestarting(true);
-      })
-      .catch(() => showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' }));
+  // Waits for the device to come back only once it accepted the restart; a refusal says why.
+  const restart = () => void restartWithToast().then((accepted) => accepted && setRestarting(true));
   return (
     <div class="panel-page settings-page page-enter" data-pins-page>
       <h2>{t('pins.title')}</h2>
       <MotionNote status={live ?? editor.status} />
-      <BoardCard editor={editor} doc={doc} onSaved={reload} />
+      <BoardCard editor={editor} doc={doc} status={live ?? editor.status} onSaved={reload} />
       <InEffectCard doc={doc} busy={restarting} onRestart={restart} />
       <SettingsCard id="wiring" title={t('pins.check.title')} hint={t('pins.check.hint')}>
         <WiringCheckPanel doc={doc} onChoosePreset={(preset) => editor.applyChanges([[['pins'], withPreset(doc, pins, preset)]])} />

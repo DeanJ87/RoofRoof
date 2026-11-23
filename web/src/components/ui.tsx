@@ -322,6 +322,7 @@ export interface Choice {
   detail?: string;
   icon?: string;
   badge?: string; // "Recommended"
+  unavailable?: string; // why it can't be chosen: the card is disabled and says so
 }
 
 /**
@@ -341,16 +342,22 @@ export const ChoiceGroup: FunctionalComponent<{
   return (
     <div class="choice-group" role="radiogroup" aria-labelledby={labelledBy} data-choice-group={name}>
       {options.map((option, index) => (
-        <label key={option.value} class={`choice${option.value === value ? ' is-checked' : ''}`}>
+        <label
+          key={option.value}
+          class={`choice${option.value === value ? ' is-checked' : ''}${option.unavailable ? ' is-unavailable' : ''}`}
+        >
           <input
             type="radio"
             class="choice-input"
             name={name}
             value={option.value}
             checked={option.value === value}
+            disabled={Boolean(option.unavailable)}
             aria-labelledby={`${id}-${index}`}
             aria-describedby={
-              [option.badge && `${id}-${index}-b`, option.detail && `${id}-${index}-d`].filter(Boolean).join(' ') || undefined
+              [option.badge && `${id}-${index}-b`, option.detail && `${id}-${index}-d`, option.unavailable && `${id}-${index}-u`]
+                .filter(Boolean)
+                .join(' ') || undefined
             }
             onChange={() => onChange(option.value)}
           />
@@ -371,6 +378,11 @@ export const ChoiceGroup: FunctionalComponent<{
             {option.detail && (
               <span class="choice-detail" id={`${id}-${index}-d`}>
                 {option.detail}
+              </span>
+            )}
+            {option.unavailable && (
+              <span class="choice-detail choice-unavailable" id={`${id}-${index}-u`}>
+                {option.unavailable}
               </span>
             )}
           </span>

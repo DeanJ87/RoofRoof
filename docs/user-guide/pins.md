@@ -42,9 +42,10 @@ A named preset fixes the board and every pin. **Custom** keeps the board you cho
 
 Pins apply **only at the next start**. A save changes the saved pins; the page then says a restart is needed and offers **Restart now**. Until the restart the device keeps using the pins it read at boot.
 
-- A save that changes the board, the preset or a pin is refused while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running: *"The roof is busy: pins and the network's set-up change only while it is still"*. The same holds for the [network mode](network.md#the-network-mode).
+- A save that changes the board, the preset or a pin is refused while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running: *"Pins and the network mode can't change while the roof is busy"*. The same holds for the [network mode](network.md#the-network-mode).
 - A pin set that breaks a rule is refused with the first error's text. Warnings don't stop a save.
 - A named preset sent with pins that differ from it is refused: choose **Custom** to change one.
+- On a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it, also in **WiFi only**), any board but the WT32-ETH01 is refused: *"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"*. The Pins page and the wizard then show **ESP32 DevKit** as unavailable, saying why, and **Custom** starts on the WT32-ETH01.
 - A restart, like every restart, waits while the roof is busy.
 
 ---
@@ -53,7 +54,7 @@ Pins apply **only at the next start**. A save changes the saved pins; the page t
 
 A device with no saved settings (new, or erased) has **no board chosen**. It can't guess: the DevKit's motor pins, GPIO25 to 27, are the WT32-ETH01's Ethernet receive lines, so driving them on a board nobody has named could fight the Ethernet chip. So it drives nothing, every move is refused with *"No board chosen yet: choose the board and its pins"*, and the [setup wizard](setup-wizard.md) and the Pins page ask for the board.
 
-To help you answer, the device looks for a WT32-ETH01 at boot, before it touches any pin: it powers the WT32's Ethernet clock (GPIO16) and asks for the LAN8720 Ethernet chip at address 1 over its management lines (MDC on GPIO23, MDIO on GPIO18). A DevKit wired for RoofRoof uses none of those pins, so the probe can't disturb it. On a chip with PSRAM it is skipped, because GPIO16 is the PSRAM's there.
+To help you answer, the device looks for a WT32-ETH01 at boot, before it touches any pin: it powers the WT32's Ethernet clock (GPIO16) and asks for the LAN8720 Ethernet chip at address 1 over its management lines (MDC on GPIO23, MDIO on GPIO18). A DevKit wired for RoofRoof uses none of those pins (the pin rules refuse them on every board), so the probe can't disturb it. A chip that reports PSRAM skips it, because GPIO16 is the PSRAM's there; this build doesn't detect PSRAM, so it always probes. A WT32-ETH01 set to **WiFi only** probes too at each start, so the device still knows what it is.
 
 - **A LAN8720 answers**: the Pins page and the wizard preselect **WT32-ETH01 + RoofRoof carrier v1**, and the device starts Ethernet straight away, so you can reach it over the cable ([Network](network.md)).
 - **Nothing answers**: they preselect **ESP32 DevKit**, and the device is reached over WiFi as before ([First Boot](../getting-started/first-setup.md)).
@@ -70,7 +71,7 @@ With no board chosen, a saved pin set that breaks a rule (saved by older or newe
 
 - every candidate motor pin (the saved RPWM, LPWM and EN, and every preset's) stays an input with no pull, except pins the chip or the board needs;
 - the motor driver is never set up, and the roof's control task doesn't start;
-- the roof shows the fault `pinSetup`, *"Pin setup invalid: nothing is driven until a valid pin setup is saved and the device restarts"*, and every move is refused with *"Pin setup invalid:"* followed by the reason: the first broken rule (for example *"EN on GPIO6: GPIO6 is a flash pin"*), *"No board chosen yet: choose the board and its pins"*, or *"The saved pin setup couldn't be read"*. **Clear fault** is refused too;
+- the roof shows the fault `pinSetup`, and every move is refused, with *"Pin setup invalid:"* followed by the reason: the first broken rule (for example *"Pin setup invalid: EN on GPIO6: GPIO6 is a flash pin"*) or *"The saved pin setup couldn't be read"*. With no board chosen the text is just *"No board chosen yet: choose the board and its pins"*. **Clear fault** is refused too, and the Roof card shows it unavailable: fix the pins on the Pins page, then restart;
 - the web UI, the network and the settings keep working, so you can fix it.
 
 The fault isn't stored and can't be cleared by hand: it is decided at each start. Save a valid pin set and restart, and it is gone; the roof starts as usual (unknown away from a magnet).
@@ -81,7 +82,7 @@ When the saved settings can't be read, everything else falls back to its default
 
 ## The pin rules
 
-The same rules run on the Pins page as you type, on the device when you save (also checked against the chip's own PSRAM), and at every start.
+The same rules run on the Pins page as you type (the page asks the device), on the device when you save, and at every start.
 
 ### Errors (refused)
 
@@ -89,7 +90,7 @@ The same rules run on the Pins page as you type, on the device when you save (al
 |---|---|
 | The ESP32 has no such GPIO (it has 0 to 5, 12 to 19, 21 to 23, 25 to 27, 32 to 36 and 39, besides the flash pins) | *"RPWM on GPIO20: the ESP32 has no GPIO20"* |
 | A flash pin (GPIO6 to 11) | *"… GPIO6 is a flash pin"* |
-| A PSRAM pin (GPIO16, 17) on a chip with PSRAM | *"… GPIO16 is used by this chip's PSRAM"* |
+| A PSRAM pin (GPIO16, 17), on every board: a WROVER module's PSRAM uses them, and this build can't detect PSRAM, so they are reserved everywhere (16 is a probe pin too) | *"… GPIO17 is used by the PSRAM on WROVER modules"* |
 | The serial port (GPIO1, 3) | *"… GPIO1 is the serial port used for the log and USB flashing"* |
 | The board's Ethernet (WT32-ETH01: GPIO0, 16, 18, 19, 21, 22, 23, 25, 26, 27) | *"… GPIO25 is used by the WT32-ETH01's Ethernet"* |
 | The WT32-ETH01 probe's pins, on every board (GPIO0, 16, 18, 23): a new device drives them at start-up before it knows its wiring | *"… GPIO16 is used to look for a WT32-ETH01 at start-up"* |
@@ -100,6 +101,7 @@ The same rules run on the Pins page as you type, on the device when you save (al
 | Two functions on one pin | *"LPWM on GPIO25: GPIO25 is already RPWM"* |
 | EN on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15) | *"EN on GPIO14: EN can't be on a strapping pin or one the chip drives while it starts (0, 2, 5, 12, 14, 15)"* |
 | A named preset with different pins | *"… this preset's pins are fixed; choose Custom to change one"* |
+| Any board but the WT32-ETH01 on a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it) | *"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"* |
 
 EN is kept off the strapping pins (stricter than a warning) because a pulse there at boot could enable the driver while its PWM inputs glitch. R_EN and L_EN are one EN line: the setting has one EN pin.
 
@@ -109,7 +111,7 @@ Any function other than EN on a strapping pin is allowed, with a warning that sa
 
 | Pin | What it does at reset |
 |---|---|
-| GPIO0 | Refused anyway (the probe's pin). Held low at reset, the board starts in its download mode instead of the firmware |
+| GPIO0 | Never reached: GPIO0 is refused on every board as a probe pin. (Held low at reset, the board would start in its download mode instead of the firmware.) |
 | GPIO2 | Must be low or floating for USB flashing; a normal start ignores it |
 | GPIO5 | Sets the SDIO timing (unused here) and pulses while the chip starts: fine for a switch input, or a PWM input while EN is held low |
 | GPIO12 | Sets the flash voltage: held high at reset, a 3.3 V flash module won't start |
@@ -141,7 +143,9 @@ Each result is **Pass**, **Check** (a warning; `warn` in the API), **Fail** or *
 
 - **On a board running Ethernet** (the WT32-ETH01): **Fail** if the LAN8720 didn't answer and Ethernet didn't start; **Check** with no link (check the cable) or a link without an address yet; **Pass** with a link and an address, with its speed.
 - **On a board set up as a DevKit**: a short probe looks for a WT32-ETH01, the same as the one at boot: the Ethernet clock on GPIO16 for about 15 ms, the clock seen on GPIO0, the PHY's ID read at address 1 over MDC (GPIO23) and MDIO (GPIO18, only ever pulled low or released), then all three back to inputs. No Ethernet PHY is the expected **Pass** on a DevKit. A LAN8720 answering is a **Check**: *"this looks like a WT32-ETH01, so choose its preset"*, and the page offers **Use that preset**. Another PHY, or a clock with no PHY, is a **Check** too.
-- The probe is **Skipped**, saying why, on a chip with PSRAM (GPIO16 is the PSRAM's). The pin rules keep every roof function off GPIO0, 16, 18 and 23, so the probe never meets one.
+- The probe is **Skipped**, saying why, on a chip that reports PSRAM (GPIO16 is the PSRAM's; this build doesn't detect PSRAM). The pin rules keep every roof function off GPIO0, 16, 18 and 23 on every board, so the probe never meets one.
+- **On a WT32-ETH01 in WiFi only**: **Skipped**, *"Not checked: the network mode is WiFi only"*: its Ethernet is deliberately off.
+- If the roof becomes busy during the check, nothing more is driven and Ethernet is **Skipped**: *"Not checked: the roof became busy, so run the check again once it is still"*.
 
 On a WT32-ETH01 still set up as a DevKit, the DevKit's motor pins (GPIO25 to 27) are driven low against the Ethernet chip's receive lines for those 15 ms; both parts tolerate it. Choose the right preset and restart to end it.
 

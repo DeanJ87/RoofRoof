@@ -178,6 +178,14 @@
         "mac": {
           "type": "string"
         },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ethernet",
+            "wifi"
+          ]
+        },
         "phyFound": {
           "type": "boolean"
         },

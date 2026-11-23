@@ -5,7 +5,7 @@ import Pins from '../Pins';
 import { Toaster } from '../toast';
 import type { SystemStatus } from '../../types';
 import { mockStatus } from '../../mocks/data';
-import { mockWiring, mockWiringDone, pinsDocumentFor } from '../../mocks/pins';
+import { BOARD_DETECTED_TEXT, mockWiring, mockWiringDone, pinsDocumentFor } from '../../mocks/pins';
 import { mockBoard } from '../../test/mockDevice';
 import { server } from '../../test/mswServer';
 
@@ -92,6 +92,62 @@ describe('Pins page', () => {
     await presets();
     expect(screen.getByText('No Ethernet chip was found, so the ESP32 DevKit is chosen.')).toBeInTheDocument();
     await waitFor(() => expect(radio(/^ESP32 DevKit/)).toBeChecked());
+  });
+
+  it("once a WT32-ETH01 is detected the DevKit can't be chosen, and Custom starts on the WT32", async () => {
+    const { status } = mockBoard('unset');
+    live(status);
+    render(<Pins />);
+    await presets();
+    const devkit = radio(/^ESP32 DevKit/);
+    expect(devkit).toBeDisabled();
+    expect(devkit).toHaveAccessibleDescription(/Not this board: its Ethernet answered, so it is a WT32-ETH01\./);
+    await waitFor(() => expect(radio(/^WT32-ETH01/)).toBeChecked());
+    await chooseCustom();
+    expect(document.querySelector<HTMLSelectElement>('[data-field="pins.board"]')!.value).toBe('wt32-eth01');
+  });
+
+  it("the device's boardDetected error blocks Save and is read out", async () => {
+    const { status } = mockBoard('unset');
+    live(status);
+    render(<Pins />);
+    await chooseCustom();
+    fireEvent.change(document.querySelector('[data-field="pins.board"]')!, { target: { value: 'esp32-devkit' } });
+    const error = await screen.findByText(BOARD_DETECTED_TEXT);
+    expect(error.closest('[data-pin-issue]')).toHaveAttribute('data-level', 'error');
+    expect(error.closest('[role="status"]')).not.toBeNull();
+    await waitFor(() => expect(button('Save pins')).toBeDisabled());
+  });
+
+  it("ties each custom pin to the device's issue about it", async () => {
+    mockBoard('devkit');
+    render(<Pins />);
+    await chooseCustom();
+    typePin('rpwm', '35');
+    const error = await screen.findByText("RPWM on GPIO35: GPIO35 is input only and can't drive an output");
+    const input = document.querySelector<HTMLInputElement>('[data-field="pins.rpwm"]')!;
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+    expect(input.getAttribute('aria-describedby')!.split(' ')).toContain(error.closest('p')!.id);
+    expect(document.querySelector('[data-field="pins.lpwm"]')).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('a refused restart shows the device reason and waits for nothing', async () => {
+    mockBoard('devkit');
+    server.use(
+      http.get('/api/pins', () =>
+        HttpResponse.json({ ...pinsDocumentFor('devkit'), saved: pinsDocumentFor('wt32').saved, restartNeeded: true }),
+      ),
+      http.post('/api/restart', () =>
+        HttpResponse.json({ error: "Pins and the network mode can't change while the roof is busy" }, { status: 409 }),
+      ),
+    );
+    render(<Toaster />);
+    render(<Pins />);
+    await presets();
+    fireEvent.click(await inEffect().findByRole('button', { name: 'Restart now' }));
+    expect(await screen.findByText("Pins and the network mode can't change while the roof is busy")).toBeInTheDocument();
+    expect(screen.queryByText('Restarting...')).toBeNull();
+    expect(inEffect().getByRole('button', { name: 'Restart now' })).toBeEnabled();
   });
 
   it('shows a WT32-ETH01 on its carrier with its pins', async () => {
@@ -181,12 +237,39 @@ describe('Pins page', () => {
     await waitFor(() => expect(radio(/^WT32-ETH01/)).toBeChecked());
   });
 
-  it('a refused check shows the device reason', async () => {
+  it('a refused check shows the device reason, read out', async () => {
     mockBoard('devkit');
     server.use(http.post('/api/pins/check', () => HttpResponse.json({ error: 'A check is already running' }, { status: 409 })));
     render(<Pins />);
     await presets();
     fireEvent.click(button('Check wiring'));
-    expect(await screen.findByText('A check is already running')).toBeInTheDocument();
+    const refusal = await screen.findByText('A check is already running');
+    expect(refusal.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('a finished check is read out with its counts', async () => {
+    mockBoard('devkit');
+    render(<Pins />);
+    await presets();
+    fireEvent.click(button('Check wiring'));
+    const live = await waitFor(() => {
+      const region = document.querySelector('[data-wiring-live]');
+      if (!region?.textContent) throw new Error('nothing read out yet');
+      return region;
+    });
+    expect(live).toHaveAttribute('role', 'status');
+    expect(live).toHaveTextContent('Wiring check finished. Pass: 4, check: 1, fail: 0.');
+  });
+
+  it('a save the device refuses is read out', async () => {
+    mockBoard('devkit');
+    server.use(http.post('/api/config', () => HttpResponse.json({ error: 'The roof is moving: wait until it stops' }, { status: 409 })));
+    render(<Pins />);
+    await presets();
+    fireEvent.click(radio(/^WT32-ETH01/));
+    await waitFor(() => expect(button('Save pins')).toBeEnabled());
+    fireEvent.click(button('Save pins'));
+    const refusal = await screen.findByText('The roof is moving: wait until it stops');
+    expect(refusal.closest('[role="status"]')).not.toBeNull();
   });
 });

@@ -285,9 +285,9 @@ The board, the roof's pins and the network mode ([Pins](pins.md), [Network](netw
 | `pins.parkA`, `pins.parkB` | int | `32`, `33` | Park switches A and B |
 | `network.mode` | string | `"auto"` | On a board with Ethernet: `auto` (Ethernet, with a saved WiFi network as a fallback after 30 s without an Ethernet address), `ethernet` (WiFi radio off, no setup hotspot) or `wifi` (Ethernet not started). Does nothing on a DevKit. Any other value is refused |
 
-Every pin set is checked against the [pin rules](pins.md#the-pin-rules) (and this chip's PSRAM): a set that breaks one is refused with `400` and the first error's text, for example `"RPWM on GPIO35: GPIO35 is input only and can't drive an output"`. Warnings don't stop a save. The pins in effect and whether a restart is needed are in [`GET /api/pins`](../api/rest.md#get-apipins).
+Every pin set is checked against the [pin rules](pins.md#the-pin-rules): a set that breaks one is refused with `400` and the first error's text, for example `"RPWM on GPIO35: GPIO35 is input only and can't drive an output"`. On a device whose Ethernet chip has answered (Ethernet started, or the boot probe found it), a change to any board but the WT32-ETH01 is refused too: `"This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"`. Warnings don't stop a save. The pins in effect and whether a restart is needed are in [`GET /api/pins`](../api/rest.md#get-apipins).
 
-On a board with Ethernet, empty `wifi.ssid` and `wifi.password` are a normal state, not an error ([Network](network.md#wi-fi-is-optional)).
+An empty `wifi.ssid` is never an error in itself (a new device has none, and on a board with Ethernet it is a normal state); only clearing a network that is already saved is refused, *"WiFi network can't be blank; use WiFi setup to change networks"* ([Network](network.md#wifi-is-optional)).
 
 ### Roof
 
@@ -472,15 +472,11 @@ A setting this device can't use isn't applied; the device keeps its own value an
 under **Can't apply here**. So is Pushover switched on when its keys weren't restored.
 A plain `GET /api/config` export still restores, without secrets.
 
-A backup made before the pins were a setting has no `pins` group, so restoring it keeps this device's
-board and pins; its old `safety.rainContact` is dropped.
-
-!!! warning "A backup carries the board and its pins"
-    A backup made on another board restores that board's pins, and the restore restarts the device
-    into them (the preview lists `pins` among the restart reasons). On a WT32-ETH01, a DevKit's motor
-    pins are its Ethernet lines, and the restart would leave it off the network. Before restoring a
-    backup from a different board, delete its `pins` group from the file (this device then keeps its
-    own) or set it to this board's preset.
+A restore never changes the board or the pins: they belong to this hardware, not to the settings
+you carry between devices. A backup whose `pins` differ from this device's (made on another board,
+or before a pin change) lists them under **Can't apply here**, and this device keeps its own; set
+them on the [Pins](pins.md) page if you mean to change them. A backup made before the pins were a
+setting has no `pins` group at all. Either way its old `safety.rainContact` is dropped.
 
 ### From a script
 

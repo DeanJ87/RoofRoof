@@ -11,12 +11,11 @@ import { SETTINGS_TABS, locationQuery, tabForErrorPath, tabFromLocation, type Se
 import TimeTab from './settings/TimeTab';
 import { listReasons } from './settings/restart';
 import { DEP_LABELS } from './settings/depLabels';
-import { showToast } from './toast';
+import { restartWithToast, showToast } from './toast';
 import { Button, Note } from './ui';
 import { nextTabIndex, scrollBehavior } from '../lib/a11y';
 import { effectiveEntries, fixTarget, previewInactive, viewOf, type DepEntry } from '../lib/settingsDeps';
 import { t } from '../i18n';
-import { restartDevice } from '../lib/settingsApi';
 import { useTabFromUrl } from '../hooks/useTabFromUrl';
 import { useConfigEditor } from '../hooks/useConfigEditor';
 
@@ -90,14 +89,8 @@ const Settings: FunctionalComponent = () => {
     }, 60);
   };
 
-  const restart = async () => {
-    try {
-      await restartDevice();
-      showToast({ message: t('common.restarting') });
-    } catch {
-      showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
-    }
-  };
+  // A refusal (the roof busy) or no answer says so; only an accepted restart says "Restarting".
+  const restart = () => restartWithToast();
 
   // Spec 021: the device's settings with this page's other edits kept.
   const reload = async (changed: string[]) => {

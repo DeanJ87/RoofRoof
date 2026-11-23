@@ -70,7 +70,7 @@ The WT32-ETH01 is a classic ESP32 (4 MB flash, no PSRAM) with a LAN8720 Ethernet
 - **LPWM on IO15 is a strapping pin.** Held low at reset it only silences the chip's boot messages on the serial port, and IO15 (like IO14 and IO5) pulses while the chip starts. Neither matters for a PWM input: with EN held low by its pull-down the IBT-2 ignores RPWM and LPWM. The Pins page shows this as a warning, not an error.
 - **Park B on IO5 is a strapping pin.** It sets the timing of the chip's SDIO interface, which RoofRoof doesn't use, so a park switch closed at reset (a parked mount) changes nothing for a normal start. The Pins page warns about it with that reason.
 - **The Ethernet pins.** The LAN8720 uses IO0 (its 50 MHz clock into the ESP32), IO16 (the clock oscillator's power), IO18 (MDIO), IO23 (MDC), IO19, IO21 and IO22 (transmit) and IO25, IO26 and IO27 (receive), with the PHY at address 1. That is why the DevKit's map can't work on a WT32: its motor pins 25 to 27 are the PHY's receive lines. The pin rules refuse any of these pins for a roof function on this board.
-- **The header.** The WT32 brings out IO2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36 and 39, plus IO0, IO1 (TX0) and IO3 (RX0) for flashing ([Flashing](../getting-started/flashing.md#wt32-eth01-the-first-flash)). A Custom map on this board can only use the first list. IO2, IO12 and IO17 are left free by the preset.
+- **The header.** The WT32 brings out IO2, 4, 5, 12, 14, 15, 17, 32, 33, 35, 36 and 39, plus IO0, IO1 (TX0) and IO3 (RX0) for flashing ([Flashing](../getting-started/flashing.md#wt32-eth01-the-first-flash)). A Custom map on this board can only use the first list, less IO17, which the pin rules keep free on every board for a WROVER module's PSRAM. IO2 and IO12 are left free by the preset.
 - **The analog inputs are all on ADC1** (IO32, 35, 36, 39), as on the DevKit.
 
 ### Custom pins
@@ -86,16 +86,17 @@ Travel length, speed and the Hall thresholds are settings, never constants in th
 The device refuses a pin set (on the Pins page as you edit, and when it is saved) that puts a function on:
 
 - a GPIO the ESP32 doesn't have (it has 0 to 5, 12 to 19, 21 to 23, 25 to 27, 32 to 36 and 39, besides the flash pins);
-- a flash pin (GPIO6 to 11), a PSRAM pin (GPIO16 and 17, on a chip with PSRAM), or the serial port used for the log and USB flashing (GPIO1 and 3);
+- a flash pin (GPIO6 to 11), a PSRAM pin (GPIO16 and 17, on every board: a WROVER module's PSRAM uses them and this build can't detect it), or the serial port used for the log and USB flashing (GPIO1 and 3);
 - one of the board's Ethernet pins, or, on the WT32-ETH01, a pin its header doesn't bring out;
 - GPIO0, 16, 18 or 23 on any board: a new device drives them at start-up to look for a WT32-ETH01;
 - an input-only pin (GPIO34 to 39) for RPWM, LPWM or EN, which must drive;
 - a pin off ADC1 (GPIO32 to 39) for the supply, the Hall sensor or a current-sense input: ADC2 can't be read while Wi-Fi is on;
 - an input-only pin for a park switch: those pins have no pull-up, so an open switch would float;
 - a pin already given to another function;
+- any board but the WT32-ETH01, once the device has seen its Ethernet chip answer;
 - for EN, a strapping pin or one the chip drives while it starts (GPIO0, 2, 5, 12, 14 and 15): a pulse there could enable the driver while the PWM pins glitch.
 
-It **warns**, and still saves, when any other function sits on a strapping pin (GPIO0, 2, 5, 12 or 15), saying what that pin does at reset. The full list, with each warning's meaning, is on the [Pins](../user-guide/pins.md#the-pin-rules) page.
+It **warns**, and still saves, when any other function sits on a strapping pin (GPIO2, 5, 12 or 15; GPIO0 is already refused as a probe pin), saying what that pin does at reset. The full list, with each warning's meaning, is on the [Pins](../user-guide/pins.md#the-pin-rules) page.
 
 R_EN and L_EN are one EN line by design: the setting has one EN pin.
 

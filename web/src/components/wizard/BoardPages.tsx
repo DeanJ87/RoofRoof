@@ -3,13 +3,12 @@ import { route } from 'preact-router';
 import { useEffect } from 'preact/hooks';
 import type { NetworkMode } from '../../types';
 import type { WizardPageProps } from './context';
-import { usePinsDocument } from '../../hooks/usePins';
-import { restartDevice } from '../../lib/settingsApi';
-import { pinsRestartNeeded, suggestedPreset, withPreset } from '../../lib/pinsView';
-import { PresetChoice, UnsetNotes } from '../pins/PinFields';
+import { usePinsDocument, usePinValidation } from '../../hooks/usePins';
+import { pinsRestartNeeded, suggestedPreset, withPreset, wt32Detected } from '../../lib/pinsView';
+import { IssueNotes, PresetChoice, UnsetNotes } from '../pins/PinFields';
 import { WiringCheckPanel } from '../pins/WiringCheck';
 import { modeDetail, modeLabel } from '../settings/EthernetCard';
-import { showToast } from '../toast';
+import { restartWithToast } from '../toast';
 import { Button, ChoiceGroup, Note } from '../ui';
 import { t } from '../../i18n';
 
@@ -17,10 +16,8 @@ import { t } from '../../i18n';
 // The board is saved like any screen and applies at a restart; the wiring
 // check moves nothing. Custom pins are set on the Pins page.
 
-const restart = () =>
-  void restartDevice()
-    .then(() => showToast({ message: t('common.restarting') }))
-    .catch(() => showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' }));
+// A refused restart says why (restartWithToast); nothing waits for one that didn't happen.
+const restart = () => void restartWithToast();
 
 /** The saved board isn't the one in effect: a restart applies it. */
 export const PinsRestartNote: FunctionalComponent<WizardPageProps> = ({ saved, status }) =>
@@ -34,6 +31,9 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { doc } = usePinsDocument();
   const pins = props.config.pins;
   const unset = props.saved.pins?.preset === 'unset';
+  // The device's verdict on the board as chosen: an error (a board it found to be a WT32-ETH01
+  // set up as another) is shown here, and the device refuses to save it.
+  const check = usePinValidation(pins);
   // A new device: the board its boot probe suggests is chosen for the person to confirm.
   useEffect(() => {
     if (doc && unset && pins?.preset === 'unset') props.update(['pins'], withPreset(doc, pins, suggestedPreset(doc)));
@@ -48,8 +48,10 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
         pins={pins}
         labelledBy={props.questionId}
         newDevice={unset}
+        wt32={wt32Detected(doc, props.status)}
         onChange={(next) => props.update(['pins'], next)}
       />
+      <IssueNotes issues={(check.validation?.issues ?? []).filter((issue) => issue.error)} idPrefix="wizard-pin-issue" />
       {pins.preset === 'custom' && (
         <>
           <Note>{t('wizard.board.custom')}</Note>

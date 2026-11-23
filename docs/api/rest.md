@@ -61,7 +61,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 
 `alerts` is the [`/api/alerts/armed`](#get-apialertsarmed-post-apialertsarm-post-apialertsdisarm) object, plus `recentRevision`, which goes up whenever [`/api/alerts/recent`](#get-apialertsrecent) would answer differently. `configRevision` goes up whenever the settings are saved, and starts from a random value at each start (so a page loaded before a restart never matches one after it). `recentRevision` restarts from 0 after a restart. Both only say *that* something changed, so a page fetches the details then. `alpaca.clients` has one entry per Alpaca device, keyed by its type: `dome`.
 
-`ethernet` is the wired network on a board that has it (the WT32-ETH01; [Network](../user-guide/network.md#ethernet-in-the-status)): `present` (the board in effect has Ethernet and the network mode isn't WiFi only), `started`, `phyFound` (the LAN8720 answered), `link`, `speedMbps`, `fullDuplex`, `ip` (`""` without an address), `mac` and `ipv6` (its IPv6 addresses, with IPv6 on). On a DevKit `present` is false and the rest are empty. The `wifi` block is unchanged; on a board running Ethernet with no WiFi saved its `connected` is simply false.
+`ethernet` is the wired network on a board that has it (the WT32-ETH01; [Network](../user-guide/network.md#ethernet-in-the-status)): `mode` (the network mode in effect since the start: `auto`, `ethernet` or `wifi`; always `wifi` on a board without Ethernet, and a saved change shows here only after the restart), `present` (the board in effect has Ethernet and the network mode isn't WiFi only), `started`, `phyFound` (the LAN8720 answered), `link`, `speedMbps`, `fullDuplex`, `ip` (`""` without an address), `mac` and `ipv6` (its IPv6 addresses, with IPv6 on). On a DevKit `present` is false and the rest are empty. The `wifi` block is unchanged; on a board running Ethernet with no WiFi saved its `connected` is simply false.
 
 `pins` is the board and pins in effect ([Pins](../user-guide/pins.md)): `preset` (`devkit`, `wt32-carrier-v1`, `custom` or `unset`), `board` (the chosen board, or the one the boot probe found while none is chosen), `valid` (the pins passed the rules at boot; false means nothing is driven) and `restartNeeded` (the saved pins differ from these). The details are in [`GET /api/pins`](#get-apipins).
 
@@ -87,7 +87,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
 | `daylight` | the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe): `mode` (`off`, `alert` or `close`), `state` (`off`, `unknown`, `night` or `day`), `sunAltitudeDeg` (`null` while off or unknown), `limitDeg` (the threshold), `text` ("Sun 3.2° ≥ 0.0°", "Sun -4.1° < 0.0°", "Location not set", "Clock not set" or "Off") and `closes` (daylight wants the roof closed now: mode `close` and state `day`) |
-| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`, `benchSupply`, `pinSetup`), `measured`, `limit` and `text`. `pinSetup` means nothing is driven (no board chosen, or an invalid or unreadable pin set); it isn't stored and can't be cleared, only fixed with a valid pin set and a restart ([Pins](../user-guide/pins.md#when-nothing-is-driven)) |
+| `fault` | `null`, or the latched fault: `kind`, `cause` (`logic`, `watchdog`, `watchdogStopped`, `parkInterlock`, `storedUnreadable`, `benchSupply`, `pinSetup`), `measured`, `limit` and `text`. `pinSetup` means nothing is driven (no board chosen, or an invalid or unreadable pin set), with the text "Pin setup invalid: " and the reason, or just "No board chosen yet: choose the board and its pins"; it isn't stored and can't be cleared, only fixed with a valid pin set and a restart ([Pins](../user-guide/pins.md#when-nothing-is-driven)) |
 | `simulation` | `off` on a real roof; `bench` for the bench-mode firmware (a simulated roof, the motor never driven; see [Bench mode](../user-guide/bench-mode.md)); `demo` in the online demo |
 | `watchdogTrips`, `maxStepGapMs`, `maxWatchdogBeatAgeMs` | since the restart: how often the watchdog switched the driver off, the longest gap between control steps, and the oldest watchdog heartbeat a step saw (the driver needs it at most 50 ms old) |
 
@@ -201,7 +201,7 @@ A save without `baseRevision` (a script, `curl`, an older page) isn't checked, a
 
 While the roof is opening or closing, every settings save is refused with `409` and `{"error": "The roof is moving: stop it first, then try again"}`: writing the flash pauses the processor's code cache, and with it the roof's control task and watchdog. A save is also refused while a close is waiting to start (`"A close is waiting to start: try again once the roof has closed"`), and while it is being written an open is refused (`busy`) and a close waits for it. Restores, uploads, WiFi changes and restarts are refused the same way; restarts, uploads, WiFi changes and scans also while the automatic close is waiting for the park or closing (`"The automatic close is under way: try again once the roof has closed or the weather is safe"`). The full table is in [Roof motion](../user-guide/roof-motion.md#while-the-roof-moves). Settings saved while the roof is stopped part-way make its position unknown (the estimate used the old ones).
 
-A save that changes `pins` or `network.mode` is also refused with `409` while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running: `{"error": "The roof is busy: pins and the network's set-up change only while it is still"}`. Both apply at the next restart. A pin set that breaks the [pin rules](../user-guide/pins.md#the-pin-rules), checked against this chip, is refused with `400` and the first error, e.g. `{"error": "RPWM on GPIO35: GPIO35 is input only and can't drive an output"}`; a named `pins.preset` sent alone fills in its pins, and with different pins it is refused. `safety.rainContact` no longer exists: a body that still has it is accepted and the key ignored.
+A save that changes `pins` or `network.mode` is also refused with `409` while the roof moves, a close is waiting, the automatic close is under way, or a calibration run or a jog is running: `{"error": "Pins and the network mode can't change while the roof is busy"}`. Both apply at the next restart. A pin set that breaks the [pin rules](../user-guide/pins.md#the-pin-rules), checked against this chip, is refused with `400` and the first error, e.g. `{"error": "RPWM on GPIO35: GPIO35 is input only and can't drive an output"}`. On a device that has seen its LAN8720 answer (Ethernet started, or the boot probe found it, also in WiFi only), a pin change to any board but the WT32-ETH01 is refused with `400` `{"error": "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"}`; a named `pins.preset` sent alone fills in its pins, and with different pins it is refused. `safety.rainContact` no longer exists: a body that still has it is accepted and the key ignored.
 
 A setting whose dependency is off is saved as sent and reported inactive by `GET /api/settings/effective`; it isn't rejected. Only combinations that can never work are refused, with the reason in `error` (see [Settings dependencies](../reference/settings-dependencies.md)).
 
@@ -277,7 +277,7 @@ What restoring a backup would save. Nothing is applied.
 }
 ```
 
-`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings this board can't use (`pin`, `pushover-keys`); they keep this device's values. `restart` says why applying restarts the device (empty: it doesn't): `wifi` (the WiFi settings or `network.mode`), `ota`, `ipv6`, `alpaca` or `pins` (the board or a pin). The web UI works out the per-setting differences from `settings`.
+`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings that aren't applied, each with its `path`, the backup's `value` and a `reason`; they keep this device's values. Reasons: `pushover-keys` (Pushover on without its keys) and `board-pins` (`pins`: a restore never changes the board or the pins, which belong to this hardware, so a backup whose pins differ from this device's lists them here). `restart` says why applying restarts the device (empty: it doesn't): `wifi` (the WiFi settings or `network.mode`), `ota`, `ipv6` or `alpaca`. A restore never gives `pins` (a settings save can). The web UI works out the per-setting differences from `settings`.
 
 Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` (also when the encrypted part was changed), or `invalid` with the same message a settings save gives. A new preview replaces the previous one.
 
@@ -415,14 +415,14 @@ curl http://roofroof.local/api/pins
 | `saved` | The pins as saved |
 | `restartNeeded` | `saved` differs from `running` |
 | `valid`, `reason` | Whether `running` passed the rules at the start. When not, nothing is driven and `reason` says why: the first broken rule, "No board chosen yet: choose the board and its pins" or "The saved pin setup couldn't be read" |
-| `issues` | The errors and warnings of `running`: `function` (`rpwm`, `lpwm`, `enable`, `currentR`, `currentL`, `supply`, `hall`, `parkA`, `parkB`), `pin`, `code`, `error` (false for a warning) and `text` |
-| `psram` | The chip has PSRAM (GPIO16 and 17 are then reserved) |
+| `issues` | The errors and warnings of `running`: `function` (`rpwm`, `lpwm`, `enable`, `currentR`, `currentL`, `supply`, `hall`, `parkA`, `parkB`, or `null` for one about the whole map), `pin`, `code`, `error` (false for a warning) and `text` |
+| `psram` | The chip reports PSRAM. GPIO16 and 17 are reserved on every board either way: this build can't detect a WROVER module's PSRAM, which uses them |
 | `board` | The board in effect: the chosen one, or the one the boot probe found while none is chosen |
 | `detected` | With no board chosen (or unreadable settings), what the boot probe found: `wt32-eth01` when a LAN8720 answered, else `esp32-devkit`; `null` when the probe didn't run (a board is chosen, or the chip has PSRAM) |
 | `presets` | Each named preset's board and pins |
 | `boards` | Each board's Ethernet pins and the pins its header brings out (`[]`: every existing GPIO) |
 
-Issue codes, errors: `missing`, `flash`, `psram`, `uart`, `ethernet`, `header`, `inputOnly`, `notAdc1`, `noPullup`, `shared`, `enStrap`, `presetMismatch`; warnings: `strap0`, `strap2`, `strap5`, `strap12`, `strap15`. The texts are on [Pins](../user-guide/pins.md#the-pin-rules).
+Issue codes, errors: `missing`, `flash`, `psram`, `probe` (GPIO0, 16, 18 or 23, the boot probe's pins, on every board), `uart`, `ethernet`, `header`, `inputOnly`, `notAdc1`, `noPullup`, `shared`, `enStrap`, `presetMismatch`, `boardDetected` (`function` `null`: the device has seen its LAN8720 answer and the map's board isn't `wt32-eth01`, "This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board"); warnings: `strap0`, `strap2`, `strap5`, `strap12`, `strap15`. The texts are on [Pins](../user-guide/pins.md#the-pin-rules).
 
 ### `POST /api/pins/validate`
 
@@ -443,6 +443,8 @@ curl -X POST http://roofroof.local/api/pins/validate -H "Content-Type: applicati
   ]
 }
 ```
+
+On a device that has seen its LAN8720 answer (Ethernet started, or the boot probe found it), a map for any board but `wt32-eth01` also gets the `boardDetected` error, as a save would.
 
 `400` with `{"error": "..."}` for a body that isn't a pin map: not an object, an unknown preset or board, or a pin that isn't a number.
 
@@ -478,7 +480,7 @@ The last wiring check since the start. Open (no password): readings and verdicts
 }
 ```
 
-`state` is `idle` (not run since the start), `running` or `done`; `checks` is empty until it is `done`. Each check has an `id` (`enPulldown`, `hall`, `supply`, `parkA`, `parkB`, `currentR`, `currentL`, `ethernet`, `motion`), a `level` (`pass`, `warn`, `fail`, `skipped`), the `value` it read with its `unit` (`null` when there is none) and a `text`. `suggestPreset` (`wt32-carrier-v1`) is added when the Ethernet probe found a WT32-ETH01's LAN8720 on a board set up without Ethernet. `finishedAt` is the device's uptime in milliseconds when it finished.
+`state` is `idle` (not run since the start), `running` or `done`; `checks` is empty until it is `done`. Each check has an `id` (`enPulldown`, `hall`, `supply`, `parkA`, `parkB`, `currentR`, `currentL`, `ethernet`, `motion`), a `level` (`pass`, `warn`, `fail`, `skipped`), the `value` it read with its `unit` (`null` when there is none) and a `text`. On a WT32-ETH01 in WiFi only, `ethernet` is `skipped` ("Not checked: the network mode is WiFi only"); it is skipped too if the roof became busy during the check ("Not checked: the roof became busy, so run the check again once it is still"). `suggestPreset` (`wt32-carrier-v1`) is added when the Ethernet probe found a WT32-ETH01's LAN8720 on a board set up without Ethernet. `finishedAt` is the device's uptime in milliseconds when it finished.
 
 ---
 
@@ -502,7 +504,7 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`, "Pin setup invalid: No board chosen yet: choose the board and its pins", or the first broken pin rule; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true.
+Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`: "No board chosen yet: choose the board and its pins", or "Pin setup invalid: " and the first broken pin rule or "The saved pin setup couldn't be read"; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true.
 
 
 ### `POST /api/roof/close`

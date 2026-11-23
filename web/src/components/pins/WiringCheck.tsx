@@ -1,5 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
+import { useState } from 'preact/hooks';
 import type { PinsDocument, WiringCheckResult } from '../../types';
 import { useWiringCheck } from '../../hooks/usePins';
 import { LEVEL_PILL, checkBlocked } from '../../lib/pinsView';
@@ -37,15 +38,33 @@ export interface WiringCheckPanelProps {
   onChoosePreset?: (preset: 'wt32-carrier-v1') => void;
 }
 
+const count = (results: WiringCheckResult[], level: WiringCheckResult['level']) =>
+  results.filter((result) => result.level === level).length;
+const finishedText = (results: WiringCheckResult[]) =>
+  t('pins.check.finished', { pass: count(results, 'pass'), warn: count(results, 'warn'), fail: count(results, 'fail') });
+
+// A polite live region: a refused start, and a check started here once it finishes (the rows
+// themselves aren't read out).
+const CheckLive: FunctionalComponent<{ problem: string | null; finished: WiringCheckResult[] | null }> = ({ problem, finished }) => (
+  <div role="status" aria-live="polite" data-wiring-live>
+    {problem && <Note tone="bad">{problem}</Note>}
+    {finished && <span class="sr-only">{finishedText(finished)}</span>}
+  </div>
+);
+
 export const WiringCheckPanel: FunctionalComponent<WiringCheckPanelProps> = ({ doc, onChoosePreset }) => {
   const { check, running, problem, start } = useWiringCheck();
   const blocked = checkBlocked(doc);
   const results = check?.state === 'done' ? check.checks.filter((result) => result.id !== 'motion') : [];
+  const [started, setStarted] = useState(false);
   return (
     <div class="card-group" data-wiring-panel>
       <div class="btn-row">
         <Button
-          onClick={() => void start()}
+          onClick={() => {
+            setStarted(true);
+            void start();
+          }}
           disabled={blocked !== null}
           describedBy={blocked ? BLOCKED_ID : undefined}
           busy={running}
@@ -55,7 +74,7 @@ export const WiringCheckPanel: FunctionalComponent<WiringCheckPanelProps> = ({ d
         </Button>
       </div>
       {blocked && <Note id={BLOCKED_ID}>{blocked}</Note>}
-      {problem && <Note tone="bad">{problem}</Note>}
+      <CheckLive problem={problem} finished={started && check?.state === 'done' ? results : null} />
       {check?.state === 'idle' && !blocked && <Note>{t('pins.check.idle')}</Note>}
       {results.map((result) => (
         <ResultRow key={result.id} check={result} />

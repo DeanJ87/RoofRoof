@@ -4,8 +4,8 @@ import { alertsConfigSchema } from './alertsSchema';
 import { roofConfigSchema } from './roofSchema';
 import { isIpv6Literal, ntpIpv6Text, parseHost, parseHttpUrl } from '../lib/netAddress';
 
-// The network is required except on a board with Ethernet (spec 023), where WiFi is optional:
-// checked on the whole settings (configSchema), which know the board.
+// A blank network is allowed (a new device, a board on Ethernet); only blanking a saved one is
+// refused, as the device does (getConfigValidationErrors, which knows the saved settings).
 export const wifiConfigSchema = z.object({
   ssid: z.string(),
   password: z.string(),
@@ -263,21 +263,30 @@ const configShape = z.object({
   network: networkConfigSchema.optional(),
 });
 
-// The device refuses a blank network while one is saved (SQMeter spec 011 FR-009); on a board
-// with Ethernet WiFi is optional (spec 023).
-export const configSchema = configShape.superRefine((data, ctx) => {
-  if (data.wifi.ssid.trim() === '' && data.pins?.board !== 'wt32-eth01')
-    ctx.addIssue({ code: 'custom', path: ['wifi', 'ssid'], message: t('validation.configSchema.wifiSsidIsRequired') });
-});
+export const configSchema = configShape;
 
 export type ConfigSchema = z.infer<typeof configSchema>;
 export type ValidationErrors = Record<string, string>;
 
-export const getConfigValidationErrors = (candidate: unknown): ValidationErrors => {
-  const result = configSchema.safeParse(candidate);
-  if (result.success) return {};
+type SavedWifi = { wifi?: { ssid?: unknown } } | null | undefined;
+const ssidOf = (value: unknown): string => {
+  const ssid = (value as SavedWifi)?.wifi?.ssid;
+  return typeof ssid === 'string' ? ssid.trim() : '';
+};
 
-  return Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.') || 'config', issue.message]));
+/**
+ * The settings' validation errors. With `saved` (the settings as loaded), a saved WiFi network
+ * can't be blanked: the device refuses that ("use WiFi setup to change networks", SQMeter spec
+ * 011 FR-009) but never requires a network (a new device, a board on Ethernet: spec 023).
+ */
+export const getConfigValidationErrors = (candidate: unknown, saved?: unknown): ValidationErrors => {
+  const result = configSchema.safeParse(candidate);
+  const errors: ValidationErrors = result.success
+    ? {}
+    : Object.fromEntries(result.error.issues.map((issue) => [issue.path.join('.') || 'config', issue.message]));
+  if (ssidOf(saved) !== '' && ssidOf(candidate) === '' && !errors['wifi.ssid'])
+    errors['wifi.ssid'] = t('validation.configSchema.wifiCantBeBlank');
+  return errors;
 };
 
 export const hasConfigValidationErrors = (errors: ValidationErrors): boolean => Object.keys(errors).length > 0;

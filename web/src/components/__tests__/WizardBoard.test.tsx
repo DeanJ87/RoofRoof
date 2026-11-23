@@ -3,9 +3,9 @@ import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import Wizard from '../Wizard';
 import { SCREENS } from '../wizard/screens';
-import type { SystemStatus } from '../../types';
+import type { PinsConfig, SystemStatus } from '../../types';
 import { mockStatus } from '../../mocks/data';
-import { mockWiring, pinsDocumentFor } from '../../mocks/pins';
+import { BOARD_DETECTED_TEXT, ethernetFor, mockValidate, mockWiring, pinsDocumentFor } from '../../mocks/pins';
 import { mockBoard } from '../../test/mockDevice';
 import { server } from '../../test/mswServer';
 
@@ -67,14 +67,44 @@ describe('Wizard: board, network and wiring', () => {
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].pins).toMatchObject({ preset: 'wt32-carrier-v1', board: 'wt32-eth01', enable: 4 });
-    // A DevKit's network in effect: no network question until the restart.
-    await onScreen('supply');
+    // The detected WT32-ETH01 is the board in effect: its network question follows.
+    await onScreen('network');
+  });
+
+  it("once a WT32-ETH01 is detected, the DevKit can't be chosen and says why", async () => {
+    const { status } = mockBoard('unset', NEW);
+    live(status);
+    render(<Wizard />);
+    await onScreen('board');
+    const devkit = screen.getByRole('radio', { name: /^ESP32 DevKit/ });
+    expect(devkit).toBeDisabled();
+    expect(devkit).toHaveAccessibleDescription(/Not this board: its Ethernet answered, so it is a WT32-ETH01\./);
+  });
+
+  it('a DevKit map saved on a detected WT32-ETH01 shows the device error', async () => {
+    const { status } = mockBoard('devkit', NEW);
+    // The board's Ethernet answered: the device has evidence it is a WT32-ETH01.
+    live({ ...status, ethernet: ethernetFor('wt32-eth01') });
+    server.use(
+      http.post('/api/pins/validate', async ({ request }) =>
+        HttpResponse.json(mockValidate((await request.json()) as Partial<PinsConfig>, 'wt32-eth01')),
+      ),
+    );
+    render(<Wizard />);
+    await onScreen('board');
+    expect(await screen.findByText(BOARD_DETECTED_TEXT)).toBeInTheDocument();
+    expect(screen.getByText(BOARD_DETECTED_TEXT).closest('[role="status"]')).not.toBeNull();
   });
 
   it('with nothing found, the DevKit is chosen', async () => {
     const { status } = mockBoard('unset', NEW);
-    server.use(http.get('/api/pins', () => HttpResponse.json({ ...pinsDocumentFor('unset'), detected: null })));
-    live(status);
+    server.use(
+      http.get('/api/pins', () => HttpResponse.json({ ...pinsDocumentFor('unset'), board: 'esp32-devkit', detected: null })),
+      http.post('/api/pins/validate', async ({ request }) =>
+        HttpResponse.json(mockValidate((await request.json()) as Partial<PinsConfig>)),
+      ),
+    );
+    live({ ...status, ethernet: ethernetFor('esp32-devkit'), pins: { ...status.pins!, board: 'esp32-devkit' } });
     render(<Wizard />);
     await onScreen('board');
     expect(await screen.findByText('No Ethernet chip was found, so the ESP32 DevKit is chosen.')).toBeInTheDocument();
@@ -89,7 +119,7 @@ describe('Wizard: board, network and wiring', () => {
     render(<Wizard />);
     await onScreen('board');
     expect(button('Continue')).toBeDisabled();
-    fireEvent.click(screen.getByRole('radio', { name: /^ESP32 DevKit/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^WT32-ETH01/ }));
     expect(button('Continue')).toBeEnabled();
   });
 

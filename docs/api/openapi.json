@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795464741,
-                    "iso": "2026-11-23T20:12:21+0000",
+                    "epoch": 1795466964,
+                    "iso": "2026-11-23T20:49:24+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795461139117,
-                    "nextSync": 1795468339117,
+                    "lastSync": 1795463362167,
+                    "nextSync": 1795470562167,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795464679117,
+                    "lastPublish": 1795466902167,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -303,6 +303,7 @@
                   },
                   "ethernet": {
                     "present": false,
+                    "mode": "wifi",
                     "started": false,
                     "phyFound": false,
                     "link": false,
@@ -8341,6 +8342,14 @@
               },
               "mac": {
                 "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "ethernet",
+                  "wifi"
+                ]
               },
               "phyFound": {
                 "type": "boolean"

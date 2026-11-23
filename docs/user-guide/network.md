@@ -34,7 +34,7 @@ Whatever used to wait for WiFi now waits for "a network": WiFi joined, or Ethern
 
 ### WiFi is optional
 
-On a board with Ethernet, empty WiFi settings are normal: the device works on the cable alone. **Settings → Network** shows the Ethernet status and says WiFi is optional, and nothing calls the empty WiFi settings an error or "not set up". Save a WiFi network there only if you want a fallback for when the cable fails.
+On a board with Ethernet, empty WiFi settings are normal: the device works on the cable alone. **Settings → Network** shows the Ethernet status and says WiFi is optional, and nothing calls the empty WiFi settings an error or "not set up": the dashboard and the **System** page show WiFi as **Not connected** (or **Off (Ethernet)** in **Ethernet only**), with no signal or address. Save a WiFi network there only if you want a fallback for when the cable fails. In **Ethernet only** the WiFi setup page's **Scan again** and **Connect** are unavailable, saying why. In **WiFi only** the Ethernet card stays, showing **Off (WiFi only)**, so you can change the mode back.
 
 ---
 
@@ -82,7 +82,7 @@ While the hotspot is open the roof can't be opened, on any board ([First Boot](.
 The dashboard's and the **System** page's network rows show Ethernet when it is up. [`GET /api/status`](../api/rest.md#get-apistatus) and `/ws/status` carry an `ethernet` block beside `wifi`:
 
 ```json
-"ethernet": { "present": true, "started": true, "phyFound": true, "link": true, "speedMbps": 100, "fullDuplex": true, "ip": "192.168.1.43", "mac": "AA:BB:CC:DD:EE:01", "ipv6": ["fe80::aabb:ccff:fedd:ee01"] }
+"ethernet": { "mode": "auto", "present": true, "started": true, "phyFound": true, "link": true, "speedMbps": 100, "fullDuplex": true, "ip": "192.168.1.43", "mac": "AA:BB:CC:DD:EE:01", "ipv6": ["fe80::aabb:ccff:fedd:ee01"] }
 ```
 
-`present` is false on a DevKit and in **WiFi only**; `phyFound` false means the LAN8720 didn't answer (for example a WT32 preset on a board that isn't one). The [wiring check](pins.md#the-ethernet-check) reports the link, its speed and the address too.
+`mode` is the network mode in effect since the start (`auto`, `ethernet` or `wifi`; always `wifi` on a DevKit): a saved change shows here only after the restart. `present` is false on a DevKit and in **WiFi only**; `phyFound` false means the LAN8720 didn't answer (for example a WT32 preset on a board that isn't one). The [wiring check](pins.md#the-ethernet-check) reports the link, its speed and the address too.

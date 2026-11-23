@@ -1,6 +1,7 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { t } from '../i18n';
+import { restartDevice } from '../lib/settingsApi';
 
 export interface ToastOptions {
   message: string;
@@ -30,6 +31,13 @@ export const showToast = (options: ToastOptions): number => {
   const duration = options.durationMs ?? 4000;
   if (duration > 0) setTimeout(() => dismissToast(id), duration);
   return id;
+};
+
+/** Asks the device to restart and says what happened: true once it accepted (then wait for it to come back). */
+export const restartWithToast = async (): Promise<boolean> => {
+  const answer = await restartDevice();
+  showToast(answer.ok ? { message: t('common.restarting') } : { message: answer.text, tone: 'bad' });
+  return answer.ok;
 };
 
 export const Toaster: FunctionalComponent = () => {

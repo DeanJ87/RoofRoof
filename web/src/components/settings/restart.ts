@@ -45,7 +45,16 @@ export const restartLabel = (code: RestartCode): string =>
 export const restartCodes = (before: Config, after: Config): RestartCode[] =>
   BOOT_SETTINGS.filter(([, needsRestart]) => needsRestart(before, after)).map(([code]) => code);
 
-export const restartReasons = (before: Config, after: Config): string[] => restartCodes(before, after).map(restartLabel);
+// The `wifi` code covers the network mode too (the device's code); the note names what changed.
+const modeOf = (c: Config) => c.network?.mode ?? 'auto';
+const wifiReason = (before: Config, after: Config): string => {
+  if (modeOf(before) === modeOf(after)) return restartLabel('wifi');
+  const wifiToo = changed(wifiFields(before).slice(1), wifiFields(after).slice(1));
+  return wifiToo ? t('settings.restart.wifiAndNetworkMode') : t('settings.restart.networkMode');
+};
+
+export const restartReasons = (before: Config, after: Config): string[] =>
+  restartCodes(before, after).map((code) => (code === 'wifi' ? wifiReason(before, after) : restartLabel(code)));
 
 // "a, b and c" in the UI's language (British English: no comma before "and").
 export const listReasons = (reasons: string[]) =>

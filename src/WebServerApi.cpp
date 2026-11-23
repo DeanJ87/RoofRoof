@@ -85,22 +85,22 @@ namespace SQM
                 stale = ConfigSave::checkSave(body, configRevision.load(), [&live]() { return live.toJson(true); });
                 if (stale.stale)
                     return false;
-                auto merged = Config::fromJson(body, &live, &reason);
-                if (!merged)
+                // Merged straight into `next` (a heap copy of the live settings):
+                // more ~2 KB Config copies here overflowed the async_tcp stack (spec 022's bench).
+                if (!Config::applyJson(body, next, true, &reason))
                 {
                     reason = reason.empty() ? "Invalid configuration" : reason;
                     return false;
                 }
                 // Spec 023: pins apply at the next start, checked against this chip
                 // too; a change waits while the roof is busy (FR-007, FR-008).
-                held = pinChangeHeld(live, *merged);
+                held = pinChangeHeld(live, next);
                 // A board that has shown its LAN8720 keeps a WT32-ETH01 map (only when the pins change).
-                const bool requireWt32 = merged->pins != live.pins && PinSetup::wt32Evidence();
-                if (!held.empty() || !merged->validatePins(PinSetup::psram(), &reason, requireWt32))
-                    return false;
-                next = std::move(*merged);
-                return true;
+                const bool requireWt32 = next.pins != live.pins && PinSetup::wt32Evidence();
+                return held.empty() && next.validatePins(PinSetup::psram(), &reason, requireWt32);
             });
+        // A save once overflowed this task's stack (spec 022's bench): log the headroom it left.
+        Logger::info(TAG, "Config save: async_tcp stack low-water %u B", static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
         if (!held.empty())
             request->send(409, "application/json", createErrorJson(held.c_str()).c_str());
         else if (saved || !reason.empty() || stale.stale)

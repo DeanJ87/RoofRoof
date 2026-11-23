@@ -5,14 +5,13 @@ import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { SetupConfig, SystemStatus } from '../types';
 import { Button, Card, Pill, ProgressMeter, ReadingRow } from './ui';
-import { showToast } from './toast';
+import { restartWithToast } from './toast';
 import { t } from '../i18n';
 import { formatAgeMs, formatBytes, formatCount, formatNumber, formatUptime } from '../i18n/format';
-import { post } from '../lib/api';
 import { fetchSetup } from '../lib/setupApi';
 import { fetchDiag } from '../lib/diagApi';
 import type { DiagDocument, DiagLive } from '../types/diag';
-import { boardLabel, presetLabel } from '../lib/pinsView';
+import { boardLabel, hasEthernet, presetLabel } from '../lib/pinsView';
 
 const formatShortAgeMs = (value: number | null | undefined): string => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 86400000) return '--';
@@ -27,14 +26,8 @@ const InfoRow: FunctionalComponent<{ label: string; value: string; tone?: string
 
 type Status = SystemStatus;
 
-const restartDevice = async () => {
-  try {
-    await post('/api/restart');
-    showToast({ message: t('common.restarting') });
-  } catch {
-    showToast({ message: t('system.couldNotReachTheDevice'), tone: 'bad' });
-  }
-};
+// A refusal (the roof busy) or no answer says so; only an accepted restart says "Restarting".
+const restartDevice = () => restartWithToast();
 
 const usedPercent = (used: number, total: number) => (total > 0 ? (used / total) * 100 : 0);
 
@@ -137,14 +130,18 @@ const MqttCard: FunctionalComponent<{ mqtt: NonNullable<Status['mqtt']> }> = ({ 
   </Card>
 );
 
-const WifiCard: FunctionalComponent<{ wifi: Status['wifi'] }> = ({ wifi }) => (
+// WiFi not connected is a fault on a board without Ethernet; on one running Ethernet (spec 023) it
+// is normal and reads neutral: off in Ethernet-only mode, else just not connected.
+const wifiState = (wifi: Status['wifi'], ethernet: Status['ethernet']) => {
+  if (wifi.connected) return { text: t('system.connected'), tone: 'tone-green' };
+  if (!ethernet?.present) return { text: t('system.disconnected'), tone: 'tone-red' };
+  return { text: ethernet.mode === 'ethernet' ? t('glance.wifiOffEthernet') : t('glance.wifiNotConnected'), tone: '' };
+};
+
+const WifiCard: FunctionalComponent<{ wifi: Status['wifi']; ethernet: Status['ethernet'] }> = ({ wifi, ethernet }) => (
   <Card title="WiFi" icon="wifi" tone="cyan">
     <div class="system-list">
-      <InfoRow
-        label={t('system.status')}
-        value={wifi.connected ? t('system.connected') : t('system.disconnected')}
-        tone={wifi.connected ? 'tone-green' : 'tone-red'}
-      />
+      <InfoRow label={t('system.status')} value={wifiState(wifi, ethernet).text} tone={wifiState(wifi, ethernet).tone} />
       {wifi.connected && (
         <>
           <InfoRow label="SSID" value={wifi.ssid} />
@@ -165,21 +162,30 @@ const WifiCard: FunctionalComponent<{ wifi: Status['wifi'] }> = ({ wifi }) => (
   </Card>
 );
 
-// Spec 023: Ethernet on a board that has it (the WiFi card stays).
-const EthernetCard: FunctionalComponent<{ ethernet: NonNullable<Status['ethernet']> }> = ({ ethernet }) => (
+// Spec 023: Ethernet on a board that has it (the WiFi card stays). In WiFi-only mode it isn't
+// started: off, not a missing link.
+const EthernetCard: FunctionalComponent<{ ethernet: Status['ethernet'] }> = ({ ethernet }) => (
   <Card title={t('system.ethernet')} icon="link" tone="cyan">
     <div class="system-list">
-      <InfoRow
-        label={t('system.status')}
-        value={ethernet.link ? t('system.connected') : t('system.noLink')}
-        tone={ethernet.link ? 'tone-green' : 'tone-amber'}
-      />
-      {ethernet.link && <InfoRow label={t('system.linkSpeed')} value={t('settings.network.speedValue', { speed: ethernet.speedMbps })} />}
-      <InfoRow label={t('system.ipAddress')} value={ethernet.ip || '--'} tone="tone-cyan" />
-      {ethernet.ipv6.map((address) => (
-        <InfoRow key={address} label="IPv6" value={address} tone="tone-cyan" />
-      ))}
-      <InfoRow label={t('system.macAddress')} value={ethernet.mac || '--'} />
+      {ethernet?.present ? (
+        <>
+          <InfoRow
+            label={t('system.status')}
+            value={ethernet.link ? t('system.connected') : t('system.noLink')}
+            tone={ethernet.link ? 'tone-green' : 'tone-amber'}
+          />
+          {ethernet.link && (
+            <InfoRow label={t('system.linkSpeed')} value={t('settings.network.speedValue', { speed: ethernet.speedMbps })} />
+          )}
+          <InfoRow label={t('system.ipAddress')} value={ethernet.ip || '--'} tone="tone-cyan" />
+          {ethernet.ipv6.map((address) => (
+            <InfoRow key={address} label="IPv6" value={address} tone="tone-cyan" />
+          ))}
+          <InfoRow label={t('system.macAddress')} value={ethernet.mac || '--'} />
+        </>
+      ) : (
+        <InfoRow label={t('system.status')} value={t('settings.network.offWifiOnly')} />
+      )}
     </div>
   </Card>
 );
@@ -296,8 +302,8 @@ const System: FunctionalComponent = () => {
       {status.partitions && <PartitionsCard partitions={status.partitions} />}
       {status.ntp && <NtpCard ntp={status.ntp} />}
       {status.mqtt && <MqttCard mqtt={status.mqtt} />}
-      {status.ethernet?.present && <EthernetCard ethernet={status.ethernet} />}
-      <WifiCard wifi={status.wifi} />
+      {hasEthernet(status) && <EthernetCard ethernet={status.ethernet} />}
+      <WifiCard wifi={status.wifi} ethernet={status.ethernet} />
       <PinsCard pins={status.pins} />
       <SetupCard />
       <DiagCard />

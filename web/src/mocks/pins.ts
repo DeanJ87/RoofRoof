@@ -1,6 +1,7 @@
 import type {
   BoardId,
   EthernetStatus,
+  NetworkMode,
   PinFunction,
   PinIssue,
   PinsConfig,
@@ -82,12 +83,20 @@ const issueOf = (map: PinsConfig, fn: PinFunction, seen: Map<number, PinFunction
   return null;
 };
 
-/** A simplified version of the device's rules: input-only outputs and shared pins are errors, strapping pins warnings. */
-export const mockValidate = (body: Partial<PinsConfig>): PinValidation => {
+export const BOARD_DETECTED_TEXT = 'This board is a WT32-ETH01 (its Ethernet answered): choose a WT32-ETH01 board';
+
+/**
+ * A simplified version of the device's rules: input-only outputs and shared pins are errors,
+ * strapping pins warnings; on a device whose Ethernet answered (`detected`), a map for
+ * another board is refused (`boardDetected`).
+ */
+export const mockValidate = (body: Partial<PinsConfig>, detected: BoardId | null = null): PinValidation => {
   const map: PinsConfig =
     body.preset === 'wt32-carrier-v1' ? WT32_PINS : body.preset === 'devkit' ? DEVKIT_PINS : { ...DEVKIT_PINS, ...body };
   const seen = new Map<number, PinFunction>();
   const issues = FUNCTIONS.map((fn) => issueOf(map, fn, seen)).filter((issue): issue is PinIssue => issue !== null);
+  if (detected === 'wt32-eth01' && map.board !== 'wt32-eth01')
+    issues.unshift({ function: null, pin: 255, code: 'boardDetected', error: true, text: BOARD_DETECTED_TEXT });
   return { valid: !issues.some((issue) => issue.error), pins: map, issues };
 };
 
@@ -96,7 +105,10 @@ export type MockBoard = 'devkit' | 'wt32' | 'unset';
 const savedPins = (kind: MockBoard): PinsConfig =>
   kind === 'wt32' ? WT32_PINS : kind === 'unset' ? { ...DEVKIT_PINS, preset: 'unset' } : DEVKIT_PINS;
 
-/** GET /api/pins for a DevKit, a WT32-ETH01 on its carrier, or a new device whose boot probe found a WT32-ETH01. */
+/**
+ * GET /api/pins for a DevKit, a WT32-ETH01 on its carrier, or a new device whose boot probe
+ * found a WT32-ETH01 (the board in effect is then the detected one).
+ */
 export const pinsDocumentFor = (kind: MockBoard): PinsDocument => {
   const pins = savedPins(kind);
   const validation = mockValidate(pins);
@@ -105,20 +117,36 @@ export const pinsDocumentFor = (kind: MockBoard): PinsDocument => {
     saved: pins,
     restartNeeded: false,
     valid: kind !== 'unset',
-    reason: kind === 'unset' ? 'No board chosen yet' : '',
+    reason: kind === 'unset' ? 'No board chosen yet: choose the board and its pins' : '',
     issues: kind === 'unset' ? [] : validation.issues,
     psram: false,
-    board: kind === 'wt32' ? 'wt32-eth01' : 'esp32-devkit',
+    board: kind === 'devkit' ? 'esp32-devkit' : 'wt32-eth01',
     detected: kind === 'unset' ? 'wt32-eth01' : null,
     presets: [DEVKIT_PINS, WT32_PINS],
     boards: BOARDS,
   };
 };
 
-/** The status's `ethernet` block: up on a WT32-ETH01, absent hardware on a DevKit. */
-export const ethernetFor = (board: BoardId): EthernetStatus =>
-  board === 'wt32-eth01'
+const NO_ETHERNET: Omit<EthernetStatus, 'mode'> = {
+  present: false,
+  started: false,
+  phyFound: false,
+  link: false,
+  speedMbps: 0,
+  fullDuplex: false,
+  ip: '',
+  mac: '',
+  ipv6: [],
+};
+
+/**
+ * The status's `ethernet` block: up on a WT32-ETH01 in `mode` (in effect since boot), not
+ * started in WiFi-only mode, absent hardware (mode `wifi`) on a DevKit.
+ */
+export const ethernetFor = (board: BoardId, mode: NetworkMode = 'auto'): EthernetStatus =>
+  board === 'wt32-eth01' && mode !== 'wifi'
     ? {
+        mode,
         present: true,
         started: true,
         phyFound: true,
@@ -129,7 +157,7 @@ export const ethernetFor = (board: BoardId): EthernetStatus =>
         mac: 'A1:B2:C3:D4:E5:F7',
         ipv6: ['fe80::a3b2:c3ff:fed4:e5f7'],
       }
-    : { present: false, started: false, phyFound: false, link: false, speedMbps: 0, fullDuplex: false, ip: '', mac: '', ipv6: [] };
+    : { ...NO_ETHERNET, mode: 'wifi' };
 
 /** GET /api/pins/check once a check has run on a DevKit with nothing fitted but the supply and the Hall sensor. */
 export const mockWiringDone: WiringCheckDocument = {

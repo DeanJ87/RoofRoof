@@ -143,7 +143,7 @@ export type RoofClosePhase = 'idle' | 'waitPark' | 'closing' | 'retryWait' | 'he
 
 export interface RoofFault {
   kind: string; // Roof::faultName
-  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped' | 'benchSupply';
+  cause: 'logic' | 'watchdog' | 'parkInterlock' | 'storedUnreadable' | 'watchdogStopped' | 'benchSupply' | 'pinSetup'; // pinSetup: spec 023
   measured: number | null;
   limit: number | null;
   text: string; // with the measured value and the limit

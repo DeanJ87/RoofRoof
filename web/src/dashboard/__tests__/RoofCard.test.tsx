@@ -289,9 +289,15 @@ describe('RoofCard', () => {
     const { unmount } = show(live(status()));
     expect(screen.queryByRole('button', { name: 'Fix the pin setup' })).toBeNull();
     unmount();
-    const invalid = status({ fault: { ...FAULT, kind: 'pinSetupInvalid', text: 'Pin setup invalid' } });
+    const invalid = status({
+      state: 'error',
+      fault: { ...FAULT, kind: 'pinSetup', cause: 'pinSetup', text: 'Pin setup invalid: RPWM on GPIO35: GPIO35 is input only' },
+    });
     invalid.pins = { preset: 'custom', board: 'esp32-devkit', valid: false, restartNeeded: false };
     show(live(invalid));
     expect(button('Fix the pin setup')).toBeInTheDocument();
+    // The device always refuses to clear it: the way out is the pins and a restart.
+    expect(button('Clear fault')).toBeDisabled();
+    expect(screen.getByText('Clear fault: Fix the pins on the Pins page, then restart')).toBeInTheDocument();
   });
 });

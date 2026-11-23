@@ -241,8 +241,14 @@ export const stopBarShown = (status: SystemStatus | null, waitedMs = 0) => {
   return Boolean(roof && (moving(roof) || roof.closePending || roof.calibrating)); // spec 016: the whole run
 };
 
-/** Clear fault needs live data: the person must see the fault they clear. */
-export const clearFaultReason = (input: ViewInput): string => (isLive(input.live, input.now) ? '' : t('roof.reason.noLiveData'));
+/**
+ * Clear fault needs live data: the person must see the fault they clear. A pin setup fault
+ * (spec 023) can't be cleared: the device refuses until the pins are fixed and it restarts.
+ */
+export const clearFaultReason = (input: ViewInput): string => {
+  if (!isLive(input.live, input.now)) return t('roof.reason.noLiveData');
+  return input.live.status?.roof?.fault?.cause === 'pinSetup' ? t('roof.reason.pinSetup') : '';
+};
 
 export const HALL_MAX_COUNTS = 4095;
 
