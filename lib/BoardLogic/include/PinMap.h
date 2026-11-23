@@ -57,12 +57,20 @@ namespace SQM
             uint8_t hall = 39;
             uint8_t parkA = 32;
             uint8_t parkB = 33;
+            // Each park input's pull-up: the chip's own, or one fitted on the board
+            // (then the input may be on 34-39, which have none). Not part of a preset.
+            bool parkAExternalPullup = false;
+            bool parkBExternalPullup = false;
 
             uint8_t pin(Function function) const;
             void setPin(Function function, uint8_t gpio);
             // Same board and pins (the preset label aside).
             bool samePins(const PinMap &other) const;
-            bool operator==(const PinMap &other) const { return preset == other.preset && samePins(other); }
+            bool operator==(const PinMap &other) const
+            {
+                return preset == other.preset && samePins(other) && parkAExternalPullup == other.parkAExternalPullup &&
+                       parkBExternalPullup == other.parkBExternalPullup;
+            }
             bool operator!=(const PinMap &other) const { return !(*this == other); }
         };
 

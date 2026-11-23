@@ -225,7 +225,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(7168); // see alertsToJson
+        DynamicJsonDocument doc(9216); // see alertsToJson; spec 023 added the pins and analog groups
         doc["deviceName"] = deviceName;
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);
@@ -233,6 +233,7 @@ namespace SQM
         appendSafety(doc, *this);
         appendRoof(doc, roof);
         ConfigPins::write(doc.createNestedObject("pins"), pins);
+        ConfigPins::writeAnalog(doc.createNestedObject("analog"), analog);
         doc.createNestedObject("network")["mode"] = network.mode == NetworkConfig::Mode::Ethernet ? "ethernet"
                                                     : network.mode == NetworkConfig::Mode::Wifi   ? "wifi"
                                                                                                   : "auto";

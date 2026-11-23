@@ -231,6 +231,42 @@ void test_the_stored_size_with_pins_fits()
     TEST_ASSERT_TRUE(c.toJson(false, false).size() < Config::MAX_PERSISTED_JSON_BYTES);
 }
 
+// Spec 023 Advanced: the analog front end and the park pull-ups.
+void test_analog_settings_and_pullups()
+{
+    const Config d = Config::createDefault();
+    TEST_ASSERT_TRUE(d.analog == Board::analogPreset(Board::AnalogPreset::DevkitBench));
+    // The owner's bench: 10k/22k on R_IS.
+    Config c = applied(R"({"analog":{"preset":"custom","currentR":{"top":10000,"bottom":22000}}})");
+    TEST_ASSERT_EQUAL_UINT32(22000, c.analog.currentR.bottomOhms);
+    TEST_ASSERT_EQUAL_UINT32(20000, c.analog.currentL.bottomOhms);
+    // A named preset fills its values; the WT32 carrier's diode drop.
+    c = applied(R"({"analog":{"preset":"wt32-carrier-v1.1"}})");
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.3f, c.analog.supplyTrim.offset);
+    // Errors refuse the save.
+    TEST_ASSERT_EQUAL_STRING(
+        "Supply sense trim: the gain must be between 0.5 and 2",
+        rejectReason(R"({"analog":{"preset":"custom","supply":{"gain":3}}})").c_str());
+    TEST_ASSERT_TRUE(rejectReason(R"({"analog":{"preset":"devkit-bench","supply":{"gain":1.1}}})").size() > 0);
+    TEST_ASSERT_EQUAL_STRING(
+        "Analog: supply.top must be a whole number of ohms", rejectReason(R"({"analog":{"preset":"custom","supply":{"top":-5}}})").c_str());
+    // Pull-ups: external lets a park switch sit on an input-only pin.
+    TEST_ASSERT_TRUE(rejectReason(R"({"pins":{"preset":"custom","currentR":32,"parkA":34}})").size() > 0);
+    c = applied(R"({"pins":{"preset":"custom","currentR":32,"parkA":34,"parkAPullup":"external"}})");
+    TEST_ASSERT_TRUE(c.pins.parkAExternalPullup);
+    TEST_ASSERT_EQUAL_STRING("Pins: parkBPullup must be internal or external", rejectReason(R"({"pins":{"parkBPullup":"weak"}})").c_str());
+    // Kept across a preset change; round trip.
+    c = applied(R"({"pins":{"preset":"custom","parkBPullup":"external"}})");
+    Config back = c;
+    std::string error;
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(R"({"pins":{"preset":"wt32-carrier-v1"}})", back, true, &error), error.c_str());
+    TEST_ASSERT_TRUE(back.pins.parkBExternalPullup);
+    Config reloaded = Config::createDefault();
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(back.toJson(), reloaded, false, &error), error.c_str());
+    TEST_ASSERT_TRUE(reloaded.pins == back.pins);
+    TEST_ASSERT_TRUE(reloaded.analog == back.analog);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -250,5 +286,6 @@ int main(int, char **)
     RUN_TEST(test_round_trip_through_json);
     RUN_TEST(test_config_pins_read_and_write);
     RUN_TEST(test_the_stored_size_with_pins_fits);
+    RUN_TEST(test_analog_settings_and_pullups);
     return UNITY_END();
 }

@@ -476,6 +476,16 @@ namespace SQM
             return ConfigPins::read(pins.as<JsonObjectConst>(), map, error);
         }
 
+        bool applyAnalog(const Section &root, Board::AnalogConfig &analog, std::string *error)
+        {
+            if (!root.has("analog"))
+                return true;
+            JsonVariant value = root["analog"];
+            if (!value.is<JsonObject>())
+                return setError(error, "Settings: analog must be an object");
+            return ConfigPins::readAnalog(value.as<JsonObjectConst>(), analog, error);
+        }
+
         bool isPushoverKey(const std::string &key)
         {
             if (key.size() != 30)
@@ -507,7 +517,8 @@ namespace SQM
         {
             applyRoot(root, cfg);
             applyWifi(root.child("wifi"), cfg.wifi, keep);
-            if (!applyPins(root, cfg.pins, error) || !applyNetwork(root.child("network"), cfg.network, error))
+            if (!applyPins(root, cfg.pins, error) || !applyNetwork(root.child("network"), cfg.network, error) ||
+                !applyAnalog(root, cfg.analog, error))
                 return false;
             applyMqtt(root.child("mqtt"), cfg.mqtt, keep);
             applyAccess(root, cfg, keep);

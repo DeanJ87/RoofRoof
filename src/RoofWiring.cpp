@@ -67,6 +67,7 @@ namespace SQM
     {
         HardwareSettings s;
         s.roof = config.roof;
+        s.analog = config.analog;
         s.fittedSwitches = static_cast<uint8_t>(config.park.switches);
         return s;
     }
@@ -100,7 +101,11 @@ namespace SQM
         {
             const float mv = averagePinMillivolts(sensePins[side]);
             in.currentMillivolts[side] = mv;
-            in.currentAmps[side] = mv / 1000.0f * RoofIo::CURRENT_DIVIDER * settings.roof.currentAmpsPerVolt;
+            in.currentAmps[side] = Board::scaledSenseAmps(
+                mv,
+                side == 0 ? settings.analog.currentR : settings.analog.currentL,
+                side == 0 ? settings.analog.currentRTrim : settings.analog.currentLTrim,
+                settings.roof.currentAmpsPerVolt);
         }
     }
 } // namespace SQM

@@ -47,13 +47,18 @@ std::string EmulatedDevice::pins(const std::string &action, const std::string &b
     const Board::Facts facts = Board::facts(runningPins.board, false);
     if (action == "validate")
     {
-        StaticJsonDocument<512> in;
+        DynamicJsonDocument in(2048);
         Board::PinMap map = cfg.pins;
         std::string error = "A pin map must be a JSON object";
         if (deserializeJson(in, body) || !in.is<JsonObject>() || !ConfigPins::read(in.as<JsonObjectConst>(), map, &error))
             return response(400, DemoCore::errorJson(error));
+        Board::AnalogConfig analog = cfg.analog;
+        const bool withAnalog = in["analog"].is<JsonObject>();
+        if (withAnalog && !ConfigPins::readAnalog(in["analog"].as<JsonObjectConst>(), analog, &error))
+            return response(400, DemoCore::errorJson(error));
         DynamicJsonDocument out(ConfigPins::PINS_DOCUMENT_BYTES / 2);
-        ConfigPins::writeValidation(out.to<JsonObject>(), map, Board::check(map, Board::facts(map.board, false)));
+        ConfigPins::writeValidation(
+            out.to<JsonObject>(), map, Board::check(map, Board::facts(map.board, false)), withAnalog ? &analog : nullptr);
         return response(200, serialize(out));
     }
     const Board::BootPins boot = Board::bootPins(runningPins, facts, false);
@@ -81,6 +86,7 @@ std::string EmulatedDevice::pins(const std::string &action, const std::string &b
     view.saved = cfg.pins;
     view.boot = boot;
     view.probed = runningPins.preset == Board::Preset::Unset;
+    view.analog = cfg.analog;
     view.board = runningPins.preset == Board::Preset::Unset ? Board::BoardId::Esp32Devkit : runningPins.board;
     DynamicJsonDocument out(ConfigPins::PINS_DOCUMENT_BYTES);
     ConfigPins::writePinsDocument(out.to<JsonObject>(), view);

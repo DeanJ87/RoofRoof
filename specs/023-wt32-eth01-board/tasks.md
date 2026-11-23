@@ -68,3 +68,9 @@
 - [x] T040 Round 1 (firmware): the probe's pins reserved on every board; MDIO sampled after the falling edge with one turnaround bit; an Alpaca stop with invalid pins answered OK; the default route follows the Wi-Fi fallback; a board whose LAN8720 answered refuses a non-WT32 map; GPIO 37/38 refused; a stored unknown network mode loads as Auto; Ethernet only as in effect; a busy EN check says so; a backup never restores the pins; the pin fault names its reason
 - [x] T041 Round 2: GPIO16/17 reserved on every board; `boardDetected` in validation and saves (a WT32 in WiFi only probed at boot); the Ethernet check skipped in WiFi only and when busy; `ethernet.mode` in the status; the web UI's empty-SSID rule, the detected-WT32 DevKit card, Clear fault for the pin fault, restart refusals, neutral WiFi beside Ethernet, live regions; settings saves merged on the heap with the async_tcp low-water logged
 - [x] T042 Round 3: the WiFi-only Settings note, the wiring check refused when the controller didn't start, Ethernet before PSRAM in the rules, wording (reviewer: safe to merge)
+
+## Phase 9: Owner requirement: the analog front end (Advanced)
+
+- [x] T043 [US1] `lib/BoardLogic` Analog (dividers, trims, presets, checks, scaling, supply calibration) with test_analog; `analog` settings and the park pull-ups in ConfigModel with tests in test_config_pins
+- [x] T044 Firmware: the roof scales the supply and current with the configured values (applied with the roof's settings, never mid-move); the park pull-ups at boot; the pin documents and validate carry the analog values and issues; the demo too
+- [ ] T045 Web: the Advanced section, the supply calibration, mocks, tests; docs

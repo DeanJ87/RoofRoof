@@ -47,8 +47,9 @@ namespace SQM
         for (uint8_t pin : {pins.hall, pins.supply, pins.currentR, pins.currentL})
             analogSetPinAttenuation(pin, ADC_11db);
         // Contacts to ground; the rules keep them off GPIO34-39 (no pull-ups).
-        for (uint8_t pin : {pins.parkA, pins.parkB})
-            pinMode(pin, INPUT_PULLUP);
+        // A board-fitted pull-up (spec 023 Advanced) leaves the chip's off.
+        pinMode(pins.parkA, pins.parkAExternalPullup ? INPUT : INPUT_PULLUP);
+        pinMode(pins.parkB, pins.parkBExternalPullup ? INPUT : INPUT_PULLUP);
     }
 
     bool RoofControl::startTask()
@@ -136,13 +137,21 @@ namespace SQM
         StepInputs in;
         in.readings.nowMs = nowMs;
         in.readings.hallCounts = hallCounts(pins.hall);
-        in.readings.supplyVolts = RoofIo::supplyVolts(pinMillivolts(pins.supply));
+        // Spec 023: scaled by the configured dividers and trims.
+        in.readings.supplyVolts = Board::scaledSupplyVolts(pinMillivolts(pins.supply), now.analog);
         in.readings.motorAmps = NAN; // "no reading" while current sense is off (spec 002 contract)
         if (now.roof.currentSenseEnabled)
-            in.readings.motorAmps = RoofIo::motorAmps(
-                pinMillivolts(pins.currentR, RoofIo::CURRENT_SAMPLES),
-                pinMillivolts(pins.currentL, RoofIo::CURRENT_SAMPLES),
-                now.roof.currentAmpsPerVolt);
+            in.readings.motorAmps = RoofIo::largerAmps(
+                Board::scaledSenseAmps(
+                    pinMillivolts(pins.currentR, RoofIo::CURRENT_SAMPLES),
+                    now.analog.currentR,
+                    now.analog.currentRTrim,
+                    now.roof.currentAmpsPerVolt),
+                Board::scaledSenseAmps(
+                    pinMillivolts(pins.currentL, RoofIo::CURRENT_SAMPLES),
+                    now.analog.currentL,
+                    now.analog.currentLTrim,
+                    now.roof.currentAmpsPerVolt));
         park1Reading.store(static_cast<uint8_t>(park1.update(levelLow(pins.parkA), nowMs)));
         park2Reading.store(static_cast<uint8_t>(park2.update(levelLow(pins.parkB), nowMs)));
         return in;

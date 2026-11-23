@@ -50,6 +50,7 @@ namespace SQM
         view.probed = PinSetup::boardProbed();
         view.detected = PinSetup::detectedBoard();
         view.board = PinSetup::board();
+        view.analog = getConfigCallback().analog;
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES);
         ConfigPins::writePinsDocument(doc.to<JsonObject>(), view);
         std::string out;
@@ -74,8 +75,16 @@ namespace SQM
         Board::Facts facts = Board::facts(map.board, PinSetup::psram());
         facts.requireWt32 = map.preset != Board::Preset::Unset && PinSetup::wt32Evidence();
         const Board::PinReport report = Board::check(map, facts);
+        // Spec 023 Advanced: dividers and trims sent under "analog" are checked too.
+        Board::AnalogConfig analog = getConfigCallback().analog;
+        const bool withAnalog = json.containsKey("analog") && json["analog"].is<JsonObject>();
+        if (withAnalog && !ConfigPins::readAnalog(json["analog"].as<JsonObjectConst>(), analog, &error))
+        {
+            request->send(400, "application/json", createErrorJson(error.c_str()).c_str());
+            return;
+        }
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES / 2);
-        ConfigPins::writeValidation(doc.to<JsonObject>(), map, report);
+        ConfigPins::writeValidation(doc.to<JsonObject>(), map, report, withAnalog ? &analog : nullptr);
         std::string out;
         serializeJson(doc, out);
         request->send(200, "application/json", out.c_str());

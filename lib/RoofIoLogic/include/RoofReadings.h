@@ -52,5 +52,7 @@ namespace SQM
         // carries current in a direction), through the divider and the
         // board's amps per volt. NaN only if both readings are NaN.
         float motorAmps(float rightMillivolts, float leftMillivolts, float ampsPerVolt);
+        // Spec 023: the larger of two already-scaled sense readings; NaN only if both are.
+        float largerAmps(float right, float left);
     } // namespace RoofIo
 } // namespace SQM

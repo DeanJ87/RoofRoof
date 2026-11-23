@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <string>
 
+#include "Analog.h"
 #include "PinMap.h"
 #include "PinRules.h"
 #include "WiringCheck.h"
@@ -20,6 +21,9 @@ namespace SQM
         // refuse any that differ. False with the reason for an unknown name or
         // a value that isn't a GPIO number.
         bool read(JsonObjectConst in, Board::PinMap &map, std::string *error);
+        // The `analog` group (dividers and trims), the same way.
+        void writeAnalog(JsonObject out, const Board::AnalogConfig &analog);
+        bool readAnalog(JsonObjectConst in, Board::AnalogConfig &analog, std::string *error);
 
         // The documents of contracts/pins-api.md, shared by the firmware and the demo.
         struct PinsView
@@ -31,10 +35,12 @@ namespace SQM
             bool probed = false; // the boot probe ran (no board chosen)
             Board::BoardId detected = Board::BoardId::Esp32Devkit;
             Board::BoardId board = Board::BoardId::Esp32Devkit; // in effect
+            Board::AnalogConfig analog; // saved (applied by the roof once no move is under way)
         };
-        constexpr size_t PINS_DOCUMENT_BYTES = 4096;
+        constexpr size_t PINS_DOCUMENT_BYTES = 6144;
         void writePinsDocument(JsonObject out, const PinsView &view);
-        void writeValidation(JsonObject out, const Board::PinMap &map, const Board::PinReport &report);
+        // `analog`: the dividers and trims to check too (nullptr: none sent).
+        void writeValidation(JsonObject out, const Board::PinMap &map, const Board::PinReport &report, const Board::AnalogConfig *analog = nullptr);
 
         enum class CheckState : uint8_t
         {

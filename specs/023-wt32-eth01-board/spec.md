@@ -138,6 +138,19 @@ Each answer takes the safest option the constitution allows and is also listed u
   then `-t uploadfs`; after that, updates go over the network (the Updates page or command-line OTA),
   over Ethernet as over Wi-Fi. The same image serves both boards.
 
+- Q: Which analog values are settings? → A: Each analog input's divider (top and bottom resistor,
+  in ohms) and, for the supply and both current senses, a trim (a gain and an offset in the input's
+  own unit), under an Advanced section of the Pins page, with presets: "DevKit bench wiring" (100k/22k
+  supply, 10k/20k Hall and IS, no trim: the scaling before this spec) and "WT32 carrier v1.1" (the
+  same plus +0.3 V on the supply for the carrier's reverse-polarity diode); Custom is editable. The
+  supply's limit and the current scaling use them; the Hall thresholds are raw ADC counts and are
+  unaffected (the Hall divider is only checked for its pin voltage). A divider that could put more
+  than 3.3 V on a pin at the sensor's maximum (supply 15 V, Hall 4.2 V on a 5 V supply, IS 5 V) is
+  a warning; a resistor out of range, a gain outside 0.5-2 or an offset outside ±2 V / ±5 A is an
+  error. Each park input's pull-up is internal or external (a fitted one); external allows a park
+  switch on GPIO34-39. The Pins page can work out the supply's gain from a voltage measured with a
+  multimeter.
+
 ## Constitution rules this spec relies on
 
 | Principle | Rule | Where it is kept |
@@ -469,6 +482,23 @@ question, the Settings row, the dashboard row and the docs for the local contact
   its demo control and its tests MUST be removed. SQMeter's rain and rain-sensor-fault path MUST
   stay as it is.
 
+**Analog front end (Advanced)**
+
+- **FR-036**: The settings MUST gain an `analog` group: a preset (`devkit-bench`, `wt32-carrier-v1.1`,
+  `custom`), each analog input's divider (top, bottom ohms), and a trim (gain, offset) for the supply
+  and both current senses; the default is `devkit-bench` for new and upgraded devices. A named
+  preset fixes its values.
+- **FR-037**: The supply volts and the motor current MUST be scaled by the configured divider and
+  trim; the change applies at the roof's next sample once no move is under way (no restart).
+- **FR-038**: The rules MUST refuse an unusable divider, gain or offset and warn when a divider could
+  put more than 3.3 V on its pin at the sensor's maximum; `GET /api/pins` and `POST
+  /api/pins/validate` report them.
+- **FR-039**: `pins.parkAPullup` and `parkBPullup` (`internal`, `external`) MUST choose each park
+  input's pull-up; with `external` a park switch may sit on GPIO34-39. They apply at a restart and
+  stay across a preset change.
+- **FR-040**: The Pins page MUST offer the Advanced settings and compute the supply's gain from a
+  measured voltage.
+
 **Docs and governance**
 
 - **FR-031**: Constitution 3.0.0: Principle I's EN wording for configurable pins and the boot read;
@@ -503,8 +533,8 @@ question, the Settings row, the dashboard row and the docs for the local contact
 - **SC-004**: The wiring check finishes within 1 s and never changes a motor output's level except
   EN's mode for under 100 µs (native verdict tests; bench check with a logic analyser).
 - **SC-005**: On the WT32-ETH01, every network service works with the Wi-Fi radio off (bench check).
-- **SC-006**: The firmware stays below the flash budget's warning line (90 %) with Ethernet linked
-  in.
+- **SC-006**: The firmware stays below the flash budget's failure line (95 %) with Ethernet linked
+  in, and the growth is recorded (it ends just over the 90 % warning line; assumption 26).
 
 ## Assumptions decided for the owner
 
@@ -564,3 +594,18 @@ Each was an open choice; the safest option the constitution allows was taken.
     so it can't tell a WROVER (whose PSRAM uses them) from a WROOM. The WT32 carrier doesn't use
     them.
 20. **A WT32-ETH01 in WiFi only is probed at boot too**, so a DevKit map can still be refused there.
+21. **The analog values apply without a restart**, at the roof's next sample once no move is under
+    way; the pull-ups (a pin mode) apply at the restart, with the pins.
+22. **The trim is a gain and an offset in the input's own unit** (volts, amps), applied after the
+    divider. The WT32 carrier v1.1 preset adds 0.3 V for its supply diode; its pin map is the
+    carrier v1's (`wt32-carrier-v1`), which the v1.1 board keeps.
+23. **The drawn 10k/20k IS divider is warned**: at the BTS7960's 5 V IS output it puts 3.33 V on the
+    pin. It stays the default (it is what the boards have); the warning says so.
+24. **The analog values are checked when saved** (errors refuse the save), not when the settings
+    load: a stored value that later fails a rule still loads, and an unusable divider reads 0 V,
+    which the supply check treats as a supply too low to move.
+25. **The supply calibration only proposes a gain** (from the live reading and the measured volts);
+    the person saves it like any setting.
+26. **Flash**: with Ethernet and the analog settings the image is just over the 90 % warning line
+    (below the 95 % failure line); it is recorded, and the next spec should look for savings first.
+

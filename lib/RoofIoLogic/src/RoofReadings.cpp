@@ -35,6 +35,13 @@ namespace SQM
             return pinMillivolts / 1000.0f * SUPPLY_DIVIDER;
         }
 
+        float largerAmps(float right, float left)
+        {
+            if (std::isnan(right))
+                return left;
+            return std::isnan(left) || right >= left ? right : left;
+        }
+
         float motorAmps(float rightMillivolts, float leftMillivolts, float ampsPerVolt)
         {
             float larger = rightMillivolts;

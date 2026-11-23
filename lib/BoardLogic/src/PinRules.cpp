@@ -83,15 +83,17 @@ namespace SQM
             }
 
             // What the function needs of the pin.
-            bool roleError(const Facts &f, Function function, uint8_t pin, IssueCode &code)
+            bool roleError(const Facts &f, const PinMap &map, Function function, uint8_t pin, IssueCode &code)
             {
+                const bool externalPullup = (function == Function::ParkA && map.parkAExternalPullup) ||
+                                            (function == Function::ParkB && map.parkBExternalPullup);
                 if (isOutput(function) && Facts::has(f.inputOnly, pin))
                     code = IssueCode::InputOnly;
                 else if (function == Function::Enable && Facts::has(EN_FORBIDDEN, pin))
                     code = IssueCode::EnStrap;
                 else if (isAnalog(function) && !Facts::has(f.adc1, pin))
                     code = IssueCode::NotAdc1;
-                else if (isPark(function) && Facts::has(f.inputOnly, pin))
+                else if (isPark(function) && !externalPullup && Facts::has(f.inputOnly, pin))
                     code = IssueCode::NoPullup;
                 else
                     return false;
@@ -173,7 +175,7 @@ namespace SQM
                 const auto function = static_cast<Function>(i);
                 const uint8_t pin = map.pin(function);
                 IssueCode code;
-                if (placeError(facts, pin, code) || roleError(facts, function, pin, code) || strapWarning(facts, pin, code))
+                if (placeError(facts, pin, code) || roleError(facts, map, function, pin, code) || strapWarning(facts, pin, code))
                     add(report, function, pin, code);
             }
             checkShared(map, report);

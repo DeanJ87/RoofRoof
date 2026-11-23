@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 
+#include "Analog.h"
 #include "PinMap.h"
 
 namespace SQM
@@ -441,6 +442,9 @@ namespace SQM
         // 023 load as the DevKit preset (Config::applyJson).
         Board::PinMap pins = Board::presetMap(Board::Preset::Unset);
         NetworkConfig network;
+        // Spec 023: each analog input's divider and trim (Advanced). Applied by
+        // the roof once no move is under way; the default is the DevKit's.
+        Board::AnalogConfig analog;
         std::string deviceName;
 
         static constexpr const char *TAG = "Config";
@@ -478,6 +482,7 @@ namespace SQM
         bool validateLoaded(std::string *error = nullptr) const;
         // Spec 023: the pins against the rules for a chip with or without
         // PSRAM (validate() assumes none; the device checks its own chip too).
+        bool validateAnalog(std::string *error = nullptr) const;
         // `requireWt32`: the device has seen a LAN8720, so only the WT32-ETH01 board is allowed.
         bool validatePins(bool psram, std::string *error = nullptr, bool requireWt32 = false) const;
         // validate() plus the rules a change from the UI/API also meets (host and

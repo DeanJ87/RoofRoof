@@ -204,6 +204,7 @@ namespace SQM
         struct HardwareSettings
         {
             RoofConfig roof;
+            Board::AnalogConfig analog; // spec 023: the dividers and trims
             uint8_t fittedSwitches = 0;
         };
 
