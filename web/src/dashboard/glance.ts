@@ -52,6 +52,7 @@ const PRIORITY: Record<string, number> = {
   'imaging-app': 4,
   'clock-location': 7,
   'sqmeter-needs': 8,
+  'test-box': 2,
 };
 
 interface Parts {
@@ -198,6 +199,18 @@ const needItems = ({ status }: GlanceInput): GlanceItem[] =>
       }),
     );
 
+// Spec 022: while a test box bypass is in effect the card never says "All good"
+// (constitution 4.1.0: a bypassed check is never shown as passing).
+const testBoxItem = ({ status }: GlanceInput): GlanceItem | null =>
+  status?.roof?.testBox?.active
+    ? item('test-box', 'note', {
+        label: t('testBox.title'),
+        state: t('testBox.check.bypassed'),
+        detail: t('status.testBoxHint'),
+        fix: { label: t('testBox.banner.manage'), href: appHref('/test-box') },
+      })
+    : null;
+
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
@@ -207,6 +220,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     channelsItem(input),
     roofFaultItem(input),
     roofCloseItem(input),
+    testBoxItem(input),
     ...imagingAppItems(input),
     clockItem(input),
     ...needItems(input),

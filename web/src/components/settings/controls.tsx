@@ -15,16 +15,23 @@ const PILL: Record<Tone, string> = { ok: 'pill-green', warn: 'pill-amber', bad: 
 
 export const StatusBadge: FunctionalComponent<{ tone: Tone; label: string }> = ({ tone, label }) => <Pill tone={PILL[tone]}>{label}</Pill>;
 
+// `plain`: the body alone, as a group (a guided flow's screen, which is its own frame).
 export const SettingsCard: FunctionalComponent<{
   id?: string;
   title: string;
   hint?: ComponentChildren;
   badge?: ComponentChildren;
-}> = ({ id, title, hint, badge, children }) => (
-  <Card id={id} title={title} hint={hint} actions={badge}>
-    <div class="card-body">{children}</div>
-  </Card>
-);
+  plain?: boolean;
+}> = ({ id, title, hint, badge, plain, children }) =>
+  plain ? (
+    <div id={id} class="card-group">
+      {children}
+    </div>
+  ) : (
+    <Card id={id} title={title} hint={hint} actions={badge}>
+      <div class="card-body">{children}</div>
+    </Card>
+  );
 
 export const Group: FunctionalComponent<{ title?: string; aside?: ComponentChildren }> = ({ title, aside, children }) => (
   <div class="card-group">

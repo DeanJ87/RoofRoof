@@ -135,7 +135,7 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = (props) => {
 
 // Broker, credentials, base topic and interval.
 // Spec 020: the broker, port and user name are read-only while the MQTT group follows SQMeter.
-const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
+export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
   const { config, update, error, status } = props;
   const base = config.mqtt.topic || 'roofroof';
   const locked = isLocked(config, 'mqtt');

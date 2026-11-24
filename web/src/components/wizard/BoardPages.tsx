@@ -1,20 +1,21 @@
 import { FunctionalComponent } from 'preact';
-import { route } from 'preact-router';
 import { useEffect } from 'preact/hooks';
 import type { NetworkMode, PinsConfig } from '../../types';
 import type { WizardPageProps } from './context';
 import { usePinsDocument, usePinValidation } from '../../hooks/usePins';
 import { pinsRestartNeeded, suggestedPreset, withPreset, wt32Detected } from '../../lib/pinsView';
-import { IssueNotes, PresetChoice, UnsetNotes } from '../pins/PinFields';
+import { CustomPins, IssueNotes, PresetChoice, UnsetNotes } from '../pins/PinFields';
 import { WiringCheckPanel } from '../pins/WiringCheck';
 import { modeDetail, modeLabel } from '../settings/EthernetCard';
+import { CurrentFields } from '../settings/RoofTab';
+import { Toggle } from '../settings/controls';
 import { restartWithToast } from '../toast';
-import { Button, ChoiceGroup, Note } from '../ui';
+import { ChoiceGroup, Note } from '../ui';
 import { t } from '../../i18n';
 
-// The Hardware page's board, network and wiring screens (spec 023 FR-027).
-// The board is saved like any screen and applies at a restart; the wiring
-// check moves nothing. Custom pins are set on the Pins page.
+// The network, board and wiring screens (spec 023 FR-027, spec 025). The board
+// is saved like any screen and applies at a restart; Custom pins are set here,
+// with the device's verdict on each. The wiring check moves nothing.
 
 // A refused restart says why (restartWithToast); nothing waits for one that didn't happen.
 const restart = () => void restartWithToast();
@@ -27,6 +28,8 @@ export const PinsRestartNote: FunctionalComponent<WizardPageProps> = ({ saved, s
     </Note>
   ) : null;
 
+const ISSUE_PREFIX = 'wizard-pin-issue';
+
 export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { doc } = usePinsDocument();
   const pins = props.config.pins;
@@ -34,6 +37,7 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
   // The device's verdict on the board as chosen: an error (a board it found to be a WT32-ETH01
   // set up as another) is shown here, and the device refuses to save it.
   const check = usePinValidation(pins);
+  const issues = check.validation?.issues ?? [];
   // A board preset chosen. The analog setup doesn't follow it: the pins apply at a restart and
   // the analog setup at once, and the board preset can't tell a carrier v1 from a v1.1 (its diode).
   const choose = (next: PinsConfig) => props.updateMany([[['pins'], next]]);
@@ -54,14 +58,12 @@ export const BoardScreen: FunctionalComponent<WizardPageProps> = (props) => {
         wt32={wt32Detected(doc, props.status)}
         onChange={choose}
       />
-      <IssueNotes issues={(check.validation?.issues ?? []).filter((issue) => issue.error)} idPrefix="wizard-pin-issue" />
       {pins.preset === 'custom' && (
-        <>
-          <Note>{t('wizard.board.custom')}</Note>
-          <div class="btn-row">
-            <Button onClick={() => route('/pins')}>{t('pins.open')}</Button>
-          </div>
-        </>
+        <CustomPins pins={pins} issues={issues} issuePrefix={ISSUE_PREFIX} onChange={(next) => props.update(['pins'], next)} />
+      )}
+      <IssueNotes issues={pins.preset === 'custom' ? issues : issues.filter((issue) => issue.error)} idPrefix={ISSUE_PREFIX} />
+      {pins.preset === 'custom' && (
+        <Note action={{ label: t('pins.open'), onClick: () => void props.leaveTo('/pins') }}>{t('wizard.board.custom')}</Note>
       )}
       {pins.preset !== 'unset' && pins.preset !== props.saved.pins?.preset && <Note>{t('wizard.board.appliesAtRestart')}</Note>}
       <PinsRestartNote {...props} />
@@ -100,13 +102,34 @@ export const NetworkScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
+// The wiring check, and whether current sense is fitted (its reading at rest is one of the checks).
 export const WiringScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { doc } = usePinsDocument();
-  const pins = props.config.pins;
+  const { pins, roof } = props.config;
   return (
     <>
       <PinsRestartNote {...props} />
-      <WiringCheckPanel doc={doc} onChoosePreset={pins ? (preset) => props.update(['pins'], withPreset(doc, pins, preset)) : undefined} />
+      <WiringCheckPanel
+        doc={doc}
+        teachLink={false}
+        onChoosePreset={pins ? (preset) => props.update(['pins'], withPreset(doc, pins, preset)) : undefined}
+      />
+      {roof && (
+        <>
+          <Toggle
+            dataField="roof.currentSenseEnabled"
+            label={t('settings.roof.currentSense')}
+            hint={t('settings.roof.currentSenseHint')}
+            checked={roof.currentSenseEnabled}
+            onChange={(v) => props.update(['roof', 'currentSenseEnabled'], v)}
+          />
+          {roof.currentSenseEnabled && (
+            <div class="form-grid indent">
+              <CurrentFields {...props} roof={roof} />
+            </div>
+          )}
+        </>
+      )}
       <Note>{t('wizard.wiring.later')}</Note>
     </>
   );

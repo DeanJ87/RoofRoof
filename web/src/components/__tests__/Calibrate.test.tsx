@@ -91,7 +91,9 @@ describe('Calibrate', () => {
       return el as HTMLElement;
     });
     expect(within(row).getByText('Not yet')).toHaveClass('pill');
-    expect(row.querySelector('.note-bad')).toHaveTextContent(/rain/);
+    // Muted, under the row (DS-04): the pill carries the state, never bare red text.
+    expect(row.querySelector('.note-muted')).toHaveTextContent(/rain/);
+    expect(row.querySelector('.note-bad')).toBeNull();
   });
 
   it('starts only once the person confirms they are at the roof, and sends what they said', async () => {

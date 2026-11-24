@@ -173,7 +173,7 @@ test('demo panel', async ({ page }) => {
   await page.screenshot({ path: save('demo-panel') });
 });
 
-// Specs 015 and 018: the setup wizard (the demo device is set up already; these open its screens directly).
+// Specs 015, 018 and 025: the setup wizard (the demo device is set up already; these open its screens directly).
 const wizardShot = async (page: import('@playwright/test').Page, screen: string, name: string) => {
   await page.goto(`./?panel=hidden#/wizard?screen=${screen}`);
   await waitForDemoApp(page);
@@ -189,7 +189,9 @@ const wizardShot = async (page: import('@playwright/test').Page, screen: string,
 for (const [screen, name] of [
   ['parkSwitches', 'wizard-choice'],
   ['board', 'wizard-board'],
-  ['supply', 'wizard-supply'],
+  ['sqmeter', 'wizard-sqmeter'],
+  ['direction', 'wizard-motor'],
+  ['alerts', 'wizard-alerts'],
   ['nina', 'wizard-nina'],
   ['review', 'wizard-review'],
 ] as const) {

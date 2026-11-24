@@ -32,7 +32,9 @@ const endText = (end: string) => (end === 'open' ? t('settings.roof.endOpen') : 
 const pair = (saved: string, proposed: string) => t(saved === proposed ? 'calibrate.same' : 'calibrate.change', { saved, proposed });
 
 // A button that runs while it is held: pointer, touch or the keyboard (Space
-// or Enter held). Leaving it, cancelling the pointer or losing focus releases it.
+// or Enter held). Letting go, cancelling the pointer, losing focus or the page
+// being hidden releases it. A pointer hold is captured (spec 025), so a layout
+// shift can't move the button from under it; moving off it doesn't end the hold.
 const HoldButton: FunctionalComponent<{
   direction: JogDirection;
   held: boolean;
@@ -43,7 +45,11 @@ const HoldButton: FunctionalComponent<{
 }> = ({ direction, held, disabled, describedBy, onPress, onRelease, children }) => {
   const down = (event: Event) => {
     event.preventDefault();
-    if (!disabled) onPress(direction);
+    if (disabled) return;
+    // A mouse hold keeps the button however the page moves under it (a note or Stop showing),
+    // as a touch already does; letting go, cancelling or losing the capture releases it.
+    if (event instanceof PointerEvent) (event.currentTarget as Element | null)?.setPointerCapture?.(event.pointerId);
+    onPress(direction);
   };
   const keyDown = (event: KeyboardEvent) => {
     if ((event.key === ' ' || event.key === 'Enter') && !event.repeat) down(event);
@@ -63,6 +69,7 @@ const HoldButton: FunctionalComponent<{
       onPointerUp={onRelease}
       onPointerCancel={onRelease}
       onPointerLeave={onRelease}
+      onLostPointerCapture={onRelease}
       onBlur={onRelease}
       onKeyDown={keyDown}
       onKeyUp={keyUp}
@@ -148,9 +155,9 @@ const JogControls: FunctionalComponent<{
         </HoldButton>
       ))}
     </div>
-    {/* In its own row, so its showing never moves a held button from under the pointer. */}
+    {/* In its own row, scrolled into view when it shows (a dialog may shrink as its Stop bar appears). */}
     {(moving || held) && (
-      <div class="btn-row">
+      <div class="btn-row" ref={(row) => row?.scrollIntoView?.({ block: 'nearest' })}>
         <Button variant="danger" onClick={() => void roofCommand('stop').catch(() => undefined)}>
           {t('teach.stop')}
         </Button>
@@ -182,39 +189,29 @@ const Marks: FunctionalComponent<{ teach: TeachStatus | null; ready: boolean; on
   </>
 );
 
-interface TeachCardProps {
-  teach: TeachStatus | null;
+interface JogPanelProps {
   roof: RoofStatus;
   config: RoofConfig;
   checks: ComponentChildren;
   blocked: string; // why a jog can't start now ('' when it can, apart from the confirmation)
-  onChanged: () => void;
+  onPress?: () => void;
 }
 
-const TeachCard: FunctionalComponent<TeachCardProps> = ({ teach, roof, config, checks, blocked, onChanged }) => {
+/**
+ * The attended jog (spec 019): the checks, "I am at the roof", the live Hall reading and the
+ * hold buttons, with Stop while the roof moves. Also the setup wizard's direction screen (spec 025).
+ */
+export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, onPress }) => {
   const [attended, setAttended] = useState(false);
   const [problem, setProblem] = useState('');
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
   const jog = useJog((text) => setProblem(text || t('teach.jogEnded')));
-  const moving = roof.state === 'opening' || roof.state === 'closing';
   const press = (direction: JogDirection) => {
     setProblem('');
-    setOutcome(null);
+    onPress?.();
     jog.press(direction);
   };
-  const mark = async (at: TeachPlace) => {
-    const answer = await markTeach(at);
-    setProblem(answer.ok ? '' : answer.text || t('teach.notMarked'));
-    setOutcome(null);
-    onChanged();
-  };
-  const done = (next: Outcome) => {
-    setOutcome(next);
-    onChanged();
-  };
   return (
-    <SettingsCard id="teach" title={t('teach.title')} hint={t('teach.hint')}>
-      <Note>{t('teach.intro')}</Note>
+    <>
       {checks}
       <Toggle
         dataField="teach.attended"
@@ -227,16 +224,52 @@ const TeachCard: FunctionalComponent<TeachCardProps> = ({ teach, roof, config, c
       <HallScale counts={roof.hall.counts} low={config.hallLowCounts} high={config.hallHighCounts} />
       <JogControls
         why={blocked || (attended ? '' : t('calibrate.reason.notAttended'))}
-        moving={moving}
+        moving={roof.state === 'opening' || roof.state === 'closing'}
         held={jog.active}
         onPress={press}
         onRelease={jog.release}
       />
       {problem && <Note tone="bad">{problem}</Note>}
+    </>
+  );
+};
+
+interface TeachCardProps extends JogPanelProps {
+  teach: TeachStatus | null;
+  onChanged: () => void;
+  plain?: boolean; // in the setup wizard's dialog (spec 025): no card, no intro
+}
+
+const TeachCard: FunctionalComponent<TeachCardProps> = (props) => {
+  const { teach, roof, config, onChanged, plain } = props;
+  const [problem, setProblem] = useState('');
+  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const moving = roof.state === 'opening' || roof.state === 'closing';
+  const mark = async (at: TeachPlace) => {
+    const answer = await markTeach(at);
+    setProblem(answer.ok ? '' : answer.text || t('teach.notMarked'));
+    setOutcome(null);
+    onChanged();
+  };
+  const done = (next: Outcome) => {
+    setOutcome(next);
+    onChanged();
+  };
+  return (
+    <SettingsCard id="teach" title={t('teach.title')} hint={t('teach.hint')} plain={plain}>
+      {!plain && <Note>{t('teach.intro')}</Note>}
+      <JogPanel
+        {...props}
+        onPress={() => {
+          setOutcome(null);
+          setProblem('');
+        }}
+      />
+      {problem && <Note tone="bad">{problem}</Note>}
       <Marks teach={teach} ready={teach?.rest.ready === true && !moving} onMark={(at) => void mark(at)} />
       {teach?.proposal && <Proposal proposal={teach.proposal} config={config} onDone={done} />}
       {outcome && <Note tone={outcome.tone}>{outcome.text}</Note>}
-      <Note>{t('teach.next')}</Note>
+      {!plain && <Note>{t('teach.next')}</Note>}
     </SettingsCard>
   );
 };
