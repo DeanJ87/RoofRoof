@@ -124,6 +124,13 @@ Every move has a hard timeout: the time the profile needs for the distance to go
 **timeout margin**. A move from an unknown position gets the whole travel at the slow duty plus the
 margin. The clock starts when the motor starts.
 
+**Settings → Roof → Travel and time limits** shows both limits as the device works them out from
+the values as you type them. With the defaults (1850 mm at 38 mm/s, 15 s margin) a full move is
+allowed about 66 s: a roof that is longer or slower than that faults `timeout` ("No target magnet
+after ...") on every move until travel and speed fit it. The [calibration run](calibration-run.md)
+measures them; until it has, the **Roof setup** stages and the note under travel and speed say the
+limits are still the defaults, and a `timeout` fault's "?" says where its limit came from.
+
 Any of these stops the motor on the spot, switches the driver off and **locks out motion** until a
 person clears it. Each records what was measured and the limit it broke.
 

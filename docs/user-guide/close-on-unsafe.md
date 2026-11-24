@@ -448,10 +448,15 @@ resync the clock), and logs which groups changed. A value it can't accept (a bro
 valid, for example) is refused: the old value stays and Settings says why. Values that already match
 write nothing.
 
-**In Settings and the wizard**, a followed group's fields are read-only and say **Follows SQMeter**,
-with when SQMeter was last read. **Edit here instead** makes the group local (save to keep it);
-**Follow SQMeter** makes it follow again. While a group follows, a settings save keeps the values
-RoofRoof synced, so an older page can't put old ones back.
+**In Settings and the wizard**, a followed group says **Follows SQMeter**, with when SQMeter was
+last read, and its fields stay editable. Typing in one of them sets the whole group here: the note
+changes to **Set here, not from SQMeter** and the save sends the group as local, so the next sync
+never puts SQMeter's value back over what you typed. **Follow SQMeter again** undoes that. Typing a
+password or token that SQMeter has and RoofRoof is asking for only fills the gap: the group keeps
+following. The device applies the same rule to any save: one that changes a followed group's values
+without saying whether the group follows (a script, an older page) makes that group local. A save
+that says the group follows (a copy from SQMeter) keeps it following, and then a settings save keeps
+the values RoofRoof synced, so an older page can't put old ones back.
 
 **Secrets.** While the MQTT or the alerts group follows, RoofRoof also reads SQMeter's secrets, in
 the pass after each good read of its settings, from the saved address with the saved login. A
@@ -467,8 +472,8 @@ uses Pushover, its keys are asked for until both are set here. This is a note, n
 
 **Switches only turn on.** While a group follows, a switch SQMeter has on (MQTT, ntfy, Pushover) is
 turned on here at the next sync (and, when no channel was on yet, the alerts master switch with
-it); nothing turns one off. To keep one off while SQMeter's is on, make
-the group local (**Edit here instead**).
+it); nothing turns one off. To keep one off while SQMeter's is on, turn it off here: that sets the
+group here.
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,
 Alpaca, WiFi, the device or host name, RoofRoof's own MQTT topic, or any on/off switch. While MQTT

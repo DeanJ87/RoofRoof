@@ -77,7 +77,7 @@ Bench mode does **not** replace the checks of this guide on the roof's own board
 
 ### Commands and settings used in this guide
 
-**In the web UI.** The dashboard's [Roof card](../user-guide/dashboard.md#roof) has **Open**, **Close**, **Stop** and, with a fault latched, **Clear fault**; a **Stop** bar sits at the bottom of every page while the roof moves. The roof's settings are in **Settings → Roof**, in five sections: **Roof motion**, **Hall sensor**, **Current and supply**, **Weather sources** and **Mount park** ([Configuration](../user-guide/configuration.md#settings-pages)). A save is refused while the roof moves. Use these wherever you are at a screen.
+**In the web UI.** The dashboard's [Roof card](../user-guide/dashboard.md#roof) has **Open**, **Close**, **Stop** and, with a fault latched, **Clear fault**; a **Stop** bar sits at the bottom of every page while the roof moves. The roof's settings are in **Settings → Roof**, in the order a roof is set up, under **Roof setup** (the stages and what is left): **Weather sources**, **Mount park**, **Direction and speed**, **Hall sensor**, **Travel and time limits** and **Current and supply**, among others ([Configuration](../user-guide/configuration.md#settings-pages)). A save is refused while the roof moves. Use these wherever you are at a screen.
 
 **From a shell.** The same commands are in the REST API, and the steps below give the `curl` form for settings. Paste these once; they are handy for scripting and for checks that need a log window beside them. If you turned on password protection (stage 2), add `-u admin:YOURPASSWORD` to every `curl -X POST`.
 

@@ -89,7 +89,7 @@ and a test box that keeps its park bypass 17.
    password fields say *"Received from SQMeter; never shown here."*); otherwise the copy says why
    and asks for them ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). The copied groups
    keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show
-   **Follows SQMeter**, with **Edit here instead**). Leave the address empty when there is no
+   **Follows SQMeter**; typing in one sets that group here instead). Leave the address empty when there is no
    SQMeter. The screen also holds the weather source: the **Weather from SQMeter** switch
    (the roof opens only on SQMeter's safe verdict and closes when it turns unsafe) and **SQMeter
    over MQTT**, with its topic, and the broker's fields when MQTT is still off on the device.

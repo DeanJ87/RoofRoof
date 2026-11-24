@@ -60,9 +60,9 @@ The **Roof** card shows the roof as its control task sees it, live:
 
 **Stop** is never disabled. It is sent the moment you press it, every time you press it, whatever the card shows.
 
-With **Settings → Roof → Roof motion → Ask before Open and Close** on (it is off by default), **Open** and **Close** first ask "Open the roof?" or "Close the roof?" under the buttons; press the button there to send it, or **Cancel**. **Stop** never asks, and pressing it also dismisses the question.
+With **Settings → Roof → Direction and speed → Ask before Open and Close** on (it is off by default), **Open** and **Close** first ask "Open the roof?" or "Close the roof?" under the buttons; press the button there to send it, or **Cancel**. **Stop** never asks, and pressing it also dismisses the question.
 
-**Open** and **Close** are greyed out when the device would refuse them, with the reason under the buttons:
+**Open** and **Close** are greyed out when the device would refuse them, with the reason under the buttons. For anything that isn't obvious from the buttons themselves, the reason is the shared **why it can't move** list (the same words as on Calibrate and the setup wizard): each line says what stops it, "?" says what that means, the line under it says when it clears, and its one fix is beside it (**Weather check settings**, **Park check settings**, **Supply settings**, **Fix the pins**, **Clear fault**):
 
 | Reason | Open | Close |
 |---|---|---|
@@ -81,7 +81,11 @@ With **Settings → Roof → Roof motion → Ask before Open and Close** on (it 
 
 The device checks every command anyway, whatever the page shows. If it refuses one, its reason appears under the buttons. When it is busy for a moment (an upload, a settings save or an MQTT connect is finishing) the buttons stay usable: try again shortly.
 
-From an unknown position (after a restart between the magnets, or a fault) Open and Close still work: the roof moves slowly to the first magnet it reaches. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof is closed or the weather has been safe for the safe spell to re-arm, 10 minutes by default (in daylight with **Alert and close**, until the sun has been down that long).
+From an unknown position (after a restart between the magnets, or a fault) Open and Close still work: the roof moves slowly to the first magnet it reaches. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof is closed or the weather has been safe for the safe spell to re-arm, 10 minutes by default (in daylight with **Alert and close**, until the sun has been down that long). While it stands down, the card says so under **Automatic close**, with the clock time it clears at while the weather is safe, and **Release hold** for a person at the roof ([Release hold](close-on-unsafe.md#release-hold)). Jog, teach and the calibration run wait for it too, and say the same.
+
+## Roof setup
+
+Until the roof is set up, a **Roof setup** card lists the stages in the order to do them: **Board and wiring**, **Weather check**, **Park check**, **Opening direction**, **Ends taught**, **Calibration run** and **Alerts**. Each is **Done** or **To do** (a test box bypass shows **Bypassed**; travel and speed typed rather than measured show **Not measured**), says what is left, and opens the page that does it. Before the calibration run it says the move time limits are still the defaults, with the time a move is allowed. The card goes once every stage is done; the same list stays at the top of **Settings → Roof**.
 
 ### Stop on every page
 
