@@ -46,8 +46,8 @@
 - [x] T020 Full checks per spec 001 quickstart §1; before and after screenshots
 - [x] T021 Review round 1 (code and safety): fixed each button's own reasons, Release hold's Cancel, the weather bypass refused while a source reads unsafe and undone cleanly, `measured` kept on a recalibration and cleared on typing, one follow rule for Settings and the wizard (the Pushover sound excluded), the release logged as it happened; tests added
 - [x] T022 Review round 2, a first-time owner in the demo: fixed a park blocker reading as if it stopped Open (each one-button reason now names its button), the hold now says it won't close by itself, the timeout's "?" mentions a stuck roof first, the supply's "?" the battery, linked settings cards clear the sticky tabs, the direction stage says where it is checked; the rest recorded under "Left for the owner"
-- [ ] T023 Code review round 2 on the changes since round 1
+- [x] T023 Code review round 2: a shared reason never lost, the wizard's in-place fix follows the typing rule, Reverse on a re-run, a rebase keeps the bookkeeping, release logs a race, a stale release question resets; tests added
 
 ## Converge
 
-Run after T021.
+Converged: every FR in spec.md maps to a done task above (FR-001 to FR-003 T006-T008; FR-004/005 T004, T005, T009; FR-006 to FR-010 T014-T017; FR-011/012 T012, T013; FR-013 T011; FR-014 T003; FR-015 T010, T022). Open items are owner decisions (spec.md, "Left for the owner") and the bench checks in the PR.
