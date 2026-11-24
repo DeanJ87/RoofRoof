@@ -101,7 +101,8 @@ void test_the_top_pass_measures_two_more_legs_at_the_top_duty(void)
     TEST_ASSERT_TRUE(rep.state == RunState::Done);
     TEST_ASSERT_EQUAL_UINT8(4, rep.measured.legCount);
     TEST_ASSERT_EQUAL_UINT8(100, rep.measured.legs[2].dutyPercent);
-    TEST_ASSERT_FLOAT_WITHIN(38.0f * 0.02f, 38.0f, rep.proposal.speedMmPerSecond);
+    // 3 %: the Hall persistence (about 260 ms at each magnet) shifts the measured times a little.
+    TEST_ASSERT_FLOAT_WITHIN(38.0f * 0.03f, 38.0f, rep.proposal.speedMmPerSecond);
     // The top legs end at the slow duty, well inside their limits.
     TEST_ASSERT_TRUE(rep.measured.legs[2].drivenMs < rep.measured.legs[0].drivenMs);
 }
