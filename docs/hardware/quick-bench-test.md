@@ -53,11 +53,11 @@ The controller reads GPIO39 as raw counts (0 to 4095, the median of five reading
 | Between | in between | between the magnets |
 | Low | 1100 or fewer | the closed end's magnet |
 
-Leaving a magnet needs the reading to pass its threshold by a further 40 counts, and a change must be seen three times in a row to count. Voltage is `counts × 3.3 / 4095`: 3000 counts is about 2.42 V and 1100 counts about 0.89 V. The ESP32's ADC is not linear (it bends near both ends), so treat the voltages as approximate and **read the live value**: the **Hall reading** on the dashboard's Roof card, and the Hall scale under it, which draws your two thresholds. Turn the pot while watching it.
+Leaving a magnet needs the reading to pass its threshold by a further 40 counts, and a change must hold for 200 ms to count. Voltage is `counts × 3.3 / 4095`: 3000 counts is about 2.42 V and 1100 counts about 0.89 V. The ESP32's ADC is not linear (it bends near both ends), so treat the voltages as approximate and **read the live value**: the **Hall reading** on the dashboard's Roof card, and the Hall scale under it, which draws your two thresholds. Turn the pot while watching it.
 
 ### Option A: a potentiometer
 
-Wire 3.3 V, then about 1 kΩ, then a 10 kΩ potentiometer, then about 1 kΩ, then GND, with the wiper to GPIO39. The two series resistors keep the wiper away from the rails, so it reads roughly 340 to 3750 counts (0.28 to 3.0 V), inside the 30 to 4065 window that doesn't count as a fault. Use the 3.3 V pin, never 5 V or 12 V.
+Wire 3.3 V, then about 1 kΩ, then a 10 kΩ potentiometer, then about 2.2 kΩ, then GND, with the wiper to GPIO39. The two series resistors keep the wiper away from the rails, so it reads roughly 600 to 3800 counts (0.5 to 3.0 V), inside the 400 to 4065 window that doesn't count as a fault. Use the 3.3 V pin, never 5 V or 12 V.
 
 - Wiper toward 3.3 V (above 3000 counts): the **open** magnet.
 - Wiper toward GND (below 1100 counts): the **closed** magnet.

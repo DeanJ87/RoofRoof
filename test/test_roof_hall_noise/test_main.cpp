@@ -4,9 +4,11 @@
 // closed end high (1900), about 1800 in between, 1370 on the open magnet.
 // Constitution I: a real wrong-direction move still faults, within a bound.
 
+#include <string>
 #include <unity.h>
 #include <vector>
 
+#include "Config.h"
 #include "HallFilter.h"
 #include "RoofController.h"
 #include "RoofSettings.h"
@@ -170,6 +172,24 @@ void test_back_on_the_start_magnet_after_the_grace(void)
     TEST_ASSERT_TRUE(ms <= HALL_PERSIST_MS + 3 * STEP_MS);
 }
 
+// Hovering in and out of the start magnet re-arms the grace each time, but
+// never past the leave time: a roof still on it then faults didNotLeave.
+void test_repeated_hover_is_bounded_by_the_leave_time(void)
+{
+    Rig rig;
+    rig.restOpen();
+    TEST_ASSERT_TRUE(rig.roof.command(Command::Close, Origin::Person).accepted);
+    const uint32_t startMs = rig.nowMs;
+    while (!rig.faulted() && rig.nowMs - startMs < 20000)
+    {
+        rig.hold(BETWEEN, 500);
+        rig.hold(OPEN_MAGNET, 500);
+    }
+    const FaultKind kind = rig.roof.status().fault.kind;
+    TEST_ASSERT_TRUE(kind == FaultKind::DidNotLeave || kind == FaultKind::WrongMagnet);
+    TEST_ASSERT_TRUE(rig.nowMs - startMs <= fieldSettings().leaveMagnetMs + 1000);
+}
+
 // Back on the start magnet after the leave time: the roof runs backwards.
 void test_back_on_the_start_magnet_after_the_leave_time(void)
 {
@@ -217,6 +237,20 @@ void test_the_readings_before_a_fault_are_kept(void)
     TEST_ASSERT_EQUAL_UINT16(1300, rig.roof.faultHall().counts[HALL_TRAIL_READINGS - 1]);
 }
 
+// Thresholds under the 400-count low rail saved by older firmware: the stored
+// settings still load (the rest is kept), the roof can't move on them, and a
+// save needs them at 500 or more.
+void test_old_low_hall_thresholds_load_but_cannot_be_saved()
+{
+    Config cfg = Config::createDefault();
+    std::string error;
+    TEST_ASSERT_TRUE(Config::applyJson("{\"roof\":{\"hallHighCounts\":1200,\"hallLowCounts\":300}}", cfg, false, &error));
+    TEST_ASSERT_EQUAL_UINT32(300, cfg.roof.hallLowCounts);
+    TEST_ASSERT_FALSE(cfg.validate(&error));
+    TEST_ASSERT_EQUAL_STRING("Roof: Hall low threshold must be between 500 and 3995 counts", error.c_str());
+    TEST_ASSERT_FALSE(validSettings(settingsFromConfig(cfg.roof)));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -226,7 +260,9 @@ int main(int, char **)
     RUN_TEST(test_back_on_the_start_magnet_within_the_leave_time);
     RUN_TEST(test_back_on_the_start_magnet_after_the_grace);
     RUN_TEST(test_back_on_the_start_magnet_after_the_leave_time);
+    RUN_TEST(test_repeated_hover_is_bounded_by_the_leave_time);
     RUN_TEST(test_arrival_within_the_bound);
     RUN_TEST(test_the_readings_before_a_fault_are_kept);
+    RUN_TEST(test_old_low_hall_thresholds_load_but_cannot_be_saved);
     return UNITY_END();
 }
