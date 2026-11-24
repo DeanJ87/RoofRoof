@@ -7,6 +7,7 @@
 #include "PlatformHold.h"
 #include "Teach.h"
 #include "RoofStatus.h"
+#include "RoofMeasured.h"
 
 using namespace DemoCore;
 

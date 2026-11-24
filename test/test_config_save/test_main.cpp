@@ -7,6 +7,7 @@
 
 #include "Config.h"
 #include "ConfigSave.h"
+#include "RoofMeasured.h"
 
 using namespace SQM;
 using ConfigSave::checkSave;

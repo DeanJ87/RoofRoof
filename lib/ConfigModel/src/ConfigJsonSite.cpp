@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "RoofMeasured.h"
 #include <ArduinoJson.h>
 
 // Spec 020: the settings that follow the SQMeter at the same site, in

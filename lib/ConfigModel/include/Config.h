@@ -7,7 +7,6 @@
 
 #include "Analog.h"
 #include "PinMap.h"
-#include "RoofMeasured.h"
 
 namespace SQM
 {

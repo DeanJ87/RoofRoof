@@ -2,6 +2,7 @@
 #include "ConfigInternal.h"
 #include "ConfigPins.h"
 #include "NetAddress.h"
+#include "RoofMeasured.h"
 #include <ArduinoJson.h>
 #include <cctype>
 #include <cstring>

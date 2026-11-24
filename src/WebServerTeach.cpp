@@ -3,6 +3,7 @@
 #include "RoofControl.h"
 #include "Teach.h"
 #include "WebServer.h"
+#include "RoofMeasured.h"
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 
