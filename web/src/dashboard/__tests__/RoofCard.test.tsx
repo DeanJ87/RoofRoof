@@ -58,7 +58,7 @@ describe('RoofCard', () => {
     expect(row).toHaveTextContent('Sun 3.2° ≥ 0.0°');
     expect(row.querySelector('[role="tooltip"], .info-tip, button')).not.toBeNull();
     expect(button('Open')).toBeDisabled();
-    expect(screen.getByText(/^Daylight check: the sun is up \(Sun 3\.2° ≥ 0\.0°\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^Open: Daylight check: the sun is up \(Sun 3\.2° ≥ 0\.0°\)/)).toBeInTheDocument();
   });
 
   it('shows the daylight line as Off, and leaves it out for older firmware', () => {
@@ -194,7 +194,7 @@ describe('RoofCard', () => {
     expect(within(checks).getByText('Unsafe')).toBeInTheDocument();
     expect(within(checks).getByText('Not parked')).toBeInTheDocument();
     expect(within(checks).getByText('Waiting for park')).toBeInTheDocument();
-    expect(screen.getByText(/^Park check: Mount not parked: Park switch 1 open/)).toBeInTheDocument();
+    expect(screen.getByText(/^Close: Park check: Mount not parked: Park switch 1 open/)).toBeInTheDocument();
     expect(screen.getByText('Stop calls off the automatic close')).toBeInTheDocument();
   });
 
@@ -223,7 +223,7 @@ describe('RoofCard', () => {
     expect(screen.getByText("Minimum 11.5 V: below it the roof won't start, and a move stops with a fault.")).toBeInTheDocument();
     expect(screen.getByText('Limit 10.0 A: above it a move stops with a fault.')).toBeInTheDocument();
     expect(screen.getByText('Park switch 2')).toBeInTheDocument();
-    expect(screen.getByText(/^Supply 10\.9 V is below 11\.5 V/)).toBeInTheDocument();
+    expect(screen.getByText(/^Open: Supply 10\.9 V is below 11\.5 V/)).toBeInTheDocument();
   });
 
   it('draws the Hall reading against the saved thresholds', () => {

@@ -249,6 +249,15 @@ one CSS rule (`.move-blocker`) replaces the calibration checklist's. Copy follow
 
 ## Left for the owner
 
+- **Opening the roof while the automatic close is on hold keeps the hold.** A person who stops an
+  automatic close, waits for the weather to clear and opens the roof again leaves the sequence stood
+  down: if rain returns within the re-arm spell, the roof is not closed by itself (spec 005's rule,
+  unchanged here). The page now says so plainly ("Automatic close on hold: it won't close by
+  itself"). Should a person's Open end the hold, as **Release hold** does? That changes the close
+  sequence, so it needs the owner's decision (it would only arm the safety close sooner).
+- Should the test box page's **No telescope under this roof** clear the N.I.N.A. address in the same
+  save (as **No weather station** now turns the SQMeter source off), instead of pointing at Mount park?
+
 - Should the wizard's "No telescope yet" clear the N.I.N.A. address and turn the SQMeter weather
   source off in the same save, as the test box page now does for the weather bypass?
 - Should **Release hold** also be offered to Home Assistant (as a button entity)?

@@ -1052,6 +1052,11 @@ a.status-row-main:focus-visible .status-row-label {
 
 /* ---- Tabbed settings ---------------------------------------------------- */
 
+/* Spec 026: a card opened by a link (section=...) clears the sticky tab bar. */
+.settings-page .sq-card[id] {
+  scroll-margin-top: 4.5rem;
+}
+
 .settings-tabs {
   position: sticky;
   top: env(safe-area-inset-top, 0px);

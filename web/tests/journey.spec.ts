@@ -60,12 +60,12 @@ test('held by a person: explained with when it clears, and released at the roof 
   await panelChoice(page, 'Weather: Safe');
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('heldByPerson');
   const held = blocker(page, 'heldByPerson');
-  await expect(held).toContainText('Automatic close on hold after a Stop');
+  await expect(held).toContainText("Automatic close on hold: it won't close by itself");
   await expect(held).toContainText(/Clears at .+ if the weather stays safe, or once the roof is closed\./);
   // The same words on Calibrate, where it holds the jog and the run.
   await go(page, '/calibrate');
   const onCalibrate = page.locator('#calibrate-blockers [data-blocker="heldByPerson"]');
-  await expect(onCalibrate).toContainText('Automatic close on hold after a Stop');
+  await expect(onCalibrate).toContainText("Automatic close on hold: it won't close by itself");
   await onCalibrate.getByRole('button', { name: 'Release hold' }).click();
   await page.getByRole('button', { name: "I'm at the roof: release" }).click();
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('idle');

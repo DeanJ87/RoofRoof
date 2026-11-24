@@ -45,7 +45,8 @@
 - [x] T019 Docs: dashboard, configuration, close-on-unsafe (Release hold), roof-motion, test-box, calibration-run, setup-wizard, commissioning; DIA-22 updated, other diagrams re-confirmed
 - [x] T020 Full checks per spec 001 quickstart §1; before and after screenshots
 - [x] T021 Review round 1 (code and safety): fixed each button's own reasons, Release hold's Cancel, the weather bypass refused while a source reads unsafe and undone cleanly, `measured` kept on a recalibration and cleared on typing, one follow rule for Settings and the wizard (the Pushover sound excluded), the release logged as it happened; tests added
-- [ ] T022 Review round 2 (a first-time owner in the demo) and a second code review; fix findings
+- [x] T022 Review round 2, a first-time owner in the demo: fixed a park blocker reading as if it stopped Open (each one-button reason now names its button), the hold now says it won't close by itself, the timeout's "?" mentions a stuck roof first, the supply's "?" the battery, linked settings cards clear the sticky tabs, the direction stage says where it is checked; the rest recorded under "Left for the owner"
+- [ ] T023 Code review round 2 on the changes since round 1
 
 ## Converge
 

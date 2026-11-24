@@ -74,8 +74,13 @@ const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
       : [];
   const open = own('open', view.open.disabled, ['open', 'opening']);
   const close = own('close', view.close.disabled, ['closed', 'closing']);
+  // Spec 026: a reason that holds only one button says which ("Close: Park check ..."), so a park
+  // blocker is never read as stopping Open.
+  const only = (blocker: Blocker, other: Blocker[], key: 'roof.reason.openPrefix' | 'roof.reason.closePrefix') =>
+    other.some((b) => b.id === blocker.id) ? blocker : { ...blocker, title: t(key, { reason: blocker.title }) };
+  const both = [...open.map((b) => only(b, close, 'roof.reason.openPrefix')), ...close.map((b) => only(b, open, 'roof.reason.closePrefix'))];
   const seen = new Set<string>();
-  const blockers = [...open, ...close].filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
+  const blockers = both.filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
   return { blockers, covered: { open: open.length > 0, close: close.length > 0 } };
 };
 
