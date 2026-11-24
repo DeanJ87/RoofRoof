@@ -350,4 +350,10 @@ Each was an open choice; the safest option the constitution allows was taken.
     the baseline and send nothing. Visibility rests on the banner on every page, the Test box page,
     `/api/status` and the MQTT and Home Assistant status, which are unchanged (constitution 5.0.1).
     A bypass switched on less than the start-up minute before a restart is therefore never
-    announced; the banner still shows it. Its level stays never-off (quiet at the lowest).
+    announced; the banner still shows it. Its level stays never-off (quiet at the lowest) and is now
+    at most urgent (Pushover priority 1): never wake me, Pushover's emergency priority that repeats
+    every minute for an hour. A stored wake me is read as urgent. The level mapping was reviewed:
+    only wake me maps to emergency, and by default only the two critical roof alerts (mount not
+    parked, roof didn't close) use it, the cases where the roof may stay open in bad weather. Those
+    come from the close sequence once per episode; a restart during an unsafe episode can start a
+    new one, which is wanted for a roof still open.

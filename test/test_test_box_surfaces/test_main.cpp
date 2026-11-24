@@ -227,6 +227,32 @@ void test_the_alert_obeys_alerts_off_and_paused(void)
     TEST_ASSERT_TRUE(Core::alertGoesOut(Alerts::AlertType::RoofNotClosed, off, false));
 }
 
+// Never an emergency (Pushover priority 2 repeats every minute for an hour):
+// a stored "wake me" is sent as urgent, and raised from storage as urgent.
+void test_the_alert_is_never_wake_me(void)
+{
+    Config cfg = Config::createDefault();
+    cfg.alerts.testBox.level = 4;
+    Alerts::AlertEngine engine;
+    Alerts::AlertInputs in;
+    in.roof.known = true;
+    in.roof.testBoxSettled = true;
+    Alerts::AlertRules rules;
+    std::vector<Alerts::Alert> sent;
+    for (uint32_t now : {100u, 101u, 200u})
+    {
+        in.nowSeconds = now;
+        in.roof.testBox = now == 200 ? TestBox::BitPark : 0;
+        in.roof.testBoxText = "Test box";
+        sent = Core::runAlerts(engine, in, rules, Core::AlertSources{cfg}, Core::LocalClock{}).outgoing;
+    }
+    TEST_ASSERT_EQUAL_size_t(1, testBoxAlerts(sent));
+    TEST_ASSERT_TRUE(sent[0].level == Alerts::AlertLevel::Urgent);
+    TEST_ASSERT_EQUAL_INT(1, Alerts::pushoverPriority(sent[0].level));
+    cfg.alerts.raiseCriticalToMinimum();
+    TEST_ASSERT_EQUAL_UINT8(AlertsConfig::MAX_TEST_BOX_LEVEL, cfg.alerts.testBox.level);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -241,5 +267,6 @@ int main(int, char **)
     RUN_TEST(test_the_alert_held_through_the_grace);
     RUN_TEST(test_the_alert_on_each_bypass_coming_into_effect);
     RUN_TEST(test_the_alert_rule_off_sends_nothing);
+    RUN_TEST(test_the_alert_is_never_wake_me);
     return UNITY_END();
 }

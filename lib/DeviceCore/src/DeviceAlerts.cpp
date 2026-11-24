@@ -310,6 +310,9 @@ namespace SQM
                 if (setting == nullptr || setting->level == 0)
                     continue;
                 alert.level = static_cast<Alerts::AlertLevel>(setting->level);
+                // The test box alert is never an emergency, whatever is stored.
+                if (alert.type == Alerts::AlertType::TestBox && setting->level > AlertsConfig::MAX_TEST_BOX_LEVEL)
+                    alert.level = static_cast<Alerts::AlertLevel>(AlertsConfig::MAX_TEST_BOX_LEVEL);
                 alert.sound = setting->sound;
                 applyAlertTemplate(alert, *setting, alertVars(sources, alert, clock));
                 step.outgoing.push_back(std::move(alert));

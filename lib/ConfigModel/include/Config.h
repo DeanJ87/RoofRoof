@@ -205,6 +205,9 @@ namespace SQM
         // boot. Level 1 (quiet) to 4: never off (MIN_TEST_BOX_LEVEL).
         EventSetting testBox;
         static constexpr uint8_t MIN_TEST_BOX_LEVEL = 1;
+        // Never "wake me" (a Pushover emergency, repeated until acknowledged):
+        // that is kept for the roof's critical alerts.
+        static constexpr uint8_t MAX_TEST_BOX_LEVEL = 3;
 
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
