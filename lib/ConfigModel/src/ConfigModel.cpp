@@ -87,9 +87,11 @@ namespace SQM
             if (!audibleSound(event->sound))
                 event->sound.clear();
         }
-        // Spec 022: the test box reminder is never off.
+        // Spec 022: the test box alert's level is never off, and never wake me.
         if (testBox.level < MIN_TEST_BOX_LEVEL)
             testBox.level = MIN_TEST_BOX_LEVEL;
+        if (testBox.level > MAX_TEST_BOX_LEVEL)
+            testBox.level = MAX_TEST_BOX_LEVEL;
     }
 
     Config Config::createDefault()

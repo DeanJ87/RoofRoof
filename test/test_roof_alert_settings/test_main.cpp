@@ -377,8 +377,8 @@ void test_silent_stored_sound_is_sent_audible()
 }
 
 // SC-001: every combination of the master switch and sending (pause, send
-// mode, grace) for every type: critical always goes out, and so does spec
-// 022's test box reminder.
+// mode, grace) for every type: critical always goes out; everything else,
+// spec 022's test box alert included, only when both allow it.
 void test_critical_alerts_go_out_in_every_state()
 {
     AlertsConfig alerts = Config::createDefault().alerts;
@@ -388,7 +388,7 @@ void test_critical_alerts_go_out_in_every_state()
             {
                 const Alerts::AlertType type = static_cast<Alerts::AlertType>(i);
                 alerts.enabled = enabled != 0;
-                const bool want = Alerts::isCritical(type) || type == Alerts::AlertType::TestBox || (enabled && sending);
+                const bool want = Alerts::isCritical(type) || (enabled && sending);
                 TEST_ASSERT_EQUAL_MESSAGE(want, Core::alertGoesOut(type, alerts, sending != 0), Alerts::alertTypeName(type));
             }
 }

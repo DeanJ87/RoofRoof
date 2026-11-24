@@ -395,6 +395,7 @@ namespace DemoRoof
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, controller.status().state, view);
         roofConditions.testBox = testBoxState.bits(); // spec 022
         roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(testBoxState) : std::string();
+        roofConditions.testBoxSettled = !testBoxState.waitingForClock;
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None)
             return;
         CloseSeq::Reasons reasons;
