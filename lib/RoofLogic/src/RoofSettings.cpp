@@ -23,6 +23,8 @@ namespace SQM
                 using C = RoofConfig;
                 return within(s.travelMm, C::MIN_TRAVEL_MM, C::MAX_TRAVEL_MM) &&
                        within(s.speedMmPerSecond, C::MIN_SPEED_MM_PER_SECOND, C::MAX_SPEED_MM_PER_SECOND) &&
+                       (s.slowSpeedMmPerSecond == 0.0f ||
+                        within(s.slowSpeedMmPerSecond, C::MIN_SPEED_MM_PER_SECOND, C::MAX_SPEED_MM_PER_SECOND)) &&
                        within(s.timeoutMarginMs, C::MIN_TIMEOUT_MARGIN_SECONDS * 1000, C::MAX_TIMEOUT_MARGIN_SECONDS * 1000) &&
                        within(s.leaveMagnetMs, C::MIN_LEAVE_MAGNET_SECONDS * 1000, C::MAX_LEAVE_MAGNET_SECONDS * 1000) &&
                        s.rampUpMs <= C::MAX_RAMP_MS && s.rampDownMs <= C::MAX_RAMP_MS &&
@@ -85,6 +87,8 @@ namespace SQM
             Settings s;
             s.travelMm = config.travelMm;
             s.speedMmPerSecond = config.speedMmPerSecond;
+            s.slowSpeedMmPerSecond = config.slowSpeedMmPerSecond;
+            s.slowSpeedDutyPercent = percent(config.slowSpeedDutyPercent);
             s.timeoutMarginMs = secondsToMs(config.timeoutMarginSeconds);
             s.leaveMagnetMs = secondsToMs(config.leaveMagnetSeconds);
             s.rampUpMs = config.rampUpMs;

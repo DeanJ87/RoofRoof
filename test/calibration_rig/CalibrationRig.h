@@ -34,6 +34,7 @@ namespace CalibTest
         // The person at the roof answers the open-end question by looking at it.
         bool answerTruthfully = true;
         uint32_t nowMs = 1000;
+        uint32_t limitMs = LIMIT_MS; // roof.calibrationLimitSeconds
 
         explicit Rig(float startMm = 0.0f, const Roof::Settings &s = Roof::Settings())
             : settings(s),
@@ -76,7 +77,7 @@ namespace CalibTest
         {
             StartInputs in;
             in.nowMs = nowMs;
-            in.limitMs = LIMIT_MS;
+            in.limitMs = limitMs;
             in.gates = gates;
             in.busy = busy;
             in.busyReason = "busy";
@@ -138,7 +139,8 @@ namespace CalibTest
 
     inline bool sameSettings(const Roof::Settings &a, const Roof::Settings &b)
     {
-        return a.travelMm == b.travelMm && a.speedMmPerSecond == b.speedMmPerSecond && a.timeoutMarginMs == b.timeoutMarginMs &&
+        return a.travelMm == b.travelMm && a.speedMmPerSecond == b.speedMmPerSecond && a.slowSpeedMmPerSecond == b.slowSpeedMmPerSecond &&
+               a.slowSpeedDutyPercent == b.slowSpeedDutyPercent && a.timeoutMarginMs == b.timeoutMarginMs &&
                a.hallHighEnd == b.hallHighEnd && a.hallHighCounts == b.hallHighCounts && a.hallLowCounts == b.hallLowCounts;
     }
 } // namespace CalibTest

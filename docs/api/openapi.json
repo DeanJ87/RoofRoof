@@ -5164,6 +5164,82 @@
                 ],
                 "additionalProperties": false
               },
+              "moveLimitSeconds": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "slowLimitSeconds": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "slowSpeedDutyPercent": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
+              "slowSpeedMmPerSecond": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
               "speedMmPerSecond": {
                 "type": [
                   "null",
@@ -5262,6 +5338,10 @@
               "hallHighEnd",
               "hallLowCounts",
               "hallProblem",
+              "moveLimitSeconds",
+              "slowLimitSeconds",
+              "slowSpeedDutyPercent",
+              "slowSpeedMmPerSecond",
               "speedMmPerSecond",
               "speedProblem",
               "timeoutMarginSeconds",
@@ -6358,6 +6438,12 @@
               "slowDutyPercent": {
                 "type": "number"
               },
+              "slowSpeedDutyPercent": {
+                "type": "number"
+              },
+              "slowSpeedMmPerSecond": {
+                "type": "number"
+              },
               "speedMmPerSecond": {
                 "type": "number"
               },
@@ -6386,6 +6472,8 @@
               "rampDownMs",
               "rampUpMs",
               "slowDutyPercent",
+              "slowSpeedDutyPercent",
+              "slowSpeedMmPerSecond",
               "speedMmPerSecond",
               "timeoutMarginSeconds",
               "topDutyPercent",
@@ -7420,6 +7508,12 @@
                 "type": "number"
               },
               "slowDutyPercent": {
+                "type": "number"
+              },
+              "slowSpeedDutyPercent": {
+                "type": "number"
+              },
+              "slowSpeedMmPerSecond": {
                 "type": "number"
               },
               "speedMmPerSecond": {

@@ -10,6 +10,7 @@ namespace SQM
             bool travelDiffers(const RoofConfig &a, const RoofConfig &b)
             {
                 return a.travelMm != b.travelMm || a.speedMmPerSecond != b.speedMmPerSecond ||
+                       a.slowSpeedMmPerSecond != b.slowSpeedMmPerSecond || a.slowSpeedDutyPercent != b.slowSpeedDutyPercent ||
                        a.timeoutMarginSeconds != b.timeoutMarginSeconds || a.leaveMagnetSeconds != b.leaveMagnetSeconds ||
                        a.rampUpMs != b.rampUpMs || a.rampDownMs != b.rampDownMs || a.topDutyPercent != b.topDutyPercent ||
                        a.slowDutyPercent != b.slowDutyPercent || a.calibrationLimitSeconds != b.calibrationLimitSeconds;

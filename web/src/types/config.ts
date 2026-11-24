@@ -74,6 +74,8 @@ export interface ParkConfig {
 export interface RoofConfig {
   travelMm: number;
   speedMmPerSecond: number;
+  slowSpeedMmPerSecond: number;
+  slowSpeedDutyPercent: number;
   timeoutMarginSeconds: number;
   leaveMagnetSeconds: number;
   calibrationLimitSeconds: number;

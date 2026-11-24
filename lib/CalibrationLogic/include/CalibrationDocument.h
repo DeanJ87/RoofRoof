@@ -13,8 +13,9 @@ namespace SQM
 {
     namespace Calib
     {
-        // Enough for the fullest document (four legs, every warning, long texts).
-        constexpr size_t DOCUMENT_CAPACITY = 4096;
+        // Enough for the fullest document (four legs, every warning, long texts),
+        // with a quarter to spare (test_calibration_document).
+        constexpr size_t DOCUMENT_CAPACITY = 6144;
 
         void writeDocument(JsonObject out, const Report &report, uint32_t nowMs);
 

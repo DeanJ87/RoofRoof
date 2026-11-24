@@ -114,6 +114,53 @@ Each answer takes the safest option the constitution allows and is also listed u
   gets a page after the Hall page that explains the run and links to the page; the wizard itself
   still never moves the roof.
 
+### Session 2026-11-24 (fix: a run started at the open end, and a heavy roof's slow duty)
+
+The roof at its open end, a run started from there failed by trying to open it. The leg order was
+right for every answer (from `open` and `partWay` the run closes first), but the start form's
+**Where the roof is now** kept the position from when the page opened: after a jog to the open end
+(the Teach card is on the same page) or any move, it still said `closed`, the run believed it and
+its slow open pushed into the open end until the leave-time fault. Separately, a heavy roof's slow
+close took longer than both the 180 s limit and the timeout of a move from an unknown position,
+which took the speed as proportional to the duty.
+
+- Q: Which legs, from each start? → A: Unchanged. From `closed`: slow open, slow close, then the
+  top-duty open and close if asked. From `open` or `partWay`: a slow close to the closed end first,
+  then the same. Every measured leg starts from the closed end, closing first is the safe
+  direction, and the person confirms the open end after the slow open as before.
+- Q: Should the device override `closed` when the roof's reading says open? → A: No. The run
+  exists partly to measure the polarity, and a roof with the polarity saved the wrong way round
+  reads as open while it is closed; closing first there would push into the closed end instead.
+  The person's answer stays authoritative, as decided on 2026-11-11. The start form instead
+  follows the roof's live reading until the person picks, and warns when the pick disagrees with
+  the reading. A wrong answer still ends at the leave-time fault (assumption 3), and that fault's
+  ending now says to check where the roof was and `roof.openDirection`.
+- Q: How does a person learn which limit stopped a leg? → A: A leg that times out (or exhausts its
+  drive budget) names the limit: `roof.calibrationLimitSeconds` with its value and maximum when
+  the leg ran on the setting, plus `roof.slowDutyPercent` for a slow leg; the slow close and the
+  top-duty legs say their limit came from the slow leg measured before them. The start form gives
+  each leg's limit above Start, and a finished run warns when a slow leg used more than three
+  quarters of the limit.
+- Q: How are moves at the slow duty timed on a heavy roof? → A: From a measured slow speed. A new
+  setting `roof.slowSpeedMmPerSecond` (0 = not measured, else 1-500 mm/s) holds the speed at the
+  slow duty. The motion model takes speed as affine in the duty, from the slow speed at the slow
+  duty to `speedMmPerSecond` at 100 % (a slow speed above the full speed counts as the full speed),
+  and it times the move from an unknown position, the drive budget, the position estimate and the
+  slowing and creeping phases of every move. With 0 it is proportional to the duty, exactly as
+  before. The run proposes it as the slow legs' average speed and shows it with the open or close
+  limit and the slow-duty limit before and after. The full speed comes from the top-duty legs with
+  their time at the slow duty counted at the slow speed (not proportionally); without a top-duty
+  pass it is the slow speed scaled to 100 %, with a warning that a heavy roof doesn't reach it.
+  This follows Principle I's rule (the hard timeout from the measured travel and speed settings
+  plus a margin): the slow speed is one of those measured settings, so no amendment is needed.
+- Q: What happens to the slow speed when the slow duty changes? → A: It is saved with the slow
+  duty it was measured at (`roof.slowSpeedDutyPercent`, set when the proposal is accepted) and
+  counts only while that is still the slow duty; otherwise the model is proportional again until a
+  new run. A slow speed applied to another slow duty would bend the affine model: with the slow
+  duty raised, the speed at the top duty would come out lower than measured, the estimate would
+  lag and the roof could reach its end magnet at the top duty before slowing down. Clearing the
+  value on a slow-duty edit instead would miss changes made through the API or a restore.
+
 ## Constitution rules this spec relies on
 
 | Principle | Rule | Where it is kept |
@@ -457,6 +504,16 @@ Playwright walk-through starts a run, waits for the result and accepts it.
 
 **Setting, demo, docs**
 
+- **FR-028** (2026-11-24): The start form's roof position MUST follow the live reading until the
+  person picks one, and MUST warn when the pick names the other end from the reading. A timed-out
+  leg's ending MUST name the limit that stopped it, and a slow leg's the slow duty; a slow leg
+  over three quarters of the limit MUST be warned about.
+- **FR-029** (2026-11-24): The run MUST propose `roof.slowSpeedMmPerSecond` (the slow legs'
+  average speed) with the slow duty it was measured at (`roof.slowSpeedDutyPercent`), which it
+  counts only while that is the slow duty, and the full speed MUST allow for the slow speed. Moves from an
+  unknown position, the drive budget and every move's slow phases MUST be timed from it; 0 keeps
+  the proportional model. The result MUST show the open or close limit and the slow-duty limit
+  before and after.
 - **FR-025**: `roof.calibrationLimitSeconds` (default 180, 30-600, whole seconds) MUST be in the
   config model, the stored settings, the web schemas, the shared range fixture and the settings
   reference. Older stored settings load with the default.
@@ -559,6 +616,22 @@ Each was an open choice; the safest option the constitution allows was taken.
 19. **MQTT reconnects wait for the run** like every platform action while the roof moves; stale
     MQTT weather then ends the run (fail-safe).
 20. **The UI mockup review is pending**: the owner reviews the page in the demo before merging.
+21. **The person's answer about where the roof is stays authoritative** (2026-11-24): the device
+    doesn't override `closed` when the roof reads as open, because a backwards polarity reads that
+    way at the closed end. The start form follows the reading until the person picks and warns
+    on a disagreeing pick; a wrong answer ends at the leave-time fault, worded to say what to check.
+22. **Leg order**: from `open` and `partWay` a slow close first, then the slow open and close and
+    the optional top-duty pass; every measured leg starts at the closed end.
+23. **A measured slow speed times every move at the slow duty** (`roof.slowSpeedMmPerSecond`, 0 =
+    proportional, as before): affine in the duty up to the full speed. It counts only while the
+    slow duty is the one it was measured at (`roof.slowSpeedDutyPercent`).
+26. **The timeout margin is still sized from a full move** (and the measured shortfall), not from
+    the longer slow-duty move: a move from an unknown position keeps the same headroom ratio as
+    before this fix; a cold night that slows it further faults early, which is fail-safe.
+24. **Without a top-duty pass the full speed is the slow speed scaled up**, as before, with a
+    warning: a heavy roof's full speed is then underestimated (longer known-position timeouts,
+    a later slow-down point). The top-duty pass measures it.
+25. **A slow leg over 75 % of the limit is warned about**, naming the slow duty and the limit.
 
 ## Out of scope
 

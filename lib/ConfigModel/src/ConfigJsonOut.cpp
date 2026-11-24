@@ -197,6 +197,8 @@ namespace SQM
             JsonObject roof = doc.createNestedObject("roof");
             roof["travelMm"] = r.travelMm;
             roof["speedMmPerSecond"] = r.speedMmPerSecond;
+            roof["slowSpeedMmPerSecond"] = r.slowSpeedMmPerSecond;
+            roof["slowSpeedDutyPercent"] = r.slowSpeedDutyPercent;
             roof["timeoutMarginSeconds"] = r.timeoutMarginSeconds;
             roof["leaveMagnetSeconds"] = r.leaveMagnetSeconds;
             roof["calibrationLimitSeconds"] = r.calibrationLimitSeconds;

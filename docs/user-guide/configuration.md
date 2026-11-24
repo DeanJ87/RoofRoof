@@ -132,6 +132,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   "roof": {
     "travelMm": 1850,
     "speedMmPerSecond": 38,
+    "slowSpeedMmPerSecond": 0,
+    "slowSpeedDutyPercent": 0,
     "timeoutMarginSeconds": 15,
     "leaveMagnetSeconds": 10,
     "calibrationLimitSeconds": 180,
@@ -331,6 +333,8 @@ sense off.
 |-------|------|---------|-------------|
 | `roof.travelMm` | int | `1850` | Distance between the two ends, in mm (100-20000) |
 | `roof.speedMmPerSecond` | number | `38` | Roof speed at 100% duty, in mm/s (1-500) |
+| `roof.slowSpeedMmPerSecond` | number | `0` | Roof speed at the slow duty, in mm/s (1-500), as a [calibration run](calibration-run.md) measured it; `0` until one has (then the speed scaled by the slow duty). Times every move from an unknown position, the drive budget and the creep at each end. Above the full speed it counts as the full speed |
+| `roof.slowSpeedDutyPercent` | int | `0` | The slow duty the slow speed was measured at (10-100, `0` = none), set with it when a calibration proposal is accepted. The slow speed counts only while `roof.slowDutyPercent` is still this; after changing the slow duty, run the calibration again |
 | `roof.timeoutMarginSeconds` | int | `15` | Added to a move's expected time to give its hard timeout (3-300) |
 | `roof.leaveMagnetSeconds` | int | `10` | A move from an end must leave its magnet within this time (2-120) |
 | `roof.calibrationLimitSeconds` | int | `180` | The longest one leg of a [calibration run](calibration-run.md) may drive before it faults `timeout` (30-600); later legs are also bounded by the measured ones. In **Settings → Roof → Calibration run → Advanced** |

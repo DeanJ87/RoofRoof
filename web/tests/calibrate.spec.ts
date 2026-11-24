@@ -30,10 +30,19 @@ const startRun = async (page: Page) => {
   await start.click();
 };
 
+const calibration = (page: Page) => page.evaluate(async () => (await fetch('/api/roof/calibration')).json());
+const roofCommand = (page: Page, command: string) =>
+  page.evaluate(async (command) => (await fetch(`/api/roof/${command}`, { method: 'POST', headers: { 'X-RoofRoof': '1' } })).ok, command);
+const roofIs = (page: Page, state: string | RegExp) => expect.poll(() => roofState(page), { timeout: 30_000 }).toMatch(state);
+
 test('a run measures the roof and its proposal is saved on Accept', async ({ page }) => {
   test.setTimeout(120_000);
   await openPage(page);
+  // Spec 016 fix: each leg's limit is explained beside Start.
+  await expect(page.locator('#calibrate-start')).toContainText('Each leg may drive 180 s');
   await startRun(page);
+  await expect.poll(async () => (await calibration(page)).request?.at).toBe('closed');
+  expect((await calibration(page)).leg.name).toBe('slowOpen');
   const stop = page.getByRole('button', { name: 'Stop calibration' });
   await expect(stop).toBeVisible({ timeout: 10_000 });
   await expect(stop).toBeEnabled();
@@ -43,11 +52,50 @@ test('a run measures the roof and its proposal is saved on Accept', async ({ pag
   await expect(page.getByRole('button', { name: 'Accept and save' })).toBeVisible({ timeout: 90_000 });
   await expect(page.locator('#calibrate-result')).toContainText('Calibration finished');
   await expect(page.locator('#calibrate-result')).toContainText('Slow open');
+  // The measured slow speed, and what it does to every move's limit.
+  await expect(page.locator('#calibrate-result')).toContainText('Slow speed');
+  await expect(page.locator('#calibrate-result')).toContainText('Open or close limit');
+  await expect(page.locator('#calibrate-result')).toContainText('Slow-duty limit');
   await page.getByRole('button', { name: 'Accept and save' }).click();
   await expect(page.locator('#calibrate-result')).toContainText('Saved');
   const config = await deviceConfig(page);
   expect(config.roof.travelMm).toBe(200);
   expect(config.roof.hallHighEnd).toBe('open');
+  expect(config.roof.slowSpeedMmPerSecond).toBeGreaterThan(0);
+});
+
+// Spec 016 fix: the start form follows the roof while the page is open (a jog
+// or a move after it opened), so the run starts from where the roof is: from
+// the open end and from part-way it closes first, then measures as usual.
+const runFrom = async (page: Page, where: 'open' | 'partWay') => {
+  await openPage(page);
+  await expect(page.locator('[data-field="calibrate.at"]')).toHaveValue('closed');
+  // The device's first seconds: the weather and the park are still being read.
+  await expect.poll(() => roofCommand(page, 'open'), { timeout: 20_000 }).toBe(true);
+  if (where === 'partWay') {
+    await page.waitForTimeout(2500);
+    await roofCommand(page, 'stop');
+    await roofIs(page, /stopped|unknown/);
+  } else await roofIs(page, /^open$/);
+  await expect(page.locator('[data-field="calibrate.at"]')).toHaveValue(where);
+  await startRun(page);
+  await expect.poll(async () => (await calibration(page)).request?.at).toBe(where);
+  expect((await calibration(page)).leg.name).toBe('toClosed');
+  await page.getByRole('button', { name: 'Yes, it is open' }).click({ timeout: 90_000 });
+  await expect(page.locator('#calibrate-result')).toContainText('Calibration finished', { timeout: 90_000 });
+  const run = await calibration(page);
+  expect(run.legs.map((leg: { name: string }) => leg.name)).toEqual(['slowOpen', 'slowClose']);
+  expect(await roofState(page)).toBe('closed');
+};
+
+test('a run started at the open end closes first', async ({ page }) => {
+  test.setTimeout(180_000);
+  await runFrom(page, 'open');
+});
+
+test('a run started part-way closes first', async ({ page }) => {
+  test.setTimeout(180_000);
+  await runFrom(page, 'partWay');
 });
 
 test('Stop mid-leg ends the run and proposes nothing', async ({ page }) => {

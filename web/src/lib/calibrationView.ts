@@ -69,10 +69,12 @@ export const startBlocked = (checks: CalibrationCheck[], attended: boolean, live
   return attended ? '' : t('calibrate.reason.notAttended');
 };
 
-export type ProposalKey = 'travelMm' | 'speedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
+export type ProposalKey =
+  'travelMm' | 'speedMmPerSecond' | 'slowSpeedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
 export const PROPOSAL_KEYS: ProposalKey[] = [
   'travelMm',
   'speedMmPerSecond',
+  'slowSpeedMmPerSecond',
   'timeoutMarginSeconds',
   'hallHighEnd',
   'hallHighCounts',
@@ -111,6 +113,8 @@ export const acceptedRoof = (proposal: CalibrationProposal, roof: RoofConfig): R
     const pair = proposal[key];
     if (pair) (next as unknown as Record<string, unknown>)[key] = pair.new;
   }
+  // The slow speed belongs to the slow duty it was measured at (it counts only while that is the slow duty).
+  if (proposal.slowSpeedDutyPercent) next.slowSpeedDutyPercent = proposal.slowSpeedDutyPercent.new;
   return next;
 };
 

@@ -64,7 +64,11 @@ interface StartProps {
 
 export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStarted, plain }) => {
   const [attended, setAttended] = useState(false);
-  const [at, setAt] = useState<CalibrationWhere>(whereFromState(roof));
+  // The roof's own reading until the person picks: a jog or a move after the
+  // page opened must not leave a stale answer that the run would believe.
+  const [picked, setAt] = useState<CalibrationWhere | null>(null);
+  const reading = whereFromState(roof);
+  const at = picked ?? reading;
   const [travel, setTravel] = useState(config.travelMm);
   const [topPass, setTopPass] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -101,6 +105,9 @@ export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live,
             ]}
             onChange={(v) => setAt(v as CalibrationWhere)}
           />
+          {at !== reading && reading !== 'partWay' && (
+            <Note tone="warn">{t('calibrate.whereDiffers', { reading: t(`calibrate.at.${reading}`) })}</Note>
+          )}
         </Field>
         <Field label={t('calibrate.travel')} hint={t('calibrate.travelHint')}>
           <NumberInput dataField="calibrate.travelMm" value={travel} min={100} unit="mm" integer onChange={setTravel} />
@@ -120,6 +127,7 @@ export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live,
           {t('calibrate.start')}
         </Button>
       </div>
+      <Note>{t('calibrate.limitNote', { limit: config.calibrationLimitSeconds })}</Note>
       {blocked && <Note id="calibrate-why">{blocked}</Note>}
       {problem && <Note tone="bad">{problem}</Note>}
     </SettingsCard>
@@ -224,6 +232,7 @@ const Readings: FunctionalComponent<{ run: CalibrationStatus }> = ({ run }) => {
 const ROW_LABEL: Record<string, Key> = {
   travelMm: 'settings.roof.travel',
   speedMmPerSecond: 'settings.roof.speed',
+  slowSpeedMmPerSecond: 'settings.roof.slowSpeed',
   timeoutMarginSeconds: 'settings.roof.timeoutMargin',
   hallHighEnd: 'settings.roof.hallHighEnd',
   hallHighCounts: 'settings.roof.hallHigh',
@@ -266,6 +275,18 @@ export const Result: FunctionalComponent<ResultProps> = ({ run, config, accept, 
               }
             />
           ))}
+          {(['moveLimitSeconds', 'slowLimitSeconds'] as const).map((key) => {
+            const pair = proposal[key];
+            return (
+              pair && (
+                <ReadingRow
+                  key={key}
+                  label={t(`calibrate.${key}`)}
+                  value={t('calibrate.change', { saved: `${pair.old} s`, proposed: `${pair.new} s` })}
+                />
+              )
+            );
+          })}
           {[proposal.speedProblem, proposal.hallProblem, ...proposal.warnings].map(
             (problem) =>
               problem && (
