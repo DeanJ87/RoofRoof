@@ -281,6 +281,8 @@ namespace SQM::ConfigDetail
         std::string group[3];
     };
     SyncedValues syncedValues(const Config &cfg);
+    // Spec 026: the RoofConfig::MEASURED_* bits of the values that differ between `a` and `b`.
+    uint8_t typedOver(const RoofConfig &a, const RoofConfig &b);
     // Spec 026: a save from the UI/API that changes a following group's values
     // and doesn't say whether it follows makes that group local, so the next
     // sync never undoes what a person typed.

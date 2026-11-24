@@ -284,6 +284,16 @@ namespace SQM
         float minSupplyVolts = 11.0f;
         // Spec 016: the longest a calibration leg may drive (its hard timeout).
         uint32_t calibrationLimitSeconds = 180;
+        // Spec 026: which values were measured on the roof (a calibration run's
+        // proposal accepted, or teach confirmed) and not typed since, as MEASURED_*
+        // bits. A save that changes one of them without sending `measured` clears its bit.
+        uint8_t measured = 0;
+        static constexpr uint8_t MEASURED_TRAVEL = 1;
+        static constexpr uint8_t MEASURED_SPEED = 2;
+        static constexpr uint8_t MEASURED_MARGIN = 4;
+        static constexpr uint8_t MEASURED_HALL = 8; // the high end and both thresholds
+        static constexpr uint8_t MEASURED_DIRECTION = 16;
+        static constexpr uint8_t MEASURED_ALL = 31;
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;

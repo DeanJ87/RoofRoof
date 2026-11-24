@@ -104,6 +104,22 @@ namespace SQM::ConfigDetail
         }};
     }
 
+    uint8_t typedOver(const RoofConfig &a, const RoofConfig &b)
+    {
+        uint8_t bits = 0;
+        if (a.travelMm != b.travelMm)
+            bits |= RoofConfig::MEASURED_TRAVEL;
+        if (a.speedMmPerSecond != b.speedMmPerSecond)
+            bits |= RoofConfig::MEASURED_SPEED;
+        if (a.timeoutMarginSeconds != b.timeoutMarginSeconds)
+            bits |= RoofConfig::MEASURED_MARGIN;
+        if (a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts || a.hallLowCounts != b.hallLowCounts)
+            bits |= RoofConfig::MEASURED_HALL;
+        if (a.openDirection != b.openDirection)
+            bits |= RoofConfig::MEASURED_DIRECTION;
+        return bits;
+    }
+
     void unfollowEdited(const Section &sync, const SyncedValues &before, Config &cfg)
     {
         const SyncedValues after = syncedValues(cfg);

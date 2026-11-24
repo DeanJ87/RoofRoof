@@ -290,6 +290,8 @@ namespace SQM
             roof.take("timeoutMarginSeconds", r.timeoutMarginSeconds);
             roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
             roof.take("calibrationLimitSeconds", r.calibrationLimitSeconds);
+            roof.take("measured", r.measured);
+            r.measured &= RoofConfig::MEASURED_ALL; // spec 026: unknown bits are dropped
             roof.take("rampUpMs", r.rampUpMs);
             roof.take("rampDownMs", r.rampDownMs);
             roof.take("topDutyPercent", r.topDutyPercent);
@@ -517,10 +519,15 @@ namespace SQM
         const Section root(reader, doc.as<JsonVariant>(), "");
         const std::string previousSsid = cfg.wifi.ssid;
         const SyncedValues synced = syncedValues(cfg);
+        const RoofConfig roofBefore = cfg.roof;
         if (!applySections(root, cfg, keep, errorOut, copied))
             return false;
         if (reader.strict())
+        {
             unfollowEdited(root.child("sqmeterSync"), synced, cfg); // spec 026
+            if (!root.child("roof").has("measured"))
+                cfg.roof.measured &= static_cast<uint8_t>(~typedOver(roofBefore, cfg.roof));
+        }
         if (reader.failed())
             return typeError(reader, errorOut);
         // Saving settings never takes the device off its network: changing

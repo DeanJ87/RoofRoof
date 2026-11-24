@@ -77,6 +77,8 @@ export interface RoofConfig {
   timeoutMarginSeconds: number;
   leaveMagnetSeconds: number;
   calibrationLimitSeconds: number;
+  // Spec 026: RoofConfig::MEASURED_* bits: values measured on the roof and not typed since (absent: older firmware).
+  measured?: number;
   rampUpMs: number;
   rampDownMs: number;
   topDutyPercent: number;
