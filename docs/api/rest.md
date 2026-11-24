@@ -194,8 +194,9 @@ The `testBox` group (`park`, `weather`, `daylight`, `hours`, `until`; see [Confi
 
 - `until` is read-only: a value in a save body is ignored. The device stamps it.
 - A bypass turning on, or `testBox.hours` sent while one is on, stamps a new deadline. To **renew**, send `{"testBox": {"hours": 72}}`.
+- A save that turns `testBox.park` on clears `park.nina.url` in the same save (even an address sent in that save); turning it off later doesn't restore it.
 - A save is refused with `400` and an `error`:
-    - `Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)` when `testBox.park` would be on with `park.nina.url` set;
+    - `Test box: "No telescope under this roof" is on; turn it off before setting a N.I.N.A. address` when `testBox.park` stays on and the save sets `park.nina.url`;
     - `Test box: the weather bypass is for a box with no weather source; turn SQMeter HTTP and MQTT off first (or turn the bypass off)` when `testBox.weather` would be on with `safety.http.enabled` or `safety.mqtt.enabled`;
     - an error naming the range when `testBox.hours` isn't 1 to 720;
     - `Test box: the clock isn't set yet (Settings → Time); a bypass needs a deadline` when a bypass turns on while the clock isn't set.

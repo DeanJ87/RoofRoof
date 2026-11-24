@@ -21,23 +21,35 @@ It is three separate switches, all off by default, and **all end at one deadline
 
 | Bypass | What it stands in for | When it is refused |
 |---|---|---|
-| **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | While a N.I.N.A. address is set, or with the park switches as the only park source (there is no N.I.N.A. to stand in for). Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
+| **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | With the park switches as the only park source (there is no N.I.N.A. to stand in for). Turning it on clears the N.I.N.A. address in the same save; while it is on, saving an address is refused. Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
 | **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside |
 | **Daylight** | The sun: no [daylight close](close-on-unsafe.md#daylight-failsafe), and with **Alert and close** no refusal to open while the sun is up | Never refused. It only matters with the daylight mode on |
 
-A save that would put a bypass beside the source it stands in for is refused with a message, for
-example *"Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address
-first (or turn the bypass off)"*.
+A bypass never sits beside the source it stands in for. Turning **No telescope under this roof**
+on removes the N.I.N.A. address in the same save, so a bench box can never ask a real mount to
+park; the page (and the wizard's **No telescope yet**) says so before you save. Turning the bypass
+off later doesn't bring the address back: type it again. Any other save that would put a bypass
+beside its source is refused with a message, for example *"Test box: "No telescope under this
+roof" is on; turn it off before setting a N.I.N.A. address"*.
 
 ## A test box and a live N.I.N.A.
 
 !!! danger "A box pointed at a live N.I.N.A. can park that mount"
     Whenever the weather turns unsafe, a RoofRoof asks the N.I.N.A. at its address to park, test
     box or not. A bench box pointed at the N.I.N.A. that drives your real mount will park it
-    mid-session. On a bench, leave the N.I.N.A. address empty, or turn off **May ask N.I.N.A. to
-    park the mount** (`park.requestPark`, on by default; also offered on the wizard's test box
+    mid-session. On a bench, turn on **No telescope under this roof** (it removes the address), or
+    turn off **May ask N.I.N.A. to park the mount** (`park.requestPark`, on by default; also offered on the wizard's test box
     screen). While a bypass is set, the banner says when unsafe weather would ask N.I.N.A. to
     park.
+
+## Critical alerts on a test box
+
+The two critical roof alerts (**The mount doesn't park**, **The roof doesn't close**) still go out
+past the pause and **Send alerts**, but while a bypass is in effect (or set and waiting for the
+clock after a restart) they go out at most at **Urgent**, never **Wake me**: no Pushover emergency
+repeated every minute for an hour on a bench. With the weather bypass in effect the missing
+weather source counts as safe, so it never starts the automatic close or raises either alert. Once
+the bypasses are off or expired, the alerts are sent at the level you set, as on any roof.
 
 ## What is never bypassed
 
@@ -95,7 +107,9 @@ Test box** (**Open test box**); the setup wizard turns it on for a bench setup.
   72 h** (your **Turn off after**) starts the deadline again from now.
 - **Bypasses** has the three switches (**No telescope under this roof**, **No weather station**,
   **No daylight close**) and **Turn off after** (the hours). A switch that can't be turned on says
-  why in one line, with a link to the setting in the way. **No weather station** turned on while
+  why in one line, with a link to the setting in the way. **No telescope under this roof** turned
+  on while a N.I.N.A. address is saved removes the address in the same save, and says so first;
+  turned off again before saving, the address comes back. **No weather station** turned on while
   an SQMeter weather source is on turns that source off in the same save, and says so: the weather
   check never reads "no weather source" (unsafe) between two saves, which would start the automatic
   close; turned off again before saving, the saved sources come back. While a configured source
@@ -104,7 +118,8 @@ Test box** (**Open test box**); the setup wizard turns it on for a bench setup.
 
 The [setup wizard](setup-wizard.md) can do the same: its test box screen, a part of its own after
 the wiring check, asks whether a telescope is, or will be, under this roof. **No telescope yet
-(bench setup)** turns on all three bypasses and skips the N.I.N.A. screen; the SQMeter screen then
+(bench setup)** turns on all three bypasses (removing a N.I.N.A. address in the same save, and
+saying so) and skips the N.I.N.A. screen; the SQMeter screen then
 supplies site data only. On a test box the direction, teach and calibration screens still move the
 roof, attended, and each names the bypassed checks (faults, the supply and the time limits still
 stop the roof).
@@ -120,7 +135,7 @@ Over the API, see [`POST /api/config`](../api/rest.md#post-apiconfig).
 3. Check the dashboard: the banner is gone, and Weather and Mount park show real readings.
 
 The device refuses a N.I.N.A. address or SQMeter while the matching bypass is on, so clearing the
-bypass first is required.
+bypass first is required. Turning a bypass off never brings a removed address back.
 
 ## Not the same as bench mode
 

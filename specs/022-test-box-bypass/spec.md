@@ -84,6 +84,31 @@ Each answer takes the safest option the constitution allows and is also listed u
   `requireAuth`). No MQTT, Home Assistant, Alpaca or SQMeter sync path sets it, and a backup restore
   brings no deadline.
 
+### Session 2026-11-24 (owner decisions)
+
+- Q: Turning **No telescope under this roof** on while a N.I.N.A. address is set: refuse, or clear
+  the address? → A: **Owner decision: clear it in the same save.** On Settings' way to the test box
+  page, on the test box page and with the wizard's **No telescope yet**, the save that turns the
+  park bypass on also removes `park.nina.url`, so a bench box can never ask a real mount to park.
+  The page and the wizard say so before saving ("This also removes the N.I.N.A. address, in the same
+  save."); turned off again before saving, the saved address comes back. The device does the same
+  for any save (the API included): a save that turns the bypass on clears the address, even one
+  sent in that save. Once the bypass is on, a save that sets an address is still refused ("turn it
+  off before setting a N.I.N.A. address"). Turning the bypass off later doesn't restore the address.
+  The park source "switches" still can't use the park bypass (spec 024). This replaces the refusal
+  in FR-007 and User Story 4's second scenario; constitution 5.1.0 rewords Principle II's test-box
+  exception to match.
+- Q: The roof's critical alerts on a test box? → A: **Owner decision: quiet.** The two critical
+  alerts ("mount didn't park", "roof didn't close", wake me by default: Pushover's emergency,
+  repeated every minute for an hour) woke the owner whenever a bench box read unsafe with the roof
+  open, including while its weather bypass was being set up. With the weather bypass in effect, a
+  missing weather source is already safe, so it never starts the close on unsafe weather or raises
+  either alert (`test/test_test_box_quiet` pins it). And while any bypass is in effect, or set and
+  waiting for the clock after a restart, both go out at most at **urgent**: still past the pause,
+  the send mode and the master switch, still resent until a channel takes them, but never the
+  emergency. On a real install (no bypass set, or the bypasses expired) they are unchanged. See
+  assumption 18.
+
 ## Constitution rules this spec relies on (and the one it changes)
 
 | Principle | Rule | Where it is kept |
@@ -175,8 +200,10 @@ Every surface shows the bypass while it is in effect.
 
 1. **Given** the park bypass on, **When** the owner saves a N.I.N.A. address, **Then** the save is
    refused: "turn off the test box park bypass first".
-2. **Given** a N.I.N.A. address, **When** the owner turns the park bypass on, **Then** the save is
-   refused likewise; the same both ways for the weather bypass and an SQMeter source.
+2. **Given** a N.I.N.A. address, **When** the owner turns the park bypass on, **Then** the same save
+   removes the address (owner decision 2026-11-24; it used to be refused), and the page says so
+   before saving. The weather bypass and an SQMeter source are refused both ways (spec 026's page
+   turns the source off in the same save).
 3. **Given** the park bypass on and a fitted park switch that reads open, **When** a close is asked,
    **Then** it is refused, and a close under way stops as a park-interlock fault.
 4. **Given** the weather bypass on and a fitted rain contact that reads wet, **Then** the verdict is
@@ -236,8 +263,9 @@ Every surface shows the bypass while it is in effect.
   refusal, no daylight close; the daylight state, text and alerts stay.
 - **FR-007**: A save that turns a bypass on, or sends `testBox.hours`, sets `until` to now plus
   `hours`; it is refused if the clock is not set. A save that leaves no bypass set clears `until`.
-  A save that sets the park bypass with a N.I.N.A. address, or the weather bypass with an SQMeter
-  source on, is refused with a message saying which to turn off.
+  A save that turns the park bypass on clears the N.I.N.A. address in the same save (owner decision
+  2026-11-24); a save that sets an address while the bypass stays on, or the weather bypass with an
+  SQMeter source on, is refused with a message saying which to turn off.
 - **FR-008**: Only `POST /api/config` (authenticated) changes the bypasses. MQTT, Home Assistant,
   Alpaca and the SQMeter sync never do; a restore never brings a deadline.
 - **FR-009**: The roof section of the status and MQTT state documents carries `testBox`: `set` (any
@@ -357,3 +385,16 @@ Each was an open choice; the safest option the constitution allows was taken.
     parked, roof didn't close) use it, the cases where the roof may stay open in bad weather. Those
     come from the close sequence once per episode; a restart during an unsafe episode can start a
     new one, which is wanted for a roof still open.
+18. **Owner decisions (2026-11-24).** (a) Turning the park bypass on clears the N.I.N.A. address in
+    the same save instead of being refused (assumption 1's "a save with both is refused" now applies
+    only to a save that sets an address while the bypass is already on). (b) The two critical roof
+    alerts go out at most at urgent while any bypass is in effect, and also while one is set and
+    waiting for the clock after a restart: with the clock not set the bypasses are out of effect
+    (the checks apply, so a bench box with no weather source starts the automatic close), and that
+    is exactly the moment the owner was woken. Expired bypasses don't count: the checks are back,
+    and so is the level the owner set. The alert still goes out (urgent: Pushover priority 1, past
+    quiet hours) and is still resent until a channel takes it; only the emergency repeats go. A
+    telescope put under a roof still in test-box mode gets urgent, not wake me, alerts until the
+    deadline, on top of the risks assumption 15 and the constitution already state. Tests:
+    `test/test_test_box_quiet`, `test/test_test_box` (the address cleared, refused once on, not
+    restored).

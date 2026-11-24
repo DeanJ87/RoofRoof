@@ -17,7 +17,7 @@ Just want to see the motor turn on the bench before the Hall sensor exists? The 
 <!-- diagram: DIA-30
 sources: lib/BoardLogic/src/PinMap.cpp lib/BoardLogic/src/WiringCheck.cpp lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: 61fd17ab9f6e7913
+fingerprint: 7a3b4d19ffeef218
 -->
 <figure class="diagram" markdown>
 
@@ -217,7 +217,7 @@ This is the whole safety function, run end to end with nothing to move. Read [Cl
 1. **The normal run.** Make SQMeter unsafe. Within 1 s the log shows `Close sequence started: unsafe: ...` and `Asking N.I.N.A. to park the mount`; N.I.N.A.'s mount parks. 4 to 5 s after the mount reports parked (and every park switch closes) the log shows `Closing the roof: the mount is parked`. Bring the closed magnet to the sensor: `Roof closed after unsafe weather`. On your phone, **Unsafe: closing** (with the weather's reasons) and then **Roof closed after unsafe weather** arrive.
 2. **The mount doesn't park.** Reset to "open" and unparked, close N.I.N.A. (or disable its park), make SQMeter unsafe. At `park.timeoutSeconds` (plus a few seconds) **Mount didn't park** arrives as a critical alert on your phone; no new park request is sent for 5 minutes; the roof stays open. Do it again with **Send alerts** off and one channel on: it still arrives. Then **turn Send alerts back on**.
 3. **A person's stop is respected.** Start a normal run, and press Stop (`roofstop`, or the web UI) while the roof "closes": the roof stops, **Automatic close stopped** arrives, and nothing more happens while it stays unsafe. Do it again, pressing Stop in the 4 s between "mount parked" and the close starting: no close starts.
-4. **The stand-down survives a restart.** After step 3's stop, restart from **System → Restart device**: the sequence is still stood down, and a **Still:** alert arrives.
+4. **The stand-down survives a restart.** After step 3's stop, restart from **System → Restart device**: the sequence is still stood down, and a **Still:** alert arrives. Then make SQMeter safe and press **Open**: the log shows `The roof is opening: the automatic close is armed again` (an Open that starts the roof moving ends the stand-down). Make SQMeter unsafe again: a new run starts at once.
 5. **Position unknown.** With the roof between the magnets (magnet away) and the verdict unsafe, restart the board: no park request is sent, and after 2 s **Roof can't close by itself: position unknown** arrives. Hold a magnet at the sensor to make the position known.
 6. **A flapping verdict.** With N.I.N.A. closed, switch SQMeter between safe and unsafe every few seconds: park requests go out at most every 30 s, and **Mount didn't park** still arrives.
 7. **Alerts all the way.** The roof alert on each critical event reached your phone with the alert master switch off and one channel on (step 2); the same events reached it with **Send alerts** on.

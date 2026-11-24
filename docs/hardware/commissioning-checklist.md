@@ -106,7 +106,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 7.1 | Unsafe with mount unparked: park request in 1 s; close 4 to 5 s after parked; **Unsafe: closing** and **Roof closed after unsafe weather** on the phone | |
 | ☐ 7.2 | N.I.N.A. closed: **Mount didn't park** at the timeout, no request for 5 min, roof stays open; also with **Send alerts** off | |
 | ☐ 7.3 | Stop during the close: stops, **Automatic close stopped**, nothing more; stop in the 4 s before the close: no close | |
-| ☐ 7.4 | After a stop, restart: still stood down, **Still:** alert | |
+| ☐ 7.4 | After a stop, restart: still stood down, **Still:** alert; then safe and **Open**: armed again, unsafe starts a new run | |
 | ☐ 7.5 | Between the magnets, unsafe, restart: no park request, **Roof can't close by itself** after 2 s | |
 | ☐ 7.6 | Flapping verdict: requests at most every 30 s, **Mount didn't park** still arrives | |
 | ☐ 7.7 | Roof alerts arrive with the master switch off and one channel on | |

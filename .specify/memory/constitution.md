@@ -1,6 +1,29 @@
 <!--
 Sync Impact Report
-- Version: 5.0.0 -> 5.0.1 (PATCH: clarification). Principle II's test-box exception now says what
+- Version: 5.0.1 -> 5.1.0 (MINOR: Principle III states the stand-down after a person's stop and
+  gains a way it ends; Principle II's test-box wording follows a changed save rule; nothing is
+  relaxed).
+- Modified: III. Unsafe Ends Closed. A new bullet states the stand-down that specs 005 and 026
+  already implement (a person's stop holds the automatic close back; it ends when the roof reads
+  closed, after the re-arm spell of safe weather, or by an attended release while nothing wants
+  the roof closed) and adds that an Open by a person or a client that starts the roof moving ends
+  it at once. Each way only arms the close again; none moves the roof.
+- Modified: II. Close Only Onto a Parked Mount, the test-box exception. "No telescope" still never
+  sits beside a N.I.N.A. address, but the save that turns it on now removes the address instead of
+  being refused; an address can't be saved while it is on, and turning it off doesn't restore one.
+- Why: owner decisions after the first nights on the bench and the roof (spec 026's open
+  questions). A person who stopped a close and then opened the roof again was left without the
+  automatic close for the rest of the re-arm spell; a bench box could still hold the address of
+  a live N.I.N.A.
+- Not a constitution change, recorded here for the next reader: while a test-box bypass is in
+  effect (or set and waiting for the clock), the two critical roof alerts go out at most at
+  urgent (spec 022, spec 007). They are still critical: past the pause, the send mode and the
+  master switch, and sent again until a channel takes them.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md (DIA-22),
+  docs/user-guide/test-box.md, docs/user-guide/alerts.md, specs/005-close-on-unsafe/spec.md,
+  specs/022-test-box-bypass/spec.md, specs/007-roof-alerts/spec.md,
+  specs/026-cohesive-journey/spec.md.
+- Earlier: 5.0.0 -> 5.0.1 (PATCH: clarification). Principle II's test-box exception now says what
   "visible" rests on: the banner on every page and the status on every interface (API, MQTT, Home
   Assistant, the Alpaca description). The alert sent when a bypass comes into effect is an ordinary
   alert: the pause, the send mode and the master switch hold it, and a restart alone doesn't
@@ -255,7 +278,8 @@ Closing onto an unparked telescope is the most expensive failure this device can
   to "no telescope". Bypasses exist only as explicit, visible, owner-set test-box settings: off by
   default, changed only by an authenticated settings save, shown on every page and every interface
   while in effect, and ending at a deadline the device enforces. "No telescope" stands in for
-  N.I.N.A. only: it can't be set while a N.I.N.A. address is, nor with the park switches only,
+  N.I.N.A. only: it never sits beside a N.I.N.A. address (the save that turns it on removes the
+  address, and an address can't be saved while it is on), it can't be set with the park switches only,
   fitted park switches still count, and every close path uses the same park result. The persistent
   banner and the status satisfy "visible"; the alert announcing a bypass is an ordinary alert that
   the owner's pause and master switch hold back.
@@ -285,6 +309,11 @@ Doubt about the weather MUST resolve to "unsafe".
   alert. The alert path MUST NOT depend on the device that failed where another path exists.
 - The roof MUST NOT open by itself. Opening is always a person's or a client's command, and it is
   refused while the verdict is unsafe.
+- **A person's stop.** A person's Stop during the automatic close stands it down, so the close
+  never fights someone at the roof; it raises a critical alert. The stand-down ends, and the close
+  is armed again, when the roof reads closed, when the weather has been safe for the re-arm spell,
+  when a person at the roof releases it while nothing wants the roof closed, or at once when an
+  Open (a person's or a client's) starts the roof moving. Ending it never moves the roof.
 - Alerts, MQTT and the web UI report the verdict. They MUST never be able to change it, or the
   motion decisions taken from it.
 - Every unsafe reason, fault and refusal MUST state the measured value and the limit, or the
@@ -477,4 +506,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 5.0.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24
+**Version**: 5.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24

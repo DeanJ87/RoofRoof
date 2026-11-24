@@ -101,6 +101,17 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: Does this spec add the roof's state or alerts to `/api/status`, MQTT state topics or the
   dashboard? → A: No: specs 008 and 009.
 
+### Session 2026-11-24 (owner decision)
+
+- Q: Must the critical roof alerts be "wake me" on a test box too? → A: **Owner decision: no.** While
+  a test-box bypass (spec 022) is in effect, or set and waiting for the clock after a restart, both
+  critical alerts are sent at most at **urgent** (Pushover priority 1, no emergency repeats),
+  whatever level is set. They stay critical otherwise: past the pause, the send mode, the grace and
+  the master switch, to every channel that is on, resent until a channel takes one. On a real
+  install, or once the bypasses expire, the level set (default wake me) applies unchanged
+  (`Core::finishCriticalAlert`'s `testBox`, `TestBox::quietsCriticals`; `test/test_test_box_quiet`).
+  Settings → Alerts says so under the Roof safety group.
+
 ## Constitution rules this spec relies on
 
 | Principle | Rule | Where it is decided |
@@ -406,6 +417,9 @@ Each was an open choice; the safest option the constitution allows was taken.
 14. **The settings rows reuse the existing event row and card** (no new components or styles,
     constitution VII); the owner's review of the page is a bench check, as the dashboard and Roof
     settings tab are spec 009's.
+15. **Owner decision (2026-11-24): urgent at most on a test box.** See the clarification of that
+    date: the level set is capped at urgent while a test-box bypass is in effect or set and waiting
+    for the clock.
 
 ## Out of scope
 
