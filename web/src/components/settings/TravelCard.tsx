@@ -27,6 +27,7 @@ const TravelCard: FunctionalComponent<RoofProps> = (props) => {
       <div class="form-grid">
         {roofNum(props, 'travelMm', t('settings.roof.travel'), { unit: 'mm', integer: true, hint: t('settings.roof.travelHint') })}
         {roofNum(props, 'speedMmPerSecond', t('settings.roof.speed'), { unit: 'mm/s', hint: t('settings.roof.speedHint') })}
+        {roofNum(props, 'slowSpeedMmPerSecond', t('settings.roof.slowSpeed'), { unit: 'mm/s', hint: t('settings.roof.slowSpeedHint') })}
         {roofNum(props, 'timeoutMarginSeconds', t('settings.roof.timeoutMargin'), {
           unit: 's',
           integer: true,

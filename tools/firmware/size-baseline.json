@@ -1,3 +1,4 @@
 {
-  "esp32dev": 1697488
+  "esp32dev": 1698656,
+  "overBudgetReason": "fix (spec 016): measured slow speed in the motion model and proposal, calibration limit hints"
 }

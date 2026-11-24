@@ -28,6 +28,8 @@
     "ntp.syncIntervalMs",
     "roof.travelMm",
     "roof.speedMmPerSecond",
+    "roof.slowSpeedMmPerSecond",
+    "roof.slowSpeedDutyPercent",
     "roof.timeoutMarginSeconds",
     "roof.leaveMagnetSeconds",
     "roof.calibrationLimitSeconds",

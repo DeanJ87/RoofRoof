@@ -11,6 +11,8 @@ const defaults = {
   rampDownMs: 3000,
   topDutyPercent: 100,
   slowDutyPercent: 40,
+  slowSpeedMmPerSecond: 0,
+  slowSpeedDutyPercent: 0,
 };
 
 describe('moveLimits', () => {
@@ -21,6 +23,11 @@ describe('moveLimits', () => {
   it('grows with the travel and shrinks with the speed', () => {
     expect(moveLimits({ ...defaults, speedMmPerSecond: 19 }).fullSeconds).toBeGreaterThan(100);
     expect(expectedMoveMs({ ...defaults, travelMm: 100 })).toBeLessThan(expectedMoveMs(defaults));
+  });
+  it('uses a measured slow speed for a move from an unknown position, only at the duty it was measured at', () => {
+    const slow = { ...defaults, slowSpeedMmPerSecond: 10, slowSpeedDutyPercent: 40 };
+    expect(moveLimits(slow).unknownSeconds).toBeCloseTo(1850 / 10 + 15, 0);
+    expect(moveLimits({ ...slow, slowSpeedDutyPercent: 50 }).unknownSeconds).toBeCloseTo(moveLimits(defaults).unknownSeconds, 3);
   });
   it('is zero for settings the device would refuse', () => {
     expect(expectedMoveMs({ ...defaults, speedMmPerSecond: 0 })).toBe(0);

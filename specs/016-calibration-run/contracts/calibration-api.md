@@ -44,7 +44,7 @@ Open (readings only).
   "ending": { "reason": "done", "text": "Calibration finished" },
   "legs": [
     { "name": "slowOpen", "target": "open", "dutyPercent": 40, "drivenMs": 121650,
-      "level": "high", "speedMmPerSecond": 38.0, "ampsMean": null, "ampsPeak": null,
+      "level": "high", "speedMmPerSecond": 15.2, "ampsMean": null, "ampsPeak": null,
       "supplyMinVolts": 12.5 }
   ],
   "hall": {
@@ -57,7 +57,11 @@ Open (readings only).
   "proposal": {
     "travelMm": { "old": 1850, "new": 1850 },
     "speedMmPerSecond": { "old": 38.0, "new": 38.0 },
+    "slowSpeedMmPerSecond": { "old": 0, "new": 15.2 },
+    "slowSpeedDutyPercent": { "old": 0, "new": 40 },
     "timeoutMarginSeconds": { "old": 15, "new": 10 },
+    "moveLimitSeconds": { "old": 67, "new": 61 },
+    "slowLimitSeconds": { "old": 137, "new": 132 },
     "hallHighEnd": { "old": "open", "new": "open" },
     "hallHighCounts": { "old": 3000, "new": 3000 },
     "hallLowCounts": { "old": 1100, "new": 1100 },

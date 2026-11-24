@@ -81,7 +81,7 @@ struct Measurements { MeasuredLeg legs[4]; uint8_t legCount; Stats between, clos
                       Roof::HallLevel closedLevel, openLevel; uint32_t travelMm; bool currentSense;
                       float maxCurrentAmps; };
 struct Problem { const char *reason; std::string text; };   // reason "" = none
-struct Proposal { uint32_t travelMm; bool speed; float speedMmPerSecond; uint32_t timeoutMarginSeconds;
+struct Proposal { uint32_t travelMm; bool speed; float speedMmPerSecond; float slowSpeedMmPerSecond; uint32_t timeoutMarginSeconds;
                   Problem speedProblem; bool hall; Roof::End hallHighEnd; uint16_t hallHighCounts,
                   hallLowCounts; Problem hallProblem; std::vector<Problem> warnings; };
 Proposal propose(const Measurements &, const Roof::Settings &old);

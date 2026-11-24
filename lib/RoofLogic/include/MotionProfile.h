@@ -2,8 +2,10 @@
 
 // The speed profile of a move and the times that follow from it (research R2-R4):
 // a soft start from the slow duty to the top duty, slowing by estimated distance
-// near the end, and the slow duty once the estimate has arrived. Speed is taken
-// as proportional to the duty.
+// near the end, and the slow duty once the estimate has arrived. Speed is affine
+// in the duty between the slow duty's speed (roof.slowSpeedMmPerSecond, measured
+// by a calibration run, used only at the slow duty it was measured at) and the
+// full speed at 100 %; otherwise it is taken as proportional to the duty.
 
 #include <cstdint>
 
@@ -42,7 +44,7 @@ namespace SQM
         uint32_t moveTimeoutMs(const Settings &settings, float distanceMm);
 
         // The hard timeout for a move from an unknown position: the whole travel at
-        // the slow duty plus the margin.
+        // the slow duty's speed (measured, or scaled from the full speed) plus the margin.
         uint32_t unknownMoveTimeoutMs(const Settings &settings);
 
         // The most driving allowed toward each end since a magnet was last confirmed

@@ -12,10 +12,12 @@ export const whereFromState = (roof: RoofStatus | undefined): CalibrationWhere =
 /** Why Start can't be pressed now, or '' when it can: the first blocker (spec 026), then the confirmation. */
 export const startBlocked = (blocked: string, attended: boolean): string => blocked || (attended ? '' : t('calibrate.reason.notAttended'));
 
-export type ProposalKey = 'travelMm' | 'speedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
+export type ProposalKey =
+  'travelMm' | 'speedMmPerSecond' | 'slowSpeedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
 export const PROPOSAL_KEYS: ProposalKey[] = [
   'travelMm',
   'speedMmPerSecond',
+  'slowSpeedMmPerSecond',
   'timeoutMarginSeconds',
   'hallHighEnd',
   'hallHighCounts',
@@ -51,6 +53,7 @@ export const proposalRows = (proposal: CalibrationProposal, roof: RoofConfig): P
 const MEASURED_BIT: Record<ProposalKey, number> = {
   travelMm: 1,
   speedMmPerSecond: 2,
+  slowSpeedMmPerSecond: 2,
   timeoutMarginSeconds: 4,
   hallHighEnd: 8,
   hallHighCounts: 8,
@@ -68,6 +71,8 @@ export const acceptedRoof = (proposal: CalibrationProposal, roof: RoofConfig): R
     (next as unknown as Record<string, unknown>)[key] = pair.new;
     measured |= MEASURED_BIT[key];
   }
+  // The slow speed belongs to the slow duty it was measured at (it counts only while that is the slow duty).
+  if (proposal.slowSpeedDutyPercent) next.slowSpeedDutyPercent = proposal.slowSpeedDutyPercent.new;
   return roof.measured === undefined ? next : { ...next, measured };
 };
 

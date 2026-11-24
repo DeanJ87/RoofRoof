@@ -687,7 +687,7 @@ The last run since start-up. Open, like `/api/status`: readings and derived valu
   "ending": { "reason": "done", "text": "Calibration finished" },
   "legs": [
     { "name": "slowOpen", "target": "open", "dutyPercent": 40, "drivenMs": 112800, "level": "high",
-      "speedMmPerSecond": 41.0, "ampsMean": null, "ampsPeak": null, "supplyMinVolts": 12.3 }
+      "speedMmPerSecond": 16.4, "ampsMean": null, "ampsPeak": null, "supplyMinVolts": 12.3 }
   ],
   "hall": {
     "between": { "mean": 2050, "min": 2041, "max": 2060, "noise": 4.2 },
@@ -699,7 +699,11 @@ The last run since start-up. Open, like `/api/status`: readings and derived valu
   "proposal": {
     "travelMm": { "old": 1850, "new": 1850 },
     "speedMmPerSecond": { "old": 38, "new": 41 },
+    "slowSpeedMmPerSecond": { "old": 0, "new": 16.4 },
+    "slowSpeedDutyPercent": { "old": 0, "new": 40 },
     "timeoutMarginSeconds": { "old": 15, "new": 10 },
+    "moveLimitSeconds": { "old": 67, "new": 59 },
+    "slowLimitSeconds": { "old": 137, "new": 123 },
     "hallHighEnd": { "old": "open", "new": "open" },
     "hallHighCounts": { "old": 3000, "new": 3000 },
     "hallLowCounts": { "old": 1100, "new": 1100 },
@@ -715,9 +719,9 @@ The last run since start-up. Open, like `/api/status`: readings and derived valu
 | `state` | `idle` (no run since start-up), `running`, `done`, `failed` (a fault, a refused leg, blocked for 15 s) or `stopped` (a stop, the weather, the park, the automatic close) |
 | `leg` | While running: `index` of `count`, `name` (`toClosed`, `slowOpen`, `slowClose`, `topOpen`, `topClose`), `phase` (`settle` at an end, `wait` for a blocker, `confirm` for the person's answer, `drive`), `elapsedMs` and the leg's `limitMs` |
 | `ending` | `reason` (`done`, `stopped`, `weather`, `park`, `closeSequence`, `fault`, `refused`, `busy`, `wrongEnd`, `unconfirmed`) and its text |
-| `legs[]` | Each measured leg: time driven, duty, the level it ended on, the speed at 100 % duty it implies, and with current sense the mean and peak running current; the lowest supply |
+| `legs[]` | Each measured leg: time driven, duty, the level it ended on, its average speed (travel ÷ time), and with current sense the mean and peak running current; the lowest supply |
 | `hall` | The in-between reading (middle half of each leg) with its noise (standard deviation), and the reading at rest at each end |
-| `proposal` | Only when `done`: the value at the start (`old`) and the proposed one (`new`); `null` where withheld, with `speedProblem` (`legsDisagree`, `legTooShort`, `outOfRange`) or `hallProblem` (`samePole`, `weakEnd`, `noRoom`); `warnings[]` (`directionsDiffer`, `currentNearLimit`) |
+| `proposal` | Only when `done`: the value at the start (`old`) and the proposed one (`new`); `null` where withheld, with `speedProblem` (`legsDisagree`, `legTooShort`, `outOfRange`) or `hallProblem` (`samePole`, `weakEnd`, `noRoom`); `warnings[]` (`directionsDiffer`, `currentNearLimit`, `fullSpeedEstimated` without a top-duty pass, `slowLegsLong` when a slow leg used over 75 % of the limit). `slowSpeedMmPerSecond` is the slow legs' average speed; `moveLimitSeconds` and `slowLimitSeconds` aren't settings: the hard timeout of a full open or close, and of a move from an unknown position at the slow duty, with the saved and the proposed settings |
 
 The status document's `roof.calibrating` is `true` for the whole run, pauses included.
 
