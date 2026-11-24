@@ -85,7 +85,7 @@ Use short, cautious settings for the first runs. They are in **Settings → Roof
 | `roof.timeoutMarginSeconds` | 10 | 3 to 300 |
 | `roof.leaveMagnetSeconds` | 10 (default) | 2 to 120 |
 
-The hard timeout is the time the move should take plus the margin: about `travelMm / (speedMmPerSecond × duty)`, with the ramps counted, plus `roof.timeoutMarginSeconds`. From an unknown position the controller uses the whole travel at `roof.slowDutyPercent` (default 40, never above the top duty) instead, so with these numbers it is 200 / (20 × 0.4) = 25 s plus 10 s = 35 s. Saving settings while at an end can drop the position to unknown, as the estimate was made with the old values.
+The hard timeout is the time the move should take plus the margin: about `travelMm / (speedMmPerSecond × duty)`, with the ramps counted, plus `roof.timeoutMarginSeconds`. From an unknown position the controller uses the whole travel at `roof.slowDutyPercent` (default 40, never above the top duty) instead, so with these numbers it is 200 / (20 × 0.4) = 25 s plus 10 s = 35 s (with `roof.slowSpeedMmPerSecond` left at 0; a calibration run measures the real slow speed, and the travel at that speed is used instead). Saving settings while at an end can drop the position to unknown, as the estimate was made with the old values.
 
 ## Weather and park
 

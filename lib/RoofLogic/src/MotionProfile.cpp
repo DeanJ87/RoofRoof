@@ -20,11 +20,34 @@ namespace SQM
                 return static_cast<double>(settings.speedMmPerSecond) / 1000.0;
             }
 
+            // mm per ms at the slow duty: the measured slow speed (never above the
+            // full speed) while the slow duty is the one it was measured at, else
+            // the full speed scaled by the duty.
+            double slowSpeedMmPerMs(const Settings &settings)
+            {
+                const double full = fullSpeedMmPerMs(settings);
+                if (settings.slowSpeedMmPerSecond > 0.0f && settings.slowSpeedDutyPercent == settings.slowDutyPercent)
+                    return std::min(full, static_cast<double>(settings.slowSpeedMmPerSecond) / 1000.0);
+                return full * dutyFraction(settings.slowDutyPercent);
+            }
+
+            // mm per ms at duty `fraction`: affine between the slow duty's speed and
+            // the full speed at 100 % (proportional when no slow speed is measured);
+            // below the slow duty, proportional to the slow duty's speed.
+            double speedAt(const Settings &settings, double fraction)
+            {
+                const double slow = dutyFraction(settings.slowDutyPercent);
+                const double atSlow = slowSpeedMmPerMs(settings);
+                if (fraction <= slow || slow >= 1.0)
+                    return slow > 0.0 ? atSlow * std::min(fraction, slow) / slow : 0.0;
+                return atSlow + (fullSpeedMmPerMs(settings) - atSlow) * (fraction - slow) / (1.0 - slow);
+            }
+
             // The length of the slow-down zone: the distance covered at the top duty
             // during the ramp-down time.
             double slowZoneMm(const Settings &settings)
             {
-                return fullSpeedMmPerMs(settings) * dutyFraction(settings.topDutyPercent) * settings.rampDownMs;
+                return speedAt(settings, dutyFraction(settings.topDutyPercent)) * settings.rampDownMs;
             }
 
             uint32_t clampMs(double ms)
@@ -41,26 +64,26 @@ namespace SQM
             }
 
             // Time to cover `remainingMm` once the ramp-up is over: cruise at the top
-            // duty to the zone, then the zone, where the fraction falls linearly with
-            // the distance left (an exponential approach that ends at the slow duty).
+            // duty to the zone, then the zone, where the fraction (and with it the
+            // speed, affine in the fraction) falls linearly with the distance left:
+            // an exponential approach that ends at the slow duty's speed.
             double timeAfterRampUpMs(const Settings &settings, double remainingMm)
             {
-                const double speed = fullSpeedMmPerMs(settings);
-                const double top = dutyFraction(settings.topDutyPercent);
-                const double slow = dutyFraction(settings.slowDutyPercent);
+                const double atTop = speedAt(settings, dutyFraction(settings.topDutyPercent));
+                const double atSlow = slowSpeedMmPerMs(settings);
                 const double zone = slowZoneMm(settings);
                 double ms = 0.0;
                 if (remainingMm > zone)
                 {
-                    ms += (remainingMm - zone) / (speed * top);
+                    ms += (remainingMm - zone) / atTop;
                     remainingMm = zone;
                 }
                 if (remainingMm <= 0.0)
                     return ms;
-                if (top - slow < 1e-6)
-                    return ms + remainingMm / (speed * top);
-                const double startFraction = slow + (top - slow) * remainingMm / zone;
-                return ms + zone / (speed * (top - slow)) * std::log(startFraction / slow);
+                if (atTop - atSlow < 1e-9)
+                    return ms + remainingMm / atSlow;
+                const double startSpeed = atSlow + (atTop - atSlow) * remainingMm / zone;
+                return ms + zone / (atTop - atSlow) * std::log(startSpeed / atSlow);
             }
         } // namespace
 
@@ -116,20 +139,22 @@ namespace SQM
 
         float advanceMm(const Settings &settings, uint8_t duty, uint32_t elapsedMs)
         {
-            return static_cast<float>(fullSpeedMmPerMs(settings) * (duty / MAX_DUTY) * elapsedMs);
+            // The slow duty's 8-bit value is the slow duty (no rounding error times the affine slope).
+            const double fraction =
+                duty == toDuty(dutyFraction(settings.slowDutyPercent)) ? dutyFraction(settings.slowDutyPercent) : duty / MAX_DUTY;
+            return static_cast<float>(speedAt(settings, fraction) * elapsedMs);
         }
 
         uint32_t expectedMoveMs(const Settings &settings, float distanceMm)
         {
             if (!(distanceMm > 0.0f) || !validSettings(settings))
                 return 0;
-            const double speed = fullSpeedMmPerMs(settings);
             double coveredMm = 0.0;
             uint32_t elapsedMs = 0;
             while (elapsedMs < settings.rampUpMs && coveredMm < distanceMm)
             {
                 const float fraction = profileFraction(settings, elapsedMs, static_cast<float>(distanceMm - coveredMm));
-                coveredMm += speed * fraction * INTEGRATION_STEP_MS;
+                coveredMm += speedAt(settings, fraction) * INTEGRATION_STEP_MS;
                 elapsedMs += INTEGRATION_STEP_MS;
             }
             if (coveredMm >= distanceMm)
@@ -146,8 +171,7 @@ namespace SQM
         {
             if (!validSettings(settings))
                 return settings.timeoutMarginMs;
-            const double slowSpeed = fullSpeedMmPerMs(settings) * dutyFraction(settings.slowDutyPercent);
-            return plusMargin(clampMs(settings.travelMm / slowSpeed), settings.timeoutMarginMs);
+            return plusMargin(clampMs(settings.travelMm / slowSpeedMmPerMs(settings)), settings.timeoutMarginMs);
         }
 
         uint32_t driveBudgetMs(const Settings &settings)

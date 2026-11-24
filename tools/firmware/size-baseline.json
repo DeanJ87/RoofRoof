@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1694352,
-  "overBudgetReason": "spec 024: park source and switch watch, SQMeter secrets in the copy and the sync (+14.9 KB)"
+  "esp32dev": 1698656,
+  "overBudgetReason": "fix (spec 016): measured slow speed in the motion model and proposal, calibration limit hints"
 }

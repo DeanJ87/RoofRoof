@@ -87,6 +87,17 @@ supply).
 **Withheld** when the open and close legs of the chosen pair (or of the slow pair) differ by more
 than 30 %, or a measured leg took under 3 s: something slipped or a magnet was read early.
 
+**Revised 2026-11-24**: the margin alone didn't cover a heavy roof. The move from an unknown
+position was timed as the travel at the full speed × the slow duty, and on the owner's roof a slow
+travel took far longer than that, so every such move timed out. The slow legs' average speed is
+now proposed as `roof.slowSpeedMmPerSecond`, and the motion model takes speed as affine in the
+duty between it and the full speed (proportional while it is 0). A top-duty leg's full speed is
+solved from that model: travel = v_slow × T + (v_full − v_slow) / (1 − s) × ∫(f − s) dt, where s is
+the slow duty and f the applied fraction, so its time at the slow duty no longer drags the full
+speed down. The shortfall term compares each slow leg with the slow speed and each top leg with
+the full speed. Without a top-duty pass the full speed is still the slow speed scaled to 100 %,
+with a warning. Each leg's `speedMmPerSecond` in the document is now its average speed.
+
 ## R6. Hall statistics
 
 **Decision**: the in-between reading from the middle half (by driven time) of every measured leg,

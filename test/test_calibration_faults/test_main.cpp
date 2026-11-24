@@ -24,7 +24,37 @@ void test_a_missing_magnet_times_out_at_the_limit(void)
     TEST_ASSERT_EQUAL_FLOAT(static_cast<float>(LIMIT_MS), r.roof.status().fault.limit);
     TEST_ASSERT_TRUE(r.rep().state == RunState::Failed);
     TEST_ASSERT_TRUE(r.rep().endingText.find("slow open") != std::string::npos);
+    // Which limit to raise: the setting, and the slow duty for a slow leg.
+    TEST_ASSERT_TRUE(r.rep().endingText.find("roof.calibrationLimitSeconds (180 s): raise it, up to 600 s") != std::string::npos);
+    TEST_ASSERT_TRUE(r.rep().endingText.find("roof.slowDutyPercent (40 %)") != std::string::npos);
     TEST_ASSERT_FALSE(r.rep().proposed);
+}
+
+// A slow roof whose slow travel doesn't fit the limit: the first leg's timeout
+// names the setting; with the limit raised the run finishes, and a slow leg
+// near the limit is warned about, naming the slow duty.
+void test_a_slow_roof_names_the_limit_and_the_slow_duty(void)
+{
+    Rig r(1850.0f);
+    r.plant.speedMmPerSecond = 10.0f; // 4 mm/s at 40 %: 462 s a slow travel
+    TEST_ASSERT_TRUE(r.start(Where::Open).accepted);
+    TEST_ASSERT_TRUE(r.finish());
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::Timeout);
+    TEST_ASSERT_TRUE(r.rep().endingText.find("Fault on the first close") != std::string::npos);
+    TEST_ASSERT_TRUE(r.rep().endingText.find("roof.calibrationLimitSeconds (180 s)") != std::string::npos);
+
+    Rig slow(1850.0f);
+    slow.plant.speedMmPerSecond = 10.0f;
+    slow.limitMs = MAX_LIMIT_MS;
+    TEST_ASSERT_TRUE(slow.start(Where::Open).accepted);
+    TEST_ASSERT_TRUE(slow.finish(3000000));
+    TEST_ASSERT_TRUE(slow.rep().state == RunState::Done);
+    bool warned = false;
+    for (const Problem &w : slow.rep().proposal.warnings)
+        warned = warned || (w.reason == "slowLegsLong" && w.text.find("roof.slowDutyPercent (40 %)") != std::string::npos &&
+                            w.text.find("of the 600 s calibration limit") != std::string::npos);
+    TEST_ASSERT_TRUE(warned);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 4.0f, slow.rep().proposal.slowSpeedMmPerSecond);
 }
 
 void test_a_jam_with_current_sense_is_over_current(void)
@@ -76,6 +106,7 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_a_missing_magnet_times_out_at_the_limit);
+    RUN_TEST(test_a_slow_roof_names_the_limit_and_the_slow_duty);
     RUN_TEST(test_a_jam_with_current_sense_is_over_current);
     RUN_TEST(test_a_motor_wired_backwards_doesnt_leave);
     RUN_TEST(test_a_low_supply_mid_leg_faults);

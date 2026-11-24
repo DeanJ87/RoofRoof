@@ -88,29 +88,86 @@ namespace SQM
                 return Problem{};
             }
 
-            // The most a measured leg took longer than `speed` predicts for it.
-            double shortfallMs(const Measurements &m, double speed)
+            bool isTop(const MeasuredLeg &leg)
+            {
+                return leg.kind == LegKind::TopOpen || leg.kind == LegKind::TopClose;
+            }
+
+            // The speed a leg measured, compared with the proposal's: the slow legs'
+            // average speed, or the full speed a top-duty leg implies.
+            double impliedSpeed(const MeasuredLeg &leg, const Measurements &m, const Roof::Settings &old, float slow)
+            {
+                return isTop(leg) ? topLegFullSpeed(leg, m.travelMm, slow, old.slowDutyPercent) : legAverageSpeed(leg, m.travelMm);
+            }
+
+            // The most a measured leg took longer than the proposed speeds predict for it.
+            double shortfallMs(const Measurements &m, const Roof::Settings &old, float speed, float slow)
             {
                 double worst = 0.0;
                 for (uint8_t i = 0; i < m.legCount; ++i)
                 {
                     const MeasuredLeg &leg = m.legs[i];
-                    const double predicted = leg.drivenMs * legSpeed(leg, m.travelMm) / speed;
+                    const double reference = isTop(leg) ? speed : slow;
+                    const double predicted = leg.drivenMs * impliedSpeed(leg, m, old, slow) / reference;
                     worst = std::max(worst, leg.drivenMs - predicted);
                 }
                 return worst;
             }
 
-            uint32_t marginSeconds(const Measurements &m, const Roof::Settings &old, float speed)
+            uint32_t marginSeconds(const Measurements &m, const Roof::Settings &old, float speed, float slow)
             {
                 Roof::Settings s = old;
                 s.speedMmPerSecond = speed;
+                s.slowSpeedMmPerSecond = slow;
+                s.slowSpeedDutyPercent = old.slowDutyPercent;
                 s.travelMm = m.travelMm;
                 const double move = Roof::expectedMoveMs(s, static_cast<float>(m.travelMm));
                 double ms = std::max<double>(MIN_PROPOSED_MARGIN_MS, MARGIN_MOVE_FRACTION * move);
-                ms = std::max(ms, MARGIN_SHORTFALL_FACTOR * shortfallMs(m, speed) + MARGIN_SHORTFALL_EXTRA_MS);
+                ms = std::max(ms, MARGIN_SHORTFALL_FACTOR * shortfallMs(m, old, speed, slow) + MARGIN_SHORTFALL_EXTRA_MS);
                 const uint32_t seconds = static_cast<uint32_t>(std::ceil(ms / 1000.0));
                 return std::min(RoofConfig::MAX_TIMEOUT_MARGIN_SECONDS, std::max(RoofConfig::MIN_TIMEOUT_MARGIN_SECONDS, seconds));
+            }
+
+            double rounded(double value)
+            {
+                return std::round(value * 10.0) / 10.0;
+            }
+
+            Problem outOfRange(const char *what, double speed)
+            {
+                return Problem{
+                    "outOfRange",
+                    format(
+                        "The measured %s %.1f mm/s is outside %.0f-%.0f mm/s",
+                        what,
+                        speed,
+                        RoofConfig::MIN_SPEED_MM_PER_SECOND,
+                        RoofConfig::MAX_SPEED_MM_PER_SECOND)};
+            }
+
+            bool inSpeedRange(double speed)
+            {
+                return speed >= RoofConfig::MIN_SPEED_MM_PER_SECOND && speed <= RoofConfig::MAX_SPEED_MM_PER_SECOND;
+            }
+
+            // The full speed: from the top-duty legs (affine from the slow speed),
+            // else extrapolated from the slow speed in proportion to the duty, with a warning.
+            double fullSpeed(const Measurements &m, const Roof::Settings &old, float slow, std::vector<Problem> &warnings)
+            {
+                const MeasuredLeg *top[2] = {nullptr, nullptr};
+                const uint8_t n = pairOf(m, true, top);
+                double sum = 0.0;
+                for (uint8_t i = 0; i < n; ++i)
+                    sum += topLegFullSpeed(*top[i], m.travelMm, slow, old.slowDutyPercent);
+                if (n > 0)
+                    return rounded(sum / n);
+                warnings.push_back(Problem{
+                    "fullSpeedEstimated",
+                    format(
+                        "No top-duty pass: the full speed is the slow speed scaled from %u %% to 100 %%, which a heavy roof doesn't "
+                        "reach; run the top-duty pass to measure it",
+                        static_cast<unsigned>(old.slowDutyPercent))});
+                return rounded(slow * 100.0 / std::max<uint8_t>(old.slowDutyPercent, 1));
             }
 
             void proposeSpeed(const Measurements &m, const Roof::Settings &old, Proposal &p)
@@ -118,10 +175,8 @@ namespace SQM
                 p.speedProblem = checkLegs(m, p.warnings);
                 if (!p.speedProblem.reason.empty())
                     return;
-                const MeasuredLeg *chosen[2] = {nullptr, nullptr};
-                uint8_t n = pairOf(m, true, chosen);
-                if (n == 0)
-                    n = pairOf(m, false, chosen);
+                const MeasuredLeg *slowLegs[2] = {nullptr, nullptr};
+                const uint8_t n = pairOf(m, false, slowLegs);
                 if (n == 0)
                 {
                     p.speedProblem = Problem{"legTooShort", "No full travel was measured"};
@@ -129,22 +184,25 @@ namespace SQM
                 }
                 double sum = 0.0;
                 for (uint8_t i = 0; i < n; ++i)
-                    sum += legSpeed(*chosen[i], m.travelMm);
-                const float speed = static_cast<float>(std::round(sum / n * 10.0) / 10.0);
-                if (speed < RoofConfig::MIN_SPEED_MM_PER_SECOND || speed > RoofConfig::MAX_SPEED_MM_PER_SECOND)
+                    sum += legAverageSpeed(*slowLegs[i], m.travelMm);
+                const float slow = static_cast<float>(rounded(sum / n));
+                if (!inSpeedRange(slow))
                 {
-                    p.speedProblem = Problem{
-                        "outOfRange",
-                        format(
-                            "The measured speed %.1f mm/s is outside %.0f-%.0f mm/s",
-                            speed,
-                            RoofConfig::MIN_SPEED_MM_PER_SECOND,
-                            RoofConfig::MAX_SPEED_MM_PER_SECOND)};
+                    p.speedProblem = outOfRange("slow speed", slow);
                     return;
                 }
+                std::vector<Problem> notes;
+                const float speed = static_cast<float>(std::max<double>(slow, fullSpeed(m, old, slow, notes)));
+                if (!inSpeedRange(speed))
+                {
+                    p.speedProblem = outOfRange("speed", speed);
+                    return;
+                }
+                p.warnings.insert(p.warnings.end(), notes.begin(), notes.end());
                 p.speed = true;
                 p.speedMmPerSecond = speed;
-                p.timeoutMarginSeconds = marginSeconds(m, old, speed);
+                p.slowSpeedMmPerSecond = slow;
+                p.timeoutMarginSeconds = marginSeconds(m, old, speed, slow);
             }
 
             struct Window
@@ -298,6 +356,26 @@ namespace SQM
             if (!(leg.dutyMs > 0.0f))
                 return 0.0f;
             return static_cast<float>(travelMm / (leg.dutyMs / 1000.0));
+        }
+
+        float legAverageSpeed(const MeasuredLeg &leg, uint32_t travelMm)
+        {
+            return leg.drivenMs > 0 ? static_cast<float>(travelMm * 1000.0 / leg.drivenMs) : 0.0f;
+        }
+
+        // travel = slow x T + (full - slow) / (1 - s) x A, where A is the time
+        // integral of the duty above the slow duty s: solved for full.
+        float topLegFullSpeed(const MeasuredLeg &leg, uint32_t travelMm, float slowSpeed, uint8_t slowDutyPercent)
+        {
+            const double s = std::min<uint8_t>(slowDutyPercent, 100) / 100.0;
+            const double driven = leg.drivenMs;
+            const double above = leg.dutyMs - s * driven; // ms at full duty above the slow duty
+            const double slowMmPerMs = slowSpeed / 1000.0;
+            const double rest = travelMm - slowMmPerMs * driven;
+            if (!(slowSpeed > 0.0f) || s >= 1.0 || !(above > 1.0) || !(rest > 0.0))
+                return legSpeed(leg, travelMm);
+            const double full = slowMmPerMs + rest * (1.0 - s) / above;
+            return static_cast<float>(full * 1000.0);
         }
 
         Proposal propose(const Measurements &measured, const Roof::Settings &old)
