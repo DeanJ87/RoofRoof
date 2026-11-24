@@ -45,7 +45,8 @@ namespace SQM
             lastStepMs = readings.nowMs;
             last = readings;
             current.hallCounts = readings.hallCounts;
-            current.hall = hall.update(readings.hallCounts, HallThresholds{config.hallHighCounts, config.hallLowCounts});
+            noteHall(readings.hallCounts);
+            current.hall = hall.update(readings.hallCounts, HallThresholds{config.hallHighCounts, config.hallLowCounts}, readings.nowMs);
             updateDeadTime(readings.nowMs);
             if (current.hall == HallLevel::High || current.hall == HallLevel::Low)
                 driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0;
@@ -209,9 +210,22 @@ namespace SQM
             if (current.fault.kind != FaultKind::None)
                 return; // the first fault is the one to report
             current.fault = fault;
+            faultTrail = recentHall;
             if (current.fault.kind == FaultKind::None)
                 current.fault.kind = FaultKind::External;
             ++faultsLatched;
+        }
+
+        void Controller::noteHall(uint16_t counts)
+        {
+            HallTrail &t = recentHall;
+            if (t.count == HALL_TRAIL_READINGS)
+            {
+                for (uint8_t i = 1; i < HALL_TRAIL_READINGS; ++i)
+                    t.counts[i - 1] = t.counts[i];
+                --t.count;
+            }
+            t.counts[t.count++] = counts;
         }
 
         void Controller::raiseFault(const Fault &fault)

@@ -239,6 +239,23 @@ namespace SQM
         }
     }
 
+    // The raw Hall readings up to the fault, oldest first: a burst of noise
+    // shows as one or two odd values among steady ones.
+    void RoofControl::logFaultHall()
+    {
+        Roof::HallTrail trail;
+        {
+            RoofLocked held(lock);
+            trail = controller.faultHall();
+        }
+        char text[8 * Roof::HALL_TRAIL_READINGS + 1] = "";
+        size_t used = 0;
+        for (uint8_t i = 0; i < trail.count && used < sizeof(text); ++i)
+            used += static_cast<size_t>(snprintf(text + used, sizeof(text) - used, " %u", static_cast<unsigned>(trail.counts[i])));
+        if (trail.count > 0)
+            Logger::warn(TAG, "Hall readings before the fault:%s", text);
+    }
+
     void RoofControl::logChanges()
     {
         std::string text;
@@ -250,7 +267,10 @@ namespace SQM
             Logger::warn(TAG, "%s", text.c_str());
         RoofIo::Snapshot now = snapshot();
         if (now.status.fault.kind != loggedFault && now.status.fault.kind != Roof::FaultKind::None)
+        {
             Logger::error(TAG, "Fault: %s", RoofIo::describeFault(now.fault).c_str());
+            logFaultHall();
+        }
         if (now.status.state != loggedState)
             Logger::info(TAG, "State %s -> %s", Roof::stateName(loggedState), Roof::stateName(now.status.state));
         loggedFault = now.status.fault.kind;

@@ -138,7 +138,7 @@ void test_fault_wrong_magnet_the_start_magnet_again(void)
 {
     Bench b;
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
-    b.steps(5000 / 20);
+    b.steps(7000 / 20); // back at the start magnet after the leave time
     TEST_ASSERT_TRUE(b.state() == State::Opening);
     b.sim.reversedWiring = true; // the roof starts coming back
     const Status fault = runToFault(b, 60000);
@@ -194,9 +194,11 @@ void test_a_rail_relatches_after_clear_while_it_lasts(void)
     b.step();
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::HallRail);
     b.sim.railCounts = -1;
-    b.steps(8); // the rail readings leave the window of the last eight
+    // The rail readings leave the window of the last eight, and a level
+    // then holds for the Hall persistence: until then it is still a rail.
+    b.steps(20);
     TEST_ASSERT_TRUE(b.roof.clearFault(Origin::Person).accepted);
-    b.steps(3);
+    b.step();
     TEST_ASSERT_TRUE(b.state() == State::Closed);
 }
 
@@ -232,6 +234,7 @@ void test_two_rail_readings_in_eight_are_a_glitch(void)
         b.sim.railCounts = counts;
         b.step();
     }
+    b.steps(8); // the rest of the Hall persistence
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
     TEST_ASSERT_TRUE(b.state() == State::Closed);
 }
@@ -456,7 +459,7 @@ void test_a_restored_fault_latches_before_the_first_step(void)
     Readings readings;
     readings.hallCounts = 700; // at the closed magnet
     readings.supplyVolts = 12.6f;
-    for (uint32_t i = 1; i <= 10; ++i)
+    for (uint32_t i = 1; i <= 12; ++i)
     {
         readings.nowMs = i * 20;
         TEST_ASSERT_TRUE(isOff(roof.tick(readings)));

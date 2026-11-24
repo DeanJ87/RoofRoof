@@ -34,7 +34,7 @@ namespace SQM
                     return;
                 startDriving(readings.nowMs);
             }
-            if (move.calibration ? checkLegMagnets() : checkMagnets())
+            if (move.calibration ? checkLegMagnets() : checkMagnets(readings.nowMs))
                 return;
             if (checkTimes(readings.nowMs) || checkElectrical(readings))
                 return;
@@ -82,7 +82,7 @@ namespace SQM
         }
 
         // True when the move ended: at its magnet, or on a wrong one (a fault).
-        bool Controller::checkMagnets()
+        bool Controller::checkMagnets(uint32_t nowMs)
         {
             End at = End::Closed;
             if (!magnetEnd(at))
@@ -100,6 +100,15 @@ namespace SQM
             // start magnet again after leaving it, means the roof runs backwards.
             if (move.startedAtMagnet && !move.leftStart)
                 return false;
+            // Back on the start magnet within the leave time: it hasn't really
+            // left (noise as it crossed the threshold). The leave check runs on
+            // from the drive's start, so a roof that stays faults didNotLeave at
+            // the leave time; after it, the start magnet again is a wrong magnet.
+            if (move.startedAtMagnet && current.hall == move.startLevel && nowMs - move.driveStartMs < config.leaveMagnetMs)
+            {
+                move.leftStart = false;
+                return false;
+            }
             latch(Fault{FaultKind::WrongMagnet, static_cast<float>(at), static_cast<float>(move.target)});
             return true;
         }
