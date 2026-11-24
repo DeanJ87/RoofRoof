@@ -1023,7 +1023,7 @@
   "settings.alerts.test": "Test",
   "settings.alerts.testBoxMessage": "Checks bypassed for a test box: {reason}. Faults still stop the roof.",
   "settings.alerts.testBoxOn": "A test box bypass starts",
-  "settings.alerts.testBoxOnHint": "Also after every restart while one is in effect. Sent even with alerts off or paused; it can't be off.",
+  "settings.alerts.testBoxOnHint": "Once, as a bypass comes into effect; not again on a restart. Held while alerts are off or paused.",
   "settings.alerts.testBoxTitle": "Test box mode on",
   "settings.alerts.testFailed": "Test failed",
   "settings.alerts.testsUseTheSavedSettings": "Tests use the saved settings and work while alerts are off. Sent alerts appear under the bell in the header.",

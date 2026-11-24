@@ -1,6 +1,15 @@
 <!--
 Sync Impact Report
-- Version: 4.1.1 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
+- Version: 5.0.0 -> 5.0.1 (PATCH: clarification). Principle II's test-box exception now says what
+  "visible" rests on: the banner on every page and the status on every interface (API, MQTT, Home
+  Assistant, the Alpaca description). The alert sent when a bypass comes into effect is an ordinary
+  alert: the pause, the send mode and the master switch hold it, and a restart alone doesn't
+  repeat it. This replaces the 3.0.0 note's "after every restart" mitigation; no rule changes.
+- Why: an owner who paused alerts while flashing firmware still got the test-box alert after each
+  restart.
+- Templates: no change. Docs: docs/user-guide/test-box.md, docs/user-guide/alerts.md,
+  specs/022-test-box-bypass/spec.md.
+- Earlier: 4.1.1 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
   make the fitted park switches the only park source).
 - Modified: II. Close Only Onto a Parked Mount. The park source is an owner setting
   (`park.source`): N.I.N.A. only, park switches only, or N.I.N.A. and park switches. Settings from
@@ -247,7 +256,9 @@ Closing onto an unparked telescope is the most expensive failure this device can
   default, changed only by an authenticated settings save, shown on every page and every interface
   while in effect, and ending at a deadline the device enforces. "No telescope" stands in for
   N.I.N.A. only: it can't be set while a N.I.N.A. address is, nor with the park switches only,
-  fitted park switches still count, and every close path uses the same park result.
+  fitted park switches still count, and every close path uses the same park result. The persistent
+  banner and the status satisfy "visible"; the alert announcing a bypass is an ordinary alert that
+  the owner's pause and master switch hold back.
 
 ### III. Unsafe Ends Closed (Fail-Safe Safety Inputs)
 
@@ -466,4 +477,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 5.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
+**Version**: 5.0.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24

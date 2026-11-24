@@ -206,6 +206,7 @@ namespace SQM
         // boot. Level 1 (quiet) to 4: never off (MIN_TEST_BOX_LEVEL).
         EventSetting testBox;
         static constexpr uint8_t MIN_TEST_BOX_LEVEL = 1;
+        static constexpr uint8_t MAX_TEST_BOX_LEVEL = 3; // never wake me (a Pushover emergency)
 
         // When alerts are sent: any time (unless paused), or only while an
         // imaging app has an Alpaca device connected.
@@ -287,9 +288,8 @@ namespace SQM
         // from a bench measurement, the ADC can't resolve the lowest currents).
         float minRunningAmps = 0.0f;
         float minSupplyVolts = 11.0f;
-        // Spec 016: the longest a calibration leg may drive (its hard timeout).
-        uint32_t calibrationLimitSeconds = 180;
-        uint8_t measured = 0; // spec 026: Measured:: bits (RoofMeasured.h)
+        uint32_t calibrationLimitSeconds = 180; // spec 016: the longest a calibration leg may drive
+        uint8_t measured = 0;                   // spec 026: Measured:: bits (RoofMeasured.h)
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;
