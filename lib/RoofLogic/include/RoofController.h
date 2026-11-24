@@ -111,6 +111,7 @@ namespace SQM
                 bool fromUnknown = false;     // slow, to the first magnet
                 bool startedAtMagnet = false; // the drive began on the other end's magnet
                 bool leftStart = false;       // and has since left it
+                uint32_t leftStartMs = 0;     // the step it was last seen leaving it
                 uint32_t driveStartMs = 0;
                 uint32_t timeoutMs = 0;
                 // Spec 016: a calibration leg, and what it has applied so far.

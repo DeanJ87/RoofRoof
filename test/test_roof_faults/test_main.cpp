@@ -138,11 +138,20 @@ void test_fault_wrong_magnet_the_start_magnet_again(void)
 {
     Bench b;
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
-    b.steps(7000 / 20); // back at the start magnet after the leave time
+    b.steps(5000 / 20); // back at the start magnet within the leave time
     TEST_ASSERT_TRUE(b.state() == State::Opening);
     b.sim.reversedWiring = true; // the roof starts coming back
-    const Status fault = runToFault(b, 60000);
+    uint32_t inZoneMs = 0;
+    while (b.roof.status().fault.kind == FaultKind::None && inZoneMs < 2000)
+    {
+        b.step();
+        if (b.sim.atClosedMagnet())
+            inZoneMs += b.stepMs;
+    }
+    const Status fault = b.roof.status();
     TEST_ASSERT_TRUE(fault.fault.kind == FaultKind::WrongMagnet);
+    TEST_ASSERT_TRUE(inZoneMs <= HALL_PERSIST_MS + 3 * b.stepMs); // within the Hall persistence of reaching it
+    TEST_ASSERT_TRUE(isOff(b.roof.output()));
     TEST_ASSERT_EQUAL_FLOAT(static_cast<float>(End::Closed), fault.fault.measured);
 }
 

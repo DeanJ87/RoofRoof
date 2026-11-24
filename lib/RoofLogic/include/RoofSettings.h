@@ -26,6 +26,10 @@ namespace SQM
         // of 38 mm/s (the profile reaches an end at the slow duty).
         constexpr uint32_t HALL_PERSIST_MS = 200;
         constexpr uint8_t HALL_CONFIRM_READINGS = 3;
+        // Back on the start magnet this soon after leaving it (and within the
+        // leave time) counts as not yet left: noise as the reading crossed the
+        // threshold. Longer away, it is a wrong magnet: the roof came back.
+        constexpr uint32_t HALL_REENTRY_GRACE_MS = 1000;
         // The raw readings kept for the log of a fault (oldest first).
         constexpr uint8_t HALL_TRAIL_READINGS = 8;
         // A confirmed magnet is left only this far past its threshold, so a roof

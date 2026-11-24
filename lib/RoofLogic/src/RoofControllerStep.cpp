@@ -87,8 +87,11 @@ namespace SQM
             End at = End::Closed;
             if (!magnetEnd(at))
             {
-                if (current.hall == HallLevel::Between)
+                if (current.hall == HallLevel::Between && !move.leftStart)
+                {
                     move.leftStart = true;
+                    move.leftStartMs = nowMs;
+                }
                 return false;
             }
             if (at == move.target)
@@ -100,11 +103,14 @@ namespace SQM
             // start magnet again after leaving it, means the roof runs backwards.
             if (move.startedAtMagnet && !move.leftStart)
                 return false;
-            // Back on the start magnet within the leave time: it hasn't really
-            // left (noise as it crossed the threshold). The leave check runs on
-            // from the drive's start, so a roof that stays faults didNotLeave at
-            // the leave time; after it, the start magnet again is a wrong magnet.
-            if (move.startedAtMagnet && current.hall == move.startLevel && nowMs - move.driveStartMs < config.leaveMagnetMs)
+            // Back on the start magnet within HALL_REENTRY_GRACE_MS of leaving it
+            // and within the leave time: it hasn't really left (noise as it
+            // crossed the threshold). The leave check runs on from the drive's
+            // start, so a roof that stays faults didNotLeave at the leave time.
+            // Away longer, or after the leave time, the start magnet again is a
+            // wrong magnet: the roof came back (constitution I).
+            if (move.startedAtMagnet && current.hall == move.startLevel && nowMs - move.leftStartMs < HALL_REENTRY_GRACE_MS &&
+                nowMs - move.driveStartMs < config.leaveMagnetMs)
             {
                 move.leftStart = false;
                 return false;

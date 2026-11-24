@@ -92,14 +92,19 @@ void test_mid_travel_bursts_are_not_a_wrong_magnet(void)
     Rig rig;
     rig.restOpen();
     TEST_ASSERT_TRUE(rig.roof.command(Command::Close, Origin::Person).accepted);
-    rig.hold(BETWEEN, 2000);
-    // Bursts of 1 to 8 steps (20-160 ms) to 1350, the open magnet's reading.
-    for (int length = 1; length <= 8; ++length)
+    rig.hold(BETWEEN, 11000); // past the leave time: no start-magnet allowance
+    // Repeated bursts of 1 to 5 steps (20-100 ms, up to half the time) to 1350,
+    // the open magnet's reading.
+    for (int length = 1; length <= 5; ++length)
     {
         for (int i = 0; i < 40; ++i)
             rig.step(withBursts(i, BETWEEN, 1350, 10, length));
         TEST_ASSERT_FALSE(rig.faulted());
     }
+    // A single burst of 9 steps (180 ms): the median holds it for 7, under the persistence.
+    for (int i = 0; i < 40; ++i)
+        rig.step(withBursts(i, BETWEEN, 1350, 40, 9));
+    TEST_ASSERT_FALSE(rig.faulted());
     // Isolated spikes up to the closed magnet's level don't arrive early either.
     for (int i = 0; i < 60; ++i)
         rig.step(withBursts(i, BETWEEN, CLOSED_MAGNET, 12, 4));
@@ -134,7 +139,7 @@ void test_back_on_the_start_magnet_within_the_leave_time(void)
     Rig rig;
     rig.restOpen();
     TEST_ASSERT_TRUE(rig.roof.command(Command::Close, Origin::Person).accepted);
-    rig.hold(BETWEEN, 1000);
+    rig.hold(BETWEEN, 500); // left, then back within the re-entry grace
     rig.hold(OPEN_MAGNET, 1000);
     TEST_ASSERT_FALSE(rig.faulted());
     uint32_t ms = 0;
@@ -145,6 +150,24 @@ void test_back_on_the_start_magnet_within_the_leave_time(void)
     }
     TEST_ASSERT_TRUE(rig.roof.status().fault.kind == FaultKind::DidNotLeave);
     TEST_ASSERT_EQUAL_FLOAT(static_cast<float>(fieldSettings().leaveMagnetMs), rig.roof.status().fault.limit);
+}
+
+// Back on the start magnet longer than the re-entry grace after leaving it,
+// though within the leave time: the roof came back, a wrong magnet.
+void test_back_on_the_start_magnet_after_the_grace(void)
+{
+    Rig rig;
+    rig.restOpen();
+    TEST_ASSERT_TRUE(rig.roof.command(Command::Close, Origin::Person).accepted);
+    rig.hold(BETWEEN, 3000);
+    uint32_t ms = 0;
+    while (!rig.faulted() && ms < 2000)
+    {
+        rig.step(OPEN_MAGNET);
+        ms += STEP_MS;
+    }
+    TEST_ASSERT_TRUE(rig.roof.status().fault.kind == FaultKind::WrongMagnet);
+    TEST_ASSERT_TRUE(ms <= HALL_PERSIST_MS + 3 * STEP_MS);
 }
 
 // Back on the start magnet after the leave time: the roof runs backwards.
@@ -201,6 +224,7 @@ int main(int, char **)
     RUN_TEST(test_mid_travel_bursts_are_not_a_wrong_magnet);
     RUN_TEST(test_a_held_wrong_magnet_faults_within_the_bound);
     RUN_TEST(test_back_on_the_start_magnet_within_the_leave_time);
+    RUN_TEST(test_back_on_the_start_magnet_after_the_grace);
     RUN_TEST(test_back_on_the_start_magnet_after_the_leave_time);
     RUN_TEST(test_arrival_within_the_bound);
     RUN_TEST(test_the_readings_before_a_fault_are_kept);
