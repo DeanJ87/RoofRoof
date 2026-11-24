@@ -47,7 +47,15 @@ const Num: FunctionalComponent<NumProps & Pick<SettingsTabProps, 'update' | 'err
   error,
 }) => (
   <Field label={label} hint={hint} error={error(at.join('.'))}>
-    <NumberInput dataField={at.join('.')} value={value} min={0} unit={unit} integer={integer} onChange={(v) => update(at, v)} />
+    <NumberInput
+      dataField={at.join('.')}
+      value={value}
+      min={0}
+      unit={unit}
+      integer={integer}
+      single={!integer}
+      onChange={(v) => update(at, v)}
+    />
   </Field>
 );
 

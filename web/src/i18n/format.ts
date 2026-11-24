@@ -32,9 +32,16 @@ export const formatIlluminance = (lux: number | undefined | null) => {
   return Math.abs(lux) >= 100 ? formatCount(Math.round(lux)) : formatSignificant(lux, 3);
 };
 
-/** A number as typed into an input: the language's decimal separator, no grouping, no rounding. */
-export const formatInputNumber = (value: number) =>
-  Number.isFinite(value) ? value.toLocaleString(formatLocale(), { maximumFractionDigits: 10, useGrouping: false }) : '';
+/**
+ * A number as typed into an input: the language's decimal separator, no grouping, no rounding. `single`
+ * (spec 026): the device keeps it as a 32-bit float, so 38.8 reads back as 38.79999924: shown to the 7
+ * significant digits a float holds, as it was typed.
+ */
+export const formatInputNumber = (value: number, single = false) => {
+  if (!Number.isFinite(value)) return '';
+  const shown = single && !Number.isInteger(value) ? Number(value.toPrecision(7)) : value;
+  return shown.toLocaleString(formatLocale(), { maximumFractionDigits: 10, useGrouping: false });
+};
 
 /** Bytes as "512 B", "12.50 KB", "1.25 MB". */
 export const formatBytes = (bytes: number | undefined | null) => {

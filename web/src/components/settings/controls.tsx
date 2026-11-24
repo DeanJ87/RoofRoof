@@ -225,7 +225,9 @@ export const NumberInput: FunctionalComponent<{
   // Notes elsewhere on the page about this value (the device's pin issues), and whether one is an error.
   describedBy?: string;
   invalid?: boolean;
-}> = ({ value, onChange, min, disabled, error, dataField, integer, ariaLabel, unit, describedBy, invalid }) => {
+  // Spec 026: the device keeps it as a 32-bit float (38.8 reads back as 38.79999924): shown as typed.
+  single?: boolean;
+}> = ({ value, onChange, min, disabled, error, dataField, integer, ariaLabel, unit, describedBy, invalid, single }) => {
   const [draft, setDraft] = useState<string | null>(null);
   const [problem, setProblem] = useState<NumberProblem | null>(null);
   const problemId = useId();
@@ -253,7 +255,7 @@ export const NumberInput: FunctionalComponent<{
       data-field={dataField}
       {...aria}
       class={inputClass(shownError || (invalid ? 'invalid' : undefined))}
-      value={draft ?? formatInputNumber(value)}
+      value={draft ?? formatInputNumber(value, single)}
       disabled={disabled}
       onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
       onChange={(e) => commit((e.target as HTMLInputElement).value)}
