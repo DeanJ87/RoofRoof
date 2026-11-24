@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptedRoof, calibrationChecks, proposalRows, settingsChangedSince, startBlocked, whereFromState } from '../calibrationView';
+import { acceptedRoof, proposalRows, settingsChangedSince, startBlocked, whereFromState } from '../calibrationView';
 import { mockCalibration, mockConfig, mockStatus } from '../../mocks/data';
 import type { RoofStatus } from '../../types';
 
@@ -7,90 +7,11 @@ import type { RoofStatus } from '../../types';
 
 const roof = (change: Partial<RoofStatus> = {}): RoofStatus => ({ ...structuredClone(mockStatus.roof!), ...change });
 
-describe('calibrationChecks', () => {
-  it('passes on a healthy roof at rest', () => {
-    const checks = calibrationChecks(roof({ weather: 'safe', parkConfirmed: true, fault: null, closePhase: 'idle', supplyLow: false }));
-    expect(checks.every((check) => check.ok)).toBe(true);
-  });
-
-  it.each([
-    ['weather', { weather: 'unsafe', weatherText: 'unsafe: rain' }],
-    ['park', { parkConfirmed: false }],
-    ['sequence', { closePhase: 'waitPark' }],
-    ['still', { state: 'opening' }],
-    ['still', { closePending: true }],
-    ['supply', { supplyLow: true }],
-  ] as [string, Partial<RoofStatus>][])('fails %s', (id, change) => {
-    const base = roof({ weather: 'safe', parkConfirmed: true, fault: null, closePhase: 'idle', supplyLow: false });
-    const failed = calibrationChecks({ ...base, ...change }).filter((check) => !check.ok);
-    expect(failed.map((check) => check.id)).toEqual([id]);
-  });
-
-  it('fails the weather while daylight wants the roof closed', () => {
-    const daylight = { mode: 'close', state: 'day', sunAltitudeDeg: 3, limitDeg: 0, text: 'Sun 3.0° ≥ 0.0°', closes: true } as const;
-    const check = calibrationChecks(roof({ weather: 'safe', daylight })).find((c) => c.id === 'weather')!;
-    expect(check.ok).toBe(false);
-    expect(check.text).toContain('Sun');
-  });
-
-  // Spec 022: a test box bypass passes the check (the device allows the move) but never reads as OK.
-  describe('with a test box bypass in effect', () => {
-    const testBox = {
-      set: true,
-      active: true,
-      park: false,
-      weather: false,
-      daylight: false,
-      until: 1,
-      expired: false,
-      waitingForClock: false,
-      parkRequests: false,
-      text: '',
-    };
-    const healthy = { weather: 'safe', parkConfirmed: true, fault: null, closePhase: 'idle', supplyLow: false } as const;
-    const check = (id: string, box: Partial<typeof testBox>, change: Partial<RoofStatus> = {}) =>
-      calibrationChecks(roof({ ...healthy, ...change, testBox: { ...testBox, ...box } })).find((c) => c.id === id)!;
-
-    it('the park row says the park check is bypassed', () => {
-      expect(check('park', { park: true })).toMatchObject({ ok: true, bypassed: true, label: 'Mount park check bypassed (test box)' });
-      expect(check('park', { park: false })).toMatchObject({ ok: true, label: 'Mount parked' });
-      expect(check('park', { park: false }).bypassed).toBeFalsy();
-    });
-
-    it('the weather row names the weather or daylight bypass', () => {
-      expect(check('weather', { weather: true })).toMatchObject({ ok: true, bypassed: true, label: 'Weather check bypassed (test box)' });
-      expect(check('weather', { daylight: true })).toMatchObject({ ok: true, bypassed: true, label: 'Daylight close bypassed (test box)' });
-      expect(check('weather', { weather: true, daylight: true }).label).toBe('Weather and daylight bypassed (test box)');
-    });
-
-    it('a check that fails anyway (a wet rain contact) fails as usual, not as bypassed', () => {
-      const wet = check('weather', { weather: true }, { weather: 'unsafe', weatherText: 'unsafe: rain' });
-      expect(wet).toMatchObject({ ok: false, label: 'Weather safe' });
-      expect(wet.bypassed).toBeFalsy();
-    });
-
-    it('a bypassed check still counts as passing for Start', () => {
-      const checks = calibrationChecks(roof({ ...healthy, testBox: { ...testBox, park: true, weather: true } }));
-      expect(startBlocked(checks, true, true)).toBe('');
-    });
-  });
-
-  it('fails an unsettled or railed Hall reading', () => {
-    for (const level of ['rail', 'unsettled'] as const) {
-      const check = calibrationChecks(roof({ hall: { counts: 0, level } })).find((c) => c.id === 'hall')!;
-      expect(check.ok).toBe(false);
-    }
-  });
-});
-
 describe('startBlocked', () => {
-  const ok = calibrationChecks(roof({ weather: 'safe', parkConfirmed: true, fault: null, closePhase: 'idle', supplyLow: false }));
-  it('needs live data, every check and the confirmation', () => {
-    expect(startBlocked(ok, true, false)).toMatch(/live data/);
-    expect(startBlocked(ok, false, true)).toMatch(/at the roof/);
-    expect(startBlocked(ok, true, true)).toBe('');
-    const failing = calibrationChecks(roof({ weather: 'unsafe', parkConfirmed: true, fault: null, closePhase: 'idle' }));
-    expect(startBlocked(failing, true, true)).toMatch(/Weather safe/);
+  it('the first blocker, then the confirmation', () => {
+    expect(startBlocked('Weather check: unsafe (rain)', true)).toBe('Weather check: unsafe (rain)');
+    expect(startBlocked('', false)).toMatch(/at the roof/);
+    expect(startBlocked('', true)).toBe('');
   });
 });
 

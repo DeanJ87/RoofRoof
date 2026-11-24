@@ -2,7 +2,7 @@ import { FunctionalComponent, type ComponentChildren } from 'preact';
 import type { RoofConfig, RoofStatus } from '../../types';
 import type { WizardPageProps } from './context';
 import TeachCard, { JogPanel } from '../calibrate/TeachCard';
-import { Checks, Result, Running, StartForm, jogGate } from '../Calibrate';
+import { Blockers, Result, Running, StartForm, moveGate, rearmOf } from '../Calibrate';
 import { useCalibration } from '../../hooks/useCalibration';
 import { useTeach } from '../../hooks/useTeach';
 import { abortCalibration } from '../../lib/calibrationApi';
@@ -82,10 +82,10 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
     <MotorFrame
       {...props}
       render={({ roof, config }) => {
-        const gate = jogGate(roof, props.fresh);
+        const gate = moveGate(roof, props.fresh, rearmOf(props.saved), true);
         return (
           <>
-            <JogPanel roof={roof} config={config} checks={<Checks checks={gate.checks} />} blocked={gate.blocked} />
+            <JogPanel roof={roof} config={config} checks={<Blockers gate={gate} />} blocked={gate.blocked} />
             <ChoiceGroup
               {...choice}
               options={[
@@ -111,14 +111,14 @@ export const TeachScreen: FunctionalComponent<WizardPageProps> = (props) => {
       render={({ roof, config }) => {
         // As the Calibrate page: no jog while a run is under way (the device refuses one anyway).
         if (run?.active) return <Note tone="warn">{t('wizard.motor.runActive')}</Note>;
-        const gate = jogGate(roof, props.fresh);
+        const gate = moveGate(roof, props.fresh, rearmOf(props.saved), true);
         return (
           <TeachCard
             plain
             teach={teach}
             roof={roof}
             config={config}
-            checks={<Checks checks={gate.checks} />}
+            checks={<Blockers gate={gate} />}
             blocked={gate.blocked}
             onChanged={() => {
               refresh();
@@ -142,7 +142,7 @@ export const CalibrationScreen: FunctionalComponent<WizardPageProps> = (props) =
           {run?.active ? (
             <Running plain run={run} roof={roof} config={config} onStop={() => void abortCalibration().then(refresh)} onAnswer={refresh} />
           ) : (
-            <StartForm plain roof={roof} config={config} live={props.fresh} onStarted={refresh} />
+            <StartForm plain roof={roof} config={config} gate={moveGate(roof, props.fresh, rearmOf(props.saved))} onStarted={refresh} />
           )}
           {run && !run.active && run.state !== 'idle' && <Result plain run={run} config={config} accept={props.acceptRoof} />}
         </>

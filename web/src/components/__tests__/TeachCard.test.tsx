@@ -90,7 +90,7 @@ describe('TeachCard', () => {
     await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
     await attend();
     expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
-    expect(teachCard().getByText('Not ready: Mount parked')).toBeInTheDocument();
+    expect(teachCard().getByText('Park check: not parked: N.I.N.A. not responding')).toBeInTheDocument();
   });
 
   it('a press starts a jog, keep-alives renew it with its id, and the release stops that jog', async () => {

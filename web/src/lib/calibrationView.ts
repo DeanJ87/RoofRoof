@@ -1,59 +1,7 @@
 import type { CalibrationProposal, CalibrationWhere, RoofConfig, RoofStatus } from '../types';
 import { t } from '../i18n';
-import { deviceText } from '../i18n/deviceMessage';
 
 // What the calibration page shows (spec 016), as pure functions for the tests.
-
-export interface CalibrationCheck {
-  id: 'weather' | 'park' | 'fault' | 'sequence' | 'still' | 'supply' | 'hall';
-  label: string;
-  ok: boolean;
-  text: string;
-  // Spec 022: passing only because a test box bypass stands in for it (never "OK").
-  bypassed?: boolean;
-}
-
-// The weather row's name while a test box bypass stands in for it, or null.
-const weatherBypass = (roof: RoofStatus): string | null => {
-  const box = roof.testBox;
-  if (box?.weather && box.daylight) return t('calibrate.check.weatherDaylightBypassed');
-  if (box?.weather) return t('calibrate.check.weatherBypassed');
-  if (box?.daylight) return t('calibrate.check.daylightBypassed');
-  return null;
-};
-
-const weatherCheck = (roof: RoofStatus): CalibrationCheck => {
-  const daylight = roof.daylight?.closes === true;
-  const ok = roof.weather === 'safe' && !daylight;
-  const bypass = ok ? weatherBypass(roof) : null;
-  if (bypass) return { id: 'weather', label: bypass, ok, text: '', bypassed: true };
-  return {
-    id: 'weather',
-    label: t('calibrate.check.weather'),
-    ok,
-    text: daylight ? deviceText(roof.daylight?.text) : deviceText(roof.weatherText),
-  };
-};
-
-const parkCheck = (roof: RoofStatus): CalibrationCheck =>
-  roof.testBox?.park && roof.parkConfirmed
-    ? { id: 'park', label: t('calibrate.check.parkBypassed'), ok: true, text: '', bypassed: true }
-    : { id: 'park', label: t('calibrate.check.park'), ok: roof.parkConfirmed, text: deviceText(roof.parkText) };
-
-/** What a run needs, from the live status (the device checks again when it starts). */
-export const calibrationChecks = (roof: RoofStatus): CalibrationCheck[] => {
-  const moving = roof.state === 'opening' || roof.state === 'closing' || roof.closePending;
-  const hallOk = roof.hall.level !== 'rail' && roof.hall.level !== 'unsettled';
-  return [
-    weatherCheck(roof),
-    parkCheck(roof),
-    { id: 'fault', label: t('calibrate.check.fault'), ok: roof.fault === null, text: roof.fault ? deviceText(roof.fault.text) : '' },
-    { id: 'sequence', label: t('calibrate.check.sequence'), ok: roof.closePhase === 'idle', text: '' },
-    { id: 'still', label: t('calibrate.check.still'), ok: !moving, text: '' },
-    { id: 'supply', label: t('calibrate.check.supply'), ok: !roof.supplyLow, text: '' },
-    { id: 'hall', label: t('calibrate.check.hall'), ok: hallOk, text: '' },
-  ];
-};
 
 /** Where the roof seems to be, as the start form's first guess (the person confirms it). */
 export const whereFromState = (roof: RoofStatus | undefined): CalibrationWhere => {
@@ -61,13 +9,8 @@ export const whereFromState = (roof: RoofStatus | undefined): CalibrationWhere =
   return 'partWay';
 };
 
-/** Why Start can't be pressed now, or '' when it can. */
-export const startBlocked = (checks: CalibrationCheck[], attended: boolean, live: boolean): string => {
-  if (!live) return t('calibrate.reason.noLiveData');
-  const failed = checks.find((check) => !check.ok);
-  if (failed) return t('calibrate.reason.check', { check: failed.label });
-  return attended ? '' : t('calibrate.reason.notAttended');
-};
+/** Why Start can't be pressed now, or '' when it can: the first blocker (spec 026), then the confirmation. */
+export const startBlocked = (blocked: string, attended: boolean): string => blocked || (attended ? '' : t('calibrate.reason.notAttended'));
 
 export type ProposalKey = 'travelMm' | 'speedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
 export const PROPOSAL_KEYS: ProposalKey[] = [

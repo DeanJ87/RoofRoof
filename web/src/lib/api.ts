@@ -45,3 +45,12 @@ export const roofCommand = (command: RoofCommand): Promise<Response> =>
     headers: { [ROOF_COMMAND_HEADER]: '1' },
     signal: timeoutSignal(ROOF_COMMAND_TIMEOUT_MS),
   });
+
+/** Spec 026: a person's attended release of the automatic close's hold (it never moves the roof). */
+export const releaseHold = (): Promise<Response> =>
+  fetch('/api/roof/release-hold', {
+    method: 'POST',
+    headers: { [ROOF_COMMAND_HEADER]: '1', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ attended: true }),
+    signal: timeoutSignal(ROOF_COMMAND_TIMEOUT_MS),
+  });

@@ -24,6 +24,7 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => [
         live={ctx.live ?? { status: ctx.status, connected: false, quiet: false, reconnectedAt: null }}
         config={ctx.config?.roof}
         confirm={ctx.config?.ui?.confirmOpenClose ?? false}
+        rearmMinutes={ctx.config?.autoClose?.rearmMinutes}
       />
     ),
   },

@@ -143,7 +143,9 @@ interface BypassesProps {
   saving: boolean;
   busy: boolean; // Turn off or Extend on its way
   error: (key: string) => string | undefined;
+  sourceTurnedOff: boolean; // spec 026: this edit turns the saved SQMeter weather source off
   update: (path: string[], value: unknown) => void;
+  updateMany: (changes: [string[], unknown][]) => void;
   depEntry: DepEntry | undefined;
   onSave: () => void;
   onDiscard: () => void;
@@ -192,16 +194,26 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           onFix={() => goToSettings('roof', 'park')}
           fixLabel={t('testBox.goToPark')}
         />
+        {/* Spec 026: on beside an SQMeter source, the same save turns the source off, so the weather
+            check never reads "no weather source" (unsafe) between two saves and starts a close. */}
         <Toggle
           dataField="testBox.weather"
           label={t('testBox.weather')}
           hint={t('testBox.weatherHint')}
           checked={testBox.weather}
-          onChange={(v) => update(['testBox', 'weather'], v)}
-          blockedReason={sqmeterOn ? t('testBox.weatherBlocked') : undefined}
-          onFix={() => goToSettings('roof', 'safety')}
-          fixLabel={t('testBox.goToWeather')}
+          onChange={(v) =>
+            props.updateMany(
+              v && sqmeterOn
+                ? [
+                    [['testBox', 'weather'], true],
+                    [['safety', 'http', 'enabled'], false],
+                    [['safety', 'mqtt', 'enabled'], false],
+                  ]
+                : [[['testBox', 'weather'], v]],
+            )
+          }
         />
+        {testBox.weather && props.sourceTurnedOff && <Note tone="warn">{t('testBox.weatherSourceOff')}</Note>}
         <Toggle
           dataField="testBox.daylight"
           label={t('testBox.daylight')}
@@ -305,6 +317,8 @@ const TestBox: FunctionalComponent = () => {
         busy={direct.busy !== ''}
         error={(key) => editor.validationErrors[key]}
         update={(path, value) => editor.applyChanges([[path, value]])}
+        updateMany={(changes) => editor.applyChanges(changes)}
+        sourceTurnedOff={Boolean(saved.safety?.http.enabled || saved.safety?.mqtt.enabled) && !(config.safety?.http.enabled || config.safety?.mqtt.enabled)}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

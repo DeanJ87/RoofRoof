@@ -8,17 +8,11 @@ import { useTeach } from '../hooks/useTeach';
 import TeachCard from './calibrate/TeachCard';
 import { useConfigEditor } from '../hooks/useConfigEditor';
 import { abortCalibration, confirmCalibration, startCalibration } from '../lib/calibrationApi';
-import {
-  acceptedRoof,
-  calibrationChecks,
-  proposalRows,
-  settingsChangedSince,
-  startBlocked,
-  whereFromState,
-  type CalibrationCheck,
-} from '../lib/calibrationView';
+import { acceptedRoof, proposalRows, settingsChangedSince, startBlocked, whereFromState } from '../lib/calibrationView';
 import { LIVE_MS } from '../lib/roofView';
-import { Field, NumberInput, SelectInput, SettingsCard, StatusBadge, Toggle } from './settings/controls';
+import { bypassedChecks, moveBlockers, type Blocker } from '../lib/moveBlockers';
+import { MoveBlockers } from './MoveBlockers';
+import { Field, NumberInput, SelectInput, SettingsCard, Toggle } from './settings/controls';
 import { Button, Note, ProgressMeter, ReadingRow } from './ui';
 import HallScale from '../dashboard/HallScale';
 import { t } from '../i18n';
@@ -33,44 +27,35 @@ import { listReasons } from './settings/restart';
 
 const seconds = (ms: number) => formatNumber(ms / 1000, 1);
 
-// A pill per check (DS-21: one or two words): OK, Bypassed (spec 022: a test
-// box bypass, never "OK") or Not yet, with the device's reason on its own line.
-const checkBadge = (check: CalibrationCheck) => {
-  if (check.bypassed) return <StatusBadge tone="warn" label={t('calibrate.bypassed')} />;
-  return check.ok ? <StatusBadge tone="ok" label={t('calibrate.ok')} /> : <StatusBadge tone="bad" label={t('calibrate.notReady')} />;
-};
+/** What stops an attended move now (spec 026): the shared blockers, and the checks a test box bypasses. */
+export interface MoveGate {
+  blockers: Blocker[];
+  bypassed: string[];
+  blocked: string; // the first blocker's line, or '' when nothing stops a move
+}
 
-export const Checks: FunctionalComponent<{ checks: CalibrationCheck[] }> = ({ checks }) => (
-  <div data-calibrate-checks>
-    {checks.map((check) => (
-      <div class="calibrate-check" key={check.id} data-check={check.id} data-state={check.bypassed ? 'bypassed' : check.ok ? 'ok' : 'bad'}>
-        <div class="reading-row">
-          <span>{check.label}</span>
-          {checkBadge(check)}
-        </div>
-        {!check.ok && check.text && <Note>{check.text}</Note>}
-      </div>
-    ))}
-  </div>
+/** The shared "why can't it move" list for the jog, teach and the calibration run. */
+export const Blockers: FunctionalComponent<{ gate: MoveGate }> = ({ gate }) => (
+  <MoveBlockers blockers={gate.blockers} bypassed={gate.bypassed} ready />
 );
 
 interface StartProps {
   roof: RoofStatus;
   config: RoofConfig;
-  live: boolean;
+  gate: MoveGate;
   onStarted: () => void;
   plain?: boolean; // in the setup wizard's dialog (spec 025)
+  blockersShown?: boolean; // false: the page lists the blockers once, above (Calibrate)
 }
 
-export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStarted, plain }) => {
+export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, gate, onStarted, plain, blockersShown = true }) => {
   const [attended, setAttended] = useState(false);
   const [at, setAt] = useState<CalibrationWhere>(whereFromState(roof));
   const [travel, setTravel] = useState(config.travelMm);
   const [topPass, setTopPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
-  const checks = calibrationChecks(roof);
-  const blocked = startBlocked(checks, attended, live);
+  const blocked = startBlocked(gate.blocked, attended);
   const canTop = config.topDutyPercent > config.slowDutyPercent;
   const start = async () => {
     setBusy(true);
@@ -81,7 +66,7 @@ export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live,
   };
   return (
     <SettingsCard id="calibrate-start" title={t('calibrate.startTitle')} hint={t('calibrate.startHint')} plain={plain}>
-      <Checks checks={checks} />
+      {blockersShown && <Blockers gate={gate} />}
       <Toggle
         dataField="calibrate.attended"
         label={t('calibrate.attended')}
@@ -309,11 +294,17 @@ export const acceptRoof = async (editor: ReturnType<typeof useConfigEditor>, nex
   return outcome.kind === 'refused' ? outcome.message : t('calibrate.notSaved');
 };
 
-/** Spec 019: a jog needs what a run needs; "still" doesn't apply while one is held. */
-export const jogGate = (roof: RoofStatus, fresh: boolean) => {
-  const checks = calibrationChecks(roof).filter((check) => check.id !== 'still');
-  return { checks, blocked: startBlocked(checks, true, fresh) };
+/**
+ * Spec 026: what stops an attended move now. `jog`: a jog needs what a run needs, but "moving" doesn't
+ * apply while one is held (spec 019).
+ */
+export const moveGate = (roof: RoofStatus, fresh: boolean, rearmMinutes: number, jog = false): MoveGate => {
+  const blockers = moveBlockers(roof, 'move', { live: fresh, rearmMinutes, nowMs: Date.now() }).filter((b) => !jog || b.id !== 'moving');
+  return { blockers, bypassed: bypassedChecks(roof), blocked: blockers[0]?.title ?? '' };
 };
+
+/** The re-arm spell for "clears at" lines: the saved setting, or its default. */
+export const rearmOf = (config: { autoClose?: { rearmMinutes: number } } | null | undefined) => config?.autoClose?.rearmMinutes ?? 10;
 
 const Calibrate: FunctionalComponent = () => {
   const editor = useConfigEditor();
@@ -327,17 +318,24 @@ const Calibrate: FunctionalComponent = () => {
   const accept = (next: RoofConfig) => acceptRoof(editor, next);
   const stop = () => void abortCalibration().then(refresh);
   const fresh = isFresh(live, connected, lastMessageAt);
-  const { checks: jogChecks, blocked: jogBlocked } = jogGate(roof, fresh);
+  const rearm = rearmOf(editor.saved);
+  const jog = moveGate(roof, fresh, rearm, true);
+  const gate = moveGate(roof, fresh, rearm);
   return (
     <div class="panel-page settings-page page-enter" data-calibrate-page>
       <h2 class="page-title">{t('calibrate.title')}</h2>
+      {!run?.active && (
+        <SettingsCard id="calibrate-blockers" title={t('move.title')}>
+          <Blockers gate={gate} />
+        </SettingsCard>
+      )}
       {!run?.active && (
         <TeachCard
           teach={teach}
           roof={roof}
           config={config}
-          checks={<Checks checks={jogChecks} />}
-          blocked={jogBlocked}
+          checks={null}
+          blocked={jog.blocked}
           onChanged={() => {
             refreshTeach();
             editor.reload();
@@ -348,7 +346,7 @@ const Calibrate: FunctionalComponent = () => {
       {run?.active ? (
         <Running run={run} roof={roof} config={config} onStop={stop} onAnswer={refresh} />
       ) : (
-        <StartForm roof={roof} config={config} live={fresh} onStarted={refresh} />
+        <StartForm roof={roof} config={config} gate={gate} blockersShown={false} onStarted={refresh} />
       )}
       {run && !run.active && run.state !== 'idle' && <Result run={run} config={config} accept={accept} />}
       <div class="btn-row">

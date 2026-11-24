@@ -139,12 +139,33 @@ describe('the test box page', () => {
     });
   };
 
-  it('explains a blocked switch in one short line with a link', async () => {
+  it('explains a blocked park switch in one short line with a link', async () => {
     mockDevice();
     await openPage();
     expect(screen.getByText('Off while a N.I.N.A. address is set.')).toBeInTheDocument();
-    expect(screen.getByText('Off while SQMeter HTTP or MQTT is on.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Park settings' })).toBeInTheDocument();
+  });
+
+  // Spec 026: turning the weather bypass on beside an SQMeter source turns the source off in the same save,
+  // so the weather check never reads "no weather source" (unsafe) between two saves and starts a close.
+  it('the weather bypass and the weather source change in one save', async () => {
+    mockDevice({ config: { park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } } } });
+    withBox(box({ set: false, active: false, park: false, weather: false }));
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ success: true, revision: 1 });
+      }),
+    );
+    await openPage();
+    const weather = document.querySelector('[data-field="testBox.weather"]')!;
+    fireEvent.click(weather.querySelector('input') ?? weather);
+    expect(await screen.findByText('Saving also turns the SQMeter weather source off, in the same save.')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on test box' }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0].testBox).toMatchObject({ weather: true });
+    expect(bodies[0].safety).toMatchObject({ http: { enabled: false } });
   });
 
   // Spec 024: the park bypass stands in for N.I.N.A., which park switches only don't use.

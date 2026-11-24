@@ -191,6 +191,12 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
       checked={safety.mqtt.enabled}
       onChange={(v) => update(['safety', 'mqtt', 'enabled'], v)}
     />
+    {/* Spec 026: no source at all reads unsafe and starts the automatic close; a test box bypasses it instead. */}
+    {!safety.http.enabled && !safety.mqtt.enabled && !config.testBox?.weather && (
+      <Note tone="warn" action={{ label: t('testBox.title'), onClick: () => route('/test-box') }}>
+        {t('settings.roof.noWeatherSource')}
+      </Note>
+    )}
     {/* Spec 020: also while off when SQMeter's topic came in (a copy, or the MQTT group synced). */}
     {(safety.mqtt.enabled || fromCopy('weatherTopic') || synced(config, 'mqtt')) && (
       <div class="form-grid indent">
