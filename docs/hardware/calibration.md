@@ -30,7 +30,7 @@ The worm gear holds the roof wherever it stops, so with the motor disconnected t
 1. **Between the magnets.** With no magnet near the sensor, note `roof.hall.counts`: the resting value, typically about 2000 with a 10k/20k divider.
 2. **At each end.** Hold the closed end's magnet where it sits when the roof is closed, and note the counts; then the open end's. One reads well above the resting value and the other well below (the magnets have opposite poles). Repeat a few millimetres short of the stopping position: the roof must still read past the threshold there.
 3. **Which end is high.** Set `roof.hallHighEnd` to the end that read high (`open` or `closed`).
-4. **Thresholds.** Set `roof.hallHighCounts` about halfway between the resting value and the high end's reading, and `roof.hallLowCounts` about halfway between the resting value and the low end's reading. They must be at least 80 counts apart and inside 100-3995. Leave a margin: leaving a magnet needs the reading 40 counts back past its threshold.
+4. **Thresholds.** Set `roof.hallHighCounts` about halfway between the resting value and the high end's reading, and `roof.hallLowCounts` about halfway between the resting value and the low end's reading. They must be at least 80 counts apart and inside 500-3995. Leave a margin: leaving a magnet needs the reading 40 counts back past its threshold.
 5. **Check.** At each end `roof.state` is that end's (`closed` or `open`), and between them `unknown` (or `stopped` after a stopped move).
 
 ```bash
@@ -38,7 +38,7 @@ curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json
   -d '{"roof": {"hallHighEnd": "open", "hallHighCounts": 2900, "hallLowCounts": 1150}}'
 ```
 
-A reading at 30 counts or below, or 4065 or above, is a rail: three of them among the last eight latch a `hallRail` fault. With the sensor's divider fitted, a disconnected sensor output reads 0.
+A reading at 400 counts or below, or 4065 or above, is a rail: three of them among the last eight latch a `hallRail` fault. Through its 10k/20k divider the SS49E's lowest output reads about 650 counts, so a reading under 400 is never a magnet: it is a lost 5 V or ground at the sensor (the divider pulls the pin towards 0). With the divider fitted, a disconnected sensor output reads 0.
 
 ## Supply
 

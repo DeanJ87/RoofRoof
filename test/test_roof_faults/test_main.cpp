@@ -159,7 +159,7 @@ void test_fault_wrong_magnet_the_start_magnet_again(void)
 
 void test_fault_hall_rail_at_rest(void)
 {
-    for (int rail : {0, 30, 4065, 4095})
+    for (int rail : {0, 400, 4065, 4095})
     {
         Bench b;
         b.sim.railCounts = rail;
@@ -168,14 +168,14 @@ void test_fault_hall_rail_at_rest(void)
         b.step();
         TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::HallRail);
         TEST_ASSERT_EQUAL_FLOAT(static_cast<float>(rail), b.roof.status().fault.measured);
-        TEST_ASSERT_EQUAL_FLOAT(rail < 2000 ? 30.0f : 4065.0f, b.roof.status().fault.limit);
+        TEST_ASSERT_EQUAL_FLOAT(rail < 2000 ? 400.0f : 4065.0f, b.roof.status().fault.limit);
         TEST_ASSERT_TRUE(b.state() == State::Error);
     }
 }
 
 void test_hall_just_inside_the_rails_is_no_fault(void)
 {
-    for (int counts : {31, 4064})
+    for (int counts : {401, 4064})
     {
         Bench b;
         b.sim.railCounts = counts;

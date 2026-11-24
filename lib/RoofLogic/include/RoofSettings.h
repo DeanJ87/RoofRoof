@@ -36,8 +36,11 @@ namespace SQM
         // parked on a threshold doesn't flicker.
         constexpr uint16_t HALL_HYSTERESIS_COUNTS = 40;
         // The SS49E through its divider never reaches these; a reading here is a
-        // disconnected or shorted sensor.
-        constexpr uint16_t HALL_RAIL_LOW_COUNTS = 30;
+        // disconnected or shorted sensor. Low: the sensor's lowest output (about
+        // 0.86 V on 5 V) through the 10k/20k divider reads about 650 counts, so
+        // anything at or under 400 is a lost supply or ground pulled down by the
+        // divider, never a magnet (field report: 100-160 at an end).
+        constexpr uint16_t HALL_RAIL_LOW_COUNTS = 400;
         constexpr uint16_t HALL_RAIL_HIGH_COUNTS = 4065;
         // A rail is confirmed by HALL_RAIL_LATCH_READINGS rail readings among the
         // last HALL_RAIL_WINDOW_READINGS, consecutive or not: an intermittent

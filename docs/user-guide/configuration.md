@@ -340,8 +340,8 @@ sense off.
 | `roof.slowDutyPercent` | int | `40` | Duty at the ends and for every move from an unknown position (10-100, not above the top duty) |
 | `roof.openDirection` | string | `"forward"` | Which motor direction opens the roof: `forward` (RPWM) or `reverse` (LPWM) |
 | `roof.hallHighEnd` | string | `"open"` | Which end's magnet reads high on the Hall sensor: `open` or `closed` |
-| `roof.hallHighCounts` | int | `3000` | Raw reading at or above which the high end's magnet is read (100-3995) |
-| `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (100-3995, at least 80 below the high threshold) |
+| `roof.hallHighCounts` | int | `3000` | Raw reading at or above which the high end's magnet is read (500-3995) |
+| `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (500-3995, at least 80 below the high threshold) |
 | `roof.currentSenseEnabled` | bool | `false` | Use the IBT-2's current outputs for over-current detection; off until they are wired |
 | `roof.maxCurrentAmps` | number | `10` | Motor current that stops the roof as a fault, with current sense on (0.5-40) |
 | `roof.currentAmpsPerVolt` | number | `8.5` | Motor amps per volt at the IBT-2's current-sense output, before the divider (0.5-100); set it by [calibration](../hardware/calibration.md#current-sense) |

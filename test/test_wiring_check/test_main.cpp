@@ -92,13 +92,13 @@ void test_en_pulldown(void)
 void test_hall_rails_and_range(void)
 {
     WiringInputs in = good();
-    in.hallCounts = 30; // the low rail limit itself
+    in.hallCounts = 400; // the low rail limit itself
     assertLevel(Level::Fail, in, CheckId::Hall);
-    in.hallCounts = 31;
+    in.hallCounts = 401;
     assertLevel(Level::Warn, in, CheckId::Hall); // below the threshold range
-    in.hallCounts = 99;
+    in.hallCounts = 499;
     assertLevel(Level::Warn, in, CheckId::Hall);
-    in.hallCounts = 100;
+    in.hallCounts = 500;
     assertLevel(Level::Pass, in, CheckId::Hall);
     in.hallCounts = 3995;
     assertLevel(Level::Pass, in, CheckId::Hall);

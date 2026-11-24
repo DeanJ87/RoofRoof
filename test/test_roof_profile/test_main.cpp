@@ -202,8 +202,8 @@ void test_hall_leaving_a_magnet_needs_the_hysteresis_band(void)
 
 void test_hall_rails(void)
 {
-    TEST_ASSERT_TRUE(HallFilter::classify(30, THRESHOLDS, HallLevel::Low) == HallLevel::Rail);
-    TEST_ASSERT_TRUE(HallFilter::classify(31, THRESHOLDS, HallLevel::Low) == HallLevel::Low);
+    TEST_ASSERT_TRUE(HallFilter::classify(400, THRESHOLDS, HallLevel::Low) == HallLevel::Rail); // under any SS49E output
+    TEST_ASSERT_TRUE(HallFilter::classify(401, THRESHOLDS, HallLevel::Low) == HallLevel::Low);
     TEST_ASSERT_TRUE(HallFilter::classify(4065, THRESHOLDS, HallLevel::High) == HallLevel::Rail);
     TEST_ASSERT_TRUE(HallFilter::classify(4064, THRESHOLDS, HallLevel::High) == HallLevel::High);
     TEST_ASSERT_TRUE(HallFilter::classify(0, THRESHOLDS, HallLevel::Between) == HallLevel::Rail);
