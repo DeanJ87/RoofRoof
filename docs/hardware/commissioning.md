@@ -17,7 +17,7 @@ Just want to see the motor turn on the bench before the Hall sensor exists? The 
 <!-- diagram: DIA-30
 sources: lib/BoardLogic/src/PinMap.cpp lib/BoardLogic/src/WiringCheck.cpp lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: 8d43f34412534ccc
+fingerprint: a87ed3ba5cbb679a
 -->
 <figure class="diagram" markdown>
 

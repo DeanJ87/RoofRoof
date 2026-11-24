@@ -11,7 +11,7 @@ The pins are a setting, chosen from a board preset on the [Pins](../user-guide/p
 !!! note "What the firmware does with these pins"
     The first thing `setup()` does is read the saved settings, which hold the pins. Straight after, it drives EN low and then RPWM and LPWM low, each level written before its pin becomes an output. Then the roof's control task reads every input below every 20 ms and drives the motor on a person's command ([Roof motion](../user-guide/roof-motion.md#on-the-board)):
 
-    - Hall: the raw 12-bit reading, the median of five per step, compared with the Hall thresholds you set ([Calibration](calibration.md)).
+    - Hall: the raw 12-bit reading, the median of nine per step, compared with the Hall thresholds you set ([Calibration](calibration.md)).
     - Supply: calibrated millivolts × 122 / 22.
     - Current (R_IS, L_IS): read only with current sense on; the larger of the two (eight samples each), × 30 / 20, × the current scale setting, then divided by the PWM duty (the sense output only follows the motor while its side is on).
     - Park switches A and B: internal pull-ups on; a closed contact reads low.
@@ -155,6 +155,16 @@ Under the 20 kHz PWM the sense output is chopped: it follows the motor current o
 The SS49E is a linear Hall sensor. It is powered at **5 V**, and its output swings over most of its 5 V supply (roughly 2.5 V at rest with no magnet, towards the supply rails as a magnet approaches). That is above what the ESP32 input tolerates, so **its output must go through a divider before the Hall input** (GPIO39 on both boards). Do not connect it directly.
 
 A 10 kΩ (top) / 20 kΩ (bottom) divider, the same as the current-sense inputs, scales a 5 V swing to under 3.3 V and a resting 2.5 V to about 1.7 V. Check the output range in the sensor's datasheet against your supply and pick a ratio that keeps the highest output under 3.3 V; the firmware's Hall thresholds are settings, so they follow whichever ratio you choose. Keep the divider close to the ESP32 and add a small capacitor (for example 100 nF) from the Hall input to GND to calm noise.
+
+#### Keep motor noise off the Hall line
+
+The Hall input is an analog reading on a long cable next to a PWM-driven motor. Noise picked up on it reads as a false magnet. The firmware takes the median of nine samples each step and of the last five steps, and only counts a change of level that has held for 200 ms. That rides through bursts of noise, but it can't fix a signal that is wrong for longer:
+
+- **Route the Hall cable away from the motor wires**, and cross them at right angles where they must meet. Never share a cable or a conduit with the motor or the 12 V feed.
+- **Twist the signal with its ground**, or use a shielded cable with the shield grounded **at the controller only** (an open, unconnected shield at the sensor end).
+- **Fit the capacitor at the ESP32 pin**: 100 nF (or up to 1 µF) from the Hall input to GND, right next to the board, after the divider. At the sensor end it does little against noise picked up along the cable.
+- **Place the magnets for a large swing**: each end's reading should sit several hundred counts from the reading in between (the calibration run and the teach refuse less than 300, and suggest moving the magnet closer). Put each threshold about halfway between, never just past the magnet's reading, so noise can't carry the reading across it.
+- **A reading under 400 counts is a fault, not a magnet.** Through the 10k/20k divider the SS49E never reads below about 650; a lower reading means its 5 V or ground connection is broken and the divider is pulling the pin down. Three such readings among the last eight latch a `hallRail` fault.
 
 ---
 

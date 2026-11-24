@@ -49,7 +49,7 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 5005acd37ba72661
+fingerprint: dcd4cce41c420dd0
 -->
 <figure class="diagram" markdown>
 
@@ -135,8 +135,8 @@ person clears it. Each records what was measured and the limit it broke.
 |---|---|
 | `timeout` | No target magnet within the move's timeout (with current sense off, this is how a jam is caught) |
 | `didNotLeave` | A move from a magnet still on it after the **leave time** (jammed at the end, or the motor wired backwards) |
-| `wrongMagnet` | The other end's magnet is read, or the start magnet again after leaving it |
-| `hallRail` | Three of the last eight Hall readings at either end of its range (sensor disconnected, shorted or an intermittent connector), moving or not |
+| `wrongMagnet` | The other end's magnet is read, or the start magnet again more than a second after leaving it (or after the leave time). Back on it sooner counts as not yet left: noise as the reading crossed the threshold |
+| `hallRail` | Three of the last eight Hall readings at either end of its range: 400 counts or below (lower than the sensor can read through its divider: a lost 5 V or ground) or 4065 or above (sensor disconnected, shorted or an intermittent connector), moving or not |
 | `overCurrent` | Current sense on, and the motor current at or above its limit for a quarter of a second |
 | `currentUnreadable` | Current sense on, and no current reading for a quarter of a second during a move |
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |

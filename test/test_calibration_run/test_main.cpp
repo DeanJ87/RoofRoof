@@ -50,8 +50,9 @@ void test_a_run_from_closed_measures_and_proposes(void)
     TEST_ASSERT_TRUE(p.timeoutMarginSeconds >= 5);
     TEST_ASSERT_TRUE(p.hall);
     TEST_ASSERT_TRUE(p.hallHighEnd == End::Open);
-    TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts);
-    TEST_ASSERT_EQUAL_UINT16(1100, p.hallLowCounts);
+    // Halfway between each end's reading and the in-between one.
+    TEST_ASSERT_EQUAL_UINT16((r.plant.restingCounts + r.plant.highMagnetCounts + 1) / 2, p.hallHighCounts);
+    TEST_ASSERT_EQUAL_UINT16((r.plant.restingCounts + r.plant.lowMagnetCounts + 1) / 2, p.hallLowCounts);
     TEST_ASSERT_EQUAL_UINT32(1800, p.travelMm);
     // Nothing changed: the run only proposes.
     TEST_ASSERT_TRUE(sameSettings(r.settings, r.roof.settings()));
