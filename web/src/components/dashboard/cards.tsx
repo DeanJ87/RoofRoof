@@ -3,6 +3,9 @@ import type { MasonryItem } from '../Masonry';
 import DeviceCard from '../../dashboard/DeviceCard';
 import RoofCard from '../../dashboard/RoofCard';
 import type { LiveState } from '../../lib/roofView';
+import { Card, Pill } from '../ui';
+import { SetupStages, stagesDone } from '../SetupProgress';
+import { setupComplete, setupStages } from '../../lib/setupProgress';
 import { t } from '../../i18n';
 
 // What the dashboard's cards are drawn from.
@@ -29,4 +32,19 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => [
     ),
   },
   { id: 'device', title: t('dashboard.deviceNetwork'), node: <DeviceCard status={ctx.status} /> },
+  ...setupCard(ctx),
 ];
+
+// Spec 026: the roof's setup stages, on the dashboard until every one is done.
+const setupCard = (ctx: CardContext): MasonryItem[] => {
+  const stages = setupStages(ctx.config);
+  if (stages.length === 0 || setupComplete(stages)) return [];
+  const node = (
+    <div data-inventory="setup-card">
+      <Card title={t('setupProgress.title')} icon="roof" hint={t('setupProgress.hint')} actions={<Pill tone="pill-amber">{stagesDone(stages)}</Pill>}>
+        <SetupStages stages={stages} />
+      </Card>
+    </div>
+  );
+  return [{ id: 'setup', title: t('setupProgress.title'), node }];
+};

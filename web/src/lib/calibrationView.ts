@@ -47,14 +47,28 @@ export const proposalRows = (proposal: CalibrationProposal, roof: RoofConfig): P
     };
   });
 
-/** The roof settings to save on Accept: every proposed value, nothing withheld. */
+// Spec 026: the RoofConfig::MEASURED_* bit of each proposed value.
+const MEASURED_BIT: Record<ProposalKey, number> = {
+  travelMm: 1,
+  speedMmPerSecond: 2,
+  timeoutMarginSeconds: 4,
+  hallHighEnd: 8,
+  hallHighCounts: 8,
+  hallLowCounts: 8,
+};
+const DIRECTION_BIT = 16; // the run's open-end question checked the direction
+
+/** The roof settings to save on Accept: every proposed value, nothing withheld, marked measured (spec 026). */
 export const acceptedRoof = (proposal: CalibrationProposal, roof: RoofConfig): RoofConfig => {
   const next: RoofConfig = { ...roof };
+  let measured = (roof.measured ?? 0) | DIRECTION_BIT;
   for (const key of PROPOSAL_KEYS) {
     const pair = proposal[key];
-    if (pair) (next as unknown as Record<string, unknown>)[key] = pair.new;
+    if (!pair) continue;
+    (next as unknown as Record<string, unknown>)[key] = pair.new;
+    measured |= MEASURED_BIT[key];
   }
-  return next;
+  return roof.measured === undefined ? next : { ...next, measured };
 };
 
 /** Whether the run's saved values differ from the settings now (saved by someone else meanwhile). */
