@@ -191,6 +191,27 @@ void test_stored_roof_without_current_scale_loads_with_its_default()
     TEST_ASSERT_FALSE(loaded.roof.currentSenseEnabled);
 }
 
+// Spec 016 fix (2026-11-24): settings saved before the measured slow speed load
+// it as 0 (not measured: moves at the slow duty timed as before); a measured one
+// round-trips, and one out of range is refused with the reason.
+void test_stored_roof_without_slow_speed_loads_it_unmeasured()
+{
+    Config loaded = Config::createDefault();
+    std::string reason;
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson("{\"roof\":{\"speedMmPerSecond\":40}}", loaded, false, &reason), reason.c_str());
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, loaded.roof.slowSpeedMmPerSecond);
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson("{\"roof\":{\"slowSpeedMmPerSecond\":9.4}}", loaded, false, &reason), reason.c_str());
+    const auto again = Config::fromJson(loaded.toJson(false));
+    TEST_ASSERT_TRUE(again.has_value());
+    TEST_ASSERT_EQUAL_FLOAT(9.4f, again->roof.slowSpeedMmPerSecond);
+    for (const char *bad : {"0.5", "500.5", "-1"})
+    {
+        Config c = Config::createDefault();
+        TEST_ASSERT_FALSE(Config::applyJson(std::string("{\"roof\":{\"slowSpeedMmPerSecond\":") + bad + "}}", c, false, &reason));
+        TEST_ASSERT_EQUAL_STRING("Roof: slow speed must be 0 (not measured) or between 1 and 500 mm/s", reason.c_str());
+    }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -199,5 +220,6 @@ int main(int, char **)
     RUN_TEST(test_stored_roof_without_current_scale_loads_with_its_default);
     RUN_TEST(test_stored_mqtt_without_roof_commands_loads_them_off);
     RUN_TEST(test_stored_config_without_setup_is_offered_the_wizard);
+    RUN_TEST(test_stored_roof_without_slow_speed_loads_it_unmeasured);
     return UNITY_END();
 }

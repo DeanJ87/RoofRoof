@@ -119,7 +119,11 @@ namespace SQM
                 const float oldTravel = static_cast<float>(old.travelMm);
                 const float newTravel = static_cast<float>(p.travelMm);
                 pair<uint32_t>(
-                    out, "moveLimitSeconds", p.speed, seconds(Roof::moveTimeoutMs(old, oldTravel)), seconds(Roof::moveTimeoutMs(now, newTravel)));
+                    out,
+                    "moveLimitSeconds",
+                    p.speed,
+                    seconds(Roof::moveTimeoutMs(old, oldTravel)),
+                    seconds(Roof::moveTimeoutMs(now, newTravel)));
                 pair<uint32_t>(
                     out, "slowLimitSeconds", p.speed, seconds(Roof::unknownMoveTimeoutMs(old)), seconds(Roof::unknownMoveTimeoutMs(now)));
             }

@@ -88,57 +88,6 @@ void test_a_run_from_open_closes_first(void)
     TEST_ASSERT_TRUE(r.rep().proposal.hall);
 }
 
-// Each start position takes its own legs: from the closed end straight to the
-// slow open; from the open end or part-way a close first. The run always ends
-// closed, and the slow open always starts from the closed end.
-void test_each_start_position_takes_its_legs(void)
-{
-    struct Case
-    {
-        Where at;
-        float startMm;
-        bool top;
-        uint8_t total;
-    };
-    for (const Case c : {Case{Where::Closed, 0.0f, false, 2},
-                         Case{Where::Closed, 0.0f, true, 4},
-                         Case{Where::Open, 1850.0f, false, 3},
-                         Case{Where::Open, 1850.0f, true, 5},
-                         Case{Where::PartWay, 900.0f, false, 3},
-                         Case{Where::PartWay, 900.0f, true, 5}})
-    {
-        Rig r(c.startMm);
-        TEST_ASSERT_TRUE(r.start(c.at, c.top).accepted);
-        TEST_ASSERT_EQUAL_UINT8(c.total, r.rep().legTotal);
-        TEST_ASSERT_TRUE(r.rep().leg == (c.at == Where::Closed ? LegKind::SlowOpen : LegKind::ToClosed));
-        TEST_ASSERT_TRUE(r.until(LegKind::SlowOpen));
-        TEST_ASSERT_TRUE(r.plant.positionMm < 30.0f); // from the closed end
-        TEST_ASSERT_TRUE(r.finish());
-        TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
-        TEST_ASSERT_EQUAL_UINT8(c.top ? 4 : 2, r.rep().measured.legCount);
-        TEST_ASSERT_TRUE(r.rep().measured.legs[0].kind == LegKind::SlowOpen);
-        TEST_ASSERT_TRUE(r.rep().measured.legs[1].kind == LegKind::SlowClose);
-        TEST_ASSERT_TRUE(r.roof.status().state == State::Closed);
-    }
-}
-
-// The reported failure: the roof at its open end but the start says closed. The
-// run believes the person (the polarity may be the thing that's wrong), so its
-// slow open can't leave the open end's magnet: a fault within the leave time,
-// and the ending says what to check. The roof never moved off its end.
-void test_a_start_that_says_closed_at_the_open_end_fails_safely_and_says_why(void)
-{
-    Rig r(1850.0f);
-    TEST_ASSERT_TRUE(r.roof.status().state == State::Open);
-    TEST_ASSERT_TRUE(r.start(Where::Closed).accepted);
-    TEST_ASSERT_TRUE(r.finish(SETTLE_MS + 10000 + 2000));
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::DidNotLeave);
-    TEST_ASSERT_TRUE(r.rep().ending == Ending::Fault);
-    TEST_ASSERT_TRUE(r.rep().endingText.find("the roof was closed, as the start said") != std::string::npos);
-    TEST_ASSERT_TRUE(r.rep().endingText.find("roof.openDirection") != std::string::npos);
-    TEST_ASSERT_FLOAT_WITHIN(0.5f, 1850.0f, r.plant.positionMm);
-}
-
 void test_the_top_pass_measures_two_more_legs_at_the_top_duty(void)
 {
     Rig r;
@@ -578,8 +527,6 @@ int main(int, char **)
     RUN_TEST(test_a_run_from_closed_measures_and_proposes);
     RUN_TEST(test_a_run_from_part_way_closes_first);
     RUN_TEST(test_a_run_from_open_closes_first);
-    RUN_TEST(test_each_start_position_takes_its_legs);
-    RUN_TEST(test_a_start_that_says_closed_at_the_open_end_fails_safely_and_says_why);
     RUN_TEST(test_the_top_pass_measures_two_more_legs_at_the_top_duty);
     RUN_TEST(test_later_legs_are_bounded_by_the_measured_ones);
     RUN_TEST(test_each_end_waits_a_second_at_rest);

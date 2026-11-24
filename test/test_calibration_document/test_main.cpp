@@ -46,7 +46,8 @@ void test_the_document_of_a_finished_run(void)
     now.speedMmPerSecond = r.rep().proposal.speedMmPerSecond;
     now.slowSpeedMmPerSecond = r.rep().proposal.slowSpeedMmPerSecond;
     now.timeoutMarginMs = r.rep().proposal.timeoutMarginSeconds * 1000;
-    TEST_ASSERT_EQUAL_UINT32((Roof::unknownMoveTimeoutMs(r.settings) + 999) / 1000, doc["proposal"]["slowLimitSeconds"]["old"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32(
+        (Roof::unknownMoveTimeoutMs(r.settings) + 999) / 1000, doc["proposal"]["slowLimitSeconds"]["old"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32((Roof::unknownMoveTimeoutMs(now) + 999) / 1000, doc["proposal"]["slowLimitSeconds"]["new"].as<uint32_t>());
     TEST_ASSERT_EQUAL_UINT32((Roof::moveTimeoutMs(now, 1800.0f) + 999) / 1000, doc["proposal"]["moveLimitSeconds"]["new"].as<uint32_t>());
 }
