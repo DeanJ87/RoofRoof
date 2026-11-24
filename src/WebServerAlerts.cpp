@@ -131,7 +131,9 @@ namespace SQM
         // the level (never below urgent), sound and wording (spec 007).
         Core::LocalClock clock;
         localClock(clock.time, clock.date);
-        const Alerts::Alert finished = Core::finishCriticalAlert(alert, Core::AlertSources{cfg}, clock);
+        // Owner decision 2026-11-24: a test box's critical alerts never wake anyone.
+        const bool testBox = TestBox::quietsCriticals(testBoxState());
+        const Alerts::Alert finished = Core::finishCriticalAlert(alert, Core::AlertSources{cfg}, clock, testBox);
         if (!Core::alertGoesOut(finished.type, cfg.alerts, alertSchedule.state().sending))
             return 0; // not reached: only critical alerts come here
         return alertDispatcher->dispatch(finished, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());

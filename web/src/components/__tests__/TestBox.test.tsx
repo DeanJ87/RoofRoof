@@ -139,11 +139,32 @@ describe('the test box page', () => {
     });
   };
 
-  it('explains a blocked park switch in one short line with a link', async () => {
+  // Owner decision 2026-11-24: beside a N.I.N.A. address, "No telescope under this roof" clears the
+  // address in the same save (it used to be blocked), saying so first; off again, the address comes back.
+  it('the park bypass and the N.I.N.A. address change in one save', async () => {
     mockDevice();
-    await openPage();
-    expect(screen.getByText('Off while a N.I.N.A. address is set.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Park settings' })).toBeInTheDocument();
+    withBox(box({ set: false, active: false, park: false, weather: false }));
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ success: true, revision: 1 });
+      }),
+    );
+    const park = await openPage();
+    const input = () => (park.querySelector('input') ?? park) as HTMLInputElement;
+    expect(input()).not.toBeDisabled();
+    fireEvent.click(input());
+    const note = 'This also removes the N.I.N.A. address, in the same save.';
+    expect(await screen.findByText(note)).toBeInTheDocument();
+    fireEvent.click(input());
+    await waitFor(() => expect(screen.queryByText(note)).toBeNull());
+    expect(screen.queryByRole('button', { name: 'Turn on test box' })).toBeNull(); // the address is back: nothing to save
+    fireEvent.click(input());
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on test box' }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0].testBox).toMatchObject({ park: true });
+    expect(bodies[0].park).toMatchObject({ nina: { url: '' } });
   });
 
   // Spec 026: turning the weather bypass on beside an SQMeter source turns the source off in the same save,

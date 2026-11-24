@@ -245,7 +245,9 @@ namespace
             watch.safeRun = true;
             watch.safeSinceMs = in.nowMs;
         }
-        if (in.roof == State::Closed || (watch.safeRun && in.nowMs - watch.safeSinceMs >= watch.policy.rearmSafeMs))
+        // An Open that started moving ends a stand-down too (owner decision 2026-11-24).
+        if (in.roof == State::Closed || in.roof == State::Opening ||
+            (watch.safeRun && in.nowMs - watch.safeSinceMs >= watch.policy.rearmSafeMs))
         {
             watch.held = false;
             watch.halted = false;

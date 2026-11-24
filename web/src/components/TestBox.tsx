@@ -13,7 +13,7 @@ import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { MODE_PILL, formatUntil, modeOf, type TestBoxMode } from './TestBoxBanner';
 import { RequestParkToggle } from './settings/TestBoxCard';
-import { parkSource } from '../lib/parkSource';
+import { parkBypassChanges, parkSource } from '../lib/parkSource';
 import { t } from '../i18n';
 
 // The test box page (spec 022, its home since the banner fix): one place to
@@ -145,6 +145,7 @@ interface BypassesProps {
   error: (key: string) => string | undefined;
   sourceTurnedOff: boolean; // spec 026: this edit turns the saved SQMeter weather source off
   savedSources: { http: boolean; mqtt: boolean }; // the SQMeter sources as saved
+  savedNinaUrl: string; // the N.I.N.A. address as saved
   weatherUnsafe: boolean; // a configured source reports unsafe now: a bypass never hides a reading
   update: (path: string[], value: unknown) => void;
   updateMany: (changes: [string[], unknown][]) => void;
@@ -174,7 +175,6 @@ const SaveRow: FunctionalComponent<BypassesProps & { turningOn: boolean }> = (pr
 
 const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
   const { config, testBox, update } = props;
-  const ninaSet = Boolean(config.park?.nina.url.trim());
   // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
   const switchesOnly = config.park ? parkSource(config.park) === 'switches' : false;
   const sourceOn = sqmeterOn(config);
@@ -191,11 +191,13 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           label={t('testBox.park')}
           hint={t('testBox.parkHint')}
           checked={testBox.park}
-          onChange={(v) => update(['testBox', 'park'], v)}
-          blockedReason={switchesOnly ? t('testBox.parkSwitchesOnly') : ninaSet ? t('testBox.parkBlocked') : undefined}
+          onChange={(v) => props.updateMany(parkBypassChanges(v, config.park?.nina.url ?? '', props.savedNinaUrl))}
+          blockedReason={switchesOnly ? t('testBox.parkSwitchesOnly') : undefined}
           onFix={() => goToSettings('roof', 'park')}
           fixLabel={t('testBox.goToPark')}
         />
+        {/* Owner decision 2026-11-24: the same save clears the N.I.N.A. address, so a bench box never parks a real mount. */}
+        {testBox.park && props.savedNinaUrl.trim() !== '' && <Note tone="warn">{t('testBox.ninaCleared')}</Note>}
         {/* Spec 026: on beside an SQMeter source, the same save turns the source off, so the weather
             check never reads "no weather source" (unsafe) between two saves and starts a close. */}
         <Toggle
@@ -287,6 +289,9 @@ const weatherSource = (saved: Config, edited: Config, weather: string | undefine
   weatherUnsafe: weather === 'unsafe',
 });
 
+// The N.I.N.A. address as saved ('' when none).
+const savedNina = (saved: Config) => saved.park?.nina.url ?? '';
+
 // An SQMeter weather source is on in these settings.
 const sqmeterOn = (c: Config) => Boolean(c.safety?.http.enabled || c.safety?.mqtt.enabled);
 
@@ -343,6 +348,7 @@ const TestBox: FunctionalComponent = () => {
         update={(path, value) => editor.applyChanges([[path, value]])}
         updateMany={(changes) => editor.applyChanges(changes)}
         {...weatherSource(saved, config, status?.roof?.weather)}
+        savedNinaUrl={savedNina(saved)}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

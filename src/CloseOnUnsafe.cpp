@@ -211,8 +211,7 @@ namespace SQM
         nothingWantsClose.store(in.weatherSafe && !in.daylight);
         const uint64_t leftMs = sequence.standDownLeftMs();
         standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
-        if (in.releaseHold)
-            Logger::warn(TAG, "%s", CloseSeq::releaseLogText(before, sequence.phase()));
+        logHoldEnd(before, in);
         keep();
         retryAlert(now);
         countClosed(before, decision);
@@ -242,6 +241,15 @@ namespace SQM
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
         }
+    }
+
+    // Spec 026's release, and (owner decision 2026-11-24) an Open that ended a stand-down.
+    void CloseOnUnsafe::logHoldEnd(CloseSeq::Phase before, const CloseSeq::Inputs &in) const
+    {
+        if (in.releaseHold)
+            Logger::warn(TAG, "%s", CloseSeq::releaseLogText(before, sequence.phase()));
+        else if (CloseSeq::openEndedHold(before, sequence.phase(), in.roof))
+            Logger::info(TAG, "The roof is opening: the automatic close is armed again");
     }
 
     const char *CloseOnUnsafe::requestRelease()

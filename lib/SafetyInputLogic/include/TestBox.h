@@ -58,6 +58,11 @@ namespace SQM
         // `clockSet`: the clock holds a real time (Core::CLOCK_VALID_EPOCH).
         State evaluate(const TestBoxConfig &config, const Sources &sources, bool clockSet, int64_t nowEpoch);
 
+        // Owner decision 2026-11-24: the roof's critical alerts go out at most at
+        // urgent (no Pushover emergency repeats) while a bypass is in effect, or
+        // set and waiting for the clock after a restart. Expired or off: as set.
+        bool quietsCriticals(const State &state);
+
         // The weather bypass: safe when "no weather source" is the only reason.
         void applyWeather(Safety::WeatherVerdict &verdict, const State &state);
         // The park bypass: N.I.N.A. not configured is set aside; parked when no

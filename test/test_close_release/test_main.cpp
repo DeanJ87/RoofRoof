@@ -157,6 +157,94 @@ void test_no_countdown_while_daylight_wants_the_roof_closed(void)
     TEST_ASSERT_TRUE(r.seq.standDownLeftMs() == NOT_COUNTING);
 }
 
+// Owner decision 2026-11-24: an Open that starts the roof moving (a person's
+// or a client's) ends the stand-down at once, as the re-arm spell does: rain
+// soon after closes the roof again. A refused Open (the roof stays put) doesn't.
+void test_an_open_that_starts_moving_ends_the_stand_down()
+{
+    Rig r;
+    heldAt(r);
+    r.in.roof = State::Stopped;
+    r.in.weatherSafe = true;
+    r.at(T0 + 2000);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.in.roof = State::Opening;
+    const Decision d = r.at(T0 + 3000);
+    assertEvent(d, Event::EndedSafe, Cause::None);
+    TEST_ASSERT_EQUAL(Action::None, d.action); // nothing more moves for it
+    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+    TEST_ASSERT_TRUE(r.seq.standDownLeftMs() == NOT_COUNTING);
+    TEST_ASSERT_TRUE(openEndedHold(Phase::HeldByPerson, Phase::Idle, State::Opening));
+    TEST_ASSERT_FALSE(openEndedHold(Phase::HeldByPerson, Phase::Idle, State::Open)); // the re-arm spell, say
+    TEST_ASSERT_FALSE(openEndedHold(Phase::CannotMove, Phase::Idle, State::Opening));
+    r.in.roof = State::Open;
+    r.at(T0 + 60000);
+    // Rain within the re-arm spell: a new attempt at once.
+    r.in.weatherSafe = false;
+    const Decision again = r.at(T0 + 61000);
+    assertEvent(again, Event::Started, Cause::None);
+    TEST_ASSERT_EQUAL(Action::RequestPark, again.action);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+}
+
+void test_a_refused_open_keeps_the_stand_down()
+{
+    Rig r;
+    heldAt(r);
+    r.in.roof = State::Stopped; // a refused Open leaves the roof where it stood
+    r.in.weatherSafe = true;
+    const Counts c = r.runTo(T0 + 60000, 1000);
+    TEST_ASSERT_EQUAL(0, c.requests + c.closes + c.stops);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+    r.in.weatherSafe = false;
+    r.runTo(T0 + 120000, 1000);
+    TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
+}
+
+void test_an_open_ends_a_halted_close_but_not_a_cannot_move()
+{
+    {
+        Rig r;
+        r.startAndClose();
+        r.at(T0 + 5000);
+        assertEvent(r.at(T0 + 4100 + 60000 + CLOSE_GUARD_SLACK_MS + 1000), Event::CloseFailed, Cause::TooLong);
+        r.in.roof = State::Stopped;
+        r.in.weatherSafe = true;
+        r.at(r.in.nowMs + 1000);
+        TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+        r.in.roof = State::Opening;
+        assertEvent(r.at(r.in.nowMs + 1000), Event::EndedSafe, Cause::None);
+        TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+    }
+    {
+        // A person's slow open from an unknown position: the position becomes
+        // known, so the back-off follows as before (not a release).
+        Rig r;
+        r.in.roof = State::Unknown;
+        r.startUnsafe();
+        r.runTo(T0 + 3000);
+        TEST_ASSERT_EQUAL(Phase::CannotMove, r.seq.phase());
+        r.in.roof = State::Opening;
+        r.at(r.in.nowMs + 100);
+        TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    }
+}
+
+// A Stop and then an Open between two steps: the roof reads opening, so the
+// stand-down the stop began ends on the next step.
+void test_a_stop_then_an_open_between_two_steps_ends_the_stand_down()
+{
+    Rig r;
+    r.startAndClose();
+    r.in.weatherSafe = true; // safe while closing: the close carries on
+    r.at(T0 + 5000);
+    r.in.personStops = 1;
+    r.in.roof = State::Opening;
+    assertEvent(r.at(T0 + 6000), Event::StoppedByPerson, Cause::None);
+    assertEvent(r.at(T0 + 6100), Event::EndedSafe, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -169,5 +257,9 @@ int main(int, char **)
     RUN_TEST(test_stand_down_countdown_counts_from_the_stop_when_safe_before_it);
     RUN_TEST(test_release_refusal_names_why);
     RUN_TEST(test_no_countdown_while_daylight_wants_the_roof_closed);
+    RUN_TEST(test_an_open_that_starts_moving_ends_the_stand_down);
+    RUN_TEST(test_a_refused_open_keeps_the_stand_down);
+    RUN_TEST(test_an_open_ends_a_halted_close_but_not_a_cannot_move);
+    RUN_TEST(test_a_stop_then_an_open_between_two_steps_ends_the_stand_down);
     return UNITY_END();
 }

@@ -172,10 +172,12 @@ namespace SQM
             return {Alerts::stackAlerts(scheduled)};
         }
 
-        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)
+        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock, bool testBox)
         {
             const AlertsConfig::EventSetting *setting = eventSettingFor(sources.cfg.alerts, alert.type);
             alert.level = criticalLevel(setting != nullptr ? setting->level : 4);
+            if (testBox && alert.level > Alerts::AlertLevel::Urgent)
+                alert.level = Alerts::AlertLevel::Urgent;
             if (setting == nullptr)
                 return alert;
             // Never silent (spec 007): a silent or vibrate-only sound uses the default.

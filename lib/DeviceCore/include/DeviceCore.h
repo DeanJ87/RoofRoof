@@ -64,7 +64,9 @@ namespace SQM
         // A critical roof alert from the close sequence, finished for sending:
         // the event's level (never below urgent), sound and wording. Pause,
         // grace and the master switch don't apply (spec 005 FR-014, spec 007 FR-004).
-        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock);
+        // `testBox` (TestBox::quietsCriticals): at most urgent, never wake me (a
+        // Pushover emergency that repeats for an hour); owner decision 2026-11-24.
+        Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock, bool testBox = false);
         // Pushover's limit on a message; a longer critical one uses the built-in text.
         constexpr size_t MAX_CRITICAL_MESSAGE_BYTES = 1024;
         // ...and its titles; a longer critical title uses the built-in one.

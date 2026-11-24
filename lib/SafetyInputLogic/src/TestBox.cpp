@@ -57,6 +57,11 @@ namespace SQM
             return s;
         }
 
+        bool quietsCriticals(const State &state)
+        {
+            return state.active() || state.waitingForClock;
+        }
+
         void applyWeather(Safety::WeatherVerdict &verdict, const State &state)
         {
             if (!state.weather || verdict.reasons != Safety::ReasonNoWeatherSource)

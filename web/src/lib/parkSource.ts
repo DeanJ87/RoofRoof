@@ -27,6 +27,15 @@ export const parkSourceChanges = (park: ParkConfig, source: ParkSource, testBox?
   return changes;
 };
 
+/**
+ * Owner decision 2026-11-24: "No telescope under this roof" on clears the N.I.N.A. address in the same save
+ * (the device does the same); off again before saving, the saved address comes back. Once saved, it stays gone.
+ */
+export const parkBypassChanges = (on: boolean, url: string, savedUrl: string): [ConfigPath, unknown][] => [
+  [['testBox', 'park'], on],
+  [['park', 'nina', 'url'], on ? '' : url || savedUrl],
+];
+
 /** The edits for the switch count: the source always goes with it (the device derives it otherwise). */
 export const parkSwitchesChanges = (park: ParkConfig, switches: ParkSwitches): [ConfigPath, unknown][] => [
   [['park', 'source'], parkSource(park)],

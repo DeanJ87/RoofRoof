@@ -1,11 +1,12 @@
 import { FunctionalComponent } from 'preact';
 import type { ParkSource, ParkSwitches, RoofStatus } from '../../types';
+import type { ConfigPath } from '../settings/context';
 import { choiceOf, type WizardPageProps } from './context';
 import { HallFields, ParkNotes, roofNum } from '../settings/RoofTab';
 import { RequestParkToggle } from '../settings/TestBoxCard';
 import { ActionButton } from '../settings/controls';
 import { ChoiceGroup, Note, ReadingRow } from '../ui';
-import { fittedCount, parkSource, parkSourceChanges, parkSwitchesChanges } from '../../lib/parkSource';
+import { fittedCount, parkBypassChanges, parkSource, parkSourceChanges, parkSwitchesChanges } from '../../lib/parkSource';
 import { t } from '../../i18n';
 
 // The test box, park switches and typed motor values screens (specs 015, 018,
@@ -20,7 +21,7 @@ const switchText = (reading: RoofStatus['parkSwitches']['switch1'] | undefined) 
 const TestBoxNotes: FunctionalComponent<WizardPageProps & { hours: number; ninaSet: boolean; sqmeterOn: boolean }> = (props) => (
   <>
     <Note tone="bad">{t('wizard.testBox.warning', { hours: props.hours })}</Note>
-    {props.ninaSet && <Note tone="warn">{t('wizard.testBox.ninaSet')}</Note>}
+    {props.ninaSet && <Note tone="warn">{t('testBox.ninaCleared')}</Note>}
     {props.sqmeterOn && <Note tone="warn">{t('wizard.testBox.sqmeterOn')}</Note>}
     <Note>{t('wizard.testBox.later')}</Note>
     {props.config.park && <RequestParkToggle park={props.config.park} update={props.update} />}
@@ -28,11 +29,14 @@ const TestBoxNotes: FunctionalComponent<WizardPageProps & { hours: number; ninaS
 );
 
 // Spec 022: a test box (no telescope, no weather station yet) gets the
-// bypasses, each only where its source isn't set up; a telescope gets none.
+// bypasses (the weather one only with no SQMeter source on); a telescope gets
+// none. Owner decision 2026-11-24: "No telescope yet" clears the N.I.N.A. address.
 export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const box = props.config.testBox;
   if (!box) return <Note>{t('settings.roof.notSent')}</Note>;
-  const ninaSet = Boolean(props.config.park?.nina.url.trim());
+  // Set in the settings as loaded: the wizard's own edit clears it for the bench answer.
+  const savedUrl = props.saved.park?.nina.url ?? '';
+  const ninaSet = savedUrl.trim() !== '';
   // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
   const switchesOnly = props.config.park ? parkSource(props.config.park) === 'switches' : false;
   const sqmeterOn = Boolean(props.config.safety?.http.enabled || props.config.safety?.mqtt.enabled);
@@ -40,7 +44,9 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const choice = choiceOf(props, 'testBox', current, (v) => {
     const on = v === 'testBox';
     props.updateMany([
-      [['testBox', 'park'], on && !ninaSet && !switchesOnly],
+      ...(switchesOnly
+        ? [[['testBox', 'park'], false] as [ConfigPath, unknown]]
+        : parkBypassChanges(on, props.config.park?.nina.url ?? '', savedUrl)),
       [['testBox', 'weather'], on && !sqmeterOn],
       [['testBox', 'daylight'], on],
     ]);
@@ -54,7 +60,7 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
           { value: 'testBox', icon: 'warning', title: t('wizard.testBox.testBox'), detail: t('wizard.testBox.testBoxDetail') },
         ]}
       />
-      {choice.value === 'testBox' && <TestBoxNotes {...props} hours={box.hours} ninaSet={ninaSet} sqmeterOn={sqmeterOn} />}
+      {choice.value === 'testBox' && <TestBoxNotes {...props} hours={box.hours} ninaSet={ninaSet && !switchesOnly} sqmeterOn={sqmeterOn} />}
     </>
   );
 };
