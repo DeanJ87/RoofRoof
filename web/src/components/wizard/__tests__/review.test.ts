@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Config, RoofInputs, SystemStatus } from '../../../types';
 import { mockConfig, mockInputs, mockStatus } from '../../../mocks/data';
+import { WIZARD_PAGES } from '../pages';
 import { reviewChecks, type ReviewInput } from '../review';
 
 // Spec 015 FR-010: one check per essential, each state reachable, and a
@@ -10,7 +11,6 @@ const base = (): ReviewInput => ({
   config: structuredClone(mockConfig),
   status: structuredClone(mockStatus),
   inputs: structuredClone(mockInputs),
-  hallNotFitted: false,
 });
 
 const stateOf = (input: ReviewInput, id: string) => reviewChecks(input).find((check) => check.id === id)!.state;
@@ -28,20 +28,39 @@ describe('reviewChecks', () => {
     const ids = reviewChecks(base()).map((check) => check.id);
     expect(ids).toEqual([
       'testBox',
-      'password',
-      'site',
-      'clock',
       'board',
       'supply',
-      'parkSwitches',
-      'hall',
-      'motion',
       'weather',
+      'site',
+      'clock',
+      'daylight',
+      'parkSwitches',
       'nina',
       'alpaca',
+      'hall',
+      'motion',
       'alerts',
-      'daylight',
+      'password',
     ]);
+    const pages = Object.fromEntries(reviewChecks(base()).map((check) => [check.id, check.page]));
+    expect(pages).toEqual({
+      testBox: 'testBox',
+      board: 'board',
+      supply: 'wiring',
+      weather: 'sqmeter',
+      site: 'sqmeter',
+      clock: 'sqmeter',
+      daylight: 'sqmeter',
+      parkSwitches: 'park',
+      nina: 'park',
+      alpaca: 'park',
+      hall: 'teach',
+      motion: 'calibrate',
+      alerts: 'alerts',
+      password: 'password',
+    });
+    const parts = new Set<string>(WIZARD_PAGES);
+    Object.values(pages).forEach((page) => expect(parts.has(page)).toBe(true));
     reviewChecks(base()).forEach((check) => {
       expect(check.label).not.toBe('');
       expect(check.text).not.toBe('');
@@ -197,7 +216,7 @@ describe('reviewChecks', () => {
     ).toBe('unknown');
   });
 
-  it('Hall sensor: not fitted and at a rail are problems; between the magnets needs a look', () => {
+  it('Hall sensor: judged from the live reading only; a rail is a problem; between the magnets needs a look', () => {
     expect(
       stateOf(
         given((i) => (roof(i).hall = { level: 'low', counts: 900 })),
@@ -218,10 +237,10 @@ describe('reviewChecks', () => {
     ).toBe('bad');
     expect(
       stateOf(
-        given((i) => ((i.hallNotFitted = true), (roof(i).hall = { level: 'low', counts: 900 }))),
+        given((i) => (i.status = { ...i.status!, roof: undefined } as SystemStatus)),
         'hall',
       ),
-    ).toBe('bad');
+    ).toBe('unknown');
   });
 
   it('motion: the factory travel and speed still need measuring', () => {

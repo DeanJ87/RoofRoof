@@ -1,40 +1,31 @@
-import { t } from '../../i18n';
-
-// The wizard's pages in order (spec 015). `setup.step` is an index into this list.
+// The wizard's parts in order (spec 025): `setup.step` is an index into this
+// list, the point the wizard resumes at. Each part is a short run of screens
+// (screens.ts) that starts where an installer would pick up again.
 export type WizardPageId =
-  'device' | 'site' | 'hardware' | 'hall' | 'teach' | 'calibrate' | 'motion' | 'weather' | 'nina' | 'alerts' | 'daylight' | 'review';
+  'network' | 'board' | 'wiring' | 'testBox' | 'sqmeter' | 'park' | 'direction' | 'teach' | 'calibrate' | 'alerts' | 'password' | 'review';
 
-export const WIZARD_PAGES: { id: WizardPageId; title: string }[] = [
-  { id: 'device', title: t('wizard.pages.device') },
-  { id: 'site', title: t('wizard.pages.site') },
-  { id: 'hardware', title: t('wizard.pages.hardware') },
-  { id: 'hall', title: t('wizard.pages.hall') },
-  { id: 'teach', title: t('wizard.pages.teach') },
-  { id: 'calibrate', title: t('wizard.pages.calibrate') },
-  { id: 'motion', title: t('wizard.pages.motion') },
-  { id: 'weather', title: t('wizard.pages.weather') },
-  { id: 'nina', title: t('wizard.pages.nina') },
-  { id: 'alerts', title: t('wizard.pages.alerts') },
-  { id: 'daylight', title: t('wizard.pages.daylight') },
-  { id: 'review', title: t('wizard.pages.review') },
+export const WIZARD_PAGES: WizardPageId[] = [
+  'network',
+  'board',
+  'wiring',
+  'testBox',
+  'sqmeter',
+  'park',
+  'direction',
+  'teach',
+  'calibrate',
+  'alerts',
+  'password',
+  'review',
 ];
 
-export const pageIndex = (id: WizardPageId) => WIZARD_PAGES.findIndex((page) => page.id === id);
+export const pageIndex = (id: WizardPageId) => WIZARD_PAGES.indexOf(id);
 
-// A step from the URL (?step=1 is the first page) or the device; anything else is page 1.
+// A step from the URL (?step=1 is the first part) or the device; anything else is part 1.
 export const clampStep = (value: unknown): number => {
   const step = Number(value);
   return Number.isInteger(step) && step >= 0 && step < WIZARD_PAGES.length ? step : 0;
 };
 
-// The settings each page edits: a Test compares them before and after its save.
-// SQMeter's login too (spec 020): a login typed after "wants a password" is a change to test.
-export const WEATHER_FIELDS = [
-  'safety.http.enabled',
-  'safety.http.url',
-  'safety.http.username',
-  'safety.http.password',
-  'safety.mqtt.enabled',
-  'safety.mqtt.topic',
-];
+// The settings N.I.N.A.'s Test compares before and after its save.
 export const NINA_FIELDS = ['park.nina.url'];

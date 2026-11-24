@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
+import Router from 'preact-router';
 import Wizard from '../Wizard';
 import { SCREENS } from '../wizard/screens';
 import type { PinsConfig, SystemStatus } from '../../types';
@@ -33,7 +34,7 @@ const at = (query: string) => window.history.replaceState(null, '', `/wizard?${q
 const onScreen = (id: string) =>
   waitFor(() => expect(document.querySelector('[data-wizard-screen]')).toHaveAttribute('data-wizard-screen', id));
 const button = (name: string) => screen.getByRole('button', { name });
-const NEW = { setup: { state: 'new' as const, step: 2 } };
+const NEW = { setup: { state: 'new' as const, step: 1 } };
 
 describe('Wizard: board, network and wiring', () => {
   beforeEach(() => {
@@ -41,18 +42,19 @@ describe('Wizard: board, network and wiring', () => {
   });
   afterEach(() => window.history.replaceState(null, '', '/'));
 
-  it('has no rain contact screen, and the board first on the Hardware page', () => {
+  it('has no rain contact screen, and a board screen of its own before the wiring', () => {
     const ids = SCREENS.map((screen) => screen.id);
     expect(ids).not.toContain('rain');
-    expect(SCREENS.filter((screen) => screen.page === 'hardware').map((screen) => screen.id)).toEqual([
-      'board',
-      'network',
-      'testBox', // spec 022
-      'supply',
-      'current',
+    expect(ids).not.toContain('supply');
+    expect(ids).not.toContain('current');
+    expect(SCREENS.filter((screen) => screen.page === 'board').map((screen) => screen.id)).toEqual(['board']);
+    expect(SCREENS.filter((screen) => screen.page === 'wiring').map((screen) => screen.id)).toEqual(['wiring']);
+    expect(ids.indexOf('board')).toBeLessThan(ids.indexOf('wiring'));
+    // Spec 024: the park source, then the switch count (a switch source only), then N.I.N.A.
+    expect(SCREENS.filter((screen) => screen.page === 'park').map((screen) => screen.id)).toEqual([
       'parkSwitches',
-      'parkSwitchCount', // spec 024
-      'wiring',
+      'parkSwitchCount',
+      'nina',
     ]);
   });
 
@@ -69,8 +71,8 @@ describe('Wizard: board, network and wiring', () => {
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].pins).toMatchObject({ preset: 'wt32-carrier-v1', board: 'wt32-eth01', enable: 4 });
-    // The detected WT32-ETH01 is the board in effect: its network question follows.
-    await onScreen('network');
+    // The network question comes before the board, so the wiring follows.
+    await onScreen('wiring');
   });
 
   it("once a WT32-ETH01 is detected, the DevKit can't be chosen and says why", async () => {
@@ -125,14 +127,30 @@ describe('Wizard: board, network and wiring', () => {
     expect(button('Continue')).toBeEnabled();
   });
 
-  it('Custom points to the pins page', async () => {
+  it('Custom shows the pins here with the device’s issues, and its note saves before opening the pins page', async () => {
     const { status } = mockBoard('devkit', NEW);
     live(status);
-    render(<Wizard />);
+    const saves = recordSaves();
+    at('screen=board');
+    render(
+      <Router>
+        <Wizard path="/wizard" />
+        <div path="/pins">The pins page</div>
+      </Router>,
+    );
     await onScreen('board');
     fireEvent.click(screen.getByRole('radio', { name: /^Custom/ }));
-    expect(screen.getByText('Set each pin on the pins page.')).toBeInTheDocument();
-    expect(button('Open the pins page')).toBeInTheDocument();
+    expect(document.querySelector('[data-custom-pins]')).not.toBeNull(); // the pin fields, inline
+    // A strapping pin on an output: the device's warning shows beside the fields.
+    const rpwm = document.querySelector<HTMLInputElement>('[data-field="pins.rpwm"]')!;
+    fireEvent.input(rpwm, { target: { value: '5' } });
+    fireEvent.change(rpwm, { target: { value: '5' } });
+    await waitFor(() => expect(document.querySelector('[data-pin-issue="rpwm"][data-level="warning"]')).not.toBeNull(), { timeout: 3000 });
+    expect(screen.getByText('Dividers and trims for a custom board are on the pins page.')).toBeInTheDocument();
+    fireEvent.click(button('Open the pins page'));
+    await waitFor(() => expect(window.location.pathname).toBe('/pins'), { timeout: 3000 });
+    expect(saves).toHaveLength(1); // saved first
+    expect(saves[0].pins).toMatchObject({ preset: 'custom' });
   });
 
   it('with the saved board not in effect, offers the restart', async () => {
@@ -150,7 +168,7 @@ describe('Wizard: board, network and wiring', () => {
     render(<Wizard />);
     await onScreen('board');
     fireEvent.click(button('Skip for now'));
-    await onScreen('testBox'); // spec 022's question follows the board
+    await onScreen('wiring');
   });
 
   it('on Ethernet: says so, and saves the network mode chosen', async () => {
@@ -192,5 +210,24 @@ describe('Wizard: board, network and wiring', () => {
     expect(await screen.findByText("Restart first: the saved pins aren't in effect yet.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check wiring' })).toBeDisabled();
     expect(screen.getByText('The board you chose applies at a restart.')).toBeInTheDocument();
+  });
+
+  it('the wiring screen has a Current sense switch and no link to Jog and teach', async () => {
+    const { status } = mockBoard('devkit', NEW);
+    live(status);
+    const saves = recordSaves();
+    at('screen=wiring');
+    render(<Wizard />);
+    await onScreen('wiring');
+    const sense = await screen.findByRole('switch', { name: 'Current sense' });
+    expect(screen.queryByRole('button', { name: /Open Jog and teach/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Jog and teach/ })).toBeNull();
+    const before = (sense as HTMLInputElement).checked;
+    expect(Boolean(document.querySelector('[data-field="roof.maxCurrentAmps"]'))).toBe(before); // its fields follow the switch
+    fireEvent.click(sense);
+    await waitFor(() => expect(Boolean(document.querySelector('[data-field="roof.maxCurrentAmps"]'))).toBe(!before));
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect((saves[0].roof as { currentSenseEnabled: boolean }).currentSenseEnabled).toBe(!before);
   });
 });

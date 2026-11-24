@@ -298,11 +298,13 @@ void test_sync_fills_secrets_and_turns_switches_on(void)
     TEST_ASSERT_TRUE(out.next.alerts.ntfyEnabled);
     TEST_ASSERT_EQUAL_STRING(PUSHOVER_USER, out.next.alerts.pushoverUserKey.c_str());
     TEST_ASSERT_TRUE(out.next.alerts.pushoverEnabled);
+    TEST_ASSERT_TRUE(out.next.alerts.enabled); // a channel turned on brings the master switch
     Config live = following();
     applyOutcome(out, live);
     TEST_ASSERT_EQUAL_STRING("broker-pass", live.mqtt.password.c_str());
     TEST_ASSERT_TRUE(live.mqtt.enabled);
     TEST_ASSERT_TRUE(live.alerts.pushoverEnabled);
+    TEST_ASSERT_TRUE(live.alerts.enabled);
     TEST_ASSERT_EQUAL_STRING(PUSHOVER_APP, live.alerts.pushoverAppToken.c_str());
 }
 
@@ -325,6 +327,16 @@ void test_sync_never_clears_and_never_turns_off(void)
     TEST_ASSERT_TRUE(out.next.mqtt.enabled);
     TEST_ASSERT_EQUAL_STRING(PUSHOVER_USER, out.next.alerts.pushoverUserKey.c_str());
     TEST_ASSERT_TRUE(out.next.alerts.pushoverEnabled);
+}
+
+void test_sync_leaves_the_alerts_master_switch_alone_otherwise(void)
+{
+    // A channel already on here: the person's master switch stays as it is.
+    Config live = following();
+    live.alerts.ntfyEnabled = true;
+    live.alerts.enabled = false;
+    const SyncOutcome out = sync(live, withSecrets(sqmeter()));
+    TEST_ASSERT_FALSE(out.next.alerts.enabled);
 }
 
 void test_sync_without_secrets_keeps_todays_rule(void)
@@ -475,6 +487,7 @@ int main(int, char **)
     RUN_TEST(test_stored_settings_never_fill);
     RUN_TEST(test_sync_fills_secrets_and_turns_switches_on);
     RUN_TEST(test_sync_never_clears_and_never_turns_off);
+    RUN_TEST(test_sync_leaves_the_alerts_master_switch_alone_otherwise);
     RUN_TEST(test_sync_without_secrets_keeps_todays_rule);
     RUN_TEST(test_sync_holds_the_mqtt_group_while_roof_commands_are_on);
     RUN_TEST(test_a_save_while_following_keeps_a_typed_password_and_an_off_switch);

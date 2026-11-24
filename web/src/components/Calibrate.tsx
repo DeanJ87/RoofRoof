@@ -40,7 +40,7 @@ const checkBadge = (check: CalibrationCheck) => {
   return check.ok ? <StatusBadge tone="ok" label={t('calibrate.ok')} /> : <StatusBadge tone="bad" label={t('calibrate.notReady')} />;
 };
 
-const Checks: FunctionalComponent<{ checks: CalibrationCheck[] }> = ({ checks }) => (
+export const Checks: FunctionalComponent<{ checks: CalibrationCheck[] }> = ({ checks }) => (
   <div data-calibrate-checks>
     {checks.map((check) => (
       <div class="calibrate-check" key={check.id} data-check={check.id} data-state={check.bypassed ? 'bypassed' : check.ok ? 'ok' : 'bad'}>
@@ -48,7 +48,7 @@ const Checks: FunctionalComponent<{ checks: CalibrationCheck[] }> = ({ checks })
           <span>{check.label}</span>
           {checkBadge(check)}
         </div>
-        {!check.ok && check.text && <Note tone="bad">{check.text}</Note>}
+        {!check.ok && check.text && <Note>{check.text}</Note>}
       </div>
     ))}
   </div>
@@ -59,9 +59,10 @@ interface StartProps {
   config: RoofConfig;
   live: boolean;
   onStarted: () => void;
+  plain?: boolean; // in the setup wizard's dialog (spec 025)
 }
 
-const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStarted }) => {
+export const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStarted, plain }) => {
   const [attended, setAttended] = useState(false);
   const [at, setAt] = useState<CalibrationWhere>(whereFromState(roof));
   const [travel, setTravel] = useState(config.travelMm);
@@ -79,7 +80,7 @@ const StartForm: FunctionalComponent<StartProps> = ({ roof, config, live, onStar
     if (answer.ok) onStarted();
   };
   return (
-    <SettingsCard id="calibrate-start" title={t('calibrate.startTitle')} hint={t('calibrate.startHint')}>
+    <SettingsCard id="calibrate-start" title={t('calibrate.startTitle')} hint={t('calibrate.startHint')} plain={plain}>
       <Checks checks={checks} />
       <Toggle
         dataField="calibrate.attended"
@@ -165,13 +166,14 @@ interface RunningProps {
   config: RoofConfig;
   onStop: () => void;
   onAnswer: () => void;
+  plain?: boolean;
 }
 
-const Running: FunctionalComponent<RunningProps> = ({ run, roof, config, onStop, onAnswer }) => {
+export const Running: FunctionalComponent<RunningProps> = ({ run, roof, config, onStop, onAnswer, plain }) => {
   const leg = run.leg;
   const driving = leg?.phase === 'drive' && leg.limitMs > 0;
   return (
-    <SettingsCard id="calibrate-run" title={t('calibrate.runningTitle')}>
+    <SettingsCard id="calibrate-run" title={t('calibrate.runningTitle')} plain={plain}>
       {leg && (
         <Note>
           {t('calibrate.legOf', { index: leg.index, count: leg.count, leg: t(LEG_TEXT[leg.name]) })}{' '}
@@ -232,9 +234,10 @@ interface ResultProps {
   run: CalibrationStatus;
   config: RoofConfig;
   accept: (roof: RoofConfig) => Promise<string | null>;
+  plain?: boolean;
 }
 
-const Result: FunctionalComponent<ResultProps> = ({ run, config, accept }) => {
+export const Result: FunctionalComponent<ResultProps> = ({ run, config, accept, plain }) => {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const proposal = run.proposal;
@@ -246,7 +249,7 @@ const Result: FunctionalComponent<ResultProps> = ({ run, config, accept }) => {
     setOutcome(problem ? { tone: 'bad', text: problem } : { tone: 'ok', text: t('calibrate.saved') });
   };
   return (
-    <SettingsCard id="calibrate-result" title={t('calibrate.resultTitle')}>
+    <SettingsCard id="calibrate-result" title={t('calibrate.resultTitle')} plain={plain}>
       {run.ending && <Note tone={run.state === 'done' ? 'ok' : 'bad'}>{deviceText(run.ending.text)}</Note>}
       <Readings run={run} />
       {proposal && (
@@ -291,8 +294,26 @@ const Result: FunctionalComponent<ResultProps> = ({ run, config, accept }) => {
 };
 
 // Live status recent enough to start a run on.
-const isFresh = (live: SystemStatus | null, connected: boolean, lastMessageAt: number | null | undefined) =>
+export const isFresh = (live: SystemStatus | null, connected: boolean, lastMessageAt: number | null | undefined) =>
   Boolean(live && connected && typeof lastMessageAt === 'number' && Date.now() - lastMessageAt <= LIVE_MS);
+
+/** Accept: the proposal saved through the settings save; null when saved, else why not (also the setup wizard's). */
+export const acceptRoof = async (editor: ReturnType<typeof useConfigEditor>, next: RoofConfig): Promise<string | null> => {
+  const outcome = await editor.save({ roof: next });
+  if (outcome.kind === 'saved') return null;
+  if (outcome.kind === 'conflict') {
+    // Spec 021: the roof's settings changed on the device; the proposal is compared with them again.
+    if ((await editor.rebase(outcome.fields)) === null) return t('settings.couldNotReachTheDevice');
+    return t('calibrate.changedOnDevice', { fields: listReasons(outcome.fields) });
+  }
+  return outcome.kind === 'refused' ? outcome.message : t('calibrate.notSaved');
+};
+
+/** Spec 019: a jog needs what a run needs; "still" doesn't apply while one is held. */
+export const jogGate = (roof: RoofStatus, fresh: boolean) => {
+  const checks = calibrationChecks(roof).filter((check) => check.id !== 'still');
+  return { checks, blocked: startBlocked(checks, true, fresh) };
+};
 
 const Calibrate: FunctionalComponent = () => {
   const editor = useConfigEditor();
@@ -303,21 +324,10 @@ const Calibrate: FunctionalComponent = () => {
   const config = editor.saved?.roof;
   if (editor.loading) return <div class="empty-state">{t('settings.loadingSettings')}</div>;
   if (!config || !roof) return <div class="empty-state tone-red">{t('calibrate.noDevice')}</div>;
-  const accept = async (next: RoofConfig) => {
-    const outcome = await editor.save({ roof: next });
-    if (outcome.kind === 'saved') return null;
-    if (outcome.kind === 'conflict') {
-      // Spec 021: the roof's settings changed on the device; the proposal is compared with them again.
-      if ((await editor.rebase(outcome.fields)) === null) return t('settings.couldNotReachTheDevice');
-      return t('calibrate.changedOnDevice', { fields: listReasons(outcome.fields) });
-    }
-    return outcome.kind === 'refused' ? outcome.message : t('calibrate.notSaved');
-  };
+  const accept = (next: RoofConfig) => acceptRoof(editor, next);
   const stop = () => void abortCalibration().then(refresh);
   const fresh = isFresh(live, connected, lastMessageAt);
-  // Spec 019: a jog needs what a run needs; "still" doesn't apply while one is held.
-  const jogChecks = calibrationChecks(roof).filter((check) => check.id !== 'still');
-  const jogBlocked = startBlocked(jogChecks, true, fresh);
+  const { checks: jogChecks, blocked: jogBlocked } = jogGate(roof, fresh);
   return (
     <div class="panel-page settings-page page-enter" data-calibrate-page>
       <h2 class="page-title">{t('calibrate.title')}</h2>

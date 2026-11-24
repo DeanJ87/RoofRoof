@@ -8,7 +8,7 @@ The dashboard is the web UI's home page, updated live over a WebSocket. Try it w
 
 The cards are **Status**, **Roof** and **Device & Network**.
 
-While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good.
+While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good. **Continue setup** resumes at the part you reached.
 
 ![Dashboard](../assets/screenshots/dashboard.png)
 
@@ -33,6 +33,7 @@ A problem no other card shows is one row under the tiles: its name, a pill, and 
 | **Alert channels** | **None on**, or **Can't send** (every channel that is on can't work right now, e.g. MQTT alerts with MQTT off) | When it happens |
 | **Clock** | **Not set**: the time isn't known yet | When it happens |
 | **Roof** | **Fault**: a motion fault is latched; "?" says what happened, with the measured value and the limit. Clear it on the Roof card | While a fault is latched |
+| **Test box** | **Bypassed**: a [test box](test-box.md) bypass is in effect, so the card never reads **All good**; the row opens the test box page | While a bypass is in effect |
 | **Automatic close** | **Held** (someone pressed Stop during it), **Can't move** (a fault or an unknown position) or **Halted** (a close took too long) - see [Close on unsafe weather](close-on-unsafe.md) | While the automatic close is in one of those states |
 
 Settings that are switched on but can't work are shown in **Settings**, where you set them: each reads **Not in effect** with the reason.

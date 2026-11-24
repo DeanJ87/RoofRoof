@@ -111,6 +111,65 @@ describe('ChoiceGroup', () => {
   });
 });
 
+describe('ChoiceGroup multiple', () => {
+  const options = [
+    { value: 'a', title: 'Alpha', detail: 'The first.' },
+    { value: 'b', title: 'Beta' },
+    { value: 'c', title: 'Gamma' },
+  ];
+
+  it('is a group of checkboxes named by the question, with the values checked', () => {
+    render(
+      <>
+        <h2 id="q">Which?</h2>
+        <ChoiceGroup name="which" labelledBy="q" value={null} multiple values={['a', 'c']} onChange={() => undefined} options={options} />
+      </>,
+    );
+    const group = screen.getByRole('group', { name: 'Which?' });
+    expect(screen.queryByRole('radiogroup')).toBeNull();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    const boxes = within(group).getAllByRole('checkbox');
+    expect(boxes).toHaveLength(3);
+    expect(boxes.map((box) => (box as HTMLInputElement).checked)).toEqual([true, false, true]);
+    expect(screen.getByRole('checkbox', { name: 'Alpha' })).toHaveAccessibleDescription('The first.');
+    expect(screen.getByRole('checkbox', { name: 'Alpha' }).closest('.choice')).toHaveClass('is-checked');
+    expect(screen.getByRole('checkbox', { name: 'Beta' }).closest('.choice')).not.toHaveClass('is-checked');
+  });
+
+  it('a click gives onChange the toggled value, and the caller keeps the ticks', () => {
+    const onChange = vi.fn();
+    const Group = () => {
+      const [values, setValues] = useState<string[]>(['a']);
+      return (
+        <>
+          <h2 id="q">Which?</h2>
+          <ChoiceGroup
+            name="which"
+            labelledBy="q"
+            value={null}
+            multiple
+            values={values}
+            onChange={(value) => {
+              onChange(value);
+              setValues((prior) => (prior.includes(value) ? prior.filter((v) => v !== value) : [...prior, value]));
+            }}
+            options={options}
+          />
+        </>
+      );
+    };
+    render(<Group />);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+    expect(onChange).toHaveBeenLastCalledWith('b');
+    expect(screen.getByRole('checkbox', { name: 'Beta' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Alpha' })).toBeChecked(); // the others stay
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+    expect(onChange).toHaveBeenLastCalledWith('a');
+    expect(screen.getByRole('checkbox', { name: 'Alpha' })).not.toBeChecked();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('ProgressMeter and Mascot', () => {
   it('the progress bar reads its value as text', () => {
     render(<ProgressMeter value={50} label="Setup progress" valueText="Screen 3 of 6" />);

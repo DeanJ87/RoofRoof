@@ -82,7 +82,7 @@ interface ModeProps {
 // Turn off (the step not to forget), then Extend: not while this page has unsaved edits.
 const ModeActions: FunctionalComponent<ModeProps> = ({ busy, dirty, saving, hours, onTurnOff, onExtend, live }) => (
   <>
-    <Note tone={live?.active ? 'bad' : 'muted'}>{t('testBox.mode.turnOffFirst')}</Note>
+    <Note>{t('testBox.mode.turnOffFirst')}</Note>
     <Button variant="danger" block onClick={onTurnOff} busy={busy === 'off'} disabled={busy === 'extend'}>
       {t('testBox.mode.turnOff')}
     </Button>

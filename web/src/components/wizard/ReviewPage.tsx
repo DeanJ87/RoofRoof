@@ -36,7 +36,7 @@ const useInputs = () => {
 
 export const ReviewScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const inputs = useInputs();
-  const checks = reviewChecks({ config: props.config, status: props.status, inputs, hallNotFitted: props.hallNotFitted });
+  const checks = reviewChecks({ config: props.config, status: props.status, inputs });
   return (
     <ul class="wizard-checks" aria-label={t('wizard.review.title')}>
       {checks.map((check) => (

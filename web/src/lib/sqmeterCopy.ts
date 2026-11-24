@@ -170,6 +170,11 @@ const switchRow = (id: CopyRowId, path: ConfigPath, carried?: CopyRow | null): C
   secrets: carried?.secrets ?? [],
   ...(carried?.asks ? { asks: carried.asks } : {}),
 });
+// An alert channel's switch also turns alerts on, so the channel delivers (and the wizard shows it ticked).
+const alertSwitchRow = (id: CopyRowId, path: ConfigPath, config: Config, carried?: CopyRow | null): CopyRow => {
+  const row = switchRow(id, path, carried);
+  return config.alerts?.enabled ? row : { ...row, changes: [...row.changes, [['alerts', 'enabled'], true]] };
+};
 // A row that takes SQMeter's received secret into `paths`.
 const secretRow = (id: CopyRowId, ours: string | null | undefined, paths: ConfigPath[]): CopyRow => ({
   id,
@@ -272,7 +277,9 @@ const ntfyRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   if (topicSet && ntfy.server === ours.server && sharedOf(site)?.ntfyToken === 'received' && !isCopiedSecret(ours.token))
     rows.push(secretRow('ntfyToken', ours.token, [['alerts', 'ntfy', 'token']]));
   if (ntfy.enabled && !ours.enabled && topicSet) {
-    rows.push(switchRow('ntfyEnabled', ['alerts', 'ntfy', 'enabled'], ours.topic.trim() === '' ? ntfyRow(site, config) : null));
+    rows.push(
+      alertSwitchRow('ntfyEnabled', ['alerts', 'ntfy', 'enabled'], config, ours.topic.trim() === '' ? ntfyRow(site, config) : null),
+    );
   }
   return rows;
 };
@@ -297,7 +304,7 @@ const pushoverRows = (site: SqmeterSite, config: Config): CopyRow[] => {
       ['alerts', 'pushover', 'userKey'],
       ['alerts', 'pushover', 'appToken'],
     ]);
-    rows.push(switchRow('pushoverEnabled', ['alerts', 'pushover', 'enabled'], own ? null : keys));
+    rows.push(alertSwitchRow('pushoverEnabled', ['alerts', 'pushover', 'enabled'], config, own ? null : keys));
   }
   return rows;
 };

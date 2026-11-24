@@ -2,17 +2,16 @@ import { FunctionalComponent, type ComponentChildren, type Ref } from 'preact';
 import { route } from 'preact-router';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Config, RoofInputs, SetupConfig, SystemStatus } from '../types';
-import { useConfigEditor, type SaveOutcome } from '../hooks/useConfigEditor';
+import { useConfigEditor } from '../hooks/useConfigEditor';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { TestSave } from '../hooks/useInputsTest';
-import { getConfigValidationMessage } from '../validation/configSchema';
 import { fieldErrorAliases } from './settings/payload';
-import { listReasons } from './settings/restart';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
 import { locationQuery } from './settings/tabs';
 import type { WizardPageProps } from './wizard/context';
+import { focusField, inPlaceFix, outcomeText, startFrom } from './wizard/flow';
 import { clampStep } from './wizard/pages';
 import {
   SCREENS,
@@ -26,6 +25,7 @@ import {
   stepOf,
   type ScreenId,
 } from './wizard/screens';
+import { acceptRoof, isFresh } from './Calibrate';
 import { DoneScreen } from './wizard/ReviewPage';
 import { Footer, Header, LeaveChoices, RestartNote } from './wizard/Chrome';
 import RoofStopBar from './RoofStopBar';
@@ -34,13 +34,16 @@ import { showToast } from './toast';
 import { Button, Modal, Note, SpeechBubble } from './ui';
 import { t } from '../i18n';
 
-// The setup wizard (specs 015 and 018): a dialog over the app that asks one
-// question per screen. Each screen saves through the settings API like
-// Settings (the device refuses a save while the roof moves). It offers no roof
-// command: the motion tests belong to the attended commissioning (constitution
-// I, III). The Stop bar is inside the dialog while the roof moves (VII).
+// The setup wizard (specs 015, 018 and 025): a dialog over the app that asks
+// one question per screen. Each screen saves through the settings API like
+// Settings (the device refuses a save while the roof moves). Its motor screens
+// host the Calibrate page's attended jog, teach and calibration run with every
+// gate (constitution I to III); no other screen moves the roof. The Stop bar is
+// inside the dialog while the roof moves (VII). It never leaves for another
+// page without saving first (leaveTo), and resumes at the saved part.
 
 const QUESTION_ID = 'wizard-question';
+const MOTOR_PARTS = ['direction', 'teach', 'calibrate'];
 
 // Where the dialog was opened from, so Leave for now goes back there.
 let returnTo = '/';
@@ -48,44 +51,18 @@ export const noteRoute = (url: string, previous?: string) => {
   if (url.startsWith('/wizard') && previous && !previous.startsWith('/wizard')) returnTo = previous;
 };
 
-// ?screen=<id> opens that screen, ?step=N spec 015's page N (System's "Run
-// setup wizard"); otherwise the saved page while setup isn't done.
-const startScreen = (setup: SetupConfig | undefined): number => {
-  const query = new URLSearchParams(typeof window !== 'undefined' ? locationQuery(window.location) : '');
-  const screen = screenIndex(query.get('screen') ?? '');
-  if (screen >= 0) return screen;
-  if (query.has('step')) return firstScreenOf(clampStep(Number(query.get('step')) - 1));
-  return setup && setup.state !== 'done' ? firstScreenOf(clampStep(setup.step)) : 0;
-};
-
 const valueAt = (config: Config | null, path: string): unknown =>
   path
     .split('.')
     .reduce<unknown>((node, key) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined), config);
 
-const outcomeText = (outcome: SaveOutcome): string | null => {
-  if (outcome.kind === 'invalid') return getConfigValidationMessage(outcome.errors);
-  if (outcome.kind === 'refused') return outcome.message;
-  if (outcome.kind === 'unreachable') return t('settings.couldNotReachTheDevice');
-  if (outcome.kind === 'conflict') return t('wizard.changedOnDevice', { fields: listReasons(outcome.fields) });
-  return null;
-};
-
-const focusField = (errors: Record<string, string>) => {
-  const first = Object.keys(errors)[0];
-  if (!first) return;
-  const alias = Object.entries(fieldErrorAliases).find(([, path]) => path === first)?.[0];
-  setTimeout(() => {
-    const target =
-      document.querySelector<HTMLElement>(`[data-field="${first}"]`) ??
-      (alias ? document.querySelector<HTMLElement>(`[data-field="${alias}"]`) : null);
-    target?.focus?.();
-  }, 60);
-};
-
 type Mode = 'screen' | 'leave' | 'skip' | 'done';
 
-const MISSING: Partial<Record<ScreenId, string>> = { name: t('wizard.missing.name'), password: t('wizard.missing.password') };
+const MISSING: Partial<Record<ScreenId, string>> = {
+  name: t('wizard.missing.name'),
+  password: t('wizard.missing.password'),
+  direction: t('wizard.missing.direction'),
+};
 
 // The question and its "why" for the screen or the dialog's own screens.
 const textsOf = (mode: Mode, id: ScreenId): [string, string] => {
@@ -112,6 +89,7 @@ interface View {
   restart: string[];
   heading: Ref<HTMLHeadingElement>;
   go: (index: number) => void;
+  skipScreen: () => void;
   keepGoing: () => void;
   close: () => void;
   askSkip: () => void;
@@ -138,8 +116,7 @@ const DialogFooter: FunctionalComponent<{ view: View }> = ({ view }) => {
       answered={isAnswered(view.index, view.props)}
       missing={missingText(view)}
       busy={view.busy}
-      // The next screen as the settings will be once this screen's edits are dropped.
-      onSkip={() => view.go(nextScreen(view.index, { ...view.props, config: view.props.saved }))}
+      onSkip={view.skipScreen}
       onContinue={view.onContinue}
     />
   );
@@ -154,7 +131,8 @@ const DialogContent: FunctionalComponent<{ view: View; title: string }> = ({ vie
       <SpeechBubble id={QUESTION_ID} headingRef={view.heading}>
         {title}
       </SpeechBubble>
-      <MotionNote status={props.status} />
+      {/* Not on the motor screens: a note appearing above a held button would move it (spec 025). */}
+      {!MOTOR_PARTS.includes(screen.page) && <MotionNote status={props.status} />}
       {mode === 'screen' && <Body {...props} />}
       {(mode === 'leave' || mode === 'skip') && (
         <LeaveChoices
@@ -213,13 +191,13 @@ const wizardDialog = (view: View) => {
 
 const Wizard: FunctionalComponent = () => {
   const editor = useConfigEditor();
-  const { data: live } = useWebSocket<SystemStatus>('/ws/status');
+  const { data: live, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
   const { config, saved, setup, effective, loading, validationErrors, dirty } = editor;
   const [index, setIndex] = useState<number | null>(null);
+  // The screen the wizard opened at: the screens before it were passed in an earlier visit.
   const seenUpTo = useRef(0);
   const [picked, setPicked] = useState<ReadonlySet<ScreenId>>(new Set());
-  const [hallNotFitted, setHallNotFitted] = useState(false);
-  const [alertPick, setAlertPick] = useState<string | null>(null);
+  const [direction, setDirection] = useState<'yes' | 'no' | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>('screen');
@@ -228,15 +206,16 @@ const Wizard: FunctionalComponent = () => {
   // The inputs as they were before the last save of a Test screen, so a Test
   // right after a plain Save still waits for a reading of the saved settings.
   const lastSave = useRef<{ index: number; before: RoofInputs | null; was: Config } | null>(null);
-  // Password protection is offered once per visit (and only when none is saved).
-  const passwordOffered = useRef(false);
 
   useEffect(markWizardOpened, []);
   useEffect(() => {
     if (loading || index !== null) return;
-    const start = startScreen(setup);
-    seenUpTo.current = start;
-    setIndex(start);
+    const start = startFrom(setup, new URLSearchParams(locationQuery(window.location)));
+    // An explicit start applies once (FR-003): a reload then resumes at the saved part.
+    if (start.explicit) route('/wizard', true);
+    // The screens before the saved part were passed in an earlier visit, also when a link opened another.
+    seenUpTo.current = Math.max(start.index, firstScreenOf(clampStep(setup?.step ?? 0)));
+    setIndex(start.index);
   }, [loading, setup, index]);
 
   const leave = () => route(returnTo);
@@ -269,7 +248,7 @@ const Wizard: FunctionalComponent = () => {
   // One save of the screen; false (with the reason shown) when it didn't go through.
   const save = async (next: SetupConfig | undefined): Promise<boolean> => {
     setBusy(true);
-    const testScreen = screen.id === 'weatherAddress' || screen.id === 'nina';
+    const testScreen = screen.id === 'nina';
     const before = testScreen ? await fetchInputs() : null;
     const was = saved;
     const outcome = await editor.save(next ? { setup: next } : {});
@@ -284,6 +263,9 @@ const Wizard: FunctionalComponent = () => {
     return outcome.kind === 'saved';
   };
 
+  // The screen saved with `step` as the part to resume at (only the part when nothing changed).
+  const keep = async (step: number): Promise<boolean> => (dirty ? save({ state, step }) : saveSetup({ state, step }));
+
   const saveForTest =
     (fields: string[]): TestSave =>
     async () => {
@@ -297,6 +279,15 @@ const Wizard: FunctionalComponent = () => {
       return { ok: true, changed, config, before: lastSave.current?.before ?? null };
     };
 
+  // Keeps this screen's answer: it is saved first (a refused save stays here with its reason).
+  const openScreen = async (to: number) => {
+    if (await keep(stepOf(to))) go(to, true);
+  };
+  // FR-006: out of the wizard only once the screen is saved; it opens at this part again.
+  const leaveTo = async (url: string) => {
+    if (await keep(stepOf(index))) route(url);
+  };
+
   const chosen = state !== 'new' || index < seenUpTo.current || picked.has(screen.id);
   const props: WizardPageProps = {
     config,
@@ -306,43 +297,47 @@ const Wizard: FunctionalComponent = () => {
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     status,
     dirty,
-    goTo: (tab, anchor) => route(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
+    goTo: (tab, anchor) => void leaveTo(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
     deps: viewOf(effectiveEntries(config, effective, dirty)),
+    // FR-007: a fix made here when the wizard can, else saved and then Settings.
     fix: (entry) => {
+      const inPlace = inPlaceFix(entry);
+      if (inPlace && 'turnOn' in inPlace) return editor.applyChanges([[inPlace.turnOn, true]]);
+      if (inPlace) return void openScreen(screenIndex(inPlace.screen));
       const target = fixTarget(entry);
-      if (!('restart' in target)) route(`/settings?tab=${target.tab}`);
+      if (!('restart' in target)) void leaveTo(`/settings?tab=${target.tab}`);
     },
-    hallNotFitted,
-    setHallNotFitted,
-    alertPick,
-    setAlertPick,
     saveForTest,
     saveHere: () => void save({ state, step: stepOf(index) }),
-    // Keeps this screen's answer: it is saved first (a refused save stays here with its reason).
-    goToPage: async (page) => {
-      const to = settle(firstScreenOf(page), props);
-      if (!dirty || (await save({ state, step: page }))) go(to, true);
-    },
-    offerPassword: () => {
-      if (passwordOffered.current) return false;
-      passwordOffered.current = true;
-      return !saved.auth.enabled && saved.auth.password === '';
-    },
+    goToPage: (page) => openScreen(settle(firstScreenOf(page), props)),
+    goToScreen: (id) => openScreen(screenIndex(id)),
+    leaveTo,
+    reload: editor.reload,
+    acceptRoof: (roof) => acceptRoof(editor, roof),
+    fresh: isFresh(live, connected, lastMessageAt),
+    direction,
+    setDirection,
     questionId: QUESTION_ID,
     chosen,
     choose: () => setPicked((prior) => new Set([...prior, screen.id])),
   };
 
-  // A screen with changes is saved with the next screen's page; an unchanged
-  // one only records the page (best effort: it has nothing to lose).
+  // A screen with changes is saved with the next screen's part; an unchanged
+  // one only records the part (best effort: it has nothing to lose).
   const next = async () => {
     const to = nextScreen(index, props);
     const at: SetupConfig = { state, step: stepOf(to) };
     if (!dirty) {
-      await saveSetup(at); // in order, so the device keeps the latest page
+      await saveSetup(at); // in order, so the device keeps the latest part
       return go(to, true);
     }
     if (await save(at)) go(to, true);
+  };
+  // FR-002: Skip for now drops the screen's edits but records the next part, so a reload resumes there.
+  const skipScreen = async () => {
+    const to = nextScreen(index, { ...props, config: saved });
+    await saveSetup({ state, step: stepOf(to) }); // in order, as Continue
+    go(to);
   };
   const finish = async () => {
     const done: SetupConfig = { state: 'done', step: 0 };
@@ -374,6 +369,7 @@ const Wizard: FunctionalComponent = () => {
     restart,
     heading,
     go,
+    skipScreen: () => void skipScreen(),
     keepGoing,
     // Escape and Close ask first (FR-004); on the leave screen Escape keeps going; once done, they close.
     close: () => (busy ? undefined : mode === 'done' ? route('/') : mode === 'screen' ? setMode('leave') : keepGoing()),

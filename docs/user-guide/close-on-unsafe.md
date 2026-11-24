@@ -319,8 +319,8 @@ safety poll, and never on the roof's own control task.
 
 ### Copy from SQMeter
 
-**Settings → Roof → Site from SQMeter → Copy from SQMeter**, and the setup wizard's first Site and
-time screen, read SQMeter's settings and list what differs, SQMeter's value beside RoofRoof's:
+**Settings → Roof → Site from SQMeter → Copy from SQMeter**, and the setup wizard's SQMeter
+screen, read SQMeter's settings and list what differs, SQMeter's value beside RoofRoof's:
 
 | Row | What it sets |
 |---|---|
@@ -368,7 +368,8 @@ never asks again until you change SQMeter's user name or password here, so a wro
 can't run into SQMeter's lock; after a 429 it waits for the next read of SQMeter's settings.
 
 **On and off switches.** SQMeter's MQTT, ntfy and Pushover switches are offered only to turn
-RoofRoof's on (Pushover once its keys are here); nothing from SQMeter ever turns one off.
+RoofRoof's on (Pushover once its keys are here; the ntfy and Pushover rows also turn alerts on);
+nothing from SQMeter ever turns one off.
 
 **Never copied:** the device name and host name (the two devices must differ), WiFi, Alpaca, OTA,
 the webhook, and any secret SQMeter didn't share. Copying a different MQTT broker, port or user name
@@ -447,7 +448,8 @@ Settings and the dashboard's Status card ask for it, also with that channel off;
 uses Pushover, its keys are asked for until both are set here. This is a note, not an alert.
 
 **Switches only turn on.** While a group follows, a switch SQMeter has on (MQTT, ntfy, Pushover) is
-turned on here at the next sync; nothing turns one off. To keep one off while SQMeter's is on, make
+turned on here at the next sync (and, when no channel was on yet, the alerts master switch with
+it); nothing turns one off. To keep one off while SQMeter's is on, make
 the group local (**Edit here instead**).
 
 **Never anything else.** A sync never touches how the roof moves, the weather verdict, the park,

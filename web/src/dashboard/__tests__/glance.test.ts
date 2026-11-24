@@ -205,4 +205,14 @@ describe('glanceItems', () => {
     expect(items[0].fix).toEqual(expect.objectContaining({ label: 'Open settings' }));
     expect(ids({})).not.toContain('sqmeter-needs');
   });
+
+  it('a test box bypass in effect is a note row, so the card never says All good (spec 022)', () => {
+    // inventory: test-box
+    const status = withStatus((s) => {
+      s.roof!.testBox = { ...s.roof!.testBox!, set: true, active: true, park: true };
+    });
+    const row = glanceItems(input({ status })).find((item) => item.id === 'test-box');
+    expect(row).toMatchObject({ severity: 'note', state: 'Bypassed', fix: expect.objectContaining({ label: 'Manage' }) });
+    expect(ids({})).not.toContain('test-box');
+  });
 });

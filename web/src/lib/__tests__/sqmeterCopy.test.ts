@@ -244,6 +244,14 @@ describe('copyRows: shared secrets and switches', () => {
     noKeys.alerts!.pushover = { ...noKeys.alerts!.pushover, enabled: false, userKey: '', appToken: '' };
     expect(ids({ ...on, secrets: { ...on.secrets!, pushover: 'none' } }, noKeys)).not.toContain('pushoverEnabled');
     expect(ids(on, noKeys)).toContain('pushoverEnabled');
+    // With alerts off here, an alert channel's switch turns alerts on too (so it delivers); MQTT's doesn't.
+    const alertsOff = matching();
+    alertsOff.mqtt.enabled = false;
+    alertsOff.alerts = { ...alertsOff.alerts!, enabled: false, pushover: { ...alertsOff.alerts!.pushover, enabled: false } };
+    expect(row(on, alertsOff, 'ntfyEnabled')!.changes).toContainEqual([['alerts', 'enabled'], true]);
+    expect(row(on, alertsOff, 'pushoverEnabled')!.changes).toContainEqual([['alerts', 'enabled'], true]);
+    expect(row(on, alertsOff, 'mqttEnabled')!.changes).not.toContainEqual([['alerts', 'enabled'], true]);
+    expect(row(on, off, 'ntfyEnabled')!.changes).not.toContainEqual([['alerts', 'enabled'], true]);
   });
 
   it('a switch row brings what the switch needs when RoofRoof lacks it, so no tick combination is refused', () => {

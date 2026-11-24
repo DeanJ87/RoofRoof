@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-// Spec 018 FR-022, SC-002: every wizard screen, and the dialog's own screens,
+// Spec 018 FR-022, SC-002 (spec 025's screens): every wizard screen, and the dialog's own screens,
 // pass the WCAG 2.2 AA scan with no violation and fit without sideways scroll,
 // at 320 px and desktop, with the browser preferring light and dark. The
 // device is set up (the demo's state), so every conditional screen shows.
@@ -9,30 +9,25 @@ import AxeBuilder from '@axe-core/playwright';
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const SCREENS = [
   'name',
-  'password',
-  'sqmeter',
-  'site',
-  'time',
-  'board',
   // Shown on a board with Ethernet; the demo's DevKit opens it only directly.
   'network',
-  'supply',
-  'current',
+  'board',
+  'wiring',
+  'testBox',
+  'sqmeter',
+  // Skipped while SQMeter supplies the location and time; opened by Edit.
+  'site',
+  'daylight',
   'parkSwitches',
   'parkSwitchCount',
-  'wiring',
-  'hallFitted',
-  'hall',
+  'nina',
+  'direction',
   'teach',
   'calibrate',
+  // "Enter manually instead".
   'motion',
-  'weatherSource',
-  'weatherAddress',
-  'nina',
-  'alpaca',
-  'alertChannel',
-  'alertDetails',
-  'daylight',
+  'alerts',
+  'password',
   'review',
 ];
 const VIEWPORTS = [

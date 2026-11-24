@@ -93,8 +93,14 @@ namespace SQM
 
             bool applyAlerts(Config &c, const SiteConfig &site)
             {
+                const bool channelsOn = c.alerts.ntfyEnabled || c.alerts.pushoverEnabled;
                 const bool ntfy = applyNtfy(c.alerts, site);
-                return applyPushover(c.alerts, site) || ntfy;
+                const bool taken = applyPushover(c.alerts, site) || ntfy;
+                // A channel the sync turned on sends nothing with alerts off: the
+                // master switch comes on with it (never off), as the copy's rows do.
+                if (!channelsOn && (c.alerts.ntfyEnabled || c.alerts.pushoverEnabled))
+                    c.alerts.enabled = true;
+                return taken;
             }
 
             bool applyGroup(Config &c, const SiteConfig &site, Group group)
@@ -312,6 +318,7 @@ namespace SQM
                     to.alerts.pushoverUserKey = a.pushoverUserKey;
                     to.alerts.pushoverAppToken = a.pushoverAppToken;
                     to.alerts.pushoverEnabled = a.pushoverEnabled;
+                    to.alerts.enabled = a.enabled;
                 }
             }
         } // namespace

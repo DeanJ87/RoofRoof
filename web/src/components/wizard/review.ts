@@ -22,7 +22,6 @@ export interface ReviewInput {
   config: Config;
   status: SystemStatus | null;
   inputs: RoofInputs | null;
-  hallNotFitted: boolean;
 }
 
 type Check = Omit<ReviewCheck, 'id' | 'label' | 'page'>;
@@ -78,8 +77,8 @@ const board = ({ config, status }: ReviewInput): Check => {
   return ok(t('wizard.review.boardOk', { board: presetLabel(pins.preset) }));
 };
 
-const hall = ({ status, hallNotFitted }: ReviewInput): Check => {
-  if (hallNotFitted) return bad(t('wizard.review.hallNotFitted'));
+// Spec 025: from the live reading only (no "not fitted" answer is kept); a sensor not connected reads at a rail.
+const hall = ({ status }: ReviewInput): Check => {
   const level = status?.roof?.hall.level;
   if (!level) return unknown();
   if (level === 'rail') return bad(t('wizard.review.hallRail'));
@@ -143,20 +142,20 @@ const testBox = ({ config, status }: ReviewInput): Check => {
 };
 
 const CHECKS: [string, string, WizardPageId, (input: ReviewInput) => Check][] = [
-  ['testBox', 'wizard.review.testBox', 'hardware', testBox],
-  ['password', 'wizard.review.password', 'device', password],
-  ['site', 'wizard.review.site', 'site', site],
-  ['clock', 'wizard.review.clock', 'site', clock],
-  ['board', 'wizard.review.board', 'hardware', board],
-  ['supply', 'wizard.review.supply', 'hardware', supply],
-  ['parkSwitches', 'wizard.review.parkSwitches', 'hardware', parkSwitches],
-  ['hall', 'wizard.review.hall', 'hall', hall],
-  ['motion', 'wizard.review.motion', 'motion', motion],
-  ['weather', 'wizard.review.weather', 'weather', weather],
-  ['nina', 'wizard.review.nina', 'nina', nina],
-  ['alpaca', 'wizard.review.alpaca', 'nina', alpaca],
+  ['testBox', 'wizard.review.testBox', 'testBox', testBox],
+  ['board', 'wizard.review.board', 'board', board],
+  ['supply', 'wizard.review.supply', 'wiring', supply],
+  ['weather', 'wizard.review.weather', 'sqmeter', weather],
+  ['site', 'wizard.review.site', 'sqmeter', site],
+  ['clock', 'wizard.review.clock', 'sqmeter', clock],
+  ['daylight', 'wizard.review.daylight', 'sqmeter', daylight],
+  ['parkSwitches', 'wizard.review.parkSwitches', 'park', parkSwitches],
+  ['nina', 'wizard.review.nina', 'park', nina],
+  ['alpaca', 'wizard.review.alpaca', 'park', alpaca],
+  ['hall', 'wizard.review.hall', 'teach', hall],
+  ['motion', 'wizard.review.motion', 'calibrate', motion],
   ['alerts', 'wizard.review.alerts', 'alerts', alerts],
-  ['daylight', 'wizard.review.daylight', 'daylight', daylight],
+  ['password', 'wizard.review.password', 'password', password],
 ];
 
 export const reviewChecks = (input: ReviewInput): ReviewCheck[] =>
