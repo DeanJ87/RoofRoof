@@ -109,12 +109,13 @@ void test_the_dome_description(void)
 
 namespace
 {
-    std::vector<Alerts::Alert> pass(Alerts::AlertEngine &engine, uint32_t now, uint8_t bits, bool on = true)
+    std::vector<Alerts::Alert> pass(Alerts::AlertEngine &engine, uint32_t now, uint8_t bits, bool on = true, bool settled = true)
     {
         Alerts::AlertInputs in;
         in.nowSeconds = now;
         in.roof.known = true;
         in.roof.testBox = bits;
+        in.roof.testBoxSettled = settled;
         in.roof.testBoxText = bits ? "Test box: park check (no telescope) bypassed until 2025-11-27 16:00 UTC" : "";
         Alerts::AlertRules rules;
         rules.onTestBox = on;
@@ -131,10 +132,34 @@ namespace
     }
 } // namespace
 
-void test_the_alert_after_boot_once_the_grace_is_over(void)
+// A restart with a bypass already in effect sends nothing: it was announced
+// when it came into effect (a reversal of spec 022's first rule).
+void test_no_alert_after_a_boot_with_a_bypass_in_effect(void)
 {
     Alerts::AlertEngine engine;
     TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 100, TestBox::BitPark)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 161, TestBox::BitPark)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 400, TestBox::BitPark)));
+    // A bypass added later still announces itself.
+    TEST_ASSERT_EQUAL_size_t(1, testBoxAlerts(pass(engine, 401, TestBox::BitPark | TestBox::BitWeather)));
+}
+
+// Waiting for the clock, nothing is decided: the bypasses that appear once it
+// is set are the baseline, not a new bypass.
+void test_no_alert_when_the_clock_sets_after_a_boot(void)
+{
+    Alerts::AlertEngine engine;
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 100, 0, true, false)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 200, 0, true, false)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 201, TestBox::BitPark)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 300, TestBox::BitPark)));
+}
+
+// A bypass switched on during the grace is sent once the grace is over.
+void test_the_alert_held_through_the_grace(void)
+{
+    Alerts::AlertEngine engine;
+    pass(engine, 100, 0);
     TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 130, TestBox::BitPark)));
     const std::vector<Alerts::Alert> sent = pass(engine, 161, TestBox::BitPark);
     TEST_ASSERT_EQUAL_size_t(1, testBoxAlerts(sent));
@@ -166,8 +191,9 @@ void test_the_alert_rule_off_sends_nothing(void)
     TEST_ASSERT_EQUAL_STRING("test_box", Alerts::alertTypeName(Alerts::AlertType::TestBox));
 }
 
-// Past the master switch, the pause and the send mode, on its own (not stacked).
-void test_the_alert_goes_out_with_alerts_off_or_paused(void)
+// Held by the master switch, the pause and the send mode like any other
+// alert, and stacked with them.
+void test_the_alert_obeys_alerts_off_and_paused(void)
 {
     AlertsConfig off = Config::createDefault().alerts;
     off.enabled = false;
@@ -175,24 +201,30 @@ void test_the_alert_goes_out_with_alerts_off_or_paused(void)
     box.type = Alerts::AlertType::TestBox;
     Alerts::Alert fault;
     fault.type = Alerts::AlertType::MoveFault;
-    const std::vector<Alerts::Alert> sent = Core::alertsToSend({fault, box}, off, false);
-    TEST_ASSERT_EQUAL_size_t(1, sent.size());
-    TEST_ASSERT_TRUE(sent[0].type == Alerts::AlertType::TestBox);
+    TEST_ASSERT_EQUAL_size_t(0, Core::alertsToSend({fault, box}, off, true).size());
+    TEST_ASSERT_FALSE(Core::alertGoesOut(Alerts::AlertType::TestBox, off, true));
     AlertsConfig on = off;
     on.enabled = true;
-    TEST_ASSERT_EQUAL_size_t(2, Core::alertsToSend({fault, box}, on, true).size());
-    TEST_ASSERT_TRUE(Core::alertGoesOut(Alerts::AlertType::TestBox, off, false));
+    TEST_ASSERT_EQUAL_size_t(0, Core::alertsToSend({fault, box}, on, false).size()); // paused
+    TEST_ASSERT_FALSE(Core::alertGoesOut(Alerts::AlertType::TestBox, on, false));
+    const std::vector<Alerts::Alert> sent = Core::alertsToSend({fault, box}, on, true);
+    TEST_ASSERT_EQUAL_size_t(1, sent.size()); // one stacked notification
+    TEST_ASSERT_TRUE(Core::alertGoesOut(Alerts::AlertType::TestBox, on, true));
+    // The critical roof alerts are still past both.
+    TEST_ASSERT_TRUE(Core::alertGoesOut(Alerts::AlertType::RoofNotClosed, off, false));
 }
 
 int main(int, char **)
 {
     UNITY_BEGIN();
-    RUN_TEST(test_the_alert_goes_out_with_alerts_off_or_paused);
+    RUN_TEST(test_the_alert_obeys_alerts_off_and_paused);
     RUN_TEST(test_texts);
     RUN_TEST(test_the_status_object);
     RUN_TEST(test_the_status_section_carries_it);
     RUN_TEST(test_the_dome_description);
-    RUN_TEST(test_the_alert_after_boot_once_the_grace_is_over);
+    RUN_TEST(test_no_alert_after_a_boot_with_a_bypass_in_effect);
+    RUN_TEST(test_no_alert_when_the_clock_sets_after_a_boot);
+    RUN_TEST(test_the_alert_held_through_the_grace);
     RUN_TEST(test_the_alert_on_each_bypass_coming_into_effect);
     RUN_TEST(test_the_alert_rule_off_sends_nothing);
     return UNITY_END();

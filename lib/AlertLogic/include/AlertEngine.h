@@ -35,7 +35,8 @@ namespace SQM
             DaylightOpen,    // the sun is up and the roof isn't closed
             DaylightClosed,  // the roof reached closed after a daylight close
             DaylightUnknown, // the daylight check can't run (no site or clock)
-            // Spec 022: a test-box bypass came into effect, or is in effect after a boot.
+            // Spec 022: a test-box bypass came into effect (sent like any other
+            // alert: the pause, the send mode and the master switch hold it).
             TestBox,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
@@ -103,7 +104,7 @@ namespace SQM
             bool onDaylightOpen = true;
             bool onDaylightClosed = true;
             bool onDaylightUnknown = true;
-            // Spec 022 (never off in the settings; false only in tests).
+            // Spec 022 (its level is never off in the settings; false only in tests).
             bool onTestBox = true;
         };
 
@@ -154,6 +155,10 @@ namespace SQM
             // status text naming them.
             uint8_t testBox = 0;
             std::string testBoxText;
+            // The bypasses in effect are decided (with one set, the clock is
+            // set). The first decided pass is the baseline: bypasses already in
+            // effect then were announced before the restart, never again.
+            bool testBoxSettled = false;
         };
 
         // The most Alpaca devices an imaging app can be watched on. RoofRoof spec 006
@@ -291,6 +296,7 @@ namespace SQM
             // whether a newly seen one waits to be announced.
             uint8_t testBoxSeen = 0;
             bool testBoxPending = false;
+            bool testBoxBaseline = false;
             void updateTestBox(const RoofInputs &roof, const AlertRules &rules, bool inGrace, std::vector<Alert> &alerts);
             static bool rise(Tracker &tracker, bool current, const Emit &emit, bool inGrace);
             static bool counted(Count &count, uint32_t value, const std::string &text, const Emit &emit, bool inGrace);

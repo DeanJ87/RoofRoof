@@ -1,6 +1,15 @@
 <!--
 Sync Impact Report
-- Version: 4.1.0 -> 4.1.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
+- Version: 4.1.1 -> 4.1.2 (PATCH: clarification). Principle II's test-box exception now says what
+  "visible" rests on: the banner on every page and the status on every interface (API, MQTT, Home
+  Assistant, the Alpaca description). The alert sent when a bypass comes into effect is an ordinary
+  alert: the pause, the send mode and the master switch hold it, and a restart alone doesn't
+  repeat it. This replaces the 3.0.0 note's "after every restart" mitigation; no rule changes.
+- Why: an owner who paused alerts while flashing firmware still got the test-box alert after each
+  restart.
+- Templates: no change. Docs: docs/user-guide/test-box.md, docs/user-guide/alerts.md,
+  specs/022-test-box-bypass/spec.md.
+- Earlier: 4.1.0 -> 4.1.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
   below no longer name the rain contact that 4.0.0 removed: the bypass never overrides a reading
   (a configured source that says unsafe or rain). No rule changes.
 - Earlier: 4.0.0 -> 4.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
@@ -208,7 +217,9 @@ Closing onto an unparked telescope is the most expensive failure this device can
 - **Test-box exception.** On a box with no telescope under it, the owner may set the park source
   to "no telescope". Bypasses exist only as explicit, visible, owner-set test-box settings: off by
   default, changed only by an authenticated settings save, shown on every page and every interface
-  while in effect, and ending at a deadline the device enforces. "No telescope" stands in for
+  while in effect, and ending at a deadline the device enforces. The persistent banner and the
+  status satisfy "visible"; the alert announcing a bypass is an ordinary alert that the owner's
+  pause and master switch hold back. "No telescope" stands in for
   N.I.N.A. only: it can't be set while a N.I.N.A. address is, fitted park switches still count,
   and every close path uses the same park result.
 
@@ -428,4 +439,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 4.1.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
+**Version**: 4.1.2 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24

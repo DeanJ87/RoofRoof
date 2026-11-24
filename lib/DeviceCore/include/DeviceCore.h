@@ -72,11 +72,11 @@ namespace SQM
         // alerts always; the rest with the master switch on and while sending
         // (not paused, the send mode allows it). Used by the firmware's alert
         // pass and its critical sink.
-        // Spec 022: the test box reminder goes out like the critical alerts
-        // (past the master switch, the pause and the send mode), at its own level.
+        // The test box alert is one of the rest (a reversal of spec 022's first
+        // rule): the persistent banner and status keep a bypass visible.
         bool alertGoesOut(Alerts::AlertType type, const AlertsConfig &alerts, bool sending);
-        // What one alert pass sends: the events that may go out stacked into
-        // one notification, and each test box reminder on its own (spec 022).
+        // What one alert pass sends: the events that may go out, stacked into
+        // one notification (empty when none may).
         std::vector<Alerts::Alert> alertsToSend(const std::vector<Alerts::Alert> &outgoing, const AlertsConfig &alerts, bool sending);
 
         // Spec 011 FR-026: an alert from bench firmware says so in its title

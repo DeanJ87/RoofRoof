@@ -17,21 +17,20 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 89d221cefdd4333f
+fingerprint: 3be27c423ef84ea0
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
-    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch, and is sent again until a channel takes it. The test box reminder skips the pause, the send mode and the master switch too, as a notification of its own.
+    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch, and is sent again until a channel takes it.
     CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
     HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source, open in daylight)<br/>or 10 min (daylight check), or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
     HELD -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
     WORDING --> ON{"Sending alerts?"}
-    WORDING -->|"test box reminder:<br/>its own notification,<br/>never paused or switched off"| INEFFECT
     ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent"]
     ON -->|yes| MASTER{"Send alerts on?"}
     MASTER -->|no| NOPUSH["No channel is used"]
@@ -66,7 +65,6 @@ flowchart TB
     8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
     10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts) and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me, and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
-    11. The **test box reminder** ([test box mode](test-box.md)) is held back in the start-up minute like any event, then skips steps 5 and 6: it goes out on its own, never stacked, whether alerts are paused, outside the send mode or **Send alerts** is off.
 
 ---
 
@@ -85,7 +83,7 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Roof open in daylight | The sun is up, the roof isn't closed and the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) is on (alert, or alert and close) | Urgent |
 | Roof closed after daylight | The roof reached closed during a daylight close | Normal |
 | Daylight check not working | The daylight check couldn't run for 10 minutes (no location, or no clock) | Normal |
-| Test box mode on | A [test box](test-box.md) bypass has come into effect, and again after every restart while one is in effect | Urgent |
+| Test box mode on | A [test box](test-box.md) bypass has come into effect (a restart alone doesn't send it again) | Urgent |
 | A weather source is lost | SQMeter stopped answering for 30 s | Normal |
 | The imaging app stops checking | No request reached a device for the **Silent for** time. See [The imaging app](#the-imaging-app) | Urgent |
 | The imaging app is back | It started checking again | Quiet |
@@ -175,7 +173,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **Roof closed after unsafe weather**: the roof reached closed while the automatic close was trying to close it, or after a stop or a halted close, whoever closed it; at most once per cooldown.
 - **Roof open in daylight** (`daylight_open`, default Urgent): the sun is at or above the threshold, the roof isn't closed and the daylight mode is **Alert** or **Alert and close**. It goes out once, after the condition has held for 30 seconds, with the sun's altitude against the threshold (`{reason}`, "Sun 3.2° ≥ 0.0°") and what happens next (`{action}`: "The mount is being parked and the roof closed.", "Daylight is set to alert only, so nothing closes it.", or "The automatic close can't close it now: see the roof's other alerts."). Not again until the roof has been closed or the sun has set and it starts again. It is not critical: with **Alert and close**, the critical alerts above cover every way the close can fail, worded "It is daylight". It isn't sent while the weather close is already closing the roof.
 - **Roof closed after daylight** (`daylight_closed`, default Normal): the roof reached closed during a close that began because of daylight; `{reason}` is the sun.
-- **Test box mode on** (`test_box`, default Urgent): a bypass of [test box mode](test-box.md) has come into effect (turned on, or a new one added), and it goes out again after every restart while one is in effect. `{reason}` is the bypass text ("Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"), and the message ends "Faults still stop the roof." It can't be switched off: its level can be lowered to Quiet at the lowest. Like the critical alerts it goes out with alerts off, paused or outside the send mode, on its own (never stacked with other events), on every channel that is set up. Like the other roof events it waits out the start-up minute.
+- **Test box mode on** (`test_box`, default Urgent): a bypass of [test box mode](test-box.md) has come into effect (turned on, or a new one added). A restart doesn't send it again for a bypass already in effect: the banner on every page and the status keep showing it. `{reason}` is the bypass text ("Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"), and the message ends "Faults still stop the roof." Its level can be lowered to Quiet at the lowest. Like every other non-critical alert it waits for **Send alerts** and is held while alerts are paused or outside the send mode (a bypass that comes into effect then isn't sent later), and it waits out the start-up minute.
 - **Daylight check not working** (`daylight_unknown`, default Normal): the mode is on and the check couldn't run for 10 minutes without a break: `{reason}` is "Location not set" or "Clock not set". A clock set by NTP within 10 minutes of a restart never sends it. Nothing moves, refuses or closes meanwhile.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 

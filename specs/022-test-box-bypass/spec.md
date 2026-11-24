@@ -148,7 +148,8 @@ Every surface shows the bypass while it is in effect.
 5. **Given** Home Assistant discovery on, **When** a bypass is in effect, **Then** the "Test box"
    problem sensor is on, with the bypasses and the deadline as attributes.
 6. **Given** alerts set up, **When** a bypass comes into effect, **Then** a "Test box mode on"
-   alert is sent; **and** after every restart while one is in effect, it is sent again.
+   alert is sent (subject to the pause, the send mode and the master switch, like any other
+   alert); a restart with the same bypasses in effect sends nothing (see assumption 17).
 
 ---
 
@@ -249,8 +250,8 @@ Every surface shows the bypass while it is in effect.
   the Dome description prefix "TEST BOX (bypassed: ...)"; a Home Assistant `test_box` binary
   sensor (problem) with the `testBox` object as attributes; log warnings at boot and on change.
 - **FR-012**: A "Test box mode on" alert event (`test_box`), default urgent, never off, sent when a
-  bypass comes into effect and once after each boot while one is in effect, on its own and past the
-  master switch, the pause and the send mode (like the critical alerts, at its own level).
+  bypass comes into effect, held by the master switch, the pause and the send mode like every other
+  non-critical alert. A restart alone doesn't send it (amended, see assumption 17).
 - **FR-015**: A setting `park.requestPark` ("May ask N.I.N.A. to park", on by default
   and after an upgrade) decides whether the automatic close sends N.I.N.A. a park request; off, it
   only waits for the park. It is on the Mount park card and on the wizard's test box screen; the
@@ -310,8 +311,8 @@ Each was an open choice; the safest option the constitution allows was taken.
    the clock is set (NTP usually takes seconds). A restored backup brings no deadline.
 7. **The test box alert can't be off** (lowest level quiet) and defaults to urgent; it is sent on
    each bypass coming into effect and after every boot while one is in effect, not on expiry (the
-   banner, status and log say that). It goes out past the master switch, the pause and the send
-   mode, so a test box with alerts off or no imaging app still gets it on any channel set up.
+   banner, status and log say that). *Reversed by assumption 17:* it no longer goes out past the
+   master switch, the pause and the send mode, nor after every boot.
 8. **The wizard's test box choice sets the bypasses** (park only with no N.I.N.A. address,
    weather only with no SQMeter source on, saying so when one stays off) and skips the weather
    source and N.I.N.A. screens; choosing "a telescope" turns them all off.
@@ -341,3 +342,12 @@ Each was an open choice; the safest option the constitution allows was taken.
 16. **The wizard never needs a parked mount**: the test box question comes first on the Hardware
     page (before teach and the calibration run, which need the park), and the N.I.N.A. screen links
     back to it and warns about a live N.I.N.A.
+17. **Reversal (after first use on a real roof): the test box alert is an ordinary alert.** The
+    owner paused alerts while flashing firmware and still got "Test box mode on" on every channel
+    after each restart. The alert now obeys the pause, the send mode, the master switch and each
+    channel's setting like every other non-critical alert, and goes out once when a bypass comes
+    into effect: the bypasses in effect on the first pass after a boot (once the clock is set) are
+    the baseline and send nothing. Visibility rests on the banner on every page, the Test box page,
+    `/api/status` and the MQTT and Home Assistant status, which are unchanged (constitution 4.1.2).
+    A bypass switched on less than the start-up minute before a restart is therefore never
+    announced; the banner still shows it. Its level stays never-off (quiet at the lowest).

@@ -133,11 +133,20 @@ namespace SQM
             updateTestBox(roof, rules, inGrace, alerts);
         }
 
-        // Spec 022: each bypass that comes into effect, and every one in effect
-        // after a boot (nothing is seen before the first pass), once the grace is
-        // over. Never held by the cooldown: each is a deliberate change.
+        // Spec 022: each bypass that comes into effect, once the grace is over.
+        // Bypasses already in effect on the first decided pass after a boot are
+        // the baseline, not news: a restart alone sends nothing. Never held by
+        // the cooldown: each is a deliberate change.
         void AlertEngine::updateTestBox(const RoofInputs &roof, const AlertRules &rules, bool inGrace, std::vector<Alert> &alerts)
         {
+            if (!roof.testBoxSettled)
+                return;
+            if (!testBoxBaseline)
+            {
+                testBoxBaseline = true;
+                testBoxSeen = roof.testBox;
+                return;
+            }
             if ((roof.testBox & ~testBoxSeen) != 0)
                 testBoxPending = true;
             testBoxSeen = roof.testBox;
