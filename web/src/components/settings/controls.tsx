@@ -5,6 +5,7 @@ import { Button, Card, InfoTip, Note, Pill } from '../ui';
 import { t } from '../../i18n';
 import { decimalSeparator, formatInputNumber } from '../../i18n/format';
 import { parseNumber, type NumberProblem } from '../../i18n/parse';
+import { isCopiedSecret } from '../../lib/copiedSecret';
 
 // Settings building blocks, all on the shared component classes so Settings
 // looks like the rest of the app. Explanations go in `hint` (a "?" tooltip),
@@ -287,25 +288,41 @@ export const TextInput: FunctionalComponent<{
   error?: string;
   dataField?: string;
   ariaLabel?: string;
-}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField, ariaLabel }) => (
-  <input
-    {...useFieldAria(ariaLabel, error)}
-    type={type}
-    data-field={dataField}
-    name={dataField}
-    class={inputClass(error)}
-    value={value}
-    placeholder={placeholder}
-    disabled={disabled}
-    // Browsers and password managers ignore "off" on password fields and fill in the password saved
-    // for this page (the device's own), replacing the mask; the next save then stores it (an MQTT or
-    // WiFi password "poisoned" by an unrelated save). "new-password" stops the autofill.
-    autocomplete={type === 'password' ? 'new-password' : undefined}
-    data-1p-ignore={type === 'password' ? '' : undefined}
-    data-lpignore={type === 'password' ? 'true' : undefined}
-    onInput={(e) => onInput((e.target as HTMLInputElement).value)}
-  />
-);
+}> = ({ value, onInput, type = 'text', placeholder, disabled, error, dataField, ariaLabel }) => {
+  // Spec 024: a password to take from SQMeter at the save shows empty, with a note, not a mask.
+  const copied = type === 'password' && isCopiedSecret(value);
+  const noteId = useId();
+  const aria = useFieldAria(ariaLabel, error);
+  const input = (
+    <input
+      {...(copied ? withNotes(aria, noteId) : aria)}
+      type={type}
+      data-field={dataField}
+      name={dataField}
+      class={inputClass(error)}
+      value={copied ? '' : value}
+      placeholder={placeholder}
+      disabled={disabled}
+      // Browsers and password managers ignore "off" on password fields and fill in the password saved
+      // for this page (the device's own), replacing the mask; the next save then stores it (an MQTT or
+      // WiFi password "poisoned" by an unrelated save). "new-password" stops the autofill.
+      autocomplete={type === 'password' ? 'new-password' : undefined}
+      data-1p-ignore={type === 'password' ? '' : undefined}
+      data-lpignore={type === 'password' ? 'true' : undefined}
+      onInput={(e) => onInput((e.target as HTMLInputElement).value)}
+    />
+  );
+  return copied ? (
+    <>
+      {input}
+      <Note tone="ok" id={noteId}>
+        {t('settings.controls.fromSqmeter')}
+      </Note>
+    </>
+  ) : (
+    input
+  );
+};
 
 export const SelectInput: FunctionalComponent<{
   value: string;

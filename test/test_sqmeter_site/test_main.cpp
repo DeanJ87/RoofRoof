@@ -388,9 +388,9 @@ void test_the_site_document_of_a_current_sqmeter()
         R"({"address":"http://192.168.1.50","device":{"name":"SQMeter"},)"
         R"("location":{"set":true,"latitude":48.1374,"longitude":11.5755},)"
         R"("time":{"timezone":"CET-1CEST,M3.5.0,M10.5.0/3","server1":"time.cloudflare.com","server2":"pool.ntp.org"},)"
-        R"("mqtt":{"broker":"192.168.1.10","port":1884,"username":"obs","topic":"obs/sqm","passwordSet":true},)"
-        R"("ntfy":{"server":"https://ntfy.example","topic":"obs-alerts","tokenSet":false},)"
-        R"("pushover":{"userKeySet":true,"appTokenSet":true}})",
+        R"("mqtt":{"broker":"192.168.1.10","port":1884,"username":"obs","topic":"obs/sqm","passwordSet":true,"enabled":true},)"
+        R"("ntfy":{"server":"https://ntfy.example","topic":"obs-alerts","tokenSet":false,"enabled":true},)"
+        R"("pushover":{"userKeySet":true,"appTokenSet":true,"enabled":true}})",
         json.c_str());
 }
 
@@ -414,7 +414,7 @@ void test_a_v0_1_sqmeter_has_its_time_zone_at_the_top_and_nothing_else()
         R"({"deviceName":"SQM","timezone":"PST8PDT","mqtt":{"broker":"","port":1883,"username":"","password":"","topic":"sqm"}})");
     TEST_ASSERT_EQUAL_STRING(
         R"({"address":"http://192.168.1.50","device":{"name":"SQM"},"location":null,"time":{"timezone":"PST8PDT","server1":"","server2":""},)"
-        R"("mqtt":{"broker":"","port":1883,"username":"","topic":"sqm","passwordSet":false},"ntfy":null,"pushover":null})",
+        R"("mqtt":{"broker":"","port":1883,"username":"","topic":"sqm","passwordSet":false,"enabled":false},"ntfy":null,"pushover":null})",
         json.c_str());
 }
 

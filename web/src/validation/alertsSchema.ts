@@ -61,8 +61,9 @@ export const alertsConfigSchema = z
   .superRefine((data, ctx) => {
     checkCriticalEvents(data.events, ctx);
     checkTestBoxEvent(data.events, ctx);
-    // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value.
-    const pushoverKey = /^([A-Za-z0-9]{30}|\*{8})$/;
+    // Pushover keys are exactly 30 letters/digits; "********" is the stored, masked value, and
+    // "(from SQMeter)" the one SQMeter shared, filled in by the device at the save (spec 024).
+    const pushoverKey = /^([A-Za-z0-9]{30}|\*{8}|\(from SQMeter\))$/;
     if (data.pushover.enabled && !pushoverKey.test(data.pushover.userKey.trim())) {
       ctx.addIssue({
         code: 'custom',

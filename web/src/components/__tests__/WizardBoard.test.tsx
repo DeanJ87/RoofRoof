@@ -50,6 +50,12 @@ describe('Wizard: board, network and wiring', () => {
     expect(SCREENS.filter((screen) => screen.page === 'board').map((screen) => screen.id)).toEqual(['board']);
     expect(SCREENS.filter((screen) => screen.page === 'wiring').map((screen) => screen.id)).toEqual(['wiring']);
     expect(ids.indexOf('board')).toBeLessThan(ids.indexOf('wiring'));
+    // Spec 024: the park source, then the switch count (a switch source only), then N.I.N.A.
+    expect(SCREENS.filter((screen) => screen.page === 'park').map((screen) => screen.id)).toEqual([
+      'parkSwitches',
+      'parkSwitchCount',
+      'nina',
+    ]);
   });
 
   it('a new device whose probe found a WT32-ETH01 has its preset chosen, saved on Continue', async () => {

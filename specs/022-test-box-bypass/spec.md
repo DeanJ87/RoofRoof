@@ -348,6 +348,6 @@ Each was an open choice; the safest option the constitution allows was taken.
     channel's setting like every other non-critical alert, and goes out once when a bypass comes
     into effect: the bypasses in effect on the first pass after a boot (once the clock is set) are
     the baseline and send nothing. Visibility rests on the banner on every page, the Test box page,
-    `/api/status` and the MQTT and Home Assistant status, which are unchanged (constitution 4.1.2).
+    `/api/status` and the MQTT and Home Assistant status, which are unchanged (constitution 5.0.1).
     A bypass switched on less than the start-up minute before a restart is therefore never
     announced; the banner still shows it. Its level stays never-off (quiet at the lowest).

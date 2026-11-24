@@ -205,7 +205,13 @@
     {
       "id": "roof-buttons",
       "label": "roof.open",
-      "sources": ["status.roof.closePending", "status.roof.supplyLow", "status.roof.minSupplyVolts", "status.wifi.apMode"],
+      "sources": [
+        "status.roof.closePending",
+        "status.roof.supplyLow",
+        "status.roof.minSupplyVolts",
+        "status.wifi.apMode",
+        "status.roof.parkSwitches.check"
+      ],
       "requiredBy": "009 FR-002 to FR-008",
       "visibility": {
         "rule": "always"
@@ -213,7 +219,7 @@
       "priority": 2,
       "location": "card:roof",
       "test": "roof-buttons",
-      "note": "Open, Close and Stop, with the reason a button is disabled: a waiting close, the supply and its minimum, the setup hotspot."
+      "note": "Open, Close and Stop, with the reason a button is disabled: a waiting close, the supply and its minimum, the setup hotspot, the stuck park switch check (spec 024)."
     },
     {
       "id": "roof-checks",
@@ -431,6 +437,16 @@
     }
   ],
   "notShown": [
+    {
+      "match": "status.roof.parkSwitches.switchesOnly",
+      "reason": "Spec 024: the park source is a setting (Settings, Roof); the stuck-switch check's refusal shows as Open's reason",
+      "shownOn": "Settings"
+    },
+    {
+      "match": "status.roof.parkSwitches.openings",
+      "reason": "Spec 024: the stuck-switch check's counts; only its refusal (Open's reason) matters to the owner",
+      "shownOn": "API (docs: safety inputs)"
+    },
     {
       "match": "status.sync.**",
       "reason": "Spec 020: shown on the followed groups' Settings rows (Follows SQMeter, refused values, needed secrets)",

@@ -17,6 +17,7 @@
 #include "RoofStatus.h"
 #include "RoofTypes.h"
 #include "SettingsDeps.h"
+#include "SqmeterSecrets.h"
 #include "TimeManager.h"
 #include <ArduinoJson.h>
 #include <AsyncUDP.h>
@@ -395,6 +396,14 @@ namespace SQM
         void handleSqmeterSite(AsyncWebServerRequest *request, bool test);
         static void runSiteJob(void *arg);
         void appendSite(JsonDocument &doc) const;
+        // Spec 024: SQMeter's secrets from the last copy, held for the save
+        // (Site::SECRETS_HELD_MS), never sent to a browser.
+        std::mutex copiedLock;
+        std::unique_ptr<CopiedSecrets> copied;
+        uint32_t copiedAtMs = 0;
+        int fetchSite(SiteJob &job, std::string &body);
+        void holdCopied(const Site::SiteConfig &site, const Site::SecretsRead &read, Site::SecretStates &states);
+        std::unique_ptr<CopiedSecrets> heldCopied();
 
         // Settings backup and restore (SQMeter spec 033, src/WebServerBackup.cpp).
         struct BackupJob;

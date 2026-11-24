@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPatch, asShown, baseValuesFor, diffConfig, leafPaths, rebaseEdits } from '../configPatch';
+import { applyPatch, asShown, baseValuesFor, diffConfig, leafPaths, rebaseEdits, withSentTogether } from '../configPatch';
 
 const loaded = {
   deviceName: 'roof',
@@ -105,5 +105,22 @@ describe('spec 021 review fixes', () => {
     expect(baseValuesFor(withSqm, { safety: { http: { password: 'x' } } })).toEqual({
       safety: { http: { password: '********', url: 'http://a', username: 'u' } },
     });
+  });
+});
+
+// Spec 024: the park source and the switch count always go together, so the device never derives the source.
+describe('withSentTogether', () => {
+  const full = { park: { nina: { url: '' }, source: 'switches', switches: 'two' }, deviceName: 'roof' };
+  it('adds the other field of the pair when one changed, and its loaded value to the base values', () => {
+    const patch = withSentTogether({ park: { switches: 'two' } }, full);
+    expect(patch).toEqual({ park: { switches: 'two', source: 'switches' } });
+    expect(withSentTogether({ park: { source: 'switches' } }, full)).toEqual({ park: { source: 'switches', switches: 'two' } });
+    expect(baseValuesFor({ park: { switches: 'one', source: 'ninaAndSwitches' } }, { park: { switches: 'two' } })).toEqual({
+      park: { switches: 'one', source: 'ninaAndSwitches' },
+    });
+  });
+  it('leaves other saves alone, and a source the settings lack (older firmware)', () => {
+    expect(withSentTogether({ deviceName: 'x' }, full)).toEqual({ deviceName: 'x' });
+    expect(withSentTogether({ park: { switches: 'one' } }, { park: { switches: 'one' } })).toEqual({ park: { switches: 'one' } });
   });
 });

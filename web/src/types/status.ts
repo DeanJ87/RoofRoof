@@ -117,8 +117,22 @@ export interface SyncGroupStatus {
   refused: string | null; // why SQMeter's value wasn't taken (the device's words)
   needs: SyncNeed[]; // secrets SQMeter has and RoofRoof lacks
 }
+// Spec 024: why SQMeter's passwords couldn't be read (the copy's answer and the sync status).
+export type SecretsProblem =
+  | 'waiting'
+  | 'notSaved'
+  | 'notSupported'
+  | 'sharingOff'
+  | 'noWebPassword'
+  | 'loginNeeded'
+  | 'loginRefused'
+  | 'tooManyLogins'
+  | 'unreachable'
+  | 'unreadable';
 export interface SyncStatus {
   problem: SyncProblem | null;
+  // Spec 024: the last read of SQMeter's passwords while MQTT or alerts follows (absent on older firmware).
+  secrets?: 'received' | SecretsProblem | null;
   readAgeSeconds: number | null; // since the last good read of SQMeter's settings in this run
   time: SyncGroupStatus;
   mqtt: SyncGroupStatus;
@@ -190,7 +204,16 @@ export interface RoofStatus {
   currentSense: boolean;
   motorAmps: number | null;
   maxCurrentAmps: number;
-  parkSwitches: { fitted: number; switch1: RoofSwitch; switch2: RoofSwitch };
+  parkSwitches: {
+    fitted: number;
+    switch1: RoofSwitch;
+    switch2: RoofSwitch;
+    // Spec 024 (absent on older firmware): the switches alone confirm the park; each switch's roof
+    // openings since it last read open; the stuck-switch check's refusal of Open (device text) or null.
+    switchesOnly?: boolean;
+    openings?: [number, number];
+    check?: string | null;
+  };
   closePending: boolean; // a close accepted, waiting for an upload or MQTT connect to stop
   calibrating?: boolean; // spec 016: a calibration run is under way (pauses included)
   // Spec 008: the automatic close's phase, and the weather and park as the roof's command checks see them now.

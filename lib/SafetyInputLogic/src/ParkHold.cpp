@@ -39,6 +39,13 @@ namespace SQM
         CloseHold closeHold(const ParkInputs &inputs, const ParkResult &result, const NinaMemory &memory)
         {
             CloseHold hold;
+            if (result.switchesOnly)
+            {
+                // Spec 024: no N.I.N.A. reading is relied on; the control task
+                // re-reads the switches every step.
+                hold.parked = result.parked;
+                return hold;
+            }
             if (result.parked)
             {
                 hold.parked = true;

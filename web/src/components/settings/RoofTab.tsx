@@ -14,8 +14,8 @@ import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
 import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
-import { NinaUrlField, ParkSwitchesField, type ParkProps } from './ParkFields';
-export { NinaUrlField, ParkSwitchesField, type ParkProps };
+import { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps } from './ParkFields';
+export { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps };
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
 
@@ -278,8 +278,9 @@ const ParkCard: FunctionalComponent<ParkProps> = (props) => (
     {/* Spec 022: a RoofRoof pointed at a N.I.N.A. asks it to park when unsafe. */}
     <Note tone="warn">{t('settings.roof.liveNinaWarning')}</Note>
     <div class="form-grid">
-      <NinaUrlField {...props} />
+      <ParkSourceField {...props} />
       <ParkSwitchesField {...props} />
+      <NinaUrlField {...props} />
       <RequestParkToggle {...props} />
       <Num
         at={['park', 'timeoutSeconds']}
@@ -292,6 +293,7 @@ const ParkCard: FunctionalComponent<ParkProps> = (props) => (
         error={props.error}
       />
     </div>
+    <ParkNotes {...props} />
   </SettingsCard>
 );
 

@@ -120,6 +120,32 @@ CONSTRAINTS = {
     ("status", ("sync", "problem")): {
         "enum": ["noAddress", "waiting", "unreachable", "unreadable", "passwordNeeded", "passwordRefused", None]
     },
+    # Spec 024: lib/SafetyInputLogic SqmeterSecrets (secretsProblemName), the park source.
+    ("status", ("sync", "secrets")): {
+        "type": ["string", "null"],
+        "enum": [
+            "received",
+            "waiting",
+            "notSaved",
+            "notSupported",
+            "sharingOff",
+            "noWebPassword",
+            "loginNeeded",
+            "loginRefused",
+            "tooManyLogins",
+            "unreachable",
+            "unreadable",
+            None,
+        ],
+    },
+    ("config", ("park", "source")): {"enum": ["nina", "switches", "ninaAndSwitches"]},
+    ("status", ("roof", "parkSwitches", "check")): {"type": ["string", "null"]},
+    ("status", ("roof", "parkSwitches", "openings")): {
+        "type": "array",
+        "items": {"type": "integer", "minimum": 0, "maximum": 255},
+        "minItems": 2,
+        "maxItems": 2,
+    },
     ("status", ("sync", "mqtt", "needs", "[]")): {"enum": ["mqttPassword", "ntfyToken"]},
     ("status", ("sync", "alerts", "needs", "[]")): {"enum": ["mqttPassword", "ntfyToken", "pushoverKeys"]},
     ("alerts-armed", ("mode",)): {"enum": SCHEDULE_MODES},

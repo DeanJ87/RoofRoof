@@ -351,36 +351,6 @@ namespace SQM
             // "rainContact" (removed by spec 023) is ignored: a saved value is dropped.
         }
 
-        // Named choices: anything but the documented names is refused, never
-        // read as a default (a typo must not change what confirms the park).
-        bool applyPark(const Section &park, ParkConfig &p, std::string *error)
-        {
-            const Section nina = park.child("nina");
-            nina.take("url", p.ninaUrl);
-            park.take("timeoutSeconds", p.timeoutSeconds);
-            park.take("requestPark", p.requestPark);
-            if (nina.has("api"))
-            {
-                const char *api = nina["api"].is<const char *>() ? nina["api"].as<const char *>() : "";
-                if (std::strcmp(api, "v2") != 0)
-                    return setError(error, "N.I.N.A. API version must be v2");
-                p.ninaApi = ParkConfig::NinaApi::V2;
-            }
-            if (!park.has("switches"))
-                return true;
-            const std::string switches = park["switches"].is<const char *>() ? park["switches"].as<const char *>() : "";
-            const ParkConfig::Switches choices[] = {ParkConfig::Switches::None, ParkConfig::Switches::One, ParkConfig::Switches::Two};
-            for (ParkConfig::Switches choice : choices)
-            {
-                if (switches == switchesName(choice))
-                {
-                    p.switches = choice;
-                    return true;
-                }
-            }
-            return setError(error, "Park switches must be none, one or two");
-        }
-
         // A mode that isn't one of the three names is refused, never read as a
         // default (a typo must not turn the daylight close on or off).
         bool applyDaylight(const Section &root, Config &cfg, std::string *error)
@@ -478,6 +448,8 @@ namespace SQM
                 return setError(
                     error,
                     "Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)");
+            if (!validateParkSource(cfg, error))
+                return false;
             if (cfg.testBox.weather && (cfg.safety.httpEnabled || cfg.safety.mqttEnabled))
                 return setError(
                     error,
@@ -493,7 +465,7 @@ namespace SQM
         }
         // Every section, in order. False (with the reason) on a value that
         // can never be stored.
-        bool applySections(const Section &root, Config &cfg, bool keep, std::string *error)
+        bool applySections(const Section &root, Config &cfg, bool keep, std::string *error, const CopiedSecrets *copied)
         {
             applyRoot(root, cfg);
             applyWifi(root.child("wifi"), cfg.wifi, keep);
@@ -519,11 +491,13 @@ namespace SQM
             applySync(root.child("sqmeterSync"), cfg.sqmeterSync);
             if (!root.reader().strict() && !root.has("sqmeterSync"))
                 migrateSync(cfg);
-            return true;
+            // Spec 024: before the checks, so a swapped-in secret is checked too.
+            return !keep || fillCopiedSecrets(cfg, copied, error);
         }
     } // namespace
 
-    bool Config::applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut)
+    bool Config::applyJson(
+        const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut, const CopiedSecrets *copied)
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
@@ -542,7 +516,7 @@ namespace SQM
             return setError(errorOut, "Settings must be a JSON object");
         const Section root(reader, doc.as<JsonVariant>(), "");
         const std::string previousSsid = cfg.wifi.ssid;
-        if (!applySections(root, cfg, keep, errorOut))
+        if (!applySections(root, cfg, keep, errorOut, copied))
             return false;
         if (reader.failed())
             return typeError(reader, errorOut);

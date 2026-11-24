@@ -280,8 +280,12 @@ namespace SQM
         switch (decision.action)
         {
         case CloseSeq::Action::RequestPark:
-            Logger::info(TAG, "Asking N.I.N.A. to park the mount");
-            safety.requestPark();
+            // Spec 024: with the park switches alone and no address, only the wait.
+            if (safety.ninaSet())
+            {
+                Logger::info(TAG, "Asking N.I.N.A. to park the mount");
+                safety.requestPark();
+            }
             break;
         case CloseSeq::Action::Close:
         {

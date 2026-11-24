@@ -24,7 +24,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 1.2 | **EN pull-down**: 8 to 11 kΩ from R_EN/L_EN to GND at the IBT-2, and at the EN pin (GPIO27 / IO4) | kΩ |
 | ☐ 1.3 | Optional 10 kΩ pull-downs on RPWM, LPWM (if fitted) | |
 | ☐ 1.4 | Dividers: 100k/22k supply, 10k/20k current sense and Hall; Hall at 5 V, output through its divider | |
-| ☐ 1.5 | Park switches close when parked | |
+| ☐ 1.5 | Park switches close when parked (two on separate cables for switches only) | |
 | ☐ 1.6 | Motor supply switch within reach; motor leads off the IBT-2 and insulated | |
 
 ## Stage 2: First power-up (motor still disconnected)
@@ -62,7 +62,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 4.4 | SQMeter MQTT (if used): offline at once; a retained `safe=1` alone isn't safe | |
 | ☐ 4.5 | Rain on SQMeter's gauge makes it unsafe (bit 9); gauge unplugged, unsafe once SQMeter reports it failed (bit 10) | |
 | ☐ 4.6 | N.I.N.A. 2.2.15+ Advanced API: `Park: parked`; unparked and slewing correct; closing N.I.N.A. gives `not responding` in about 4 s | |
-| ☐ 4.7 | Park switches vs N.I.N.A.: one switch open gives "disagree" | |
+| ☐ 4.7 | Park switches vs N.I.N.A.: one switch open gives "disagree"; with switches only, N.I.N.A. off still parked and a slew not parked | |
 | ☐ 4.8 | An unrelated settings save doesn't reset the verdict or the park result | |
 | ☐ 4.9 | **Automatic close** settings left at their defaults (10 min, 30 min, Halt, Remote Stop off, Advanced untouched) until stage 11 | |
 | ☐ 4.9 | Site set (lat, lon); NTP synced; the Roof card's Daylight sun altitude within 0.5° of an almanac | ° vs ° |
@@ -189,7 +189,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | `roof.topDutyPercent` / `slowDutyPercent` | |
 | `roof.currentSenseEnabled` / `maxCurrentAmps` / `currentAmpsPerVolt` / `minRunningAmps` | |
 | `roof.minSupplyVolts` | |
-| `park.switches` / `park.timeoutSeconds` | |
+| `park.source` / `park.switches` / `park.timeoutSeconds` | |
 | `safety.staleSeconds` | |
 | `daylight.mode` / `daylight.sunAltitudeDeg` / `daylight.bandDeg` | |
 | `autoClose.rearmMinutes` / `remindMinutes` / `notStarted` / `remoteStop` | |

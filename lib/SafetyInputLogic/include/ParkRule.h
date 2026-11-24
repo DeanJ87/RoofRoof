@@ -4,7 +4,9 @@
 // latest reading is good, fresh, connected, at park and not slewing, AND every
 // fitted park switch reads closed. Disagreement between the two, or anything
 // unreadable, is "not parked"; spec 005 keeps the roof open and raises a
-// critical alert on it.
+// critical alert on it. Spec 024 (constitution 5.0.0): with the switches as
+// the only source, every fitted switch closed confirms it, and N.I.N.A. counts
+// only against it (a fresh reading that says the mount is slewing).
 
 #include <cstdint>
 #include <string>
@@ -28,7 +30,8 @@ namespace SQM
         struct ParkInputs
         {
             Nina::MountReading nina;
-            uint8_t fittedSwitches = 0; // 0, 1 (GPIO32) or 2 (GPIO32 and GPIO33)
+            uint8_t fittedSwitches = 0; // 0, 1 (park switch A) or 2 (A and B)
+            bool switchesOnly = false;  // spec 024: park.source is the switches alone
             SwitchReading switch1 = SwitchReading::Unreadable;
             SwitchReading switch2 = SwitchReading::Unreadable;
             uint64_t nowMs = 0;
@@ -52,6 +55,7 @@ namespace SQM
             ParkSwitch2Open = 1u << 11,
             ParkSwitch2Unreadable = 1u << 12,
             ParkSourcesDisagree = 1u << 13,
+            ParkNoSwitchFitted = 1u << 14, // spec 024: switches only, none fitted
         };
 
         struct ParkResult
@@ -65,6 +69,7 @@ namespace SQM
             // Spec 022: parked only because the test box's park bypass ("no
             // telescope") stands in for N.I.N.A. (TestBox::applyPark).
             bool bypassed = false;
+            bool switchesOnly = false; // spec 024: confirmed by the switches alone
         };
 
         ParkResult evaluatePark(const ParkInputs &inputs);
@@ -98,7 +103,8 @@ namespace SQM
         };
 
         // `result` is evaluatePark(inputs). A ride-through never starts a move:
-        // only the park result confirms a park for a start.
+        // only the park result confirms a park for a start. With the switches
+        // alone (spec 024) nothing rides and nothing is bounded by N.I.N.A.
         CloseHold closeHold(const ParkInputs &inputs, const ParkResult &result, const NinaMemory &memory);
         // "riding on a parked reading 3.2 s old (limit 10 s)", or "" when not riding.
         std::string describe(const CloseHold &hold, uint32_t limitMs);

@@ -1,4 +1,4 @@
-# RoofRoof roadmap: specs 002-022
+# RoofRoof roadmap: specs 002-024
 
 The scope of each spec after 001 and the design decisions they share. Every spec still goes through Spec Kit (`/speckit-specify` → `/speckit-plan` → `/speckit-tasks` → `/speckit-implement` → `/speckit-converge`). This file says **what each spec covers and where it stops**, so the specs don't overlap or leave gaps.
 
@@ -31,9 +31,11 @@ The constitution (`.specify/memory/constitution.md`) governs everything: Motion 
 
 ## Design decisions
 
-- **Park is confirmed by N.I.N.A. AtPark AND every fitted park switch (GPIO32/33).**
-  - The switches are optional, a second check on the mount, and `park.switches` says which are
-    fitted; with none, N.I.N.A.'s park alone confirms it.
+- **Park is confirmed by the park source (`park.source`, spec 024):** N.I.N.A. AtPark only;
+  N.I.N.A. AtPark AND every fitted park switch; or every fitted park switch alone (one or two,
+  normally open, with a stuck-switch check and a N.I.N.A. slew veto).
+  - `park.switches` says which switches are fitted; settings from before spec 024 take the source
+    from it (none: N.I.N.A. only; one or two: N.I.N.A. and switches).
   - If the configured sources disagree, or the park can't be confirmed, the roof stays open and a critical alert goes out.
 - **N.I.N.A. Advanced API** (github.com/christian-photo/ninaAPI):
   - Target v2 (2.2.x): `GET /v2/api/equipment/mount/park`, then poll `/v2/api/equipment/mount/info` for `AtPark`.
@@ -373,6 +375,24 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the carrier PCB itself; checking direction and travel (spec 019's jog and
   teach); a second Ethernet chip.
 
+### 024 Park source and SQMeter secrets (base: 023)
+
+- **Scope:**
+  - A park source setting (N.I.N.A. only, park switches only, N.I.N.A. and switches), migrated
+    exactly from `park.switches`. With the switches only: every fitted switch closed confirms the
+    park, a fresh N.I.N.A. slewing reading vetoes, the N.I.N.A. address is optional (asked to park
+    only when set), no ride-through, the test box park bypass can't be set; a stuck-switch check
+    refuses Open after 3 roof openings without the switch opening. Normally-open wiring, two
+    switches recommended. Constitution 5.0.0.
+  - The wizard's park question as three choice cards and a switch-count follow-up.
+  - "Copy from SQMeter" and the sync read SQMeter's `GET /api/secrets` on the device (saved address
+    only) and bring the MQTT password, ntfy token and Pushover keys for the server they belong to;
+    the browser only learns that they were received. SQMeter's MQTT, ntfy and Pushover on/off
+    switches are offered (turn on only); the sync turns them on while the group follows. Exact
+    reasons when SQMeter can't share (404, 403, 401). The demo's SQMeter serves `/api/secrets`.
+- **Out of scope:** normally-closed switch wiring; an alert for the stuck-switch check; turning a
+  switch off from SQMeter; copying the webhook or Wi-Fi.
+
 ## Merge order
 
 ```text
@@ -381,7 +401,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
                             ├─ 007 ─┼─ 008 ── 009 ── 011 ─┬─ 012
                             └─ 010 ─┘                     └─ 013 ─┬─ 014
                                                                   └─ 015 ─┬─ 016 ── 019 ─┐
-                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 022 ── 023
+                                                                          └─ 017 ────────┴─ 018 ── 020 ── 021 ── 022 ── 023 ── 024
 ```
 
 A spec branches from `main` once its bases are merged. Specs running in parallel each work in their own git worktree. Rebase onto `main` before the PR and again before merging.

@@ -73,6 +73,7 @@ With **Settings → Roof → Roof motion → Ask before Open and Close** on (it 
 | The weather isn't safe (the verdict's reason) | yes | - |
 | It is daylight: the sun's altitude and the threshold (only with the daylight failsafe on **Alert and close**) | yes | - |
 | The setup hotspot is on (it has no password) | yes | - |
+| A park switch hasn't opened in the last 3 roof openings (park switches only: it may be stuck or shorted) | yes | - |
 | The mount isn't confirmed parked (what failed, e.g. a park switch open) | - | yes |
 | A close is already waiting to start | - | yes |
 | The supply is low or unreadable (the reading and the minimum) | yes | yes |

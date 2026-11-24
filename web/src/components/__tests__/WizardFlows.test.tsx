@@ -126,12 +126,50 @@ describe('Wizard: choices, skips and refusals', () => {
     expect(copied).toEqual({ url: 'http://10.0.0.5/api/safety', username: '', password: '' });
     fireEvent.click(button('Apply ticked'));
     expect(await screen.findByText('Applied: Continue saves them.')).toBeInTheDocument();
-    expect(saves).toHaveLength(0);
-    fireEvent.click(button('Continue'));
-    await waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].ntp).toMatchObject({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server2: 'time.nist.gov' });
+    // Spec 024: the address was saved before the copy (SQMeter shares its passwords only with the saved one).
+    expect(saves).toHaveLength(1);
     expect((saves[0].safety as { http: { url: string } }).http.url).toBe('http://10.0.0.5/api/safety');
-    expect(saves[0].setup).toEqual({ state: 'new', step: 4 });
+    expect(saves[0].ntp).toBeUndefined();
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves).toHaveLength(2));
+    expect(saves[1].ntp).toMatchObject({ timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server2: 'time.nist.gov' });
+    expect(saves[1].setup).toEqual({ state: 'new', step: 4 });
+  });
+
+  // Spec 024: SQMeter's MQTT password arrives with the copy; the field says so and MQTT's Test waits for the save.
+  it("the copy brings SQMeter's MQTT password and switch into the SQMeter screen's MQTT fields", async () => {
+    mockDevice({
+      config: {
+        ...PASSWORD_SET,
+        setup: { state: 'new', step: 4 },
+        mqtt: { ...mockConfig.mqtt, enabled: false, broker: '', password: '' },
+        safety: {
+          ...mockConfig.safety!,
+          http: { enabled: true, url: 'http://sqmeter.local/api/safety' },
+          mqtt: { ...mockConfig.safety!.mqtt, enabled: true },
+        },
+      },
+    });
+    const saves = recordSaves();
+    server.use(
+      http.post('/api/sqmeter/site', () =>
+        HttpResponse.json({
+          ...mockSqmeterSite,
+          mqtt: { ...mockSqmeterSite.mqtt!, enabled: true },
+          secrets: { problem: null, http: true, mqttPassword: 'received', ntfyToken: 'none', pushover: 'none' },
+        }),
+      ),
+    );
+    at('screen=sqmeter');
+    render(<Wizard />);
+    await onScreen('sqmeter');
+    fireEvent.click(button('Copy from SQMeter'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply ticked' }));
+    expect(await screen.findByText('Received from SQMeter; never shown here.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Broker', { selector: 'input' })).toHaveValue('192.168.1.10');
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves.some((body) => body.mqtt)).toBe(true));
+    expect(saves.find((body) => body.mqtt)!.mqtt).toMatchObject({ enabled: true, broker: '192.168.1.10', password: '(from SQMeter)' });
   });
 
   it('lets Continue go on from the SQMeter screen with no address', async () => {
@@ -173,12 +211,56 @@ describe('Wizard: choices, skips and refusals', () => {
     await onScreen('site');
   });
 
-  // Spec 019: the park switches are an optional second check.
-  it('the park switches screen says the switches are optional', async () => {
-    mockDevice({ config: { setup: { state: 'new', step: 2 } } });
-    window.history.replaceState(null, '', '/wizard?screen=parkSwitches');
+  // Spec 024: how the park is known, then (a switch source only) how many switches.
+  it('asks the park source, then the switch count with its readings and warnings, and saves both', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 5 }, testBox: { ...mockConfig.testBox!, park: true } } });
+    const saves = recordSaves();
+    at('screen=parkSwitches');
     render(<Wizard />);
     await onScreen('parkSwitches');
-    expect(screen.getByText(/Park switches are optional/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /^Park switches only/ }));
+    fireEvent.click(button('Continue'));
+    await onScreen('parkSwitchCount');
+    expect(screen.getByRole('dialog', { name: 'How many park switches are fitted?' })).toBeInTheDocument();
+    expect(button('Continue')).toBeDisabled(); // a fact only the owner knows
+    fireEvent.click(screen.getByRole('radio', { name: /^One switch/ }));
+    expect(screen.getByText('Park switch 1')).toBeInTheDocument();
+    expect(document.querySelector('[data-park-note="oneSwitch"]')).toHaveTextContent(/fit two on separate cables/);
+    expect(document.querySelector('[data-park-note="wiring"]')).toHaveTextContent(/3 roof openings/);
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves.length).toBeGreaterThanOrEqual(1));
+    const park = saves.map((body) => body.park).find(Boolean) as Record<string, unknown>;
+    expect(park).toMatchObject({ source: 'switches', switches: 'one' });
+    // The test box's park bypass stands in for N.I.N.A., which switches only don't use.
+    expect(saves.map((body) => body.testBox).find(Boolean)).toMatchObject({ park: false });
+    // With the bypass gone N.I.N.A. is asked, its address optional.
+    await onScreen('nina');
+    expect(screen.getByText(/Address optional with switches only/)).toBeInTheDocument();
+  });
+
+  it('N.I.N.A. only skips the switch count', async () => {
+    mockDevice({ config: { setup: { state: 'new', step: 5 }, park: { ...mockConfig.park!, source: 'ninaAndSwitches', switches: 'two' } } });
+    const saves = recordSaves();
+    at('screen=parkSwitches');
+    render(<Wizard />);
+    await onScreen('parkSwitches');
+    fireEvent.click(screen.getByRole('radio', { name: /^N.I.N.A. only/ }));
+    fireEvent.click(button('Continue'));
+    await onScreen('nina');
+    expect(saves.map((body) => body.park).find(Boolean)).toMatchObject({ source: 'nina', switches: 'none' });
+  });
+
+  it('with park switches only the N.I.N.A. address is optional', async () => {
+    mockDevice({
+      config: {
+        setup: { state: 'done', step: 0 },
+        park: { ...mockConfig.park!, source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } },
+      },
+    });
+    at('screen=nina');
+    render(<Wizard />);
+    await onScreen('nina');
+    expect(screen.getByText(/Address optional with switches only/)).toBeInTheDocument();
+    expect(screen.queryByText(/No address: the park can't be confirmed/)).toBeNull();
   });
 });

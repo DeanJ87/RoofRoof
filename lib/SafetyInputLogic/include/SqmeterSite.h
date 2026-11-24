@@ -160,8 +160,20 @@ namespace SQM
         // The status document's "location" section (FR-010).
         void writeLocationStatus(JsonObject out, const LocationConfig &config, const LocationRead &read, bool addressSet, uint64_t nowMs);
 
+        // Spec 024: SQMeter's own secrets from GET /api/secrets ("" = not set),
+        // read on the device and never sent to a browser.
+        struct SiteSecrets
+        {
+            bool received = false; // a good read: the values below are SQMeter's
+            std::string mqttPassword;
+            std::string ntfyToken;
+            std::string pushoverUserKey;
+            std::string pushoverAppToken;
+        };
+
         // What the copy can use of SQMeter's settings (FR-014). A secret is
-        // only ever "set" or not: its text is never kept.
+        // only ever "set" or not here; spec 024's `secrets` holds the values
+        // when SQMeter shared them.
         struct SiteConfig
         {
             std::string name;
@@ -186,6 +198,14 @@ namespace SQM
             bool hasPushover = false;
             bool pushoverUserKeySet = false;
             bool pushoverAppTokenSet = false;
+            // Spec 024: SQMeter's on/off switches, and its secrets when shared.
+            bool mqttEnabled = false;
+            bool ntfyEnabled = false;
+            bool pushoverEnabled = false;
+            // Spec 024: SQMeter's `sharing.secrets` (an older SQMeter has none).
+            bool hasSharing = false;
+            bool sharingSecrets = false;
+            SiteSecrets secrets;
         };
 
         // Only the parts of SQMeter's settings that SiteConfig holds.

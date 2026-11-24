@@ -13,7 +13,7 @@ It opens as a dialog over the dashboard. A small dog asks one question per scree
 a choice card or a few fields, and a **Why this matters** panel (beside the question on a wide
 screen, under it on a phone) says why it is asked.
 
-![The setup wizard asking how many park switches are fitted](../assets/screenshots/wizard-choice.png)
+![The setup wizard asking how RoofRoof knows the mount is parked](../assets/screenshots/wizard-choice.png)
 
 !!! warning "The motor screens move the roof, attended"
     The wizard's direction, teach and calibration screens host the
@@ -53,8 +53,8 @@ The wizard doesn't open from the setup hotspot: joining the network is the hotsp
 ## The questions
 
 The questions are grouped in twelve parts; the part you reach is what the wizard resumes at. The
-screens that don't apply to your setup are left out, so a real observatory sees at most 17 screens
-and a test box 16.
+screens that don't apply to your setup are left out, so a real observatory sees at most 18 screens
+and a test box that keeps its park bypass 17.
 
 1. **Network**: **What should we call this roof?** (the name N.I.N.A. shows); then, on a board with
    Ethernet, **How should RoofRoof join your network?**: *"You're on Ethernet at …"*, with the
@@ -82,12 +82,15 @@ and a test box 16.
 5. **SQMeter**: **Where is SQMeter?** SQMeter's address and login are asked once, here (e.g.
    `192.168.1.50` or `sqmeter.local`; RoofRoof adds `/api/safety` itself), with **Test**, which
    reads SQMeter through the device, and **Copy from SQMeter**, which lists what SQMeter has that
-   differs (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy) for you to tick and
-   apply; **Continue** then saves them. The copied groups keep following SQMeter
-   ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show **Follows SQMeter**,
-   with **Edit here instead**), and passwords and tokens are never copied
-   ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). Leave the address empty when there
-   is no SQMeter. The screen also holds the weather source: the **Weather from SQMeter** switch
+   differs (time zone, NTP servers, MQTT broker, MQTT weather topic, ntfy, and MQTT, ntfy and
+   Pushover switched on) for you to tick and apply; **Continue** then saves them. The copy saves
+   SQMeter's address first, so SQMeter's MQTT password, ntfy token and Pushover keys come too when
+   SQMeter shares them (the device reads them; the page only says they were received, and the
+   password fields say *"Received from SQMeter; never shown here."*); otherwise the copy says why
+   and asks for them ([Site from SQMeter](close-on-unsafe.md#copy-from-sqmeter)). The copied groups
+   keep following SQMeter ([Keeping in step](close-on-unsafe.md#keeping-in-step); their fields show
+   **Follows SQMeter**, with **Edit here instead**). Leave the address empty when there is no
+   SQMeter. The screen also holds the weather source: the **Weather from SQMeter** switch
    (the roof opens only on SQMeter's safe verdict and closes when it turns unsafe) and **SQMeter
    over MQTT**, with its topic, and the broker's fields when MQTT is still off on the device.
     - What SQMeter supplies is not asked again. When the location and the time zone and time
@@ -102,11 +105,14 @@ and a test box 16.
       **Alert and close**, and the sun altitude threshold
       ([daylight failsafe](close-on-unsafe.md#daylight-failsafe)). Without the site's location the
       screen says so, and **Set location** goes to the site screen.
-6. **Mount park**: **How many park switches are fitted?** (**None**, **One switch** or **Two
-   switches**), each with its live state: operate each by hand and watch it change. The switches
-   are optional: N.I.N.A.'s park alone confirms the mount is parked, and fitted switches are a
-   second check that must agree ([Safety inputs](safety-inputs.md)). Then, unless the park is
-   bypassed, **Where is N.I.N.A. running?**: the Advanced API address, with **Test**, and whether
+6. **Mount park**: **How does RoofRoof know the mount is parked?** (**N.I.N.A. only**, **Park
+   switches only** or **N.I.N.A. and park switches**). With switches, **How many park switches
+   are fitted?** (**One switch** or **Two switches**), each with its live state: operate each by
+   hand and watch it change. With the switches only, N.I.N.A. is not needed, two switches on
+   separate cables are recommended and one gets a warning, and the test box's park bypass is
+   turned off, as there is no N.I.N.A. for it to stand in for ([Safety inputs](safety-inputs.md#park)).
+   Then, unless the park is bypassed, **Where is N.I.N.A. running?**: the Advanced API address
+   (optional with the switches only: it is then only asked to park), with **Test**, and whether
    N.I.N.A. opens and closes the roof (**Open and close over Alpaca**, recommended). N.I.N.A.'s
    sequence drives the roof through the Alpaca Dome; RoofRoof is the failsafe behind it. Changing
    Alpaca needs a restart, which the review offers. On a test box this screen is skipped, as the

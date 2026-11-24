@@ -1,10 +1,11 @@
 import { FunctionalComponent } from 'preact';
-import type { RoofStatus } from '../../types';
+import type { ParkSource, ParkSwitches, RoofStatus } from '../../types';
 import { choiceOf, type WizardPageProps } from './context';
-import { HallFields, roofNum } from '../settings/RoofTab';
+import { HallFields, ParkNotes, roofNum } from '../settings/RoofTab';
 import { RequestParkToggle } from '../settings/TestBoxCard';
 import { ActionButton } from '../settings/controls';
 import { ChoiceGroup, Note, ReadingRow } from '../ui';
+import { fittedCount, parkSource, parkSourceChanges, parkSwitchesChanges } from '../../lib/parkSource';
 import { t } from '../../i18n';
 
 // The test box, park switches and typed motor values screens (specs 015, 018,
@@ -32,12 +33,14 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const box = props.config.testBox;
   if (!box) return <Note>{t('settings.roof.notSent')}</Note>;
   const ninaSet = Boolean(props.config.park?.nina.url.trim());
+  // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
+  const switchesOnly = props.config.park ? parkSource(props.config.park) === 'switches' : false;
   const sqmeterOn = Boolean(props.config.safety?.http.enabled || props.config.safety?.mqtt.enabled);
   const current = box.park || box.weather || box.daylight ? 'testBox' : 'telescope';
   const choice = choiceOf(props, 'testBox', current, (v) => {
     const on = v === 'testBox';
     props.updateMany([
-      [['testBox', 'park'], on && !ninaSet],
+      [['testBox', 'park'], on && !ninaSet && !switchesOnly],
       [['testBox', 'weather'], on && !sqmeterOn],
       [['testBox', 'daylight'], on],
     ]);
@@ -56,26 +59,46 @@ export const TestBoxScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
+// Spec 024: how the park is known; the switch count is the next screen (switch sources only).
 export const ParkSwitchesScreen: FunctionalComponent<WizardPageProps> = (props) => {
   const { park } = props.config;
   if (!park) return <Note>{t('settings.roof.notSent')}</Note>;
+  const choice = choiceOf(props, 'parkSource', parkSource(park), (v) =>
+    props.updateMany(parkSourceChanges(park, v as ParkSource, props.config.testBox)),
+  );
+  return (
+    <ChoiceGroup
+      {...choice}
+      options={[
+        { value: 'nina', icon: 'scope', title: t('settings.roof.sourceNina'), detail: t('wizard.hardware.sourceNinaDetail') },
+        { value: 'switches', icon: 'switch', title: t('settings.roof.sourceSwitches'), detail: t('wizard.hardware.sourceSwitchesDetail') },
+        { value: 'ninaAndSwitches', icon: 'switch', title: t('settings.roof.sourceBoth'), detail: t('wizard.hardware.sourceBothDetail') },
+      ]}
+    />
+  );
+};
+
+// Spec 024: one or two switches, with their live readings and the switches-only warnings.
+export const ParkSwitchCountScreen: FunctionalComponent<WizardPageProps> = (props) => {
+  const { park } = props.config;
+  if (!park) return <Note>{t('settings.roof.notSent')}</Note>;
   const roof = props.status?.roof;
-  const fitted = { none: 0, one: 1, two: 2 }[park.switches];
-  const choice = choiceOf(props, 'parkSwitches', park.switches, (v) => props.update(['park', 'switches'], v));
+  const fitted = fittedCount(park.switches);
+  const choice = choiceOf(props, 'parkSwitches', park.switches === 'none' ? null : park.switches, (v) =>
+    props.updateMany(parkSwitchesChanges(park, v as ParkSwitches)),
+  );
   return (
     <>
       <ChoiceGroup
         {...choice}
         options={[
-          { value: 'none', icon: 'off', title: t('wizard.hardware.switchesNone'), detail: t('wizard.hardware.switchesNoneDetail') },
           { value: 'one', icon: 'switch', title: t('wizard.hardware.switchesOne'), detail: t('wizard.hardware.switchesOneDetail') },
           { value: 'two', icon: 'switch', title: t('wizard.hardware.switchesTwo'), detail: t('wizard.hardware.switchesTwoDetail') },
         ]}
       />
-      {/* Spec 019: the switches are an optional second check. */}
-      <Note>{t('wizard.hardware.parkOptional')}</Note>
       {choice.value && fitted >= 1 && <ReadingRow label={t('roof.parkSwitch1')} value={switchText(roof?.parkSwitches.switch1)} />}
       {choice.value && fitted >= 2 && <ReadingRow label={t('roof.parkSwitch2')} value={switchText(roof?.parkSwitches.switch2)} />}
+      {choice.value && <ParkNotes {...props} park={park} nina={false} />}
     </>
   );
 };

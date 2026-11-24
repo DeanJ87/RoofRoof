@@ -11,6 +11,7 @@ namespace SQM
             // The config's namespace (src/ConfigStore.cpp); its own key.
             const char *const NVS_NAMESPACE = "roofroof";
             const char *const KEY_FAULT = "roofFault";
+            const char *const KEY_WATCH = "parkWatch"; // spec 024
         } // namespace
 
         RoofIo::Decoded load(RoofIo::FaultRecord &out)
@@ -54,6 +55,34 @@ namespace SQM
                 RoofIo::encodeFault(record, bytes);
                 result = nvs_set_blob(handle, KEY_FAULT, bytes, sizeof(bytes));
             }
+            if (result == ESP_OK)
+                result = nvs_commit(handle);
+            nvs_close(handle);
+            return result == ESP_OK;
+        }
+        Safety::SwitchWatch loadWatch()
+        {
+            Safety::SwitchWatch watch;
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK)
+                return watch;
+            size_t length = sizeof(watch.quiet);
+            uint8_t bytes[sizeof(watch.quiet)] = {};
+            if (nvs_get_blob(handle, KEY_WATCH, bytes, &length) == ESP_OK && length == sizeof(bytes))
+            {
+                watch.quiet[0] = bytes[0];
+                watch.quiet[1] = bytes[1];
+            }
+            nvs_close(handle);
+            return watch;
+        }
+
+        bool saveWatch(const Safety::SwitchWatch &watch)
+        {
+            nvs_handle_t handle;
+            if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK)
+                return false;
+            esp_err_t result = nvs_set_blob(handle, KEY_WATCH, watch.quiet, sizeof(watch.quiet));
             if (result == ESP_OK)
                 result = nvs_commit(handle);
             nvs_close(handle);

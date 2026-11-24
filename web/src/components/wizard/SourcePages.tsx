@@ -10,6 +10,7 @@ import { DepNote, Group, Toggle } from '../settings/controls';
 import { ChoiceGroup, Note } from '../ui';
 import { TestPanel } from './TestPanel';
 import { NINA_FIELDS, pageIndex } from './pages';
+import { ninaCounts } from '../../lib/parkSource';
 import { t } from '../../i18n';
 import { NINA_ROOF_DOC } from '../../lib/docsLinks';
 import { locationSource } from '../../lib/sqmeterCopy';
@@ -32,7 +33,9 @@ export const NinaScreen: FunctionalComponent<WizardPageProps> = (props) => {
         {t('wizard.nina.noTelescope')}
       </Note>
       <NinaUrlField {...props} park={park} />
-      {!park.nina.url && <Note tone="bad">{t('wizard.nina.noUrl')}</Note>}
+      {/* Spec 024: with park switches only the address is optional. */}
+      {!park.nina.url && ninaCounts(park) && <Note tone="bad">{t('wizard.nina.noUrl')}</Note>}
+      {!ninaCounts(park) && <Note>{t('settings.roof.ninaOptional')}</Note>}
       <TestPanel save={props.saveForTest(NINA_FIELDS)} dirty={props.dirty} />
       <Toggle
         dataField="alpaca.enabled"

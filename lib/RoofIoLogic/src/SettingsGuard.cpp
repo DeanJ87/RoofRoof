@@ -26,7 +26,7 @@ namespace SQM
 
             bool parkDiffers(const ParkConfig &a, const ParkConfig &b)
             {
-                return a.ninaUrl != b.ninaUrl || a.ninaApi != b.ninaApi || a.switches != b.switches;
+                return a.ninaUrl != b.ninaUrl || a.ninaApi != b.ninaApi || a.switches != b.switches || a.source != b.source;
             }
         } // namespace
 

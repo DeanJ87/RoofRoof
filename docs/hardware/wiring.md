@@ -173,7 +173,9 @@ The polarity is fixed, not a setting:
 - **Park switch**: wire a contact that **closes when the mount is parked**. Closed (low) = parked. A broken wire or an open contact reads "not parked", which is the safe way round: the roof then won't close. The opposite wiring would read a broken wire as parked, so it isn't offered.
 - A level counts once it has been read three times in a row (40 ms). Before that, and if the input chatters for more than a second without three equal readings in a row, it reads `unreadable`: not parked.
 
-Which switches are fitted is a setting (`park.switches`: none, one on park A, or both). The live readings are `roof.parkSwitches` in the [status](../api/rest.md#get-apistatus), and the [wiring check](../user-guide/pins.md#the-wiring-check) reads each fitted switch.
+The wiring can't protect against the other fault: a wire **shorted to ground**, or a switch **stuck closed**, reads "parked" whatever the mount does. With N.I.N.A. in the park rule that shows up as a disagreement the first time the mount unparks. If the switches are the [only park source](../user-guide/safety-inputs.md#park-switches-only), fit **two**, at different points of the mount and on **separate cables**, so one short or one stuck switch disagrees with the other; and expect the stuck-switch check to ask for the mount to leave its park once after 3 roof openings in a row without it.
+
+Which switches are fitted is a setting (`park.switches`: none, one on park A, or both), and what confirms the park is another (`park.source`: N.I.N.A. only, park switches only, or both). The live readings are `roof.parkSwitches` in the [status](../api/rest.md#get-apistatus), and the [wiring check](../user-guide/pins.md#the-wiring-check) reads each fitted switch.
 
 Rain isn't wired to the controller: it comes from SQMeter's rain gauge ([Safety inputs](../user-guide/safety-inputs.md#weather)).
 

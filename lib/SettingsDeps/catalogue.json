@@ -97,6 +97,7 @@
     "pins.parkBPullup",
     "park.nina.url",
     "park.nina.api",
+    "park.source",
     "park.switches",
     "park.timeoutSeconds",
     "mqtt.changeMinSeconds",

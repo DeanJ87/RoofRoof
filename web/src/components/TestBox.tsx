@@ -13,6 +13,7 @@ import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import { showToast } from './toast';
 import { MODE_PILL, formatUntil, modeOf, type TestBoxMode } from './TestBoxBanner';
 import { RequestParkToggle } from './settings/TestBoxCard';
+import { parkSource } from '../lib/parkSource';
 import { t } from '../i18n';
 
 // The test box page (spec 022, its home since the banner fix): one place to
@@ -170,6 +171,8 @@ const SaveRow: FunctionalComponent<BypassesProps & { turningOn: boolean }> = (pr
 const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
   const { config, testBox, update } = props;
   const ninaSet = Boolean(config.park?.nina.url.trim());
+  // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
+  const switchesOnly = config.park ? parkSource(config.park) === 'switches' : false;
   const sqmeterOn = Boolean(config.safety?.http.enabled || config.safety?.mqtt.enabled);
   const turningOn = testBox.park || testBox.weather || testBox.daylight;
   const fix = (entry: DepEntry) => {
@@ -185,7 +188,7 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           hint={t('testBox.parkHint')}
           checked={testBox.park}
           onChange={(v) => update(['testBox', 'park'], v)}
-          blockedReason={ninaSet ? t('testBox.parkBlocked') : undefined}
+          blockedReason={switchesOnly ? t('testBox.parkSwitchesOnly') : ninaSet ? t('testBox.parkBlocked') : undefined}
           onFix={() => goToSettings('roof', 'park')}
           fixLabel={t('testBox.goToPark')}
         />

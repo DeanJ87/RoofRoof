@@ -116,6 +116,31 @@ namespace SQM::ConfigDetail
         return "none";
     }
 
+    inline const char *parkSourceName(ParkConfig::Source source)
+    {
+        switch (source)
+        {
+        case ParkConfig::Source::Switches:
+            return "switches";
+        case ParkConfig::Source::NinaAndSwitches:
+            return "ninaAndSwitches";
+        case ParkConfig::Source::Nina:
+            break;
+        }
+        return "nina";
+    }
+
+    class Section;
+
+    // Spec 024 (ConfigJsonPark.cpp): the park section in, and whether the
+    // source, the fitted switches and the test box's park bypass agree.
+    bool applyPark(const Section &park, ParkConfig &p, std::string *error);
+    bool validateParkSource(const Config &cfg, std::string *error);
+
+    // Spec 024 (CopiedSecrets.cpp): each secret sent as Config::COPIED_SECRET
+    // takes `copied`'s value for the same server, or the save is refused.
+    bool fillCopiedSecrets(Config &cfg, const CopiedSecrets *copied, std::string *error);
+
     // MQTT broker and webhook URL forms, IPv6 literals included (SQMeter spec 015);
     // web/src/validation/configSchema.ts applies the same rules.
     bool validateAddresses(const Config &cfg, std::string *error);
