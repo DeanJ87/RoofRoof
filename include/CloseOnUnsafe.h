@@ -85,6 +85,7 @@ namespace SQM
         void keep();
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather);
         void countClosed(CloseSeq::Phase before, const CloseSeq::Decision &decision);
+        void logHoldEnd(CloseSeq::Phase before, const CloseSeq::Inputs &in) const;
         void send(const Alerts::Alert &alert, uint64_t nowMs);
         void retryAlert(uint64_t nowMs);
 

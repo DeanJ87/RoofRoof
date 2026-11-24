@@ -24,10 +24,14 @@ test('a test box: bypasses in effect, shown on every page, and off again', async
   await expect(page.locator('main')).toBeVisible();
   await page.waitForTimeout(2500);
 
-  // Refused beside the source it stands in for.
-  const refused = await post(page, '/api/config', { testBox: { park: true }, park: { nina: { url: 'http://10.0.0.2:1888' } } });
+  // Never beside the source it stands in for: turning "No telescope" on clears the N.I.N.A. address in the
+  // same save (owner decision 2026-11-24); with it on, an address is refused.
+  const cleared = await post(page, '/api/config', { testBox: { park: true }, park: { nina: { url: 'http://10.0.0.2:1888' } } });
+  expect(cleared.status).toBe(200);
+  expect(JSON.parse((await api(page, '/api/config')).body).park.nina.url).toBe('');
+  const refused = await post(page, '/api/config', { park: { nina: { url: 'http://10.0.0.2:1888' } } });
   expect(refused.status).toBe(400);
-  expect(refused.body).toContain('clear the N.I.N.A. address first');
+  expect(refused.body).toContain('turn it off before setting a N.I.N.A. address');
 
   const saved = await post(page, '/api/config', {
     park: { nina: { url: '' } },

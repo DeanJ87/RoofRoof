@@ -340,13 +340,16 @@ describe('Wizard', () => {
     await onScreen('direction'); // no N.I.N.A. screen
   });
 
-  it('a test box keeps the park and weather checks where their sources are set up', async () => {
+  it('owner decision 2026-11-24: a test box clears the N.I.N.A. address and keeps the weather check where SQMeter is on', async () => {
     mockDevice({ config: { setup: { state: 'new', step: 3 } } });
+    const saves = recordSaves();
     render(<Wizard />);
     await onScreen('testBox');
     fireEvent.click(screen.getByRole('radio', { name: /No telescope yet \(bench setup\)/ }));
-    expect(screen.getByText('A N.I.N.A. address is set, so the park check stays on.')).toBeInTheDocument();
+    expect(screen.getByText('This also removes the N.I.N.A. address, in the same save.')).toBeInTheDocument();
     expect(screen.getByText('A weather source is on, so the weather check stays on.')).toBeInTheDocument();
+    fireEvent.click(button('Continue'));
+    await waitFor(() => expect(saves[0]).toMatchObject({ testBox: { park: true, daylight: true }, park: { nina: { url: '' } } }));
   });
 
   // FR-017, FR-018: SQMeter once; what it answers shows as done with Edit.

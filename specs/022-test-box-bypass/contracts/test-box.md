@@ -7,9 +7,11 @@
 ```
 
 - `until` is read-only: a value in a save body is ignored; the device sets it (data-model.md).
+- A save that turns `testBox.park` on clears `park.nina.url` in the same save (owner decision
+  2026-11-24; it used to be refused). Turning it off later doesn't restore the address.
 - A save is refused (400, `error`) when:
-  - `testBox.park` would be on with `park.nina.url` set: "Test box: the park bypass is for a box
-    with no telescope; clear the N.I.N.A. address first (or turn the bypass off)";
+  - `testBox.park` stays on and the save sets `park.nina.url`: "Test box: "No telescope under this
+    roof" is on; turn it off before setting a N.I.N.A. address";
   - `testBox.weather` would be on with `safety.http.enabled` or `safety.mqtt.enabled`: "Test box:
     the weather bypass is for a box with no weather source; turn SQMeter HTTP and MQTT off first
     (or turn the bypass off)";

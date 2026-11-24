@@ -101,7 +101,7 @@ describe('the automatic close on hold', () => {
   it('says when it clears from the device countdown, and offers Release hold only while safe', () => {
     const held = roof({ closePhase: 'heldByPerson', closeRearmSeconds: 600 });
     const blocker = closePhaseBlocker(held, ctx)!;
-    expect(blocker.title).toBe("Automatic close on hold: it won't close by itself");
+    expect(blocker.title).toBe('Automatic close on hold until the roof opens or closes');
     expect(blocker.clears).toBe(
       `Clears at ${formatTime(new Date(ctx.nowMs + 600_000))} if the weather stays safe, or once the roof is closed.`,
     );

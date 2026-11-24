@@ -116,14 +116,44 @@ void test_hours_between_1_and_720(void)
 
 void test_the_park_bypass_never_beside_a_nina_address(void)
 {
-    const std::string e1 = saveError(R"({"testBox":{"park":true}})", withNina());
-    TEST_ASSERT_EQUAL_STRING(
-        "Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)", e1.c_str());
+    // Owner decision 2026-11-24: turning the park bypass on clears the address
+    // in the same save (it used to be refused).
+    const Config nina = withNina();
+    std::string error;
+    const auto cleared = Config::fromJson(R"({"testBox":{"park":true}})", &nina, &error);
+    TEST_ASSERT_TRUE_MESSAGE(cleared.has_value(), error.c_str());
+    TEST_ASSERT_TRUE(cleared->testBox.park);
+    TEST_ASSERT_EQUAL_STRING("", cleared->park.ninaUrl.c_str());
+    // Even when the same save sends an address: the bypass turning on wins.
+    const auto both = Config::fromJson(R"({"testBox":{"park":true},"park":{"nina":{"url":"http://10.0.0.2:1888"}}})", &nina);
+    TEST_ASSERT_TRUE(both.has_value());
+    TEST_ASSERT_EQUAL_STRING("", both->park.ninaUrl.c_str());
+    // With the bypass already on, a save that sets an address is still refused.
     Config bypassed = Config::createDefault();
     bypassed.testBox.park = true;
-    saveError(R"({"park":{"nina":{"url":"http://10.0.0.2:1888"}}})", bypassed);
-    // Clearing the address in the same save is fine.
-    TEST_ASSERT_TRUE(Config::fromJson(R"({"testBox":{"park":true},"park":{"nina":{"url":""}}})", nullptr).has_value());
+    TEST_ASSERT_EQUAL_STRING(
+        "Test box: \"No telescope under this roof\" is on; turn it off before setting a N.I.N.A. address",
+        saveError(R"({"park":{"nina":{"url":"http://10.0.0.2:1888"}}})", bypassed).c_str());
+    // Turning it off later doesn't bring the address back.
+    const auto off = Config::fromJson(R"({"testBox":{"park":false}})", &*cleared);
+    TEST_ASSERT_TRUE(off.has_value());
+    TEST_ASSERT_EQUAL_STRING("", off->park.ninaUrl.c_str());
+    // The park source "switches" still can't use the bypass (spec 024): refused,
+    // so nothing (the address included) is saved.
+    Config switches = withNina();
+    switches.park.source = ParkConfig::Source::Switches;
+    switches.park.switches = ParkConfig::Switches::Two;
+    TEST_ASSERT_EQUAL_STRING(
+        "Test box: the park bypass stands in for N.I.N.A.; with park switches only there is nothing to bypass",
+        saveError(R"({"testBox":{"park":true}})", switches).c_str());
+    // applyJson changes its argument before it refuses (the address is cleared on
+    // it): the save is atomic only because the handler discards that copy.
+    Config applied = switches;
+    TEST_ASSERT_FALSE(Config::applyJson(R"({"testBox":{"park":true}})", applied, true));
+    // Other bypasses leave the address alone.
+    const auto daylight = Config::fromJson(R"({"testBox":{"daylight":true}})", &nina);
+    TEST_ASSERT_TRUE(daylight.has_value());
+    TEST_ASSERT_EQUAL_STRING("http://192.168.1.20:1888", daylight->park.ninaUrl.c_str());
 }
 
 void test_the_weather_bypass_never_beside_an_sqmeter_source(void)

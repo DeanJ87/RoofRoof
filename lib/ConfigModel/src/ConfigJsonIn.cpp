@@ -449,11 +449,10 @@ namespace SQM
         {
             if (!validateAddresses(cfg, error) || !validateSqmeterAddress(cfg.safety, error))
                 return false;
-            // Spec 022: a bypass never sits beside the source it stands in for.
+            // Spec 022: a bypass never sits beside the source it stands in for (a
+            // save turning the park bypass on has cleared the address: applyJson).
             if (cfg.testBox.park && !cfg.park.ninaUrl.empty())
-                return setError(
-                    error,
-                    "Test box: the park bypass is for a box with no telescope; clear the N.I.N.A. address first (or turn the bypass off)");
+                return setError(error, "Test box: \"No telescope under this roof\" is on; turn it off before setting a N.I.N.A. address");
             if (!validateParkSource(cfg, error))
                 return false;
             if (cfg.testBox.weather && (cfg.safety.httpEnabled || cfg.safety.mqttEnabled))
@@ -504,6 +503,16 @@ namespace SQM
 
     namespace
     {
+        // Owner decision 2026-11-24: a save (UI/API, `incoming`) that turns "No
+        // telescope under this roof" on clears the N.I.N.A. address in the same
+        // save, so a bench box can never ask a real mount to park. Turning it off
+        // later doesn't bring the address back.
+        void dropNinaForParkBypass(bool incoming, bool parkBypassBefore, Config &cfg)
+        {
+            if (incoming && cfg.testBox.park && !parkBypassBefore)
+                cfg.park.ninaUrl.clear();
+        }
+
         // Spec 026: a save from the UI/API sets a followed SQMeter group here when it changes the
         // group's values, and clears the measured bit of each roof value it types over.
         void afterChange(const Section &root, const SyncedValues &synced, const RoofConfig &roofBefore, Config &cfg)
@@ -538,8 +547,10 @@ namespace SQM
         const std::string previousSsid = cfg.wifi.ssid;
         const SyncedValues synced = syncedValues(cfg);
         const RoofConfig roofBefore = cfg.roof;
+        const bool parkBypassBefore = cfg.testBox.park;
         if (!applySections(root, cfg, keep, errorOut, copied))
             return false;
+        dropNinaForParkBypass(keep, parkBypassBefore, cfg);
         afterChange(root, synced, roofBefore, cfg); // spec 026
         if (reader.failed())
             return typeError(reader, errorOut);

@@ -61,6 +61,21 @@ Each answer takes the safest option the constitution allows; they are also liste
   English-only `device.*` catalogue (English device text shown as sent is the same words); the page
   ends smaller than before.
 
+### Session 2026-11-24 (owner decisions)
+
+The owner answered the questions under "Left for the owner":
+
+- Q: Should a person's Open end the hold? → A: **Yes.** An Open by a person or a client that starts
+  the roof moving ends a person's stand-down at once, the same transition as **Release hold** and
+  the end of the re-arm spell (spec 005, constitution 6.0.0). A halted close is not ended by an
+  Open. The page no longer says the close "won't close by itself" without an end: the hold reads
+  "Automatic close on hold until the roof opens or closes".
+- Q: Should **No telescope under this roof** (the test box page) and the wizard's **No telescope
+  yet** clear the N.I.N.A. address in the same save? → A: **Yes** (spec 022's record has the
+  details). The wizard's SQMeter weather source is unchanged by this decision.
+- Q: Should **Release hold** also be offered to Home Assistant? → A: **No.** It stays on the web
+  page only: it is for a person at the roof who can see it.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Why can't the roof move? (Priority: P1)
@@ -248,6 +263,8 @@ one CSS rule (`.move-blocker`) replaces the calibration checklist's. Copy follow
    rule, unchanged).
 
 ## Left for the owner
+
+Answered on 2026-11-24 (see the clarifications above); kept here as they were asked.
 
 - **Opening the roof while the automatic close is on hold keeps the hold.** A person who stops an
   automatic close, waits for the weather to clear and opens the roof again leaves the sequence stood

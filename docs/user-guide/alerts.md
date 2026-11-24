@@ -35,7 +35,7 @@ flowchart TB
     ON -->|yes| MASTER{"Send alerts on?"}
     MASTER -->|no| NOPUSH["No channel is used"]
     MASTER -->|yes| INEFFECT{"Channel in effect?"}
-    CRITICAL(["Critical roof alert<br/>the mount didn't park,<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me"]
+    CRITICAL(["Critical roof alert<br/>the mount didn't park,<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me (Urgent at most on a test box)"]
     CWORDING -->|"never paused, never switched off"| INEFFECT
     SENT --> AGAIN["Critical alert no channel took:<br/>sent again after 1 min, doubling to 30 min"]
     INEFFECT -->|"no: MQTT off,<br/>no network"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
@@ -64,7 +64,7 @@ flowchart TB
     7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without a network: WiFi or Ethernet) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
-    10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts) and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me, and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
+    10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts) and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
 
 ---
 
@@ -159,6 +159,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 **Roof safety** (critical): **The mount doesn't park** and **The roof doesn't close**. The constitution requires them, so they:
 
 - can be **Urgent** or **Wake me** only, with a sound that makes a noise (not silent or vibrate only); the device refuses anything else, and sends a lower stored level as Urgent;
+- are sent at **Urgent** while a [test box](test-box.md#critical-alerts-on-a-test-box) park or weather bypass is in effect (or waiting for the clock with one that would be): a bench box never sends Pushover's emergency;
 - are sent to every channel that is switched on even with **Send alerts** off, while paused, in "Only while an imaging app is connected" with no app, and in the first minute after a start;
 - go out at most once every 30 minutes per cause, and again every 30 minutes ("Still: ...") while the roof stays open;
 - are sent again (after 1 minute, doubling to 30 minutes) until a channel takes one.
