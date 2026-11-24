@@ -199,6 +199,18 @@ namespace SQM
             return true;
         }
 
+        // The measured slow speed and its duty: each 0 (not measured) or in range.
+        bool validateRoofSlowSpeed(const RoofConfig &r, std::string *error)
+        {
+            if (r.slowSpeedMmPerSecond != 0.0f &&
+                !inRange(r.slowSpeedMmPerSecond, RoofConfig::MIN_SPEED_MM_PER_SECOND, RoofConfig::MAX_SPEED_MM_PER_SECOND))
+                return setError(error, "Roof: slow speed must be 0 (not measured) or between 1 and 500 mm/s");
+            if (r.slowSpeedDutyPercent != 0 &&
+                (r.slowSpeedDutyPercent < RoofConfig::MIN_SLOW_DUTY_PERCENT || r.slowSpeedDutyPercent > RoofConfig::MAX_DUTY_PERCENT))
+                return setError(error, "Roof: the slow speed's duty must be 0 (none) or between 10 and 100 %");
+            return true;
+        }
+
         bool validateRoofTiming(const RoofConfig &r, std::string *error)
         {
             if (r.travelMm < RoofConfig::MIN_TRAVEL_MM || r.travelMm > RoofConfig::MAX_TRAVEL_MM)
@@ -306,7 +318,8 @@ namespace SQM
 
         bool validateRoof(const Config &c, std::string *error)
         {
-            return validateRoofTiming(c.roof, error) && validateRoofDuty(c.roof, error) && validateRoofSensing(c.roof, error);
+            return validateRoofTiming(c.roof, error) && validateRoofSlowSpeed(c.roof, error) && validateRoofDuty(c.roof, error) &&
+                   validateRoofSensing(c.roof, error);
         }
     } // namespace
 

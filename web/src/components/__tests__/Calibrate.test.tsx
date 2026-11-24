@@ -118,6 +118,35 @@ describe('Calibrate', () => {
     expect(headers[0]).toBe('1');
   });
 
+  // Spec 016 fix: the roof moved to its open end after the page opened (a jog):
+  // the form follows it, so the run isn't told "closed"; a pick the reading
+  // disagrees with is kept, with a warning. Each leg's limit is given by Start.
+  it('where the roof is follows its reading until the person picks, and warns on a disagreeing pick', async () => {
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('/api/roof/calibration/start', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ success: true, state: 'running' });
+      }),
+    );
+    const { rerender } = render(<Calibrate />);
+    const where = (await screen.findByRole('combobox', { name: 'Where the roof is now' })) as HTMLSelectElement;
+    expect(where.value).toBe('closed');
+    expect(startCard().getByText(/Each leg may drive 180 s/)).toBeInTheDocument();
+    const open = ready();
+    open.roof = { ...open.roof!, state: 'open', hall: { counts: 3400, level: 'high' } };
+    live(open);
+    rerender(<Calibrate />);
+    await waitFor(() => expect(where.value).toBe('open'));
+    expect(startCard().queryByText(/The roof reads as/)).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'I am at the roof and can see it' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start calibration' }));
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ at: 'open' });
+    fireEvent.change(where, { target: { value: 'closed' } });
+    expect(await startCard().findByText(/The roof reads as Open/)).toBeInTheDocument();
+  });
+
   it('says why Start is unavailable while a check fails', async () => {
     const s = ready();
     s.roof!.weather = 'unsafe';
@@ -191,12 +220,18 @@ describe('Calibrate', () => {
     render(<Calibrate />);
     expect(await screen.findByText('38 → 41')).toBeInTheDocument();
     expect(screen.getByText('15 → 10')).toBeInTheDocument();
+    // The measured slow speed, and every move's limit before and after.
+    expect(screen.getByText('0 → 16.4')).toBeInTheDocument();
+    expect(screen.getByText('67 s → 59 s')).toBeInTheDocument();
+    expect(screen.getByText('137 s → 123 s')).toBeInTheDocument();
     expect(saves).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: 'Accept and save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
     const roof = saves[0].roof as Record<string, unknown>;
     expect(roof.speedMmPerSecond).toBe(41);
     expect(roof.timeoutMarginSeconds).toBe(10);
+    expect(roof.slowSpeedMmPerSecond).toBe(16.4);
+    expect(roof.slowSpeedDutyPercent).toBe(40);
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 

@@ -37,7 +37,12 @@ export interface CalibrationRest {
 export interface CalibrationProposal {
   travelMm: CalibrationPair<number>;
   speedMmPerSecond: CalibrationPair<number> | null;
+  slowSpeedMmPerSecond: CalibrationPair<number> | null;
+  slowSpeedDutyPercent: CalibrationPair<number> | null; // the slow duty it was measured at
   timeoutMarginSeconds: CalibrationPair<number> | null;
+  // Not settings: the hard timeouts of a full move and of a move at the slow duty.
+  moveLimitSeconds: CalibrationPair<number> | null;
+  slowLimitSeconds: CalibrationPair<number> | null;
   hallHighEnd: CalibrationPair<'open' | 'closed'> | null;
   hallHighCounts: CalibrationPair<number> | null;
   hallLowCounts: CalibrationPair<number> | null;

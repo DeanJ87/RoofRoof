@@ -72,6 +72,7 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
       {roofNum(props, 'rampDownMs', t('settings.roof.rampDown'), { unit: 'ms', integer: true, hint: t('settings.roof.rampDownHint') })}
       {roofNum(props, 'topDutyPercent', t('settings.roof.topDuty'), { unit: '%', integer: true })}
       {roofNum(props, 'slowDutyPercent', t('settings.roof.slowDuty'), { unit: '%', integer: true, hint: t('settings.roof.slowDutyHint') })}
+      {roofNum(props, 'slowSpeedMmPerSecond', t('settings.roof.slowSpeed'), { unit: 'mm/s', hint: t('settings.roof.slowSpeedHint') })}
       <Field label={t('settings.roof.openDirection')} hint={t('settings.roof.openDirectionHint')}>
         <SelectInput
           dataField="roof.openDirection"

@@ -76,12 +76,19 @@ wanting the roof closed), the mount parked, no fault, the automatic close idle, 
 the supply above its minimum, a settled Hall reading. Then:
 
 1. Turn on **I am at the roof and can see it**.
-2. Say **where the roof is now**: closed, open or part-way. Look at it: the run can't tell the ends
-   apart by the polarity setting, which it is measuring. The device checks your answer against the
-   Hall reading (a magnet at an end, none part-way).
+2. Say **where the roof is now**: closed, open or part-way. The choice follows the roof's own
+   reading until you change it, so a jog or a move after the page opened is taken into account.
+   Look at the roof: the run can't tell the ends apart by the polarity setting, which it is
+   measuring, so it believes your answer. If you choose the other end from the one the roof reads
+   as, the page warns you. The device checks your answer against the Hall reading (a magnet at an
+   end, none part-way). Said **closed** while the roof is really open, the slow open can't leave
+   the open end's magnet and stops with the `didNotLeave` fault after the leave time; the ending
+   says to check where the roof was and `roof.openDirection`.
 3. Check the **measured travel**.
 4. Optionally **Also run at the top duty**.
-5. **Start calibration**.
+5. **Start calibration**. The note above the button gives each leg's time limit
+   (`roof.calibrationLimitSeconds`). A slow roof whose slow travel takes longer needs it raised
+   (Settings → Roof → Calibration run → Advanced, up to 600 s) first.
 
 The device checks everything again and refuses with the reason if anything fails: the weather or
 daylight, the park, the automatic close, a fault, a move or a waiting close, an upload, a restart,
@@ -133,15 +140,16 @@ While the run is under way:
 
 ## The result
 
-The page shows each leg's time and the speed it implies at 100 % duty (and the running current
+The page shows each leg's time and its average speed (and the running current
 with current sense), the in-between Hall reading and its noise, and each end's reading at rest.
 For a finished run it proposes:
 
 | Setting | How |
 |---|---|
 | Travel | the travel you entered |
-| Speed | travel ÷ the duty-weighted time of the top-duty legs (the slow legs without them), to 0.1 mm/s |
-| Timeout margin | the largest of 5 s, 20 % of a full move, and 1.5 × the most a leg ran over what the proposed speed predicts + 3 s |
+| Slow speed | the slow legs' average speed (travel ÷ time), to 0.1 mm/s: the speed at the slow duty |
+| Speed | the full speed at 100 %: from the top-duty legs, with their time at the slow duty counted at the slow speed; without a top-duty pass, the slow speed scaled from the slow duty to 100 % (with a warning) |
+| Timeout margin | the largest of 5 s, 20 % of a full move, and 1.5 × the most a leg ran over what the proposed speeds predict + 3 s |
 | Which end reads high | the end whose reading at rest is above the in-between level |
 | Hall thresholds | each kept if it is clear of the in-between readings (100 counts or 4 × the noise) and read at rest at its end; otherwise moved only as far as needed, never past where the roof stopped |
 
@@ -155,9 +163,25 @@ A value isn't proposed, with the reason, when:
   from the sensor;
 - no threshold is both clear of the noise and read at rest.
 
-The speed model is the controller's own: speed proportional to the duty. A motor that needs a
-good part of the slow duty before it moves runs slower at the slow duty than that model says; the
-proposed margin covers it, and the top-duty pass gives the speed real moves see.
+Below them, two rows show what the proposal does to every move's hard timeout, saved beside
+proposed: **Open or close limit** (a full move from a known end) and **Slow-duty limit** (a move
+from an unknown position, at the slow duty, timed from the slow speed; this is also the drive
+budget). These aren't settings; they follow from the ones above.
+
+The speed model is the controller's own: speed affine in the duty, from the slow speed at the slow
+duty to the full speed at 100 %. A heavy roof's motor needs a good part of the slow duty before it
+moves, so at 40 % it runs well under 40 % of its full speed; the measured slow speed times every
+move at the slow duty (moves from an unknown position, the creep to each end), so they no longer
+time out. Until a run has measured it (`roof.slowSpeedMmPerSecond` 0), speed is taken as
+proportional to the duty. The slow speed is saved with the slow duty it was measured at
+(`roof.slowSpeedDutyPercent`) and counts only while that is still the slow duty: change the slow
+duty and the timing falls back to proportional until you run again. Run the top-duty pass for the
+full speed real moves see.
+
+When a slow leg took more than three quarters of the time limit, a warning names the slow duty and
+the limit: raise `roof.calibrationLimitSeconds` before the next run. A leg that times out says the
+same: which limit stopped it (the setting, or for the slow close and the top-duty legs the slow leg
+measured before them) and, for a slow leg, the slow duty.
 
 A peak running current at 80 % of `roof.maxCurrentAmps` is pointed out; current limits are never
 proposed.
