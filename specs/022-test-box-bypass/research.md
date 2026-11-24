@@ -72,7 +72,7 @@
   bits it has seen since boot and sends when a bit appears that it hadn't seen (its first pass after
   boot sees none, so a bypass in effect at boot is announced after the start-up grace). Level 1-4,
   default 3; 0 is refused on save and raised to 1 on load. Not in the "announced" set kept across a
-  reset, so every boot reminds.
+  reset, so every boot reminds. (Reversed by spec assumption 17: a restart alone sends nothing.)
 - **Alternatives**: a critical event (rejected: critical events bypass the master switch and the
   pause by design for II/III failures; this is a reminder, not a failure).
 
