@@ -182,7 +182,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | Setting | Value |
 |---|---|
 | `roof.travelMm` | |
-| `roof.speedMmPerSecond` | |
+| `roof.speedMmPerSecond` / `slowSpeedMmPerSecond` | |
 | `roof.openDirection` | |
 | `roof.hallHighEnd` / `hallHighCounts` / `hallLowCounts` | |
 | `roof.timeoutMarginSeconds` / `leaveMagnetSeconds` | |
