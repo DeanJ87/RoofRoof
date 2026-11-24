@@ -141,6 +141,7 @@ namespace SQM
             JsonObject nina = park.createNestedObject("nina");
             nina["url"] = c.park.ninaUrl;
             nina["api"] = "v2";
+            park["source"] = parkSourceName(c.park.source);
             park["switches"] = switchesName(c.park.switches);
             park["timeoutSeconds"] = c.park.timeoutSeconds;
             park["requestPark"] = c.park.requestPark;

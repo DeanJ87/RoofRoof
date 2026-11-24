@@ -58,10 +58,13 @@ export interface SafetyConfig {
 }
 
 export type ParkSwitches = 'none' | 'one' | 'two';
+// Spec 024: what confirms the park. Absent on older firmware: none → nina, one or two → ninaAndSwitches.
+export type ParkSource = 'nina' | 'switches' | 'ninaAndSwitches';
 
-// How the park is confirmed: N.I.N.A. AND the fitted switches (spec 004).
+// How the park is confirmed (spec 004): N.I.N.A., the fitted switches, or both (spec 024).
 export interface ParkConfig {
   nina: { url: string; api: 'v2' };
+  source?: ParkSource;
   switches: ParkSwitches;
   timeoutSeconds: number; // spec 005: the close sequence's wait for the park, 30-1800 s
   requestPark?: boolean; // spec 022: the automatic close may ask N.I.N.A. to park (absent on older firmware: on)

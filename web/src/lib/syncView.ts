@@ -1,4 +1,4 @@
-import type { Config, SyncGroup, SyncNeed, SyncStatus } from '../types';
+import type { Config, SecretsProblem, SyncGroup, SyncNeed, SyncStatus } from '../types';
 import { formatAgo, formatDateTime } from '../i18n/format';
 import { t } from '../i18n';
 
@@ -78,4 +78,14 @@ export const syncLine = (sync: SyncStatus | null | undefined, group: SyncGroup):
     return { text: t('sync.synced', { date }), problem: false };
   }
   return { text: t('sync.notYet'), problem: false };
+};
+
+/** Spec 024: the groups whose secrets and switches the sync keeps too. */
+export const keepsSecrets = (group: SyncGroup): boolean => group === 'mqtt' || group === 'alerts';
+
+/** Spec 024: why the sync couldn't read SQMeter's passwords, for a following MQTT or alerts group. */
+export const secretsProblem = (sync: SyncStatus | null | undefined, group: SyncGroup): Exclude<SecretsProblem, 'waiting'> | null => {
+  const secrets = sync?.secrets;
+  if (!keepsSecrets(group) || !sync?.[group]?.follow || !secrets || secrets === 'received' || secrets === 'waiting') return null;
+  return secrets;
 };

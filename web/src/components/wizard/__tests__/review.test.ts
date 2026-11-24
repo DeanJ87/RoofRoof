@@ -14,6 +14,7 @@ const base = (): ReviewInput => ({
 });
 
 const stateOf = (input: ReviewInput, id: string) => reviewChecks(input).find((check) => check.id === id)!.state;
+const textOf = (input: ReviewInput, id: string) => reviewChecks(input).find((check) => check.id === id)!.text;
 const given = (change: (input: ReviewInput) => void) => {
   const input = base();
   change(input);
@@ -160,11 +161,31 @@ describe('reviewChecks', () => {
     ).toBe('warn');
     const two = (s1: 'closed' | 'unreadable') =>
       given((i) => {
+        cfg(i).park.source = 'ninaAndSwitches';
         cfg(i).park.switches = 'two';
         roof(i).parkSwitches = { fitted: 2, switch1: s1, switch2: 'open' };
       });
     expect(stateOf(two('closed'), 'parkSwitches')).toBe('ok');
     expect(stateOf(two('unreadable'), 'parkSwitches')).toBe('bad');
+  });
+
+  // Spec 024: the review names the park source; one switch alone is attention, no N.I.N.A. address fine.
+  it('park source: switches only with one switch is attention, and needs no N.I.N.A. address', () => {
+    const only = (switches: 'one' | 'two') =>
+      given((i) => {
+        cfg(i).park = { ...cfg(i).park, source: 'switches', switches, nina: { url: '', api: 'v2' } };
+        roof(i).parkSwitches = { fitted: switches === 'one' ? 1 : 2, switch1: 'closed', switch2: 'closed' };
+      });
+    expect(stateOf(only('one'), 'parkSwitches')).toBe('warn');
+    expect(stateOf(only('two'), 'parkSwitches')).toBe('ok');
+    expect(textOf(only('two'), 'parkSwitches')).toMatch(/^Park switches only/);
+    expect(stateOf(only('two'), 'nina')).toBe('ok');
+    expect(
+      stateOf(
+        given((i) => (cfg(i).park.nina.url = '')),
+        'nina',
+      ),
+    ).toBe('bad');
   });
 
   it('board: none chosen is a problem; one waiting for a restart needs a look', () => {

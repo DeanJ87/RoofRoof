@@ -28,6 +28,7 @@
 #include "InputsReport.h"
 #include "RoofController.h"
 #include "RoofGates.h"
+#include "SwitchWatch.h"
 #include "RoofPlant.h"
 #include "RoofStatus.h"
 #include "SafetyInput.h"
@@ -53,14 +54,15 @@ namespace DemoRoof
     // The Demo panel's settings.
     struct Injectors
     {
-        bool unsafe = false;         // SQMeter: unsafe for a reason other than rain
-        bool rain = false;           // SQMeter: rain
-        bool parkFails = false;      // the mount never reaches park
-        bool jam = false;            // the roof can't move
-        bool supplyLow = false;      // the 12 V supply at LOW_SUPPLY_VOLTS
-        bool sunUp = false;          // spec 013: the sun well above the daylight threshold
-        bool sqmeterOffline = false; // spec 020: SQMeter answers nothing (weather, location, settings)
-        bool sqmeterLocked = false;  // spec 020: SQMeter wants a login (DEMO_SQMETER_USER / DEMO_SQMETER_PASSWORD) for every request
+        bool unsafe = false;            // SQMeter: unsafe for a reason other than rain
+        bool rain = false;              // SQMeter: rain
+        bool parkFails = false;         // the mount never reaches park
+        bool jam = false;               // the roof can't move
+        bool supplyLow = false;         // the 12 V supply at LOW_SUPPLY_VOLTS
+        bool sunUp = false;             // spec 013: the sun well above the daylight threshold
+        bool sqmeterOffline = false;    // spec 020: SQMeter answers nothing (weather, location, settings)
+        bool sqmeterLocked = false;     // spec 020: SQMeter wants a login (DEMO_SQMETER_USER / DEMO_SQMETER_PASSWORD) for every request
+        bool sqmeterSharingOff = false; // spec 024: SQMeter's password sharing is off (GET /api/secrets answers 403)
     };
 
     // The simulated mount as N.I.N.A. reports it.
@@ -93,6 +95,16 @@ namespace DemoRoof
         if (inject.sqmeterLocked && (user != DEMO_SQMETER_USER || password != DEMO_SQMETER_PASSWORD))
             return 401;
         return 200;
+    }
+
+    // Spec 024: the simulated SQMeter's GET /api/secrets: as above, then 403
+    // without a web password (it isn't locked) or with sharing off.
+    inline int demoSecretsAnswer(const Injectors &inject, const std::string &user, const std::string &password)
+    {
+        const int answer = demoSqmeterAnswer(inject, user, password);
+        if (answer != 200)
+            return answer;
+        return !inject.sqmeterLocked || inject.sqmeterSharingOff ? 403 : 200;
     }
 
     class EmulatedRoof
@@ -212,6 +224,10 @@ namespace DemoRoof
         RoofPlant::Plant plant = RoofPlant::forSettings(Roof::Settings(), 0.0f);
         RoofIo::FaultRecord fault;
         RoofIo::GateInputs gates;
+        // Spec 024: the stuck-switch watch (RoofControl::watchSwitches), kept across a restart as in NVS.
+        Safety::SwitchWatch watch;
+        Roof::State watchedState = Roof::State::Unknown;
+        void watchSwitches();
         uint32_t personStops = 0;
         Diag::MoveLog *diagLog = nullptr;
         Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close

@@ -187,8 +187,10 @@ Before the motion logic sees a command:
 
 - **Open** is refused unless the [weather verdict](safety-inputs.md) is safe. An open in progress
   stops (no fault, the estimate kept) as soon as the verdict is no longer safe.
-- **Close** is refused unless the mount is confirmed parked: N.I.N.A. reports it at park AND every
-  fitted park switch reads closed. During the close this is checked every step; if it no longer
+- **Open** is also refused, with the [park switches only](safety-inputs.md#park-switches-only), while
+  a park switch hasn't opened in the last 3 roof openings (`parkSwitchCheck`).
+- **Close** is refused unless the mount is confirmed parked by the park source: N.I.N.A. reports it
+  at park, every fitted park switch reads closed, or both ([Safety inputs](safety-inputs.md#park)). During the close this is checked every step; if it no longer
   holds, the motor stops with an `external` fault, cause `parkInterlock`, naming the input that
   failed. The weather never blocks a close.
 - **Stop** is always accepted.

@@ -45,8 +45,58 @@ describe('safety and park settings', () => {
   });
 
   it('accepts only the documented switch choices and API version', () => {
-    expect(withPark({ switches: 'two' })).toEqual({});
+    expect(withPark({ source: 'ninaAndSwitches', switches: 'two' })).toEqual({});
+    // Older firmware sends no source: any switch count goes (the device derives the source).
+    expect(withPark({ source: undefined, switches: 'two' })).toEqual({});
     expect(withPark({ switches: 'both' as ParkConfig['switches'] })['park.switches']).toBeDefined();
     expect(withPark({ nina: { url: '', api: 'v3' as 'v2' } })['park.nina.api']).toBeDefined();
+  });
+
+  // Spec 024 FR-002: the park source's rules, as the device's.
+  it('takes N.I.N.A. only with no switch, a switch source with one or two', () => {
+    expect(withPark({ source: 'nina', switches: 'none' })).toEqual({});
+    expect(withPark({ source: 'nina', switches: 'one' })['park.switches']).toMatch(/N.I.N.A. only has no park switches/);
+    expect(withPark({ source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } })).toEqual({});
+    expect(withPark({ source: 'switches', switches: 'none' })['park.switches']).toMatch(/one or two/);
+    expect(withPark({ source: 'ninaAndSwitches', switches: 'none' })['park.switches']).toMatch(/one or two/);
+    expect(withPark({ source: 'both' as ParkConfig['source'] })['park.source']).toBeDefined();
+  });
+
+  it("refuses the test box's park bypass with park switches only", () => {
+    const errors = getConfigValidationErrors({
+      ...mockConfig,
+      park: { ...basePark, source: 'switches', switches: 'one' },
+      testBox: { ...mockConfig.testBox!, park: true },
+    });
+    expect(errors['testBox.park']).toMatch(/nothing to bypass/);
+    expect(
+      getConfigValidationErrors({
+        ...mockConfig,
+        park: { ...basePark, source: 'ninaAndSwitches', switches: 'one' },
+        testBox: { ...mockConfig.testBox!, park: true },
+      })['testBox.park'],
+    ).toBeUndefined();
+  });
+});
+
+// Spec 024: a secret to take from SQMeter at the save passes the page's checks (the device decides).
+describe('the "(from SQMeter)" placeholder', () => {
+  it('is accepted as the MQTT password, the ntfy token and the Pushover keys (whose format is otherwise 30 characters)', () => {
+    const alerts = mockConfig.alerts!;
+    const errors = getConfigValidationErrors({
+      ...mockConfig,
+      mqtt: { ...mockConfig.mqtt, password: '(from SQMeter)' },
+      alerts: {
+        ...alerts,
+        ntfy: { ...alerts.ntfy, token: '(from SQMeter)' },
+        pushover: { ...alerts.pushover, enabled: true, userKey: '(from SQMeter)', appToken: '(from SQMeter)' },
+      },
+    });
+    expect(errors).toEqual({});
+    const short = getConfigValidationErrors({
+      ...mockConfig,
+      alerts: { ...alerts, pushover: { ...alerts.pushover, enabled: true, userKey: 'abc' } },
+    });
+    expect(short['alerts.pushover.userKey']).toBeDefined();
   });
 });

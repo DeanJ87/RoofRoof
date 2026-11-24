@@ -161,8 +161,12 @@ test('the real observatory branch: every screen answered in the wizard, the moto
   await choose(page, 'Alert and close');
   await proceed(page);
 
+  // Spec 024: how the park is known, then how many switches.
   await onScreen(page, 'parkSwitches');
-  await choose(page, 'One switch');
+  await choose(page, /^N\.I\.N\.A\. and park switches/);
+  await proceed(page);
+  await onScreen(page, 'parkSwitchCount');
+  await choose(page, /^One switch/);
   await expect(dialog(page)).toContainText('Park switch 1');
   await proceed(page);
   await onScreen(page, 'nina');
@@ -198,7 +202,7 @@ test('the real observatory branch: every screen answered in the wizard, the moto
   expect(config.auth.enabled).toBe(true);
   expect(config.location.source).toBe('sqmeter');
   expect(config.alerts.ntfy).toMatchObject({ enabled: true, topic: 'darkskylab-sqm' });
-  expect(config.park.switches).toBe('one');
+  expect(config.park).toMatchObject({ source: 'ninaAndSwitches', switches: 'one' });
   expect(config.daylight.mode).toBe('close');
   expect(config.roof.travelMm).toBe(210); // the run's proposal, accepted in the wizard
   expect(config.setup).toEqual({ state: 'done', step: 0 });
@@ -236,7 +240,7 @@ test('the test box branch: SQMeter for site data only, no N.I.N.A., the bypasses
   await choose(page, 'Do nothing');
   await proceed(page);
   await onScreen(page, 'parkSwitches');
-  await choose(page, 'None');
+  await choose(page, /^N\.I\.N\.A\. only/);
   await proceed(page);
 
   // No N.I.N.A. screen: the park check is bypassed, and the motor screens say so.
@@ -399,4 +403,42 @@ test('keyboard: arrows move through the choices, Escape asks before leaving, foc
   // Opened from the Demo panel, which has closed: focus goes to the page.
   await expect(page.locator('#main')).toBeFocused();
   await expect(page.locator('[data-inventory="setup-banner"]')).toContainText("Setup isn't finished");
+});
+
+// Spec 024: the SQMeter screen's copy saves the address and login first (SQMeter shares its
+// passwords only with the saved address), says why when SQMeter won't share them, and brings
+// the MQTT password across unseen once it does.
+test("the SQMeter screen's copy saves the address first and brings SQMeter's passwords", async ({ page }) => {
+  test.setTimeout(120_000);
+  const bodies: string[] = [];
+  page.on('response', async (response) => {
+    if (response.url().includes('/api/')) bodies.push(await response.text().catch(() => ''));
+  });
+  // SQMeter without a web password: it shares nothing (403).
+  await page.goto('./#/wizard?screen=sqmeter');
+  await onScreen(page, 'sqmeter');
+  await dialog(page).getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(dialog(page)).toContainText('SQMeter has no web password', { timeout: 15_000 });
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Leave for now' }).click();
+  await expect(dialog(page)).toHaveCount(0);
+
+  // SQMeter locked with its login: typed here, saved by the copy before it reads SQMeter.
+  const toggle = page.locator('.demo-panel-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await page.getByRole('button', { name: 'SQMeter password: On', exact: true }).click();
+  await toggle.click();
+  await page.goto('./#/wizard?screen=sqmeter');
+  await onScreen(page, 'sqmeter');
+  await dialog(page).locator('[data-field="safety.http.username"]').fill('admin');
+  await dialog(page).locator('[data-field="safety.http.password"]').fill('sqmeter');
+  await dialog(page).getByRole('button', { name: 'Copy from SQMeter' }).click();
+  await expect(dialog(page)).toContainText('Passwords received from SQMeter', { timeout: 15_000 });
+  expect((await deviceConfig(page)).safety.http).toMatchObject({ username: 'admin', password: '********' });
+  await expect(dialog(page).getByRole('switch', { name: 'MQTT broker' })).toBeChecked();
+  await expect(dialog(page)).not.toContainText('Enter the MQTT password');
+  await dialog(page).getByRole('button', { name: 'Apply ticked' }).click();
+  await proceed(page);
+  await expect.poll(async () => (await deviceConfig(page)).mqtt).toMatchObject({ username: 'observatory', password: '********' });
+  expect(bodies.some((body) => body.includes('demo-broker-pass'))).toBe(false);
 });

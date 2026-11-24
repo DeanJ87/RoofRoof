@@ -5,6 +5,7 @@
 // checks are lib/RoofIoLogic's (FaultRecord.h).
 
 #include "FaultRecord.h"
+#include "SwitchWatch.h"
 
 namespace SQM
 {
@@ -15,5 +16,9 @@ namespace SQM
         RoofIo::Decoded load(RoofIo::FaultRecord &out);
         // Saves `record`, or removes it when its kind is None. False if NVS refused.
         bool save(const RoofIo::FaultRecord &record);
+        // Spec 024: the park switches' stuck-switch watch (two counts). A
+        // missing or unreadable one loads as nothing counted yet.
+        Safety::SwitchWatch loadWatch();
+        bool saveWatch(const Safety::SwitchWatch &watch);
     } // namespace RoofFaultStore
 } // namespace SQM

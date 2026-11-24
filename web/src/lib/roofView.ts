@@ -126,6 +126,8 @@ const openReason = (input: ViewInput, roof: RoofStatus): string | null => {
   if (roof.state === 'opening') return t('roof.reason.opening');
   if (roof.weather !== 'safe') return t('roof.reason.weather', { text: deviceText(roof.weatherText) || t('roof.weather.unknown') });
   if (roof.daylight?.closes) return t('roof.reason.daylight', { text: deviceText(roof.daylight.text) });
+  // Spec 024 (parkSwitchCheck): with switches only, a switch that hasn't opened in 3 roof openings.
+  if (roof.parkSwitches.check) return deviceText(roof.parkSwitches.check);
   if (hotspotHeld(input)) return t('roof.reason.hotspot');
   return motionReason(roof);
 };

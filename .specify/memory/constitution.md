@@ -1,6 +1,30 @@
 <!--
 Sync Impact Report
-- Version: 4.1.0 -> 4.1.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
+- Version: 4.1.1 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
+  make the fitted park switches the only park source).
+- Modified: II. Close Only Onto a Parked Mount. The park source is an owner setting
+  (`park.source`): N.I.N.A. only, park switches only, or N.I.N.A. and park switches. Settings from
+  before it take it from `park.switches` (none: N.I.N.A. only; one or two: N.I.N.A. and switches),
+  exactly the rule before. With the switches only, every fitted switch reading closed confirms the
+  park; with two, both must; N.I.N.A. counts only against it (a fresh reading that says the mount
+  is slewing means not parked). The switches close to ground at park (normally open), so a broken
+  wire reads not parked. A switch that hasn't read open over 3 roof openings in a row refuses Open
+  until it has been seen open. With no N.I.N.A. reading relied on, the close's re-check reads the
+  switches every control step and nothing rides through. The test box's park bypass (it stands in
+  for N.I.N.A.) can't be set with the switches only. Principle III's step 2 (ask N.I.N.A. to park)
+  is sent only when an address is set.
+- New risk (II): with the switches only, a switch that is shorted to ground or stuck closed reads
+  "parked" whatever the mount does. Two switches on separate cables make one such fault a
+  disagreement (not parked); with one switch nothing can tell it from a parked mount. A fault that
+  appears during a night, with one switch, can let the roof close onto an unparked mount; a fault
+  that lasts is caught at the fourth roof opening at most (Open refused while the roof is closed).
+  Settings, the setup wizard and the docs recommend two switches and warn with one.
+- Why: spec 024. An observatory with reliable park switches, or without N.I.N.A. running at night,
+  could not close the roof on the switches alone.
+- Templates: no change (they read the principles from this file).
+- Docs: docs/user-guide/safety-inputs.md, docs/hardware/wiring.md, docs/hardware/commissioning.md,
+  specs/024-park-source-and-secrets/spec.md.
+- Earlier: 4.1.0 -> 4.1.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
   below no longer name the rain contact that 4.0.0 removed: the bypass never overrides a reading
   (a configured source that says unsafe or rain). No rule changes.
 - Earlier: 4.0.0 -> 4.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
@@ -192,10 +216,22 @@ nothing has gone wrong.
 
 Closing onto an unparked telescope is the most expensive failure this device can cause.
 
-- The roof MUST NOT close unless the mount is confirmed parked: N.I.N.A. reports `AtPark` AND
-  every fitted park switch (`park.switches`) is closed, all fresh at the moment the close starts.
-  The switches are optional, a second check on the mount itself. If the sources disagree, or any
-  of them can't be read, the mount counts as not parked.
+- The roof MUST NOT close unless the mount is confirmed parked by its park source (`park.source`),
+  all fresh at the moment the close starts:
+  - **N.I.N.A. only**: N.I.N.A. reports `AtPark`;
+  - **N.I.N.A. and park switches**: N.I.N.A. reports `AtPark` AND every fitted park switch
+    (`park.switches`) is closed;
+  - **park switches only**: every fitted park switch is closed (one or two; with two, both), and no
+    fresh N.I.N.A. reading says the mount is slewing.
+
+  If the sources disagree, or any of them can't be read, the mount counts as not parked. Settings
+  saved before the source existed keep the rule they had (no switch: N.I.N.A. only; switches:
+  N.I.N.A. and switches).
+- **Park switches only.** The switches close to ground at the park position (normally open), so a
+  broken wire reads not parked. A switch shorted to ground or stuck closed reads parked, so: two
+  switches on separate cables are recommended and a single switch is warned about wherever the
+  source is set; and a fitted switch that hasn't read open over 3 roof openings in a row is suspect
+  and refuses Open until it has been seen open.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed.
 - Every close request is checked the same way, whatever its source: Alpaca `CloseShutter`, the
@@ -204,13 +240,14 @@ Closing onto an unparked telescope is the most expensive failure this device can
   park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
   source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
   unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
-  motor the same way.
+  motor the same way. With the park switches only, no N.I.N.A. reading is relied on: the switches
+  are read every control step.
 - **Test-box exception.** On a box with no telescope under it, the owner may set the park source
   to "no telescope". Bypasses exist only as explicit, visible, owner-set test-box settings: off by
   default, changed only by an authenticated settings save, shown on every page and every interface
   while in effect, and ending at a deadline the device enforces. "No telescope" stands in for
-  N.I.N.A. only: it can't be set while a N.I.N.A. address is, fitted park switches still count,
-  and every close path uses the same park result.
+  N.I.N.A. only: it can't be set while a N.I.N.A. address is, nor with the park switches only,
+  fitted park switches still count, and every close path uses the same park result.
 
 ### III. Unsafe Ends Closed (Fail-Safe Safety Inputs)
 
@@ -218,7 +255,8 @@ Doubt about the weather MUST resolve to "unsafe".
 
 - Unsafe or raining MUST always end with the mount parked and the roof closed:
   1. stop the running sequence;
-  2. ask N.I.N.A. to park (unless the owner turned park requests off, `park.requestPark`);
+  2. ask N.I.N.A. to park (when an address is set, unless the owner turned park requests off,
+     `park.requestPark`);
   3. wait for the park to be confirmed (Principle II);
   4. close.
 
@@ -428,4 +466,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 4.1.1 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23
+**Version**: 5.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-23

@@ -114,9 +114,18 @@ namespace SQM
     };
 
     // How the park is confirmed (spec 004, constitution II): N.I.N.A. AND the
-    // fitted park switches.
+    // fitted park switches, or (spec 024) either alone.
     struct ParkConfig
     {
+        // Spec 024: what confirms the park. Settings without it take it from
+        // `switches` (none: Nina, one or two: NinaAndSwitches), today's rule.
+        enum class Source : uint8_t
+        {
+            Nina = 0,
+            Switches = 1,
+            NinaAndSwitches = 2,
+        };
+        Source source = Source::Nina;
         std::string ninaUrl; // N.I.N.A. Advanced API base, e.g. http://192.168.1.20:1888; empty = not configured
         enum class NinaApi : uint8_t
         {
@@ -131,6 +140,7 @@ namespace SQM
             Two = 2,
         };
         Switches switches = Switches::None;
+        bool switchesOnly() const { return source == Source::Switches; }
         // Spec 005: how long the close sequence waits for the park to be
         // confirmed before it raises "mount not parked". A fact of the mount.
         uint32_t timeoutSeconds = 240;
@@ -467,6 +477,8 @@ namespace SQM
         bool any() const { return park || weather || daylight; }
     };
 
+    struct CopiedSecrets; // spec 024: CopiedSecrets.h
+
     struct Config
     {
         WiFiConfig wifi;
@@ -556,8 +568,18 @@ namespace SQM
         // it) unless `anyPath` (stored settings: dropped). Empty stays empty.
         static std::string sqmeterAddress(const std::string &typed, bool anyPath = false);
         // Applies JSON on top of `cfg` in place and validates. On failure
-        // `cfg` may be partially updated.
-        static bool applyJson(const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *error = nullptr);
+        // `cfg` may be partially updated. Spec 024: from the UI/API, a secret
+        // sent as COPIED_SECRET takes its value from `copied` (the held copy
+        // from SQMeter, nullptr when none is held), only while the field's
+        // server is the one it was read for; otherwise the save is refused.
+        static bool applyJson(
+            const std::string &json,
+            Config &cfg,
+            bool preserveSecretPlaceholders,
+            std::string *error = nullptr,
+            const CopiedSecrets *copied = nullptr);
+        // "(from SQMeter)": a secret to take from the copy, never stored.
+        static constexpr const char *COPIED_SECRET = "(from SQMeter)";
         // Settings > Network "Test connection" sends the form as shown, so an unchanged password
         // arrives as the mask. Returns the password to try: what was typed; or the saved one when
         // the form still shows the mask (or is blank) and names the saved broker, port and user.

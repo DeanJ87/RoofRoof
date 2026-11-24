@@ -30,6 +30,8 @@ SOURCES = {
     "lib/ConfigModel/src/ConfigValidate.cpp": ("settings", {"setError": [1]}),
     "lib/ConfigModel/src/ConfigJsonSite.cpp": ("settings", {"setError": [1]}),
     "lib/ConfigModel/src/ConfigJsonGroups.cpp": ("settings", {"setError": [1]}),
+    "lib/ConfigModel/src/ConfigJsonPark.cpp": ("settings", {"setError": [1]}),
+    "lib/ConfigModel/src/CopiedSecrets.cpp": ("settings", {"setError": [1]}),
     "lib/SafetyInputLogic/src/SqmeterSync.cpp": ("settings", {}),
     # Spec 020: SQMeter's 401/403, in the weather text and the copy's refusal.
     "lib/SafetyInputLogic/src/SqmeterSource.cpp": ("api", {}),

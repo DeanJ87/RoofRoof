@@ -423,7 +423,7 @@ void test_the_status_section()
     std::string json;
     serializeJson(doc, json);
     TEST_ASSERT_EQUAL_STRING(
-        R"({"problem":null,"readAgeSeconds":60,)"
+        R"({"problem":null,"readAgeSeconds":60,"secrets":null,)"
         R"("time":{"follow":true,"syncedAt":1763540000,"refused":"SQMeter's value refused: NTP server","needs":[]},)"
         R"("mqtt":{"follow":true,"syncedAt":1763540000,"refused":null,"needs":["mqttPassword"]},)"
         R"("alerts":{"follow":false,"syncedAt":1763540000,"refused":null,"needs":[]}})",

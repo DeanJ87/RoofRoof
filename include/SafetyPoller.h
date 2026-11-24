@@ -3,6 +3,7 @@
 #include "NinaApi.h"
 #include "SafetyInput.h"
 #include "SafetySettings.h"
+#include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
 #include "SqmeterSource.h"
 #include "SqmeterSync.h"
@@ -82,6 +83,7 @@ namespace SQM
             std::string password;
             bool followLocation = false;
             bool followSettings = false;
+            bool followSecrets = false; // spec 024: the MQTT or the alerts group follows
         };
         void setSite(const SiteTarget &target);
         // Set by the main loop every pass: the roof moves, a close waits or
@@ -91,6 +93,11 @@ namespace SQM
         Site::LocationRead locationRead(uint32_t &generation) const;
         // The latest read of SQMeter's settings (spec 020's sync), under the lock.
         Site::ConfigRead settingsRead() const;
+        // Spec 024: the latest read of SQMeter's secrets, under the lock (never
+        // in the snapshot, so no other reader copies them).
+        Site::SecretsRead secretsRead() const;
+        // Only why it failed (the status): no secret is copied.
+        Site::SecretsProblem secretsProblem() const;
 
         // Spec 020 FR-038: one GET (Settings' Test of SQMeter's address), as
         // the weather poll makes it. Any task but the async TCP one.
@@ -133,6 +140,7 @@ namespace SQM
         // At most one SQMeter site read per pass: the location, else the settings.
         void maybeReadSite(bool safetyPolled, bool safetyOn);
         void pollSettings(const Site::Endpoint &from, uint32_t generation);
+        void pollSecrets(const Site::Endpoint &from, uint32_t generation, uint64_t basedOnMs);
         Targets currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const;
 
         mutable SemaphoreHandle_t mutex = nullptr;
@@ -151,6 +159,8 @@ namespace SQM
         static constexpr uint32_t LOCATION_TOTAL_MS = Site::LocationSchedule::READ_MS;
         Site::Endpoint siteStatus;   // SQMeter's /api/status while the location follows it, else an empty URL
         Site::Endpoint siteSettings; // SQMeter's /api/config while any settings group follows it, else an empty URL
+        Site::Endpoint siteSecrets;  // spec 024: SQMeter's /api/secrets while the MQTT or alerts group follows it
+        Site::SecretsRead secrets;   // spec 024: under the lock; never in `state`
         // The poll schedule: the poller task's own (a settings change makes
         // that part due at once).
         uint64_t nextSqmeterMs = 0;

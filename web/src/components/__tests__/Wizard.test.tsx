@@ -94,14 +94,14 @@ describe('Wizard', () => {
     cleanup();
     at('screen=parkSwitches');
     render(<Wizard />);
-    expect(await question()).toHaveTextContent('How many park switches are fitted?');
+    expect(await question()).toHaveTextContent('How does RoofRoof know the mount is parked?');
   });
 
   it('on a new device a choice waits for an answer, with the reason', async () => {
     mockDevice({ config: { setup: { state: 'new', step: 5 } } });
     render(<Wizard />);
     await onScreen('parkSwitches');
-    const group = screen.getByRole('radiogroup', { name: 'How many park switches are fitted?' });
+    const group = screen.getByRole('radiogroup', { name: 'How does RoofRoof know the mount is parked?' });
     expect(
       within(group)
         .getAllByRole('radio')
@@ -110,9 +110,8 @@ describe('Wizard', () => {
     const go = button('Continue');
     expect(go).toBeDisabled();
     expect(document.getElementById(go.getAttribute('aria-describedby')!)).toHaveTextContent('Choose an answer to continue.');
-    fireEvent.click(within(group).getByRole('radio', { name: 'One switch' }));
+    fireEvent.click(within(group).getByRole('radio', { name: /^N.I.N.A. and park switches/ }));
     expect(button('Continue')).toBeEnabled();
-    expect(screen.getByText('Park switch 1')).toBeInTheDocument(); // its live state beside the choices
   });
 
   it('a device set up before shows its current settings as chosen', async () => {
@@ -120,7 +119,7 @@ describe('Wizard', () => {
     at('screen=parkSwitches');
     render(<Wizard />);
     await question();
-    expect(screen.getByRole('radio', { name: 'None' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /^N.I.N.A. only/ })).toBeChecked();
     expect(button('Continue')).toBeEnabled();
   });
 
@@ -261,14 +260,14 @@ describe('Wizard', () => {
     const saves = recordSaves();
     render(<Wizard />);
     await onScreen('parkSwitches');
-    fireEvent.click(screen.getByRole('radio', { name: 'Two switches' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^Park switches only/ }));
     fireEvent.click(button('Skip for now'));
     await onScreen('nina');
     fireEvent.input(screen.getByLabelText('N.I.N.A. address', { selector: 'input' }), { target: { value: 'http://10.0.0.9:1888' } });
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves.some((save) => save.park)).toBe(true));
     const save = saves.find((body) => body.park)!;
-    expect(save.park).toEqual({ nina: { url: 'http://10.0.0.9:1888' } }); // never the skipped switches
+    expect(save.park).toEqual({ nina: { url: 'http://10.0.0.9:1888' } }); // never the skipped park source
   });
 
   it('a screen change moves focus to its question', async () => {
@@ -336,7 +335,7 @@ describe('Wizard', () => {
     });
     render(<Wizard />);
     await onScreen('parkSwitches');
-    fireEvent.click(screen.getByRole('radio', { name: 'None' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^N.I.N.A. only/ }));
     fireEvent.click(button('Continue'));
     await onScreen('direction'); // no N.I.N.A. screen
   });

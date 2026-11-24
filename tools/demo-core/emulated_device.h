@@ -23,6 +23,7 @@
 #include "ConfigSave.h"
 #include "DeviceCore.h"
 #include "SettingsDeps.h"
+#include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
 #include "SqmeterSync.h"
 #include "SummaryList.h"
@@ -277,8 +278,14 @@ private:
     Site::LocationSchedule settingsSchedule;
     Site::ConfigRead settingsRead;
     Site::SyncState syncState;
+    // Spec 024: the sync's read of SQMeter's secrets, and the copy's held ones.
+    Site::SecretsRead secretsRead;
+    std::optional<CopiedSecrets> copied;
+    uint64_t copiedAtMs = 0;
     void runSettingsSync(bool busy);
     void runSite();
+    void syncSite();
+    Site::SecretsRead demoSecrets(const Site::Endpoint &from, uint64_t at) const;
     void resetSite();
     void writeLocation(JsonObject out) const;
     void writeSync(JsonObject out) const;

@@ -26,7 +26,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
     - **Current and supply**: current sense and its limits, and the minimum supply.
     - **Weather sources**: SQMeter over HTTP and over MQTT and the stale time - see [Safety inputs](safety-inputs.md).
-    - **Mount park**: the N.I.N.A. address, the park switches fitted and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
+    - **Mount park**: what confirms the park (N.I.N.A. only, park switches only, or both), the switches fitted, the N.I.N.A. address and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
     - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe). The **Daylight band** is under **Advanced**.
     - **Automatic close**: how the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) behaves - the safe spell that re-arms it after a Stop, the reminder interval, what happens when a close doesn't start and whether a Stop from an imaging app or MQTT calls it off. The timings that rarely need changing are under **Advanced**. While Alpaca is off a note says imaging apps can't open or close the roof, with a button to the [ASCOM Alpaca](alpaca.md#nina-opens-and-closes-the-roof) card.
     - **Ask before Open and Close** (in **Roof motion**): Open and Close on the dashboard ask once before they are sent. Stop never asks.
@@ -99,6 +99,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
   },
   "park": {
     "nina": { "url": "", "api": "v2" },
+    "source": "nina",
     "switches": "none",
     "requestPark": true
   },
@@ -280,9 +281,10 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
 | `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` only, e.g. `http://192.168.1.20:1888`; empty means not configured, so the mount never counts as parked |
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
+| `park.source` | string | `"nina"` | What confirms the park ([Safety inputs](safety-inputs.md#park)): `nina` (N.I.N.A. only), `switches` (the park switches only; the N.I.N.A. address is then optional) or `ninaAndSwitches` (both must agree). `nina` needs `park.switches` `none`, the others `one` or `two`; any other combination is refused. Settings saved before it, and a save that sends `park.switches` without it, take it from `park.switches` (`none`: `nina`; `one`, `two`: `ninaAndSwitches`). A motion setting: refused while the roof moves |
 | `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (park switch A) or `two` (A and B); their pins are in [`pins`](#pins-and-network) |
 | `park.timeoutSeconds` | int | `240` | How long the [close on unsafe weather](close-on-unsafe.md) waits for the park to be confirmed before a critical alert (30-1800). Set it a little above the longest time your mount takes to park |
-| `park.requestPark` | bool | `true` | The [close on unsafe weather](close-on-unsafe.md) may ask N.I.N.A. to park the mount. Off: it only waits for the park. Turn it off for a bench box pointed at a N.I.N.A. that drives a real mount ([test box](test-box.md)) |
+| `park.requestPark` | bool | `true` | The [close on unsafe weather](close-on-unsafe.md) may ask N.I.N.A. to park the mount (only ever when `park.nina.url` is set). Off: it only waits for the park. Turn it off for a bench box pointed at a N.I.N.A. that drives a real mount ([test box](test-box.md)) |
 
 Rain comes from SQMeter only (its rain gauge: `reasonFlags` bit 9 rain, bit 10 a failed gauge; or its MQTT safe topic). The local rain contact and its `safety.rainContact` setting are gone; a saved or restored value is dropped without an error, and a save that still sends it is accepted with the key ignored.
 
@@ -376,7 +378,7 @@ A value out of range is refused with the range. They are edited in **Settings â†
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `testBox.park` | bool | `false` | Stand in for N.I.N.A. ("no telescope under this roof"). Refused while `park.nina.url` is set |
+| `testBox.park` | bool | `false` | Stand in for N.I.N.A. ("no telescope under this roof"). Refused while `park.nina.url` is set, and with `park.source` `switches` |
 | `testBox.weather` | bool | `false` | Stand in for a missing weather source. Refused while `safety.http.enabled` or `safety.mqtt.enabled` is on |
 | `testBox.daylight` | bool | `false` | No daylight close and no refusal to open in daylight |
 | `testBox.hours` | int | `72` | How long a bypass lasts from when it is turned on or this is sent (1-720) |

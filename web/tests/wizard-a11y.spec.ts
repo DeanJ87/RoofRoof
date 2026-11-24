@@ -19,6 +19,7 @@ const SCREENS = [
   'site',
   'daylight',
   'parkSwitches',
+  'parkSwitchCount',
   'nina',
   'direction',
   'teach',

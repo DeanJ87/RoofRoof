@@ -156,25 +156,36 @@ export const safetyConfigSchema = z
     path: ['mqtt', 'topic'],
   });
 
-export const parkConfigSchema = z.object({
-  nina: z.object({
-    url: z.string().superRefine((value, ctx) => {
-      if (value === '') return;
-      const url = parseHttpUrl(value);
-      if (url.error) ctx.addIssue({ code: 'custom', message: url.error });
-      else if (!isPlainHttp(value)) ctx.addIssue({ code: 'custom', message: t('validation.configSchema.ninaUrlMustStartWithHttp') });
+export const parkConfigSchema = z
+  .object({
+    nina: z.object({
+      url: z.string().superRefine((value, ctx) => {
+        if (value === '') return;
+        const url = parseHttpUrl(value);
+        if (url.error) ctx.addIssue({ code: 'custom', message: url.error });
+        else if (!isPlainHttp(value)) ctx.addIssue({ code: 'custom', message: t('validation.configSchema.ninaUrlMustStartWithHttp') });
+      }),
+      api: z.literal('v2'),
     }),
-    api: z.literal('v2'),
-  }),
-  switches: z.enum(['none', 'one', 'two']),
-  requestPark: z.boolean().optional(),
-  // Spec 005: how long the close sequence waits for the park to be confirmed.
-  timeoutSeconds: z
-    .number()
-    .int()
-    .min(30, t('validation.configSchema.parkTimeLimitMustBeBetween'))
-    .max(1800, t('validation.configSchema.parkTimeLimitMustBeBetween')),
-});
+    // Spec 024: optional, as older firmware doesn't send it (the device derives it from the switches).
+    source: z.enum(['nina', 'switches', 'ninaAndSwitches']).optional(),
+    switches: z.enum(['none', 'one', 'two']),
+    requestPark: z.boolean().optional(),
+    // Spec 005: how long the close sequence waits for the park to be confirmed.
+    timeoutSeconds: z
+      .number()
+      .int()
+      .min(30, t('validation.configSchema.parkTimeLimitMustBeBetween'))
+      .max(1800, t('validation.configSchema.parkTimeLimitMustBeBetween')),
+  })
+  // Spec 024 FR-002: N.I.N.A. only fits no switch; a switch source one or two.
+  .superRefine((data, ctx) => {
+    if (!data.source) return;
+    if (data.source === 'nina' && data.switches !== 'none')
+      ctx.addIssue({ code: 'custom', path: ['switches'], message: t('validation.configSchema.parkNinaNoSwitch') });
+    if (data.source !== 'nina' && data.switches === 'none')
+      ctx.addIssue({ code: 'custom', path: ['switches'], message: t('validation.configSchema.parkSwitchesNeeded') });
+  });
 
 // Spec 013: the daylight failsafe and the roof's location.
 export const daylightConfigSchema = z.object({
@@ -325,7 +336,11 @@ const configShape = z.object({
   analog: analogConfigSchema.optional(),
 });
 
-export const configSchema = configShape;
+// Spec 024 FR-002: the test box's park bypass stands in for N.I.N.A., which park switches only don't use.
+export const configSchema = configShape.superRefine((data, ctx) => {
+  if (data.testBox?.park && data.park?.source === 'switches')
+    ctx.addIssue({ code: 'custom', path: ['testBox', 'park'], message: t('validation.configSchema.testBoxParkSwitchesOnly') });
+});
 
 export type ConfigSchema = z.infer<typeof configSchema>;
 export type ValidationErrors = Record<string, string>;

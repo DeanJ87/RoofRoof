@@ -25,7 +25,7 @@ namespace SQM
 
         Sources sourcesOf(const SafetyConfig &safety, const ParkConfig &park)
         {
-            return Sources{!park.ninaUrl.empty(), safety.httpEnabled || safety.mqttEnabled, park.requestPark};
+            return Sources{!park.ninaUrl.empty(), safety.httpEnabled || safety.mqttEnabled, park.requestPark, park.switchesOnly()};
         }
 
         uint8_t State::bits() const
@@ -51,7 +51,7 @@ namespace SQM
                 s.expired = true;
                 return s;
             }
-            s.park = config.park && !sources.ninaConfigured;
+            s.park = config.park && !sources.ninaConfigured && !sources.switchesOnly;
             s.weather = config.weather && !sources.sqmeterOn;
             s.daylight = config.daylight;
             return s;
