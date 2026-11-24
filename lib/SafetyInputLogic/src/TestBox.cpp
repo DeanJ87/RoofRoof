@@ -41,9 +41,12 @@ namespace SQM
             s.parkRequests = sources.ninaConfigured && sources.requestPark;
             if (!s.set)
                 return s;
+            const bool park = config.park && !sources.ninaConfigured && !sources.switchesOnly;
+            const bool weather = config.weather && !sources.sqmeterOn;
             if (!clockSet)
             {
                 s.waitingForClock = true;
+                s.benchWaiting = park || weather;
                 return s;
             }
             if (nowEpoch >= static_cast<int64_t>(config.until))
@@ -51,15 +54,15 @@ namespace SQM
                 s.expired = true;
                 return s;
             }
-            s.park = config.park && !sources.ninaConfigured && !sources.switchesOnly;
-            s.weather = config.weather && !sources.sqmeterOn;
+            s.park = park;
+            s.weather = weather;
             s.daylight = config.daylight;
             return s;
         }
 
         bool quietsCriticals(const State &state)
         {
-            return state.active() || state.waitingForClock;
+            return state.park || state.weather || state.benchWaiting;
         }
 
         void applyWeather(Safety::WeatherVerdict &verdict, const State &state)

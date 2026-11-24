@@ -45,11 +45,13 @@ roof" is on; turn it off before setting a N.I.N.A. address"*.
 ## Critical alerts on a test box
 
 The two critical roof alerts (**The mount doesn't park**, **The roof doesn't close**) still go out
-past the pause and **Send alerts**, but while a bypass is in effect (or set and waiting for the
-clock after a restart) they go out at most at **Urgent**, never **Wake me**: no Pushover emergency
+past the pause and **Send alerts**, but while the park or weather bypass is in effect (or one is
+set, its source isn't, and the device waits for the clock after a restart) they go out at
+**Urgent**, never **Wake me**: no Pushover emergency
 repeated every minute for an hour on a bench. With the weather bypass in effect the missing
-weather source counts as safe, so it never starts the automatic close or raises either alert. Once
-the bypasses are off or expired, the alerts are sent at the level you set, as on any roof.
+weather source counts as safe, so it never starts the automatic close or raises either alert. The
+daylight bypass alone doesn't change them (it can be set on a real roof). Once the bypasses are off
+or expired, the alerts are sent at the level you set, as on any roof.
 
 ## What is never bypassed
 

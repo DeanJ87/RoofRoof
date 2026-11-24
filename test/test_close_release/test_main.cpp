@@ -201,7 +201,7 @@ void test_a_refused_open_keeps_the_stand_down()
     TEST_ASSERT_EQUAL(Phase::HeldByPerson, r.seq.phase());
 }
 
-void test_an_open_ends_a_halted_close_but_not_a_cannot_move()
+void test_an_open_ends_neither_a_halted_close_nor_a_cannot_move()
 {
     {
         Rig r;
@@ -212,9 +212,12 @@ void test_an_open_ends_a_halted_close_but_not_a_cannot_move()
         r.in.weatherSafe = true;
         r.at(r.in.nowMs + 1000);
         TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+        // A close that timed out waits for a person or the re-arm spell: an
+        // Open doesn't end it (its alert keeps being sent until delivered).
         r.in.roof = State::Opening;
-        assertEvent(r.at(r.in.nowMs + 1000), Event::EndedSafe, Cause::None);
-        TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+        r.at(r.in.nowMs + 1000);
+        TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
+        TEST_ASSERT_FALSE(openEndedHold(Phase::Halted, Phase::Idle, State::Opening));
     }
     {
         // A person's slow open from an unknown position: the position becomes
@@ -228,6 +231,33 @@ void test_an_open_ends_a_halted_close_but_not_a_cannot_move()
         r.at(r.in.nowMs + 100);
         TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
     }
+}
+
+// A Stop and an Open seen on the same step while stood down: the roof reads
+// opening, so the Open came last (after it, a Stop would leave it stopped).
+void test_a_stop_and_an_open_seen_on_one_step_end_the_stand_down()
+{
+    Rig r;
+    heldAt(r);
+    r.in.weatherSafe = true;
+    r.at(T0 + 2000);
+    r.in.personStops = 2;
+    r.in.roof = State::Opening;
+    assertEvent(r.at(T0 + 3000), Event::EndedSafe, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+}
+
+// The gate refuses an Open while unsafe; if one is seen anyway (a race with the
+// verdict), ending the stand-down only arms the close: an attempt starts at once.
+void test_an_open_seen_while_unsafe_arms_the_close_at_once()
+{
+    Rig r;
+    heldAt(r);
+    r.in.roof = State::Opening;
+    assertEvent(r.at(T0 + 2000), Event::EndedSafe, Cause::None);
+    const Decision d = r.at(T0 + 2100);
+    assertEvent(d, Event::Started, Cause::None);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
 }
 
 // A Stop and then an Open between two steps: the roof reads opening, so the
@@ -259,7 +289,9 @@ int main(int, char **)
     RUN_TEST(test_no_countdown_while_daylight_wants_the_roof_closed);
     RUN_TEST(test_an_open_that_starts_moving_ends_the_stand_down);
     RUN_TEST(test_a_refused_open_keeps_the_stand_down);
-    RUN_TEST(test_an_open_ends_a_halted_close_but_not_a_cannot_move);
+    RUN_TEST(test_an_open_ends_neither_a_halted_close_nor_a_cannot_move);
+    RUN_TEST(test_a_stop_and_an_open_seen_on_one_step_end_the_stand_down);
+    RUN_TEST(test_an_open_seen_while_unsafe_arms_the_close_at_once);
     RUN_TEST(test_a_stop_then_an_open_between_two_steps_ends_the_stand_down);
     return UNITY_END();
 }

@@ -101,11 +101,15 @@ Each answer takes the safest option the constitution allows and is also listed u
 - Q: A person stopped the automatic close and then opens the roof again (the dashboard's Open, or
   N.I.N.A.'s or MQTT's). Does the stand-down still hold for the rest of the re-arm spell? → A: No.
   **Owner decision:** an Open by a person or a client that starts the roof moving ends the
-  stand-down at once (`HeldByPerson`, and a halted close, `Halted`), the same transition as the end
-  of the re-arm spell and spec 026's **Release hold**: the close is armed again, so rain soon after
-  closes the roof as on any other night. An Open that is refused leaves the roof where it was and
-  keeps the stand-down. A can't-move stand-down is unchanged (a person's move from an unknown
-  position makes the position known, which already resumes the sequence). Constitution 5.1.0 states
+  stand-down (`HeldByPerson`) at once, the same transition as the end of the re-arm spell and spec
+  026's **Release hold**: the close is armed again, so rain soon after closes the roof as on any
+  other night. An Open that is refused leaves the roof where it was and keeps the stand-down. A
+  halted close (`Halted`, a close that took too long) is not ended by an Open: the decision is
+  about a person's stop, and a halt's critical alert must keep being resent until delivered. After
+  an Open has ended the hold, a person's Stop of that Open doesn't hold the close again (stops while
+  idle are history): rain then starts a new attempt. A Stop and an Open seen on the same step leave
+  the roof reading opening only if the Open came last, so the Open wins. A can't-move stand-down is unchanged (a person's move from an unknown
+  position makes the position known, which already resumes the sequence). Constitution 6.0.0 states
   it in Principle III. The sequence sees it as the roof reading `opening` while stood down: the
   roof never opens by itself, and jog, teach and the calibration run wait for the sequence to be
   idle, so only an accepted Open can make it read so.
@@ -519,11 +523,12 @@ Each was an open choice; the safest option the constitution allows was taken.
     doesn't stand the sequence down.
 12. **The sequence runs on the main loop**: its timing is limited by the loop (a blocked loop delays
     it; spec 003's gates still refuse a close on a park result older than 5 s).
-13. **Owner decision (2026-11-24): an Open that starts the roof moving ends a stand-down**
-    (`HeldByPerson` or `Halted`), from the dashboard, Alpaca or MQTT alike. It only arms the close
-    again; nothing moves for it. A refused Open keeps the stand-down. Tests:
-    `test/test_close_release` (the open, a refused open, a halted close, a stop then an open between
-    two steps) and `test/test_close_properties` (the observer ends the hold on `opening`).
+13. **Owner decision (2026-11-24): an Open that starts the roof moving ends a person's stand-down**
+    (`HeldByPerson`), from the dashboard, Alpaca or MQTT alike. It only arms the close again;
+    nothing moves for it. A refused Open keeps the stand-down; a halted close is not ended by an
+    Open (assumed: the decision names the person's hold only). Tests: `test/test_close_release`
+    (the open, a refused open, a halted close kept, a stop and an open on one step, an open seen
+    while unsafe) and the three property suites (the observer ends the hold on `opening`).
 
 ## Out of scope
 

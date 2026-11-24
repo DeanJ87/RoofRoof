@@ -47,7 +47,10 @@ namespace SQM
             bool daylight = false;
             bool expired = false;         // set, the clock set and the deadline passed (or none)
             bool waitingForClock = false; // set and the clock not set
-            uint32_t until = 0;           // the deadline, Unix seconds
+            // Waiting for the clock with a park or weather bypass set whose source
+            // isn't set up (it comes into effect once the clock is set): a bench box.
+            bool benchWaiting = false;
+            uint32_t until = 0; // the deadline, Unix seconds
             // Unsafe weather would ask a configured N.I.N.A. to park its mount
             // (park.requestPark on and an address set): shown with the bypasses.
             bool parkRequests = false;
@@ -59,8 +62,9 @@ namespace SQM
         State evaluate(const TestBoxConfig &config, const Sources &sources, bool clockSet, int64_t nowEpoch);
 
         // Owner decision 2026-11-24: the roof's critical alerts go out at most at
-        // urgent (no Pushover emergency repeats) while a bypass is in effect, or
-        // set and waiting for the clock after a restart. Expired or off: as set.
+        // urgent (no Pushover emergency repeats) while the park or weather bypass
+        // is in effect, or waiting for the clock with one that would be
+        // (benchWaiting). The daylight bypass alone, expired bypasses or none: as set.
         bool quietsCriticals(const State &state);
 
         // The weather bypass: safe when "no weather source" is the only reason.

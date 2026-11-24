@@ -138,13 +138,16 @@ void test_the_park_bypass_never_beside_a_nina_address(void)
     const auto off = Config::fromJson(R"({"testBox":{"park":false}})", &*cleared);
     TEST_ASSERT_TRUE(off.has_value());
     TEST_ASSERT_EQUAL_STRING("", off->park.ninaUrl.c_str());
-    // A refused save (the park source "switches" can't use the bypass, spec
-    // 024) keeps the address: nothing is saved.
+    // The park source "switches" still can't use the bypass (spec 024): refused,
+    // so nothing (the address included) is saved.
     Config switches = withNina();
     switches.park.source = ParkConfig::Source::Switches;
     switches.park.switches = ParkConfig::Switches::Two;
-    saveError(R"({"testBox":{"park":true}})", switches);
-    TEST_ASSERT_EQUAL_STRING("http://192.168.1.20:1888", switches.park.ninaUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Test box: the park bypass stands in for N.I.N.A.; with park switches only there is nothing to bypass",
+        saveError(R"({"testBox":{"park":true}})", switches).c_str());
+    Config applied = switches; // applied in place, as the save handler's copy is
+    TEST_ASSERT_FALSE(Config::applyJson(R"({"testBox":{"park":true}})", applied, true));
     // Other bypasses leave the address alone.
     const auto daylight = Config::fromJson(R"({"testBox":{"daylight":true}})", &nina);
     TEST_ASSERT_TRUE(daylight.has_value());

@@ -66,10 +66,10 @@ Each answer takes the safest option the constitution allows; they are also liste
 The owner answered the questions under "Left for the owner":
 
 - Q: Should a person's Open end the hold? → A: **Yes.** An Open by a person or a client that starts
-  the roof moving ends the stand-down at once, the same transition as **Release hold** and the end
-  of the re-arm spell (spec 005, constitution 5.1.0). The page no longer says the close "won't close
-  by itself" without an end: the hold reads "Automatic close on hold until the roof opens or
-  closes", and its clearing note says the roof opening or closing ends it too.
+  the roof moving ends a person's stand-down at once, the same transition as **Release hold** and
+  the end of the re-arm spell (spec 005, constitution 6.0.0). A halted close is not ended by an
+  Open. The page no longer says the close "won't close by itself" without an end: the hold reads
+  "Automatic close on hold until the roof opens or closes".
 - Q: Should **No telescope under this roof** (the test box page) and the wizard's **No telescope
   yet** clear the N.I.N.A. address in the same save? → A: **Yes** (spec 022's record has the
   details). The wizard's SQMeter weather source is unchanged by this decision.

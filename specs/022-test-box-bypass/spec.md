@@ -96,17 +96,20 @@ Each answer takes the safest option the constitution allows and is also listed u
   sent in that save. Once the bypass is on, a save that sets an address is still refused ("turn it
   off before setting a N.I.N.A. address"). Turning the bypass off later doesn't restore the address.
   The park source "switches" still can't use the park bypass (spec 024). This replaces the refusal
-  in FR-007 and User Story 4's second scenario; constitution 5.1.0 rewords Principle II's test-box
-  exception to match.
+  in FR-007 and User Story 4's second scenario; constitution 6.0.0 rewords Principle II's test-box
+  exception to match (6.0.0, MAJOR: a mistaken "No telescope" now removes an address instead of
+  being refused).
 - Q: The roof's critical alerts on a test box? → A: **Owner decision: quiet.** The two critical
   alerts ("mount didn't park", "roof didn't close", wake me by default: Pushover's emergency,
   repeated every minute for an hour) woke the owner whenever a bench box read unsafe with the roof
   open, including while its weather bypass was being set up. With the weather bypass in effect, a
   missing weather source is already safe, so it never starts the close on unsafe weather or raises
-  either alert (`test/test_test_box_quiet` pins it). And while any bypass is in effect, or set and
-  waiting for the clock after a restart, both go out at most at **urgent**: still past the pause,
+  either alert (`test/test_test_box_quiet` pins it). And while the park or weather bypass is in
+  effect, or one is set whose source isn't (so it would be in effect) and the device waits for the
+  clock after a restart, both go out at **urgent**: still past the pause,
   the send mode and the master switch, still resent until a channel takes them, but never the
-  emergency. On a real install (no bypass set, or the bypasses expired) they are unchanged. See
+  emergency. On a real install (no bypass set, the bypasses expired, the daylight bypass alone,
+  or a bypass set beside its source) they are unchanged. See
   assumption 18.
 
 ## Constitution rules this spec relies on (and the one it changes)
@@ -388,11 +391,12 @@ Each was an open choice; the safest option the constitution allows was taken.
 18. **Owner decisions (2026-11-24).** (a) Turning the park bypass on clears the N.I.N.A. address in
     the same save instead of being refused (assumption 1's "a save with both is refused" now applies
     only to a save that sets an address while the bypass is already on). (b) The two critical roof
-    alerts go out at most at urgent while any bypass is in effect, and also while one is set and
-    waiting for the clock after a restart: with the clock not set the bypasses are out of effect
+    alerts go out at urgent while the park or weather bypass is in effect, and also while one is
+    set (its source not set up) and waiting for the clock after a restart: with the clock not set the bypasses are out of effect
     (the checks apply, so a bench box with no weather source starts the automatic close), and that
     is exactly the moment the owner was woken. Expired bypasses don't count: the checks are back,
-    and so is the level the owner set. The alert still goes out (urgent: Pushover priority 1, past
+    and so is the level the owner set. Nor does the daylight bypass alone (a real install may use
+    it), nor a bypass set beside the source it stands in for. The alert still goes out (urgent: Pushover priority 1, past
     quiet hours) and is still resent until a channel takes it; only the emergency repeats go. A
     telescope put under a roof still in test-box mode gets urgent, not wake me, alerts until the
     deadline, on top of the risks assumption 15 and the constitution already state. Tests:

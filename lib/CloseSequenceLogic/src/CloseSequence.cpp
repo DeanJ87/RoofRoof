@@ -304,11 +304,11 @@ namespace SQM
             // the roof closed: the close is armed again, never started by it.
             if (in.releaseHold && in.weatherSafe && !personStopped && current != Phase::CannotMove)
                 return enter(Phase::Idle, Event::EndedSafe);
-            // Owner decision 2026-11-24: an Open (a person's or a client's) that
-            // started the roof moving ends it at once, as the re-arm spell does.
-            // Nothing else reads Opening here: the roof never opens by itself, and
-            // jog, teach and the calibration run wait for the sequence to be idle.
-            if (in.roof == Roof::State::Opening && current != Phase::CannotMove)
+            // Owner decision 2026-11-24: an Open that started the roof moving ends
+            // a person's stand-down, as the re-arm spell does (not a halt). Only an
+            // Open reads Opening here: jog, teach and calibration wait for idle. A
+            // Stop on the same step came first (after it the roof reads stopped).
+            if (in.roof == Roof::State::Opening && current == Phase::HeldByPerson)
                 return enter(Phase::Idle, Event::EndedSafe);
             // A stop while the roof can't move (before a person clears a fault,
             // say) still stands the sequence down once it can.

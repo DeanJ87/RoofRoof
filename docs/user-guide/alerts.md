@@ -159,7 +159,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 **Roof safety** (critical): **The mount doesn't park** and **The roof doesn't close**. The constitution requires them, so they:
 
 - can be **Urgent** or **Wake me** only, with a sound that makes a noise (not silent or vibrate only); the device refuses anything else, and sends a lower stored level as Urgent;
-- are sent at most at **Urgent** while a [test box](test-box.md#critical-alerts-on-a-test-box) bypass is in effect (or set and waiting for the clock): a bench box never sends Pushover's emergency;
+- are sent at **Urgent** while a [test box](test-box.md#critical-alerts-on-a-test-box) park or weather bypass is in effect (or waiting for the clock with one that would be): a bench box never sends Pushover's emergency;
 - are sent to every channel that is switched on even with **Send alerts** off, while paused, in "Only while an imaging app is connected" with no app, and in the first minute after a start;
 - go out at most once every 30 minutes per cause, and again every 30 minutes ("Still: ...") while the roof stays open;
 - are sent again (after 1 minute, doubling to 30 minutes) until a channel takes one.

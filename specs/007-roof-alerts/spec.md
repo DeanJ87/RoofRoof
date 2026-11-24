@@ -104,8 +104,8 @@ Each answer takes the safest option the constitution allows and is also listed u
 ### Session 2026-11-24 (owner decision)
 
 - Q: Must the critical roof alerts be "wake me" on a test box too? → A: **Owner decision: no.** While
-  a test-box bypass (spec 022) is in effect, or set and waiting for the clock after a restart, both
-  critical alerts are sent at most at **urgent** (Pushover priority 1, no emergency repeats),
+  the test box's park or weather bypass (spec 022) is in effect, or would be once the clock is set
+  after a restart, both critical alerts are sent at **urgent** (Pushover priority 1, no emergency repeats),
   whatever level is set. They stay critical otherwise: past the pause, the send mode, the grace and
   the master switch, to every channel that is on, resent until a channel takes one. On a real
   install, or once the bypasses expire, the level set (default wake me) applies unchanged
@@ -418,8 +418,8 @@ Each was an open choice; the safest option the constitution allows was taken.
     constitution VII); the owner's review of the page is a bench check, as the dashboard and Roof
     settings tab are spec 009's.
 15. **Owner decision (2026-11-24): urgent at most on a test box.** See the clarification of that
-    date: the level set is capped at urgent while a test-box bypass is in effect or set and waiting
-    for the clock.
+    date: the level set is capped at urgent while the park or weather bypass is in effect, or would be
+    once the clock is set.
 
 ## Out of scope
 

@@ -199,7 +199,7 @@ namespace SQM
 
         bool openEndedHold(Phase before, Phase after, Roof::State roof)
         {
-            return (before == Phase::HeldByPerson || before == Phase::Halted) && after == Phase::Idle && roof == Roof::State::Opening;
+            return before == Phase::HeldByPerson && after == Phase::Idle && roof == Roof::State::Opening;
         }
 
         const char *releaseRefusal(Phase phase, bool nothingWantsClose)

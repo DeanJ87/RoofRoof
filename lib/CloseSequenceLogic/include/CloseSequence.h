@@ -148,8 +148,8 @@ namespace SQM
         // The log line for a step that took a release request: released, or dropped
         // (something wanted the roof closed, or a new Stop came first).
         const char *releaseLogText(Phase before, Phase after);
-        // Owner decision 2026-11-24: a step that ended a stand-down (HeldByPerson,
-        // Halted) because an Open started the roof moving.
+        // Owner decision 2026-11-24: a step that ended a person's stand-down
+        // (HeldByPerson) because an Open started the roof moving.
         bool openEndedHold(Phase before, Phase after, Roof::State roof);
 
         // The roof's answer to the Close action.

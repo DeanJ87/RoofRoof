@@ -1,9 +1,10 @@
 // Owner decision 2026-11-24 (specs 022 and 007): on a test box the roof's
 // critical alerts ("mount didn't park", "roof didn't close") never wake anyone.
 // With the weather bypass in effect, a missing weather source never starts the
-// close on unsafe weather, so neither alert is raised; with any bypass in effect
-// (or set and waiting for the clock) a critical alert goes out at most at
-// urgent, never Pushover's emergency priority. A real install is unchanged.
+// close on unsafe weather, so neither alert is raised; with the park or weather
+// bypass in effect (or waiting for the clock with one that would be) a critical
+// alert goes out at most at urgent, never Pushover's emergency priority. A real
+// install (the daylight bypass alone, expired bypasses, or none) is unchanged.
 
 #include <string>
 #include <unity.h>
@@ -57,6 +58,27 @@ namespace
         TestBox::applyWeather(r.weather, box);
         TestBox::applyPark(r.park, hold, box);
         return r;
+    }
+
+    TestBoxConfig daylightOnly()
+    {
+        TestBoxConfig t;
+        t.daylight = true;
+        t.until = static_cast<uint32_t>(NOW + HOUR);
+        return t;
+    }
+
+    TestBoxConfig benchBoth()
+    {
+        TestBoxConfig t = weatherOnly();
+        t.park = true;
+        return t;
+    }
+
+    // N.I.N.A. set and SQMeter on: neither bypass can apply.
+    TestBox::Sources realSources()
+    {
+        return TestBox::Sources{true, true, true, false};
     }
 
     // An open roof for an hour, stepped every second: the critical alerts raised.
@@ -150,6 +172,9 @@ void test_a_real_install_still_gets_wake_me(void)
         TestBox::evaluate(TestBoxConfig{}, TestBox::Sources{}, true, NOW),                  // no bypass set
         TestBox::evaluate(weatherOnly(), TestBox::Sources{}, true, NOW + 73 * HOUR),        // expired: the checks are back
         TestBox::evaluate(parkOnly, TestBox::Sources{true, false, true, false}, true, NOW), // set beside N.I.N.A.: not in effect
+        TestBox::evaluate(daylightOnly(), realSources(), true, NOW),                        // daylight bypass on a real install
+        TestBox::evaluate(daylightOnly(), TestBox::Sources{}, false, 0),                    // only daylight set, waiting for the clock
+        TestBox::evaluate(benchBoth(), realSources(), false, 0),                            // set beside N.I.N.A. and SQMeter, no clock
     };
     for (const TestBox::State &box : cases)
     {

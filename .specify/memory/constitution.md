@@ -1,24 +1,32 @@
 <!--
 Sync Impact Report
-- Version: 5.0.1 -> 5.1.0 (MINOR: Principle III states the stand-down after a person's stop and
-  gains a way it ends; Principle II's test-box wording follows a changed save rule; nothing is
-  relaxed).
+- Version: 5.0.1 -> 6.0.0 (MAJOR: Principle II's test-box exception loses a refusal, which relaxes
+  it; Principle III states the stand-down after a person's stop and gains a way it ends, which is
+  more protective).
+- Modified: II. Close Only Onto a Parked Mount, the test-box exception. "No telescope" still never
+  sits beside a N.I.N.A. address, but the save that turns it on now removes the address instead of
+  being refused; an address can't be saved while it is on, and turning it off doesn't restore one.
+- New risk (II): before, a configured N.I.N.A. address blocked the park bypass, so turning it on by
+  mistake on a real install was refused. Now that one save (or any authenticated API client sending
+  `testBox.park`) removes the address and bypasses the park check until the deadline: the roof
+  could then close onto an unparked mount (fitted park switches still count). Mitigations: the test
+  box page and the wizard say "This also removes the N.I.N.A. address" before the save; the bypass
+  is shown on every page and interface; it ends at its deadline; the save needs the clock and an
+  authenticated save, as before; the park source "switches" still can't use it.
 - Modified: III. Unsafe Ends Closed. A new bullet states the stand-down that specs 005 and 026
   already implement (a person's stop holds the automatic close back; it ends when the roof reads
   closed, after the re-arm spell of safe weather, or by an attended release while nothing wants
   the roof closed) and adds that an Open by a person or a client that starts the roof moving ends
-  it at once. Each way only arms the close again; none moves the roof.
-- Modified: II. Close Only Onto a Parked Mount, the test-box exception. "No telescope" still never
-  sits beside a N.I.N.A. address, but the save that turns it on now removes the address instead of
-  being refused; an address can't be saved while it is on, and turning it off doesn't restore one.
+  it at once. Each way only arms the close again; none moves the roof. A close that took too long
+  (halted) is not ended by an Open.
 - Why: owner decisions after the first nights on the bench and the roof (spec 026's open
   questions). A person who stopped a close and then opened the roof again was left without the
-  automatic close for the rest of the re-arm spell; a bench box could still hold the address of
-  a live N.I.N.A.
-- Not a constitution change, recorded here for the next reader: while a test-box bypass is in
-  effect (or set and waiting for the clock), the two critical roof alerts go out at most at
-  urgent (spec 022, spec 007). They are still critical: past the pause, the send mode and the
-  master switch, and sent again until a channel takes them.
+  automatic close for the rest of the re-arm spell; a bench box could keep the address of a live
+  N.I.N.A. and park a real mount.
+- Not a constitution change, recorded here for the next reader: while the test box's park or
+  weather bypass is in effect (or would be once the clock is set), the two critical roof alerts go
+  out at urgent, not wake me (spec 022, spec 007). They are still critical: past the pause, the
+  send mode and the master switch, and sent again until a channel takes them.
 - Templates: no change. Docs: docs/user-guide/close-on-unsafe.md (DIA-22),
   docs/user-guide/test-box.md, docs/user-guide/alerts.md, specs/005-close-on-unsafe/spec.md,
   specs/022-test-box-bypass/spec.md, specs/007-roof-alerts/spec.md,
@@ -506,4 +514,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 5.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24
+**Version**: 6.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24
