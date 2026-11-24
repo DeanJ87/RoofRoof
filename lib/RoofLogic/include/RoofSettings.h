@@ -17,15 +17,30 @@ namespace SQM
         // Driver off between any two driven periods, so a direction change always
         // goes through stop first (constitution I).
         constexpr uint32_t DEAD_TIME_MS = 500;
-        // Equal Hall readings in a row before a zone change counts: rejects single
-        // ADC spikes; three steps at 50 Hz is about 1 mm at the slow speed.
+        // A Hall level change (arriving at a magnet, a wrong magnet, leaving one)
+        // counts only once the filtered reading has held it this long without a
+        // break, and over at least HALL_CONFIRM_READINGS steps. Motor PWM noise
+        // coupled into the sensor line reads as bursts of tens of milliseconds;
+        // this outlasts them. The cost is overrun at an end: with the median's
+        // two steps, about 260 ms, 4 mm at a 40 % creep and 10 mm at full speed
+        // of 38 mm/s (the profile reaches an end at the slow duty).
+        constexpr uint32_t HALL_PERSIST_MS = 200;
         constexpr uint8_t HALL_CONFIRM_READINGS = 3;
+        // Back on the start magnet this soon after leaving it (and within the
+        // leave time) counts as not yet left: noise as the reading crossed the
+        // threshold. Longer away, it is a wrong magnet: the roof came back.
+        constexpr uint32_t HALL_REENTRY_GRACE_MS = 1000;
+        // The raw readings kept for the log of a fault (oldest first).
+        constexpr uint8_t HALL_TRAIL_READINGS = 8;
         // A confirmed magnet is left only this far past its threshold, so a roof
         // parked on a threshold doesn't flicker.
         constexpr uint16_t HALL_HYSTERESIS_COUNTS = 40;
         // The SS49E through its divider never reaches these; a reading here is a
-        // disconnected or shorted sensor.
-        constexpr uint16_t HALL_RAIL_LOW_COUNTS = 30;
+        // disconnected or shorted sensor. Low: the sensor's lowest output (about
+        // 0.86 V on 5 V) through the 10k/20k divider reads about 650 counts, so
+        // anything at or under 400 is a lost supply or ground pulled down by the
+        // divider, never a magnet (field report: 100-160 at an end).
+        constexpr uint16_t HALL_RAIL_LOW_COUNTS = 400;
         constexpr uint16_t HALL_RAIL_HIGH_COUNTS = 4065;
         // A rail is confirmed by HALL_RAIL_LATCH_READINGS rail readings among the
         // last HALL_RAIL_WINDOW_READINGS, consecutive or not: an intermittent

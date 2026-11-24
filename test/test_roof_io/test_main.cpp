@@ -35,10 +35,10 @@ void test_median_of_odd_and_even_counts(void)
 void test_median_rejects_a_spike_and_keeps_a_rail(void)
 {
     const uint16_t spike[] = {2000, 2001, 4095, 1999, 2000};
-    TEST_ASSERT_EQUAL_UINT16(2000, medianCounts(spike, HALL_SAMPLES));
+    TEST_ASSERT_EQUAL_UINT16(2000, medianCounts(spike, 5));
     // A disconnected sensor pulled to 0 by its divider stays a rail reading.
     const uint16_t rail[] = {0, 3, 0, 1, 2000};
-    TEST_ASSERT_LESS_OR_EQUAL_UINT16(Roof::HALL_RAIL_LOW_COUNTS, medianCounts(rail, HALL_SAMPLES));
+    TEST_ASSERT_LESS_OR_EQUAL_UINT16(Roof::HALL_RAIL_LOW_COUNTS, medianCounts(rail, 5));
 }
 
 void test_median_uses_at_most_the_sample_limit(void)

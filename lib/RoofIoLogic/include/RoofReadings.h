@@ -23,8 +23,10 @@ namespace SQM
         // A live update after a state or fault change, at most this often.
         constexpr uint32_t STATUS_BROADCAST_MIN_MS = 250;
 
-        // Samples per control step: the Hall's median, the averaged supply and current.
-        constexpr uint8_t HALL_SAMPLES = 5;
+        // Samples per control step: the Hall's median (9 back to back span several
+        // 20 kHz PWM periods, so a spike that hits a few is dropped), the
+        // averaged supply and current.
+        constexpr uint8_t HALL_SAMPLES = 9;
         constexpr uint8_t ANALOG_SAMPLES = 4;
         // The current senses are chopped by the 20 kHz PWM: more samples,
         // spread over several PWM periods, average them (MotionGuards.h).

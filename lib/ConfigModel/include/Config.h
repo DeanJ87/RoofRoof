@@ -309,7 +309,8 @@ namespace SQM
         static constexpr uint32_t MIN_TOP_DUTY_PERCENT = 20;
         static constexpr uint32_t MIN_SLOW_DUTY_PERCENT = 10;
         static constexpr uint32_t MAX_DUTY_PERCENT = 100;
-        static constexpr uint32_t MIN_HALL_COUNTS = 100;
+        // Above the low rail (Roof::HALL_RAIL_LOW_COUNTS 400) and its hysteresis.
+        static constexpr uint32_t MIN_HALL_COUNTS = 500;
         static constexpr uint32_t MAX_HALL_COUNTS = 3995;
         // Two hysteresis bands (Roof::HALL_HYSTERESIS_COUNTS), so leaving one
         // magnet's zone can never land in the other's.

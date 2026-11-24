@@ -199,7 +199,7 @@ Each result is **Pass**, **Check** (a warning; `warn` in the API), **Fail** or *
 | Check | What it does | Results |
 |---|---|---|
 | **EN pull-down** | Holds RPWM and LPWM low (so the bridge can't drive whatever EN does), switches EN for about 50 µs to an input with the chip's internal pull-up, reads it, and drives it low again | **Pass**: EN reads low, so its pull-down holds the driver off. **Fail**: EN reads high, so the pull-down is missing or weaker than about 20 kΩ, and a reset or a crash wouldn't hold the driver off. **Skipped** on the bench build, which keeps its motor pins low |
-| **Hall** | The raw reading | **Fail** at a rail (the sensor or its divider disconnected or shorted); **Check** outside the thresholds' range (100 to 3995); **Pass** otherwise |
+| **Hall** | The raw reading | **Fail** at a rail (the sensor or its divider disconnected or shorted); **Check** outside the thresholds' range (500 to 3995); **Pass** otherwise |
 | **Supply** | The 12 V supply sense | **Fail** below 3 V (no supply, or its divider isn't connected) or unreadable; **Check** above 15 V (check the 100k/22k divider) or below `roof.minSupplyVolts` (the roof won't move); **Pass** otherwise |
 | **Park switch A**, **B** | Each fitted switch | **Pass** open (not parked) or closed (parked), saying which; **Check** unreadable (the input changes too often: check the switch and its wire); **Skipped** when not fitted (`park.switches`) |
 | **Current sense R**, **L** | Each input while the roof is stopped | With current sense on: **Pass** below 1 A, **Check** above (check the IS wire and its divider). With it off, in millivolts at the pin: **Pass** below 80 mV, **Check** above |

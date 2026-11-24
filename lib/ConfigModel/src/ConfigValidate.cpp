@@ -17,6 +17,12 @@ namespace SQM
 
     namespace
     {
+        // Thresholds saved by firmware from before the Hall's low rail rose to
+        // 400 counts still load (so an update keeps the rest of the settings);
+        // the roof refuses to move on them (validSettings) and a save needs
+        // RoofConfig::MIN_HALL_COUNTS.
+        constexpr uint32_t LOADED_MIN_HALL_COUNTS = 100;
+
         // Letters, digits, _ and -, with / between levels (same rule as the web UI).
         bool validTopic(const std::string &topic)
         {
@@ -243,12 +249,22 @@ namespace SQM
             return true;
         }
 
+        // A save needs thresholds above the low rail (validateRoofSensing takes older ones on load).
+        bool validateHallMinimum(const RoofConfig &r, std::string *error)
+        {
+            if (r.hallHighCounts < RoofConfig::MIN_HALL_COUNTS)
+                return setError(error, "Roof: Hall high threshold must be between 500 and 3995 counts");
+            if (r.hallLowCounts < RoofConfig::MIN_HALL_COUNTS)
+                return setError(error, "Roof: Hall low threshold must be between 500 and 3995 counts");
+            return true;
+        }
+
         bool validateRoofSensing(const RoofConfig &r, std::string *error)
         {
-            if (r.hallHighCounts < RoofConfig::MIN_HALL_COUNTS || r.hallHighCounts > RoofConfig::MAX_HALL_COUNTS)
-                return setError(error, "Roof: Hall high threshold must be between 100 and 3995 counts");
-            if (r.hallLowCounts < RoofConfig::MIN_HALL_COUNTS || r.hallLowCounts > RoofConfig::MAX_HALL_COUNTS)
-                return setError(error, "Roof: Hall low threshold must be between 100 and 3995 counts");
+            if (r.hallHighCounts < LOADED_MIN_HALL_COUNTS || r.hallHighCounts > RoofConfig::MAX_HALL_COUNTS)
+                return setError(error, "Roof: Hall high threshold must be between 500 and 3995 counts");
+            if (r.hallLowCounts < LOADED_MIN_HALL_COUNTS || r.hallLowCounts > RoofConfig::MAX_HALL_COUNTS)
+                return setError(error, "Roof: Hall low threshold must be between 500 and 3995 counts");
             if (r.hallHighCounts < r.hallLowCounts + RoofConfig::MIN_HALL_GAP_COUNTS)
                 return setError(error, "Roof: the Hall high threshold must be at least 80 counts above the low threshold");
             if (!inRange(r.maxCurrentAmps, RoofConfig::MIN_CURRENT_AMPS, RoofConfig::MAX_CURRENT_AMPS))
@@ -434,7 +450,8 @@ namespace SQM
 
     bool Config::validate(std::string *error) const
     {
-        return validateLoaded(error) && validatePins(false, error) && validateAnalog(error) && validateStoredSize(*this, error);
+        return validateLoaded(error) && validateHallMinimum(roof, error) && validatePins(false, error) && validateAnalog(error) &&
+               validateStoredSize(*this, error);
     }
 
     bool Config::validateLoaded(std::string *error) const

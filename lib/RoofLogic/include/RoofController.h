@@ -16,6 +16,13 @@ namespace SQM
 {
     namespace Roof
     {
+        // The raw Hall readings of the last steps, oldest first.
+        struct HallTrail
+        {
+            uint16_t counts[HALL_TRAIL_READINGS] = {};
+            uint8_t count = 0;
+        };
+
         // The roof controller. One instance, owned by the motion task.
         class Controller
         {
@@ -90,6 +97,9 @@ namespace SQM
             // Driven time toward `end` since a magnet was last confirmed (FR-025's
             // budget, read-only: spec 017's diagnostics report it).
             uint32_t budgetUsedMs(End end) const { return driveBudgetUsedMs[static_cast<int>(end)]; }
+            // The raw Hall readings up to the step the latched fault was taken on
+            // (empty before any fault): a wrong magnet from noise shows as a burst.
+            const HallTrail &faultHall() const { return faultTrail; }
 
         private:
             // The move in progress.
@@ -101,6 +111,7 @@ namespace SQM
                 bool fromUnknown = false;     // slow, to the first magnet
                 bool startedAtMagnet = false; // the drive began on the other end's magnet
                 bool leftStart = false;       // and has since left it
+                uint32_t leftStartMs = 0;     // the step it was last seen leaving it
                 uint32_t driveStartMs = 0;
                 uint32_t timeoutMs = 0;
                 // Spec 016: a calibration leg, and what it has applied so far.
@@ -125,7 +136,7 @@ namespace SQM
             void stepMove(const Readings &readings);
             void startDriving(uint32_t nowMs);
             void updateDeadTime(uint32_t nowMs);
-            bool checkMagnets();
+            bool checkMagnets(uint32_t nowMs);
             bool checkLegMagnets();
             void startLeg(bool leavesOtherEnd, bool onMagnet);
             uint32_t budgetLimitMs() const;
@@ -146,6 +157,7 @@ namespace SQM
             void stopMove(bool keepEstimate);
             void stopDriving();
             void latch(const Fault &fault);
+            void noteHall(uint16_t counts);
             void followHall();
             void settleIdle();
             bool magnetEnd(End &end) const;
@@ -155,6 +167,8 @@ namespace SQM
             Settings config;
             bool settingsValid;
             HallFilter hall;
+            HallTrail recentHall;
+            HallTrail faultTrail;
             Status current;
             Output out;
             Move move;

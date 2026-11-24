@@ -244,8 +244,11 @@ void test_commands_refused_until_the_hall_settles(void)
         roof.tick(readings);
     }
     TEST_ASSERT_TRUE(roof.command(Command::Close, Origin::Person).reason == Refusal::HallNotSettled);
-    readings.nowMs = 60;
-    roof.tick(readings);
+    for (uint32_t i = 3; i <= 11; ++i) // HALL_PERSIST_MS after the first reading
+    {
+        readings.nowMs = i * 20;
+        roof.tick(readings);
+    }
     TEST_ASSERT_TRUE(roof.status().state == State::Closed);
 }
 
@@ -323,7 +326,7 @@ void test_leaving_a_magnet_at_rest_makes_the_position_unknown(void)
 {
     Bench b;
     b.sim.positionMm = 100.0f; // moved by hand, or the sensor drifted
-    b.steps(3);
+    b.steps(14);
     TEST_ASSERT_TRUE(b.state() == State::Unknown);
     TEST_ASSERT_FALSE(b.roof.status().positionKnown);
 }
@@ -332,7 +335,7 @@ void test_a_magnet_read_at_rest_makes_the_position_known(void)
 {
     Bench b(Settings(), 900.0f);
     b.sim.positionMm = 1850.0f;
-    b.steps(3);
+    b.steps(14);
     TEST_ASSERT_TRUE(b.state() == State::Open);
     TEST_ASSERT_TRUE(b.roof.status().positionKnown);
 }

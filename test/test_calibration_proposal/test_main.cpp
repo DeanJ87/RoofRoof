@@ -280,14 +280,34 @@ void test_the_margin_stays_in_its_range(void)
 
 // --- Polarity and thresholds ------------------------------------------------------------
 
-void test_good_thresholds_are_kept(void)
+// Halfway between each end's rest reading and the in-between one, whatever the
+// old thresholds were: a threshold just past a magnet's reading is crossed by
+// noise as the roof leaves it.
+void test_thresholds_are_proposed_halfway(void)
 {
-    const Proposal p = propose(good(), Roof::Settings());
+    Roof::Settings old;
+    old.hallHighCounts = 3390; // just inside the open magnet's reading
+    old.hallLowCounts = 710;
+    const Proposal p = propose(good(), old);
     TEST_ASSERT_TRUE(p.hall);
     TEST_ASSERT_TRUE(p.hallHighEnd == End::Open);
-    TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts);
-    TEST_ASSERT_EQUAL_UINT16(1100, p.hallLowCounts);
+    TEST_ASSERT_EQUAL_UINT16(2725, p.hallHighCounts); // (2050 + 3400) / 2
+    TEST_ASSERT_EQUAL_UINT16(1375, p.hallLowCounts);  // (2050 + 700) / 2
     TEST_ASSERT_TRUE(p.hallProblem.reason.empty());
+}
+
+// The field case: the open magnet at 1370, in between 1800, the closed one at 2300.
+void test_the_field_readings_get_halfway_thresholds(void)
+{
+    Measurements m = good();
+    m.between = spread(1800, 5);
+    m.openRest = spread(1370, 5);
+    m.closedRest = spread(2300, 5);
+    const Proposal p = propose(m, Roof::Settings());
+    TEST_ASSERT_TRUE(p.hall);
+    TEST_ASSERT_TRUE(p.hallHighEnd == End::Closed);
+    TEST_ASSERT_EQUAL_UINT16(2050, p.hallHighCounts);
+    TEST_ASSERT_EQUAL_UINT16(1585, p.hallLowCounts);
 }
 
 void test_the_closed_end_reading_high_is_proposed(void)
@@ -299,38 +319,25 @@ void test_the_closed_end_reading_high_is_proposed(void)
     TEST_ASSERT_TRUE(p.hallHighEnd == End::Closed);
 }
 
+// Noisy in-between readings push the halfway point out to the clearance.
 void test_a_threshold_too_close_to_the_noise_moves_out(void)
 {
     Measurements m = good();
-    m.between = spread(2050, 50); // 2000-2100, sigma 50: clearance 200
-    Roof::Settings old;
-    old.hallHighCounts = 2200;
-    old.hallLowCounts = 1950;
-    const Proposal p = propose(m, old);
-    TEST_ASSERT_TRUE(p.hall);
-    TEST_ASSERT_EQUAL_UINT16(2300, p.hallHighCounts);
-    TEST_ASSERT_EQUAL_UINT16(1800, p.hallLowCounts);
-}
-
-void test_a_threshold_not_read_at_rest_moves_in(void)
-{
-    Measurements m = good();
-    m.openRest = constant(3010);    // the roof stops just past 3000
-    m.closedRest = spread(1095, 3); // 1092-1098, sigma 3: margin 10
+    m.between = spread(2050, 200); // 1850-2250, sigma 200: clearance 800
     const Proposal p = propose(m, Roof::Settings());
     TEST_ASSERT_TRUE(p.hall);
-    TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts); // 3010 - 10
-    TEST_ASSERT_EQUAL_UINT16(1108, p.hallLowCounts);  // 1098 + 10
+    TEST_ASSERT_EQUAL_UINT16(3050, p.hallHighCounts); // 2250 + 800
+    TEST_ASSERT_EQUAL_UINT16(1050, p.hallLowCounts);  // 1850 - 800
 }
 
+// A noisy end pulls the halfway point in to the rest margin.
 void test_noisy_rest_readings_widen_the_rest_margin(void)
 {
     Measurements m = good();
-    m.openRest = spread(3100, 20); // 3080-3120, sigma 20: margin 60
+    m.openRest = spread(2600, 100); // 2500-2700, sigma 100: margin 300
     const Proposal p = propose(m, Roof::Settings());
-    TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts); // 3080 - 60 = 3020 >= 3000: kept
-    m.openRest = spread(3050, 20);                    // 3030-3070: up to 2970
-    TEST_ASSERT_EQUAL_UINT16(2970, propose(m, Roof::Settings()).hallHighCounts);
+    TEST_ASSERT_TRUE(p.hall);
+    TEST_ASSERT_EQUAL_UINT16(2200, p.hallHighCounts); // 2500 - 300, under the halfway 2325
 }
 
 void test_no_room_for_a_threshold_withholds_them(void)
@@ -434,10 +441,10 @@ int main(int, char **)
     RUN_TEST(test_a_speed_out_of_range_is_withheld);
     RUN_TEST(test_the_margin_is_at_least_five_seconds_and_a_fifth_of_a_move);
     RUN_TEST(test_the_margin_stays_in_its_range);
-    RUN_TEST(test_good_thresholds_are_kept);
+    RUN_TEST(test_thresholds_are_proposed_halfway);
+    RUN_TEST(test_the_field_readings_get_halfway_thresholds);
     RUN_TEST(test_the_closed_end_reading_high_is_proposed);
     RUN_TEST(test_a_threshold_too_close_to_the_noise_moves_out);
-    RUN_TEST(test_a_threshold_not_read_at_rest_moves_in);
     RUN_TEST(test_noisy_rest_readings_widen_the_rest_margin);
     RUN_TEST(test_no_room_for_a_threshold_withholds_them);
     RUN_TEST(test_both_ends_on_one_side_is_the_same_pole);

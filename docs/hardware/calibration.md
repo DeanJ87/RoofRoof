@@ -19,7 +19,7 @@ curl -s http://roofroof.local/api/status | python3 -c 'import json,sys; print(js
 
 ## Hall sensor
 
-The controller reads the SS49E on GPIO39 (on both presets) as raw 12-bit counts (0-4095), the median of five readings every 20 ms: `roof.hall.counts`. `roof.hall.level` is how it classifies that reading against the thresholds: `low`, `between`, `high`, `rail` (a disconnected or shorted sensor) or `unsettled` (not three equal classifications in a row yet).
+The controller reads the SS49E on GPIO39 (on both presets) as raw 12-bit counts (0-4095), the median of nine readings every 20 ms: `roof.hall.counts`. `roof.hall.level` is how it classifies that reading against the thresholds: `low`, `between`, `high`, `rail` (a disconnected or shorted sensor) or `unsettled` (not settled yet). The level is classified from the median of the last five readings, and a change counts only once it has held for 200 ms, so a burst of motor noise can't read as a magnet.
 
 In the web UI, the **Hall reading** on the dashboard's Roof card and in **Settings → Roof → Hall sensor** is drawn on its 0-4095 scale with the two thresholds marked; in Settings the marks follow the thresholds as you type them, before you save, so you can see each end's reading fall past its mark.
 
@@ -30,7 +30,7 @@ The worm gear holds the roof wherever it stops, so with the motor disconnected t
 1. **Between the magnets.** With no magnet near the sensor, note `roof.hall.counts`: the resting value, typically about 2000 with a 10k/20k divider.
 2. **At each end.** Hold the closed end's magnet where it sits when the roof is closed, and note the counts; then the open end's. One reads well above the resting value and the other well below (the magnets have opposite poles). Repeat a few millimetres short of the stopping position: the roof must still read past the threshold there.
 3. **Which end is high.** Set `roof.hallHighEnd` to the end that read high (`open` or `closed`).
-4. **Thresholds.** Set `roof.hallHighCounts` about halfway between the resting value and the high end's reading, and `roof.hallLowCounts` about halfway between the resting value and the low end's reading. They must be at least 80 counts apart and inside 100-3995. Leave a margin: leaving a magnet needs the reading 40 counts back past its threshold.
+4. **Thresholds.** Set `roof.hallHighCounts` about halfway between the resting value and the high end's reading, and `roof.hallLowCounts` about halfway between the resting value and the low end's reading. They must be at least 80 counts apart and inside 500-3995. Leave a margin: leaving a magnet needs the reading 40 counts back past its threshold. Never put a threshold just past a magnet's reading (for example 1400 for a magnet that reads 1370): motor noise carries the reading back across it as the roof leaves, and the controller sees the magnet again. The [calibration run](../user-guide/calibration-run.md) and the teach propose the halfway points.
 5. **Check.** At each end `roof.state` is that end's (`closed` or `open`), and between them `unknown` (or `stopped` after a stopped move).
 
 ```bash
@@ -38,7 +38,7 @@ curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json
   -d '{"roof": {"hallHighEnd": "open", "hallHighCounts": 2900, "hallLowCounts": 1150}}'
 ```
 
-A reading at 30 counts or below, or 4065 or above, is a rail: three of them among the last eight latch a `hallRail` fault. With the sensor's divider fitted, a disconnected sensor output reads 0.
+A reading at 400 counts or below, or 4065 or above, is a rail: three of them among the last eight latch a `hallRail` fault. Through its 10k/20k divider the SS49E's lowest output reads about 650 counts, so a reading under 400 is never a magnet: it is a lost 5 V or ground at the sensor (the divider pulls the pin towards 0). With the divider fitted, a disconnected sensor output reads 0.
 
 ## Supply
 

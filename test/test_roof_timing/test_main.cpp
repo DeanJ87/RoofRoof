@@ -92,7 +92,7 @@ void test_the_first_drive_after_start_up_waits_the_dead_time(void)
     Controller roof;
     uint32_t nowMs = 5000;
     const uint32_t firstStepMs = nowMs + 20;
-    for (int i = 0; i < 3; ++i) // the Hall settles at the closed magnet
+    for (int i = 0; i < 11; ++i) // the Hall settles at the closed magnet
         roof.tick(closedReadings(nowMs += 20));
     TEST_ASSERT_TRUE(roof.command(Command::Open, Origin::Person).accepted);
     const uint32_t drivenAt = firstDrivenStep(roof, nowMs, 2000);

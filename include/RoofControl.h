@@ -267,6 +267,7 @@ namespace SQM
         void persistFault();
         void persistWatch();
         void logChanges();
+        void logFaultHall();
 
         mutable SemaphoreHandle_t lock = nullptr;
         TaskHandle_t task = nullptr;
