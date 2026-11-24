@@ -153,10 +153,13 @@ which took the speed as proportional to the duty.
   pass it is the slow speed scaled to 100 %, with a warning that a heavy roof doesn't reach it.
   This follows Principle I's rule (the hard timeout from the measured travel and speed settings
   plus a margin): the slow speed is one of those measured settings, so no amendment is needed.
-- Q: What happens to the slow speed when the slow duty changes? → A: It stays, and its hint asks
-  for a new run. A slow duty raised after measuring gives longer timeouts than needed, still
-  bounded; one lowered gives shorter ones, which can only fault early (fail-safe). Clearing it on
-  every slow-duty edit would silently change a field the person didn't touch.
+- Q: What happens to the slow speed when the slow duty changes? → A: It is saved with the slow
+  duty it was measured at (`roof.slowSpeedDutyPercent`, set when the proposal is accepted) and
+  counts only while that is still the slow duty; otherwise the model is proportional again until a
+  new run. A slow speed applied to another slow duty would bend the affine model: with the slow
+  duty raised, the speed at the top duty would come out lower than measured, the estimate would
+  lag and the roof could reach its end magnet at the top duty before slowing down. Clearing the
+  value on a slow-duty edit instead would miss changes made through the API or a restore.
 
 ## Constitution rules this spec relies on
 
@@ -506,7 +509,8 @@ Playwright walk-through starts a run, waits for the result and accepts it.
   leg's ending MUST name the limit that stopped it, and a slow leg's the slow duty; a slow leg
   over three quarters of the limit MUST be warned about.
 - **FR-029** (2026-11-24): The run MUST propose `roof.slowSpeedMmPerSecond` (the slow legs'
-  average speed) with the speed, and the full speed MUST allow for the slow speed. Moves from an
+  average speed) with the slow duty it was measured at (`roof.slowSpeedDutyPercent`), which it
+  counts only while that is the slow duty, and the full speed MUST allow for the slow speed. Moves from an
   unknown position, the drive budget and every move's slow phases MUST be timed from it; 0 keeps
   the proportional model. The result MUST show the open or close limit and the slow-duty limit
   before and after.
@@ -619,8 +623,11 @@ Each was an open choice; the safest option the constitution allows was taken.
 22. **Leg order**: from `open` and `partWay` a slow close first, then the slow open and close and
     the optional top-duty pass; every measured leg starts at the closed end.
 23. **A measured slow speed times every move at the slow duty** (`roof.slowSpeedMmPerSecond`, 0 =
-    proportional, as before): affine in the duty up to the full speed. It isn't cleared when the
-    slow duty changes; the hint asks for a new run.
+    proportional, as before): affine in the duty up to the full speed. It counts only while the
+    slow duty is the one it was measured at (`roof.slowSpeedDutyPercent`).
+26. **The timeout margin is still sized from a full move** (and the measured shortfall), not from
+    the longer slow-duty move: a move from an unknown position keeps the same headroom ratio as
+    before this fix; a cold night that slows it further faults early, which is fail-safe.
 24. **Without a top-duty pass the full speed is the slow speed scaled up**, as before, with a
     warning: a heavy roof's full speed is then underestimated (longer known-position timeouts,
     a later slow-down point). The top-duty pass measures it.

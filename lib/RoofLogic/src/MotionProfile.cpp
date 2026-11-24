@@ -21,11 +21,12 @@ namespace SQM
             }
 
             // mm per ms at the slow duty: the measured slow speed (never above the
-            // full speed), or before one is measured the full speed scaled by the duty.
+            // full speed) while the slow duty is the one it was measured at, else
+            // the full speed scaled by the duty.
             double slowSpeedMmPerMs(const Settings &settings)
             {
                 const double full = fullSpeedMmPerMs(settings);
-                if (settings.slowSpeedMmPerSecond > 0.0f)
+                if (settings.slowSpeedMmPerSecond > 0.0f && settings.slowSpeedDutyPercent == settings.slowDutyPercent)
                     return std::min(full, static_cast<double>(settings.slowSpeedMmPerSecond) / 1000.0);
                 return full * dutyFraction(settings.slowDutyPercent);
             }
@@ -138,7 +139,10 @@ namespace SQM
 
         float advanceMm(const Settings &settings, uint8_t duty, uint32_t elapsedMs)
         {
-            return static_cast<float>(speedAt(settings, duty / MAX_DUTY) * elapsedMs);
+            // The slow duty's 8-bit value is the slow duty (no rounding error times the affine slope).
+            const double fraction =
+                duty == toDuty(dutyFraction(settings.slowDutyPercent)) ? dutyFraction(settings.slowDutyPercent) : duty / MAX_DUTY;
+            return static_cast<float>(speedAt(settings, fraction) * elapsedMs);
         }
 
         uint32_t expectedMoveMs(const Settings &settings, float distanceMm)

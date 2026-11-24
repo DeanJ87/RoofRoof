@@ -119,6 +119,7 @@ namespace SQM
                 Roof::Settings s = old;
                 s.speedMmPerSecond = speed;
                 s.slowSpeedMmPerSecond = slow;
+                s.slowSpeedDutyPercent = old.slowDutyPercent;
                 s.travelMm = m.travelMm;
                 const double move = Roof::expectedMoveMs(s, static_cast<float>(m.travelMm));
                 double ms = std::max<double>(MIN_PROPOSED_MARGIN_MS, MARGIN_MOVE_FRACTION * move);

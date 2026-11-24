@@ -393,6 +393,7 @@ void test_a_measured_slow_speed_times_moves_from_an_unknown_position(void)
 {
     Settings s;
     s.slowSpeedMmPerSecond = 9.0f; // 1850 mm in 205.6 s, not 121.7 s
+    s.slowSpeedDutyPercent = 40;
     TEST_ASSERT_UINT32_WITHIN(2, 205556 + 15000, unknownMoveTimeoutMs(s));
     TEST_ASSERT_EQUAL_UINT32(unknownMoveTimeoutMs(s), driveBudgetMs(s));
     TEST_ASSERT_FLOAT_WITHIN(1e-3f, 9.0f, advanceMm(s, toDuty(0.4f), 1000)); // 102/255 is exactly 40 %
@@ -405,6 +406,7 @@ void test_no_slow_speed_is_the_proportional_model(void)
     Settings linear;
     Settings same;
     same.slowSpeedMmPerSecond = 38.0f * 0.4f;
+    same.slowSpeedDutyPercent = 40;
     for (float distance : {10.0f, 500.0f, 1850.0f})
         TEST_ASSERT_UINT32_WITHIN(2, expectedMoveMs(linear, distance), expectedMoveMs(same, distance));
     TEST_ASSERT_UINT32_WITHIN(2, unknownMoveTimeoutMs(linear), unknownMoveTimeoutMs(same));
@@ -418,6 +420,7 @@ void test_a_slow_speed_makes_the_speed_affine_in_the_duty(void)
 {
     Settings s;
     s.slowSpeedMmPerSecond = 9.0f;
+    s.slowSpeedDutyPercent = 40;
     TEST_ASSERT_FLOAT_WITHIN(1e-3f, 9.0f, advanceMm(s, 102, 1000));
     TEST_ASSERT_FLOAT_WITHIN(1e-3f, 38.0f, advanceMm(s, 255, 1000));
     TEST_ASSERT_FLOAT_WITHIN(1e-3f, 9.0f + 29.0f * (178.0f / 255.0f - 0.4f) / 0.6f, advanceMm(s, 178, 1000));
@@ -436,12 +439,34 @@ void test_a_slow_speed_makes_the_speed_affine_in_the_duty(void)
     TEST_ASSERT_TRUE(expectedMoveMs(s, 1850.0f) > expectedMoveMs(Settings(), 1850.0f));
 }
 
+// The slow speed belongs to the slow duty it was measured at: with the slow duty
+// changed since, moves at the slow duty are timed as proportional again, never
+// from a speed measured at another duty (the estimate would lag at the top duty).
+void test_a_slow_speed_from_another_slow_duty_is_not_used(void)
+{
+    Settings measured;
+    measured.slowSpeedMmPerSecond = 9.0f;
+    measured.slowSpeedDutyPercent = 40;
+    Settings changed = measured;
+    changed.slowDutyPercent = 60;
+    Settings proportional;
+    proportional.slowDutyPercent = 60;
+    TEST_ASSERT_EQUAL_UINT32(unknownMoveTimeoutMs(proportional), unknownMoveTimeoutMs(changed));
+    TEST_ASSERT_EQUAL_UINT32(expectedMoveMs(proportional, 1850.0f), expectedMoveMs(changed, 1850.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-4f, advanceMm(proportional, 204, 1000), advanceMm(changed, 204, 1000));
+    Settings none = measured;
+    none.slowSpeedDutyPercent = 0; // a slow speed with no duty recorded counts as not measured
+    TEST_ASSERT_EQUAL_UINT32(unknownMoveTimeoutMs(Settings()), unknownMoveTimeoutMs(none));
+    TEST_ASSERT_TRUE(unknownMoveTimeoutMs(measured) > unknownMoveTimeoutMs(Settings()));
+}
+
 // A slow speed above the full speed counts as the full speed; outside 1-500 mm/s
 // (other than 0) the settings are invalid and refuse every move.
 void test_slow_speed_bounds(void)
 {
     Settings s;
     s.slowSpeedMmPerSecond = 80.0f;
+    s.slowSpeedDutyPercent = 40;
     TEST_ASSERT_TRUE(validSettings(s));
     TEST_ASSERT_UINT32_WITHIN(2, 1850000 / 38 + 15000, unknownMoveTimeoutMs(s));
     for (float bad : {0.5f, 500.5f, -1.0f, NAN})
@@ -450,6 +475,7 @@ void test_slow_speed_bounds(void)
         TEST_ASSERT_FALSE(validSettings(s));
     }
     s.slowSpeedMmPerSecond = 1.0f;
+    s.slowSpeedDutyPercent = 40;
     s.travelMm = RoofConfig::MAX_TRAVEL_MM;
     s.timeoutMarginMs = RoofConfig::MAX_TIMEOUT_MARGIN_SECONDS * 1000;
     TEST_ASSERT_TRUE(validSettings(s));
@@ -487,6 +513,7 @@ int main(int, char **)
     RUN_TEST(test_a_measured_slow_speed_times_moves_from_an_unknown_position);
     RUN_TEST(test_no_slow_speed_is_the_proportional_model);
     RUN_TEST(test_a_slow_speed_makes_the_speed_affine_in_the_duty);
+    RUN_TEST(test_a_slow_speed_from_another_slow_duty_is_not_used);
     RUN_TEST(test_slow_speed_bounds);
     return UNITY_END();
 }

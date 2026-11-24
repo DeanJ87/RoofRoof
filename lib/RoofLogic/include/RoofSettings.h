@@ -70,6 +70,8 @@ namespace SQM
             // At the slow duty, as a calibration run measured it; 0 = not measured
             // (the full speed scaled by the slow duty). Affine in between (MotionProfile).
             float slowSpeedMmPerSecond = 0.0f;
+            // The slow duty it was measured at: used only while that is still the slow duty.
+            uint8_t slowSpeedDutyPercent = 0;
             uint32_t timeoutMarginMs = 15000;
             uint32_t leaveMagnetMs = 10000;
             uint32_t rampUpMs = 2000;

@@ -182,6 +182,7 @@ void test_speed_from_the_top_legs_when_run(void)
     Roof::Settings now;
     now.speedMmPerSecond = p.speedMmPerSecond;
     now.slowSpeedMmPerSecond = p.slowSpeedMmPerSecond;
+    now.slowSpeedDutyPercent = 40;
     now.timeoutMarginMs = p.timeoutMarginSeconds * 1000;
     TEST_ASSERT_TRUE(Roof::unknownMoveTimeoutMs(now) >= m.legs[0].drivenMs + 3000);
 }

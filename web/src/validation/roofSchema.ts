@@ -12,6 +12,7 @@ export const roofConfigSchema = z
     speedMmPerSecond: z.number().min(1).max(500),
     // 0: not measured yet (moves at the slow duty are timed from the speed).
     slowSpeedMmPerSecond: z.union([z.literal(0), z.number().min(1).max(500)]),
+    slowSpeedDutyPercent: z.union([z.literal(0), z.number().int().min(10).max(100)]),
     timeoutMarginSeconds: z.number().int().min(3).max(300),
     leaveMagnetSeconds: z.number().int().min(2).max(120),
     calibrationLimitSeconds: z.number().int().min(30).max(600),

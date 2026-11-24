@@ -173,8 +173,10 @@ duty to the full speed at 100 %. A heavy roof's motor needs a good part of the s
 moves, so at 40 % it runs well under 40 % of its full speed; the measured slow speed times every
 move at the slow duty (moves from an unknown position, the creep to each end), so they no longer
 time out. Until a run has measured it (`roof.slowSpeedMmPerSecond` 0), speed is taken as
-proportional to the duty. Run the top-duty pass for the full speed real moves see, and run again
-after changing the slow duty.
+proportional to the duty. The slow speed is saved with the slow duty it was measured at
+(`roof.slowSpeedDutyPercent`) and counts only while that is still the slow duty: change the slow
+duty and the timing falls back to proportional until you run again. Run the top-duty pass for the
+full speed real moves see.
 
 When a slow leg took more than three quarters of the time limit, a warning names the slow duty and
 the limit: raise `roof.calibrationLimitSeconds` before the next run. A leg that times out says the

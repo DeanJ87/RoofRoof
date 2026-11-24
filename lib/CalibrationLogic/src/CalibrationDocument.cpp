@@ -115,6 +115,7 @@ namespace SQM
                 now.travelMm = p.travelMm;
                 now.speedMmPerSecond = p.speedMmPerSecond;
                 now.slowSpeedMmPerSecond = p.slowSpeedMmPerSecond;
+                now.slowSpeedDutyPercent = old.slowDutyPercent;
                 now.timeoutMarginMs = p.timeoutMarginSeconds * 1000;
                 const float oldTravel = static_cast<float>(old.travelMm);
                 const float newTravel = static_cast<float>(p.travelMm);
@@ -141,6 +142,7 @@ namespace SQM
                 pair<uint32_t>(j, "travelMm", true, o.travelMm, p.travelMm);
                 pair<double>(j, "speedMmPerSecond", p.speed, rounded(o.speedMmPerSecond, 1), p.speedMmPerSecond);
                 pair<double>(j, "slowSpeedMmPerSecond", p.speed, rounded(o.slowSpeedMmPerSecond, 1), p.slowSpeedMmPerSecond);
+                pair<uint32_t>(j, "slowSpeedDutyPercent", p.speed, o.slowSpeedDutyPercent, o.slowDutyPercent);
                 pair<uint32_t>(j, "timeoutMarginSeconds", p.speed, o.timeoutMarginMs / 1000, p.timeoutMarginSeconds);
                 writeLimits(j, p, o);
                 pair<const char *>(j, "hallHighEnd", p.hall, Roof::endName(o.hallHighEnd), Roof::endName(p.hallHighEnd));

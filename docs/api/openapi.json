@@ -5202,6 +5202,25 @@
                 ],
                 "additionalProperties": false
               },
+              "slowSpeedDutyPercent": {
+                "type": [
+                  "null",
+                  "object"
+                ],
+                "properties": {
+                  "new": {
+                    "type": "number"
+                  },
+                  "old": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "new",
+                  "old"
+                ],
+                "additionalProperties": false
+              },
               "slowSpeedMmPerSecond": {
                 "type": [
                   "null",
@@ -5321,6 +5340,7 @@
               "hallProblem",
               "moveLimitSeconds",
               "slowLimitSeconds",
+              "slowSpeedDutyPercent",
               "slowSpeedMmPerSecond",
               "speedMmPerSecond",
               "speedProblem",
@@ -6418,6 +6438,9 @@
               "slowDutyPercent": {
                 "type": "number"
               },
+              "slowSpeedDutyPercent": {
+                "type": "number"
+              },
               "slowSpeedMmPerSecond": {
                 "type": "number"
               },
@@ -6449,6 +6472,7 @@
               "rampDownMs",
               "rampUpMs",
               "slowDutyPercent",
+              "slowSpeedDutyPercent",
               "slowSpeedMmPerSecond",
               "speedMmPerSecond",
               "timeoutMarginSeconds",
@@ -7484,6 +7508,9 @@
                 "type": "number"
               },
               "slowDutyPercent": {
+                "type": "number"
+              },
+              "slowSpeedDutyPercent": {
                 "type": "number"
               },
               "slowSpeedMmPerSecond": {

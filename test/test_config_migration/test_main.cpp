@@ -200,10 +200,15 @@ void test_stored_roof_without_slow_speed_loads_it_unmeasured()
     std::string reason;
     TEST_ASSERT_TRUE_MESSAGE(Config::applyJson("{\"roof\":{\"speedMmPerSecond\":40}}", loaded, false, &reason), reason.c_str());
     TEST_ASSERT_EQUAL_FLOAT(0.0f, loaded.roof.slowSpeedMmPerSecond);
-    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson("{\"roof\":{\"slowSpeedMmPerSecond\":9.4}}", loaded, false, &reason), reason.c_str());
+    TEST_ASSERT_EQUAL_UINT32(0, loaded.roof.slowSpeedDutyPercent);
+    TEST_ASSERT_TRUE_MESSAGE(
+        Config::applyJson("{\"roof\":{\"slowSpeedMmPerSecond\":9.4,\"slowSpeedDutyPercent\":40}}", loaded, false, &reason), reason.c_str());
     const auto again = Config::fromJson(loaded.toJson(false));
     TEST_ASSERT_TRUE(again.has_value());
     TEST_ASSERT_EQUAL_FLOAT(9.4f, again->roof.slowSpeedMmPerSecond);
+    TEST_ASSERT_EQUAL_UINT32(40, again->roof.slowSpeedDutyPercent);
+    TEST_ASSERT_FALSE(Config::applyJson("{\"roof\":{\"slowSpeedDutyPercent\":9}}", loaded, false, &reason));
+    TEST_ASSERT_EQUAL_STRING("Roof: the slow speed's duty must be 0 (none) or between 10 and 100 %", reason.c_str());
     for (const char *bad : {"0.5", "500.5", "-1"})
     {
         Config c = Config::createDefault();

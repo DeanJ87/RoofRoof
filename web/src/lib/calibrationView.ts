@@ -113,6 +113,8 @@ export const acceptedRoof = (proposal: CalibrationProposal, roof: RoofConfig): R
     const pair = proposal[key];
     if (pair) (next as unknown as Record<string, unknown>)[key] = pair.new;
   }
+  // The slow speed belongs to the slow duty it was measured at (it counts only while that is the slow duty).
+  if (proposal.slowSpeedDutyPercent) next.slowSpeedDutyPercent = proposal.slowSpeedDutyPercent.new;
   return next;
 };
 

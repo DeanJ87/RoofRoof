@@ -132,7 +132,7 @@ describe('Calibrate', () => {
     const { rerender } = render(<Calibrate />);
     const where = (await screen.findByRole('combobox', { name: 'Where the roof is now' })) as HTMLSelectElement;
     expect(where.value).toBe('closed');
-    expect(startCard().getByText(/Each leg may drive up to 180 s/)).toBeInTheDocument();
+    expect(startCard().getByText(/Each leg may drive 180 s/)).toBeInTheDocument();
     const open = ready();
     open.roof = { ...open.roof!, state: 'open', hall: { counts: 3400, level: 'high' } };
     live(open);
@@ -231,6 +231,7 @@ describe('Calibrate', () => {
     expect(roof.speedMmPerSecond).toBe(41);
     expect(roof.timeoutMarginSeconds).toBe(10);
     expect(roof.slowSpeedMmPerSecond).toBe(16.4);
+    expect(roof.slowSpeedDutyPercent).toBe(40);
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 

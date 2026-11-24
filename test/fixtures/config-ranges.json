@@ -93,6 +93,12 @@
       "max": 500
     },
     {
+      "path": "roof.slowSpeedDutyPercent",
+      "int": true,
+      "min": 10,
+      "max": 100
+    },
+    {
       "path": "roof.timeoutMarginSeconds",
       "int": true,
       "min": 3,

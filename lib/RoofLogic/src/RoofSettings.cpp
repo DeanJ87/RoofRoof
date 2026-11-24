@@ -88,6 +88,7 @@ namespace SQM
             s.travelMm = config.travelMm;
             s.speedMmPerSecond = config.speedMmPerSecond;
             s.slowSpeedMmPerSecond = config.slowSpeedMmPerSecond;
+            s.slowSpeedDutyPercent = percent(config.slowSpeedDutyPercent);
             s.timeoutMarginMs = secondsToMs(config.timeoutMarginSeconds);
             s.leaveMagnetMs = secondsToMs(config.leaveMagnetSeconds);
             s.rampUpMs = config.rampUpMs;

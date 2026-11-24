@@ -283,6 +283,7 @@ export const mockCalibration: CalibrationStatus = {
     travelMm: { old: 1850, new: 1850 },
     speedMmPerSecond: { old: 38, new: 41 },
     slowSpeedMmPerSecond: { old: 0, new: 16.4 },
+    slowSpeedDutyPercent: { old: 0, new: 40 },
     timeoutMarginSeconds: { old: 15, new: 10 },
     moveLimitSeconds: { old: 67, new: 59 },
     slowLimitSeconds: { old: 137, new: 123 },

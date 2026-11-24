@@ -198,6 +198,7 @@ void test_a_heavy_roof_measures_its_slow_speed_and_unknown_moves_then_fit(void)
     now.travelMm = p.travelMm;
     now.speedMmPerSecond = p.speedMmPerSecond;
     now.slowSpeedMmPerSecond = p.slowSpeedMmPerSecond;
+    now.slowSpeedDutyPercent = 40;
     now.timeoutMarginMs = p.timeoutMarginSeconds * 1000;
     Rig after(1800.0f, now);
     after.plant.speedMmPerSecond = 40.0f;

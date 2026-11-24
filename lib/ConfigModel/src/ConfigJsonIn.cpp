@@ -79,6 +79,7 @@ namespace SQM
                 {"roof", "rampDownMs"},
                 {"roof", "topDutyPercent"},
                 {"roof", "slowDutyPercent"},
+                {"roof", "slowSpeedDutyPercent"},
                 {"roof", "hallHighCounts"},
                 {"roof", "hallLowCounts"},
                 {"mqtt", "changeMinSeconds"},
@@ -288,6 +289,7 @@ namespace SQM
             roof.take("travelMm", r.travelMm);
             roof.take("speedMmPerSecond", r.speedMmPerSecond);
             roof.take("slowSpeedMmPerSecond", r.slowSpeedMmPerSecond);
+            roof.take("slowSpeedDutyPercent", r.slowSpeedDutyPercent);
             roof.take("timeoutMarginSeconds", r.timeoutMarginSeconds);
             roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
             roof.take("calibrationLimitSeconds", r.calibrationLimitSeconds);

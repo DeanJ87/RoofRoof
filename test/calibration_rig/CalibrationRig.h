@@ -139,7 +139,8 @@ namespace CalibTest
 
     inline bool sameSettings(const Roof::Settings &a, const Roof::Settings &b)
     {
-        return a.travelMm == b.travelMm && a.speedMmPerSecond == b.speedMmPerSecond && a.timeoutMarginMs == b.timeoutMarginMs &&
+        return a.travelMm == b.travelMm && a.speedMmPerSecond == b.speedMmPerSecond && a.slowSpeedMmPerSecond == b.slowSpeedMmPerSecond &&
+               a.slowSpeedDutyPercent == b.slowSpeedDutyPercent && a.timeoutMarginMs == b.timeoutMarginMs &&
                a.hallHighEnd == b.hallHighEnd && a.hallHighCounts == b.hallHighCounts && a.hallLowCounts == b.hallLowCounts;
     }
 } // namespace CalibTest

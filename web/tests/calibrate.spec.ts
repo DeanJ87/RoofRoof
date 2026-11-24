@@ -39,7 +39,7 @@ test('a run measures the roof and its proposal is saved on Accept', async ({ pag
   test.setTimeout(120_000);
   await openPage(page);
   // Spec 016 fix: each leg's limit is explained beside Start.
-  await expect(page.locator('#calibrate-start')).toContainText('Each leg may drive up to 180 s');
+  await expect(page.locator('#calibrate-start')).toContainText('Each leg may drive 180 s');
   await startRun(page);
   await expect.poll(async () => (await calibration(page)).request?.at).toBe('closed');
   expect((await calibration(page)).leg.name).toBe('slowOpen');

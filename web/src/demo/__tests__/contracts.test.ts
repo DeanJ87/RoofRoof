@@ -235,6 +235,7 @@ function writeCalibrationSamples(put: (name: string, document: unknown) => void)
       ...mockCalibration.proposal,
       speedMmPerSecond: null,
       slowSpeedMmPerSecond: null,
+      slowSpeedDutyPercent: null,
       timeoutMarginSeconds: null,
       moveLimitSeconds: null,
       slowLimitSeconds: null,
