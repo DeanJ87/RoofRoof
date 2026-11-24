@@ -32,14 +32,14 @@ export const valueSource = (roof: RoofConfig, bits: number, isDefault: boolean):
 export const motionDefaults = (roof: RoofConfig) => roof.travelMm === DEFAULT_TRAVEL_MM && roof.speedMmPerSecond === DEFAULT_SPEED;
 
 const calibrated = (roof: RoofConfig): Pick<Stage, 'state' | 'note'> => {
-  if (measured(roof, MEASURED.travel | MEASURED.speed)) return { state: 'done', note: t('setupProgress.calibratedDone') };
+  if (measured(roof, MEASURED.travel | MEASURED.speed)) return { state: 'done', note: t('stage.calibratedDone') };
   const seconds = formatNumber(moveLimits(roof).fullSeconds, 0);
-  if (motionDefaults(roof)) return { state: 'todo', note: t('setupProgress.calibratedDefaults', { seconds }) };
-  return { state: 'typed', note: t('setupProgress.calibratedTyped', { seconds }) };
+  if (motionDefaults(roof)) return { state: 'todo', note: t('stage.calibratedDefaults', { seconds }) };
+  return { state: 'typed', note: t('stage.calibratedTyped', { seconds }) };
 };
 
 const sourceStage = (on: boolean, bypassed: boolean, done: string, todo: string): Pick<Stage, 'state' | 'note'> => {
-  if (bypassed) return { state: 'bypassed', note: t('setupProgress.bypassed') };
+  if (bypassed) return { state: 'bypassed', note: t('stage.bypassed') };
   return on ? { state: 'done', note: done } : { state: 'todo', note: todo };
 };
 
@@ -53,12 +53,12 @@ const alertsOn = ({ alerts: a }: Config) =>
 
 const stage = (id: Stage['id'], href: string, rest: Pick<Stage, 'state' | 'note'>): Stage => ({
   id,
-  title: t(`setupProgress.${id}`),
+  title: t(`stage.${id}`),
   href,
   ...rest,
 });
 const done = (ok: boolean, id: 'board' | 'direction' | 'ends' | 'alerts') =>
-  ok ? { state: 'done' as const, note: t(`setupProgress.${id}Done`) } : { state: 'todo' as const, note: t(`setupProgress.${id}Todo`) };
+  ok ? { state: 'done' as const, note: t(`stage.${id}Done`) } : { state: 'todo' as const, note: t(`stage.${id}Todo`) };
 
 /** The stages, in order; empty when the device sent no roof settings (older firmware). */
 export const setupStages = (config: Config | null | undefined): Stage[] => {
@@ -70,9 +70,9 @@ export const setupStages = (config: Config | null | undefined): Stage[] => {
     stage(
       'weather',
       `${ROOF}safety`,
-      sourceStage(weatherOn(config), Boolean(box?.weather), t('setupProgress.weatherDone'), t('setupProgress.weatherTodo')),
+      sourceStage(weatherOn(config), Boolean(box?.weather), t('stage.weatherDone'), t('stage.weatherTodo')),
     ),
-    stage('park', `${ROOF}park`, sourceStage(parkOn(config), Boolean(box?.park), t('setupProgress.parkDone'), t('setupProgress.parkTodo'))),
+    stage('park', `${ROOF}park`, sourceStage(parkOn(config), Boolean(box?.park), t('stage.parkDone'), t('stage.parkTodo'))),
     stage('direction', '/calibrate', done(measured(roof, MEASURED.direction), 'direction')),
     stage('ends', '/calibrate', done(measured(roof, MEASURED.hall), 'ends')),
     stage('calibrated', '/calibrate', calibrated(roof)),

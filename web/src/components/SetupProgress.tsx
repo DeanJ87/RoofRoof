@@ -18,7 +18,7 @@ export const SetupStages: FunctionalComponent<{ stages: Stage[] }> = ({ stages }
           <Button variant="link" onClick={() => route(stage.href)}>
             {`${index + 1}. ${stage.title}`}
           </Button>
-          <Pill tone={PILL[stage.state]}>{t(`setupProgress.state.${stage.state}`)}</Pill>
+          <Pill tone={PILL[stage.state]}>{t(`stage.state.${stage.state}`)}</Pill>
         </div>
         {stage.state !== 'done' && <Note tone={stage.state === 'bypassed' ? 'warn' : 'muted'}>{stage.note}</Note>}
       </div>
@@ -28,4 +28,4 @@ export const SetupStages: FunctionalComponent<{ stages: Stage[] }> = ({ stages }
 
 /** "4 of 7 done", for the card's pill. */
 export const stagesDone = (stages: Stage[]) =>
-  t('setupProgress.count', { done: stages.filter((stage) => stage.state === 'done').length, total: stages.length });
+  t('stage.count', { done: stages.filter((stage) => stage.state === 'done').length, total: stages.length });

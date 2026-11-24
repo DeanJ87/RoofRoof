@@ -394,8 +394,8 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
       {stages.length > 0 && (
         <SettingsCard
           id="setup"
-          title={t('setupProgress.title')}
-          hint={t('setupProgress.hint')}
+          title={t('stage.title')}
+          hint={t('stage.hint')}
           badge={<Pill tone="pill-dim">{stagesDone(stages)}</Pill>}
         >
           <SetupStages stages={stages} />

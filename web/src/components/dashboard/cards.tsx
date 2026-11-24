@@ -42,14 +42,14 @@ const setupCard = (ctx: CardContext): MasonryItem[] => {
   const node = (
     <div data-inventory="setup-card">
       <Card
-        title={t('setupProgress.title')}
+        title={t('stage.title')}
         icon="roof"
-        hint={t('setupProgress.hint')}
+        hint={t('stage.hint')}
         actions={<Pill tone="pill-amber">{stagesDone(stages)}</Pill>}
       >
         <SetupStages stages={stages} />
       </Card>
     </div>
   );
-  return [{ id: 'setup', title: t('setupProgress.title'), node }];
+  return [{ id: 'setup', title: t('stage.title'), node }];
 };

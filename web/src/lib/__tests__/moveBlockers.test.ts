@@ -51,7 +51,7 @@ describe('moveBlockers', () => {
   it('each blocker says what stops it, what it means, when it clears; settings blockers link to their card', () => {
     const [weather] = moveBlockers(roof({ weather: 'unsafe', weatherText: 'unsafe: rain' }), 'move', ctx);
     expect(weather.title).toBe('Weather check: unsafe: rain');
-    expect(weather.meaning).toMatch(/only while the weather check reads safe/);
+    expect(weather.meaning).toMatch(/only while the weather reads safe/);
     expect(weather.clears).toBe('Clears once SQMeter reports safe.');
     expect(weather.fix).toEqual({ label: 'Weather check settings', href: '/settings?tab=roof&section=safety' });
     const [park] = moveBlockers(roof({ parkConfirmed: false, parkText: 'N.I.N.A. reports not parked' }), 'close', ctx);
