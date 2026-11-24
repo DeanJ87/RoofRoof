@@ -516,8 +516,11 @@ namespace SQM
             return setError(errorOut, "Settings must be a JSON object");
         const Section root(reader, doc.as<JsonVariant>(), "");
         const std::string previousSsid = cfg.wifi.ssid;
+        const SyncedValues synced = syncedValues(cfg);
         if (!applySections(root, cfg, keep, errorOut, copied))
             return false;
+        if (reader.strict())
+            unfollowEdited(root.child("sqmeterSync"), synced, cfg); // spec 026
         if (reader.failed())
             return typeError(reader, errorOut);
         // Saving settings never takes the device off its network: changing

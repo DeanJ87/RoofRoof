@@ -81,6 +81,43 @@ namespace SQM::ConfigDetail
         }
     }
 
+    namespace
+    {
+        std::string joined(std::initializer_list<std::string> values)
+        {
+            std::string out;
+            for (const std::string &value : values)
+                out += value + '\x1f';
+            return out;
+        }
+    } // namespace
+
+    SyncedValues syncedValues(const Config &c)
+    {
+        const MQTTConfig &m = c.mqtt;
+        const AlertsConfig &a = c.alerts;
+        return SyncedValues{{
+            joined({c.ntp.timezone, c.ntp.server1, c.ntp.server2}),
+            joined({m.broker, std::to_string(m.port), m.username, m.password, m.enabled ? "1" : "0", c.safety.mqttTopic}),
+            joined({a.ntfyServer, a.ntfyTopic, a.ntfyToken, a.ntfyEnabled ? "1" : "0", a.pushoverUserKey, a.pushoverAppToken,
+                    a.pushoverEnabled ? "1" : "0"}),
+        }};
+    }
+
+    void unfollowEdited(const Section &sync, const SyncedValues &before, Config &cfg)
+    {
+        const SyncedValues after = syncedValues(cfg);
+        const char *const names[] = {"time", "mqtt", "alerts"};
+        SqmeterSyncConfig::Group *const groups[] = {&cfg.sqmeterSync.time, &cfg.sqmeterSync.mqtt, &cfg.sqmeterSync.alerts};
+        for (size_t i = 0; i < 3; ++i)
+        {
+            if (!groups[i]->follow || sync.child(names[i]).has("follow") || after.group[i] == before.group[i])
+                continue;
+            groups[i]->follow = false;
+            groups[i]->syncedAt = 0;
+        }
+    }
+
     // Settings saved before spec 020: a group whose values the person had
     // already set stays local; one still at its defaults follows SQMeter.
     void migrateSync(Config &cfg)

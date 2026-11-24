@@ -2,7 +2,6 @@ import { FunctionalComponent } from 'preact';
 import type { SettingsTabProps } from './context';
 import { DepToggle, Field, NumberInput, SelectInput, SettingsCard, TextInput } from './controls';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { locked as isLocked } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // Common time zones in POSIX TZ format
@@ -22,10 +21,9 @@ export const TIMEZONE_OPTIONS = [
 const knownZone = (timezone: string) => TIMEZONE_OPTIONS.some((tz) => tz.value === timezone);
 
 // The zone and its POSIX string (also the setup wizard's time screen, spec 018).
-// Spec 020: read-only while the time group follows SQMeter.
+// Spec 020: follows SQMeter with the time group; spec 026: typing here unfollows it.
 export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config' | 'update' | 'error' | 'status'>> = (props) => {
   const { config, update, error } = props;
-  const locked = isLocked(config, 'time');
   return (
     <>
       <FollowsSqmeter group="time" {...props} />
@@ -33,7 +31,6 @@ export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config'
         <Field label={t('settings.time.timeZone')}>
           <SelectInput
             dataField="ntp.timezone"
-            disabled={locked}
             value={knownZone(config.ntp.timezone) ? config.ntp.timezone : 'custom'}
             options={[...TIMEZONE_OPTIONS, { value: 'custom', label: t('common.custom') }]}
             onChange={(v) => update(['ntp', 'timezone'], v === 'custom' ? '' : v)}
@@ -43,7 +40,6 @@ export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config'
           <Field label={t('settings.time.posixTimeZone')} hint={t('settings.time.eGPst8pdtM32')} error={error('ntp.timezone')}>
             <TextInput
               dataField="ntp.timezone"
-              disabled={locked}
               value={config.ntp.timezone}
               onInput={(v) => update(['ntp', 'timezone'], v)}
             />
@@ -64,7 +60,6 @@ export const TimeZoneCard: FunctionalComponent<SettingsTabProps> = (props) => (
 // `followNote`: false where the time zone above already says the group follows SQMeter (the wizard's Time screen).
 export const NtpFields: FunctionalComponent<SettingsTabProps & { followNote?: boolean }> = (props) => {
   const { config, update, error, deps, fix, followNote = true } = props;
-  const locked = isLocked(config, 'time');
   return (
     <>
       {followNote && <FollowsSqmeter group="time" {...props} />}
@@ -80,7 +75,6 @@ export const NtpFields: FunctionalComponent<SettingsTabProps & { followNote?: bo
           <Field label={t('settings.time.server')} error={error('ntp.server1')}>
             <TextInput
               dataField="ntp.server1"
-              disabled={locked}
               value={config.ntp.server1}
               placeholder="pool.ntp.org"
               onInput={(v) => update(['ntp', 'server1'], v)}
@@ -89,7 +83,6 @@ export const NtpFields: FunctionalComponent<SettingsTabProps & { followNote?: bo
           <Field label={t('settings.time.fallbackServer')}>
             <TextInput
               dataField="ntp.server2"
-              disabled={locked}
               value={config.ntp.server2}
               placeholder="time.nist.gov"
               onInput={(v) => update(['ntp', 'server2'], v)}

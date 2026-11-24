@@ -1,15 +1,15 @@
 import { FunctionalComponent } from 'preact';
 import type { SyncGroup, SyncNeed } from '../../types';
 import type { SettingsTabProps } from './context';
-import { Note } from '../ui';
+import { InfoTip, Note } from '../ui';
 import { follows, fromCopy, keepsSecrets, locked, needs, secretsProblem, syncLine } from '../../lib/syncView';
 import { deviceText } from '../../i18n/deviceMessage';
 import { t } from '../../i18n';
 
-// Spec 020: a group of site settings that follows SQMeter is read-only here
-// (its fields disabled, this note saying why), with "Edit here instead"; a
-// group set here can follow SQMeter again once its address is set. Either is
-// an edit the normal Save keeps.
+// Spec 020: a group of site settings that follows SQMeter says so here; spec
+// 026: typing in one of its fields sets the group here instead (never silently
+// overwritten by the next sync), and "Follow SQMeter again" undoes that. Either
+// is an edit the normal Save keeps.
 
 type Props = Pick<SettingsTabProps, 'config' | 'status' | 'update'> & { group: SyncGroup };
 
@@ -18,32 +18,35 @@ export const FollowsSqmeter: FunctionalComponent<Props> = ({ group, config, stat
   const setFollow = (follow: boolean) => update(['sqmeterSync', group, 'follow'], follow);
   if (!follows(config, group)) {
     if (!config.safety?.http.url.trim()) return null;
-    return <Note action={{ label: t('sync.follow'), onClick: () => setFollow(true) }}>{t('sync.local')}</Note>;
+    // Spec 026: also right after typing here (typing unfollows the group in the same edit).
+    return (
+      <div data-sync={group} data-sync-local>
+        <Note action={{ label: t('sync.follow'), onClick: () => setFollow(true) }}>{t('sync.local')}</Note>
+      </div>
+    );
   }
-  // Without SQMeter's address or held by MQTT roof commands nothing is synced and the fields stay
-  // editable; say that what is typed is replaced once it syncs, unless the group is made local.
+  // Without SQMeter's address or held by MQTT roof commands nothing is synced yet.
   if (!locked(config, group)) {
     const why = config.safety?.http.url.trim() ? t('sync.heldRoofCommands') : t('sync.heldNoAddress');
     return (
       <div data-sync={group}>
-        <Note tone="warn" action={{ label: t('sync.editHere'), onClick: () => setFollow(false) }}>
-          {why}
-        </Note>
+        <Note tone="warn">{why}</Note>
       </div>
     );
   }
-  return <Followed group={group} status={status} onLocal={() => setFollow(false)} />;
+  return <Followed group={group} status={status} />;
 };
 
-// A followed group's line, the device's refusal, and (spec 024) the passwords it keeps or couldn't read.
-const Followed: FunctionalComponent<Pick<Props, 'group' | 'status'> & { onLocal: () => void }> = ({ group, status, onLocal }) => {
+// A followed group's line (typing in its fields sets them here instead: "?"), the device's refusal,
+// and (spec 024) the passwords it keeps or couldn't read.
+const Followed: FunctionalComponent<Pick<Props, 'group' | 'status'>> = ({ group, status }) => {
   const line = syncLine(status?.sync, group);
   const refused = status?.sync?.[group]?.follow ? status.sync[group].refused : null;
   const secrets = secretsProblem(status?.sync, group);
   return (
     <div data-sync={group}>
-      <Note tone={line.problem ? 'warn' : 'muted'} action={{ label: t('sync.editHere'), onClick: onLocal }}>
-        {line.text}
+      <Note tone={line.problem ? 'warn' : 'muted'}>
+        {line.text} <InfoTip text={t('sync.typeHere')} />
       </Note>
       {refused && <Note tone="warn">{deviceText(refused)}</Note>}
       {/* Spec 024: the passwords and switches follow too (switches only ever turn on). */}

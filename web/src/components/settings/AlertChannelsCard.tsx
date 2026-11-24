@@ -4,7 +4,7 @@ import { isPending, soundOptions, type AlertsView } from './alertsShared';
 import { AlertTestNote } from './AlertTemplateEditor';
 import { ActionButton, DepToggle, Field, Group, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
-import { asked, locked as isLocked, ntfyShown } from '../../lib/syncView';
+import { asked, ntfyShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 // `toggle` false: the group without its on switch (the setup wizard ticks channels itself, spec 025).
@@ -81,10 +81,9 @@ const PushoverGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true })
   );
 };
 
-// Spec 020: the server and topic are read-only while the alerts group follows SQMeter.
+// Spec 020: the server and topic follow SQMeter while the group does; spec 026: typing here unfollows it.
 const NtfyGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => {
   const { alerts, set, err, dep, fix, config, status, update } = view;
-  const locked = isLocked(config, 'alerts');
   return (
     <Group>
       {toggle && (
@@ -105,7 +104,6 @@ const NtfyGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => 
               <TextInput
                 type="url"
                 dataField="alerts.ntfy.server"
-                disabled={locked}
                 value={alerts.ntfy.server}
                 onInput={(v) => set(['ntfy', 'server'], v)}
               />
@@ -113,7 +111,6 @@ const NtfyGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => 
             <Field label={t('settings.alerts.topic')} error={err('ntfy.topic')} hint={t('settings.alerts.ntfyTopicsPublic')}>
               <TextInput
                 dataField="alerts.ntfy.topic"
-                disabled={locked}
                 value={alerts.ntfy.topic}
                 onInput={(v) => set(['ntfy', 'topic'], v)}
               />

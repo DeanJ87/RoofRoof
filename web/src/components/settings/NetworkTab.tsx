@@ -23,7 +23,7 @@ import {
   Toggle,
 } from './controls';
 import { FollowsSqmeter, NeedsNote } from './FollowsSqmeter';
-import { locked as isLocked, mqttShown } from '../../lib/syncView';
+import { mqttShown } from '../../lib/syncView';
 import { t } from '../../i18n';
 
 type NetworkTabProps = SettingsTabProps & { originalWifiSsid: string | null };
@@ -135,11 +135,10 @@ const WifiCard: FunctionalComponent<NetworkTabProps> = (props) => {
 };
 
 // Broker, credentials, base topic and interval.
-// Spec 020: the broker, port and user name are read-only while the MQTT group follows SQMeter.
+// Spec 020: the broker, port and user name follow SQMeter while the group does; spec 026: typing here unfollows it.
 export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
   const { config, update, error, status } = props;
   const base = config.mqtt.topic || 'roofroof';
-  const locked = isLocked(config, 'mqtt');
   return (
     <>
       <FollowsSqmeter group="mqtt" {...props} />
@@ -147,7 +146,6 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
         <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
           <TextInput
             dataField="mqttBroker"
-            disabled={locked}
             value={config.mqtt.broker}
             placeholder="192.168.1.100 or fd00::10"
             onInput={(v) => update(['mqtt', 'broker'], v)}
@@ -156,7 +154,6 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
         <Field label={t('settings.network.port')} error={error('mqttPort')}>
           <NumberInput
             dataField="mqttPort"
-            disabled={locked}
             integer
             min={1}
             max={65535}
@@ -167,7 +164,6 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
         <Field label={t('settings.network.username')}>
           <TextInput
             dataField="mqtt.username"
-            disabled={locked}
             value={config.mqtt.username}
             placeholder={t('settings.network.optional')}
             onInput={(v) => update(['mqtt', 'username'], v)}

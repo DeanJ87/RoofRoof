@@ -66,11 +66,33 @@ const withPartners = (paths: string[]): string[] => [
   ]),
 ];
 
-/** `patch` with the other fields of a SENT_TOGETHER group from `full` (the settings as saved) when one of them is in it. */
+/** `path` is `field`, inside it, or holds it. */
+const overlaps = (path: string, field: string) => path === field || path.startsWith(`${field}.`) || field.startsWith(`${path}.`);
+
+/**
+ * Spec 026: the values each group that can follow SQMeter covers. A save that changes one of them
+ * says whether its group still follows, so the device never guesses: a person's edit sends `false`
+ * (typing unfollows), a copy from SQMeter sends `true`; a save that says nothing (a script) unfollows.
+ */
+export const SYNC_GROUP_FIELDS: Record<'time' | 'mqtt' | 'alerts', string[]> = {
+  time: ['ntp.timezone', 'ntp.server1', 'ntp.server2'],
+  mqtt: ['mqtt.broker', 'mqtt.port', 'mqtt.username', 'mqtt.password', 'mqtt.enabled', 'safety.mqtt.topic'],
+  alerts: ['alerts.ntfy.server', 'alerts.ntfy.topic', 'alerts.ntfy.token', 'alerts.ntfy.enabled', 'alerts.pushover'],
+};
+
+/** The follow flags of the sync groups whose values `paths` change. */
+const followPaths = (paths: string[]): string[] =>
+  Object.entries(SYNC_GROUP_FIELDS)
+    .filter(([, fields]) => paths.some((path) => fields.some((field) => overlaps(path, field))))
+    .map(([group]) => `sqmeterSync.${group}.follow`);
+
+/**
+ * `patch` with the other fields of a SENT_TOGETHER group from `full` (the settings as saved) when one of
+ * them is in it, and the follow flag of each SQMeter group whose values it changes (spec 026).
+ */
 export const withSentTogether = (patch: unknown, full: unknown): unknown => {
   const paths = leafPaths(patch);
-  return SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path)))
-    .flat()
+  return [...SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path))).flat(), ...followPaths(paths)]
     .filter((path) => !paths.includes(path) && valueAt(full, path) !== undefined)
     .reduce((out, path) => applyPatch(out, pathPatch(path, valueAt(full, path))), patch);
 };
@@ -127,7 +149,6 @@ export const applyPatch = <T>(target: T, patch: unknown): T => {
   return out as T;
 };
 
-const overlaps = (path: string, field: string) => path === field || path.startsWith(`${field}.`) || field.startsWith(`${path}.`);
 
 /**
  * After a refused save: the person's edits (`edited` against `loaded`) over the device's settings,

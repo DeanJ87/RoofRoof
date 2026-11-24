@@ -12,7 +12,7 @@ import { SqmeterLoginFields } from './SqmeterLoginFields';
 import { SqmeterAddressTest } from './SqmeterAddressTest';
 import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
+import { fromCopy, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
 import { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps } from './ParkFields';
 export { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps };
@@ -228,15 +228,14 @@ export const SqmeterUrlField: FunctionalComponent<SourceFieldProps & { test?: bo
   </>
 );
 
-// Spec 020: read-only while the MQTT group follows SQMeter (SQMeter's base topic is where it publishes `<base>/safe`).
+// Spec 020: follows SQMeter with the MQTT group (its base topic is where it publishes `<base>/safe`); spec 026: typing unfollows.
 export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<SafetyProps, 'config' | 'status'>> = (props) => {
-  const { safety, update, error, config } = props;
+  const { safety, update, error } = props;
   return (
     <>
       <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
         <TextInput
           dataField="safety.mqtt.topic"
-          disabled={isLocked(config, 'mqtt')}
           value={safety.mqtt.topic}
           onInput={(v) => update(['safety', 'mqtt', 'topic'], v)}
         />

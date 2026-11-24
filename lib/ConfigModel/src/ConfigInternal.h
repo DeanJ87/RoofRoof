@@ -274,6 +274,17 @@ namespace SQM::ConfigDetail
     // switches, and their upgrade rule for settings saved before them.
     bool applyLocation(const Section &location, LocationConfig &loc, std::string *error);
     void applySync(const Section &sync, SqmeterSyncConfig &s);
+    // Spec 026: each sync group's own values (time, mqtt, alerts), to tell an
+    // edit of a following group from a save that leaves it alone.
+    struct SyncedValues
+    {
+        std::string group[3];
+    };
+    SyncedValues syncedValues(const Config &cfg);
+    // Spec 026: a save from the UI/API that changes a following group's values
+    // and doesn't say whether it follows makes that group local, so the next
+    // sync never undoes what a person typed.
+    void unfollowEdited(const Section &sync, const SyncedValues &before, Config &cfg);
     void migrateSync(Config &cfg);
 
     // Spec 023 (ConfigJsonBoard.cpp): the pins, the analog front end and the network mode.

@@ -9,6 +9,7 @@ import { fieldErrorAliases } from './settings/payload';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
+import { editChanges } from '../lib/syncView';
 import { locationQuery } from './settings/tabs';
 import type { WizardPageProps } from './wizard/context';
 import { focusField, inPlaceFix, outcomeText, startFrom } from './wizard/flow';
@@ -292,7 +293,7 @@ const Wizard: FunctionalComponent = () => {
   const props: WizardPageProps = {
     config,
     saved,
-    update: (path, value) => editor.applyChanges([[path, value]]),
+    update: (path, value) => editor.applyChanges(editChanges(editor.config, path, value, editor.status?.sync)), // spec 026
     updateMany: editor.applyChanges,
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     status,

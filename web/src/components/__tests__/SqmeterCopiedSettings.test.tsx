@@ -10,8 +10,8 @@ import type { Config, SyncStatus } from '../../types';
 
 // Spec 020: SQMeter's login next to its address, and every value copied from
 // SQMeter lands as an ordinary setting on its own Settings page, visible (also
-// with MQTT or the channel off), marked "Follows SQMeter" and editable with
-// "Edit here instead"; a secret to enter is asked for at its field.
+// with MQTT or the channel off), marked "Follows SQMeter" and editable (spec 026:
+// typing sets the group here); a secret to enter is asked for at its field.
 
 const field = (path: string) => document.querySelector<HTMLInputElement>(`[data-field="${path}"]`);
 const findField = (path: string) =>
@@ -170,15 +170,17 @@ describe('Copied values on their own Settings pages', () => {
     const broker = await findField('mqttBroker');
     expect(broker).toHaveValue('192.168.1.10');
     expect(field('mqtt.username')).toHaveValue('observatory');
-    expect(broker).toBeDisabled();
+    expect(broker).toBeEnabled();
     expect(screen.getByText('Follows SQMeter once saved')).toBeInTheDocument();
     expect(field('mqtt.password')).toBeEnabled();
     // SQMeter's broker has a password: it is asked for at the field until one is typed.
     expect(screen.getByText("SQMeter's broker needs a password: enter it here.")).toBeInTheDocument();
     fireEvent.input(field('mqtt.password')!, { target: { value: 'secret' } });
     expect(screen.queryByText("SQMeter's broker needs a password: enter it here.")).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit here instead' }));
-    await waitFor(() => expect(field('mqttBroker')).toBeEnabled());
+    // The asked-for password fills the gap: the group still follows. Typing the broker sets it here.
+    expect(screen.getByText('Follows SQMeter once saved')).toBeInTheDocument();
+    fireEvent.input(broker, { target: { value: '10.9.9.9' } });
+    expect(await screen.findByText('Set here, not from SQMeter')).toBeInTheDocument();
   });
 
   it("a new broker without a password: RoofRoof's old one is cleared, and not said to be SQMeter's", async () => {
@@ -202,7 +204,7 @@ describe('Copied values on their own Settings pages', () => {
     await toTab('Time');
     expect(await findField('ntp.timezone')).toHaveValue('GMT0BST,M3.5.0/1,M10.5.0');
     expect(field('ntp.server2')).toHaveValue('time.nist.gov');
-    expect(screen.getAllByRole('button', { name: 'Edit here instead' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Follows SQMeter once saved').length).toBeGreaterThan(0);
   });
 
   it('ntfy off: the copied server and topic show on Alerts, marked', async () => {
@@ -212,8 +214,8 @@ describe('Copied values on their own Settings pages', () => {
     await toTab('Alerts');
     expect(await findField('alerts.ntfy.topic')).toHaveValue('my-observatory');
     expect(field('alerts.ntfy.server')).toHaveValue('https://ntfy.sh');
-    expect(field('alerts.ntfy.topic')).toBeDisabled();
-    expect(field('alerts.ntfy.token')).toBeEnabled();
+    expect(field('alerts.ntfy.topic')).toBeEnabled();
+    expect(screen.getAllByText('Follows SQMeter once saved').length).toBeGreaterThan(0);
   });
 
   it('the MQTT weather source off: a copied weather topic shows on Roof, marked', async () => {
@@ -227,7 +229,7 @@ describe('Copied values on their own Settings pages', () => {
     expect(field('safety.mqtt.topic')).toBeNull();
     await copyAll();
     expect(await findField('safety.mqtt.topic')).toHaveValue('observatory/sqm');
-    expect(field('safety.mqtt.topic')).toBeDisabled();
+    expect(screen.getAllByText('Follows SQMeter once saved').length).toBeGreaterThan(0);
   });
 
   it('the copied location follows SQMeter on the Daylight card', async () => {

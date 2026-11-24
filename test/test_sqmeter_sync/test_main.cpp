@@ -378,9 +378,12 @@ void test_the_switches_round_trip_and_the_api_never_sets_synced_at()
     TEST_ASSERT_EQUAL_UINT32(0, api->sqmeterSync.time.syncedAt); // made local: no longer the device's
     const auto keep = Config::fromJson(R"({"sqmeterSync":{"time":{"follow":true,"syncedAt":7}}})", &c);
     TEST_ASSERT_EQUAL_UINT32(42, keep->sqmeterSync.time.syncedAt);
-    // From the API a missing section changes nothing (no upgrade rule).
-    const auto none = Config::fromJson(R"({"ntp":{"timezone":"PST8PDT"}})", &c);
+    // From the API there is no upgrade rule: a save that leaves the group's values keeps it
+    // following; spec 026: one that changes them without saying makes the group local.
+    const auto none = Config::fromJson(R"({"deviceName":"Roof"})", &c);
     TEST_ASSERT_TRUE(none->sqmeterSync.time.follow);
+    const auto typed = Config::fromJson(R"({"ntp":{"timezone":"PST8PDT"}})", &c);
+    TEST_ASSERT_FALSE(typed->sqmeterSync.time.follow);
 }
 
 // --- The read of SQMeter's settings and the status ---------------------------------
@@ -461,6 +464,51 @@ void test_a_large_settings_document_fits_the_filtered_document()
     printf("filtered settings: %u of %u bytes (host)\n", static_cast<unsigned>(doc.memoryUsage()), static_cast<unsigned>(CONFIG_DOC_BYTES));
 }
 
+// --- Spec 026: typing in a followed group sets it here --------------------------------
+
+namespace
+{
+    // A save from the UI/API (strict) onto `cfg`.
+    void saved(Config &cfg, const std::string &json)
+    {
+        std::string error;
+        TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(json, cfg, true, &error), error.c_str());
+    }
+} // namespace
+
+void test_a_save_that_changes_a_followed_group_without_saying_unfollows_it()
+{
+    Config c = sync(live(), sqmeter(), NOW, true).next;
+    saved(c, R"({"mqtt":{"username":"me","password":"mine"}})");
+    TEST_ASSERT_FALSE(c.sqmeterSync.mqtt.follow);
+    TEST_ASSERT_EQUAL_UINT32(0, c.sqmeterSync.mqtt.syncedAt);
+    TEST_ASSERT_TRUE(c.sqmeterSync.time.follow); // the other groups keep following
+    TEST_ASSERT_TRUE(c.sqmeterSync.alerts.follow);
+    // The keep rule then leaves the typed values alone: they are never overwritten.
+    const Config before = sync(live(), sqmeter(), NOW, true).next;
+    keepFollowed(before, c);
+    TEST_ASSERT_EQUAL_STRING("me", c.mqtt.username.c_str());
+    TEST_ASSERT_EQUAL_STRING("mine", c.mqtt.password.c_str());
+    // And the next sync doesn't touch a local group.
+    TEST_ASSERT_EQUAL_STRING("me", sync(c, sqmeter(), NOW + 600, true).next.mqtt.username.c_str());
+}
+
+void test_a_save_that_says_follow_keeps_following()
+{
+    Config c = sync(live(), sqmeter(), NOW, true).next;
+    saved(c, R"({"ntp":{"timezone":"PST8PDT"},"sqmeterSync":{"time":{"follow":true}}})");
+    TEST_ASSERT_TRUE(c.sqmeterSync.time.follow); // a copy from SQMeter says so
+}
+
+void test_a_save_that_leaves_the_groups_alone_keeps_following()
+{
+    Config c = sync(live(), sqmeter(), NOW, true).next;
+    saved(c, R"({"deviceName":"Roof","mqtt":{"password":"********"},"alerts":{"ntfy":{"server":"https://ntfy.example"}}})");
+    TEST_ASSERT_TRUE(c.sqmeterSync.mqtt.follow); // the mask keeps the password: nothing changed
+    TEST_ASSERT_TRUE(c.sqmeterSync.alerts.follow); // the same server
+    TEST_ASSERT_TRUE(c.sqmeterSync.time.follow);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -490,5 +538,8 @@ int main(int, char **)
     RUN_TEST(test_the_status_section);
     RUN_TEST(test_the_status_without_an_address_or_with_nothing_followed);
     RUN_TEST(test_a_large_settings_document_fits_the_filtered_document);
+    RUN_TEST(test_a_save_that_changes_a_followed_group_without_saying_unfollows_it);
+    RUN_TEST(test_a_save_that_says_follow_keeps_following);
+    RUN_TEST(test_a_save_that_leaves_the_groups_alone_keeps_following);
     return UNITY_END();
 }
