@@ -62,6 +62,13 @@ namespace SQM
             128);
         confirm->setMethod(HTTP_POST);
         server.addHandler(confirm);
+        // Spec 026: a person's attended release of the automatic close's stand-down.
+        AsyncCallbackJsonWebHandler *release = new AsyncCallbackJsonWebHandler(
+            "/api/roof/release-hold",
+            [this](AsyncWebServerRequest *request, JsonVariant &json) { handleReleaseHold(request, json); },
+            64);
+        release->setMethod(HTTP_POST);
+        server.addHandler(release);
         server.on("/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
         server.on("/api/roof/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCalibrationStatus(request); });
         server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
@@ -116,6 +123,27 @@ namespace SQM
             return;
         }
         sendOutcome(request, roof->clearFault(Roof::Origin::Person));
+    }
+
+    // Spec 026 (contracts/release-hold.md): only a person, logged in, with the
+    // command header, at the roof; the stand-down ends at the next step, and
+    // only while nothing wants the roof closed. It never moves the roof.
+    void WebServer::handleReleaseHold(AsyncWebServerRequest *request, JsonVariant &json)
+    {
+        if (!requireAuth(request) || !requireCommandHeader(request))
+            return;
+        if (!json["attended"].is<bool>() || !json["attended"].as<bool>())
+        {
+            request->send(400, "application/json", createErrorJson("Confirm that you are at the roof and can see it").c_str());
+            return;
+        }
+        const char *refusal = releaseHold ? releaseHold() : "The automatic close isn't running";
+        if (refusal != nullptr)
+        {
+            request->send(409, "application/json", createErrorJson(refusal).c_str());
+            return;
+        }
+        request->send(200, "application/json", "{\"success\":true}");
     }
 
     // Spec 016 (contracts/calibration-api.md): only a person, logged in, with
@@ -259,6 +287,8 @@ namespace SQM
         const char *phase = closePhase ? closePhase() : nullptr;
         if (phase != nullptr)
             s.closePhase = phase;
+        if (standDownSeconds)
+            s.closeRearmSeconds = standDownSeconds();
         if (daylightSource)
             s.daylight = daylightSource();
         s.testBox = testBoxState();
@@ -280,6 +310,7 @@ namespace SQM
         JsonObject out = doc.createNestedObject("roof");
         RoofIo::writeStatus(out, snapshot);
         RoofIo::writeDaylight(out, snapshot);
+        RoofIo::writeCloseRearm(out, snapshot);
     }
 
     // Open, close and stop from <base>/roof/set (spec 008 FR-004 to FR-009).

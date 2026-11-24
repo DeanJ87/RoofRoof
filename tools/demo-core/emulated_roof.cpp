@@ -374,6 +374,15 @@ namespace DemoRoof
 
     // --- The close sequence (CloseOnUnsafe::handle) ------------------------------
 
+    const char *EmulatedRoof::releaseHold()
+    {
+        const bool nothingWantsClose = verdict.verdict == Safety::Verdict::Safe && !daylightView.closes();
+        const char *refusal = CloseSeq::releaseRefusal(sequence.phase(), nothingWantsClose);
+        if (refusal == nullptr)
+            releaseWanted = true;
+        return refusal;
+    }
+
     void EmulatedRoof::stepSequence()
     {
         CloseSeq::Inputs in;
@@ -384,6 +393,8 @@ namespace DemoRoof
         in.remoteStops = remoteStops;
         in.roofStarted = true;
         in.daylight = daylightView.closes();
+        in.releaseHold = releaseWanted; // spec 026
+        releaseWanted = false;
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
         sequence.setPolicy(policy);
         const CloseSeq::Phase before = sequence.phase();

@@ -65,6 +65,13 @@ namespace SQM
         // Any task: the sequence's phase as of its last step (spec 008: the
         // status document and MQTT).
         CloseSeq::Phase phase() const { return static_cast<CloseSeq::Phase>(phaseNow.load()); }
+        // Spec 026, any task: the stand-down's seconds left if nothing wants the
+        // roof closed meanwhile (-1: not counting down), as of the last step.
+        int32_t standDownSeconds() const { return standDownLeftS.load(); }
+        // Spec 026, any task: a person's attended release of a stand-down,
+        // applied by the next step (the sequence checks again there). Refused
+        // (nullptr: accepted) when there is none, or something wants the roof closed.
+        const char *requestRelease();
 
     private:
         static constexpr const char *TAG = "Close";
@@ -84,6 +91,9 @@ namespace SQM
         CloseSeq::Sequence sequence;
         std::atomic<uint8_t> phaseNow{static_cast<uint8_t>(CloseSeq::Phase::Idle)};
         std::atomic<uint32_t> parkTimeoutMs{CloseSeq::DEFAULT_PARK_TIMEOUT_MS};
+        std::atomic<int32_t> standDownLeftS{-1};
+        std::atomic<bool> nothingWantsClose{false}; // the last step: weather safe and no daylight close
+        std::atomic<bool> releaseWanted{false};
         AlertSink alertSink;
         DeliveryProbe deliveryProbe;
         CloseSeq::AlertRetry retry;

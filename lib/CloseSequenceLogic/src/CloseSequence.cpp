@@ -300,6 +300,10 @@ namespace SQM
             // Safe for policy.rearmSafeMs since standing down, not since before it.
             if (safeLong && elapsed(phaseSinceMs, in.nowMs) >= policy.rearmSafeMs)
                 return enter(Phase::Idle, Event::EndedSafe);
+            // Spec 026: a person's release ends it early, only while nothing wants
+            // the roof closed: the close is armed again, never started by it.
+            if (in.releaseHold && in.weatherSafe && !personStopped && current != Phase::CannotMove)
+                return enter(Phase::Idle, Event::EndedSafe);
             // A stop while the roof can't move (before a person clears a fault,
             // say) still stands the sequence down once it can.
             if (personStopped && current == Phase::CannotMove)
@@ -312,6 +316,14 @@ namespace SQM
                 return enter(Phase::RetryWait);
             }
             return Decision{};
+        }
+
+        uint64_t Sequence::standDownLeftMs() const
+        {
+            if ((current != Phase::HeldByPerson && current != Phase::Halted) || !safe.on)
+                return NOT_COUNTING;
+            const uint64_t endsMs = std::max(safe.sinceMs, phaseSinceMs) + policy.rearmSafeMs;
+            return endsMs > lastNowMs ? endsMs - lastNowMs : 0;
         }
 
         Decision Sequence::closeAnswered(CloseAnswer answer)

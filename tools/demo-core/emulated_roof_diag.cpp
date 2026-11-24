@@ -83,6 +83,8 @@ namespace DemoRoof
         s.simulation = "demo";
         RoofIo::applyChecks(s, gates); // spec 008: the weather and park as the checks see them
         s.closePhase = CloseSeq::phaseName(sequence.phase());
+        const uint64_t leftMs = sequence.standDownLeftMs(); // spec 026
+        s.closeRearmSeconds = leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000);
         s.daylight = CloseSeq::daylightStatus(daylightView);
         s.testBox = testBoxState;
         return s;

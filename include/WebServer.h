@@ -92,6 +92,15 @@ namespace SQM
         // and the MQTT document). Called from any task, so it must be.
         using ClosePhase = std::function<const char *()>;
         void setClosePhase(ClosePhase source) { closePhase = std::move(source); }
+        // Spec 026 (any task): the stand-down's seconds left (-1: not counting),
+        // and a person's release of it (nullptr: accepted, else why not).
+        using StandDownSeconds = std::function<int32_t()>;
+        using ReleaseHold = std::function<const char *()>;
+        void setCloseHold(StandDownSeconds seconds, ReleaseHold release)
+        {
+            standDownSeconds = std::move(seconds);
+            releaseHold = std::move(release);
+        }
         // Spec 013: the daylight state for the status document (any task).
         using DaylightSource = std::function<RoofIo::DaylightStatus()>;
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
@@ -171,6 +180,8 @@ namespace SQM
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;
+        StandDownSeconds standDownSeconds;
+        ReleaseHold releaseHold;
         DaylightSource daylightSource;
         InputsSource inputsSource;
         const char *lastClosePhase = nullptr; // as last broadcast on /ws/status
@@ -347,6 +358,7 @@ namespace SQM
         void handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command);
         void handleRoofInputs(AsyncWebServerRequest *request);
         void handleRoofClearFault(AsyncWebServerRequest *request);
+        void handleReleaseHold(AsyncWebServerRequest *request, JsonVariant &json);
         // Spec 016: the calibration run.
         void handleCalibrationStart(AsyncWebServerRequest *request, JsonVariant &json);
         void handleCalibrationAbort(AsyncWebServerRequest *request);

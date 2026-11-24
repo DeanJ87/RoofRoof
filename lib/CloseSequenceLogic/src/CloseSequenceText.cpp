@@ -189,5 +189,13 @@ namespace SQM
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }
+        const char *releaseRefusal(Phase phase, bool nothingWantsClose)
+        {
+            if (phase != Phase::HeldByPerson && phase != Phase::Halted)
+                return "The automatic close isn't standing down: there is nothing to release";
+            if (!nothingWantsClose)
+                return "The weather or the daylight check wants the roof closed: the stand-down can't be released now";
+            return nullptr;
+        }
     } // namespace CloseSeq
 } // namespace SQM

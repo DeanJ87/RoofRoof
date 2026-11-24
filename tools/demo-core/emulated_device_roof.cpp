@@ -42,6 +42,12 @@ std::string EmulatedDevice::roofCommand(const std::string &name)
         outcome = roof.command(Roof::Command::Stop, Roof::Origin::Person);
     else if (name == "clear-fault")
         outcome = roof.clearFault();
+    else if (name == "release-hold")
+    {
+        // Spec 026: the web page checks the attended confirmation (handlers.ts), as the firmware's route does.
+        const char *refusal = roof.releaseHold();
+        return refusal == nullptr ? response(200, "{\"success\":true}") : response(409, errorJson(refusal));
+    }
     else
         return response(404, errorJson("Not found"));
     return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
