@@ -195,7 +195,8 @@ namespace SQM
         in.personStops = snap.personStops;
         in.remoteStops = snap.remoteStops;
         in.roofStarted = roof.running();
-        in.daylight = daylightView.closes(); // spec 013
+        in.daylight = daylightView.closes();            // spec 013
+        in.releaseHold = releaseWanted.exchange(false); // spec 026
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
         {
             std::lock_guard<std::mutex> held(daylightLock);
@@ -207,6 +208,11 @@ namespace SQM
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
         phaseNow.store(static_cast<uint8_t>(sequence.phase()));
+        nothingWantsClose.store(in.weatherSafe && !in.daylight);
+        const uint64_t leftMs = sequence.standDownLeftMs();
+        standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
+        if (in.releaseHold)
+            Logger::warn(TAG, "%s", CloseSeq::releaseLogText(before, sequence.phase()));
         keep();
         retryAlert(now);
         countClosed(before, decision);
@@ -236,6 +242,14 @@ namespace SQM
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
         }
+    }
+
+    const char *CloseOnUnsafe::requestRelease()
+    {
+        const char *refusal = CloseSeq::releaseRefusal(phase(), nothingWantsClose.load());
+        if (refusal == nullptr)
+            releaseWanted.store(true);
+        return refusal;
     }
 
     // Each close the sequence saw finish, as a weather or a daylight episode (spec 013).

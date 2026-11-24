@@ -66,11 +66,54 @@ const withPartners = (paths: string[]): string[] => [
   ]),
 ];
 
-/** `patch` with the other fields of a SENT_TOGETHER group from `full` (the settings as saved) when one of them is in it. */
+/** `path` is `field`, inside it, or holds it. */
+const overlaps = (path: string, field: string) => path === field || path.startsWith(`${field}.`) || field.startsWith(`${path}.`);
+
+/**
+ * Spec 026: the values each group that can follow SQMeter covers. A save that changes one of them
+ * says whether its group still follows, so the device never guesses: a person's edit sends `false`
+ * (typing unfollows), a copy from SQMeter sends `true`; a save that says nothing (a script) unfollows.
+ */
+export const SYNC_GROUP_FIELDS: Record<'time' | 'mqtt' | 'alerts', string[]> = {
+  time: ['ntp.timezone', 'ntp.server1', 'ntp.server2'],
+  mqtt: ['mqtt.broker', 'mqtt.port', 'mqtt.username', 'mqtt.password', 'mqtt.enabled', 'safety.mqtt.topic'],
+  alerts: [
+    'alerts.ntfy.server',
+    'alerts.ntfy.topic',
+    'alerts.ntfy.token',
+    'alerts.ntfy.enabled',
+    'alerts.pushover.userKey',
+    'alerts.pushover.appToken',
+    'alerts.pushover.enabled',
+  ],
+};
+
+/** Spec 026: each roof value the device marks as measured (RoofConfig::MEASURED_* bits). */
+export const MEASURED_FIELDS: Record<string, number> = {
+  'roof.travelMm': 1,
+  'roof.speedMmPerSecond': 2,
+  'roof.timeoutMarginSeconds': 4,
+  'roof.hallHighEnd': 8,
+  'roof.hallHighCounts': 8,
+  'roof.hallLowCounts': 8,
+  'roof.openDirection': 16,
+};
+
+/** The follow flags of the sync groups whose values `paths` change. */
+const followPaths = (paths: string[]): string[] =>
+  Object.entries(SYNC_GROUP_FIELDS)
+    .filter(([, fields]) => paths.some((path) => fields.some((field) => overlaps(path, field))))
+    .map(([group]) => `sqmeterSync.${group}.follow`);
+
+/**
+ * `patch` with the other fields of a SENT_TOGETHER group from `full` (the settings as saved) when one of
+ * them is in it, and the follow flag of each SQMeter group whose values it changes (spec 026).
+ */
 export const withSentTogether = (patch: unknown, full: unknown): unknown => {
   const paths = leafPaths(patch);
-  return SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path)))
-    .flat()
+  // A measured roof value goes with `roof.measured` as edited, so the device never guesses (spec 026).
+  const measured = paths.some((path) => path in MEASURED_FIELDS) ? ['roof.measured'] : [];
+  return [...SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path))).flat(), ...followPaths(paths), ...measured]
     .filter((path) => !paths.includes(path) && valueAt(full, path) !== undefined)
     .reduce((out, path) => applyPatch(out, pathPatch(path, valueAt(full, path))), patch);
 };
@@ -127,8 +170,6 @@ export const applyPatch = <T>(target: T, patch: unknown): T => {
   return out as T;
 };
 
-const overlaps = (path: string, field: string) => path === field || path.startsWith(`${field}.`) || field.startsWith(`${path}.`);
-
 /**
  * After a refused save: the person's edits (`edited` against `loaded`) over the device's settings,
  * except those to the changed fields and their credential partners (a password typed for a
@@ -145,5 +186,19 @@ export const rebaseEdits = <T>(fresh: T, loaded: T, edited: T, changedFields: st
     if (unknown || changed.some((field) => overlaps(path, field))) replaced.push(path);
     else setAt(kept, path, valueAt(edits, path));
   });
-  return { config: applyPatch(fresh, kept), replaced };
+  return { config: keepBookkeeping(applyPatch(fresh, kept), leafPaths(kept), edited), replaced };
+};
+
+/**
+ * Spec 026: after a rebase, the kept edits still say what they are: a measured roof value typed here
+ * is not measured, and a group typed in while it was set here stays set here, whatever the device's
+ * flags now say.
+ */
+const keepBookkeeping = <T>(config: T, kept: string[], edited: T): T => {
+  let out = config;
+  const measured = valueAt(out, 'roof.measured');
+  const cleared = kept.reduce((bits, path) => bits | (MEASURED_FIELDS[path] ?? 0), 0);
+  if (typeof measured === 'number' && cleared) out = applyPatch(out, pathPatch('roof.measured', measured & ~cleared));
+  for (const path of followPaths(kept)) if (valueAt(edited, path) === false) out = applyPatch(out, pathPatch(path, false));
+  return out;
 };

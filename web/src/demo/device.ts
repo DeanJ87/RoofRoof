@@ -358,7 +358,8 @@ class DemoDevice {
         // Set up already (spec 015): the Demo panel restarts the setup wizard.
         setup: { state: 'done', step: 0 },
         // Spec 020: the time follows the simulated SQMeter; the broker and the ntfy topic stay the demo's own.
-        sqmeterSync: { mqtt: { follow: false }, alerts: { follow: false } },
+        // Spec 026: a save that sets a group's values says whether it follows (else it is set here).
+        sqmeterSync: { time: { follow: true }, mqtt: { follow: false }, alerts: { follow: false } },
       }),
     );
     this.core.loadConfig(this.core.getConfig(false)); // what the hardware boots with

@@ -9,6 +9,7 @@ import { fieldErrorAliases } from './settings/payload';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
+import { editBatch, editChanges } from '../lib/syncView';
 import { locationQuery } from './settings/tabs';
 import type { WizardPageProps } from './wizard/context';
 import { focusField, inPlaceFix, outcomeText, startFrom } from './wizard/flow';
@@ -292,8 +293,9 @@ const Wizard: FunctionalComponent = () => {
   const props: WizardPageProps = {
     config,
     saved,
-    update: (path, value) => editor.applyChanges([[path, value]]),
-    updateMany: editor.applyChanges,
+    update: (path, value) => editor.applyChanges(editChanges(editor.config, path, value, editor.status?.sync)), // spec 026
+    // Spec 026: the same rule for several edits at once (a copy's own follow flags come last and stand).
+    updateMany: (changes) => editor.applyChanges(editBatch(editor.config, changes, editor.status?.sync)),
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     status,
     dirty,
@@ -302,7 +304,7 @@ const Wizard: FunctionalComponent = () => {
     // FR-007: a fix made here when the wizard can, else saved and then Settings.
     fix: (entry) => {
       const inPlace = inPlaceFix(entry);
-      if (inPlace && 'turnOn' in inPlace) return editor.applyChanges([[inPlace.turnOn, true]]);
+      if (inPlace && 'turnOn' in inPlace) return editor.applyChanges(editChanges(editor.config, inPlace.turnOn, true, editor.status?.sync));
       if (inPlace) return void openScreen(screenIndex(inPlace.screen));
       const target = fixTarget(entry);
       if (!('restart' in target)) void leaveTo(`/settings?tab=${target.tab}`);

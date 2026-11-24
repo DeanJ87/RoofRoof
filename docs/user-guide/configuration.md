@@ -20,17 +20,19 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     ![Device settings](../assets/screenshots/settings-device.png)
 
 === "Roof"
-    How the roof moves, the Hall sensor, current sense and the supply, the weather sources, the mount park and the daylight failsafe:
+    The roof's settings in the order a roof is set up, under **Roof setup**: the seven stages (board and wiring, weather check, park check, opening direction, ends taught, calibration run, alerts), each **Done**, **To do**, **Not measured** or **Bypassed** (test box), with a link to the page that does it. The same list is a card on the dashboard until every stage is done. Then:
 
-    - **Roof motion**: travel, speed, timeout margin, the time to leave a magnet, ramps, top and slow duty, and the opening direction - see [Roof motion](roof-motion.md).
+    - **Pins**: a link to the [Pins](pins.md) page, where the board, its pins and the wiring check are (also reached from the **System** page).
+    - **Weather sources** and **Copy from SQMeter**, then **Mount park** (below).
+    - **Direction and speed**: the opening direction, top and slow duty, the ramps and the time to leave a magnet - see [Roof motion](roof-motion.md).
     - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
+    - **Travel and time limits**: travel, speed and the timeout margin, and the move time limits they make (**Open or close limit**, and **Slow-duty limit (slow speed)** for a move from an unknown position, as the calibration result names them), worked out as the device does. A note says whether travel and speed were measured on the roof, are still the defaults or were typed, with a link to the [calibration run](calibration-run.md); its time limit is under **Advanced**.
     - **Current and supply**: current sense and its limits, and the minimum supply.
     - **Weather sources**: SQMeter over HTTP and over MQTT and the stale time - see [Safety inputs](safety-inputs.md).
     - **Mount park**: what confirms the park (N.I.N.A. only, park switches only, or both), the switches fitted, the N.I.N.A. address and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
     - **Daylight**: the mode (**Off**, **Alert**, **Alert and close**), the **Sun altitude** threshold and the site's latitude and longitude - see the [daylight failsafe](close-on-unsafe.md#daylight-failsafe). The **Daylight band** is under **Advanced**.
     - **Automatic close**: how the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) behaves - the safe spell that re-arms it after a Stop, the reminder interval, what happens when a close doesn't start and whether a Stop from an imaging app or MQTT calls it off. The timings that rarely need changing are under **Advanced**. While Alpaca is off a note says imaging apps can't open or close the roof, with a button to the [ASCOM Alpaca](alpaca.md#nina-opens-and-closes-the-roof) card.
-    - **Ask before Open and Close** (in **Roof motion**): Open and Close on the dashboard ask once before they are sent. Stop never asks.
-    - **Pins**: a link to the [Pins](pins.md) page, where the board, its pins and the wiring check are (also reached from the **System** page).
+    - **Ask before Open and Close** (in **Direction and speed**): Open and Close on the dashboard ask once before they are sent. Stop never asks.
 
     While the roof is opening or closing the tab says so: the device refuses every save until it stops. Saving while the roof is stopped part-way makes its position unknown, and the tab says that too.
 
@@ -337,7 +339,8 @@ sense off.
 | `roof.slowSpeedDutyPercent` | int | `0` | The slow duty the slow speed was measured at (10-100, `0` = none), set with it when a calibration proposal is accepted. The slow speed counts only while `roof.slowDutyPercent` is still this; after changing the slow duty, run the calibration again |
 | `roof.timeoutMarginSeconds` | int | `15` | Added to a move's expected time to give its hard timeout (3-300) |
 | `roof.leaveMagnetSeconds` | int | `10` | A move from an end must leave its magnet within this time (2-120) |
-| `roof.calibrationLimitSeconds` | int | `180` | The longest one leg of a [calibration run](calibration-run.md) may drive before it faults `timeout` (30-600); later legs are also bounded by the measured ones. In **Settings → Roof → Calibration run → Advanced** |
+| `roof.calibrationLimitSeconds` | int | `180` | The longest one leg of a [calibration run](calibration-run.md) may drive before it faults `timeout` (30-600); later legs are also bounded by the measured ones. In **Settings → Roof → Travel and time limits → Advanced** |
+| `roof.measured` | int | `0` | Spec 026: which roof values were measured on the roof and not typed since, as bits: 1 travel, 2 speed, 4 timeout margin, 8 the Hall end and thresholds, 16 the opening direction. Set by an accepted calibration run (which sends it), by **Confirm** after teaching the ends, and by the setup wizard's direction screen; a save that changes one of those values without sending `measured` clears its bit. Unknown bits are dropped. Shown as the **Roof setup** stages and the note under travel and speed |
 | `roof.rampUpMs` | int | `2000` | Soft start, slow duty to top duty (0-30000) |
 | `roof.rampDownMs` | int | `3000` | Slowing near the end: the zone is the distance covered at the top duty in this time (0-30000) |
 | `roof.topDutyPercent` | int | `100` | Highest motor duty (20-100) |

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
+import { englishOnly } from './vite.i18n';
 
 // Set ESP32 IP address for development
 // Update this to match your ESP32's IP when connected to WiFi
@@ -7,7 +8,7 @@ import preact from '@preact/preset-vite';
 const ESP32_IP = '192.168.1.128';
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact(), englishOnly()],
   build: {
     outDir: 'dist',
     assetsDir: 'assets',

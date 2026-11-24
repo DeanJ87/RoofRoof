@@ -33,6 +33,7 @@
     "roof.timeoutMarginSeconds",
     "roof.leaveMagnetSeconds",
     "roof.calibrationLimitSeconds",
+    "roof.measured",
     "roof.rampUpMs",
     "roof.rampDownMs",
     "roof.topDutyPercent",

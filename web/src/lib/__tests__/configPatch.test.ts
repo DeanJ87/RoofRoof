@@ -124,3 +124,39 @@ describe('withSentTogether', () => {
     expect(withSentTogether({ park: { switches: 'one' } }, { park: { switches: 'one' } })).toEqual({ park: { switches: 'one' } });
   });
 });
+
+// Spec 026: a save that changes an SQMeter group's values says whether it still follows.
+describe('withSentTogether and the follow flags', () => {
+  it('adds the follow flag of each group whose values the patch changes', () => {
+    const full = { sqmeterSync: { time: { follow: true }, mqtt: { follow: false }, alerts: { follow: true } } };
+    expect(withSentTogether({ mqtt: { username: 'me' } }, full)).toEqual({
+      mqtt: { username: 'me' },
+      sqmeterSync: { mqtt: { follow: false } },
+    });
+    expect(withSentTogether({ ntp: { timezone: 'UTC0' } }, full)).toEqual({
+      ntp: { timezone: 'UTC0' },
+      sqmeterSync: { time: { follow: true } },
+    });
+    expect(withSentTogether({ deviceName: 'Roof' }, full)).toEqual({ deviceName: 'Roof' });
+  });
+});
+
+// Spec 026: a measured roof value always goes with roof.measured as edited (a recalibration keeps its bits).
+describe('withSentTogether and roof.measured', () => {
+  it('adds roof.measured when a measured value changes', () => {
+    const full = { roof: { travelMm: 2100, speedMmPerSecond: 41, measured: 31 } };
+    expect(withSentTogether({ roof: { speedMmPerSecond: 41 } }, full)).toEqual({ roof: { speedMmPerSecond: 41, measured: 31 } });
+    expect(withSentTogether({ roof: { rampUpMs: 100 } }, full)).toEqual({ roof: { rampUpMs: 100 } });
+  });
+});
+
+// Spec 026: a rebase keeps what the kept edits are: a typed measured value isn't measured.
+describe('rebaseEdits keeps the bookkeeping', () => {
+  it('clears the bit of a kept measured value even when the device changed roof.measured', () => {
+    const loaded = { roof: { travelMm: 1850, measured: 0 } };
+    const edited = { roof: { travelMm: 2000, measured: 0 } };
+    const fresh = { roof: { travelMm: 1850, measured: 31 } };
+    const { config } = rebaseEdits(fresh, loaded, edited, ['roof.measured']);
+    expect(config).toEqual({ roof: { travelMm: 2000, measured: 30 } });
+  });
+});

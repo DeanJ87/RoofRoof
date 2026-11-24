@@ -192,6 +192,13 @@ export const demoHandlers = [
   ...(['open', 'close', 'stop', 'clear-fault'] as const).map((name) =>
     http.post(`/api/roof/${name}`, () => reply(demoDevice.roofCommand(name))),
   ),
+  // Spec 026: a person's attended release of the automatic close's stand-down (the firmware's 400 without it)
+  http.post('/api/roof/release-hold', async ({ request }) => {
+    const body = (await request.json().catch(() => null)) as { attended?: unknown } | null;
+    if (body?.attended !== true)
+      return reply({ status: 400, body: JSON.stringify({ error: 'Confirm that you are at the roof and can see it' }) });
+    return reply(demoDevice.roofCommand('release-hold'));
+  }),
 
   // The calibration run (spec 016): the device's own run, on the simulated roof
   http.get('/api/roof/calibration', () => reply(demoDevice.calibration('status'))),

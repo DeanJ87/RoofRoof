@@ -539,6 +539,12 @@
         "closePhase": {
           "type": "string"
         },
+        "closeRearmSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "currentSense": {
           "type": "boolean"
         },
@@ -856,6 +862,7 @@
         "calibrating",
         "closePending",
         "closePhase",
+        "closeRearmSeconds",
         "currentSense",
         "daylight",
         "driving",

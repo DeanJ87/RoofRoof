@@ -8,9 +8,10 @@ import { mockDevice } from '../../test/mockDevice';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import type { Config, SyncGroup, SyncStatus } from '../../types';
 
-// Spec 020: a group that follows SQMeter is read-only in Settings, with "Edit
-// here instead"; a group set here can follow again; a secret SQMeter has and
-// RoofRoof lacks is asked for at its field.
+// Spec 020: a group that follows SQMeter says so in Settings; spec 026: its
+// fields stay editable and typing in one sets the group here ("Set here, not
+// from SQMeter", Follow SQMeter again), never silently overwritten later; a
+// secret SQMeter has and RoofRoof lacks is asked for at its field.
 
 const following = (...groups: SyncGroup[]) => {
   const sync = structuredClone(mockConfig.sqmeterSync!);
@@ -53,22 +54,19 @@ const groupStatus = (follow: boolean, extra: Partial<SyncStatus['time']> = {}) =
 describe('Following SQMeter', () => {
   afterEach(() => window.history.replaceState(null, '', '/'));
 
-  it('Time: read-only while following, with the age; Edit here instead unlocks it and Save sends follow false', async () => {
+  it('Time: following, with the age; typing a time zone sets the group here, and Save sends follow false with it', async () => {
     mockDevice({ config: { sqmeterSync: following('time') } });
     liveSync({ readAgeSeconds: 180, time: groupStatus(true) });
     const saves = recordSaves();
     await openTab('time', 'Time');
-    expect(await findField('ntp.timezone')).toBeDisabled();
-    expect(field('ntp.server1')).toBeDisabled();
-    expect(field('ntp.server2')).toBeDisabled();
-    expect(field('ntp.syncIntervalMs')).toBeEnabled();
+    expect(await findField('ntp.timezone')).toBeEnabled();
     expect((await screen.findAllByText('Follows SQMeter, checked 3 min ago')).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edit here instead' })[0]);
-    await waitFor(() => expect(field('ntp.server1')).toBeEnabled());
-    expect(field('ntp.timezone')).toBeEnabled();
+    fireEvent.input(field('ntp.server1')!, { target: { value: 'time.example' } });
+    expect((await screen.findAllByText('Set here, not from SQMeter')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Follow SQMeter again' }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
-    // Spec 021: only the switch that changed is sent.
+    expect(saves[0].ntp.server1).toBe('time.example');
     expect(saves[0].sqmeterSync).toEqual({ time: { follow: false } });
   });
 
@@ -77,9 +75,8 @@ describe('Following SQMeter', () => {
     const saves = recordSaves();
     await openTab('time', 'Time');
     expect(await findField('ntp.server1')).toBeEnabled();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Follow SQMeter' })[0]);
-    await waitFor(() => expect(field('ntp.server1')).toBeDisabled());
-    expect(screen.getAllByText('Follows SQMeter once saved').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Follow SQMeter again' })[0]);
+    expect((await screen.findAllByText('Follows SQMeter once saved')).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].sqmeterSync!.time.follow).toBe(true);
@@ -89,20 +86,25 @@ describe('Following SQMeter', () => {
     mockDevice({ config: { safety: { ...mockConfig.safety!, http: { enabled: false, url: '' } } } });
     await openTab('time', 'Time');
     await findField('ntp.server1');
-    expect(screen.queryByRole('button', { name: 'Follow SQMeter' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Follow SQMeter again' })).toBeNull();
   });
 
-  it('Network: the broker, port and user name are read-only while following; the password asked for when needed', async () => {
+  // The owner's case: a login typed while the MQTT group followed SQMeter is saved as typed, and the group is set here.
+  it('Network: typing a user name and password sets the MQTT group here; the save says so', async () => {
     mockDevice({ config: { sqmeterSync: following('mqtt') } });
     liveSync({ problem: 'unreachable', readAgeSeconds: 900, mqtt: groupStatus(true, { needs: ['mqttPassword'] }) });
+    const saves = recordSaves();
     await openTab('network', 'Network');
-    expect(await findField('mqttBroker')).toBeDisabled();
-    expect(field('mqttPort')).toBeDisabled();
-    expect(field('mqtt.username')).toBeDisabled();
-    expect(field('mqtt.password')).toBeEnabled();
-    expect(field('mqttTopic')).toBeEnabled(); // RoofRoof's own base topic is never SQMeter's
+    expect(await findField('mqttBroker')).toBeEnabled();
     expect(await screen.findByText('Follows SQMeter: SQMeter not answering')).toBeInTheDocument();
     expect(screen.getByText("SQMeter's broker needs a password: enter it here.")).toBeInTheDocument();
+    fireEvent.input(field('mqtt.username')!, { target: { value: 'me' } });
+    fireEvent.input(field('mqtt.password')!, { target: { value: 'mine' } });
+    expect(await screen.findByText('Set here, not from SQMeter')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].mqtt).toMatchObject({ username: 'me', password: 'mine' });
+    expect(saves[0].sqmeterSync).toEqual({ mqtt: { follow: false } });
   });
 
   it("shows the device's reason when it held or refused SQMeter's value", async () => {
@@ -117,8 +119,10 @@ describe('Following SQMeter', () => {
       config: { sqmeterSync: following('mqtt'), safety: { ...mockConfig.safety!, mqtt: { enabled: true, topic: 'sqmeter' } } },
     });
     await openTab('roof', 'Roof');
-    expect(await findField('safety.mqtt.topic')).toBeDisabled();
-    expect(field('safety.http.url')).toBeEnabled();
+    expect(await findField('safety.mqtt.topic')).toBeEnabled();
+    expect(screen.getAllByText(/^Follows SQMeter/).length).toBeGreaterThan(0);
+    fireEvent.input(field('safety.mqtt.topic')!, { target: { value: 'obs/sqm' } });
+    expect((await screen.findAllByText('Set here, not from SQMeter')).length).toBeGreaterThan(0);
   });
 
   it('Alerts: the ntfy server and topic follow; the token is asked for when needed', async () => {
@@ -130,13 +134,13 @@ describe('Following SQMeter', () => {
     });
     liveSync({ readAgeSeconds: 30, alerts: groupStatus(true, { needs: ['ntfyToken', 'pushoverKeys'] }) });
     await openTab('alerts', 'Alerts');
-    expect(await findField('alerts.ntfy.topic')).toBeDisabled();
-    expect(field('alerts.ntfy.server')).toBeDisabled();
+    expect(await findField('alerts.ntfy.topic')).toBeEnabled();
     expect(field('alerts.ntfy.token')).toBeEnabled();
     expect(await screen.findByText("SQMeter's ntfy server needs a token: enter it here.")).toBeInTheDocument();
     expect(screen.getByText('SQMeter uses Pushover: enter the user key and app token here.')).toBeInTheDocument();
-    const note = screen.getByText('Follows SQMeter, checked 30 s ago');
-    expect(within(note).getByRole('button', { name: 'Edit here instead' })).toBeInTheDocument();
+    const note = screen.getByText(/^Follows SQMeter, checked 30 s ago/);
+    expect(within(note).getByRole('button', { name: 'More information' })).toBeInTheDocument(); // typing sets it here: "?"
+    expect(within(note).queryByRole('button', { name: 'Edit here instead' })).toBeNull();
   });
 
   // Spec 024: the sync keeps the passwords and switches too, and says why it couldn't read the passwords.

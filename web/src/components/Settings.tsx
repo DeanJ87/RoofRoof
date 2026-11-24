@@ -18,7 +18,7 @@ import { effectiveEntries, fixTarget, previewInactive, viewOf, type DepEntry } f
 import { t } from '../i18n';
 import { useTabFromUrl } from '../hooks/useTabFromUrl';
 import { useConfigEditor } from '../hooks/useConfigEditor';
-import { forgetCopy } from '../lib/syncView';
+import { editBatch, editChanges, forgetCopy } from '../lib/syncView';
 
 // Saving would switch these off in practice (FR-006); harmless defaults aren't news.
 const SavePreview: FunctionalComponent<{ entries: DepEntry[] }> = ({ entries }) =>
@@ -174,8 +174,8 @@ const Settings: FunctionalComponent = () => {
 
   const props: SettingsTabProps = {
     config,
-    update: (path, value) => applyChanges([[path, value]]),
-    updateMany: applyChanges,
+    update: (path, value) => applyChanges(editChanges(config, path, value, status?.sync)), // spec 026: typing unfollows SQMeter
+    updateMany: (changes) => applyChanges(editBatch(config, changes, status?.sync)), // spec 026
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     status,
     dirty,

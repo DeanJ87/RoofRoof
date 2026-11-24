@@ -627,21 +627,14 @@ a.status-row-main:focus-visible .status-row-label {
   border-bottom: 0;
 }
 
-/* A calibration check (spec 016): its row, then the device's reason when it fails. */
-.calibrate-check {
+/* Spec 026: one blocker (what stops a move, then when it clears) in the shared list. */
+.move-blocker {
+  padding: 0.35rem 0;
   border-bottom: 1px solid var(--line-soft);
 }
 
-.calibrate-check:last-child {
+.move-blocker:last-of-type {
   border-bottom: 0;
-}
-
-.calibrate-check > .reading-row {
-  border-bottom: 0;
-}
-
-.calibrate-check > .note {
-  padding-bottom: 0.55rem;
 }
 
 .reading-label {
@@ -1058,6 +1051,11 @@ a.status-row-main:focus-visible .status-row-label {
 }
 
 /* ---- Tabbed settings ---------------------------------------------------- */
+
+/* Spec 026: a card opened by a link (section=...) clears the sticky tab bar. */
+.settings-page .sq-card[id] {
+  scroll-margin-top: 4.5rem;
+}
 
 .settings-tabs {
   position: sticky;

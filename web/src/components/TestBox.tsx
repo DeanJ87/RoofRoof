@@ -143,7 +143,11 @@ interface BypassesProps {
   saving: boolean;
   busy: boolean; // Turn off or Extend on its way
   error: (key: string) => string | undefined;
+  sourceTurnedOff: boolean; // spec 026: this edit turns the saved SQMeter weather source off
+  savedSources: { http: boolean; mqtt: boolean }; // the SQMeter sources as saved
+  weatherUnsafe: boolean; // a configured source reports unsafe now: a bypass never hides a reading
   update: (path: string[], value: unknown) => void;
+  updateMany: (changes: [string[], unknown][]) => void;
   depEntry: DepEntry | undefined;
   onSave: () => void;
   onDiscard: () => void;
@@ -173,7 +177,7 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
   const ninaSet = Boolean(config.park?.nina.url.trim());
   // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
   const switchesOnly = config.park ? parkSource(config.park) === 'switches' : false;
-  const sqmeterOn = Boolean(config.safety?.http.enabled || config.safety?.mqtt.enabled);
+  const sourceOn = sqmeterOn(config);
   const turningOn = testBox.park || testBox.weather || testBox.daylight;
   const fix = (entry: DepEntry) => {
     const target = fixTarget(entry);
@@ -192,16 +196,19 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           onFix={() => goToSettings('roof', 'park')}
           fixLabel={t('testBox.goToPark')}
         />
+        {/* Spec 026: on beside an SQMeter source, the same save turns the source off, so the weather
+            check never reads "no weather source" (unsafe) between two saves and starts a close. */}
         <Toggle
           dataField="testBox.weather"
           label={t('testBox.weather')}
           hint={t('testBox.weatherHint')}
           checked={testBox.weather}
-          onChange={(v) => update(['testBox', 'weather'], v)}
-          blockedReason={sqmeterOn ? t('testBox.weatherBlocked') : undefined}
+          onChange={(v) => props.updateMany(weatherBypassChanges(v, sourceOn, props.savedSources))}
+          blockedReason={sourceOn && props.weatherUnsafe ? t('testBox.weatherUnsafe') : undefined}
           onFix={() => goToSettings('roof', 'safety')}
-          fixLabel={t('testBox.goToWeather')}
+          fixLabel={t('move.fix.weather')}
         />
+        {testBox.weather && props.sourceTurnedOff && <Note tone="warn">{t('testBox.weatherSourceOff')}</Note>}
         <Toggle
           dataField="testBox.daylight"
           label={t('testBox.daylight')}
@@ -254,6 +261,35 @@ const useSave = (editor: ReturnType<typeof useConfigEditor>) => {
   return { saving, save };
 };
 
+/**
+ * Spec 026: the weather bypass on beside an SQMeter source turns the source off in the same save (so the
+ * weather never reads "no weather source" between two saves); off again, the saved sources come back.
+ */
+const weatherBypassChanges = (on: boolean, sourceOn: boolean, saved: { http: boolean; mqtt: boolean }): [string[], unknown][] => {
+  if (on && sourceOn)
+    return [
+      [['testBox', 'weather'], true],
+      [['safety', 'http', 'enabled'], false],
+      [['safety', 'mqtt', 'enabled'], false],
+    ];
+  if (on) return [[['testBox', 'weather'], true]];
+  return [
+    [['testBox', 'weather'], false],
+    [['safety', 'http', 'enabled'], saved.http],
+    [['safety', 'mqtt', 'enabled'], saved.mqtt],
+  ];
+};
+
+// The weather sources as the bypass sees them: turned off by this edit, as saved, and reading unsafe now.
+const weatherSource = (saved: Config, edited: Config, weather: string | undefined) => ({
+  sourceTurnedOff: sqmeterOn(saved) && !sqmeterOn(edited),
+  savedSources: { http: Boolean(saved.safety?.http.enabled), mqtt: Boolean(saved.safety?.mqtt.enabled) },
+  weatherUnsafe: weather === 'unsafe',
+});
+
+// An SQMeter weather source is on in these settings.
+const sqmeterOn = (c: Config) => Boolean(c.safety?.http.enabled || c.safety?.mqtt.enabled);
+
 const TestBox: FunctionalComponent = () => {
   const editor = useConfigEditor();
   const { config, saved, status, effective, dirty, loading } = editor;
@@ -305,6 +341,8 @@ const TestBox: FunctionalComponent = () => {
         busy={direct.busy !== ''}
         error={(key) => editor.validationErrors[key]}
         update={(path, value) => editor.applyChanges([[path, value]])}
+        updateMany={(changes) => editor.applyChanges(changes)}
+        {...weatherSource(saved, config, status?.roof?.weather)}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

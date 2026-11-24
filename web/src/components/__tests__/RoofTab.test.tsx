@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { http, HttpResponse } from 'msw';
 import Settings from '../Settings';
 import { Toaster } from '../toast';
@@ -294,17 +294,44 @@ describe('toConfigPayload', () => {
   });
 });
 
-// Spec 016: the Calibrate card links the attended page and holds its time limit.
-describe('Settings → Roof → Calibration run', () => {
-  it('links the calibration page and keeps the time limit under Advanced', async () => {
+// Spec 026: travel, speed and the move time limits they make, who set them, and the calibration run's link.
+describe('Settings → Roof → Travel and time limits', () => {
+  it('shows the move time limits beside travel and speed, says they are defaults, and keeps the run limit under Advanced', async () => {
     mockDevice();
     await openRoofTab();
-    const card = (await screen.findByText('Open the calibration page')).closest('section, .card, [id="calibrate"]');
-    expect(card).not.toBeNull();
+    const card = document.getElementById('travel')!;
+    await waitFor(() => expect(card).not.toBeNull());
+    const limits = card.querySelector('[data-move-limits]')!;
+    expect(limits).toHaveTextContent('Open or close limit');
+    expect(limits).toHaveTextContent('Slow-duty limit (slow speed)');
+    expect(card).toHaveTextContent('Travel and speed are still the defaults: run the calibration run.');
+    expect(within(card).getByRole('button', { name: 'Calibration run' })).toBeInTheDocument();
     const limit = await findField('roof.calibrationLimitSeconds');
     expect(limit.closest('details')).not.toBeNull();
   });
 
+  it('lists the setup stages first, in order, each with its state', async () => {
+    mockDevice();
+    await openRoofTab();
+    const stages = await waitFor(() => {
+      const el = document.querySelector('#setup [data-setup-stages]');
+      if (!el) throw new Error('no stages yet');
+      return el;
+    });
+    expect([...stages.querySelectorAll('[data-stage]')].map((row) => row.getAttribute('data-stage'))).toEqual([
+      'board',
+      'weather',
+      'park',
+      'direction',
+      'ends',
+      'calibrated',
+      'alerts',
+    ]);
+    expect(stages.querySelector('[data-stage="calibrated"]')).toHaveAttribute('data-state', 'todo');
+  });
+});
+
+describe('Settings → Roof → park source', () => {
   // Spec 024: the park source; the switch count only for a switch source, always saved with the source.
   it('sets the park source with the switch count, warns about one switch only, and saves both together', async () => {
     mockDevice();

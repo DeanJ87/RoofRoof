@@ -2,7 +2,7 @@ import { FunctionalComponent, type ComponentChildren } from 'preact';
 import type { RoofConfig, RoofStatus } from '../../types';
 import type { WizardPageProps } from './context';
 import TeachCard, { JogPanel } from '../calibrate/TeachCard';
-import { Checks, Result, Running, StartForm, jogGate } from '../Calibrate';
+import { Blockers, Result, Running, StartForm, moveGate, rearmOf } from '../Calibrate';
 import { useCalibration } from '../../hooks/useCalibration';
 import { useTeach } from '../../hooks/useTeach';
 import { abortCalibration } from '../../lib/calibrationApi';
@@ -58,7 +58,8 @@ const MotorFrame: FunctionalComponent<WizardPageProps & { render: (motor: Motor)
 // The wrong way: reverse the opening direction here (FR-007), save it, then hold Open again.
 const WrongWay: FunctionalComponent<WizardPageProps & { roof: RoofConfig }> = (props) => {
   const reverse = () => props.update(['roof', 'openDirection'], props.roof.openDirection === 'forward' ? 'reverse' : 'forward');
-  return props.dirty ? (
+  // Reversed here and not saved yet: save it before holding Open again.
+  return props.config.roof?.openDirection !== props.saved.roof?.openDirection ? (
     <Note tone="warn" action={{ label: t('settings.save'), onClick: props.saveHere }}>
       {t('wizard.motor.saveDirection')}
     </Note>
@@ -76,16 +77,21 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
     name: 'direction',
     labelledBy: props.questionId,
     value: props.direction,
-    onChange: (v: string) => props.setDirection(v as 'yes' | 'no'),
+    onChange: (v: string) => {
+      props.setDirection(v as 'yes' | 'no');
+      // Spec 026: seen to open at the roof: the direction counts as measured (saved with Continue).
+      const roof = props.config.roof;
+      if (roof?.measured !== undefined) props.update(['roof', 'measured'], v === 'yes' ? roof.measured | 16 : roof.measured & ~16);
+    },
   };
   return (
     <MotorFrame
       {...props}
       render={({ roof, config }) => {
-        const gate = jogGate(roof, props.fresh);
+        const gate = moveGate(roof, props.fresh, rearmOf(props.saved), true);
         return (
           <>
-            <JogPanel roof={roof} config={config} checks={<Checks checks={gate.checks} />} blocked={gate.blocked} />
+            <JogPanel roof={roof} config={config} checks={<Blockers gate={gate} />} blocked={gate.blocked} />
             <ChoiceGroup
               {...choice}
               options={[
@@ -111,14 +117,14 @@ export const TeachScreen: FunctionalComponent<WizardPageProps> = (props) => {
       render={({ roof, config }) => {
         // As the Calibrate page: no jog while a run is under way (the device refuses one anyway).
         if (run?.active) return <Note tone="warn">{t('wizard.motor.runActive')}</Note>;
-        const gate = jogGate(roof, props.fresh);
+        const gate = moveGate(roof, props.fresh, rearmOf(props.saved), true);
         return (
           <TeachCard
             plain
             teach={teach}
             roof={roof}
             config={config}
-            checks={<Checks checks={gate.checks} />}
+            checks={<Blockers gate={gate} />}
             blocked={gate.blocked}
             onChanged={() => {
               refresh();
@@ -142,7 +148,7 @@ export const CalibrationScreen: FunctionalComponent<WizardPageProps> = (props) =
           {run?.active ? (
             <Running plain run={run} roof={roof} config={config} onStop={() => void abortCalibration().then(refresh)} onAnswer={refresh} />
           ) : (
-            <StartForm plain roof={roof} config={config} live={props.fresh} onStarted={refresh} />
+            <StartForm plain roof={roof} config={config} gate={moveGate(roof, props.fresh, rearmOf(props.saved))} onStarted={refresh} />
           )}
           {run && !run.active && run.state !== 'idle' && <Result plain run={run} config={config} accept={props.acceptRoof} />}
         </>

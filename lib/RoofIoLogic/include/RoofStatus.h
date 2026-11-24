@@ -67,6 +67,9 @@ namespace SQM
             bool parkConfirmed = false;
             std::string parkText;
             const char *closePhase = "idle";
+            // Spec 026: a stand-down's seconds left if nothing wants the roof
+            // closed meanwhile (CloseSeq::Sequence::standDownLeftMs); -1: not counting (null).
+            int32_t closeRearmSeconds = -1;
             // Spec 011: "off" (the real roof), "bench" (bench firmware: simulated
             // roof, motor never driven) or "demo" (the browser demo).
             const char *simulation = "off";
@@ -98,5 +101,7 @@ namespace SQM
         // Spec 013: the roof object's "daylight" (the status document only;
         // the MQTT state document leaves it out).
         void writeDaylight(JsonObject out, const Snapshot &snapshot);
+        // Spec 026: the roof object's "closeRearmSeconds" (the status document only).
+        void writeCloseRearm(JsonObject out, const Snapshot &snapshot);
     } // namespace RoofIo
 } // namespace SQM

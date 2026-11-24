@@ -137,6 +137,14 @@ namespace SQM
             writeTestBox(out, s.testBox);
         }
 
+        void writeCloseRearm(JsonObject out, const Snapshot &s)
+        {
+            if (s.closeRearmSeconds >= 0)
+                out["closeRearmSeconds"] = s.closeRearmSeconds;
+            else
+                out["closeRearmSeconds"] = nullptr;
+        }
+
         void writeTestBox(JsonObject out, const TestBox::State &state)
         {
             JsonObject box = out.createNestedObject("testBox");

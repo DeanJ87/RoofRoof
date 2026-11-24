@@ -55,7 +55,7 @@ describe('Wizard: the motor screens', () => {
     expect(open).toBeDisabled();
     expect(close).toBeDisabled();
     expect(screen.getByText(NOT_ATTENDED)).toBeInTheDocument();
-    expect(screen.getByText('Mount parked')).toBeInTheDocument(); // the checks list
+    expect(screen.getByText('Nothing stops a move now.')).toBeInTheDocument(); // the shared blockers list (spec 026)
     fireEvent.click(screen.getByRole('switch', { name: 'I am at the roof, watching it' }));
     await waitFor(() => expect(open).toBeEnabled());
     expect(close).toBeEnabled();
@@ -72,7 +72,7 @@ describe('Wizard: the motor screens', () => {
     await onScreen('direction');
     fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof, watching it' }));
     expect(await holdOpen()).toBeDisabled();
-    expect(screen.getByText('Not ready: Mount parked')).toBeInTheDocument();
+    expect(screen.getAllByText('Park check: not parked: N.I.N.A. not responding').length).toBeGreaterThan(0);
   });
 
   it('a test box names the checks it bypasses', async () => {
@@ -193,7 +193,7 @@ describe('Wizard: the motor screens', () => {
     await onScreen('direction');
     fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof, watching it' }));
     expect(await holdOpen()).toBeDisabled();
-    expect(screen.getByText('No live data from the device: calibration needs it')).toBeInTheDocument();
+    expect(screen.getAllByText('No live data').length).toBeGreaterThan(0);
   });
 
   // S4: leaving the screen mid-hold sends the release (the device would stop it anyway after 500 ms).

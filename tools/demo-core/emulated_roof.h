@@ -160,6 +160,8 @@ namespace DemoRoof
         // Spec 015: GET /api/roof/inputs, as SafetyInputs::report().
         Safety::InputsReport inputs() const;
         CloseSeq::Phase phase() const { return sequence.phase(); }
+        // Spec 026: CloseOnUnsafe::requestRelease; the next step applies it.
+        const char *releaseHold();
         const Alerts::RoofInputs &conditions() const { return roofConditions; }
         // Spec 022: the test box's bypasses in effect (as SafetyInputs::testBox).
         const TestBox::State &testBox() const { return testBoxState; }
@@ -248,6 +250,7 @@ namespace DemoRoof
         bool weatherChanged = false;
 
         CloseSeq::Sequence sequence;
+        bool releaseWanted = false; // spec 026: a person's release, for the next step
         Alerts::RoofInputs roofConditions;
         uint32_t closedCount = 0;
         // Spec 013: CloseOnUnsafe::updateDaylight.

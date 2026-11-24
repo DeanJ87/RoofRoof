@@ -3,6 +3,7 @@ import preact from '@preact/preset-vite';
 import { copyFileSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { latestReleasedVersion } from './src/lib/releaseVersion';
+import { englishOnly } from './vite.i18n';
 
 // The demo device reports the newest release in CHANGELOG.md.
 const demoVersion = latestReleasedVersion(readFileSync(resolve(__dirname, '../CHANGELOG.md'), 'utf8'));
@@ -10,6 +11,7 @@ const demoVersion = latestReleasedVersion(readFileSync(resolve(__dirname, '../CH
 export default defineConfig({
   plugins: [
     preact(),
+    englishOnly(), // as on the device (vite.i18n.ts)
     // Static hosts serve 404.html for unknown paths: let the app answer
     // device URLs (/api/..., /management/..., /setup/...) opened directly.
     // Nothing may leave the browser (SQMeter spec 016 FR-006): the demo only talks to

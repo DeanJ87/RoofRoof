@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "RoofMeasured.h"
 #include <ArduinoJson.h>
 
 // Spec 020: the settings that follow the SQMeter at the same site, in
@@ -78,6 +79,67 @@ namespace SQM::ConfigDetail
                 group.second->syncedAt = 0;
             if (!sync.reader().strict())
                 in.take("syncedAt", group.second->syncedAt);
+        }
+    }
+
+    namespace
+    {
+        // FNV-1a over a group's values, each ended by a separator: equal values hash equal, and a
+        // change is told apart without keeping copies of the strings (passwords among them).
+        struct Hash
+        {
+            uint32_t h = 2166136261u;
+            Hash &operator<<(const std::string &value)
+            {
+                for (const char c : value)
+                    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+                h = (h ^ 0x1fu) * 16777619u;
+                return *this;
+            }
+            Hash &operator<<(uint32_t value) { return *this << std::to_string(value); }
+        };
+    } // namespace
+
+    SyncedValues syncedValues(const Config &c)
+    {
+        const MQTTConfig &m = c.mqtt;
+        const AlertsConfig &a = c.alerts;
+        return SyncedValues{{
+            (Hash() << c.ntp.timezone << c.ntp.server1 << c.ntp.server2).h,
+            (Hash() << m.broker << m.port << m.username << m.password << m.enabled << c.safety.mqttTopic).h,
+            (Hash() << a.ntfyServer << a.ntfyTopic << a.ntfyToken << a.ntfyEnabled << a.pushoverUserKey << a.pushoverAppToken
+                    << a.pushoverEnabled)
+                .h,
+        }};
+    }
+
+    uint8_t typedOver(const RoofConfig &a, const RoofConfig &b)
+    {
+        uint8_t bits = 0;
+        if (a.travelMm != b.travelMm)
+            bits |= Measured::TRAVEL;
+        if (a.speedMmPerSecond != b.speedMmPerSecond)
+            bits |= Measured::SPEED;
+        if (a.timeoutMarginSeconds != b.timeoutMarginSeconds)
+            bits |= Measured::MARGIN;
+        if (a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts || a.hallLowCounts != b.hallLowCounts)
+            bits |= Measured::HALL;
+        if (a.openDirection != b.openDirection)
+            bits |= Measured::DIRECTION;
+        return bits;
+    }
+
+    void unfollowEdited(const Section &sync, const SyncedValues &before, Config &cfg)
+    {
+        const SyncedValues after = syncedValues(cfg);
+        const char *const names[] = {"time", "mqtt", "alerts"};
+        SqmeterSyncConfig::Group *const groups[] = {&cfg.sqmeterSync.time, &cfg.sqmeterSync.mqtt, &cfg.sqmeterSync.alerts};
+        for (size_t i = 0; i < 3; ++i)
+        {
+            if (!groups[i]->follow || sync.child(names[i]).has("follow") || after.group[i] == before.group[i])
+                continue;
+            groups[i]->follow = false;
+            groups[i]->syncedAt = 0;
         }
     }
 

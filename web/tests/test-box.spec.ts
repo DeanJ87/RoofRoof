@@ -53,13 +53,11 @@ test('a test box: bypasses in effect, shown on every page, and off again', async
     .click();
   await expect(banner).toBeVisible();
 
-  // Calibrate: the checklists never say the mount is parked or the weather safe.
+  // Calibrate: the shared "why it can't move" list never says the mount is parked or the weather safe:
+  // it names the bypassed checks (spec 026).
   await page.evaluate(() => (window.location.hash = '/calibrate'));
-  const checks = page.locator('[data-calibrate-checks]').first();
-  await expect(checks.locator('[data-check="park"]')).toHaveAttribute('data-state', 'bypassed');
-  await expect(checks.locator('[data-check="park"]')).toContainText('Mount park check bypassed (test box)');
-  await expect(checks.locator('[data-check="park"]')).toContainText('Bypassed');
-  await expect(checks.locator('[data-check="weather"]')).toHaveAttribute('data-state', 'bypassed');
+  const checks = page.locator('#calibrate-blockers [data-move-blockers]');
+  await expect(checks).toContainText('Bypassed by the test box: Park check, Weather check.');
   await expect(checks).not.toContainText('Mount parked');
 
   // Manage opens the test box page; Turn off ends it.

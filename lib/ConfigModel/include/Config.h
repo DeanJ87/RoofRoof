@@ -287,8 +287,8 @@ namespace SQM
         // from a bench measurement, the ADC can't resolve the lowest currents).
         float minRunningAmps = 0.0f;
         float minSupplyVolts = 11.0f;
-        // Spec 016: the longest a calibration leg may drive (its hard timeout).
-        uint32_t calibrationLimitSeconds = 180;
+        uint32_t calibrationLimitSeconds = 180; // spec 016: the longest a calibration leg may drive
+        uint8_t measured = 0;                   // spec 026: Measured:: bits (RoofMeasured.h)
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;

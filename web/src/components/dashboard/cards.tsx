@@ -3,6 +3,9 @@ import type { MasonryItem } from '../Masonry';
 import DeviceCard from '../../dashboard/DeviceCard';
 import RoofCard from '../../dashboard/RoofCard';
 import type { LiveState } from '../../lib/roofView';
+import { Card, Pill } from '../ui';
+import { SetupStages, stagesDone } from '../SetupProgress';
+import { setupComplete, setupStages } from '../../lib/setupProgress';
 import { t } from '../../i18n';
 
 // What the dashboard's cards are drawn from.
@@ -24,8 +27,24 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => [
         live={ctx.live ?? { status: ctx.status, connected: false, quiet: false, reconnectedAt: null }}
         config={ctx.config?.roof}
         confirm={ctx.config?.ui?.confirmOpenClose ?? false}
+        rearmMinutes={ctx.config?.autoClose?.rearmMinutes}
       />
     ),
   },
   { id: 'device', title: t('dashboard.deviceNetwork'), node: <DeviceCard status={ctx.status} /> },
+  ...setupCard(ctx),
 ];
+
+// Spec 026: the roof's setup stages, on the dashboard until every one is done.
+const setupCard = (ctx: CardContext): MasonryItem[] => {
+  const stages = setupStages(ctx.config);
+  if (stages.length === 0 || setupComplete(stages)) return [];
+  const node = (
+    <div data-inventory="setup-card">
+      <Card title={t('stage.title')} icon="roof" hint={t('stage.hint')} actions={<Pill tone="pill-amber">{stagesDone(stages)}</Pill>}>
+        <SetupStages stages={stages} />
+      </Card>
+    </div>
+  );
+  return [{ id: 'setup', title: t('stage.title'), node }];
+};

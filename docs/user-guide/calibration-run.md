@@ -10,7 +10,7 @@ stopwatch and reading the Hall sensor by hand, the controller can measure them: 
 **attended calibration run**, it opens and closes the roof slowly, and it **proposes** the values,
 each beside the one saved now. Nothing changes until you accept.
 
-Open it from **Settings → Roof → Calibration run → Open the calibration page**, or from the setup
+Open it from **Settings → Roof → Travel and time limits → Calibration run**, or from the setup
 wizard's direction, teach and calibration screens, which run the same attended jog, teach and calibration run inside the wizard.
 
 !!! danger "Only with you at the roof"
@@ -61,7 +61,7 @@ you move the roof by hand and tell the device where each end is.
 
 Both directions need the weather safe and the mount parked, and the park interlock watches every
 jog: on a new roof the motor direction setting may still be wrong, so **Hold to open** may close the
-roof. If it moves the wrong way, let go and fix **Settings → Roof → Roof motion → Opening direction** (`roof.openDirection`). A jog
+roof. If it moves the wrong way, let go and fix **Settings → Roof → Direction and speed → Opening direction** (`roof.openDirection`). A jog
 stops when the weather or daylight turns, and the automatic close stops it before it makes its
 own checks. Nothing is kept across a restart, and nothing moves after one.
 

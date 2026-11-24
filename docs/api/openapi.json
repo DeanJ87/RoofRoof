@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795469809,
-                    "iso": "2026-11-23T21:36:49+0000",
+                    "epoch": 1795482879,
+                    "iso": "2026-11-24T01:14:39+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795466207709,
-                    "nextSync": 1795473407709,
+                    "lastSync": 1795479277076,
+                    "nextSync": 1795486477076,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795469747709,
+                    "lastPublish": 1795482817076,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -248,7 +248,13 @@
                     "parkSwitches": {
                       "fitted": 0,
                       "switch1": "notFitted",
-                      "switch2": "notFitted"
+                      "switch2": "notFitted",
+                      "switchesOnly": false,
+                      "openings": [
+                        0,
+                        0
+                      ],
+                      "check": null
                     },
                     "closePending": false,
                     "calibrating": false,
@@ -281,7 +287,8 @@
                       "limitDeg": 0,
                       "text": "Location not set",
                       "closes": false
-                    }
+                    },
+                    "closeRearmSeconds": null
                   },
                   "location": {
                     "source": "sqmeter",
@@ -294,6 +301,7 @@
                   "sync": {
                     "problem": "waiting",
                     "readAgeSeconds": null,
+                    "secrets": null,
                     "time": {
                       "follow": true,
                       "syncedAt": null,
@@ -331,7 +339,7 @@
                     "valid": true,
                     "restartNeeded": false
                   },
-                  "configRevision": 3932332023
+                  "configRevision": 3159606172
                 }
               }
             }
@@ -2139,6 +2147,91 @@
             "$ref": "#/components/parameters/roofCommand"
           }
         ]
+      }
+    },
+    "/api/roof/release-hold": {
+      "post": {
+        "operationId": "post_roof_release_hold",
+        "tags": [
+          "Roof"
+        ],
+        "summary": "Release the automatic close's hold",
+        "description": "Spec 026: ends a stand-down of the automatic close (`closePhase` `heldByPerson` after a person's Stop, or `halted` after a close that took too long) before its re-arm spell is over, as a person at the roof. Accepted only while the weather check reads safe and daylight doesn't want the roof closed; the next step of the sequence checks again and applies it. It never moves the roof: it arms the automatic close again, so unsafe weather afterwards starts a new attempt. 400 unless `attended` is true; 409 when there is no stand-down or something wants the roof closed. Needs the header `X-RoofRoof: 1`.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Refused: a required header is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/roofCommand"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attended": {
+                    "type": "boolean",
+                    "description": "The person confirms they are at the roof and can see it; must be true."
+                  }
+                },
+                "required": [
+                  "attended"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
       }
     },
     "/api/roof/calibration/start": {
@@ -6420,6 +6513,9 @@
               "maxCurrentAmps": {
                 "type": "number"
               },
+              "measured": {
+                "type": "number"
+              },
               "minRunningAmps": {
                 "type": "number"
               },
@@ -6466,6 +6562,7 @@
               "hallLowCounts",
               "leaveMagnetSeconds",
               "maxCurrentAmps",
+              "measured",
               "minRunningAmps",
               "minSupplyVolts",
               "openDirection",
@@ -7490,6 +7587,9 @@
                 "type": "number"
               },
               "maxCurrentAmps": {
+                "type": "number"
+              },
+              "measured": {
                 "type": "number"
               },
               "minRunningAmps": {
@@ -9296,6 +9396,12 @@
               "closePhase": {
                 "type": "string"
               },
+              "closeRearmSeconds": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
               "currentSense": {
                 "type": "boolean"
               },
@@ -9613,6 +9719,7 @@
               "calibrating",
               "closePending",
               "closePhase",
+              "closeRearmSeconds",
               "currentSense",
               "daylight",
               "driving",

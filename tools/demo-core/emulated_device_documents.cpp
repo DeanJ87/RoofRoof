@@ -16,6 +16,7 @@ std::string EmulatedDevice::statusParts() const
     JsonObject roofOut = doc.createNestedObject("roof");
     RoofIo::writeStatus(roofOut, snapshot); // the firmware's own writer (spec 011)
     RoofIo::writeDaylight(roofOut, snapshot);
+    RoofIo::writeCloseRearm(roofOut, snapshot);
     writeLocation(doc.createNestedObject("location")); // spec 020
     writeSync(doc.createNestedObject("sync"));
     // Spec 023: the demo board is a DevKit on Wi-Fi.

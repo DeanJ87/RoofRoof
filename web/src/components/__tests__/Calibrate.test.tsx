@@ -47,8 +47,8 @@ describe('Calibrate', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  // Spec 022: a test box bypass reads as Bypassed, never OK; a failing check keeps its pill short, the reason below it.
-  it('a bypassed park check says so with an amber Bypassed pill, and Start can still be pressed', async () => {
+  // Spec 026: one "why it can't move" list above both forms; a test box bypass is named there, never as OK (spec 022).
+  it('a bypassed park check is named as bypassed, and Start can still be pressed', async () => {
     const status = ready();
     status.roof = {
       ...status.roof!,
@@ -67,33 +67,33 @@ describe('Calibrate', () => {
     };
     live(status);
     render(<Calibrate />);
-    const row = await waitFor(() => {
-      const el = document.querySelector('#calibrate-start [data-check="park"]');
-      if (!el) throw new Error('no checks yet');
+    const list = await waitFor(() => {
+      const el = document.querySelector('#calibrate-blockers [data-move-blockers]');
+      if (!el) throw new Error('no list yet');
       return el as HTMLElement;
     });
-    expect(row).toHaveAttribute('data-state', 'bypassed');
-    expect(row).toHaveTextContent('Mount park check bypassed (test box)');
-    expect(within(row).getByText('Bypassed')).toHaveClass('pill-amber');
-    expect(within(row).queryByText('OK')).toBeNull();
+    expect(list).toHaveTextContent('Nothing stops a move now.');
+    expect(within(list).getByText('Bypassed by the test box: Park check.')).toHaveClass('note-warn');
+    expect(list).not.toHaveTextContent(/OK/);
     fireEvent.click(screen.getByRole('switch', { name: 'I am at the roof and can see it' }));
     expect(startCard().getByRole('button', { name: 'Start calibration' })).toBeEnabled();
   });
 
-  it("a failing check shows Not yet, with the device's reason on its own line", async () => {
+  it('a blocker says what stops the move, when it clears, and links to its fix', async () => {
     const status = ready();
     status.roof = { ...status.roof!, weather: 'unsafe', weatherText: 'unsafe: rain' };
     live(status);
     render(<Calibrate />);
     const row = await waitFor(() => {
-      const el = document.querySelector('#calibrate-start [data-check="weather"]');
-      if (!el) throw new Error('no checks yet');
+      const el = document.querySelector('#calibrate-blockers [data-blocker="weather"]');
+      if (!el) throw new Error('no blockers yet');
       return el as HTMLElement;
     });
-    expect(within(row).getByText('Not yet')).toHaveClass('pill');
-    // Muted, under the row (DS-04): the pill carries the state, never bare red text.
-    expect(row.querySelector('.note-muted')).toHaveTextContent(/rain/);
-    expect(row.querySelector('.note-bad')).toBeNull();
+    expect(row).toHaveTextContent('Weather check: unsafe: rain');
+    expect(row).toHaveTextContent('Clears once SQMeter reports safe.');
+    expect(within(row).getByRole('button', { name: 'Weather check settings' })).toBeInTheDocument();
+    // Listed once on the page: the jog and the run share it.
+    expect(document.querySelectorAll('[data-blocker="weather"]')).toHaveLength(1);
   });
 
   it('starts only once the person confirms they are at the roof, and sends what they said', async () => {
@@ -155,8 +155,7 @@ describe('Calibrate', () => {
     render(<Calibrate />);
     fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof and can see it' }));
     expect(screen.getByRole('button', { name: 'Start calibration' })).toBeDisabled();
-    expect(startCard().getByText('Not ready: Weather safe')).toBeInTheDocument();
-    expect(startCard().getByText('unsafe: rain')).toBeInTheDocument();
+    expect(startCard().getByText('Weather check: unsafe: rain')).toBeInTheDocument();
   });
 
   it('shows the device refusal', async () => {

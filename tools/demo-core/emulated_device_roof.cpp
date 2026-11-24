@@ -7,6 +7,7 @@
 #include "PlatformHold.h"
 #include "Teach.h"
 #include "RoofStatus.h"
+#include "RoofMeasured.h"
 
 using namespace DemoCore;
 
@@ -42,6 +43,12 @@ std::string EmulatedDevice::roofCommand(const std::string &name)
         outcome = roof.command(Roof::Command::Stop, Roof::Origin::Person);
     else if (name == "clear-fault")
         outcome = roof.clearFault();
+    else if (name == "release-hold")
+    {
+        // Spec 026: the web page checks the attended confirmation (handlers.ts), as the firmware's route does.
+        const char *refusal = roof.releaseHold();
+        return refusal == nullptr ? response(200, "{\"success\":true}") : response(409, errorJson(refusal));
+    }
     else
         return response(404, errorJson("Not found"));
     return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
@@ -132,6 +139,7 @@ std::string EmulatedDevice::teachConfirm(const std::string &body)
     next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
     next.roof.hallHighCounts = values.highCounts;
     next.roof.hallLowCounts = values.lowCounts;
+    next.roof.measured |= Measured::HALL; // spec 026, as the device
     std::string reason;
     if (!next.validate(&reason))
         return response(400, errorJson(reason));

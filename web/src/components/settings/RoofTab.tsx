@@ -4,7 +4,10 @@ import type { DaylightConfig, LocationConfig, RoofConfig, SafetyConfig } from '.
 import type { SettingsTabProps } from './context';
 import { DepNote, DepToggle, Field, Fold, NumberInput, SelectInput, SettingsCard, TextInput, Toggle } from './controls';
 import AutoCloseCard from './AutoCloseCard';
-import { Button, Note, ReadingRow } from '../ui';
+import { Button, Note, Pill, ReadingRow } from '../ui';
+import { setupStages } from '../../lib/setupProgress';
+import { SetupStages, stagesDone } from '../SetupProgress';
+import TravelCard from './TravelCard';
 import { presetLabel } from '../../lib/pinsView';
 import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
 import SqmeterCopy from './SqmeterCopy';
@@ -12,7 +15,7 @@ import { SqmeterLoginFields } from './SqmeterLoginFields';
 import { SqmeterAddressTest } from './SqmeterAddressTest';
 import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
-import { fromCopy, locked as isLocked, synced } from '../../lib/syncView';
+import { fromCopy, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
 import { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps } from './ParkFields';
 export { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps };
@@ -44,7 +47,15 @@ const Num: FunctionalComponent<NumProps & Pick<SettingsTabProps, 'update' | 'err
   error,
 }) => (
   <Field label={label} hint={hint} error={error(at.join('.'))}>
-    <NumberInput dataField={at.join('.')} value={value} min={0} unit={unit} integer={integer} onChange={(v) => update(at, v)} />
+    <NumberInput
+      dataField={at.join('.')}
+      value={value}
+      min={0}
+      unit={unit}
+      integer={integer}
+      single={!integer}
+      onChange={(v) => update(at, v)}
+    />
   </Field>
 );
 
@@ -53,26 +64,10 @@ export const roofNum = (props: RoofProps, key: keyof RoofConfig, label: string, 
   <Num {...extra} at={['roof', key]} label={label} value={props.roof[key] as number} update={props.update} error={props.error} />
 );
 
+// Spec 026: the motor's direction, duties and ramps (set before the first move).
 const MotionCard: FunctionalComponent<RoofProps> = (props) => (
   <SettingsCard id="roof" title={t('settings.roof.motion')} hint={t('settings.roof.motionHint')}>
     <div class="form-grid">
-      {roofNum(props, 'travelMm', t('settings.roof.travel'), { unit: 'mm', integer: true, hint: t('settings.roof.travelHint') })}
-      {roofNum(props, 'speedMmPerSecond', t('settings.roof.speed'), { unit: 'mm/s', hint: t('settings.roof.speedHint') })}
-      {roofNum(props, 'timeoutMarginSeconds', t('settings.roof.timeoutMargin'), {
-        unit: 's',
-        integer: true,
-        hint: t('settings.roof.timeoutMarginHint'),
-      })}
-      {roofNum(props, 'leaveMagnetSeconds', t('settings.roof.leaveMagnet'), {
-        unit: 's',
-        integer: true,
-        hint: t('settings.roof.leaveMagnetHint'),
-      })}
-      {roofNum(props, 'rampUpMs', t('settings.roof.rampUp'), { unit: 'ms', integer: true })}
-      {roofNum(props, 'rampDownMs', t('settings.roof.rampDown'), { unit: 'ms', integer: true, hint: t('settings.roof.rampDownHint') })}
-      {roofNum(props, 'topDutyPercent', t('settings.roof.topDuty'), { unit: '%', integer: true })}
-      {roofNum(props, 'slowDutyPercent', t('settings.roof.slowDuty'), { unit: '%', integer: true, hint: t('settings.roof.slowDutyHint') })}
-      {roofNum(props, 'slowSpeedMmPerSecond', t('settings.roof.slowSpeed'), { unit: 'mm/s', hint: t('settings.roof.slowSpeedHint') })}
       <Field label={t('settings.roof.openDirection')} hint={t('settings.roof.openDirectionHint')}>
         <SelectInput
           dataField="roof.openDirection"
@@ -84,6 +79,15 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
           onChange={(v) => props.update(['roof', 'openDirection'], v)}
         />
       </Field>
+      {roofNum(props, 'topDutyPercent', t('settings.roof.topDuty'), { unit: '%', integer: true })}
+      {roofNum(props, 'slowDutyPercent', t('settings.roof.slowDuty'), { unit: '%', integer: true, hint: t('settings.roof.slowDutyHint') })}
+      {roofNum(props, 'rampUpMs', t('settings.roof.rampUp'), { unit: 'ms', integer: true })}
+      {roofNum(props, 'rampDownMs', t('settings.roof.rampDown'), { unit: 'ms', integer: true, hint: t('settings.roof.rampDownHint') })}
+      {roofNum(props, 'leaveMagnetSeconds', t('settings.roof.leaveMagnet'), {
+        unit: 's',
+        integer: true,
+        hint: t('settings.roof.leaveMagnetHint'),
+      })}
     </div>
     <Toggle
       dataField="ui.confirmOpenClose"
@@ -192,6 +196,12 @@ export const WeatherSourceFields: FunctionalComponent<SafetyProps> = ({ safety, 
       checked={safety.mqtt.enabled}
       onChange={(v) => update(['safety', 'mqtt', 'enabled'], v)}
     />
+    {/* Spec 026: no source at all reads unsafe and starts the automatic close; a test box bypasses it instead. */}
+    {!safety.http.enabled && !safety.mqtt.enabled && !config.testBox?.weather && (
+      <Note tone="warn" action={{ label: t('testBox.title'), onClick: () => route('/test-box') }}>
+        {t('settings.roof.noWeatherSource')}
+      </Note>
+    )}
     {/* Spec 020: also while off when SQMeter's topic came in (a copy, or the MQTT group synced). */}
     {(safety.mqtt.enabled || fromCopy('weatherTopic') || synced(config, 'mqtt')) && (
       <div class="form-grid indent">
@@ -223,18 +233,13 @@ export const SqmeterUrlField: FunctionalComponent<SourceFieldProps & { test?: bo
   </>
 );
 
-// Spec 020: read-only while the MQTT group follows SQMeter (SQMeter's base topic is where it publishes `<base>/safe`).
+// Spec 020: follows SQMeter with the MQTT group (its base topic is where it publishes `<base>/safe`); spec 026: typing unfollows.
 export const SqmeterTopicField: FunctionalComponent<SourceFieldProps & Pick<SafetyProps, 'config' | 'status'>> = (props) => {
-  const { safety, update, error, config } = props;
+  const { safety, update, error } = props;
   return (
     <>
       <Field label={t('settings.roof.sqmeterTopic')} error={error('safety.mqtt.topic')}>
-        <TextInput
-          dataField="safety.mqtt.topic"
-          disabled={isLocked(config, 'mqtt')}
-          value={safety.mqtt.topic}
-          onInput={(v) => update(['safety', 'mqtt', 'topic'], v)}
-        />
+        <TextInput dataField="safety.mqtt.topic" value={safety.mqtt.topic} onInput={(v) => update(['safety', 'mqtt', 'topic'], v)} />
       </Field>
       <FollowsSqmeter group="mqtt" {...props} />
     </>
@@ -367,25 +372,6 @@ const DaylightCard: FunctionalComponent<DaylightProps> = (props) => (
   </SettingsCard>
 );
 
-// Spec 016: the attended calibration run, on its own page; its time limit under Advanced.
-export const CalibrateCard: FunctionalComponent<RoofProps> = (props) => (
-  <SettingsCard id="calibrate" title={t('calibrate.cardTitle')} hint={t('calibrate.cardHint')}>
-    <Note>{t('calibrate.cardText')}</Note>
-    <div class="btn-row">
-      <Button onClick={() => route('/calibrate')}>{t('calibrate.open')}</Button>
-    </div>
-    <Fold
-      label={t('settings.roof.advanced')}
-      open={props.error('roof.calibrationLimitSeconds') !== undefined}
-      dataField="calibrate.advanced"
-    >
-      <div class="form-grid">
-        {roofNum(props, 'calibrationLimitSeconds', t('calibrate.limit'), { unit: 's', integer: true, hint: t('calibrate.limitHint') })}
-      </div>
-    </Fold>
-  </SettingsCard>
-);
-
 // Spec 023: the board and its pins, set on their own page; they apply at a restart.
 export const PinsCard: FunctionalComponent<SettingsTabProps> = ({ config }) => (
   <SettingsCard id="pins" title={t('pins.title')} hint={t('settings.roof.pinsHint')}>
@@ -406,25 +392,32 @@ export const MotionNote: FunctionalComponent<Pick<SettingsTabProps, 'status'>> =
   return null;
 };
 
+// Spec 026: the roof's cards in the order it is set up (the stages above them), each setting in one place.
 const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
   const { roof, safety, park, daylight, location, autoClose, mqtt } = props.config;
+  const stages = setupStages(props.config);
   return (
     <>
       <MotionNote status={props.status} />
+      {stages.length > 0 && (
+        <SettingsCard id="setup" title={t('stage.title')} hint={t('stage.hint')} badge={<Pill tone="pill-dim">{stagesDone(stages)}</Pill>}>
+          <SetupStages stages={stages} />
+        </SettingsCard>
+      )}
       <PinsCard {...props} />
+      {safety && <SafetyCard {...props} safety={safety} />}
+      {safety && <SqmeterCopyCard {...props} safety={safety} />}
+      {park && <ParkCard {...props} park={park} />}
       {roof ? (
         <>
           <MotionCard {...props} roof={roof} />
           <HallCard {...props} roof={roof} />
-          <CalibrateCard {...props} roof={roof} />
+          <TravelCard {...props} roof={roof} />
           <CurrentCard {...props} roof={roof} />
         </>
       ) : (
         <Note>{t('settings.roof.notSent')}</Note>
       )}
-      {safety && <SafetyCard {...props} safety={safety} />}
-      {safety && <SqmeterCopyCard {...props} safety={safety} />}
-      {park && <ParkCard {...props} park={park} />}
       {autoClose && <AutoCloseCard {...props} autoClose={autoClose} mqtt={mqtt} />}
       {daylight && location && <DaylightCard {...props} daylight={daylight} location={location} />}
       {props.config.testBox && <TestBoxCard {...props} testBox={props.config.testBox} />}

@@ -7,6 +7,7 @@
 
 #include "Config.h"
 #include "ConfigSave.h"
+#include "RoofMeasured.h"
 
 using namespace SQM;
 using ConfigSave::checkSave;
@@ -154,6 +155,48 @@ void test_a_long_value_changed_on_the_device_is_named(void)
     TEST_ASSERT_EQUAL_STRING("alerts.events.roof_fault.message", c.conflicts[0].c_str());
 }
 
+// --- Spec 026: which roof values were measured on the roof ----------------------------
+
+namespace
+{
+    Config savedWith(Config cfg, const char *json)
+    {
+        std::string error;
+        TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(json, cfg, true, &error), error.c_str());
+        return cfg;
+    }
+} // namespace
+
+void test_a_calibration_accept_marks_its_values_measured(void)
+{
+    const Config c = savedWith(Config::createDefault(), R"({"roof":{"travelMm":2100,"speedMmPerSecond":31.5,"measured":7}})");
+    TEST_ASSERT_EQUAL_UINT8(Measured::TRAVEL | Measured::SPEED | Measured::MARGIN, c.roof.measured);
+    // Round trip through storage.
+    Config again = Config::createDefault();
+    std::string error;
+    TEST_ASSERT_TRUE(Config::applyJson(c.toJson(false, false), again, false, &error));
+    TEST_ASSERT_EQUAL_UINT8(7, again.roof.measured);
+}
+
+void test_typing_a_measured_value_clears_only_its_bit(void)
+{
+    Config c = Config::createDefault();
+    c.roof.measured = Measured::ALL;
+    const Config typed = savedWith(c, R"({"roof":{"travelMm":2000}})");
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::TRAVEL, typed.roof.measured);
+    const Config hall = savedWith(c, R"({"roof":{"hallLowCounts":900}})");
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::HALL, hall.roof.measured);
+    const Config direction = savedWith(c, R"({"roof":{"openDirection":"reverse"}})");
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::DIRECTION, direction.roof.measured);
+    const Config same = savedWith(c, R"({"roof":{"travelMm":1850,"rampUpMs":1500},"deviceName":"Roof"})");
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL, same.roof.measured); // nothing measured changed
+}
+
+void test_unknown_measured_bits_are_dropped(void)
+{
+    TEST_ASSERT_EQUAL_UINT8(Measured::HALL, savedWith(Config::createDefault(), R"({"roof":{"measured":200}})").roof.measured);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -169,5 +212,8 @@ int main(int, char **)
     RUN_TEST(test_base_keys_do_not_change_settings);
     RUN_TEST(test_round_trip_of_the_device_document);
     RUN_TEST(test_a_long_value_changed_on_the_device_is_named);
+    RUN_TEST(test_a_calibration_accept_marks_its_values_measured);
+    RUN_TEST(test_typing_a_measured_value_clears_only_its_bit);
+    RUN_TEST(test_unknown_measured_bits_are_dropped);
     return UNITY_END();
 }

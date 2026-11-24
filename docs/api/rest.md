@@ -49,7 +49,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted", "switchesOnly": false, "openings": [0, 0], "check": null }, "closePending": false, "calibrating": false, "closePhase": "idle", "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted", "switchesOnly": false, "openings": [0, 0], "check": null }, "closePending": false, "calibrating": false, "closePhase": "idle", "closeRearmSeconds": null, "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
 }
 ```
 
@@ -84,6 +84,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
 | `calibrating` | a [calibration run](../user-guide/calibration-run.md) is under way, pauses at each end included; open and close are refused (`calibrating`) and the Stop bar shows |
 | `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
+| `closeRearmSeconds` | spec 026: while the automatic close stands down (`heldByPerson`, `halted`), the seconds until it ends by itself if the weather stays safe and daylight doesn't want the roof closed; `null` while it isn't counting down (idle, or something wants the roof closed now) |
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
 | `daylight` | the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe): `mode` (`off`, `alert` or `close`), `state` (`off`, `unknown`, `night` or `day`), `sunAltitudeDeg` (`null` while off or unknown), `limitDeg` (the threshold), `text` ("Sun 3.2° ≥ 0.0°", "Sun -4.1° < 0.0°", "Location not set", "Clock not set" or "Off") and `closes` (daylight wants the roof closed now: mode `close` and state `day`) |
@@ -623,6 +624,10 @@ Stop at once, keeping the position estimate (`stopped`). Always accepted.
 ### `POST /api/roof/clear-fault`
 
 Clear a latched fault after fixing its cause. The fault is removed from storage too; the position is known again only at a magnet. Accepted with no fault.
+
+### `POST /api/roof/release-hold`
+
+Spec 026: a person at the roof ends the automatic close's stand-down (`heldByPerson` after a Stop, `halted` after a close that took too long) before its re-arm spell is over. Body `{ "attended": true }` (`400` without it). Refused (`409`, with `error`) when there is no stand-down, or while the weather check isn't safe or daylight wants the roof closed. The next step of the sequence checks again and applies it. It never moves the roof: it arms the automatic close again, so unsafe weather afterwards starts a new attempt. See [the automatic close](../user-guide/close-on-unsafe.md#release-hold).
 
 ### `GET /api/roof/inputs`
 

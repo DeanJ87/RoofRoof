@@ -1,6 +1,7 @@
 import type { Config, SecretsProblem, SyncGroup, SyncNeed, SyncStatus } from '../types';
 import { formatAgo, formatDateTime } from '../i18n/format';
 import { t } from '../i18n';
+import { MEASURED_FIELDS, SYNC_GROUP_FIELDS } from './configPatch';
 
 // Spec 020: whether a group of site settings follows SQMeter, and the one line
 // that says how that is going. Never a safety verdict: a failed read only
@@ -88,4 +89,41 @@ export const secretsProblem = (sync: SyncStatus | null | undefined, group: SyncG
   const secrets = sync?.secrets;
   if (!keepsSecrets(group) || !sync?.[group]?.follow || !secrets || secrets === 'received' || secrets === 'waiting') return null;
   return secrets;
+};
+
+const SECRET_NEED: Record<string, SyncNeed> = {
+  'mqtt.password': 'mqttPassword',
+  'alerts.ntfy.token': 'ntfyToken',
+  'alerts.pushover.userKey': 'pushoverKeys',
+  'alerts.pushover.appToken': 'pushoverKeys',
+};
+
+/**
+ * Spec 026: a person's edit, plus "stop following" for the SQMeter group it belongs to while that group
+ * follows: typing over a value SQMeter sets makes the group set here, never silently overwritten later.
+ * A secret the device asks for (SQMeter has one RoofRoof lacks) only fills the gap: the group keeps following.
+ */
+export const editChanges = (config: Config | null, path: string[], value: unknown, sync?: SyncStatus | null): [string[], unknown][] => {
+  const dotted = path.join('.');
+  const group = (Object.keys(SYNC_GROUP_FIELDS) as SyncGroup[]).find((name) =>
+    SYNC_GROUP_FIELDS[name].some((field) => dotted === field || dotted.startsWith(`${field}.`)),
+  );
+  const need = SECRET_NEED[dotted];
+  const filling = need !== undefined && asked(sync, need);
+  const changes: [string[], unknown][] = [[path, value]];
+  if (group && config && follows(config, group) && !filling) changes.push([['sqmeterSync', group, 'follow'], false]);
+  // A measured roof value typed over is no longer measured (as the device's rule).
+  const bit = MEASURED_FIELDS[dotted];
+  const measured = config?.roof?.measured;
+  if (bit && measured !== undefined && measured & bit) changes.push([['roof', 'measured'], measured & ~bit]);
+  return changes;
+};
+
+/** Several edits at once with editChanges' rule; their measured bits combine (each clears its own). */
+export const editBatch = (config: Config | null, changes: [string[], unknown][], sync?: SyncStatus | null): [string[], unknown][] => {
+  const all = changes.flatMap(([path, value]) => editChanges(config, path, value, sync));
+  const isMeasured = ([path]: [string[], unknown]) => path.join('.') === 'roof.measured';
+  const bits = all.filter(isMeasured).map(([, value]) => value as number);
+  if (bits.length < 2) return all;
+  return [...all.filter((change) => !isMeasured(change)), [['roof', 'measured'], bits.reduce((a, b) => a & b)]];
 };

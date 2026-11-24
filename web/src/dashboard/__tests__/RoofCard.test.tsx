@@ -58,7 +58,7 @@ describe('RoofCard', () => {
     expect(row).toHaveTextContent('Sun 3.2° ≥ 0.0°');
     expect(row.querySelector('[role="tooltip"], .info-tip, button')).not.toBeNull();
     expect(button('Open')).toBeDisabled();
-    expect(screen.getByText('Open: Daylight (Sun 3.2° ≥ 0.0°)')).toBeInTheDocument();
+    expect(screen.getByText(/^Open: Daylight check: the sun is up \(Sun 3\.2° ≥ 0\.0°\)/)).toBeInTheDocument();
   });
 
   it('shows the daylight line as Off, and leaves it out for older firmware', () => {
@@ -107,8 +107,8 @@ describe('RoofCard', () => {
     expect(button('Stop')).not.toHaveAttribute('disabled');
     expect(button('Open')).toBeDisabled();
     expect(button('Close')).toBeDisabled();
-    // One note for the reason both share; both buttons point at it.
-    expect(screen.getAllByText('Open: No live data')).toHaveLength(1);
+    // One blocker for the reason both share; both buttons point at it (spec 026).
+    expect(document.querySelectorAll('[data-blocker="noLiveData"]')).toHaveLength(1);
     expect(button('Close').getAttribute('aria-describedby')).toBe(button('Open').getAttribute('aria-describedby'));
   });
 
@@ -147,9 +147,23 @@ describe('RoofCard', () => {
     );
     show(live(status({ state: 'stopped' })));
     fireEvent.click(button('Open'));
-    expect(await screen.findByText('Open: The device is restarting')).toBeInTheDocument();
+    expect((await screen.findAllByText('The device is restarting')).length).toBeGreaterThan(0);
     expect(button('Close')).toBeDisabled();
     expect(button('Stop')).toBeEnabled();
+  });
+
+  // Spec 026: a reason both buttons share is never lost when one button also has a blocker.
+  it('a restarting refusal still shows when the weather blocks Open', async () => {
+    server.use(
+      http.post('/api/roof/close', () =>
+        HttpResponse.json({ success: false, state: 'stopped', reason: 'restarting', error: 'The device is restarting' }, { status: 409 }),
+      ),
+    );
+    show(live(status({ state: 'stopped', weather: 'unsafe', weatherText: 'unsafe: rain' })));
+    fireEvent.click(button('Close'));
+    expect(await screen.findByText('Close: The device is restarting')).toBeInTheDocument();
+    const id = button('Close').getAttribute('aria-describedby');
+    expect(document.getElementById(id!)).toHaveTextContent('Close: The device is restarting');
   });
 
   it('a latched fault: its text, Clear fault, and Open and Close disabled', async () => {
@@ -164,7 +178,7 @@ describe('RoofCard', () => {
     show(live(status({ state: 'error', fault: FAULT })));
     expect(screen.getByText('No target magnet after 61 s >= 60 s timeout')).toBeInTheDocument();
     expect(button('Open')).toBeDisabled();
-    expect(screen.getByText('Open: Fault: clear it first')).toBeInTheDocument();
+    expect(screen.getByText('Fault: clear it first')).toBeInTheDocument();
     fireEvent.click(button('Clear fault'));
     await waitFor(() => expect(cleared).toBe(true));
   });
@@ -194,7 +208,7 @@ describe('RoofCard', () => {
     expect(within(checks).getByText('Unsafe')).toBeInTheDocument();
     expect(within(checks).getByText('Not parked')).toBeInTheDocument();
     expect(within(checks).getByText('Waiting for park')).toBeInTheDocument();
-    expect(screen.getByText('Close: Mount not parked: Park switch 1 open')).toBeInTheDocument();
+    expect(screen.getByText(/^Close: Park check: Mount not parked: Park switch 1 open/)).toBeInTheDocument();
     expect(screen.getByText('Stop calls off the automatic close')).toBeInTheDocument();
   });
 
@@ -223,7 +237,7 @@ describe('RoofCard', () => {
     expect(screen.getByText("Minimum 11.5 V: below it the roof won't start, and a move stops with a fault.")).toBeInTheDocument();
     expect(screen.getByText('Limit 10.0 A: above it a move stops with a fault.')).toBeInTheDocument();
     expect(screen.getByText('Park switch 2')).toBeInTheDocument();
-    expect(screen.getByText('Open: Supply 10.9 V is below 11.5 V')).toBeInTheDocument();
+    expect(screen.getByText(/^Open: Supply 10\.9 V is below 11\.5 V/)).toBeInTheDocument();
   });
 
   it('draws the Hall reading against the saved thresholds', () => {

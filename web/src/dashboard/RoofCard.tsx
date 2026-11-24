@@ -16,6 +16,8 @@ import {
   type RoofView,
 } from '../lib/roofView';
 import { useRoofCommand } from '../hooks/useRoofCommand';
+import { closePhaseBlocker, faultBlocker, moveBlockers, type Blocker, type BlockerContext } from '../lib/moveBlockers';
+import { MoveBlockers } from '../components/MoveBlockers';
 import type { RoofCommand } from '../lib/api';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatCount, formatNumber } from '../i18n/format';
@@ -56,16 +58,48 @@ const Position: FunctionalComponent<{ view: RoofView }> = ({ view }) => (
 
 type Send = (command: RoofCommand) => void;
 
-// The reason under the buttons; one note when Open and Close share it.
-const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }) => {
+// Spec 026: why Open or Close can't be used, from the shared blockers (the fault has its own
+// block below). A reason no blocker covers ("Already open", "Restarting") stays a one-line note.
+interface WhyView {
+  blockers: Blocker[]; // both buttons' together, each once
+  covered: { open: boolean; close: boolean }; // the button's own reason is in the list
+}
+
+const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
+  const roof = view.roof;
+  // At that end already (or moving there), only "no live data" explains more than the button does.
+  const own = (action: 'open' | 'close', disabled: boolean, here: string[]) =>
+    disabled
+      ? moveBlockers(roof, action, ctx).filter((b) => b.id !== 'fault' && (b.id === 'noLiveData' || !here.includes(roof?.state ?? '')))
+      : [];
+  const open = own('open', view.open.disabled, ['open', 'opening']);
+  const close = own('close', view.close.disabled, ['closed', 'closing']);
+  // Spec 026: a reason that holds only one button says which ("Close: Park check ..."), so a park
+  // blocker is never read as stopping Open.
+  const only = (blocker: Blocker, other: Blocker[], key: 'roof.reason.openPrefix' | 'roof.reason.closePrefix') =>
+    other.some((b) => b.id === blocker.id) ? blocker : { ...blocker, title: t(key, { reason: blocker.title }) };
+  const both = [
+    ...open.map((b) => only(b, close, 'roof.reason.openPrefix')),
+    ...close.map((b) => only(b, open, 'roof.reason.closePrefix')),
+  ];
+  const seen = new Set<string>();
+  const blockers = both.filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
+  return { blockers, covered: { open: open.length > 0, close: close.length > 0 } };
+};
+
+// A button's reason no blocker covers ("Already closed", "Restarting"), as its own note.
+const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }, covered: WhyView['covered']) => {
   const notes: ComponentChildren[] = [];
-  if (open.reason)
+  // Spec 026: a reason both buttons share (a fault, a restart) is said once, for both, unprefixed.
+  const shared = Boolean(open.reason) && open.reason === close.reason && !covered.open && !covered.close;
+  if (open.reason && !covered.open)
     notes.push(
       <Note key="open" id={ids.open}>
-        {t('roof.reason.openPrefix', { reason: open.reason })}
+        {shared ? open.reason : t('roof.reason.openPrefix', { reason: open.reason })}
       </Note>,
     );
-  if (close.reason && close.reason !== open.reason)
+  // A reason both share shows once, on the open note, unless that note isn't shown.
+  if (close.reason && !covered.close && (close.reason !== open.reason || covered.open))
     notes.push(
       <Note key="close" id={ids.close}>
         {t('roof.reason.closePrefix', { reason: close.reason })}
@@ -89,11 +123,18 @@ const Confirm: FunctionalComponent<{ asking: 'open' | 'close'; onYes: () => void
   );
 };
 
-const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean }> = ({ view, send, confirm }) => {
+const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean; ctx: BlockerContext }> = ({
+  view,
+  send,
+  confirm,
+  ctx,
+}) => {
   const base = useId();
   const [asking, setAsking] = useState<'open' | 'close' | null>(null);
-  const ids = { open: `${base}-open`, close: `${base}-close` };
-  const closeId = view.close.reason && view.close.reason === view.open.reason ? ids.open : ids.close;
+  const why = blockersFor(view, ctx);
+  const ids = { open: why.covered.open ? `${base}-why` : `${base}-open`, close: why.covered.close ? `${base}-why` : `${base}-close` };
+  const sharedNote = !why.covered.open && !why.covered.close && view.close.reason && view.close.reason === view.open.reason;
+  const closeId = sharedNote ? ids.open : ids.close;
   const press = (command: 'open' | 'close') => (confirm ? setAsking(command) : send(command));
   return (
     <div class="roof-controls" data-inventory="roof-buttons">
@@ -138,16 +179,33 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolea
           onNo={() => setAsking(null)}
         />
       )}
-      {reasonNotes(view.open, view.close, ids)}
-      {view.notes.map((note) => (
-        <Note key={note.id} tone={note.tone}>
-          {note.text}
-        </Note>
-      ))}
-      {view.result && <Note tone={view.result.tone}>{view.result.text}</Note>}
+      <Why view={view} why={why} ids={ids} whyId={`${base}-why`} />
     </div>
   );
 };
+
+// Under the buttons: the shared blockers (spec 026), a reason no blocker covers, the notes and the last answer.
+const Why: FunctionalComponent<{ view: RoofView; why: WhyView; ids: { open: string; close: string }; whyId: string }> = ({
+  view,
+  why,
+  ids,
+  whyId,
+}) => (
+  <>
+    {why.blockers.length > 0 && (
+      <div id={whyId}>
+        <MoveBlockers blockers={why.blockers} />
+      </div>
+    )}
+    {reasonNotes(view.open, view.close, ids, why.covered)}
+    {view.notes.map((note) => (
+      <Note key={note.id} tone={note.tone}>
+        {note.text}
+      </Note>
+    ))}
+    {view.result && <Note tone={view.result.tone}>{view.result.text}</Note>}
+  </>
+);
 
 // Clear fault needs live data, so the person sees the fault they clear (constitution I).
 const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; reason: string }> = ({ roof, send, busy, reason }) => {
@@ -155,7 +213,9 @@ const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; 
   if (!roof.fault) return null;
   return (
     <div class="roof-fault" data-inventory="roof-fault-card">
-      <Note tone="bad">{deviceText(roof.fault.text)}</Note>
+      <Note tone="bad">
+        {deviceText(roof.fault.text)} <InfoTip text={faultBlocker(roof)?.meaning} />
+      </Note>
       <Button
         small
         onClick={() => send('clear-fault')}
@@ -205,14 +265,17 @@ export const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight; location
   );
 };
 
-const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus }> = ({ roof, location }) => {
+const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus; ctx: BlockerContext }> = ({ roof, location, ctx }) => {
   const phase = closePhasePill(roof.closePhase);
+  // Spec 026: a stand-down says when it clears, with Release hold while that is allowed.
+  const hold = roof.closePhase === 'heldByPerson' || roof.closePhase === 'halted' ? closePhaseBlocker(roof, ctx) : null;
   return (
     <div data-inventory="roof-checks">
       <PillRow label={t('roof.weather.label')} pill={weatherPill(roof)} />
       <PillRow label={t('roof.park.label')} pill={parkPill(roof)} />
       {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
+      {hold && <MoveBlockers blockers={[hold]} />}
     </div>
   );
 };
@@ -259,28 +322,51 @@ const PinsLink: FunctionalComponent<{ valid?: boolean }> = ({ valid }) =>
     </div>
   ) : null;
 
+// The fault, the checks, the readings and the Hall scale, once the roof reports.
+const Details: FunctionalComponent<{
+  roof: RoofStatus;
+  config?: RoofConfig;
+  live: LiveState;
+  ctx: BlockerContext;
+  fault: { send: Send; busy: boolean; reason: string };
+}> = ({ roof, config, live, ctx, fault }) => (
+  <>
+    <Fault roof={roof} send={fault.send} busy={fault.busy} reason={fault.reason} />
+    <Checks roof={roof} location={live.status?.location} ctx={ctx} />
+    <Readings roof={roof} />
+    <Hall roof={roof} config={config} />
+  </>
+);
+
 export interface RoofCardProps {
   live: LiveState;
   config?: RoofConfig;
   confirm?: boolean; // spec 014: ui.confirmOpenClose
+  rearmMinutes?: number; // autoClose.rearmMinutes, for "clears at" (spec 026)
 }
 
-const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = false }) => {
+const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = false, rearmMinutes = 10 }) => {
   const roof = live.status?.roof ?? null;
   const { result, inFlight, send } = useRoofCommand(roof?.state ?? null);
   const input = { live, result, inFlight, now: Date.now() };
   const view = roofView(input);
   const clearReason = inFlight === 'open' || inFlight === 'close' ? t('roof.sending') : clearFaultReason(input);
+  const ctx: BlockerContext = { live: view.live, rearmMinutes, nowMs: input.now };
   return (
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
-        <Buttons view={view} send={send} confirm={confirm} />
-        {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
+        <Buttons view={view} send={send} confirm={confirm} ctx={ctx} />
         <PinsLink valid={live.status?.pins?.valid} />
-        {roof && <Checks roof={roof} location={live.status?.location} />}
-        {roof && <Readings roof={roof} />}
-        {roof && <Hall roof={roof} config={config} />}
+        {roof && (
+          <Details
+            roof={roof}
+            config={config}
+            live={live}
+            ctx={ctx}
+            fault={{ send, busy: inFlight === 'clear-fault', reason: clearReason }}
+          />
+        )}
       </Card>
     </div>
   );

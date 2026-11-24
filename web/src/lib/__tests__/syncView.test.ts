@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { follows, locked, needs, syncLine } from '../syncView';
+import { editBatch, editChanges, follows, locked, needs, syncLine } from '../syncView';
 import { mockConfig, mockStatus } from '../../mocks/data';
-import type { SyncStatus } from '../../types';
+import type { Config, SyncStatus } from '../../types';
 
 // Spec 020: following SQMeter per group.
 
@@ -54,5 +54,60 @@ describe('syncView', () => {
     expect(needs(s, 'ntfyToken')).toBe(true);
     expect(needs(s, 'mqttPassword')).toBe(false);
     expect(needs(undefined, 'pushoverKeys')).toBe(false);
+  });
+});
+
+// Spec 026: typing in a followed group sets it here; an asked-for secret only fills the gap.
+describe('editChanges', () => {
+  const following = (): Config => {
+    const c = structuredClone(mockConfig);
+    c.sqmeterSync = { time: { follow: true, syncedAt: 1 }, mqtt: { follow: true, syncedAt: 1 }, alerts: { follow: true, syncedAt: 1 } };
+    return c;
+  };
+  it('a field of a followed group unfollows that group only', () => {
+    expect(editChanges(following(), ['mqtt', 'username'], 'me')).toEqual([
+      [['mqtt', 'username'], 'me'],
+      [['sqmeterSync', 'mqtt', 'follow'], false],
+    ]);
+    expect(editChanges(following(), ['safety', 'mqtt', 'topic'], 'obs')[1]).toEqual([['sqmeterSync', 'mqtt', 'follow'], false]);
+    expect(editChanges(following(), ['ntp', 'timezone'], 'UTC0')[1]).toEqual([['sqmeterSync', 'time', 'follow'], false]);
+    expect(editChanges(following(), ['alerts', 'pushover', 'userKey'], 'k')[1]).toEqual([['sqmeterSync', 'alerts', 'follow'], false]);
+  });
+  it('a field outside the groups, or a group set here, is just the edit', () => {
+    expect(editChanges(following(), ['mqtt', 'topic'], 'roof')).toEqual([[['mqtt', 'topic'], 'roof']]);
+    const local = following();
+    local.sqmeterSync!.mqtt.follow = false;
+    expect(editChanges(local, ['mqtt', 'username'], 'me')).toHaveLength(1);
+  });
+  it('a secret the device asks for keeps the group following', () => {
+    const sync = { ...mockStatus.sync!, mqtt: { follow: true, syncedAt: 1, refused: null, needs: ['mqttPassword' as const] } };
+    expect(editChanges(following(), ['mqtt', 'password'], 'pw', sync)).toHaveLength(1);
+    expect(editChanges(following(), ['mqtt', 'password'], 'pw')).toHaveLength(2);
+  });
+});
+
+// Spec 026: a measured roof value typed over is no longer measured, also several at once; a Pushover sound isn't SQMeter's.
+describe('editChanges and editBatch: measured values and the Pushover sound', () => {
+  const measured = (bits: number): Config => {
+    const c = structuredClone(mockConfig);
+    c.roof = { ...c.roof!, measured: bits };
+    c.sqmeterSync = { time: { follow: true, syncedAt: 1 }, mqtt: { follow: true, syncedAt: 1 }, alerts: { follow: true, syncedAt: 1 } };
+    return c;
+  };
+  it('clears the bit of the value typed', () => {
+    expect(editChanges(measured(31), ['roof', 'travelMm'], 2000)).toEqual([
+      [['roof', 'travelMm'], 2000],
+      [['roof', 'measured'], 30],
+    ]);
+  });
+  it('combines the bits of several edits', () => {
+    const changes = editBatch(measured(31), [
+      [['roof', 'travelMm'], 2000],
+      [['roof', 'speedMmPerSecond'], 20],
+    ]);
+    expect(changes.filter(([path]) => path.join('.') === 'roof.measured')).toEqual([[['roof', 'measured'], 28]]);
+  });
+  it('a Pushover sound keeps the alerts group following', () => {
+    expect(editChanges(measured(0), ['alerts', 'pushover', 'sound'], 'siren')).toHaveLength(1);
   });
 });

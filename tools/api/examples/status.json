@@ -89,16 +89,16 @@
     "fsSize": 458752
   },
   "time": {
-    "epoch": 1795469809,
-    "iso": "2026-11-23T21:36:49+0000",
+    "epoch": 1795482879,
+    "iso": "2026-11-24T01:14:39+0000",
     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
   },
   "ntp": {
     "enabled": true,
     "synced": true,
     "status": 1,
-    "lastSync": 1795466207709,
-    "nextSync": 1795473407709,
+    "lastSync": 1795479277076,
+    "nextSync": 1795486477076,
     "drift": 0.003,
     "server": "pool.ntp.org"
   },
@@ -130,7 +130,7 @@
     "enabled": true,
     "connected": true,
     "state": 0,
-    "lastPublish": 1795469747709,
+    "lastPublish": 1795482817076,
     "lastReconnectAttempt": 0,
     "broker": "192.168.1.10",
     "port": 1883,
@@ -161,7 +161,13 @@
     "parkSwitches": {
       "fitted": 0,
       "switch1": "notFitted",
-      "switch2": "notFitted"
+      "switch2": "notFitted",
+      "switchesOnly": false,
+      "openings": [
+        0,
+        0
+      ],
+      "check": null
     },
     "closePending": false,
     "calibrating": false,
@@ -194,7 +200,8 @@
       "limitDeg": 0,
       "text": "Location not set",
       "closes": false
-    }
+    },
+    "closeRearmSeconds": null
   },
   "location": {
     "source": "sqmeter",
@@ -207,6 +214,7 @@
   "sync": {
     "problem": "waiting",
     "readAgeSeconds": null,
+    "secrets": null,
     "time": {
       "follow": true,
       "syncedAt": null,
@@ -244,5 +252,5 @@
     "valid": true,
     "restartNeeded": false
   },
-  "configRevision": 3932332023
+  "configRevision": 3159606172
 }

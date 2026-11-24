@@ -45,6 +45,8 @@ namespace SQM
         constexpr uint64_t WEATHER_REARM_CONFIRM_MS = 30000;
         // The most one step adds to that count (ten steps' worth).
         constexpr uint64_t MAX_COUNT_STEP_MS = 1000;
+        // Spec 026: standDownLeftMs() while a stand-down isn't counting down.
+        constexpr uint64_t NOT_COUNTING = UINT64_MAX;
         // park.timeoutSeconds' default, in ms.
         constexpr uint32_t DEFAULT_PARK_TIMEOUT_MS = 240000;
 
@@ -67,6 +69,10 @@ namespace SQM
             // The sequence then acts as for unsafe weather; the verdict itself is
             // never changed (weatherSafe stays the weather's).
             bool daylight = false;
+            // Spec 026: a person's attended "Release hold": ends a stand-down
+            // (a person's stop, a halted close) early, but only on a step where
+            // nothing wants the roof closed (weather safe, no daylight close).
+            bool releaseHold = false;
         };
 
         enum class Phase : uint8_t
@@ -135,6 +141,14 @@ namespace SQM
             bool remoteStop = false;
         };
 
+        // Spec 026: why a person's release of a stand-down is refused now, or
+        // nullptr when it may go ahead (the sequence checks again at its step).
+        // `nothingWantsClose`: the weather is safe and no daylight close is wanted.
+        const char *releaseRefusal(Phase phase, bool nothingWantsClose);
+        // The log line for a step that took a release request: released, or dropped
+        // (something wanted the roof closed, or a new Stop came first).
+        const char *releaseLogText(Phase before, Phase after);
+
         // The roof's answer to the Close action.
         enum class CloseAnswer : uint8_t
         {
@@ -172,6 +186,11 @@ namespace SQM
             // The roof's answer to the Close action of the last step.
             Decision closeAnswered(CloseAnswer answer);
             Phase phase() const { return current; }
+            // Spec 026: how long until a stand-down (HeldByPerson, Halted) ends
+            // by itself if nothing wants the roof closed meanwhile, as of the
+            // last step; NOT_COUNTING when not stood down or while something
+            // wants the roof closed (the count then starts again once it doesn't).
+            uint64_t standDownLeftMs() const;
             // Spec 013: the current episode was started by daylight and the
             // weather has stayed safe since (false while idle with nothing wanted).
             bool daylightEpisode() const { return daylightOnly; }

@@ -218,6 +218,8 @@ export interface RoofStatus {
   calibrating?: boolean; // spec 016: a calibration run is under way (pauses included)
   // Spec 008: the automatic close's phase, and the weather and park as the roof's command checks see them now.
   closePhase: RoofClosePhase;
+  // Spec 026: a stand-down's seconds left if nothing wants the roof closed meanwhile (null: not counting; absent: older firmware).
+  closeRearmSeconds?: number | null;
   weather: 'safe' | 'unsafe' | 'unknown';
   weatherText: string;
   parkConfirmed: boolean;

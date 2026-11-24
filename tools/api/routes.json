@@ -17,6 +17,7 @@
     { "path": "/api/roof/close", "method": "POST", "auth": "required" },
     { "path": "/api/roof/stop", "method": "POST", "auth": "required" },
     { "path": "/api/roof/clear-fault", "method": "POST", "auth": "required" },
+    { "path": "/api/roof/release-hold", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration/start", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration/abort", "method": "POST", "auth": "required" },
     { "path": "/api/roof/calibration/confirm", "method": "POST", "auth": "required" },

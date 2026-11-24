@@ -3,6 +3,7 @@
 #include "RoofControl.h"
 #include "Teach.h"
 #include "WebServer.h"
+#include "RoofMeasured.h"
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 
@@ -123,6 +124,7 @@ namespace SQM
                 next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
                 next.roof.hallHighCounts = values.highCounts;
                 next.roof.hallLowCounts = values.lowCounts;
+                next.roof.measured |= Measured::HALL; // spec 026: measured at the roof
                 invalid = !next.validate(&reason);
                 return !invalid;
             });
