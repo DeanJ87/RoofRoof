@@ -149,3 +149,14 @@ describe('withSentTogether and roof.measured', () => {
     expect(withSentTogether({ roof: { rampUpMs: 100 } }, full)).toEqual({ roof: { rampUpMs: 100 } });
   });
 });
+
+// Spec 026: a rebase keeps what the kept edits are: a typed measured value isn't measured.
+describe('rebaseEdits keeps the bookkeeping', () => {
+  it('clears the bit of a kept measured value even when the device changed roof.measured', () => {
+    const loaded = { roof: { travelMm: 1850, measured: 0 } };
+    const edited = { roof: { travelMm: 2000, measured: 0 } };
+    const fresh = { roof: { travelMm: 1850, measured: 31 } };
+    const { config } = rebaseEdits(fresh, loaded, edited, ['roof.measured']);
+    expect(config).toEqual({ roof: { travelMm: 2000, measured: 30 } });
+  });
+});

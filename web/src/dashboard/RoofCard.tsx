@@ -78,7 +78,10 @@ const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
   // blocker is never read as stopping Open.
   const only = (blocker: Blocker, other: Blocker[], key: 'roof.reason.openPrefix' | 'roof.reason.closePrefix') =>
     other.some((b) => b.id === blocker.id) ? blocker : { ...blocker, title: t(key, { reason: blocker.title }) };
-  const both = [...open.map((b) => only(b, close, 'roof.reason.openPrefix')), ...close.map((b) => only(b, open, 'roof.reason.closePrefix'))];
+  const both = [
+    ...open.map((b) => only(b, close, 'roof.reason.openPrefix')),
+    ...close.map((b) => only(b, open, 'roof.reason.closePrefix')),
+  ];
   const seen = new Set<string>();
   const blockers = both.filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
   return { blockers, covered: { open: open.length > 0, close: close.length > 0 } };
@@ -93,7 +96,8 @@ const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; c
         {t('roof.reason.openPrefix', { reason: open.reason })}
       </Note>,
     );
-  if (close.reason && close.reason !== open.reason && !covered.close)
+  // A reason both share shows once, on the open note, unless that note isn't shown.
+  if (close.reason && !covered.close && (close.reason !== open.reason || covered.open))
     notes.push(
       <Note key="close" id={ids.close}>
         {t('roof.reason.closePrefix', { reason: close.reason })}
@@ -127,7 +131,8 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolea
   const [asking, setAsking] = useState<'open' | 'close' | null>(null);
   const why = blockersFor(view, ctx);
   const ids = { open: why.covered.open ? `${base}-why` : `${base}-open`, close: why.covered.close ? `${base}-why` : `${base}-close` };
-  const closeId = !why.covered.close && view.close.reason && view.close.reason === view.open.reason ? ids.open : ids.close;
+  const sharedNote = !why.covered.open && !why.covered.close && view.close.reason && view.close.reason === view.open.reason;
+  const closeId = sharedNote ? ids.open : ids.close;
   const press = (command: 'open' | 'close') => (confirm ? setAsking(command) : send(command));
   return (
     <div class="roof-controls" data-inventory="roof-buttons">

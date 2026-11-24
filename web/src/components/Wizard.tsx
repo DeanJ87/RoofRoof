@@ -304,7 +304,7 @@ const Wizard: FunctionalComponent = () => {
     // FR-007: a fix made here when the wizard can, else saved and then Settings.
     fix: (entry) => {
       const inPlace = inPlaceFix(entry);
-      if (inPlace && 'turnOn' in inPlace) return editor.applyChanges([[inPlace.turnOn, true]]);
+      if (inPlace && 'turnOn' in inPlace) return editor.applyChanges(editChanges(editor.config, inPlace.turnOn, true, editor.status?.sync));
       if (inPlace) return void openScreen(screenIndex(inPlace.screen));
       const target = fixTarget(entry);
       if (!('restart' in target)) void leaveTo(`/settings?tab=${target.tab}`);

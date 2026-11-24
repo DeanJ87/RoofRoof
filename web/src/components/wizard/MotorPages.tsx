@@ -58,7 +58,8 @@ const MotorFrame: FunctionalComponent<WizardPageProps & { render: (motor: Motor)
 // The wrong way: reverse the opening direction here (FR-007), save it, then hold Open again.
 const WrongWay: FunctionalComponent<WizardPageProps & { roof: RoofConfig }> = (props) => {
   const reverse = () => props.update(['roof', 'openDirection'], props.roof.openDirection === 'forward' ? 'reverse' : 'forward');
-  return props.dirty ? (
+  // Reversed here and not saved yet: save it before holding Open again.
+  return props.config.roof?.openDirection !== props.saved.roof?.openDirection ? (
     <Note tone="warn" action={{ label: t('settings.save'), onClick: props.saveHere }}>
       {t('wizard.motor.saveDirection')}
     </Note>

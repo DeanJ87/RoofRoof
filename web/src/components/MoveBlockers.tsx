@@ -29,6 +29,8 @@ const send = async (request: () => Promise<Response>, done?: string) => {
 const Row: FunctionalComponent<{ blocker: Blocker; onDone?: () => void }> = ({ blocker, onDone }) => {
   const [asking, setAsking] = useState(false);
   const fix = blocker.fix;
+  // The question goes with the offer: asked again from the start once it is offered again.
+  if (asking && fix?.act !== 'releaseHold') setAsking(false);
   const act = async () => {
     if (!fix) return;
     if (fix.href) return route(fix.href);

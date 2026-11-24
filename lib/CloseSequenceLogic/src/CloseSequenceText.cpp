@@ -191,9 +191,10 @@ namespace SQM
         }
         const char *releaseLogText(Phase before, Phase after)
         {
-            const bool standDown = before == Phase::HeldByPerson || before == Phase::Halted;
-            return standDown && after == Phase::Idle ? "Stand-down released by a person at the roof"
-                                                     : "Release request dropped: the sequence checked again and kept its stand-down";
+            if (before != Phase::HeldByPerson && before != Phase::Halted)
+                return "Release request dropped: the stand-down had already ended";
+            return after == Phase::Idle ? "Stand-down released by a person at the roof"
+                                        : "Release request dropped: the sequence checked again and kept its stand-down";
         }
 
         const char *releaseRefusal(Phase phase, bool nothingWantsClose)

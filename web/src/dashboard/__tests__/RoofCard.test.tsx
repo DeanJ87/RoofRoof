@@ -152,6 +152,20 @@ describe('RoofCard', () => {
     expect(button('Stop')).toBeEnabled();
   });
 
+  // Spec 026: a reason both buttons share is never lost when one button also has a blocker.
+  it('a restarting refusal still shows when the weather blocks Open', async () => {
+    server.use(
+      http.post('/api/roof/close', () =>
+        HttpResponse.json({ success: false, state: 'stopped', reason: 'restarting', error: 'The device is restarting' }, { status: 409 }),
+      ),
+    );
+    show(live(status({ state: 'stopped', weather: 'unsafe', weatherText: 'unsafe: rain' })));
+    fireEvent.click(button('Close'));
+    expect(await screen.findByText('Close: The device is restarting')).toBeInTheDocument();
+    const id = button('Close').getAttribute('aria-describedby');
+    expect(document.getElementById(id!)).toHaveTextContent('Close: The device is restarting');
+  });
+
   it('a latched fault: its text, Clear fault, and Open and Close disabled', async () => {
     // inventory: roof-fault-card
     let cleared = false;

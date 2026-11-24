@@ -186,5 +186,19 @@ export const rebaseEdits = <T>(fresh: T, loaded: T, edited: T, changedFields: st
     if (unknown || changed.some((field) => overlaps(path, field))) replaced.push(path);
     else setAt(kept, path, valueAt(edits, path));
   });
-  return { config: applyPatch(fresh, kept), replaced };
+  return { config: keepBookkeeping(applyPatch(fresh, kept), leafPaths(kept), edited), replaced };
+};
+
+/**
+ * Spec 026: after a rebase, the kept edits still say what they are: a measured roof value typed here
+ * is not measured, and a group typed in while it was set here stays set here, whatever the device's
+ * flags now say.
+ */
+const keepBookkeeping = <T>(config: T, kept: string[], edited: T): T => {
+  let out = config;
+  const measured = valueAt(out, 'roof.measured');
+  const cleared = kept.reduce((bits, path) => bits | (MEASURED_FIELDS[path] ?? 0), 0);
+  if (typeof measured === 'number' && cleared) out = applyPatch(out, pathPatch('roof.measured', measured & ~cleared));
+  for (const path of followPaths(kept)) if (valueAt(edited, path) === false) out = applyPatch(out, pathPatch(path, false));
+  return out;
 };
