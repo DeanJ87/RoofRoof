@@ -116,15 +116,15 @@ namespace SQM::ConfigDetail
     {
         uint8_t bits = 0;
         if (a.travelMm != b.travelMm)
-            bits |= RoofConfig::MEASURED_TRAVEL;
+            bits |= Measured::TRAVEL;
         if (a.speedMmPerSecond != b.speedMmPerSecond)
-            bits |= RoofConfig::MEASURED_SPEED;
+            bits |= Measured::SPEED;
         if (a.timeoutMarginSeconds != b.timeoutMarginSeconds)
-            bits |= RoofConfig::MEASURED_MARGIN;
+            bits |= Measured::MARGIN;
         if (a.hallHighEnd != b.hallHighEnd || a.hallHighCounts != b.hallHighCounts || a.hallLowCounts != b.hallLowCounts)
-            bits |= RoofConfig::MEASURED_HALL;
+            bits |= Measured::HALL;
         if (a.openDirection != b.openDirection)
-            bits |= RoofConfig::MEASURED_DIRECTION;
+            bits |= Measured::DIRECTION;
         return bits;
     }
 

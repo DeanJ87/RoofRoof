@@ -138,7 +138,7 @@ std::string EmulatedDevice::teachConfirm(const std::string &body)
     next.roof.hallHighEnd = values.highEnd == Roof::End::Open ? RoofConfig::HallEnd::Open : RoofConfig::HallEnd::Closed;
     next.roof.hallHighCounts = values.highCounts;
     next.roof.hallLowCounts = values.lowCounts;
-    next.roof.measured |= RoofConfig::MEASURED_HALL; // spec 026, as the device
+    next.roof.measured |= Measured::HALL; // spec 026, as the device
     std::string reason;
     if (!next.validate(&reason))
         return response(400, errorJson(reason));

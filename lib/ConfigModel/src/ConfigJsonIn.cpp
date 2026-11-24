@@ -294,7 +294,7 @@ namespace SQM
             roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
             roof.take("calibrationLimitSeconds", r.calibrationLimitSeconds);
             roof.take("measured", r.measured);
-            r.measured &= RoofConfig::MEASURED_ALL; // spec 026: unknown bits are dropped
+            r.measured &= Measured::ALL; // spec 026: unknown bits are dropped
             roof.take("rampUpMs", r.rampUpMs);
             roof.take("rampDownMs", r.rampDownMs);
             roof.take("topDutyPercent", r.topDutyPercent);

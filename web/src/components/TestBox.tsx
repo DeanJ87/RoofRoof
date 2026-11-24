@@ -280,6 +280,13 @@ const weatherBypassChanges = (on: boolean, sourceOn: boolean, saved: { http: boo
   ];
 };
 
+// The weather sources as the bypass sees them: turned off by this edit, as saved, and reading unsafe now.
+const weatherSource = (saved: Config, edited: Config, weather: string | undefined) => ({
+  sourceTurnedOff: sqmeterOn(saved) && !sqmeterOn(edited),
+  savedSources: { http: Boolean(saved.safety?.http.enabled), mqtt: Boolean(saved.safety?.mqtt.enabled) },
+  weatherUnsafe: weather === 'unsafe',
+});
+
 // An SQMeter weather source is on in these settings.
 const sqmeterOn = (c: Config) => Boolean(c.safety?.http.enabled || c.safety?.mqtt.enabled);
 
@@ -335,9 +342,7 @@ const TestBox: FunctionalComponent = () => {
         error={(key) => editor.validationErrors[key]}
         update={(path, value) => editor.applyChanges([[path, value]])}
         updateMany={(changes) => editor.applyChanges(changes)}
-        sourceTurnedOff={sqmeterOn(saved) && !sqmeterOn(config)}
-        savedSources={{ http: Boolean(saved.safety?.http.enabled), mqtt: Boolean(saved.safety?.mqtt.enabled) }}
-        weatherUnsafe={status?.roof?.weather === 'unsafe'}
+        {...weatherSource(saved, config, status?.roof?.weather)}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

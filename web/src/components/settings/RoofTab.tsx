@@ -392,12 +392,7 @@ const RoofTab: FunctionalComponent<SettingsTabProps> = (props) => {
     <>
       <MotionNote status={props.status} />
       {stages.length > 0 && (
-        <SettingsCard
-          id="setup"
-          title={t('stage.title')}
-          hint={t('stage.hint')}
-          badge={<Pill tone="pill-dim">{stagesDone(stages)}</Pill>}
-        >
+        <SettingsCard id="setup" title={t('stage.title')} hint={t('stage.hint')} badge={<Pill tone="pill-dim">{stagesDone(stages)}</Pill>}>
           <SetupStages stages={stages} />
         </SettingsCard>
       )}

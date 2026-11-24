@@ -41,12 +41,7 @@ const setupCard = (ctx: CardContext): MasonryItem[] => {
   if (stages.length === 0 || setupComplete(stages)) return [];
   const node = (
     <div data-inventory="setup-card">
-      <Card
-        title={t('stage.title')}
-        icon="roof"
-        hint={t('stage.hint')}
-        actions={<Pill tone="pill-amber">{stagesDone(stages)}</Pill>}
-      >
+      <Card title={t('stage.title')} icon="roof" hint={t('stage.hint')} actions={<Pill tone="pill-amber">{stagesDone(stages)}</Pill>}>
         <SetupStages stages={stages} />
       </Card>
     </div>

@@ -169,7 +169,7 @@ namespace
 void test_a_calibration_accept_marks_its_values_measured(void)
 {
     const Config c = savedWith(Config::createDefault(), R"({"roof":{"travelMm":2100,"speedMmPerSecond":31.5,"measured":7}})");
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_TRAVEL | RoofConfig::MEASURED_SPEED | RoofConfig::MEASURED_MARGIN, c.roof.measured);
+    TEST_ASSERT_EQUAL_UINT8(Measured::TRAVEL | Measured::SPEED | Measured::MARGIN, c.roof.measured);
     // Round trip through storage.
     Config again = Config::createDefault();
     std::string error;
@@ -180,20 +180,20 @@ void test_a_calibration_accept_marks_its_values_measured(void)
 void test_typing_a_measured_value_clears_only_its_bit(void)
 {
     Config c = Config::createDefault();
-    c.roof.measured = RoofConfig::MEASURED_ALL;
+    c.roof.measured = Measured::ALL;
     const Config typed = savedWith(c, R"({"roof":{"travelMm":2000}})");
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_ALL & ~RoofConfig::MEASURED_TRAVEL, typed.roof.measured);
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::TRAVEL, typed.roof.measured);
     const Config hall = savedWith(c, R"({"roof":{"hallLowCounts":900}})");
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_ALL & ~RoofConfig::MEASURED_HALL, hall.roof.measured);
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::HALL, hall.roof.measured);
     const Config direction = savedWith(c, R"({"roof":{"openDirection":"reverse"}})");
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_ALL & ~RoofConfig::MEASURED_DIRECTION, direction.roof.measured);
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL & ~Measured::DIRECTION, direction.roof.measured);
     const Config same = savedWith(c, R"({"roof":{"travelMm":1850,"rampUpMs":1500},"deviceName":"Roof"})");
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_ALL, same.roof.measured); // nothing measured changed
+    TEST_ASSERT_EQUAL_UINT8(Measured::ALL, same.roof.measured); // nothing measured changed
 }
 
 void test_unknown_measured_bits_are_dropped(void)
 {
-    TEST_ASSERT_EQUAL_UINT8(RoofConfig::MEASURED_HALL, savedWith(Config::createDefault(), R"({"roof":{"measured":200}})").roof.measured);
+    TEST_ASSERT_EQUAL_UINT8(Measured::HALL, savedWith(Config::createDefault(), R"({"roof":{"measured":200}})").roof.measured);
 }
 
 int main(int, char **)

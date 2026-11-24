@@ -7,6 +7,7 @@
 
 #include "Analog.h"
 #include "PinMap.h"
+#include "RoofMeasured.h"
 
 namespace SQM
 {
@@ -288,11 +289,7 @@ namespace SQM
         float minSupplyVolts = 11.0f;
         // Spec 016: the longest a calibration leg may drive (its hard timeout).
         uint32_t calibrationLimitSeconds = 180;
-        // Spec 026: values measured on the roof and not typed since (MEASURED_* bits);
-        // a save that changes one without sending `measured` clears its bit.
-        uint8_t measured = 0;
-        static constexpr uint8_t MEASURED_TRAVEL = 1, MEASURED_SPEED = 2, MEASURED_MARGIN = 4;
-        static constexpr uint8_t MEASURED_HALL = 8, MEASURED_DIRECTION = 16, MEASURED_ALL = 31; // HALL: end and thresholds
+        uint8_t measured = 0; // spec 026: Measured:: bits (RoofMeasured.h)
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;
