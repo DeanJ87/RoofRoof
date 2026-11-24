@@ -26,7 +26,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     - **Weather sources** and **Copy from SQMeter**, then **Mount park** (below).
     - **Direction and speed**: the opening direction, top and slow duty, the ramps and the time to leave a magnet - see [Roof motion](roof-motion.md).
     - **Hall sensor**: which end reads high and the two thresholds, with the live reading drawn against the thresholds as you type them - see [Calibration](../hardware/calibration.md).
-    - **Travel and time limits**: travel, speed and the timeout margin, and the **Move time limit** they make (a full move, and a slow move from an unknown position), worked out as the device does. A note says whether travel and speed were measured on the roof, are still the defaults or were typed, with a link to the [calibration run](calibration-run.md); its time limit is under **Advanced**.
+    - **Travel and time limits**: travel, speed and the timeout margin, and the move time limits they make (**Open or close limit**, and **Slow-duty limit (slow speed)** for a move from an unknown position, as the calibration result names them), worked out as the device does. A note says whether travel and speed were measured on the roof, are still the defaults or were typed, with a link to the [calibration run](calibration-run.md); its time limit is under **Advanced**.
     - **Current and supply**: current sense and its limits, and the minimum supply.
     - **Weather sources**: SQMeter over HTTP and over MQTT and the stale time - see [Safety inputs](safety-inputs.md).
     - **Mount park**: what confirms the park (N.I.N.A. only, park switches only, or both), the switches fitted, the N.I.N.A. address and the **Park time limit** of the [close on unsafe weather](close-on-unsafe.md).
@@ -347,8 +347,8 @@ sense off.
 | `roof.slowDutyPercent` | int | `40` | Duty at the ends and for every move from an unknown position (10-100, not above the top duty) |
 | `roof.openDirection` | string | `"forward"` | Which motor direction opens the roof: `forward` (RPWM) or `reverse` (LPWM) |
 | `roof.hallHighEnd` | string | `"open"` | Which end's magnet reads high on the Hall sensor: `open` or `closed` |
-| `roof.hallHighCounts` | int | `3000` | Raw reading at or above which the high end's magnet is read (100-3995) |
-| `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (100-3995, at least 80 below the high threshold) |
+| `roof.hallHighCounts` | int | `3000` | Raw reading at or above which the high end's magnet is read (500-3995) |
+| `roof.hallLowCounts` | int | `1100` | Raw reading at or below which the other end's magnet is read (500-3995, at least 80 below the high threshold) |
 | `roof.currentSenseEnabled` | bool | `false` | Use the IBT-2's current outputs for over-current detection; off until they are wired |
 | `roof.maxCurrentAmps` | number | `10` | Motor current that stops the roof as a fault, with current sense on (0.5-40) |
 | `roof.currentAmpsPerVolt` | number | `8.5` | Motor amps per volt at the IBT-2's current-sense output, before the divider (0.5-100); set it by [calibration](../hardware/calibration.md#current-sense) |

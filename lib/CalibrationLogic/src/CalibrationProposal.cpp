@@ -217,11 +217,6 @@ namespace SQM
                 return Window{std::max<double>(w.lo, RoofConfig::MIN_HALL_COUNTS), std::min<double>(w.hi, RoofConfig::MAX_HALL_COUNTS)};
             }
 
-            uint16_t clampInto(uint16_t old, Window w)
-            {
-                return clampCounts(static_cast<double>(old), w.lo, w.hi);
-            }
-
             double restMargin(const Stats &rest)
             {
                 return std::max(MIN_REST_MARGIN_COUNTS, REST_MARGIN_SIGMAS * rest.sigma());
@@ -253,7 +248,7 @@ namespace SQM
                             "weakEnd",
                             format(
                                 "The %s end reads %.0f counts, %.0f from the in-between level %.0f (at least %.0f needed): the magnet is "
-                                "too weak or too far from the sensor",
+                                "too weak or too far from the sensor; move it closer",
                                 endText(end),
                                 rest.mean(),
                                 separation,
@@ -275,16 +270,23 @@ namespace SQM
                         w.hi)};
             }
 
-            void proposeHall(const Measurements &m, const Roof::Settings &old, Proposal &p)
+            void proposeHall(const Measurements &m, Proposal &p)
             {
                 HallFit fit;
                 p.hallProblem = fitHall(m.closedRest, m.openRest, m.between, fit);
                 if (!p.hallProblem.reason.empty())
                     return;
+                // Halfway between each end's rest reading and the in-between one
+                // (as the teach proposes), kept in the window: a threshold just
+                // past a magnet's reading is crossed by noise as the roof leaves.
+                const bool closedHigh = fit.highEnd == Roof::End::Closed;
+                const double mid = m.between.mean();
+                const double high = (mid + (closedHigh ? m.closedRest : m.openRest).mean()) / 2.0;
+                const double low = (mid + (closedHigh ? m.openRest : m.closedRest).mean()) / 2.0;
                 p.hall = true;
                 p.hallHighEnd = fit.highEnd;
-                p.hallHighCounts = clampInto(old.hallHighCounts, Window{fit.highLo, fit.highHi});
-                p.hallLowCounts = clampInto(old.hallLowCounts, Window{fit.lowLo, fit.lowHi});
+                p.hallHighCounts = clampCounts(high, fit.highLo, fit.highHi);
+                p.hallLowCounts = clampCounts(low, fit.lowLo, fit.lowHi);
             }
 
             void warnCurrent(const Measurements &m, Proposal &p)
@@ -383,7 +385,7 @@ namespace SQM
             Proposal p;
             p.travelMm = measured.travelMm;
             proposeSpeed(measured, old, p);
-            proposeHall(measured, old, p);
+            proposeHall(measured, p);
             warnCurrent(measured, p);
             return p;
         }

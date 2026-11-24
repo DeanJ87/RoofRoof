@@ -50,8 +50,9 @@ void test_a_run_from_closed_measures_and_proposes(void)
     TEST_ASSERT_TRUE(p.timeoutMarginSeconds >= 5);
     TEST_ASSERT_TRUE(p.hall);
     TEST_ASSERT_TRUE(p.hallHighEnd == End::Open);
-    TEST_ASSERT_EQUAL_UINT16(3000, p.hallHighCounts);
-    TEST_ASSERT_EQUAL_UINT16(1100, p.hallLowCounts);
+    // Halfway between each end's reading and the in-between one.
+    TEST_ASSERT_EQUAL_UINT16((r.plant.restingCounts + r.plant.highMagnetCounts + 1) / 2, p.hallHighCounts);
+    TEST_ASSERT_EQUAL_UINT16((r.plant.restingCounts + r.plant.lowMagnetCounts + 1) / 2, p.hallLowCounts);
     TEST_ASSERT_EQUAL_UINT32(1800, p.travelMm);
     // Nothing changed: the run only proposes.
     TEST_ASSERT_TRUE(sameSettings(r.settings, r.roof.settings()));
@@ -101,7 +102,8 @@ void test_the_top_pass_measures_two_more_legs_at_the_top_duty(void)
     TEST_ASSERT_TRUE(rep.state == RunState::Done);
     TEST_ASSERT_EQUAL_UINT8(4, rep.measured.legCount);
     TEST_ASSERT_EQUAL_UINT8(100, rep.measured.legs[2].dutyPercent);
-    TEST_ASSERT_FLOAT_WITHIN(38.0f * 0.02f, 38.0f, rep.proposal.speedMmPerSecond);
+    // 3 %: the Hall persistence (about 260 ms at each magnet) shifts the measured times a little.
+    TEST_ASSERT_FLOAT_WITHIN(38.0f * 0.03f, 38.0f, rep.proposal.speedMmPerSecond);
     // The top legs end at the slow duty, well inside their limits.
     TEST_ASSERT_TRUE(rep.measured.legs[2].drivenMs < rep.measured.legs[0].drivenMs);
 }
@@ -459,7 +461,7 @@ void test_the_opposite_polarity_is_proposed(void)
 {
     Rig r;
     r.plant.highEndClosed = true; // the setting says open reads high
-    r.steps(200);
+    r.steps(400);                 // past the Hall persistence
     TEST_ASSERT_TRUE(r.start().accepted);
     TEST_ASSERT_TRUE(r.finish());
     TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
@@ -472,7 +474,7 @@ void test_same_pole_magnets_return_to_closed_and_withhold_the_thresholds(void)
 {
     Rig r;
     r.plant.lowMagnetCounts = 3400; // both ends read high
-    r.steps(200);
+    r.steps(400);                   // past the Hall persistence
     TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
     TEST_ASSERT_TRUE(r.finish());
     const Report &rep = r.rep();

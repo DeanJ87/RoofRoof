@@ -48,7 +48,7 @@ test('a new roof: the setup stages on the dashboard, with the move time limits s
   await card.getByRole('button', { name: /Calibration run/ }).click();
   await expect(page.locator('[data-calibrate-page]')).toBeVisible();
   await go(page, '/settings?tab=roof');
-  await expect(page.locator('#travel [data-move-limits]')).toContainText('Move time limit');
+  await expect(page.locator('#travel [data-move-limits]')).toContainText('Open or close limit');
 });
 
 test('held by a person: explained with when it clears, and released at the roof while safe', async ({ page }) => {

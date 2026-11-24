@@ -21,11 +21,13 @@ namespace
 {
     const HallThresholds THRESHOLDS{3000, 1100};
 
+    uint32_t feedMs = 0; // the step clock, 20 ms a reading
+
     HallLevel feed(HallFilter &filter, uint16_t counts, int times)
     {
         HallLevel level = filter.level();
         for (int i = 0; i < times; ++i)
-            level = filter.update(counts, THRESHOLDS);
+            level = filter.update(counts, THRESHOLDS, feedMs += 20);
         return level;
     }
 
@@ -171,12 +173,12 @@ void test_valid_settings_bounds(void)
 
 // --- Hall filter (FR-020) ---------------------------------------------------
 
-void test_hall_unsettled_until_three_equal_readings(void)
+void test_hall_unsettled_until_the_persistence(void)
 {
     HallFilter filter;
     TEST_ASSERT_TRUE(filter.level() == HallLevel::Unsettled);
-    TEST_ASSERT_TRUE(feed(filter, 2000, 2) == HallLevel::Unsettled);
-    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 2000, 10) == HallLevel::Unsettled); // 180 ms held
+    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);    // 200 ms
 }
 
 void test_hall_thresholds_are_inclusive(void)
@@ -200,32 +202,52 @@ void test_hall_leaving_a_magnet_needs_the_hysteresis_band(void)
 
 void test_hall_rails(void)
 {
-    TEST_ASSERT_TRUE(HallFilter::classify(30, THRESHOLDS, HallLevel::Low) == HallLevel::Rail);
-    TEST_ASSERT_TRUE(HallFilter::classify(31, THRESHOLDS, HallLevel::Low) == HallLevel::Low);
+    TEST_ASSERT_TRUE(HallFilter::classify(400, THRESHOLDS, HallLevel::Low) == HallLevel::Rail); // under any SS49E output
+    TEST_ASSERT_TRUE(HallFilter::classify(401, THRESHOLDS, HallLevel::Low) == HallLevel::Low);
     TEST_ASSERT_TRUE(HallFilter::classify(4065, THRESHOLDS, HallLevel::High) == HallLevel::Rail);
     TEST_ASSERT_TRUE(HallFilter::classify(4064, THRESHOLDS, HallLevel::High) == HallLevel::High);
     TEST_ASSERT_TRUE(HallFilter::classify(0, THRESHOLDS, HallLevel::Between) == HallLevel::Rail);
     TEST_ASSERT_TRUE(HallFilter::classify(4095, THRESHOLDS, HallLevel::Between) == HallLevel::Rail);
 }
 
-void test_hall_a_changed_candidate_restarts_the_count(void)
+// A burst shorter than the persistence (once the median has flipped) is
+// ignored; a break restarts the time.
+void test_hall_a_burst_shorter_than_the_persistence_is_ignored(void)
 {
     HallFilter filter;
-    feed(filter, 2000, 3);
-    feed(filter, 3200, 2);
-    TEST_ASSERT_TRUE(feed(filter, 900, 2) == HallLevel::Between); // two high, then two low: neither confirmed
+    feed(filter, 2000, 11);
+    TEST_ASSERT_TRUE(feed(filter, 900, 10) == HallLevel::Between); // median flips at the third: 160 ms held
+    TEST_ASSERT_TRUE(feed(filter, 2000, 5) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 900, 12) == HallLevel::Between);
     TEST_ASSERT_TRUE(feed(filter, 900, 1) == HallLevel::Low);
-    // A single reading back at the confirmed level resets the count too.
-    feed(filter, 2000, 2);
-    feed(filter, 900, 1);
-    TEST_ASSERT_TRUE(feed(filter, 2000, 2) == HallLevel::Low);
-    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+}
+
+// Bursts of up to two steps in five never reach the median, however often.
+void test_hall_the_median_drops_two_step_bursts(void)
+{
+    HallFilter filter;
+    feed(filter, 2000, 11);
+    for (int i = 0; i < 40; ++i)
+    {
+        TEST_ASSERT_TRUE(feed(filter, 900, 2) == HallLevel::Between);
+        TEST_ASSERT_TRUE(feed(filter, 2000, 3) == HallLevel::Between);
+    }
+    TEST_ASSERT_EQUAL_UINT16(2000, filter.filtered());
+}
+
+// A late step doesn't confirm early: at least HALL_CONFIRM_READINGS readings.
+void test_hall_needs_readings_as_well_as_time(void)
+{
+    HallFilter filter;
+    TEST_ASSERT_TRUE(filter.update(2000, THRESHOLDS, 1000) == HallLevel::Unsettled);
+    TEST_ASSERT_TRUE(filter.update(2000, THRESHOLDS, 2000) == HallLevel::Unsettled);
+    TEST_ASSERT_TRUE(filter.update(2000, THRESHOLDS, 2020) == HallLevel::Between);
 }
 
 void test_hall_rail_readings_counted_in_a_window(void)
 {
     HallFilter filter;
-    feed(filter, 2000, 3);
+    feed(filter, 2000, 11);
     // Alternating good and rail: the third rail reading within eight confirms it.
     TEST_ASSERT_TRUE(feed(filter, 4095, 1) == HallLevel::Between);
     TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
@@ -234,16 +256,16 @@ void test_hall_rail_readings_counted_in_a_window(void)
     TEST_ASSERT_TRUE(feed(filter, 0, 1) == HallLevel::Rail);
     // It stays a rail until the rail readings have left the window and a level is confirmed.
     TEST_ASSERT_TRUE(feed(filter, 2000, 5) == HallLevel::Rail);
-    TEST_ASSERT_TRUE(feed(filter, 2000, 1) == HallLevel::Between);
+    TEST_ASSERT_TRUE(feed(filter, 2000, 15) == HallLevel::Between);
 }
 
 void test_isolated_rail_readings_do_not_interrupt_a_magnet(void)
 {
     HallFilter filter;
-    feed(filter, 2000, 3);
-    feed(filter, 3200, 2);
-    feed(filter, 4095, 1); // a spike between two magnet readings
-    TEST_ASSERT_TRUE(feed(filter, 3200, 1) == HallLevel::High);
+    feed(filter, 2000, 11);
+    feed(filter, 3200, 5);
+    feed(filter, 4095, 1); // a spike among the magnet readings
+    TEST_ASSERT_TRUE(feed(filter, 3200, 8) == HallLevel::High);
 }
 
 void test_reading_sanity_bounds(void)
@@ -491,11 +513,13 @@ int main(int, char **)
     RUN_TEST(test_out_of_range_config_is_invalid_not_wrapped);
     RUN_TEST(test_an_unusable_analog_setup_refuses_moves);
     RUN_TEST(test_valid_settings_bounds);
-    RUN_TEST(test_hall_unsettled_until_three_equal_readings);
+    RUN_TEST(test_hall_unsettled_until_the_persistence);
     RUN_TEST(test_hall_thresholds_are_inclusive);
     RUN_TEST(test_hall_leaving_a_magnet_needs_the_hysteresis_band);
     RUN_TEST(test_hall_rails);
-    RUN_TEST(test_hall_a_changed_candidate_restarts_the_count);
+    RUN_TEST(test_hall_a_burst_shorter_than_the_persistence_is_ignored);
+    RUN_TEST(test_hall_the_median_drops_two_step_bursts);
+    RUN_TEST(test_hall_needs_readings_as_well_as_time);
     RUN_TEST(test_hall_rail_readings_counted_in_a_window);
     RUN_TEST(test_isolated_rail_readings_do_not_interrupt_a_magnet);
     RUN_TEST(test_reading_sanity_bounds);

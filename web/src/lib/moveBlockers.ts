@@ -145,7 +145,7 @@ const hallBlocker = (roof: RoofStatus): Blocker | null => {
   if (roof.hall.level === 'unsettled')
     return make('hall', t('roof.reason.hallNotSettled'), t('move.hallSettleWhy'), t('move.clears.hallSettle'));
   if (roof.hall.level === 'rail')
-    return make('hallRail', t('move.hallRail', { counts: roof.hall.counts }), t('move.hallRailWhy'), t('move.clears.hallRail'), {
+    return make('hallRail', t('roof.hall.level.rail'), t('move.hallRailWhy'), t('move.clears.hallRail'), {
       label: t('move.fix.wiring'),
       href: '/pins',
     });

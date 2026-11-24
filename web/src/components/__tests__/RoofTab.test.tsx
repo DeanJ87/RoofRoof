@@ -302,8 +302,8 @@ describe('Settings → Roof → Travel and time limits', () => {
     const card = document.getElementById('travel')!;
     await waitFor(() => expect(card).not.toBeNull());
     const limits = card.querySelector('[data-move-limits]')!;
-    expect(limits).toHaveTextContent('Move time limit');
-    expect(limits).toHaveTextContent('From an unknown position');
+    expect(limits).toHaveTextContent('Open or close limit');
+    expect(limits).toHaveTextContent('Slow-duty limit (slow speed)');
     expect(card).toHaveTextContent('Travel and speed are still the defaults: run the calibration run.');
     expect(within(card).getByRole('button', { name: 'Calibration run' })).toBeInTheDocument();
     const limit = await findField('roof.calibrationLimitSeconds');

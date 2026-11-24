@@ -43,12 +43,12 @@ const TravelCard: FunctionalComponent<RoofProps> = (props) => {
       <div data-move-limits>
         <div class="reading-row">
           <span class="reading-label">
-            {t('settings.roof.moveLimit')} <InfoTip text={t('settings.roof.moveLimitHint')} />
+            {t('calibrate.moveLimitSeconds')} <InfoTip text={t('settings.roof.moveLimitHint')} />
           </span>
           <strong class="reading-value">{t('settings.roof.seconds', { value: formatNumber(limits.fullSeconds, 1) })}</strong>
         </div>
         <ReadingRow
-          label={t('settings.roof.moveLimitUnknown')}
+          label={t('calibrate.slowLimitSeconds')}
           value={t('settings.roof.seconds', { value: formatNumber(limits.unknownSeconds, 1) })}
         />
       </div>

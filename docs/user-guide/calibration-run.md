@@ -151,7 +151,7 @@ For a finished run it proposes:
 | Speed | the full speed at 100 %: from the top-duty legs, with their time at the slow duty counted at the slow speed; without a top-duty pass, the slow speed scaled from the slow duty to 100 % (with a warning) |
 | Timeout margin | the largest of 5 s, 20 % of a full move, and 1.5 × the most a leg ran over what the proposed speeds predict + 3 s |
 | Which end reads high | the end whose reading at rest is above the in-between level |
-| Hall thresholds | each kept if it is clear of the in-between readings (100 counts or 4 × the noise) and read at rest at its end; otherwise moved only as far as needed, never past where the roof stopped |
+| Hall thresholds | halfway between each end's reading at rest and the in-between reading (as the teach proposes), whatever they were before; moved only as far as needed to stay clear of the in-between readings (100 counts or 4 × the noise) and to be read at rest at its end |
 
 A value isn't proposed, with the reason, when:
 
@@ -159,7 +159,7 @@ A value isn't proposed, with the reason, when:
   magnet was read early;
 - both ends read on the same side of the in-between level (polarity and thresholds): the magnets
   face the sensor with the same pole;
-- an end reads less than 300 counts from the in-between level: its magnet is too weak or too far
+- an end reads less than 300 counts from the in-between level: its magnet is too weak or too far (move it closer)
   from the sensor;
 - no threshold is both clear of the noise and read at rest.
 

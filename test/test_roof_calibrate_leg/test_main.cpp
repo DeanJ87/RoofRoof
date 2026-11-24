@@ -131,7 +131,7 @@ void test_the_dead_time_runs_before_a_leg_after_a_drive(void)
 {
     Bench b;
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
-    b.steps(10);
+    b.steps(15); // past the Hall persistence
     b.command(Command::Stop);
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Closed), Origin::Person).accepted);
     uint32_t offMs = 0;
@@ -168,7 +168,7 @@ void test_a_slow_leg_stops_at_the_other_magnet_and_reports_it(void)
     TEST_ASSERT_TRUE(r.level == HallLevel::High);
     // 1825 mm (the magnet zones are 25 mm) at 38 mm/s x 0.4: about 120 s.
     const float expectedMs = 1825.0f / (38.0f * (SLOW_DUTY / 255.0f)) * 1000.0f;
-    TEST_ASSERT_FLOAT_WITHIN(200.0f, expectedMs, static_cast<float>(r.drivenMs));
+    TEST_ASSERT_FLOAT_WITHIN(400.0f, expectedMs, static_cast<float>(r.drivenMs)); // with the Hall persistence
     TEST_ASSERT_FLOAT_WITHIN(0.01f * r.drivenMs, r.drivenMs * (SLOW_DUTY / 255.0f), r.dutyMs);
 }
 
@@ -177,7 +177,7 @@ void test_a_leg_ends_at_the_next_magnet_whatever_the_polarity_setting(void)
     // The setting says the open end reads high; the roof's closed end does.
     Bench b;
     b.sim.highEndClosed = true;
-    b.steps(10);
+    b.steps(15);                                // past the Hall persistence
     TEST_ASSERT_TRUE(b.state() == State::Open); // the saved settings' label
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
     TEST_ASSERT_TRUE(b.runToRest());
@@ -215,7 +215,7 @@ void test_the_start_magnet_again_after_leaving_it_is_an_arrival_when_any_level_w
     // Both magnets read high (the same pole): the leg still stops at the next one.
     Bench b;
     b.sim.lowMagnetCounts = 3400;
-    b.steps(10);
+    b.steps(15); // past the Hall persistence
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
     TEST_ASSERT_TRUE(b.runToRest());
     TEST_ASSERT_TRUE(b.roof.calibrationReport().arrived);
@@ -354,7 +354,7 @@ void test_a_late_step_during_a_leg_faults(void)
 {
     Bench b;
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
-    b.steps(10);
+    b.steps(15); // past the Hall persistence
     b.stepMs = MAX_STEP_GAP_MS + 20;
     b.step();
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::LateStep);
@@ -393,7 +393,7 @@ void test_a_command_to_the_same_end_leaves_the_leg_running(void)
 {
     Bench b;
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
-    b.steps(10);
+    b.steps(15); // past the Hall persistence
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
     TEST_ASSERT_TRUE(b.roof.status().calibrating);
     TEST_ASSERT_EQUAL_UINT32(0, b.roof.calibrationReport().ended);
@@ -427,7 +427,7 @@ void test_a_leg_against_the_polarity_setting_keeps_no_estimate(void)
     // would be wrong. A stop part-way leaves the position unknown.
     Bench b;
     b.sim.highEndClosed = true;
-    b.steps(10);
+    b.steps(15); // past the Hall persistence
     TEST_ASSERT_TRUE(b.state() == State::Open);
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
     b.steps(1 + 5000 / 20);

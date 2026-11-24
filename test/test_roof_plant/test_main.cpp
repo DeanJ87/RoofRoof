@@ -82,10 +82,10 @@ void test_counts_lie_past_each_threshold_and_off_the_rails(void)
     TEST_ASSERT_TRUE(plant.highMagnetCounts < HALL_RAIL_HIGH_COUNTS);
     TEST_ASSERT_TRUE(plant.restingCounts > settings.hallLowCounts && plant.restingCounts < settings.hallHighCounts);
     // The same for thresholds near the rails.
-    settings.hallLowCounts = 100;
+    settings.hallLowCounts = 500;
     settings.hallHighCounts = 4000;
     const Plant edge = RoofPlant::forSettings(settings, 0.0f);
-    TEST_ASSERT_TRUE(edge.lowMagnetCounts < 100 && edge.lowMagnetCounts > HALL_RAIL_LOW_COUNTS);
+    TEST_ASSERT_TRUE(edge.lowMagnetCounts < 500 && edge.lowMagnetCounts > HALL_RAIL_LOW_COUNTS);
     TEST_ASSERT_TRUE(edge.highMagnetCounts > 4000 && edge.highMagnetCounts < HALL_RAIL_HIGH_COUNTS);
 }
 
