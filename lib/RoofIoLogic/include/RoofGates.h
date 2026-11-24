@@ -41,6 +41,9 @@ namespace SQM
             bool ninaGrace = false;
             uint64_t parkFreshUntilMs = 0;
             uint64_t nowMs = 0; // when checked, on the clock N.I.N.A.'s readings are stamped with
+            // Spec 024: the park switch (1 or 2) the stuck-switch check holds
+            // suspect (Safety::stuckSwitch), 0 when none: Open is refused.
+            uint8_t stuckSwitch = 0;
         };
 
         // The main loop hands the verdict and park result over every 250 ms. If
@@ -55,7 +58,8 @@ namespace SQM
             None,
             WeatherNotSafe,
             MountNotParked,
-            Daylight, // spec 013: the daylight close wants the roof closed
+            Daylight,    // spec 013: the daylight close wants the roof closed
+            SwitchCheck, // spec 024: a park switch hasn't opened in STUCK_OPENINGS roof openings
         };
 
         // Bits of the park-interlock fault's measured value.
@@ -76,8 +80,9 @@ namespace SQM
         bool switchesClosed(uint8_t fitted, Contact switch1, Contact switch2);
         // The park result says parked AND every fitted switch reads closed now.
         bool parkHolds(const GateInputs &in);
-        // Open: only with a safe verdict (WeatherNotSafe) and daylight not
-        // wanting the roof closed (Daylight; the weather is named first).
+        // Open: only with a safe verdict (WeatherNotSafe), daylight not
+        // wanting the roof closed (Daylight; the weather is named first) and
+        // no park switch held suspect (SwitchCheck, spec 024).
         // Close: only while the park holds. Stop and abort are never gated.
         GateRefusal gateCommand(Roof::Command command, const GateInputs &in);
         // Spec 021: a move under way may go on: the park result says parked, or it
@@ -97,7 +102,7 @@ namespace SQM
         // the reason an open under way was stopped.
         GateRefusal openRefusal(const GateInputs &in);
 
-        // "none", "weatherNotSafe", "mountNotParked", "daylight".
+        // "none", "weatherNotSafe", "mountNotParked", "daylight", "parkSwitchCheck".
         const char *gateRefusalName(GateRefusal refusal);
     } // namespace RoofIo
 } // namespace SQM

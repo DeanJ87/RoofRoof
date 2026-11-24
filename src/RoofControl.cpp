@@ -62,6 +62,7 @@ namespace SQM
         setupPins();
         // Constitution I: a restart never clears the lockout. Latched before the first step.
         restoreFault();
+        watch = savedWatch = RoofFaultStore::loadWatch(); // spec 024
 #if ROOFROOF_BENCH
         benchStart();
 #endif
@@ -393,6 +394,10 @@ namespace SQM
             s.pinSetupText = pinsReason; // spec 023
         s.switch1 = gates.switch1;
         s.switch2 = gates.switch2;
+        s.switchesOnly = settings.switchesOnly;
+        s.openings[0] = watch.quiet[0];
+        s.openings[1] = watch.quiet[1];
+        s.stuckSwitch = gates.stuckSwitch;
         s.closePending = closePending;
         s.calibrating = calibration.active();
         s.personStops = personStops;

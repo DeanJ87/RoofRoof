@@ -96,6 +96,23 @@ namespace SQM
             {
                 return std::string("N.I.N.A. ") + what + (r.ninaDetail.empty() ? "" : ": " + r.ninaDetail);
             }
+            // Spec 024: N.I.N.A. counts only against the park: a good, fresh
+            // reading of a connected mount that is slewing.
+            uint32_t slewVeto(const ParkInputs &in, uint32_t ageMs)
+            {
+                const bool fresh = in.nina.status == ReadingStatus::Good && ageMs <= in.ninaMaxAgeMs;
+                return fresh && in.nina.connected && in.nina.slewing ? ParkMountSlewing : 0;
+            }
+
+            uint32_t fittedReasons(const ParkInputs &in)
+            {
+                uint32_t reasons = 0;
+                if (in.fittedSwitches >= 1)
+                    reasons |= switchReasons(in.switch1, ParkSwitch1Open, ParkSwitch1Unreadable);
+                if (in.fittedSwitches >= 2)
+                    reasons |= switchReasons(in.switch2, ParkSwitch2Open, ParkSwitch2Unreadable);
+                return reasons;
+            }
         } // namespace
 
         ParkResult evaluatePark(const ParkInputs &in)
@@ -104,12 +121,15 @@ namespace SQM
             r.ninaMaxAgeMs = in.ninaMaxAgeMs;
             r.ninaAgeMs = elapsedMs(in.nina.takenAtMs, in.nowMs);
             r.ninaDetail = in.nina.detail;
+            if (in.switchesOnly)
+            {
+                r.switchesOnly = true;
+                r.reasons = fittedReasons(in) | slewVeto(in, r.ninaAgeMs) | (in.fittedSwitches == 0 ? ParkNoSwitchFitted : 0);
+                r.parked = r.reasons == 0;
+                return r;
+            }
             bool ninaUsable = false;
-            r.reasons = ninaReasons(in, r.ninaAgeMs, ninaUsable);
-            if (in.fittedSwitches >= 1)
-                r.reasons |= switchReasons(in.switch1, ParkSwitch1Open, ParkSwitch1Unreadable);
-            if (in.fittedSwitches >= 2)
-                r.reasons |= switchReasons(in.switch2, ParkSwitch2Open, ParkSwitch2Unreadable);
+            r.reasons = ninaReasons(in, r.ninaAgeMs, ninaUsable) | fittedReasons(in);
             r.disagree = disagree(in, ninaUsable);
             if (r.disagree)
                 r.reasons |= ParkSourcesDisagree;
@@ -122,7 +142,7 @@ namespace SQM
             if (r.bypassed)
                 return "bypassed (test box): no telescope under this roof";
             if (r.parked)
-                return "parked";
+                return r.switchesOnly ? "parked (park switches)" : "parked";
             const uint32_t b = r.reasons;
             std::string text;
             append(text, b & ParkNinaNotConfigured, "N.I.N.A. not configured");
@@ -142,6 +162,7 @@ namespace SQM
             append(text, b & ParkSwitch2Open, "Park switch 2 open");
             append(text, b & ParkSwitch2Unreadable, "Park switch 2 unreadable");
             append(text, b & ParkSourcesDisagree, "N.I.N.A. and the park switches disagree");
+            append(text, b & ParkNoSwitchFitted, "no park switch fitted");
             return "not parked: " + text;
         }
     } // namespace Safety

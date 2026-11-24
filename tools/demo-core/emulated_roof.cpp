@@ -157,6 +157,7 @@ namespace DemoRoof
         const Roof::Readings in = readings();
         takePendingSettings();
         gates.switch1 = gates.switch2 = switchContact();
+        watchSwitches();
         checkGates();
         controller.tick(in);
         syncFault();
@@ -335,6 +336,7 @@ namespace DemoRoof
             p.nina.takenAtMs = ninaReadAtMs;
         }
         p.fittedSwitches = static_cast<uint8_t>(parkCfg.switches);
+        p.switchesOnly = parkCfg.switchesOnly(); // spec 024
         p.switch1 = p.switch2 = RoofIo::parkReading(switchContact());
         p.nowMs = nowMs;
         park = Safety::evaluatePark(p);

@@ -147,6 +147,15 @@ describe('the test box page', () => {
     expect(screen.getByRole('button', { name: 'Park settings' })).toBeInTheDocument();
   });
 
+  // Spec 024: the park bypass stands in for N.I.N.A., which park switches only don't use.
+  it('blocks the park bypass with park switches only, with its own reason', async () => {
+    mockDevice({ config: { park: { ...mockConfig.park!, source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } } } });
+    const park = await openPage();
+    expect(park).toBeDisabled();
+    expect(screen.getByText("Off with park switches only: there's no N.I.N.A. to bypass.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Park settings' })).toBeInTheDocument();
+  });
+
   it('while on: until when, each check bypassed or checked, Turn off sends every bypass off, Extend sends only the hours', async () => {
     mockDevice({
       config: {

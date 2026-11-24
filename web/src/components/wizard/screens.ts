@@ -2,10 +2,11 @@ import type { FunctionalComponent } from 'preact';
 import type { WizardPageProps } from './context';
 import { WIZARD_PAGES, pageIndex, type WizardPageId } from './pages';
 import { NameScreen, PasswordScreen, SiteScreen, SqmeterScreen, siteFromSqmeter } from './DevicePages';
-import { MotionScreen, ParkSwitchesScreen, TestBoxScreen } from './HardwarePages';
+import { MotionScreen, ParkSwitchCountScreen, ParkSwitchesScreen, TestBoxScreen } from './HardwarePages';
 import { BoardScreen, NetworkScreen, WiringScreen } from './BoardPages';
 import { CalibrationScreen, DirectionScreen, TeachScreen } from './MotorPages';
 import { hasEthernet } from '../../lib/pinsView';
+import { parkSource } from '../../lib/parkSource';
 import { AlertsScreen, DaylightScreen, NinaScreen, alertChannelsOn } from './SourcePages';
 import { ReviewScreen } from './ReviewPage';
 
@@ -24,6 +25,7 @@ export type ScreenId =
   | 'site'
   | 'daylight'
   | 'parkSwitches'
+  | 'parkSwitchCount'
   | 'nina'
   | 'direction'
   | 'teach'
@@ -48,6 +50,8 @@ export interface Screen {
 const boardChosen = (p: WizardPageProps) => !p.config.pins || p.config.pins.preset !== 'unset';
 // Spec 022: a test box skips N.I.N.A., which its park bypass stands in for.
 const noParkBypass = (p: WizardPageProps) => !p.config.testBox?.park;
+// Spec 024: the switch count shows only for a switch source.
+const usesSwitches = (p: WizardPageProps) => Boolean(p.config.park && parkSource(p.config.park) !== 'nina');
 const passwordAnswered = (p: WizardPageProps) => !p.config.auth.enabled || p.config.auth.password !== '';
 
 export const SCREENS: Screen[] = [
@@ -62,7 +66,9 @@ export const SCREENS: Screen[] = [
   { id: 'sqmeter', page: 'sqmeter', Body: SqmeterScreen },
   { id: 'site', page: 'sqmeter', Body: SiteScreen, shows: (p) => !siteFromSqmeter(p.config) },
   { id: 'daylight', page: 'sqmeter', Body: DaylightScreen, choice: true },
+  // Spec 024: how the park is known, then how many switches (a switch source only).
   { id: 'parkSwitches', page: 'park', Body: ParkSwitchesScreen, choice: true },
+  { id: 'parkSwitchCount', page: 'park', Body: ParkSwitchCountScreen, choice: true, shows: usesSwitches },
   { id: 'nina', page: 'park', Body: NinaScreen, shows: noParkBypass },
   // Specs 019 and 016 inside the wizard: each move attended, every gate kept.
   { id: 'direction', page: 'direction', Body: DirectionScreen, answered: (p) => p.direction === 'yes' },

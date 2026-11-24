@@ -25,6 +25,7 @@ describe('wizard screens', () => {
       'site',
       'daylight',
       'parkSwitches',
+      'parkSwitchCount',
       'nina',
       'direction',
       'teach',
@@ -61,6 +62,7 @@ describe('wizard screens', () => {
       site: 'sqmeter',
       daylight: 'sqmeter',
       parkSwitches: 'park',
+      parkSwitchCount: 'park',
       nina: 'park',
       direction: 'direction',
       teach: 'teach',
@@ -128,6 +130,19 @@ describe('wizard screens', () => {
     expect(nina.shows!(props((p) => (p.config.testBox = { ...p.config.testBox, park: true })))).toBe(false);
     const bypass = props((p) => (p.config.testBox = { ...p.config.testBox, park: true }));
     expect(SCREENS[nextScreen(idx('parkSwitches'), bypass)].id).toBe('direction');
+  });
+
+  // Spec 024: the switch count only for a switch source; N.I.N.A. only goes straight on.
+  it('shows the switch count only when the park source uses switches', () => {
+    const count = SCREENS[idx('parkSwitchCount')];
+    const source = (s: 'nina' | 'switches' | 'ninaAndSwitches', switches: 'none' | 'one' | 'two') =>
+      props((p) => (p.config.park = { ...p.config.park, source: s, switches }));
+    expect(count.shows!(source('nina', 'none'))).toBe(false);
+    expect(count.shows!(source('switches', 'one'))).toBe(true);
+    expect(count.shows!(source('ninaAndSwitches', 'two'))).toBe(true);
+    expect(SCREENS[nextScreen(idx('parkSwitches'), source('nina', 'none'))].id).toBe('nina');
+    expect(SCREENS[nextScreen(idx('parkSwitches'), source('switches', 'two'))].id).toBe('parkSwitchCount');
+    expect(stepOf(idx('parkSwitchCount'))).toBe(5);
   });
 
   it('never shows the motion screen in the flow', () => {

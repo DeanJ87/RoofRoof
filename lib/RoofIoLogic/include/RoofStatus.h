@@ -47,6 +47,11 @@ namespace SQM
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;
             Contact switch2 = Contact::Unreadable;
+            // Spec 024: the switches are the only park source; each switch's
+            // roof openings since it last read open; the switch Open is refused for.
+            bool switchesOnly = false;
+            uint8_t openings[2] = {0, 0};
+            uint8_t stuckSwitch = 0;
             bool closePending = false; // a close waiting for an upload or MQTT connect to stop
             bool calibrating = false;  // spec 016: a calibration run is under way (pauses included)
             uint32_t remoteStops = 0;  // spec 014: of personStops, the remote stops honoured by autoClose.remoteStop

@@ -688,8 +688,24 @@
         "parkSwitches": {
           "type": "object",
           "properties": {
+            "check": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "fitted": {
               "type": "number"
+            },
+            "openings": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 2,
+              "maxItems": 2
             },
             "switch1": {
               "type": "string",
@@ -708,6 +724,9 @@
                 "unreadable",
                 "notFitted"
               ]
+            },
+            "switchesOnly": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -979,6 +998,26 @@
           "type": [
             "null",
             "number"
+          ]
+        },
+        "secrets": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "received",
+            "waiting",
+            "notSaved",
+            "notSupported",
+            "sharingOff",
+            "noWebPassword",
+            "loginNeeded",
+            "loginRefused",
+            "tooManyLogins",
+            "unreachable",
+            "unreadable",
+            null
           ]
         },
         "time": {

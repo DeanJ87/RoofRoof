@@ -39,6 +39,12 @@ export const CREDENTIAL_PARTNERS: string[][] = [
   ['safety.http.url', 'safety.http.username', 'safety.http.password'],
 ];
 
+/**
+ * Spec 024: fields always sent together when either changes: a save with `park.switches` alone makes
+ * the device derive the park source from it (an older page's meaning), so the source goes with it.
+ */
+export const SENT_TOGETHER: string[][] = [['park.source', 'park.switches']];
+
 const valueAt = (source: unknown, path: string): unknown =>
   path.split('.').reduce<unknown>((node, key) => (isObject(node) ? node[key] : undefined), source);
 
@@ -52,10 +58,22 @@ const setAt = (target: Node, path: string, value: unknown) => {
   node[keys[keys.length - 1]] = value;
 };
 
-// `paths` with the credential partners of any of them.
+// `paths` with the credential partners (and the fields sent together) of any of them.
 const withPartners = (paths: string[]): string[] => [
-  ...new Set([...paths, ...CREDENTIAL_PARTNERS.filter((group) => group.some((path) => paths.includes(path))).flat()]),
+  ...new Set([
+    ...paths,
+    ...[...CREDENTIAL_PARTNERS, ...SENT_TOGETHER].filter((group) => group.some((path) => paths.includes(path))).flat(),
+  ]),
 ];
+
+/** `patch` with the other fields of a SENT_TOGETHER group from `full` (the settings as saved) when one of them is in it. */
+export const withSentTogether = (patch: unknown, full: unknown): unknown => {
+  const paths = leafPaths(patch);
+  return SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path)))
+    .flat()
+    .filter((path) => !paths.includes(path) && valueAt(full, path) !== undefined)
+    .reduce((out, path) => applyPatch(out, pathPatch(path, valueAt(full, path))), patch);
+};
 
 /**
  * The loaded value (null when the device didn't send it) of every field the patch changes and of

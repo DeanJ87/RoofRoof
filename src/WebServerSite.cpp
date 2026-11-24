@@ -1,5 +1,6 @@
 #include "Logger.h"
 #include "SafetyPoller.h"
+#include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
 #include <optional>
 #include "SqmeterSource.h"
@@ -24,7 +25,7 @@ namespace SQM
         constexpr BaseType_t SITE_JOB_CORE = 1;         // beside the loop task, as the backup job
         constexpr uint32_t CONNECT_MS = 2500;
         constexpr uint32_t TOTAL_MS = 5000;
-        constexpr size_t SITE_DOCUMENT_BYTES = 1536;
+        constexpr size_t SITE_DOCUMENT_BYTES = 1792; // spec 024: the switches and the secrets part
 
         void collectBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
         {
@@ -80,15 +81,14 @@ namespace SQM
             return out;
         }
 
-        // SQMeter's settings, filtered as they arrive, into the site document.
-        int fetchSite(const std::string &address, const Site::Endpoint &from, std::string &body)
+        // SQMeter's settings, filtered as they arrive; false with the error body.
+        bool readSite(const Site::Endpoint &from, Site::SiteConfig &site, std::string &body)
         {
             DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
             Site::configFilter(filter);
             DynamicJsonDocument doc(Site::CONFIG_DOC_BYTES);
             const Site::Fetch fetch = SafetyPoller::fetchJson(
                 from, filter, doc, SafetyPoller::FetchLimits{CONNECT_MS, TOTAL_MS, SafetyPoller::TLS_PERSON_WAIT_MS});
-            Site::SiteConfig site;
             std::string why = "not SQMeter's settings";
             if (fetch.status <= 0)
                 body = errorBody("SQMeter not answering: " + (fetch.error.empty() ? std::string("no reply") : fetch.error));
@@ -99,19 +99,21 @@ namespace SQM
             else if (!fetch.parsed || !Site::readSiteConfig(doc, site, why))
                 body = errorBody("SQMeter's settings couldn't be read: " + why);
             else
-            {
-                DynamicJsonDocument out(SITE_DOCUMENT_BYTES);
-                Site::writeSiteDocument(out.to<JsonObject>(), address, site);
-                if (out.overflowed())
-                {
-                    body = errorBody("SQMeter's settings are too long to copy");
-                    return 502;
-                }
-                body.clear();
-                serializeJson(out, body);
-                return 200;
-            }
-            return 502;
+                return true;
+            return false;
+        }
+
+        // Spec 024: SQMeter's secrets, with the same login, at the same address.
+        Site::SecretsRead readSecrets(const Site::Endpoint &settings, const std::string &address)
+        {
+            Site::Endpoint from = settings;
+            from.url = Site::siteUrl(address, Site::SECRETS_PATH);
+            DynamicJsonDocument filter(Site::SECRETS_FILTER_BYTES);
+            Site::secretsFilter(filter);
+            DynamicJsonDocument doc(Site::SECRETS_DOC_BYTES);
+            const Site::Fetch fetch = SafetyPoller::fetchJson(
+                from, filter, doc, SafetyPoller::FetchLimits{CONNECT_MS, TOTAL_MS, SafetyPoller::TLS_PERSON_WAIT_MS});
+            return Site::readSecrets(fetch, doc, SafetyPoller::nowMs());
         }
 
         // Spec 020 FR-038: one read of SQMeter's /api/safety, as the weather
@@ -132,7 +134,62 @@ namespace SQM
         std::string address;
         Site::Endpoint from; // the URL and the login (never logged)
         bool test = false;   // /api/sqmeter/test: one weather read
+        WebServer *owner = nullptr;
+        bool savedAddress = false; // spec 024: the secrets are read only at the saved address
     };
+
+    // Spec 024: which secrets SQMeter's equal RoofRoof's saved ones, under the
+    // save lock (no settings save changes them meanwhile); and the received
+    // ones held for the save.
+    void WebServer::holdCopied(const Site::SiteConfig &site, const Site::SecretsRead &read, Site::SecretStates &states)
+    {
+        updateConfigCallback(
+            [&](const Config &live, Config &)
+            {
+                states = Site::secretStates(site.secrets, live);
+                return false; // nothing to save
+            });
+        const std::lock_guard<std::mutex> held(copiedLock);
+        copied.reset(read.good() ? new CopiedSecrets(Site::copiedFrom(site)) : nullptr);
+        copiedAtMs = millis();
+    }
+
+    std::unique_ptr<CopiedSecrets> WebServer::heldCopied()
+    {
+        const std::lock_guard<std::mutex> held(copiedLock);
+        if (copied && millis() - copiedAtMs > Site::SECRETS_HELD_MS)
+            copied.reset(); // expired: wiped, not just ignored
+        if (!copied)
+            return nullptr;
+        return std::unique_ptr<CopiedSecrets>(new CopiedSecrets(*copied));
+    }
+
+    // SQMeter's settings into the site document, with (spec 024) what became
+    // of its secrets; never a secret's value.
+    int WebServer::fetchSite(SiteJob &job, std::string &body)
+    {
+        const auto site = std::unique_ptr<Site::SiteConfig>(new Site::SiteConfig());
+        if (!readSite(job.from, *site, body))
+            return 502;
+        Site::SecretsRead secrets;
+        secrets.problem = Site::SecretsProblem::NotSaved;
+        if (job.savedAddress)
+            secrets = Site::sharingOff(*site) ? Site::sharingOffRead(SafetyPoller::nowMs()) : readSecrets(job.from, job.address);
+        site->secrets = secrets.secrets;
+        Site::SecretStates states;
+        holdCopied(*site, secrets, states);
+        DynamicJsonDocument out(SITE_DOCUMENT_BYTES);
+        Site::writeSiteDocument(out.to<JsonObject>(), job.address, *site);
+        Site::writeSecretsPart(out.as<JsonObject>(), secrets, states, job.address);
+        if (out.overflowed())
+        {
+            body = errorBody("SQMeter's settings are too long to copy");
+            return 502;
+        }
+        body.clear();
+        serializeJson(out, body);
+        return 200;
+    }
 
     void WebServer::setupSiteRoutes()
     {
@@ -184,7 +241,9 @@ namespace SQM
             return;
         }
         const char *path = test ? Site::SAFETY_PATH : Site::CONFIG_PATH;
-        auto *job = new SiteJob{request->pause(), address, Site::copyEndpoint(getConfigCallback().safety, address, login, path), test};
+        const SafetyConfig &saved = getConfigCallback().safety;
+        auto *job = new SiteJob{
+            request->pause(), address, Site::copyEndpoint(saved, address, login, path), test, this, Site::savedAddress(address, saved)};
         if (xTaskCreatePinnedToCore(runSiteJob, "site_job", SITE_JOB_STACK_BYTES, job, 1, nullptr, SITE_JOB_CORE) != pdPASS)
         {
             const AsyncWebServerRequestPtr paused = job->request;
@@ -199,7 +258,7 @@ namespace SQM
     {
         std::unique_ptr<SiteJob> job(static_cast<SiteJob *>(arg));
         std::string body;
-        const int status = job->test ? testSafety(job->from, body) : fetchSite(job->address, job->from, body);
+        const int status = job->test ? testSafety(job->from, body) : job->owner->fetchSite(*job, body);
         if (status != 200)
             Logger::info(TAG, "%s: %s", job->test ? "Test of SQMeter" : "Copy from SQMeter", body.c_str());
         if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())

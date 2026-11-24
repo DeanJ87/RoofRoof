@@ -40,6 +40,9 @@ export const PasswordScreen: FunctionalComponent<WizardPageProps> = (props) => {
   );
 };
 
+// Spec 024: the copy saves the typed address first, so SQMeter's passwords (read only from the saved address) arrive.
+const saveAddress = (props: WizardPageProps) => async () => (await props.saveForTest(['safety.http.url'])()).ok;
+
 /** The location is read from SQMeter (spec 020). */
 const locationFromSqmeter = (config: Config) =>
   Boolean(config.location && locationSource(config.location) === 'sqmeter' && config.safety?.http.url.trim());
@@ -111,7 +114,7 @@ export const SqmeterScreen: FunctionalComponent<WizardPageProps> = (props) => {
       <div class="form-grid">
         <SqmeterUrlField safety={safety} update={props.update} error={props.error} />
       </div>
-      <SqmeterCopy {...props} url={safety.http.url} wizard />
+      <SqmeterCopy {...props} url={safety.http.url} wizard beforeFetch={saveAddress(props)} />
       <SqmeterDone {...props} />
       <SqmeterWeather {...props} />
     </div>

@@ -38,6 +38,7 @@ namespace SQM
         uint32_t lastCheckMs = 0;
         uint64_t locationAtMs = 0;
         uint64_t settingsAtMs = 0;
+        uint64_t secretsAtMs = 0; // spec 024
         uint8_t syncedFollows = 0;
     };
 } // namespace SQM

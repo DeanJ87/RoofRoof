@@ -1,19 +1,36 @@
-import type { Config, LocationConfig, LocationSource, SqmeterSite, SyncGroup } from '../types';
+import type { Config, LocationConfig, LocationSource, SecretState, SecretsProblem, SqmeterSite, SyncGroup } from '../types';
 import type { ConfigPath } from '../components/settings/context';
 import { bodyOf, postJson } from './api';
 import { deviceError, deviceText } from '../i18n/deviceMessage';
 import { formatCoordinates } from '../i18n/format';
 import { t } from '../i18n';
+import { COPIED_SECRET, isCopiedSecret } from './copiedSecret';
+
+export { COPIED_SECRET } from './copiedSecret';
 
 // Copy site settings from SQMeter (spec 020 US3, FR-014 to FR-018): the device
 // fetches SQMeter's settings (POST /api/sqmeter/site); this lists each setting
 // that differs, and the ticked rows become changes to the page's settings.
 // Nothing is saved here: the normal Save does that.
-// Never copied (FR-015): the device name, host name, Wi-Fi, any password,
-// token or key, Alpaca, OTA, the language, and the MQTT and alert channels'
-// on/off switches. RoofRoof's own MQTT base topic is never changed.
+// Never copied (FR-015): the device name, host name, Wi-Fi, Alpaca, OTA, the
+// language. RoofRoof's own MQTT base topic is never changed. Spec 024: the MQTT
+// password, ntfy token and Pushover keys SQMeter shares come across as
+// COPIED_SECRET (the device fills them in at the save; the browser never sees
+// them), and SQMeter's MQTT, ntfy and Pushover switches only ever turn RoofRoof's on.
 
-export type CopyRowId = 'location' | 'timezone' | 'ntp' | 'mqttBroker' | 'weatherTopic' | 'ntfy';
+export type CopyRowId =
+  | 'location'
+  | 'timezone'
+  | 'ntp'
+  | 'mqttBroker'
+  | 'mqttPassword'
+  | 'mqttEnabled'
+  | 'weatherTopic'
+  | 'ntfy'
+  | 'ntfyToken'
+  | 'ntfyEnabled'
+  | 'pushoverKeys'
+  | 'pushoverEnabled';
 // What the person must enter after applying a row.
 export type CopySecret = 'mqttPassword' | 'ntfyToken';
 export type CopyNote = 'pushover';
@@ -22,7 +39,7 @@ export interface CopyRow {
   id: CopyRowId;
   ours: string; // RoofRoof's value, for display
   theirs: string; // SQMeter's value, for display
-  changes: [ConfigPath, unknown][]; // null for a secret clears it on the device
+  changes: [ConfigPath, unknown][]; // null for a secret clears it on the device; COPIED_SECRET takes SQMeter's
   secrets: CopySecret[];
   asks?: CopySecret[]; // of `secrets`, those SQMeter has set: asked for at their fields after the copy
 }
@@ -134,28 +151,81 @@ const timeRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   return rows;
 };
 
+// Spec 024: the device holds SQMeter's secret (it differs from RoofRoof's, or equals it).
+const held = (state: SecretState | undefined) => state === 'received' || state === 'same';
+const sharedOf = (site: SqmeterSite) => site.secrets;
+const secretShown = (value: string | null | undefined) =>
+  (value ?? '') === '' ? t('settings.sqmeterCopy.notSet') : t('settings.sqmeterCopy.secretSet');
+const onOff = (on: boolean) => (on ? t('settings.sqmeterCopy.on') : t('settings.sqmeterCopy.off'));
+// A row that turns a switch on (spec 024: a copy never turns one off).
+// `needs`: what the switch can't be on without when RoofRoof lacks it (the broker, the topic, the keys),
+// so no combination of ticks makes a save the device refuses.
+// `carried`: the row whose changes the switch needs (RoofRoof has no broker or topic yet); its secret
+// prompts come too, so a password SQMeter didn't share is still asked for.
+const switchRow = (id: CopyRowId, path: ConfigPath, carried?: CopyRow | null): CopyRow => ({
+  id,
+  ours: onOff(false),
+  theirs: onOff(true),
+  changes: [[path, true], ...(carried?.changes ?? [])],
+  secrets: carried?.secrets ?? [],
+  ...(carried?.asks ? { asks: carried.asks } : {}),
+});
+// An alert channel's switch also turns alerts on, so the channel delivers (and the wizard shows it ticked).
+const alertSwitchRow = (id: CopyRowId, path: ConfigPath, config: Config, carried?: CopyRow | null): CopyRow => {
+  const row = switchRow(id, path, carried);
+  return config.alerts?.enabled ? row : { ...row, changes: [...row.changes, [['alerts', 'enabled'], true]] };
+};
+// A row that takes SQMeter's received secret into `paths`.
+const secretRow = (id: CopyRowId, ours: string | null | undefined, paths: ConfigPath[]): CopyRow => ({
+  id,
+  ours: secretShown(ours),
+  theirs: t('settings.sqmeterCopy.received'),
+  changes: paths.map((path): [ConfigPath, unknown] => [path, COPIED_SECRET]),
+  secrets: [],
+});
+
+const brokerRow = (site: SqmeterSite, config: Config): CopyRow | null => {
+  const mqtt = site.mqtt;
+  const ours = config.mqtt;
+  if (!mqtt || mqtt.broker.trim() === '') return null;
+  if (mqtt.broker === ours.broker && mqtt.port === ours.port && mqtt.username === ours.username) return null;
+  // The old password is never sent to a different broker (FR-017); SQMeter's goes with its own (spec 024).
+  const copied = held(sharedOf(site)?.mqttPassword);
+  return {
+    id: 'mqttBroker',
+    ours: broker(ours.broker, ours.port, ours.username),
+    theirs: broker(mqtt.broker, mqtt.port, mqtt.username),
+    changes: [
+      [['mqtt', 'broker'], mqtt.broker],
+      [['mqtt', 'port'], mqtt.port],
+      [['mqtt', 'username'], mqtt.username],
+      [['mqtt', 'password'], copied ? COPIED_SECRET : null],
+    ],
+    // Only when there is a password to enter: SQMeter's, or the one RoofRoof had.
+    secrets: !copied && (mqtt.passwordSet || (ours.password ?? '') !== '') ? ['mqttPassword'] : [],
+    asks: !copied && mqtt.passwordSet ? ['mqttPassword'] : [],
+  };
+};
+
+// Spec 024: SQMeter's password for the broker RoofRoof already has, and its MQTT switch.
+const mqttSecretRows = (site: SqmeterSite, config: Config): CopyRow[] => {
+  const mqtt = site.mqtt;
+  const ours = config.mqtt;
+  if (!mqtt) return [];
+  const rows: CopyRow[] = [];
+  const sameBroker = mqtt.broker === ours.broker && mqtt.port === ours.port && mqtt.username === ours.username;
+  if (sameBroker && sharedOf(site)?.mqttPassword === 'received' && !isCopiedSecret(ours.password))
+    rows.push(secretRow('mqttPassword', ours.password, [['mqtt', 'password']]));
+  if (mqtt.enabled && !ours.enabled && mqtt.broker.trim() !== '') {
+    rows.push(switchRow('mqttEnabled', ['mqtt', 'enabled'], ours.broker.trim() === '' ? brokerRow(site, config) : null));
+  }
+  return rows;
+};
+
 const mqttRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   const mqtt = site.mqtt;
   if (!mqtt) return [];
-  const rows: CopyRow[] = [];
-  const ours = config.mqtt;
-  const differs = mqtt.broker !== ours.broker || mqtt.port !== ours.port || mqtt.username !== ours.username;
-  if (mqtt.broker.trim() !== '' && differs)
-    rows.push({
-      id: 'mqttBroker',
-      ours: broker(ours.broker, ours.port, ours.username),
-      theirs: broker(mqtt.broker, mqtt.port, mqtt.username),
-      // The old password is never sent to a different broker (FR-017).
-      changes: [
-        [['mqtt', 'broker'], mqtt.broker],
-        [['mqtt', 'port'], mqtt.port],
-        [['mqtt', 'username'], mqtt.username],
-        [['mqtt', 'password'], null],
-      ],
-      // Only when there is a password to enter: SQMeter's, or the one RoofRoof had.
-      secrets: mqtt.passwordSet || (ours.password ?? '') !== '' ? ['mqttPassword'] : [],
-      asks: mqtt.passwordSet ? ['mqttPassword'] : [],
-    });
+  const rows: CopyRow[] = [brokerRow(site, config), ...mqttSecretRows(site, config)].filter((row): row is CopyRow => row !== null);
   // SQMeter's base topic is where the MQTT weather source reads <base>/safe.
   const safety = config.safety;
   if (safety && mqtt.topic.trim() !== '' && mqtt.topic !== safety.mqtt.topic)
@@ -169,26 +239,74 @@ const mqttRows = (site: SqmeterSite, config: Config): CopyRow[] => {
   return rows;
 };
 
+// The ntfy token for a new server: SQMeter's when shared (spec 024), else cleared (FR-017), and whether to ask for one.
+const ntfyTokenChange = (site: SqmeterSite, ours: { token: string | null }, newServer: boolean) => {
+  const copied = held(sharedOf(site)?.ntfyToken);
+  const tokenSet = Boolean(site.ntfy?.tokenSet);
+  return {
+    changes: newServer ? [[['alerts', 'ntfy', 'token'], copied ? COPIED_SECRET : null] as [ConfigPath, unknown]] : [],
+    secrets: !copied && (tokenSet || (newServer && (ours.token ?? '') !== '')) ? (['ntfyToken'] as CopySecret[]) : [],
+    asks: !copied && tokenSet ? (['ntfyToken'] as CopySecret[]) : [],
+  };
+};
+
 const ntfyRow = (site: SqmeterSite, config: Config): CopyRow | null => {
   const ntfy = site.ntfy;
   const ours = config.alerts?.ntfy;
   if (!ntfy || !ours || ntfy.topic.trim() === '') return null;
   const newServer = ntfy.server !== ours.server;
   if (!newServer && ntfy.topic === ours.topic) return null;
-  const changes: [ConfigPath, unknown][] = [
-    [['alerts', 'ntfy', 'server'], ntfy.server],
-    [['alerts', 'ntfy', 'topic'], ntfy.topic],
-  ];
-  // The old token is never sent to a different server (FR-017).
-  if (newServer) changes.push([['alerts', 'ntfy', 'token'], null]);
+  const token = ntfyTokenChange(site, ours, newServer);
   return {
     id: 'ntfy',
     ours: ours.topic.trim() === '' ? t('settings.sqmeterCopy.notSet') : `${ours.server}/${ours.topic}`,
     theirs: `${ntfy.server}/${ntfy.topic}`,
-    changes,
-    secrets: ntfy.tokenSet || (newServer && (ours.token ?? '') !== '') ? ['ntfyToken'] : [],
-    asks: ntfy.tokenSet ? ['ntfyToken'] : [],
+    changes: [[['alerts', 'ntfy', 'server'], ntfy.server], [['alerts', 'ntfy', 'topic'], ntfy.topic], ...token.changes],
+    secrets: token.secrets,
+    asks: token.asks,
   };
+};
+
+// Spec 024: SQMeter's ntfy token for the server RoofRoof already has, and the channel's switch.
+const ntfyRows = (site: SqmeterSite, config: Config): CopyRow[] => {
+  const ntfy = site.ntfy;
+  const ours = config.alerts?.ntfy;
+  if (!ntfy || !ours) return [];
+  const rows = [ntfyRow(site, config)].filter((row): row is CopyRow => row !== null);
+  const topicSet = ntfy.topic.trim() !== '';
+  if (topicSet && ntfy.server === ours.server && sharedOf(site)?.ntfyToken === 'received' && !isCopiedSecret(ours.token))
+    rows.push(secretRow('ntfyToken', ours.token, [['alerts', 'ntfy', 'token']]));
+  if (ntfy.enabled && !ours.enabled && topicSet) {
+    rows.push(
+      alertSwitchRow('ntfyEnabled', ['alerts', 'ntfy', 'enabled'], config, ours.topic.trim() === '' ? ntfyRow(site, config) : null),
+    );
+  }
+  return rows;
+};
+
+// Spec 024: SQMeter's Pushover keys (both together) and the channel's switch.
+const pushoverRows = (site: SqmeterSite, config: Config): CopyRow[] => {
+  const theirs = site.pushover;
+  const ours = config.alerts?.pushover;
+  if (!theirs || !ours) return [];
+  const rows: CopyRow[] = [];
+  const state = sharedOf(site)?.pushover;
+  if (state === 'received' && !isCopiedSecret(ours.userKey))
+    rows.push(
+      secretRow('pushoverKeys', ours.userKey, [
+        ['alerts', 'pushover', 'userKey'],
+        ['alerts', 'pushover', 'appToken'],
+      ]),
+    );
+  const own = ours.userKey.trim() !== '' && ours.appToken.trim() !== '';
+  if (theirs.enabled && !ours.enabled && (held(state) || own)) {
+    const keys = secretRow('pushoverKeys', ours.userKey, [
+      ['alerts', 'pushover', 'userKey'],
+      ['alerts', 'pushover', 'appToken'],
+    ]);
+    rows.push(alertSwitchRow('pushoverEnabled', ['alerts', 'pushover', 'enabled'], config, own ? null : keys));
+  }
+  return rows;
 };
 
 /** One row for each copyable setting that differs from the settings as edited (FR-016). */
@@ -197,8 +315,14 @@ export const ROW_GROUP: Partial<Record<CopyRowId, SyncGroup>> = {
   timezone: 'time',
   ntp: 'time',
   mqttBroker: 'mqtt',
+  mqttPassword: 'mqtt',
+  mqttEnabled: 'mqtt',
   weatherTopic: 'mqtt',
   ntfy: 'alerts',
+  ntfyToken: 'alerts',
+  ntfyEnabled: 'alerts',
+  pushoverKeys: 'alerts',
+  pushoverEnabled: 'alerts',
 };
 
 const withFollow = (row: CopyRow, config: Config): CopyRow => {
@@ -208,13 +332,36 @@ const withFollow = (row: CopyRow, config: Config): CopyRow => {
 };
 
 export const copyRows = (site: SqmeterSite, config: Config): CopyRow[] =>
-  [locationRow(site, config), ...timeRows(site, config), ...mqttRows(site, config), ntfyRow(site, config)]
+  [
+    locationRow(site, config),
+    ...timeRows(site, config),
+    ...mqttRows(site, config),
+    ...ntfyRows(site, config),
+    ...pushoverRows(site, config),
+  ]
     .filter((row): row is CopyRow => row !== null)
     .map((row) => withFollow(row, config));
 
-/** What can't be copied but is worth saying: SQMeter's Pushover keys are never copied. */
+/** What can't be copied but is worth saying: SQMeter's Pushover keys, when it didn't share them. */
 export const copyNotes = (site: SqmeterSite): CopyNote[] =>
-  site.pushover && (site.pushover.userKeySet || site.pushover.appTokenSet) ? ['pushover'] : [];
+  site.pushover && (site.pushover.userKeySet || site.pushover.appTokenSet) && !held(sharedOf(site)?.pushover) ? ['pushover'] : [];
+
+/** Spec 024: what became of SQMeter's passwords: received (and whether over http), or why not. */
+export type ShownSecretsProblem = Exclude<SecretsProblem, 'waiting'>;
+export interface SecretsOutcome {
+  received: boolean;
+  http: boolean;
+  problem: ShownSecretsProblem | null; // only when SQMeter has a secret set
+}
+export const secretsOutcome = (site: SqmeterSite): SecretsOutcome => {
+  const secrets = site.secrets;
+  if (!secrets) return { received: false, http: false, problem: null };
+  const received = secrets.problem === null && [secrets.mqttPassword, secrets.ntfyToken, secrets.pushover].some(held);
+  const wanted = Boolean(site.mqtt?.passwordSet || site.ntfy?.tokenSet || site.pushover?.userKeySet || site.pushover?.appTokenSet);
+  // 'waiting' is the sync's, before its first read: nothing to say.
+  const problem = wanted && secrets.problem !== 'waiting' ? secrets.problem : null;
+  return { received, http: received && secrets.http, problem };
+};
 
 /** The ticked rows' changes, for the editor's applyChanges. */
 export const changesOf = (rows: CopyRow[], ticked: ReadonlySet<CopyRowId>): [ConfigPath, unknown][] =>

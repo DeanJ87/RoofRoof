@@ -129,7 +129,7 @@ export const mockStatus: SystemStatus = {
     currentSense: false,
     motorAmps: null,
     maxCurrentAmps: 10,
-    parkSwitches: { fitted: 0, switch1: 'notFitted', switch2: 'notFitted' },
+    parkSwitches: { fitted: 0, switch1: 'notFitted', switch2: 'notFitted', switchesOnly: false, openings: [0, 0], check: null },
     closePending: false,
     calibrating: false,
     closePhase: 'idle',
@@ -162,6 +162,7 @@ export const mockStatus: SystemStatus = {
   sync: {
     problem: null,
     readAgeSeconds: null,
+    secrets: null,
     time: { follow: false, syncedAt: null, refused: null, needs: [] },
     mqtt: { follow: false, syncedAt: null, refused: null, needs: [] },
     alerts: { follow: false, syncedAt: null, refused: null, needs: [] },
@@ -188,9 +189,11 @@ export const mockSqmeterSite: SqmeterSite = {
   device: { name: 'SQMeter' },
   location: { set: true, latitude: 51.4769, longitude: -0.0005 },
   time: { timezone: 'GMT0BST,M3.5.0/1,M10.5.0', server1: 'pool.ntp.org', server2: 'time.nist.gov' },
-  mqtt: { broker: '192.168.1.10', port: 1883, username: 'observatory', topic: 'sqmeter', passwordSet: true },
-  ntfy: { server: 'https://ntfy.sh', topic: 'my-observatory', tokenSet: false },
-  pushover: { userKeySet: true, appTokenSet: true },
+  mqtt: { broker: '192.168.1.10', port: 1883, username: 'observatory', topic: 'sqmeter', passwordSet: true, enabled: false },
+  ntfy: { server: 'https://ntfy.sh', topic: 'my-observatory', tokenSet: false, enabled: false },
+  pushover: { userKeySet: true, appTokenSet: true, enabled: false },
+  // Spec 024: an SQMeter too old to share its passwords.
+  secrets: { problem: 'notSupported', http: true, mqttPassword: 'none', ntfyToken: 'none', pushover: 'none' },
 };
 
 export const mockWifiNetworks: WiFiNetwork[] = [

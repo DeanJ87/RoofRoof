@@ -55,6 +55,9 @@ namespace SQM
         // snapshot; only park() says the mount is parked. Spec 022: the close
         // sequence asks only while park.requestPark is on (CloseSeq::Policy).
         void requestPark() { poller.requestPark(); }
+        // Spec 024: a N.I.N.A. address is set (with the park switches as the
+        // only source it is optional; without one nothing is asked to park).
+        bool ninaSet() const { return !settings.park.ninaUrl.empty(); }
         // Any task (spec 015, GET /api/roof/inputs): the verdict, the park and
         // N.I.N.A.'s reading as last evaluated, copied under their own lock.
         // Waits at most REPORT_WAIT_MS for it (the loop holds it only for a

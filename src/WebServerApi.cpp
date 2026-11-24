@@ -104,6 +104,8 @@ namespace SQM
         std::string reason;
         std::string held;
         ConfigSave::Check stale;
+        // Spec 024: SQMeter's secrets from the last copy, for a "(from SQMeter)" field.
+        const std::unique_ptr<CopiedSecrets> copiedNow = heldCopied();
         const bool saved = editAsFlashWrite(
             request,
             [&](const Config &live, Config &next)
@@ -114,7 +116,7 @@ namespace SQM
                 // Merged straight into `next` (already a copy of the live
                 // settings, on the heap): a second ~2 KB Config here and
                 // Config::fromJson's two more overflowed the async_tcp stack (spec 022).
-                if (!Config::applyJson(body, next, true, &reason))
+                if (!Config::applyJson(body, next, true, &reason, copiedNow.get()))
                 {
                     reason = reason.empty() ? "Invalid configuration" : reason;
                     return false;

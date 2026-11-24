@@ -118,6 +118,20 @@ describe('Open', () => {
     expect(open({})).toEqual({ disabled: false, reason: '', busy: false });
   });
 
+  // Spec 024 (parkSwitchCheck): a park switch that hasn't opened in 3 roof openings refuses Open.
+  it("is refused while the stuck-switch check holds, with the device's reason", () => {
+    const check = "Park switch 2 hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park once";
+    const parkSwitches = {
+      fitted: 2,
+      switch1: 'closed' as const,
+      switch2: 'closed' as const,
+      switchesOnly: true,
+      openings: [0, 3] as [number, number],
+    };
+    expect(open({ parkSwitches: { ...parkSwitches, check } })).toEqual({ disabled: true, reason: check, busy: false });
+    expect(open({ parkSwitches: { ...parkSwitches, check: null } }).disabled).toBe(false);
+  });
+
   it('needs the weather to be safe, and says why', () => {
     expect(open({ weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' }).reason).toContain('unsafe: rain (SQMeter HTTP)');
     expect(open({ weather: 'unknown', weatherText: '' }).disabled).toBe(true);

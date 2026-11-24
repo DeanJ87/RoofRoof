@@ -49,7 +49,10 @@ namespace SQM
             switch (command)
             {
             case Roof::Command::Open:
-                return openRefusal(in);
+            {
+                const GateRefusal refusal = openRefusal(in);
+                return refusal == GateRefusal::None && in.stuckSwitch != 0 ? GateRefusal::SwitchCheck : refusal;
+            }
             case Roof::Command::Close:
                 return parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
             default:
@@ -118,6 +121,8 @@ namespace SQM
                 return "mountNotParked";
             case GateRefusal::Daylight:
                 return "daylight";
+            case GateRefusal::SwitchCheck:
+                return "parkSwitchCheck";
             default:
                 return "none";
             }

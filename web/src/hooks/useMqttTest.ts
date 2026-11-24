@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { Config } from '../types';
 import { postJson } from '../lib/api';
+import { isCopiedSecret } from '../lib/copiedSecret';
 import { t } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 
@@ -19,7 +20,8 @@ export const useMqttTest = (config: Config) => {
         broker: config.mqtt.broker,
         port: config.mqtt.port,
         username: config.mqtt.username,
-        password: config.mqtt.password ?? '',
+        // Never the "(from SQMeter)" placeholder (spec 024): the page disables the test then.
+        password: isCopiedSecret(config.mqtt.password) ? '' : (config.mqtt.password ?? ''),
         clientId: `RoofRoof-${config.deviceName || 'ESP32'}-Test`,
       });
       const result = await response.json();

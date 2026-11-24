@@ -34,6 +34,7 @@ namespace SQM
             bool ninaConfigured = false; // a N.I.N.A. address is set
             bool sqmeterOn = false;      // SQMeter HTTP or MQTT is on
             bool requestPark = true;     // park.requestPark: the automatic close may ask N.I.N.A. to park
+            bool switchesOnly = false;   // spec 024: the park source doesn't use N.I.N.A.
         };
         Sources sourcesOf(const SafetyConfig &safety, const ParkConfig &park);
 

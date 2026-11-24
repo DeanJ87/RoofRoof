@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "Config.h"
+#include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
 
 namespace SQM
@@ -72,7 +73,11 @@ namespace SQM
         // move the roof). A changed MQTT broker, port or user name clears the
         // saved MQTT password; a changed ntfy server clears the saved token.
         // `syncedAt` is set to `epochSeconds` (1 without a clock) when a group
-        // changes or is confirmed for the first time.
+        // changes or is confirmed for the first time. Spec 024: with
+        // `site.secrets` received, a group's secrets take SQMeter's non-empty
+        // values (for SQMeter's server, which the group now uses; never cleared
+        // by an empty one), and a switch SQMeter has on turns RoofRoof's on
+        // (never off); Pushover's only once both keys are here.
         // `out` is filled in place (the firmware keeps it on the heap: two
         // settings copies would crowd the loop task's stack).
         void syncFromSite(SyncOutcome &out, const Config &live, const SiteConfig &site, int64_t epochSeconds, bool clockSet);
@@ -98,7 +103,9 @@ namespace SQM
         // Pushover keys and RoofRoof lacks either (they are never synced).
         std::vector<const char *> secretsNeeded(const Config &config, const SiteConfig &site, Group group);
 
-        // The status document's "sync" section (FR-030).
+        // The status document's "sync" section (FR-030). Spec 024: `secrets` is
+        // null while neither the MQTT nor the alerts group follows, else
+        // "received" or why SQMeter's secrets couldn't be read.
         struct SyncState
         {
             std::string refused[GROUP_COUNT]; // the last sync's refusal per group
@@ -110,6 +117,8 @@ namespace SQM
             const SyncState &state;
             bool addressSet = false; // SQMeter's address is set
             uint64_t nowMs = 0;
+            // Spec 024: the last read of SQMeter's secrets (nullptr: none kept).
+            const SecretsRead *secrets = nullptr;
         };
         void writeSyncStatus(JsonObject out, const SyncView &view);
     } // namespace Site
