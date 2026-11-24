@@ -1004,7 +1004,7 @@
   "settings.alerts.roofFault": "Roof fault",
   "settings.alerts.roofFaultMessage": "The roof stopped with a fault and won't move until a person clears it. Fault: {reason}",
   "settings.alerts.roofSafety": "Roof safety",
-  "settings.alerts.roofSafetyNote": "Sent to every channel that is on, even with alerts off or paused. A test box sends Urgent.",
+  "settings.alerts.roofSafetyNote": "Sent to every channel on, even when off or paused. Park or weather bypass on: Urgent.",
   "settings.alerts.safetyLostMessage": "The weather counts as unsafe until it is back. {reason}",
   "settings.alerts.safetyLostTitle": "Weather source lost",
   "settings.alerts.saveFirst": "Save first",

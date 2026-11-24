@@ -146,7 +146,9 @@ void test_the_park_bypass_never_beside_a_nina_address(void)
     TEST_ASSERT_EQUAL_STRING(
         "Test box: the park bypass stands in for N.I.N.A.; with park switches only there is nothing to bypass",
         saveError(R"({"testBox":{"park":true}})", switches).c_str());
-    Config applied = switches; // applied in place, as the save handler's copy is
+    // applyJson changes its argument before it refuses (the address is cleared on
+    // it): the save is atomic only because the handler discards that copy.
+    Config applied = switches;
     TEST_ASSERT_FALSE(Config::applyJson(R"({"testBox":{"park":true}})", applied, true));
     // Other bypasses leave the address alone.
     const auto daylight = Config::fromJson(R"({"testBox":{"daylight":true}})", &nina);
