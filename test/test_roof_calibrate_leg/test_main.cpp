@@ -177,7 +177,7 @@ void test_a_leg_ends_at_the_next_magnet_whatever_the_polarity_setting(void)
     // The setting says the open end reads high; the roof's closed end does.
     Bench b;
     b.sim.highEndClosed = true;
-    b.steps(15); // past the Hall persistence
+    b.steps(15);                                // past the Hall persistence
     TEST_ASSERT_TRUE(b.state() == State::Open); // the saved settings' label
     TEST_ASSERT_TRUE(b.roof.calibrate(leg(End::Open), Origin::Person).accepted);
     TEST_ASSERT_TRUE(b.runToRest());

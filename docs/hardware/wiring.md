@@ -154,7 +154,7 @@ Under the 20 kHz PWM the sense output is chopped: it follows the motor current o
 
 The SS49E is a linear Hall sensor. It is powered at **5 V**, and its output swings over most of its 5 V supply (roughly 2.5 V at rest with no magnet, towards the supply rails as a magnet approaches). That is above what the ESP32 input tolerates, so **its output must go through a divider before the Hall input** (GPIO39 on both boards). Do not connect it directly.
 
-A 10 kΩ (top) / 20 kΩ (bottom) divider, the same as the current-sense inputs, scales a 5 V swing to under 3.3 V and a resting 2.5 V to about 1.7 V. Check the output range in the sensor's datasheet against your supply and pick a ratio that keeps the highest output under 3.3 V; the firmware's Hall thresholds are settings, so they follow whichever ratio you choose. Keep the divider close to the ESP32 and add a small capacitor (for example 100 nF) from the Hall input to GND to calm noise.
+A 10 kΩ (top) / 20 kΩ (bottom) divider, the same as the current-sense inputs, scales a 5 V swing to under 3.3 V and a resting 2.5 V to about 1.7 V. Check the output range in the sensor's datasheet against your supply and pick a ratio that keeps the highest output under 3.3 V and the lowest above about 0.55 V at the pin (a ratio of at least 0.6, as 10k/20k gives): a reading of 400 counts or below is taken as a broken sensor connection. The firmware's Hall thresholds are settings, so they follow the ratio you choose. Keep the divider close to the ESP32 and add a small capacitor (for example 100 nF) from the Hall input to GND to calm noise.
 
 #### Keep motor noise off the Hall line
 
