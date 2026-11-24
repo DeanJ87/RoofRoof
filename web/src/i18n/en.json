@@ -1324,7 +1324,7 @@
   "settings.roof.slowDuty": "Slow duty",
   "settings.roof.slowDutyHint": "Duty at the ends and for every move from an unknown position. Not above the top duty.",
   "settings.roof.slowSpeed": "Slow speed",
-  "settings.roof.slowSpeedHint": "Measured by a calibration run; times moves from an unknown position. Used only at the slow duty it was measured at. 0: scaled from the speed.",
+  "settings.roof.slowSpeedHint": "Set by a calibration run, with the slow duty it was measured at; used only at that duty. Times moves from an unknown position. 0: scaled from the speed.",
   "settings.roof.sourceBoth": "N.I.N.A. and park switches",
   "settings.roof.sourceNina": "N.I.N.A. only",
   "settings.roof.sourceSwitches": "Park switches only",

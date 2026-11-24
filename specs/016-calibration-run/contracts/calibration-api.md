@@ -58,6 +58,7 @@ Open (readings only).
     "travelMm": { "old": 1850, "new": 1850 },
     "speedMmPerSecond": { "old": 38.0, "new": 38.0 },
     "slowSpeedMmPerSecond": { "old": 0, "new": 15.2 },
+    "slowSpeedDutyPercent": { "old": 0, "new": 40 },
     "timeoutMarginSeconds": { "old": 15, "new": 10 },
     "moveLimitSeconds": { "old": 67, "new": 61 },
     "slowLimitSeconds": { "old": 137, "new": 132 },

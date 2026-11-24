@@ -123,7 +123,8 @@ time a command arrived, and it also applies after start-up.
 Every move has a hard timeout: the time the profile needs for the distance to go, plus the
 **timeout margin**. A move from an unknown position gets the whole travel at the slow duty plus the
 margin. The speed at the slow duty is `roof.slowSpeedMmPerSecond`, measured by the
-[calibration run](calibration-run.md); until it is measured (0) the speed is taken as proportional
+[calibration run](calibration-run.md), and counts only while the slow duty is still the one it was
+measured at (`roof.slowSpeedDutyPercent`); until it is measured (0), or after the slow duty changes, the speed is taken as proportional
 to the duty, which a heavy roof's motor is not, so run the calibration before relying on moves from
 an unknown position. The clock starts when the motor starts.
 

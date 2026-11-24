@@ -4,8 +4,8 @@
 // a soft start from the slow duty to the top duty, slowing by estimated distance
 // near the end, and the slow duty once the estimate has arrived. Speed is affine
 // in the duty between the slow duty's speed (roof.slowSpeedMmPerSecond, measured
-// by a calibration run) and the full speed at 100 %; before a slow speed is
-// measured it is taken as proportional to the duty.
+// by a calibration run, used only at the slow duty it was measured at) and the
+// full speed at 100 %; otherwise it is taken as proportional to the duty.
 
 #include <cstdint>
 

@@ -72,3 +72,4 @@ setting, firmware, demo, web and docs.
 - [X] T029 The proposal: the slow speed, the full speed from the top-duty legs allowing for it, a warning without a top-duty pass; the document's `slowSpeedMmPerSecond`, `moveLimitSeconds` and `slowLimitSeconds`; the result's rows; contract schemas, OpenAPI, device catalogue, demo core
 - [X] T030 Docs (calibration run, configuration, CHANGELOG), the Playwright runs from open, closed and part-way, every check, reviews
 - [X] T031 Review round 1: the slow speed is kept with the slow duty it was measured at (`roof.slowSpeedDutyPercent`) and ignored for another slow duty; the slow duty's 8-bit value advances at the slow speed exactly; the leg-limit note's tests follow its text
+- [X] T032 Review round 2: safe to merge; the slow speed's duty in the REST and contract examples, roof motion and the settings hint
