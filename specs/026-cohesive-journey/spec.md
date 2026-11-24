@@ -211,7 +211,8 @@ one CSS rule (`.move-blocker`) replaces the calibration checklist's. Copy follow
 - **SC-003**: A new owner can see from one card what is set up and what is not (7 stages).
 - **SC-004**: Turning the test box weather bypass on with the roof open starts no automatic close.
 - **SC-005**: A typed MQTT login survives the next sync.
-- **SC-006**: The built UI uses fewer LittleFS blocks than before (336 KB → 332 KB of the 336 KB limit).
+- **SC-006**: The built UI does not grow LittleFS use: it is 2 KB gzipped smaller than main, within the
+  75% limit.
 
 ## Assumptions decided for the owner
 

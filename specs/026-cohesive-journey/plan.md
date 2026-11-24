@@ -26,7 +26,7 @@ WASM demo core), as in spec 001. Budgets: LittleFS at its limit before this work
 | III Unsafe ends closed | The release is refused while anything wants the roof closed and is re-checked by the sequence's own step; it only re-arms the close (the transition the re-arm spell makes). Native tests: release while safe, ignored while unsafe or in daylight, a new Stop wins, halted released, cannot-move not. |
 | IV Alpaca | Not touched. |
 | V Testable logic | Release, countdown, `measured`, unfollow rule in lib with native tests; page logic in pure modules with Vitest; journeys in Playwright. |
-| VI Budgets | LittleFS 336 → 332 KB; JS + CSS gz 160.7 → 157.9 KB; flash +1.8 KB (92.4%). |
+| VI Budgets | UI 2 KB gzipped smaller than main, LittleFS within its 75% limit; flash +3.7 KB (92.8%), recorded. |
 | VII UI | DS components only; every greyed button points at its reasons; bypassed checks named as bypassed. |
 | VIII Security | The release route needs login and the command header, like every roof command. |
 | IX Docs | User guide (dashboard, configuration, close-on-unsafe, roof-motion, test-box, calibration-run, setup-wizard), REST, OpenAPI, schemas, DIA-22 updated and re-confirmed. |

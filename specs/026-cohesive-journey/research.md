@@ -27,11 +27,13 @@ the end of the re-arm spell, which the device would reach by itself.
 
 - LittleFS was exactly at its 75% limit. The `device.*` catalogue (English to the same English) was
   ~7 KB of the gzipped script; leaving the messages no code names out of the build frees two 4 KB
-  blocks. Measured: 336 KB → 332 KB on LittleFS, JS + CSS 160.7 KB → 157.9 KB gzipped, with this
-  spec's UI included. Merging the entry chunk into the app (inlineDynamicImports) was tried and
+  blocks. Measured before main gained the measured slow speed: 336 KB → 332 KB on LittleFS, JS +
+  CSS 160.7 KB → 157.9 KB gzipped, with this spec's UI included. After merging that: 2.0 KB gzipped
+  smaller than main, the same block count (336 KB of the 336 KB limit). Merging the entry chunk into the app (inlineDynamicImports) was tried and
   grew the script; not used.
-- Flash: +1.8 KB at the first firmware change (92.3% → 92.4%), for the release route, the countdown,
-  `roof.measured` and the follow rule; inside SIZE-04's warning band, far from the 95% fail.
+- Flash: +3.7 KB against main (92.8%), for the release route, the countdown, `roof.measured` and
+  the follow rule (the follow rule hashes the group values instead of joining strings, which saved
+  1.2 KB); inside SIZE-04's warning band, far from the 95% fail.
 
 ## R4 Move limits on the page
 

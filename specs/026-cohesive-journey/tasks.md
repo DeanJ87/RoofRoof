@@ -44,7 +44,8 @@
 - [x] T018 Playwright `web/tests/journey.spec.ts`: stages, held and released, no release while unsafe, each refusal with its fix, a timeout fault, the test box save, typing over SQMeter
 - [x] T019 Docs: dashboard, configuration, close-on-unsafe (Release hold), roof-motion, test-box, calibration-run, setup-wizard, commissioning; DIA-22 updated, other diagrams re-confirmed
 - [x] T020 Full checks per spec 001 quickstart §1; before and after screenshots
-- [ ] T021 Two review rounds (one as a first-time owner in the demo); fix findings
+- [x] T021 Review round 1 (code and safety): fixed each button's own reasons, Release hold's Cancel, the weather bypass refused while a source reads unsafe and undone cleanly, `measured` kept on a recalibration and cleared on typing, one follow rule for Settings and the wizard (the Pushover sound excluded), the release logged as it happened; tests added
+- [ ] T022 Review round 2 (a first-time owner in the demo) and a second code review; fix findings
 
 ## Converge
 
