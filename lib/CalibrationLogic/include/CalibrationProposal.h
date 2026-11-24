@@ -85,8 +85,9 @@ namespace SQM
         struct Proposal
         {
             uint32_t travelMm = 0;
-            bool speed = false; // speedMmPerSecond and timeoutMarginSeconds proposed
+            bool speed = false; // speedMmPerSecond, slowSpeedMmPerSecond and timeoutMarginSeconds proposed
             float speedMmPerSecond = 0.0f;
+            float slowSpeedMmPerSecond = 0.0f; // the slow legs' average speed, at the slow duty
             uint32_t timeoutMarginSeconds = 0;
             Problem speedProblem;
             bool hall = false; // hallHighEnd and both thresholds proposed
@@ -113,8 +114,17 @@ namespace SQM
         // `counts` rounded and kept within [lo, hi] (rounded inward).
         uint16_t clampCounts(double counts, double lo, double hi);
 
-        // The speed a measured leg implies at 100 % duty (travel ÷ its duty-weighted time).
+        // The speed a measured leg implies at 100 % duty if speed were proportional
+        // to the duty (travel ÷ its duty-weighted time): only for comparing legs
+        // driven with the same profile.
         float legSpeed(const MeasuredLeg &leg, uint32_t travelMm);
+        // The leg's average speed (travel ÷ its driving time), in mm/s.
+        float legAverageSpeed(const MeasuredLeg &leg, uint32_t travelMm);
+        // The full speed at 100 % a top-duty leg implies when the speed is affine
+        // in the duty from `slowSpeed` (mm/s, measured at `slowDutyPercent`): the
+        // time it spent above the slow duty carries the rest of the travel.
+        // Proportional (legSpeed) when that can't be solved.
+        float topLegFullSpeed(const MeasuredLeg &leg, uint32_t travelMm, float slowSpeed, uint8_t slowDutyPercent);
 
         Proposal propose(const Measurements &measured, const Roof::Settings &old);
     } // namespace Calib

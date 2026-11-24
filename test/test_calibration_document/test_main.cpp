@@ -4,6 +4,7 @@
 #include <unity.h>
 
 #include "CalibrationDocument.h"
+#include "MotionProfile.h"
 #include "../calibration_rig/CalibrationRig.h"
 
 using namespace CalibTest;
@@ -36,6 +37,40 @@ void test_the_document_of_a_finished_run(void)
     TEST_ASSERT_EQUAL_STRING("open", doc["proposal"]["hallHighEnd"]["new"]);
     TEST_ASSERT_TRUE(doc["proposal"]["hallProblem"].isNull());
     TEST_ASSERT_TRUE(doc["proposal"]["warnings"].is<JsonArray>());
+    // The slow speed and what the proposal does to every move's hard timeout.
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, doc["proposal"]["slowSpeedMmPerSecond"]["old"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 15.0f, doc["proposal"]["slowSpeedMmPerSecond"]["new"].as<float>());
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 15.0f, doc["legs"][0]["speedMmPerSecond"].as<float>()); // the leg's own average
+    Roof::Settings now = r.settings;
+    now.travelMm = 1800;
+    now.speedMmPerSecond = r.rep().proposal.speedMmPerSecond;
+    now.slowSpeedMmPerSecond = r.rep().proposal.slowSpeedMmPerSecond;
+    now.slowSpeedDutyPercent = 40;
+    now.timeoutMarginMs = r.rep().proposal.timeoutMarginSeconds * 1000;
+    TEST_ASSERT_EQUAL_UINT32(
+        (Roof::unknownMoveTimeoutMs(r.settings) + 999) / 1000, doc["proposal"]["slowLimitSeconds"]["old"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32((Roof::unknownMoveTimeoutMs(now) + 999) / 1000, doc["proposal"]["slowLimitSeconds"]["new"].as<uint32_t>());
+    TEST_ASSERT_EQUAL_UINT32((Roof::moveTimeoutMs(now, 1800.0f) + 999) / 1000, doc["proposal"]["moveLimitSeconds"]["new"].as<uint32_t>());
+}
+
+// The largest document: a top pass with current sense, and every warning.
+void test_the_largest_document_fits(void)
+{
+    Roof::Settings s;
+    s.currentSenseEnabled = true;
+    s.maxCurrentAmps = 3.2f; // the plant's 3 A running current is near it
+    Rig r(1850.0f, s);
+    r.plant.speedMmPerSecond = 9.0f; // 514 s a slow travel: near the 600 s limit
+    r.limitMs = MAX_LIMIT_MS;
+    TEST_ASSERT_TRUE(r.start(Where::Open, true).accepted);
+    TEST_ASSERT_TRUE(r.finish(3000000));
+    TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
+    TEST_ASSERT_TRUE(r.rep().proposal.warnings.size() >= 2);
+    DynamicJsonDocument doc(DOCUMENT_CAPACITY);
+    writeDocument(doc.to<JsonObject>(), r.rep(), r.nowMs);
+    TEST_ASSERT_FALSE(doc.overflowed());
+    TEST_ASSERT_EQUAL(4, doc["legs"].size());
+    TEST_ASSERT_TRUE(doc.memoryUsage() < DOCUMENT_CAPACITY * 3 / 4);
 }
 
 void test_the_document_while_running_and_idle(void)
@@ -88,6 +123,7 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_the_document_of_a_finished_run);
+    RUN_TEST(test_the_largest_document_fits);
     RUN_TEST(test_the_document_while_running_and_idle);
     RUN_TEST(test_the_start_request_is_parsed);
     return UNITY_END();

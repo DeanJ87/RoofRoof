@@ -1,5 +1,7 @@
 #include "CalibrationRun.h"
 
+#include <algorithm>
+#include <cstdio>
 #include <cstring>
 
 #include "Config.h"
@@ -240,6 +242,24 @@ namespace SQM
         {
             rep.proposal = propose(rep.measured, rep.old);
             rep.proposed = true;
+            // The slow legs near the limit: what to raise before the roof slows further.
+            uint32_t slowest = 0;
+            for (uint8_t i = 0; i < rep.measured.legCount; ++i)
+                if (rep.measured.legs[i].kind == LegKind::SlowOpen || rep.measured.legs[i].kind == LegKind::SlowClose)
+                    slowest = std::max(slowest, rep.measured.legs[i].drivenMs);
+            if (slowest > rep.limitMs * SLOW_LEG_WARN_FRACTION)
+            {
+                char text[220];
+                std::snprintf(
+                    text,
+                    sizeof(text),
+                    "The slow legs, at roof.slowDutyPercent (%u %%), took up to %u s of the %u s calibration limit "
+                    "(roof.calibrationLimitSeconds): raise the limit, up to 600 s, before the next run",
+                    static_cast<unsigned>(rep.old.slowDutyPercent),
+                    static_cast<unsigned>((slowest + 999) / 1000),
+                    static_cast<unsigned>(rep.limitMs / 1000));
+                rep.proposal.warnings.push_back(Problem{"slowLegsLong", text});
+            }
             finish(Ending::Done, "Calibration finished");
         }
     } // namespace Calib
