@@ -214,7 +214,7 @@ void test_person_and_controller_stops_still_work(void)
     roof.bench.steps(50);
     TEST_ASSERT_TRUE(roof.command(Command::Stop, Origin::Automatic));
     TEST_ASSERT_TRUE(roof.command(Command::Close, Origin::Automatic));
-    roof.bench.steps(50);
+    roof.bench.steps(70); // off the open magnet, past the Hall persistence
     TEST_ASSERT_TRUE(roof.command(Command::Stop, Origin::Person));
     TEST_ASSERT_EQUAL_UINT32(1, roof.personStops);
     roof.bench.steps(10);

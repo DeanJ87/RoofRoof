@@ -459,7 +459,7 @@ void test_the_opposite_polarity_is_proposed(void)
 {
     Rig r;
     r.plant.highEndClosed = true; // the setting says open reads high
-    r.steps(200);
+    r.steps(400); // past the Hall persistence
     TEST_ASSERT_TRUE(r.start().accepted);
     TEST_ASSERT_TRUE(r.finish());
     TEST_ASSERT_TRUE(r.rep().state == RunState::Done);
@@ -472,7 +472,7 @@ void test_same_pole_magnets_return_to_closed_and_withhold_the_thresholds(void)
 {
     Rig r;
     r.plant.lowMagnetCounts = 3400; // both ends read high
-    r.steps(200);
+    r.steps(400); // past the Hall persistence
     TEST_ASSERT_TRUE(r.start(Where::Closed, true).accepted);
     TEST_ASSERT_TRUE(r.finish());
     const Report &rep = r.rep();
