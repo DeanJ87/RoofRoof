@@ -212,7 +212,7 @@ namespace SQM
         const uint64_t leftMs = sequence.standDownLeftMs();
         standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
         if (in.releaseHold)
-            Logger::warn(TAG, "Stand-down released by a person: %s", CloseSeq::phaseName(sequence.phase()));
+            Logger::warn(TAG, "%s", CloseSeq::releaseLogText(before, sequence.phase()));
         keep();
         retryAlert(now);
         countClosed(before, decision);

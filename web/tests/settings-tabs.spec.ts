@@ -69,15 +69,14 @@ test('Settings → Roof copies site settings from SQMeter, and Save keeps them',
     .toBe('observatory|roofroof|roofroof-demo|true|false');
 });
 
-// Spec 020: a group that follows SQMeter is read-only; "Edit here instead" unlocks it and Save keeps it set here.
-test('Settings → Time follows SQMeter read-only until Edit here instead, which saves follow false', async ({ page }) => {
+// Spec 020: a group that follows SQMeter says so; spec 026: typing in it sets it here, and Save keeps it.
+test('Settings → Time follows SQMeter until a value is typed, which saves follow false with it', async ({ page }) => {
   await page.goto('./#/settings?tab=time');
   const server = page.locator('[data-field="ntp.server1"]');
-  await expect(server).toBeDisabled({ timeout: 15_000 });
+  await expect(server).toBeEnabled({ timeout: 15_000 });
   await expect(page.locator('[data-sync="time"]').first()).toContainText('Follows SQMeter');
-  await page.getByRole('button', { name: 'Edit here instead' }).first().click();
-  await expect(server).toBeEnabled();
   await server.fill('time.example.org');
+  await expect(page.getByText('Set here, not from SQMeter').first()).toBeVisible();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect
     .poll(() =>
@@ -87,7 +86,7 @@ test('Settings → Time follows SQMeter read-only until Edit here instead, which
       }),
     )
     .toBe('false|time.example.org');
-  await expect(page.getByRole('button', { name: 'Follow SQMeter' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Follow SQMeter again' }).first()).toBeVisible();
 });
 
 // Spec 020: a password-protected SQMeter. Locked, the copy and the weather source say SQMeter wants a

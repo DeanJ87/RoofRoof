@@ -9,7 +9,7 @@ import { fieldErrorAliases } from './settings/payload';
 import { MotionNote } from './settings/RoofTab';
 import { effectiveEntries, fixTarget, viewOf } from '../lib/settingsDeps';
 import { fetchInputs, saveSetup } from '../lib/setupApi';
-import { editChanges } from '../lib/syncView';
+import { editBatch, editChanges } from '../lib/syncView';
 import { locationQuery } from './settings/tabs';
 import type { WizardPageProps } from './wizard/context';
 import { focusField, inPlaceFix, outcomeText, startFrom } from './wizard/flow';
@@ -294,7 +294,8 @@ const Wizard: FunctionalComponent = () => {
     config,
     saved,
     update: (path, value) => editor.applyChanges(editChanges(editor.config, path, value, editor.status?.sync)), // spec 026
-    updateMany: editor.applyChanges,
+    // Spec 026: the same rule for several edits at once (a copy's own follow flags come last and stand).
+    updateMany: (changes) => editor.applyChanges(editBatch(editor.config, changes, editor.status?.sync)),
     error: (key) => validationErrors[fieldErrorAliases[key] ?? key],
     status,
     dirty,

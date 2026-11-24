@@ -97,7 +97,9 @@ Test box** (**Open test box**); the setup wizard turns it on for a bench setup.
   why in one line, with a link to the setting in the way. **No weather station** turned on while
   an SQMeter weather source is on turns that source off in the same save, and says so: the weather
   check never reads "no weather source" (unsafe) between two saves, which would start the automatic
-  close. **Turn on test box** (or **Save**) starts the deadline.
+  close; turned off again before saving, the saved sources come back. While a configured source
+  reports unsafe it isn't offered: a bypass never hides a reading. **Turn on test box** (or
+  **Save**) starts the deadline.
 
 The [setup wizard](setup-wizard.md) can do the same: its test box screen, a part of its own after
 the wiring check, asks whether a telescope is, or will be, under this roof. **No telescope yet

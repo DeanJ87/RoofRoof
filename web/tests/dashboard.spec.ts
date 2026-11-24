@@ -194,11 +194,13 @@ test('the demo says its clock moved on the Demo button, not the dashboard', asyn
   await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved', { timeout: 20_000 });
 });
 
-test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({ page }) => {
+test('the dashboard is the Status card, the Roof card, Roof setup (until done) and Device & Network, nothing from the old sensors', async ({
+  page,
+}) => {
   // inventory: device-network-card
   await open(page);
   await expect(card(page, 'Device & Network')).toBeVisible();
-  await expect(page.locator('.masonry-item')).toHaveCount(3);
+  await expect(page.locator('.masonry-item')).toHaveCount(4); // spec 026: the demo roof isn't calibrated yet
   // The roof straight after Status (spec 009 FR-001).
   await expect(page.locator('.masonry-item').nth(1)).toContainText('Roof');
 });
@@ -297,7 +299,7 @@ test('daylight: with alert and close and the sun up the open roof closes, and Op
   await expect.poll(() => roofState(page), { timeout: 40_000 }).toMatch(/closing|closed/);
   await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('closed');
   await expect(item(page, 'roof-daylight')).toContainText('Sun');
-  await expect(item(page, 'roof-buttons')).toContainText('Open: Daylight');
+  await expect(item(page, 'roof-buttons')).toContainText('Daylight check: the sun is up');
   await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeDisabled();
   expect(await roofCommand(page, 'open')).toBe(409);
   // The sun is down again: Open is back.

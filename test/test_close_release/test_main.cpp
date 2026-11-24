@@ -2,6 +2,8 @@
 // (only while nothing wants the roof closed; it never moves the roof) and the
 // stand-down's countdown (constitution III: the close is only armed again).
 
+#include <cstring>
+
 #include "../close_rig/CloseRig.h"
 
 using namespace CloseTest;
@@ -132,6 +134,29 @@ void test_stand_down_countdown_counts_from_the_stop_when_safe_before_it()
     TEST_ASSERT_TRUE(r.seq.standDownLeftMs() == REARM_SAFE_MS); // from the stop, not from T0 + 5000
 }
 
+void test_release_refusal_names_why(void)
+{
+    TEST_ASSERT_NULL(releaseRefusal(Phase::HeldByPerson, true));
+    TEST_ASSERT_NULL(releaseRefusal(Phase::Halted, true));
+    TEST_ASSERT_NOT_NULL(releaseRefusal(Phase::HeldByPerson, false)); // something wants the roof closed
+    TEST_ASSERT_NOT_NULL(releaseRefusal(Phase::Idle, true));
+    TEST_ASSERT_NOT_NULL(releaseRefusal(Phase::CannotMove, true));
+    TEST_ASSERT_NOT_NULL(releaseRefusal(Phase::WaitPark, true));
+    TEST_ASSERT_EQUAL_STRING("Stand-down released by a person at the roof", releaseLogText(Phase::HeldByPerson, Phase::Idle));
+    TEST_ASSERT_NOT_EQUAL(
+        0, std::strcmp("Stand-down released by a person at the roof", releaseLogText(Phase::HeldByPerson, Phase::HeldByPerson)));
+}
+
+void test_no_countdown_while_daylight_wants_the_roof_closed(void)
+{
+    Rig r;
+    heldAt(r);
+    r.in.weatherSafe = true;
+    r.in.daylight = true;
+    r.runTo(T0 + 60000, 1000);
+    TEST_ASSERT_TRUE(r.seq.standDownLeftMs() == NOT_COUNTING);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -142,5 +167,7 @@ int main(int, char **)
     RUN_TEST(test_release_ends_a_halted_close_but_not_a_cannot_move);
     RUN_TEST(test_stand_down_countdown_runs_only_while_safe);
     RUN_TEST(test_stand_down_countdown_counts_from_the_stop_when_safe_before_it);
+    RUN_TEST(test_release_refusal_names_why);
+    RUN_TEST(test_no_countdown_while_daylight_wants_the_roof_closed);
     return UNITY_END();
 }

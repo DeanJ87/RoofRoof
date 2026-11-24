@@ -144,6 +144,8 @@ interface BypassesProps {
   busy: boolean; // Turn off or Extend on its way
   error: (key: string) => string | undefined;
   sourceTurnedOff: boolean; // spec 026: this edit turns the saved SQMeter weather source off
+  savedSources: { http: boolean; mqtt: boolean }; // the SQMeter sources as saved
+  weatherUnsafe: boolean; // a configured source reports unsafe now: a bypass never hides a reading
   update: (path: string[], value: unknown) => void;
   updateMany: (changes: [string[], unknown][]) => void;
   depEntry: DepEntry | undefined;
@@ -201,17 +203,10 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           label={t('testBox.weather')}
           hint={t('testBox.weatherHint')}
           checked={testBox.weather}
-          onChange={(v) =>
-            props.updateMany(
-              v && sourceOn
-                ? [
-                    [['testBox', 'weather'], true],
-                    [['safety', 'http', 'enabled'], false],
-                    [['safety', 'mqtt', 'enabled'], false],
-                  ]
-                : [[['testBox', 'weather'], v]],
-            )
-          }
+          onChange={(v) => props.updateMany(weatherBypassChanges(v, sourceOn, props.savedSources))}
+          blockedReason={sourceOn && props.weatherUnsafe ? t('testBox.weatherUnsafe') : undefined}
+          onFix={() => goToSettings('roof', 'safety')}
+          fixLabel={t('move.fix.weather')}
         />
         {testBox.weather && props.sourceTurnedOff && <Note tone="warn">{t('testBox.weatherSourceOff')}</Note>}
         <Toggle
@@ -264,6 +259,25 @@ const useSave = (editor: ReturnType<typeof useConfigEditor>) => {
     report(outcome);
   };
   return { saving, save };
+};
+
+/**
+ * Spec 026: the weather bypass on beside an SQMeter source turns the source off in the same save (so the
+ * weather never reads "no weather source" between two saves); off again, the saved sources come back.
+ */
+const weatherBypassChanges = (on: boolean, sourceOn: boolean, saved: { http: boolean; mqtt: boolean }): [string[], unknown][] => {
+  if (on && sourceOn)
+    return [
+      [['testBox', 'weather'], true],
+      [['safety', 'http', 'enabled'], false],
+      [['safety', 'mqtt', 'enabled'], false],
+    ];
+  if (on) return [[['testBox', 'weather'], true]];
+  return [
+    [['testBox', 'weather'], false],
+    [['safety', 'http', 'enabled'], saved.http],
+    [['safety', 'mqtt', 'enabled'], saved.mqtt],
+  ];
 };
 
 // An SQMeter weather source is on in these settings.
@@ -322,6 +336,8 @@ const TestBox: FunctionalComponent = () => {
         update={(path, value) => editor.applyChanges([[path, value]])}
         updateMany={(changes) => editor.applyChanges(changes)}
         sourceTurnedOff={sqmeterOn(saved) && !sqmeterOn(config)}
+        savedSources={{ http: Boolean(saved.safety?.http.enabled), mqtt: Boolean(saved.safety?.mqtt.enabled) }}
+        weatherUnsafe={status?.roof?.weather === 'unsafe'}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

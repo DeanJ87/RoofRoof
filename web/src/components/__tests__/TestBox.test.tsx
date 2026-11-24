@@ -168,6 +168,36 @@ describe('the test box page', () => {
     expect(bodies[0].safety).toMatchObject({ http: { enabled: false } });
   });
 
+  it('the weather bypass turned off again before saving puts the saved weather source back', async () => {
+    mockDevice({ config: { park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } } } });
+    withBox(box({ set: false, active: false, park: false, weather: false }));
+    await openPage();
+    const weather = () => {
+      const el = document.querySelector('[data-field="testBox.weather"]')!;
+      return (el.querySelector('input') ?? el) as HTMLInputElement;
+    };
+    fireEvent.click(weather());
+    expect(await screen.findByText('Saving also turns the SQMeter weather source off, in the same save.')).toBeInTheDocument();
+    fireEvent.click(weather());
+    await waitFor(() => expect(screen.queryByText('Saving also turns the SQMeter weather source off, in the same save.')).toBeNull());
+    expect(screen.queryByRole('button', { name: 'Turn on test box' })).toBeNull(); // nothing left to save
+  });
+
+  // A bypass never hides a reading (constitution III): not offered while a configured source says unsafe.
+  it('no weather bypass while a configured source reports unsafe', async () => {
+    mockDevice({ config: { park: { ...mockConfig.park!, nina: { url: '', api: 'v2' } } } });
+    server.use(
+      http.get('/api/status', () =>
+        HttpResponse.json({
+          ...mockStatus,
+          roof: { ...mockStatus.roof, weather: 'unsafe', testBox: box({ set: false, active: false, park: false, weather: false }) },
+        }),
+      ),
+    );
+    await openPage();
+    expect(await screen.findByText('Off while SQMeter reports unsafe: a bypass never hides a reading.')).toBeInTheDocument();
+  });
+
   // Spec 024: the park bypass stands in for N.I.N.A., which park switches only don't use.
   it('blocks the park bypass with park switches only, with its own reason', async () => {
     mockDevice({ config: { park: { ...mockConfig.park!, source: 'switches', switches: 'two', nina: { url: '', api: 'v2' } } } });

@@ -1,5 +1,5 @@
 // The dashboard's cards in their default order: the roof straight after Status (spec 009).
-export const DEFAULT_ORDER = ['status', 'setup', 'roof', 'device']; // spec 026: setup while the roof isn't set up
+export const DEFAULT_ORDER = ['status', 'roof', 'setup', 'device']; // spec 026: Roof setup while the roof isn't set up
 const ORDER_KEY = 'roofroof.dashboard.order';
 
 // Card order is a per-browser preference.

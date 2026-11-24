@@ -80,7 +80,7 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
       props.setDirection(v as 'yes' | 'no');
       // Spec 026: seen to open at the roof: the direction counts as measured (saved with Continue).
       const roof = props.config.roof;
-      if (v === 'yes' && roof?.measured !== undefined) props.update(['roof', 'measured'], roof.measured | 16);
+      if (roof?.measured !== undefined) props.update(['roof', 'measured'], v === 'yes' ? roof.measured | 16 : roof.measured & ~16);
     },
   };
   return (

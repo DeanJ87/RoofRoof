@@ -189,6 +189,13 @@ namespace SQM
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }
+        const char *releaseLogText(Phase before, Phase after)
+        {
+            const bool standDown = before == Phase::HeldByPerson || before == Phase::Halted;
+            return standDown && after == Phase::Idle ? "Stand-down released by a person at the roof"
+                                                     : "Release request dropped: the sequence checked again and kept its stand-down";
+        }
+
         const char *releaseRefusal(Phase phase, bool nothingWantsClose)
         {
             if (phase != Phase::HeldByPerson && phase != Phase::Halted)

@@ -220,7 +220,12 @@ one CSS rule (`.move-blocker`) replaces the calibration checklist's. Copy follow
    arms the automatic close again (the same transition as the end of the re-arm spell); it never
    moves the roof. A person's Stop still stands the sequence down at once, so nobody can be made to
    fight a close in real rain: while it is unsafe the hold cannot be released. Constitution Principle
-   III is unchanged (no gate is weakened); the decision is recorded here and in the user guide.
+   III is unchanged (no gate is weakened). Its bullet "Alerts, MQTT and the web UI report the verdict.
+   They MUST never be able to change it, or the motion decisions taken from it" doesn't apply: the
+   stand-down comes from a person's Stop, not from the verdict, and the release can only make the
+   safety close possible again sooner, never stop it. "Attended" is the person's own statement; with
+   login off any LAN client can send it (Principle VIII's trusted LAN, as for Open and Close). The
+   decision is recorded here and in the user guide.
 2. Jog, teach and the calibration run still wait for the automatic close to be idle (unchanged); the
    hold is explained and releasable instead of the gate being relaxed.
 3. `roof.measured` starts at 0 on an upgrade: an upgraded roof whose travel and speed were measured
@@ -228,11 +233,17 @@ one CSS rule (`.move-blocker`) replaces the calibration checklist's. Copy follow
 4. A script's save that changes a followed group without a follow flag makes the group local
    (previously the device kept the synced values). A person's value is never replaced silently.
 5. A secret SQMeter has and RoofRoof is asking for, typed by the person, keeps the group following.
-6. The device's English text is shown as sent; the `device.*` catalogue stays in `en.json` for the
+6. The test box's weather bypass is not offered in one click while a configured SQMeter source
+   reports unsafe (a bypass never hides a reading); turning it off again before saving puts the saved
+   sources back.
+7. Every follow-group value counts as typed, the on/off switches too (MQTT, ntfy, Pushover): turning
+   one off while the group follows sets the group here, so the next sync can't turn it back on. The
+   same rule applies on Settings pages and in the wizard. A Pushover sound is not part of the group.
+8. The device's English text is shown as sent; the `device.*` catalogue stays in `en.json` for the
    checks and a future language, and is left out of the build.
-7. The wizard's bench branch still keeps a N.I.N.A. address and an SQMeter source when they are set
+9. The wizard's bench branch still keeps a N.I.N.A. address and an SQMeter source when they are set
    (spec 022's choice); see "Left for the owner".
-8. The dashboard's Open and Close stay available while the automatic close is held (the firmware's
+10. The dashboard's Open and Close stay available while the automatic close is held (the firmware's
    rule, unchanged).
 
 ## Left for the owner

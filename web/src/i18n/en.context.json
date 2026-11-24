@@ -1713,6 +1713,7 @@
   "testBox.weather": "Test box page, Bypasses card: switch that bypasses the missing weather source.",
   "testBox.weatherHint": "Test box page, Bypasses card: tooltip.",
   "testBox.weatherSourceOff": "Warning note on the test box page when turning the weather bypass on also turns the SQMeter source off; sentence.",
+  "testBox.weatherUnsafe": "Test box page: why the weather bypass can't be turned on while a configured SQMeter source reports unsafe; sentence.",
   "timezone.asiaTokyoJst": "Time zone list: a time zone name; keep the city names and abbreviations.",
   "timezone.australiaSydneyAestAedt": "Time zone list: a time zone name; keep the city names and abbreviations.",
   "timezone.europeLondonGmtBst": "Time zone list: a time zone name; keep the city names and abbreviations.",

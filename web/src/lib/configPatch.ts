@@ -77,7 +77,26 @@ const overlaps = (path: string, field: string) => path === field || path.startsW
 export const SYNC_GROUP_FIELDS: Record<'time' | 'mqtt' | 'alerts', string[]> = {
   time: ['ntp.timezone', 'ntp.server1', 'ntp.server2'],
   mqtt: ['mqtt.broker', 'mqtt.port', 'mqtt.username', 'mqtt.password', 'mqtt.enabled', 'safety.mqtt.topic'],
-  alerts: ['alerts.ntfy.server', 'alerts.ntfy.topic', 'alerts.ntfy.token', 'alerts.ntfy.enabled', 'alerts.pushover'],
+  alerts: [
+    'alerts.ntfy.server',
+    'alerts.ntfy.topic',
+    'alerts.ntfy.token',
+    'alerts.ntfy.enabled',
+    'alerts.pushover.userKey',
+    'alerts.pushover.appToken',
+    'alerts.pushover.enabled',
+  ],
+};
+
+/** Spec 026: each roof value the device marks as measured (RoofConfig::MEASURED_* bits). */
+export const MEASURED_FIELDS: Record<string, number> = {
+  'roof.travelMm': 1,
+  'roof.speedMmPerSecond': 2,
+  'roof.timeoutMarginSeconds': 4,
+  'roof.hallHighEnd': 8,
+  'roof.hallHighCounts': 8,
+  'roof.hallLowCounts': 8,
+  'roof.openDirection': 16,
 };
 
 /** The follow flags of the sync groups whose values `paths` change. */
@@ -92,7 +111,9 @@ const followPaths = (paths: string[]): string[] =>
  */
 export const withSentTogether = (patch: unknown, full: unknown): unknown => {
   const paths = leafPaths(patch);
-  return [...SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path))).flat(), ...followPaths(paths)]
+  // A measured roof value goes with `roof.measured` as edited, so the device never guesses (spec 026).
+  const measured = paths.some((path) => path in MEASURED_FIELDS) ? ['roof.measured'] : [];
+  return [...SENT_TOGETHER.filter((group) => group.some((path) => paths.includes(path))).flat(), ...followPaths(paths), ...measured]
     .filter((path) => !paths.includes(path) && valueAt(full, path) !== undefined)
     .reduce((out, path) => applyPatch(out, pathPatch(path, valueAt(full, path))), patch);
 };

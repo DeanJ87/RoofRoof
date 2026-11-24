@@ -60,26 +60,35 @@ type Send = (command: RoofCommand) => void;
 
 // Spec 026: why Open or Close can't be used, from the shared blockers (the fault has its own
 // block below). A reason no blocker covers ("Already open", "Restarting") stays a one-line note.
-const blockersFor = (view: RoofView, ctx: BlockerContext): Blocker[] => {
+interface WhyView {
+  blockers: Blocker[]; // both buttons' together, each once
+  covered: { open: boolean; close: boolean }; // the button's own reason is in the list
+}
+
+const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
   const roof = view.roof;
-  const wanted: ('open' | 'close')[] = [];
-  if (view.open.disabled && roof?.state !== 'open' && roof?.state !== 'opening') wanted.push('open');
-  if (view.close.disabled && roof?.state !== 'closed' && roof?.state !== 'closing') wanted.push('close');
-  const seen = new Set<string>(['fault']);
-  return wanted
-    .flatMap((action) => moveBlockers(roof, action, ctx))
-    .filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
+  // At that end already (or moving there), only "no live data" explains more than the button does.
+  const own = (action: 'open' | 'close', disabled: boolean, here: string[]) =>
+    disabled
+      ? moveBlockers(roof, action, ctx).filter((b) => b.id !== 'fault' && (b.id === 'noLiveData' || !here.includes(roof?.state ?? '')))
+      : [];
+  const open = own('open', view.open.disabled, ['open', 'opening']);
+  const close = own('close', view.close.disabled, ['closed', 'closing']);
+  const seen = new Set<string>();
+  const blockers = [...open, ...close].filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
+  return { blockers, covered: { open: open.length > 0, close: close.length > 0 } };
 };
 
-const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }, covered: boolean) => {
+// A button's reason no blocker covers ("Already closed", "Restarting"), as its own note.
+const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }, covered: WhyView['covered']) => {
   const notes: ComponentChildren[] = [];
-  if (open.reason && !covered)
+  if (open.reason && !covered.open)
     notes.push(
       <Note key="open" id={ids.open}>
         {t('roof.reason.openPrefix', { reason: open.reason })}
       </Note>,
     );
-  if (close.reason && close.reason !== open.reason && !covered)
+  if (close.reason && close.reason !== open.reason && !covered.close)
     notes.push(
       <Note key="close" id={ids.close}>
         {t('roof.reason.closePrefix', { reason: close.reason })}
@@ -111,10 +120,9 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolea
 }) => {
   const base = useId();
   const [asking, setAsking] = useState<'open' | 'close' | null>(null);
-  const blockers = blockersFor(view, ctx);
-  const covered = blockers.length > 0;
-  const ids = covered ? { open: `${base}-why`, close: `${base}-why` } : { open: `${base}-open`, close: `${base}-close` };
-  const closeId = view.close.reason && view.close.reason === view.open.reason ? ids.open : ids.close;
+  const why = blockersFor(view, ctx);
+  const ids = { open: why.covered.open ? `${base}-why` : `${base}-open`, close: why.covered.close ? `${base}-why` : `${base}-close` };
+  const closeId = !why.covered.close && view.close.reason && view.close.reason === view.open.reason ? ids.open : ids.close;
   const press = (command: 'open' | 'close') => (confirm ? setAsking(command) : send(command));
   return (
     <div class="roof-controls" data-inventory="roof-buttons">
@@ -159,25 +167,25 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolea
           onNo={() => setAsking(null)}
         />
       )}
-      <Why view={view} blockers={blockers} ids={ids} whyId={`${base}-why`} />
+      <Why view={view} why={why} ids={ids} whyId={`${base}-why`} />
     </div>
   );
 };
 
 // Under the buttons: the shared blockers (spec 026), a reason no blocker covers, the notes and the last answer.
-const Why: FunctionalComponent<{ view: RoofView; blockers: Blocker[]; ids: { open: string; close: string }; whyId: string }> = ({
+const Why: FunctionalComponent<{ view: RoofView; why: WhyView; ids: { open: string; close: string }; whyId: string }> = ({
   view,
-  blockers,
+  why,
   ids,
   whyId,
 }) => (
   <>
-    {blockers.length > 0 && (
+    {why.blockers.length > 0 && (
       <div id={whyId}>
-        <MoveBlockers blockers={blockers} />
+        <MoveBlockers blockers={why.blockers} />
       </div>
     )}
-    {reasonNotes(view.open, view.close, ids, blockers.length > 0)}
+    {reasonNotes(view.open, view.close, ids, why.covered)}
     {view.notes.map((note) => (
       <Note key={note.id} tone={note.tone}>
         {note.text}

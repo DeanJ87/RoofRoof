@@ -140,3 +140,12 @@ describe('withSentTogether and the follow flags', () => {
     expect(withSentTogether({ deviceName: 'Roof' }, full)).toEqual({ deviceName: 'Roof' });
   });
 });
+
+// Spec 026: a measured roof value always goes with roof.measured as edited (a recalibration keeps its bits).
+describe('withSentTogether and roof.measured', () => {
+  it('adds roof.measured when a measured value changes', () => {
+    const full = { roof: { travelMm: 2100, speedMmPerSecond: 41, measured: 31 } };
+    expect(withSentTogether({ roof: { speedMmPerSecond: 41 } }, full)).toEqual({ roof: { speedMmPerSecond: 41, measured: 31 } });
+    expect(withSentTogether({ roof: { rampUpMs: 100 } }, full)).toEqual({ roof: { rampUpMs: 100 } });
+  });
+});

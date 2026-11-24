@@ -145,6 +145,9 @@ namespace SQM
         // nullptr when it may go ahead (the sequence checks again at its step).
         // `nothingWantsClose`: the weather is safe and no daylight close is wanted.
         const char *releaseRefusal(Phase phase, bool nothingWantsClose);
+        // The log line for a step that took a release request: released, or dropped
+        // (something wanted the roof closed, or a new Stop came first).
+        const char *releaseLogText(Phase before, Phase after);
 
         // The roof's answer to the Close action.
         enum class CloseAnswer : uint8_t

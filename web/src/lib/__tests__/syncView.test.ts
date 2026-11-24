@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editChanges, follows, locked, needs, syncLine } from '../syncView';
+import { editBatch, editChanges, follows, locked, needs, syncLine } from '../syncView';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import type { Config, SyncStatus } from '../../types';
 
@@ -83,5 +83,31 @@ describe('editChanges', () => {
     const sync = { ...mockStatus.sync!, mqtt: { follow: true, syncedAt: 1, refused: null, needs: ['mqttPassword' as const] } };
     expect(editChanges(following(), ['mqtt', 'password'], 'pw', sync)).toHaveLength(1);
     expect(editChanges(following(), ['mqtt', 'password'], 'pw')).toHaveLength(2);
+  });
+});
+
+// Spec 026: a measured roof value typed over is no longer measured, also several at once; a Pushover sound isn't SQMeter's.
+describe('editChanges and editBatch: measured values and the Pushover sound', () => {
+  const measured = (bits: number): Config => {
+    const c = structuredClone(mockConfig);
+    c.roof = { ...c.roof!, measured: bits };
+    c.sqmeterSync = { time: { follow: true, syncedAt: 1 }, mqtt: { follow: true, syncedAt: 1 }, alerts: { follow: true, syncedAt: 1 } };
+    return c;
+  };
+  it('clears the bit of the value typed', () => {
+    expect(editChanges(measured(31), ['roof', 'travelMm'], 2000)).toEqual([
+      [['roof', 'travelMm'], 2000],
+      [['roof', 'measured'], 30],
+    ]);
+  });
+  it('combines the bits of several edits', () => {
+    const changes = editBatch(measured(31), [
+      [['roof', 'travelMm'], 2000],
+      [['roof', 'speedMmPerSecond'], 20],
+    ]);
+    expect(changes.filter(([path]) => path.join('.') === 'roof.measured')).toEqual([[['roof', 'measured'], 28]]);
+  });
+  it('a Pushover sound keeps the alerts group following', () => {
+    expect(editChanges(measured(0), ['alerts', 'pushover', 'sound'], 'siren')).toHaveLength(1);
   });
 });

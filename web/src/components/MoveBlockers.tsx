@@ -4,7 +4,7 @@ import { useState } from 'preact/hooks';
 import type { Blocker } from '../lib/moveBlockers';
 import { bodyOf, releaseHold, roofCommand } from '../lib/api';
 import { deviceError } from '../i18n/deviceMessage';
-import { InfoTip, Note } from './ui';
+import { Button, InfoTip, Note } from './ui';
 import { showToast } from './toast';
 import { t } from '../i18n';
 
@@ -47,10 +47,15 @@ const Row: FunctionalComponent<{ blocker: Blocker; onDone?: () => void }> = ({ b
         {blocker.title} <InfoTip text={blocker.meaning} />
       </Note>
       <Note>{blocker.clears}</Note>
-      {asking && (
-        <Note tone="warn" action={{ label: t('move.release.yes'), onClick: () => void release() }}>
-          {t('move.release.confirm')}
-        </Note>
+      {/* Asked again only while the release is still offered (the device refuses it otherwise). */}
+      {asking && fix?.act === 'releaseHold' && (
+        <div class="inline-confirm" role="group" aria-label={t('move.release.confirm')}>
+          <span>{t('move.release.confirm')}</span>
+          <Button onClick={() => void release()}>{t('move.release.yes')}</Button>
+          <Button variant="ghost" onClick={() => setAsking(false)}>
+            {t('roof.cancel')}
+          </Button>
+        </div>
       )}
     </div>
   );

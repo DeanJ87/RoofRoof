@@ -8,7 +8,7 @@ import { t } from '../i18n';
 // and the page that does it; a stage not done says what is left on its own line.
 // On the dashboard (its own card while the roof isn't set up) and in Settings → Roof.
 
-const PILL: Record<StageState, string> = { done: 'pill-green', todo: 'pill-amber', typed: 'pill-amber', bypassed: 'pill-red' };
+const PILL: Record<StageState, string> = { done: 'pill-green', todo: 'pill-amber', typed: 'pill-amber', bypassed: 'pill-amber' };
 
 export const SetupStages: FunctionalComponent<{ stages: Stage[] }> = ({ stages }) => (
   <div data-setup-stages>

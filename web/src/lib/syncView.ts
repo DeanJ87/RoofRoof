@@ -1,7 +1,7 @@
 import type { Config, SecretsProblem, SyncGroup, SyncNeed, SyncStatus } from '../types';
 import { formatAgo, formatDateTime } from '../i18n/format';
 import { t } from '../i18n';
-import { SYNC_GROUP_FIELDS } from './configPatch';
+import { MEASURED_FIELDS, SYNC_GROUP_FIELDS } from './configPatch';
 
 // Spec 020: whether a group of site settings follows SQMeter, and the one line
 // that says how that is going. Never a safety verdict: a failed read only
@@ -110,11 +110,20 @@ export const editChanges = (config: Config | null, path: string[], value: unknow
   );
   const need = SECRET_NEED[dotted];
   const filling = need !== undefined && asked(sync, need);
-  const unfollow = group && config && follows(config, group) && !filling;
-  return unfollow
-    ? [
-        [path, value],
-        [['sqmeterSync', group, 'follow'], false],
-      ]
-    : [[path, value]];
+  const changes: [string[], unknown][] = [[path, value]];
+  if (group && config && follows(config, group) && !filling) changes.push([['sqmeterSync', group, 'follow'], false]);
+  // A measured roof value typed over is no longer measured (as the device's rule).
+  const bit = MEASURED_FIELDS[dotted];
+  const measured = config?.roof?.measured;
+  if (bit && measured !== undefined && measured & bit) changes.push([['roof', 'measured'], measured & ~bit]);
+  return changes;
+};
+
+/** Several edits at once with editChanges' rule; their measured bits combine (each clears its own). */
+export const editBatch = (config: Config | null, changes: [string[], unknown][], sync?: SyncStatus | null): [string[], unknown][] => {
+  const all = changes.flatMap(([path, value]) => editChanges(config, path, value, sync));
+  const isMeasured = ([path]: [string[], unknown]) => path.join('.') === 'roof.measured';
+  const bits = all.filter(isMeasured).map(([, value]) => value as number);
+  if (bits.length < 2) return all;
+  return [...all.filter((change) => !isMeasured(change)), [['roof', 'measured'], bits.reduce((a, b) => a & b)]];
 };
