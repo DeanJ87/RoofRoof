@@ -103,7 +103,12 @@ const Confirm: FunctionalComponent<{ asking: 'open' | 'close'; onYes: () => void
   );
 };
 
-const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean; ctx: BlockerContext }> = ({ view, send, confirm, ctx }) => {
+const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean; ctx: BlockerContext }> = ({
+  view,
+  send,
+  confirm,
+  ctx,
+}) => {
   const base = useId();
   const [asking, setAsking] = useState<'open' | 'close' | null>(null);
   const blockers = blockersFor(view, ctx);
@@ -154,21 +159,33 @@ const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolea
           onNo={() => setAsking(null)}
         />
       )}
-      {covered && (
-        <div id={`${base}-why`}>
-          <MoveBlockers blockers={blockers} />
-        </div>
-      )}
-      {reasonNotes(view.open, view.close, ids, covered)}
-      {view.notes.map((note) => (
-        <Note key={note.id} tone={note.tone}>
-          {note.text}
-        </Note>
-      ))}
-      {view.result && <Note tone={view.result.tone}>{view.result.text}</Note>}
+      <Why view={view} blockers={blockers} ids={ids} whyId={`${base}-why`} />
     </div>
   );
 };
+
+// Under the buttons: the shared blockers (spec 026), a reason no blocker covers, the notes and the last answer.
+const Why: FunctionalComponent<{ view: RoofView; blockers: Blocker[]; ids: { open: string; close: string }; whyId: string }> = ({
+  view,
+  blockers,
+  ids,
+  whyId,
+}) => (
+  <>
+    {blockers.length > 0 && (
+      <div id={whyId}>
+        <MoveBlockers blockers={blockers} />
+      </div>
+    )}
+    {reasonNotes(view.open, view.close, ids, blockers.length > 0)}
+    {view.notes.map((note) => (
+      <Note key={note.id} tone={note.tone}>
+        {note.text}
+      </Note>
+    ))}
+    {view.result && <Note tone={view.result.tone}>{view.result.text}</Note>}
+  </>
+);
 
 // Clear fault needs live data, so the person sees the fault they clear (constitution I).
 const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; reason: string }> = ({ roof, send, busy, reason }) => {
@@ -285,6 +302,22 @@ const PinsLink: FunctionalComponent<{ valid?: boolean }> = ({ valid }) =>
     </div>
   ) : null;
 
+// The fault, the checks, the readings and the Hall scale, once the roof reports.
+const Details: FunctionalComponent<{
+  roof: RoofStatus;
+  config?: RoofConfig;
+  live: LiveState;
+  ctx: BlockerContext;
+  fault: { send: Send; busy: boolean; reason: string };
+}> = ({ roof, config, live, ctx, fault }) => (
+  <>
+    <Fault roof={roof} send={fault.send} busy={fault.busy} reason={fault.reason} />
+    <Checks roof={roof} location={live.status?.location} ctx={ctx} />
+    <Readings roof={roof} />
+    <Hall roof={roof} config={config} />
+  </>
+);
+
 export interface RoofCardProps {
   live: LiveState;
   config?: RoofConfig;
@@ -304,11 +337,16 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = 
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
         <Buttons view={view} send={send} confirm={confirm} ctx={ctx} />
-        {roof && <Fault roof={roof} send={send} busy={inFlight === 'clear-fault'} reason={clearReason} />}
         <PinsLink valid={live.status?.pins?.valid} />
-        {roof && <Checks roof={roof} location={live.status?.location} ctx={ctx} />}
-        {roof && <Readings roof={roof} />}
-        {roof && <Hall roof={roof} config={config} />}
+        {roof && (
+          <Details
+            roof={roof}
+            config={config}
+            live={live}
+            ctx={ctx}
+            fault={{ send, busy: inFlight === 'clear-fault', reason: clearReason }}
+          />
+        )}
       </Card>
     </div>
   );

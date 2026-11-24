@@ -101,19 +101,10 @@ const NtfyGroup: FunctionalComponent<GroupProps> = ({ view, toggle = true }) => 
           <FollowsSqmeter group="alerts" config={config} status={status} update={update} />
           <div class="form-grid">
             <Field label={t('settings.alerts.server')} error={err('ntfy.server')}>
-              <TextInput
-                type="url"
-                dataField="alerts.ntfy.server"
-                value={alerts.ntfy.server}
-                onInput={(v) => set(['ntfy', 'server'], v)}
-              />
+              <TextInput type="url" dataField="alerts.ntfy.server" value={alerts.ntfy.server} onInput={(v) => set(['ntfy', 'server'], v)} />
             </Field>
             <Field label={t('settings.alerts.topic')} error={err('ntfy.topic')} hint={t('settings.alerts.ntfyTopicsPublic')}>
-              <TextInput
-                dataField="alerts.ntfy.topic"
-                value={alerts.ntfy.topic}
-                onInput={(v) => set(['ntfy', 'topic'], v)}
-              />
+              <TextInput dataField="alerts.ntfy.topic" value={alerts.ntfy.topic} onInput={(v) => set(['ntfy', 'topic'], v)} />
             </Field>
             <Field label={t('settings.alerts.token')}>
               <TextInput

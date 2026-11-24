@@ -38,11 +38,7 @@ export const TimeZoneFields: FunctionalComponent<Pick<SettingsTabProps, 'config'
         </Field>
         {!knownZone(config.ntp.timezone) && (
           <Field label={t('settings.time.posixTimeZone')} hint={t('settings.time.eGPst8pdtM32')} error={error('ntp.timezone')}>
-            <TextInput
-              dataField="ntp.timezone"
-              value={config.ntp.timezone}
-              onInput={(v) => update(['ntp', 'timezone'], v)}
-            />
+            <TextInput dataField="ntp.timezone" value={config.ntp.timezone} onInput={(v) => update(['ntp', 'timezone'], v)} />
           </Field>
         )}
       </div>

@@ -8,7 +8,10 @@ import { test, expect, type Page } from '@playwright/test';
 const roofCommand = (page: Page, name: string) =>
   page.evaluate((name) => fetch(`/api/roof/${name}`, { method: 'POST', headers: { 'X-RoofRoof': '1' } }).then((r) => r.status), name);
 const roof = (page: Page) =>
-  page.evaluate(async () => (await (await fetch('/api/status')).json()).roof as { state: string; closePhase: string; weather: string; parkConfirmed: boolean });
+  page.evaluate(
+    async () =>
+      (await (await fetch('/api/status')).json()).roof as { state: string; closePhase: string; weather: string; parkConfirmed: boolean },
+  );
 const panelChoice = async (page: Page, name: string) => {
   const toggle = page.locator('.demo-panel-toggle');
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
@@ -18,7 +21,15 @@ const panelChoice = async (page: Page, name: string) => {
 const ready = async (page: Page) => {
   await page.goto('./#/');
   await expect(page.locator('[data-inventory="status-card"]')).toBeVisible({ timeout: 15_000 });
-  await expect.poll(async () => { const r = await roof(page); return `${r.state}:${r.weather}:${r.parkConfirmed}`; }, { timeout: 15_000 }).toBe('closed:safe:true');
+  await expect
+    .poll(
+      async () => {
+        const r = await roof(page);
+        return `${r.state}:${r.weather}:${r.parkConfirmed}`;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe('closed:safe:true');
 };
 const go = (page: Page, hash: string) => page.evaluate((h) => (window.location.hash = h), hash);
 const blocker = (page: Page, id: string) => page.locator(`[data-blocker="${id}"]`).first();
@@ -72,7 +83,11 @@ test('no release while the weather is unsafe: the hold says it clears after a sa
   await expect(held).toContainText(/Clears after \d+ min of safe weather/);
   await expect(held.getByRole('button', { name: 'Release hold' })).toHaveCount(0);
   const refused = await page.evaluate(() =>
-    fetch('/api/roof/release-hold', { method: 'POST', headers: { 'X-RoofRoof': '1', 'Content-Type': 'application/json' }, body: '{"attended":true}' }).then((r) => r.status),
+    fetch('/api/roof/release-hold', {
+      method: 'POST',
+      headers: { 'X-RoofRoof': '1', 'Content-Type': 'application/json' },
+      body: '{"attended":true}',
+    }).then((r) => r.status),
   );
   expect(refused).toBe(409);
 });
@@ -113,14 +128,20 @@ test('test box: the weather bypass and the source change in one save, so no clos
   await ready(page);
   // A box with no telescope: N.I.N.A.'s address off first, then the roof open.
   await page.evaluate(() =>
-    fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ park: { nina: { url: '' } }, testBox: { park: true } }) }),
+    fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ park: { nina: { url: '' } }, testBox: { park: true } }),
+    }),
   );
   await openRoof(page);
   await go(page, '/test-box');
   await page.locator('input[data-field="testBox.weather"], [data-field="testBox.weather"] input').first().check({ force: true });
   await expect(page.getByText('Saving also turns the SQMeter weather source off, in the same save.')).toBeVisible();
   await page.getByRole('button', { name: /^(Save|Turn on test box)$/ }).click();
-  await expect.poll(async () => (await page.evaluate(async () => (await (await fetch('/api/config')).json()).testBox.weather)) as boolean).toBe(true);
+  await expect
+    .poll(async () => (await page.evaluate(async () => (await (await fetch('/api/config')).json()).testBox.weather)) as boolean)
+    .toBe(true);
   // Watch the automatic close for a while: it never starts.
   for (let i = 0; i < 6; i += 1) {
     expect((await roof(page)).closePhase).toBe('idle');

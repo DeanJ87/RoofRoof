@@ -10,7 +10,18 @@ const healthy = { weather: 'safe', parkConfirmed: true, fault: null, closePhase:
 const roof = (change: Partial<RoofStatus> = {}): RoofStatus => ({ ...structuredClone(mockStatus.roof!), ...healthy, ...change });
 const ctx = { live: true, rearmMinutes: 10, nowMs: Date.UTC(2026, 10, 24, 0, 15) };
 const ids = (r: RoofStatus, action: 'open' | 'close' | 'move' = 'move') => moveBlockers(r, action, ctx).map((b) => b.id);
-const testBox = { set: true, active: true, park: false, weather: false, daylight: false, until: 1, expired: false, waitingForClock: false, parkRequests: false, text: '' };
+const testBox = {
+  set: true,
+  active: true,
+  park: false,
+  weather: false,
+  daylight: false,
+  until: 1,
+  expired: false,
+  waitingForClock: false,
+  parkRequests: false,
+  text: '',
+};
 
 describe('moveBlockers', () => {
   it('nothing stops a move on a healthy roof at rest', () => {
@@ -31,7 +42,7 @@ describe('moveBlockers', () => {
     ['closeWaiting', { closePending: true }],
     ['calibrating', { calibrating: true }],
     ['supply', { supplyLow: true, supplyVolts: 10.2 }],
-    ['hall', { hall: { counts: 0, level: 'rail' } }],
+    ['hallRail', { hall: { counts: 0, level: 'rail' } }],
     ['hall', { hall: { counts: 1200, level: 'unsettled' } }],
   ] as [string, Partial<RoofStatus>][])('names %s for an attended move', (id, change) => {
     expect(ids(roof(change))).toEqual([id]);
@@ -56,7 +67,7 @@ describe('moveBlockers', () => {
     expect(ids(r, 'move')).toEqual(['weather', 'daylight', 'park']);
   });
 
-  it('a fault comes first, with Clear fault; a fault covers the automatic close that can\'t move', () => {
+  it("a fault comes first, with Clear fault; a fault covers the automatic close that can't move", () => {
     const fault = { kind: 'didNotLeave', cause: 'logic', measured: 10, limit: 10, text: 'Still on the start magnet after 10.0 s' } as const;
     const list = moveBlockers(roof({ fault, closePhase: 'cannotMove', weather: 'unsafe' }), 'move', ctx);
     expect(list.map((b) => b.id)).toEqual(['fault', 'weather']);
@@ -64,7 +75,13 @@ describe('moveBlockers', () => {
   });
 
   it('a move that timed out says its limit comes from travel and speed, and to run the calibration run', () => {
-    const fault = { kind: 'timeout', cause: 'logic', measured: 63400, limit: 63400, text: 'No target magnet after 63.4 s >= 63.4 s timeout' } as const;
+    const fault = {
+      kind: 'timeout',
+      cause: 'logic',
+      measured: 63400,
+      limit: 63400,
+      text: 'No target magnet after 63.4 s >= 63.4 s timeout',
+    } as const;
     const [blocker] = moveBlockers(roof({ fault }), 'move', ctx);
     expect(blocker.meaning).toMatch(/travel, speed and the margin/);
     expect(blocker.meaning).toMatch(/calibration run/);
@@ -85,7 +102,9 @@ describe('the automatic close on hold', () => {
     const held = roof({ closePhase: 'heldByPerson', closeRearmSeconds: 600 });
     const blocker = closePhaseBlocker(held, ctx)!;
     expect(blocker.title).toBe('Automatic close on hold after a Stop');
-    expect(blocker.clears).toBe(`Clears at ${formatTime(new Date(ctx.nowMs + 600_000))} if the weather stays safe, or once the roof is closed.`);
+    expect(blocker.clears).toBe(
+      `Clears at ${formatTime(new Date(ctx.nowMs + 600_000))} if the weather stays safe, or once the roof is closed.`,
+    );
     expect(blocker.fix).toMatchObject({ act: 'releaseHold', label: 'Release hold' });
     expect(releaseOffered(held)).toBe(true);
   });

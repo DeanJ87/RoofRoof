@@ -83,13 +83,20 @@ namespace SQM::ConfigDetail
 
     namespace
     {
-        std::string joined(std::initializer_list<std::string> values)
+        // FNV-1a over a group's values, each ended by a separator: equal values hash equal, and a
+        // change is told apart without keeping copies of the strings (passwords among them).
+        struct Hash
         {
-            std::string out;
-            for (const std::string &value : values)
-                out += value + '\x1f';
-            return out;
-        }
+            uint32_t h = 2166136261u;
+            Hash &operator<<(const std::string &value)
+            {
+                for (const char c : value)
+                    h = (h ^ static_cast<uint8_t>(c)) * 16777619u;
+                h = (h ^ 0x1fu) * 16777619u;
+                return *this;
+            }
+            Hash &operator<<(uint32_t value) { return *this << std::to_string(value); }
+        };
     } // namespace
 
     SyncedValues syncedValues(const Config &c)
@@ -97,10 +104,11 @@ namespace SQM::ConfigDetail
         const MQTTConfig &m = c.mqtt;
         const AlertsConfig &a = c.alerts;
         return SyncedValues{{
-            joined({c.ntp.timezone, c.ntp.server1, c.ntp.server2}),
-            joined({m.broker, std::to_string(m.port), m.username, m.password, m.enabled ? "1" : "0", c.safety.mqttTopic}),
-            joined({a.ntfyServer, a.ntfyTopic, a.ntfyToken, a.ntfyEnabled ? "1" : "0", a.pushoverUserKey, a.pushoverAppToken,
-                    a.pushoverEnabled ? "1" : "0"}),
+            (Hash() << c.ntp.timezone << c.ntp.server1 << c.ntp.server2).h,
+            (Hash() << m.broker << m.port << m.username << m.password << m.enabled << c.safety.mqttTopic).h,
+            (Hash() << a.ntfyServer << a.ntfyTopic << a.ntfyToken << a.ntfyEnabled << a.pushoverUserKey << a.pushoverAppToken
+                    << a.pushoverEnabled)
+                .h,
         }};
     }
 

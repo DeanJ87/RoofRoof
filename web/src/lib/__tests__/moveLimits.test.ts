@@ -3,7 +3,15 @@ import { expectedMoveMs, moveLimits } from '../moveLimits';
 
 // Spec 026: the limits Settings shows beside travel and speed, as the device works them out
 // (the demo, running the firmware's code, faults a default roof's jammed move at 65.9 s).
-const defaults = { travelMm: 1850, speedMmPerSecond: 38, timeoutMarginSeconds: 15, rampUpMs: 2000, rampDownMs: 3000, topDutyPercent: 100, slowDutyPercent: 40 };
+const defaults = {
+  travelMm: 1850,
+  speedMmPerSecond: 38,
+  timeoutMarginSeconds: 15,
+  rampUpMs: 2000,
+  rampDownMs: 3000,
+  topDutyPercent: 100,
+  slowDutyPercent: 40,
+};
 
 describe('moveLimits', () => {
   it('matches the device for the default roof', () => {

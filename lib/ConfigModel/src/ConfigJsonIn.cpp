@@ -498,6 +498,20 @@ namespace SQM
         }
     } // namespace
 
+    namespace
+    {
+        // Spec 026: a save from the UI/API sets a followed SQMeter group here when it changes the
+        // group's values, and clears the measured bit of each roof value it types over.
+        void afterChange(const Section &root, const SyncedValues &synced, const RoofConfig &roofBefore, Config &cfg)
+        {
+            if (!root.reader().strict())
+                return; // stored settings
+            unfollowEdited(root.child("sqmeterSync"), synced, cfg);
+            if (!root.child("roof").has("measured"))
+                cfg.roof.measured &= static_cast<uint8_t>(~typedOver(roofBefore, cfg.roof));
+        }
+    } // namespace
+
     bool Config::applyJson(
         const std::string &json, Config &cfg, bool preserveSecretPlaceholders, std::string *errorOut, const CopiedSecrets *copied)
     {
@@ -522,12 +536,7 @@ namespace SQM
         const RoofConfig roofBefore = cfg.roof;
         if (!applySections(root, cfg, keep, errorOut, copied))
             return false;
-        if (reader.strict())
-        {
-            unfollowEdited(root.child("sqmeterSync"), synced, cfg); // spec 026
-            if (!root.child("roof").has("measured"))
-                cfg.roof.measured &= static_cast<uint8_t>(~typedOver(roofBefore, cfg.roof));
-        }
+        afterChange(root, synced, roofBefore, cfg); // spec 026
         if (reader.failed())
             return typeError(reader, errorOut);
         // Saving settings never takes the device off its network: changing

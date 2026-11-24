@@ -64,9 +64,7 @@ namespace SQM
         server.addHandler(confirm);
         // Spec 026: a person's attended release of the automatic close's stand-down.
         AsyncCallbackJsonWebHandler *release = new AsyncCallbackJsonWebHandler(
-            "/api/roof/release-hold",
-            [this](AsyncWebServerRequest *request, JsonVariant &json) { handleReleaseHold(request, json); },
-            64);
+            "/api/roof/release-hold", [this](AsyncWebServerRequest *request, JsonVariant &json) { handleReleaseHold(request, json); }, 64);
         release->setMethod(HTTP_POST);
         server.addHandler(release);
         server.on("/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });

@@ -45,34 +45,38 @@ const sourceStage = (on: boolean, bypassed: boolean, done: string, todo: string)
 
 const ROOF = '/settings?tab=roof&section=';
 
+// What the saved settings say is in place.
+const weatherOn = (c: Config) => Boolean(c.safety?.http.enabled || c.safety?.mqtt.enabled);
+const parkOn = (c: Config) => Boolean(c.park?.nina.url.trim() || c.park?.source === 'switches');
+const alertsOn = ({ alerts: a }: Config) =>
+  Boolean(a?.enabled && (a.ntfy.enabled || a.pushover.enabled || a.webhook.enabled || a.mqtt.enabled));
+
+const stage = (id: Stage['id'], href: string, rest: Pick<Stage, 'state' | 'note'>): Stage => ({
+  id,
+  title: t(`setupProgress.${id}`),
+  href,
+  ...rest,
+});
+const done = (ok: boolean, id: 'board' | 'direction' | 'ends' | 'alerts') =>
+  ok ? { state: 'done' as const, note: t(`setupProgress.${id}Done`) } : { state: 'todo' as const, note: t(`setupProgress.${id}Todo`) };
+
 /** The stages, in order; empty when the device sent no roof settings (older firmware). */
 export const setupStages = (config: Config | null | undefined): Stage[] => {
   const roof = config?.roof;
   if (!config || !roof) return [];
-  const weatherOn = Boolean(config.safety?.http.enabled || config.safety?.mqtt.enabled);
-  const parkOn = Boolean(config.park?.nina.url.trim() || config.park?.source === 'switches');
-  const alerts = config.alerts;
-  const alertsOn = Boolean(alerts?.enabled && (alerts.ntfy.enabled || alerts.pushover.enabled || alerts.webhook.enabled || alerts.mqtt.enabled));
-  const stage = (id: Stage['id'], href: string, rest: Pick<Stage, 'state' | 'note'>): Stage => ({
-    id,
-    title: t(`setupProgress.${id}`),
-    href,
-    ...rest,
-  });
-  const done = (ok: boolean, id: 'board' | 'direction' | 'ends' | 'alerts') =>
-    ok ? { state: 'done' as const, note: t(`setupProgress.${id}Done`) } : { state: 'todo' as const, note: t(`setupProgress.${id}Todo`) };
+  const box = config.testBox;
   return [
     stage('board', '/pins', done(config.pins?.preset !== 'unset', 'board')),
     stage(
       'weather',
       `${ROOF}safety`,
-      sourceStage(weatherOn, Boolean(config.testBox?.weather), t('setupProgress.weatherDone'), t('setupProgress.weatherTodo')),
+      sourceStage(weatherOn(config), Boolean(box?.weather), t('setupProgress.weatherDone'), t('setupProgress.weatherTodo')),
     ),
-    stage('park', `${ROOF}park`, sourceStage(parkOn, Boolean(config.testBox?.park), t('setupProgress.parkDone'), t('setupProgress.parkTodo'))),
+    stage('park', `${ROOF}park`, sourceStage(parkOn(config), Boolean(box?.park), t('setupProgress.parkDone'), t('setupProgress.parkTodo'))),
     stage('direction', '/calibrate', done(measured(roof, MEASURED.direction), 'direction')),
     stage('ends', '/calibrate', done(measured(roof, MEASURED.hall), 'ends')),
     stage('calibrated', '/calibrate', calibrated(roof)),
-    stage('alerts', '/settings?tab=alerts', done(alertsOn, 'alerts')),
+    stage('alerts', '/settings?tab=alerts', done(alertsOn(config), 'alerts')),
   ];
 };
 

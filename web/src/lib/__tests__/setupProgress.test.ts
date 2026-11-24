@@ -14,7 +14,7 @@ const config = (change: (c: Config) => void = () => undefined): Config => {
 const state = (c: Config, id: string) => setupStages(c).find((s) => s.id === id)?.state;
 
 describe('setupStages', () => {
-  it('lists the stages in an installer\'s order', () => {
+  it("lists the stages in an installer's order", () => {
     expect(setupStages(config()).map((s) => s.id)).toEqual(['board', 'weather', 'park', 'direction', 'ends', 'calibrated', 'alerts']);
   });
   it('before the calibration run says the move time limits are still defaults', () => {
@@ -23,10 +23,30 @@ describe('setupStages', () => {
     expect(stage.note).toMatch(/^Move time limits are still defaults \(about 66 s a move\)/);
   });
   it('typed travel and speed are not measured; measured ones are done', () => {
-    expect(state(config((c) => (c.roof!.travelMm = 2400)), 'calibrated')).toBe('typed');
-    expect(state(config((c) => (c.roof!.measured = 3)), 'calibrated')).toBe('done');
-    expect(state(config((c) => (c.roof!.measured = 8)), 'ends')).toBe('done');
-    expect(state(config((c) => (c.roof!.measured = 16)), 'direction')).toBe('done');
+    expect(
+      state(
+        config((c) => (c.roof!.travelMm = 2400)),
+        'calibrated',
+      ),
+    ).toBe('typed');
+    expect(
+      state(
+        config((c) => (c.roof!.measured = 3)),
+        'calibrated',
+      ),
+    ).toBe('done');
+    expect(
+      state(
+        config((c) => (c.roof!.measured = 8)),
+        'ends',
+      ),
+    ).toBe('done');
+    expect(
+      state(
+        config((c) => (c.roof!.measured = 16)),
+        'direction',
+      ),
+    ).toBe('done');
   });
   it('a test box bypass is shown as bypassed, never done', () => {
     const c = config((x) => {

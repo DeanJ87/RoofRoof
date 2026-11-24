@@ -34,9 +34,12 @@ export interface BlockerContext {
   nowMs: number; // the browser's clock, for "clears at 00:25"
 }
 
-const make = (id: string, tone: Blocker['tone'], title: string, meaning: string, clears: string, fix?: BlockerFix): Blocker => ({
+// A fault, a can't-move automatic close and a Hall reading at its limit are problems; the rest wait for something.
+const BAD = ['fault', 'cannotMove', 'hallRail'];
+
+const make = (id: string, title: string, meaning: string, clears: string, fix?: BlockerFix): Blocker => ({
   id,
-  tone,
+  tone: BAD.includes(id) ? 'bad' : 'warn',
   title,
   meaning,
   clears,
@@ -68,11 +71,17 @@ export const closePhaseBlocker = (roof: RoofStatus, ctx: BlockerContext): Blocke
   if (STAND_DOWN.includes(phase)) {
     const fix: BlockerFix | undefined = releaseOffered(roof) ? { label: t('move.fix.release'), act: 'releaseHold' } : undefined;
     const halted = phase === 'halted';
-    return make(phase, 'warn', t(halted ? 'move.halted' : 'move.held'), t(halted ? 'move.haltedWhy' : 'move.heldWhy'), standDownClears(roof, ctx), fix);
+    return make(
+      phase,
+      t(halted ? 'move.halted' : 'move.held'),
+      t(halted ? 'move.haltedWhy' : 'move.heldWhy'),
+      standDownClears(roof, ctx),
+      fix,
+    );
   }
   if (WORKING.includes(phase))
-    return make(phase, 'warn', t('move.working'), t(`roof.closePhase.${phase}Hint` as MessageKey), t('move.clears.working'));
-  if (phase === 'cannotMove') return make(phase, 'bad', t('move.cannotMove'), t('roof.closePhase.cannotMoveHint'), t('move.clears.cannotMove'));
+    return make(phase, t('move.working'), t(`roof.closePhase.${phase}Hint` as MessageKey), t('move.clears.working'));
+  if (phase === 'cannotMove') return make(phase, t('move.cannotMove'), t('roof.closePhase.cannotMoveHint'), t('move.clears.cannotMove'));
   return null;
 };
 
@@ -80,10 +89,11 @@ export const faultBlocker = (roof: RoofStatus): Blocker | null => {
   const fault = roof.fault;
   if (!fault) return null;
   const title = deviceText(fault.text);
-  if (fault.cause === 'pinSetup') return make('fault', 'bad', title, t('move.pinsWhy'), t('move.clears.pins'), { label: t('move.fix.pins'), href: '/pins' });
+  if (fault.cause === 'pinSetup')
+    return make('fault', title, t('move.pinsWhy'), t('move.clears.pins'), { label: t('move.fix.pins'), href: '/pins' });
   // A move that ran out of time: its limit comes from travel and speed (spec 026).
   const meaning = fault.kind === 'timeout' ? t('move.timeoutWhy') : t('move.faultWhy');
-  return make('fault', 'bad', title, meaning, t('move.clears.fault'), { label: t('move.fix.clearFault'), act: 'clearFault' });
+  return make('fault', title, meaning, t('move.clears.fault'), { label: t('move.fix.clearFault'), act: 'clearFault' });
 };
 
 const weatherBlocker = (roof: RoofStatus): Blocker | null => {
@@ -92,7 +102,6 @@ const weatherBlocker = (roof: RoofStatus): Blocker | null => {
   const unsafe = roof.weather === 'unsafe';
   return make(
     'weather',
-    'warn',
     t('move.weather', { text }), // the device's text says unsafe or why it doubts
     t('move.weatherWhy'),
     t(unsafe ? 'move.clears.weather' : 'move.clears.weatherUnknown'),
@@ -104,7 +113,6 @@ const daylightBlocker = (roof: RoofStatus): Blocker | null =>
   roof.daylight?.closes
     ? make(
         'daylight',
-        'warn',
         t('move.daylight', { text: deviceText(roof.daylight.text) }),
         t('move.daylightWhy'),
         t('move.clears.daylight'),
@@ -117,7 +125,6 @@ const parkBlocker = (roof: RoofStatus): Blocker | null =>
     ? null
     : make(
         'park',
-        'warn',
         t('move.park', { text: deviceText(roof.parkText) || t('roof.reason.notParked') }),
         t('move.parkWhy'),
         t('move.clears.park'),
@@ -131,13 +138,14 @@ const supplyBlocker = (roof: RoofStatus): Blocker | null => {
     roof.supplyVolts === null
       ? t('roof.reason.supplyUnreadable', { min })
       : t('roof.reason.supplyLow', { volts: formatNumber(roof.supplyVolts, 1), min });
-  return make('supply', 'warn', title, t('move.supplyWhy'), t('move.clears.supply', { min }), settings('current', 'move.fix.supply'));
+  return make('supply', title, t('move.supplyWhy'), t('move.clears.supply', { min }), settings('current', 'move.fix.supply'));
 };
 
 const hallBlocker = (roof: RoofStatus): Blocker | null => {
-  if (roof.hall.level === 'unsettled') return make('hall', 'warn', t('roof.reason.hallNotSettled'), t('move.hallSettleWhy'), t('move.clears.hallSettle'));
+  if (roof.hall.level === 'unsettled')
+    return make('hall', t('roof.reason.hallNotSettled'), t('move.hallSettleWhy'), t('move.clears.hallSettle'));
   if (roof.hall.level === 'rail')
-    return make('hall', 'bad', t('move.hallRail', { counts: roof.hall.counts }), t('move.hallRailWhy'), t('move.clears.hallRail'), {
+    return make('hallRail', t('move.hallRail', { counts: roof.hall.counts }), t('move.hallRailWhy'), t('move.clears.hallRail'), {
       label: t('move.fix.wiring'),
       href: '/pins',
     });
@@ -145,15 +153,16 @@ const hallBlocker = (roof: RoofStatus): Blocker | null => {
 };
 
 const busyBlocker = (roof: RoofStatus, action: MoveAction): Blocker | null => {
-  if (roof.calibrating) return make('calibrating', 'warn', t('move.calibrating'), t('move.calibratingWhy'), t('move.clears.calibrating'));
-  if (roof.closePending) return make('closeWaiting', 'warn', t('roof.reason.closeWaiting'), t('move.closeWaitingWhy'), t('move.clears.closeWaiting'));
+  if (roof.calibrating) return make('calibrating', t('move.calibrating'), t('move.calibratingWhy'), t('move.clears.calibrating'));
+  if (roof.closePending)
+    return make('closeWaiting', t('roof.reason.closeWaiting'), t('move.closeWaitingWhy'), t('move.clears.closeWaiting'));
   if (action === 'move' && (roof.state === 'opening' || roof.state === 'closing'))
-    return make('moving', 'warn', t('move.moving'), t('move.movingWhy'), t('move.clears.moving'));
+    return make('moving', t('move.moving'), t('move.movingWhy'), t('move.clears.moving'));
   return null;
 };
 
 /** No live data: nothing can be offered, whatever the last reading said. */
-export const noLiveBlocker = (): Blocker => make('noLiveData', 'warn', t('roof.reason.noLiveData'), t('move.noLiveWhy'), t('move.clears.live'));
+export const noLiveBlocker = (): Blocker => make('noLiveData', t('roof.reason.noLiveData'), t('move.noLiveWhy'), t('move.clears.live'));
 
 /**
  * Everything that stops `action` now, most important first, in the device's order of checks (the

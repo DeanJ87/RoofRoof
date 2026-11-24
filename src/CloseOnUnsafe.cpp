@@ -195,7 +195,7 @@ namespace SQM
         in.personStops = snap.personStops;
         in.remoteStops = snap.remoteStops;
         in.roofStarted = roof.running();
-        in.daylight = daylightView.closes(); // spec 013
+        in.daylight = daylightView.closes();            // spec 013
         in.releaseHold = releaseWanted.exchange(false); // spec 026
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
         {

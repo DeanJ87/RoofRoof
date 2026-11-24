@@ -1,4 +1,4 @@
-import { FunctionalComponent } from 'preact';
+import { ComponentChildren, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import { useState } from 'preact/hooks';
 import type { CalibrationStatus, CalibrationWhere, RoofConfig, RoofStatus, SystemStatus } from '../types';
@@ -306,6 +306,16 @@ export const moveGate = (roof: RoofStatus, fresh: boolean, rearmMinutes: number,
 /** The re-arm spell for "clears at" lines: the saved setting, or its default. */
 export const rearmOf = (config: { autoClose?: { rearmMinutes: number } } | null | undefined) => config?.autoClose?.rearmMinutes ?? 10;
 
+// With no run under way: why the roof can't move (once, for the jog and the run), then teach.
+const AtRest: FunctionalComponent<{ gate: MoveGate; teach: ComponentChildren }> = ({ gate, teach }) => (
+  <>
+    <SettingsCard id="calibrate-blockers" title={t('move.title')}>
+      <Blockers gate={gate} />
+    </SettingsCard>
+    {teach}
+  </>
+);
+
 const Calibrate: FunctionalComponent = () => {
   const editor = useConfigEditor();
   const { data: live, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
@@ -325,21 +335,21 @@ const Calibrate: FunctionalComponent = () => {
     <div class="panel-page settings-page page-enter" data-calibrate-page>
       <h2 class="page-title">{t('calibrate.title')}</h2>
       {!run?.active && (
-        <SettingsCard id="calibrate-blockers" title={t('move.title')}>
-          <Blockers gate={gate} />
-        </SettingsCard>
-      )}
-      {!run?.active && (
-        <TeachCard
-          teach={teach}
-          roof={roof}
-          config={config}
-          checks={null}
-          blocked={jog.blocked}
-          onChanged={() => {
-            refreshTeach();
-            editor.reload();
-          }}
+        <AtRest
+          gate={gate}
+          teach={
+            <TeachCard
+              teach={teach}
+              roof={roof}
+              config={config}
+              checks={null}
+              blocked={jog.blocked}
+              onChanged={() => {
+                refreshTeach();
+                editor.reload();
+              }}
+            />
+          }
         />
       )}
       <Note>{t('calibrate.intro')}</Note>

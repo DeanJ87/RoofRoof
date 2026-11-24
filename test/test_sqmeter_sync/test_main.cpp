@@ -504,7 +504,7 @@ void test_a_save_that_leaves_the_groups_alone_keeps_following()
 {
     Config c = sync(live(), sqmeter(), NOW, true).next;
     saved(c, R"({"deviceName":"Roof","mqtt":{"password":"********"},"alerts":{"ntfy":{"server":"https://ntfy.example"}}})");
-    TEST_ASSERT_TRUE(c.sqmeterSync.mqtt.follow); // the mask keeps the password: nothing changed
+    TEST_ASSERT_TRUE(c.sqmeterSync.mqtt.follow);   // the mask keeps the password: nothing changed
     TEST_ASSERT_TRUE(c.sqmeterSync.alerts.follow); // the same server
     TEST_ASSERT_TRUE(c.sqmeterSync.time.follow);
 }

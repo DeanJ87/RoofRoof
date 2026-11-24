@@ -103,12 +103,7 @@ const SECRET_NEED: Record<string, SyncNeed> = {
  * follows: typing over a value SQMeter sets makes the group set here, never silently overwritten later.
  * A secret the device asks for (SQMeter has one RoofRoof lacks) only fills the gap: the group keeps following.
  */
-export const editChanges = (
-  config: Config | null,
-  path: string[],
-  value: unknown,
-  sync?: SyncStatus | null,
-): [string[], unknown][] => {
+export const editChanges = (config: Config | null, path: string[], value: unknown, sync?: SyncStatus | null): [string[], unknown][] => {
   const dotted = path.join('.');
   const group = (Object.keys(SYNC_GROUP_FIELDS) as SyncGroup[]).find((name) =>
     SYNC_GROUP_FIELDS[name].some((field) => dotted === field || dotted.startsWith(`${field}.`)),
@@ -116,5 +111,10 @@ export const editChanges = (
   const need = SECRET_NEED[dotted];
   const filling = need !== undefined && asked(sync, need);
   const unfollow = group && config && follows(config, group) && !filling;
-  return unfollow ? [[path, value], [['sqmeterSync', group, 'follow'], false]] : [[path, value]];
+  return unfollow
+    ? [
+        [path, value],
+        [['sqmeterSync', group, 'follow'], false],
+      ]
+    : [[path, value]];
 };

@@ -195,7 +195,8 @@ export const demoHandlers = [
   // Spec 026: a person's attended release of the automatic close's stand-down (the firmware's 400 without it)
   http.post('/api/roof/release-hold', async ({ request }) => {
     const body = (await request.json().catch(() => null)) as { attended?: unknown } | null;
-    if (body?.attended !== true) return reply({ status: 400, body: JSON.stringify({ error: 'Confirm that you are at the roof and can see it' }) });
+    if (body?.attended !== true)
+      return reply({ status: 400, body: JSON.stringify({ error: 'Confirm that you are at the roof and can see it' }) });
     return reply(demoDevice.roofCommand('release-hold'));
   }),
 

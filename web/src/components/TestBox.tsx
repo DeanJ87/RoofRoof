@@ -175,7 +175,7 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
   const ninaSet = Boolean(config.park?.nina.url.trim());
   // Spec 024: with park switches only there is no N.I.N.A. to stand in for.
   const switchesOnly = config.park ? parkSource(config.park) === 'switches' : false;
-  const sqmeterOn = Boolean(config.safety?.http.enabled || config.safety?.mqtt.enabled);
+  const sourceOn = sqmeterOn(config);
   const turningOn = testBox.park || testBox.weather || testBox.daylight;
   const fix = (entry: DepEntry) => {
     const target = fixTarget(entry);
@@ -203,7 +203,7 @@ const BypassesCard: FunctionalComponent<BypassesProps> = (props) => {
           checked={testBox.weather}
           onChange={(v) =>
             props.updateMany(
-              v && sqmeterOn
+              v && sourceOn
                 ? [
                     [['testBox', 'weather'], true],
                     [['safety', 'http', 'enabled'], false],
@@ -266,6 +266,9 @@ const useSave = (editor: ReturnType<typeof useConfigEditor>) => {
   return { saving, save };
 };
 
+// An SQMeter weather source is on in these settings.
+const sqmeterOn = (c: Config) => Boolean(c.safety?.http.enabled || c.safety?.mqtt.enabled);
+
 const TestBox: FunctionalComponent = () => {
   const editor = useConfigEditor();
   const { config, saved, status, effective, dirty, loading } = editor;
@@ -318,7 +321,7 @@ const TestBox: FunctionalComponent = () => {
         error={(key) => editor.validationErrors[key]}
         update={(path, value) => editor.applyChanges([[path, value]])}
         updateMany={(changes) => editor.applyChanges(changes)}
-        sourceTurnedOff={Boolean(saved.safety?.http.enabled || saved.safety?.mqtt.enabled) && !(config.safety?.http.enabled || config.safety?.mqtt.enabled)}
+        sourceTurnedOff={sqmeterOn(saved) && !sqmeterOn(config)}
         depEntry={deps.get('testBox.park')}
         onSave={() => void save()}
         onDiscard={editor.discard}

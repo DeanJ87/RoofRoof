@@ -6433,6 +6433,9 @@
               "maxCurrentAmps": {
                 "type": "number"
               },
+              "measured": {
+                "type": "number"
+              },
               "minRunningAmps": {
                 "type": "number"
               },
@@ -6473,6 +6476,7 @@
               "hallLowCounts",
               "leaveMagnetSeconds",
               "maxCurrentAmps",
+              "measured",
               "minRunningAmps",
               "minSupplyVolts",
               "openDirection",
@@ -7495,6 +7499,9 @@
                 "type": "number"
               },
               "maxCurrentAmps": {
+                "type": "number"
+              },
+              "measured": {
                 "type": "number"
               },
               "minRunningAmps": {

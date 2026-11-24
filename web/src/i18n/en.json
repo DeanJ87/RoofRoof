@@ -198,6 +198,7 @@
   "device.api.badClientId": "Bad client ID",
   "device.api.badCredentialsCheckUsernamePassword": "Bad credentials - check username/password",
   "device.api.badProtocol": "Bad protocol",
+  "device.api.confirmThatYouAreAtThe": "Confirm that you are at the roof and can see it",
   "device.api.connectFailed": "Connect failed",
   "device.api.connectionLost": "Connection lost",
   "device.api.connectionTimeout": "Connection timeout",

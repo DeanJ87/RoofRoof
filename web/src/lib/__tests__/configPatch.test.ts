@@ -129,8 +129,14 @@ describe('withSentTogether', () => {
 describe('withSentTogether and the follow flags', () => {
   it('adds the follow flag of each group whose values the patch changes', () => {
     const full = { sqmeterSync: { time: { follow: true }, mqtt: { follow: false }, alerts: { follow: true } } };
-    expect(withSentTogether({ mqtt: { username: 'me' } }, full)).toEqual({ mqtt: { username: 'me' }, sqmeterSync: { mqtt: { follow: false } } });
-    expect(withSentTogether({ ntp: { timezone: 'UTC0' } }, full)).toEqual({ ntp: { timezone: 'UTC0' }, sqmeterSync: { time: { follow: true } } });
+    expect(withSentTogether({ mqtt: { username: 'me' } }, full)).toEqual({
+      mqtt: { username: 'me' },
+      sqmeterSync: { mqtt: { follow: false } },
+    });
+    expect(withSentTogether({ ntp: { timezone: 'UTC0' } }, full)).toEqual({
+      ntp: { timezone: 'UTC0' },
+      sqmeterSync: { time: { follow: true } },
+    });
     expect(withSentTogether({ deviceName: 'Roof' }, full)).toEqual({ deviceName: 'Roof' });
   });
 });

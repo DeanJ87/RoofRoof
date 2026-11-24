@@ -149,7 +149,6 @@ export const applyPatch = <T>(target: T, patch: unknown): T => {
   return out as T;
 };
 
-
 /**
  * After a refused save: the person's edits (`edited` against `loaded`) over the device's settings,
  * except those to the changed fields and their credential partners (a password typed for a

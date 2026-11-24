@@ -278,7 +278,7 @@ namespace SQM::ConfigDetail
     // edit of a following group from a save that leaves it alone.
     struct SyncedValues
     {
-        std::string group[3];
+        uint32_t group[3]; // a hash of each group's values
     };
     SyncedValues syncedValues(const Config &cfg);
     // Spec 026: the RoofConfig::MEASURED_* bits of the values that differ between `a` and `b`.
