@@ -91,14 +91,15 @@ export const mockAnalogIssues = (analog: AnalogConfig): AnalogIssue[] => {
       });
   }
   const trims = [
-    ['supply', analog.supply.gain, analog.supply.offsetVolts, 2, 'V'],
-    ['currentR', analog.currentR.gain, analog.currentR.offsetAmps, 5, 'A'],
-    ['currentL', analog.currentL.gain, analog.currentL.offsetAmps, 5, 'A'],
+    ['supply', analog.supply.gain, analog.supply.offsetVolts, 1, 'V'],
+    ['currentR', analog.currentR.gain, analog.currentR.offsetAmps, 0.5, 'A'],
+    ['currentL', analog.currentL.gain, analog.currentL.offsetAmps, 0.5, 'A'],
   ] as const;
   for (const [input, gain, offset, most, unit] of trims) {
     const label = ANALOG_LABELS[input][0];
-    if (!(gain >= 0.5 && gain <= 2)) issues.push({ input, error: true, text: `${label} trim: the gain must be between 0.5 and 2` });
-    if (!(Math.abs(offset) <= most)) issues.push({ input, error: true, text: `${label} trim: the offset must be within ${most} ${unit}` });
+    if (!(gain >= 0.8 && gain <= 1.25)) issues.push({ input, error: true, text: `${label} trim: the gain must be between 0.8 and 1.25` });
+    if (!(Math.abs(offset) <= most))
+      issues.push({ input, error: true, text: `${label} trim: the offset must be within ${most.toFixed(1)} ${unit}` });
   }
   const named = ANALOG_PRESETS.find((preset) => preset.preset === analog.preset);
   if (named && JSON.stringify(named) !== JSON.stringify(analog))

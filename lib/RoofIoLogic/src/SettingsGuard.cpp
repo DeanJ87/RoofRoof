@@ -33,7 +33,7 @@ namespace SQM
         bool motionSettingsChanged(const Config &current, const Config &next)
         {
             return travelDiffers(current.roof, next.roof) || sensingDiffers(current.roof, next.roof) ||
-                   parkDiffers(current.park, next.park);
+                   parkDiffers(current.park, next.park) || current.analog != next.analog;
         }
 
         bool settingsSaveRefused(Roof::State state, bool motionChanged, bool calibrating)

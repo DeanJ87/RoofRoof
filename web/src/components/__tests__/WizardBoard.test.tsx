@@ -71,6 +71,8 @@ describe('Wizard: board, network and wiring', () => {
     fireEvent.click(button('Continue'));
     await waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].pins).toMatchObject({ preset: 'wt32-carrier-v1', board: 'wt32-eth01', enable: 4 });
+    // The analog preset doesn't follow the board (spec 023 review): no +0.3 V for a carrier without the diode.
+    expect(saves[0].analog).toBeUndefined();
     // The network question comes before the board, so the wiring follows.
     await onScreen('wiring');
   });

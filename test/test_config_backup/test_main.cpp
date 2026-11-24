@@ -370,6 +370,25 @@ void test_pins_are_never_restored()
     TEST_ASSERT_TRUE(restore(wt32, backupOf(wt32)).preview.notApplicable.empty());
 }
 
+// Spec 023: nor the analog dividers and trims (another board's resistors).
+void test_the_analog_setup_is_never_restored()
+{
+    Config bench = configured();
+    bench.analog = Board::analogPreset(Board::AnalogPreset::DevkitBench);
+    bench.analog.preset = Board::AnalogPreset::Custom;
+    bench.analog.currentR = Board::Divider{10000, 22000};
+    Config wt32 = configured();
+    wt32.analog = Board::analogPreset(Board::AnalogPreset::Wt32CarrierV11);
+    const Restore r = restore(wt32, backupOf(bench));
+    TEST_ASSERT_EQUAL(Backup::Error::None, r.error);
+    TEST_ASSERT_TRUE(r.preview.candidate.analog == wt32.analog);
+    TEST_ASSERT_EQUAL(1, r.preview.notApplicable.size());
+    TEST_ASSERT_EQUAL_STRING("analog", r.preview.notApplicable[0].path.c_str());
+    TEST_ASSERT_EQUAL(Backup::NotApplicableReason::BoardAnalog, r.preview.notApplicable[0].reason);
+    TEST_ASSERT_EQUAL_STRING("board-analog", Backup::reasonCode(Backup::NotApplicableReason::BoardAnalog));
+    TEST_ASSERT_TRUE(restore(wt32, backupOf(wt32)).preview.notApplicable.empty());
+}
+
 void test_pushover_without_its_keys_is_not_applied()
 {
     Config other = configured();
@@ -560,6 +579,7 @@ int main(int, char **)
     RUN_TEST(test_a_restored_setting_is_saved_and_restart_needs_are_named);
     RUN_TEST(test_preview_document_shape);
     RUN_TEST(test_pins_are_never_restored);
+    RUN_TEST(test_the_analog_setup_is_never_restored);
     RUN_TEST(test_apply_request_reads_the_token);
     return UNITY_END();
 }

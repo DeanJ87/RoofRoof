@@ -160,7 +160,7 @@ namespace SQM
             case Roof::Refusal::CurrentUnreadable:
                 return format("Motor current unreadable (limit %.1f A)", limit);
             case Roof::Refusal::SettingsInvalid:
-                return "Roof settings invalid: fix them on the settings page";
+                return "Roof settings invalid: fix them on the settings page (or the analog setup on the Pins page)";
             case Roof::Refusal::NotAPerson:
                 return "Only a person can clear a fault";
             case Roof::Refusal::Moving:

@@ -537,6 +537,7 @@ void test_roof_at_every_maximum_fits_the_persisted_size()
     cfg.roof.hallLowCounts = 3915;
     cfg.roof.currentSenseEnabled = true;
     cfg.roof.maxCurrentAmps = 40.0f;
+    cfg.roof.currentAmpsPerVolt = 100.0f; // spec 023: so the inputs can read the 40 A limit
     cfg.roof.minSupplyVolts = 15.0f;
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());

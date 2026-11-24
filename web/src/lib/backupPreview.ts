@@ -7,7 +7,7 @@ import { compareVersions } from '../utils/versionCompare';
 // device image stays small (research R7).
 
 export type SecretsState = 'restored' | 'kept' | 'none';
-export type NotApplicableReason = 'pushover-keys' | 'board-pins';
+export type NotApplicableReason = 'pushover-keys' | 'board-pins' | 'board-analog';
 export type { RestartCode } from '../components/settings/restart';
 import type { RestartCode } from '../components/settings/restart';
 

@@ -51,6 +51,7 @@ namespace SQM
         view.detected = PinSetup::detectedBoard();
         view.board = PinSetup::board();
         view.analog = getConfigCallback().analog;
+        view.gates = getConfigCallback().analogGates();
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES);
         ConfigPins::writePinsDocument(doc.to<JsonObject>(), view);
         std::string out;
@@ -84,7 +85,7 @@ namespace SQM
             return;
         }
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES / 2);
-        ConfigPins::writeValidation(doc.to<JsonObject>(), map, report, withAnalog ? &analog : nullptr);
+        ConfigPins::writeValidation(doc.to<JsonObject>(), map, report, withAnalog ? &analog : nullptr, getConfigCallback().analogGates());
         std::string out;
         serializeJson(doc, out);
         request->send(200, "application/json", out.c_str());

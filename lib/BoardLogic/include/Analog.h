@@ -60,13 +60,24 @@ namespace SQM
         const char *analogPresetName(AnalogPreset preset);
         bool parseAnalogPreset(const std::string &name, AnalogPreset &out);
 
-        // The ranges a value must be in (errors).
+        // The ranges a value must be in (errors). A trim corrects a part's
+        // tolerance, never the scaling: the gain stays within -20 %/+25 %.
         constexpr uint32_t MIN_RESISTOR_OHMS = 100;
         constexpr uint32_t MAX_RESISTOR_OHMS = 10000000;
-        constexpr float MIN_GAIN = 0.5f;
-        constexpr float MAX_GAIN = 2.0f;
-        constexpr float MAX_SUPPLY_OFFSET_VOLTS = 2.0f;
-        constexpr float MAX_CURRENT_OFFSET_AMPS = 5.0f;
+        constexpr float MIN_GAIN = 0.8f;
+        constexpr float MAX_GAIN = 1.25f;
+        constexpr float MAX_SUPPLY_OFFSET_VOLTS = 1.0f;
+        // Roof::MIN_CURRENT_READING_AMPS's size: an idle input (0 V at the pin)
+        // must still read as readable (static_assert in RoofSettings.cpp).
+        constexpr float MAX_CURRENT_OFFSET_AMPS = 0.5f;
+        // The most the supply trim may raise a reading at the low-supply limit,
+        // so it can't hide a real under-voltage by more than this.
+        constexpr float MAX_SUPPLY_TRIM_RAISE_VOLTS = 1.0f;
+        // The highest pin voltage taken as readable at 11 dB: below the ESP32's
+        // typical ~3.1 V, since the full scale varies by chip and bends at the top.
+        constexpr float ADC_FULL_SCALE_VOLTS = 2.9f;
+        // A named preset's values are compared within this (JSON round trips).
+        constexpr float PRESET_TOLERANCE = 0.0001f;
         // The most each sensor puts out (warnings above 3.3 V at the pin): a
         // 12 V system's supply at its highest, the SS49E on 5 V, the BTS7960's IS.
         constexpr float SUPPLY_MAX_VOLTS_IN = 15.0f;
@@ -80,14 +91,31 @@ namespace SQM
             bool error = true;
             std::string text;
         };
-        std::vector<AnalogIssue> checkAnalog(const AnalogConfig &analog);
+        // What the roof's gates compare the scaled readings with (RoofConfig's
+        // values): a trim must never stop over-current or a low supply tripping.
+        struct AnalogGates
+        {
+            bool currentSense = false;
+            float maxCurrentAmps = 10.0f;
+            float ampsPerVolt = 8.5f;
+            float minRunningAmps = 0.0f;
+            float minSupplyVolts = 11.0f;
+            // The lowest duty a move drives at: the reading is scaled back by the
+            // duty (RoofIo::runningAmps), so an offset weighs 100 / this much more.
+            float slowDutyPercent = 40.0f;
+        };
+        std::vector<AnalogIssue> checkAnalog(const AnalogConfig &analog, const AnalogGates &gates);
+        // The highest current a sense input can report at full duty: the lower of
+        // the ADC's full scale and the IS output's own top (IS_MAX_VOLTS_IN), scaled.
+        float highestSenseAmps(const Divider &divider, const Trim &trim, float ampsPerVolt);
 
-        // The scaled readings. NaN in, NaN out.
+        // The scaled readings. NaN in, NaN out; NaN (unreadable) for a divider that can't be used.
         float scaledSupplyVolts(float pinMillivolts, const AnalogConfig &analog);
         float scaledSenseAmps(float pinMillivolts, const Divider &divider, const Trim &trim, float ampsPerVolt);
 
-        // The supply gain that makes `nowVolts` (scaled with `current`) read as
-        // `measuredVolts`, keeping the offset; 0 when it can't be worked out.
-        float calibratedSupplyGain(const Trim &current, float nowVolts, float measuredVolts);
+        // The supply gain for `edited` that makes `nowVolts` (the device's reading,
+        // scaled with the `saved` setup it runs) read as `measuredVolts`, keeping
+        // the edited offset; 0 when it can't be worked out.
+        float calibratedSupplyGain(const AnalogConfig &saved, const AnalogConfig &edited, float nowVolts, float measuredVolts);
     } // namespace Board
 } // namespace SQM

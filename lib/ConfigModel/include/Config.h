@@ -285,6 +285,9 @@ namespace SQM
         // Spec 016: the longest a calibration leg may drive (its hard timeout).
         uint32_t calibrationLimitSeconds = 180;
 
+        // Spec 023: what the roof's gates compare the analog readings with.
+        Board::AnalogGates analogGates() const;
+
         // The ranges, shared with the web UI (test/fixtures/config-ranges.json) and
         // checked again by Roof::validSettings.
         static constexpr uint32_t MIN_TRAVEL_MM = 100;
@@ -314,6 +317,11 @@ namespace SQM
         static constexpr float MIN_SUPPLY_VOLTS = 6.0f;
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
     };
+
+    // Spec 023 review: whether the analog setup passes its checks against these
+    // roof settings (errors only). Also what the roof applies, so stored values
+    // that fail them (saved before a rule existed) refuse every move.
+    bool analogUsable(const Board::AnalogConfig &analog, const RoofConfig &roof, std::string *error = nullptr);
 
     // The daylight failsafe (spec 013): with the sun at or above
     // sunAltitudeDeg, alert (and with Close, close the roof as for unsafe
@@ -465,21 +473,7 @@ namespace SQM
         bool any() const { return park || weather || daylight; }
     };
 
-    // Spec 024: SQMeter's secrets the device read during a "copy from
-    // SQMeter", held in memory for a while, with the servers they belong to. A
-    // secret field saved as Config::COPIED_SECRET takes the held value, only
-    // for that server (Config::applyJson).
-    struct CopiedSecrets
-    {
-        std::string mqttBroker;
-        uint16_t mqttPort = 0;
-        std::string mqttUsername;
-        std::string mqttPassword;
-        std::string ntfyServer;
-        std::string ntfyToken;
-        std::string pushoverUserKey;
-        std::string pushoverAppToken;
-    };
+    struct CopiedSecrets; // spec 024: CopiedSecrets.h
 
     struct Config
     {
@@ -547,6 +541,9 @@ namespace SQM
         // Spec 023: the pins against the rules for a chip with or without
         // PSRAM (validate() assumes none; the device checks its own chip too).
         bool validateAnalog(std::string *error = nullptr) const;
+        // What the roof's gates compare the analog readings with (spec 023):
+        // a divider or trim is checked against them, so it can't defeat one.
+        Board::AnalogGates analogGates() const;
         // `requireWt32`: the device has seen a LAN8720, so only the WT32-ETH01 board is allowed.
         bool validatePins(bool psram, std::string *error = nullptr, bool requireWt32 = false) const;
         // validate() plus the rules a change from the UI/API also meets (host and

@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "CopiedSecrets.h"
 #include "ConfigInternal.h"
 
 // Spec 024: the secrets a "copy from SQMeter" brings, swapped in at the save.

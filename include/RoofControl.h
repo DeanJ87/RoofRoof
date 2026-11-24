@@ -218,6 +218,7 @@ namespace SQM
         };
 
         static HardwareSettings settingsOf(const Config &config);
+        static Roof::Settings motionSettings(const HardwareSettings &s);
         bool startTask();
         void takePins(const Board::PinMap &inEffect, bool valid, const std::string &reason);
         static void taskEntry(void *self);

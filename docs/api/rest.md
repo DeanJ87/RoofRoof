@@ -334,7 +334,7 @@ What restoring a backup would save. Nothing is applied.
 }
 ```
 
-`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings that aren't applied, each with its `path`, the backup's `value` and a `reason`; they keep this device's values. Reasons: `pushover-keys` (Pushover on without its keys) and `board-pins` (`pins`: a restore never changes the board or the pins, which belong to this hardware, so a backup whose pins differ from this device's lists them here). `restart` says why applying restarts the device (empty: it doesn't): `wifi` (the WiFi settings or `network.mode`), `ota`, `ipv6` or `alpaca`. A restore never gives `pins` (a settings save can). The web UI works out the per-setting differences from `settings`.
+`settings` is what applying saves, masked like `GET /api/config` (shortened above). `secrets.state` is `restored` (passphrase right), `kept` (the file has secrets, no passphrase given: this device keeps its own) or `none`. `notApplicable` lists settings that aren't applied, each with its `path`, the backup's `value` and a `reason`; they keep this device's values. Reasons: `pushover-keys` (Pushover on without its keys), `board-pins` (`pins`: a restore never changes the board or the pins, which belong to this hardware, so a backup whose pins differ from this device's lists them here) and `board-analog` (`analog`: nor the dividers and trims, which describe this board's resistors; listed when they differ). `restart` says why applying restarts the device (empty: it doesn't): `wifi` (the WiFi settings or `network.mode`), `ota`, `ipv6` or `alpaca`. A restore never gives `pins` (a settings save can). The web UI works out the per-setting differences from `settings`.
 
 Refused with `400` and a `code`: `not-backup`, `damaged`, `newer-format`, `wrong-passphrase` (also when the encrypted part was changed), or `invalid` with the same message a settings save gives. A new preview replaces the previous one.
 
@@ -543,7 +543,7 @@ curl -X POST http://roofroof.local/api/pins/validate -H "Content-Type: applicati
 }
 ```
 
-An `analog` value that isn't a number where one is needed, or an unknown analog preset, is a `400`.
+An `analog` value that isn't a number where one is needed, an input that isn't an object, or an unknown analog preset, is a `400`. The checks include the roof's saved settings: over-current reach, the broken-wire floor and the supply trim's raise at the minimum supply ([A trim can't defeat a safety check](../user-guide/pins.md#a-trim-cant-defeat-a-safety-check)).
 
 `400` with `{"error": "..."}` for a body that isn't a pin map: not an object, an unknown preset or board, or a pin that isn't a number.
 

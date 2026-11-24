@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1691024,
-  "overBudgetReason": "spec 024: park source and switch watch, SQMeter secrets in the copy and the sync"
+  "esp32dev": 1694352,
+  "overBudgetReason": "spec 024: park source and switch watch, SQMeter secrets in the copy and the sync (+14.9 KB)"
 }

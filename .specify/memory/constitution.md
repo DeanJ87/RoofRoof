@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version: 4.1.0 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
+- Version: 4.1.1 -> 5.0.0 (MAJOR: Principle II no longer always requires N.I.N.A.; the owner may
   make the fitted park switches the only park source).
 - Modified: II. Close Only Onto a Parked Mount. The park source is an owner setting
   (`park.source`): N.I.N.A. only, park switches only, or N.I.N.A. and park switches. Settings from
@@ -24,6 +24,9 @@ Sync Impact Report
 - Templates: no change (they read the principles from this file).
 - Docs: docs/user-guide/safety-inputs.md, docs/hardware/wiring.md, docs/hardware/commissioning.md,
   specs/024-park-source-and-secrets/spec.md.
+- Earlier: 4.1.0 -> 4.1.1 (PATCH: wording). Principle III's test-box exception and the 3.0.0 note
+  below no longer name the rain contact that 4.0.0 removed: the bypass never overrides a reading
+  (a configured source that says unsafe or rain). No rule changes.
 - Earlier: 4.0.0 -> 4.1.0 (MINOR: Principle VII is expanded; nothing is relaxed).
 - Modified: VII. Quiet, Consistent UI. The design system gains a second documented addition: the
   banner (`Banner` in `web/src/components/ui.tsx`, DS-14), for a state that holds on every page
@@ -71,8 +74,8 @@ Sync Impact Report
   becomes an owner setting, `park.requestPark`, on by default and after an upgrade: off, the
   unsafe close only waits for a park confirmed some other way (a bench box pointed at a live
   N.I.N.A. need not park that mount). Neither can be set alongside the source it stands
-  in for (a N.I.N.A. address, an SQMeter source); fitted park switches and a rain contact still
-  count; no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
+  in for (a N.I.N.A. address, an SQMeter source); fitted park switches still count (and, until
+  4.0.0, the rain contact); no motion fault, the watchdog or the supply limit can be bypassed (Principle I unchanged).
 - New risk (park requests): on a real roof with `park.requestPark` off, rain leaves the roof open
   unless the mount is parked some other way (by hand, or by N.I.N.A.'s own safety monitor); the
   critical "mount not parked" alert says no park was asked for, and the Mount park card warns
@@ -276,8 +279,8 @@ Doubt about the weather MUST resolve to "unsafe".
 - Every unsafe reason, fault and refusal MUST state the measured value and the limit, or the
   input that failed (`Supply 10.9 V < 11.5 V`, `Park switch open`, `N.I.N.A. not responding`).
 - **Test-box exception.** With no weather source configured at all, the same owner-set test-box
-  settings (Principle II) may bypass "no weather source". They never bypass a reading (a rain
-  contact that is wet or unreadable) or the doubt of a source that is configured, and can't be set
+  settings (Principle II) may bypass "no weather source". They never bypass a reading (a source
+  that reports unsafe or rain) or the doubt of a source that is configured, and can't be set
   while an SQMeter source is on.
 
 ### IV. Standards Conformance (ASCOM Alpaca Dome)

@@ -12,6 +12,7 @@
 #include <string>
 
 #include "Config.h"
+#include "CopiedSecrets.h"
 #include "SqmeterSite.h"
 
 namespace SQM

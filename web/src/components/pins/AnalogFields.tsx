@@ -136,16 +136,20 @@ const CALIBRATE_REFUSAL: Record<'noReading' | 'measured' | 'range', MessageKey> 
   range: 'pins.analog.calibrate.outOfRange',
 };
 
-/** Calibrate the supply to what a multimeter reads: sets the gain (as Custom) for the person to save. */
+/**
+ * Calibrate the supply to what a multimeter reads: sets the gain (as Custom) for the person to save.
+ * The reading was scaled with the `saved` setup, so the gain is worked out from it for the setup as edited.
+ */
 const CalibrateSupply: FunctionalComponent<{
   analog: AnalogConfig;
+  saved: AnalogConfig;
   supplyVolts: number | null | undefined;
   onChange: (analog: AnalogConfig) => void;
-}> = ({ analog, supplyVolts, onChange }) => {
+}> = ({ analog, saved, supplyVolts, onChange }) => {
   const [measured, setMeasured] = useState(Number.NaN);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const calibrate = () => {
-    const answer = calibrateSupplyGain(analog.supply, supplyVolts, measured);
+    const answer = calibrateSupplyGain(saved.supply, analog.supply, supplyVolts, measured);
     if (!answer.ok) return setResult({ ok: false, text: t(CALIBRATE_REFUSAL[answer.reason]) });
     onChange({ ...analog, preset: 'custom', supply: { ...analog.supply, gain: answer.gain } });
     setResult({ ok: true, text: t('pins.analog.calibrate.done', { gain: formatNumber(answer.gain, 4) }) });
@@ -214,12 +218,14 @@ export const AdvancedSection: FunctionalComponent<{
   doc: PinsDocument;
   pins: PinsConfig;
   analog: AnalogConfig | undefined;
+  // The saved analog setup: the one that scaled the live supply reading.
+  savedAnalog: AnalogConfig | undefined;
   issues: AnalogIssue[];
   errors: ValidationErrors;
   supplyVolts: number | null | undefined;
   onPins: (pins: PinsConfig) => void;
   onAnalog: (analog: AnalogConfig) => void;
-}> = ({ doc, pins, analog, issues, errors, supplyVolts, onPins, onAnalog }) => {
+}> = ({ doc, pins, analog, savedAnalog, issues, errors, supplyVolts, onPins, onAnalog }) => {
   const hasError = issues.some((issue) => issue.error) || Object.keys(errors).some((key) => key.startsWith('analog.'));
   const opened = useRef(false);
   if (hasError) opened.current = true;
@@ -243,7 +249,7 @@ export const AdvancedSection: FunctionalComponent<{
             <AnalogInputRows key={input} analog={analog} input={input} issues={issues} errors={errors} onChange={onAnalog} />
           ))}
           <AnalogIssueNotes issues={issues} />
-          <CalibrateSupply analog={analog} supplyVolts={supplyVolts} onChange={onAnalog} />
+          <CalibrateSupply analog={analog} saved={savedAnalog ?? analog} supplyVolts={supplyVolts} onChange={onAnalog} />
         </div>
       )}
       <PullupFields pins={pins} onChange={onPins} />

@@ -46,7 +46,7 @@ namespace SQM
         takePins(pinsInEffect, valid, reason);
         settings = settingsOf(config);
         remoteStopsClose.store(config.autoClose.remoteStop); // spec 014
-        controller.applySettings(Roof::settingsFromConfig(settings.roof));
+        controller.applySettings(motionSettings(settings));
         gates.fittedSwitches = settings.fittedSwitches;
         if (!pinsValid)
         {
@@ -438,7 +438,7 @@ namespace SQM
     {
         if (!settingsPending)
             return;
-        const Roof::CommandResult taken = controller.applySettings(Roof::settingsFromConfig(pendingSettings.roof));
+        const Roof::CommandResult taken = controller.applySettings(motionSettings(pendingSettings));
         if (!taken.accepted)
             return; // a move is active: kept pending until it ends
         settings = pendingSettings;

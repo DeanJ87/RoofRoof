@@ -63,6 +63,18 @@ namespace SQM
         return MotorDriver::probeEnable();
     }
 
+    // Spec 023 review: stored analog values that fail their checks (saved before a
+    // rule existed) are never driven with: the settings count as invalid.
+    Roof::Settings RoofControl::motionSettings(const HardwareSettings &s)
+    {
+        Roof::Settings motion = Roof::settingsFromConfig(s.roof);
+        std::string why;
+        motion.analogUsable = analogUsable(s.analog, s.roof, &why);
+        if (!motion.analogUsable)
+            Logger::error(TAG, "Analog setup refused, every move is refused until it is fixed: %s", why.c_str());
+        return motion;
+    }
+
     RoofControl::HardwareSettings RoofControl::settingsOf(const Config &config)
     {
         HardwareSettings s;

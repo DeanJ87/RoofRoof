@@ -85,8 +85,7 @@ namespace SQM
                     return make(
                         CheckId::Supply, Level::Fail, format("%.1f V: no supply, or its divider isn't connected", shown), volts, "V");
                 if (volts > SUPPLY_MAX_VOLTS)
-                    return make(
-                        CheckId::Supply, Level::Warn, format("%.1f V: above 15 V, so check the divider (100k/22k)", shown), volts, "V");
+                    return make(CheckId::Supply, Level::Warn, format("%.1f V: above 15 V, so check the supply divider", shown), volts, "V");
                 if (volts < in.supplyLimit)
                     return make(
                         CheckId::Supply,
