@@ -4830,7 +4830,9 @@
                 "reason": {
                   "type": "string",
                   "enum": [
-                    "pushover-keys"
+                    "pushover-keys",
+                    "board-pins",
+                    "board-analog"
                   ]
                 }
               },

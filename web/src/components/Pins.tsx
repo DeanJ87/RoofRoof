@@ -11,7 +11,7 @@ import { announce } from '../lib/a11y';
 import { getConfigValidationMessage } from '../validation/configSchema';
 import { CustomPins, IssueNotes, PinRows, PresetChoice, UnsetNotes } from './pins/PinFields';
 import { AdvancedSection } from './pins/AnalogFields';
-import { analogErrors, analogForBoard } from '../lib/analogView';
+import { analogErrors } from '../lib/analogView';
 import { WiringCheckPanel } from './pins/WiringCheck';
 import { MotionNote } from './settings/RoofTab';
 import { SettingsCard, StatusBadge } from './settings/controls';
@@ -63,19 +63,6 @@ const savedText = (pinsChanged: boolean, analogChanged: boolean) => {
 // The device's checks on the analog setup as edited; its saved setup's while the device hasn't answered.
 const analogIssuesOf = (doc: PinsDocument, check: ReturnType<typeof usePinValidation>, unchanged: boolean): AnalogIssue[] =>
   check.validation?.analogIssues ?? (unchanged ? (doc.analogIssues ?? []) : []);
-
-// Applies a board preset's pins; a named analog preset follows it (a Custom analog setup stays).
-const applyBoard = (editor: ConfigEditor, doc: PinsDocument, next: PinsConfig) => {
-  const analog = analogForBoard(doc, editor.config?.analog, next.preset);
-  editor.applyChanges(
-    analog
-      ? [
-          [['pins'], next],
-          [['analog'], analog],
-        ]
-      : [[['pins'], next]],
-  );
-};
 
 // Save and Discard while something changed, and why Save is unavailable.
 const SaveRow: FunctionalComponent<{
@@ -143,9 +130,11 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
     setProblem(null);
     editor.applyChanges([[['analog'], next]]);
   };
+  // A board preset chosen. The analog setup doesn't follow it: the pins apply at a restart and the
+  // analog setup at once, and the board preset can't tell a carrier v1 from a v1.1 (its diode).
   const choose = (next: PinsConfig) => {
     setProblem(null);
-    applyBoard(editor, doc, next);
+    editor.applyChanges([[['pins'], next]]);
   };
   // A new device: the board its boot probe suggests is chosen for the person to confirm and save.
   useEffect(() => {
@@ -186,6 +175,7 @@ const BoardCard: FunctionalComponent<{ editor: ConfigEditor; doc: PinsDocument; 
         doc={doc}
         pins={pins}
         analog={analog}
+        savedAnalog={editor.saved?.analog}
         issues={analogIssuesOf(doc, check, !analogChanged)}
         errors={editor.validationErrors}
         supplyVolts={status?.roof?.supplyVolts}
@@ -259,8 +249,8 @@ const Pins: FunctionalComponent = () => {
   if (editor.loading || loading) return <div class="empty-state">{t('settings.loadingSettings')}</div>;
   const pins = editor.config?.pins;
   if (!pins || !doc) return <div class="empty-state tone-red">{t('pins.couldNotLoad')}</div>;
-  // The wiring check's suggested preset; a named analog preset follows it, as on the cards.
-  const choosePreset = (preset: PinPreset) => applyBoard(editor, doc, withPreset(doc, pins, preset));
+  // The wiring check's suggested preset (the analog setup stays, as on the cards).
+  const choosePreset = (preset: PinPreset) => editor.applyChanges([[['pins'], withPreset(doc, pins, preset)]]);
   // Waits for the device to come back only once it accepted the restart; a refusal says why.
   const restart = () => void restartWithToast().then((accepted) => accepted && setRestarting(true));
   return (

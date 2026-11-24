@@ -94,7 +94,9 @@ void test_refusal_texts(void)
     assertText("Supply 10.9 V < 11.0 V", describeRefusal(refused(R::SupplyLow, 10.9f, 11)));
     assertText("Supply unreadable (minimum 11.0 V)", describeRefusal(refused(R::SupplyUnreadable, 0, 11)));
     assertText("Motor current unreadable (limit 10.0 A)", describeRefusal(refused(R::CurrentUnreadable, 0, 10)));
-    assertText("Roof settings invalid: fix them on the settings page", describeRefusal(refused(R::SettingsInvalid, 0, 0)));
+    assertText(
+        "Roof settings invalid: fix them on the settings page (or the analog setup on the Pins page)",
+        describeRefusal(refused(R::SettingsInvalid, 0, 0)));
     assertText("Only a person can clear a fault", describeRefusal(refused(R::NotAPerson, 0, 0)));
     assertText("The roof is moving", describeRefusal(refused(R::Moving, 0, 0)));
 }

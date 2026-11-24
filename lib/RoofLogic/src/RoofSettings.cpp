@@ -66,6 +66,10 @@ namespace SQM
             return std::isfinite(volts) && volts <= MAX_SUPPLY_READING_VOLTS;
         }
 
+        // Spec 023: a current offset the settings allow keeps an idle input (0 V
+        // at the pin) readable, so a valid trim can never lock every move.
+        static_assert(-Board::MAX_CURRENT_OFFSET_AMPS >= MIN_CURRENT_READING_AMPS, "a valid current offset must read as readable");
+
         bool currentReadable(float amps)
         {
             return std::isfinite(amps) && amps >= MIN_CURRENT_READING_AMPS;
@@ -73,7 +77,7 @@ namespace SQM
 
         bool validSettings(const Settings &settings)
         {
-            return validMotion(settings) && validSensing(settings);
+            return validMotion(settings) && validSensing(settings) && settings.analogUsable;
         }
 
         Settings settingsFromConfig(const RoofConfig &config)

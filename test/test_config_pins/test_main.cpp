@@ -245,7 +245,7 @@ void test_analog_settings_and_pullups()
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.3f, c.analog.supplyTrim.offset);
     // Errors refuse the save.
     TEST_ASSERT_EQUAL_STRING(
-        "Supply sense trim: the gain must be between 0.5 and 2",
+        "Supply sense trim: the gain must be between 0.8 and 1.25",
         rejectReason(R"({"analog":{"preset":"custom","supply":{"gain":3}}})").c_str());
     TEST_ASSERT_TRUE(rejectReason(R"({"analog":{"preset":"devkit-bench","supply":{"gain":1.1}}})").size() > 0);
     TEST_ASSERT_EQUAL_STRING(
@@ -265,6 +265,66 @@ void test_analog_settings_and_pullups()
     TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(back.toJson(), reloaded, false, &error), error.c_str());
     TEST_ASSERT_TRUE(reloaded.pins == back.pins);
     TEST_ASSERT_TRUE(reloaded.analog == back.analog);
+}
+
+// An input's values must come as an object; anything else is refused, not ignored.
+void test_a_non_object_analog_input_is_refused()
+{
+    TEST_ASSERT_EQUAL_STRING("Analog: supply must be an object", rejectReason(R"({"analog":{"preset":"custom","supply":5}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("Analog: hall must be an object", rejectReason(R"({"analog":{"preset":"custom","hall":[1]}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "Analog: currentL must be an object", rejectReason(R"({"analog":{"preset":"custom","currentL":"10k"}})").c_str());
+}
+
+// A Custom setup survives the settings' JSON (as stored, and as the page re-sends it).
+void test_a_custom_analog_setup_round_trips()
+{
+    const Config c = applied(R"({"analog":{"preset":"custom","supply":{"top":100000,"bottom":20000,"gain":1.0325,"offsetVolts":0.25},)"
+                             R"("hall":{"top":4700,"bottom":10000},"currentR":{"top":10000,"bottom":22000,"gain":0.97,"offsetAmps":-0.2},)"
+                             R"("currentL":{"top":10000,"bottom":20000,"gain":1.1,"offsetAmps":0.15}}})");
+    std::string error;
+    Config reloaded = Config::createDefault();
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(c.toJson(false, false), reloaded, false, &error), error.c_str());
+    TEST_ASSERT_TRUE(reloaded.analog == c.analog);
+    const auto resaved = Config::fromJson(c.toJson(), &c, &error);
+    TEST_ASSERT_TRUE_MESSAGE(resaved.has_value(), error.c_str());
+    TEST_ASSERT_TRUE(resaved->analog == c.analog);
+    TEST_ASSERT_EQUAL_UINT32(4700, resaved->analog.hall.topOhms);
+}
+
+// The WT32 preset's +0.3 V comes back from JSON as a float; a strict re-save keeps the preset.
+void test_the_wt32_analog_preset_resaves_strictly()
+{
+    const Config c = applied(R"({"analog":{"preset":"wt32-carrier-v1.1"}})");
+    std::string error;
+    const auto resaved = Config::fromJson(c.toJson(), &c, &error);
+    TEST_ASSERT_TRUE_MESSAGE(resaved.has_value(), error.c_str());
+    TEST_ASSERT_TRUE(resaved->analog.preset == Board::AnalogPreset::Wt32CarrierV11);
+    // As the page sends it, with the offset as a double.
+    TEST_ASSERT_TRUE(
+        Config::fromJson(R"({"analog":{"preset":"wt32-carrier-v1.1","supply":{"offsetVolts":0.30000000000000004}}})", &c, &error)
+            .has_value());
+}
+
+// A roof setting the analog setup can't serve is refused too (re-checked on every save).
+void test_roof_settings_are_checked_against_the_analog_setup()
+{
+    // 2.9 V x 1.5 x 8.5 A/V reads 37.0 A at most.
+    TEST_ASSERT_TRUE(rejectReason(R"({"roof":{"currentSenseEnabled":true,"maxCurrentAmps":36}})").empty());
+    TEST_ASSERT_EQUAL_STRING(
+        "R_IS: it can read at most 37.0 A, below the current limit (38.0 A), so over-current could never trip",
+        rejectReason(R"({"roof":{"currentSenseEnabled":true,"maxCurrentAmps":38}})").c_str());
+    // A lower slow duty weighs a current offset more (re-checked when the roof settings change).
+    const std::string offset = R"({"analog":{"preset":"custom","currentR":{"offsetAmps":-0.1}},"roof":{"currentSenseEnabled":true,)";
+    TEST_ASSERT_TRUE(rejectReason(offset + R"("slowDutyPercent":20}})").empty());
+    TEST_ASSERT_TRUE(rejectReason(offset + R"("slowDutyPercent":10}})").size() > 0);
+    TEST_ASSERT_TRUE(rejectReason(R"({"roof":{"currentSenseEnabled":true,"currentAmpsPerVolt":2}})").size() > 0);
+    // Current sense off: the limit isn't used.
+    TEST_ASSERT_TRUE(rejectReason(R"({"roof":{"maxCurrentAmps":40}})").empty());
+    // The supply trim at a higher minimum supply.
+    TEST_ASSERT_EQUAL_STRING(
+        "", rejectReason(R"({"analog":{"preset":"custom","supply":{"gain":1.07}},"roof":{"minSupplyVolts":11}})").c_str());
+    TEST_ASSERT_TRUE(rejectReason(R"({"analog":{"preset":"custom","supply":{"gain":1.07}},"roof":{"minSupplyVolts":15}})").size() > 0);
 }
 
 int main(int, char **)
@@ -287,5 +347,9 @@ int main(int, char **)
     RUN_TEST(test_config_pins_read_and_write);
     RUN_TEST(test_the_stored_size_with_pins_fits);
     RUN_TEST(test_analog_settings_and_pullups);
+    RUN_TEST(test_a_non_object_analog_input_is_refused);
+    RUN_TEST(test_a_custom_analog_setup_round_trips);
+    RUN_TEST(test_the_wt32_analog_preset_resaves_strictly);
+    RUN_TEST(test_roof_settings_are_checked_against_the_analog_setup);
     return UNITY_END();
 }

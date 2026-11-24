@@ -37,7 +37,9 @@ namespace DemoRoof
         policy = CloseSeq::policyFrom(cfg);
         remoteStopsClose = cfg.autoClose.remoteStop;
         settingsPending = false;
-        const Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
+        pendingAnalog = cfg.analog;
+        Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
+        settings.analogUsable = analogUsable(pendingAnalog, roofCfg); // as RoofControl::motionSettings
         controller = Roof::Controller(settings);
         RoofPlant::applySettings(plant, settings, roofCfg.minRunningAmps);
         // Constitution I: a restart never clears the lockout.
@@ -83,6 +85,7 @@ namespace DemoRoof
         testBoxCfg = cfg.testBox;
         mqttOn = cfg.mqtt.enabled;
         pendingRoof = cfg.roof;
+        pendingAnalog = cfg.analog;
         settingsPending = true;
         takePendingSettings();
     }
@@ -122,7 +125,8 @@ namespace DemoRoof
     {
         if (!settingsPending)
             return;
-        const Roof::Settings settings = Roof::settingsFromConfig(pendingRoof);
+        Roof::Settings settings = Roof::settingsFromConfig(pendingRoof);
+        settings.analogUsable = analogUsable(pendingAnalog, pendingRoof); // as RoofControl::motionSettings
         if (!controller.applySettings(settings).accepted)
             return;
         roofCfg = pendingRoof;

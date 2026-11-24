@@ -74,3 +74,14 @@
 - [x] T043 [US1] `lib/BoardLogic` Analog (dividers, trims, presets, checks, scaling, supply calibration) with test_analog; `analog` settings and the park pull-ups in ConfigModel with tests in test_config_pins
 - [x] T044 Firmware: the roof scales the supply and current with the configured values (applied with the roof's settings, never mid-move); the park pull-ups at boot; the pin documents and validate carry the analog values and issues; the demo too
 - [x] T045 Web: the Advanced section, the supply calibration, mocks, tests; docs
+
+## Phase 10: Review fixes after the merge (clarification 2026-11-23)
+
+- [x] T046 [US1] Native tests first (test_analog, test_config_pins, test_config_backup, test_roof_gates, test_config_model): trim ranges, gate reach, broken-wire floor, supply raise, preset tolerance, NaN for an unusable divider, calibration from the saved setup, non-object inputs, Custom and WT32 round trips, analog as a motion setting, analog never restored
+- [x] T047 `lib/BoardLogic` Analog: ranges 0.8-1.25 / ±1 V / ±0.5 A, `AnalogGates` and the gate checks, `highestSenseAmps`, the preset compared within 0.0001, NaN for ratio 0, the resistor sum in double, `calibratedSupplyGain(saved, edited, …)`; static_assert that a valid current offset reads as readable (RoofSettings.cpp)
+- [x] T048 ConfigModel: `Config::analogGates()`, `validateAnalog` against the roof settings, non-object inputs refused; pin documents and validate checked against the gates (firmware and demo); `motionSettingsChanged` counts `analog`
+- [x] T049 ConfigBackup: `analog` never restored, listed as `board-analog`
+- [x] T050 Web: the calibration from the saved setup, the analog preset no longer follows the board (Pins page, wizard, wiring suggestion), zod ranges, the backup reason; tests
+- [x] T051 Docs (pins, configuration, REST), constitution 4.1.1 (rain-contact wording), CHANGELOG
+- [x] T052 Review round 1: the offset weighed by 100 / slow duty (broken-wire floor, −0.5 A), the reach capped by the IS output's 5 V and the ADC taken as 2.9 V, stored analog values that fail the checks refuse every move (`Roof::Settings::analogUsable`), the backup reason enum in the contract and OpenAPI, the wiring check's supply text
+- [x] T053 Review round 2: the driven offset uses the duty as driven (255 / step), the reach takes the worse offset at the slow duty, the demo core applies `analogUsable` too, the settings-invalid refusal names the Pins page

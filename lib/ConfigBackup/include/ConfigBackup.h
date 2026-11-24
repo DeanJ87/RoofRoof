@@ -116,6 +116,7 @@ namespace SQM::Backup
     {
         PushoverKeys, // Pushover on, but its keys are neither restored nor set here
         BoardPins,    // spec 023: a backup never changes the board or pins (they belong to this hardware)
+        BoardAnalog,  // spec 023: nor the analog dividers and trims (this board's resistors)
     };
     const char *reasonCode(NotApplicableReason reason);
 

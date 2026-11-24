@@ -48,6 +48,25 @@ namespace SQM::Backup
             settings.remove("pins");
         }
 
+        // Spec 023: the dividers and trims describe this board's resistors, like
+        // the pins: another board's would mis-scale the supply and current gates.
+        // Never restored; listed when they differ from this device's.
+        void markAnalog(JsonObject settings, const Config &current, std::vector<NotApplicable> &out)
+        {
+            if (!settings.containsKey("analog"))
+                return;
+            Board::AnalogConfig backup = current.analog;
+            const bool readable =
+                settings["analog"].is<JsonObject>() && ConfigPins::readAnalog(settings["analog"].as<JsonObjectConst>(), backup, nullptr);
+            if (!readable || backup != current.analog)
+            {
+                std::string value;
+                serializeJson(settings["analog"], value);
+                out.push_back({"analog", value, NotApplicableReason::BoardAnalog});
+            }
+            settings.remove("analog");
+        }
+
         // Where a secret goes in the settings document, made if missing.
         JsonVariant secretSlot(JsonObject settings, const std::string &path)
         {
@@ -98,6 +117,7 @@ namespace SQM::Backup
             JsonObject settings = doc.as<JsonObject>();
             markPushover(settings, in, current, out.notApplicable);
             markPins(settings, current, out.notApplicable);
+            markAnalog(settings, current, out.notApplicable);
             if (in.secrets)
                 injectSecrets(settings, *in.secrets);
             serializeJson(settings, applyText);

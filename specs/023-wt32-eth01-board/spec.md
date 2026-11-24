@@ -147,9 +147,44 @@ Each answer takes the safest option the constitution allows and is also listed u
   unaffected (the Hall divider is only checked for its pin voltage). A divider that could put more
   than 3.3 V on a pin at the sensor's maximum (supply 15 V, Hall 4.2 V on a 5 V supply, IS 5 V) is
   a warning; a resistor out of range, a gain outside 0.5-2 or an offset outside ±2 V / ±5 A is an
-  error. Each park input's pull-up is internal or external (a fitted one); external allows a park
+  error (narrowed, and cross-checked against the roof's gates, by the review clarification below). Each park input's pull-up is internal or external (a fitted one); external allows a park
   switch on GPIO34-39. The Pins page can work out the supply's gain from a voltage measured with a
   multimeter.
+
+### Clarification 2026-11-23: review of the analog front end (after merge)
+
+A review after the merge found ways in which the analog settings could weaken a motion gate or
+mis-scale a reading. The rules below replace the earlier ones where they differ (FR-041 to FR-046,
+assumptions 27 to 33).
+
+- Q: Which reading does the supply calibration start from? → A: The device's live reading was
+  scaled with the saved setup. The page takes it back to the pin's volts with the saved divider and
+  trim, then works out the gain for the setup as edited, keeping the edited offset. An unsaved
+  preset (the WT32's +0.3 V) or divider is therefore counted once.
+- Q: Are analog changes motion settings? → A: Yes. The dividers, trims and preset count as motion
+  settings, like the current scale and the supply minimum they feed. Every settings save is already
+  held while the roof moves or a calibration run is under way, so a run never mixes two scalings.
+- Q: What ranges may a trim take? → A: A trim corrects a part's tolerance, not the scaling. The gain
+  is 0.8 to 1.25 for every input. The supply offset is within ±1 V. The current offset is within
+  ±0.5 A, the size of the "below −0.5 A is unreadable" rule, so an idle input always reads as
+  readable.
+- Q: Can a trim stop a gate tripping? → A: No, the device refuses it, checking against the saved
+  roof settings on every save. With current sense on, each side must reach `roof.maxCurrentAmps`
+  at the ADC's full scale (taken as 2.9 V) or the IS output's 5 V, whichever is lower. While
+  driving, the reading is scaled back by the duty, so the offset counts 100 / slow duty times. At the
+  slow duty, the offset must be below `roof.minRunningAmps` when that is set, and not below −0.5 A.
+  Stored values that fail these checks still load, but the roof refuses every move until they are
+  fixed. At `roof.minSupplyVolts`, the supply trim may raise the reading by 1 V at most. A trim
+  that reads low is always allowed, since it trips sooner.
+- Q: Does a backup restore `analog`? → A: No. Like the pins, the analog setup describes this
+  board's hardware. A backup whose `analog` differs lists it as not applied (`board-analog`), and
+  the device keeps its own.
+- Q: Does the analog preset follow the board preset? → A: No. The pins apply at a restart and the
+  analog setup at once. The board preset `wt32-carrier-v1` also fits a carrier v1 without the
+  supply diode, so following it would add +0.3 V there. The person chooses the analog preset.
+- Q: Smaller points? → A: An unusable divider reads NaN (unreadable), and the resistor sum is
+  worked out in double. An input's values that aren't an object are refused. A named preset's
+  values are compared within 0.0001.
 
 ## Constitution rules this spec relies on
 
@@ -498,6 +533,20 @@ question, the Settings row, the dashboard row and the docs for the local contact
   stay across a preset change.
 - **FR-040**: The Pins page MUST offer the Advanced settings and compute the supply's gain from a
   measured voltage.
+- **FR-041** (review): The supply calibration MUST work from the saved setup that scaled the live
+  reading and give the gain for the setup as edited.
+- **FR-042** (review): A change to `analog` MUST count as a motion-settings change.
+- **FR-043** (review): A trim's gain MUST be 0.8 to 1.25. The supply offset MUST be within ±1 V and
+  a current offset within ±0.5 A, so a valid offset keeps an idle input readable.
+- **FR-044** (review): A setup MUST be refused when, with current sense on, a side can't read
+  `roof.maxCurrentAmps` at the lower of the ADC's full scale and the IS output's top. It MUST also
+  be refused when a side's offset, scaled by 100 / `roof.slowDutyPercent`, is not below a set
+  `roof.minRunningAmps` or is below −0.5 A. It MUST also be refused when the supply trim raises a
+  reading at `roof.minSupplyVolts` by more than 1 V. The check MUST run on every save, so a `roof`
+  change re-checks it. The roof MUST refuse every move while the setup in effect fails it.
+- **FR-045** (review): A restore MUST NOT change `analog`. A backup whose `analog` differs lists it
+  as not applied (`board-analog`).
+- **FR-046** (review): Choosing a board preset MUST NOT change the analog preset.
 
 **Docs and governance**
 
@@ -602,10 +651,44 @@ Each was an open choice; the safest option the constitution allows was taken.
 23. **The drawn 10k/20k IS divider is warned**: at the BTS7960's 5 V IS output it puts 3.33 V on the
     pin. It stays the default (it is what the boards have); the warning says so.
 24. **The analog values are checked when saved** (errors refuse the save), not when the settings
-    load: a stored value that later fails a rule still loads, and an unusable divider reads 0 V,
-    which the supply check treats as a supply too low to move.
+    load: a stored value that later fails a rule still loads, and an unusable divider reads as
+    unreadable (NaN, since the review; it read 0 V before), which refuses every move.
 25. **The supply calibration only proposes a gain** (from the live reading and the measured volts);
     the person saves it like any setting.
 26. **Flash**: with Ethernet and the analog settings the image is just over the 90 % warning line
     (below the 95 % failure line); it is recorded, and the next spec should look for savings first.
+
+Added with the review clarification (2026-11-23):
+
+27. **Trim ranges**: gain 0.8 to 1.25 for every input, supply offset ±1 V, current offset ±0.5 A.
+    That covers resistor tolerance and a diode's drop. A gain beyond them means a wrong divider,
+    which should be entered as such.
+28. **The ADC's full scale is taken as 2.9 V**, below the ESP32's typical 3.1 V at 11 dB (which
+    varies by chip and bends at the top), so the reach check errs towards refusing. The IS output's
+    5 V caps it too. With the defaults (10k/20k, 8.5 A/V) a side reaches 37.0 A, so with current
+    sense on a limit above that needs a larger ratio or A/V.
+29. **The supply trim may raise a reading by at most 1 V at the minimum supply.** That allows the
+    carrier's 0.3 V diode and a few percent of gain, but not enough to hide a sagging battery. A
+    trim that reads low is never limited by this rule, because it stops the roof sooner.
+30. **A current offset must be below a set broken-wire floor** (`roof.minRunningAmps`), because a
+    sense wire that comes off reads the offset.
+31. **The analog preset no longer follows the board preset**, on the Pins page or in the wizard. The
+    board preset can't tell a carrier v1 from a v1.1, and the two settings apply at different times.
+32. **Stored values from a pre-release build** that fail the new rules still load (as in
+    assumption 24), but the roof refuses every move ("Roof settings invalid") and logs why, until
+    the analog setup is fixed. The Pins page shows the error, and any save must fix it first. No
+    release has shipped the analog settings.
+33. **A backup never restores the analog setup**, as for the pins (assumption 18).
+34. **The lowest driving duty is the slow duty**: ramps and calibration legs never go below it, so
+    the offset's weight while driving is bounded by 100 / `roof.slowDutyPercent` (at most 10x).
+35. **The motion-settings guard (`motionSettingsChanged`) counts `analog`**, but the save that
+    matters is refused earlier: every settings save is a flash write, which is held while the roof
+    moves or a calibration run is under way.
+36. **The offset's weight while driving uses the duty as driven** (255 / the slow duty's step of
+    255, rounded from the float fraction as `Roof::toDuty` does), and the over-current reach takes the worse of the offset at
+    full duty and at the slow duty.
+37. **A positive current offset is not bounded against the current limit** beyond ±0.5 A. At a
+    10 % slow duty, +0.5 A reads about +5 A while driving, which can trip over-current early on a
+    low limit. That fails safe (the roof stops), so it is left to the person to set a smaller
+    offset.
 

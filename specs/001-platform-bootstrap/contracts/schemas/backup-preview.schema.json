@@ -38,7 +38,7 @@
         "properties": {
           "path": { "type": "string" },
           "value": { "description": "The backup's value (left out for a secret)." },
-          "reason": { "type": "string", "enum": ["pushover-keys"] }
+          "reason": { "type": "string", "enum": ["pushover-keys", "board-pins", "board-analog"] }
         },
         "required": ["path", "reason"],
         "additionalProperties": false

@@ -122,6 +122,8 @@ namespace SQM::Backup
         {
         case NotApplicableReason::BoardPins:
             return "board-pins";
+        case NotApplicableReason::BoardAnalog:
+            return "board-analog";
         case NotApplicableReason::PushoverKeys:
             break;
         }

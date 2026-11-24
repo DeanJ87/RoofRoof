@@ -36,12 +36,18 @@ namespace SQM
             Board::BoardId detected = Board::BoardId::Esp32Devkit;
             Board::BoardId board = Board::BoardId::Esp32Devkit; // in effect
             Board::AnalogConfig analog;                         // saved (applied by the roof once no move is under way)
+            Board::AnalogGates gates;                           // the saved roof settings' (Config::analogGates)
         };
         constexpr size_t PINS_DOCUMENT_BYTES = 6144;
         void writePinsDocument(JsonObject out, const PinsView &view);
-        // `analog`: the dividers and trims to check too (nullptr: none sent).
+        // `analog`: the dividers and trims to check too (nullptr: none sent),
+        // against the roof's `gates`.
         void writeValidation(
-            JsonObject out, const Board::PinMap &map, const Board::PinReport &report, const Board::AnalogConfig *analog = nullptr);
+            JsonObject out,
+            const Board::PinMap &map,
+            const Board::PinReport &report,
+            const Board::AnalogConfig *analog,
+            const Board::AnalogGates &gates);
 
         enum class CheckState : uint8_t
         {

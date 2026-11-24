@@ -206,6 +206,7 @@ namespace DemoRoof
         bool mqttOn = false;
         bool settingsPending = false;
         RoofConfig pendingRoof;
+        Board::AnalogConfig pendingAnalog; // spec 023: checked against the roof settings it is applied with
 
         Roof::Controller controller;
         RoofPlant::Plant plant = RoofPlant::forSettings(Roof::Settings(), 0.0f);

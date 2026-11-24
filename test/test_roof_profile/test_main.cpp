@@ -102,6 +102,22 @@ void test_config_enums_and_units_map_to_the_logic(void)
     TEST_ASSERT_EQUAL_UINT32(4000, s.leaveMagnetMs);
 }
 
+// Spec 023 review: an analog setup that fails its checks (stored before a rule
+// existed) makes the settings invalid, so every move is refused.
+void test_an_unusable_analog_setup_refuses_moves(void)
+{
+    RoofConfig config;
+    Settings s = settingsFromConfig(config);
+    TEST_ASSERT_TRUE(validSettings(s));
+    SQM::Board::AnalogConfig analog;
+    TEST_ASSERT_TRUE(SQM::analogUsable(analog, config));
+    analog.preset = SQM::Board::AnalogPreset::Custom;
+    analog.currentRTrim.offset = -5.0f; // allowed before the review: an idle input would read unreadable
+    s.analogUsable = SQM::analogUsable(analog, config);
+    TEST_ASSERT_FALSE(s.analogUsable);
+    TEST_ASSERT_FALSE(validSettings(s));
+}
+
 // A stored value too big for the logic's field becomes invalid, never wraps into range.
 void test_out_of_range_config_is_invalid_not_wrapped(void)
 {
@@ -376,6 +392,7 @@ int main(int, char **)
     RUN_TEST(test_default_settings_are_valid_and_match_the_stored_defaults);
     RUN_TEST(test_config_enums_and_units_map_to_the_logic);
     RUN_TEST(test_out_of_range_config_is_invalid_not_wrapped);
+    RUN_TEST(test_an_unusable_analog_setup_refuses_moves);
     RUN_TEST(test_valid_settings_bounds);
     RUN_TEST(test_hall_unsettled_until_three_equal_readings);
     RUN_TEST(test_hall_thresholds_are_inclusive);
