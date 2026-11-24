@@ -89,7 +89,7 @@ describe('Calibrate', () => {
       if (!el) throw new Error('no blockers yet');
       return el as HTMLElement;
     });
-    expect(row).toHaveTextContent('Weather check: unsafe (unsafe: rain)');
+    expect(row).toHaveTextContent('Weather check: unsafe: rain');
     expect(row).toHaveTextContent('Clears once SQMeter reports safe.');
     expect(within(row).getByRole('button', { name: 'Weather check settings' })).toBeInTheDocument();
     // Listed once on the page: the jog and the run share it.
@@ -126,7 +126,7 @@ describe('Calibrate', () => {
     render(<Calibrate />);
     fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof and can see it' }));
     expect(screen.getByRole('button', { name: 'Start calibration' })).toBeDisabled();
-    expect(startCard().getByText('Weather check: unsafe (unsafe: rain)')).toBeInTheDocument();
+    expect(startCard().getByText('Weather check: unsafe: rain')).toBeInTheDocument();
   });
 
   it('shows the device refusal', async () => {

@@ -93,7 +93,7 @@ const weatherBlocker = (roof: RoofStatus): Blocker | null => {
   return make(
     'weather',
     'warn',
-    t(unsafe ? 'move.weatherUnsafe' : 'move.weatherUnknown', { text }),
+    t('move.weather', { text }), // the device's text says unsafe or why it doubts
     t('move.weatherWhy'),
     t(unsafe ? 'move.clears.weather' : 'move.clears.weatherUnknown'),
     settings('safety', 'move.fix.weather'),
