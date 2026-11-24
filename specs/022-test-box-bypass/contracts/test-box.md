@@ -61,5 +61,5 @@ attributes the `roof.testBox` object, from the `<base>/state` topic.
 ## Alert
 
 Event `test_box` ("Test box mode on"): "Checks bypassed for a test box: {reason}. Faults still stop
-the roof." `{reason}` is the status text. Sent on its own, past the master switch, the pause and the
-send mode.
+the roof." `{reason}` is the status text. Amended (spec assumption 17): held by the master switch,
+the pause and the send mode like any other alert, and not repeated on a restart.

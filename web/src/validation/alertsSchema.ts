@@ -19,7 +19,7 @@ const checkCriticalEvents = (events: EventSettings, ctx: z.RefinementCtx) => {
   }
 };
 
-// Spec 022: the test box reminder is never off.
+// Spec 022: the test box alert's level is never off.
 const checkTestBoxEvent = (events: EventSettings, ctx: z.RefinementCtx) => {
   const event = events.test_box;
   if (event && event.level < 1)

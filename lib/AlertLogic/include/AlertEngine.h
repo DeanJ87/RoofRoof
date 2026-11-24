@@ -156,8 +156,8 @@ namespace SQM
             uint8_t testBox = 0;
             std::string testBoxText;
             // The bypasses in effect are decided (with one set, the clock is
-            // set). The first decided pass is the baseline: bypasses already in
-            // effect then were announced before the restart, never again.
+            // set). The first decided passes are the baseline: bypasses already
+            // in effect then were announced before the restart, never again.
             bool testBoxSettled = false;
         };
 
@@ -296,7 +296,7 @@ namespace SQM
             // whether a newly seen one waits to be announced.
             uint8_t testBoxSeen = 0;
             bool testBoxPending = false;
-            bool testBoxBaseline = false;
+            uint8_t testBoxSettledPasses = 0; // 2: the baseline is taken
             void updateTestBox(const RoofInputs &roof, const AlertRules &rules, bool inGrace, std::vector<Alert> &alerts);
             static bool rise(Tracker &tracker, bool current, const Emit &emit, bool inGrace);
             static bool counted(Count &count, uint32_t value, const std::string &text, const Emit &emit, bool inGrace);

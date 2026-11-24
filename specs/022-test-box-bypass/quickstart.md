@@ -27,7 +27,7 @@ cd web && npx vitest run TestBox Wizard review configSchema settingsDeps && npx 
 - With the bypasses on, unplug the Hall sensor (rail): the move stops with the Hall fault and
   latches as before. Drop the 12 V supply below the minimum: refused/latched as before.
 - With a park switch fitted and open: Close is refused.
-- An alert channel set up: "Test box mode on" arrives at the save and after a restart.
+- An alert channel set up: "Test box mode on" arrives at the save, not again after a restart (spec assumption 17).
 - Home Assistant: the "Test box" problem sensor is on with its attributes.
 - N.I.N.A.'s Dome description starts with "TEST BOX".
 - Set hours to 1 and wait: after the hour the banner says expired and Open is refused again.

@@ -129,7 +129,7 @@ const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_di
 export const CRITICAL_EVENTS: AlertEventKey[] = ['mount_not_parked', 'roof_not_closed'];
 export const isCriticalEvent = (key: AlertEventKey) => CRITICAL_EVENTS.includes(key);
 export const CRITICAL_LEVEL_OPTIONS = LEVEL_OPTIONS.filter((option) => Number(option.value) >= 3);
-// Spec 022: the test box reminder is never off.
+// Spec 022: the test box alert's level is never off.
 export const levelOptionsFor = (key: AlertEventKey) =>
   isCriticalEvent(key)
     ? CRITICAL_LEVEL_OPTIONS

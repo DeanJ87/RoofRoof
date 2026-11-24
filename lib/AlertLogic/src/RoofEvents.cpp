@@ -141,9 +141,11 @@ namespace SQM
         {
             if (!roof.testBoxSettled)
                 return;
-            if (!testBoxBaseline)
+            // Two decided passes in a row that agree: a copy of the inputs taken
+            // while they were being written can't set the baseline.
+            if (testBoxSettledPasses < 2)
             {
-                testBoxBaseline = true;
+                testBoxSettledPasses = testBoxSettledPasses == 1 && roof.testBox == testBoxSeen ? 2 : 1;
                 testBoxSeen = roof.testBox;
                 return;
             }

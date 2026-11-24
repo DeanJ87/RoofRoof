@@ -155,11 +155,24 @@ void test_no_alert_when_the_clock_sets_after_a_boot(void)
     TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 300, TestBox::BitPark)));
 }
 
+// A first decided pass that disagrees with the next (a copy torn while it was
+// written) doesn't set the baseline: no spurious alert after the grace.
+void test_a_torn_first_pass_is_not_the_baseline(void)
+{
+    Alerts::AlertEngine engine;
+    pass(engine, 100, 0);
+    pass(engine, 101, TestBox::BitPark);
+    pass(engine, 102, TestBox::BitPark);
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 161, TestBox::BitPark)));
+    TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 300, TestBox::BitPark)));
+}
+
 // A bypass switched on during the grace is sent once the grace is over.
 void test_the_alert_held_through_the_grace(void)
 {
     Alerts::AlertEngine engine;
     pass(engine, 100, 0);
+    pass(engine, 101, 0); // the baseline: two decided passes that agree
     TEST_ASSERT_EQUAL_size_t(0, testBoxAlerts(pass(engine, 130, TestBox::BitPark)));
     const std::vector<Alerts::Alert> sent = pass(engine, 161, TestBox::BitPark);
     TEST_ASSERT_EQUAL_size_t(1, testBoxAlerts(sent));
@@ -224,6 +237,7 @@ int main(int, char **)
     RUN_TEST(test_the_dome_description);
     RUN_TEST(test_no_alert_after_a_boot_with_a_bypass_in_effect);
     RUN_TEST(test_no_alert_when_the_clock_sets_after_a_boot);
+    RUN_TEST(test_a_torn_first_pass_is_not_the_baseline);
     RUN_TEST(test_the_alert_held_through_the_grace);
     RUN_TEST(test_the_alert_on_each_bypass_coming_into_effect);
     RUN_TEST(test_the_alert_rule_off_sends_nothing);

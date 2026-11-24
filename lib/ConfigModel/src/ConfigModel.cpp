@@ -87,7 +87,7 @@ namespace SQM
             if (!audibleSound(event->sound))
                 event->sound.clear();
         }
-        // Spec 022: the test box reminder is never off.
+        // Spec 022: the test box alert's level is never off.
         if (testBox.level < MIN_TEST_BOX_LEVEL)
             testBox.level = MIN_TEST_BOX_LEVEL;
     }
