@@ -47,6 +47,14 @@ namespace
         return leg;
     }
 
+    size_t warned(const Proposal &p, const char *reason)
+    {
+        size_t n = 0;
+        for (const Problem &w : p.warnings)
+            n += w.reason == reason ? 1 : 0;
+        return n;
+    }
+
     // A good run at the default roof: 38 mm/s, the open end high.
     Measurements good(float openSpeed = 38.0f, float closeSpeed = 38.0f)
     {
@@ -147,8 +155,11 @@ void test_speed_from_the_slow_legs(void)
     const Proposal p = propose(good(41.0f, 41.0f), Roof::Settings());
     TEST_ASSERT_TRUE(p.speed);
     TEST_ASSERT_FLOAT_WITHIN(0.051f, 41.0f, p.speedMmPerSecond);
+    TEST_ASSERT_FLOAT_WITHIN(0.051f, 41.0f * 0.4f, p.slowSpeedMmPerSecond); // measured, not scaled
     TEST_ASSERT_EQUAL_UINT32(1850, p.travelMm);
-    TEST_ASSERT_TRUE(p.warnings.empty());
+    // Without a top-duty pass the full speed is scaled up from the slow one, and the result says so.
+    TEST_ASSERT_EQUAL(1, p.warnings.size());
+    TEST_ASSERT_EQUAL(1, warned(p, "fullSpeedEstimated"));
 }
 
 void test_speed_is_rounded_to_a_tenth(void)
@@ -165,10 +176,36 @@ void test_speed_from_the_top_legs_when_run(void)
     m.legCount = 4;
     const Proposal p = propose(m, Roof::Settings());
     TEST_ASSERT_FLOAT_WITHIN(0.051f, 38.0f, p.speedMmPerSecond);
-    // The margin covers the slow legs taking longer than 38 mm/s predicts.
-    const double slowMs = m.legs[0].drivenMs;
-    const double shortfall = slowMs - slowMs * 30.0 / 38.0;
-    TEST_ASSERT_TRUE(p.timeoutMarginSeconds * 1000.0 >= 1.5 * shortfall + 3000.0);
+    TEST_ASSERT_FLOAT_WITHIN(0.051f, 12.0f, p.slowSpeedMmPerSecond);
+    TEST_ASSERT_EQUAL(0, warned(p, "fullSpeedEstimated"));
+    // A move from an unknown position, at the slow duty, now fits the slow legs' time.
+    Roof::Settings now;
+    now.speedMmPerSecond = p.speedMmPerSecond;
+    now.slowSpeedMmPerSecond = p.slowSpeedMmPerSecond;
+    now.timeoutMarginMs = p.timeoutMarginSeconds * 1000;
+    TEST_ASSERT_TRUE(Roof::unknownMoveTimeoutMs(now) >= m.legs[0].drivenMs + 3000);
+}
+
+// A heavy roof: 40 % duty gives a quarter of the full speed (a deadband of 20 %),
+// and the top-duty legs spend part of their time at the slow duty. The full
+// speed comes out right, not distorted by taking speed as proportional to duty.
+void test_the_full_speed_allows_for_a_slow_duty_slower_than_proportional(void)
+{
+    Measurements m = good(25.0f, 25.0f); // 10 mm/s at 40 %, 185 s a slow travel
+    MeasuredLeg top = legAt(LegKind::TopOpen, 100, 40.0f, 1850);
+    // 20 s at 10 mm/s near the end, the rest (1650 mm) at 40 mm/s.
+    top.drivenMs = 20000 + 41250;
+    top.dutyMs = 20000 * 0.4f + 41250;
+    m.legs[2] = top;
+    m.legs[3] = top;
+    m.legs[3].kind = LegKind::TopClose;
+    m.legCount = 4;
+    const Proposal p = propose(m, Roof::Settings());
+    TEST_ASSERT_TRUE(p.speed);
+    TEST_ASSERT_FLOAT_WITHIN(0.051f, 10.0f, p.slowSpeedMmPerSecond);
+    TEST_ASSERT_FLOAT_WITHIN(0.15f, 40.0f, p.speedMmPerSecond);
+    // Proportional to duty, the same legs would imply only 1850 / 49.25 s = 37.6 mm/s.
+    TEST_ASSERT_TRUE(legSpeed(top, 1850) < 38.0f);
 }
 
 void test_disagreeing_legs_withhold_the_speed(void)
@@ -183,8 +220,7 @@ void test_legs_disagreeing_a_little_are_warned_about(void)
 {
     const Proposal p = propose(good(38.0f, 32.0f), Roof::Settings());
     TEST_ASSERT_TRUE(p.speed);
-    TEST_ASSERT_EQUAL(1, p.warnings.size());
-    TEST_ASSERT_EQUAL_STRING("directionsDiffer", p.warnings[0].reason.c_str());
+    TEST_ASSERT_EQUAL(1, warned(p, "directionsDiffer"));
 }
 
 void test_a_too_short_leg_withholds_the_speed(void)
@@ -209,6 +245,10 @@ void test_a_speed_out_of_range_is_withheld(void)
     const Proposal p = propose(m, Roof::Settings());
     TEST_ASSERT_FALSE(p.speed);
     TEST_ASSERT_EQUAL_STRING("outOfRange", p.speedProblem.reason.c_str());
+    // A slow speed under 1 mm/s is out of range too, whatever the full speed.
+    const Proposal crawl = propose(good(2.0f, 2.0f), Roof::Settings());
+    TEST_ASSERT_FALSE(crawl.speed);
+    TEST_ASSERT_EQUAL_STRING("outOfRange", crawl.speedProblem.reason.c_str());
 }
 
 void test_the_margin_is_at_least_five_seconds_and_a_fifth_of_a_move(void)
@@ -225,9 +265,14 @@ void test_the_margin_is_at_least_five_seconds_and_a_fifth_of_a_move(void)
 
 void test_the_margin_stays_in_its_range(void)
 {
-    Measurements m = good(1.2f, 1.2f); // a very slow roof: a long move
-    m.travelMm = 1850;
-    const Proposal p = propose(m, Roof::Settings());
+    // A very slow roof (1.25 mm/s, 1 mm/s at an 80 % slow duty): a long move.
+    Measurements m = good();
+    m.travelMm = 3000;
+    m.legs[0] = legAt(LegKind::SlowOpen, 80, 1.25f, 3000);
+    m.legs[1] = legAt(LegKind::SlowClose, 80, 1.25f, 3000);
+    Roof::Settings s;
+    s.slowDutyPercent = 80;
+    const Proposal p = propose(m, s);
     TEST_ASSERT_TRUE(p.speed);
     TEST_ASSERT_EQUAL_UINT32(RoofConfig::MAX_TIMEOUT_MARGIN_SECONDS, p.timeoutMarginSeconds);
 }
@@ -350,13 +395,12 @@ void test_a_peak_current_near_the_limit_is_warned_about(void)
     m.currentSense = true;
     m.maxCurrentAmps = 10.0f;
     m.legs[0].electrical.addAmps(7.9f);
-    TEST_ASSERT_TRUE(propose(m, Roof::Settings()).warnings.empty());
+    TEST_ASSERT_EQUAL(0, warned(propose(m, Roof::Settings()), "currentNearLimit"));
     m.legs[1].electrical.addAmps(8.0f);
     const Proposal p = propose(m, Roof::Settings());
-    TEST_ASSERT_EQUAL(1, p.warnings.size());
-    TEST_ASSERT_EQUAL_STRING("currentNearLimit", p.warnings[0].reason.c_str());
+    TEST_ASSERT_EQUAL(1, warned(p, "currentNearLimit"));
     m.currentSense = false;
-    TEST_ASSERT_TRUE(propose(m, Roof::Settings()).warnings.empty());
+    TEST_ASSERT_EQUAL(0, warned(propose(m, Roof::Settings()), "currentNearLimit"));
 }
 
 void test_leg_names(void)
@@ -382,6 +426,7 @@ int main(int, char **)
     RUN_TEST(test_speed_from_the_slow_legs);
     RUN_TEST(test_speed_is_rounded_to_a_tenth);
     RUN_TEST(test_speed_from_the_top_legs_when_run);
+    RUN_TEST(test_the_full_speed_allows_for_a_slow_duty_slower_than_proportional);
     RUN_TEST(test_disagreeing_legs_withhold_the_speed);
     RUN_TEST(test_legs_disagreeing_a_little_are_warned_about);
     RUN_TEST(test_a_too_short_leg_withholds_the_speed);

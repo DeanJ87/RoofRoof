@@ -85,6 +85,8 @@ namespace SQM
         constexpr uint32_t MIN_LIMIT_MS = 30000;
         constexpr uint32_t MAX_LIMIT_MS = 600000;
         constexpr uint32_t MAX_PLANNED_LEGS = 5;
+        // A slow leg that used more than this fraction of the limit is warned about.
+        constexpr double SLOW_LEG_WARN_FRACTION = 0.75;
 
         struct Request
         {
@@ -186,6 +188,7 @@ namespace SQM
             void awaitConfirmation(uint32_t nowMs);
             void finish(Ending ending, const std::string &text);
             void finishDone();
+            std::string faultHint(Roof::FaultKind kind) const;
 
             Report rep;
             LegKind legs[MAX_PLANNED_LEGS] = {};

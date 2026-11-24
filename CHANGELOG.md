@@ -34,6 +34,11 @@ All notable changes to RoofRoof are documented here.
 - The local rain contact is removed: rain comes only from SQMeter (its rain gauge, `reasonFlags` bits 9 and 10, or its MQTT safe topic), which is unchanged. The `safety.rainContact` setting, its reading, `roof.rainContact` in the status, `weather.rainContact` in `GET /api/roof/inputs`, the wizard question, the Settings row and the dashboard row are gone; a saved or restored `safety.rainContact` is dropped without an error, and a save that still sends it is accepted. GPIO4 is free (the WT32 carrier uses its IO4 for EN). Constitution 4.0.0 records it, with the risk it leaves (a gauge that misses rain while SQMeter stays healthy), and words Principle I for configurable pins: the boot reads the saved settings, then drives EN and both PWM low, and an invalid pin set drives nothing (spec 023).
 - New logo: RoofRoof's dog, the wizard's mascot, replaces the observatory mark in the web UI header, the browser tab icon, the docs, the app icon, the social cards, banners and stickers. The same dog is used at every size, down to the 16 px tab icon (spec 018).
 
+### Fixed
+
+- Calibration run started from the open end: the page's **Where the roof is now** kept the position from when the page opened, so after a jog or a move to the open end it still said closed, and the run's slow open pushed into the open end until the `didNotLeave` fault. The choice now follows the roof's reading until you change it, warns when you pick the other end, and that fault's ending says what to check. A leg that times out names the limit to raise (`roof.calibrationLimitSeconds`, and `roof.slowDutyPercent` for a slow leg), a slow leg near the limit is warned about, and the note above **Start calibration** gives each leg's limit (spec 016).
+- A heavy roof timed out moving from an unknown position: the slow duty's speed was taken as proportional to the duty. New setting `roof.slowSpeedMmPerSecond` (0 until measured), which the calibration run measures and proposes; moves from an unknown position, the drive budget and the slow phases of every move are timed from it, the full speed from the top-duty pass allows for it, and the result shows the open or close limit and the slow-duty limit before and after (spec 016).
+
 ## [0.0.0] - 2026-11-10
 
 Repository started. No firmware released.

@@ -67,6 +67,9 @@ namespace SQM
         {
             uint32_t travelMm = 1850;
             float speedMmPerSecond = 38.0f; // at 100% duty; scaled by the duty (research R2)
+            // At the slow duty, as a calibration run measured it; 0 = not measured
+            // (the full speed scaled by the slow duty). Affine in between (MotionProfile).
+            float slowSpeedMmPerSecond = 0.0f;
             uint32_t timeoutMarginMs = 15000;
             uint32_t leaveMagnetMs = 10000;
             uint32_t rampUpMs = 2000;

@@ -432,6 +432,7 @@ void test_roof_every_field_round_trips()
     Config cfg = Config::createDefault();
     cfg.roof.travelMm = 4200;
     cfg.roof.speedMmPerSecond = 61.5f;
+    cfg.roof.slowSpeedMmPerSecond = 9.4f;
     cfg.roof.timeoutMarginSeconds = 44;
     cfg.roof.leaveMagnetSeconds = 33;
     cfg.roof.calibrationLimitSeconds = 240;
@@ -456,6 +457,7 @@ void test_roof_every_field_round_trips()
     const RoofConfig &r = loaded->roof;
     TEST_ASSERT_EQUAL_UINT32(4200, r.travelMm);
     TEST_ASSERT_EQUAL_FLOAT(61.5f, r.speedMmPerSecond);
+    TEST_ASSERT_EQUAL_FLOAT(9.4f, r.slowSpeedMmPerSecond);
     TEST_ASSERT_EQUAL_UINT32(44, r.timeoutMarginSeconds);
     TEST_ASSERT_EQUAL_UINT32(33, r.leaveMagnetSeconds);
     TEST_ASSERT_EQUAL_UINT32(240, r.calibrationLimitSeconds);
@@ -481,6 +483,7 @@ void test_roof_defaults_match_the_spec_and_are_valid()
     TEST_ASSERT_EQUAL_UINT32(1850, r.travelMm);
     TEST_ASSERT_EQUAL_UINT32(40, r.slowDutyPercent);
     TEST_ASSERT_EQUAL_UINT32(180, r.calibrationLimitSeconds);
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, r.slowSpeedMmPerSecond); // not measured: the speed scaled by the slow duty
     TEST_ASSERT_FALSE(r.currentSenseEnabled);
     TEST_ASSERT_TRUE(r.openDirection == RoofConfig::Direction::Forward);
     TEST_ASSERT_TRUE(r.hallHighEnd == RoofConfig::HallEnd::Open);
@@ -511,6 +514,11 @@ void test_roof_out_of_range_says_which_setting()
 {
     TEST_ASSERT_EQUAL_STRING("Roof: travel must be between 100 and 20000 mm", roofReason("{\"travelMm\":99}").c_str());
     TEST_ASSERT_EQUAL_STRING("Roof: speed must be between 1 and 500 mm/s", roofReason("{\"speedMmPerSecond\":501}").c_str());
+    const char *slow = "Roof: slow speed must be 0 (not measured) or between 1 and 500 mm/s";
+    TEST_ASSERT_EQUAL_STRING(slow, roofReason("{\"slowSpeedMmPerSecond\":0.5}").c_str());
+    TEST_ASSERT_EQUAL_STRING(slow, roofReason("{\"slowSpeedMmPerSecond\":500.5}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", roofReason("{\"slowSpeedMmPerSecond\":0}").c_str());
+    TEST_ASSERT_EQUAL_STRING("", roofReason("{\"slowSpeedMmPerSecond\":1}").c_str());
     TEST_ASSERT_EQUAL_STRING("Roof: ramp down must be between 0 and 30000 ms", roofReason("{\"rampDownMs\":30001}").c_str());
     const char *limit = "Roof: calibration time limit must be between 30 and 600 seconds";
     TEST_ASSERT_EQUAL_STRING(limit, roofReason("{\"calibrationLimitSeconds\":29}").c_str());
@@ -524,6 +532,7 @@ void test_roof_at_every_maximum_fits_the_persisted_size()
     Config cfg = Config::createDefault();
     cfg.roof.travelMm = 20000;
     cfg.roof.speedMmPerSecond = 500.0f;
+    cfg.roof.slowSpeedMmPerSecond = 499.9f;
     cfg.roof.timeoutMarginSeconds = 300;
     cfg.roof.leaveMagnetSeconds = 120;
     cfg.roof.calibrationLimitSeconds = 600;

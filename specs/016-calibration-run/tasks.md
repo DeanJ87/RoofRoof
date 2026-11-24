@@ -61,3 +61,13 @@ setting, firmware, demo, web and docs.
 - [X] T021 Round 2: the person confirms the open end after the slow open (`POST /api/roof/calibration/confirm`, phase `confirm`, endings `wrongEnd` and `unconfirmed`), with tests for a backwards motor from part-way and with a wrong answer; top legs slow down allowing a deadband of half the slow duty (tested at 30 %/0.2, 40 %/0.3); the close sequence's idle state read under the roof's lock; page, demo, routes, OpenAPI, docs
 - [X] T022 Round 3: the park interlock watches every calibration leg; the top pass is skipped after disagreeing slow legs; a fast leg without a slow-down point is refused; a tautological test assertion replaced
 - [X] T023 Round 4: a unit test of the calibration branch of the park interlock; flash and UI baselines; converge: no remaining gap
+
+## Phase 11: Fix 2026-11-24 (started at the open end; a heavy roof's slow duty)
+
+- [X] T024 Reproduce: native (`test_calibration_run`: each start position's legs; `closed` said at the open end ends at `didNotLeave`) and Playwright (`tests/calibrate.spec.ts`: the form still said closed after the roof opened)
+- [X] T025 Web: the start form follows the roof's reading until the person picks, warns on a disagreeing pick, and gives each leg's limit above Start; Vitest
+- [X] T026 `lib/CalibrationLogic`: a timed-out leg names its limit (and the slow duty), `didNotLeave` on the first leg says what to check, a slow leg over 75 % of the limit is warned about; native tests
+- [X] T027 `roof.slowSpeedMmPerSecond` through ConfigModel, `Roof::Settings`, the settings guard, zod, the range fixture, the settings-deps catalogue, mocks and Settings → Roof
+- [X] T028 `MotionProfile`: speed affine in the duty from the measured slow speed (unknown-position timeout, drive budget, estimate, slow phases); proportional when 0; native tests including a heavy simulated roof
+- [X] T029 The proposal: the slow speed, the full speed from the top-duty legs allowing for it, a warning without a top-duty pass; the document's `slowSpeedMmPerSecond`, `moveLimitSeconds` and `slowLimitSeconds`; the result's rows; contract schemas, OpenAPI, device catalogue, demo core
+- [X] T030 Docs (calibration run, configuration, CHANGELOG), the Playwright runs from open, closed and part-way, every check, reviews

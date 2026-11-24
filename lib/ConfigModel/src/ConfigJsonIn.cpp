@@ -287,6 +287,7 @@ namespace SQM
                 return true;
             roof.take("travelMm", r.travelMm);
             roof.take("speedMmPerSecond", r.speedMmPerSecond);
+            roof.take("slowSpeedMmPerSecond", r.slowSpeedMmPerSecond);
             roof.take("timeoutMarginSeconds", r.timeoutMarginSeconds);
             roof.take("leaveMagnetSeconds", r.leaveMagnetSeconds);
             roof.take("calibrationLimitSeconds", r.calibrationLimitSeconds);

@@ -69,10 +69,12 @@ export const startBlocked = (checks: CalibrationCheck[], attended: boolean, live
   return attended ? '' : t('calibrate.reason.notAttended');
 };
 
-export type ProposalKey = 'travelMm' | 'speedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
+export type ProposalKey =
+  'travelMm' | 'speedMmPerSecond' | 'slowSpeedMmPerSecond' | 'timeoutMarginSeconds' | 'hallHighEnd' | 'hallHighCounts' | 'hallLowCounts';
 export const PROPOSAL_KEYS: ProposalKey[] = [
   'travelMm',
   'speedMmPerSecond',
+  'slowSpeedMmPerSecond',
   'timeoutMarginSeconds',
   'hallHighEnd',
   'hallHighCounts',

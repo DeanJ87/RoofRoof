@@ -205,6 +205,9 @@ namespace SQM
                 return setError(error, "Roof: travel must be between 100 and 20000 mm");
             if (!inRange(r.speedMmPerSecond, RoofConfig::MIN_SPEED_MM_PER_SECOND, RoofConfig::MAX_SPEED_MM_PER_SECOND))
                 return setError(error, "Roof: speed must be between 1 and 500 mm/s");
+            if (r.slowSpeedMmPerSecond != 0.0f &&
+                !inRange(r.slowSpeedMmPerSecond, RoofConfig::MIN_SPEED_MM_PER_SECOND, RoofConfig::MAX_SPEED_MM_PER_SECOND))
+                return setError(error, "Roof: slow speed must be 0 (not measured) or between 1 and 500 mm/s");
             if (r.timeoutMarginSeconds < RoofConfig::MIN_TIMEOUT_MARGIN_SECONDS ||
                 r.timeoutMarginSeconds > RoofConfig::MAX_TIMEOUT_MARGIN_SECONDS)
                 return setError(error, "Roof: timeout margin must be between 3 and 300 seconds");

@@ -296,6 +296,63 @@
           ],
           "additionalProperties": false
         },
+        "moveLimitSeconds": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "new": {
+              "type": "number"
+            },
+            "old": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "new",
+            "old"
+          ],
+          "additionalProperties": false
+        },
+        "slowLimitSeconds": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "new": {
+              "type": "number"
+            },
+            "old": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "new",
+            "old"
+          ],
+          "additionalProperties": false
+        },
+        "slowSpeedMmPerSecond": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "new": {
+              "type": "number"
+            },
+            "old": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "new",
+            "old"
+          ],
+          "additionalProperties": false
+        },
         "speedMmPerSecond": {
           "type": [
             "null",
@@ -394,6 +451,9 @@
         "hallHighEnd",
         "hallLowCounts",
         "hallProblem",
+        "moveLimitSeconds",
+        "slowLimitSeconds",
+        "slowSpeedMmPerSecond",
         "speedMmPerSecond",
         "speedProblem",
         "timeoutMarginSeconds",

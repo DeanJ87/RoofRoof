@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include "MotionGuards.h"
 #include "RoofText.h"
@@ -95,11 +96,50 @@ namespace SQM
                 return finish(
                     Ending::Fault,
                     "Fault on the " + legText(rep.leg) + ": " +
-                        (faulted ? in.faultText : std::string("latched and cleared during the run")));
+                        (faulted ? in.faultText + faultHint(controller.status().fault.kind)
+                                 : std::string("latched and cleared during the run")));
             if (rep.phase == Phase::Drive)
                 stepDrive(controller, in);
             else
                 stepPause(controller, in);
+        }
+
+        // What to change after a leg's fault, where the run can tell.
+        std::string Run::faultHint(Roof::FaultKind kind) const
+        {
+            char text[200];
+            const bool slow = rep.leg != LegKind::TopOpen && rep.leg != LegKind::TopClose;
+            if ((kind == Roof::FaultKind::Timeout || kind == Roof::FaultKind::DriveBudget) && rep.legLimitMs < rep.limitMs)
+                return ". This leg's limit came from the slow leg measured before it: the roof ran much slower this time";
+            if (kind == Roof::FaultKind::Timeout || kind == Roof::FaultKind::DriveBudget)
+            {
+                std::snprintf(
+                    text,
+                    sizeof(text),
+                    ". Each leg may drive for roof.calibrationLimitSeconds (%u s): raise it, up to 600 s",
+                    static_cast<unsigned>(rep.limitMs / 1000));
+                std::string hint = text;
+                if (slow)
+                {
+                    std::snprintf(
+                        text,
+                        sizeof(text),
+                        ", or roof.slowDutyPercent (%u %%) if the roof may run faster at the ends",
+                        static_cast<unsigned>(rep.old.slowDutyPercent));
+                    hint += text;
+                }
+                return hint;
+            }
+            if (kind == Roof::FaultKind::DidNotLeave && rep.legIndex == 0)
+            {
+                std::snprintf(
+                    text,
+                    sizeof(text),
+                    ". Check that the roof was %s, as the start said, and roof.openDirection",
+                    rep.request.at == Where::Open ? "open" : "closed");
+                return text;
+            }
+            return "";
         }
 
         void Run::sample(const Roof::Status &status, const StepInputs &in)

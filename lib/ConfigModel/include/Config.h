@@ -252,6 +252,10 @@ namespace SQM
 
         uint32_t travelMm = 1850;
         float speedMmPerSecond = 38.0f; // at 100% duty
+        // At the slow duty, measured by a calibration run; 0 = not measured (the
+        // speed scaled by the slow duty). Moves from an unknown position and the
+        // drive budget are timed from it.
+        float slowSpeedMmPerSecond = 0.0f;
         uint32_t timeoutMarginSeconds = 15;
         uint32_t leaveMagnetSeconds = 10;
         uint32_t rampUpMs = 2000;

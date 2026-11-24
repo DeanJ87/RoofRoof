@@ -1033,6 +1033,9 @@
         "slowDutyPercent": {
           "type": "number"
         },
+        "slowSpeedMmPerSecond": {
+          "type": "number"
+        },
         "speedMmPerSecond": {
           "type": "number"
         },
@@ -1061,6 +1064,7 @@
         "rampDownMs",
         "rampUpMs",
         "slowDutyPercent",
+        "slowSpeedMmPerSecond",
         "speedMmPerSecond",
         "timeoutMarginSeconds",
         "topDutyPercent",

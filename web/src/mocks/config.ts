@@ -51,6 +51,7 @@ export const mockConfig: Config = {
   roof: {
     travelMm: 1850,
     speedMmPerSecond: 38,
+    slowSpeedMmPerSecond: 0,
     timeoutMarginSeconds: 15,
     leaveMagnetSeconds: 10,
     calibrationLimitSeconds: 180,
