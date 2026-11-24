@@ -147,7 +147,7 @@ describe('RoofCard', () => {
     );
     show(live(status({ state: 'stopped' })));
     fireEvent.click(button('Open'));
-    expect(await screen.findByText('Open: The device is restarting')).toBeInTheDocument();
+    expect((await screen.findAllByText('The device is restarting')).length).toBeGreaterThan(0);
     expect(button('Close')).toBeDisabled();
     expect(button('Stop')).toBeEnabled();
   });
@@ -178,7 +178,7 @@ describe('RoofCard', () => {
     show(live(status({ state: 'error', fault: FAULT })));
     expect(screen.getByText('No target magnet after 61 s >= 60 s timeout')).toBeInTheDocument();
     expect(button('Open')).toBeDisabled();
-    expect(screen.getByText('Open: Fault: clear it first')).toBeInTheDocument();
+    expect(screen.getByText('Fault: clear it first')).toBeInTheDocument();
     fireEvent.click(button('Clear fault'));
     await waitFor(() => expect(cleared).toBe(true));
   });

@@ -90,10 +90,12 @@ const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
 // A button's reason no blocker covers ("Already closed", "Restarting"), as its own note.
 const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }, covered: WhyView['covered']) => {
   const notes: ComponentChildren[] = [];
+  // Spec 026: a reason both buttons share (a fault, a restart) is said once, for both, unprefixed.
+  const shared = Boolean(open.reason) && open.reason === close.reason && !covered.open && !covered.close;
   if (open.reason && !covered.open)
     notes.push(
       <Note key="open" id={ids.open}>
-        {t('roof.reason.openPrefix', { reason: open.reason })}
+        {shared ? open.reason : t('roof.reason.openPrefix', { reason: open.reason })}
       </Note>,
     );
   // A reason both share shows once, on the open note, unless that note isn't shown.

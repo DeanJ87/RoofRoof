@@ -31,9 +31,12 @@ export interface ProposalRow {
   changed: boolean;
 }
 
+// A measured speed arrives as a float ("38.79999924"): two decimals are plenty, here and when saved.
+const tidy = (value: number) => Math.round(value * 100) / 100;
+
 const shown = (key: ProposalKey, value: number | string): string => {
   if (key === 'hallHighEnd') return value === 'open' ? t('settings.roof.endOpen') : t('settings.roof.endClosed');
-  return String(value);
+  return String(typeof value === 'number' ? tidy(value) : value);
 };
 
 /** Each proposed value beside the value saved now (not the one at the start of the run). */
@@ -68,7 +71,7 @@ export const acceptedRoof = (proposal: CalibrationProposal, roof: RoofConfig): R
   for (const key of PROPOSAL_KEYS) {
     const pair = proposal[key];
     if (!pair) continue;
-    (next as unknown as Record<string, unknown>)[key] = pair.new;
+    (next as unknown as Record<string, unknown>)[key] = typeof pair.new === 'number' ? tidy(pair.new) : pair.new;
     measured |= MEASURED_BIT[key];
   }
   // The slow speed belongs to the slow duty it was measured at (it counts only while that is the slow duty).
