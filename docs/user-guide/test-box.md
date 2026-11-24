@@ -77,9 +77,10 @@ You can't miss it:
   passes, because the device allows the move;
 - the Alpaca Dome's description starts `TEST BOX (bypassed: ...): `;
 - Home Assistant has a **Test box bypass** sensor ([MQTT](mqtt.md#home-assistant));
-- an alert, **Test box mode on**, goes out when a bypass comes into effect and again after every
-  restart while one is in effect ([Alerts](alerts.md#the-roof)), even with alerts off or paused, on
-  any channel that is set up. It can't be switched off (its level never goes below Quiet);
+- an alert, **Test box mode on**, goes out when a bypass comes into effect
+  ([Alerts](alerts.md#the-roof)). It is an ordinary alert: **Send alerts** off or alerts paused
+  hold it back, and a restart alone doesn't send it again. The banner and the status are what
+  keep a bypass in view; its level never goes below Quiet;
 - the log carries warnings.
 
 ## Turn it on

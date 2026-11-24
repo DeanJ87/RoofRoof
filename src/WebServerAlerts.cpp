@@ -116,7 +116,6 @@ namespace SQM
     {
         if (step.outgoing.empty())
             return;
-        // Spec 022: the test box reminder goes out on its own, past the pause and the send mode.
         for (const Alerts::Alert &alert : Core::alertsToSend(step.outgoing, cfg.alerts, alertSchedule.state().sending))
             alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
     }

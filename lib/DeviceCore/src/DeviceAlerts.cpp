@@ -157,23 +157,19 @@ namespace SQM
         {
             // The roof's critical alerts: past the master switch, the pause,
             // the send mode and the grace (spec 005 FR-014, spec 007 FR-004).
-            return Alerts::isCritical(type) || type == Alerts::AlertType::TestBox || (alerts.enabled && sending);
+            // Everything else, the test box's included, waits for both.
+            return Alerts::isCritical(type) || (alerts.enabled && sending);
         }
 
         std::vector<Alerts::Alert> alertsToSend(const std::vector<Alerts::Alert> &outgoing, const AlertsConfig &alerts, bool sending)
         {
             std::vector<Alerts::Alert> scheduled;
-            std::vector<Alerts::Alert> out;
             for (const Alerts::Alert &alert : outgoing)
-            {
-                if (alert.type == Alerts::AlertType::TestBox)
-                    out.push_back(alert);
-                else if (alertGoesOut(alert.type, alerts, sending))
+                if (alertGoesOut(alert.type, alerts, sending))
                     scheduled.push_back(alert);
-            }
-            if (!scheduled.empty())
-                out.insert(out.begin(), Alerts::stackAlerts(scheduled));
-            return out;
+            if (scheduled.empty())
+                return {};
+            return {Alerts::stackAlerts(scheduled)};
         }
 
         Alerts::Alert finishCriticalAlert(Alerts::Alert alert, const AlertSources &sources, const LocalClock &clock)
@@ -314,6 +310,9 @@ namespace SQM
                 if (setting == nullptr || setting->level == 0)
                     continue;
                 alert.level = static_cast<Alerts::AlertLevel>(setting->level);
+                // The test box alert is never an emergency, whatever is stored.
+                if (alert.type == Alerts::AlertType::TestBox && setting->level > AlertsConfig::MAX_TEST_BOX_LEVEL)
+                    alert.level = static_cast<Alerts::AlertLevel>(AlertsConfig::MAX_TEST_BOX_LEVEL);
                 alert.sound = setting->sound;
                 applyAlertTemplate(alert, *setting, alertVars(sources, alert, clock));
                 step.outgoing.push_back(std::move(alert));

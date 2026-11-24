@@ -213,9 +213,10 @@ namespace SQM
         const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
         CloseSeq::updateConditions(roofConditions, snap, safety.weather(), view);
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, snap.status.state, view);
-        // Spec 022: the test box's alert (each bypass coming into effect, and after a boot).
+        // Spec 022: the test box's alert (each bypass coming into effect).
         roofConditions.testBox = safety.testBox().bits();
         roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(safety.testBox()) : std::string();
+        roofConditions.testBoxSettled = !safety.testBox().waitingForClock;
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 
