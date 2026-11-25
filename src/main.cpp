@@ -19,6 +19,8 @@
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
+#include "HeapReserve.h"
+#include <esp_heap_caps.h>
 #include "HeapTrace.h"
 #include "Logger.h"
 #include "MQTTClient.h"
@@ -61,9 +63,10 @@ void siteSaved(bool settingsUnchanged); // spec 020, below
 static SiteSync siteSync(config, configSaveLock, safetyPoller, siteSaved);
 
 // The default 8 KB left only ~1.5 KB spare at peak on SQMeter (alert
-// processing, config saves). 4 KB more is cheap insurance against a
-// stack-overflow reboot.
-SET_LOOP_TASK_STACK_SIZE(12 * 1024);
+// processing, config saves). Spec 038: RoofRoof's loop peaked at about 7.3 KB
+// over a day of bench and shakedown runs (crash snapshots); 10 KB keeps about
+// 2.9 KB spare and gives 2 KB back to the heap (was 12 KB).
+SET_LOOP_TASK_STACK_SIZE(10 * 1024);
 
 // Callbacks for WebServer
 const Config &getConfigCallback()
@@ -384,6 +387,21 @@ void startServices()
     HeapTrace::mark("setup complete");
 }
 
+// Spec 038: the emergency reserve is taken back once there is room, and its
+// use is logged (the new-handler that spends it can't log).
+void keepHeapReserve()
+{
+    static uint32_t spentSeen = 0;
+    HeapSafe::HeapReserve &reserve = HeapSafe::reserve();
+    if (reserve.spent() != spentSeen)
+    {
+        spentSeen = reserve.spent();
+        Logger::warn("Heap", "Out of memory: the emergency reserve was used (%u times since start)", static_cast<unsigned>(spentSeen));
+    }
+    if (!reserve.held() && HeapSafe::HeapReserve::refillFits(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)))
+        reserve.refill();
+}
+
 // Spec 020: no SQMeter read, copy or save while the roof is busy (spec 010).
 bool roofBusy()
 {
@@ -470,6 +488,8 @@ void setup()
     Serial.begin(115200);
     CrashLog::arm(); // spec 029: before the first log line
     Logger::init();
+    // Spec 038: the emergency reserve, taken while the heap is whole.
+    HeapSafe::armReserve();
     bool storedRejected = false;
     loadConfig(storedRejected);
     PinSetup::begin(config, storedRejected); // EN, then RPWM and LPWM low; or nothing driven
@@ -549,6 +569,7 @@ void loop()
     if (timeManager)
         timeManager->handle();
     webServer->handle();
+    keepHeapReserve();
 
     // SQMeter spec 027 FR-021: a new firmware is only kept once it has
     // started properly; one that fails before this point rolls back on its

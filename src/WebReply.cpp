@@ -2,6 +2,7 @@
 
 #include "ConnectionBudget.h"
 #include "FramePool.h"
+#include "HeapReserve.h"
 #include "HeapGuard.h"
 #include <AsyncWebSocket.h>
 #include <ESPAsyncWebServer.h>
@@ -29,6 +30,13 @@ namespace SQM
             uint32_t largestBlock()
             {
                 return static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+            }
+
+            // Spec 038: while the emergency reserve is spent the heap counts as
+            // short, so only essential requests run until the loop takes it back.
+            uint32_t guardBlock()
+            {
+                return HeapSafe::reserve().held() ? largestBlock() : 0;
             }
 
             // The web server fills its own send buffer (2.9 KB) from the
@@ -154,7 +162,7 @@ namespace SQM
                 [](AsyncWebServerRequest *request, ArMiddlewareNext next)
                 {
                     const uint32_t freeHeap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
-                    if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, largestBlock(), freeHeap) &&
+                    if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, guardBlock(), freeHeap) &&
                         HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesInFlight.load()))
                         next();
                     else

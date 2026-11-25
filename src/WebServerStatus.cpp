@@ -1,6 +1,7 @@
 #include "BenchMode.h"
 #include "ConnectionBudget.h"
 #include "FirmwareMarker.h"
+#include "HeapReserve.h"
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
@@ -175,6 +176,7 @@ namespace SQM
             heap8["free"] = heap_caps_get_free_size(MALLOC_CAP_8BIT);
             heap8["largest"] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
             heap8["minFree"] = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
+            heap8["reserveSpent"] = HeapSafe::reserve().spent(); // spec 038
             doc["heapSize"] = ESP.getHeapSize();
             doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
             doc["flashSize"] = ESP.getFlashChipSize();

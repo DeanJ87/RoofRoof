@@ -1,6 +1,7 @@
 #include "HeapMap.h"
 
 #include "HeapCensus.h"
+#include "HeapReserve.h"
 #include <atomic>
 #include <cstdio>
 #include <esp_heap_caps.h>
@@ -61,7 +62,7 @@ namespace SQM
                     text,
                     sizeof(text),
                     "Heap (8-bit): free %u B in %u blocks, largest %u B, lowest since start %u B; "
-                    "in use %u B in %u blocks\n",
+                    "in use %u B in %u blocks; reserve %s, spent %u times\n",
                     static_cast<unsigned>(info.total_free_bytes),
                     static_cast<unsigned>(info.free_blocks),
                     static_cast<unsigned>(info.largest_free_block),
