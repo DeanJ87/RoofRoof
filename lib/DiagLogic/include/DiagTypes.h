@@ -89,6 +89,11 @@ namespace SQM
             float minVolts = NAN;
             uint16_t hallStart = 0;
             uint16_t hallEnd = 0;
+            // Spec 036: the reading furthest from hallStart, when (from the start)
+            // and where (the estimate; NaN while the position is unknown). Not kept.
+            uint16_t hallPeak = 0;
+            uint32_t hallPeakMs = 0;
+            float hallPeakMm = NAN;
             Roof::Origin origin = Roof::Origin::Person;
             Roof::End target = Roof::End::Closed;
             Roof::State endState = Roof::State::Unknown;

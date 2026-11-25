@@ -5,7 +5,8 @@
 // critical needs_person alert for: a restart with the position unknown, a
 // fault latched or the roof controller not started (reminded until the
 // condition ends); a restart with the roof not reading closed (once); a Hall
-// sensor at a rail at any time (at once, reminded while it stays). The close
+// sensor at a rail, or (spec 036) an end magnet read too early, at any time
+// (at once, reminded while it stays). The close
 // sequence unable to move raises its own CannotClose (also needs_person, with
 // its own reminders), so this watcher only counts it as "active" for the
 // status. Pure: time and the snapshot come in, at most one alert goes out.
@@ -51,8 +52,8 @@ namespace SQM
             enum class Condition : uint8_t
             {
                 None,
-                Restart, // a restart with the position unknown, a fault or the controller not started
-                HallRail,
+                Restart,  // a restart with the position unknown, a fault or the controller not started
+                HallRail, // spec 036: or an end magnet read too early
             };
             bool judgeRestart(const NeedsPersonInputs &in, Alerts::Alert &out);
             bool remind(const NeedsPersonInputs &in, Alerts::Alert &out);
@@ -60,7 +61,7 @@ namespace SQM
             bool judged = false;
             Condition condition = Condition::None;
             bool cannotMove = false;
-            bool hallRailSeen = false; // the previous step's fault was a Hall rail
+            bool hallRailSeen = false; // the previous step's fault was a Hall rail (spec 036: or an early end)
             uint64_t alertedAtMs = 0;
             std::string line;
         };

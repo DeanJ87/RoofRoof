@@ -33,6 +33,16 @@ namespace SQM
                        (s.openDirection == Driver::Command::Forward || s.openDirection == Driver::Command::Reverse);
             }
 
+            // Spec 036: the end check, the overrun (0: off, tests only) and the movement check (0 V: off).
+            bool validChecks(const Settings &s)
+            {
+                using C = RoofConfig;
+                return within(s.endPlausiblePercent, C::MIN_END_PLAUSIBLE_PERCENT, C::MAX_END_PLAUSIBLE_PERCENT) &&
+                       (s.endOverrunPercent == 0 || within(s.endOverrunPercent, C::MIN_END_OVERRUN_PERCENT, C::MAX_END_OVERRUN_PERCENT)) &&
+                       (s.motionSagVolts == 0.0f || within(s.motionSagVolts, C::MIN_MOTION_SAG_VOLTS, C::MAX_MOTION_SAG_VOLTS)) &&
+                       within(s.motionCheckMs, C::MIN_MOTION_CHECK_SECONDS * 1000, C::MAX_MOTION_CHECK_SECONDS * 1000);
+            }
+
             bool validSensing(const Settings &s)
             {
                 using C = RoofConfig;
@@ -80,7 +90,7 @@ namespace SQM
 
         bool validSettings(const Settings &settings)
         {
-            return validMotion(settings) && validSensing(settings) && settings.analogUsable;
+            return validMotion(settings) && validSensing(settings) && validChecks(settings) && settings.analogUsable;
         }
 
         Settings settingsFromConfig(const RoofConfig &config)
@@ -105,6 +115,12 @@ namespace SQM
             s.minSupplyVolts = config.minSupplyVolts;
             s.blindClose = config.blindClose;
             s.blindSagVolts = config.blindSagVolts;
+            s.endPlausiblePercent = percent(config.endPlausiblePercent);
+            // Stored values are 105-200; anything else becomes 255, which validSettings rejects (0 is off: tests only).
+            const bool overrunOk = config.endOverrunPercent > 0 && config.endOverrunPercent <= RoofConfig::MAX_END_OVERRUN_PERCENT;
+            s.endOverrunPercent = overrunOk ? static_cast<uint8_t>(config.endOverrunPercent) : 255;
+            s.motionSagVolts = config.motionSagVolts;
+            s.motionCheckMs = secondsToMs(config.motionCheckSeconds);
             return s;
         }
     } // namespace Roof

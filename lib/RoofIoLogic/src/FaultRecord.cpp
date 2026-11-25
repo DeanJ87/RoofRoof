@@ -10,8 +10,8 @@ namespace SQM
         {
             constexpr uint8_t MAGIC_0 = 'R';
             constexpr uint8_t MAGIC_1 = 'F';
-            constexpr size_t CHECKED_BYTES = 14; // the checksum covers bytes 0-13
-            constexpr uint8_t LAST_KIND = static_cast<uint8_t>(Roof::FaultKind::External);
+            constexpr size_t CHECKED_BYTES = 14;                                             // the checksum covers bytes 0-13
+            constexpr uint8_t LAST_KIND = static_cast<uint8_t>(Roof::FaultKind::NoMovement); // spec 036: appended
             constexpr uint8_t LAST_CAUSE = static_cast<uint8_t>(FaultCause::PinSetup);
             // Byte 5's flags: spec 027's rest rail, spec 030's blind close done.
             constexpr uint8_t AT_REST = 1u << 0;

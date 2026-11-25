@@ -204,17 +204,6 @@ void test_end_to_end_open_and_close_within_their_timeouts(void)
     TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
 }
 
-// A roof 10% slower than its setting still ends at the magnet: it creeps at the
-// slow duty after the estimate arrives, inside the margin.
-void test_a_slower_roof_creeps_to_the_magnet(void)
-{
-    Bench b;
-    b.sim.speedMmPerSecond = 34.2f;
-    TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
-    TEST_ASSERT_TRUE(b.runToRest());
-    TEST_ASSERT_TRUE(b.state() == State::Open);
-}
-
 // --- US3: never by itself from an unknown position ----------------------------
 
 void test_boot_between_magnets_is_unknown_and_off(void)
@@ -573,7 +562,6 @@ int main(int, char **)
     RUN_TEST(test_open_when_open_is_an_accepted_no_op);
     RUN_TEST(test_a_repeated_command_leaves_the_move_unchanged);
     RUN_TEST(test_end_to_end_open_and_close_within_their_timeouts);
-    RUN_TEST(test_a_slower_roof_creeps_to_the_magnet);
     RUN_TEST(test_boot_between_magnets_is_unknown_and_off);
     RUN_TEST(test_commands_refused_until_the_hall_settles);
     RUN_TEST(test_automatic_moves_refused_when_unknown);

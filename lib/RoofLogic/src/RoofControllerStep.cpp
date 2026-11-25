@@ -24,8 +24,9 @@ namespace SQM
             if (!move.driving)
             {
                 // A calibration leg always drives: its end is the next magnet (spec 016).
+                // Spec 036: an early reading is judged once driving (checkArrival).
                 End at = End::Closed;
-                if (!move.calibration && magnetEnd(at) && at == move.target)
+                if (!move.calibration && magnetEnd(at) && at == move.target && (move.fromUnknown || endPlausible()))
                 {
                     arrive();
                     return;
@@ -33,10 +34,11 @@ namespace SQM
                 if (!deadTimeDone)
                     return;
                 startDriving(readings.nowMs);
+                startWatch(readings); // spec 036
             }
             if (move.calibration ? checkLegMagnets() : checkMagnets(readings.nowMs))
                 return;
-            if (checkTimes(readings.nowMs) || checkElectrical(readings))
+            if (checkTimes(readings.nowMs) || checkElectrical(readings) || checkMovement(readings))
                 return;
             driveProfile(readings.nowMs);
         }
@@ -87,6 +89,12 @@ namespace SQM
             End at = End::Closed;
             if (!magnetEnd(at))
             {
+                // Spec 036: an early reading that doesn't last isn't the magnet.
+                if (move.early)
+                {
+                    endTooEarly(nowMs);
+                    return true;
+                }
                 if (current.hall == HallLevel::Between && !move.leftStart)
                 {
                     move.leftStart = true;
@@ -95,10 +103,7 @@ namespace SQM
                 return false;
             }
             if (at == move.target)
-            {
-                arrive();
-                return true;
-            }
+                return checkArrival(nowMs); // spec 036: only where the estimate allows
             // Still on the start magnet is expected; the other end's magnet, or the
             // start magnet again after leaving it, means the roof runs backwards.
             if (move.startedAtMagnet && !move.leftStart)
@@ -128,6 +133,8 @@ namespace SQM
                 latch(Fault{FaultKind::DidNotLeave, static_cast<float>(elapsedMs), static_cast<float>(config.leaveMagnetMs)});
                 return true;
             }
+            if (checkOverrun(elapsedMs)) // spec 036: no end magnet where expected
+                return true;
             if (elapsedMs >= move.timeoutMs)
             {
                 latch(Fault{FaultKind::Timeout, static_cast<float>(elapsedMs), static_cast<float>(move.timeoutMs)});
@@ -196,6 +203,8 @@ namespace SQM
             float fraction = 0.0f;
             if (move.calibration)
                 fraction = legFraction(config, move.leg, drivenMs);
+            else if (move.early)
+                fraction = dutyFraction(config.slowDutyPercent); // spec 036: toward an early reading
             else
                 fraction = move.fromUnknown ? dutyFraction(config.slowDutyPercent) : profileFraction(config, drivenMs, remainingMm());
             const Driver::Command closeDirection =

@@ -74,6 +74,18 @@ namespace SQM
             LateStep,          // a control step later than MAX_STEP_GAP_MS while driving
             DriveBudget,       // driven too long in total without reaching a magnet
             External,          // raised by the caller (watchdog, park interlock)
+            // Spec 036 (constitution 8.1.0, I): the target's magnet read well before the
+            // estimate says the roof can be there, and not confirmed (measured: the
+            // estimated progress in percent of the travel, limit: roof.endPlausiblePercent).
+            // Appended: kinds are stored by number (fault record, kept summaries).
+            EndTooEarly,
+            // Spec 036: a move from a known position drove roof.endOverrunPercent of its
+            // expected time without its magnet (measured, limit: ms).
+            NoEndMagnet,
+            // Spec 036: driving without a sign of movement (no supply sag of
+            // roof.motionSagVolts, no Hall change) for the check time (measured: the
+            // deepest sag, limit: the setting, volts).
+            NoMovement,
         };
 
         // A fault and the numbers behind it (constitution III: the measured value and
@@ -102,6 +114,9 @@ namespace SQM
             // Spec 030: no blind close now (setting off, not a Hall rail fault
             // alone, one already run for this fault, or not the automatic close).
             BlindUnavailable,
+            // Spec 036: toward the end whose magnet was read too early, before the
+            // roof has reached the other end (or the Hall settings were saved again).
+            EndDoubted,
         };
 
         // The answer to a command.
@@ -149,6 +164,8 @@ namespace SQM
             // one may start now (Controller::blindCloseReady).
             bool blind = false;
             bool blindReady = false;
+            // Spec 036: the move holds an early end reading at the slow duty.
+            bool earlyEnd = false;
         };
 
         // Spec 016: one leg of an attended calibration run (Controller::calibrate).
@@ -201,6 +218,26 @@ namespace SQM
             Fault fault;             // the fault that ended it (why Fault)
         };
 
+        // Spec 036 (constitution 8.1.0, I): how a move's arrival at its magnet was judged.
+        enum class EndCheck : uint8_t
+        {
+            Plausible, // read at or past roof.endPlausiblePercent of the travel: arrived
+            Late,      // read early, held at the slow duty, then accepted (plausible or clearly at the magnet)
+            TooEarly,  // read early and not confirmed: the EndTooEarly fault
+            Unchecked, // a move from an unknown position: no estimate to judge it by
+        };
+
+        // The last end judged (Controller::endCheckReport), for the log.
+        struct EndCheckReport
+        {
+            uint32_t ended = 0; // ends judged since construction
+            EndCheck result = EndCheck::Plausible;
+            End target = End::Closed;
+            float progressPercent = 0.0f; // the estimated progress when the magnet was first read
+            uint16_t counts = 0;          // the raw reading then
+            uint32_t heldMs = 0;          // Late, TooEarly: how long it was held at the slow duty
+        };
+
         // Stable machine names for status documents, logs and MQTT (never translated).
         const char *stateName(State state);
         const char *endName(End end);
@@ -209,5 +246,6 @@ namespace SQM
         const char *refusalName(Refusal reason);
         const char *hallLevelName(HallLevel level);
         const char *blindEndName(BlindEnd why);
+        const char *endCheckName(EndCheck check);
     } // namespace Roof
 } // namespace SQM

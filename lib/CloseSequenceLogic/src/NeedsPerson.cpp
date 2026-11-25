@@ -40,6 +40,25 @@ namespace SQM
                 return roof.fault.fault.kind == Roof::FaultKind::HallRail;
             }
 
+            // Spec 036: an end magnet read too early (the roof isn't where it read).
+            bool endTooEarly(const RoofIo::Snapshot &roof)
+            {
+                return roof.fault.fault.kind == Roof::FaultKind::EndTooEarly;
+            }
+
+            // Spec 036: the roof didn't do what its estimate says.
+            bool motionDoubt(const RoofIo::Snapshot &roof)
+            {
+                const Roof::FaultKind kind = roof.fault.fault.kind;
+                return kind == Roof::FaultKind::EndTooEarly || kind == Roof::FaultKind::NoEndMagnet || kind == Roof::FaultKind::NoMovement;
+            }
+
+            // A fault that needs a person at once, whatever held before.
+            bool sensorFault(const RoofIo::Snapshot &roof)
+            {
+                return hallRail(roof) || motionDoubt(roof);
+            }
+
             std::string notClosedText(const RoofIo::Snapshot &roof)
             {
                 const Roof::Status &status = roof.status;
@@ -72,6 +91,14 @@ namespace SQM
             if (hallRail(roof))
                 return "Hall sensor fault: " + RoofIo::describeFault(roof.fault) +
                        ". Check the roof, the Hall sensor and its cable, then clear the fault.";
+            if (endTooEarly(roof))
+                return RoofIo::describeFault(roof.fault) +
+                       ". Check where the roof really is, the magnets and the Hall thresholds (teach them again), then clear the fault. "
+                       "The roof must reach the other end before it moves toward this one again.";
+            if (motionDoubt(roof))
+                return RoofIo::describeFault(roof.fault) +
+                       ". Check where the roof really is, the magnets, the speed and travel settings and the slow duty, then clear "
+                       "the fault.";
             if (roof.fault.fault.kind != Roof::FaultKind::None)
                 return "Fault latched: " + RoofIo::describeFault(roof.fault) + ". Check the roof, then clear the fault.";
             if (!roof.status.positionKnown)
@@ -91,7 +118,7 @@ namespace SQM
             if (roofStuck(roof, in.roofStarted))
             {
                 condition = Condition::Restart; // until the roof isn't stuck any more
-                hallRailSeen = hallRail(roof);
+                hallRailSeen = sensorFault(roof);
                 line = stuckText(roof, in.roofStarted);
                 out = make("The device restarted. " + line, line, false);
                 return true;
@@ -120,16 +147,17 @@ namespace SQM
             cannotMove = in.phase == Phase::CannotMove;
             if (!judged)
                 return judgeRestart(in, out);
-            const bool rail = hallRail(roof);
+            const bool rail = sensorFault(roof);
             const bool railNew = rail && !hallRailSeen;
             hallRailSeen = rail;
             if (railNew)
             {
-                // A Hall sensor failing at any time: at once, whatever held before.
+                // A Hall sensor failing (spec 036: or an end read too early) at
+                // any time: at once, whatever held before.
                 condition = Condition::HallRail;
                 alertedAtMs = in.nowMs;
                 line = stuckText(roof, in.roofStarted);
-                out = make("The Hall sensor failed. " + line, line, false);
+                out = make(hallRail(roof) ? "The Hall sensor failed. " + line : line, line, false);
                 return true;
             }
             const bool holds = condition == Condition::HallRail ? rail : roofStuck(roof, in.roofStarted);

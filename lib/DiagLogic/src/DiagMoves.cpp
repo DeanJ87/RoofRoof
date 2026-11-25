@@ -132,6 +132,18 @@ namespace SQM
             putReading(out, "sagVolts", s.sagVolts(), 2);
             out["hallStart"] = s.hallStart;
             out["hallEnd"] = s.hallEnd;
+            // Spec 036: where the reading peaked; a kept summary doesn't hold it.
+            if (s.kept)
+            {
+                out["hallPeak"] = nullptr;
+                out["hallPeakMs"] = nullptr;
+            }
+            else
+            {
+                out["hallPeak"] = s.hallPeak;
+                out["hallPeakMs"] = s.hallPeakMs;
+            }
+            putReading(out, "hallPeakMm", s.kept ? NAN : s.hallPeakMm, 0);
         }
 
         std::string summaryJson(const Summary &summary, const Clock &clock, bool held)

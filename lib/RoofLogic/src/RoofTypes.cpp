@@ -47,6 +47,9 @@ namespace SQM
                 "lateStep",
                 "driveBudget",
                 "external",
+                "endTooEarly",
+                "noEndMagnet",
+                "noMovement",
             };
             return nameIn(kind, NAMES);
         }
@@ -66,6 +69,7 @@ namespace SQM
                 "moving",
                 "legInvalid",
                 "blindUnavailable",
+                "endDoubted",
             };
             return nameIn(reason, NAMES);
         }
@@ -80,6 +84,12 @@ namespace SQM
         {
             static const char *const NAMES[] = {"limit", "stall", "fault", "stopped"};
             return nameIn(why, NAMES);
+        }
+
+        const char *endCheckName(EndCheck check)
+        {
+            static const char *const NAMES[] = {"plausible", "late", "tooEarly", "unchecked"};
+            return nameIn(check, NAMES);
         }
     } // namespace Roof
 } // namespace SQM

@@ -109,6 +109,9 @@ CONSTRAINTS = {
             "lateStep",
             "driveBudget",
             "external",
+            "endTooEarly",
+            "noEndMagnet",
+            "noMovement",
         ]
     },
     # Spec 020: lib/SafetyInputLogic SqmeterSite (writeLocationStatus, problemName).

@@ -190,6 +190,29 @@
       "max": 6
     },
     {
+      "path": "roof.endPlausiblePercent",
+      "int": true,
+      "min": 50,
+      "max": 95
+    },
+    {
+      "path": "roof.endOverrunPercent",
+      "int": true,
+      "min": 105,
+      "max": 200
+    },
+    {
+      "path": "roof.motionSagVolts",
+      "min": 0,
+      "max": 2
+    },
+    {
+      "path": "roof.motionCheckSeconds",
+      "int": true,
+      "min": 5,
+      "max": 60
+    },
+    {
       "path": "setup.step",
       "int": true,
       "min": 0,

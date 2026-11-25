@@ -88,6 +88,7 @@ namespace SQM
             current.jogging = (move.active && move.jog) || (blind.active && blind.jog);
             current.blind = blind.active && !blind.jog;
             current.blindReady = blindCloseReady();
+            current.earlyEnd = move.active && move.early; // spec 036
         }
 
         // The gap just driven: the estimate, the drive budget and (spec 016) the
@@ -159,7 +160,7 @@ namespace SQM
                 current.fault.kind != FaultKind::None)
                 return false;
             End at = End::Closed;
-            return magnetEnd(at) && at == (command == Command::Open ? End::Open : End::Closed);
+            return magnetEnd(at) && !doubted(at) && at == (command == Command::Open ? End::Open : End::Closed);
         }
 
         // Spec 027 (constitution 7.0.0, I): a Hall rail fault latched with no
@@ -199,6 +200,8 @@ namespace SQM
             if (blind.active || (move.active && move.jog))
                 return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
             const End target = command == Command::Open ? End::Open : End::Closed;
+            if (doubted(target))
+                return refused(Refusal::EndDoubted); // spec 036
             End at = End::Closed;
             if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{};
@@ -228,6 +231,10 @@ namespace SQM
                 return refused(Refusal::FaultLatched);
             if (blind.active || (move.active && move.jog))
                 return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
+            // Spec 036: not toward a magnet read too early until the roof has
+            // reached the other end (or new Hall settings are applied).
+            if (doubted(target))
+                return refused(Refusal::EndDoubted);
             End at = End::Closed;
             if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{}; // already there, or already on its way
@@ -241,6 +248,9 @@ namespace SQM
 
             // A reversal stops first; the dead time runs before the new drive.
             // A calibration leg replaced by a normal move ends there (spec 016).
+            // Spec 036: reversed while an early reading was held, it starts
+            // from an unknown position.
+            abandonEarly();
             endLeg(false);
             stopDriving();
             move = Move{};
@@ -258,6 +268,7 @@ namespace SQM
         {
             if (!move.active)
                 return;
+            abandonEarly(); // spec 036
             endLeg(false);
             stopDriving();
             // constitution I: an abort part-way leaves the position unknown.
@@ -285,6 +296,7 @@ namespace SQM
         {
             if (blind.active)
                 endBlind(BlindEnd::Fault, fault);
+            abandonEarly(); // spec 036
             endLeg(false);
             stopDriving();
             move = Move{};
@@ -325,6 +337,14 @@ namespace SQM
                 return CommandResult{};
             if (blind.active)
                 endBlind(BlindEnd::Stopped);
+            // Spec 036: a restored early-end fault doesn't say which end; the
+            // magnet read now is the one not to believe.
+            End at = End::Closed;
+            if (current.fault.kind == FaultKind::EndTooEarly && !doubting && magnetEnd(at))
+            {
+                doubting = true;
+                doubtedEnd = at;
+            }
             current.fault = Fault{};
             hallRailAtRest = false;
             blindRan = false;
@@ -339,6 +359,10 @@ namespace SQM
         {
             if (move.active || blind.active)
                 return refused(Refusal::Moving);
+            // Spec 036: new Hall settings (a re-teach) end the doubt about an end.
+            if (settings.hallHighCounts != config.hallHighCounts || settings.hallLowCounts != config.hallLowCounts ||
+                settings.hallHighEnd != config.hallHighEnd)
+                doubting = false;
             config = settings;
             settingsValid = validSettings(settings);
             doubtMagnets = false; // spec 033: a re-teach (new Hall settings) places the roof again
@@ -368,6 +392,15 @@ namespace SQM
             }
             if (magnetEnd(at))
             {
+                // Spec 036: a magnet read too early doesn't place the roof; the
+                // other end's does, and ends the doubt.
+                if (doubted(at))
+                {
+                    current.positionKnown = false;
+                    current.state = State::Unknown;
+                    return;
+                }
+                doubting = false;
                 current.positionKnown = true;
                 current.positionMm = at == End::Open ? static_cast<float>(config.travelMm) : 0.0f;
                 current.state = endState(at);

@@ -207,6 +207,28 @@ void test_a_hall_rail_fault_at_any_time_alerts_at_once_and_reminds(void)
     TEST_ASSERT_EQUAL(3, w.alerts);
 }
 
+// Spec 036: an end magnet read too early raises needs_person at once, with the
+// measured progress and the limit, and is reminded while it stays latched.
+void test_an_end_read_too_early_alerts_at_once_and_reminds(void)
+{
+    Watch w;
+    w.run(closed(), 0, 60000);
+    RoofIo::Snapshot early;
+    early.status.state = Roof::State::Error;
+    early.status.hall = Roof::HallLevel::High;
+    early.status.hallCounts = 2152;
+    early.fault.fault = {Roof::FaultKind::EndTooEarly, 33.0f, 80.0f};
+    w.run(early, 61000, 61000);
+    TEST_ASSERT_EQUAL(1, w.alerts);
+    TEST_ASSERT_TRUE(has(w.last.message, "End too early: magnet or sensor problem"));
+    TEST_ASSERT_TRUE(has(w.last.message, "33 percent of the travel < 80 percent"));
+    TEST_ASSERT_TRUE(has(w.last.message, "clear the fault"));
+    TEST_ASSERT_FALSE(has(w.last.message, "The Hall sensor failed"));
+    TEST_ASSERT_TRUE(w.last.type == Alerts::AlertType::NeedsPerson);
+    w.run(early, 62000, 61000 + REMIND);
+    TEST_ASSERT_EQUAL(2, w.alerts);
+}
+
 void test_the_close_sequence_unable_to_move_shows_and_the_sequence_reminds(void)
 {
     Watch w;
@@ -262,6 +284,7 @@ int main(int, char **)
     RUN_TEST(test_a_restart_with_the_roof_closed_says_nothing);
     RUN_TEST(test_a_roof_controller_that_did_not_start_needs_a_person);
     RUN_TEST(test_a_hall_rail_fault_at_any_time_alerts_at_once_and_reminds);
+    RUN_TEST(test_an_end_read_too_early_alerts_at_once_and_reminds);
     RUN_TEST(test_the_close_sequence_unable_to_move_shows_and_the_sequence_reminds);
     RUN_TEST(test_the_sequence_unable_to_move_raises_needs_person_with_reminders);
     return UNITY_END();

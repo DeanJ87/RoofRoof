@@ -64,6 +64,7 @@ namespace SQM
             void startMove(const Sample &sample);
             void recordStep(const Sample &sample);
             void recordDriven(const Sample &sample, Summary &summary);
+            static void notePeak(const Sample &sample, Summary &summary);
             void endMove(const Sample &sample);
             void advancePoints(uint32_t elapsedMs, uint8_t duty);
             void accumulate(const Sample &sample);

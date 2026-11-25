@@ -144,7 +144,31 @@ namespace SQM
             // After a restart: the record says one ran for this Hall rail fault.
             void restoreBlindDone() { blindRan = current.fault.kind == FaultKind::HallRail; }
 
+            // Spec 036 (constitution 8.1.0, I), RoofControllerEnd.cpp: a move from
+            // a known position believes its target's magnet only once the estimate
+            // has covered roof.endPlausiblePercent of the travel toward it. Read
+            // earlier, the move goes on at the slow duty and accepts it as
+            // EARLY_END_* say, or latches EndTooEarly. Calibration legs, jogs and
+            // moves from an unknown position aren't judged (the last are logged).
+            const EndCheckReport &endCheckReport() const { return endLast; }
+            // After an early end (its fault, or a stop or reversal while it was
+            // held), that end's magnet doesn't place the roof and no move may
+            // head for it until the roof reaches the other end or new Hall
+            // settings are applied.
+            bool endDoubted(End &end) const
+            {
+                end = doubtedEnd;
+                return doubting;
+            }
+
         private:
+            // When a condition that must last CONFIRM_MS was first seen.
+            struct Pending
+            {
+                bool active = false;
+                uint32_t sinceMs = 0;
+            };
+
             // The move in progress.
             struct Move
             {
@@ -164,13 +188,21 @@ namespace SQM
                 float dutyMs = 0.0f;
                 // Spec 019: a jog (its keep-alive is jogHoldPending and jogHoldUntilMs).
                 bool jog = false;
-            };
-
-            // When a condition that must last CONFIRM_MS was first seen.
-            struct Pending
-            {
-                bool active = false;
-                uint32_t sinceMs = 0;
+                // Spec 036: the target's magnet was read early; held at the slow duty since.
+                bool early = false;
+                uint32_t earlySinceMs = 0;
+                float earlyProgress = 0.0f;
+                uint16_t earlyCounts = 0;
+                bool clearSeen = false; // clearly at the magnet, since clearSinceMs
+                uint32_t clearSinceMs = 0;
+                // Spec 036: no end magnet by overrunMs (0: not judged); the movement
+                // check's window since watchSinceMs, from watchHall and restVolts.
+                uint32_t overrunMs = 0;
+                float restVolts = 0.0f;
+                uint32_t watchSinceMs = 0;
+                uint16_t watchHall = 0;
+                float deepestSag = 0.0f;
+                Pending sagging;
             };
 
             // Move decisions (RoofControllerStep.cpp).
@@ -193,6 +225,20 @@ namespace SQM
             void advanceEstimate(uint32_t elapsedMs);
             void accountDrive(uint32_t gapMs);
             void arrive();
+
+            // Spec 036: the end check (RoofControllerEnd.cpp).
+            bool checkArrival(uint32_t nowMs);
+            bool endPlausible() const;
+            float progressPercent() const;
+            bool clearlyAtMagnet() const;
+            void endTooEarly(uint32_t nowMs);
+            void abandonEarly();
+            void noteEnd(EndCheck result, float progress, uint16_t counts, uint32_t heldMs);
+            bool doubted(End end) const { return doubting && end == doubtedEnd; }
+            // Spec 036: no end magnet where expected, and no sign of movement (RoofControllerWatch.cpp).
+            void startWatch(const Readings &readings);
+            bool checkOverrun(uint32_t elapsedMs);
+            bool checkMovement(const Readings &readings);
 
             // Spec 030: the blind close under way (RoofControllerBlind.cpp).
             struct Blind
@@ -272,6 +318,9 @@ namespace SQM
             Blind blind;
             BlindReport blindLast;
             bool blindRan = false;
+            EndCheckReport endLast;
+            bool doubting = false; // spec 036: doubtedEnd's magnet was read too early
+            End doubtedEnd = End::Open;
         };
     } // namespace Roof
 } // namespace SQM

@@ -250,7 +250,7 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(1, 'X', true));   // magic
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(2, 2, true));     // version
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 14, true));    // kind out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 7, true));     // cause out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 4, true));     // flags byte out of range (specs 027 and 030 use bits 0 and 1)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum

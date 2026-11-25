@@ -140,7 +140,7 @@ void test_supply_sags_only_while_driving(void)
     Plant plant = RoofPlant::forSettings(Settings(), 0.0f);
     TEST_ASSERT_EQUAL_FLOAT(12.6f, plant.supplyNow());
     plant.drive(drive(DriveCommand::Forward, 255), 20);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, 12.3f, plant.supplyNow());
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 11.6f, plant.supplyNow()); // spec 036: 1.0 V at full duty
     plant.drive(drive(DriveCommand::Off, 0), 20);
     TEST_ASSERT_EQUAL_FLOAT(12.6f, plant.supplyNow());
     plant.supplyVolts = 10.5f;

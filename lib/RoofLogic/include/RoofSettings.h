@@ -83,6 +83,20 @@ namespace SQM
         constexpr uint32_t BLIND_SURGE_MS = 1000;
         constexpr uint32_t BLIND_STALL_MS = 500;
 
+        // Spec 036 (constitution 8.1.0, I): an end magnet read early (before
+        // roof.endPlausiblePercent of the travel) holds the move at the slow duty
+        // toward it. It is accepted once the reading has lasted EARLY_END_PERSIST_MS
+        // and either the estimate reaches the plausible point or the reading is
+        // clearly at the magnet: past its threshold by half the gap between the
+        // two thresholds, for EARLY_END_PERSIST_MS. Not accepted within
+        // EARLY_END_HOLD_MS, or the reading lost, is the EndTooEarly fault.
+        constexpr uint32_t EARLY_END_PERSIST_MS = 1000;
+        constexpr uint32_t EARLY_END_HOLD_MS = 5000;
+        constexpr uint32_t END_OVERRUN_MIN_MS = 3000;
+        // Spec 036: the movement check ignores the start-up surge (as the blind
+        // close does) and counts a Hall change this large as movement.
+        constexpr uint16_t MOTION_HALL_COUNTS = 60;
+
         // Whether a supply reading can be believed: finite and at most MAX_SUPPLY_READING_VOLTS.
         bool supplyReadable(float volts);
         // Whether a current reading can be believed: finite and at least MIN_CURRENT_READING_AMPS.
@@ -117,6 +131,21 @@ namespace SQM
             // Spec 030: the blind close is allowed, and its stall threshold.
             bool blindClose = true;
             float blindSagVolts = 2.0f;
+            // Spec 036: an end magnet read before the estimate has covered this
+            // percentage of the travel toward it is early (RoofControllerEnd.cpp).
+            uint8_t endPlausiblePercent = 80;
+            // Spec 036: a move from a known position that has driven this percentage of
+            // its expected time (and at least END_OVERRUN_MIN_MS more) without its magnet
+            // stops (NoEndMagnet), before the hard timeout. 0 is off (tests that isolate
+            // another limit; the stored setting is 105-200).
+            uint8_t endOverrunPercent = 115;
+            // Spec 036: driving shows movement by a supply sag of at least this much
+            // (held CONFIRM_MS) or a Hall change of MOTION_HALL_COUNTS within
+            // motionCheckMs (twice that for a calibration leg or jog); 0 = off. The
+            // logic's default is off (a bare Settings drives a model with no supply
+            // sag); the stored setting's default is RoofConfig's 0.2 V.
+            float motionSagVolts = 0.0f;
+            uint32_t motionCheckMs = 10000;
         };
 
         // Whether `settings` are within the ranges RoofConfig documents. The
