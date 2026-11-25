@@ -43,6 +43,7 @@
     },
     { "path": "/api/diag/crashes", "method": "GET", "auth": "required" },
     { "path": "/api/diag/log", "method": "GET", "auth": "required" },
+    { "path": "/api/diag/heap", "method": "GET", "auth": "required" },
     {
       "path": "/api/diag/moves/clear",
       "method": "POST",

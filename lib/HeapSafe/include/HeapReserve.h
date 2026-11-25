@@ -26,7 +26,7 @@ namespace SQM
             using Allocate = void *(*)(size_t);
             using Release = void (*)(void *);
 
-            static constexpr size_t BYTES = 3072;
+            static constexpr size_t BYTES = 2048;
             // The loop takes the block back once the largest free block is at
             // least this (so taking it can't itself starve a reply).
             static constexpr size_t REFILL_BLOCK_BYTES = 8192;

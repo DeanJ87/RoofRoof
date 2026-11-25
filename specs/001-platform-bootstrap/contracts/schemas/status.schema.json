@@ -377,6 +377,10 @@
         },
         "minFree": {
           "type": "number"
+        },
+        "reserveSpent": {
+          "type": "number",
+          "description": "Spec 038: times the emergency heap reserve was given up so an allocation could succeed, since start."
         }
       },
       "required": [

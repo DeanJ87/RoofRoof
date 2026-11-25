@@ -468,6 +468,19 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the web server library's other allocations; HTTP keep-alive; Calibrate and the
   wizard's live views.
 
+### 038 Heap headroom (base: main after 037)
+
+- **Scope:**
+  - `GET /api/diag/heap`: the heap census (regions, block sizes, the largest blocks, each task's
+    stack); task stacks cut to their measured peaks plus about 3 KB; 2 TCP segments of send buffer
+    per connection.
+  - A 2 KB reserve the C++ new-handler gives up instead of aborting; the guard treats a spent
+    reserve as a short heap until the loop retakes it; `heap8Bit.reserveSpent`.
+  - A CI heap budget (`tools/firmware/heap_budget.py`) and the bench floors in `ws_soak.py` (40 KB
+    largest block at rest; 20 KB largest and 15 KB free under spec 037's soak).
+- **Out of scope:** Wi-Fi driver buffer counts, TLS settings, compiling IPv6 out, the web server
+  library's allocations, UI changes.
+
 ## Merge order
 
 ```text
