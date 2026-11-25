@@ -74,8 +74,8 @@ namespace
         Policy policy; // the policy in force (clamped, as the sequence holds it)
         bool closingRun = false;
         uint64_t closingSinceMs = 0;
-        bool alertedEver[8][11] = {};
-        uint64_t alertedAtMs[8][11] = {};
+        bool alertedEver[9][14] = {};
+        uint64_t alertedAtMs[9][14] = {};
         bool halted = false;          // a close outlasted its guard
         uint64_t closeBarUntilMs = 0; // a refused or interrupted close: no close before this
         uint64_t quietUnsafeMs = 0;   // unsafe and not closed, with nothing done or raised
@@ -275,7 +275,9 @@ namespace
             return "P2 close while safe";
         if (!watch.parkedRun || in.nowMs - watch.parkedSinceMs < watch.policy.parkSettleMs)
             return "P2 close without 4 s of park";
-        if (!movable(in.roof) || in.closePending)
+        // Spec 030: and from an unknown position with the controller running.
+        const bool fromUnknown = in.roof == State::Unknown && in.roofStarted;
+        if (!(movable(in.roof) || fromUnknown) || in.closePending)
             return "P2 close of a roof that isn't movable";
         if (in.nowMs < watch.closeBarUntilMs)
             return "P10 a close within the back-off after a refused or interrupted close";
@@ -304,7 +306,9 @@ namespace
             return "P4 an action while stood down by a person";
         if (watch.halted)
             return "P9 an action after a close outlasted its guard";
-        if (in.roof == State::Unknown || in.roof == State::Error)
+        // Spec 030 (constitution 8.0.0): a running controller closes from an
+        // unknown position, and a blind close may run with only a Hall rail fault.
+        if ((in.roof == State::Unknown && !in.roofStarted) || (in.roof == State::Error && !in.blindReady))
             return "P5 an action while unknown or faulted";
         if (action == Action::Close)
             return checkClose(in, watch);

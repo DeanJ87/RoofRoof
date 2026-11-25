@@ -359,6 +359,7 @@ void startServices()
     // Spec 008: the automatic close's phase in the status and the MQTT document.
     webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
     webServer->setCloseHold([]() { return closeOnUnsafe.standDownSeconds(); }, []() { return closeOnUnsafe.requestRelease(); });
+    webServer->setWeatherHold([]() { return closeOnUnsafe.weatherHoldStatus(); }); // spec 030
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.
     webServer->setInputs([]() { return safetyInputs->report(); });
@@ -372,22 +373,12 @@ void startServices()
     // Spec 005: unsafe ends parked and closed; its critical events go out
     // through the alert dispatcher, never through N.I.N.A. or SQMeter. Its
     // record was restored in setup(), before the web server could ask.
-    closeOnUnsafe.setAlertSink(
-        [](const Alerts::Alert &alert) { return webServer->raiseRoofAlert(alert); },
-        [](uint32_t id)
-        {
-            switch (webServer->roofAlertOutcome(id))
-            {
-            case AlertDispatcher::Outcome::Delivered:
-                return CloseSeq::Delivery::Delivered;
-            case AlertDispatcher::Outcome::Pending:
-                return CloseSeq::Delivery::Pending;
-            case AlertDispatcher::Outcome::NoChannel:
-                return CloseSeq::Delivery::NoChannel;
-            default:
-                return CloseSeq::Delivery::Failed;
-            }
-        });
+    // Spec 030: through the alert outbox, kept until a channel takes them.
+    closeOnUnsafe.setAlertOut(
+        {[](const Alerts::Alert &alert, bool resolvable) { webServer->queueRoofAlert(alert, resolvable); },
+         [](Alerts::AlertType type) { webServer->resolveRoofAlert(type); },
+         [](uint64_t ms) { webServer->setAlertMaxGap(ms); }});
+    webServer->setNeedsPerson([]() { return closeOnUnsafe.needsPersonStatus(); });
     // Spec 007: the roof's non-critical events, read once a second by the alert pass.
     webServer->setRoofConditions([]() { return closeOnUnsafe.conditions(); });
     HeapTrace::mark("setup complete");

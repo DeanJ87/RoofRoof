@@ -120,7 +120,7 @@ describe("SQMeter's address (FR-036 to FR-039)", () => {
     server.use(
       http.post('/api/sqmeter/test', async ({ request }) => {
         bodies.push(await request.json());
-        return HttpResponse.json({ safe: false, reasonFlags: 512, text: 'SQMeter says unsafe: reasonFlags 0x200 (rain)' });
+        return HttpResponse.json({ safe: false, reasonFlags: 512, reasons: 'Rain detected', text: 'SQMeter says unsafe: Rain detected' });
       }),
     );
     await open('roof', 'Roof');
@@ -132,7 +132,7 @@ describe("SQMeter's address (FR-036 to FR-039)", () => {
     fireEvent.input(address, { target: { value: '192.168.4.144' } });
     const weather = address.closest('section') as HTMLElement;
     fireEvent.click(within(weather).getByRole('button', { name: 'Test' }));
-    expect(await within(weather).findByText('SQMeter says unsafe: reasonFlags 0x200 (rain)')).toBeInTheDocument();
+    expect(await within(weather).findByText('SQMeter says unsafe: Rain detected')).toBeInTheDocument();
     expect(bodies[0]).toEqual({ url: '192.168.4.144', username: '', password: '' });
   });
 

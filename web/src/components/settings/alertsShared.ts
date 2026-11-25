@@ -88,6 +88,7 @@ const DEFAULT_TEXT: Record<AlertEventKey, { title: string; message: string }> = 
   // The critical roof events: the close sequence's own wording for each case.
   mount_not_parked: { title: t('settings.alerts.mountDidntPark'), message: '{details}' },
   roof_not_closed: { title: t('settings.alerts.roofDidntClose'), message: '{details}' },
+  needs_person: { title: t('settings.alerts.roofNeedsPerson'), message: '{details}' },
   move_fault: { title: t('settings.alerts.roofFault'), message: t('settings.alerts.roofFaultMessage') },
   supply_low: { title: t('settings.alerts.supplyLowTitle'), message: t('settings.alerts.supplyLowMessage') },
   unsafe_closing: { title: t('settings.alerts.unsafeClosingTitle'), message: t('settings.alerts.unsafeClosingMessage') },
@@ -127,7 +128,7 @@ const CLIENT_EVENTS: AlertEventKey[] = ['client_lost', 'client_back', 'client_di
 
 // The roof's critical events (spec 007): only urgent or wake me, and sent
 // whatever the master switch, the pause or the start-up grace say.
-export const CRITICAL_EVENTS: AlertEventKey[] = ['mount_not_parked', 'roof_not_closed'];
+export const CRITICAL_EVENTS: AlertEventKey[] = ['mount_not_parked', 'roof_not_closed', 'needs_person'];
 export const isCriticalEvent = (key: AlertEventKey) => CRITICAL_EVENTS.includes(key);
 export const CRITICAL_LEVEL_OPTIONS = LEVEL_OPTIONS.filter((option) => Number(option.value) >= 3);
 // Spec 022: the test box alert's level is never off, and never wake me (an emergency).

@@ -221,9 +221,11 @@ void test_an_open_ends_neither_a_halted_close_nor_a_cannot_move()
     }
     {
         // A person's slow open from an unknown position: the position becomes
-        // known, so the back-off follows as before (not a release).
+        // known, so the back-off follows as before (not a release). (The
+        // controller not running: spec 030 closes from an unknown position otherwise.)
         Rig r;
         r.in.roof = State::Unknown;
+        r.in.roofStarted = false;
         r.startUnsafe();
         r.runTo(T0 + 3000);
         TEST_ASSERT_EQUAL(Phase::CannotMove, r.seq.phase());

@@ -226,7 +226,7 @@ namespace SQM
         stepGuard(now); // spec 027: the wait for the park, the overrides in effect
         // Constitution II: a close (spec 027: or an open) stops as a motion
         // fault when the park is lost; not a person's confirmed close.
-        if (RoofIo::interlockLost(status, now, guard.closeParkOverride()))
+        if (RoofIo::interlockLost(status, now, guard.closeParkOverride(), guard.closeNinaLost())) // spec 030: N.I.N.A. lost
         {
             latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(now)), 0.0f));
             return;
@@ -261,12 +261,26 @@ namespace SQM
     void RoofControl::logChanges()
     {
         std::string text;
+        Roof::BlindReport blind;
         {
             RoofLocked held(lock);
             text.swap(notice);
+            blind = controller.blindReport();
         }
         if (!text.empty())
             Logger::warn(TAG, "%s", text.c_str());
+        if (blind.ended != loggedBlind)
+        {
+            // Spec 030: what the bench measurement of roof.blindSagVolts needs.
+            loggedBlind = blind.ended;
+            Logger::warn(
+                TAG,
+                "Blind close ended (%s) after %u ms; supply at rest %.2f V, deepest sag %.2f V",
+                Roof::blindEndName(blind.why),
+                static_cast<unsigned>(blind.drivenMs),
+                static_cast<double>(blind.restVolts),
+                static_cast<double>(blind.deepestSag));
+        }
         RoofIo::Snapshot now = snapshot();
         if (now.status.fault.kind != loggedFault && now.status.fault.kind != Roof::FaultKind::None)
         {

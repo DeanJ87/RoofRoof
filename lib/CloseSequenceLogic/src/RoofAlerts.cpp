@@ -21,6 +21,10 @@ namespace SQM
                     return "Roof controller not started";
                 case Cause::NinaNotConfigured:
                     return "N.I.N.A. not configured";
+                case Cause::WasUnknown:
+                    return "Closed from an unknown position";
+                case Cause::NinaLost:
+                    return "Closed without N.I.N.A.'s park";
                 default:
                     break;
                 }
@@ -60,9 +64,12 @@ namespace SQM
                 type = Alerts::AlertType::MountNotParked;
                 return true;
             case Event::CloseFailed:
-            case Event::CannotClose:
             case Event::StoppedByPerson:
                 type = Alerts::AlertType::RoofNotClosed;
+                return true;
+            case Event::CannotClose: // spec 030: the roof can't move by itself: a person must act
+            case Event::NeedsPerson: // spec 030: a close ran without a known position or N.I.N.A.'s park
+                type = Alerts::AlertType::NeedsPerson;
                 return true;
             default:
                 break;
@@ -102,8 +109,10 @@ namespace SQM
         bool closedAfterAttempt(Phase before, Event event)
         {
             // A person closing the roof after a stop or a halted close counts
-            // too; CannotMove doesn't (a flickering closed magnet passes there).
-            return event == Event::Closed && (attempting(before) || before == Phase::HeldByPerson || before == Phase::Halted);
+            // too. Spec 030: closed straight from a wait (no close seen) is a
+            // closed magnet flickering back at rest (an unknown position now
+            // starts an attempt), as in CannotMove: it doesn't count.
+            return event == Event::Closed && (before == Phase::Closing || before == Phase::HeldByPerson || before == Phase::Halted);
         }
 
         bool sourcesKnown(const Safety::WeatherVerdict &weather)

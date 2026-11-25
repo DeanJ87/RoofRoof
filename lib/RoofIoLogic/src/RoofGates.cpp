@@ -94,7 +94,11 @@ namespace SQM
                 return parkSetAside || parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
             }
             case Roof::Command::Close:
-                return parkSetAside || parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
+            {
+                // Spec 030: N.I.N.A.'s part set aside (Close only), the switches still count.
+                const bool ninaAside = (overrides & OverrideNinaLost) != 0 && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
+                return parkSetAside || ninaAside || parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
+            }
             default:
                 return GateRefusal::None;
             }
@@ -117,13 +121,15 @@ namespace SQM
             return (in.parked || in.ninaGrace) && readingFresh(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
         }
 
-        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden)
+        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden, bool ninaLost)
         {
             // Spec 016: any calibration leg too. Until the person confirms the open
             // end, a leg may drive the roof the other way (a motor wired backwards).
             // Spec 027: an open too (the roof passes over the telescope either way).
             if (parkOverridden && status.state == Roof::State::Closing)
                 return false;
+            if (ninaLost && status.state == Roof::State::Closing)
+                return !switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
             const bool watched = status.state == Roof::State::Closing || status.state == Roof::State::Opening || status.calibrating;
             return watched && !closeMayContinue(in);
         }

@@ -80,6 +80,9 @@ namespace SQM
 
         uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested)
         {
+            // Spec 030: the automatic close's N.I.N.A.-lost close, its Close only.
+            if (origin == Roof::Origin::Automatic)
+                return command == Roof::Command::Close ? static_cast<uint8_t>(requested & OverrideNinaLost) : 0;
             if (origin != Roof::Origin::Person)
                 return 0;
             if (command == Roof::Command::Open)

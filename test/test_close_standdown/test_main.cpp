@@ -122,9 +122,9 @@ void test_the_count_at_start_up_is_history()
     TEST_ASSERT_EQUAL(Event::None, seq.step(in).event);
 }
 
-// --- US5: never move by itself from an unknown position ---
+// --- US5 (spec 030, constitution 8.0.0): an unknown position closes once the park is confirmed ---
 
-void test_unknown_position_stands_down_after_two_seconds()
+void test_unknown_position_attempts_after_two_seconds()
 {
     Rig r;
     r.in.roof = State::Unknown;
@@ -135,11 +135,28 @@ void test_unknown_position_stands_down_after_two_seconds()
     TEST_ASSERT_EQUAL(0u, c.events.size());
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
     const Decision d = r.at(T0 - 50 + UNKNOWN_CONFIRM_MS);
-    assertEvent(d, Event::CannotClose, Cause::PositionUnknown);
-    TEST_ASSERT_TRUE(d.alert);
-    TEST_ASSERT_EQUAL(Action::None, d.action);
+    assertEvent(d, Event::Started, Cause::None);
+    TEST_ASSERT_EQUAL(Action::RequestPark, d.action);
+    // Nothing moves until the park is confirmed.
+    c = r.runTo(T0 + 60000, 100);
+    TEST_ASSERT_EQUAL(0, c.closes);
     r.in.parked = true;
-    c = r.runTo(T0 - 50 + UNKNOWN_CONFIRM_MS + REMIND_MS - 1000, 1000);
+    c = r.runTo(T0 + 60000 + PARK_SETTLE_MS + 200, 100);
+    TEST_ASSERT_EQUAL(1, c.closes);
+}
+
+void test_unknown_position_with_the_roof_not_started_cannot_close()
+{
+    Rig r;
+    r.in.roof = State::Unknown;
+    r.in.roofStarted = false;
+    r.at(T0 - 50);
+    r.in.weatherSafe = false;
+    r.in.parked = true;
+    const Decision d = r.at(T0 - 50 + UNKNOWN_CONFIRM_MS);
+    assertEvent(d, Event::CannotClose, Cause::RoofNotStarted);
+    TEST_ASSERT_TRUE(d.alert);
+    Counts c = r.runTo(T0 - 50 + UNKNOWN_CONFIRM_MS + REMIND_MS - 1000, 1000);
     assertOnlyReminders(c, Event::CannotClose, 0);
     c = r.runTo(T0 - 50 + UNKNOWN_CONFIRM_MS + REMIND_MS, 1);
     assertOnlyReminders(c, Event::CannotClose, 1);
@@ -196,15 +213,18 @@ void test_fault_while_waiting_stands_down()
     TEST_ASSERT_EQUAL(Phase::CannotMove, r.seq.phase());
 }
 
-void test_unknown_while_waiting_or_closing_stands_down_after_two_seconds()
+// Spec 030: a close that ends part-way with the position unknown is a failed
+// close like any other: back off, then try again from the unknown position.
+void test_unknown_after_a_close_ends_part_way_retries_after_the_back_off()
 {
     Rig r;
     r.startAndClose();
     r.in.roof = State::Unknown;
-    r.at(T0 + 5000);
-    TEST_ASSERT_EQUAL(Event::None, r.at(T0 + 5000 + UNKNOWN_CONFIRM_MS - 1).event);
-    TEST_ASSERT_EQUAL(Phase::Closing, r.seq.phase());
-    assertEvent(r.at(T0 + 5000 + UNKNOWN_CONFIRM_MS), Event::CannotClose, Cause::PositionUnknown);
+    assertEvent(r.at(T0 + 5000), Event::CloseFailed, Cause::Interrupted);
+    TEST_ASSERT_EQUAL(Phase::RetryWait, r.seq.phase());
+    r.in.parked = true;
+    Counts c = r.runTo(T0 + 5000 + RETRY_AFTER_MS + PARK_SETTLE_MS + 1000, 100);
+    TEST_ASSERT_EQUAL(1, c.closes);
 }
 
 void test_resumes_after_a_person_makes_the_position_known()
@@ -212,8 +232,10 @@ void test_resumes_after_a_person_makes_the_position_known()
     Rig r;
     r.in.roof = State::Error;
     r.startUnsafe();
-    r.in.roof = State::Unknown; // a person cleared the fault between the magnets
+    r.in.roof = State::Unknown; // a person cleared the fault between the magnets (spec 030: it may close from there)
+    r.in.roofStarted = false;   // (as the roof controller not running would leave it)
     TEST_ASSERT_EQUAL(Phase::CannotMove, (r.at(T0 + 1000), r.seq.phase()));
+    r.in.roofStarted = true;
     r.in.roof = State::Open; // and moved it to the open magnet
     const Decision d = r.at(T0 + 60000);
     TEST_ASSERT_EQUAL(Action::None, d.action);
@@ -448,7 +470,8 @@ void test_a_closed_reading_flickering_at_rest_does_not_storm_alerts()
         if (r.at(t).alert)
             alerts++;
     }
-    TEST_ASSERT_EQUAL(1, alerts);
+    // Spec 030: the unknown spells start attempts (no critical event), never a storm.
+    TEST_ASSERT_TRUE(alerts <= 1);
 }
 
 void test_an_attempt_stretched_by_safe_spells_is_capped_in_wall_time()
@@ -501,12 +524,13 @@ int main(int, char **)
     RUN_TEST(test_persons_close_while_stood_down_ends_it);
     RUN_TEST(test_stops_before_the_episode_are_ignored);
     RUN_TEST(test_the_count_at_start_up_is_history);
-    RUN_TEST(test_unknown_position_stands_down_after_two_seconds);
+    RUN_TEST(test_unknown_position_attempts_after_two_seconds);
+    RUN_TEST(test_unknown_position_with_the_roof_not_started_cannot_close);
     RUN_TEST(test_unknown_at_start_up_that_settles_starts_normally);
     RUN_TEST(test_fault_latched_cannot_close);
     RUN_TEST(test_a_stop_while_unable_to_move_stands_down_once_it_can);
     RUN_TEST(test_fault_while_waiting_stands_down);
-    RUN_TEST(test_unknown_while_waiting_or_closing_stands_down_after_two_seconds);
+    RUN_TEST(test_unknown_after_a_close_ends_part_way_retries_after_the_back_off);
     RUN_TEST(test_resumes_after_a_person_makes_the_position_known);
     RUN_TEST(test_cannot_move_ends_when_closed_or_safe_for_ten_minutes);
     RUN_TEST(test_safe_while_waiting_ends_without_a_close);

@@ -641,6 +641,10 @@
         "fromUnknown": {
           "type": "boolean"
         },
+        "blind": {
+          "type": "boolean",
+          "description": "Spec 030: the move is a blind close (the Hall sensor dead, closing on time alone)."
+        },
         "hall": {
           "type": "object",
           "properties": {
@@ -967,6 +971,7 @@
         }
       },
       "required": [
+        "blind",
         "calibrating",
         "closePending",
         "closePhase",

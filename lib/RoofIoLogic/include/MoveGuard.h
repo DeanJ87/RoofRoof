@@ -88,13 +88,16 @@ namespace SQM
             // An Open override in effect (OverrideWeather, OverrideDaylight).
             uint8_t openOverride() const { return openBits; }
             // A person's confirmed close is under way: no park re-check.
-            bool closeParkOverride() const { return closeAside; }
+            bool closeParkOverride() const { return (closeBits & OverridePark) != 0; }
+            // Spec 030: the automatic close's N.I.N.A.-lost close is under way:
+            // the park re-check looks at the fitted switches only.
+            bool closeNinaLost() const { return (closeBits & OverrideNinaLost) != 0; }
 
         private:
             MoveGuardSettings settings;
             ParkWait parkWait;
             uint8_t openBits = 0;
-            bool closeAside = false;
+            uint8_t closeBits = 0; // OverridePark, OverrideNinaLost
         };
 
         // Spec 027: the body of POST /api/roof/open or /close: none, or

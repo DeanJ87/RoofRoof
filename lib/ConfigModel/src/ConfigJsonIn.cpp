@@ -91,6 +91,8 @@ namespace SQM
                 {"autoClose", "closeStartSeconds"},
                 {"autoClose", "closeGuardSeconds"},
                 {"autoClose", "remindMinutes"},
+                {"autoClose", "unsafeHoldSeconds"},
+                {"autoClose", "ninaLostMinutes"},
             };
             for (const auto &field : FIELDS)
             {
@@ -307,6 +309,8 @@ namespace SQM
             roof.take("currentAmpsPerVolt", r.currentAmpsPerVolt);
             roof.take("minRunningAmps", r.minRunningAmps);
             roof.take("minSupplyVolts", r.minSupplyVolts);
+            roof.take("blindClose", r.blindClose); // spec 030: absent (an upgrade) keeps the default, on
+            roof.take("blindSagVolts", r.blindSagVolts);
             return applyRoofEnums(roof, r, error);
         }
 
@@ -419,6 +423,9 @@ namespace SQM
             a.take("closeStartSeconds", c.closeStartSeconds);
             a.take("closeGuardSeconds", c.closeGuardSeconds);
             a.take("remindMinutes", c.remindMinutes);
+            a.take("unsafeHoldSeconds", c.unsafeHoldSeconds);
+            a.take("ninaLostClose", c.ninaLostClose); // spec 030
+            a.take("ninaLostMinutes", c.ninaLostMinutes);
             a.take("remoteStop", c.remoteStop);
             root.child("ui").take("confirmOpenClose", cfg.ui.confirmOpenClose);
             if (!a.has("notStarted"))

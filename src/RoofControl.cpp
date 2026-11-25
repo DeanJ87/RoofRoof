@@ -29,7 +29,7 @@ namespace SQM
         bool sameFault(const RoofIo::FaultRecord &a, const RoofIo::FaultRecord &b)
         {
             // Compared bit for bit, so a NaN value equals itself.
-            return a.fault.kind == b.fault.kind && a.cause == b.cause && a.atRest == b.atRest &&
+            return a.fault.kind == b.fault.kind && a.cause == b.cause && a.atRest == b.atRest && a.blindDone == b.blindDone &&
                    std::memcmp(&a.fault.measured, &b.fault.measured, sizeof(float)) == 0 &&
                    std::memcmp(&a.fault.limit, &b.fault.limit, sizeof(float)) == 0;
         }
@@ -93,6 +93,8 @@ namespace SQM
         controller.raiseFault(stored.fault);
         if (stored.atRest)
             controller.restoreRestRail(); // spec 027
+        if (stored.blindDone)
+            controller.restoreBlindDone(); // spec 030: one blind close per fault
         fault = stored;
         // A damaged record is replaced by a readable one on the first step.
         if (found == RoofIo::Decoded::Fault)
@@ -250,67 +252,6 @@ namespace SQM
         return outcome;
     }
 
-    RoofControl::Outcome RoofControl::automaticClose(uint32_t personStopsSeen)
-    {
-        if (lock == nullptr || !started.load())
-            return notStarted();
-        Outcome outcome;
-        {
-            RoofLocked held(lock);
-            const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
-            if (personStops != personStopsSeen)
-                outcome = Outcome{
-                    false,
-                    CloseSeq::PERSON_STOP_REASON,
-                    "A person stopped the roof: the automatic close is withdrawn",
-                    controller.status().state};
-            else
-            {
-                guard.closeWins(); // spec 027: a waiting Open is called off
-                // Spec 016: the automatic close always wins; a closing leg carries on as its close.
-                if (calibration.active())
-                    endCalibrationFor(true, "");
-                // Spec 019: a person's jog is stopped first; the close then has its normal checks.
-                if (Calib::Teach::yieldToClose(controller))
-                {
-                    applyOutput();
-                    refreshSnapshot();
-                    notice = "Jog stopped: the automatic close takes over";
-                }
-                outcome = commandLocked(Roof::Command::Close, Roof::Origin::Automatic, now);
-            }
-        }
-        if (!outcome.accepted)
-            Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
-        else if (outcome.pending)
-            Logger::info(TAG, "%s", outcome.text.c_str());
-        return outcome;
-    }
-
-    void RoofControl::runPendingClose()
-    {
-        if (!closePending)
-            return;
-        const Outcome pre = precheck(Roof::Command::Close, closeOrigin, closeOverrides);
-        if (!pre.accepted)
-        {
-            closePending = false;
-            notice = "Waiting close dropped: " + pre.text;
-            return;
-        }
-        const RoofIo::Blockers now = blockers ? blockers() : RoofIo::Blockers();
-        const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(Roof::Command::Close, now);
-        if ((decision.cancelRestart || decision.stopFlash) && closeHook)
-            closeHook(decision);
-        if (decision.action != RoofIo::BlockerAction::Proceed)
-            return;
-        closePending = false;
-        const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin);
-        if (outcome.accepted)
-            guard.ran(Roof::Command::Close, closeOverrides, currentGates());
-        notice = outcome.accepted ? "Waiting close started" : "Waiting close refused: " + outcome.text;
-    }
-
     RoofControl::Outcome RoofControl::clearFault(Roof::Origin origin)
     {
         if (lock == nullptr || !started.load())
@@ -393,6 +334,7 @@ namespace SQM
             // run it without a fresh command.
             closePending = false;
         }
+        fault.blindDone = controller.blindDone(); // spec 030: saved with the fault
     }
 
     bool RoofControl::settingsSaveRefused(const Config &current, const Config &next) const
@@ -553,8 +495,11 @@ namespace SQM
             // at once; only a cleared fault's removal can wait for the stop.
             // Counted as a flash write until it ends (spec 010): a command
             // decided meanwhile waits (close) or is refused (open).
-            if (sameFault(fault, savedFault) || controller.status().driving || RoofIo::roofMoving(controller.status().state) ||
-                closePending)
+            // Spec 030: a blind close's done flag is saved in its dead time,
+            // before the motor runs (this task steps the roof: no step meanwhile).
+            const Roof::Status &now = controller.status();
+            const bool blindWaiting = now.blind && !now.driving;
+            if (sameFault(fault, savedFault) || now.driving || (RoofIo::roofMoving(now.state) && !blindWaiting) || closePending)
                 return;
             // Not under a committed restart: the reset would cut the write off.
             if (blockers && blockers().restartCommitted)

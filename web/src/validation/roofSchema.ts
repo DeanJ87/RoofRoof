@@ -30,6 +30,8 @@ export const roofConfigSchema = z
     currentAmpsPerVolt: z.number().min(0.5).max(100),
     minRunningAmps: z.number().min(0).max(20),
     minSupplyVolts: z.number().min(6).max(15),
+    blindClose: z.boolean(), // spec 030
+    blindSagVolts: z.number().min(0.5).max(6),
   })
   .superRefine((data, ctx) => {
     if (data.slowDutyPercent > data.topDutyPercent) {

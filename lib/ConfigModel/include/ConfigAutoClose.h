@@ -28,6 +28,14 @@ namespace SQM
         // An Alpaca or MQTT stop of a close in unsafe weather counts as a
         // person's stop (stand-down and its critical alert) instead of being refused.
         bool remoteStop = false;
+        // Spec 030: the unsafe time (added up) before the automatic close
+        // starts; rain starts it at once. 0: no hold (spec 005's behaviour).
+        uint32_t unsafeHoldSeconds = 60;
+        // Spec 030 (owner option, off): with park.source nina or ninaAndSwitches,
+        // unsafe weather and N.I.N.A. lost this long without a break, close
+        // without N.I.N.A.'s park (the fitted switches must still read closed).
+        bool ninaLostClose = false;
+        uint32_t ninaLostMinutes = 5;
 
         static constexpr uint32_t MIN_REARM_MINUTES = 5;
         static constexpr uint32_t MAX_REARM_MINUTES = 60;
@@ -43,5 +51,9 @@ namespace SQM
         static constexpr uint32_t MAX_CLOSE_GUARD_SECONDS = 120;
         static constexpr uint32_t MIN_REMIND_MINUTES = 10;
         static constexpr uint32_t MAX_REMIND_MINUTES = 120;
+        static constexpr uint32_t MIN_UNSAFE_HOLD_SECONDS = 0;
+        static constexpr uint32_t MAX_UNSAFE_HOLD_SECONDS = 300;
+        static constexpr uint32_t MIN_NINA_LOST_MINUTES = 1;
+        static constexpr uint32_t MAX_NINA_LOST_MINUTES = 60;
     };
 } // namespace SQM

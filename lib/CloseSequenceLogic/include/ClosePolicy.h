@@ -45,6 +45,13 @@ namespace SQM
             // Spec 022 (park.requestPark): ask N.I.N.A. to park (Principle III
             // step 2). Off, the sequence only waits for a park confirmed some other way.
             bool requestPark = true;
+            // Spec 030 (autoClose.unsafeHoldSeconds): the unsafe time, added
+            // up, before the close starts (WeatherHold.h); 0: no hold.
+            uint64_t unsafeHoldMs = 60000;
+            // Spec 030 (autoClose.ninaLostClose, only with N.I.N.A. a park
+            // source): close without N.I.N.A.'s park once it has been lost this long.
+            bool ninaLostClose = false;
+            uint64_t ninaLostMs = 300000;
         };
 
         // The ranges (research R3), in ms. The floors and ceilings keep the
@@ -66,6 +73,8 @@ namespace SQM
         static_assert(CLOSE_START_RANGE.minMs > 15000 + 5000, "the close-start floor outlasts the network hold with margin");
         constexpr PolicyRange CLOSE_GUARD_SLACK_RANGE{10000, 120000};
         constexpr PolicyRange REMIND_RANGE{600000, 7200000};
+        constexpr PolicyRange UNSAFE_HOLD_RANGE{0, 300000};
+        constexpr PolicyRange NINA_LOST_RANGE{60000, 3600000};
 
         // `policy` with every value inside its range.
         Policy clamp(const Policy &policy);

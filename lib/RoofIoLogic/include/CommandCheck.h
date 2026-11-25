@@ -46,7 +46,8 @@ namespace SQM
             bool parkAside = false;
         };
 
-        // Spec 027: the overrides `origin` may use for `command` (0 for anyone but a person).
+        // Spec 027: the overrides `origin` may use for `command` (0 for clients
+        // and MQTT; spec 030: the automatic close's Close only OverrideNinaLost).
         uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested);
 
         constexpr const char *CALIBRATING_REASON = "calibrating";

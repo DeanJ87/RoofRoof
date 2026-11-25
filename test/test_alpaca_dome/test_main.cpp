@@ -257,6 +257,18 @@ void test_connected_open_and_close_reach_the_roof(void)
     TEST_ASSERT_TRUE(rig.backend.actions[1] == DomeAction::CloseShutter);
 }
 
+// Spec 030 (FR-012): OpenShutter refused for unsafe weather carries the
+// reason in SQMeter's words, unchanged, in the Alpaca error.
+void test_open_shutter_while_unsafe_carries_the_words(void)
+{
+    Rig rig;
+    rig.connect();
+    rig.backend.answer = {false, "Weather not safe: unsafe: SQMeter HTTP says unsafe: Cloud 100% >= 30%"};
+    const Response r = rig.put("openshutter");
+    TEST_ASSERT_EQUAL(ALPACA_ERR_INVALID_OPERATION, Rig::errorOf(r));
+    TEST_ASSERT_TRUE(has(r, "\"ErrorMessage\":\"Weather not safe: unsafe: SQMeter HTTP says unsafe: Cloud 100% >= 30%\""));
+}
+
 void test_a_refusal_is_invalid_operation_with_its_reason(void)
 {
     Rig rig;
@@ -393,6 +405,7 @@ int main(int, char **)
     RUN_TEST(test_open_and_close_need_a_connection);
     RUN_TEST(test_connected_open_and_close_reach_the_roof);
     RUN_TEST(test_a_refusal_is_invalid_operation_with_its_reason);
+    RUN_TEST(test_open_shutter_while_unsafe_carries_the_words);
     RUN_TEST(test_abort_works_connected_or_not);
     RUN_TEST(test_alpaca_off_refuses_open_and_close_without_reaching_the_roof);
     RUN_TEST(test_abort_with_alpaca_off_is_disabled);

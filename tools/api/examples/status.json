@@ -146,6 +146,7 @@
     "target": null,
     "driving": false,
     "fromUnknown": false,
+    "blind": false,
     "moveElapsedMs": 0,
     "moveTimeoutMs": 0,
     "hall": {

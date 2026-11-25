@@ -777,6 +777,10 @@
       "reason": "Move details for troubleshooting through the API; the card says a move from an unknown position goes slowly"
     },
     {
+      "match": "status.roof.blind",
+      "reason": "Move details for troubleshooting through the API; the state says closing and the alert says the close ran blind"
+    },
+    {
       "match": "status.roof.moveElapsedMs",
       "reason": "Move details for troubleshooting through the API"
     },

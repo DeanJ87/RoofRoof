@@ -178,13 +178,22 @@ void test_test_box_sensor(void)
     TEST_ASSERT_EQUAL_STRING("{{ (value_json.roof.testBox or {}) | tojson }}", doc["json_attributes_template"]);
 }
 
+// Spec 030: "Needs a person" is a problem sensor on the state document's flag.
+void test_needs_a_person_is_a_problem_sensor(void)
+{
+    const DynamicJsonDocument doc = parsed(announce(false), "binary_sensor", "needs_person");
+    TEST_ASSERT_EQUAL_STRING("Needs a person", doc["name"]);
+    TEST_ASSERT_EQUAL_STRING("problem", doc["device_class"]);
+    TEST_ASSERT_EQUAL_STRING("{{ 'ON' if value_json.roof.needsPerson.active else 'OFF' }}", doc["value_template"]);
+}
+
 // Every entity, every time: announced or removed, never left out.
 void test_every_entity_is_published_or_removed(void)
 {
     for (const bool flag : {false, true})
     {
         const auto out = announce(flag, flag, flag);
-        TEST_ASSERT_EQUAL_size_t(20, out.size()); // spec 027: eleven for the observatory dashboard
+        TEST_ASSERT_EQUAL_size_t(21, out.size()); // spec 027: eleven for the observatory dashboard; spec 030: needs a person
         for (const auto &entry : out)
             if (!entry.second.empty())
                 TEST_ASSERT_TRUE(entry.second.size() < 1024); // well inside the 3 KB MQTT buffer
@@ -209,7 +218,7 @@ void test_long_names_fit(void)
             TEST_ASSERT_TRUE(payload.size() < 2048);
             ++seen;
         });
-    TEST_ASSERT_EQUAL(20, seen);
+    TEST_ASSERT_EQUAL(21, seen);
 }
 
 int main(int, char **)
@@ -223,6 +232,7 @@ int main(int, char **)
     RUN_TEST(test_motor_current_only_with_current_sense);
     RUN_TEST(test_roof_fault_sensor);
     RUN_TEST(test_test_box_sensor);
+    RUN_TEST(test_needs_a_person_is_a_problem_sensor);
     RUN_TEST(test_every_entity_is_published_or_removed);
     RUN_TEST(test_long_names_fit);
     return UNITY_END();

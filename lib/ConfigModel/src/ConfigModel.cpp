@@ -52,6 +52,7 @@ namespace SQM
             a.enabled = false;
             a.mountNotParked = {4, "", "", ""};
             a.roofNotClosed = {4, "", "", ""};
+            a.needsPerson = {4, "", "", ""};
             a.moveFault = {3, "", "", ""};
             a.supplyLow = {2, "", "", ""};
             a.unsafeClosing = {2, "", "", ""};
@@ -79,7 +80,7 @@ namespace SQM
 
     void AlertsConfig::raiseCriticalToMinimum()
     {
-        for (EventSetting *event : {&mountNotParked, &roofNotClosed})
+        for (EventSetting *event : {&mountNotParked, &roofNotClosed, &needsPerson})
         {
             if (event->level > 4)
                 event->level = 4;

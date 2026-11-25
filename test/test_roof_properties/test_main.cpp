@@ -10,7 +10,7 @@
 //   P2  the duty never exceeds the top duty, nor the slow duty from unknown;
 //   P3  a latched fault keeps the driver off until a person clears it (spec
 //       027: or, for a Hall rail fault latched at rest, until it clears itself);
-//   P4  no motion after the position became unknown without a person's command;
+//   P4  no motion from unknown without a person's command (spec 030: or the automatic Close);
 //   P5  no driven period outlasts its timeout or (from a magnet) the leave time;
 //   P7  three rail readings among the last eight, consecutive or not (spec 027:
 //       after the boot settle, or while moving), latch a
@@ -314,7 +314,9 @@ namespace
         void commanded(const Controller &roof, Command command, Origin origin, const CommandResult &result)
         {
             const bool move = command == Command::Open || command == Command::Close;
-            if (move && result.accepted && origin == Origin::Person)
+            // Spec 030 (constitution 8.0.0): or the automatic close's Close (P2 keeps it slow).
+            const bool automaticClose = command == Command::Close && origin == Origin::Automatic;
+            if (move && result.accepted && (origin == Origin::Person || automaticClose))
                 needsPerson = false;
             (void)roof;
         }

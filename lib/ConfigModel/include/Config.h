@@ -174,8 +174,8 @@ namespace SQM
         // Custom wording within the limits, counted in characters (as the
         // web UI counts them), not UTF-8 bytes.
         static bool templateFits(const std::string &title, const std::string &message);
-        // The roof (spec 007). The first two are critical: their level is 3
-        // (urgent) or 4 (wake me), never lower.
+        // The roof (spec 007). The first two, and spec 030's needs_person, are
+        // critical: their level is 3 (urgent) or 4 (wake me), never lower.
         static constexpr uint8_t MIN_CRITICAL_LEVEL = 3;
         // A Pushover sound that makes a noise: not "none" (silent) or
         // "vibrate"; the critical events can't use those.
@@ -186,6 +186,7 @@ namespace SQM
         void raiseCriticalToMinimum();
         EventSetting mountNotParked;
         EventSetting roofNotClosed;
+        EventSetting needsPerson; // spec 030: the roof needs a person (critical)
         EventSetting moveFault;
         EventSetting supplyLow;
         EventSetting unsafeClosing;
@@ -290,6 +291,11 @@ namespace SQM
         float minSupplyVolts = 11.0f;
         uint32_t calibrationLimitSeconds = 180; // spec 016: the longest a calibration leg may drive
         uint8_t measured = 0;                   // spec 026: Measured:: bits (RoofMeasured.h)
+        // Spec 030 (constitution 8.0.0, I): with the Hall sensor dead, the automatic
+        // close drives towards closed on time alone (on by default, also after an
+        // upgrade); a supply sag this far below its rest stops it as a stall.
+        bool blindClose = true;
+        float blindSagVolts = 2.0f;
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;
@@ -323,6 +329,8 @@ namespace SQM
         static constexpr float MAX_MIN_RUNNING_AMPS = 20.0f;
         static constexpr float MIN_SUPPLY_VOLTS = 6.0f;
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
+        static constexpr float MIN_BLIND_SAG_VOLTS = 0.5f;
+        static constexpr float MAX_BLIND_SAG_VOLTS = 6.0f;
     };
 
     // Spec 023 review: whether the analog setup passes its checks against these

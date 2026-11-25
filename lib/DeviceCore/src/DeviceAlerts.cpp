@@ -39,6 +39,7 @@ namespace SQM
             static constexpr std::pair<AlertType, Setting> SETTINGS[] = {
                 {AlertType::MountNotParked, &AlertsConfig::mountNotParked},
                 {AlertType::RoofNotClosed, &AlertsConfig::roofNotClosed},
+                {AlertType::NeedsPerson, &AlertsConfig::needsPerson},
                 {AlertType::MoveFault, &AlertsConfig::moveFault},
                 {AlertType::SupplyLow, &AlertsConfig::supplyLow},
                 {AlertType::UnsafeClosing, &AlertsConfig::unsafeClosing},
@@ -329,6 +330,7 @@ namespace SQM
             constexpr SampleAlert SAMPLE_ALERTS[] = {
                 {"mount_not_parked", Alerts::AlertType::MountNotParked, "Mount didn't park", "The mount doesn't park"},
                 {"roof_not_closed", Alerts::AlertType::RoofNotClosed, "Roof didn't close", "The roof doesn't close"},
+                {"needs_person", Alerts::AlertType::NeedsPerson, "Roof needs a person", "The roof needs a person"},
                 {"move_fault", Alerts::AlertType::MoveFault, "Roof fault", "The roof faults"},
                 {"supply_low", Alerts::AlertType::SupplyLow, "12 V supply low", "The 12 V supply is low"},
                 {"unsafe_closing", Alerts::AlertType::UnsafeClosing, "Unsafe: closing", "The weather closes the roof"},

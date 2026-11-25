@@ -8,7 +8,7 @@ type EventSettings = Record<string, { level: number; sound: string } | undefined
 
 // The roof's critical alerts can't be switched off, quietened or silenced (spec 007).
 const checkCriticalEvents = (events: EventSettings, ctx: z.RefinementCtx) => {
-  for (const key of ['mount_not_parked', 'roof_not_closed']) {
+  for (const key of ['mount_not_parked', 'roof_not_closed', 'needs_person']) {
     const event = events[key];
     if (event && event.level < 3) {
       ctx.addIssue({ code: 'custom', path: ['events', key, 'level'], message: t('validation.configSchema.roofCriticalAlertsAreUrgent') });

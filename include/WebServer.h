@@ -2,6 +2,7 @@
 
 #include "AlertDispatcher.h"
 #include "AlertEngine.h"
+#include "AlertOutbox.h"
 #include "AlpacaProtocol.h"
 #include "AlpacaRouter.h"
 #include "Config.h"
@@ -84,6 +85,13 @@ namespace SQM
         // alert pause, the send mode, the start-up grace and the master switch.
         // Returns the record id for roofAlertOutcome() (0: not stored).
         uint32_t raiseRoofAlert(const Alerts::Alert &alert);
+        // Spec 030, main loop: an alert waits in the outbox until a channel takes
+        // it (critical ones raw, finished each time they are sent, and kept in
+        // NVS meanwhile). `resolvable`: dropped when its condition ends.
+        void queueRoofAlert(const Alerts::Alert &alert, bool resolvable) { alertOutbox.push(alert, resolvable); }
+        void resolveRoofAlert(Alerts::AlertType type) { alertOutbox.resolve(type); }
+        // The longest gap between two sends of a waiting alert (the reminder interval).
+        void setAlertMaxGap(uint64_t ms) { alertOutbox.setMaxGap(ms); }
         // Main loop, before begin(): where the alert pass reads the roof's
         // conditions for the non-critical roof events (spec 007).
         using RoofConditions = std::function<Alerts::RoofInputs()>;
@@ -101,6 +109,12 @@ namespace SQM
             standDownSeconds = std::move(seconds);
             releaseHold = std::move(release);
         }
+        // Spec 030 (any task): the automatic close's weather hold.
+        using WeatherHoldSource = std::function<RoofIo::WeatherHoldStatus()>;
+        void setWeatherHold(WeatherHoldSource source) { weatherHoldSource = std::move(source); }
+        // Spec 030 (any task): the roof needs a person (status, MQTT, the banner).
+        using NeedsPersonSource = std::function<RoofIo::NeedsPersonStatus()>;
+        void setNeedsPerson(NeedsPersonSource source) { needsPersonSource = std::move(source); }
         // Spec 013: the daylight state for the status document (any task).
         using DaylightSource = std::function<RoofIo::DaylightStatus()>;
         void setDaylight(DaylightSource source) { daylightSource = std::move(source); }
@@ -184,6 +198,8 @@ namespace SQM
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;
         StandDownSeconds standDownSeconds;
+        WeatherHoldSource weatherHoldSource;
+        NeedsPersonSource needsPersonSource;
         ReleaseHold releaseHold;
         DaylightSource daylightSource;
         InputsSource inputsSource;
@@ -288,6 +304,7 @@ namespace SQM
         void scheduleChanged(bool wasSending);
         void publishArmedState();
         std::unique_ptr<AlertDispatcher> alertDispatcher;
+        AlertOutbox alertOutbox; // spec 030
         // Set by the HTTP handler, sent from the loop task.
         struct PendingAlertTest
         {
@@ -308,6 +325,7 @@ namespace SQM
         void processAlerts();
         void watchClients(Alerts::AlertInputs &inputs, const Config &cfg, const std::string &localTime);
         void sendAlerts(const Core::AlertStep &step, const Config &cfg);
+        void sendQueuedAlerts();
 
         // What the settings dependencies need to know (lib/SettingsDeps).
         Deps::Facts settingsFacts() const;

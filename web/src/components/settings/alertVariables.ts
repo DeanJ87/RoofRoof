@@ -11,6 +11,7 @@ export const COMMON_VARS = ['event', 'device', 'time', 'date', 'level'];
 export const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   mount_not_parked: ['reason', 'limit', 'details'],
   roof_not_closed: ['reason', 'limit', 'details'],
+  needs_person: ['reason', 'limit', 'details'],
   move_fault: ['reason'],
   supply_low: ['reason'],
   unsafe_closing: ['reason'],

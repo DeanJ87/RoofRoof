@@ -217,9 +217,42 @@ void test_stored_roof_without_slow_speed_loads_it_unmeasured()
     }
 }
 
+// Spec 030 (owner decision, constitution 8.0.0): the blind close is on after an
+// upgrade, not only for a new device; the N.I.N.A.-lost close stays off.
+void test_stored_settings_without_spec_030_load_blind_close_on_and_nina_lost_off()
+{
+    Config loaded = Config::createDefault();
+    std::string reason;
+    const std::string stored = "{\"roof\":{\"travelMm\":2000},\"autoClose\":{\"remindMinutes\":30}}";
+    TEST_ASSERT_TRUE_MESSAGE(Config::applyJson(stored, loaded, false, &reason), reason.c_str());
+    TEST_ASSERT_TRUE(loaded.roof.blindClose);
+    TEST_ASSERT_EQUAL_FLOAT(2.0f, loaded.roof.blindSagVolts);
+    TEST_ASSERT_FALSE(loaded.autoClose.ninaLostClose);
+    TEST_ASSERT_EQUAL_UINT32(5, loaded.autoClose.ninaLostMinutes);
+    TEST_ASSERT_TRUE_MESSAGE(
+        Config::applyJson(
+            "{\"roof\":{\"blindClose\":false,\"blindSagVolts\":3.5},\"autoClose\":{\"ninaLostClose\":true,\"ninaLostMinutes\":12}}",
+            loaded,
+            false,
+            &reason),
+        reason.c_str());
+    const auto again = Config::fromJson(loaded.toJson(false));
+    TEST_ASSERT_TRUE(again.has_value());
+    TEST_ASSERT_FALSE(again->roof.blindClose);
+    TEST_ASSERT_EQUAL_FLOAT(3.5f, again->roof.blindSagVolts);
+    TEST_ASSERT_TRUE(again->autoClose.ninaLostClose);
+    TEST_ASSERT_EQUAL_UINT32(12, again->autoClose.ninaLostMinutes);
+    TEST_ASSERT_FALSE(Config::applyJson("{\"roof\":{\"blindSagVolts\":0.4}}", loaded, false, &reason));
+    TEST_ASSERT_EQUAL_STRING("Roof: blind close stall sag must be between 0.5 and 6 volts", reason.c_str());
+    Config other = Config::createDefault();
+    TEST_ASSERT_FALSE(Config::applyJson("{\"autoClose\":{\"ninaLostMinutes\":61}}", other, false, &reason));
+    TEST_ASSERT_EQUAL_STRING("Automatic close: N.I.N.A. lost time must be between 1 and 60 minutes", reason.c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_stored_settings_without_spec_030_load_blind_close_on_and_nina_lost_off);
     RUN_TEST(test_every_release_loads_without_loss);
     RUN_TEST(test_stored_config_without_roof_loads_with_roof_defaults);
     RUN_TEST(test_stored_roof_without_current_scale_loads_with_its_default);

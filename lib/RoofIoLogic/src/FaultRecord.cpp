@@ -13,6 +13,9 @@ namespace SQM
             constexpr size_t CHECKED_BYTES = 14; // the checksum covers bytes 0-13
             constexpr uint8_t LAST_KIND = static_cast<uint8_t>(Roof::FaultKind::External);
             constexpr uint8_t LAST_CAUSE = static_cast<uint8_t>(FaultCause::PinSetup);
+            // Byte 5's flags: spec 027's rest rail, spec 030's blind close done.
+            constexpr uint8_t AT_REST = 1u << 0;
+            constexpr uint8_t BLIND_DONE = 1u << 1;
 
             uint16_t checksum(const uint8_t *data)
             {
@@ -49,7 +52,8 @@ namespace SQM
             out[2] = FAULT_RECORD_VERSION;
             out[3] = static_cast<uint8_t>(record.fault.kind);
             out[4] = static_cast<uint8_t>(record.cause);
-            out[5] = record.atRest && record.fault.kind == Roof::FaultKind::HallRail ? 1 : 0; // spec 027
+            const bool hallRail = record.fault.kind == Roof::FaultKind::HallRail;
+            out[5] = static_cast<uint8_t>((record.atRest && hallRail ? AT_REST : 0) | (record.blindDone && hallRail ? BLIND_DONE : 0));
             putFloat(out + 6, record.fault.measured);
             putFloat(out + 10, record.fault.limit);
             const uint16_t sum = checksum(out);
@@ -65,7 +69,8 @@ namespace SQM
             if (data == nullptr || length != FAULT_RECORD_BYTES)
                 return Decoded::Unreadable;
             const uint16_t stored = static_cast<uint16_t>(data[14] | (data[15] << 8));
-            const bool header = data[0] == MAGIC_0 && data[1] == MAGIC_1 && data[2] == FAULT_RECORD_VERSION && data[5] <= 1;
+            const bool header =
+                data[0] == MAGIC_0 && data[1] == MAGIC_1 && data[2] == FAULT_RECORD_VERSION && (data[5] & ~(AT_REST | BLIND_DONE)) == 0;
             const bool kindOk = data[3] != 0 && data[3] <= LAST_KIND;
             const bool causeOk = data[4] <= LAST_CAUSE;
             if (!header || !kindOk || !causeOk || stored != checksum(data))
@@ -74,7 +79,9 @@ namespace SQM
             out.cause = static_cast<FaultCause>(data[4]);
             out.fault.measured = getFloat(data + 6);
             out.fault.limit = getFloat(data + 10);
-            out.atRest = data[5] == 1 && out.fault.kind == Roof::FaultKind::HallRail;
+            const bool hallRail = out.fault.kind == Roof::FaultKind::HallRail;
+            out.atRest = (data[5] & AT_REST) != 0 && hallRail;
+            out.blindDone = (data[5] & BLIND_DONE) != 0 && hallRail;
             return Decoded::Fault;
         }
 

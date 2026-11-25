@@ -467,7 +467,8 @@ void test_release_and_the_automatic_close_end_a_jog(void)
     TEST_ASSERT_FALSE(r.roof.status().jogging);
 
     // The automatic close stops the jog, then makes its own checks: part-way the
-    // position is unknown, so its close is refused (constitution I).
+    // position is unknown, so (spec 030, constitution 8.0.0) it closes slowly
+    // from there, as a person's close would.
     TEST_ASSERT_TRUE(r.jog(End::Closed).accepted);
     r.steps(100);
     TEST_ASSERT_FALSE(r.roof.command(Roof::Command::Close, Roof::Origin::Automatic).accepted);
@@ -475,9 +476,9 @@ void test_release_and_the_automatic_close_end_a_jog(void)
     TEST_ASSERT_TRUE(Teach::yieldToClose(r.roof));
     TEST_ASSERT_FALSE(r.roof.status().jogging);
     TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
-    const Roof::CommandResult close = r.roof.command(Roof::Command::Close, Roof::Origin::Automatic);
-    TEST_ASSERT_FALSE(close.accepted);
-    TEST_ASSERT_EQUAL_STRING("positionUnknown", Roof::refusalName(close.reason));
+    TEST_ASSERT_TRUE(r.roof.command(Roof::Command::Close, Roof::Origin::Automatic).accepted);
+    TEST_ASSERT_TRUE(r.roof.status().fromUnknown);
+    TEST_ASSERT_FALSE(r.roof.command(Roof::Command::Open, Roof::Origin::Automatic).accepted);
 }
 
 void test_a_release_body(void)

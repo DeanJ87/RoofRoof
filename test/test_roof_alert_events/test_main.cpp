@@ -106,10 +106,12 @@ void test_names_and_critical(void)
     TEST_ASSERT_EQUAL_STRING("safety_lost", alertTypeName(AlertType::SafetyLost));
     TEST_ASSERT_TRUE(isCritical(AlertType::MountNotParked));
     TEST_ASSERT_TRUE(isCritical(AlertType::RoofNotClosed));
+    TEST_ASSERT_EQUAL_STRING("needs_person", alertTypeName(AlertType::NeedsPerson));
+    TEST_ASSERT_TRUE(isCritical(AlertType::NeedsPerson)); // spec 030
     for (size_t i = 0; i < ALERT_TYPE_COUNT; ++i)
     {
         const AlertType type = static_cast<AlertType>(i);
-        if (type != AlertType::MountNotParked && type != AlertType::RoofNotClosed)
+        if (type != AlertType::MountNotParked && type != AlertType::RoofNotClosed && type != AlertType::NeedsPerson)
             TEST_ASSERT_FALSE_MESSAGE(isCritical(type), alertTypeName(type));
     }
 }

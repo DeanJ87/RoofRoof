@@ -252,12 +252,25 @@ void test_commands_refused_until_the_hall_settles(void)
     TEST_ASSERT_TRUE(roof.status().state == State::Closed);
 }
 
+// Spec 030 (constitution 8.0.0, I): only a person, and the automatic close's Close, move an unknown roof.
 void test_automatic_moves_refused_when_unknown(void)
 {
     Bench b(Settings(), 900.0f);
-    for (Command c : {Command::Open, Command::Close})
+    const struct
     {
-        const CommandResult r = b.command(c, Origin::Automatic);
+        Command command;
+        Origin origin;
+    } refusedNow[] = {
+        {Command::Open, Origin::Automatic},
+        {Command::Open, Origin::Client},
+        {Command::Close, Origin::Client},
+        {Command::Open, Origin::Mqtt},
+        {Command::Close, Origin::Mqtt},
+    };
+    for (const auto &c : refusedNow)
+    {
+        TEST_ASSERT_TRUE(b.roof.check(c.command, c.origin).reason == Refusal::PositionUnknown);
+        const CommandResult r = b.command(c.command, c.origin);
         TEST_ASSERT_FALSE(r.accepted);
         TEST_ASSERT_TRUE(r.reason == Refusal::PositionUnknown);
     }
@@ -308,7 +321,7 @@ void test_abort_part_way_makes_the_position_unknown(void)
     TEST_ASSERT_TRUE(b.roof.output().command == Driver::Command::Off); // at once, not on the next step
     TEST_ASSERT_TRUE(b.state() == State::Unknown);
     TEST_ASSERT_FALSE(b.roof.status().positionKnown);
-    TEST_ASSERT_TRUE(b.command(Command::Close, Origin::Automatic).reason == Refusal::PositionUnknown);
+    TEST_ASSERT_TRUE(b.command(Command::Open, Origin::Automatic).reason == Refusal::PositionUnknown);
     TEST_ASSERT_TRUE(b.step().command == Driver::Command::Off);
 }
 

@@ -63,12 +63,15 @@ void test_every_critical_event_has_a_type(void)
     Alerts::AlertType type = Alerts::AlertType::Test;
     TEST_ASSERT_TRUE(alertTypeFor(Event::ParkNotConfirmed, type));
     TEST_ASSERT_EQUAL(Alerts::AlertType::MountNotParked, type);
-    for (Event event : {Event::CloseFailed, Event::CannotClose, Event::StoppedByPerson})
+    for (Event event : {Event::CloseFailed, Event::StoppedByPerson})
     {
         type = Alerts::AlertType::Test;
         TEST_ASSERT_TRUE(alertTypeFor(event, type));
         TEST_ASSERT_EQUAL(Alerts::AlertType::RoofNotClosed, type);
     }
+    // Spec 030: the sequence unable to move is "the roof needs a person".
+    TEST_ASSERT_TRUE(alertTypeFor(Event::CannotClose, type));
+    TEST_ASSERT_EQUAL(Alerts::AlertType::NeedsPerson, type);
     for (Event event : {Event::None, Event::Started, Event::EndedSafe, Event::Closed})
         TEST_ASSERT_FALSE(alertTypeFor(event, type));
     // Every event the sequence calls critical has a critical alert type.
@@ -113,7 +116,9 @@ void test_critical_alert_fills_the_shared_variables(void)
     park.event = Event::ParkNotConfirmed;
     Decision close;
     close.event = Event::CloseFailed;
-    for (const Decision &decision : {park, close})
+    Decision cannot;
+    cannot.event = Event::CannotClose;
+    for (const Decision &decision : {park, close, cannot})
     {
         const Alerts::Alert alert = criticalAlert(decision, "why");
         const char *event = Alerts::alertTypeName(alert.type);
@@ -277,9 +282,10 @@ void test_conditions_closing_and_the_weather_kept_for_the_close(void)
 
 void test_closed_counts_only_after_an_attempt(void)
 {
-    for (Phase phase : {Phase::WaitPark, Phase::Closing, Phase::RetryWait, Phase::HeldByPerson, Phase::Halted})
+    for (Phase phase : {Phase::Closing, Phase::HeldByPerson, Phase::Halted})
         TEST_ASSERT_TRUE(closedAfterAttempt(phase, Event::Closed));
-    for (Phase phase : {Phase::Idle, Phase::CannotMove})
+    // Spec 030: closed straight from a wait is a closed magnet flickering back at rest.
+    for (Phase phase : {Phase::Idle, Phase::CannotMove, Phase::WaitPark, Phase::RetryWait})
         TEST_ASSERT_FALSE(closedAfterAttempt(phase, Event::Closed));
     TEST_ASSERT_FALSE(closedAfterAttempt(Phase::Closing, Event::EndedSafe));
 }

@@ -75,10 +75,6 @@ namespace SQM
             return ms > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(ms);
         }
 
-        CloseSeq::Delivery deliveryOf(uint32_t id, const CloseOnUnsafe::DeliveryProbe &probe)
-        {
-            return id == 0 || !probe ? CloseSeq::Delivery::Failed : probe(id);
-        }
     } // namespace
 
     void CloseOnUnsafe::updateConfig(const Config &config)
@@ -137,12 +133,15 @@ namespace SQM
         saved.requestAgeMs = k->requestAgeMs;
         sequence.restore(saved);
         phaseNow.store(static_cast<uint8_t>(sequence.phase()));
-        if (sequence.phase() != CloseSeq::Phase::Idle)
-            Logger::warn(
-                TAG,
-                "Close sequence carries on after the restart (%s, %u s)",
-                CloseSeq::phaseName(sequence.phase()),
-                static_cast<unsigned>(k->unsafeMs / 1000));
+        if (sequence.phase() == CloseSeq::Phase::Idle)
+            return;
+        // Spec 030: an attempt restored mid-way was already wanted: no new hold.
+        weatherHold.startFired();
+        Logger::warn(
+            TAG,
+            "Close sequence carries on after the restart (%s, %u s)",
+            CloseSeq::phaseName(sequence.phase()),
+            static_cast<unsigned>(k->unsafeMs / 1000));
     }
 
     // Every step: RTC memory is plain RAM, so keeping the running time costs
@@ -197,13 +196,16 @@ namespace SQM
         in.roofStarted = roof.running();
         in.daylight = daylightView.closes();                              // spec 013
         CloseSeq::applyOverride(in, snap.overrideBits, safety.weather()); // spec 027
+        holdWeather(in, snap.overrideBits, safety.weather().reasons);     // spec 030
+        watchNina(in, snap, safety.park());                               // spec 030
         in.releaseHold = releaseWanted.exchange(false);                   // spec 026
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
         {
             std::lock_guard<std::mutex> held(daylightLock);
             sequence.setPolicy(policy);
             // Spec 005: resends up to the reminder interval, and never further apart than its 30 minutes.
-            retry.setMaxGap(std::min<uint64_t>(policy.remindMs, CloseSeq::ALERT_RETRY_MAX_MS));
+            if (alertOut.maxGap)
+                alertOut.maxGap(std::min<uint64_t>(policy.remindMs, CloseSeq::ALERT_RETRY_MAX_MS));
         }
 
         const CloseSeq::Phase before = sequence.phase();
@@ -214,7 +216,7 @@ namespace SQM
         standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
         logHoldEnd(before, in);
         keep();
-        retryAlert(now);
+        settleAlerts(snap, in.roofStarted); // spec 030
         countClosed(before, decision);
         updateConditions(snap, safety);
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
@@ -222,6 +224,7 @@ namespace SQM
 
         CloseSeq::Reasons reasons;
         reasons.park = CloseSeq::parkReason(safety.park(), policy.requestPark);
+        reasons.parkGap = CloseSeq::parkGapOf(safety.park()); // spec 030
         reasons.fault = RoofIo::describeFault(snap.fault);
         reasons.roof = snap.status.state;
         const std::string weather = Safety::describe(safety.weather());
@@ -236,6 +239,55 @@ namespace SQM
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
         }
+    }
+
+    // Spec 030: the sequence sees the weather through the hold (the verdict
+    // itself, Open's refusal and an opening roof's stop are not delayed).
+    // Daylight is left as it is.
+    void CloseOnUnsafe::holdWeather(CloseSeq::Inputs &in, uint8_t overrideBits, uint32_t reasons)
+    {
+        CloseSeq::WeatherHold::Step step;
+        step.nowMs = in.nowMs;
+        step.weatherSafe = in.weatherSafe;
+        step.rain = (reasons & Safety::ReasonRain) != 0;
+        step.overrideActive = (overrideBits & RoofIo::OverrideWeather) != 0;
+        {
+            std::lock_guard<std::mutex> held(daylightLock);
+            step.holdMs = policy.unsafeHoldMs;
+        }
+        const bool wasFired = weatherHold.fired();
+        in.weatherSafe = weatherHold.update(step);
+        if (weatherHold.fired() != wasFired)
+            Logger::info(TAG, "%s", weatherHold.fired() ? "Weather hold: the automatic close is wanted" : "Weather hold: clear");
+        RoofIo::WeatherHoldStatus shown;
+        shown.countedSeconds = static_cast<int32_t>(std::min<uint64_t>(weatherHold.countedMs() / 1000, INT32_MAX));
+        const uint64_t left = weatherHold.leftMs();
+        shown.leftSeconds = left == CloseSeq::WeatherHold::NOT_HOLDING ? -1 : static_cast<int32_t>((left + 999) / 1000);
+        shown.fired = weatherHold.fired();
+        std::lock_guard<std::mutex> held(daylightLock);
+        holdShown = shown;
+    }
+
+    // Spec 030 (autoClose.ninaLostClose): N.I.N.A. lost long enough, and every
+    // fitted park switch reads closed (the gate checks them again at the start
+    // and throughout the close).
+    void CloseOnUnsafe::watchNina(CloseSeq::Inputs &in, const RoofIo::Snapshot &snap, const Safety::ParkResult &park)
+    {
+        CloseSeq::NinaLostWatch::Step step;
+        step.nowMs = in.nowMs;
+        step.parkReasons = park.reasons;
+        {
+            std::lock_guard<std::mutex> held(daylightLock);
+            step.enabled = policy.ninaLostClose;
+            step.afterMs = policy.ninaLostMs;
+        }
+        in.ninaLost = ninaLostWatch.update(step) && RoofIo::switchesClosed(snap.fittedSwitches, snap.switch1, snap.switch2);
+    }
+
+    RoofIo::WeatherHoldStatus CloseOnUnsafe::weatherHoldStatus() const
+    {
+        std::lock_guard<std::mutex> held(daylightLock);
+        return holdShown;
     }
 
     // What the roof's non-critical alerts look at (spec 007), after each step.
@@ -279,35 +331,17 @@ namespace SQM
             ++closedCount;
     }
 
-    // A critical alert no channel took is sent again, at most every minute,
-    // until one does or the sequence is idle (constitution III).
-    void CloseOnUnsafe::retryAlert(uint64_t nowMs)
-    {
-        if (sequence.phase() == CloseSeq::Phase::Idle)
-            retry.clear();
-        if (!retry.active() || nowMs - lastProbeMs < PROBE_EVERY_MS)
-            return;
-        lastProbeMs = nowMs;
-        if (!retry.resendDue(deliveryOf(lastAlertId, deliveryProbe), nowMs))
-            return;
-        Logger::warn(TAG, "No channel took the alert \"%s\": sending it again", lastAlert.title.c_str());
-        lastAlertId = alertSink ? alertSink(lastAlert) : 0;
-        retry.resent(nowMs);
-    }
-
     void CloseOnUnsafe::parkWaitFailed(const std::string &text)
     {
         Logger::error(TAG, "Mount not parked: %s", text.c_str());
-        send(CloseSeq::parkWaitAlert(text), SafetyPoller::nowMs() + TIME_BASE_MS);
+        send(CloseSeq::parkWaitAlert(text), false); // a person's command gave up: sent until a channel takes it
     }
 
-    void CloseOnUnsafe::send(const Alerts::Alert &alert, uint64_t nowMs)
+    // Spec 030: through the alert outbox, sent again until a channel takes it.
+    void CloseOnUnsafe::send(const Alerts::Alert &alert, bool resolvable)
     {
-        if (!alertSink)
-            return;
-        lastAlert = alert;
-        lastAlertId = alertSink(alert);
-        retry.sent(nowMs);
+        if (alertOut.queue)
+            alertOut.queue(alert, resolvable);
     }
 
     CloseSeq::Decision CloseOnUnsafe::carryOut(
@@ -324,12 +358,20 @@ namespace SQM
             }
             break;
         case CloseSeq::Action::Close:
+        case CloseSeq::Action::BlindClose:
         {
-            // Through spec 003's gates: the park at the start, the interlock throughout.
-            const RoofControl::Outcome outcome = roof.automaticClose(personStopsSeen);
+            // Through spec 003's gates: the park at the start, the interlock
+            // throughout (spec 030: N.I.N.A.'s part set aside by the N.I.N.A.-lost close).
+            const uint8_t bits = decision.ninaLost ? RoofIo::OverrideNinaLost : 0;
+            const RoofControl::Outcome outcome = decision.action == CloseSeq::Action::BlindClose
+                                                     ? roof.automaticBlindClose(personStopsSeen, bits)
+                                                     : roof.automaticClose(personStopsSeen, bits);
             refusal = outcome.text;
             if (outcome.accepted)
-                Logger::info(TAG, "Closing the roof: the mount is parked");
+                Logger::info(
+                    TAG,
+                    "%s",
+                    decision.ninaLost ? "Closing the roof: N.I.N.A. lost, its park set aside" : "Closing the roof: the mount is parked");
             return sequence.closeAnswered(CloseSeq::answerFor(outcome.accepted, outcome.reason));
         }
         case CloseSeq::Action::Stop:
@@ -341,10 +383,12 @@ namespace SQM
         return CloseSeq::Decision{};
     }
 
-    void CloseOnUnsafe::report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather)
+    void CloseOnUnsafe::report(const CloseSeq::Decision &given, const CloseSeq::Reasons &reasons, const std::string &weather)
     {
-        if (decision.event == CloseSeq::Event::None)
+        if (given.event == CloseSeq::Event::None)
             return;
+        CloseSeq::Decision decision = given;
+        decision.parkGap = reasons.parkGap; // spec 030: the title names the missing input
         if (!CloseSeq::isCritical(decision.event))
         {
             if (decision.event == CloseSeq::Event::Started && decision.daylight)
@@ -357,10 +401,15 @@ namespace SQM
         }
         const CloseSeq::AlertText text = CloseSeq::alertFor(decision, CloseSeq::reasonFor(decision, reasons));
         Logger::error(TAG, "%s: %s", text.title.c_str(), text.message.c_str());
-        if (!decision.alert || !alertSink)
+        if (!decision.alert || !alertOut.queue)
             return; // already alerted in this episode
         // Typed, with its variables; the sink applies the event's settings
         // (spec 007) each time it is sent or sent again.
-        send(CloseSeq::criticalAlert(decision, CloseSeq::reasonFor(decision, reasons)), stepNowMs);
+        // Spec 030: a condition's alert is dropped once the sequence is idle (or
+        // the roof no longer needs a person); a report of what happened is kept.
+        const CloseSeq::Event e = decision.event;
+        const bool condition = e == CloseSeq::Event::ParkNotConfirmed || e == CloseSeq::Event::CloseFailed ||
+                               e == CloseSeq::Event::CannotClose || e == CloseSeq::Event::StoppedByPerson;
+        send(CloseSeq::criticalAlert(decision, CloseSeq::reasonFor(decision, reasons)), condition);
     }
 } // namespace SQM

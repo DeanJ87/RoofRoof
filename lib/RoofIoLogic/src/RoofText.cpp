@@ -167,6 +167,8 @@ namespace SQM
                 return "The roof is moving";
             case Roof::Refusal::LegInvalid:
                 return "Calibration leg outside its ranges";
+            case Roof::Refusal::BlindUnavailable:
+                return "No blind close: it is off, already ran for this fault, or the fault isn't the Hall sensor's alone";
             }
             return "Refused";
         }

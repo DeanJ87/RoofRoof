@@ -166,7 +166,8 @@ namespace SQM
             {
                 return state == o.state && fault == o.fault && positionKnown == o.positionKnown && closePending == o.closePending &&
                        closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed && testBox == o.testBox &&
-                       testBoxFlags == o.testBoxFlags && guard == o.guard && ninaReachable == o.ninaReachable && sources == o.sources;
+                       testBoxFlags == o.testBoxFlags && guard == o.guard && ninaReachable == o.ninaReachable && sources == o.sources &&
+                       needsPerson == o.needsPerson;
             }
 
             StateKey keyOf(const Snapshot &snapshot)
@@ -186,6 +187,7 @@ namespace SQM
                 key.guard = static_cast<uint8_t>((wait.waiting ? 1 : 0) | (wait.failed ? 2 : 0) | (snapshot.overrideBits << 2));
                 key.ninaReachable = snapshot.health.ninaReachable;
                 key.sources = std::string(snapshot.health.sqmeterState) + "/" + snapshot.daylight.state;
+                key.needsPerson = snapshot.needsPerson.active;
                 return key;
             }
 

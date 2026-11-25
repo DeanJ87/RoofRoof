@@ -65,6 +65,23 @@ namespace SQM
         };
         SourcesHealth healthOf(const Safety::InputsReport &report, bool ninaSet);
 
+        // Spec 030: the automatic close's weather hold (CloseSeq::WeatherHold):
+        // the unsafe seconds added up, the seconds left before the close is
+        // wanted (-1: not counting) and whether it has fired.
+        struct WeatherHoldStatus
+        {
+            int32_t countedSeconds = 0;
+            int32_t leftSeconds = -1;
+            bool fired = false;
+        };
+
+        // Spec 030: the roof needs a person (CloseSeq::NeedsPerson), and what for.
+        struct NeedsPersonStatus
+        {
+            bool active = false;
+            std::string text;
+        };
+
         // A consistent copy of everything the section shows, taken under the
         // roof's lock and written outside it.
         struct Snapshot
@@ -104,6 +121,8 @@ namespace SQM
             // Spec 026: a stand-down's seconds left if nothing wants the roof
             // closed meanwhile (CloseSeq::Sequence::standDownLeftMs); -1: not counting (null).
             int32_t closeRearmSeconds = -1;
+            WeatherHoldStatus weatherHold; // spec 030, filled in by the caller
+            NeedsPersonStatus needsPerson; // spec 030, filled in by the caller
             // Spec 011: "off" (the real roof), "bench" (bench firmware: simulated
             // roof, motor never driven) or "demo" (the browser demo).
             const char *simulation = "off";
@@ -154,7 +173,8 @@ namespace SQM
         // Spec 027: the MQTT state document's "closeRearmSeconds",
         // "daylightState" and "blocked" for Home Assistant.
         void writeDashboard(JsonObject out, const Snapshot &snapshot);
-        // Spec 026: the roof object's "closeRearmSeconds" (the status document only).
+        // Spec 026: the roof object's "closeRearmSeconds", and spec 030's
+        // "weatherHold" and "needsPerson.text" (the status document only).
         void writeCloseRearm(JsonObject out, const Snapshot &snapshot);
     } // namespace RoofIo
 } // namespace SQM

@@ -160,6 +160,7 @@ namespace SQM
 
         HeapTrace::mark("web server routes");
         alertDispatcher->begin();
+        alertOutbox.begin(); // spec 030: alerts kept across the restart
         HeapTrace::mark("alert dispatcher");
         if (getConfigCallback().alpaca.enabled)
             startAlpacaDiscovery();

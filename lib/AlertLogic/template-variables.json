@@ -18,6 +18,11 @@
       "limit",
       "details"
     ],
+    "needs_person": [
+      "reason",
+      "limit",
+      "details"
+    ],
     "move_fault": [
       "reason"
     ],

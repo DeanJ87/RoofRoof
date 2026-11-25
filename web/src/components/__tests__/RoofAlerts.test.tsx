@@ -18,6 +18,7 @@ import type { AlertEventKey, Config } from '../../types';
 const ROOF_KEYS: AlertEventKey[] = [
   'mount_not_parked',
   'roof_not_closed',
+  'needs_person',
   'move_fault',
   'supply_low',
   'unsafe_closing',
@@ -39,6 +40,7 @@ describe('Roof alert events', () => {
     for (const key of ROOF_KEYS) expect(document.querySelector(`[data-event="${key}"]`)).not.toBeNull();
     expect(options(screen.getByLabelText("The mount doesn't park: level") as HTMLSelectElement)).toEqual(['3', '4']);
     expect(options(screen.getByLabelText("The roof doesn't close: level") as HTMLSelectElement)).toEqual(['3', '4']);
+    expect(options(screen.getByLabelText('The roof needs a person: level') as HTMLSelectElement)).toEqual(['3', '4']);
     expect(options(screen.getByLabelText('The roof faults: level') as HTMLSelectElement)).toEqual(['0', '1', '2', '3', '4']);
   });
 
@@ -68,7 +70,7 @@ describe('Roof alert events', () => {
     const alerts = mergeAlertsConfig(mockConfig.alerts);
     const withLevel = (key: AlertEventKey, level: number) =>
       alertsConfigSchema.safeParse({ ...alerts, events: { ...alerts.events, [key]: { level, sound: '' } } }).success;
-    for (const key of ['mount_not_parked', 'roof_not_closed'] as const) {
+    for (const key of ['mount_not_parked', 'roof_not_closed', 'needs_person'] as const) {
       expect(withLevel(key, 0)).toBe(false);
       expect(withLevel(key, 2)).toBe(false);
       expect(withLevel(key, 3)).toBe(true);
@@ -124,6 +126,12 @@ describe('Roof alert events', () => {
     expect(mergeAlertsConfig(undefined).events.nina_lost.level).toBe(2);
   });
 
+  it('has the needs-a-person event: critical, wake me by default, the close sequence wording (spec 030)', () => {
+    expect(EVENT_VARS.needs_person).toEqual(['reason', 'limit', 'details']);
+    expect(defaultText('needs_person')).toEqual({ title: 'Roof needs a person', message: '{details}' });
+    expect(mergeAlertsConfig(undefined).events.needs_person.level).toBe(4);
+  });
+
   it('waits on alerts first, then on daylight, for the daylight events', () => {
     const facts = { wifiConnected: true, mqttConnected: true, clockSet: true, alpacaDevices: 1 };
     const withAlerts = { ...mockConfig, alerts: mergeAlertsConfig({ ...mockConfig.alerts, enabled: true }) };
@@ -150,5 +158,6 @@ describe('Roof alert events', () => {
     for (const key of ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost', 'nina_lost'])
       expect(view.get(`alerts.events.${key}.level`)).toMatchObject({ id: 'D-04', state: 'inactive', reason: 'alerts-off' });
     expect(view.get('alerts.events.mount_not_parked.level').state).toBe('unknown');
+    expect(view.get('alerts.events.needs_person.level').state).toBe('unknown');
   });
 });

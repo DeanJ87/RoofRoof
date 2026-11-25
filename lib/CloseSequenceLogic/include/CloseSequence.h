@@ -5,8 +5,9 @@
 // park, wait for the park to be confirmed, close, and confirm closed. Every
 // step has a time limit; a step that runs out stops the sequence where it is
 // and raises a critical event naming it. The roof never opens from here, and
-// nothing is sent while the position is unknown, a fault is latched or a
-// person has stopped the sequence. Pure: time and inputs come in, one action
+// nothing is sent while a fault is latched or a person has stopped the
+// sequence; spec 030 (constitution 8.0.0): an unknown position closes slowly
+// to the first magnet, and a dead Hall sensor (alone) may close blind, once. Pure: time and inputs come in, one action
 // and one event go out (data-model.md has the transition table). The close
 // itself goes through spec 003's gates like every other close.
 
@@ -73,6 +74,16 @@ namespace SQM
             // (a person's stop, a halted close) early, but only on a step where
             // nothing wants the roof closed (weather safe, no daylight close).
             bool releaseHold = false;
+            // Spec 030 (constitution 8.0.0, I): a blind close may start
+            // (Roof::Status::blindReady: only a Hall rail fault latched,
+            // roof.blindClose on, none run for it yet). The sequence then
+            // attempts as usual and closes with Action::BlindClose.
+            bool blindReady = false;
+            // Spec 030 (autoClose.ninaLostClose): N.I.N.A. has been lost long
+            // enough (NinaLostWatch) and every fitted park switch reads closed:
+            // a close wanted for the weather (never daylight alone) may go
+            // ahead without N.I.N.A.'s park.
+            bool ninaLost = false;
         };
 
         enum class Phase : uint8_t
@@ -82,7 +93,7 @@ namespace SQM
             Closing,      // the close was commanded, or one was already running
             RetryWait,    // an attempt failed: no request until the back-off ends
             HeldByPerson, // a person stopped the sequence
-            CannotMove,   // the position is unknown or a fault is latched
+            CannotMove,   // a fault is latched (no blind close), the roof controller didn't start, or a blind close ran
             Halted,       // a close outlasted its guard and was stopped: waits for a person
         };
 
@@ -93,6 +104,7 @@ namespace SQM
             RequestPark, // SafetyInputs::requestPark()
             Close,       // RoofControl::command(Close, Automatic), then closeAnswered()
             Stop,        // RoofControl::command(Stop, Automatic)
+            BlindClose,  // spec 030: RoofControl::automaticBlindClose(), then closeAnswered()
         };
 
         enum class Event : uint8_t
@@ -105,6 +117,10 @@ namespace SQM
             CloseFailed,      // critical: the close didn't end closed
             CannotClose,      // critical: position unknown or fault latched
             StoppedByPerson,  // critical: open while unsafe because a person stopped it
+            // Spec 030, critical: a close ran without a known position (WasUnknown),
+            // blind (ClosedBlind) or without N.I.N.A.'s park (NinaLost): a person
+            // must check the roof.
+            NeedsPerson,
         };
 
         enum class Cause : uint8_t
@@ -120,6 +136,18 @@ namespace SQM
             FaultLatched,
             RoofNotStarted, // the roof controller didn't start: nothing can move
             NotStarted,     // spec 014: a waiting close didn't start in time and was called off (policy retry)
+            WasUnknown,     // spec 030: the close started from an unknown position
+            ClosedBlind,    // spec 030: the blind close ran (the Hall sensor is dead)
+            NinaLost,       // spec 030: the close ran without N.I.N.A.'s park
+        };
+
+        // Spec 030: the input a ParkNotConfirmed alert names in its title
+        // (parkGapOf; filled in by the caller, for the wording only).
+        enum class ParkGap : uint8_t
+        {
+            None,
+            NinaLost,        // N.I.N.A. can't be read (unreachable, stale, unreadable, error, not read yet)
+            SourcesDisagree, // N.I.N.A. and the park switches point opposite ways
         };
 
         // What one step decided.
@@ -139,6 +167,10 @@ namespace SQM
             uint64_t rearmMs = REARM_SAFE_MS;
             // Spec 014: a StoppedByPerson whose stop came from an imaging app or MQTT.
             bool remoteStop = false;
+            // Spec 030: the Close or BlindClose sets N.I.N.A.'s park aside
+            // (RoofIo::OverrideNinaLost); a NeedsPerson event's close did.
+            bool ninaLost = false;
+            ParkGap parkGap = ParkGap::None; // spec 030
         };
 
         // Spec 026: why a person's release of a stand-down is refused now, or
@@ -243,7 +275,9 @@ namespace SQM
             Decision closing(const Inputs &in, bool personStopped);
             Decision stoodDown(const Inputs &in, bool personStopped);
             bool interrupted(const Inputs &in, bool personStopped, Decision &out);
-            Decision closeNow();
+            Decision closeNow(const Inputs &in);
+            bool blocksAttempt(const Inputs &in) const;
+            Decision closeNotice(Decision decision);
             Decision failAttempt(Event event, Cause cause, Action action);
             Decision enter(Phase next, Event event = Event::None, Cause cause = Cause::None);
             Action requestIfDue(uint64_t nowMs);
@@ -284,6 +318,16 @@ namespace SQM
             bool parkConfirmed = false;    // parked for the policy's park hold
             bool unknownConfirmed = false; // unknown for UNKNOWN_CONFIRM_MS
             bool safeLong = false;         // safe for the policy's re-arm spell
+            bool ninaLostNow = false;      // spec 030: the N.I.N.A.-lost close may go ahead
+            bool closeAllowed() const { return parkConfirmed || ninaLostNow; }
+            // Spec 030: the close under way started from an unknown position,
+            // blind, or without N.I.N.A.'s park (its notice's cause), and ran
+            // (the roof accepted it); the notice waiting to be raised.
+            Cause closeKind = Cause::None;
+            bool closeKindNina = false;
+            bool closeRan = false;
+            Cause noticeCause = Cause::None;
+            bool noticeNina = false;
             // Where the close came from, to go back to if the gate refuses it.
             Phase beforeClose = Phase::WaitPark;
             uint64_t beforeCloseSinceMs = 0;
@@ -333,8 +377,8 @@ namespace SQM
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
             // When each event and cause last alerted (index: Event, Cause).
-            bool alertedEver[8][11] = {};
-            uint64_t alertedAtMs[8][11] = {};
+            bool alertedEver[9][14] = {};
+            uint64_t alertedAtMs[9][14] = {};
             bool remindNow = false; // restored after a restart: remind on the first step
             bool restorePending = false;
             // Spec 013: the episode was started by daylight with the weather safe.
@@ -356,19 +400,24 @@ namespace SQM
         // The roof's status into `in`.
         void applyRoof(Inputs &in, const Roof::Status &status, bool closePending);
 
-        // ParkNotConfirmed, CloseFailed, CannotClose and StoppedByPerson.
+        // ParkNotConfirmed, CloseFailed, CannotClose, StoppedByPerson and (spec 030) NeedsPerson.
         bool isCritical(Event event);
         // The texts an event's reason can come from (constitution III).
         struct Reasons
         {
-            std::string park;    // Safety::describe(park result)
-            std::string fault;   // RoofIo::describeFault(latched fault)
-            std::string refusal; // the refused close's text
+            std::string park;                // Safety::describe(park result)
+            std::string fault;               // RoofIo::describeFault(latched fault)
+            std::string refusal;             // the refused close's text
+            ParkGap parkGap = ParkGap::None; // spec 030: parkGapOf(park result)
             Roof::State roof = Roof::State::Unknown;
         };
         // The park's text for the reasons: Safety::describe(park), and while
         // park requests are off (spec 022) a note that none was sent.
         std::string parkReason(const Safety::ParkResult &park, bool requestPark);
+        // Spec 030: which input keeps the park from being confirmed, for the
+        // wording (the park source decides: with the switches alone N.I.N.A.
+        // is never the missing input).
+        ParkGap parkGapOf(const Safety::ParkResult &park);
         // Which of `reasons` explains `decision`'s event ("" when the event says it all).
         std::string reasonFor(const Decision &decision, const Reasons &reasons);
 
