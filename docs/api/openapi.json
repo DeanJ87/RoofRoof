@@ -57,7 +57,7 @@
     },
     {
       "name": "Diagnostics",
-      "description": "Advanced diagnostics (off by default): live readings and the move log."
+      "description": "Advanced diagnostics (off by default): live readings and the move log; crash records and the recent log (always on, spec 029)."
     },
     {
       "name": "Alpaca",
@@ -3691,6 +3691,82 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diag/crashes": {
+      "get": {
+        "operationId": "get_diag_crashes",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Crash records",
+        "description": "Spec 029: the last 3 unexpected restarts (a crash, a watchdog or a brown-out), newest first, recorded at the start after each one; always on, whatever the diagnostics mode. Plain text, one fact per line: the reset reason, the firmware version and build (the first 16 hex digits of the .elf's SHA-256), the time and uptime of the crash, and, when the panic handler ran, the reason, the task, its core and stack left, whether a flash write was in progress, and the PC and up to 16 backtrace addresses; the free memory and five tasks' stack headroom from the last second before it; and the last 8 log lines. Needs the password when protection is on (the log lines can name hosts and topics).\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The records as text: this start (reset reason, boot count, running firmware and build), then each record after a blank line, newest first, one fact per line: `Record <seq>: <kind>`, `Time:`, `Reset reason:`, `Firmware:`, `Reason:`, `Task:` (core and stack left), `Stuck tasks:`, `Flash write:`, `Backtrace:` (what tools/decode_crash.py reads), `Memory:`, `Stack left:`, `Roof:`, and `Log before the restart:` with up to 8 lines. Lines a record has no data for are left out.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "This start: panic (4), boot 3\nRunning: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nRecords: 2 (the last 3 are kept)\n\nRecord 2: panic\nTime: 2026-11-25 02:14:07 UTC, 5231 s after start\nReset reason: panic (4)\nFirmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nReason: LoadProhibited\nTask: async_tcp, core 1, stack left 1904 B\nFlash write: in progress\nBacktrace: 0x400d5f2c 0x400d5f2c 0x400d61a0 0x40089e1d\nMemory: free 61224 B, lowest 41020 B, largest block 31732 B\nStack left: loop 5980, roof 3416, async_tcp 6640, safetyPoll 2120, alerts 3876 B\nRoof: closed\nLog before the restart:\n  5229.120s INFO  [Main] Settings saved\n  5229.480s INFO  [Main] Settings saved\n\nRecord 1: brownout\nTime: unknown (clock not set), 812 s after start\nReset reason: brownout (9)\nFirmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nReason: not captured\n"
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diag/log": {
+      "get": {
+        "operationId": "get_diag_log",
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Recent log",
+        "description": "Spec 029: the device's last 50 log lines as plain text, oldest first, kept across a crash or a software restart (not a power cut), each with the boot it belongs to, the seconds since that boot, the level and up to 71 characters of text. Needs the password when protection is on.\n\nNeeds the password when protection is on.",
+        "security": [
+          {
+            "deviceLogin": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One line per log line, oldest first: `#<boot> <seconds>s <LEVEL> <text>`.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "#2 5229.120s INFO  [Main] Settings saved\n#3 0.412s INFO  [Main] === RoofRoof Starting ===\n#3 0.431s WARN  [Crash] Restarted unexpectedly (panic): crash record 2 kept\n"
+              }
+            }
+          },
+          "401": {
+            "description": "The password is needed",
             "content": {
               "application/json": {
                 "schema": {

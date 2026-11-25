@@ -1,5 +1,5 @@
 ---
-description: "Advanced diagnostics: an optional Diagnostics page with the roof's live readings, the control task's timing and the device's memory, plus a log of the last moves with current and supply profiles, CSV and JSON downloads, and optional MQTT. Off by default; it never affects the roof."
+description: "Advanced diagnostics: an optional Diagnostics page with the roof's live readings, the control task's timing and the device's memory, plus a log of the last moves with current and supply profiles, CSV and JSON downloads, and optional MQTT. Off by default; it never affects the roof. The Crashes card (always on) keeps the last unexpected restarts and the recent log."
 ---
 
 # Advanced diagnostics
@@ -10,6 +10,8 @@ It is **off by default**. With it off the device records nothing, allocates noth
 
 !!! info "Readings only"
     Diagnostics never opens, closes or stops the roof, and no decision uses what it records. The only action is **Clear log**, which empties the record.
+
+The [Crashes card](#crashes) at the end of the page is the exception: crash capture is always on, so the card shows whether advanced diagnostics is on or off.
 
 ---
 
@@ -131,3 +133,32 @@ One move says little. Compare moves in the same conditions:
 - A current peak at the same place in each profile points to one spot on the track.
 
 Keep the summaries on, download a CSV now and then, and compare the first move after commissioning with later ones.
+
+---
+
+## Crashes
+
+The controller sometimes has to restart on its own: after a crash in the firmware, when a watchdog finds a task stuck, or when the supply dips too low (a brown-out). An installed controller has no serial cable to show why, so it keeps a record itself. This is always on and costs nothing while nothing goes wrong.
+
+The **Crashes** card at the end of the Diagnostics page shows the last 3 unexpected restarts, newest first, as the device wrote them, one fact per line. Each starts `Record <number>: panic` (a crash: an exception, `abort()`, a failed check or a stack overflow), `watchdog` or `brownout`, then:
+
+- when it happened (or the seconds since start when the clock wasn't set yet), the reset reason, and the firmware and build that crashed;
+- the panic's reason, the task that was running (`loopTask` is the main loop, `roof_motion` the roof's task, `async_tcp` the web server), its core and the stack it had left; for a task watchdog, the tasks that stopped checking in; whether a flash write (a settings save, a fault record, the kept move summaries) was in progress;
+- the backtrace: the code addresses that [Decoding a crash](../development/crash-decoding.md) turns into function names;
+- the free memory, the stack left in the main loop, the roof's task, the web server, the weather poller and the alert sender, and the roof's state, from the last second before the restart;
+- the last 8 log lines before it.
+
+A brown-out, or a reset with no panic, has no reason or backtrace ("not captured"): only the time, the memory and stacks, and the log.
+
+**Copy** copies them, for an issue or for `tools/decode_crash.py`. **Copy log** copies the last 50 lines of the device's log, including the lines from before the last restart (they are kept across a crash or a software restart, not across a power cut).
+
+How it works:
+
+- When the firmware panics, its last act before the restart is to write a short capture (the reason, the task, the code addresses) into memory that survives the restart. Once a second the main loop also notes the time, the free memory, the stacks and the roof's state there, so a brown-out, which leaves no time for a capture, still has its context.
+- At the next start, before the roof's task starts and before anything can move, the device turns that into a record in its settings memory (NVS) with the firmware version, its build and the last 8 log lines. The fourth record replaces the oldest. Ordinary restarts (a power cut, the reset button, an update or a settings restart) make no record.
+- The ESP32 also reports a slow power-up as a brown-out: a brown-out record right after switching the supply on is not a fault.
+
+The card needs the password when protection is on: log lines can name addresses and topics. The same text is at [`GET /api/diag/crashes`](../api/rest.md#get-apidiagcrashes) and [`GET /api/diag/log`](../api/rest.md#get-apidiaglog).
+
+!!! info "Readings only"
+    Crash records never open, close or stop the roof. A restart in the middle of a move still leaves the position unknown and the roof still, as before.

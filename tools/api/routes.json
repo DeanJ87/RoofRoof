@@ -41,6 +41,8 @@
       "auth": "open",
       "why": "Read-only: the move log's summaries and one move's profile (/api/diag/moves/{id}, JSON or CSV); readings only, changes nothing"
     },
+    { "path": "/api/diag/crashes", "method": "GET", "auth": "required" },
+    { "path": "/api/diag/log", "method": "GET", "auth": "required" },
     {
       "path": "/api/diag/moves/clear",
       "method": "POST",

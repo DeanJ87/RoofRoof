@@ -134,6 +134,10 @@ def response_object(status, ref, example):
     if isinstance(ref, dict) and "text" in ref:
         content = {"text/plain": {"schema": {"type": "string", "enum": ref["enum"]}, "example": ref["enum"][1]}}
         return {"description": ref["text"], "content": content}
+    if isinstance(ref, dict) and "plain" in ref:
+        # A plain-text document (spec 029's crash records and log): its shape is in the description.
+        content = {"text/plain": {"schema": {"type": "string"}, "example": ref["example"]}}
+        return {"description": ref["plain"], "content": content}
     if isinstance(ref, dict) and "inline" in ref:
         return {"description": HTTP_STATUS[status], "content": {"application/json": {"schema": ref["inline"]}}}
     target = {"action": "ActionResult", "error": "Error"}.get(ref, schema_name(ref))
