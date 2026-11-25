@@ -155,11 +155,11 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
   - A Roof settings tab for travel, speed, timeouts, ramps, Hall and current settings, plus the safety sources and N.I.N.A. connection.
   - a11y, inventory, screenshots, Playwright and docs.
 
-### 010 WiFi and OTA under motion (base: 005, parallel with 006/007)
+### 010 Wi-Fi and OTA under motion (base: 005, parallel with 006/007)
 
 - **Scope:** what the platform does while the roof moves:
   - OTA uploads, restarts and settings saves that need a restart are refused or deferred while moving;
-  - WiFi loss mid-move: the move completes or stops safely, and is never left driving without control;
+  - Wi-Fi loss mid-move: the move completes or stops safely, and is never left driving without control;
   - captive-portal behaviour when the roof is open;
   - a brown-out or reboot mid-move gives unknown position, with no motion.
 - Platform race from spec 004 (FR-011a): `MQTTClient::updateConfig` runs on the web server's task during a settings save. Move the reconnect onto the main loop, like the 004 settings hand-off.
@@ -254,7 +254,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     a live document (`GET /api/diag`) and stream (`/ws/diag`, 4 a second while moving) with the
     supply and its sag, current and power, duty, direction and ramp phase, the driver's EN and
     PWM, the Hall reading, the position estimate and times, the drive budget, the control task's
-    step time and gap, the watchdog margin, the loop pass, memory, stacks, WiFi, uptime and reset
+    step time and gap, the watchdog margin, the loop pass, memory, stacks, Wi-Fi, uptime and reset
     reason.
   - A log of the last 5 moves with summaries (peak, average and stall current, lowest supply,
     sag, Hall at each end, result) and downsampled profiles; 32 summaries, optionally kept across
@@ -319,7 +319,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     weather topic, ntfy) to tick and apply, saved through the normal save. No password, token or key
     is ever copied or forwarded; a copied broker or ntfy server clears the matching saved secret.
   - The demo's simulated SQMeter (a GPS fix and settings), with an "SQMeter offline" injector.
-- **Out of scope:** copying the device name, host name, WiFi, language or any on/off switch;
+- **Out of scope:** copying the device name, host name, Wi-Fi, language or any on/off switch;
   SQMeter's MQTT for the location; any safety decision from SQMeter's location.
 
 ### 021 Bench resilience (base: 020, stacked on its PR)
@@ -369,8 +369,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     keep the DevKit map. An invalid or unreadable set drives nothing and shows "Pin setup invalid".
   - A wiring check that can't move the roof (EN pull-down, Hall, supply, park switches, current
     sense at rest, Ethernet), on a Pins page and in the setup wizard.
-  - The WT32-ETH01's Ethernet with a network mode (Auto, Ethernet only, WiFi only); everything
-    that keyed off WiFi works over Ethernet; one image for both boards.
+  - The WT32-ETH01's Ethernet with a network mode (Auto, Ethernet only, Wi-Fi only); everything
+    that keyed off Wi-Fi works over Ethernet; one image for both boards.
   - The local rain contact removed; constitution 4.0.0.
 - **Out of scope:** the carrier PCB itself; checking direction and travel (spec 019's jog and
   teach); a second Ethernet chip.
@@ -391,7 +391,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     switches are offered (turn on only); the sync turns them on while the group follows. Exact
     reasons when SQMeter can't share (404, 403, 401). The demo's SQMeter serves `/api/secrets`.
 - **Out of scope:** normally-closed switch wiring; an alert for the stuck-switch check; turning a
-  switch off from SQMeter; copying the webhook or WiFi.
+  switch off from SQMeter; copying the webhook or Wi-Fi.
 
 ### 029 Crash capture (base: main after 026)
 
