@@ -331,6 +331,7 @@ namespace SQM
 
         // What the settings dependencies need to know (lib/SettingsDeps).
         Deps::Facts settingsFacts() const;
+        Deps::Facts networkFacts() const;
         // Alert channels switched on but inactive, with the reason. Alerts
         // being off doesn't block: tests work while alerts are off.
         ChannelBlocks channelBlocks() const;

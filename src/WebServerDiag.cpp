@@ -341,7 +341,10 @@ namespace SQM
         const uint32_t revision = diagnostics->summariesRevision();
         if (diagMqttStarted && revision == diagMqttRevision && !diagSummaryPending)
             return;
-        auto summaries = std::make_unique<Diag::SummaryList>();
+        // Spec 035: checked; short of memory, the summary goes on a later pass.
+        const std::unique_ptr<Diag::SummaryList> summaries(new (std::nothrow) Diag::SummaryList());
+        if (!summaries)
+            return;
         diagnostics->copySummaries(*summaries);
         diagMqttRevision = revision;
         if (!diagMqttStarted)

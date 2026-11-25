@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "PlatformGuard.h"
 #include <memory>
+#include <new>
 #include <time.h>
 
 // Spec 020: the location and the followed settings read from SQMeter, saved
@@ -70,7 +71,9 @@ namespace SQM
         const PlatformGuard::FlashWrite write;
         if (write.refused() != RoofIo::HoldReason::None)
             return false;
-        const auto updated = std::make_unique<Config>(config);
+        const std::unique_ptr<Config> updated(new (std::nothrow) Config(config)); // spec 035: checked
+        if (!updated)
+            return false; // tried again on a later pass, like a held flash write
         updated->location = *next;
         if (!updated->save())
         {
@@ -88,7 +91,9 @@ namespace SQM
     bool SiteSync::syncSettings(const Site::ConfigRead &read, time_t epoch)
     {
         // On the heap: settings copies would crowd the loop task's stack.
-        const auto outcome = std::make_unique<Site::SyncOutcome>();
+        const std::unique_ptr<Site::SyncOutcome> outcome(new (std::nothrow) Site::SyncOutcome()); // spec 035: checked
+        if (!outcome)
+            return false;
         Site::syncFromSite(*outcome, config, read.site, static_cast<int64_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
         {
             const std::lock_guard<std::mutex> shown(stateLock);

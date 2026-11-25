@@ -124,11 +124,26 @@ namespace SQM
         // 8 KB stack is too much heap to hold for alerts that come hours apart.
         static constexpr uint32_t TASK_IDLE_EXIT_MS = 30000;
 
+        // Spec 035: what the HTTPS channels use, not every event's wording
+        // (a queued job held a copy of all the alert settings).
+        struct JobChannels
+        {
+            std::string pushoverUserKey;
+            std::string pushoverAppToken;
+            std::string pushoverSound;
+            std::string ntfyServer;
+            std::string ntfyTopic;
+            std::string ntfyToken;
+            std::string webhookUrl;
+            std::string webhookAuthHeader;
+            bool webhookInsecureTls;
+        };
+
         struct Job
         {
             uint32_t recordId;
             Alerts::Alert alert;
-            AlertsConfig cfg;
+            JobChannels cfg;
             std::string deviceName;
             uint8_t channelMask;
         };
@@ -137,7 +152,7 @@ namespace SQM
         void run();
         void deliver(const Job &job);
         uint32_t store(AlertRecord &record); // the record's new id, 0 if it couldn't be stored
-        void queueHttp(Job *job);
+        void queueHttp(uint32_t recordId, uint8_t channelMask, Job *job);
         void ensureTask();
         void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail);
 
