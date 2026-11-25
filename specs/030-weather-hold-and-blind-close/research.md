@@ -36,6 +36,15 @@ only, `scripts/lto.py` (a build middleware adds `-flto=auto` to objects under sr
 link drops `-fno-lto`). Other candidates (Arduino core log level, ArduinoJson features, the
 certificate bundle) were left: each is a few KB and changes behaviour or needs a framework rebuild.
 
+After the rebase onto spec 029 (crash capture, main 47ae6d3 at 1,737,840 B, 94.70%): with LTO the
+image is 1,647,040 B (89.76%, -90,800 B). Spec 029's hooks still link as intended under LTO, checked
+on the final .elf: IDF's `panic_handler` calls `__wrap_esp_panic_handler` (`-Wl,--wrap`), which calls
+the Arduino panic callback and then the real `esp_panic_handler`; `setup()` registers the crash
+log's `onPanic` with `set_arduino_panic_handler`; IDF's `task_wdt_isr` calls the project's
+`esp_task_wdt_isr_user_handler`; the capture, snapshot and log ring are in `.rtc_noinit`
+(0x5000xxxx). Those two hooks run in flash with or without LTO (as on main), so no file is excluded
+from LTO; `tools/firmware/test_isr_audit.py` and the crash native tests pass.
+
 ## R5 Config.h
 
 At 600 lines. `AutoCloseConfig` moves to `ConfigAutoClose.h` (included by Config.h), freeing 37 lines.

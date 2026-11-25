@@ -1,8 +1,11 @@
 # Link-time optimisation for this project's own code (src/ and lib/), measured
 # at about -110 KB of flash (spec 030). The framework, ESP-IDF's prebuilt
-# archives and the lib_deps libraries are compiled as before: none of our code
-# runs in an interrupt or from IRAM, so moving code between our functions can't
-# put flash code where the cache may be off. The link line carries -fno-lto
+# archives and the lib_deps libraries are compiled as before. None of our code
+# is placed in IRAM: spec 029's crash hooks (the wrapped panic handler's
+# callback and the task watchdog's user handler) run from flash with or without
+# LTO, and their RTC_NOINIT memory keeps its section (checked on the .elf with
+# nm and objdump for spec 030), so LTO can't put flash code where the cache may
+# be off. The link line carries -fno-lto
 # from the framework; this replaces it so the linker plugin optimises across
 # our objects.
 import os
