@@ -1,6 +1,22 @@
 <!--
 Sync Impact Report
-- Version: 7.0.0 -> 8.0.0 (MAJOR: Principle I lets the automatic close move from an unknown position,
+- Version: 8.0.0 -> 9.0.0 (MAJOR: Principle I lets a person nudge the roof with the Hall sensor
+  failed, which no magnet can stop. It relaxes a safety principle, so it states its risk.)
+- Modified: I. Motion Safety. A third owner-decided exception: a **person's blind jog**. With the
+  Hall rail fault the latched fault (and no other), or no fault and the Hall reading at a rail or not
+  settled, a person's jog (spec 019) runs on time alone: slow duty, only while the button is held
+  (the keep-alive deadline on the step clock), at most the jog's limit (30 s at most), stopping on
+  release, Stop, Abort, a stall seen as supply sag (`roof.blindSagVolts`) and every fault still
+  checked. The Hall fault stays latched and the position unknown. Every other fault, invalid settings
+  and a low or unreadable supply still refuse it. Alpaca, MQTT and the automatic origins can't.
+- New risk (I): with no Hall sensor nothing stops the roof at its ends; the person watching, the
+  keep-alive, the slow duty, the jog limit and the stall stop are the guards, and repeated nudges
+  have no drive budget. The alternative, a part-open roof with a dead sensor that nobody can move
+  from the web UI, was judged worse by the owner.
+- Why: owner decision after a roof was left part-open with a failed Hall sensor (spec 033).
+- Templates: no change. Docs: docs/user-guide/roof-motion.md, docs/user-guide/calibration.md,
+  specs/033-person-nudge-without-hall/spec.md.
+- Earlier: 7.0.0 -> 8.0.0 (MAJOR: Principle I lets the automatic close move from an unknown position,
   with the Hall sensor working or failed; Principle III lets the automatic close wait out a hold
   before it starts for anything but rain; Principle II gains an owner-selectable close without
   N.I.N.A.'s park, off by default. Each relaxes a safety principle, so each states its risk.)
@@ -324,6 +340,14 @@ nothing has gone wrong.
       other fault and on Stop. The Hall fault stays latched. One blind close per latched fault,
       remembered across restarts. Risk: the chain is driven into its end until the stall stop or
       the time limit.
+  - **A person's blind jog** (owner decision, 9.0.0). With the Hall rail fault the latched fault
+    (and no other), or no fault and the Hall reading at a rail or not settled, a person's jog runs
+    on time alone: slow duty, toward the end held, only while the button is held (the keep-alive
+    deadline on the step clock), at most the jog's limit (30 s at most), stopping on release, Stop,
+    Abort, a stall seen as supply sag and every fault still checked. The Hall fault stays latched
+    and the position unknown. Any other fault still refuses it; only a person may start one. Risk:
+    nothing stops the roof at its ends but the person watching, the keep-alive, the limit and the
+    stall stop.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed
   settings, plus a margin) and MUST stop on its target magnet. The timeout is enforced by the
   motion code itself, never by a client.
@@ -332,7 +356,8 @@ nothing has gone wrong.
     bounded to 30-600 s and enforced by the motion code. Later legs are bounded by the times
     already measured. The drive budget and every motion fault below still apply, and each leg
     stops at the first magnet it reaches.
-- Any motion fault MUST stop the motor, drop EN and lock out motion until a person clears it.
+- Any motion fault MUST stop the motor, drop EN and lock out motion until a person clears it; the
+  Hall rail fault's only exceptions are the blind close and a person's blind jog above.
   Motion faults include:
   - a timeout or "no magnet before the timeout";
   - over-current or a stall, when current sense is fitted;
@@ -647,4 +672,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 8.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
+**Version**: 9.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
