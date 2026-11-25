@@ -15,9 +15,18 @@ or moved.
     python3 tools/soak/ws_soak.py --host 192.168.1.245 --clients 4 \
         --also /api/status@0.5 /api/diag@10 "/api/v1/dome/0/shutterstatus?ClientID=1&ClientTransactionID=1@1"
 
-Pass: the device never restarted and the largest free block of its
+Pass: the device never restarted, the largest free block of its
 byte-addressable heap (/api/status heap8Bit.largest) stayed at or above --floor
-bytes in every sample. Exit status 0 on a pass, 1 on a fail, 2 when it couldn't be
+bytes and its free heap (heap8Bit.free) at or above --free-floor bytes in every
+sample.
+
+Spec 038's bench checks: at rest (no pages, nothing polled but the samples)
+the largest block stays at or above 40 KB; under the spec 037 load at or above
+20 KB with at least 15 KB free:
+
+    python3 tools/soak/ws_soak.py --host 192.168.1.245 --clients 0 --also --minutes 3 --floor 40960
+    python3 tools/soak/ws_soak.py --host 192.168.1.245 --clients 4 --floor 20480 --free-floor 15360 \
+        --also /api/status@0.5 /api/diag@10 "/api/v1/dome/0/shutterstatus?ClientID=1&ClientTransactionID=1@1" Exit status 0 on a pass, 1 on a fail, 2 when it couldn't be
 reached. Only the Python standard library is used.
 """
 
@@ -216,6 +225,7 @@ class Soak:
             "free": doc.get("heap8Bit", {}).get("free", doc.get("freeHeap")),
             "largest": doc.get("heap8Bit", {}).get("largest", doc.get("maxAllocHeap")),
             "minFree": doc.get("heap8Bit", {}).get("minFree", doc.get("minFreeHeap")),
+            "reserveSpent": doc.get("heap8Bit", {}).get("reserveSpent"),  # spec 038
             "live": conn.get("liveUpdates", {}).get("status"),
             "liveCounters": {k: v for k, v in conn.get("liveUpdates", {}).items() if k not in ("status", "limitPerEndpoint")},
             "short": conn.get("shortOfMemory"),
@@ -250,9 +260,7 @@ class Soak:
 
     def report(self, first: dict) -> int:
         last = self.samples[-1]
-        restarted = last["boot"] != first["boot"] or any(
-            b["uptime"] < a["uptime"] for a, b in zip(self.samples, self.samples[1:], strict=False)
-        )
+        restarted, passed = verdict(self.samples, self.args.floor, self.args.free_floor)
         lowest = min(s["largest"] for s in self.samples)
         summary = {
             "minutes": self.args.minutes,
@@ -276,9 +284,18 @@ class Soak:
             "device": {"first": first, "last": last},
         }
         print(json.dumps(summary, indent=2))
-        passed = not restarted and lowest >= self.args.floor
         print("PASS" if passed else "FAIL")
         return 0 if passed else 1
+
+
+def verdict(samples: list[dict], floor: int, free_floor: int = 0) -> tuple[bool, bool]:
+    """(restarted, passed) over the samples, the first one included."""
+    restarted = samples[-1]["boot"] != samples[0]["boot"] or any(
+        b["uptime"] < a["uptime"] for a, b in zip(samples, samples[1:], strict=False)
+    )
+    lowest = min(s["largest"] for s in samples)
+    lowest_free = min(s["free"] for s in samples)
+    return restarted, not restarted and lowest >= floor and lowest_free >= free_floor
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -293,6 +310,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--http-every", type=float, default=2, help="seconds between polls of each --also path")
     # heap8Bit.largest: about 21 KB at rest with the frame pool reserved; the memory guard needs 6 KB.
     parser.add_argument("--floor", type=int, default=8192, help="lowest acceptable largest free block (bytes)")
+    parser.add_argument("--free-floor", type=int, default=0, help="lowest acceptable free heap (bytes, spec 038)")
     return parser.parse_args(argv)
 
 

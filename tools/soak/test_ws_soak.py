@@ -20,6 +20,18 @@ class FakeSocket:
 
 
 class WsSoakTest(unittest.TestCase):
+    def test_verdict_floors_and_restarts(self):
+        rows = [
+            {"boot": 1, "uptime": 10, "largest": 45000, "free": 60000},
+            {"boot": 1, "uptime": 20, "largest": 41000, "free": 16000},
+        ]
+        self.assertEqual(soak.verdict(rows, 40960), (False, True))
+        self.assertEqual(soak.verdict(rows, 40960, free_floor=15360), (False, True))
+        self.assertEqual(soak.verdict(rows, 40960, free_floor=16384), (False, False))
+        self.assertEqual(soak.verdict(rows, 41001), (False, False))
+        restarted = rows + [{"boot": 1, "uptime": 5, "largest": 50000, "free": 60000}]
+        self.assertEqual(soak.verdict(restarted, 0), (True, False))
+
     def test_request_is_an_upgrade(self):
         request = soak.websocket_request("10.0.0.5", "/ws/status").decode()
         self.assertTrue(request.startswith("GET /ws/status HTTP/1.1\r\n"))
