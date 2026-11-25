@@ -124,9 +124,20 @@ test('clock not set is one row; it is absent while the clock is set', async ({ p
   await expect(item(page, 'clock-location')).toHaveCount(0);
 });
 
-// The imaging app's states and the dropped live connection (freshness) are
+// Spec 028: an unfinished setup is one Status row naming the first stage left, linking to it.
+test('setup not finished is one row, Finish setup with the first stage left', async ({ page }) => {
+  // inventory: setup
+  await open(page);
+  const row = item(page, 'setup');
+  await expect(row).toContainText('Finish setup: Opening direction');
+  await expect(page.locator('[data-setup-stages]')).toHaveCount(0);
+  await row.locator('a').click();
+  await expect(page.locator('[data-calibrate-page]')).toBeVisible();
+});
+
+// The imaging app's states are
 // unit-tested in web/src/dashboard/__tests__/glance.test.ts: the demo has no
-// imaging app to connect, and its stream never drops.
+// imaging app to connect.
 
 // Each fact once (DS-08): the Status card never repeats what another card shows.
 test('the Status card repeats no other card', async ({ page }) => {

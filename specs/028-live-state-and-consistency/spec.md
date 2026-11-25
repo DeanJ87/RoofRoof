@@ -8,7 +8,7 @@
 
 ## Context
 
-Using the web UI on a phone and on the bench showed four rough edges. None of them changes what the
+Using the web UI on a phone and on the bench showed five rough edges. None of them changes what the
 roof does; all of them change how much a person can trust what the page shows.
 
 1. **Before the first reading.** A page that loads slowly shows its controls and values before the
@@ -28,6 +28,9 @@ roof does; all of them change how much a person can trust what the page shows.
 4. **"?" tooltips.** The dashboard lays its cards out with transforms, so each card is its own
    stacking context. A tooltip on one card is painted under the next card, whatever its z-index.
    A tooltip inside a scrolling table is clipped by it.
+5. **The setup card.** Spec 026 put the roof's seven setup stages on the dashboard as their own card
+   until every one is done. On a roof that is almost set up it takes a third of the main page to say
+   one thing is left.
 
 ## Clarifications
 
@@ -53,6 +56,9 @@ Each answer takes the safest option the constitution allows; they are also liste
   this matters" body, page intro lines, the alerts list's message line and the System page's subtle
   lines. One size, line height and colour (tokens) for all of them; tone colours (warn, bad, ok)
   stay. The banner's detail line is not secondary text: it carries a safety state (DS-14).
+- Q: Where does the one-line setup prompt go? → A: A note row in the Status card (DS-01 keeps the
+  space above the cards clear; DS-08 puts a problem no other card shows there), naming the first
+  stage left and linking to it.
 - Q: How is the tooltip fixed in general? → A: The tip is shown in the browser's top layer (the
   popover feature), positioned beside its "?" and kept inside the window, so no card, table or
   dialog can cover or clip it. Browsers without the feature keep today's placement.
@@ -144,6 +150,24 @@ is in the top layer and inside the window.
 3. **Given** a tip is open, **When** Escape is pressed or focus leaves, **Then** it hides (WCAG
    1.4.13), as today.
 
+### User Story 5 - One line for an unfinished setup (Priority: P2)
+
+While the roof's setup isn't finished, the dashboard says so in one line in the Status card, "Finish
+setup: Weather check" with how many stages are left, and the line opens the first unfinished stage.
+The full stages list is in Settings → Roof only.
+
+**Independent Test**: unit test of the Status card's items for a roof with only the weather source
+left; Playwright opens the demo's dashboard, finds the row and follows it.
+
+**Acceptance Scenarios**:
+
+1. **Given** every stage done but the weather source, **When** the dashboard shows, **Then** the
+   Status card has one row "Finish setup: Weather check" with "1 left", linking to Settings → Roof's
+   weather sources, and no stages card.
+2. **Given** every stage done, **When** the dashboard shows, **Then** there is no setup row.
+3. **Given** a stage the test box bypasses, **When** the dashboard shows, **Then** it isn't named in
+   the setup row (the Test box row covers it).
+
 ### Edge Cases
 
 - A stream that closes before its first message: still "Connecting" (nothing was shown).
@@ -189,6 +213,10 @@ is in the top layer and inside the window.
   as they are.
 - **FR-012**: The device web bundle MUST NOT grow in LittleFS blocks, and the gzipped JS + CSS MUST
   NOT grow.
+- **FR-014**: The dashboard MUST NOT show the setup stages card; while a stage is to do (or typed,
+  not measured), the Status card MUST show one note row naming the first such stage, how many are
+  left, what that stage needs behind "?", and a link to the page that does it. Settings → Roof keeps
+  the full list.
 - **FR-013**: The wizard's observatory-branch browser test MUST pin the demo's clock to a night time,
   so the daylight check doesn't depend on when it runs.
 
@@ -223,6 +251,7 @@ is in the top layer and inside the window.
   reachable again (1 s first retry plus jitter).
 - **SC-004**: Every secondary text class computes to the same font size.
 - **SC-005**: The Status card's tooltip is in the top layer, over the neighbouring cards, and inside the window (Playwright).
+- **SC-007**: With one stage left, the dashboard spends one Status row on setup, not a card.
 - **SC-006**: The device bundle's gzipped JS + CSS is no larger than main's, and LittleFS use stays at
   or under 75%.
 
@@ -247,6 +276,11 @@ is in the top layer and inside the window.
    every page (DS-14).
 7. **Top layer for tooltips.** The popover feature (all current browsers) is used instead of moving the
    tip in the DOM; older browsers keep the in-card tip.
+
+8. **Finish setup lives in the Status card.** DS-01 keeps anything but the Arrange toolbar out of
+   the space above the cards, and DS-08 makes the Status card the place for a problem no other card
+   shows, so the one-line prompt is a Status row (a note, amber) rather than a strip or a new card. It
+   counts towards "N to check" until setup is finished.
 
 ## Out of scope
 

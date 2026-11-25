@@ -49,6 +49,12 @@
 - [x] T021 Size check: gzipped JS + CSS not above T001 (shared strings where the text is the same); record the baseline
 - [x] T022 Full checks (quickstart §1 of spec 001), quality gate, docs build
 
+## Phase 8: User Story 5 - One line for an unfinished setup (P2)
+
+- [x] T023 [US5] The Status card's `setup` row (`web/src/dashboard/glance.ts`): "Finish setup: <first stage left>", "N left", the stage's note behind "?", a link to its page; the setup card removed from `web/src/components/dashboard/cards.tsx` and the default order; strings and inventory entry
+- [x] T024 [US5] Tests: `glance.test.ts` (weather only left, all done), Playwright `dashboard.spec.ts` (inventory: setup) and `journey.spec.ts` (the stages in Settings → Roof)
+- [x] T025 [US5] Docs: dashboard and configuration guides
+
 ## Dependencies
 
 T002 → T003 → T004, T005. T006 → T007. T008 → T009 → T010 → T011. T014 → T015, T016. T017 → T018.

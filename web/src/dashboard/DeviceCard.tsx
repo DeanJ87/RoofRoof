@@ -29,7 +29,7 @@ const MQTT_STATE: Record<number, MessageKey> = {
 };
 
 export const mqttStateText = (mqtt: NonNullable<SystemStatus['mqtt']>): { text: string; tone: string; reason?: string } => {
-  if (mqtt.connected) return { text: t('dashboard.connected'), tone: 'pill-green' };
+  if (mqtt.connected) return { text: t('system.connected'), tone: 'pill-green' };
   const reason = MQTT_STATE[mqtt.state];
   return reason
     ? { text: t('glance.mqttCantConnect'), tone: 'pill-red', reason: t(reason) }
@@ -139,7 +139,7 @@ const EthernetRows: FunctionalComponent<{ ethernet: SystemStatus['ethernet'] }> 
   ethernet?.present ? (
     <div data-inventory="ethernet">
       <Row label={t('glance.ethernet')}>
-        <Pill tone={ethernet.link ? 'pill-green' : 'pill-amber'}>{ethernet.link ? t('dashboard.connected') : t('glance.noLink')}</Pill>
+        <Pill tone={ethernet.link ? 'pill-green' : 'pill-amber'}>{ethernet.link ? t('system.connected') : t('glance.noLink')}</Pill>
       </Row>
       <Row label={t('glance.ethernetIp')} value={ethernet.ip || '--'} mono />
     </div>

@@ -122,6 +122,20 @@
       "demoCannot": "The demo keeps its MQTT and alerts groups set locally, so it never needs a secret"
     },
     {
+      "id": "setup",
+      "label": "stage.finish",
+      "sources": [],
+      "requiredBy": "026 (setup stages), 028",
+      "visibility": {
+        "rule": "when",
+        "when": "a roof setup stage is still to do (one the test box bypasses counts under the test box row)"
+      },
+      "priority": 9,
+      "location": "card:status",
+      "test": "setup",
+      "note": "One note row, Finish setup: <first stage left>, linking to that stage; the full list is in Settings, Roof."
+    },
+    {
       "id": "test-box",
       "label": "testBox.check.bypassed",
       "sources": ["status.roof.testBox.active"],

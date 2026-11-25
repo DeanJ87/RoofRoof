@@ -9,7 +9,7 @@ import { glanceItems, toCheck, type GlanceInput } from '../glance';
 
 const input = (over: Partial<GlanceInput> = {}): GlanceInput => ({
   status: structuredClone(mockStatus),
-  config: structuredClone(mockConfig),
+  config: withConfig(setUp), // a roof whose setup is finished (spec 028's row aside)
   effective: { facts: {} as EffectiveReport['facts'], settings: [] },
   schedule: { armed: true, mode: 'any', reason: 'none', since: null, sinceAgeMs: null },
   ...over,
@@ -19,6 +19,16 @@ const ids = (over: Partial<GlanceInput>) =>
   glanceItems(input(over))
     .filter((item) => item.severity === 'note' || item.severity === 'problem')
     .map((item) => item.id);
+
+// Every setup stage done (spec 026 stages; spec 028's Finish setup row stays away).
+function setUp(c: Config) {
+  c.pins = { ...c.pins!, preset: 'devkit' } as typeof c.pins;
+  c.safety!.http.enabled = true;
+  c.park!.nina.url = 'http://nina.local:1888';
+  c.roof!.measured = 31;
+  c.alerts!.enabled = true;
+  c.alerts!.ntfy.enabled = true;
+}
 
 const withConfig = (change: (config: Config) => void) => {
   const config = structuredClone(mockConfig);
@@ -37,7 +47,7 @@ describe('glanceItems', () => {
     const status = withStatus((s) => {
       s.alpaca!.clients = { dome: { connected: true, watching: true, silent: false, lastCheckedAgeMs: 2000, clientId: 4021 } };
     });
-    const items = glanceItems(input({ status, config: withConfig((c) => (c.alerts!.enabled = true)) }));
+    const items = glanceItems(input({ status, config: withConfig(setUp) }));
     expect(toCheck(items)).toEqual([]);
     // Tiles: the imaging app per Alpaca device, then Alerts.
     expect(items.map((item) => [item.label, item.state])).toEqual(
@@ -142,6 +152,20 @@ describe('glanceItems', () => {
   it('says the clock is not set (FR-016)', () => {
     expect(ids({ status: withStatus((s) => (s.time.epoch = 0)) })).toContain('clock-location');
     expect(ids({})).not.toContain('clock-location');
+  });
+
+  // Spec 028: one row for an unfinished setup, naming the first stage left and linking to it.
+  it('says Finish setup with the first stage left, and nothing once every stage is done', () => {
+    const weatherOnly = withConfig((c) => {
+      setUp(c);
+      c.safety!.http.enabled = false;
+      c.safety!.mqtt.enabled = false;
+    });
+    const item = glanceItems(input({ config: weatherOnly })).find((i) => i.id === 'setup');
+    expect(item).toMatchObject({ label: 'Finish setup: Weather check', state: '1 left', severity: 'note' });
+    expect(item?.fix).toMatchObject({ href: expect.stringContaining('/settings?tab=roof&section=safety') });
+    const all = withConfig(setUp);
+    expect(ids({ config: all })).not.toContain('setup');
   });
 
   it('orders problems by the spec priority', () => {

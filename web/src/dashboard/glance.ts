@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { appHref } from '../lib/appHref';
 import { deviceText } from '../i18n/deviceMessage';
 import { closePhasePill } from '../lib/roofView';
+import { setupStages } from '../lib/setupProgress';
 
 // What the Status card shows (SQMeter specs 025 content, 026 presentation).
 // The card's job is the imaging app and whether alerts go out, plus problems
@@ -50,6 +51,7 @@ const PRIORITY: Record<string, number> = {
   'clock-location': 7,
   'sqmeter-needs': 8,
   'test-box': 2,
+  setup: 9,
 };
 
 interface Parts {
@@ -200,6 +202,22 @@ const testBoxItem = ({ status }: GlanceInput): GlanceItem | null =>
       })
     : null;
 
+// Spec 028: an unfinished roof setup is one line, "Finish setup: <first stage left>",
+// linking to that stage; the full list is in Settings → Roof. A stage the test box
+// bypasses isn't counted here: the test box row says so.
+const setupItem = ({ config }: GlanceInput): GlanceItem | null => {
+  const left = setupStages(config).filter((stage) => stage.state === 'todo' || stage.state === 'typed');
+  const first = left[0];
+  return first
+    ? item('setup', 'note', {
+        label: t('stage.finish', { stage: first.title }),
+        state: t('stage.left', { count: left.length }),
+        detail: first.note,
+        fix: { label: first.title, href: appHref(first.href) },
+      })
+    : null;
+};
+
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
@@ -212,6 +230,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     ...imagingAppItems(input),
     clockItem(input),
     ...needItems(input),
+    setupItem(input),
   ].filter((entry): entry is GlanceItem => Boolean(entry));
   const rank = { problem: 0, note: 1, ok: 2, idle: 3 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);
