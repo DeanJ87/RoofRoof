@@ -393,6 +393,20 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** normally-closed switch wiring; an alert for the stuck-switch check; turning a
   switch off from SQMeter; copying the webhook or Wi-Fi.
 
+### 029 Crash capture (base: main after 026)
+
+- **Scope:**
+  - The evidence of an unexpected restart kept by the device itself (no serial cable at the roof):
+    the panic's reason, task, PC and backtrace through the Arduino core's panic hook into RTC memory,
+    a once-a-second context snapshot, and a 50-line log ring there too; at the next start a crash,
+    watchdog or brown-out becomes one of 3 records in NVS (before the roof's task starts).
+  - Read-only `GET /api/diag/crashes` and `GET /api/diag/log` (password), a Crashes card on the
+    Diagnostics page, `<base>/device` and a Home Assistant "Last restart reason" sensor, and a
+    "Restarted unexpectedly" alert (Normal).
+  - `tools/decode_crash.py` with the build's `.elf` (CI artifact, release asset, `.pio/elf/`).
+- **Out of scope:** a core dump partition or any partition change; fixing a particular crash; a clear
+  command.
+
 ## Merge order
 
 ```text
