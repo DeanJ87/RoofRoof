@@ -155,7 +155,8 @@ namespace SQM
 
         bool Controller::atEnd(Command command) const
         {
-            if ((command != Command::Open && command != Command::Close) || move.active || current.fault.kind != FaultKind::None)
+            if ((command != Command::Open && command != Command::Close) || move.active || doubtMagnets ||
+                current.fault.kind != FaultKind::None)
                 return false;
             End at = End::Closed;
             return magnetEnd(at) && at == (command == Command::Open ? End::Open : End::Closed);
@@ -199,7 +200,7 @@ namespace SQM
                 return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
             const End target = command == Command::Open ? End::Open : End::Closed;
             End at = End::Closed;
-            if (move.active ? move.target == target : (magnetEnd(at) && at == target))
+            if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{};
             const CommandResult notReady = readinessRefusal();
             if (!notReady.accepted)
@@ -228,7 +229,7 @@ namespace SQM
             if (blind.active || (move.active && move.jog))
                 return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
             End at = End::Closed;
-            if (move.active ? move.target == target : (magnetEnd(at) && at == target))
+            if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{}; // already there, or already on its way
             const CommandResult notReady = readinessRefusal();
             if (!notReady.accepted)
@@ -340,6 +341,7 @@ namespace SQM
                 return refused(Refusal::Moving);
             config = settings;
             settingsValid = validSettings(settings);
+            doubtMagnets = false; // spec 033: a re-teach (new Hall settings) places the roof again
             // The estimate was made with the old travel and speed.
             if (current.state == State::Stopped)
             {
@@ -355,6 +357,15 @@ namespace SQM
         void Controller::followHall()
         {
             End at = End::Closed;
+            if (doubtMagnets)
+            {
+                // Spec 033: after a person overrode the magnets, a magnet read
+                // at rest doesn't place the roof.
+                current.positionKnown = false;
+                if (current.fault.kind == FaultKind::None)
+                    current.state = State::Unknown;
+                return;
+            }
             if (magnetEnd(at))
             {
                 current.positionKnown = true;

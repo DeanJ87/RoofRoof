@@ -184,6 +184,20 @@ void test_a_jog_runs_with_the_hall_rail_fault_only(void)
     assertRefused("faultLatched", other.jog(End::Closed));
 }
 
+// Spec 033: a person's override of the end magnets goes through the same attended checks.
+void test_a_jog_may_override_the_end_magnets(void)
+{
+    Rig r(900.0f);
+    StartInputs s = r.in();
+    s.ignoreMagnets = true;
+    assertRefused("notAttended", r.teach.jog(r.roof, End::Open, false, false, s));
+    TEST_ASSERT_TRUE(r.teach.jog(r.roof, End::Open, true, false, s).accepted);
+    r.hold(2000);
+    TEST_ASSERT_TRUE(r.roof.magnetsDoubted());
+    r.roof.raiseFault(Roof::Fault{FaultKind::External, 0, 0});
+    assertRefused("faultLatched", r.teach.jog(r.roof, End::Open, true, false, s));
+}
+
 void test_the_controllers_own_refusals_come_through(void)
 {
     Rig r(900.0f);
@@ -449,8 +463,13 @@ void test_the_request_bodies(void)
     TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
     TEST_ASSERT_TRUE(jog.target == End::Open);
     TEST_ASSERT_EQUAL_UINT32(7, jog.id);
+    TEST_ASSERT_FALSE(jog.ignoreMagnets);
+    deserializeJson(doc, R"({"direction":"open","attended":true,"ignoreMagnets":true})");
+    TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
+    TEST_ASSERT_TRUE(jog.ignoreMagnets);
     for (const char *body :
          {R"({"direction":"closed","attended":true})",
+          R"({"direction":"open","attended":true,"ignoreMagnets":1})",
           R"({"direction":"open"})",
           R"({"direction":"open","attended":true,"id":0})",
           R"({"direction":"open","attended":true,"id":"7"})"})
@@ -527,6 +546,7 @@ int main(int, char **)
     RUN_TEST(test_both_directions_need_the_safe_weather_no_daylight_and_the_park);
     RUN_TEST(test_a_jog_is_refused_while_anything_else_is_going_on);
     RUN_TEST(test_a_jog_runs_with_the_hall_rail_fault_only);
+    RUN_TEST(test_a_jog_may_override_the_end_magnets);
     RUN_TEST(test_the_controllers_own_refusals_come_through);
     RUN_TEST(test_a_renewal_needs_the_running_jog);
     RUN_TEST(test_weather_or_daylight_turning_stops_a_jog_either_way);

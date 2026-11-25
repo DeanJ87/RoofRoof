@@ -75,8 +75,14 @@ namespace SQM
             // a stall, Stop, Abort or any fault the blind close stops on. It
             // needs valid settings and power only; the fault stays latched and
             // the position unknown. Status::jogging is set, Status::blind isn't.
-            CommandResult jog(End target, Origin origin);
-            CommandResult checkJog(End target, Origin origin) const;
+            // `ignoreMagnets` (spec 033, a person only): the person overrides the
+            // end magnets; the jog runs blind as above, also with the Hall
+            // sensor working, and afterwards a magnet read at rest doesn't place
+            // the roof (magnetsDoubted()) until a move reaches one or new
+            // settings are applied. Any fault but the Hall rail one refuses it.
+            CommandResult jog(End target, Origin origin, bool ignoreMagnets = false);
+            CommandResult checkJog(End target, Origin origin, bool ignoreMagnets = false) const;
+            bool magnetsDoubted() const { return doubtMagnets; }
             // Renews the jog `id` (from jogId() after its start): false, and
             // nothing changes, when no jog or another one is active.
             bool holdJog(uint32_t id);
@@ -261,6 +267,7 @@ namespace SQM
             // Spec 019: renewed since the last step (stamped by the next), and
             // when the jog under way stops unless renewed.
             bool jogHoldPending = false;
+            bool doubtMagnets = false; // spec 033: the magnets were overridden
             uint32_t jogHoldUntilMs = 0;
             Blind blind;
             BlindReport blindLast;

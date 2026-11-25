@@ -49,7 +49,7 @@ namespace SQM
             Answer common = attendedRefusal(controller, attended, calibrating, jogIn);
             if (!common.accepted)
                 return common;
-            const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person);
+            const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person, in.ignoreMagnets);
             if (!result.accepted)
                 return refuse(Roof::refusalName(result.reason), RoofIo::describeRefusal(result));
             return Answer{};

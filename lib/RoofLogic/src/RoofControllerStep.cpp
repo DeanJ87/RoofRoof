@@ -217,6 +217,7 @@ namespace SQM
 
         void Controller::arrive()
         {
+            doubtMagnets = false; // spec 033: a move reached a magnet
             endLeg(true);
             stopDriving();
             move = Move{};

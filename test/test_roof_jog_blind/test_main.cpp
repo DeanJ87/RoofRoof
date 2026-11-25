@@ -261,6 +261,94 @@ void test_a_person_may_jog_before_the_hall_has_settled(void)
     TEST_ASSERT_TRUE(roof.status().state == State::Unknown); // no fault latched
 }
 
+// --- Overriding the end magnets (a working Hall sensor) ---------------------------
+
+namespace
+{
+    // Jogs toward open from 900 mm, held until the roof is well into the open
+    // magnet's zone (or `ignoreMagnets` is off and it stops); true while it still jogs.
+    bool jogIntoOpenMagnet(Bench &b, bool ignoreMagnets)
+    {
+        b.sim.positionMm = b.sim.travelMm - 120.0f;
+        b.steps(30);
+        TEST_ASSERT_TRUE(b.roof.jog(End::Open, Origin::Person, ignoreMagnets).accepted);
+        int i = 0;
+        while (b.roof.status().jogging && b.sim.positionMm < b.sim.travelMm - 5.0f && i < 3000)
+        {
+            if (i++ % 7 == 0)
+                b.roof.holdJog(b.roof.jogId());
+            b.step();
+        }
+        holdFor(b, 20); // the Hall has confirmed the open magnet by now
+        return b.roof.status().jogging;
+    }
+} // namespace
+
+void test_a_normal_jog_stops_at_the_end_magnet(void)
+{
+    Bench b;
+    TEST_ASSERT_FALSE(jogIntoOpenMagnet(b, false));
+    TEST_ASSERT_TRUE(b.state() == State::Open);
+    TEST_ASSERT_TRUE(b.roof.status().positionKnown);
+    TEST_ASSERT_FALSE(b.roof.magnetsDoubted());
+}
+
+void test_an_override_jog_carries_on_past_the_end_magnet(void)
+{
+    Bench b;
+    TEST_ASSERT_TRUE(jogIntoOpenMagnet(b, true));
+    TEST_ASSERT_TRUE(b.roof.status().hall == HallLevel::High); // the open magnet, read and ignored
+    TEST_ASSERT_TRUE(b.roof.output().command == Driver::Command::Forward);
+    TEST_ASSERT_EQUAL_UINT8(SLOW_DUTY, b.roof.output().duty);
+    TEST_ASSERT_TRUE(b.roof.status().fault.kind == FaultKind::None);
+    TEST_ASSERT_TRUE(b.roof.releaseJog(b.roof.jogId()));
+    b.steps(20);
+    // The magnet read at rest doesn't place the roof until a move reaches one.
+    TEST_ASSERT_TRUE(b.state() == State::Unknown);
+    TEST_ASSERT_FALSE(b.roof.status().positionKnown);
+    TEST_ASSERT_TRUE(b.roof.magnetsDoubted());
+    TEST_ASSERT_FALSE(b.roof.atEnd(Command::Open));
+    assertRefused(Refusal::PositionUnknown, b.command(Command::Open, Origin::Client));
+    TEST_ASSERT_TRUE(b.command(Command::Open, Origin::Person).accepted);
+    b.steps(DEAD_STEPS);
+    TEST_ASSERT_TRUE(b.state() == State::Open);
+    TEST_ASSERT_TRUE(b.roof.status().positionKnown);
+    TEST_ASSERT_FALSE(b.roof.magnetsDoubted());
+}
+
+void test_an_override_is_a_persons_only_and_any_fault_refuses_it(void)
+{
+    Bench b(Settings(), 900.0f);
+    for (Origin origin : {Origin::Automatic, Origin::Client, Origin::Mqtt})
+        assertRefused(Refusal::NotAPerson, b.roof.jog(End::Open, origin, true));
+    b.roof.raiseFault(Fault{FaultKind::WrongMagnet, 0, 0});
+    assertRefused(Refusal::FaultLatched, b.roof.jog(End::Open, Origin::Person, true));
+    TEST_ASSERT_FALSE(b.roof.magnetsDoubted());
+}
+
+void test_an_override_jog_keeps_the_keep_alive_and_the_limit(void)
+{
+    Bench b(Settings(), 900.0f);
+    TEST_ASSERT_TRUE(b.roof.jog(End::Closed, Origin::Person, true).accepted);
+    TEST_ASSERT_EQUAL_UINT32(b.roof.jogLimitMs(), b.roof.status().moveTimeoutMs);
+    holdFor(b, DEAD_STEPS + 5);
+    TEST_ASSERT_TRUE(b.roof.status().driving);
+    b.steps(static_cast<int>(JOG_HOLD_MS / 20) + 1);
+    TEST_ASSERT_FALSE(b.roof.status().jogging);
+    TEST_ASSERT_EQUAL_UINT8(0, b.roof.output().duty);
+}
+
+void test_new_settings_trust_the_magnets_again(void)
+{
+    Bench b;
+    jogIntoOpenMagnet(b, true);
+    b.roof.releaseJog(b.roof.jogId());
+    b.steps(5);
+    TEST_ASSERT_TRUE(b.roof.applySettings(Settings()).accepted);
+    TEST_ASSERT_FALSE(b.roof.magnetsDoubted());
+    TEST_ASSERT_TRUE(b.state() == State::Open);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -274,5 +362,10 @@ int main(int, char **)
     RUN_TEST(test_a_supply_drop_during_a_blind_jog_stops_it);
     RUN_TEST(test_a_blind_jog_is_never_taken_over_but_yields_to_the_blind_close);
     RUN_TEST(test_a_person_may_jog_before_the_hall_has_settled);
+    RUN_TEST(test_a_normal_jog_stops_at_the_end_magnet);
+    RUN_TEST(test_an_override_jog_carries_on_past_the_end_magnet);
+    RUN_TEST(test_an_override_is_a_persons_only_and_any_fault_refuses_it);
+    RUN_TEST(test_an_override_jog_keeps_the_keep_alive_and_the_limit);
+    RUN_TEST(test_new_settings_trust_the_magnets_again);
     return UNITY_END();
 }

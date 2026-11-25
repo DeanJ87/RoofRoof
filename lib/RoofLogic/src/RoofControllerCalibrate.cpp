@@ -103,10 +103,13 @@ namespace SQM
             return current.hall == HallLevel::Unsettled || current.hall == HallLevel::Rail;
         }
 
-        CommandResult Controller::checkJog(End target, Origin origin) const
+        // Spec 033: `ignoreMagnets` (a person's override) runs it blind too.
+        CommandResult Controller::checkJog(End target, Origin origin, bool ignoreMagnets) const
         {
-            if (origin != Origin::Person || !hallBlind())
+            if (origin != Origin::Person || !(ignoreMagnets || hallBlind()))
                 return checkCalibrate(jogLeg(target), origin);
+            if (current.fault.kind != FaultKind::None && current.fault.kind != FaultKind::HallRail)
+                return refusedLeg(Refusal::FaultLatched);
             if (move.active || blind.active)
                 return refusedLeg(Refusal::Moving);
             return blindReadiness();
@@ -116,16 +119,19 @@ namespace SQM
         // unknown; at a magnet it is that magnet's end. Spec 033: a blind jog
         // runs as the blind close does, toward `target`, with the jog's limit
         // and its keep-alive; the Hall fault stays latched.
-        CommandResult Controller::jog(End target, Origin origin)
+        CommandResult Controller::jog(End target, Origin origin, bool ignoreMagnets)
         {
-            const bool blindJog = origin == Origin::Person && hallBlind();
-            const CommandResult answer = blindJog ? checkJog(target, origin) : calibrate(jogLeg(target), origin);
+            const bool blindJog = origin == Origin::Person && (ignoreMagnets || hallBlind());
+            const CommandResult answer = blindJog ? checkJog(target, origin, ignoreMagnets) : calibrate(jogLeg(target), origin);
             if (!answer.accepted)
                 return answer;
             if (blindJog)
             {
                 startBlind(target, jogLimitMs());
                 blind.jog = true;
+                // The magnets read at rest afterwards aren't believed until a
+                // move reaches one (or new settings): one may have shifted.
+                doubtMagnets = doubtMagnets || ignoreMagnets;
             }
             else
             {
