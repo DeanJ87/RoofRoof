@@ -11,23 +11,26 @@ namespace SQM
         class InnerWriter
         {
         public:
-            explicit InnerWriter(JsonStream &stream) : stream_(stream) {}
+            explicit InnerWriter(JsonStream &stream)
+                : stream(stream)
+            {
+            }
 
             size_t write(uint8_t c)
             {
-                if (seen_++ == 0)
+                if (seen++ == 0)
                     return 1;
-                if (held_)
+                if (held)
                 {
-                    if (!started_)
+                    if (!started)
                     {
-                        stream_.separate();
-                        started_ = true;
+                        stream.separate();
+                        started = true;
                     }
-                    stream_.out_.write(last_);
+                    stream.out.write(last);
                 }
-                last_ = c;
-                held_ = true;
+                last = c;
+                held = true;
                 return 1;
             }
 
@@ -39,43 +42,43 @@ namespace SQM
             }
 
         private:
-            JsonStream &stream_;
-            size_t seen_ = 0;
-            uint8_t last_ = 0;
-            bool held_ = false;
-            bool started_ = false;
+            JsonStream &stream;
+            size_t seen = 0;
+            uint8_t last = 0;
+            bool held = false;
+            bool started = false;
         };
 
         void JsonStream::separate()
         {
-            const uint8_t bit = static_cast<uint8_t>(1U << (depth_ % MAX_DEPTH));
-            if ((filled_ & bit) != 0)
-                out_ += ',';
-            filled_ |= bit;
+            const uint8_t bit = static_cast<uint8_t>(1U << (depth % MAX_DEPTH));
+            if ((filled & bit) != 0)
+                out += ',';
+            filled |= bit;
         }
 
         void JsonStream::open(const char *key, char bracket)
         {
-            if (depth_ > 0)
+            if (depth > 0)
                 separate();
             if (key != nullptr)
             {
-                out_ += '"';
-                out_ += key;
-                out_ += "\":";
+                out += '"';
+                out += key;
+                out += "\":";
             }
-            out_ += bracket;
-            ++depth_;
-            if (depth_ >= MAX_DEPTH)
-                out_.fail(); // deeper than any reply here: refuse rather than guess
-            filled_ &= static_cast<uint8_t>(~(1U << (depth_ % MAX_DEPTH)));
+            out += bracket;
+            ++depth;
+            if (depth >= MAX_DEPTH)
+                out.fail(); // deeper than any reply here: refuse rather than guess
+            filled &= static_cast<uint8_t>(~(1U << (depth % MAX_DEPTH)));
         }
 
         void JsonStream::close(char bracket)
         {
-            if (depth_ > 0)
-                --depth_;
-            out_ += bracket;
+            if (depth > 0)
+                --depth;
+            out += bracket;
         }
 
         void JsonStream::beginObject(const char *key)
@@ -105,10 +108,10 @@ namespace SQM
         {
             if (doc.capacity() == 0)
             {
-                out_.fail();
+                out.fail();
                 return false;
             }
-            overflowed_ = overflowed_ || doc.overflowed();
+            anyOverflowed = anyOverflowed || doc.overflowed();
             return true;
         }
 
@@ -127,11 +130,11 @@ namespace SQM
             separate();
             if (key != nullptr)
             {
-                out_ += '"';
-                out_ += key;
-                out_ += "\":";
+                out += '"';
+                out += key;
+                out += "\":";
             }
-            serializeJson(doc, out_);
+            serializeJson(doc, out);
         }
     } // namespace HeapSafe
 } // namespace SQM

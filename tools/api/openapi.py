@@ -50,7 +50,7 @@ HTTP_STATUS = {
     "413": "The request body is too large",
     "500": "Device failure",
     "502": "The broker didn't answer",
-    "503": "Not enough free memory",
+    "503": "Busy: not enough free memory, try again (Retry-After)",
 }
 
 

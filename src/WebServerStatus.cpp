@@ -361,7 +361,12 @@ namespace SQM
             json.members(doc);
         };
         json.beginObject();
-        section([&]() { appendFirmware(doc); appendRuntime(doc); });
+        section(
+            [&]()
+            {
+                appendFirmware(doc);
+                appendRuntime(doc);
+            });
         section(
             [&]()
             {
@@ -371,9 +376,26 @@ namespace SQM
                 Core::writeClientWatch(
                     doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
             });
-        section([&]() { appendMemory(doc); appendPartitions(doc); appendTime(doc); });
-        section([&]() { appendWifi(doc); EthernetLink::appendStatus(doc); appendPinsStatus(doc); }); // spec 023
-        section([&]() { appendMqttStatus(doc); appendConnections(doc); });
+        section(
+            [&]()
+            {
+                appendMemory(doc);
+                appendPartitions(doc);
+                appendTime(doc);
+            });
+        section(
+            [&]()
+            {
+                appendWifi(doc);
+                EthernetLink::appendStatus(doc);
+                appendPinsStatus(doc);
+            }); // spec 023
+        section(
+            [&]()
+            {
+                appendMqttStatus(doc);
+                appendConnections(doc);
+            });
         section([&]() { appendRoof(doc); });
         section([&]() { appendSite(doc); });
         json.endObject();

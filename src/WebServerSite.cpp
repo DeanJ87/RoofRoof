@@ -318,7 +318,13 @@ namespace SQM
                            : job->test ? testSafety(job->from, body)
                                        : job->owner->fetchSite(*job, body);
         if (status != 200)
-            Logger::info(TAG, "%s: %s", job->nina ? "Test of N.I.N.A." : job->test ? "Test of SQMeter" : "Copy from SQMeter", body.str().c_str());
+            Logger::info(
+                TAG,
+                "%s: %s",
+                job->nina   ? "Test of N.I.N.A."
+                : job->test ? "Test of SQMeter"
+                            : "Copy from SQMeter",
+                body.str().c_str());
         if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())
             WebReply::sendText(request.get(), status, "application/json", std::move(body));
         job.reset();

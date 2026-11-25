@@ -34,9 +34,9 @@ namespace SQM
 
             // ArduinoJson's writer interface: the bytes written, 0 once failed.
             size_t write(uint8_t c);
-            size_t write(const uint8_t *data, size_t length);
+            size_t write(const uint8_t *data, size_t count);
 
-            ChunkText &append(const char *text, size_t length);
+            ChunkText &append(const char *text, size_t count);
             ChunkText &append(const char *text);
             ChunkText &operator+=(const char *text) { return append(text); }
             ChunkText &operator+=(const std::string &text) { return append(text.data(), text.size()); }
@@ -44,9 +44,9 @@ namespace SQM
 
             // False once a piece couldn't be allocated, the cap was reached or
             // fail() was called; what was written is kept but incomplete.
-            bool ok() const { return !failed_; }
-            void fail() { failed_ = true; }
-            size_t size() const { return length_; }
+            bool ok() const { return !failed; }
+            void fail() { failed = true; }
+            size_t size() const { return length; }
 
             // Copies up to `max` bytes from `offset`; the bytes copied.
             size_t read(size_t offset, uint8_t *out, size_t max) const;
@@ -59,11 +59,11 @@ namespace SQM
             bool reserveTail();
             void release();
 
-            char *pieces_[MAX_PIECES] = {};
-            size_t maxPieces_;
-            Allocate allocate_;
-            size_t length_ = 0;
-            bool failed_ = false;
+            char *pieces[MAX_PIECES] = {};
+            size_t maxPieces;
+            Allocate allocator;
+            size_t length = 0;
+            bool failed = false;
         };
     } // namespace HeapSafe
 } // namespace SQM

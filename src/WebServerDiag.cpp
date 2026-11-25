@@ -172,6 +172,26 @@ namespace SQM
         WebReply::sendText(request, 200, "application/json", std::move(text));
     }
 
+    void WebServer::sendMoveList(AsyncWebServerRequest *request, const Diag::Clock &clock)
+    {
+        // Spec 031: the copy is checked (a few KB), "busy" when short.
+        std::shared_ptr<Diag::SummaryList> summaries(new (std::nothrow) Diag::SummaryList());
+        if (!summaries)
+        {
+            WebReply::sendBusy(request);
+            return;
+        }
+        diagnostics->copySummaries(*summaries);
+        Diag::ListView view;
+        view.held.count = roof->diagIds(view.held.ids);
+        view.keep = diagnostics->keepSummaries();
+        view.clock = clock;
+        sendChunked(
+            request,
+            "application/json",
+            [summaries, view](size_t index, std::string &out) { return Diag::listPart(*summaries, view, index, out); });
+    }
+
     void WebServer::handleDiagMoves(AsyncWebServerRequest *request)
     {
         const bool list = request->url() == MOVES_PATH;
@@ -192,24 +212,10 @@ namespace SQM
         const Diag::Clock clock = clockNow();
         if (list)
         {
-            // Spec 031: the copies are checked (a few KB each), "busy" when short.
-            std::shared_ptr<Diag::SummaryList> summaries(new (std::nothrow) Diag::SummaryList());
-            if (!summaries)
-            {
-                WebReply::sendBusy(request);
-                return;
-            }
-            diagnostics->copySummaries(*summaries);
-            Diag::ListView view;
-            view.held.count = roof->diagIds(view.held.ids);
-            view.keep = diagnostics->keepSummaries();
-            view.clock = clock;
-            sendChunked(
-                request,
-                "application/json",
-                [summaries, view](size_t index, std::string &out) { return Diag::listPart(*summaries, view, index, out); });
+            sendMoveList(request, clock);
             return;
         }
+        // Spec 031: the copy is checked (a few KB), "busy" when short.
         std::shared_ptr<Diag::Move> move(new (std::nothrow) Diag::Move());
         if (!move)
         {

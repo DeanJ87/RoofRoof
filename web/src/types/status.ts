@@ -21,6 +21,8 @@ export interface SystemStatus {
     tcpLimit: number;
     liveUpdates: { status: number; limitPerEndpoint: number; replaced: number; stalledClosed: number };
     alpacaRestoredAfterRestart: boolean;
+    // Spec 031: requests answered "busy" and live frames skipped for memory, since start.
+    shortOfMemory?: { refused: number; skippedFrames: number };
   };
   freeHeap: number;
   minFreeHeap?: number;

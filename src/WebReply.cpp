@@ -33,7 +33,8 @@ namespace SQM
             class ChunkTextResponse : public AsyncAbstractResponse
             {
             public:
-                ChunkTextResponse(int code, const char *type, HeapSafe::ChunkText &&text) : text_(std::move(text))
+                ChunkTextResponse(int code, const char *type, HeapSafe::ChunkText &&text)
+                    : text_(std::move(text))
                 {
                     _code = code;
                     _contentType = type;

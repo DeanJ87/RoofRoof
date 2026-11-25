@@ -95,6 +95,7 @@ bool check(const SupplyReading &s, uint32_t t);
 | SMELL-16 | Mixed or missing units | `travelSpeed` mm/s or m/min? | Units in names (NAME-11), metric internally | converge |
 | SMELL-17 | Arduino `String` in logic | Heap churn, non-portable | `std::string` (outside thin Arduino glue) | converge |
 | SMELL-18 | `any` / unchecked casts in TS | Defeats the type checker | Proper types, `unknown` + narrowing | auto |
+| SMELL-19 | A reply written into a growing string (`serializeJson(doc, std::string&)`, `String`, WebSocket text from a string) | No C++ exceptions: a failed `new` aborts the device; doubling needs a block twice the text, and several at once fragment the heap (spec 031) | `WebReply::sendJson` / `sendText` with a `HeapSafe::ChunkText`, `JsonStream` sections for large documents, `MQTTClient::publishJson`, `WebReply::textAll` | auto (`tools/firmware/test_heap_audit.py`) |
 
 ---
 

@@ -227,8 +227,21 @@ namespace
     const std::vector<std::vector<const char *>> SECTIONS = {
         {"firmware", "uptime", "configRevision", "freeHeap", "stackFree"},
         {"alerts", "alpaca"},
-        {"heapStages", "minFreeHeap", "maxAllocHeap", "heapSize", "cpuFreqMHz", "flashSize", "sketchSize", "freeSketchSpace",
-         "resetReason", "bootCount", "fsTotal", "fsUsed", "partitions", "time", "ntp"},
+        {"heapStages",
+         "minFreeHeap",
+         "maxAllocHeap",
+         "heapSize",
+         "cpuFreqMHz",
+         "flashSize",
+         "sketchSize",
+         "freeSketchSpace",
+         "resetReason",
+         "bootCount",
+         "fsTotal",
+         "fsUsed",
+         "partitions",
+         "time",
+         "ntp"},
         {"wifi", "ethernet", "pins"},
         {"mqtt", "connections"},
         {"roof"},
@@ -260,8 +273,13 @@ void test_status_document_fits()
         // With 20% headroom, like SQMeter's readings document.
         const size_t used = onDevice(part);
         char detail[96];
-        snprintf(detail, sizeof detail, "%s section: pool %u bytes of %u", section.front(), static_cast<unsigned>(used),
-                 static_cast<unsigned>(Core::STATUS_SECTION_CAPACITY));
+        snprintf(
+            detail,
+            sizeof detail,
+            "%s section: pool %u bytes of %u",
+            section.front(),
+            static_cast<unsigned>(used),
+            static_cast<unsigned>(Core::STATUS_SECTION_CAPACITY));
         TEST_ASSERT_TRUE_MESSAGE(used * 12 / 10 <= Core::STATUS_SECTION_CAPACITY, detail);
         printf("status document on the device: %s\n", detail);
     }

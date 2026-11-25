@@ -185,6 +185,7 @@ namespace SQM
         void setupDiagRoutes();
         void handleDiagLive(AsyncWebServerRequest *request);
         void handleDiagMoves(AsyncWebServerRequest *request);
+        void sendMoveList(AsyncWebServerRequest *request, const Diag::Clock &clock);
         void handleDiagClear(AsyncWebServerRequest *request);
         void onDiagWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
         void broadcastDiag(uint32_t now);

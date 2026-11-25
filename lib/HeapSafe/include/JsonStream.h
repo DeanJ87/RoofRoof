@@ -27,7 +27,10 @@ namespace SQM
         class JsonStream
         {
         public:
-            explicit JsonStream(ChunkText &out) : out_(out) {}
+            explicit JsonStream(ChunkText &out)
+                : out(out)
+            {
+            }
 
             // `key` when inside an object, nullptr at the top or in an array.
             void beginObject(const char *key = nullptr);
@@ -40,7 +43,7 @@ namespace SQM
             void element(const JsonDocument &doc, const char *key = nullptr);
 
             // A document written so far had overflowed its pool (members missing).
-            bool overflowed() const { return overflowed_; }
+            bool overflowed() const { return anyOverflowed; }
 
         private:
             static constexpr uint8_t MAX_DEPTH = 8;
@@ -49,10 +52,10 @@ namespace SQM
             void close(char bracket);
             bool usable(const JsonDocument &doc);
 
-            ChunkText &out_;
-            uint8_t depth_ = 0;
-            uint8_t filled_ = 0; // bit n: level n already holds a member or element
-            bool overflowed_ = false;
+            ChunkText &out;
+            uint8_t depth = 0;
+            uint8_t filled = 0; // bit n: level n already holds a member or element
+            bool anyOverflowed = false;
             friend class InnerWriter;
         };
     } // namespace HeapSafe

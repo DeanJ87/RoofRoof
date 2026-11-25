@@ -27,13 +27,11 @@ ALLOWED: dict[str, str] = {
     "measureJson (no growth)",
     "lib/DiagLogic/src/DiagMoves.cpp: text": "one move summary (at most SUMMARY_DOC_CAPACITY's text), reserved once from "
     "measureJson, a part of the chunked moves list",
-    "lib/DeviceCore/src/AlertDelivery.cpp: out": "an outgoing alert message (768-byte document) on the alert task, not a "
-    "reply",
+    "lib/DeviceCore/src/AlertDelivery.cpp: out": "an outgoing alert message (768-byte document) on the alert task, not a " "reply",
     "lib/ConfigModel/src/ConfigJsonOut.cpp: json": "the stored settings text for NVS; saves are refused while memory is "
     "short (spec 029 R13)",
     "lib/ConfigModel/src/ConfigJsonOut.cpp: output": "the settings text for the save checks and backups, guarded as above",
-    "lib/ConfigBackup/src/BackupRules.cpp: out": "a backup, built one request at a time after its own free-memory check "
-    "(spec 024)",
+    "lib/ConfigBackup/src/BackupRules.cpp: out": "a backup, built one request at a time after its own free-memory check " "(spec 024)",
     "lib/ConfigBackup/src/BackupFile.cpp: out": "a backup file, guarded as above",
     "lib/ConfigBackup/src/BackupFile.cpp: out.settings": "a backup's settings, guarded as above",
     "lib/ConfigBackup/src/BackupPreview.cpp: value": "a backup preview's field, guarded as above",

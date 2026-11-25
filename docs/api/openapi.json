@@ -125,7 +125,11 @@
                       "replaced": 0,
                       "stalledClosed": 0
                     },
-                    "alpacaRestoredAfterRestart": false
+                    "alpacaRestoredAfterRestart": false,
+                    "shortOfMemory": {
+                      "refused": 0,
+                      "skippedFrames": 0
+                    }
                   },
                   "freeHeap": 214320,
                   "minFreeHeap": 156056,
@@ -372,6 +376,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -392,6 +406,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SettingsEffective"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -420,7 +444,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -478,7 +502,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -540,6 +564,16 @@
           },
           "409": {
             "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -776,7 +810,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -867,6 +901,16 @@
               }
             }
           },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
@@ -948,6 +992,16 @@
                     "checks"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -1114,6 +1168,16 @@
                   "required": [
                     "error"
                   ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -1562,6 +1626,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1656,7 +1730,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1783,7 +1857,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1841,6 +1915,16 @@
           },
           "409": {
             "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2929,6 +3013,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -3478,6 +3572,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -3544,7 +3648,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3637,6 +3741,16 @@
                     "id": 2,
                     "active": true
                   }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -3735,6 +3849,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -3773,6 +3897,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -3804,6 +3938,16 @@
           },
           "401": {
             "description": "The password is needed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3851,6 +3995,16 @@
           },
           "409": {
             "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3916,6 +4070,16 @@
           },
           "413": {
             "description": "The request body is too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4011,6 +4175,16 @@
               }
             }
           },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
@@ -4094,7 +4268,7 @@
             }
           },
           "503": {
-            "description": "Not enough free memory",
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4183,6 +4357,16 @@
               }
             }
           },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
@@ -4225,6 +4409,16 @@
           },
           "502": {
             "description": "The broker didn't answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4312,6 +4506,16 @@
           },
           "409": {
             "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4551,6 +4755,16 @@
               }
             }
           },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
@@ -4653,6 +4867,16 @@
               }
             }
           },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "description": "The password is needed"
           }
@@ -4679,6 +4903,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4714,6 +4948,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ActionResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -4755,6 +4999,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -4775,6 +5029,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AlertsRecent"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Busy: not enough free memory, try again (Retry-After)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -9461,6 +9725,22 @@
                 ],
                 "additionalProperties": false
               },
+              "shortOfMemory": {
+                "type": "object",
+                "properties": {
+                  "refused": {
+                    "type": "number"
+                  },
+                  "skippedFrames": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "refused",
+                  "skippedFrames"
+                ],
+                "additionalProperties": false
+              },
               "tcpLimit": {
                 "type": "number"
               }
@@ -9468,6 +9748,7 @@
             "required": [
               "alpacaRestoredAfterRestart",
               "liveUpdates",
+              "shortOfMemory",
               "tcpLimit"
             ],
             "additionalProperties": false

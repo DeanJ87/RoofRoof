@@ -38,7 +38,11 @@
       "replaced": 0,
       "stalledClosed": 0
     },
-    "alpacaRestoredAfterRestart": false
+    "alpacaRestoredAfterRestart": false,
+    "shortOfMemory": {
+      "refused": 0,
+      "skippedFrames": 0
+    }
   },
   "freeHeap": 214320,
   "minFreeHeap": 156056,

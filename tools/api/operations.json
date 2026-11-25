@@ -40,7 +40,8 @@
       "summary": "Device status",
       "description": "Firmware, memory, flash, time, WiFi (with IPv6 addresses), MQTT, alerts, Alpaca clients and connections. Also pushed over `/ws/status`.",
       "responses": {
-        "200": "status"
+        "200": "status",
+        "503": "error"
       },
       "example": "status"
     },
@@ -49,7 +50,8 @@
       "summary": "Settings in effect",
       "description": "Each setting that depends on another, and whether it's in effect or inactive, with the reason.",
       "responses": {
-        "200": "settings-effective"
+        "200": "settings-effective",
+        "503": "error"
       }
     },
     "GET /api/config": {
@@ -378,7 +380,8 @@
       "responses": {
         "200": "action",
         "400": "error",
-        "409": "error"
+        "409": "error",
+        "503": "error"
       }
     },
     "POST /api/backup": {
@@ -436,7 +439,8 @@
         "200": "backup-preview",
         "400": "error",
         "409": "error",
-        "413": "error"
+        "413": "error",
+        "503": "error"
       }
     },
     "POST /api/backup/apply": {
@@ -479,7 +483,8 @@
           }
         },
         "409": "error",
-        "500": "error"
+        "500": "error",
+        "503": "error"
       }
     },
     "POST /api/restart": {
@@ -488,7 +493,8 @@
       "description": "Restarts the device after answering. Refused with 409 (with the reason) while the roof is opening or closing, a close is waiting to start, or the automatic close is waiting for the park or closing.",
       "responses": {
         "200": "action",
-        "409": "error"
+        "409": "error",
+        "503": "error"
       }
     },
     "POST /api/roof/open": {
@@ -1211,7 +1217,8 @@
       "summary": "The calibration run",
       "description": "Spec 016: the last calibration run since start-up (`idle` before any): its state, the leg under way with its limit, how it ended, each measured leg (time, duty, end level, speed at 100 % duty, current and supply), the Hall readings (in between, and at rest at each end) and, for a finished run, the proposal with the value at the start beside each proposed one (`null` where withheld, with the reason). Read-only, kept in memory only.",
       "responses": {
-        "200": "calibration"
+        "200": "calibration",
+        "503": "error"
       },
       "example": "calibration"
     },
@@ -1233,7 +1240,8 @@
         "200": "wifi-scan",
         "202": "wifi-scan",
         "500": "error",
-        "409": "error"
+        "409": "error",
+        "503": "error"
       }
     },
     "POST /api/wifi/connect": {
@@ -1265,7 +1273,8 @@
       "responses": {
         "202": "action",
         "400": "error",
-        "409": "error"
+        "409": "error",
+        "503": "error"
       }
     },
     "POST /api/mqtt/test": {
@@ -1307,7 +1316,8 @@
       "responses": {
         "200": "action",
         "400": "error",
-        "502": "error"
+        "502": "error",
+        "503": "error"
       }
     },
     "POST /api/update": {
@@ -1345,7 +1355,8 @@
       "summary": "Sending or paused",
       "description": "Whether alerts are being sent, the send mode and why it's sending or paused.",
       "responses": {
-        "200": "alerts-armed"
+        "200": "alerts-armed",
+        "503": "error"
       },
       "example": "alerts-armed"
     },
@@ -1359,7 +1370,8 @@
         }
       ],
       "responses": {
-        "202": "action"
+        "202": "action",
+        "503": "error"
       }
     },
     "POST /api/alerts/disarm": {
@@ -1372,7 +1384,8 @@
         }
       ],
       "responses": {
-        "202": "action"
+        "202": "action",
+        "503": "error"
       }
     },
     "GET /api/alerts/recent": {
@@ -1380,7 +1393,8 @@
       "summary": "Recent alerts",
       "description": "Whether alerts are on, and the last 20 since boot, newest first, with each channel's delivery result (`pending`, `sent`, `failed`, `skipped`).",
       "responses": {
-        "200": "alerts-recent"
+        "200": "alerts-recent",
+        "503": "error"
       }
     },
     "POST /api/alerts/test": {
@@ -1461,7 +1475,8 @@
       ],
       "responses": {
         "202": "action",
-        "400": "error"
+        "400": "error",
+        "503": "error"
       },
       "example": "alert-test"
     },
@@ -1470,7 +1485,8 @@
       "summary": "Clear recent alerts",
       "description": "Empties the recent-alerts list.",
       "responses": {
-        "200": "action"
+        "200": "action",
+        "503": "error"
       }
     },
     "GET /api/diag": {
@@ -1478,7 +1494,8 @@
       "summary": "Live diagnostics",
       "description": "Everything the controller measures now: the supply and its sag, the motor current and power, the duty, direction and ramp phase, the driver's EN and PWM levels, the Hall reading, the position estimate with the elapsed and remaining time and the timeout, the drive budget, the control task's step time and gap, the watchdog margin, the main loop's pass time, memory, stacks, Wi-Fi signal, uptime and reset reason. The same document streams on /ws/diag. With advanced diagnostics off it is {\"enabled\": false}.",
       "responses": {
-        "200": "diag"
+        "200": "diag",
+        "503": "error"
       },
       "example": "diag"
     },
@@ -1491,7 +1508,8 @@
           "plain": "The records as text: this start (reset reason, boot count, running firmware and build), then each record after a blank line, newest first, one fact per line: `Record <seq>: <kind>`, `Time:`, `Reset reason:`, `Firmware:`, `Reason:`, `Task:` (core and stack left), `Stuck tasks:`, `Flash write:`, `Backtrace:` (what tools/decode_crash.py reads), `Memory:`, `Stack left:`, `Roof:`, and `Log before the restart:` with up to 8 lines. Lines a record has no data for are left out.",
           "example": "This start: panic (4), boot 3\nRunning: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nRecords: 2 (the last 3 are kept)\n\nRecord 2: panic\nTime: 2026-11-25 02:14:07 UTC, 5231 s after start\nReset reason: panic (4)\nFirmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nReason: LoadProhibited\nTask: async_tcp, core 1, stack left 1904 B\nFlash write: in progress\nBacktrace: 0x400d5f2c 0x400d5f2c 0x400d61a0 0x40089e1d\nMemory: free 61224 B, lowest 41020 B, largest block 31732 B\nStack left: loop 5980, roof 3416, async_tcp 6640, safetyPoll 2120, alerts 3876 B\nRoof: closed\nLog before the restart:\n  5229.120s INFO  [Main] Settings saved\n  5229.480s INFO  [Main] Settings saved\n\nRecord 1: brownout\nTime: unknown (clock not set), 812 s after start\nReset reason: brownout (9)\nFirmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2\nReason: not captured\n"
         },
-        "401": "error"
+        "401": "error",
+        "503": "error"
       }
     },
     "GET /api/diag/log": {
@@ -1503,7 +1521,8 @@
           "plain": "One line per log line, oldest first: `#<boot> <seconds>s <LEVEL> <text>`.",
           "example": "#2 5229.120s INFO  [Main] Settings saved\n#3 0.412s INFO  [Main] === RoofRoof Starting ===\n#3 0.431s WARN  [Crash] Restarted unexpectedly (panic): crash record 2 kept\n"
         },
-        "401": "error"
+        "401": "error",
+        "503": "error"
       }
     },
     "GET /api/diag/moves": {
@@ -1512,7 +1531,8 @@
       "description": "The last 32 move summaries, newest first, each saying whether its profile is still held (the last 5 moves). The same handler serves /api/diag/moves/{id}: one move with its summary and downsampled profile (404 when it isn't held), or with ?format=csv the profile as a CSV download. With advanced diagnostics off the list is {\"enabled\": false}.",
       "responses": {
         "200": "diag-moves",
-        "404": "error"
+        "404": "error",
+        "503": "error"
       },
       "example": "diag-moves"
     },
@@ -1528,7 +1548,8 @@
       "responses": {
         "200": "action",
         "403": "error",
-        "409": "error"
+        "409": "error",
+        "503": "error"
       }
     },
     "POST /api/roof/jog": {
@@ -1864,7 +1885,8 @@
       "summary": "Jog and teach",
       "description": "Spec 019: the jog under way (its id, direction, time driven, limit, keep-alive deadline and interval), whether the roof has been still for the one-second reading window and its mean, the three marks, and the proposal (`null` until all three are marked; `ok` false with the reason when the ends can't be told apart or the part-way reading overlaps one). Read-only, kept in memory only.",
       "responses": {
-        "200": "roof-teach"
+        "200": "roof-teach",
+        "503": "error"
       },
       "example": "roof-teach"
     },
@@ -2322,7 +2344,8 @@
               }
             ]
           }
-        }
+        },
+        "503": "error"
       }
     },
     "POST /api/pins/validate": {
@@ -2571,7 +2594,8 @@
               "error"
             ]
           }
-        }
+        },
+        "503": "error"
       }
     },
     "POST /api/pins/check": {
@@ -2608,7 +2632,8 @@
               "error"
             ]
           }
-        }
+        },
+        "503": "error"
       }
     },
     "GET /api/pins/check": {
@@ -2708,7 +2733,8 @@
             ],
             "finishedAt": 123456
           }
-        }
+        },
+        "503": "error"
       }
     },
     "POST /api/nina/test": {
