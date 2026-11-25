@@ -38,6 +38,7 @@ namespace SQM
         CloseSeq::AlertQueue queue;
         uint32_t keptSerial[KEPT_TYPES] = {}; // the push whose record is in NVS (0: none)
         uint32_t queuedAt[KEPT_TYPES] = {};   // epoch seconds the waiting one was queued
+        bool memoryFits = true;               // spec 035: the last step's heap check
         bool stepped = false;
         uint32_t lastStepMs = 0;
     };

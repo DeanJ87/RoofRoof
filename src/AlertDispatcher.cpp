@@ -17,6 +17,7 @@
 #include "NetAddress.h"
 #include <ctime>
 #include <memory>
+#include <new>
 
 namespace SQM
 {
@@ -35,9 +36,12 @@ namespace SQM
         // Plain http also reaches IPv6 literals and IPv6-only names (SQMeter spec 015).
         std::unique_ptr<WiFiClient> clientFor(const std::string &url, bool insecureTls, const char *rootCa)
         {
+            // Spec 035: checked (nullptr short of memory).
             if (url.rfind("https://", 0) != 0)
-                return std::make_unique<DualStackClient>();
-            auto secure = std::make_unique<WiFiClientSecure>();
+                return std::unique_ptr<WiFiClient>(new (std::nothrow) DualStackClient());
+            std::unique_ptr<WiFiClientSecure> secure(new (std::nothrow) WiFiClientSecure());
+            if (!secure)
+                return nullptr;
             if (insecureTls)
                 secure->setInsecure();
             else
@@ -80,6 +84,11 @@ namespace SQM
         bool httpPost(const Delivery::HttpRequest &request, const TlsTrust &tls, std::string &detail)
         {
             const std::unique_ptr<WiFiClient> client = clientFor(request.url, tls.insecure, tls.rootCa);
+            if (!client)
+            {
+                detail = "Low memory";
+                return false;
+            }
             HTTPClient http;
             http.setTimeout(HTTP_TIMEOUT_MS);
             http.setConnectTimeout(HTTP_TIMEOUT_MS);
@@ -196,6 +205,7 @@ namespace SQM
     {
         mutex = xSemaphoreCreateMutex();
         queue = xQueueCreate(QUEUE_LENGTH, sizeof(Job *));
+        records.reserve(MAX_RECORDS + 1); // spec 035: taken once, never grown on a send
     }
 
     void AlertDispatcher::ensureTask()
@@ -247,7 +257,19 @@ namespace SQM
         const uint32_t id = store(record);
         Logger::info(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
         if (httpMask != 0 && queue != nullptr && id != 0)
-            queueHttp(new Job{id, alert, cfg, deviceName, httpMask});
+        {
+            JobChannels channels{
+                cfg.pushoverUserKey,
+                cfg.pushoverAppToken,
+                cfg.pushoverSound,
+                cfg.ntfyServer,
+                cfg.ntfyTopic,
+                cfg.ntfyToken,
+                cfg.webhookUrl,
+                cfg.webhookAuthHeader,
+                cfg.webhookInsecureTls};
+            queueHttp(id, httpMask, new (std::nothrow) Job{id, alert, std::move(channels), deviceName, httpMask});
+        }
         return id;
     }
 
@@ -294,17 +316,19 @@ namespace SQM
     }
 
     // HTTPS channels go to the delivery task; a full queue fails them at once.
-    void AlertDispatcher::queueHttp(Job *job)
+    // Spec 035: a job that couldn't be allocated fails the same way (sent
+    // again by the outbox).
+    void AlertDispatcher::queueHttp(uint32_t recordId, uint8_t channelMask, Job *job)
     {
-        if (xQueueSend(queue, &job, 0) == pdTRUE)
+        if (job != nullptr && xQueueSend(queue, &job, 0) == pdTRUE)
         {
             ensureTask();
             return;
         }
-        Logger::warn(TAG, "Alert queue full - dropping notification");
+        Logger::warn(TAG, job != nullptr ? "Alert queue full - dropping notification" : "Low memory - alert not queued");
         for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
-            if (job->channelMask & (1u << i))
-                setStatus(job->recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, "Queue full");
+            if (channelMask & (1u << i))
+                setStatus(recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, job != nullptr ? "Queue full" : "Low memory");
         delete job;
     }
 
@@ -442,8 +466,7 @@ namespace SQM
     {
         if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
         {
-            records.clear();
-            records.shrink_to_fit();
+            records.clear(); // the room stays (spec 035)
             ++revision;
             xSemaphoreGive(mutex);
         }

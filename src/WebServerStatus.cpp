@@ -108,23 +108,34 @@ namespace SQM
         discoveryWasOn = mqtt.homeAssistant;
     }
 
-    Deps::Facts WebServer::settingsFacts() const
+    // Spec 035: no allocation (the Alpaca device list is a copy, and the
+    // alert channels don't depend on it).
+    Deps::Facts WebServer::networkFacts() const
     {
         Deps::Facts facts;
         facts.wifiConnected = NetState::online(); // spec 023: Ethernet counts
         facts.mqttConnected = mqttClient != nullptr && mqttClient->isConnected();
         facts.clockSet = static_cast<int64_t>(time(nullptr)) >= Core::CLOCK_VALID_EPOCH;
+        return facts;
+    }
+
+    Deps::Facts WebServer::settingsFacts() const
+    {
+        Deps::Facts facts = networkFacts();
         facts.alpacaDevices = static_cast<uint8_t>(alpacaBackend.devices().size());
         return facts;
     }
 
+    // Spec 035: asked for every alert sent, so it allocates nothing (it built
+    // every setting's entry list on the heap; a burst of alerts aborted there).
     ChannelBlocks WebServer::channelBlocks() const
     {
-        const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), settingsFacts());
+        Deps::Entry entries[Deps::ALERT_CHANNEL_ENTRIES];
+        const size_t count = Deps::alertChannels(getConfigCallback(), networkFacts(), entries);
         uint8_t passing = 0;
-        auto blocked = [&entries, &passing](const char *setting, AlertChannel channel) -> const char *
+        auto blocked = [&entries, count, &passing](const char *setting, AlertChannel channel) -> const char *
         {
-            const Deps::Reason *reason = Deps::reasonFor(entries, setting);
+            const Deps::Reason *reason = Deps::channelReason(entries, count, setting);
             if (reason == nullptr || std::strcmp(reason->code, "alerts-off") == 0)
                 return nullptr;
             // Spec 030: the network or the broker coming back lets a resend through.

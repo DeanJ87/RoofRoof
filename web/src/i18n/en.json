@@ -154,6 +154,7 @@
   "device.alert.imagingAppIsBack": "Imaging app is back",
   "device.alert.imagingAppStoppedChecking": "Imaging app stopped checking",
   "device.alert.invalidUrl": "Invalid URL",
+  "device.alert.lowMemory": "Low memory",
   "device.alert.mountDidnTPark": "Mount didn't park",
   "device.alert.mqttNotConnected": "MQTT not connected",
   "device.alert.nINACanT": "N.I.N.A. can't be reached, so the park counts as not confirmed. {reason}",

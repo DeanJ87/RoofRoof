@@ -12,6 +12,7 @@
 
 #include <ArduinoJson.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -65,6 +66,13 @@ namespace SQM
 
         // Every reported setting, in catalogue order.
         std::vector<Entry> evaluate(const Config &cfg, const Facts &facts);
+        // Spec 035: the four alert channels' entries (alerts.pushover/ntfy/
+        // webhook/mqtt.enabled), the same as evaluate() gives them, written
+        // into `out` without allocating: the alert path asks for every send.
+        constexpr size_t ALERT_CHANNEL_ENTRIES = 4;
+        size_t alertChannels(const Config &cfg, const Facts &facts, Entry (&out)[ALERT_CHANNEL_ENTRIES]);
+        // The reason `setting` among `entries` is inactive, or nullptr.
+        const Reason *channelReason(const Entry *entries, size_t count, const char *setting);
         // nullptr if `setting` isn't reported.
         const Entry *find(const std::vector<Entry> &entries, const char *setting);
         bool isActive(const std::vector<Entry> &entries, const char *setting);

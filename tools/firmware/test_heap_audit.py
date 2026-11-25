@@ -128,7 +128,44 @@ def findings() -> list[str]:
     return out
 
 
+# Spec 035: an allocation on a running path is checked (new (std::nothrow)),
+# so a short heap skips or fails one step instead of aborting. make_unique
+# can't be checked; these are made once at start-up. "path" -> why.
+MAKE_UNIQUE_ALLOWED: dict[str, str] = {
+    "src/main.cpp": "the services, made once in setup()",
+    "src/WebServer.cpp": "the alert dispatcher, made once in begin()",
+    "src/MQTTClient.cpp": "the MQTT client, made once with its owner",
+}
+# The full settings-dependency list (about 40 entries) is for the settings
+# route; the alert path asks Deps::alertChannels, which allocates nothing.
+EVALUATE_ALLOWED = {"src/WebServerApi.cpp"}
+
+
+def running_path_findings(rel: str, text: str) -> list[str]:
+    out = []
+    text = without_comments(text)
+    for m in re.finditer(r"\bmake_unique\s*<", text):
+        if rel.startswith("src/") and rel not in MAKE_UNIQUE_ALLOWED:
+            out.append(f"{rel} (line {text.count(chr(10), 0, m.start()) + 1}): make_unique on a running path (use new (std::nothrow))")
+    for m in re.finditer(r"\bDeps::evaluate\s*\(", text):
+        if rel.startswith("src/") and rel not in EVALUATE_ALLOWED:
+            out.append(f"{rel} (line {text.count(chr(10), 0, m.start()) + 1}): the full settings list outside the settings route")
+    return out
+
+
 class HeapAuditTest(unittest.TestCase):
+    def test_running_paths_check_their_allocations(self):
+        out = []
+        for path in sources():
+            rel = path.relative_to(ROOT).as_posix()
+            out.extend(running_path_findings(rel, path.read_text(encoding="utf-8", errors="replace")))
+        self.assertEqual(out, [])
+
+    def test_flags_the_alert_path_that_crashed(self):
+        bad = "ChannelBlocks W::channelBlocks() const { const auto e = Deps::evaluate(cfg, f); auto j = std::make_unique<Job>(); }"
+        self.assertEqual(len(running_path_findings("src/WebServerStatus.cpp", bad)), 2)
+        self.assertEqual(running_path_findings("src/main.cpp", "auto w = std::make_unique<WiFiManager>();"), [])
+
     def test_no_reply_is_written_into_a_growing_string(self):
         self.assertEqual(findings(), [])
 

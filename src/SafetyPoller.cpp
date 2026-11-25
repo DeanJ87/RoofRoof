@@ -14,6 +14,7 @@
 #include <esp_timer.h>
 #include <atomic>
 #include <memory>
+#include <new>
 
 namespace SQM
 {
@@ -54,10 +55,13 @@ namespace SQM
                 bool (*busy)() = uploadBusy.load();
                 if (busy != nullptr && busy())
                     return;
-                lock = std::make_unique<TlsLock::Guard>(tlsWaitMs);
-                if (!lock->ok())
+                // Spec 035: checked; short of memory, the poll fails like a busy session.
+                lock.reset(new (std::nothrow) TlsLock::Guard(tlsWaitMs));
+                if (!lock || !lock->ok())
                     return;
-                tls = std::make_unique<WiFiClientSecure>();
+                tls.reset(new (std::nothrow) WiFiClientSecure());
+                if (!tls)
+                    return;
                 tls->setInsecure();
                 tls->setHandshakeTimeout(TLS_HANDSHAKE_S);
             }
@@ -103,10 +107,11 @@ namespace SQM
                     continue;
                 }
                 const int got = stream.read(reinterpret_cast<uint8_t *>(chunk), sizeof(chunk));
+                // Spec 035: the cap is checked before the text grows, so it never asks past it.
+                if (got > 0 && out.size() + static_cast<size_t>(got) > MAX_BODY_BYTES)
+                    return false;
                 if (got > 0)
                     out.append(chunk, static_cast<size_t>(got));
-                if (out.size() > MAX_BODY_BYTES)
-                    return false;
             }
             return false;
         }

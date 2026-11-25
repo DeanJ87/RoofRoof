@@ -7,8 +7,10 @@
 // and at once when the network comes back. It leaves when a channel took it,
 // when no channel can ever take it (none switched on), when a newer alert of
 // the same event supersedes it, or when its condition is resolved. Bounded:
-// when full, the oldest non-critical alert makes room. Pure: the caller sends
-// and asks how each send went.
+// when full, the oldest non-critical alert makes room. Spec 035: one send per
+// step, so a burst never holds several deliveries' memory at once, and no
+// allocation beyond the alert's own copy. Pure: the caller sends and asks how
+// each send went.
 
 #include <cstddef>
 #include <cstdint>
@@ -44,6 +46,9 @@ namespace SQM
         class AlertQueue
         {
         public:
+            // Spec 035: the entries' room is taken once, so a push never grows it.
+            AlertQueue() { entries.reserve(ALERT_QUEUE_CAPACITY); }
+
             using Send = std::function<uint32_t(const QueuedAlert &)>; // returns the record id (0: not stored)
             using Probe = std::function<Delivery(uint32_t)>;
 
@@ -53,7 +58,9 @@ namespace SQM
             void resolve(Alerts::AlertType type);
             // The longest gap between two sends (the reminder interval, at most 30 min).
             void setMaxGap(uint64_t ms);
-            // Sends what is due now; drops what a channel took.
+            // Drops what a channel took, then sends one alert that is due:
+            // a critical one first, else the oldest (spec 035: a burst goes
+            // out one alert per step, not all at once).
             void step(uint64_t nowMs, bool networkUp, const Send &send, const Probe &probe);
 
             const QueuedAlert *find(Alerts::AlertType type) const;
@@ -61,6 +68,7 @@ namespace SQM
 
         private:
             bool settle(QueuedAlert &entry, uint64_t nowMs, bool upAgain, const Probe &probe);
+            QueuedAlert *nextDue();
             void makeRoom();
 
             std::vector<QueuedAlert> entries; // oldest first

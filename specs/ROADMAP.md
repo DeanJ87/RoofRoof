@@ -430,6 +430,18 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the move dialog, Calibrate and the wizard's blocker lists, the Status card, the
   nudge controls (spec 033), firmware.
 
+### 035 Heap-safe alert path (base: main after 034)
+
+- **Scope:**
+  - The alert channels' availability worked out without allocating (`Deps::alertChannels`); the
+    settings-dependency list reserved exactly.
+  - The spec 030 outbox: one send per step (critical first), its room reserved once, and no step
+    while the heap is short; the HTTPS job holds only the channel settings, allocated checked.
+  - Checked allocations on the other running paths (alert and poll TLS clients, the weather poll's
+    body, diagnostics summaries, the SQMeter sync); a running-path rule in the heap audit.
+- **Out of scope:** the web server library's allocations; the bounded once-a-second copies (device
+  list, safety snapshot, discovery key); any change to what alerts say or when they retry.
+
 ## Merge order
 
 ```text

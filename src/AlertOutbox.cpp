@@ -3,8 +3,10 @@
 #include <Arduino.h>
 #include <Preferences.h>
 #include <ctime>
+#include <esp_heap_caps.h>
 
 #include "DeviceCore.h"
+#include "HeapGuard.h"
 #include "KeptAlert.h"
 #include "Logger.h"
 #include "PlatformGuard.h"
@@ -88,6 +90,18 @@ namespace SQM
             return;
         stepped = true;
         lastStepMs = now;
+        // Spec 035: a send on a heap too short for it would abort the device
+        // (no exceptions); the alert waits for the next step instead.
+        const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        const bool fits = HeapSafe::alertFits(largest, ESP.getFreeHeap());
+        if (fits != memoryFits)
+        {
+            memoryFits = fits;
+            if (!fits && queue.size() > 0)
+                Logger::warn(TAG, "Low memory (largest block %lu B): alerts wait", static_cast<unsigned long>(largest));
+        }
+        if (!fits)
+            return;
         queue.step(now, networkUp, send, probe);
         keep();
     }
