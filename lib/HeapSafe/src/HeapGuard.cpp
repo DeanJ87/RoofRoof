@@ -39,6 +39,11 @@ namespace SQM
             return essential(path, isPost) || (largestBlock >= MIN_BLOCK_BYTES && freeHeap >= MIN_FREE_BYTES);
         }
 
+        bool alertFits(uint32_t largestBlock, uint32_t freeHeap)
+        {
+            return largestBlock >= MIN_BLOCK_BYTES && freeHeap >= MIN_FREE_BYTES;
+        }
+
         bool frameFits(size_t length, uint32_t largestBlock)
         {
             return largestBlock >= FRAME_MARGIN_BYTES && largestBlock - FRAME_MARGIN_BYTES >= length;

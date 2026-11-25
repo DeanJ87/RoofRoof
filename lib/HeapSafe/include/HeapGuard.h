@@ -24,6 +24,10 @@ namespace SQM
         bool essential(const char *path, bool isPost);
         // Whether a request may run with this heap.
         bool admit(const char *path, bool isPost, uint32_t largestBlock, uint32_t freeHeap);
+        // Spec 035: whether the main loop may hand a queued alert to the
+        // dispatcher now (its record, the MQTT text and the HTTPS job: a few
+        // small blocks). Below it, the alert waits for a later step.
+        bool alertFits(uint32_t largestBlock, uint32_t freeHeap);
         // Whether a WebSocket frame of `length` bytes may be allocated.
         bool frameFits(size_t length, uint32_t largestBlock);
     } // namespace HeapSafe

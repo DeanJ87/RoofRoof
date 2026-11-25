@@ -52,12 +52,16 @@ namespace SQM
                 bool neutral = false;
             };
 
-            // What every section needs, worked out once.
+            // What every section needs, worked out once. The entries go to
+            // `list`, or (spec 035: the alert path, no allocation) to `fixed`.
             struct Context
             {
                 const Config &cfg;
                 const Facts &f;
-                std::vector<Entry> &out;
+                std::vector<Entry> *list;
+                Entry *fixed = nullptr;
+                size_t fixedCapacity = 0;
+                size_t *fixedCount = nullptr;
 
                 // `on`: the setting's own switch. The first unmet link decides.
                 void add(const char *setting, const char *id, bool on, std::initializer_list<Link> chain, Shown shown = {}) const
@@ -80,9 +84,16 @@ namespace SQM
                             break;
                         }
                     }
-                    out.push_back(e);
+                    if (list != nullptr)
+                        list->push_back(e);
+                    else if (*fixedCount < fixedCapacity)
+                        fixed[(*fixedCount)++] = e;
                 }
             };
+
+            // Every entry evaluate() reports (a native test holds it to the
+            // catalogue): reserved at once, so the list is one allocation.
+            constexpr size_t ENTRY_COUNT = 40;
 
             // Alert channels are push only: they need the master switch. Links
             // in catalogue order, so the channel's own dependency comes before
@@ -214,8 +225,8 @@ namespace SQM
         std::vector<Entry> evaluate(const Config &cfg, const Facts &f)
         {
             std::vector<Entry> out;
-            out.reserve(16);
-            const Context c{cfg, f, out};
+            out.reserve(ENTRY_COUNT);
+            const Context c{cfg, f, &out};
             addAlertChannels(c);
             addAlertEvents(c);
             addAlertOptions(c);
@@ -226,6 +237,22 @@ namespace SQM
             addDiag(c);
             addTestBox(c);
             return out;
+        }
+
+        size_t alertChannels(const Config &cfg, const Facts &f, Entry (&out)[ALERT_CHANNEL_ENTRIES])
+        {
+            size_t count = 0;
+            const Context c{cfg, f, nullptr, out, ALERT_CHANNEL_ENTRIES, &count};
+            addAlertChannels(c);
+            return count;
+        }
+
+        const Reason *channelReason(const Entry *entries, size_t count, const char *setting)
+        {
+            for (size_t i = 0; i < count; ++i)
+                if (std::strcmp(entries[i].setting, setting) == 0)
+                    return entries[i].state == State::Inactive ? entries[i].reason : nullptr;
+            return nullptr;
         }
 
         const Entry *find(const std::vector<Entry> &entries, const char *setting)

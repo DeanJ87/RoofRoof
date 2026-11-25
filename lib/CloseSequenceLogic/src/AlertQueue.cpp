@@ -1,6 +1,7 @@
 #include "AlertQueue.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace SQM
 {
@@ -30,8 +31,9 @@ namespace SQM
             if (nextSerial == 0)
                 nextSerial = 1;
             entry.retry.setMaxGap(maxGapMs);
-            entries.push_back(entry);
-            return entry.serial;
+            const uint32_t serial = entry.serial;
+            entries.push_back(std::move(entry));
+            return serial;
         }
 
         // The oldest non-critical alert goes; with none, the oldest of all.
@@ -81,6 +83,15 @@ namespace SQM
             return false;
         }
 
+        QueuedAlert *AlertQueue::nextDue()
+        {
+            QueuedAlert *next = nullptr;
+            for (QueuedAlert &entry : entries)
+                if (!entry.sent && (next == nullptr || (entry.critical && !next->critical)))
+                    next = &entry;
+            return next;
+        }
+
         void AlertQueue::step(uint64_t nowMs, bool networkUp, const Send &send, const Probe &probe)
         {
             const bool upAgain = networkUp && !wasUp;
@@ -89,22 +100,20 @@ namespace SQM
             {
                 QueuedAlert &entry = entries[i];
                 if (entry.sent && settle(entry, nowMs, upAgain, probe))
-                {
                     entries.erase(entries.begin() + static_cast<std::ptrdiff_t>(i));
-                    continue;
-                }
-                if (!entry.sent && networkUp && send)
-                {
-                    const bool again = entry.retry.active();
-                    entry.id = send(entry);
-                    entry.sent = true;
-                    if (again)
-                        entry.retry.resent(nowMs);
-                    else
-                        entry.retry.sent(nowMs);
-                }
-                ++i;
+                else
+                    ++i;
             }
+            QueuedAlert *entry = networkUp && send ? nextDue() : nullptr;
+            if (entry == nullptr)
+                return;
+            const bool again = entry->retry.active();
+            entry->id = send(*entry);
+            entry->sent = true;
+            if (again)
+                entry->retry.resent(nowMs);
+            else
+                entry->retry.sent(nowMs);
         }
     } // namespace CloseSeq
 } // namespace SQM

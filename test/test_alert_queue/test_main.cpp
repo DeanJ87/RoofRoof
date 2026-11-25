@@ -157,7 +157,7 @@ void test_a_newer_alert_of_the_same_event_supersedes_the_waiting_one(void)
     TEST_ASSERT_EQUAL_STRING("new", queue.find(Alerts::AlertType::NeedsPerson)->alert.message.c_str());
     TEST_ASSERT_EQUAL(second, queue.find(Alerts::AlertType::NeedsPerson)->serial);
     run(queue, channels, false, 0, 0);
-    run(queue, channels, true, 1000, 1000);
+    run(queue, channels, true, 1000, 2000); // spec 035: one send per step
     TEST_ASSERT_EQUAL(2, channels.sent.size());
     TEST_ASSERT_EQUAL_STRING("park", channels.sent[0].c_str());
     TEST_ASSERT_EQUAL_STRING("new", channels.sent[1].c_str());
