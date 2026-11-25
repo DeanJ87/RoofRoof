@@ -50,6 +50,8 @@ test.describe.configure({ retries: 0 });
 test('healthy: the Status card is the alerts state, All good', async ({ page }) => {
   // inventory: status-card  inventory: alerts-state
   await open(page);
+  // A roof whose setup is finished (the demo's isn't measured yet: spec 028's Finish setup row).
+  await setConfig(page, { 'roof.measured': 31 });
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveText('All good');
   // The demo's roof is an Alpaca Dome (spec 011), so the imaging-app tile is there too.
@@ -124,9 +126,20 @@ test('clock not set is one row; it is absent while the clock is set', async ({ p
   await expect(item(page, 'clock-location')).toHaveCount(0);
 });
 
-// The imaging app's states and the dropped live connection (freshness) are
+// Spec 028: an unfinished setup is one Status row naming the first stage left, linking to it.
+test('setup not finished is one row, Finish setup with the first stage left', async ({ page }) => {
+  // inventory: setup
+  await open(page);
+  const row = item(page, 'setup');
+  await expect(row).toContainText('Finish setup: Opening direction');
+  await expect(page.locator('[data-setup-stages]')).toHaveCount(0);
+  await row.locator('a').click();
+  await expect(page.locator('[data-calibrate-page]')).toBeVisible();
+});
+
+// The imaging app's states are
 // unit-tested in web/src/dashboard/__tests__/glance.test.ts: the demo has no
-// imaging app to connect, and its stream never drops.
+// imaging app to connect.
 
 // Each fact once (DS-08): the Status card never repeats what another card shows.
 test('the Status card repeats no other card', async ({ page }) => {
@@ -194,13 +207,11 @@ test('the demo says its clock moved on the Demo button, not the dashboard', asyn
   await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved', { timeout: 20_000 });
 });
 
-test('the dashboard is the Status card, the Roof card, Roof setup (until done) and Device & Network, nothing from the old sensors', async ({
-  page,
-}) => {
+test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({ page }) => {
   // inventory: device-network-card
   await open(page);
   await expect(card(page, 'Device & Network')).toBeVisible();
-  await expect(page.locator('.masonry-item')).toHaveCount(4); // spec 026: the demo roof isn't calibrated yet
+  await expect(page.locator('.masonry-item')).toHaveCount(3); // spec 028: setup is a Status row, not a card
   // The roof straight after Status (spec 009 FR-001).
   await expect(page.locator('.masonry-item').nth(1)).toContainText('Roof');
 });

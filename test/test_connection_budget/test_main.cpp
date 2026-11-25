@@ -73,6 +73,16 @@ void test_a_brief_backlog_is_not_a_stall()
     TEST_ASSERT_TRUE(Budget::stalledTooLong(0xFFFFF000UL, 0x2000UL)); // across the millis() wrap
 }
 
+// Spec 028: both live streams share one rate.
+void test_live_updates_share_one_rate()
+{
+    TEST_ASSERT_EQUAL_UINT32(2000, Budget::liveIntervalMs(false));
+    TEST_ASSERT_EQUAL_UINT32(500, Budget::liveIntervalMs(true));
+    TEST_ASSERT_TRUE(Budget::LIVE_MOVING_MS < Budget::LIVE_REST_MS);
+    // Never faster than the change-driven send's floor (RoofReadings.h: 250 ms).
+    TEST_ASSERT_TRUE(Budget::LIVE_MOVING_MS >= 250);
+}
+
 void test_only_restarts_the_device_caused_keep_connections()
 {
     TEST_ASSERT_TRUE(SQM::Alpaca::keepsConnections(ResetKind::Software));
@@ -145,6 +155,7 @@ int main()
     RUN_TEST(test_live_updates_leave_room_for_imaging_apps);
     RUN_TEST(test_oldest_client_is_replaced_past_the_limit);
     RUN_TEST(test_a_brief_backlog_is_not_a_stall);
+    RUN_TEST(test_live_updates_share_one_rate);
     RUN_TEST(test_only_restarts_the_device_caused_keep_connections);
     RUN_TEST(test_memory_round_trips);
     RUN_TEST(test_random_power_on_memory_is_ignored);

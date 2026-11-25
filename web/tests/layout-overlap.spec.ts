@@ -111,7 +111,9 @@ for (const width of [320, 390]) {
     await expect(roof).toBeVisible({ timeout: 15_000 });
     for (const name of ['Open', 'Close', 'Stop']) {
       const control = roof.getByRole('button', { name, exact: true });
-      await control.scrollIntoViewIfNeeded();
+      // Where a person scrolls it to: not under the bottom edge, where the tour offer sits on a phone
+      // (spec 028's Finish setup row in the Status card moves the Roof card down).
+      await control.evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await expectClear(page, control);
       const box = (await control.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);

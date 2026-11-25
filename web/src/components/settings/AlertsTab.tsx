@@ -20,7 +20,7 @@ type Schedule = ReturnType<typeof useAlertSchedule>;
 const ScheduleStatus: FunctionalComponent<{ schedule: Schedule }> = ({ schedule }) => {
   const { schedule: shownSchedule, busy: scheduleBusy, pauseOrResume: sendPauseOrResume } = schedule;
   const pauseOrResume = async (resume: boolean) => {
-    if (!(await sendPauseOrResume(resume))) showToast({ message: t('settings.alerts.couldNotReachTheDevice'), tone: 'bad' });
+    if (!(await sendPauseOrResume(resume))) showToast({ message: t('settings.couldNotReachTheDevice'), tone: 'bad' });
   };
   return (
     <div class="btn-row" data-schedule-status>

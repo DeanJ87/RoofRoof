@@ -1,7 +1,6 @@
 import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
-import { useQuiet } from '../hooks/useQuiet';
 import type { Config, SystemStatus } from '../types';
 import { Button } from './ui';
 import { getJson } from '../lib/api';
@@ -11,21 +10,11 @@ import StatusCard from '../dashboard/StatusCard';
 import { glanceItems } from '../dashboard/glance';
 import { useEffectiveReport } from '../dashboard/useGlanceData';
 import { useAlertSchedule } from '../hooks/useAlertSchedule';
-import { StatusDot } from './dashboard/MiniSpark';
 import { dashboardCards } from './dashboard/cards';
 import { DEFAULT_ORDER, loadOrder, saveOrder } from './dashboard/order';
 import { useReconnectedAt } from '../hooks/useRoofCommand';
 import RoofCard from '../dashboard/RoofCard';
-
-// Nothing received yet; once data has arrived, a lost connection keeps the
-// last values on screen, greyed, with the Status card saying so.
-const Waiting: FunctionalComponent<{ connected: boolean }> = ({ connected }) => (
-  <div class="empty-state">
-    <StatusDot ok={false} />
-    <h2>{connected ? t('dashboard.waitingForTheDevice') : t('dashboard.connecting')}</h2>
-    <p>{t('dashboard.openingTheLiveWebsocketStream')}</p>
-  </div>
-);
+import LiveWaiting from './LiveWaiting';
 
 const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: boolean) => void; reset: () => void }> = ({
   arranging,
@@ -47,8 +36,7 @@ const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: bool
 const Dashboard: FunctionalComponent = () => {
   const [savedOrder, setSavedOrder] = useState<string[]>(loadOrder);
   const [arranging, setArranging] = useState(false);
-  const { data: status, connected, lastMessageAt } = useWebSocket<SystemStatus>('/ws/status');
-  const quiet = useQuiet(lastMessageAt);
+  const { data: status, connected, lastMessageAt, reconnecting } = useWebSocket<SystemStatus>('/ws/status');
   const reconnectedAt = useReconnectedAt(connected, lastMessageAt);
   const [config, setConfig] = useState<Config | null>(null);
   const configRevision = status?.configRevision;
@@ -63,16 +51,18 @@ const Dashboard: FunctionalComponent = () => {
       .catch(() => undefined);
   }, [configRevision]);
 
-  const items = glanceItems({ status, config, effective, connected, quiet, schedule });
+  const items = glanceItems({ status, config, effective, schedule });
   const onAction = () => void pauseOrResume(true);
 
-  const live = { status, connected, quiet, reconnectedAt, lastMessageAt };
-  // Stop never waits for live data: the Roof card (Stop enabled, Open and Close
-  // disabled with "No live data") shows under the waiting note too.
+  // Spec 028: a quiet socket is closed by useWebSocket, so the status shown is never quiet.
+  const live = { status, connected, quiet: false, reconnectedAt, lastMessageAt };
+  // Spec 028: no reading from this connection, no state: the waiting note, on
+  // first load and after a drop. Stop never waits for live data: the Roof card
+  // (Stop enabled, Open and Close disabled with "No live data") shows under it.
   if (!status)
     return (
       <div class="dashboard page-enter">
-        <Waiting connected={connected} />
+        <LiveWaiting reconnecting={reconnecting} />
         <RoofCard live={live} />
       </div>
     );
@@ -98,7 +88,7 @@ const Dashboard: FunctionalComponent = () => {
   };
 
   return (
-    <div class={`dashboard page-enter${connected ? '' : ' is-disconnected'}`}>
+    <div class="dashboard page-enter">
       <Toolbar arranging={arranging} setArranging={setArranging} reset={reset} />
       <Masonry items={ordered} editing={arranging} onMove={move} />
     </div>

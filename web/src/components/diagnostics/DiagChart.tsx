@@ -121,21 +121,21 @@ const DiagChart: FunctionalComponent<{ points: DiagPoint[]; currentSense: boolea
   const column = (index: number) => points.map((point) => point[index]);
   const panels: Panel[] = [
     {
-      title: t('diagnostics.chart.supply'),
+      title: t('diagnostics.supply'),
       unit: 'V',
       scale: niceScale(column(VOLTS)),
       series: [{ column: VOLTS, label: t('diagnostics.chart.minimum'), className: 'diag-line' }],
     },
     {
-      title: t('diagnostics.chart.duty'),
+      title: t('diagnostics.duty'),
       unit: '%',
       scale: niceScale([], { fixed: [0, 100], count: 2 }),
-      series: [{ column: DUTY, label: t('diagnostics.chart.duty'), className: 'diag-line' }],
+      series: [{ column: DUTY, label: t('diagnostics.duty'), className: 'diag-line' }],
     },
   ];
   if (currentSense)
     panels.unshift({
-      title: t('diagnostics.chart.current'),
+      title: t('diagnostics.current'),
       unit: 'A',
       scale: niceScale([...column(AMPS_AVG), ...column(AMPS_MAX)], { floor: 0 }),
       series: [
@@ -193,8 +193,8 @@ const DiagChart: FunctionalComponent<{ points: DiagPoint[]; currentSense: boolea
         {reading(t('diagnostics.chart.time'), `${formatNumber(at[T] / 1000, 1)} s`)}
         {currentSense && reading(t('diagnostics.chart.average'), `${formatNumber(at[AMPS_AVG], 2)} A`)}
         {currentSense && reading(t('diagnostics.chart.peak'), `${formatNumber(at[AMPS_MAX], 2)} A`)}
-        {reading(t('diagnostics.chart.supply'), `${formatNumber(at[VOLTS], 2)} V`)}
-        {reading(t('diagnostics.chart.duty'), `${formatNumber(at[DUTY], 0)} %`)}
+        {reading(t('diagnostics.supply'), `${formatNumber(at[VOLTS], 2)} V`)}
+        {reading(t('diagnostics.duty'), `${formatNumber(at[DUTY], 0)} %`)}
       </p>
     </div>
   );

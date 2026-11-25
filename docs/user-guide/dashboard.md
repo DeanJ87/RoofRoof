@@ -6,6 +6,10 @@ description: "The RoofRoof dashboard: the Roof card with Open, Close and Stop, t
 
 The dashboard is the web UI's home page, updated live over a WebSocket. Try it without hardware in the [live demo](../live-demo.md).
 
+Nothing on the dashboard is shown before the device has sent its first reading: until then the page says **Connecting**, with the Roof card under it (its state reads **Connecting**, Open and Close are unavailable, Stop always works). If the connection drops, or nothing arrives for 5 seconds (a phone that went to sleep), the page says **Reconnecting** instead of showing the old values, and reconnects at once when the page is back in front. The **System** and **Diagnostics** pages do the same. While the roof moves, the readings update twice a second, the same rate as the Diagnostics page; at rest every 2 seconds.
+
+Explanations are behind **?**: hover, tap or tab to it. The tip is drawn over everything on the page and kept inside the window.
+
 The cards are **Status**, **Roof** and **Device & Network**.
 
 While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good. **Continue setup** resumes at the part you reached.
@@ -34,6 +38,7 @@ A problem no other card shows is one row under the tiles: its name, a pill, and 
 | **Clock** | **Not set**: the time isn't known yet | When it happens |
 | **Roof** | **Fault**: a motion fault is latched; "?" says what happened, with the measured value and the limit. Clear it on the Roof card | While a fault is latched |
 | **Test box** | **Bypassed**: a [test box](test-box.md) bypass is in effect, so the card never reads **All good**; the row opens the test box page | While a bypass is in effect |
+| **Finish setup: …** | **N left**: the roof's setup isn't finished; the row opens the first stage left (see [Roof setup](#roof-setup)) | Until every setup stage is done |
 | **Automatic close** | **Held** (someone pressed Stop during it), **Can't move** (a fault or an unknown position) or **Halted** (a close took too long) - see [Close on unsafe weather](close-on-unsafe.md) | While the automatic close is in one of those states |
 
 Settings that are switched on but can't work are shown in **Settings**, where you set them: each reads **Not in effect** with the reason.
@@ -85,7 +90,7 @@ From an unknown position (after a restart between the magnets, or a fault) Open 
 
 ## Roof setup
 
-Until the roof is set up, a **Roof setup** card lists the stages in the order to do them: **Board and wiring**, **Weather check**, **Park check**, **Opening direction**, **Ends taught**, **Calibration run** and **Alerts**. Each is **Done** or **To do** (a test box bypass shows **Bypassed**; travel and speed typed rather than measured show **Not measured**), says what is left, and opens the page that does it. Before the calibration run it says the move time limits are still the defaults, with the time a move is allowed. The card goes once every stage is done; the same list stays at the top of **Settings → Roof**.
+Until the roof is set up, the **Status** card has one row, **Finish setup: Weather check** (the first stage left) with a pill saying how many are left; "?" says what that stage needs, and the row opens the page that does it. It goes once every stage is done (a stage the test box bypasses is the **Test box** row's business). The full list is at the top of **Settings → Roof**: **Board and wiring**, **Weather check**, **Park check**, **Opening direction**, **Ends taught**, **Calibration run** and **Alerts**, each **Done** or **To do** (a test box bypass shows **Bypassed**; travel and speed typed rather than measured show **Not measured**), with what is left and a link to the page that does it. Before the calibration run it says the move time limits are still the defaults, with the time a move is allowed.
 
 ### Stop on every page
 

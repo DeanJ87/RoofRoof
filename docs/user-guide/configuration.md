@@ -20,7 +20,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     ![Device settings](../assets/screenshots/settings-device.png)
 
 === "Roof"
-    The roof's settings in the order a roof is set up, under **Roof setup**: the seven stages (board and wiring, weather check, park check, opening direction, ends taught, calibration run, alerts), each **Done**, **To do**, **Not measured** or **Bypassed** (test box), with a link to the page that does it. The same list is a card on the dashboard until every stage is done. Then:
+    The roof's settings in the order a roof is set up, under **Roof setup**: the seven stages (board and wiring, weather check, park check, opening direction, ends taught, calibration run, alerts), each **Done**, **To do**, **Not measured** or **Bypassed** (test box), with a link to the page that does it. Until every stage is done, the dashboard's Status card has one **Finish setup** row naming the first stage left. Then:
 
     - **Pins**: a link to the [Pins](pins.md) page, where the board, its pins and the wiring check are (also reached from the **System** page).
     - **Weather sources** and **Copy from SQMeter**, then **Mount park** (below).

@@ -33,7 +33,7 @@ With diagnostics on, the **System** page has a Diagnostics card with a few live 
 
 ### Live values
 
-The values update four times a second while the roof moves and every two seconds at rest. A value the device can't read shows as not available.
+The values update twice a second while the roof moves and every two seconds at rest, the same rate as the dashboard. A value the device can't read shows as not available. Until the first reading arrives, and after the connection drops, the page says **Connecting** or **Reconnecting** instead of showing older values.
 
 | Group | Figure | What it tells you |
 |---|---|---|

@@ -17,11 +17,7 @@ export const modeDetail = (mode: NetworkMode) => t(`settings.network.modeDetail.
 
 const linkBadge = (ethernet: EthernetStatus) => {
   if (!ethernet.present) return <StatusBadge tone="off" label={t('settings.network.offWifiOnly')} />;
-  return ethernet.link ? (
-    <StatusBadge tone="ok" label={t('settings.network.connected')} />
-  ) : (
-    <StatusBadge tone="warn" label={t('settings.network.noLink')} />
-  );
+  return ethernet.link ? <StatusBadge tone="ok" label={t('system.connected')} /> : <StatusBadge tone="warn" label={t('glance.noLink')} />;
 };
 
 export const EthernetRows: FunctionalComponent<{ ethernet: EthernetStatus }> = ({ ethernet }) => (

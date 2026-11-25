@@ -131,7 +131,7 @@ const PreviewView: FunctionalComponent<{ restore: Restore & { preview: RestorePr
         <ActionButton onClick={state.apply} disabled={nothing || state.restarting} busy={state.busy === 'apply' || state.restarting}>
           {t('settings.backup.restore')}
         </ActionButton>
-        {!state.restarting && <ActionButton onClick={state.cancel}>{t('settings.device.cancel')}</ActionButton>}
+        {!state.restarting && <ActionButton onClick={state.cancel}>{t('settings.alerts.cancel')}</ActionButton>}
       </div>
     </>
   );
@@ -149,7 +149,7 @@ const FileRows: FunctionalComponent<{ restore: Restore }> = ({ restore }) => {
           value={formatDateTime(new Date(header.createdAt), { dateStyle: 'medium', timeStyle: 'short' })}
         />
       )}
-      {header?.firmware && <ReadingRow label={t('system.firmware')} value={header.firmware} />}
+      {header?.firmware && <ReadingRow label={t('dashboard.firmware')} value={header.firmware} />}
     </>
   );
 };
@@ -179,7 +179,7 @@ const RestoreView: FunctionalComponent<{ restore: Restore; state: RestoreState }
                 {t('settings.backup.preview')}
               </ActionButton>
             )}
-            <ActionButton onClick={state.cancel}>{t('settings.device.cancel')}</ActionButton>
+            <ActionButton onClick={state.cancel}>{t('settings.alerts.cancel')}</ActionButton>
           </div>
         </>
       )}

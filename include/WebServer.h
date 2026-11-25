@@ -127,6 +127,7 @@ namespace SQM
 
         // Broadcast status data to /ws/status clients.
         void broadcastStatusData();
+        void broadcastStatusIfDue(uint32_t now);
 
         // The setup screen is trying new WiFi credentials (POST /api/wifi/connect).
         bool isWifiConnectPending() const { return wifiConnectActive.load(); }
@@ -136,7 +137,6 @@ namespace SQM
     private:
         static constexpr const char *TAG = "WebServer";
         static constexpr uint16_t PORT = 80;
-        static constexpr uint32_t WS_STATUS_BROADCAST_INTERVAL_MS = 2000;
         static constexpr uint32_t ALERT_PASS_INTERVAL_MS = 1000;
         static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
 

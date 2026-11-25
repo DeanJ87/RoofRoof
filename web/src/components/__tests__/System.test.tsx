@@ -21,7 +21,14 @@ describe('System', () => {
 
     render(<System />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Connecting')).toBeInTheDocument();
+  });
+
+  // Spec 028: after a drop no values from the old connection, and it says so.
+  it('says Reconnecting after the stream drops', () => {
+    vi.mocked(useWebSocket).mockReturnValue({ data: null, connected: false, lastMessageAt: null, reconnecting: true });
+    render(<System />);
+    expect(screen.getByRole('heading', { name: 'Reconnecting' })).toBeInTheDocument();
   });
 
   it('renders firmware version once connected', () => {

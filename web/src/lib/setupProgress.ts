@@ -4,8 +4,8 @@ import { formatNumber } from '../i18n/format';
 import { moveLimits } from './moveLimits';
 
 // Spec 026: the roof's setup stages in the order an installer does them, each done
-// or not, with the page that does it. Shown on the dashboard until the roof is set up,
-// and at the top of Settings → Roof. Derived from the saved settings only.
+// or not, with the page that does it. At the top of Settings → Roof; the dashboard's Status
+// card names the first one left (spec 028). Derived from the saved settings only.
 
 export type StageState = 'done' | 'todo' | 'bypassed' | 'typed';
 export interface Stage {

@@ -113,7 +113,7 @@ export const DeviceCard: FunctionalComponent<{ live: DiagLive }> = ({ live }) =>
       <MetricTile label={t('diagnostics.loopPass')} value={formatCount(live.loop.passMs)} unit="ms" />
       <MetricTile label={t('diagnostics.maxLoopPass')} value={formatCount(live.loop.maxPassMs)} unit="ms" />
       <MetricTile label={t('diagnostics.signal')} value={formatCount(live.wifi.rssi)} unit="dBm" />
-      <MetricTile label={t('diagnostics.uptime')} value={formatUptime(live.uptimeS)} />
+      <MetricTile label={t('dashboard.uptime')} value={formatUptime(live.uptimeS)} />
     </Tiles>
     <ReadingRow label={t('diagnostics.resetReason')} value={live.resetReason ?? DASH} />
     <SimulatedNote live={live} />

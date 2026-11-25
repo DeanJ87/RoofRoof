@@ -61,6 +61,15 @@ describe('Diagnostics page', () => {
       expect(clear).toHaveAccessibleDescription("The log can't be cleared while the roof moves.");
     });
 
+    // Spec 028 FR-006: after a drop, never the document fetched when the page opened.
+    it('shows Reconnecting, not the page-load readings, after the stream drops', async () => {
+      vi.mocked(useWebSocket).mockReturnValue({ data: null, connected: false, lastMessageAt: null, reconnecting: true });
+      render(<Diagnostics />);
+      expect(await screen.findByRole('heading', { name: 'Reconnecting' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Control task' })).toBeNull();
+      vi.mocked(useWebSocket).mockReturnValue({ data: null, connected: false, lastMessageAt: null });
+    });
+
     it('says when current sense is not fitted', async () => {
       vi.mocked(useWebSocket).mockReturnValue({
         data: { ...mockDiagLive, roof: { ...mockDiagLive.roof, currentSense: false, motorAmps: null, powerWatts: null } },

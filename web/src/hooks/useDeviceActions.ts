@@ -16,10 +16,10 @@ export const useDeviceActions = () => {
       const response = await post(url);
       const body = await bodyOf(response);
       setActionResult(
-        response.ok ? { type: 'success', text: success } : { type: 'error', text: deviceError(body, t('settings.device.failed')) },
+        response.ok ? { type: 'success', text: success } : { type: 'error', text: deviceError(body, t('settings.alerts.failed')) },
       );
     } catch {
-      setActionResult({ type: 'error', text: t('settings.device.couldNotReachTheDevice') });
+      setActionResult({ type: 'error', text: t('settings.couldNotReachTheDevice') });
     }
   };
 

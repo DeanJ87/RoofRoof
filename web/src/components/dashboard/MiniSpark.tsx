@@ -3,10 +3,6 @@ import { summariseSeries } from '../../lib/a11y';
 import { formatNumber } from '../../i18n/format';
 import { svgNumber } from '../../lib/svg';
 
-export const StatusDot: FunctionalComponent<{ ok: boolean }> = ({ ok }) => (
-  <span class={`status-dot ${ok ? 'is-ok' : 'is-bad'}`} aria-hidden="true" />
-);
-
 type Point = { x: number; y: number };
 
 // One smoothed segment of the trend line, as SVG path commands.

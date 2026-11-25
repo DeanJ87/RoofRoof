@@ -39,16 +39,18 @@ const openRoof = async (page: Page) => {
   await expect.poll(async () => (await roof(page)).state, { timeout: 60_000 }).toBe('open');
 };
 
-test('a new roof: the setup stages on the dashboard, with the move time limits still defaults', async ({ page }) => {
+test('a new roof: one Finish setup line on the dashboard, the stages in Settings, with the move time limits still defaults', async ({
+  page,
+}) => {
   await ready(page);
-  const card = page.locator('[data-inventory="setup-card"]');
-  await expect(card).toBeVisible();
-  await expect(card.locator('[data-stage]')).toHaveCount(7);
-  await expect(card.locator('[data-stage="calibrated"]')).toContainText('Move time limits are still defaults');
-  await card.getByRole('button', { name: /Calibration run/ }).click();
-  await expect(page.locator('[data-calibrate-page]')).toBeVisible();
+  await expect(page.locator('[data-inventory="setup"]')).toContainText('Finish setup:');
   await go(page, '/settings?tab=roof');
+  const stages = page.locator('[data-setup-stages]');
+  await expect(stages.locator('[data-stage]')).toHaveCount(7);
+  await expect(stages.locator('[data-stage="calibrated"]')).toContainText('Move time limits are still defaults');
   await expect(page.locator('#travel [data-move-limits]')).toContainText('Open or close limit');
+  await stages.getByRole('button', { name: /Calibration run/ }).click();
+  await expect(page.locator('[data-calibrate-page]')).toBeVisible();
 });
 
 test('held by a person: explained with when it clears, and released at the roof while safe', async ({ page }) => {

@@ -11,7 +11,7 @@ RoofRoof exposes the device's data through these integration paths. The roof's s
 <!-- diagram: DIA-15
 sources: include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h lib/AlpacaLogic/include/AlpacaRouter.h
 blocking: false
-fingerprint: 6c7975c39abb90d8
+fingerprint: a0f8ec3f0a476eed
 -->
 <figure class="diagram" markdown>
 
@@ -21,7 +21,7 @@ flowchart LR
     accDescr: The device status feeds four paths. REST is pulled by scripts and can command the roof; WebSocket pushes the status live to the dashboard and apps; MQTT publishes the roof's state, availability and alerts to a broker for Home Assistant and, when switched on, takes its open, close and stop commands; Alpaca serves the roof as a Dome that N.I.N.A. and other clients can open, close and stop; alerts are pushed to phones and services. Inbound, the device reads SQMeter's weather verdict, its location, its shared settings and, when SQMeter shares them, its secrets (copied or kept in step), and N.I.N.A.'s mount state.
     DATA["Device status<br/>and alerts"]
     DATA --> REST["REST API<br/>pull, any time;<br/>roof open, close, stop"]
-    DATA --> WS["WebSocket<br/>push: status every 2 s<br/>and on a roof change"]
+    DATA --> WS["WebSocket<br/>push: status every 2 s,<br/>500 ms while moving,<br/>and on a roof change"]
     DATA --> MQTT["MQTT<br/>publish: roof state, availability, alerts;<br/>roof commands when switched on"]
     DATA --> ALPACA["ASCOM Alpaca<br/>Dome: shutter state;<br/>open, close, stop"]
     DATA --> ALERTS["Alerts<br/>pushed on events"]
@@ -42,7 +42,7 @@ flowchart LR
     The device status and alerts feed every path:
 
     - **REST API**: pulled any time, by scripts and Home Assistant's REST integrations; with the password, it also opens, closes and stops the roof and clears a fault.
-    - **WebSocket**: pushed live, the status every 2 seconds and within 250 ms of a roof state or fault change, to the dashboard and apps.
+    - **WebSocket**: pushed live, the status every 2 seconds (every 500 ms while the roof moves) and within 250 ms of a roof state or fault change, to the dashboard and apps.
     - **MQTT**: published to your broker - the roof's state, availability, alerts and the alerts pause switch - for Home Assistant (a roof cover with sensors) or Node-RED; with roof commands switched on, open, close and stop come back the same way, with an Alpaca client's limits.
     - **ASCOM Alpaca**: the roof as a Dome for N.I.N.A. and other Alpaca clients: the shutter state, and open, close and stop through the same checks as the web UI's.
     - **Alerts**: pushed when something happens, to Pushover, ntfy, a webhook or MQTT.

@@ -80,7 +80,7 @@ export const testSqmeter = async (url: string, login: SqmeterLogin = {}): Promis
     }
     return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')) };
   } catch {
-    return { ok: false, error: t('settings.sqmeterCopy.unreachable') };
+    return { ok: false, error: t('settings.couldNotReachTheDevice') };
   }
 };
 
@@ -93,7 +93,7 @@ export const fetchSqmeterSite = async (url?: string, login: SqmeterLogin = {}): 
     const password = typeof body.error === 'string' && PASSWORD_ERROR.test(body.error);
     return { ok: false, error: deviceError(body, t('settings.sqmeterCopy.failed')), password };
   } catch {
-    return { ok: false, error: t('settings.sqmeterCopy.unreachable') };
+    return { ok: false, error: t('settings.couldNotReachTheDevice') };
   }
 };
 

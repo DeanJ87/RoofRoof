@@ -19,7 +19,7 @@ const ConnectedCard: FunctionalComponent<{ phase: Extract<WifiConnectPhase, { ki
   const local = phase.mdns !== false && phase.hostname ? `http://${phase.hostname}.local` : null;
   return (
     <div class="panel-page compact-page page-enter">
-      <Card title={t('wifiSetup.connected')} icon="wifi" tone="green">
+      <Card title={t('system.connected')} icon="wifi" tone="green">
         <div class="card-body">
           <p>{tRich('wifiSetup.joinedReconnect', { ssid: <strong>{phase.ssid}</strong> })}</p>
           <ul class="wifi-addresses">
@@ -104,12 +104,12 @@ const CredentialFields: FunctionalComponent<{
 }> = ({ other, needsPassword, otherSsid, setOtherSsid, password, setPassword }) => (
   <div class="form-grid">
     {other && (
-      <Field label={t('wifiSetup.networkName')}>
+      <Field label={t('settings.network.networkName')}>
         <TextInput dataField="setup.ssid" value={otherSsid} onInput={setOtherSsid} />
       </Field>
     )}
     {needsPassword && (
-      <Field label={t('wifiSetup.password')}>
+      <Field label={t('settings.network.password')}>
         <TextInput dataField="setup.password" type="password" value={password} onInput={setPassword} />
       </Field>
     )}
@@ -148,7 +148,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
     <div class="panel-page compact-page page-enter">
       <div>
         <h2 class="page-title">{t('wifiSetup.wifiSetup')}</h2>
-        <p class="muted">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
+        <p class="subtext">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
         <EthernetNote ethernet={ethernet} />
       </div>
       <Card

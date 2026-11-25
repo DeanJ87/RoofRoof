@@ -6,7 +6,7 @@ import { t } from '../i18n';
 
 // Spec 026: the roof's setup stages (lib/setupProgress.ts), each a row with its state
 // and the page that does it; a stage not done says what is left on its own line.
-// On the dashboard (its own card while the roof isn't set up) and in Settings → Roof.
+// In Settings → Roof; the dashboard has one Status row for it (spec 028, dashboard/glance.ts).
 
 const PILL: Record<StageState, string> = { done: 'pill-green', todo: 'pill-amber', typed: 'pill-amber', bypassed: 'pill-amber' };
 

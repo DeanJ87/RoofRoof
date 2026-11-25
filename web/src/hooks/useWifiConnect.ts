@@ -21,7 +21,7 @@ const requestConnect = async (ssid: string, password: string): Promise<string | 
     if (response.ok) return null;
     return deviceError(await bodyOf(response), t('wifiSetup.theDeviceRefusedTheRequest'));
   } catch {
-    return t('wifiSetup.couldNotReachTheDevice');
+    return t('settings.couldNotReachTheDevice');
   }
 };
 

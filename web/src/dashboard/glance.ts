@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { appHref } from '../lib/appHref';
 import { deviceText } from '../i18n/deviceMessage';
 import { closePhasePill } from '../lib/roofView';
+import { setupStages } from '../lib/setupProgress';
 
 // What the Status card shows (SQMeter specs 025 content, 026 presentation).
 // The card's job is the imaging app and whether alerts go out, plus problems
@@ -37,13 +38,10 @@ export interface GlanceInput {
   status: SystemStatus | null;
   config: Config | null;
   effective: EffectiveReport | null;
-  connected: boolean; // the stream is open
-  quiet: boolean; // no message for longer than the quiet threshold
   schedule: AlertSchedule | null; // live alert schedule (useAlertSchedule)
 }
 
 const PRIORITY: Record<string, number> = {
-  freshness: 1,
   'alerts-state': 3,
   'alerts-mode-not-in-effect': 3,
   'no-channel': 3,
@@ -53,6 +51,7 @@ const PRIORITY: Record<string, number> = {
   'clock-location': 7,
   'sqmeter-needs': 8,
   'test-box': 2,
+  setup: 9,
 };
 
 interface Parts {
@@ -73,14 +72,6 @@ const settingsLink = (tab: string, anchor?: string): GlanceFix => ({
   label: t('glance.openSettings'),
   href: appHref(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
 });
-
-// The live connection to the device, when it isn't live.
-const freshness = ({ connected, quiet }: GlanceInput): GlanceItem | null => {
-  const label = t('status.data');
-  if (!connected) return item('freshness', 'problem', { label, state: t('status.offline'), detail: t('status.offlineHint') });
-  if (quiet) return item('freshness', 'problem', { label, state: t('status.noUpdates'), detail: t('status.noUpdatesHint') });
-  return null;
-};
 
 const alertsItem = ({ config, schedule }: GlanceInput): GlanceItem | null => {
   if (!config?.alerts) return null;
@@ -211,10 +202,25 @@ const testBoxItem = ({ status }: GlanceInput): GlanceItem | null =>
       })
     : null;
 
+// Spec 028: an unfinished roof setup is one line, "Finish setup: <first stage left>",
+// linking to that stage; the full list is in Settings → Roof. A stage the test box
+// bypasses isn't counted here: the test box row says so.
+const setupItem = ({ config }: GlanceInput): GlanceItem | null => {
+  const left = setupStages(config).filter((stage) => stage.state === 'todo' || stage.state === 'typed');
+  const first = left[0];
+  return first
+    ? item('setup', 'note', {
+        label: t('stage.finish', { stage: first.title }),
+        state: t('stage.left', { count: left.length }),
+        detail: first.note,
+        fix: { label: first.title, href: appHref(first.href) },
+      })
+    : null;
+};
+
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
-    freshness(input),
     alertsItem(input),
     sendModeItem(input),
     channelsItem(input),
@@ -224,6 +230,7 @@ export const glanceItems = (input: GlanceInput): GlanceItem[] => {
     ...imagingAppItems(input),
     clockItem(input),
     ...needItems(input),
+    setupItem(input),
   ].filter((entry): entry is GlanceItem => Boolean(entry));
   const rank = { problem: 0, note: 1, ok: 2, idle: 3 } as const;
   return items.sort((a, b) => a.priority - b.priority || rank[a.severity] - rank[b.severity]);

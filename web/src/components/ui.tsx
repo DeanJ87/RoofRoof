@@ -1,12 +1,15 @@
 import { ComponentChildren, FunctionalComponent, type Ref } from 'preact';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useId, useLayoutEffect, useRef } from 'preact/hooks';
 import { announce } from '../lib/a11y';
 import { t } from '../i18n';
 
 import { Icon, type IconTone } from './icons';
+import { InfoTip } from './InfoTip';
 
 // The icon set lives in icons.tsx (kept apart for the file-length limit); it is part of the DS.
 export { COLORS, Icon } from './icons';
+// The "?" tip lives in InfoTip.tsx (kept apart for the file-length limit); it is part of the DS.
+export { InfoTip } from './InfoTip';
 
 export const Pill: FunctionalComponent<{ tone?: string }> = ({ tone = 'pill-dim', children }) => (
   <span class={`pill ${tone}`}>{children}</span>
@@ -147,48 +150,6 @@ export const Button: FunctionalComponent<{
     {busy ? (busyLabel ?? t('common.working')) : children}
   </button>
 );
-
-// "?" that reveals an explanation on hover, focus or tap - for detail that
-// would otherwise clutter the page as footnotes. A button whose description
-// is the tip, so screen readers read it; tap toggles it, Escape hides it
-// (WCAG 1.4.13, 4.1.2).
-export const InfoTip: FunctionalComponent<{ text: ComponentChildren }> = ({ text }) => {
-  const id = useId();
-  const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const reset = () => setDismissed(false);
-  return (
-    <button
-      type="button"
-      class={`info-tip${open ? ' is-open' : ''}${dismissed ? ' is-dismissed' : ''}`}
-      aria-label={t('ui.moreInformation')}
-      aria-describedby={id}
-      aria-expanded={open}
-      onClick={(event) => {
-        event.preventDefault(); // inside a <label>: don't toggle its control
-        setDismissed(false);
-        setOpen(!open);
-      }}
-      onKeyDown={(event) => {
-        // The first Escape hides the tip; once hidden, Escape reaches a dialog around it.
-        if (event.key !== 'Escape' || dismissed) return;
-        event.stopPropagation();
-        setOpen(false);
-        setDismissed(true);
-      }}
-      onBlur={() => {
-        setOpen(false);
-        reset();
-      }}
-      onMouseLeave={reset}
-    >
-      <span aria-hidden="true">?</span>
-      <span class="info-tip-body" role="tooltip" id={id}>
-        {text}
-      </span>
-    </button>
-  );
-};
 
 // One-line status note under a control: no box, just tinted text.
 export const Note: FunctionalComponent<{

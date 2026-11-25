@@ -243,6 +243,9 @@ void test_each_finished_summary_goes_once_oldest_first()
 
 void test_the_stream_runs_faster_while_moving()
 {
+    // Spec 028: the status stream's rate, 500 ms while moving and 2 s at rest.
+    TEST_ASSERT_EQUAL_UINT32(500, streamIntervalMs(Roof::State::Opening));
+    TEST_ASSERT_EQUAL_UINT32(2000, streamIntervalMs(Roof::State::Open));
     TEST_ASSERT_EQUAL_UINT32(STREAM_MOVING_MS, streamIntervalMs(Roof::State::Opening));
     TEST_ASSERT_EQUAL_UINT32(STREAM_MOVING_MS, streamIntervalMs(Roof::State::Closing));
     TEST_ASSERT_EQUAL_UINT32(STREAM_REST_MS, streamIntervalMs(Roof::State::Stopped));

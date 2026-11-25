@@ -61,7 +61,7 @@ SQMeter paths are the same as RoofRoof's unless a different path is shown. "Comm
 | CaptiveDns | `lib/CaptiveDns` | Unchanged (code) | No |
 | ConfigBackup | `lib/ConfigBackup` | Changed: backup key is `roofroofBackup`; removed settings dropped from the preview and rules | No |
 | ConfigModel | `lib/ConfigModel` | Changed: sensor, display, battery, language and board-profile settings removed; `pins` and `network.mode` added and `safety.rainContact` removed (spec 023); the roof's motion settings added (spec 002); the roof's alert events added, and the settings documents enlarged to hold them (spec 007); `daylight.*` added, and `location.set`, `location.latitude` and `location.longitude` kept under SQMeter's names (without `showSunMoon`) (spec 013); `location.source` and the device-owned `location.sqmeter.{gps,savedAt}` added, with a `library.json` declaring ArduinoJson so libraries that include `Config.h` build alone (spec 020: the location follows the SQMeter at the same site, whose `sky.locationSource` names the same choice) | No |
-| ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer | No |
+| ConnectionBudget | `lib/ConnectionBudget` | Changed: one live endpoint fewer; one live schedule for both streams (spec 028: 2 s at rest, 500 ms while the roof moves) | No |
 | DeviceCore | `lib/DeviceCore` | Changed: sky, safety, battery, BLE and display sections removed; alerts and status kept; the roof's event settings, test samples and the critical alerts' finishing (level floor, wording that keeps the reason) added (spec 007) | No |
 | FirmwareImage | `lib/FirmwareImage` | Changed: product field in the marker and scanner, RoofRoof's own magic; a second build kind, `bench`, that a standard board refuses (spec 011) | Yes |
 | NetAddress | `lib/NetAddress` | Unchanged (code) | No |
@@ -90,7 +90,8 @@ The web UI is Preact, Vite and TypeScript with plain CSS (no Tailwind), and keep
 | Settings (Alerts, Network, Time, Device tabs, backup card) | `web/src/components/settings` | Changed: Sensors, Safety, Battery, Display and Language tabs and cards removed | No |
 | Alpaca, System, Updates pages | `web/src/components` | Changed: no release check; upload only | No |
 | Settings dependency logic and links | `web/src/lib/settingsDep*.ts` | Changed: follows the cut catalogue | No |
-| Layout, UI kit, toasts, WiFi setup | `web/src/components` | Changed: the UI kit gains the onboarding set (modal, choice cards, speech bubble, mascot; spec 018) and its icons move to `icons.tsx`; the layout makes the page inert behind a modal | No (SQMeter has no guided flow) |
+| Layout, UI kit, toasts, WiFi setup | `web/src/components` | Changed: the UI kit gains the onboarding set (modal, choice cards, speech bubble, mascot; spec 018) and its icons move to `icons.tsx`; the layout makes the page inert behind a modal; the "?" tip moves to `InfoTip.tsx` and shows in the top layer, and secondary text takes one set of tokens (spec 028) | Yes (the tip and the tokens) |
+| Live stream hook | `web/src/hooks/useWebSocket.ts` | Changed (spec 028): only readings from the current connection, connecting or reconnecting, a quiet socket closed after 5 s, a 1 s first retry and an immediate reconnect when the page comes back; `useQuiet` removed | Yes |
 | i18n | `web/src/i18n` | Changed: English only; the 13 other language packs and loader removed | No |
 | Browser demo and its panel | `web/src/demo` | Changed: runs the firmware core built as `rr-core` (was `sqm-core`); sensor panel, conditions, presets and imaging app removed | No |
 | Mocks, types, validation, test helpers | `web/src/mocks`, `types`, `validation`, `test` | Changed: sensor, battery and display types and schemas removed | No |

@@ -3,6 +3,7 @@ import type { RoofCommand } from './api';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatNumber } from '../i18n/format';
+import { LIVE_QUIET_MS } from './liveStream';
 
 // What the Roof card, the Stop bar and the Status card show for the roof
 // (spec 009, data-model.md). The page only predicts refusals so that it can
@@ -34,8 +35,8 @@ export interface LiveState {
   lastMessageAt?: number | null; // when the last message arrived (ms), checked against `now` too
 }
 
-/** No message for longer than this and the data counts as stale (useQuiet's threshold). */
-export const LIVE_MS = 5000;
+/** No message for longer than this and the data counts as stale (useWebSocket's quiet limit). */
+export const LIVE_MS = LIVE_QUIET_MS;
 
 export interface ButtonView {
   disabled: boolean;
@@ -75,7 +76,7 @@ export interface ViewInput {
   now: number;
 }
 
-// `now` catches a page that slept with the socket open: useQuiet's tick may lag.
+// `now` catches a page that slept with the socket open: useWebSocket's check may lag.
 export const isLive = (live: LiveState, now = Date.now()) =>
   live.status !== null && live.connected && !live.quiet && !(typeof live.lastMessageAt === 'number' && now - live.lastMessageAt > LIVE_MS);
 
@@ -232,7 +233,8 @@ export const roofView = (input: ViewInput): RoofView => {
     open: openButton(input),
     close: closeButton(input),
     stop: { disabled: false },
-    state: statePill(roof),
+    // Spec 028: before the first status no state is shown, not even "not reporting".
+    state: input.live.status ? statePill(roof) : { label: t('live.connecting'), tone: 'pill-dim', text: '' },
     position: positionOf(roof),
     notes: roof ? stateNotes(roof) : [],
     result: resultNote(input.result, roof, input.now),

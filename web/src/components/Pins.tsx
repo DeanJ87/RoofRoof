@@ -264,7 +264,7 @@ const Pins: FunctionalComponent = () => {
       </SettingsCard>
       <div class="btn-row">
         <Button variant="link" onClick={() => route('/settings?tab=roof&section=pins')}>
-          {t('pins.toSettings')}
+          {t('calibrate.toSettings')}
         </Button>
       </div>
     </div>

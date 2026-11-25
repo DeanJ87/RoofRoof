@@ -21,9 +21,10 @@ describe('InfoTip', () => {
     const tip = screen.getByRole('button', { name: 'More information' });
     fireEvent.click(tip);
     expect(tip).toHaveAttribute('aria-expanded', 'true');
+    expect(tip).toHaveClass('is-shown');
     fireEvent.keyDown(tip, { key: 'Escape' });
     expect(tip).toHaveAttribute('aria-expanded', 'false');
-    expect(tip).toHaveClass('is-dismissed');
+    expect(tip).not.toHaveClass('is-shown');
   });
 });
 

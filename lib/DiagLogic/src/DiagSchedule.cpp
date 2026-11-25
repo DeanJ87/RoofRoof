@@ -6,7 +6,7 @@ namespace SQM
     {
         uint32_t streamIntervalMs(Roof::State state)
         {
-            return moving(state) ? STREAM_MOVING_MS : STREAM_REST_MS;
+            return ConnectionBudget::liveIntervalMs(moving(state));
         }
 
         bool MqttSchedule::liveDue(uint32_t nowMs, bool busy) const

@@ -148,7 +148,7 @@ export const SqmeterCopy: FunctionalComponent<CopyProps> = ({ config, updateMany
           <Button variant="primary" onClick={apply} disabled={ticked.size === 0}>
             {t('settings.sqmeterCopy.apply')}
           </Button>
-          <Button onClick={() => setView({ kind: 'idle' })}>{t('settings.sqmeterCopy.cancel')}</Button>
+          <Button onClick={() => setView({ kind: 'idle' })}>{t('settings.alerts.cancel')}</Button>
         </div>
         {ticked.size === 0 && <Note>{t('settings.sqmeterCopy.noneTicked')}</Note>}
       </div>
