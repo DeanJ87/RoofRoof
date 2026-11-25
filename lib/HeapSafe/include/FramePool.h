@@ -24,8 +24,10 @@ namespace SQM
         {
         public:
             using Frame = std::shared_ptr<std::vector<uint8_t>>; // AsyncWebSocketSharedBuffer
-            static constexpr size_t SLOTS = 3;
-            static constexpr size_t CAPACITY = 6144; // a status document with room to grow
+            // One for the status stream, one for the diagnostics stream or a
+            // new client's first frame: 10 KB of a heap with about 45 KB free.
+            static constexpr size_t SLOTS = 2;
+            static constexpr size_t CAPACITY = 5120; // a status document (4.4 KB) with room to grow
 
             // Allocates the buffers; called once at start while memory is plentiful.
             void reserve();

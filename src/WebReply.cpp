@@ -21,6 +21,7 @@ namespace SQM
         {
             std::atomic<uint32_t> refusedCount{0};
             std::atomic<uint32_t> skippedCount{0};
+            std::atomic<uint32_t> repliesInFlight{0}; // spec 037: ChunkTextResponses alive
 
             constexpr const char *BUSY_BODY = "{\"error\":\"The device is busy: try again\"}";
 
@@ -40,7 +41,10 @@ namespace SQM
                     _code = code;
                     _contentType = type;
                     _contentLength = text_.size();
+                    ++repliesInFlight;
                 }
+
+                ~ChunkTextResponse() override { --repliesInFlight; }
 
                 bool _sourceValid() const override { return true; }
 
@@ -139,7 +143,8 @@ namespace SQM
                 [](AsyncWebServerRequest *request, ArMiddlewareNext next)
                 {
                     const uint32_t freeHeap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
-                    if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, largestBlock(), freeHeap))
+                    if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, largestBlock(), freeHeap) &&
+                        HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesInFlight.load()))
                         next();
                     else
                         sendBusy(request);

@@ -754,15 +754,7 @@ a.status-row-main:focus-visible .status-row-label {
   min-height: 12rem;
 }
 
-/* Spec 037: the last reading after a drop, greyed under a small badge. */
-.live-stale-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0 0 0.75rem;
-  color: var(--muted);
-}
-
+/* Spec 037: the last reading after a drop, greyed (badge: .inline-confirm). */
 .live-stale-body {
   opacity: 0.55;
 }

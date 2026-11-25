@@ -37,6 +37,6 @@ namespace SQM
 {
     namespace HeapSafe
     {
-        const bool nothrowNewReplaced = true;
+        const bool NOTHROW_NEW_REPLACED = true;
     } // namespace HeapSafe
 } // namespace SQM

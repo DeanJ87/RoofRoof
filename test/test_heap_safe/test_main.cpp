@@ -335,6 +335,20 @@ void test_a_connection_is_accepted_only_with_room_for_its_request()
     TEST_ASSERT_TRUE(MIN_ACCEPT_BLOCK_BYTES < MIN_BLOCK_BYTES); // Alpaca still gets in when replies are refused
 }
 
+// Spec 037 FR-009: at most MAX_REPLIES_IN_FLIGHT API replies being sent at
+// once; Alpaca, the roof's commands, uploads and pages are never held back.
+void test_api_replies_in_flight_are_capped_but_not_essential_ones()
+{
+    TEST_ASSERT_TRUE(replySlotFree("/api/status", false, MAX_REPLIES_IN_FLIGHT - 1));
+    TEST_ASSERT_FALSE(replySlotFree("/api/status", false, MAX_REPLIES_IN_FLIGHT));
+    TEST_ASSERT_FALSE(replySlotFree("/api/diag?x=1", false, MAX_REPLIES_IN_FLIGHT));
+    TEST_ASSERT_TRUE(replySlotFree("/api/v1/dome/0/shutterstatus", false, 9));
+    TEST_ASSERT_TRUE(replySlotFree("/api/roof/stop", true, 9));
+    TEST_ASSERT_TRUE(replySlotFree("/api/update", true, 9));
+    TEST_ASSERT_TRUE(replySlotFree("/assets/App.js", false, 9));
+    TEST_ASSERT_TRUE(replySlotFree("/apiary", false, 9));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -356,5 +370,6 @@ int main(int, char **)
     RUN_TEST(test_guard_limits_at_their_boundaries);
     RUN_TEST(test_frame_needs_its_length_plus_margin);
     RUN_TEST(test_a_connection_is_accepted_only_with_room_for_its_request);
+    RUN_TEST(test_api_replies_in_flight_are_capped_but_not_essential_ones);
     return UNITY_END();
 }

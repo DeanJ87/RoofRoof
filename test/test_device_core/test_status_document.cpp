@@ -130,7 +130,7 @@ namespace
         JsonObject connections = doc.createNestedObject("connections");
         connections["tcpLimit"] = 16;
         JsonObject live = connections.createNestedObject("liveUpdates");
-        for (const char *key : {"status", "limitPerEndpoint", "replaced", "stalledClosed"})
+        for (const char *key : {"status", "limitPerEndpoint", "refused", "stalledClosed"})
             live[key] = 4294967295U;
         connections["alpacaRestoredAfterRestart"] = true;
         JsonObject shortOfMemory = connections.createNestedObject("shortOfMemory"); // spec 031

@@ -8,6 +8,7 @@
 #include "RoofMqtt.h"
 #include "WebServer.h"
 #include "JsonStream.h"
+#include <esp_heap_caps.h>
 #include "WebReply.h"
 #include "version.h"
 #include <ArduinoJson.h>
@@ -167,6 +168,13 @@ namespace SQM
             }
             doc["minFreeHeap"] = ESP.getMinFreeHeap();
             doc["maxAllocHeap"] = ESP.getMaxAllocHeap();
+            // Spec 037: the heap ordinary allocations use. freeHeap and
+            // maxAllocHeap also count the IRAM heap (32-bit access only, about
+            // 59 KB here), which malloc and new never use.
+            JsonObject heap8 = doc.createNestedObject("heap8Bit");
+            heap8["free"] = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+            heap8["largest"] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+            heap8["minFree"] = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
             doc["heapSize"] = ESP.getHeapSize();
             doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
             doc["flashSize"] = ESP.getFlashChipSize();

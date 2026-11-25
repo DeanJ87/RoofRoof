@@ -79,7 +79,7 @@ def close_code(payload: bytes) -> int:
 
 
 def split_poll(spec: str, default: float) -> tuple[str, float]:
-    """"/api/status@0.5" -> ("/api/status", 0.5); without "@", the default interval."""
+    """ "/api/status@0.5" -> ("/api/status", 0.5); without "@", the default interval."""
     path, _, every = spec.partition("@")
     return path, float(every) if every else default
 
@@ -106,7 +106,7 @@ class Soak:
         self.stop = threading.Event()
         self.pages = [Page(i) for i in range(args.clients)]
         self.samples: list[dict] = []
-        self.http = {"ok": 0, "busy": 0, "failed": 0}
+        self.http: dict[str, dict[str, int]] = {}
         self.lock = threading.Lock()
 
     def connect(self) -> socket.socket:
@@ -184,12 +184,21 @@ class Soak:
             try:
                 code, _ = self.get(path)
                 key = "ok" if code == 200 else "busy" if code == 503 else "failed"
-            except (OSError, urllib.error.URLError):
-                key = "failed"
+            except (OSError, urllib.error.URLError) as exc:
+                key = "timeout" if "timed out" in str(exc).lower() else "failed"
             with self.lock:
-                self.http[key] += 1
+                counts = self.http.setdefault(path.split("?")[0], {"ok": 0, "busy": 0, "timeout": 0, "failed": 0})
+                counts[key] += 1
 
     def sample(self) -> dict | None:
+        for _ in range(3):  # a "busy" (503) reply is retried, not taken for a dead device
+            row = self.sample_once()
+            if row is not None:
+                return row
+            time.sleep(1)
+        return None
+
+    def sample_once(self) -> dict | None:
         try:
             code, body = self.get("/api/status")
             doc = json.loads(body) if code == 200 else None
@@ -202,9 +211,10 @@ class Soak:
             "t": round(time.monotonic() - self.started),
             "uptime": doc.get("uptime"),
             "boot": doc.get("bootCount"),
-            "free": doc.get("freeHeap"),
-            "largest": doc.get("maxAllocHeap"),
-            "minFree": doc.get("minFreeHeap"),
+            # The byte-addressable heap (spec 037); maxAllocHeap also counts IRAM.
+            "free": doc.get("heap8Bit", {}).get("free", doc.get("freeHeap")),
+            "largest": doc.get("heap8Bit", {}).get("largest", doc.get("maxAllocHeap")),
+            "minFree": doc.get("heap8Bit", {}).get("minFree", doc.get("minFreeHeap")),
             "live": conn.get("liveUpdates", {}).get("status"),
             "liveCounters": {k: v for k, v in conn.get("liveUpdates", {}).items() if k not in ("status", "limitPerEndpoint")},
             "short": conn.get("shortOfMemory"),

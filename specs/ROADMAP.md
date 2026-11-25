@@ -454,6 +454,20 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** current sense as a movement sign; keeping the doubt across a restart once the
   fault is cleared; any new position sensor.
 
+### 037 Stable live pages under load (base: main after 035)
+
+- **Scope:**
+  - `new (std::nothrow)` returns null instead of aborting (no exceptions); a connection refused at
+    accept when the heap is nearly empty.
+  - A live-update client past the limit is refused (close 4429) instead of replacing the oldest;
+    pooled frame buffers, one queued message per client, a heartbeat when a document can't be
+    sent.
+  - The page: 10 s before a socket counts as dead, a back-off that can't loop, the last values
+    greyed while it reconnects, "Too many pages".
+  - `tools/soak/ws_soak.py`.
+- **Out of scope:** the web server library's other allocations; HTTP keep-alive; Calibrate and the
+  wizard's live views.
+
 ## Merge order
 
 ```text

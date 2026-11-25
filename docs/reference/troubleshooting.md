@@ -72,7 +72,7 @@ What uses connections:
 - an imaging app: 1-2 per request burst (each Alpaca request is a short connection)
 - internet alerts: 1 while sending
 
-`/api/status` → `connections` shows who holds what: `liveUpdates` counts the clients, and `replaced` and `stalledClosed` count live-update clients closed since the restart (replaced by a newer one, or closed because they stopped reading).
+`/api/status` → `connections` shows who holds what: `liveUpdates` counts the clients, and `refused` and `stalledClosed` count live-update clients closed since the restart (refused because 3 pages already had live updates, or closed because they stopped reading). `heap8Bit` gives the heap ordinary allocations use (`free`, `largest` block, `minFree` since the restart); `freeHeap` and `maxAllocHeap` also count about 59 KB of IRAM that they never use, so read `heap8Bit.largest` when judging fragmentation. A page that is refused says "Too many pages" and tries again every minute; close a tab you don't need.
 
 `tools/soak/connection_soak.py --host <device-ip>` reproduces the worst case against a device and reports every request that failed.
 

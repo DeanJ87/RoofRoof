@@ -19,9 +19,9 @@ const LiveWaiting: FunctionalComponent<{ reconnecting?: boolean; tooMany?: boole
 // Roof card's Open and Close stay off, Stop stays usable).
 export const LiveStale: FunctionalComponent<{ tooMany?: boolean; children: ComponentChildren }> = ({ tooMany, children }) => (
   <div class="live-stale">
-    <p class="live-stale-badge">
+    <p class="inline-confirm">
       <span class="status-dot" aria-hidden="true" />
-      {tooMany ? `${t('live.tooMany')}. ${t('live.tooManyHint')}` : t('live.lastKnown')}
+      {tooMany ? `${t('live.tooMany')}: ${t('live.tooManyHint')}` : t('live.reconnecting')}
     </p>
     <div class="live-stale-body">{children}</div>
   </div>

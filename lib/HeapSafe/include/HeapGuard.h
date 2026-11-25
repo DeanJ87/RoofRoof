@@ -32,6 +32,14 @@ namespace SQM
         // dispatcher now (its record, the MQTT text and the HTTPS job: a few
         // small blocks). Below it, the alert waits for a later step.
         bool alertFits(uint32_t largestBlock, uint32_t freeHeap);
+        // Spec 037: built replies (about 9 KB each with the server's buffers)
+        // being sent at once. Past this a non-essential API request is
+        // answered "busy": admitting several at the same free-heap reading
+        // took the heap to 2 KB under a 2 Hz status poll on the bench.
+        constexpr uint32_t MAX_REPLIES_IN_FLIGHT = 2;
+        // Whether one more reply may be built; pages, files and essential
+        // requests are never held back by it.
+        bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight);
         // Whether a WebSocket frame of `length` bytes may be allocated.
         bool frameFits(size_t length, uint32_t largestBlock);
         // Whether a new connection may be accepted.

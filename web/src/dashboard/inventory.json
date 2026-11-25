@@ -557,6 +557,26 @@
       "shownOn": "System"
     },
     {
+      "match": "status.heap8Bit",
+      "reason": "Device internals for troubleshooting (spec 037: the heap malloc uses); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.heap8Bit.free",
+      "reason": "Device internals for troubleshooting (spec 037: the heap malloc uses); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.heap8Bit.largest",
+      "reason": "Device internals for troubleshooting (spec 037: the heap malloc uses); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.heap8Bit.minFree",
+      "reason": "Device internals for troubleshooting (spec 037: the heap malloc uses); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
       "match": "status.maxAllocHeap",
       "reason": "Device internals for troubleshooting",
       "shownOn": "System"
@@ -632,7 +652,7 @@
       "shownOn": "API (docs: troubleshooting)"
     },
     {
-      "match": "status.connections.liveUpdates.replaced",
+      "match": "status.connections.liveUpdates.refused",
       "reason": "Connection diagnostics for troubleshooting imaging-app drops (SQMeter spec 011 FR-008); read from the API",
       "shownOn": "API (docs: troubleshooting)"
     },

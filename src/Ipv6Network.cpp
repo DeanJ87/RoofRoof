@@ -77,7 +77,7 @@ namespace SQM
                     // new (std::nothrow) returns nullptr when memory runs out
                     // (lib/HeapSafe NothrowNew), handled here.
                     client->setRxTimeout(3);
-                    if (!HeapSafe::nothrowNewReplaced || !AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
+                    if (!HeapSafe::NOTHROW_NEW_REPLACED || !AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
                     {
                         client->abort();
                         delete client;

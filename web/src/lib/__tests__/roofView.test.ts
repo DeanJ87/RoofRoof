@@ -390,7 +390,7 @@ describe('the Hall scale', () => {
 // Review fixes: a page that slept, an unconfirmed Stop, Clear fault.
 describe('live data and results over time', () => {
   it('counts the data stale from its last message, even if the quiet tick lags', () => {
-    const slept = live(status(), { lastMessageAt: NOW - 6000 });
+    const slept = live(status(), { lastMessageAt: NOW - 11000 }); // spec 037: past the 10 s limit
     expect(openButton(input({ live: slept })).reason).toBe('No live data');
     expect(openButton(input({ live: live(status(), { lastMessageAt: NOW - 1000 }) })).disabled).toBe(false);
   });

@@ -60,7 +60,7 @@ void test_nothrow_new_does_not_use_the_throwing_form()
     TEST_ASSERT_NOT_NULL(bytes);
     delete[] bytes;
     TEST_ASSERT_EQUAL(0, throwingCalls);
-    TEST_ASSERT_TRUE(SQM::HeapSafe::nothrowNewReplaced);
+    TEST_ASSERT_TRUE(SQM::HeapSafe::NOTHROW_NEW_REPLACED);
 }
 
 void test_nothrow_new_returns_null_when_memory_runs_out()

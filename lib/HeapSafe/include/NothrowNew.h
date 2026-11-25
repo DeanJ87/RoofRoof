@@ -11,6 +11,6 @@ namespace SQM
     namespace HeapSafe
     {
         // Referenced from the firmware so the linker always keeps the replacement.
-        extern const bool nothrowNewReplaced;
+        extern const bool NOTHROW_NEW_REPLACED;
     } // namespace HeapSafe
 } // namespace SQM
