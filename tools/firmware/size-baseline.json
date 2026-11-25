@@ -1,4 +1,3 @@
 {
-  "esp32dev": 1728496,
-  "overBudgetReason": "spec 027: park wait before every move, a person's overrides, N.I.N.A. https test and nina_lost alert, eleven Home Assistant entities, source health in the status (+24 KB)"
+  "esp32dev": 1736048
 }

@@ -177,6 +177,9 @@ namespace SQM
         bool diagOn() const;
         std::string diagLiveJson() const;
         Diag::SystemLive diagSystem() const;
+        // Spec 029 (src/WebServerCrash.cpp).
+        void setupCrashRoutes();
+        void handleCrashDocument(AsyncWebServerRequest *request);
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;

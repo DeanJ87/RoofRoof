@@ -1,6 +1,7 @@
 #include "FlashGuard.h"
 
 #include <Arduino.h>
+#include <atomic>
 
 #include "MotionGuards.h"
 
@@ -12,13 +13,27 @@ namespace SQM
         {
             portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
             RoofIo::FlashActivity activity; // guarded by lock
+            // Spec 029: the same, readable without the lock (from the panic hook).
+            std::atomic<bool> writingMirror{false};
+
+            // Under the lock, after every change.
+            void mirror(uint32_t nowMs)
+            {
+                writingMirror.store(activity.writing() || activity.busy(nowMs), std::memory_order_relaxed);
+            }
         } // namespace
+
+        bool writingNow()
+        {
+            return writingMirror.load(std::memory_order_relaxed);
+        }
 
         uint32_t begin()
         {
             const uint32_t now = millis();
             portENTER_CRITICAL(&lock);
             const uint32_t token = activity.begin(now);
+            mirror(millis());
             portEXIT_CRITICAL(&lock);
             return token;
         }
@@ -28,6 +43,7 @@ namespace SQM
             const uint32_t now = millis();
             portENTER_CRITICAL(&lock);
             activity.progress(token, now);
+            mirror(millis());
             portEXIT_CRITICAL(&lock);
         }
 
@@ -35,6 +51,7 @@ namespace SQM
         {
             portENTER_CRITICAL(&lock);
             activity.end(token);
+            mirror(millis());
             portEXIT_CRITICAL(&lock);
         }
 
@@ -66,6 +83,7 @@ namespace SQM
         {
             portENTER_CRITICAL(&lock);
             activity.holdShort();
+            mirror(millis());
             portEXIT_CRITICAL(&lock);
         }
 
@@ -73,6 +91,7 @@ namespace SQM
         {
             portENTER_CRITICAL(&lock);
             activity.releaseShort();
+            mirror(millis());
             portEXIT_CRITICAL(&lock);
         }
 

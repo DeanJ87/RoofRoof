@@ -22,6 +22,7 @@ namespace SQM
     {
         setupBackupRoutes();
         setupRoofRoutes();
+        setupCrashRoutes(); // spec 029: before /api/diag's prefix
         setupDiagRoutes();
         setupSiteRoutes();
         setupPinRoutes();
