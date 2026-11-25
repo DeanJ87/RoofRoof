@@ -47,7 +47,7 @@
   "freeHeap": 214320,
   "minFreeHeap": 156056,
   "maxAllocHeap": 110580,
-  "heap8Bit": { "free": 98000, "largest": 51200, "minFree": 61000 },
+  "heap8Bit": { "free": 98000, "largest": 51200, "minFree": 61000, "reserveSpent": 0 },
   "heapSize": 327680,
   "stackFree": {
     "asyncTcp": 3360,

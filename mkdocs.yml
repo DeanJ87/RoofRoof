@@ -122,6 +122,7 @@ nav:
     - Releasing: development/releasing.md
     - Heritage: development/heritage.md
     - Decoding a crash: development/crash-decoding.md
+    - Heap budget: development/heap-budget.md
   - Reference:
     - Settings Dependencies: reference/settings-dependencies.md
     - Troubleshooting: reference/troubleshooting.md

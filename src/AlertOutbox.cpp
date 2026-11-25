@@ -5,10 +5,12 @@
 #include <ctime>
 #include <esp_heap_caps.h>
 
+#include "ConnectionBudget.h"
 #include "DeviceCore.h"
 #include "HeapGuard.h"
 #include "KeptAlert.h"
 #include "Logger.h"
+#include "NetState.h"
 #include "PlatformGuard.h"
 
 namespace SQM
@@ -90,6 +92,11 @@ namespace SQM
             return;
         stepped = true;
         lastStepMs = now;
+        // Spec 038: queued alerts wait a few seconds after the network comes
+        // back, behind MQTT's reconnect, so their TLS sessions don't land in
+        // the same moment.
+        if (networkUp && !NetState::settledFor(ConnectionBudget::ALERT_SETTLE_MS))
+            return;
         // Spec 035: a send on a heap too short for it would abort the device
         // (no exceptions); the alert waits for the next step instead.
         const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));

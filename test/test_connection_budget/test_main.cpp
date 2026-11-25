@@ -152,6 +152,24 @@ void test_a_clean_disconnect_is_remembered_as_disconnected()
     TEST_ASSERT_FALSE(recalled[1]);
 }
 
+// Spec 038: MQTT and the queued alerts wait after the network comes back,
+// MQTT first; a drop starts the wait again.
+void test_reconnect_work_waits_for_the_network_to_settle()
+{
+    using SQM::ConnectionBudget::NetworkSettle;
+    TEST_ASSERT_TRUE(SQM::ConnectionBudget::MQTT_SETTLE_MS < SQM::ConnectionBudget::ALERT_SETTLE_MS);
+    NetworkSettle settle;
+    TEST_ASSERT_FALSE(settle.settled(0, 0)); // never up
+    settle.update(true, 1000);
+    settle.update(true, 2000); // still the same start
+    TEST_ASSERT_FALSE(settle.settled(3999, 3000));
+    TEST_ASSERT_TRUE(settle.settled(4001, 3000)); // started at 1001 (0 means down)
+    settle.update(false, 5000);
+    TEST_ASSERT_FALSE(settle.settled(9000, 0));
+    settle.update(true, 0xFFFFFF00u); // across the millis() wrap
+    TEST_ASSERT_TRUE(settle.settled(0x00000F00u, 3000));
+}
+
 int main()
 {
     UNITY_BEGIN();
@@ -164,5 +182,6 @@ int main()
     RUN_TEST(test_random_power_on_memory_is_ignored);
     RUN_TEST(test_restored_connection_reads_connected_without_a_disconnect);
     RUN_TEST(test_a_clean_disconnect_is_remembered_as_disconnected);
+    RUN_TEST(test_reconnect_work_waits_for_the_network_to_settle);
     return UNITY_END();
 }

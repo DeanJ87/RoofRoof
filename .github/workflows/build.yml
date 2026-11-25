@@ -311,7 +311,9 @@ jobs:
       # fail above 95% - and the change from the target branch's record.
       - name: Firmware flash budget
         run: |
-          python3 -m unittest tools/firmware/test_firmware_tools.py tools/firmware/test_isr_audit.py tools/firmware/test_heap_audit.py
+          python3 -m unittest tools/firmware/test_firmware_tools.py tools/firmware/test_isr_audit.py tools/firmware/test_heap_audit.py tools/firmware/test_heap_budget.py
+          # Spec 038: stacks and buffers kept from the heap for good, plus static data, within budget.
+          python3 tools/firmware/heap_budget.py
           if [ -n "${BASE_REF}" ]; then
             git fetch --depth=1 origin "${BASE_REF}"
             python3 tools/firmware/flash_budget.py --envs esp32dev --base-ref FETCH_HEAD | tee "$RUNNER_TEMP/flash.txt"

@@ -1,3 +1,4 @@
 {
-  "esp32dev": 1661840
+  "esp32dev": 1665280,
+  "overBudgetReason": "Spec 038: heap census, emergency reserve, reconnect stagger (+3.4 KB)"
 }

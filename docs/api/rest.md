@@ -997,6 +997,30 @@ The device's last 50 log lines as plain text, oldest first, including the lines 
 
 `#` is the boot (counted since the log was last emptied by a power cut), then the time since that start, the level and up to 71 characters of text.
 
+### `GET /api/diag/heap`
+
+Where the heap that ordinary allocations use went, as plain text (spec 038). Needs the password when protection is on. Walking the heap holds its lock for a few milliseconds, so the census is refused with `409` while the roof moves or a close waits; `503` when another census is running or the device is short of memory.
+
+```text
+Heap (8-bit): free 52100 B in 31 blocks, largest 41972 B, lowest since start 18320 B; in use 171300 B in 912 blocks; reserve held, spent 0 times
+Regions (start, size, free, largest free, blocks used/free):
+  0x3ffc2e20  119264 B  free  45120  largest  41972  blocks 640/12
+Blocks by size (used count/bytes, free count/bytes):
+  <=32   used  310    7420 B  free    4      96 B
+Largest blocks in use:
+  0x3ffc5a10  10260 B  stack of loopTask
+Task stacks (heap block, least left since start):
+  loopTask          10260 B  least left   3010 B
+```
+
+| Part | Meaning |
+|---|---|
+| `Heap (8-bit)` | Free bytes and blocks, the largest free block, the lowest free since start, what is in use, and the emergency reserve (`held`, or `spent` until the device takes it back) |
+| `Regions` | Each heap region: its size, free bytes, largest free block, and blocks in use and free. The largest block can never be bigger than its region |
+| `Blocks by size` | Blocks in use and free in 8 size classes: many small free blocks between used ones is fragmentation |
+| `Largest blocks in use` | The 16 largest, with the task whose stack it is |
+| `Task stacks` | Every task, its stack's heap block (`-` when the stack isn't on this heap) and the least it has had left since start |
+
 ---
 
 ### `POST /api/update`

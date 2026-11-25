@@ -1,0 +1,5 @@
+{
+  "limitBytes": 115500,
+  "staticBytes": 61228,
+  "reason": "Spec 038: loop 10 KB, async_tcp 8 KB, esp_timer 4 KB stacks; 2 KB emergency reserve"
+}

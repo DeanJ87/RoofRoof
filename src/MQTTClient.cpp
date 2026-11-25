@@ -1,5 +1,7 @@
 #include "MQTTClient.h"
 #include "BufferedWriter.h"
+#include "ConnectionBudget.h"
+#include "NetState.h"
 #include "NetAddress.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
@@ -284,6 +286,9 @@ namespace SQM
         {
             return;
         }
+        // Spec 038: not in the burst right after the network comes back.
+        if (!NetState::settledFor(ConnectionBudget::MQTT_SETTLE_MS))
+            return;
 
         lastReconnectAttempt = now;
         Logger::info(TAG, "Attempting MQTT reconnection...");

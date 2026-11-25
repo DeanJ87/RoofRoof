@@ -577,6 +577,11 @@
       "shownOn": "API (docs: troubleshooting)"
     },
     {
+      "match": "status.heap8Bit.reserveSpent",
+      "reason": "Device internals for troubleshooting (spec 038: the emergency heap reserve); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
       "match": "status.maxAllocHeap",
       "reason": "Device internals for troubleshooting",
       "shownOn": "System"
