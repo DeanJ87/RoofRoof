@@ -90,8 +90,10 @@ public:
 
     // --- The roof (spec 011) -------------------------------------------------
     // POST /api/roof/<name> (open, close, stop, clear-fault), as a person.
-    // Returns {status, body} like the device (200, 409; 404 for another name).
-    std::string roofCommand(const std::string &name);
+    // Returns {status, body} like the device (200, 202 waiting for the park,
+    // 409; 400 for a bad override body; 404 for another name). Spec 027:
+    // `body` is an Open's or Close's optional {"override": [...]}.
+    std::string roofCommand(const std::string &name, const std::string &body);
     // Spec 016: POST /api/roof/calibration/start (`body`) and /abort, GET /api/roof/calibration.
     std::string calibration(const std::string &action, const std::string &body);
     // Spec 019: POST /api/roof/jog ("jog"), /api/roof/teach/mark, /confirm and /discard, GET /api/roof/teach ("status").
@@ -105,6 +107,8 @@ public:
     std::string pins(const std::string &action, const std::string &body);
     // Spec 020 FR-038: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
     std::string sqmeterTest(const std::string &body);
+    // Spec 027: POST /api/nina/test, one read of the simulated mount (`body`: {"url"} or "").
+    std::string ninaTest(const std::string &body);
     // The Demo panel: {unsafe, rain, parkFails, jam, supplyLow, sunUp, sqmeterOffline} (any subset)
     // and {mount: "park"|"unpark"}. Returns roofPanel().
     std::string roofInject(const std::string &json);

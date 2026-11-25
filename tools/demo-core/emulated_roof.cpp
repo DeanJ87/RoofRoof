@@ -36,6 +36,8 @@ namespace DemoRoof
         daylightCfg = Daylight::settingsFrom(cfg);
         policy = CloseSeq::policyFrom(cfg);
         remoteStopsClose = cfg.autoClose.remoteStop;
+        guard = RoofIo::MoveGuard(); // spec 027: a restart ends a wait
+        guard.configure(RoofIo::moveGuardSettingsOf(cfg));
         settingsPending = false;
         pendingAnalog = cfg.analog;
         Roof::Settings settings = Roof::settingsFromConfig(roofCfg);
@@ -78,6 +80,7 @@ namespace DemoRoof
         daylightCfg = Daylight::settingsFrom(cfg);
         policy = CloseSeq::policyFrom(cfg);
         remoteStopsClose = cfg.autoClose.remoteStop;
+        guard.configure(RoofIo::moveGuardSettingsOf(cfg)); // spec 027: applies to the next wait
         stepDaylight(true);
         sourcesChanged(cfg.safety, cfg.park);
         safetyCfg = cfg.safety;
@@ -188,14 +191,16 @@ namespace DemoRoof
         return r;
     }
 
-    // RoofControl::checkGates: constitution II's interlock, III's stop of an open.
+    // RoofControl::checkGates: spec 027's wait for the park and the overrides
+    // in effect, then constitution II's interlock, III's stop of an open.
     void EmulatedRoof::checkGates()
     {
+        stepGuard();
         const Roof::Status &status = controller.status();
-        if (RoofIo::interlockLost(status, gates))
+        if (RoofIo::interlockLost(status, gates, guard.closeParkOverride()))
             latchExternal(
                 RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f));
-        else if (RoofIo::openMustStop(status, gates))
+        else if (RoofIo::openMustStop(status, gates, guard.openOverride()))
             controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
     }
 
@@ -349,6 +354,7 @@ namespace DemoRoof
 
         gates.weather = verdict.verdict;
         gates.weatherText = Safety::describe(verdict);
+        gates.weatherReasons = verdict.reasons; // spec 027: what a person may override
         gates.parked = park.parked;
         gates.parkText = Safety::describe(park);
     }
@@ -393,7 +399,8 @@ namespace DemoRoof
         in.remoteStops = remoteStops;
         in.roofStarted = true;
         in.daylight = daylightView.closes();
-        in.releaseHold = releaseWanted; // spec 026
+        CloseSeq::applyOverride(in, overrideBits(), verdict); // spec 027
+        in.releaseHold = releaseWanted;                       // spec 026
         releaseWanted = false;
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
         sequence.setPolicy(policy);
@@ -404,7 +411,8 @@ namespace DemoRoof
         const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
         CloseSeq::updateConditions(roofConditions, snapshot(), verdict, view);
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, controller.status().state, view);
-        roofConditions.testBox = testBoxState.bits(); // spec 022
+        CloseSeq::updateNinaConditions(roofConditions, park, !parkCfg.ninaUrl.empty()); // spec 027
+        roofConditions.testBox = testBoxState.bits();                                   // spec 022
         roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(testBoxState) : std::string();
         roofConditions.testBoxSettled = !testBoxState.waitingForClock;
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None)
@@ -458,86 +466,6 @@ namespace DemoRoof
         std::vector<Alerts::Alert> out;
         out.swap(critical);
         return out;
-    }
-
-    // --- Commands -----------------------------------------------------------------
-
-    Outcome EmulatedRoof::outcomeOf(const Roof::CommandResult &result) const
-    {
-        Outcome outcome;
-        outcome.accepted = result.accepted;
-        if (!result.accepted)
-        {
-            outcome.reason = Roof::refusalName(result.reason);
-            outcome.text = RoofIo::describeRefusal(result);
-        }
-        outcome.state = controller.status().state;
-        return outcome;
-    }
-
-    // RoofControl's precheck and runLocked: the gates, the client rule and the
-    // motion logic's own checks, then the command.
-    Outcome EmulatedRoof::runChecked(Roof::Command command, Roof::Origin origin)
-    {
-        RoofIo::CommandContext context;
-        context.remoteStopsClose = remoteStopsClose;
-        context.calibrating = calibration.active();
-        const RoofIo::CommandCheck check = RoofIo::checkCommand(command, origin, gates, controller, context);
-        if (!check.accepted)
-            return Outcome{false, check.reason, check.text, controller.status().state};
-        const bool stopping = command == Roof::Command::Stop || command == Roof::Command::Abort;
-        // The close sequence stands down on a person's stop (spec 005), and on a
-        // remote stop the owner's autoClose.remoteStop counts as one (spec 014).
-        if (stopping && (RoofIo::countsAsPersonStop(command, origin) || check.standsDown))
-            personStops++;
-        if (stopping && check.standsDown)
-            remoteStops++;
-        if (stopping)
-            calibration.stopped(origin == Roof::Origin::Person ? "Stopped by a person" : "Stopped by a stop command");
-        const Outcome outcome = outcomeOf(controller.command(command, origin));
-        if (outcome.accepted && (command == Roof::Command::Open || command == Roof::Command::Close))
-            moveOrigin = origin;
-        syncFault();
-        return outcome;
-    }
-
-    Outcome EmulatedRoof::command(Roof::Command command, Roof::Origin origin)
-    {
-        return runChecked(command, origin);
-    }
-
-    // RoofControl::automaticClose: withdrawn if a person stopped the roof since the decision.
-    Outcome EmulatedRoof::automaticClose(uint32_t personStopsSeen)
-    {
-        if (personStops != personStopsSeen)
-            return Outcome{
-                false,
-                CloseSeq::PERSON_STOP_REASON,
-                "A person stopped the roof: the automatic close is withdrawn",
-                controller.status().state};
-        calibration.yieldToClose(controller);   // spec 016: the automatic close always wins
-        Calib::Teach::yieldToClose(controller); // spec 019: a jog is stopped first
-        return runChecked(Roof::Command::Close, Roof::Origin::Automatic);
-    }
-
-    Outcome EmulatedRoof::clearFault()
-    {
-        const Outcome outcome = outcomeOf(controller.clearFault(Roof::Origin::Person));
-        syncFault();
-        return outcome;
-    }
-
-    Alpaca::DomeStatus EmulatedRoof::domeStatus() const
-    {
-        return RoofIo::domeStatus(controller.status(), false, true);
-    }
-
-    // WebServer::AlpacaBackend::domeCommand: the client origin, the same checks.
-    Alpaca::DomeAnswer EmulatedRoof::domeCommand(Alpaca::DomeAction action)
-    {
-        const RoofIo::DomeDispatch dispatch = RoofIo::domeDispatch(action);
-        const Outcome outcome = command(dispatch.command, dispatch.origin);
-        return RoofIo::domeAnswer(dispatch.command, outcome.accepted, outcome.reason, outcome.text, fault);
     }
 
     // --- The panel and what is shown ----------------------------------------------

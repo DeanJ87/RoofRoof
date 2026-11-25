@@ -191,7 +191,7 @@ export const demoHandlers = [
 
   // The roof (spec 011): the device's own command checks and motion logic, on the simulated roof
   ...(['open', 'close', 'stop', 'clear-fault'] as const).map((name) =>
-    http.post(`/api/roof/${name}`, () => reply(demoDevice.roofCommand(name))),
+    http.post(`/api/roof/${name}`, async ({ request }) => reply(demoDevice.roofCommand(name, await request.text()))),
   ),
   // Spec 026: a person's attended release of the automatic close's stand-down (the firmware's 400 without it)
   http.post('/api/roof/release-hold', async ({ request }) => {
@@ -209,6 +209,8 @@ export const demoHandlers = [
   // Copy from SQMeter (spec 020): the device fetches the simulated SQMeter's settings.
   http.post('/api/sqmeter/site', async ({ request }) => reply(demoDevice.sqmeterSite(await request.text()))),
   http.post('/api/sqmeter/test', async ({ request }) => reply(demoDevice.sqmeterTest(await request.text()))),
+  // Spec 027: Settings' N.I.N.A. Test, answered from the simulated mount.
+  http.post('/api/nina/test', async ({ request }) => reply(demoDevice.ninaTest(await request.text()))),
 
   // The board and its pins (spec 023): the firmware's rules and documents; the wiring check reads the simulated roof
   http.get('/api/pins', () => reply(demoDevice.pins('status'))),
