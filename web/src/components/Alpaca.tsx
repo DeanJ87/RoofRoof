@@ -67,7 +67,7 @@ const ImagingAppState: FunctionalComponent<{
           <div class="reading-row" key={key}>
             <span class="reading-label">{label(key)}</span>
             <span class="client-state">
-              {view.checked && <span class="system-subtle">{view.checked}</span>}
+              {view.checked && <span class="subtext">{view.checked}</span>}
               <Pill tone={CLIENT_PILL[view.tone]}>{view.state}</Pill>
             </span>
           </div>

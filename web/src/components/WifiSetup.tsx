@@ -148,7 +148,7 @@ const WifiSetup: FunctionalComponent<{ path?: string; pollMs?: number }> = ({ po
     <div class="panel-page compact-page page-enter">
       <div>
         <h2 class="page-title">{t('wifiSetup.wifiSetup')}</h2>
-        <p class="muted">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
+        <p class="subtext">{t('wifiSetup.chooseTheNetworkRoofroofShould')}</p>
         <EthernetNote ethernet={ethernet} />
       </div>
       <Card

@@ -325,7 +325,7 @@ const TestBox: FunctionalComponent = () => {
         <h2 class="page-title" tabIndex={-1} ref={heading}>
           {t('testBox.title')}
         </h2>
-        <p>{t('testBox.intro')}</p>
+        <p class="subtext">{t('testBox.intro')}</p>
       </div>
       <ModeCard
         live={status?.roof?.testBox}
