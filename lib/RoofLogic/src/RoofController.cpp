@@ -54,11 +54,7 @@ namespace SQM
             // constitution I: a late step means the motor ran unsupervised.
             if (late)
                 latch(Fault{FaultKind::LateStep, static_cast<float>(gapMs), static_cast<float>(MAX_STEP_GAP_MS)});
-            if (current.hall == HallLevel::Rail)
-            {
-                const float rail = readings.hallCounts <= HALL_RAIL_LOW_COUNTS ? HALL_RAIL_LOW_COUNTS : HALL_RAIL_HIGH_COUNTS;
-                latch(Fault{FaultKind::HallRail, static_cast<float>(readings.hallCounts), rail});
-            }
+            checkHallRail(readings.hallCounts, readings.nowMs);
             if (current.fault.kind == FaultKind::None)
             {
                 if (move.active)
@@ -101,6 +97,64 @@ namespace SQM
                 stopMove(true);
                 return CommandResult{};
             }
+        }
+
+        // A Hall reading at a rail latches its fault (constitution I); spec 027:
+        // one latched at rest clears itself after a minute of good readings.
+        void Controller::checkHallRail(uint16_t counts, uint32_t nowMs)
+        {
+            if (!bootSeen)
+            {
+                bootSeen = true;
+                bootMs = nowMs;
+            }
+            // A rail in the first moments after start-up, at rest, is the sensor
+            // and the ADC settling: not judged (no move can start meanwhile: the
+            // Hall reads not settled).
+            const bool settling = !move.active && nowMs - bootMs < HALL_BOOT_SETTLE_MS;
+            if (current.hall == HallLevel::Rail && !settling)
+            {
+                if (current.fault.kind == FaultKind::None)
+                    hallRailAtRest = !move.active; // before the latch ends the move
+                const float rail = counts <= HALL_RAIL_LOW_COUNTS ? HALL_RAIL_LOW_COUNTS : HALL_RAIL_HIGH_COUNTS;
+                latch(Fault{FaultKind::HallRail, static_cast<float>(counts), rail});
+            }
+            clearRestRail(nowMs);
+        }
+
+        bool Controller::atEnd(Command command) const
+        {
+            if ((command != Command::Open && command != Command::Close) || move.active || current.fault.kind != FaultKind::None)
+                return false;
+            End at = End::Closed;
+            return magnetEnd(at) && at == (command == Command::Open ? End::Open : End::Closed);
+        }
+
+        // Spec 027 (constitution 7.0.0, I): a Hall rail fault latched with no
+        // move under way clears after HALL_REST_CLEAR_MS of readings off the
+        // rails, still at rest; the position is then read afresh from the Hall.
+        void Controller::clearRestRail(uint32_t nowMs)
+        {
+            const bool good = current.hall != HallLevel::Rail && current.hall != HallLevel::Unsettled;
+            if (!faultClearsAtRest() || move.active || !good)
+            {
+                goodAtRest.active = false;
+                return;
+            }
+            if (!goodAtRest.active)
+            {
+                goodAtRest.active = true;
+                goodAtRest.sinceMs = nowMs;
+                return;
+            }
+            if (nowMs - goodAtRest.sinceMs < HALL_REST_CLEAR_MS)
+                return;
+            goodAtRest.active = false;
+            hallRailAtRest = false;
+            current.fault = Fault{};
+            current.positionKnown = false;
+            current.state = State::Unknown;
+            followHall();
         }
 
         CommandResult Controller::check(Command command, Origin origin) const
@@ -240,6 +294,7 @@ namespace SQM
             if (current.fault.kind == FaultKind::None)
                 return CommandResult{};
             current.fault = Fault{};
+            hallRailAtRest = false;
             driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0; // a person has looked at the roof
             current.positionKnown = false;
             current.state = State::Unknown;

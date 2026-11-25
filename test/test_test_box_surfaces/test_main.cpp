@@ -95,14 +95,14 @@ void test_the_status_section_carries_it(void)
 void test_the_dome_description(void)
 {
     TEST_ASSERT_EQUAL_STRING(
-        "TEST BOX (bypassed: park check, weather check, daylight close): Roll-off roof: shutter open, close and stop only",
+        "TEST BOX (bypassed: park check, weather check, daylight close): Roll-off roof, shutter only",
         Alpaca::domeDeviceInfo("off", TestBox::domePrefix(inEffect())).description.c_str());
     TestBoxConfig parkOnly;
     parkOnly.park = true;
     parkOnly.until = NOW + 1;
     TEST_ASSERT_EQUAL_STRING("TEST BOX (bypassed: park check): ", TestBox::domePrefix(inEffect(parkOnly)).c_str());
     TEST_ASSERT_EQUAL_STRING("", TestBox::domePrefix(TestBox::State{}).c_str());
-    TEST_ASSERT_EQUAL_STRING("Roll-off roof: shutter open, close and stop only", Alpaca::domeDeviceInfo().description.c_str());
+    TEST_ASSERT_EQUAL_STRING("Roll-off roof, shutter only", Alpaca::domeDeviceInfo().description.c_str());
 }
 
 // --- The alert --------------------------------------------------------------------------

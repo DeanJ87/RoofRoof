@@ -28,6 +28,7 @@ namespace SQM
             rules.onDaylightClosed = a.daylightClosed.level != 0;
             rules.onDaylightUnknown = a.daylightUnknown.level != 0;
             rules.onTestBox = a.testBox.level != 0;
+            rules.onNinaLost = a.ninaLost.level != 0;
             return rules;
         }
 
@@ -50,6 +51,7 @@ namespace SQM
                 {AlertType::DaylightClosed, &AlertsConfig::daylightClosed},
                 {AlertType::DaylightUnknown, &AlertsConfig::daylightUnknown},
                 {AlertType::TestBox, &AlertsConfig::testBox},
+                {AlertType::NinaLost, &AlertsConfig::ninaLost},
             };
             for (const auto &entry : SETTINGS)
                 if (entry.first == type)
@@ -339,6 +341,7 @@ namespace SQM
                 {"daylight_closed", Alerts::AlertType::DaylightClosed, "Roof closed after daylight", "The roof closed after daylight"},
                 {"daylight_unknown", Alerts::AlertType::DaylightUnknown, "Daylight check not working", "The daylight check can't run"},
                 {"test_box", Alerts::AlertType::TestBox, "Test box mode on", "A test box bypass comes into effect"},
+                {"nina_lost", Alerts::AlertType::NinaLost, "N.I.N.A. not reachable", "N.I.N.A. can't be reached"},
             };
         } // namespace
 

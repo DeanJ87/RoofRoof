@@ -536,6 +536,21 @@ void test_the_daylight_bypass_keeps_the_state_but_never_closes(void)
     TEST_ASSERT_EQUAL_STRING("Sun 10.0° ≥ 0.0°", Daylight::describe(v).c_str());
 }
 
+// Spec 027: a weather bypass set beside an SQMeter source says it isn't in effect.
+void test_the_text_says_when_the_weather_bypass_is_out_of_effect(void)
+{
+    TestBoxConfig config;
+    config.weather = true;
+    config.daylight = true;
+    config.until = 2000000000u;
+    TestBox::Sources sources;
+    sources.sqmeterOn = true;
+    const TestBox::State s = TestBox::evaluate(config, sources, true, 1900000000);
+    TEST_ASSERT_FALSE(s.weather);
+    TEST_ASSERT_TRUE(s.weatherBesideSource);
+    TEST_ASSERT_TRUE(TestBox::describe(s).find("weather check not bypassed: SQMeter is on") != std::string::npos);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -569,5 +584,6 @@ int main(int, char **)
     RUN_TEST(test_asking_nina_to_park_is_a_setting_on_by_default);
     RUN_TEST(test_faults_still_latch_once_the_bypassed_gates_let_a_move_start);
     RUN_TEST(test_the_daylight_bypass_keeps_the_state_but_never_closes);
+    RUN_TEST(test_the_text_says_when_the_weather_bypass_is_out_of_effect);
     return UNITY_END();
 }

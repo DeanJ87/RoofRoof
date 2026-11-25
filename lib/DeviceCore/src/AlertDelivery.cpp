@@ -60,6 +60,7 @@ namespace SQM
                 "house",          // DaylightClosed
                 "question",       // DaylightUnknown
                 "construction",   // TestBox
+                "electric_plug",  // NinaLost
             };
             static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
             const size_t index = static_cast<size_t>(type);

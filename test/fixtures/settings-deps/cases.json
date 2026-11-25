@@ -329,7 +329,7 @@
       }
     },
     {
-      "name": "Home Assistant on, alerts off: the Alerts switch is not announced",
+      "name": "Home Assistant on, alerts off: the Alerts switch is still announced (spec 027)",
       "config": {
         "mqtt": {
           "enabled": true,
@@ -347,9 +347,8 @@
           "id": "D-13"
         },
         "mqtt.homeAssistant.alertsSwitch": {
-          "state": "inactive",
-          "id": "D-13",
-          "reason": "alerts-off"
+          "state": "active",
+          "id": "D-13"
         }
       }
     },

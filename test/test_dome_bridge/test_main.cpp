@@ -500,6 +500,33 @@ void test_moves_refused_while_jogging(void)
         TEST_ASSERT_TRUE(RoofIo::checkCommand(Command::Stop, origin, gates, b.roof, ctx()).accepted);
 }
 
+// Spec 027: a wait for the park reads as the move; a failed one as an error, named in the description.
+void test_park_wait_states(void)
+{
+    Roof::Status open;
+    open.state = State::Open;
+    RoofIo::WaitView wait;
+    wait.waiting = true;
+    wait.command = Command::Close;
+    Alpaca::DomeStatus s = RoofIo::domeStatus(open, false, true, wait);
+    TEST_ASSERT_TRUE(s.shutter == Alpaca::ShutterState::Closing);
+    TEST_ASSERT_TRUE(s.slewing);
+    wait.command = Command::Open;
+    Roof::Status closed;
+    closed.state = State::Closed;
+    s = RoofIo::domeStatus(closed, false, true, wait);
+    TEST_ASSERT_TRUE(s.shutter == Alpaca::ShutterState::Opening);
+    TEST_ASSERT_EQUAL_STRING("", RoofIo::domeWaitPrefix(wait).c_str());
+    wait.waiting = false;
+    wait.failed = true;
+    wait.text = "The mount didn't park within 240 s: the Close wasn't run";
+    s = RoofIo::domeStatus(open, false, true, wait);
+    TEST_ASSERT_TRUE(s.shutter == Alpaca::ShutterState::Error);
+    TEST_ASSERT_FALSE(s.slewing);
+    TEST_ASSERT_EQUAL_STRING(
+        "Last move not run: The mount didn't park within 240 s: the Close wasn't run: ", RoofIo::domeWaitPrefix(wait).c_str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -525,6 +552,7 @@ int main(int, char **)
         remote = origin;
         runRemoteTests();
     }
+    RUN_TEST(test_park_wait_states);
     return UNITY_END();
 }
 

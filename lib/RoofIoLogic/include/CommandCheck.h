@@ -38,7 +38,16 @@ namespace SQM
             // refused (`calibrating`) for every origin but the automatic close,
             // which ends the run first (RoofControl::automaticClose).
             bool calibrating = false;
+            // Spec 027: what a person confirmed past (RoofIo::OverrideBit). Only
+            // a person's count: Open takes weather and daylight, Close the park.
+            uint8_t overrides = 0;
+            // Spec 027: the park set aside whoever asks (MoveGuard's "refused
+            // only for the park" dry run; never used to run a command).
+            bool parkAside = false;
         };
+
+        // Spec 027: the overrides `origin` may use for `command` (0 for anyone but a person).
+        uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested);
 
         constexpr const char *CALIBRATING_REASON = "calibrating";
         // Spec 019: open and close from anyone but the automatic close while a
@@ -60,7 +69,9 @@ namespace SQM
         // (constitution II, III); then, for a remote client, no open while the roof
         // is closing, a close waits, or a close was stopped part-way (a client
         // never reverses a close); then the motion logic's dry run (position
-        // unknown, fault, supply...).
+        // unknown, fault, supply...). Spec 027: an Open or Close of a roof
+        // already at that end (nothing moving) is accepted first, whatever the
+        // checks say: there is nothing to do.
         CommandCheck checkCommand(
             Roof::Command command,
             Roof::Origin origin,

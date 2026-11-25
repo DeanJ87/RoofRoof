@@ -83,7 +83,7 @@ namespace SQM
                 else if (call.is("description"))
                     reply.setValue(call.info.description);
                 else if (call.is("driverinfo"))
-                    reply.setValue(DRIVER_INFO);
+                    reply.setValue(std::string(DRIVER_NAME) + " v" + call.identity.version); // spec 027
                 else if (call.is("driverversion"))
                     reply.setValue(call.identity.version);
                 else if (call.is("interfaceversion"))

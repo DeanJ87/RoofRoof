@@ -232,7 +232,7 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(9216); // see alertsToJson; spec 023 added the pins and analog groups
+        DynamicJsonDocument doc(9728); // see alertsToJson; spec 023 added the pins and analog groups, spec 027 an event
         doc["deviceName"] = deviceName;
         appendNetwork(doc, *this, redactSecrets);
         appendTime(doc, *this);

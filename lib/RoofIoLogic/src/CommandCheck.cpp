@@ -63,7 +63,29 @@ namespace SQM
                             " can't stop it (Stop in the web UI can)"};
                 return CommandCheck{};
             }
+
+            // A calibration run or a jog under way refuses open and close for
+            // everyone but the automatic close (specs 016 and 019).
+            CommandCheck busyRefusal(Roof::Origin origin, const Roof::Status &status, const CommandContext &context)
+            {
+                if (origin == Roof::Origin::Automatic)
+                    return CommandCheck{};
+                if (context.calibrating)
+                    return CommandCheck{false, CALIBRATING_REASON, "A calibration run is under way: stop it first"};
+                if (status.jogging)
+                    return CommandCheck{false, JOGGING_REASON, "A person is jogging the roof: release the button or press Stop first"};
+                return CommandCheck{};
+            }
         } // namespace
+
+        uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested)
+        {
+            if (origin != Roof::Origin::Person)
+                return 0;
+            if (command == Roof::Command::Open)
+                return static_cast<uint8_t>(requested & (OverrideWeather | OverrideDaylight));
+            return command == Roof::Command::Close ? static_cast<uint8_t>(requested & OverridePark) : 0;
+        }
 
         bool remoteOrigin(Roof::Origin origin)
         {
@@ -83,11 +105,15 @@ namespace SQM
                 return client ? checkClientStop(command, origin, gates, status, context) : CommandCheck{};
             if (command != Roof::Command::Open && command != Roof::Command::Close)
                 return CommandCheck{};
-            if (context.calibrating && origin != Roof::Origin::Automatic)
-                return CommandCheck{false, CALIBRATING_REASON, "A calibration run is under way: stop it first"};
-            if (status.jogging && origin != Roof::Origin::Automatic)
-                return CommandCheck{false, JOGGING_REASON, "A person is jogging the roof: release the button or press Stop first"};
-            const GateRefusal gate = gateCommand(command, gates);
+            CommandCheck busy = busyRefusal(origin, status, context);
+            if (!busy.accepted)
+                return busy;
+            // Spec 027: already there, nothing to do (not while a close waits:
+            // an Open must not replace it).
+            if (controller.atEnd(command) && !(command == Roof::Command::Open && context.closePending))
+                return CommandCheck{};
+            const uint8_t overrides = allowedOverrides(command, origin, context.overrides) | (context.parkAside ? OverridePark : 0);
+            const GateRefusal gate = gateCommand(command, gates, static_cast<uint8_t>(overrides));
             if (gate != GateRefusal::None)
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};
             if (client && command == Roof::Command::Open && closeUnderWay(status, context))

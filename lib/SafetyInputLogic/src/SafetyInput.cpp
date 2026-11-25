@@ -146,6 +146,7 @@ namespace SQM
             s.detail = failingNow(record) ? record.detail : std::string();
             if (!record.enabled)
                 return s;
+            s.replied = record.haveGood;
             if (record.haveGood)
             {
                 s.sqmeterSafe = record.last.safe;

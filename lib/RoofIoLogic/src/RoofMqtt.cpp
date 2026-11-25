@@ -154,14 +154,19 @@ namespace SQM
             {
                 out["timestamp"] = clockValid ? epoch : 0U;
                 out["timeValid"] = clockValid;
-                writeStatus(out.createNestedObject("roof"), snapshot);
+                JsonObject roof = out.createNestedObject("roof");
+                writeStatus(roof, snapshot);
+                // Spec 027: what an observatory dashboard needs (Home Assistant).
+                writeMoveGuard(roof, snapshot);
+                writeHealth(roof, snapshot, false);
+                writeDashboard(roof, snapshot);
             }
 
             bool StateKey::operator==(const StateKey &o) const
             {
                 return state == o.state && fault == o.fault && positionKnown == o.positionKnown && closePending == o.closePending &&
                        closePhase == o.closePhase && weather == o.weather && parkConfirmed == o.parkConfirmed && testBox == o.testBox &&
-                       testBoxFlags == o.testBoxFlags;
+                       testBoxFlags == o.testBoxFlags && guard == o.guard && ninaReachable == o.ninaReachable && sources == o.sources;
             }
 
             StateKey keyOf(const Snapshot &snapshot)
@@ -177,6 +182,10 @@ namespace SQM
                 const TestBox::State &box = snapshot.testBox;
                 key.testBox = box.bits();
                 key.testBoxFlags = static_cast<uint8_t>((box.set ? 1 : 0) | (box.expired ? 2 : 0) | (box.waitingForClock ? 4 : 0));
+                const WaitView &wait = snapshot.parkWait;
+                key.guard = static_cast<uint8_t>((wait.waiting ? 1 : 0) | (wait.failed ? 2 : 0) | (snapshot.overrideBits << 2));
+                key.ninaReachable = snapshot.health.ninaReachable;
+                key.sources = std::string(snapshot.health.sqmeterState) + "/" + snapshot.daylight.state;
                 return key;
             }
 

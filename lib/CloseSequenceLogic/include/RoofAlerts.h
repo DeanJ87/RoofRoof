@@ -30,6 +30,9 @@ namespace SQM
         // `details` (the whole built-in message) and `reminder` ("yes"/"no").
         // `why` is reasonFor()'s text. Only for isCritical(decision.event).
         Alerts::Alert criticalAlert(const Decision &decision, const std::string &why);
+        // Spec 027: an Open or Close that waited for the park and gave up
+        // (RoofIo::ParkWait): "mount not parked", with its text.
+        Alerts::Alert parkWaitAlert(const std::string &why);
 
         // The sequence is attempting a close: waiting for the park, closing,
         // or waiting to try again (not when it can't move or is stood down).
@@ -77,6 +80,11 @@ namespace SQM
         // daylight episode runs, for its "closed" alert.
         void updateDaylightConditions(
             Alerts::RoofInputs &roof, const Daylight::View &daylight, Roof::State state, const SequenceView &sequence);
+
+        // Spec 027: N.I.N.A. lost. With an address set (`ninaSet`), the park
+        // result says it is unreachable, unreadable, an API error or stale;
+        // the text is the park result's.
+        void updateNinaConditions(Alerts::RoofInputs &roof, const Safety::ParkResult &park, bool ninaSet);
 
         // The daylight state as the status document shows it.
         RoofIo::DaylightStatus daylightStatus(const Daylight::View &daylight);

@@ -65,6 +65,7 @@ void test_roof_event_defaults()
     TEST_ASSERT_EQUAL_UINT8(2, a.unsafeClosing.level);
     TEST_ASSERT_EQUAL_UINT8(2, a.roofClosed.level);
     TEST_ASSERT_EQUAL_UINT8(2, a.safetyLost.level);
+    TEST_ASSERT_EQUAL_UINT8(2, a.ninaLost.level);
     DynamicJsonDocument doc(16384);
     deserializeJson(doc, cfg.toJson());
     for (const char *key : ROOF_KEYS)
@@ -114,7 +115,7 @@ void test_critical_level_floor_in_validation()
         TEST_ASSERT_EQUAL_STRING("", rejectReason(levelJson(key, 4)).c_str());
         TEST_ASSERT_TRUE(rejectReason(levelJson(key, 5)).size() > 0);
     }
-    for (const char *key : {"move_fault", "supply_low", "unsafe_closing", "roof_closed", "safety_lost"})
+    for (const char *key : {"move_fault", "supply_low", "unsafe_closing", "roof_closed", "safety_lost", "nina_lost"})
     {
         TEST_ASSERT_EQUAL_STRING_MESSAGE("", rejectReason(levelJson(key, 0)).c_str(), key);
         TEST_ASSERT_TRUE(rejectReason(levelJson(key, 5)).size() > 0);
@@ -128,7 +129,7 @@ void test_full_roof_templates_fit()
     const std::string message(AlertsConfig::MAX_TEMPLATE_MESSAGE, 'M');
     AlertsConfig &a = cfg.alerts;
     for (AlertsConfig::EventSetting *event :
-         {&a.mountNotParked, &a.roofNotClosed, &a.moveFault, &a.supplyLow, &a.unsafeClosing, &a.roofClosed, &a.safetyLost})
+         {&a.mountNotParked, &a.roofNotClosed, &a.moveFault, &a.supplyLow, &a.unsafeClosing, &a.roofClosed, &a.safetyLost, &a.ninaLost})
         *event = {4, "persistent", title, message};
     std::string error;
     TEST_ASSERT_TRUE_MESSAGE(cfg.validate(&error), error.c_str());
@@ -150,6 +151,7 @@ void test_settings_documents_are_not_cut_short()
           &a.unsafeClosing,
           &a.roofClosed,
           &a.safetyLost,
+          &a.ninaLost,
           &a.clientLost,
           &a.clientBack,
           &a.clientDisconnected})
@@ -251,14 +253,17 @@ void test_rules_follow_the_roof_levels()
 {
     Config cfg = Config::createDefault();
     Alerts::AlertRules rules = Core::alertRules(cfg);
-    TEST_ASSERT_TRUE(rules.onMoveFault && rules.onSupplyLow && rules.onUnsafeClosing && rules.onRoofClosed && rules.onSafetyLost);
+    TEST_ASSERT_TRUE(
+        rules.onMoveFault && rules.onSupplyLow && rules.onUnsafeClosing && rules.onRoofClosed && rules.onSafetyLost && rules.onNinaLost);
     cfg.alerts.moveFault.level = 0;
     cfg.alerts.supplyLow.level = 0;
     cfg.alerts.unsafeClosing.level = 0;
     cfg.alerts.roofClosed.level = 0;
     cfg.alerts.safetyLost.level = 0;
+    cfg.alerts.ninaLost.level = 0;
     rules = Core::alertRules(cfg);
-    TEST_ASSERT_FALSE(rules.onMoveFault || rules.onSupplyLow || rules.onUnsafeClosing || rules.onRoofClosed || rules.onSafetyLost);
+    TEST_ASSERT_FALSE(
+        rules.onMoveFault || rules.onSupplyLow || rules.onUnsafeClosing || rules.onRoofClosed || rules.onSafetyLost || rules.onNinaLost);
     for (size_t i = 0; i < Alerts::ALERT_TYPE_COUNT; ++i)
     {
         const Alerts::AlertType type = static_cast<Alerts::AlertType>(i);

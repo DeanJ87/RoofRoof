@@ -54,6 +54,9 @@ namespace SQM
             // Unsafe weather would ask a configured N.I.N.A. to park its mount
             // (park.requestPark on and an address set): shown with the bypasses.
             bool parkRequests = false;
+            // Spec 027: the weather bypass is set but an SQMeter source is on,
+            // so it isn't in effect (a silent SQMeter still closes the roof).
+            bool weatherBesideSource = false;
             bool active() const { return park || weather || daylight; }
             uint8_t bits() const;
         };

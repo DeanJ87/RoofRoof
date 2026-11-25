@@ -5,7 +5,9 @@
 // (close only onto a confirmed park, re-checked throughout the close) and III
 // (no opening unless the weather is safe). Spec 005's automatic close goes
 // through the same checks. Spec 013: no opening while daylight wants the roof
-// closed (daylight mode "alert and close" and the sun up).
+// closed (daylight mode "alert and close" and the sun up). Spec 027
+// (constitution 7.0.0): the park gates Open too, and a person may confirm past
+// the overridable refusals (OverrideBit).
 
 #include <cstdint>
 #include <string>
@@ -24,9 +26,10 @@ namespace SQM
         struct GateInputs
         {
             Safety::Verdict weather = Safety::Verdict::Unknown;
-            std::string weatherText; // Safety::describe(verdict)
-            bool parked = false;     // Safety::ParkResult::parked
-            std::string parkText;    // Safety::describe(park result)
+            std::string weatherText;     // Safety::describe(verdict)
+            uint32_t weatherReasons = 0; // spec 027: Safety::WeatherVerdict::reasons
+            bool parked = false;         // Safety::ParkResult::parked
+            std::string parkText;        // Safety::describe(park result)
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;
             Contact switch2 = Contact::Unreadable;
@@ -71,6 +74,28 @@ namespace SQM
             InterlockNinaStale = 1u << 3,  // spec 021: the relied-on N.I.N.A. reading is past its freshness
         };
 
+        // Spec 027: what a person may confirm past (bits of a command's
+        // overrides). Park: one Close only. Weather: an Open while the weather
+        // source itself reports unsafe for anything but rain (no doubt about
+        // the source). Daylight: an Open.
+        enum OverrideBit : uint8_t
+        {
+            OverridePark = 1u << 0,
+            OverrideWeather = 1u << 1,
+            OverrideDaylight = 1u << 2,
+        };
+        // Only the source's own "unsafe", not rain: a person may override it.
+        bool weatherOverridable(const GateInputs &in);
+        // The override bits a person may set for `command` now (those whose
+        // refusal applies and can be overridden).
+        uint8_t overridableNow(Roof::Command command, const GateInputs &in);
+        // An Open override in effect (OverrideWeather, OverrideDaylight) as it
+        // stands now: the bits still covering a refusal, or 0 when it ends
+        // (every overridden reason cleared, or a refusal it doesn't cover).
+        uint8_t overrideStillApplies(uint8_t active, const GateInputs &in);
+        // "mountNotParked" -> OverridePark, "weatherNotSafe", "daylight"; 0 else.
+        uint8_t overrideBit(const char *name);
+
         // `in` as the checks may use it: unchanged when the verdict and park
         // result were handed over within SAFETY_HANDOVER_STALE_MS, else with
         // the weather Unknown and the park not confirmed, saying why.
@@ -81,26 +106,31 @@ namespace SQM
         // The park result says parked AND every fitted switch reads closed now.
         bool parkHolds(const GateInputs &in);
         // Open: only with a safe verdict (WeatherNotSafe), daylight not
-        // wanting the roof closed (Daylight; the weather is named first) and
-        // no park switch held suspect (SwitchCheck, spec 024).
-        // Close: only while the park holds. Stop and abort are never gated.
-        GateRefusal gateCommand(Roof::Command command, const GateInputs &in);
+        // wanting the roof closed (Daylight; the weather is named first), no
+        // park switch held suspect (SwitchCheck, spec 024) and (spec 027) the
+        // park holding (MountNotParked). Close: only while the park holds.
+        // Stop and abort are never gated. `overrides` (OverrideBit) sets the
+        // matching refusals aside; the caller decides who may set them.
+        GateRefusal gateCommand(Roof::Command command, const GateInputs &in, uint8_t overrides = 0);
         // Spec 021: a move under way may go on: the park result says parked, or it
         // rides through a missed N.I.N.A. reply (ninaGrace); every fitted switch
         // reads closed now; and the reading relied on is still fresh at `nowMs`.
         // Never used to start a move (gateCommand uses parkHolds).
         bool closeMayContinue(const GateInputs &in);
-        // A close (or, spec 016, any calibration leg) is under way, including its
-        // dead time, and the park no longer holds (closeMayContinue).
-        bool interlockLost(const Roof::Status &status, const GateInputs &in);
+        // A close, an open (spec 027) or (spec 016) any calibration leg is under
+        // way, including its dead time, and the park no longer holds
+        // (closeMayContinue). `parkOverridden`: a person's confirmed close
+        // (spec 027) runs without the park check.
+        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden = false);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
         // An open (or, spec 019, a jog either way) is under way and the verdict
         // is no longer safe, or daylight wants the roof closed: stop it.
-        bool openMustStop(const Roof::Status &status, const GateInputs &in);
+        // Spec 027: an Open override in effect (OverrideBit) sets its reasons aside.
+        bool openMustStop(const Roof::Status &status, const GateInputs &in, uint8_t overrides = 0);
         // Why an open would be refused now (None, WeatherNotSafe or Daylight):
         // the reason an open under way was stopped.
-        GateRefusal openRefusal(const GateInputs &in);
+        GateRefusal openRefusal(const GateInputs &in, uint8_t overrides = 0);
 
         // "none", "weatherNotSafe", "mountNotParked", "daylight", "parkSwitchCheck".
         const char *gateRefusalName(GateRefusal refusal);

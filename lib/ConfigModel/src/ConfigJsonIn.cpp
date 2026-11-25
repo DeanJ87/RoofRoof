@@ -530,7 +530,7 @@ namespace SQM
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
-        DynamicJsonDocument doc(json.size() + 6144 > 8192 ? json.size() + 6144 : 8192);
+        DynamicJsonDocument doc(json.size() + 6656 > 8704 ? json.size() + 6656 : 8704);
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

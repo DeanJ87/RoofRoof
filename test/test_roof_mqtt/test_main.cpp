@@ -294,7 +294,8 @@ void test_result_document(void)
     TEST_ASSERT_EQUAL_STRING("unknown", other["state"]);
 }
 
-// FR-001: the roof object is the status document's, field for field.
+// FR-001: the roof object is the status document's, field for field, plus
+// (spec 027) the wait, the overrides, the sources' health and the dashboard's fields.
 void test_state_document_is_the_status_roof(void)
 {
     const Snapshot s = closedRoof();
@@ -304,7 +305,11 @@ void test_state_document_is_the_status_roof(void)
     TEST_ASSERT_TRUE(state["timeValid"].as<bool>());
 
     DynamicJsonDocument status(4096);
-    writeStatus(status.createNestedObject("roof"), s);
+    JsonObject roof = status.createNestedObject("roof");
+    writeStatus(roof, s);
+    writeMoveGuard(roof, s);
+    writeHealth(roof, s, false);
+    writeDashboard(roof, s);
     std::string a;
     std::string b;
     serializeJson(state["roof"], a);
@@ -340,13 +345,25 @@ void test_state_document_fits(void)
     s.parkText = std::string(MAX_CHECK_TEXT, 'p');
     s.testBox.set = s.testBox.park = s.testBox.weather = s.testBox.daylight = true; // spec 022: the longest text
     s.testBox.until = 4294967295u;
+    // Spec 027: a wait, every override, the longest blocked line.
+    s.parkWait.waiting = true;
+    s.parkWait.failed = true;
+    s.parkWait.text = std::string(80, 'x');
+    s.overrideBits = s.openOverridable = 7;
+    s.daylight.state = "transition";
+    s.closeRearmSeconds = 2147483647;
+    s.health.ninaSet = true;
+    s.health.ninaState = "notConfigured";
+    s.health.sqmeterReplied = true;
+    s.health.sqmeterAgeMs = 4294967295u;
+    s.health.sqmeterState = "unreachable";
     DynamicJsonDocument doc(Mqtt::STATE_DOC_CAPACITY);
     Mqtt::writeState(doc.to<JsonObject>(), s, 4294967295u, true);
     TEST_ASSERT_FALSE(doc.overflowed());
     std::string text;
     serializeJson(doc, text);
     // Well inside the 3 KB MQTT buffer (spec 022's test box object took it past 1.5 KB).
-    TEST_ASSERT_TRUE_MESSAGE(text.size() < 2048, text.c_str());
+    TEST_ASSERT_TRUE_MESSAGE(text.size() < 2560, text.c_str()); // spec 027: inside the 3 KB MQTT buffer
 }
 
 // The longest refusal (a stop refused with the longest weather text) fits.

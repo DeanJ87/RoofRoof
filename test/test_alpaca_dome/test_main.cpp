@@ -89,7 +89,7 @@ void test_lists_one_dome_with_a_stable_unique_id(void)
     request.path = "/management/v1/configureddevices";
     Response r;
     TEST_ASSERT_TRUE(rig.router.handle(request, r));
-    TEST_ASSERT_TRUE(has(r, "\"DeviceName\":\"RoofRoof roof\""));
+    TEST_ASSERT_TRUE(has(r, "\"DeviceName\":\"RoofRoof\""));
     TEST_ASSERT_TRUE(has(r, "\"DeviceType\":\"Dome\""));
     TEST_ASSERT_TRUE(has(r, "\"DeviceNumber\":0"));
     TEST_ASSERT_TRUE(has(r, "\"UniqueID\":\"roofroof-a1b2c3d4e5f6-dome-0\""));
@@ -113,9 +113,11 @@ void test_lists_nothing_while_alpaca_is_off(void)
 void test_name_description_and_interface_version(void)
 {
     Rig rig;
-    TEST_ASSERT_TRUE(has(rig.get("name"), "\"Value\":\"RoofRoof roof\""));
-    TEST_ASSERT_TRUE(has(rig.get("description"), "\"Value\":\"Roll-off roof: shutter open, close and stop only\""));
+    TEST_ASSERT_TRUE(has(rig.get("name"), "\"Value\":\"RoofRoof\""));
+    TEST_ASSERT_TRUE(has(rig.get("description"), "\"Value\":\"Roll-off roof, shutter only\""));
     TEST_ASSERT_TRUE(has(rig.get("interfaceversion"), "\"Value\":3"));
+    // Spec 027: "RoofRoof v<firmware version>".
+    TEST_ASSERT_TRUE(has(rig.get("driverinfo"), ("\"Value\":\"RoofRoof v" + IDENTITY.version + "\"").c_str()));
 }
 
 // Spec 011 FR-026: bench and demo say so in the description; the name and
@@ -125,11 +127,10 @@ void test_simulated_roofs_say_so_in_the_description(void)
     const DeviceInfo standard = domeDeviceInfo();
     const DeviceInfo bench = domeDeviceInfo("bench");
     const DeviceInfo demo = domeDeviceInfo("demo");
-    TEST_ASSERT_EQUAL_STRING("Roll-off roof: shutter open, close and stop only", standard.description.c_str());
+    TEST_ASSERT_EQUAL_STRING("Roll-off roof, shutter only", standard.description.c_str());
     TEST_ASSERT_EQUAL_STRING(standard.description.c_str(), domeDeviceInfo("off").description.c_str());
-    TEST_ASSERT_EQUAL_STRING(
-        "BENCH MODE (simulated roof, no motor): Roll-off roof: shutter open, close and stop only", bench.description.c_str());
-    TEST_ASSERT_EQUAL_STRING("Demo (simulated roof): Roll-off roof: shutter open, close and stop only", demo.description.c_str());
+    TEST_ASSERT_EQUAL_STRING("BENCH MODE (simulated roof, no motor): Roll-off roof, shutter only", bench.description.c_str());
+    TEST_ASSERT_EQUAL_STRING("Demo (simulated roof): Roll-off roof, shutter only", demo.description.c_str());
     for (const DeviceInfo &info : {bench, demo})
     {
         TEST_ASSERT_EQUAL_STRING(standard.name.c_str(), info.name.c_str());

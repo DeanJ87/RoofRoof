@@ -25,8 +25,9 @@ namespace SQM
                 const char *icon;
                 const char *deviceClass; // nullptr when the entity has none
                 const char *unit;        // sensors: unit of measurement, or nullptr
-                const char *value;       // sensors: the field of <base>/state the value comes from
+                const char *value; // sensors: the field of <base>/state the value comes from; spec 027 binary sensors: the whole template
                 bool diagnostic;
+                bool text = false; // spec 027: a text sensor (no state class)
             };
 
             // Spec 008 contracts/mqtt.md. The roof's values come from the retained
@@ -59,6 +60,109 @@ namespace SQM
                 {"binary_sensor", "fault", "Roof fault", Group::Roof, nullptr, "problem", nullptr, nullptr, false},
                 // Spec 022: on while a test-box bypass is in effect.
                 {"binary_sensor", "test_box", "Test box bypass", Group::Roof, "mdi:test-tube", "problem", nullptr, nullptr, false},
+                // Spec 027: what an observatory dashboard needs (docs/integration/home-assistant.md).
+                {"binary_sensor",
+                 "weather_safe",
+                 "Weather safe",
+                 Group::Roof,
+                 "mdi:weather-night",
+                 nullptr,
+                 nullptr,
+                 "{{ 'ON' if value_json.roof.weather == 'safe' else 'OFF' }}",
+                 false},
+                {"binary_sensor",
+                 "mount_parked",
+                 "Mount parked",
+                 Group::Roof,
+                 "mdi:telescope",
+                 nullptr,
+                 nullptr,
+                 "{{ 'ON' if value_json.roof.parkConfirmed else 'OFF' }}",
+                 false},
+                {"sensor",
+                 "close_phase",
+                 "Automatic close",
+                 Group::Roof,
+                 "mdi:home-roof",
+                 nullptr,
+                 nullptr,
+                 "value_json.roof.closePhase",
+                 false,
+                 true},
+                {"binary_sensor",
+                 "close_held",
+                 "Automatic close held",
+                 Group::Roof,
+                 "mdi:hand-back-left",
+                 "problem",
+                 nullptr,
+                 "{{ 'ON' if value_json.roof.closePhase in ['heldByPerson', 'halted'] else 'OFF' }}",
+                 false},
+                {"sensor",
+                 "hold_lapses",
+                 "Hold lapses in",
+                 Group::Roof,
+                 nullptr,
+                 "duration",
+                 "s",
+                 "value_json.roof.closeRearmSeconds",
+                 false},
+                {"sensor",
+                 "blocked",
+                 "Roof blocked",
+                 Group::Roof,
+                 "mdi:alert-circle-outline",
+                 nullptr,
+                 nullptr,
+                 "value_json.roof.blocked",
+                 false,
+                 true},
+                {"sensor",
+                 "park_wait",
+                 "Waiting for park",
+                 Group::Roof,
+                 nullptr,
+                 "duration",
+                 "s",
+                 "value_json.roof.parkWait.leftSeconds if value_json.roof.parkWait else 0",
+                 false},
+                {"sensor",
+                 "daylight",
+                 "Daylight",
+                 Group::Roof,
+                 "mdi:weather-sunny",
+                 nullptr,
+                 nullptr,
+                 "value_json.roof.daylightState",
+                 false,
+                 true},
+                {"sensor",
+                 "sqmeter_reply",
+                 "SQMeter last reply",
+                 Group::Roof,
+                 nullptr,
+                 "duration",
+                 "s",
+                 "value_json.roof.sqmeter.lastReplySeconds",
+                 true},
+                {"binary_sensor",
+                 "override",
+                 "Checks overridden",
+                 Group::Roof,
+                 "mdi:shield-alert",
+                 "problem",
+                 nullptr,
+                 "{{ 'ON' if value_json.roof.override else 'OFF' }}",
+                 false},
+                {"binary_sensor",
+                 "nina_reachable",
+                 "N.I.N.A. reachable",
+                 Group::Roof,
+                 nullptr,
+                 "connectivity",
+                 nullptr,
+                 "{{ 'ON' if value_json.roof.nina.reachable else 'OFF' }}",
+                 true},
             };
 
             bool enabled(Group group, const Groups &groups)
@@ -95,7 +199,8 @@ namespace SQM
                 doc["value_template"] = std::string("{{ ") + entity.value + " }}";
                 if (entity.unit != nullptr)
                     doc["unit_of_measurement"] = entity.unit;
-                doc["state_class"] = "measurement";
+                if (!entity.text)
+                    doc["state_class"] = "measurement";
                 if (entity.diagnostic)
                     doc["entity_category"] = "diagnostic";
             }
@@ -147,6 +252,14 @@ namespace SQM
                     addFault(doc, base);
                 else if (object == "test_box")
                     addTestBox(doc, base);
+                else if (std::string(entity.component) == "binary_sensor")
+                {
+                    // Spec 027: the entity's own ON/OFF template.
+                    doc["state_topic"] = base + "/state";
+                    doc["value_template"] = entity.value;
+                    if (entity.diagnostic)
+                        doc["entity_category"] = "diagnostic";
+                }
                 else
                     addSensor(doc, entity, base);
             }

@@ -9,6 +9,8 @@
 #include <string>
 
 #include "FaultRecord.h"
+#include "InputsReport.h"
+#include "ParkWait.h"
 #include "RoofGates.h"
 #include "RoofTypes.h"
 #include "SwitchInput.h"
@@ -30,6 +32,38 @@ namespace SQM
             std::string text; // Daylight::describe
             bool closes = false;
         };
+
+        // Spec 027: a command waiting for the park, or how the last wait ended.
+        struct WaitView
+        {
+            bool waiting = false;
+            Roof::Command command = Roof::Command::Close;
+            Roof::Origin origin = Roof::Origin::Person;
+            uint32_t leftMs = 0;
+            bool asked = false;
+            bool failed = false; // the last wait gave up or was refused (Alpaca: error until the next command)
+            std::string text;    // why the last wait ended
+        };
+        WaitView waitView(const ParkWait &wait, uint32_t nowMs);
+
+        // Spec 027: how N.I.N.A. and SQMeter are answering (from the safety
+        // inputs' report), for the status, Home Assistant and the dashboard.
+        struct SourcesHealth
+        {
+            bool ninaSet = false;
+            const char *ninaState = "notConfigured"; // Safety::ninaStateName
+            bool ninaReachable = false;              // it answered (good, or an answer that says why not)
+            bool ninaConnected = false;              // the mount is connected (a good reading)
+            bool ninaAtPark = false;
+            uint32_t ninaAgeMs = 0; // since the latest reading
+            std::string ninaText;   // why it isn't good
+            bool sqmeterOn = false;
+            const char *sqmeterState = "off"; // Safety::sourceStateName (HTTP first, else MQTT)
+            bool sqmeterReplied = false;      // a good reply since the source was switched on
+            uint32_t sqmeterAgeMs = 0;        // since that reply
+            std::string sqmeterText;          // the latest failure: no reply, HTTP status, unreadable
+        };
+        SourcesHealth healthOf(const Safety::InputsReport &report, bool ninaSet);
 
         // A consistent copy of everything the section shows, taken under the
         // roof's lock and written outside it.
@@ -77,6 +111,13 @@ namespace SQM
             // Spec 022: the test box's bypasses as the checks apply them now,
             // filled in by the caller like the daylight.
             TestBox::State testBox;
+            // Spec 027: the wait for the park, a person's override in effect
+            // (OverrideBit; an Open's or a confirmed close's) and the Open
+            // refusals a person may override now.
+            WaitView parkWait;
+            uint8_t overrideBits = 0;
+            uint8_t openOverridable = 0;
+            SourcesHealth health; // filled in by the caller, like the daylight
         };
 
         // The weather and park texts in the documents are cut to this many bytes
@@ -101,6 +142,18 @@ namespace SQM
         // Spec 013: the roof object's "daylight" (the status document only;
         // the MQTT state document leaves it out).
         void writeDaylight(JsonObject out, const Snapshot &snapshot);
+        // Spec 027: "parkWait", "parkWaitEnded", "override" and "openOverridable"
+        // (the status and the MQTT state document).
+        void writeMoveGuard(JsonObject out, const Snapshot &snapshot);
+        // Spec 027: "nina" and "sqmeter" (`texts`: with their failure texts,
+        // the status document; the MQTT state document leaves them out).
+        void writeHealth(JsonObject out, const Snapshot &snapshot, bool texts);
+        // Spec 027: why the roof's next move (Open when not open, else Close)
+        // can't start now, in a line ("" when nothing blocks it): Home Assistant.
+        std::string blockedText(const Snapshot &snapshot);
+        // Spec 027: the MQTT state document's "closeRearmSeconds",
+        // "daylightState" and "blocked" for Home Assistant.
+        void writeDashboard(JsonObject out, const Snapshot &snapshot);
         // Spec 026: the roof object's "closeRearmSeconds" (the status document only).
         void writeCloseRearm(JsonObject out, const Snapshot &snapshot);
     } // namespace RoofIo

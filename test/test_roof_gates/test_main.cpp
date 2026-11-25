@@ -50,6 +50,7 @@ namespace
 void test_open_needs_a_safe_verdict(void)
 {
     GateInputs in;
+    in.parked = true;
     in.weather = Safety::Verdict::Safe;
     TEST_ASSERT_EQUAL(GateRefusal::None, gateCommand(Roof::Command::Open, in));
     in.weather = Safety::Verdict::Unsafe;
@@ -58,13 +59,27 @@ void test_open_needs_a_safe_verdict(void)
     TEST_ASSERT_EQUAL(GateRefusal::WeatherNotSafe, gateCommand(Roof::Command::Open, in));
 }
 
-void test_open_ignores_the_park(void)
+// Spec 027 (constitution 7.0.0, II): Open needs the park as Close does,
+// named after the weather and daylight.
+void test_open_needs_the_park(void)
 {
-    GateInputs in;
-    in.weather = Safety::Verdict::Safe;
-    in.parked = false;
-    in.fittedSwitches = 2;
-    TEST_ASSERT_EQUAL(GateRefusal::None, gateCommand(Roof::Command::Open, in));
+    for (uint8_t fitted = 0; fitted <= 2; ++fitted)
+    {
+        GateInputs in = parkedWith(fitted);
+        TEST_ASSERT_EQUAL(GateRefusal::None, gateCommand(Roof::Command::Open, in));
+        in.parked = false;
+        TEST_ASSERT_EQUAL(GateRefusal::MountNotParked, gateCommand(Roof::Command::Open, in));
+        in.parked = true;
+        if (fitted > 0)
+        {
+            in.switch1 = Contact::Open;
+            TEST_ASSERT_EQUAL(GateRefusal::MountNotParked, gateCommand(Roof::Command::Open, in));
+        }
+    }
+    GateInputs both = parkedWith(0);
+    both.parked = false;
+    both.weather = Safety::Verdict::Unsafe;
+    TEST_ASSERT_EQUAL(GateRefusal::WeatherNotSafe, gateCommand(Roof::Command::Open, both));
 }
 
 void test_close_needs_park_result_and_fitted_switches(void)
@@ -117,6 +132,7 @@ void test_stop_and_abort_are_never_gated(void)
     TEST_ASSERT_EQUAL(GateRefusal::None, gateCommand(Roof::Command::Abort, worst));
 }
 
+// Spec 027: while closing or opening.
 void test_interlock_lost_only_while_closing(void)
 {
     GateInputs lost = parkedWith(1);
@@ -124,7 +140,7 @@ void test_interlock_lost_only_while_closing(void)
     const GateInputs held = parkedWith(1);
     for (Roof::State state : ALL_STATES)
     {
-        const bool closing = state == Roof::State::Closing;
+        const bool closing = state == Roof::State::Closing || state == Roof::State::Opening;
         TEST_ASSERT_EQUAL_MESSAGE(closing, interlockLost(inState(state), lost), Roof::stateName(state));
         TEST_ASSERT_FALSE(interlockLost(inState(state), held));
     }
@@ -145,7 +161,7 @@ void test_interlock_lost_during_any_calibration_leg(void)
         TEST_ASSERT_TRUE_MESSAGE(interlockLost(leg, lost), Roof::stateName(state));
         TEST_ASSERT_FALSE(interlockLost(leg, parkedWith(1)));
         leg.calibrating = false;
-        TEST_ASSERT_EQUAL(state == Roof::State::Closing, interlockLost(leg, lost));
+        TEST_ASSERT_EQUAL(state == Roof::State::Closing || state == Roof::State::Opening, interlockLost(leg, lost));
     }
 }
 
@@ -524,7 +540,7 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_open_needs_a_safe_verdict);
-    RUN_TEST(test_open_ignores_the_park);
+    RUN_TEST(test_open_needs_the_park);
     RUN_TEST(test_close_needs_park_result_and_fitted_switches);
     RUN_TEST(test_unfitted_switches_are_ignored);
     RUN_TEST(test_close_ignores_the_weather);

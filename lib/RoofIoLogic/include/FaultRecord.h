@@ -30,6 +30,10 @@ namespace SQM
         {
             Roof::Fault fault;
             FaultCause cause = FaultCause::Logic;
+            // Spec 027: a Hall rail fault latched with no move under way: it
+            // clears itself after good readings at rest, also after a restart.
+            // Byte 5 of the record (0 before spec 027: then a person clears it).
+            bool atRest = false;
         };
 
         constexpr size_t FAULT_RECORD_BYTES = 16;

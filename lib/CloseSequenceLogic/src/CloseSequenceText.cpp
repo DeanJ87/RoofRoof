@@ -121,6 +121,17 @@ namespace SQM
             }
         } // namespace
 
+        void applyOverride(Inputs &in, uint8_t overrides, const Safety::WeatherVerdict &weather)
+        {
+            RoofIo::GateInputs gates;
+            gates.weather = weather.verdict;
+            gates.weatherReasons = weather.reasons;
+            if ((overrides & RoofIo::OverrideWeather) != 0 && RoofIo::weatherOverridable(gates))
+                in.weatherSafe = true;
+            if ((overrides & RoofIo::OverrideDaylight) != 0)
+                in.daylight = false;
+        }
+
         std::string parkReason(const Safety::ParkResult &park, bool requestPark)
         {
             const std::string text = Safety::describe(park);

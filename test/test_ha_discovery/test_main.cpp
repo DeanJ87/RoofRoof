@@ -184,7 +184,7 @@ void test_every_entity_is_published_or_removed(void)
     for (const bool flag : {false, true})
     {
         const auto out = announce(flag, flag, flag);
-        TEST_ASSERT_EQUAL_size_t(9, out.size());
+        TEST_ASSERT_EQUAL_size_t(20, out.size()); // spec 027: eleven for the observatory dashboard
         for (const auto &entry : out)
             if (!entry.second.empty())
                 TEST_ASSERT_TRUE(entry.second.size() < 1024); // well inside the 3 KB MQTT buffer
@@ -209,7 +209,7 @@ void test_long_names_fit(void)
             TEST_ASSERT_TRUE(payload.size() < 2048);
             ++seen;
         });
-    TEST_ASSERT_EQUAL(9, seen);
+    TEST_ASSERT_EQUAL(20, seen);
 }
 
 int main(int, char **)
