@@ -42,7 +42,7 @@ On demand (taken while in use, then freed):
 |---|---:|---:|---|
 | `alerts` task stack | 8,192 | 8,192 | started for an HTTPS alert, exits when idle |
 | TLS session (alert, https SQMeter) | about 25-40 KB | same | dynamic buffers, 16 KB in / 4 KB out at most |
-| Unsent data per connection | up to 5,744 | up to 2,872 | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT` |
+| Unsent data per connection | up to 5,744 | up to 5,744 | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT`; halving it stalled MQTT after a network return |
 | Status reply | 3 KB pool + 1 KB pieces | same | at most 2 replies in flight (spec 037) |
 | `GET /api/config` | 2 x 9.7 KB | same | behind the memory guard |
 | WiFi dynamic RX/TX buffers | up to 32 each | same | 1.6 KB each, while traffic is in flight |

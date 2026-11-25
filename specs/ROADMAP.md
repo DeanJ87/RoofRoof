@@ -472,8 +472,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 
 - **Scope:**
   - `GET /api/diag/heap`: the heap census (regions, block sizes, the largest blocks, each task's
-    stack); task stacks cut to their measured peaks plus about 3 KB; 2 TCP segments of send buffer
-    per connection.
+    stack); task stacks cut to their measured peaks plus about 3 KB.
   - A 2 KB reserve the C++ new-handler gives up instead of aborting; the guard treats a spent
     reserve as a short heap until the loop retakes it; `heap8Bit.reserveSpent`.
   - A CI heap budget (`tools/firmware/heap_budget.py`) and the bench floors in `ws_soak.py` (40 KB

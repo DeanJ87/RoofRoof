@@ -4,8 +4,7 @@
 
 ## Summary
 
-Measure the heap on the board (a census endpoint), give back what task stacks never use, halve the
-send buffer a connection may hold, turn the throwing `operator new`'s abort into a recoverable event
+Measure the heap on the board (a census endpoint), give back what task stacks never use, turn the throwing `operator new`'s abort into a recoverable event
 with a small reserve, and keep the savings with a CI budget and a bench floor.
 
 ## Constitution check
@@ -27,7 +26,6 @@ with a small reserve, and keep the savings with a CI budget and a bench floor.
 | census | `lib/HeapSafe` `HeapCensus` (fixed arrays, `add` per block), `src/HeapMap.cpp` (`heap_caps_walk`, `uxTaskGetSystemState`), `WebServer::handleHeapCensus` |
 | reserve | `lib/HeapSafe` `HeapReserve`, `armReserve()` first in `setup()`, `keepHeapReserve()` in `loop()`, `WebReply::installGuard` (`guardBlock`) |
 | stacks | `SET_LOOP_TASK_STACK_SIZE(10 * 1024)`, `-DCONFIG_ASYNC_TCP_STACK_SIZE=8192`, `CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096` |
-| send buffer | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT=2872` |
 | status | `heap8Bit.reserveSpent`; schema, types, inventory, example |
 | CI budget | `tools/firmware/heap_budget.py`, `heap-budget.json`, tests; build workflow |
 | reconnect stagger | `ConnectionBudget::NetworkSettle` (`MQTT_SETTLE_MS` 3 s, `ALERT_SETTLE_MS` 8 s), `NetState::tick()` in `loop()`, `MQTTClient::reconnect`, `AlertOutbox::handle` |

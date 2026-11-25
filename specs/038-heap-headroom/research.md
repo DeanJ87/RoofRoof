@@ -73,9 +73,13 @@ handler doesn't allocate or log. A second failure before the retake aborts as be
 
 ## R5 Send buffers
 
-`CONFIG_LWIP_TCP_SND_BUF_DEFAULT` 5,744 B let each connection hold 4 segments of unacknowledged
+`CONFIG_LWIP_TCP_SND_BUF_DEFAULT` 5,744 B lets each connection hold 4 segments of unacknowledged
 data: with 4 pages each sent a 4.4 KB status frame and two status replies in flight, up to about
-30 KB at once. 2 segments (2,872 B, lwIP's minimum of 2 x MSS) halves that peak.
+30 KB at once. 2 segments (2,872 B, lwIP's minimum) was flashed and tried: after a network return
+the MQTT client's writes ("Write of 128 bytes stopped after 16") ran out of their 1 s budget while
+the discovery burst waited for acknowledgements, and the connection was dropped and remade three
+times. MQTT can carry the weather source, so the change was reverted; the peak is instead bounded
+by spec 037's caps (2 replies in flight, one queued frame per page).
 
 ## R5b The reconnect burst
 

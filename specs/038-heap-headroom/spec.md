@@ -87,8 +87,8 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
   C++ new-handler when `operator new` fails; the memory guard MUST treat a spent reserve as a short
   heap; the main loop MUST take it back once the largest block is at least 8 KB and log each use;
   `/api/status` `heap8Bit.reserveSpent` MUST count the uses.
-- **FR-004**: A TCP connection MUST hold at most 2 segments (2,872 B) of unacknowledged data
-  (`CONFIG_LWIP_TCP_SND_BUF_DEFAULT`, was 5,744 B).
+- **FR-004**: The TCP send buffer stays at 4 segments (5,744 B): halving it was tried on the
+  bench and dropped (research R5).
 - **FR-005**: `tools/firmware/heap_budget.py` MUST sum the kept stacks and buffers (read from the
   sources) and the static data (from the `.elf`) and fail CI when the sum passes
   `tools/firmware/heap-budget.json`.
@@ -119,8 +119,9 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
   crash snapshots recorded; the timer task's callbacks need well under 2 KB). A stack overflow is
   caught by FreeRTOS and restarts the device with a record; the census shows each task's least
   stack left so the margin can be watched.
-- **Half the TCP send buffer per connection.** Large files and frames go out in more round trips
-  (milliseconds on the LAN); Alpaca replies are small and unaffected.
+- **The TCP send buffer stays at 4 segments.** Halving it was tried on the bench; MQTT writes
+  then stalled and dropped the connection after a network return (research R5), and MQTT can
+  carry the weather, so it was put back.
 - **Heap poisoning stays on** (light: about 8-12 B per block) because it turns a buffer overrun
   into a recorded crash rather than silent corruption.
 - **Reconnect work staggered** after a network return: MQTT 3 s later (its weather and commands
