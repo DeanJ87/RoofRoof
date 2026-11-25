@@ -487,7 +487,7 @@
     "POST /api/roof/open": {
       "tag": "Roof",
       "summary": "Open the roof",
-      "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe. Refused with `hotspot` while the setup hotspot, which has no password, is on. Needs the header `X-RoofRoof: 1`.",
+      "description": "Asks the roof to open, as a person. Refused unless the weather verdict is safe (constitution III), the mount is confirmed parked (an open needs the park as a close does), the daylight failsafe allows it, and by the motion logic (a latched fault, the Hall reading not settled, the supply low or unreadable, current sense on and unreadable, invalid settings), and with `busy` while an upload or command-line OTA is writing the flash, an MQTT connect is under way or a restart is scheduled. When the park is the only thing refusing it and N.I.N.A. can be asked (an address is set and **Ask N.I.N.A. to park** is on), the open is accepted with 202 and waits: N.I.N.A. is asked to park, and the open runs once the park has held for the park hold time, through every check again; `roof.parkWait` in the status shows the wait, which ends at the park wait limit (`park.timeoutSeconds`, with the critical \"mount not parked\" alert), on any stop, on a new command, or when another check refuses it (`roof.parkWaitEnded`). When N.I.N.A. can't be asked, the 409 text says so. An optional body `{\"override\": [\"weatherNotSafe\", \"daylight\"]}` is the person's confirmed override of those refusals for this open; it stays in effect while the roof opens and ends when the roof reads closed, a close is accepted, or a refusal it doesn't cover (rain, a weather source in doubt, the park, a park switch check) appears. `roof.openOverridable` lists what may be overridden now and `roof.override` what is. A body that isn't JSON of that shape, or names something that can't be overridden, is refused with 400. An accepted open starts after the 500 ms dead time and ends on the open magnet; `GET /api/status` `roof` shows its progress. An open in progress stops if the weather stops being safe (unless overridden) or the park is lost. Refused with `hotspot` while the setup hotspot, which has no password, is on. Needs the header `X-RoofRoof: 1`.",
       "responses": {
         "200": {
           "inline": {
@@ -511,7 +511,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked` (open too: the telescope passes under the roof either way), `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -519,11 +519,11 @@
               },
               "pending": {
                 "type": "boolean",
-                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                "description": "Accepted but not started yet (202 only): a close waiting for an upload or MQTT connect to stop, or an open or close waiting for the mount to park (`roof.parkWait` in the status says which)."
               },
               "message": {
                 "type": "string",
-                "description": "What the waiting close is waiting for (202 only)."
+                "description": "What the command is waiting for (202 only)."
               }
             },
             "required": [
@@ -555,7 +555,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked` (open too: the telescope passes under the roof either way), `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -569,18 +569,45 @@
             "additionalProperties": false
           }
         },
-        "403": "error"
+        "403": "error",
+        "400": "error"
       },
       "parameters": [
         {
           "$ref": "#/components/parameters/roofCommand"
         }
-      ]
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "override": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "weatherNotSafe",
+                  "daylight",
+                  "mountNotParked"
+                ]
+              },
+              "description": "A person's confirmed override. Open: `weatherNotSafe` (only while SQMeter alone says unsafe: never for rain or a weather source in doubt) and `daylight`. Close: `mountNotParked`. Each is for that one command; a name that can't be overridden is refused with 400."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "override": [
+            "weatherNotSafe",
+            "daylight"
+          ]
+        }
+      }
     },
     "POST /api/roof/close": {
       "tag": "Roof",
       "summary": "Close the roof",
-      "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload, another flash write or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).",
+      "description": "Asks the roof to close, as a person. Refused unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed (constitution II); refused by the motion logic as for open. When the park is the only thing refusing it and N.I.N.A. can be asked, the close is accepted with 202 and waits for the park as an open does (see `POST /api/roof/open`); when N.I.N.A. can't be asked, the 409 text says so. An optional body `{\"override\": [\"mountNotParked\"]}` is the person's confirmed close without the park, for this close only: it isn't re-checked while closing. A bad body is refused with 400. A close in progress stops with a `parkInterlock` fault if the park confirmation is lost. Needs the header `X-RoofRoof: 1`. A close always wins: it cancels a scheduled restart and stops an upload in progress (the upload fails with 409). While an upload, another flash write or an MQTT connect is still finishing, the close is accepted with 202 and `pending: true` and starts as soon as it is done (`roof.closePending` in the status).",
       "responses": {
         "200": {
           "inline": {
@@ -604,7 +631,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked` (open too: the telescope passes under the roof either way), `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -612,11 +639,11 @@
               },
               "pending": {
                 "type": "boolean",
-                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                "description": "Accepted but not started yet (202 only): a close waiting for an upload or MQTT connect to stop, or an open or close waiting for the mount to park (`roof.parkWait` in the status says which)."
               },
               "message": {
                 "type": "string",
-                "description": "What the waiting close is waiting for (202 only)."
+                "description": "What the command is waiting for (202 only)."
               }
             },
             "required": [
@@ -648,7 +675,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked` (open too: the telescope passes under the roof either way), `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid` or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -685,7 +712,7 @@
               },
               "reason": {
                 "type": "string",
-                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked`, `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
+                "description": "Why it was refused (409 only): `weatherNotSafe`, `daylight` (open only: the daylight setting is \"alert and close\" and the sun is up, spec 013), `mountNotParked` (open too: the telescope passes under the roof either way), `faultLatched`, `hallNotSettled`, `positionUnknown`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`, `busy` (an upload or other flash write, a WiFi change or scan, an MQTT connect or a scheduled restart; open only), `restarting` (a restart about to happen), `hotspot` (open while the setup hotspot is on) or `notStarted`."
               },
               "error": {
                 "type": "string",
@@ -693,11 +720,11 @@
               },
               "pending": {
                 "type": "boolean",
-                "description": "A close accepted that starts once an upload or MQTT connect has stopped (202 only)."
+                "description": "Accepted but not started yet (202 only): a close waiting for an upload or MQTT connect to stop, or an open or close waiting for the mount to park (`roof.parkWait` in the status says which)."
               },
               "message": {
                 "type": "string",
-                "description": "What the waiting close is waiting for (202 only)."
+                "description": "What the command is waiting for (202 only)."
               }
             },
             "required": [
@@ -706,13 +733,39 @@
             ],
             "additionalProperties": false
           }
-        }
+        },
+        "400": "error"
       },
       "parameters": [
         {
           "$ref": "#/components/parameters/roofCommand"
         }
-      ]
+      ],
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "override": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "weatherNotSafe",
+                  "daylight",
+                  "mountNotParked"
+                ]
+              },
+              "description": "A person's confirmed override. Open: `weatherNotSafe` (only while SQMeter alone says unsafe: never for rain or a weather source in doubt) and `daylight`. Close: `mountNotParked`. Each is for that one command; a name that can't be overridden is refused with 400."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "override": [
+            "mountNotParked"
+          ]
+        }
+      }
     },
     "POST /api/roof/stop": {
       "tag": "Roof",
@@ -2625,6 +2678,66 @@
             "finishedAt": 123456
           }
         }
+      }
+    },
+    "POST /api/nina/test": {
+      "tag": "Settings",
+      "summary": "Test N.I.N.A.'s address",
+      "description": "Spec 027: the device reads N.I.N.A.'s mount information once, as the park check does (Advanced API v2), at the body's `url` (`http://` or `https://`) or, with no body, the saved address. Nothing is saved. 200 with whether N.I.N.A. is `reachable`, the mount `connected`, `atPark` and `slewing`; 502 with `error` when N.I.N.A. doesn't answer (\"N.I.N.A. not responding: ...\") or answers but not as expected. 400 for a body that isn't `{\"url\"}` (a string, at most 512 bytes) or an address that doesn't start with http:// or https:// (or none saved); 409 while the roof is busy or another read of N.I.N.A. or SQMeter runs.",
+      "requestBody": {
+        "inline": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "N.I.N.A.'s address as typed (http:// or https://, with the port). Optional: the saved address when left out."
+            }
+          },
+          "additionalProperties": false
+        },
+        "example": {
+          "url": "https://nina.local:1888"
+        }
+      },
+      "responses": {
+        "200": {
+          "inline": {
+            "type": "object",
+            "properties": {
+              "reachable": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean",
+                "description": "The mount is connected in N.I.N.A."
+              },
+              "atPark": {
+                "type": "boolean"
+              },
+              "slewing": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "reachable",
+              "connected",
+              "atPark",
+              "slewing"
+            ],
+            "additionalProperties": false
+          },
+          "example": {
+            "reachable": true,
+            "connected": true,
+            "atPark": false,
+            "slewing": false
+          }
+        },
+        "400": "error",
+        "401": "error",
+        "409": "error",
+        "502": "error",
+        "503": "error"
       }
     }
   }

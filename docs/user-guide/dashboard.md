@@ -54,20 +54,30 @@ While a [test box](test-box.md) bypass is set, a banner above every page says wh
 The **Roof** card shows the roof as its control task sees it, live:
 
 - the state as the pill top-right (**Closed**, **Open**, **Opening**, **Closing**, **Stopped**, **Unknown**, **Fault**), and the **Position** as a bar with the percentage open (**Unknown** until the roof reaches a magnet);
-- **Open**, **Close** and **Stop**;
-- with a latched fault, its text (the measured value and the limit) and **Clear fault**;
+- **Open**, **Close** and **Stop** (see [Open, Close and Stop](#open-close-and-stop));
+- with a latched fault, its text (the measured value and the limit) and **Clear fault**. A Hall reading at a rail with the roof at rest says it clears itself after a minute of good readings and shows the live reading; **Clear fault** still works at once;
 - **Weather** and **Mount park**: the weather verdict and the park check exactly as the roof's own command checks see them now, each with its reason behind "?" (**Test box bypass** while a [test box](test-box.md) bypass stands in); and **Automatic close** while the [close on unsafe weather](close-on-unsafe.md) is under way or standing down;
+- **Park wait** and **Override** lines while they apply, and the health of the two inputs: **SQMeter** (when it last replied and what the last failure was: no reply, an HTTP status, an unreadable reply) and **N.I.N.A.** (reachable, mount connected, parked, or why not);
 - **Daylight**: the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) as the device sees it: its mode and the sun's altitude against the threshold ("Sun 3.2° ≥ 0.0°"), or why the check can't run ("Location not set", "Clock not set"); with the mode off it says so. Below it, where the site came from and how old it is ("Location from SQMeter (GPS), read 3 min ago", "Typed-in location"), or why SQMeter's location isn't being read ([Site from SQMeter](close-on-unsafe.md#site-from-sqmeter)); this line is information, never a safety verdict;
 - **Supply**, **Motor current** (while current sense is on) and the park switches (when fitted);
 - the **Hall reading** on its 0-4095 scale, with the low and high thresholds marked and where the reading is (at the low magnet, between the magnets, at the high magnet). Use it to [calibrate](../hardware/calibration.md).
 
 ### Open, Close and Stop
 
-**Stop** is never disabled. It is sent the moment you press it, every time you press it, whatever the card shows.
+**Stop** is never disabled. It is sent the moment you press it, every time you press it, whatever the card shows. While the roof is still and nothing waits, the card shows **Open** and **Close** (never only Stop), with the reasons a move is blocked; **Stop** shows while the roof moves, a close waits to start, or a move waits for the park.
+
+**The park wait.** When the mount isn't confirmed parked and N.I.N.A. can be asked, Open or Close doesn't refuse: the card says "Waiting for the mount to park", with the time left before it gives up and **Stop** to call it off, N.I.N.A. is asked to park, and the roof moves once the park has held ([Park before every move](close-on-unsafe.md#park-before-every-move)). If the wait ends without the move, the card says why.
+
+**The move dialog.** When Open or Close would be refused, pressing it opens a dialog that lists every reason, each with its text:
+
+- **Open** with only daylight and the weather SQMeter alone calls unsafe (not rain) in the way offers **Open anyway**. It confirms each reason for this one opening, and the card then says the checks are overridden while it lasts. If any reason can't be overridden (rain, a weather source in doubt, an unparked mount, a fault, the supply), the dialog lists them all and offers no override.
+- **Close** with the park not confirmed first asks N.I.N.A. to park when it can, and says the mount isn't confirmed parked and the roof could hit the telescope. **Close anyway** closes once without the park check; the next Close checks again.
+
+An override is a person's, with the password: Alpaca, MQTT and Home Assistant never have one ([A person's confirmed open](close-on-unsafe.md#a-persons-confirmed-open)).
 
 With **Settings → Roof → Direction and speed → Ask before Open and Close** on (it is off by default), **Open** and **Close** first ask "Open the roof?" or "Close the roof?" under the buttons; press the button there to send it, or **Cancel**. **Stop** never asks, and pressing it also dismisses the question.
 
-**Open** and **Close** are greyed out when the device would refuse them, with the reason under the buttons. For anything that isn't obvious from the buttons themselves, the reason is the shared **why it can't move** list (the same words as on Calibrate and the setup wizard): each line says what stops it, "?" says what that means, the line under it says when it clears, and its one fix is beside it (**Weather check settings**, **Park check settings**, **Supply settings**, **Fix the pins**, **Clear fault**):
+When the device would refuse **Open** or **Close**, the buttons stay on the card and the reason is under them (pressing one opens the move dialog above). For anything that isn't obvious from the buttons themselves, the reason is the shared **why it can't move** list (the same words as on Calibrate and the setup wizard): each line says what stops it, "?" says what that means, the line under it says when it clears, and its one fix is beside it (**Weather check settings**, **Park check settings**, **Supply settings**, **Fix the pins**, **Clear fault**):
 
 | Reason | Open | Close |
 |---|---|---|
@@ -75,11 +85,11 @@ With **Settings → Roof → Direction and speed → Ask before Open and Close**
 | A fault is latched: clear it first | yes | yes |
 | The device is restarting (after it refused a command with `restarting`, until it is back) | yes | yes |
 | Already at that end, or already moving that way | yes | yes |
-| The weather isn't safe (the verdict's reason) | yes | - |
-| It is daylight: the sun's altitude and the threshold (only with the daylight failsafe on **Alert and close**) | yes | - |
+| The weather isn't safe (the verdict's reason; **Open anyway** in the dialog when SQMeter alone says unsafe, not rain) | yes | - |
+| It is daylight: the sun's altitude and the threshold (only with the daylight failsafe on **Alert and close**; **Open anyway** in the dialog) | yes | - |
 | The setup hotspot is on (it has no password) | yes | - |
 | A park switch hasn't opened in the last 3 roof openings (park switches only: it may be stuck or shorted) | yes | - |
-| The mount isn't confirmed parked (what failed, e.g. a park switch open) | - | yes |
+| The mount isn't confirmed parked (what failed, e.g. a park switch open): pressing the button waits for the park when N.I.N.A. can be asked, else opens the move dialog | yes | yes |
 | A close is already waiting to start | - | yes |
 | The supply is low or unreadable (the reading and the minimum) | yes | yes |
 | The Hall reading hasn't settled yet | yes | yes |
@@ -94,7 +104,7 @@ Until the roof is set up, the **Status** card has one row, **Finish setup: Weath
 
 ### Stop on every page
 
-While the roof is opening or closing, or a close is waiting to start, a **Stop roof** bar is pinned to the bottom of every page. It stays if the live data stops while the roof was last seen moving.
+While the roof is opening or closing, or a close is waiting to start, or a move is waiting for the park, a **Stop roof** bar is pinned to the bottom of every page. It stays if the live data stops while the roof was last seen moving.
 
 ## Device & Network
 

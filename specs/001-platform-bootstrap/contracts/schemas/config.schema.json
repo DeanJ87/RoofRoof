@@ -210,6 +210,30 @@
               ],
               "additionalProperties": false
             },
+            "nina_lost": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
             "roof_closed": {
               "type": "object",
               "properties": {
@@ -364,6 +388,7 @@
             "daylight_unknown",
             "mount_not_parked",
             "move_fault",
+            "nina_lost",
             "roof_closed",
             "roof_not_closed",
             "safety_lost",

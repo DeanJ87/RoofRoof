@@ -21,7 +21,8 @@ Alpaca is **off** on a new device and after an update, because it has no login a
 
 1. Turn Alpaca on: **Settings → Network → ASCOM Alpaca → Serve Alpaca**, then **Save** and restart when asked ([Enabling Alpaca support](#enabling-alpaca-support)). While it is off, **Settings → Roof → Automatic close** says imaging apps can't open or close the roof, with a button that takes you there.
 2. Add the roof in N.I.N.A. as a Dome ([Adding the roof in N.I.N.A.](#adding-the-roof-in-nina)).
-3. Put **Open dome shutter** and **Close dome shutter** in your sequence. An open is refused while the weather isn't safe, and a close is refused unless the mount is confirmed parked, so park the mount before the close.
+3. Put **Open dome shutter** and **Close dome shutter** in your sequence. An open is refused while the weather isn't safe, and an open or a close is refused unless the mount is confirmed parked. Park the mount before either, or let RoofRoof ask: with N.I.N.A.'s address set and **Ask N.I.N.A. to park** on ([Park rule](safety-inputs.md#park)), a command sent while the mount isn't parked succeeds at once and waits ([The park wait](#the-park-wait)).
+4. Add **Park scope** before **Open dome shutter** at the start of the night and before **Close dome shutter** at the end, so the roof never has to wait. The sequence's own park is still the normal way; the wait is the safety net.
 
 ## Enabling Alpaca support
 
@@ -35,9 +36,9 @@ Alpaca support is off by default. Turning it on lets imaging apps open, close an
 ## Adding the roof in N.I.N.A.
 
 1. In N.I.N.A., go to **Equipment → Dome**.
-2. Open the device list and pick **RoofRoof roof** under the Alpaca devices (N.I.N.A. finds it by discovery). If it isn't listed, see [If discovery doesn't find the device](#if-discovery-doesnt-find-the-device).
+2. Open the device list and pick **RoofRoof** under the Alpaca devices (N.I.N.A. finds it by discovery). If it isn't listed, see [If discovery doesn't find the device](#if-discovery-doesnt-find-the-device).
 3. **Connect**. The shutter state shows as Open, Closed, Opening, Closing or Error.
-4. Use N.I.N.A.'s Open and Close shutter buttons, or the **Open dome shutter** and **Close dome shutter** instructions in a sequence. N.I.N.A.'s Stop button stops the roof.
+4. Use N.I.N.A.'s Open and Close shutter buttons, or the **Open dome shutter** and **Close dome shutter** instructions in a sequence. N.I.N.A.'s Stop button stops the roof. The device is listed as **RoofRoof**; its driver information reads `RoofRoof v<firmware version>` and its description `Roll-off roof, shutter only` (with a prefix in bench mode, in the demo and while a [test box](test-box.md) bypass is in effect).
 
 N.I.N.A.'s **Setup** button opens the device's Settings page.
 
@@ -47,11 +48,11 @@ N.I.N.A.'s **Setup** button opens the device's Settings page.
 
 | Member | What it does |
 |---|---|
-| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open. Returns at once; progress shows in `ShutterStatus`. Needs a connected client. Refused while the roof is closing, a close is waiting, or a close was stopped part-way: an imaging app can't reverse a close. |
-| `CloseShutter` | Closes the roof, through the same checks as the web UI's Close. Returns at once. Needs a connected client. A close that has to wait for an upload or an MQTT connect to stop succeeds and shows as closing. |
+| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open, which include the weather and the mount's park. Returns at once; progress shows in `ShutterStatus`. Already open is success. If only the park refuses it and N.I.N.A. can be asked, it succeeds and the roof waits for the park ([The park wait](#the-park-wait)). Needs a connected client. Refused while the roof is closing, a close is waiting, or a close was stopped part-way: an imaging app can't reverse a close. |
+| `CloseShutter` | Closes the roof, through the same checks as the web UI's Close. Returns at once. Already closed is success. Needs a connected client. A close that has to wait for an upload or an MQTT connect to stop, or for the mount to park, succeeds and shows as closing. |
 | `AbortSlew` | Stops the roof at once, keeping its position estimate (the roof's Stop, not its Abort), connected or not. It can't stop a close while the weather isn't safe (below). |
 | `ShutterStatus` | 0 open, 1 closed, 2 opening, 3 closing, 4 error (below). |
-| `Slewing` | True while the roof is opening or closing, or a close is waiting to start. |
+| `Slewing` | True while the roof is opening or closing, or a command is waiting to start (for an upload or MQTT connect, or for the park). |
 | `CanSetShutter` | True. |
 | Every other `Can...` | False. |
 | `Slaved` | False; setting it false is accepted, true is not implemented. |
@@ -68,6 +69,8 @@ The device is `Dome` number 0, interface version 3, with the `UniqueID` `roofroo
 | At the open magnet | Open (0) |
 | Opening | Opening (2) |
 | Closing, or a close waiting to start | Closing (3) |
+| An open or close waiting for the mount to park | Opening (2) or Closing (3), with `Slewing` true |
+| A park wait that failed (it ran out of time or another check refused the command), until the next command | Error (4) |
 | Stopped part-way, position unknown, a fault latched, or the roof controller not running | Error (4) |
 
 Only the closed magnet reads as closed, and only the open magnet as open: an app waiting for "open" never starts slewing the mount under a part-open roof. A roof stopped part-way reads as error; an app that wants it closed can still close it.
@@ -80,9 +83,9 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 
 | Reason | Example message | What to do |
 |---|---|---|
-| Weather not safe (open) | `Weather not safe: unsafe: rain` | Wait for the weather. There is no override ([Safety inputs](safety-inputs.md)). |
+| Weather not safe (open) | `Weather not safe: unsafe: rain` | Wait for the weather. An imaging app has no override; a person at the web UI can confirm one only while SQMeter alone says unsafe ([Safety inputs](safety-inputs.md)). |
 | Daylight (open) | `Daylight: Sun 3.2° ≥ 0.0°` | The daylight failsafe is on "Alert and close" and the sun is up. Wait for the sun to go down, or set the mode to Alert or Off ([Daylight failsafe](close-on-unsafe.md#daylight-failsafe)). |
-| Mount not parked (close) | `Mount not parked: park not confirmed (N.I.N.A. not responding)` | Park the mount; check the [park rule](safety-inputs.md#park). |
+| Mount not parked (open or close) | `Mount not parked: park not confirmed (N.I.N.A. not responding): no N.I.N.A. address to ask for the park: park the mount, or set N.I.N.A.'s address` | Park the mount; check the [park rule](safety-inputs.md#park). When the message ends by saying N.I.N.A. can't be asked (no address, or **Ask N.I.N.A. to park** off), the command couldn't wait. |
 | Position unknown | `Position unknown: only a person can move the roof` | Move the roof to a magnet from the web UI ([Roof motion](roof-motion.md)). |
 | A fault is latched | `A fault is latched: a person must clear it first: No target magnet after 61.0 s >= 60.0 s timeout` | Find the cause, then clear the fault in the web UI. |
 | Supply low | `Supply 10.9 V < 11.5 V` | Check the 12 V supply. |
@@ -94,36 +97,51 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 
 Disconnecting, or an imaging app that goes quiet, never stops or starts a move: a move has its own time limit and magnet checks in the roof's motion logic, and stopping a close half-way would leave the roof neither open nor closed. The [imaging-app alerts](alerts.md#the-imaging-app) tell you when an app has gone quiet.
 
+## The park wait
+
+An open or close refused only because the mount isn't confirmed parked doesn't fail when RoofRoof can ask N.I.N.A. to park (an address is set and **Ask N.I.N.A. to park** is on). `OpenShutter` or `CloseShutter` succeeds at once, `ShutterStatus` reads Opening or Closing and `Slewing` is true, while RoofRoof asks N.I.N.A. to park the mount (again every park request gap), and runs the command once the park has held for the park hold time, through every check again. If another check refuses it meanwhile, a stop or a new command arrives, or the park wait limit passes (**Settings → Roof → Mount park → Park time limit**, 240 seconds by default, with the critical "mount not parked" alert), the wait ends and `ShutterStatus` reads **Error** until N.I.N.A.'s next command. The roof never moves while the park is unconfirmed, and an imaging app can't override it. A person may confirm a close without the park in the web UI ([Dashboard](dashboard.md#open-close-and-stop)).
+
+While a person's override is in effect the **Description** starts with "CHECKS OVERRIDDEN:". After a failed wait it starts with "Last move not run:" and the reason, so N.I.N.A. can show why. Set N.I.N.A.'s dome shutter timeout longer than the park wait limit, so N.I.N.A. waits for the park instead of giving up first. N.I.N.A.'s own "park the mount before the shutter moves" option works alongside: whichever parks the mount, the wait sees the park and the roof moves. The same command sent again while it waits joins the wait; the automatic close calls off a waiting open.
+
+Set the sequence's wait for the shutter to be at least as long as the park wait limit, so N.I.N.A. doesn't give up on a roof that is still waiting.
+
 ## Stop from N.I.N.A. in bad weather
 
-Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe (or the sun is up with the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) on "Alert and close"), N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is opened or closed or the weather has been safe for the safe spell to re-arm (10 minutes by default). N.I.N.A.'s Stop works as usual for every other move, and it never counts as a person's stop.
+Alpaca has no password, so nothing an imaging app sends may call off or hold up the [close on unsafe weather](close-on-unsafe.md). While the roof is closing (or a close is waiting to start) and the weather isn't safe (or the sun is up with the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) on "Alert and close"), N.I.N.A.'s Stop (`AbortSlew`) is **refused** with a message saying so, whoever started the close, and the roof carries on closing onto the parked mount. If the roof must not close (someone at the roof), press **Stop in the web UI**: it works on every page, and a person's stop stands the automatic close down until the roof is opened or closed or the weather has been safe for the safe spell to re-arm (10 minutes by default). N.I.N.A.'s Stop works as usual for every other move, and it ends a park wait; it never counts as a person's stop.
 
 If you are often at the roof with N.I.N.A. to hand, you can turn on **Settings → Roof → Automatic close → Remote Stop calls off a close**. N.I.N.A.'s Stop (and an MQTT stop) during such a close is then accepted and counts exactly as a person's: the roof stops, the automatic close stands down, and the critical alert **Automatic close stopped** goes out with its reminders, so the roof is never left open in bad weather without one. It is off by default. The Alpaca connection is not a safeguard: ASCOM asks for it, but it is one setting for the whole server; the roof's own checks are what protect it.
 
 <!-- diagram: DIA-18
 sources: lib/AlpacaLogic/src/AlpacaDome.cpp lib/AlpacaLogic/src/AlpacaRouter.cpp lib/RoofIoLogic/src/DomeBridge.cpp src/WebServerAlpaca.cpp#WebServer::AlpacaBackend::domeCommand
 blocking: true
-fingerprint: 6689d8207e6ff74a
+fingerprint: 1a64e14d1d76cd47
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 sequenceDiagram
     accTitle: An imaging app drives the roof's Dome
-    accDescr: The app finds RoofRoof by UDP discovery and lists its one Dome. It connects. OpenShutter goes through the same weather check (and is refused while the roof is closing), and CloseShutter through the same park check, as the web UI's buttons; a refused command returns InvalidOperation with the reason and nothing moves, an accepted one returns at once and the app polls ShutterStatus until open or closed. Open and close need a connected client. AbortSlew stops the roof at once, connected or not, except a close while the weather isn't safe, which it can't stop; it is never a person's stop.
+    accDescr: The app finds RoofRoof by UDP discovery and lists its one Dome. It connects. OpenShutter goes through the same weather and park checks (and is refused while the roof is closing), and CloseShutter through the same park check, as the web UI's buttons; a refused command returns InvalidOperation with the reason and nothing moves, an accepted one returns at once and the app polls ShutterStatus until open or closed. When only the park refuses a command and N.I.N.A. can be asked, it is accepted too and waits for the park, ShutterStatus reading opening or closing, and reads error if the wait fails. Open and close need a connected client. AbortSlew stops the roof at once, connected or not, except a close while the weather isn't safe, which it can't stop; it is never a person's stop.
     participant A as Imaging app
     participant R as RoofRoof (Alpaca)
     participant C as Roof control
     A->>R: UDP "alpacadiscovery1" to port 32227
     R-->>A: AlpacaPort 80
     A->>R: GET /management/v1/configureddevices
-    R-->>A: Dome 0 "RoofRoof roof"
+    R-->>A: Dome 0 "RoofRoof"
     A->>R: PUT connected=true
     A->>R: PUT openshutter
-    R->>C: open, origin client: weather gate, motion checks
-    alt refused (unsafe, unknown position, fault, supply)
+    R->>C: open, origin client: weather and park gates, motion checks
+    alt refused (unsafe, unknown position, fault, supply, no way to ask for the park)
         C-->>R: refused with the reason
         R-->>A: InvalidOperation and the reason, nothing moves
+    else only the park refuses and N.I.N.A. can be asked
+        C-->>R: waiting for the park
+        R-->>A: OK at once
+        loop until the park holds, or the wait fails
+            A->>R: GET shutterstatus
+            R-->>A: opening, or error after a failed wait
+        end
     else accepted
         C-->>R: opening
         R-->>A: OK at once
@@ -134,7 +152,7 @@ sequenceDiagram
     end
     A->>R: PUT closeshutter
     R->>C: close, origin client: park gate, interlock throughout
-    C-->>R: closing, or refused: mount not parked
+    C-->>R: closing, or waiting for the park, or refused: no way to ask for the park
     A->>R: PUT abortslew (connected or not)
     R->>C: stop, origin client (never a person's stop)
     alt a close under way and the weather not safe
@@ -152,10 +170,10 @@ sequenceDiagram
 ??? info "Diagram in words"
 
     1. The app broadcasts `alpacadiscovery1` on UDP port 32227; RoofRoof answers `{"AlpacaPort": 80}` (only when **Serve Alpaca** was on when it started).
-    2. The app lists the configured devices and finds one: Dome 0, "RoofRoof roof".
+    2. The app lists the configured devices and finds one: Dome 0, "RoofRoof".
     3. It connects. Open and close are refused with NotConnected until it has.
-    4. `OpenShutter` goes to the roof control with the client origin, through the weather check and the motion checks. A refusal comes back as InvalidOperation with the reason, and nothing moves. An accepted open returns at once; the app polls `ShutterStatus` until it reads open.
-    5. An open while the roof is closing, a close is waiting, or a close was stopped part-way, is refused: an imaging app can't reverse a close. `CloseShutter` goes through the park check at the start, and the park is re-checked on every control step while closing. A mount that isn't confirmed parked refuses the close.
+    4. `OpenShutter` goes to the roof control with the client origin, through the weather and park checks and the motion checks. A refusal comes back as InvalidOperation with the reason, and nothing moves. An accepted open returns at once; the app polls `ShutterStatus` until it reads open. If only the park refuses it and N.I.N.A. can be asked, it is accepted and waits for the park (`ShutterStatus` opening); a failed wait reads error until the next command.
+    5. An open while the roof is closing, a close is waiting, or a close was stopped part-way, is refused: an imaging app can't reverse a close. `CloseShutter` goes through the park check at the start, and the park is re-checked on every control step while closing. A mount that isn't confirmed parked makes the close wait for the park when N.I.N.A. can be asked, and refuses it when not.
     6. `AbortSlew` stops the roof at once, connected or not, except a close while the weather isn't safe, whoever started it: that is refused with InvalidOperation and the close carries on (Stop in the web UI can stop it). It is never a person's stop.
 
 ---

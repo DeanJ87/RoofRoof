@@ -12,6 +12,7 @@
     { "path": "/api/pins/validate", "method": "POST", "auth": "open", "why": "Checks a pin map against the pin rules and saves nothing; no address or secret" },
     { "path": "/api/pins", "method": "GET", "auth": "open", "why": "Read-only: the pins in effect and saved, the rules' report and the presets; no address or secret" },
     { "path": "/api/sqmeter/test", "method": "POST", "auth": "required" },
+    { "path": "/api/nina/test", "method": "POST", "auth": "required" },
     { "path": "/api/restart", "method": "POST", "auth": "required" },
     { "path": "/api/roof/open", "method": "POST", "auth": "required" },
     { "path": "/api/roof/close", "method": "POST", "auth": "required" },

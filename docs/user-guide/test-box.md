@@ -22,7 +22,7 @@ It is three separate switches, all off by default, and **all end at one deadline
 | Bypass | What it stands in for | When it is refused |
 |---|---|---|
 | **Park** | N.I.N.A.: it acts as a park source saying "no telescope under this roof", so a close is allowed | With the park switches as the only park source (there is no N.I.N.A. to stand in for). Turning it on clears the N.I.N.A. address in the same save; while it is on, saving an address is refused. Fitted [park switches](safety-inputs.md#park) still count: if they say the mount isn't parked, the close waits |
-| **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside |
+| **Weather** | A missing weather source: the "No weather source" verdict counts as safe | While SQMeter over HTTP or MQTT is on. A configured source that is in doubt (stale, unreachable, unreadable, says unsafe) is never set aside: a silent SQMeter reads unsafe and the roof closes. With the bypass set beside an SQMeter source it isn't in effect, and the status says so: "Test box: ... bypassed until ... (weather check not bypassed: SQMeter is on)" (`roof.testBox.text`) |
 | **Daylight** | The sun: no [daylight close](close-on-unsafe.md#daylight-failsafe), and with **Alert and close** no refusal to open while the sun is up | Never refused. It only matters with the daylight mode on |
 
 A bypass never sits beside the source it stands in for. Turning **No telescope under this roof**

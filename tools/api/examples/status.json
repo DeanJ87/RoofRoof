@@ -201,7 +201,26 @@
       "text": "Location not set",
       "closes": false
     },
-    "closeRearmSeconds": null
+    "closeRearmSeconds": null,
+    "parkWait": null,
+    "parkWaitEnded": null,
+    "override": [],
+    "openOverridable": [],
+    "nina": {
+      "set": true,
+      "state": "good",
+      "reachable": true,
+      "connected": true,
+      "atPark": true,
+      "ageSeconds": 2,
+      "text": ""
+    },
+    "sqmeter": {
+      "on": true,
+      "state": "good",
+      "lastReplySeconds": 3,
+      "text": "Replied 3 s ago: safe"
+    }
   },
   "location": {
     "source": "sqmeter",

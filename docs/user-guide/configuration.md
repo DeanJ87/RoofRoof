@@ -121,6 +121,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
       "daylight_closed": { "level": 2, "sound": "", "title": "", "message": "" },
       "daylight_unknown": { "level": 2, "sound": "", "title": "", "message": "" },
       "safety_lost": { "level": 2, "sound": "", "title": "", "message": "" },
+      "nina_lost": { "level": 2, "sound": "", "title": "", "message": "" },
       "test_box": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_lost": { "level": 3, "sound": "", "title": "", "message": "" },
       "client_back": { "level": 1, "sound": "", "title": "", "message": "" },
@@ -282,7 +283,7 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
 | `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
-| `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` only, e.g. `http://192.168.1.20:1888`; empty means not configured, so the mount never counts as parked |
+| `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` or `https://` (no certificate check), e.g. `http://192.168.1.20:1888`; Settings has a **Test** for it ([`POST /api/nina/test`](../api/rest.md#post-apininatest)); empty means not configured, so the mount never counts as parked |
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
 | `park.source` | string | `"nina"` | What confirms the park ([Safety inputs](safety-inputs.md#park)): `nina` (N.I.N.A. only), `switches` (the park switches only; the N.I.N.A. address is then optional) or `ninaAndSwitches` (both must agree). `nina` needs `park.switches` `none`, the others `one` or `two`; any other combination is refused. Settings saved before it, and a save that sends `park.switches` without it, take it from `park.switches` (`none`: `nina`; `one`, `two`: `ninaAndSwitches`). A motion setting: refused while the roof moves |
 | `park.switches` | string | `"none"` | Park switches fitted: `none`, `one` (park switch A) or `two` (A and B); their pins are in [`pins`](#pins-and-network) |
@@ -446,7 +447,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box` (urgent by default and never off; held by `enabled`, the pause and the send mode like the rest); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box` (urgent by default and never off; held by `enabled`, the pause and the send mode like the rest); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

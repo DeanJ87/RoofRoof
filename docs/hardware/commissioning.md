@@ -17,7 +17,7 @@ Just want to see the motor turn on the bench before the Hall sensor exists? The 
 <!-- diagram: DIA-30
 sources: lib/BoardLogic/src/PinMap.cpp lib/BoardLogic/src/WiringCheck.cpp lib/RoofLogic/src/RoofController.cpp lib/CloseSequenceLogic/src/CloseSequence.cpp include/CloseOnUnsafe.h
 blocking: true
-fingerprint: b3c140c63b86d5f5
+fingerprint: 2da0cae1f6b38418
 -->
 <figure class="diagram" markdown>
 
@@ -53,7 +53,7 @@ flowchart TD
 !!! danger "Safety rules for the whole procedure"
     - The roof is moved by a motor strong enough to damage a telescope. Until stage 11 passes, **someone is at the roof for every move, with a way to cut the motor supply within reach** (a switch or an unplugged lead, not a software button).
     - **Park the mount** (or take the telescope off the mount) before any move of the real roof.
-    - The roof closes only onto a parked mount, and opens only while the weather is safe. Those checks are not to be worked around for a test; the procedure below tests them with real inputs.
+    - The roof moves only with the mount confirmed parked (a roll-off roof can hit a telescope that points up either way, so an open needs the park too), and opens only while the weather is safe. Those checks are not to be worked around for a test; the procedure below tests them with real inputs.
     - [Test box mode](../user-guide/test-box.md) bypasses the park, weather and daylight checks for a box on the desk with no telescope. Turn every bypass off before stage 4: commissioning a real roof tests the real checks.
     - A step that fails stops the procedure. Fix the cause (see [Troubleshooting](../reference/troubleshooting.md)) and repeat the step before going on.
 
@@ -143,7 +143,7 @@ These thresholds only need to see both magnets. Once the motor is connected (sta
 
 ## Stage 4: Weather and park sources (motor disconnected)
 
-The roof opens only on a safe weather verdict and closes only onto a confirmed park, so these inputs are tested with the real sources, one at a time. Details: [Safety inputs](../user-guide/safety-inputs.md). Keep a log window open: each result is a line with the `Safety` tag.
+The roof opens only on a safe weather verdict, and opens or closes only with a confirmed park, so these inputs are tested with the real sources, one at a time. Details: [Safety inputs](../user-guide/safety-inputs.md). Keep a log window open: each result is a line with the `Safety` tag.
 
 !!! warning "Unsafe weather starts the automatic close"
     Whenever you make the weather unsafe in stages 4 and 6, **hold the closed magnet at the Hall sensor** (roof `closed`), so the automatic close has nothing to do. With the roof open or stopped and the mount parked, an unsafe verdict would ask the real mount to park and command a close that times out and latches a fault. Before stage 7 check that the close sequence is idle (no `Close` lines in the log and `roof.closePhase`, where shown, idle).
@@ -192,7 +192,8 @@ With the motor leads off, the controller still runs its whole drive logic. A han
 
 1. **Refusals first.**
    - No weather source (set `safety.http.enabled` off for a moment): `roofopen` is refused, `weatherNotSafe`. Turn it back on.
-   - N.I.N.A. closed, or a park switch open: `roofclose` is refused, `mountNotParked`. Restore both.
+   - A park switch open, or N.I.N.A. closed with park requests off (`park.requestPark` false) or no N.I.N.A. address: `roofopen` and `roofclose` are refused, `mountNotParked`, the text saying N.I.N.A. can't be asked. Restore them. With an address set and park requests on, the same commands answer `202` and wait for the park instead ([Park before every move](../user-guide/close-on-unsafe.md#park-before-every-move)): with N.I.N.A. closed the wait ends after `park.timeoutSeconds` with **Mount didn't park**, the roof not having moved (`roofstop` ends it sooner). Restore N.I.N.A.
+   - **The park wait and the confirmed close.** Unpark the mount with N.I.N.A. connected and run `roofopen`: N.I.N.A. is asked to park, `roof.parkWait` counts down, and the roof starts to open about 4 s after the park is confirmed. Repeat with `roofclose` (hold the open magnet first). Then, with N.I.N.A. closed, `roofclose` with the body `{"override": ["mountNotParked"]}` closes once without the park; the next `roofclose` checks the park again.
    - A fitted park switch opened **during** a close (hold the open magnet, `roofclose`, take the magnet away, then open the switch): the move stops with a `parkInterlock` fault naming the switch. Clear it with `roofclear`.
    - Between the magnets (`state: unknown`): a person's `roofclose` or `roofopen` is allowed (slowly, to the first magnet); N.I.N.A. and MQTT cannot do it.
 2. **The drive pattern.** Hold the closed magnet (state `closed`) and run `roofopen`. Take the magnet away. For the length of the move watch RPWM, LPWM and EN (DevKit: GPIO25, 26, 27; WT32 carrier: IO14, IO15, IO4): EN goes high only while driving; RPWM and LPWM are never both high; the PWM runs at 20 kHz. *Analyser:* capture a full open, a close, a stop and a reversal (open then close at once); RPWM and LPWM are never both high and EN drops before the stop is reported. With a meter, the EN pin reads about 3.3 V only while driving and returns to 0 V on `roofstop`.
@@ -229,7 +230,7 @@ This is the whole safety function, run end to end with nothing to move. Read [Cl
 13. **The daylight dry run** (by day; skip to step 14 at night and do it the next morning). Reset to "open" with the mount unparked and SQMeter safe.
     - **Alert.** With the mode on **Alert** and the sun above the threshold (lower the **Sun altitude** threshold below the sun's altitude shown on the Roof card if you need to), **Roof open in daylight** arrives about 30 s later, saying nothing closes the roof. Nothing moves, and `roofopen` is still accepted.
     - **Alert and close.** Set the mode to **Alert and close**. Within about a second the log shows `Close sequence started: daylight, Sun ...` and `Asking N.I.N.A. to park the mount`; the mount parks, the close starts 4 to 5 s after the park is confirmed, and with the closed magnet at the sensor **Roof closed after daylight** arrives. **Unsafe: closing** does not.
-    - **Opening refused.** With the roof `closed`, `roofopen` answers `409` `daylight` with the sun and the threshold, and the Roof card's **Open** greys with the same reason. N.I.N.A.'s Open shutter gets the same refusal.
+    - **Opening refused.** With the roof `closed`, `roofopen` answers `409` `daylight` with the sun and the threshold, and the Roof card's **Open** says the same reason under the buttons (pressing it offers **Open anyway**). N.I.N.A.'s Open shutter gets the same refusal. `roofopen` with the body `{"override": ["daylight"]}` opens the roof; rain or a lost SQMeter on top of it can't be overridden.
     - **The park first.** Reset to "open" and unparked with N.I.N.A. closed: **Mount didn't park** arrives at `park.timeoutSeconds`, worded "It is daylight ...", and the roof stays open.
     - **A person's stop.** Start the daylight close again and press Stop while the roof "closes": **Automatic close stopped** arrives once, worded "in daylight", nothing more happens and no 30-minute reminders follow. Make SQMeter unsafe: after 30 s the weather close starts (**Unsafe: closing**). Press Stop again and make SQMeter safe.
     - **The check can't run.** Switch **Location set** off: the Roof card's Daylight line says **Location not set**, nothing is refused, and **Daylight check not working** arrives 10 minutes later. Switch it back on.
@@ -272,10 +273,10 @@ At the roof, the roof at its closed end (state `closed`), the 12 V switch in rea
 
 Details: [ASCOM Alpaca](../user-guide/alpaca.md); how the sequence and the failsafe share the roof: [N.I.N.A. opens and closes the roof](../user-guide/alpaca.md#nina-opens-and-closes-the-roof). Alpaca is off by default and an Alpaca client is not a person: it can't move a roof whose position is unknown, clear a fault or stop a close in bad weather. Do steps 1 to 7 first **with the motor still disconnected** (hand-held magnets, as in stage 6), before "Connect the motor" below; steps 2 and 5 are then repeated on the real roof, attended, after stage 8.
 
-1. **Switch Alpaca on** (**Settings → Network → ASCOM Alpaca**) and restart. In N.I.N.A.'s dome equipment, discover **RoofRoof roof** and connect (add it by IP and port 80 if discovery doesn't cross your network).
+1. **Switch Alpaca on** (**Settings → Network → ASCOM Alpaca**) and restart. In N.I.N.A.'s dome equipment, discover **RoofRoof** and connect (add it by IP and port 80 if discovery doesn't cross your network).
 2. **Open and close from N.I.N.A.** with the weather safe and the mount parked. ShutterStatus runs through opening, open, closing and closed.
 3. **Weather unsafe:** N.I.N.A.'s Open shows an error with the weather's reason, and nothing moves.
-4. **Mount not parked:** N.I.N.A.'s Close shows the park reason.
+4. **Mount not parked:** N.I.N.A.'s Close with the mount unparked succeeds at once, ShutterStatus reads closing while N.I.N.A. is asked to park, and the roof closes once the park is confirmed. With park requests off (or no N.I.N.A. address), or after a wait that runs out, it shows the park reason (an error, ShutterStatus reading Error until the next command). N.I.N.A.'s Open with the mount unparked behaves the same way.
 5. **Stop from N.I.N.A.** stops a move in safe weather. With **Remote Stop calls off a close** off (the default), during a close in unsafe weather it shows an error and the close **continues**; the web UI's Stop still stops it, and no **Automatic close stopped** alert arrives for the client's stop. A client's stop of a close waiting behind an upload is refused in bad weather.
 6. **Position unknown:** after a boot between the magnets N.I.N.A.'s Open and Close say only a person can move the roof.
 7. **Alpaca off:** every Dome command, Stop included, answers "disabled". Turn it back on afterwards if you use it.
