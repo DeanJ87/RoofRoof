@@ -50,6 +50,8 @@ test.describe.configure({ retries: 0 });
 test('healthy: the Status card is the alerts state, All good', async ({ page }) => {
   // inventory: status-card  inventory: alerts-state
   await open(page);
+  // A roof whose setup is finished (the demo's isn't measured yet: spec 028's Finish setup row).
+  await setConfig(page, { 'roof.measured': 31 });
   await expect(statusCard(page).getByRole('heading', { name: 'Status', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveText('All good');
   // The demo's roof is an Alpaca Dome (spec 011), so the imaging-app tile is there too.
@@ -205,13 +207,13 @@ test('the demo says its clock moved on the Demo button, not the dashboard', asyn
   await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved', { timeout: 20_000 });
 });
 
-test('the dashboard is the Status card, the Roof card, Roof setup (until done) and Device & Network, nothing from the old sensors', async ({
+test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({
   page,
 }) => {
   // inventory: device-network-card
   await open(page);
   await expect(card(page, 'Device & Network')).toBeVisible();
-  await expect(page.locator('.masonry-item')).toHaveCount(4); // spec 026: the demo roof isn't calibrated yet
+  await expect(page.locator('.masonry-item')).toHaveCount(3); // spec 028: setup is a Status row, not a card
   // The roof straight after Status (spec 009 FR-001).
   await expect(page.locator('.masonry-item').nth(1)).toContainText('Roof');
 });

@@ -12,8 +12,9 @@ const open = async (page: Page) => {
 
 test('the Status card tip is in the top layer, over the next card and inside the window', async ({ page }) => {
   await open(page);
-  await statusCard(page).locator('.card-title .info-tip').hover();
-  const body = statusCard(page).locator('.info-tip-body');
+  const tip = statusCard(page).locator('.card-title .info-tip');
+  await tip.hover();
+  const body = tip.locator('.info-tip-body');
   await expect(body).toBeVisible();
   const placed = await body.evaluate((tip) => {
     const box = tip.getBoundingClientRect();
