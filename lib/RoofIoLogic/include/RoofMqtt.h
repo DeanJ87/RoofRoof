@@ -78,9 +78,10 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
-            // PubSubClient's buffer (MQTTClient): a publish needs its 5-byte
-            // header, the 2-byte topic length, the topic and the payload in it,
-            // or PubSubClient refuses it without sending.
+            // PubSubClient's buffer (MQTTClient): a document published whole
+            // needs its 5-byte header, the 2-byte topic length, the topic and the
+            // payload in it, or PubSubClient refuses it without sending. The
+            // state document is streamed (spec 031) but is kept inside it too.
             constexpr size_t CLIENT_BUFFER_BYTES = 3072;
             constexpr size_t STATE_DOC_CAPACITY = 3840; // spec 027: the dashboard fields; spec 030: needsPerson
             constexpr size_t RESULT_DOC_CAPACITY = 1024;

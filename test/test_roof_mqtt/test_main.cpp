@@ -397,7 +397,7 @@ void test_state_document_fits_with_escaped_texts(void)
 
 // Spec 032: the largest document while the roof moves (every text at its
 // longest and escaped, every dashboard field set), with a long base topic,
-// fits PubSubClient's buffer, so a moving publish is never refused for size.
+// fits PubSubClient's buffer: streamed since spec 031, it would still fit whole.
 void test_the_largest_moving_document_fits_the_client_buffer(void)
 {
     Snapshot s = closedRoof();

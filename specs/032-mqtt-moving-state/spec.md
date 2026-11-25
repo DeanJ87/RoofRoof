@@ -33,7 +33,10 @@ loop while the roof is busy. Native tests reproduce three faults in it:
 
 The document's size was checked too: the largest moving document (every text at its longest and
 escaped, every dashboard field set, a 128-character base topic) is about 2.5 KB, inside PubSubClient's
-3 KB buffer, and spec 031 now streams it from its pool. Size is not a cause; a test keeps it so.
+3 KB buffer, and spec 031 now streams it from its pool without that buffer. Size is not a cause; a
+test keeps it inside the buffer anyway. Spec 031's streamed publish returns false without dropping
+the connection when the document's pool can't be allocated: exactly the kind of failure that
+latched in fault 2.
 
 ## User Scenarios & Testing
 
