@@ -123,7 +123,7 @@ namespace DemoRoof
     }
 
     // RoofControl::automaticClose: withdrawn if a person stopped the roof since the decision.
-    Outcome EmulatedRoof::automaticClose(uint32_t personStopsSeen)
+    Outcome EmulatedRoof::automaticClose(uint32_t personStopsSeen, uint8_t overrides)
     {
         if (personStops != personStopsSeen)
             return Outcome{
@@ -134,7 +134,29 @@ namespace DemoRoof
         guard.closeWins();                      // spec 027: a waiting Open is called off
         calibration.yieldToClose(controller);   // spec 016: the automatic close always wins
         Calib::Teach::yieldToClose(controller); // spec 019: a jog is stopped first
-        return runChecked(Roof::Command::Close, Roof::Origin::Automatic);
+        return runChecked(Roof::Command::Close, Roof::Origin::Automatic, overrides);
+    }
+
+    // Spec 030 (RoofControl::blindLocked): the park gate as for every close,
+    // then the controller's blind close (the Hall sensor dead: on time alone).
+    Outcome EmulatedRoof::automaticBlindClose(uint32_t personStopsSeen, uint8_t overrides)
+    {
+        const Roof::State state = controller.status().state;
+        if (personStops != personStopsSeen)
+            return Outcome{false, CloseSeq::PERSON_STOP_REASON, "A person stopped the roof: the automatic close is withdrawn", state};
+        const uint8_t allowed = RoofIo::allowedOverrides(Roof::Command::Close, Roof::Origin::Automatic, overrides);
+        const RoofIo::GateRefusal gate = RoofIo::gateCommand(Roof::Command::Close, gates, allowed);
+        if (gate != RoofIo::GateRefusal::None)
+            return Outcome{false, RoofIo::gateRefusalName(gate), RoofIo::describeGate(gate, gates), state};
+        guard.closeWins();
+        const Outcome outcome = outcomeOf(controller.blindClose(Roof::Origin::Automatic));
+        if (outcome.accepted)
+        {
+            moveOrigin = Roof::Origin::Automatic;
+            guard.ran(Roof::Command::Close, allowed, gates); // the park re-check, N.I.N.A.-lost included
+        }
+        syncFault();
+        return outcome;
     }
 
     Outcome EmulatedRoof::clearFault()

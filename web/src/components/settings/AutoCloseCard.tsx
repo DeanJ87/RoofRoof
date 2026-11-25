@@ -26,7 +26,7 @@ const PolicyNumber: FunctionalComponent<{
   props: Props;
   at: string[];
   label: string;
-  hint: string;
+  hint?: string;
   unit: string;
   value: number;
 }> = ({ props, at, label, hint, unit, value }) => (
@@ -122,6 +122,14 @@ const AutoCloseCard: FunctionalComponent<Props> = (props) => {
       <div class="form-grid">
         <PolicyNumber
           props={props}
+          at={['autoClose', 'unsafeHoldSeconds']}
+          label={t('settings.roof.unsafeHold')}
+          hint={t('settings.roof.unsafeHoldHint')}
+          unit={t('settings.roof.unitSeconds')}
+          value={a.unsafeHoldSeconds}
+        />
+        <PolicyNumber
+          props={props}
           at={['autoClose', 'rearmMinutes']}
           label={t('settings.roof.rearm')}
           hint={t('settings.roof.rearmHint')}
@@ -156,6 +164,24 @@ const AutoCloseCard: FunctionalComponent<Props> = (props) => {
         onChange={(v) => props.update(['autoClose', 'remoteStop'], v)}
       />
       <DepNote entry={props.deps.get('autoClose.remoteStop')} onFix={props.fix} />
+      <Toggle
+        dataField="autoClose.ninaLostClose"
+        label={t('settings.roof.ninaLostClose')}
+        hint={t('settings.roof.ninaLostCloseHint')}
+        checked={a.ninaLostClose}
+        onChange={(v) => props.update(['autoClose', 'ninaLostClose'], v)}
+      />
+      {(a.ninaLostClose || props.error('autoClose.ninaLostMinutes') !== undefined) && (
+        <div class="form-grid">
+          <PolicyNumber
+            props={props}
+            at={['autoClose', 'ninaLostMinutes']}
+            label={t('settings.roof.ninaLostMinutes')}
+            unit={t('settings.roof.unitMinutes')}
+            value={a.ninaLostMinutes}
+          />
+        </div>
+      )}
       <AdvancedRows {...props} />
     </SettingsCard>
   );

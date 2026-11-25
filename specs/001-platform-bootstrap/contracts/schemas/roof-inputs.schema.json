@@ -84,6 +84,9 @@
             "limitMs": {
               "type": "number"
             },
+            "reasons": {
+              "type": "string"
+            },
             "safe": {
               "type": "boolean"
             },
@@ -109,6 +112,7 @@
             "flags",
             "generation",
             "limitMs",
+            "reasons",
             "safe",
             "state",
             "text"
@@ -133,6 +137,9 @@
             "limitMs": {
               "type": "number"
             },
+            "reasons": {
+              "type": "string"
+            },
             "safe": {
               "type": "boolean"
             },
@@ -158,6 +165,7 @@
             "flags",
             "generation",
             "limitMs",
+            "reasons",
             "safe",
             "state",
             "text"

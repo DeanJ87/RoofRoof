@@ -13,6 +13,9 @@ interface Roof {
   fault: { kind: string; cause: string; text: string } | null;
   supplyVolts: number | null;
   simulation: string;
+  weather: string;
+  closePhase: string;
+  weatherHold: { countedSeconds: number; leftSeconds: number; fired: boolean };
 }
 
 const DEFAULTS = {
@@ -105,13 +108,36 @@ describe('demo roof', () => {
     expect(runUntil(() => roof().state === 'closed', 180000)).toBeGreaterThan(0);
   });
 
+  it('spec 030: a short unsafe spell never moves the roof; the hold counts it, rain skips it', () => {
+    const hold = () => roof().weatherHold;
+    command('open');
+    runUntil(() => roof().state === 'open', 120000);
+    expect(hold()).toEqual({ countedSeconds: 0, leftSeconds: -1, fired: false });
+    inject({ unsafe: true });
+    tick(30000);
+    expect(roof().weather).toBe('unsafe');
+    expect(roof().closePhase).toBe('idle');
+    expect(hold().fired).toBe(false);
+    expect(hold().leftSeconds).toBeGreaterThan(0);
+    expect(hold().leftSeconds).toBeLessThanOrEqual(60);
+    inject({ unsafe: false });
+    tick(20000);
+    expect(roof().state).toBe('open');
+    expect(hold().leftSeconds).toBe(-1);
+    // Rain: no hold, the close starts at once.
+    inject({ rain: true });
+    tick(6000);
+    expect(roof().closePhase).not.toBe('idle');
+    expect(hold().fired).toBe(true);
+  });
+
   it('park fails: the roof stays open and a critical alert goes out (constitution II)', () => {
     core.applyConfig(JSON.stringify({ park: { timeoutSeconds: 30 } }));
     command('open');
     runUntil(() => roof().state === 'open', 120000);
     inject({ mount: 'unpark', parkFails: true });
     inject({ unsafe: true });
-    tick(60000);
+    tick(120000); // spec 030: the 60 s weather hold, then the 30 s park wait
     expect(roof().state).toBe('open');
     expect(alertTitles().some((t) => /park/i.test(t))).toBe(true);
   });

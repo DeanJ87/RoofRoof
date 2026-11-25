@@ -59,9 +59,12 @@ const standDownClears = (roof: RoofStatus, ctx: BlockerContext): string => {
   return t('move.clears.afterSafe', { minutes: ctx.rearmMinutes });
 };
 
-/** Release is offered only while the device would take it: stood down and nothing wants the roof closed. */
+/**
+ * Release is offered only while the device would take it: stood down and nothing wants the roof closed
+ * (spec 030: a fired weather hold still wants it closed until its clear spell has passed).
+ */
 export const releaseOffered = (roof: RoofStatus): boolean =>
-  STAND_DOWN.includes(roof.closePhase) && roof.weather === 'safe' && !roof.daylight?.closes;
+  STAND_DOWN.includes(roof.closePhase) && roof.weather === 'safe' && !roof.daylight?.closes && !roof.weatherHold?.fired;
 
 /**
  * The automatic close as the person needs to know it, or null while it is idle: a stand-down (a person's

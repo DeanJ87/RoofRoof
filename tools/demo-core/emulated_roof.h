@@ -25,6 +25,8 @@
 #include "DiagDocuments.h"
 #include "MoveGuard.h"
 #include "MoveLog.h"
+#include "NeedsPerson.h"
+#include "NinaLost.h"
 #include "FaultRecord.h"
 #include "InputsReport.h"
 #include "RoofController.h"
@@ -35,6 +37,7 @@
 #include "SafetyInput.h"
 #include "SqmeterSource.h"
 #include "Teach.h"
+#include "WeatherHold.h"
 
 namespace DemoRoof
 {
@@ -194,7 +197,13 @@ namespace DemoRoof
         void stepDaylight(bool now);
         void carryOut(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
-        Outcome automaticClose(uint32_t personStopsSeen);
+        Outcome automaticClose(uint32_t personStopsSeen, uint8_t overrides = 0);
+        // Spec 030 (RoofControl::automaticBlindClose): the park gate, then the controller's blind close.
+        Outcome automaticBlindClose(uint32_t personStopsSeen, uint8_t overrides = 0);
+        // Spec 030 (CloseOnUnsafe::holdWeather, watchNina, settleAlerts).
+        void holdWeather(CloseSeq::Inputs &in);
+        void watchNina(CloseSeq::Inputs &in);
+        void settleAlerts();
         Outcome runChecked(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0);
         // Spec 027 (emulated_roof_guard.cpp): RoofControlGuard's admitLocked and stepGuard.
         RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides, bool parkAside) const;
@@ -261,7 +270,8 @@ namespace DemoRoof
         bool weatherChanged = false;
 
         CloseSeq::Sequence sequence;
-        bool releaseWanted = false; // spec 026: a person's release, for the next step
+        bool releaseWanted = false;    // spec 026: a person's release, for the next step
+        bool nothingWantsClose = true; // spec 026/030: the last step's weather (through the hold) and daylight
         Alerts::RoofInputs roofConditions;
         uint32_t closedCount = 0;
         // Spec 013: CloseOnUnsafe::updateDaylight.
@@ -273,6 +283,9 @@ namespace DemoRoof
         Daylight::Watch daylightWatch;
         Daylight::View daylightView;
         uint32_t daylightClosedCount = 0;
+        CloseSeq::WeatherHold weatherHold;     // spec 030
+        CloseSeq::NinaLostWatch ninaLostWatch; // spec 030 (autoClose.ninaLostClose)
+        CloseSeq::NeedsPerson needsPerson;     // spec 030
         int64_t epoch = 0;
         uint64_t lastDaylightMs = 0;
         std::vector<Alerts::Alert> critical;

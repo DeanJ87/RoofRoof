@@ -143,6 +143,17 @@ export const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight; location
   );
 };
 
+// Spec 030: the weather hold counting down to the automatic close (rain needs none).
+const WeatherHold: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
+  const hold = roof.weatherHold;
+  if (!hold || hold.fired || hold.leftSeconds < 0) return null;
+  return (
+    <div data-inventory="roof-weather-hold">
+      <Note tone="warn">{t('roof.weatherHold', { seconds: formatCount(hold.leftSeconds) })}</Note>
+    </div>
+  );
+};
+
 const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus; ctx: BlockerContext }> = ({ roof, location, ctx }) => {
   const phase = closePhasePill(roof.closePhase);
   // Spec 026: a stand-down says when it clears, with Release hold while that is allowed.
@@ -150,6 +161,7 @@ const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus;
   return (
     <div data-inventory="roof-checks">
       <HealthRow label={t('roof.weather.label')} pill={weatherPill(roof)} line={sqmeterLine(roof)} />
+      <WeatherHold roof={roof} />
       <HealthRow label={t('roof.park.label')} pill={parkPill(roof)} line={ninaLine(roof)} />
       {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
@@ -234,6 +246,11 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = 
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
+        {roof?.blind && (
+          <div data-inventory="roof-blind">
+            <Note tone="warn">{t('roof.blindClosing')}</Note>
+          </div>
+        )}
         <RoofButtons view={view} send={send} confirm={confirm} ctx={ctx} />
         <PinsLink valid={live.status?.pins?.valid} />
         {roof && (

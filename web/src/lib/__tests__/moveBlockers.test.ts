@@ -122,6 +122,16 @@ describe('the automatic close on hold', () => {
     expect(releaseOffered(held)).toBe(false);
   });
 
+  it('no release while the weather hold has fired, even with the weather safe again (spec 030)', () => {
+    const held = roof({
+      closePhase: 'heldByPerson',
+      closeRearmSeconds: null,
+      weatherHold: { countedSeconds: 60, leftSeconds: -1, fired: true },
+    });
+    expect(releaseOffered(held)).toBe(false);
+    expect(closePhaseBlocker(held, ctx)!.fix).toBeUndefined();
+  });
+
   it('no release while daylight wants the roof closed', () => {
     const daylight = { mode: 'close', state: 'day', sunAltitudeDeg: 3, limitDeg: 0, text: 'Sun up', closes: true } as const;
     expect(releaseOffered(roof({ closePhase: 'heldByPerson', daylight }))).toBe(false);

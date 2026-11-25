@@ -320,4 +320,28 @@ describe('RoofCard', () => {
     expect(button('Clear fault')).toBeDisabled();
     expect(screen.getByText('Clear fault: Fix the pins on the Pins page, then restart')).toBeInTheDocument();
   });
+  it('counts the weather hold down to the automatic close, and hides it once fired or not counting (spec 030)', () => {
+    // inventory: roof-weather-hold
+    const hold = (leftSeconds: number, fired = false) => ({ countedSeconds: 60 - leftSeconds, leftSeconds, fired });
+    const { unmount } = show(live(status({ weather: 'unsafe', weatherHold: hold(42) })));
+    expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toHaveTextContent(
+      'Weather unsafe: closing in 42 s unless it clears',
+    );
+    unmount();
+    const fired = show(live(status({ weather: 'unsafe', weatherHold: hold(0, true) })));
+    expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toBeNull();
+    fired.unmount();
+    // Rain (or safe weather): not counting.
+    show(live(status({ weatherHold: hold(-1) })));
+    expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toBeNull();
+  });
+
+  it('says the roof is closing blind while the Hall sensor has failed (spec 030)', () => {
+    // inventory: roof-blind
+    const { unmount } = show(live(status({ blind: false })));
+    expect(document.querySelector('[data-inventory="roof-blind"]')).toBeNull();
+    unmount();
+    show(live(status({ state: 'closing', blind: true })));
+    expect(document.querySelector('[data-inventory="roof-blind"]')).toHaveTextContent('Closing blind: the Hall sensor has failed');
+  });
 });

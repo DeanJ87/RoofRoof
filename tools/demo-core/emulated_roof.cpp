@@ -47,6 +47,8 @@ namespace DemoRoof
         // Constitution I: a restart never clears the lockout.
         if (fault.fault.kind != Roof::FaultKind::None)
             controller.raiseFault(fault.fault);
+        if (fault.blindDone)
+            controller.restoreBlindDone(); // spec 030: one blind close per fault
         gates = RoofIo::GateInputs();
         gates.fittedSwitches = static_cast<uint8_t>(parkCfg.switches);
         personStops = 0;
@@ -60,6 +62,10 @@ namespace DemoRoof
         verdict = Safety::WeatherVerdict();
         park = Safety::ParkResult();
         sequence = CloseSeq::Sequence();
+        nothingWantsClose = true;
+        weatherHold = CloseSeq::WeatherHold(); // spec 030: a fresh boot starts with the hold empty
+        ninaLostWatch = CloseSeq::NinaLostWatch();
+        needsPerson = CloseSeq::NeedsPerson();
         roofConditions = Alerts::RoofInputs();
         closedCount = 0;
         daylightClosedCount = 0;
@@ -197,7 +203,7 @@ namespace DemoRoof
     {
         stepGuard();
         const Roof::Status &status = controller.status();
-        if (RoofIo::interlockLost(status, gates, guard.closeParkOverride()))
+        if (RoofIo::interlockLost(status, gates, guard.closeParkOverride(), guard.closeNinaLost())) // spec 030: N.I.N.A. lost
             latchExternal(
                 RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f));
         else if (RoofIo::openMustStop(status, gates, guard.openOverride()))
@@ -246,6 +252,8 @@ namespace DemoRoof
             fault = RoofIo::FaultRecord();
         else if (fault.fault.kind == Roof::FaultKind::None)
             fault = RoofIo::FaultRecord{now, RoofIo::FaultCause::Logic};
+        if (now.kind != Roof::FaultKind::None)
+            fault.blindDone = controller.blindDone(); // spec 030: saved with the fault
     }
 
     // --- The simulated SQMeter and N.I.N.A. -------------------------------------
@@ -382,7 +390,7 @@ namespace DemoRoof
 
     const char *EmulatedRoof::releaseHold()
     {
-        const bool nothingWantsClose = verdict.verdict == Safety::Verdict::Safe && !daylightView.closes();
+        // As CloseOnUnsafe::requestRelease: the weather as the sequence last saw it (spec 030: through the hold).
         const char *refusal = CloseSeq::releaseRefusal(sequence.phase(), nothingWantsClose);
         if (refusal == nullptr)
             releaseWanted = true;
@@ -400,14 +408,18 @@ namespace DemoRoof
         in.roofStarted = true;
         in.daylight = daylightView.closes();
         CloseSeq::applyOverride(in, overrideBits(), verdict); // spec 027
+        holdWeather(in);                                      // spec 030
+        watchNina(in);                                        // spec 030
         in.releaseHold = releaseWanted;                       // spec 026
         releaseWanted = false;
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
         sequence.setPolicy(policy);
         const CloseSeq::Phase before = sequence.phase();
         const CloseSeq::Decision decision = sequence.step(in);
+        nothingWantsClose = in.weatherSafe && !in.daylight;
         if (CloseSeq::closedAfterAttempt(before, decision.event))
             ++(decision.daylight ? daylightClosedCount : closedCount);
+        settleAlerts(); // spec 030
         const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
         CloseSeq::updateConditions(roofConditions, snapshot(), verdict, view);
         CloseSeq::updateDaylightConditions(roofConditions, daylightView, controller.status().state, view);
@@ -419,6 +431,7 @@ namespace DemoRoof
             return;
         CloseSeq::Reasons reasons;
         reasons.park = CloseSeq::parkReason(park, policy.requestPark);
+        reasons.parkGap = CloseSeq::parkGapOf(park); // spec 030
         reasons.fault = RoofIo::describeFault(fault);
         reasons.roof = controller.status().state;
         carryOut(decision, reasons);
@@ -433,10 +446,14 @@ namespace DemoRoof
                 parkMount();
             break;
         case CloseSeq::Action::Close:
+        case CloseSeq::Action::BlindClose:
         {
             // As CloseOnUnsafe::handle: the decision and the roof's answer are
-            // reported once the refusal (if any) is known.
-            const Outcome outcome = automaticClose(personStops);
+            // reported once the refusal (if any) is known. Spec 030: N.I.N.A.'s
+            // part of the park set aside by the N.I.N.A.-lost close.
+            const uint8_t bits = decision.ninaLost ? RoofIo::OverrideNinaLost : 0;
+            const Outcome outcome = decision.action == CloseSeq::Action::BlindClose ? automaticBlindClose(personStops, bits)
+                                                                                    : automaticClose(personStops, bits);
             CloseSeq::Reasons reasons = given;
             reasons.refusal = outcome.text;
             const CloseSeq::Decision answer = sequence.closeAnswered(CloseSeq::answerFor(outcome.accepted, outcome.reason));
@@ -454,11 +471,54 @@ namespace DemoRoof
     }
 
     // A critical event goes to the alert sink once per episode (decision.alert).
-    void EmulatedRoof::report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons)
+    void EmulatedRoof::report(const CloseSeq::Decision &given, const CloseSeq::Reasons &reasons)
     {
-        if (!CloseSeq::isCritical(decision.event) || !decision.alert)
+        if (!CloseSeq::isCritical(given.event) || !given.alert)
             return;
+        CloseSeq::Decision decision = given;
+        decision.parkGap = reasons.parkGap; // spec 030: the title names the missing input
         critical.push_back(CloseSeq::criticalAlert(decision, CloseSeq::reasonFor(decision, reasons)));
+    }
+
+    // Spec 030 (CloseOnUnsafe::holdWeather): the sequence sees the weather
+    // through the hold; the verdict itself, Open's refusal and an opening
+    // roof's stop are not delayed.
+    void EmulatedRoof::holdWeather(CloseSeq::Inputs &in)
+    {
+        CloseSeq::WeatherHold::Step step;
+        step.nowMs = in.nowMs;
+        step.weatherSafe = in.weatherSafe;
+        step.rain = (verdict.reasons & Safety::ReasonRain) != 0;
+        step.overrideActive = (overrideBits() & RoofIo::OverrideWeather) != 0;
+        step.holdMs = policy.unsafeHoldMs;
+        in.weatherSafe = weatherHold.update(step);
+    }
+
+    // Spec 030 (CloseOnUnsafe::watchNina, autoClose.ninaLostClose).
+    void EmulatedRoof::watchNina(CloseSeq::Inputs &in)
+    {
+        CloseSeq::NinaLostWatch::Step step;
+        step.nowMs = in.nowMs;
+        step.parkReasons = park.reasons;
+        step.enabled = policy.ninaLostClose;
+        step.afterMs = policy.ninaLostMs;
+        in.ninaLost = ninaLostWatch.update(step) && RoofIo::switchesClosed(gates.fittedSwitches, gates.switch1, gates.switch2);
+    }
+
+    // Spec 030 (CloseOnUnsafe::settleAlerts): the needs-a-person watcher. The
+    // demo has no outages, so its alerts go straight to the critical sink.
+    void EmulatedRoof::settleAlerts()
+    {
+        const RoofIo::Snapshot snap = snapshot();
+        CloseSeq::NeedsPersonInputs in;
+        in.nowMs = nowMs - bootMs;
+        in.roof = &snap;
+        in.roofStarted = true;
+        in.phase = sequence.phase();
+        in.remindMs = policy.remindMs;
+        Alerts::Alert alert;
+        if (needsPerson.step(in, alert))
+            critical.push_back(alert);
     }
 
     std::vector<Alerts::Alert> EmulatedRoof::takeCritical()

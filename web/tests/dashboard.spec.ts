@@ -282,7 +282,7 @@ test('a jammed roof: the fault on the Roof card and the Status card, gone once c
 });
 
 test('unsafe weather: the close phase on the Roof card; a person stopping it shows on the Status card', async ({ page }) => {
-  // inventory: roof-close-phase  inventory: roof-close
+  // inventory: roof-close-phase  inventory: roof-close  inventory: roof-weather-hold
   await open(page);
   await roofReady(page);
   await fast(page);
@@ -290,7 +290,10 @@ test('unsafe weather: the close phase on the Roof card; a person stopping it sho
   await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('open');
   await expect(item(page, 'roof-close-phase')).toHaveCount(0);
   await panelChoice(page, 'Weather: Unsafe');
+  // Spec 030: the hold counts down first (60 s, 6 s at 10x), then the close starts.
+  await expect(item(page, 'roof-weather-hold')).toContainText(/closing in \d+ s unless it clears/, { timeout: 10_000 });
   await expect(item(page, 'roof-close-phase')).toBeVisible({ timeout: 20_000 });
+  await expect(item(page, 'roof-weather-hold')).toHaveCount(0);
   await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('closing');
   expect(await roofCommand(page, 'stop')).toBe(200);
   await expect(item(page, 'roof-close')).toBeVisible({ timeout: 10_000 });

@@ -338,6 +338,34 @@
       "test": "roof-close-phase"
     },
     {
+      "id": "roof-weather-hold",
+      "label": "roof.weatherHold",
+      "sources": ["status.roof.weatherHold", "status.roof.weatherHold.leftSeconds", "status.roof.weatherHold.fired"],
+      "requiredBy": "030 FR-004",
+      "visibility": {
+        "rule": "when",
+        "when": "unsafe weather is counting towards the automatic close (not rain, not yet fired)"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-weather-hold"
+    },
+    {
+      "id": "roof-blind",
+      "label": "roof.blindClosing",
+      "sources": ["status.roof.blind"],
+      "requiredBy": "030 FR-006",
+      "visibility": {
+        "rule": "when",
+        "when": "the roof is closing blind (the Hall sensor failed)"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-blind",
+      "testIn": "unit",
+      "demoCannot": "The demo roof has no failed Hall sensor to inject, so it never closes blind"
+    },
+    {
       "id": "device-network-card",
       "label": "dashboard.deviceNetwork",
       "sources": [
@@ -777,10 +805,6 @@
       "reason": "Move details for troubleshooting through the API; the card says a move from an unknown position goes slowly"
     },
     {
-      "match": "status.roof.blind",
-      "reason": "Move details for troubleshooting through the API; the state says closing and the alert says the close ran blind"
-    },
-    {
       "match": "status.roof.moveElapsedMs",
       "reason": "Move details for troubleshooting through the API"
     },
@@ -879,6 +903,14 @@
     {
       "match": "deps.D-48",
       "reason": "Shown on its Settings row (Roof, Test box); the test box banner says when the bypasses wait for the clock"
+    },
+    {
+      "match": "status.roof.weatherHold.countedSeconds",
+      "reason": "Hold details for troubleshooting through the API; the Roof card says the seconds left"
+    },
+    {
+      "match": "status.roof.needsPerson.**",
+      "reason": "Not a dashboard item: a red banner shows it on every page instead (components/NeedsPersonBanner.tsx, spec 030)"
     }
   ]
 }

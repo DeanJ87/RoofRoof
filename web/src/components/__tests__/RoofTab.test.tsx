@@ -27,6 +27,8 @@ const FIELDS = [
   'roof.hallLowCounts',
   'roof.currentSenseEnabled',
   'roof.minSupplyVolts',
+  'roof.blindClose',
+  'roof.blindSagVolts',
   'safety.http.enabled',
   'safety.http.url',
   'safety.mqtt.enabled',
@@ -41,6 +43,8 @@ const FIELDS = [
   'autoClose.remindMinutes',
   'autoClose.notStarted',
   'autoClose.remoteStop',
+  'autoClose.unsafeHoldSeconds',
+  'autoClose.ninaLostClose',
   'ui.confirmOpenClose',
 ];
 

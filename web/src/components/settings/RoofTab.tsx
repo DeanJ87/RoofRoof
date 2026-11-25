@@ -89,6 +89,19 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
         hint: t('settings.roof.leaveMagnetHint'),
       })}
     </div>
+    {/* Spec 030: with the Hall sensor failed, the automatic close on time alone. */}
+    <Toggle
+      dataField="roof.blindClose"
+      label={t('settings.roof.blindClose')}
+      hint={t('settings.roof.blindCloseHint')}
+      checked={props.roof.blindClose}
+      onChange={(v) => props.update(['roof', 'blindClose'], v)}
+    />
+    {(props.roof.blindClose || props.error('roof.blindSagVolts') !== undefined) && (
+      <div class="form-grid">
+        {roofNum(props, 'blindSagVolts', t('settings.roof.blindSag'), { unit: 'V', hint: t('settings.roof.blindSagHint') })}
+      </div>
+    )}
     <Toggle
       dataField="ui.confirmOpenClose"
       label={t('settings.roof.confirmOpenClose')}
