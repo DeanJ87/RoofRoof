@@ -41,7 +41,8 @@ namespace SQM
                        static_cast<uint32_t>(s.hallHighCounts) >= static_cast<uint32_t>(s.hallLowCounts) + C::MIN_HALL_GAP_COUNTS &&
                        (s.hallHighEnd == End::Open || s.hallHighEnd == End::Closed) &&
                        within(s.maxCurrentAmps, C::MIN_CURRENT_AMPS, C::MAX_CURRENT_AMPS) &&
-                       within(s.minSupplyVolts, C::MIN_SUPPLY_VOLTS, C::MAX_SUPPLY_VOLTS);
+                       within(s.minSupplyVolts, C::MIN_SUPPLY_VOLTS, C::MAX_SUPPLY_VOLTS) &&
+                       within(s.blindSagVolts, C::MIN_BLIND_SAG_VOLTS, C::MAX_BLIND_SAG_VOLTS);
             }
 
             // Out-of-range values become 0 so validSettings rejects them rather than
@@ -102,6 +103,8 @@ namespace SQM
             s.currentSenseEnabled = config.currentSenseEnabled;
             s.maxCurrentAmps = config.maxCurrentAmps;
             s.minSupplyVolts = config.minSupplyVolts;
+            s.blindClose = config.blindClose;
+            s.blindSagVolts = config.blindSagVolts;
             return s;
         }
     } // namespace Roof

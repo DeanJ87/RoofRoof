@@ -111,6 +111,25 @@ namespace SQM
             // latched at rest (its record says so) clears itself the same way.
             void restoreRestRail() { hallRailAtRest = current.fault.kind == FaultKind::HallRail; }
 
+            // Spec 030 (constitution 8.0.0, I), RoofControllerBlind.cpp: the
+            // blind close. Only the automatic close's, only with a Hall rail
+            // fault latched (the sensor is dead), roof.blindClose on and none
+            // run yet for this fault. After the dead time it drives towards
+            // closed at the slow duty on time alone: no magnet, no ramp. It
+            // stops at unknownMoveTimeoutMs() (not a fault), on a stall (the
+            // supply sagging blindSagVolts below its rest for BLIND_STALL_MS
+            // after BLIND_SURGE_MS), on Stop or Abort, and on every fault the
+            // controller still checks (supply, late step, raiseFault). The Hall
+            // rail fault stays latched; afterwards the state is Error again.
+            CommandResult blindClose(Origin origin);
+            // A blind close may start now (Status::blindReady).
+            bool blindCloseReady() const;
+            const BlindReport &blindReport() const { return blindLast; }
+            // A blind close has run for the latched fault (kept in its record).
+            bool blindDone() const { return blindRan; }
+            // After a restart: the record says one ran for this Hall rail fault.
+            void restoreBlindDone() { blindRan = current.fault.kind == FaultKind::HallRail; }
+
         private:
             // The move in progress.
             struct Move
@@ -160,6 +179,22 @@ namespace SQM
             void advanceEstimate(uint32_t elapsedMs);
             void accountDrive(uint32_t gapMs);
             void arrive();
+
+            // Spec 030: the blind close under way (RoofControllerBlind.cpp).
+            struct Blind
+            {
+                bool active = false;
+                bool driving = false;
+                uint32_t driveStartMs = 0;
+                uint32_t limitMs = 0;
+                float restVolts = 0.0f;
+                float deepestSag = 0.0f;
+                Pending sag; // the sag at or past the threshold
+            };
+            void stepBlind(const Readings &readings);
+            bool blindStalled(const Readings &readings, uint32_t drivenMs);
+            void endBlind(BlindEnd why, const Fault &fault = Fault{});
+            void noteMove(uint32_t nowMs);
 
             // Commands, idle and the latch (RoofController.cpp).
             CommandResult requestMove(End target, Origin origin);
@@ -211,6 +246,9 @@ namespace SQM
             uint32_t bootMs = 0;
             Pending goodAtRest;
             uint32_t jogCount = 0;
+            Blind blind;
+            BlindReport blindLast;
+            bool blindRan = false;
         };
     } // namespace Roof
 } // namespace SQM
