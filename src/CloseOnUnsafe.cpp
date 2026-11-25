@@ -195,8 +195,9 @@ namespace SQM
         in.personStops = snap.personStops;
         in.remoteStops = snap.remoteStops;
         in.roofStarted = roof.running();
-        in.daylight = daylightView.closes();            // spec 013
-        in.releaseHold = releaseWanted.exchange(false); // spec 026
+        in.daylight = daylightView.closes();                              // spec 013
+        CloseSeq::applyOverride(in, snap.overrideBits, safety.weather()); // spec 027
+        in.releaseHold = releaseWanted.exchange(false);                   // spec 026
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
         {
             std::lock_guard<std::mutex> held(daylightLock);
@@ -215,13 +216,7 @@ namespace SQM
         keep();
         retryAlert(now);
         countClosed(before, decision);
-        const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
-        CloseSeq::updateConditions(roofConditions, snap, safety.weather(), view);
-        CloseSeq::updateDaylightConditions(roofConditions, daylightView, snap.status.state, view);
-        // Spec 022: the test box's alert (each bypass coming into effect).
-        roofConditions.testBox = safety.testBox().bits();
-        roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(safety.testBox()) : std::string();
-        roofConditions.testBoxSettled = !safety.testBox().waitingForClock;
+        updateConditions(snap, safety);
         if (decision.action == CloseSeq::Action::None && decision.event == CloseSeq::Event::None && sequence.phase() == loggedPhase)
             return; // the usual pass: nothing to do
 
@@ -241,6 +236,19 @@ namespace SQM
             Logger::info(TAG, "Close sequence: %s -> %s", CloseSeq::phaseName(loggedPhase), CloseSeq::phaseName(sequence.phase()));
             loggedPhase = sequence.phase();
         }
+    }
+
+    // What the roof's non-critical alerts look at (spec 007), after each step.
+    void CloseOnUnsafe::updateConditions(const RoofIo::Snapshot &snap, SafetyInputs &safety)
+    {
+        const CloseSeq::SequenceView view{sequence.phase(), closedCount, sequence.daylightEpisode(), daylightClosedCount};
+        CloseSeq::updateConditions(roofConditions, snap, safety.weather(), view);
+        CloseSeq::updateDaylightConditions(roofConditions, daylightView, snap.status.state, view);
+        CloseSeq::updateNinaConditions(roofConditions, safety.park(), safety.ninaSet()); // spec 027
+        // Spec 022: the test box's alert (each bypass coming into effect).
+        roofConditions.testBox = safety.testBox().bits();
+        roofConditions.testBoxText = roofConditions.testBox != 0 ? TestBox::describe(safety.testBox()) : std::string();
+        roofConditions.testBoxSettled = !safety.testBox().waitingForClock;
     }
 
     // Spec 026's release, and (owner decision 2026-11-24) an Open that ended a stand-down.
@@ -285,6 +293,12 @@ namespace SQM
         Logger::warn(TAG, "No channel took the alert \"%s\": sending it again", lastAlert.title.c_str());
         lastAlertId = alertSink ? alertSink(lastAlert) : 0;
         retry.resent(nowMs);
+    }
+
+    void CloseOnUnsafe::parkWaitFailed(const std::string &text)
+    {
+        Logger::error(TAG, "Mount not parked: %s", text.c_str());
+        send(CloseSeq::parkWaitAlert(text), SafetyPoller::nowMs() + TIME_BASE_MS);
     }
 
     void CloseOnUnsafe::send(const Alerts::Alert &alert, uint64_t nowMs)

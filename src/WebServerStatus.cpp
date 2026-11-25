@@ -34,7 +34,9 @@ namespace SQM
         HaDiscovery::Groups discoveryGroups(const Config &cfg)
         {
             HaDiscovery::Groups groups;
-            groups.alertsSwitch = cfg.alerts.enabled; // dep: D-13
+            // Spec 027: announced whenever discovery is on (it pauses and arms
+            // alerts; with the master switch off nothing is sent either way).
+            groups.alertsSwitch = true;
             groups.roofCommands = cfg.mqtt.roofCommands;
             groups.currentSense = cfg.roof.currentSenseEnabled;
             return groups;

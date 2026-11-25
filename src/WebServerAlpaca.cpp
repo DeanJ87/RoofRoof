@@ -101,7 +101,14 @@ namespace SQM
     // started: a device that comes and goes would confuse clients.
     std::vector<Alpaca::DeviceInfo> WebServer::AlpacaBackend::devices() const
     {
-        return {Alpaca::domeDeviceInfo(Bench::SIMULATION, TestBox::domePrefix(owner.testBoxState()))};
+        // Spec 027: a failed park wait leads the description while ShutterStatus reads error.
+        std::string wait;
+        if (owner.roof != nullptr)
+        {
+            const RoofIo::Snapshot snap = owner.roof->snapshot();
+            wait = RoofIo::domeOverridePrefix(snap.overrideBits) + RoofIo::domeWaitPrefix(snap.parkWait);
+        }
+        return {Alpaca::domeDeviceInfo(Bench::SIMULATION, wait + TestBox::domePrefix(owner.testBoxState()))};
     }
 
     Alpaca::DomeStatus WebServer::AlpacaBackend::domeStatus() const
@@ -110,7 +117,7 @@ namespace SQM
         if (roof == nullptr || !roof->running())
             return RoofIo::domeStatus(Roof::Status(), false, false);
         const RoofIo::Snapshot snap = roof->snapshot();
-        return RoofIo::domeStatus(snap.status, snap.closePending, true);
+        return RoofIo::domeStatus(snap.status, snap.closePending, true, snap.parkWait);
     }
 
     // Constitution II-III: the web UI's checked command path, with the client

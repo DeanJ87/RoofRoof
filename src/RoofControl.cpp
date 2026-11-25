@@ -29,7 +29,7 @@ namespace SQM
         bool sameFault(const RoofIo::FaultRecord &a, const RoofIo::FaultRecord &b)
         {
             // Compared bit for bit, so a NaN value equals itself.
-            return a.fault.kind == b.fault.kind && a.cause == b.cause &&
+            return a.fault.kind == b.fault.kind && a.cause == b.cause && a.atRest == b.atRest &&
                    std::memcmp(&a.fault.measured, &b.fault.measured, sizeof(float)) == 0 &&
                    std::memcmp(&a.fault.limit, &b.fault.limit, sizeof(float)) == 0;
         }
@@ -45,6 +45,7 @@ namespace SQM
         }
         takePins(pinsInEffect, valid, reason);
         settings = settingsOf(config);
+        guard.configure(RoofIo::moveGuardSettingsOf(config));
         remoteStopsClose.store(config.autoClose.remoteStop); // spec 014
         controller.applySettings(motionSettings(settings));
         gates.fittedSwitches = settings.fittedSwitches;
@@ -90,6 +91,8 @@ namespace SQM
             return;
         }
         controller.raiseFault(stored.fault);
+        if (stored.atRest)
+            controller.restoreRestRail(); // spec 027
         fault = stored;
         // A damaged record is replaced by a readable one on the first step.
         if (found == RoofIo::Decoded::Fault)
@@ -133,15 +136,17 @@ namespace SQM
     // Why an open or close can't run now (RoofIo::checkCommand: the park and
     // weather gates, the client rule, the motion logic's own checks, without
     // changing anything). Accepted when it can.
-    RoofControl::Outcome RoofControl::precheck(Roof::Command command, Roof::Origin origin) const
+    RoofControl::Outcome RoofControl::precheck(Roof::Command command, Roof::Origin origin, uint8_t overrides) const
     {
-        const RoofIo::CommandCheck check = checkNow(command, origin);
+        const RoofIo::CommandCheck check = checkNow(command, origin, overrides);
         return Outcome{check.accepted, check.reason, check.text, controller.status().state};
     }
 
-    RoofIo::CommandCheck RoofControl::checkNow(Roof::Command command, Roof::Origin origin) const
+    RoofIo::CommandCheck RoofControl::checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides, bool parkAside) const
     {
         RoofIo::CommandContext context;
+        context.overrides = overrides;
+        context.parkAside = parkAside;
         context.closePending = closePending;
         context.remoteStopsClose = remoteStopsClose.load();
         context.calibrating = calibration.active(); // spec 016: open and close wait for the run
@@ -157,6 +162,7 @@ namespace SQM
         if (!check.accepted)
             return Outcome{false, check.reason, check.text, controller.status().state};
         closePending = false; // a stop replaces a waiting close
+        guard.stopped();      // spec 027: and ends a wait for the park
         // Counted before the stop is applied, so no snapshot shows the
         // stop without it: the close sequence (spec 005) stands down on it.
         // An Alpaca client's stop stops the roof but doesn't count (spec 006),
@@ -185,11 +191,12 @@ namespace SQM
     // upload) and its deferral happen only once it would run: past the gates
     // and the motion logic's checks, and not when the roof is already closed
     // or closing (spec 003 FR-029).
-    RoofControl::Outcome RoofControl::commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now)
+    RoofControl::Outcome RoofControl::commandLocked(
+        Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now, uint8_t overrides)
     {
         if (command == Roof::Command::Stop || command == Roof::Command::Abort)
             return stopLocked(command, origin);
-        const Outcome pre = precheck(command, origin);
+        const Outcome pre = precheck(command, origin, overrides);
         if (!pre.accepted)
             return pre;
         const Roof::State state = controller.status().state;
@@ -204,10 +211,14 @@ namespace SQM
         {
             closePending = true;
             closeOrigin = origin;
+            closeOverrides = overrides;
+            guard.ran(command, overrides, currentGates()); // spec 027: a confirmed close keeps its override while it waits
             refreshSnapshot();
             return Outcome{true, "", std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now), state, true};
         }
         const Outcome outcome = runLocked(command, origin);
+        if (outcome.accepted)
+            guard.ran(command, RoofIo::allowedOverrides(command, origin, overrides), currentGates()); // spec 027
         if (command == Roof::Command::Open && outcome.accepted)
         {
             closePending = false; // an open that runs replaces a waiting close
@@ -216,7 +227,7 @@ namespace SQM
         return outcome;
     }
 
-    RoofControl::Outcome RoofControl::command(Roof::Command command, Roof::Origin origin)
+    RoofControl::Outcome RoofControl::command(Roof::Command command, Roof::Origin origin, uint8_t overrides)
     {
         if (lock == nullptr || !started.load())
             return notStarted();
@@ -228,7 +239,9 @@ namespace SQM
             // Stop and abort never look at blockers: not probed for them.
             const bool stopping = command == Roof::Command::Stop || command == Roof::Command::Abort;
             const RoofIo::Blockers now = blockers && !stopping ? blockers() : RoofIo::Blockers();
-            outcome = commandLocked(command, origin, now);
+            const bool move = command == Roof::Command::Open || command == Roof::Command::Close;
+            outcome = move && origin != Roof::Origin::Automatic ? admitLocked(command, origin, overrides, now)
+                                                                : commandLocked(command, origin, now);
         }
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
@@ -253,6 +266,7 @@ namespace SQM
                     controller.status().state};
             else
             {
+                guard.closeWins(); // spec 027: a waiting Open is called off
                 // Spec 016: the automatic close always wins; a closing leg carries on as its close.
                 if (calibration.active())
                     endCalibrationFor(true, "");
@@ -277,7 +291,7 @@ namespace SQM
     {
         if (!closePending)
             return;
-        const Outcome pre = precheck(Roof::Command::Close, closeOrigin);
+        const Outcome pre = precheck(Roof::Command::Close, closeOrigin, closeOverrides);
         if (!pre.accepted)
         {
             closePending = false;
@@ -292,6 +306,8 @@ namespace SQM
             return;
         closePending = false;
         const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin);
+        if (outcome.accepted)
+            guard.ran(Roof::Command::Close, closeOverrides, currentGates());
         notice = outcome.accepted ? "Waiting close started" : "Waiting close refused: " + outcome.text;
     }
 
@@ -372,47 +388,11 @@ namespace SQM
         {
             fault.fault = now;
             fault.cause = causeIfNew;
+            fault.atRest = controller.faultClearsAtRest(); // spec 027: kept over a restart
             // A fault ends a waiting close: clearing the fault later must not
             // run it without a fresh command.
             closePending = false;
         }
-    }
-
-    void RoofControl::refreshSnapshot()
-    {
-        RoofIo::Snapshot s;
-        s.status = controller.status();
-        s.fault = fault;
-        s.travelMm = settings.roof.travelMm;
-        s.supplyVolts = supplyVolts;
-        s.minSupplyVolts = settings.roof.minSupplyVolts;
-        s.currentSense = settings.roof.currentSenseEnabled;
-        s.motorAmps = motorAmps;
-        s.maxCurrentAmps = settings.roof.maxCurrentAmps;
-        s.fittedSwitches = settings.fittedSwitches;
-        if (!pinsValid)
-            s.pinSetupText = pinsReason; // spec 023
-        s.switch1 = gates.switch1;
-        s.switch2 = gates.switch2;
-        s.switchesOnly = settings.switchesOnly;
-        s.openings[0] = watch.quiet[0];
-        s.openings[1] = watch.quiet[1];
-        s.stuckSwitch = gates.stuckSwitch;
-        s.closePending = closePending;
-        s.calibrating = calibration.active();
-        s.personStops = personStops;
-        s.remoteStops = remoteStops;
-        closeWaitingNow.store(closePending);
-        s.maxWatchdogBeatAgeMs = maxBeatAgeMs;
-        s.watchdogTrips = watchdogTrips;
-        s.maxStepGapMs = maxStepGapMs;
-        s.simulation = Bench::SIMULATION;
-        const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind ||
-                             s.closePending != snap.closePending || s.calibrating != snap.calibrating;
-        snap = s;
-        stateNow.store(static_cast<uint8_t>(s.status.state));
-        if (changed)
-            revisionCount.fetch_add(1);
     }
 
     bool RoofControl::settingsSaveRefused(const Config &current, const Config &next) const
@@ -432,6 +412,7 @@ namespace SQM
         RoofLocked held(lock);
         pendingSettings = settingsOf(config);
         settingsPending = true;
+        guard.configure(RoofIo::moveGuardSettingsOf(config)); // spec 027: applies to the next wait
     }
 
     void RoofControl::takePendingSettings()
@@ -465,6 +446,7 @@ namespace SQM
         RoofLocked held(lock);
         gates.weather = weather.verdict;
         gates.weatherText = weatherText;
+        gates.weatherReasons = weather.reasons; // spec 027: what a person may override
         gates.parked = park.parked;
         gates.parkText = parkText;
         gates.ninaGrace = hold.riding;

@@ -11,6 +11,8 @@
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
 #include <WiFi.h>
+#include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 // The roof's REST commands and its status section (spec 003 FR-013 to FR-016,
@@ -24,6 +26,28 @@ namespace SQM
         // 200 with the new state, or 409 with the refusal's reason and text
         // (constitution III: the measured value and the limit, or the failed input).
         // And the roof over MQTT (spec 008, contracts/mqtt.md).
+        // Spec 027: the override body of an open or close, at most 256 bytes.
+        void collectCommandBody(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
+        {
+            if (total > 256)
+                return;
+            if (index == 0 && request->_tempObject == nullptr)
+                request->_tempObject = calloc(total + 1, 1);
+            if (request->_tempObject != nullptr && index + len <= total)
+                std::memcpy(static_cast<uint8_t *>(request->_tempObject) + index, data, len);
+        }
+
+        // The body collected, freed; empty when there was none.
+        std::string takeBody(AsyncWebServerRequest *request)
+        {
+            if (request->_tempObject == nullptr)
+                return request->contentLength() > 256 ? std::string("too long") : std::string();
+            std::string body = static_cast<const char *>(request->_tempObject);
+            free(request->_tempObject);
+            request->_tempObject = nullptr;
+            return body;
+        }
+
         void sendOutcome(AsyncWebServerRequest *request, const RoofControl::Outcome &outcome)
         {
             StaticJsonDocument<512> doc;
@@ -69,9 +93,19 @@ namespace SQM
         server.addHandler(release);
         server.on("/api/roof/calibration/abort", HTTP_POST, [this](AsyncWebServerRequest *request) { handleCalibrationAbort(request); });
         server.on("/api/roof/calibration", HTTP_GET, [this](AsyncWebServerRequest *request) { handleCalibrationStatus(request); });
-        server.on("/api/roof/open", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); });
+        // Spec 027: an optional body naming a person's overrides.
         server.on(
-            "/api/roof/close", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); });
+            "/api/roof/open",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Open); },
+            nullptr,
+            collectCommandBody);
+        server.on(
+            "/api/roof/close",
+            HTTP_POST,
+            [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Close); },
+            nullptr,
+            collectCommandBody);
         server.on("/api/roof/stop", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofCommand(request, Roof::Command::Stop); });
         server.on("/api/roof/clear-fault", HTTP_POST, [this](AsyncWebServerRequest *request) { handleRoofClearFault(request); });
         server.on("/api/roof/inputs", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRoofInputs(request); });
@@ -101,12 +135,19 @@ namespace SQM
     {
         if (!requireAuth(request) || !requireCommandHeader(request))
             return;
+        uint8_t overrides = 0;
+        std::string error;
+        if (!RoofIo::parseOverrides(takeBody(request), overrides, error))
+        {
+            request->send(400, "application/json", createErrorJson(error.c_str()).c_str());
+            return;
+        }
         if (roof == nullptr)
         {
             sendOutcome(request, RoofControl::Outcome{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown});
             return;
         }
-        const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person);
+        const RoofControl::Outcome outcome = roof->command(command, Roof::Origin::Person, overrides);
         Logger::info(TAG, "Roof %s from the web API: %s", Roof::commandName(command), outcome.accepted ? "accepted" : "refused");
         sendOutcome(request, outcome);
     }
@@ -290,6 +331,10 @@ namespace SQM
         if (daylightSource)
             s.daylight = daylightSource();
         s.testBox = testBoxState();
+        // Spec 027: N.I.N.A.'s and SQMeter's health, from the inputs report.
+        if (inputsSource)
+            if (const std::optional<Safety::InputsReport> report = inputsSource())
+                s.health = RoofIo::healthOf(*report, !getConfigCallback().park.ninaUrl.empty());
         return s;
     }
 
@@ -309,6 +354,8 @@ namespace SQM
         RoofIo::writeStatus(out, snapshot);
         RoofIo::writeDaylight(out, snapshot);
         RoofIo::writeCloseRearm(out, snapshot);
+        RoofIo::writeMoveGuard(out, snapshot); // spec 027
+        RoofIo::writeHealth(out, snapshot, true);
     }
 
     // Open, close and stop from <base>/roof/set (spec 008 FR-004 to FR-009).

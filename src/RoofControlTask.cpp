@@ -223,19 +223,21 @@ namespace SQM
     {
         const Roof::Status &status = controller.status();
         const RoofIo::GateInputs now = currentGates();
-        // Constitution II: a close stops as a motion fault when the park is lost.
-        if (RoofIo::interlockLost(status, now))
+        stepGuard(now); // spec 027: the wait for the park, the overrides in effect
+        // Constitution II: a close (spec 027: or an open) stops as a motion
+        // fault when the park is lost; not a person's confirmed close.
+        if (RoofIo::interlockLost(status, now, guard.closeParkOverride()))
         {
             latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(now)), 0.0f));
             return;
         }
         // Constitution III: no opening while the weather isn't safe; spec 013:
         // nor while daylight wants the roof closed.
-        if (RoofIo::openMustStop(status, now))
+        if (RoofIo::openMustStop(status, now, guard.openOverride()))
         {
             controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
             applyOutput();
-            notice = "Opening stopped: " + RoofIo::describeGate(RoofIo::openRefusal(now), now);
+            notice = "Opening stopped: " + RoofIo::describeGate(RoofIo::openRefusal(now, guard.openOverride()), now);
         }
     }
 
