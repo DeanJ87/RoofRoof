@@ -22,7 +22,7 @@ There is no public docs site: these docs and the [live demo](live-demo.md) are b
 <!-- diagram: DIA-01
 sources: src/main.cpp#setup include/WebServer.h include/MQTTClient.h include/AlertDispatcher.h include/MotorDriver.h include/TimeManager.h
 blocking: false
-fingerprint: 4926a1667d30ad61
+fingerprint: a98b20330c0c10b8
 -->
 <figure class="diagram" markdown>
 

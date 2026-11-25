@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 315c9a2b35089680
+fingerprint: ef5f80bfe1c19077
 -->
 <figure class="diagram" markdown>
 
@@ -204,6 +204,8 @@ A fault, a low supply or a lost source that is already there when the device sta
 An alert that no channel took (the access point restarting, no internet, Pushover or the broker unreachable) is not lost. Every alert waits in a queue and is sent again until a channel takes it: after 1 minute, then at doubling gaps up to 30 minutes (never longer than the reminder interval), and at once when the network or the broker comes back. It leaves the queue when a channel took it, when no channel is switched on to take it, when a newer alert of the same event replaces it, or when its condition has ended (a close alert for a roof that has since closed, say).
 
 The critical roof alerts waiting for a channel are also kept in the device's flash, one per event (written when queued and erased when delivered, a few writes per incident), so a restart or a power cut doesn't lose them. After the restart they are sent again, with "Sent before a restart at 2026-11-25 02:14." (the time it was queued, local) in the message (no time without a clock). A condition that is still there after the restart is also raised again from the device's fresh look at the roof.
+
+Several alerts at once (a weather change, the automatic close and the park in the same minute) go out one a second, the critical ones first, so the burst never needs the memory of several deliveries at once. While the device is short of memory (largest free block under 6 KB or under 24 KB free), the queue waits and the log says `Low memory (largest block ... B): alerts wait`; the alerts go out once memory is back.
 
 ### The imaging app
 
