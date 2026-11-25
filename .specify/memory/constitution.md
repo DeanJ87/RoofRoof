@@ -1,6 +1,53 @@
 <!--
 Sync Impact Report
-- Version: 6.0.0 -> 7.0.0 (MAJOR: a person may confirm past two guards, which relaxes Principles II
+- Version: 7.0.0 -> 8.0.0 (MAJOR: Principle I lets the automatic close move from an unknown position,
+  with the Hall sensor working or failed; Principle III lets the automatic close wait out a hold
+  before it starts for anything but rain; Principle II gains an owner-selectable close without
+  N.I.N.A.'s park, off by default. Each relaxes a safety principle, so each states its risk.)
+- Modified: I. Motion Safety. Two owner-decided exceptions to "never move by itself while its
+  position is unknown", both for the automatic close only (unsafe weather, or daylight wanting the
+  roof closed), only towards closed and only once the park is confirmed (Principle II, as for every
+  close): (a) with the Hall sensor working, the close runs as a person's move from an unknown position
+  does (slow duty, stops at the first magnet, the unknown-position timeout, every fault); (b) with the
+  Hall sensor failed (a Hall rail fault latched and no other), and `roof.blindClose` on, a **blind
+  close**: slow duty, towards closed on time alone, at most the unknown-position timeout, stopping on a
+  stall seen as supply sag (`roof.blindSagVolts`), on any other fault and on Stop; once per latched
+  fault, kept across restarts. Both end with a critical alert that a person must check the roof.
+- New risk (I): (a) a roof whose position is unknown moves by itself; if the open-direction setting is
+  wrong it drives open until the open magnet (a wrong-magnet fault) or the timeout. (b) with no Hall
+  sensor nothing sees the closed end: the motor drives the chain into the end until the stall stop or
+  the time limit (up to the full travel at the slow duty plus the margin), and a roof that was already
+  closed is driven into its end. Mitigations: slow duty only; the hard time limit; the stall stop from
+  the supply sag and the supply-minimum fault; one blind close per fault, remembered across restarts;
+  the park rule; a critical alert every time; current sense is not fitted, so the sag is the only
+  stall sign. The alternative, a roof that stays part-open in the rain with nobody told, was judged
+  worse by the owner.
+- Modified: II. Close Only Onto a Parked Mount. By default the roof never closes without the park
+  confirmed by its park source, whatever the weather, rain included: the automatic close keeps asking
+  and raises a critical alert, reminded until a person resolves it. New: **close when N.I.N.A. is
+  lost** (`autoClose.ninaLostClose`, off by default and after an upgrade): with the park source N.I.N.A.
+  or N.I.N.A. and switches, unsafe weather wanting the roof closed and N.I.N.A. unreadable without a
+  break for `autoClose.ninaLostMinutes`, the automatic close (only) closes without N.I.N.A.'s park;
+  with N.I.N.A. and switches only while every fitted switch reads closed. A critical alert follows.
+- New risk (II): with the option on and N.I.N.A. as the only park source, the roof can close onto an
+  unparked mount. Mitigations: off by default; only the automatic close, only for weather, only after
+  minutes of N.I.N.A. silence; the switches still count when fitted; shown on its settings card.
+- Modified: III. Unsafe Ends Closed. The verdict still turns unsafe at once (Open refused, an opening
+  roof stopped), but the automatic close starts only once the unsafe time, added up and forgotten only
+  after a safe spell as long, reaches `autoClose.unsafeHoldSeconds` (default 60 s, at most 300 s);
+  rain starts it at once. Once started it isn't called off by a safe blip shorter than the hold.
+- New risk (III): a real change of weather (cloud, wind, a failed rain sensor, a silent SQMeter) is
+  closed up to the hold later than before: a silent SQMeter closes after its stale time plus the hold
+  (about 95 s by default) instead of about 35 s. Mitigations: rain is never held; the hold is bounded;
+  Open is refused at once; a SQMeter restart (a few seconds) no longer moves the roof.
+- Modified: Compatibility. `roof.blindClose` is on after an upgrade (owner decision): the one
+  motion feature a migration turns on, written here as the exception.
+- Why: owner decisions after live testing on the real roof (spec 030): SQMeter restarts moved the
+  roof; a crash mid-open left the roof part-open in unsafe weather with nothing moving.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/roof-motion.md,
+  docs/user-guide/alerts.md, docs/user-guide/safety-inputs.md, docs/user-guide/configuration.md,
+  specs/030-weather-hold-and-blind-close/spec.md.
+- Earlier: 6.0.0 -> 7.0.0 (MAJOR: a person may confirm past two guards, which relaxes Principles II
   and III; a Hall rail reading at rest clears itself, which relaxes Principle I. The park check now
   also gates Open and commands wait for the park, which is more protective).
 - Modified: I. Motion Safety. A Hall reading at a rail that latched with the motor off clears itself
@@ -266,6 +313,17 @@ nothing has gone wrong.
   after a boot away from a magnet, after an abort mid-travel and after a fault. Moving from an
   unknown position needs an explicit, authenticated command from a person, at reduced speed,
   stopping at the first magnet.
+  - **The automatic close's exceptions** (owner decision, 8.0.0). Only the automatic close (unsafe
+    weather, or daylight wanting the roof closed), only towards closed, only once the park is
+    confirmed (Principle II), each ending with a critical alert that a person must check the roof:
+    - with the Hall sensor working, it closes as a person's move from an unknown position does
+      (slow duty, stops at the first magnet, the unknown-position timeout, every fault);
+    - with the Hall sensor failed (a Hall rail fault latched and no other fault) and
+      `roof.blindClose` on, a **blind close**: slow duty, towards closed on time alone, at most the
+      unknown-position timeout, stopping on a stall seen as supply sag (`roof.blindSagVolts`), on any
+      other fault and on Stop. The Hall fault stays latched. One blind close per latched fault,
+      remembered across restarts. Risk: the chain is driven into its end until the stall stop or
+      the time limit.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed
   settings, plus a margin) and MUST stop on its target magnet. The timeout is enforced by the
   motion code itself, never by a client.
@@ -318,7 +376,17 @@ Closing onto an unparked telescope is the most expensive failure this device can
   source is set; and a fitted switch that hasn't read open over 3 roof openings in a row is suspect
   and refuses Open until it has been seen open.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
-  even when it's raining: a wet telescope can be dried, a crushed one can't be fixed.
+  even when it's raining: a wet telescope can be dried, a crushed one can't be fixed. The automatic
+  close keeps asking for the park for as long as the roof should close, and the critical alert names
+  the missing input ("N.I.N.A. unreachable, mount park unknown") and is reminded until a person
+  resolves it.
+- **Close when N.I.N.A. is lost** (owner-selectable, `autoClose.ninaLostClose`, off by default). With
+  the park source N.I.N.A. or N.I.N.A. and switches, unsafe weather (not daylight alone) wanting the
+  roof closed, and N.I.N.A. unreadable without a break for `autoClose.ninaLostMinutes`, the automatic
+  close, and only it, may close without N.I.N.A.'s park: with N.I.N.A. and switches only while every
+  fitted switch reads closed, which the re-check during that close keeps checking. A critical alert
+  says the roof closed without N.I.N.A.'s park. Risk: with N.I.N.A. as the only park source nothing
+  confirms the park, and the roof can close onto an unparked mount.
 - Every open and close request is checked the same way, whatever its source: Alpaca
   `OpenShutter` and `CloseShutter`, the web UI, MQTT, Home Assistant or the automatic close. A request
   refused only for the park waits for it when N.I.N.A. can be asked (Principle III's steps 2 and 3,
@@ -356,6 +424,12 @@ Doubt about the weather MUST resolve to "unsafe".
 
   Every step has a timeout. A step that times out stops the sequence where it is and raises a
   critical alert naming the step.
+- **The weather hold** (8.0.0). The verdict turns unsafe at once, but the sequence starts only once
+  the unsafe time, added up and forgotten only after a safe spell as long, reaches
+  `autoClose.unsafeHoldSeconds` (default 60 s, 0-300 s); once started, a safe spell shorter than the
+  hold doesn't call it off. Rain starts it at once. A person's Open override in effect empties the
+  hold. Risk: weather other than rain, and a silent source (its stale time plus the hold), close
+  later than they would without the hold.
 - The weather verdict comes from SQMeter: `GET /api/safety` (its `safe` flag and `reasonFlags`,
   bit 9 rain and bit 10 rain-sensor fault) and/or its retained MQTT `<base>/safe`. Any source that says unsafe makes the verdict unsafe. A
   missing, stale or unparseable source counts as unsafe, and so does a rain sensor that has failed.
@@ -530,7 +604,8 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   A custom map is checked by the same rules. Analog inputs use ADC1 only. Travel length, speed and Hall thresholds are settings, never
   constants.
 - **Compatibility:** config saved by an older release MUST load and be migrated without a factory
-  reset, and a migration MUST NOT turn on any motion feature that was off.
+  reset, and a migration MUST NOT turn on any motion feature that was off. The one exception is the
+  blind close (`roof.blindClose`, Principle I), on after an upgrade by owner decision.
 - **Updates:** OTA MUST be atomic, and is refused while moving (Principle I).
 
 ## Development Workflow and Quality Gates
@@ -572,4 +647,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 7.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
+**Version**: 8.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
