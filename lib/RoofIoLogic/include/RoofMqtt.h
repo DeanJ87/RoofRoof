@@ -28,13 +28,19 @@ namespace SQM
             constexpr uint32_t CHANGE_MIN_MS = 1000;
             // The longest at-rest change gap the setting allows (spec 014).
             constexpr uint32_t MAX_CHANGE_MIN_MS = 60000;
-            // While the roof moves or a close waits, only a change of its state,
-            // fault or waiting close, at most this often and at most
-            // BUSY_MAX_PUBLISHES times until it is at rest again (research R4:
-            // a write to a half-open link can hold the main loop for seconds,
-            // and the roof's checks need that loop every 5 s).
+            // While a close waits or the automatic close is attempting (the roof
+            // not moving), only a change of its state, fault or waiting close, at
+            // most this often and at most BUSY_MAX_PUBLISHES times until it is at
+            // rest again (research R4: every write while busy is held to
+            // BUSY_WRITE_BUDGET_MS, and a write that can't finish drops the
+            // connection, which isn't reopened until the roof is at rest).
+            // After a failed publish while busy, the next try waits this long too.
             constexpr uint32_t BUSY_MIN_MS = 5000;
             constexpr uint8_t BUSY_MAX_PUBLISHES = 2;
+            // Spec 032: while the roof moves, the document goes out as the move
+            // starts (at once), on a reversal or fault (CHANGE_MIN_MS after the
+            // last), and every MOVING_PROGRESS_MS with the position.
+            constexpr uint32_t MOVING_PROGRESS_MS = 3000;
             // A payload longer than this (after trimming) is never a command.
             constexpr size_t MAX_COMMAND_PAYLOAD = 16;
             // The MQTT socket's time on the main loop (research R4): a write may
@@ -53,6 +59,10 @@ namespace SQM
                 void start(uint32_t nowMs) { startMs = nowMs; }
                 // How long the next write may take; 0: none left (drop the connection).
                 uint32_t writeBudgetMs(uint32_t nowMs, bool busy) const;
+                // Spec 032: a write may start now with its whole budget (while busy,
+                // BUSY_WRITE_BUDGET_MS left in the pass), so it never runs out part
+                // way and drops the connection; otherwise wait for the next pass.
+                bool mayWrite(uint32_t nowMs, bool busy) const { return writeBudgetMs(nowMs, busy) >= BUSY_WRITE_BUDGET_MS; }
                 // Whether MQTT may read (run PubSubClient's loop) now.
                 bool mayRead(uint32_t nowMs, bool busy) const;
 
@@ -68,6 +78,10 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
+            // PubSubClient's buffer (MQTTClient): a publish needs its 5-byte
+            // header, the 2-byte topic length, the topic and the payload in it,
+            // or PubSubClient refuses it without sending.
+            constexpr size_t CLIENT_BUFFER_BYTES = 3072;
             constexpr size_t STATE_DOC_CAPACITY = 3840; // spec 027: the dashboard fields; spec 030: needsPerson
             constexpr size_t RESULT_DOC_CAPACITY = 1024;
 
@@ -156,13 +170,20 @@ namespace SQM
             // The roof moves, a close waits, or the automatic close is attempting.
             bool busy(const StateKey &key);
 
+            // The roof is opening or closing.
+            bool moving(const StateKey &key);
+
             // When the document is due: never published, or a new connection; at
             // rest, the key changed and the change gap (CHANGE_MIN_MS by default) has passed, or the interval
-            // has passed. While busy (research R4: the roof moves, a close waits,
-            // or the automatic close is attempting):
-            // only a change of state, fault or waiting close, BUSY_MIN_MS after
-            // the last publish, at most BUSY_MAX_PUBLISHES times, and nothing at
-            // all once a publish has failed on this connection.
+            // has passed; the end of a move or wait CHANGE_MIN_MS after the last
+            // publish, whatever the change gap. While the roof moves (spec 032):
+            // at once when the move starts, a change of state, fault or waiting
+            // close CHANGE_MIN_MS after the last publish, otherwise every
+            // MOVING_PROGRESS_MS. While a close waits or the automatic close is
+            // attempting without moving (research R4): only a change of state,
+            // fault or waiting close, BUSY_MIN_MS after the last publish, at most
+            // BUSY_MAX_PUBLISHES times. After a failed publish while busy, the
+            // next try waits BUSY_MIN_MS; a successful publish clears it.
             class StateSchedule
             {
             public:
@@ -176,12 +197,14 @@ namespace SQM
                 }
 
             private:
+                // due() when the roof is busy now or was at the last publish.
+                bool busyDue(const StateKey &key, uint32_t since) const;
                 uint32_t changeMinMs = CHANGE_MIN_MS;
                 bool any = false;
                 StateKey last;
                 uint32_t lastConnection = 0;
                 uint32_t lastMs = 0;
-                bool failed = false;       // a publish on this connection failed
+                bool failed = false;       // the last publish failed
                 uint8_t busyPublishes = 0; // since the roof was last at rest
             };
         } // namespace Mqtt

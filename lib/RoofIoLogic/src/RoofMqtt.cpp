@@ -82,6 +82,11 @@ namespace SQM
                 return closePhase == "waitPark" || closePhase == "closing" || closePhase == "retryWait";
             }
 
+            bool moving(const StateKey &key)
+            {
+                return key.state == Roof::State::Opening || key.state == Roof::State::Closing;
+            }
+
             bool busy(const StateKey &key)
             {
                 return key.state == Roof::State::Opening || key.state == Roof::State::Closing || key.closePending ||
@@ -196,20 +201,38 @@ namespace SQM
                 if (!any || connection != lastConnection)
                     return true;
                 const uint32_t since = nowMs - lastMs;
-                if (busy(key))
-                    return !failed && busyPublishes < BUSY_MAX_PUBLISHES && busyChange(key, last) && since >= BUSY_MIN_MS;
+                if (busy(key) || busy(last))
+                    return busyDue(key, since);
                 if (key != last)
                     return since >= (changeMinMs < intervalMs ? changeMinMs : intervalMs); // never later than the interval
                 return since >= intervalMs;
             }
 
+            bool StateSchedule::busyDue(const StateKey &key, uint32_t since) const
+            {
+                if (failed && busy(key) && busy(last))
+                    return since >= BUSY_MIN_MS; // a failed publish while busy: try again later, not at once
+                if (moving(key))
+                {
+                    if (!busy(last))
+                        return true; // the move has started: at once (spec 032)
+                    return since >= (busyChange(key, last) ? CHANGE_MIN_MS : MOVING_PROGRESS_MS);
+                }
+                // A move or wait has ended (at rest, or a close waiting): not held
+                // to the change gap or the busy count.
+                if (moving(last) || !busy(key))
+                    return since >= CHANGE_MIN_MS;
+                return busyPublishes < BUSY_MAX_PUBLISHES && busyChange(key, last) && since >= BUSY_MIN_MS;
+            }
+
             void StateSchedule::published(const StateKey &key, uint32_t connection, uint32_t nowMs, bool ok)
             {
                 const bool sameConnection = any && connection == lastConnection;
-                failed = (sameConnection && failed) || !ok;
+                failed = !ok;
                 any = true;
                 const uint8_t before = sameConnection ? busyPublishes : 0;
-                busyPublishes = busy(key) ? static_cast<uint8_t>(before + 1) : 0;
+                // Counted only while busy without moving (spec 032: a move has its own cadence).
+                busyPublishes = busy(key) && !moving(key) ? static_cast<uint8_t>(before + 1) : 0;
                 last = key;
                 lastConnection = connection;
                 lastMs = nowMs;
