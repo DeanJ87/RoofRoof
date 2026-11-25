@@ -12,6 +12,7 @@ import {
   mockSqmeterSite,
 } from './data';
 import { evaluate, type DepFacts } from '../lib/settingsDeps';
+import { mockCrashesText, mockDeviceLogText } from './crash';
 import { mockDiagLive, mockDiagMove, mockDiagMoves } from './diag';
 import { mockValidate, mockWiring, mockWiringDone, pinsDocumentFor } from './pins';
 
@@ -163,6 +164,9 @@ export const handlers = [
     });
   }),
   http.post('/api/diag/moves/clear', () => (mockDiag.enabled ? HttpResponse.json({ success: true }) : diagOff())),
+  // Crash capture (spec 029): always on, whatever the diagnostics mode
+  http.get('/api/diag/crashes', () => HttpResponse.text(mockCrashesText)),
+  http.get('/api/diag/log', () => HttpResponse.text(mockDeviceLogText)),
 
   // REST — the board and its pins (spec 023): a DevKit with its preset; the check finishes at once
   http.get('/api/pins', () => HttpResponse.json(pinsDocumentFor('devkit'))),

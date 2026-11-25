@@ -1,8 +1,10 @@
 // EmulatedDevice: advanced diagnostics (spec 017), the firmware's Diagnostics
-// and WebServerDiag on the simulated roof, through the same lib/DiagLogic.
+// and WebServerDiag on the simulated roof, through the same lib/DiagLogic;
+// the crash documents (spec 029) through lib/CrashLogic.
 
 #include "emulated_device.h"
 
+#include "CrashDocuments.h"
 #include "DiagDocuments.h"
 #include "PlatformHold.h"
 #include "RoofReadings.h"
@@ -97,4 +99,23 @@ std::string EmulatedDevice::diagClear()
     if (diagList)
         diagList->clear();
     return response(200, "{\"success\":true}");
+}
+
+std::string EmulatedDevice::crashesDocument() const
+{
+    Crash::BootView boot;
+    boot.resetCode = static_cast<uint8_t>(Crash::ResetCode::PowerOn);
+    boot.bootCount = 1;
+    boot.firmware = firmwareVersion.c_str();
+    return Crash::crashesText(boot, nullptr, 0);
+}
+
+std::string EmulatedDevice::logDocument() const
+{
+    Crash::LogLine line{};
+    line.boot = 1;
+    line.ms = static_cast<uint32_t>(uptimeSeconds() * 1000);
+    line.level = static_cast<uint8_t>(Crash::Level::Info);
+    Crash::copyText(line.text, sizeof(line.text), "[Demo] The simulated device keeps no log");
+    return Crash::logText(&line, 1);
 }

@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "CrashLog.h"
 #include <cstdio>
 #include <cstdarg>
 #include <ctime>
@@ -92,6 +93,12 @@ namespace SQM
         const uint32_t timestamp = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
         printf("%s[%lu] [%s] [%s] ", levelToColor(level), static_cast<unsigned long>(timestamp), levelToString(level), tag);
+
+        // Spec 029: the same line into the log ring kept across a restart.
+        va_list kept;
+        va_copy(kept, args);
+        CrashLog::logLine(static_cast<uint8_t>(level), tag, format, kept);
+        va_end(kept);
 
         vprintf(format, args);
         printf("\033[0m\n"); // Reset color

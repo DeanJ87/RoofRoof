@@ -11,7 +11,7 @@ That is the way in for an ESP32 DevKit. A WT32-ETH01 on a network cable needs no
 <!-- diagram: DIA-07
 sources: src/WiFiManager.cpp#WiFiManager::begin src/WiFiManager.cpp#WiFiManager::startCaptivePortal src/WiFiManager.cpp#WiFiManager::updateCredentials lib/CaptiveDns/ src/WebServerApi.cpp#WebServer::pollWiFiConnect src/WebServer.cpp#WebServer::setupStaticRoutes src/main.cpp#loop
 blocking: false
-fingerprint: 5a0502a527d473a4
+fingerprint: 7d665a106d35a1f4
 -->
 <figure class="diagram" markdown>
 

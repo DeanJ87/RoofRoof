@@ -47,4 +47,7 @@ export interface Core extends BackupCore {
   diagMoves(): string;
   diagMove(id: number, csv: boolean): string; // "" when the move isn't held
   diagClear(): string;
+  // Spec 029: GET /api/diag/crashes and /api/diag/log (plain text), by the firmware's writers.
+  crashesDocument(): string;
+  logDocument(): string;
 }

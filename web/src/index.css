@@ -2642,6 +2642,15 @@ main:focus {
   margin-bottom: 0.75rem;
 }
 
+/* Spec 029: the Crashes card's records, as the device wrote them. */
+.crash-text {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
 .diag-table {
   width: 100%;
   border-collapse: collapse;

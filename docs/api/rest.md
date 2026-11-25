@@ -153,6 +153,8 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
+While the device is short of memory (several pages reading at once) it answers `503` instead of risking a restart; try again. A save (`POST /api/config`) is refused the same way, and nothing is saved.
+
 Every field, with its default, is in the [configuration reference](../user-guide/configuration.md#full-configuration-reference), including the `roof` section that sets how the roof moves ([Roof motion](../user-guide/roof-motion.md)).
 
 ```bash
@@ -817,7 +819,7 @@ The jog under way, the reading window, the marks and the proposal. Open, like `/
 
 ## Diagnostics
 
-The [advanced diagnostics](../user-guide/diagnostics.md) routes. They are open (readings only, no password), like `/api/status`, except clearing the log. With `diag.enabled` off, each read answers `200 {"enabled": false}` (a move by id answers `404`) and records nothing. A value the device can't read is `null`.
+The [advanced diagnostics](../user-guide/diagnostics.md) routes. They are open (readings only, no password), like `/api/status`, except clearing the log and the crash records and log (spec 029), which need the password when protection is on. With `diag.enabled` off, each read answers `200 {"enabled": false}` (a move by id answers `404`) and records nothing. A value the device can't read is `null`.
 
 ### `GET /api/diag`
 
@@ -932,6 +934,61 @@ curl -X POST -H "X-RoofRoof: 1" http://roofroof.local/api/diag/moves/clear
 ```
 
 Answers `200 {"success": true}`. `409 {"error": "..."}` while the roof moves or a close is waiting. The kept file is emptied afterwards (removed while "Keep move summaries" is off), by the main loop, at its next chance to write flash.
+
+### `GET /api/diag/crashes`
+
+The last 3 [unexpected restarts](../user-guide/diagnostics.md#crashes) (a crash, a watchdog or a brown-out), newest first, as plain text (`text/plain`), one fact per line. Always on, whatever `diag.enabled` says; needs the password when protection is on (`401` without it). It changes nothing.
+
+```text
+This start: panic (4), boot 3
+Running: 0.1.0+dev, build 3f2a9c0e11d4b7a2
+Records: 2 (the last 3 are kept)
+
+Record 2: panic
+Time: 2026-11-25 02:14:07 UTC, 5231 s after start
+Reset reason: panic (4)
+Firmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2
+Reason: LoadProhibited
+Task: async_tcp, core 1, stack left 1904 B
+Flash write: in progress
+Backtrace: 0x400d5f2c 0x400d5f2c 0x400d61a0 0x40089e1d
+Memory: free 61224 B, lowest 41020 B, largest block 31732 B
+Stack left: loop 5980, roof 3416, async_tcp 6640, safetyPoll 2120, alerts 3876 B
+Roof: closed
+Log before the restart:
+  5229.120s INFO  [Main] Settings saved
+
+Record 1: brownout
+Time: unknown (clock not set), 812 s after start
+Reset reason: brownout (9)
+Firmware: 0.1.0+dev, build 3f2a9c0e11d4b7a2
+Reason: not captured
+```
+
+| Line | Meaning |
+|---|---|
+| `This start`, `Running` | Why this start happened (SQMeter's reset reason names: `poweron`, `software`, `panic`, `watchdog`, `brownout`, ...) and the code, the boot count, and the running firmware and build |
+| `Record <seq>: <kind>` | `panic`, `watchdog` or `brownout`; the sequence keeps rising across restarts |
+| `Time` | When it crashed (UTC), or "unknown" when the clock wasn't set; and the seconds since that start |
+| `Firmware` | The version and build that crashed: the build is the first 16 hex digits of the SHA-256 of that build's `firmware.elf`, which [`tools/decode_crash.py`](../development/crash-decoding.md) checks |
+| `Reason` | The panic's own words, or "not captured" for a brown-out or a reset with no panic (then the task, backtrace and flash lines are left out) |
+| `Task` | The task that was running, its core, and the stack it had left (near 0: it overflowed; `?` unknown) |
+| `Stuck tasks` | For a task watchdog: the tasks that didn't check in |
+| `Flash write` | A flash write (a settings save, a fault record, the kept move summaries, an update) was in progress at the panic |
+| `Backtrace` | The PC, then up to 16 frames; `[corrupt]` and `[continues]` when a frame was bad or there were more |
+| `Memory`, `Stack left`, `Roof` | Free memory and the stack left in five tasks (bytes, `?` unknown) and the roof's state from the last second before the restart; left out when that note didn't survive |
+| `Log before the restart` | The last 8 log lines before it |
+
+### `GET /api/diag/log`
+
+The device's last 50 log lines as plain text, oldest first, including the lines from before a crash or a software restart (not a power cut). Needs the password when protection is on.
+
+```text
+#2 5229.120s INFO  [Main] Settings saved
+#3 0.412s INFO  [Main] === RoofRoof Starting ===
+```
+
+`#` is the boot (counted since the log was last emptied by a power cut), then the time since that start, the level and up to 71 characters of text.
 
 ---
 

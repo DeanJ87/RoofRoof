@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "CloseOnUnsafe.h"
+#include "CrashLog.h"
 #include "Diagnostics.h"
 #include "EthernetLink.h"
 #include "NetState.h"
@@ -476,10 +477,14 @@ void setup()
     // the driver off, as it does through reset and the boot loader. Serial
     // and the log use UART0 only.
     Serial.begin(115200);
+    CrashLog::arm(); // spec 029: before the first log line
     Logger::init();
     bool storedRejected = false;
     loadConfig(storedRejected);
     PinSetup::begin(config, storedRejected); // EN, then RPWM and LPWM low; or nothing driven
+    // Spec 029 FR-009: EN is low and the roof's task hasn't started, so the
+    // one flash write of a crash record can't wait behind a move.
+    CrashLog::keepRecord();
     delay(100);
     bootCount++;
 
@@ -570,6 +575,7 @@ void loop()
     siteSync.handle(roofBusy()); // spec 020
     WiringRun::handle();         // spec 023
     diagnostics.handle();
+    CrashLog::snapshot(Roof::stateName(roofControl.state()), roofControl.stackFreeBytes()); // spec 029
     diagnostics.passEnded();
 
     // Small delay to prevent a tight loop.

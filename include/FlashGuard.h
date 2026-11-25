@@ -24,5 +24,8 @@ namespace SQM
         void holdShort();
         void releaseShort();
         bool writing();
+        // Spec 029: any of the above in progress, read without a lock (safe
+        // from the panic hook, which records it).
+        bool writingNow();
     } // namespace FlashGuard
 } // namespace SQM

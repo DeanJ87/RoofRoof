@@ -121,6 +121,7 @@ nav:
     - Brand: development/brand.md
     - Releasing: development/releasing.md
     - Heritage: development/heritage.md
+    - Decoding a crash: development/crash-decoding.md
   - Reference:
     - Settings Dependencies: reference/settings-dependencies.md
     - Troubleshooting: reference/troubleshooting.md

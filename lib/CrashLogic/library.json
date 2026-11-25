@@ -1,0 +1,5 @@
+{
+  "name": "CrashLogic",
+  "version": "0.1.0",
+  "description": "Crash capture: the RTC layouts and their checks, the log ring, the crash record and its documents (pure logic, spec 029)"
+}

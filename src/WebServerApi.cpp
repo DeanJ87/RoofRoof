@@ -1,3 +1,4 @@
+#include "ConfigJson.h"
 #include "DualStackClient.h"
 #include "Logger.h"
 #include "NetAddress.h"
@@ -10,7 +11,10 @@
 #include <AsyncJson.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <esp_heap_caps.h>
+#include <algorithm>
 #include <cstring>
+#include <memory>
 
 // The REST API: settings, status, restart, WiFi and the MQTT test.
 
@@ -18,10 +22,52 @@ namespace SQM
 {
     using namespace WebShared;
 
+    namespace
+    {
+        // Spec 029 research R13: GET /api/config under load aborted the device
+        // (a std::string growing to ~16 KB and a ~10 KB String copy per request,
+        // several requests at once, no C++ exceptions, so a failed allocation is
+        // abort()). Here every large allocation is checked: the JSON pool, then
+        // one buffer, shrunk to the text's size and held by the response until
+        // it is sent. Null when either can't be had.
+        // A save's largest single allocation is a settings string of up to 16 KB
+        // (a doubling std::string); with the other copies it needs about 48 KB.
+        constexpr size_t SAVE_MIN_BLOCK_BYTES = 20 * 1024;
+        constexpr size_t SAVE_MIN_FREE_BYTES = 48 * 1024;
+
+        std::shared_ptr<char> settingsJson(const Config &cfg, size_t &length)
+        {
+            DynamicJsonDocument doc(ConfigJson::CAPACITY);
+            if (doc.capacity() == 0)
+                return nullptr;
+            ConfigJson::write(cfg, doc, true);
+            if (doc.overflowed())
+            {
+                Logger::error("Web", "Settings JSON doesn't fit its pool");
+                return nullptr;
+            }
+            // The text is shorter than its pool (test_config_json_body checks the
+            // longest settings); written into a pool-sized buffer, then shrunk.
+            char *raw = static_cast<char *>(malloc(ConfigJson::CAPACITY));
+            if (raw == nullptr)
+                return nullptr;
+            length = serializeJson(doc, raw, ConfigJson::CAPACITY);
+            if (length + 1 >= ConfigJson::CAPACITY)
+            {
+                free(raw);
+                Logger::error("Web", "Settings JSON doesn't fit its buffer");
+                return nullptr;
+            }
+            char *exact = static_cast<char *>(realloc(raw, length + 1));
+            return std::shared_ptr<char>(exact != nullptr ? exact : raw, free);
+        }
+    } // namespace
+
     void WebServer::setupAPIRoutes()
     {
         setupBackupRoutes();
         setupRoofRoutes();
+        setupCrashRoutes(); // spec 029: before /api/diag's prefix
         setupDiagRoutes();
         setupSiteRoutes();
         setupPinRoutes();
@@ -96,6 +142,14 @@ namespace SQM
     {
         if (!requireAuth(request))
             return;
+        // Spec 029 research R13: a save builds several settings-sized strings
+        // and documents; without C++ exceptions a failed allocation aborts the
+        // device. Refused while memory is short instead (nothing is saved).
+        if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < SAVE_MIN_BLOCK_BYTES || ESP.getFreeHeap() < SAVE_MIN_FREE_BYTES)
+        {
+            request->send(503, "application/json", "{\"error\":\"The device is short of memory: nothing was saved, try again\"}");
+            return;
+        }
 
         std::string body;
         serializeJson(json, body);
@@ -235,9 +289,24 @@ namespace SQM
         // Spec 021: the revision first, so a save in between only makes the
         // page's copy look older, never newer.
         const uint32_t revision = configRevision.load();
-        const Config &cfg = getConfigCallback();
-        std::string json = cfg.toJson(true);
-        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json.c_str());
+        size_t length = 0;
+        const std::shared_ptr<char> body = settingsJson(getConfigCallback(), length);
+        if (!body)
+        {
+            // Spec 029 R13: short of memory (several pages reading at once): say
+            // so instead of letting a failed allocation abort the device.
+            request->send(503, "application/json", "{\"error\":\"The device is short of memory: try again\"}");
+            return;
+        }
+        AsyncWebServerResponse *response = request->beginResponse(
+            "application/json",
+            length,
+            [body, length](uint8_t *buffer, size_t maxLen, size_t index) -> size_t
+            {
+                const size_t n = index < length ? std::min(maxLen, length - index) : 0;
+                memcpy(buffer, body.get() + index, n);
+                return n;
+            });
         response->addHeader("X-Config-Revision", String(revision));
         request->send(response);
     }

@@ -85,3 +85,18 @@ test('axe at phone width, with the mode on and a move in progress', async ({ pag
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+// Spec 029: the Crashes card shows with diagnostics off too; the demo never
+// crashes, so it says so, and Copy log copies the device's log.
+test('crashes: the card shows with the mode off, empty in the demo, and copies the log', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await ready(page, '#/diagnostics');
+  const card = page.locator('section', { has: page.getByRole('heading', { name: 'Crashes' }) });
+  await expect(card.getByText('No crashes recorded.')).toBeVisible();
+  await card.getByRole('button', { name: 'Copy log' }).click();
+  await expect(page.getByText('Copied', { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('The simulated device keeps no log');
+  const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+  expect(results.violations).toEqual([]);
+});
