@@ -207,9 +207,7 @@ test('the demo says its clock moved on the Demo button, not the dashboard', asyn
   await expect(page.locator('.demo-panel-toggle')).toContainText('Clock moved', { timeout: 20_000 });
 });
 
-test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({
-  page,
-}) => {
+test('the dashboard is the Status card, the Roof card and Device & Network, nothing from the old sensors', async ({ page }) => {
   // inventory: device-network-card
   await open(page);
   await expect(card(page, 'Device & Network')).toBeVisible();
