@@ -14,6 +14,8 @@ The cards are **Status**, **Roof** and **Device & Network**.
 
 While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good. **Continue setup** resumes at the part you reached.
 
+While the roof needs a person, a red banner on every page says so: **The roof needs a person**, with the device's own words for what and why (a restart with the position unknown or a fault latched, the Hall sensor failing, or the automatic close unable to move) and what to do. It goes when the condition ends (the fault is cleared, a magnet has been read after a move or a teach, the Hall sensor reads normally again), and the same condition is a Home Assistant binary sensor, **Needs a person** ([Alerts](alerts.md#roof-needs-a-person)).
+
 ![Dashboard](../assets/screenshots/dashboard.png)
 
 ---
@@ -39,7 +41,7 @@ A problem no other card shows is one row under the tiles: its name, a pill, and 
 | **Roof** | **Fault**: a motion fault is latched; "?" says what happened, with the measured value and the limit. Clear it on the Roof card | While a fault is latched |
 | **Test box** | **Bypassed**: a [test box](test-box.md) bypass is in effect, so the card never reads **All good**; the row opens the test box page | While a bypass is in effect |
 | **Finish setup: …** | **N left**: the roof's setup isn't finished; the row opens the first stage left (see [Roof setup](#roof-setup)) | Until every setup stage is done |
-| **Automatic close** | **Held** (someone pressed Stop during it), **Can't move** (a fault or an unknown position) or **Halted** (a close took too long) - see [Close on unsafe weather](close-on-unsafe.md) | While the automatic close is in one of those states |
+| **Automatic close** | **Held** (someone pressed Stop during it), **Can't move** (a fault, or the roof controller didn't start) or **Halted** (a close took too long) - see [Close on unsafe weather](close-on-unsafe.md) | While the automatic close is in one of those states |
 
 Settings that are switched on but can't work are shown in **Settings**, where you set them: each reads **Not in effect** with the reason.
 
@@ -57,6 +59,8 @@ The **Roof** card shows the roof as its control task sees it, live:
 - **Open**, **Close** and **Stop** (see [Open, Close and Stop](#open-close-and-stop));
 - with a latched fault, its text (the measured value and the limit) and **Clear fault**. A Hall reading at a rail with the roof at rest says it clears itself after a minute of good readings and shows the live reading; **Clear fault** still works at once;
 - **Weather** and **Mount park**: the weather verdict and the park check exactly as the roof's own command checks see them now, each with its reason behind "?" (**Test box bypass** while a [test box](test-box.md) bypass stands in); and **Automatic close** while the [close on unsafe weather](close-on-unsafe.md) is under way or standing down;
+- a note under **Weather** while the [weather hold](close-on-unsafe.md#the-weather-hold) counts: the weather is unsafe, and the note counts down the seconds before the automatic close starts unless it clears (rain starts it at once, with no countdown). Open is already refused and an opening roof already stopped;
+- a note on the card while a close runs from an unknown position, or blind with a dead Hall sensor ([Close on unsafe weather](close-on-unsafe.md#closing-when-the-position-is-unknown)): the roof moves slowly with no position to show, and a person must check it afterwards;
 - **Park wait** and **Override** lines while they apply, and the health of the two inputs: **SQMeter** (when it last replied and what the last failure was: no reply, an HTTP status, an unreadable reply) and **N.I.N.A.** (reachable, mount connected, parked, or why not);
 - **Daylight**: the [daylight failsafe](close-on-unsafe.md#daylight-failsafe) as the device sees it: its mode and the sun's altitude against the threshold ("Sun 3.2° ≥ 0.0°"), or why the check can't run ("Location not set", "Clock not set"); with the mode off it says so. Below it, where the site came from and how old it is ("Location from SQMeter (GPS), read 3 min ago", "Typed-in location"), or why SQMeter's location isn't being read ([Site from SQMeter](close-on-unsafe.md#site-from-sqmeter)); this line is information, never a safety verdict;
 - **Supply**, **Motor current** (while current sense is on) and the park switches (when fitted);
@@ -96,7 +100,7 @@ When the device would refuse **Open** or **Close**, the buttons stay on the card
 
 The device checks every command anyway, whatever the page shows. If it refuses one, its reason appears under the buttons. When it is busy for a moment (an upload, a settings save or an MQTT connect is finishing) the buttons stay usable: try again shortly.
 
-From an unknown position (after a restart between the magnets, or a fault) Open and Close still work: the roof moves slowly to the first magnet it reaches. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof opens or closes, or the weather has been safe for the safe spell to re-arm, 10 minutes by default (in daylight with **Alert and close**, until the sun has been down that long). While it stands down, the card says so under **Automatic close**, with the clock time it clears at while the weather is safe, and **Release hold** for a person at the roof ([Release hold](close-on-unsafe.md#release-hold)). Jog, teach and the calibration run wait for it too, and say the same.
+From an unknown position (after a restart between the magnets, or an abort) Open and Close still work for a person: the roof moves slowly to the first magnet it reaches. The automatic close does the same, towards closed only, in unsafe weather. While the automatic close is waiting for the park or closing, the card warns that **Stop** calls it off: a person's stop stands it down until the roof opens or closes, or the weather has been safe for the safe spell to re-arm, 10 minutes by default (in daylight with **Alert and close**, until the sun has been down that long). While it stands down, the card says so under **Automatic close**, with the clock time it clears at while the weather is safe, and **Release hold** for a person at the roof ([Release hold](close-on-unsafe.md#release-hold)). Jog, teach and the calibration run wait for it too, and say the same.
 
 ## Roof setup
 

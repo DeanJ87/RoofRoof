@@ -49,7 +49,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 3.2 | Closest magnet approach stays clear of 30 and 4065 | |
 | ☐ 3.3 | `roof.hallHighEnd`, `hallHighCounts`, `hallLowCounts` set | / / |
 | ☐ 3.4 | States correct at each end, `unknown` between, also after a restart | |
-| ☐ 3.5 | Sensor unplugged: `hallRail` fault latched; cleared after replugging | |
+| ☐ 3.5 | Sensor unplugged: `hallRail` fault latched and **Roof needs a person** on the phone; cleared after replugging | |
 | ☐ 3.6 | Thresholds see both magnets (stage 8: teach the ends, then the calibration run refines them) | |
 
 ## Stage 4: Weather and park sources (motor disconnected)
@@ -103,11 +103,14 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 7.1 | Unsafe with mount unparked: park request in 1 s; close 4 to 5 s after parked; **Unsafe: closing** and **Roof closed after unsafe weather** on the phone | |
+| ☐ 7.1 | Unsafe with mount unparked: the weather hold counts (60 s, or the shortened test value), then the park request within 1 s; close 4 to 5 s after parked; **Unsafe: closing** and **Roof closed after unsafe weather** on the phone | |
 | ☐ 7.2 | N.I.N.A. closed: **Mount didn't park** at the timeout, no request for 5 min, roof stays open; also with **Send alerts** off | |
 | ☐ 7.3 | Stop during the close: stops, **Automatic close stopped**, nothing more; stop in the 4 s before the close: no close | |
 | ☐ 7.4 | After a stop, restart: still stood down, **Still:** alert; then safe and **Open**: armed again, unsafe starts a new run | |
-| ☐ 7.5 | Between the magnets, unsafe, restart: no park request, **Roof can't close by itself** after 2 s | |
+| ☐ 7.5 | Between the magnets, restart: **Roof needs a person**; unsafe: after the hold the roof closes slowly and **Roof closed from an unknown position** arrives with the magnet, a `timeout` fault without it | |
+| ☐ 7.5a | A 10 s unsafe blip and a 15 s silent SQMeter move nothing; about 90 s of silence starts the close; rain starts it at once | |
+| ☐ 7.6a | Hall sensor unplugged, unsafe: **Roof needs a person** at once, one blind close for the move's limit, **Roof closed blind: check the roof**; no second one until the fault is cleared; with `roof.blindClose` off, nothing moves | |
+| ☐ 7.6b | N.I.N.A. closed, unsafe: **Can't close: N.I.N.A. unreachable, mount park unknown** repeating, roof stays open; opt-in close (if used) closes with the switches closed, not with one open | |
 | ☐ 7.6 | Flapping verdict: requests at most every 30 s, **Mount didn't park** still arrives | |
 | ☐ 7.7 | Roof alerts arrive with the master switch off and one channel on | |
 | ☐ 7.8 | During the wait for park: restart, firmware upload, web UI upload, WiFi change answer `409`; after Stop they are accepted; with the router off they work from the hotspot | |
@@ -136,7 +139,8 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | ☐ 8.6 | No `supplyLow` at start; lowest supply during a move | V |
 | ☐ 8.7 | Timeout test mid-travel stops the roof, values restored; motor and IBT-2 cool enough after the longest run | |
 | ☐ 8.8 | Current sense (if fitted): `currentAmpsPerVolt`, `maxCurrentAmps`, `minRunningAmps`; `overCurrent` test; surge under 250 ms | / / |
-| ☐ 8.9 | Power cut mid-move: roof held, `unknown`, only a person moves it, slowly | |
+| ☐ 8.9 | Power cut mid-move: roof held, `unknown`, **Roof needs a person**, a person moves it slowly (in unsafe weather the automatic close does, once parked) | |
+| ☐ 8.9a | Supply sag measured: at rest / running at the slow duty / stall (if tried); `roof.blindSagVolts` set between running and stall; attended blind close stops and alerts | V / V / V / V |
 | ☐ 8.10 | Full run at the settled values, attended | |
 | ☐ 8.11 | **Attended dry run on the real roof**: park, close, **Unsafe: closing**, **Roof closed after unsafe weather**; a stop during the close works | |
 
@@ -188,11 +192,12 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | `roof.timeoutMarginSeconds` / `leaveMagnetSeconds` | |
 | `roof.topDutyPercent` / `slowDutyPercent` | |
 | `roof.currentSenseEnabled` / `maxCurrentAmps` / `currentAmpsPerVolt` / `minRunningAmps` | |
-| `roof.minSupplyVolts` | |
+| `roof.minSupplyVolts` / `blindClose` / `blindSagVolts` | |
 | `park.source` / `park.switches` / `park.timeoutSeconds` | |
 | `safety.staleSeconds` | |
 | `daylight.mode` / `daylight.sunAltitudeDeg` / `daylight.bandDeg` | |
 | `autoClose.rearmMinutes` / `remindMinutes` / `notStarted` / `remoteStop` | |
+| `autoClose.unsafeHoldSeconds` / `ninaLostClose` / `ninaLostMinutes` | |
 | `autoClose.parkRequestSeconds` / `parkHoldSeconds` / `retryMinutes` / `closeStartSeconds` / `closeGuardSeconds` | |
 | `location.latitude` / `location.longitude` | |
 

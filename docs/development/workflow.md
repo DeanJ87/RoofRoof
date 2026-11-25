@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: c80e553b4237d13a
+fingerprint: 63b8d26198d31752
 -->
 <figure class="diagram" markdown>
 
@@ -110,6 +110,8 @@ pio device monitor
 ```
 
 Source lives in `src/` and `include/`. PlatformIO handles the toolchain.
+
+The project's own code (`src/` and `lib/`, not the framework or the libraries) is built with link-time optimisation (`scripts/lto.py`), which brings the firmware image to about 89% of the OTA slot (94% without it). None of that code runs in an interrupt or from IRAM, which is what makes it safe: keep it that way, or the script must change. Boot and move the image on a board after changing the compiler flags.
 
 ---
 

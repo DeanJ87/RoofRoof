@@ -90,6 +90,8 @@ The state document also carries what an observatory dashboard needs (spec 027), 
 | `roof.nina` | `{set, state, reachable, connected, atPark, ageSeconds}`: N.I.N.A.'s health (no `text` here) |
 | `roof.sqmeter` | `{on, state, lastReplySeconds}`: the weather source's health (`lastReplySeconds` `null` without a good reply; no `text` here) |
 | `roof.closeRearmSeconds` | seconds until a held automatic close lapses, or `null` |
+| `roof.needsPerson` | `{active}`: the roof needs a person (a restart with the position unknown or a fault latched, a Hall sensor failure, the automatic close unable to move). Its text is in `GET /api/status` only. A change of `active` publishes the document at once |
+| `roof.blind` | the move is a [blind close](close-on-unsafe.md#blind-close-when-the-hall-sensor-has-failed) (the Hall sensor is dead; closing on time alone) |
 | `roof.daylightState` | `off`, `unknown`, `night` or `day` |
 | `roof.blocked` | one line saying why the roof can't move now (a fault, the weather, daylight, the park, a park wait), or `""` |
 
@@ -141,7 +143,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: 396cb714c90eafba
+fingerprint: 168ec84cd7a2f36e
 -->
 <figure class="diagram" markdown>
 
@@ -157,7 +159,7 @@ flowchart LR
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
-    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on: Connectivity, the Roof cover,<br/>its sensors and fault; the Alerts switch<br/>(whenever discovery is on)"]
+    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on: Connectivity, the Roof cover,<br/>its sensors, fault and needs-a-person sensor; the Alerts switch<br/>(whenever discovery is on)"]
 ```
 
 <figcaption>MQTT topic map: the topics RoofRoof listens to (left) and what it publishes (right). Its own topics sit under the base topic, default <code>roofroof</code>; SQMeter's under SQMeter's, default <code>sqmeter</code>.</figcaption>
@@ -177,7 +179,7 @@ flowchart LR
 
     When SQMeter over MQTT is a weather source, it also listens on SQMeter's `availability`, `safe` and `safety` topics under SQMeter's base topic (default `sqmeter`). It never publishes to them.
 
-    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved: the Connectivity sensor, the Roof cover, its position, supply, Hall and (with current sense on) motor current sensors and the Roof fault sensor always; the weather, park, automatic close, daylight, SQMeter and N.I.N.A. entities; and the Alerts switch, whenever discovery is on.
+    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved: the Connectivity sensor, the Roof cover, its position, supply, Hall and (with current sense on) motor current sensors, the Roof fault sensor and the Needs a person sensor always; the weather, park, automatic close, daylight, SQMeter and N.I.N.A. entities; and the Alerts switch, whenever discovery is on.
 
 !!! note "The same in every language"
     Topics and payloads never change with the UI language, including Home Assistant discovery. Alert titles and messages are English (or your own alert wording) for people to read: automate on the alert `event`.
@@ -192,6 +194,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 - **Roof** (cover): open, opening, closed, closing or stopped; unknown while the roof's state is `unknown` or `error`. With **Accept roof commands** on it has Open, Close and Stop, which send the [roof commands](#roof-commands) with all their limits; otherwise it is read-only. It has no position slider: the roof can't be sent to a position.
 - **Roof position** (%, `null` and so unknown while the position is unknown), **Supply voltage** (V), **Hall reading** (raw counts, a diagnostic) and, only while current sense is on, **Motor current** (A).
 - **Roof fault** (binary sensor, problem): on while a fault is latched; its attributes carry the fault's kind, cause, measured value, limit and text.
+- **Needs a person** (binary sensor, problem): on while the roof needs a person: a restart with the position unknown or a fault latched, the Hall sensor failing, or the automatic close unable to move ([Alerts](alerts.md#roof-needs-a-person)). It reads `roof.needsPerson.active` of the state document.
 - **Test box bypass** (binary sensor, problem): on while a [test box](test-box.md) bypass is in effect. Its attributes are the `roof.testBox` object.
 - **Weather safe**, **Mount parked**, **Automatic close held** (binary sensors), **Automatic close** (the phase), **Hold lapses in** (seconds), **Roof blocked** (why the roof can't move, as a line of text), **Waiting for park** (seconds left), **Daylight**, and, as diagnostics, **SQMeter last reply** (seconds) and **N.I.N.A. reachable**.
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send)). It is announced whenever discovery is on.

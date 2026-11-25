@@ -29,7 +29,7 @@ The `roof` object of the state document is the status's `roof` object ([REST API
 
 ## Entities
 
-With **Home Assistant → MQTT discovery** on, the device announces itself as one Home Assistant device named after the device name (identifier `roofroof_<mac>`, manufacturer and model "RoofRoof", the firmware version). Nineteen entities are announced.
+With **Home Assistant → MQTT discovery** on, the device announces itself as one Home Assistant device named after the device name (identifier `roofroof_<mac>`, manufacturer and model "RoofRoof", the firmware version). Twenty entities are announced.
 
 **Entity ids.** Home Assistant builds an entity id from the device name and the entity name, so with a device named `roofroof` the weather sensor is `binary_sensor.roofroof_weather_safe`; a device named `Observatory roof` gives `binary_sensor.observatory_roof_weather_safe`. Check the id in Home Assistant's entity list before using it. Each entity also carries a fixed `unique_id` and `object_id` of the form `roofroof_<mac>_<object>` (the `<mac>` is the device's MAC address without separators, as in its `UniqueID`), which is the `<object>` column below: `roofroof_<mac>_weather_safe`.
 
@@ -45,6 +45,7 @@ Unless a row says otherwise, an entity is available while `<base>/availability` 
 | Motor current | `sensor`, `motor_current` | current, A | `roof.motorAmps` | device online, and only announced while current sense is on |
 | Hall reading | `sensor`, `hall` | raw counts, diagnostic | `roof.hall.counts` | device online |
 | Roof fault | `binary_sensor`, `fault` | problem | on while `roof.fault` is set; attributes are the fault (`kind`, `cause`, `measured`, `limit`, `text`) | device online |
+| Needs a person | `binary_sensor`, `needs_person` | problem | on while `roof.needsPerson.active`: a restart with the position unknown or a fault latched, the Hall sensor failing, or the automatic close unable to move; the reason is in the Roof needs a person alert and the web UI's banner | device online |
 | Test box bypass | `binary_sensor`, `test_box` | problem | on while `roof.testBox.active`; attributes are `roof.testBox` | device online |
 | Weather safe | `binary_sensor`, `weather_safe` | - | on while `roof.weather` is `safe` | device online |
 | Mount parked | `binary_sensor`, `mount_parked` | - | on while `roof.parkConfirmed` | device online |
@@ -93,6 +94,8 @@ cards:
         name: Daylight
       - entity: binary_sensor.roofroof_roof_fault
         name: Fault
+      - entity: binary_sensor.roofroof_needs_a_person
+        name: Needs a person
       - entity: sensor.roofroof_sqmeter_last_reply
         name: SQMeter last reply
       - entity: binary_sensor.roofroof_n_i_n_a_reachable
@@ -101,4 +104,4 @@ cards:
         name: Alerts
 ```
 
-An automation can use the alert topic instead of an entity: trigger on a message on `roofroof/alerts` and match the `event` field (for example `nina_lost`, `mount_not_parked`, `roof_not_closed`). Alert titles and messages are for people to read; automate on `event`.
+An automation can use the alert topic instead of an entity: trigger on a message on `roofroof/alerts` and match the `event` field (for example `nina_lost`, `mount_not_parked`, `roof_not_closed`, `needs_person`). Alert titles and messages are for people to read; automate on `event`.

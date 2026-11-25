@@ -176,16 +176,16 @@
                     "fsSize": 458752
                   },
                   "time": {
-                    "epoch": 1795482879,
-                    "iso": "2026-11-24T01:14:39+0000",
+                    "epoch": 1795624109,
+                    "iso": "2026-11-25T16:28:29+0000",
                     "timezone": "GMT0BST,M3.5.0/1,M10.5.0"
                   },
                   "ntp": {
                     "enabled": true,
                     "synced": true,
                     "status": 1,
-                    "lastSync": 1795479277076,
-                    "nextSync": 1795486477076,
+                    "lastSync": 1795620507450,
+                    "nextSync": 1795627707450,
                     "drift": 0.003,
                     "server": "pool.ntp.org"
                   },
@@ -217,7 +217,7 @@
                     "enabled": true,
                     "connected": true,
                     "state": 0,
-                    "lastPublish": 1795482817076,
+                    "lastPublish": 1795624047450,
                     "lastReconnectAttempt": 0,
                     "broker": "192.168.1.10",
                     "port": 1883,
@@ -233,11 +233,12 @@
                     "target": null,
                     "driving": false,
                     "fromUnknown": false,
+                    "blind": false,
                     "moveElapsedMs": 0,
                     "moveTimeoutMs": 0,
                     "hall": {
                       "level": "low",
-                      "counts": 565
+                      "counts": 750
                     },
                     "supplyVolts": 12.6,
                     "supplyLow": false,
@@ -263,6 +264,10 @@
                     "weatherText": "safe",
                     "parkConfirmed": true,
                     "parkText": "parked",
+                    "needsPerson": {
+                      "active": false,
+                      "text": ""
+                    },
                     "fault": null,
                     "watchdogTrips": 0,
                     "maxStepGapMs": 20,
@@ -289,6 +294,11 @@
                       "closes": false
                     },
                     "closeRearmSeconds": null,
+                    "weatherHold": {
+                      "countedSeconds": 0,
+                      "leftSeconds": -1,
+                      "fired": false
+                    },
                     "parkWait": null,
                     "parkWaitEnded": null,
                     "override": [],
@@ -299,14 +309,14 @@
                       "reachable": true,
                       "connected": true,
                       "atPark": true,
-                      "ageSeconds": 2,
+                      "ageSeconds": 1,
                       "text": ""
                     },
                     "sqmeter": {
                       "on": true,
                       "state": "good",
-                      "lastReplySeconds": 3,
-                      "text": "Replied 3 s ago: safe"
+                      "lastReplySeconds": 1,
+                      "text": ""
                     }
                   },
                   "location": {
@@ -358,7 +368,7 @@
                     "valid": true,
                     "restartNeeded": false
                   },
-                  "configRevision": 3159606172
+                  "configRevision": 1125792824
                 }
               }
             }
@@ -1585,14 +1595,19 @@
                       "type": "integer",
                       "description": "SQMeter's reason flags (0 when safe)."
                     },
+                    "reasons": {
+                      "type": "string",
+                      "description": "SQMeter's own reasons, joined with \"; \" (at most 160 bytes; empty when it sent none)."
+                    },
                     "text": {
                       "type": "string",
-                      "description": "For people: \"SQMeter says safe\" or \"SQMeter says unsafe: reasonFlags 0x200 (rain)\"."
+                      "description": "For people: \"SQMeter says safe\", or \"SQMeter says unsafe: \" with SQMeter's reasons, or without them the flags as words (\"rain\")."
                     }
                   },
                   "required": [
                     "safe",
                     "reasonFlags",
+                    "reasons",
                     "text"
                   ],
                   "additionalProperties": false
@@ -3452,7 +3467,7 @@
                   },
                   "rest": {
                     "ready": true,
-                    "counts": 565
+                    "counts": 750
                   },
                   "marks": {
                     "closed": null,
@@ -3496,6 +3511,7 @@
                       "limitMs": 30000,
                       "safe": true,
                       "flags": 0,
+                      "reasons": "",
                       "text": ""
                     },
                     "mqtt": {
@@ -3506,6 +3522,7 @@
                       "limitMs": 150000,
                       "safe": false,
                       "flags": 0,
+                      "reasons": "no reason given",
                       "text": ""
                     }
                   },
@@ -6014,6 +6031,30 @@
                     ],
                     "additionalProperties": false
                   },
+                  "needs_person": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "message",
+                      "sound",
+                      "title"
+                    ],
+                    "additionalProperties": false
+                  },
                   "nina_lost": {
                     "type": "object",
                     "properties": {
@@ -6192,6 +6233,7 @@
                   "daylight_unknown",
                   "mount_not_parked",
                   "move_fault",
+                  "needs_person",
                   "nina_lost",
                   "roof_closed",
                   "roof_not_closed",
@@ -6457,6 +6499,12 @@
               "closeStartSeconds": {
                 "type": "number"
               },
+              "ninaLostClose": {
+                "type": "boolean"
+              },
+              "ninaLostMinutes": {
+                "type": "number"
+              },
               "notStarted": {
                 "type": "string"
               },
@@ -6477,18 +6525,24 @@
               },
               "retryMinutes": {
                 "type": "number"
+              },
+              "unsafeHoldSeconds": {
+                "type": "number"
               }
             },
             "required": [
               "closeGuardSeconds",
               "closeStartSeconds",
+              "ninaLostClose",
+              "ninaLostMinutes",
               "notStarted",
               "parkHoldSeconds",
               "parkRequestSeconds",
               "rearmMinutes",
               "remindMinutes",
               "remoteStop",
-              "retryMinutes"
+              "retryMinutes",
+              "unsafeHoldSeconds"
             ],
             "additionalProperties": false
           },
@@ -6829,6 +6883,12 @@
           "roof": {
             "type": "object",
             "properties": {
+              "blindClose": {
+                "type": "boolean"
+              },
+              "blindSagVolts": {
+                "type": "number"
+              },
               "calibrationLimitSeconds": {
                 "type": "number"
               },
@@ -6894,6 +6954,8 @@
               }
             },
             "required": [
+              "blindClose",
+              "blindSagVolts",
               "calibrationLimitSeconds",
               "currentAmpsPerVolt",
               "currentSenseEnabled",
@@ -7324,6 +7386,24 @@
                     },
                     "additionalProperties": false
                   },
+                  "needs_person": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "sound": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
                   "nina_lost": {
                     "type": "object",
                     "properties": {
@@ -7639,6 +7719,12 @@
               "closeStartSeconds": {
                 "type": "number"
               },
+              "ninaLostClose": {
+                "type": "boolean"
+              },
+              "ninaLostMinutes": {
+                "type": "number"
+              },
               "notStarted": {
                 "type": "string"
               },
@@ -7658,6 +7744,9 @@
                 "type": "boolean"
               },
               "retryMinutes": {
+                "type": "number"
+              },
+              "unsafeHoldSeconds": {
                 "type": "number"
               }
             },
@@ -7923,6 +8012,12 @@
           "roof": {
             "type": "object",
             "properties": {
+              "blindClose": {
+                "type": "boolean"
+              },
+              "blindSagVolts": {
+                "type": "number"
+              },
               "calibrationLimitSeconds": {
                 "type": "number"
               },
@@ -8834,6 +8929,9 @@
                   "limitMs": {
                     "type": "number"
                   },
+                  "reasons": {
+                    "type": "string"
+                  },
                   "safe": {
                     "type": "boolean"
                   },
@@ -8859,6 +8957,7 @@
                   "flags",
                   "generation",
                   "limitMs",
+                  "reasons",
                   "safe",
                   "state",
                   "text"
@@ -8883,6 +8982,9 @@
                   "limitMs": {
                     "type": "number"
                   },
+                  "reasons": {
+                    "type": "string"
+                  },
                   "safe": {
                     "type": "boolean"
                   },
@@ -8908,6 +9010,7 @@
                   "flags",
                   "generation",
                   "limitMs",
+                  "reasons",
                   "safe",
                   "state",
                   "text"
@@ -9745,6 +9848,10 @@
           "roof": {
             "type": "object",
             "properties": {
+              "blind": {
+                "type": "boolean",
+                "description": "Spec 030: the move is a blind close (the Hall sensor dead, closing on time alone)."
+              },
               "calibrating": {
                 "type": "boolean"
               },
@@ -9902,6 +10009,23 @@
               },
               "moveTimeoutMs": {
                 "type": "number"
+              },
+              "needsPerson": {
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "active",
+                  "text"
+                ],
+                "additionalProperties": false,
+                "description": "Spec 030: the roof needs a person (a restart with the position unknown, a fault, a Hall sensor failure, the automatic close unable to move), and what for."
               },
               "nina": {
                 "type": "object",
@@ -10177,11 +10301,33 @@
               "weather": {
                 "type": "string"
               },
+              "weatherHold": {
+                "type": "object",
+                "properties": {
+                  "countedSeconds": {
+                    "type": "integer"
+                  },
+                  "fired": {
+                    "type": "boolean"
+                  },
+                  "leftSeconds": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "countedSeconds",
+                  "fired",
+                  "leftSeconds"
+                ],
+                "additionalProperties": false,
+                "description": "Spec 030: the automatic close's weather hold: unsafe seconds added up, seconds left before the close is wanted (-1: not counting), whether it has fired."
+              },
               "weatherText": {
                 "type": "string"
               }
             },
             "required": [
+              "blind",
               "calibrating",
               "closePending",
               "closePhase",
@@ -10199,6 +10345,7 @@
               "motorAmps",
               "moveElapsedMs",
               "moveTimeoutMs",
+              "needsPerson",
               "nina",
               "openOverridable",
               "override",
@@ -10219,6 +10366,7 @@
               "testBox",
               "watchdogTrips",
               "weather",
+              "weatherHold",
               "weatherText"
             ],
             "additionalProperties": false
