@@ -44,7 +44,9 @@ const send = async (path: string, body?: unknown, timeoutMs = ROOF_COMMAND_TIMEO
 };
 
 /** Starts a jog; the answer's `id` names it for the keep-alives. */
-export const startJog = (direction: JogDirection) => send('/api/roof/jog', { direction, attended: true });
+/** Starts a jog; `ignoreMagnets` (spec 033): the person overrides the end magnets (it runs on time alone). */
+export const startJog = (direction: JogDirection, ignoreMagnets = false) =>
+  send('/api/roof/jog', ignoreMagnets ? { direction, attended: true, ignoreMagnets } : { direction, attended: true });
 /** Renews jog `id`; a late renewal can't outlive the device's own deadline, so it waits no longer than it. */
 export const holdJog = (direction: JogDirection, id: number, timeoutMs: number) =>
   send('/api/roof/jog', { direction, attended: true, id }, timeoutMs);

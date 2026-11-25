@@ -110,6 +110,7 @@ describe('TeachCard', () => {
     await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeEnabled());
     expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled();
     expect(document.getElementById('jog-blind')).toHaveTextContent('Nudging without the position sensor: watch the roof.');
+    expect(teachCard().queryByRole('switch', { name: "Don't stop at the end magnets" })).toBeNull();
   });
 
   it('still refuses the hold buttons for any other fault', async () => {
@@ -138,6 +139,23 @@ describe('TeachCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(posts.length).toBe(count); // no keep-alive after the release
     expect(open).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  // Spec 033: the person may override the end magnets, warned; the start says so, the renewals don't need to.
+  it('overriding the end magnets warns and sends the override with the start only', async () => {
+    const posts = record();
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    expect(document.getElementById('jog-override')).not.toBeInTheDocument();
+    fireEvent.click(teachCard().getByRole('switch', { name: "Don't stop at the end magnets" }));
+    expect(document.getElementById('jog-override')).toHaveTextContent("The roof won't stop at its ends: watch it.");
+    const close = teachCard().getByRole('button', { name: 'Hold to close' });
+    fireEvent.pointerDown(close);
+    await waitFor(() => expect(posts.filter((p) => p.path === '/api/roof/jog').length).toBeGreaterThanOrEqual(2), { timeout: 2000 });
+    expect(posts[0].body).toEqual({ direction: 'close', attended: true, ignoreMagnets: true });
+    expect(posts[1].body).toEqual({ direction: 'close', attended: true, id: 4 });
+    fireEvent.pointerUp(close);
   });
 
   it('leaving the button or hiding the page releases it', async () => {

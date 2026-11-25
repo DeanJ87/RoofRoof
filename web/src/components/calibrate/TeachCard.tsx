@@ -204,12 +204,13 @@ interface JogPanelProps {
  */
 export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, blind, onPress }) => {
   const [attended, setAttended] = useState(false);
+  const [ignoreMagnets, setIgnoreMagnets] = useState(false);
   const [problem, setProblem] = useState('');
   const jog = useJog((text) => setProblem(text || t('teach.jogEnded')));
   const press = (direction: JogDirection) => {
     setProblem('');
     onPress?.();
-    jog.press(direction);
+    jog.press(direction, ignoreMagnets && !blind);
   };
   return (
     <>
@@ -224,6 +225,21 @@ export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, che
       {blind && (
         <Note tone="warn" id="jog-blind">
           {t('teach.blindJog')}
+        </Note>
+      )}
+      {/* Spec 033: a person may override the end magnets (one shifted, or the sensor reads wrong). */}
+      {!blind && (
+        <Toggle
+          dataField="teach.ignoreMagnets"
+          label={t('teach.ignoreMagnets')}
+          hint={t('teach.ignoreMagnetsHint')}
+          checked={ignoreMagnets}
+          onChange={setIgnoreMagnets}
+        />
+      )}
+      {ignoreMagnets && !blind && (
+        <Note tone="warn" id="jog-override">
+          {t('teach.ignoreMagnetsWarn')}
         </Note>
       )}
       <ReadingRow label={t('calibrate.hallNow')} value={String(roof.hall.counts)} />
