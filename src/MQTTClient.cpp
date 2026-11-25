@@ -96,7 +96,7 @@ namespace SQM
     {
         resolveBroker();
         mqttClient->setServer(brokerHost.c_str(), brokerPort);
-        mqttClient->setBufferSize(3072); // Fits the largest MQTT document (diagnostics, discovery)
+        mqttClient->setBufferSize(RoofIo::Mqtt::CLIENT_BUFFER_BYTES); // Fits the largest MQTT document (diagnostics, discovery)
         mqttClient->setKeepAlive(60);
         mqttClient->setSocketTimeout(SOCKET_TIMEOUT_S);
         // Spec 008: a write to a half-open broker link gives up and drops the

@@ -414,7 +414,8 @@ namespace SQM
     }
 
     // The retained roof document on <base>/state, when RoofIo::Mqtt's schedule
-    // says (FR-002: nothing periodic while the roof moves or a close waits).
+    // says (spec 032: at once when a move starts, then every few seconds with
+    // the position; nothing periodic while a close waits).
     void WebServer::publishRoofState()
     {
         if (roof == nullptr || mqttClient == nullptr || !mqttClient->isConnected())
@@ -430,14 +431,17 @@ namespace SQM
         const uint32_t connection = mqttClient->connectionCount();
         const Config &config = getConfigCallback();
         roofStateSchedule.setChangeMinMs(config.mqtt.changeMinSeconds * 1000u); // spec 014
-        if (!roofStateSchedule.due(key, connection, now, config.mqtt.publishIntervalMs))
+        // Spec 032: not started with too little of the pass left (cut short, it
+        // would drop the connection for the rest of the move); the next check
+        // tries again.
+        if (!roofStateSchedule.due(key, connection, now, config.mqtt.publishIntervalMs) || !mqttClient->mayWrite())
             return;
         const time_t epoch = time(nullptr);
         DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
         RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
         // A failed publish isn't retried at once (the link is going, and the
-        // reconnect publishes again); while the roof is busy nothing more is
-        // tried on this connection (research R4).
+        // reconnect publishes again); while the roof is busy the next try waits
+        // BUSY_MIN_MS (research R4, spec 032).
         const bool ok = mqttClient->publishSubtopicJson(RoofIo::Mqtt::STATE_SUBTOPIC, doc, true);
         roofStateSchedule.published(key, connection, now, ok);
     }

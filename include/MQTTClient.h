@@ -47,6 +47,9 @@ namespace SQM
         // starts now (while the roof is busy, at most 500 ms of writes and
         // reads in all; spec 008).
         void startPass() { passBudget.start(millis()); }
+        // Spec 032: a write may start now with its whole budget left in this
+        // pass (RoofIo::Mqtt::PassBudget::mayWrite); otherwise wait for the next.
+        bool mayWrite() const { return passBudget.mayWrite(millis(), busy()); }
         // While the roof moves or a close waits (spec 003), no connect is
         // tried: a connect to a dead broker (DNS, TCP connect, CONNACK) would
         // hold up the main loop, and with it the safety hand-over to the roof.
