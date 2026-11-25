@@ -1,10 +1,10 @@
 ---
-description: "RoofRoof WebSocket API: the device status, with the roof's state, position, readings, checks and automatic-close phase, from /ws/status every 2 seconds and at once when the roof changes."
+description: "RoofRoof WebSocket API: the device status, with the roof's state, position, readings, checks and automatic-close phase, from /ws/status every 2 seconds (twice a second while the roof moves) and at once when the roof changes."
 ---
 
 # WebSocket
 
-Connect to `/ws/status` for a live stream of the device status, pushed every 2 seconds. The same object is available once from [`GET /api/status`](rest.md#get-apistatus).
+Connect to `/ws/status` for a live stream of the device status: one message as soon as you connect, then every 2 seconds, and every 500 ms while the roof is opening or closing. The same object is available once from [`GET /api/status`](rest.md#get-apistatus).
 
 ---
 
@@ -19,7 +19,7 @@ ws.onmessage = (event) => {
 };
 
 ws.onclose = () => {
-  // reconnect with backoff
+  // The last message is no longer current: show that, then reconnect with back-off.
 };
 ```
 
@@ -64,7 +64,7 @@ ws.onmessage = (event) => {
 };
 ```
 
-- It is sent every 250 ms while the roof is opening or closing, and every 2 s otherwise.
+- One message as soon as you connect, then on the same schedule as `/ws/status`: every 500 ms while the roof is opening or closing, and every 2 s otherwise.
 - At most 3 clients are kept (a new one replaces the oldest). A client that stops reading is closed after 10 s.
 - With diagnostics off, the device closes a client as soon as it connects.
 - Like `/ws/status`, it has no authentication and carries readings only.
@@ -74,7 +74,9 @@ ws.onmessage = (event) => {
 ## Notes
 
 - `/ws/status` is also sent at once when the recent alerts change: `alerts.recentRevision` goes up whenever [`GET /api/alerts/recent`](rest.md#get-apialertsrecent) would answer differently, so a page fetches the list only then.
-- `/ws/status` is also sent within 250 ms when the roof's state or fault, a waiting close, or the automatic close's phase changes (`roof` in the status), not only on the regular 2 s broadcast. While the roof moves this is the live position; MQTT only publishes the roof on a change then.
+- `/ws/status` is also sent within 250 ms when the roof's state or fault, a waiting close, or the automatic close's phase changes (`roof` in the status), not only on the regular broadcast. While the roof moves it carries the live position twice a second; MQTT only publishes the roof on a change then.
+- Both streams share one schedule (2 s at rest, 500 ms while the roof moves), so the dashboard and the Diagnostics page update at the same rate.
+- A client should treat a socket that has sent nothing for 5 s as dead (more than two missed messages), and never show the last message of a closed socket as current. The web UI closes such a socket, says it is reconnecting, and tries again after 1 s, doubling to 30 s; when the page comes back to the foreground it reconnects at once.
 - The server broadcasts to all connected clients simultaneously, and limits how many it keeps per endpoint (`connections` in the status).
 - There is no authentication on the WebSocket endpoint.
 - The WebSocket at `/ws/sensors` no longer exists.

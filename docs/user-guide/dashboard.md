@@ -6,6 +6,10 @@ description: "The RoofRoof dashboard: the Roof card with Open, Close and Stop, t
 
 The dashboard is the web UI's home page, updated live over a WebSocket. Try it without hardware in the [live demo](../live-demo.md).
 
+Nothing on the dashboard is shown before the device has sent its first reading: until then the page says **Connecting**, with the Roof card under it (its state reads **Connecting**, Open and Close are unavailable, Stop always works). If the connection drops, or nothing arrives for 5 seconds (a phone that went to sleep), the page says **Reconnecting** instead of showing the old values, and reconnects at once when the page is back in front. The **System** and **Diagnostics** pages do the same. While the roof moves, the readings update twice a second, the same rate as the Diagnostics page; at rest every 2 seconds.
+
+Explanations are behind **?**: hover, tap or tab to it. The tip is drawn over everything on the page and kept inside the window.
+
 The cards are **Status**, **Roof** and **Device & Network**.
 
 While the [setup wizard](setup-wizard.md) isn't done, a banner above the cards says so: **Setup isn't finished** with **Continue setup** on a new device (the wizard itself opens on the first dashboard visit after the device joins your WiFi), or an offer to **Run setup wizard** on a device upgraded from a release before it. **Dismiss** hides it for good. **Continue setup** resumes at the part you reached.

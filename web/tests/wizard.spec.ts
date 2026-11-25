@@ -122,6 +122,9 @@ const motorPart = async (page: Page) => {
 
 test('the real observatory branch: every screen answered in the wizard, the motor included', async ({ page }) => {
   test.setTimeout(300_000);
+  // Night at the demo's site (Greenwich), so the daylight check never refuses a move: the demo's
+  // clock follows the browser's, which runs on from here.
+  await page.clock.install({ time: new Date('2026-12-21T23:00:00Z') });
   await restartWizard(page, SHORT_ROOF);
   await watchAddress(page);
   await expect(dialog(page)).toHaveAttribute('aria-modal', 'true');
