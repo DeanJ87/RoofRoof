@@ -78,7 +78,8 @@ data: with 4 pages each sent a 4.4 KB status frame and two status replies in fli
 30 KB at once. 2 segments (2,872 B, lwIP's minimum) was flashed and tried: after a network return
 the MQTT client's writes ("Write of 128 bytes stopped after 16") ran out of their 1 s budget while
 the discovery burst waited for acknowledgements, and the connection was dropped and remade three
-times. MQTT can carry the weather source, so the change was reverted; the peak is instead bounded
+times. The link had only just come back, so the bench couldn't separate the cause, but MQTT can
+carry the weather source, so the change was reverted; the peak is instead bounded
 by spec 037's caps (2 replies in flight, one queued frame per page).
 
 ## R5b The reconnect burst
