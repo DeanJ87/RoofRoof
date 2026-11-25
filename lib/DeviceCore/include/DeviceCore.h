@@ -24,13 +24,12 @@ namespace SQM
     {
         // A clock reading before this (2024-01-01) means "not set yet".
         constexpr int64_t CLOCK_VALID_EPOCH = 1704067200;
-        // ArduinoJson pool for /api/status (src/WebServerStatus.cpp): the
-        // sections this library writes plus the device's own (firmware,
-        // memory, partitions, time, WiFi, MQTT, connections, roof), pinned by
+        // ArduinoJson pool for one section of /api/status (src/WebServerStatus.cpp
+        // writeStatus, spec 031): the sections are written one after another
+        // from this pool, so no reply needs one pool for the whole document
+        // (7168 bytes until spec 031). Each section group is pinned by
         // test/test_device_core (test_status_document_fits).
-        constexpr size_t STATUS_DOC_CAPACITY = 7168; // 4096 until spec 003 added the roof section, 5120 until spec 008 added its checks,
-                                                     // 6144 until spec 022 added the test box and spec 023 Ethernet and the pins,
-                                                     // 6656 until spec 024 added the park switch watch and the secrets read
+        constexpr size_t STATUS_SECTION_CAPACITY = 3072;
 
         // ISO 8601 UTC, or "" before the clock is set.
         std::string isoUtc(int64_t epoch);

@@ -29,9 +29,7 @@ namespace SQM
             {
                 DynamicJsonDocument doc(ConfigPins::CHECK_DOCUMENT_BYTES);
                 WiringRun::writeDocument(doc);
-                std::string out;
-                serializeJson(doc, out);
-                request->send(200, "application/json", out.c_str());
+                WebReply::sendJson(request, 200, doc);
             });
         AsyncCallbackJsonWebHandler *validate = new AsyncCallbackJsonWebHandler(
             "/api/pins/validate", [this](AsyncWebServerRequest *request, JsonVariant &json) { handleValidatePins(request, json); });
@@ -54,9 +52,7 @@ namespace SQM
         view.gates = getConfigCallback().analogGates();
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES);
         ConfigPins::writePinsDocument(doc.to<JsonObject>(), view);
-        std::string out;
-        serializeJson(doc, out);
-        request->send(200, "application/json", out.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
     void WebServer::handleValidatePins(AsyncWebServerRequest *request, JsonVariant &json)
@@ -86,9 +82,7 @@ namespace SQM
         }
         DynamicJsonDocument doc(ConfigPins::PINS_DOCUMENT_BYTES / 2);
         ConfigPins::writeValidation(doc.to<JsonObject>(), map, report, withAnalog ? &analog : nullptr, getConfigCallback().analogGates());
-        std::string out;
-        serializeJson(doc, out);
-        request->send(200, "application/json", out.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
     void WebServer::handleStartWiringCheck(AsyncWebServerRequest *request)

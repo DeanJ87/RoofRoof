@@ -1,4 +1,5 @@
 #include "MQTTClient.h"
+#include "BufferedWriter.h"
 #include "NetAddress.h"
 #include "Logger.h"
 #include <ArduinoJson.h>
@@ -327,6 +328,27 @@ namespace SQM
         if (ok)
             lastPublish = millis();
         return ok;
+    }
+
+    bool MQTTClient::publishJson(const std::string &topic, const JsonDocument &doc, bool retained)
+    {
+        if (!config.enabled || !mqttClient || !mqttClient->connected() || doc.capacity() == 0)
+            return false;
+        if (!mqttClient->beginPublish(topic.c_str(), static_cast<unsigned int>(measureJson(doc)), retained))
+            return false;
+        HeapSafe::BufferedWriter<PubSubClient> writer(*mqttClient);
+        serializeJson(doc, writer);
+        const bool ok = writer.flush() && mqttClient->endPublish() == 1;
+        if (ok)
+            lastPublish = millis();
+        return ok;
+    }
+
+    bool MQTTClient::publishSubtopicJson(const std::string &subtopic, const JsonDocument &doc, bool retained)
+    {
+        if (!config.enabled || !mqttClient || !mqttClient->connected())
+            return false;
+        return publishJson(config.topic + "/" + subtopic, doc, retained);
     }
 
     std::string MQTTClient::getAvailabilityTopic() const

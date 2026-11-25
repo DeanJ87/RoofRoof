@@ -20,6 +20,7 @@
 #include "SettingsDeps.h"
 #include "SqmeterSecrets.h"
 #include "TimeManager.h"
+#include "WebReply.h"
 #include <ArduinoJson.h>
 #include <AsyncUDP.h>
 #include <AsyncWebSocket.h>
@@ -189,7 +190,7 @@ namespace SQM
         void broadcastDiag(uint32_t now);
         void publishDiag(uint32_t now);
         bool diagOn() const;
-        std::string diagLiveJson() const;
+        void writeDiagLive(HeapSafe::ChunkText &out) const; // spec 031
         Diag::SystemLive diagSystem() const;
         // Spec 029 (src/WebServerCrash.cpp).
         void setupCrashRoutes();
@@ -243,7 +244,7 @@ namespace SQM
         bool roofBusyForMqtt() const;
         static constexpr uint32_t ROOF_STATE_CHECK_MS = 100;
         uint32_t lastRoofStateCheck = 0;
-        std::vector<std::string> pendingRoofResults; // published on the next pass, outside PubSubClient's callback
+        std::vector<RoofIo::Mqtt::Result> pendingRoofResults; // published on the next pass, outside PubSubClient's callback
         void sendPendingAlertTest();
         void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);
@@ -438,7 +439,7 @@ namespace SQM
         std::mutex copiedLock;
         std::unique_ptr<CopiedSecrets> copied;
         uint32_t copiedAtMs = 0;
-        int fetchSite(SiteJob &job, std::string &body);
+        int fetchSite(SiteJob &job, HeapSafe::ChunkText &body);
         void holdCopied(const Site::SiteConfig &site, const Site::SecretsRead &read, Site::SecretStates &states);
         std::unique_ptr<CopiedSecrets> heldCopied();
 
@@ -477,19 +478,21 @@ namespace SQM
         void restoreAlpacaConnections();
         void rememberAlpacaConnections();
         void onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type);
+        void sendFirstStatus(AsyncWebSocketClient *client) const;
 
         // Helper functions
         bool requireAuth(AsyncWebServerRequest *request) const;
         // The request carries the password when protection is on (no reply sent).
         bool requestAuthorised(AsyncWebServerRequest *request) const;
-        std::string createStatusJson() const;
-        // createStatusJson() sections, in document order.
+        // Spec 031: /api/status and the live frame, in sections (src/WebServerStatus.cpp).
+        void writeStatus(HeapSafe::ChunkText &out) const;
+        // writeStatus() sections, in document order.
         void appendFirmware(JsonDocument &doc) const;
         void appendRuntime(JsonDocument &doc) const;
         void appendTime(JsonDocument &doc) const;
         void appendWifi(JsonDocument &doc) const;
         void appendMqttStatus(JsonDocument &doc) const;
-        static std::string createErrorJson(const char *error);
+        static WebReply::ErrorText createErrorJson(const char *error);
     };
 
 } // namespace SQM

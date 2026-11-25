@@ -190,7 +190,7 @@ namespace SQM
         if (file.empty())
         {
             status = 500;
-            return createErrorJson("The backup couldn't be made");
+            return createErrorJson("The backup couldn't be made").c_str();
         }
         return file;
     }

@@ -11,7 +11,7 @@ namespace SQM
         namespace
         {
             // One formatted line (cut at 200 characters) and a newline.
-            __attribute__((format(printf, 2, 3))) void line(std::string &out, const char *format, ...)
+            __attribute__((format(printf, 2, 3))) void line(HeapSafe::ChunkText &out, const char *format, ...)
             {
                 char text[200];
                 va_list args;
@@ -36,7 +36,7 @@ namespace SQM
                 return text;
             }
 
-            void writeTime(std::string &out, const Record &r)
+            void writeTime(HeapSafe::ChunkText &out, const Record &r)
             {
                 if ((r.flags & Record::TIMED) == 0)
                 {
@@ -51,7 +51,7 @@ namespace SQM
                 line(out, "Time: %s UTC, %lu s after start", when, ul(r.uptimeMs / 1000));
             }
 
-            void writeCapture(std::string &out, const Record &r)
+            void writeCapture(HeapSafe::ChunkText &out, const Record &r)
             {
                 if ((r.flags & Record::CAPTURED) == 0)
                 {
@@ -83,7 +83,7 @@ namespace SQM
                     (c.flags & Capture::CONTINUES) != 0 ? " [continues]" : "");
             }
 
-            void writeSnapshot(std::string &out, const Record &r)
+            void writeSnapshot(HeapSafe::ChunkText &out, const Record &r)
             {
                 if ((r.flags & Record::SNAPSHOT) == 0)
                     return;
@@ -108,7 +108,7 @@ namespace SQM
             }
         } // namespace
 
-        void writeRecord(std::string &out, const Record &r)
+        void writeRecord(HeapSafe::ChunkText &out, const Record &r)
         {
             line(out, "Record %lu: %s", ul(r.seq), kindName(static_cast<Kind>(r.kind)));
             writeTime(out, r);
@@ -123,9 +123,8 @@ namespace SQM
                 line(out, "  %lu.%03lus %s %s", ul(r.log[i].ms / 1000), ul(r.log[i].ms % 1000), levelText(r.log[i].level), r.log[i].text);
         }
 
-        std::string crashesText(const BootView &boot, const Record *records, size_t count)
+        void crashesText(HeapSafe::ChunkText &out, const BootView &boot, const Record *records, size_t count)
         {
-            std::string out;
             line(
                 out,
                 "This start: %s (%u), boot %lu",
@@ -139,12 +138,10 @@ namespace SQM
                 out += '\n';
                 writeRecord(out, records[i]);
             }
-            return out;
         }
 
-        std::string logText(const LogLine *lines, size_t count)
+        void logText(HeapSafe::ChunkText &out, const LogLine *lines, size_t count)
         {
-            std::string out;
             for (size_t i = 0; i < count; ++i)
                 line(
                     out,
@@ -154,7 +151,20 @@ namespace SQM
                     ul(lines[i].ms % 1000),
                     levelText(lines[i].level),
                     lines[i].text);
-            return out;
+        }
+
+        std::string crashesText(const BootView &boot, const Record *records, size_t count)
+        {
+            HeapSafe::ChunkText out;
+            crashesText(out, boot, records, count);
+            return out.str();
+        }
+
+        std::string logText(const LogLine *lines, size_t count)
+        {
+            HeapSafe::ChunkText out;
+            logText(out, lines, count);
+            return out.str();
         }
     } // namespace Crash
 } // namespace SQM

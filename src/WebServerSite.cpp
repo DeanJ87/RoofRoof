@@ -73,17 +73,26 @@ namespace SQM
             return true;
         }
 
-        std::string errorBody(const std::string &message)
+        WebReply::ErrorText errorBody(const std::string &message)
         {
-            StaticJsonDocument<256> doc;
-            doc["error"] = message;
-            std::string out;
-            serializeJson(doc, out);
-            return out;
+            return WebReply::errorJson(message.c_str());
+        }
+
+        // Spec 031: a job's reply in pieces (the job runs on its own task).
+        void setBody(HeapSafe::ChunkText &body, const WebReply::ErrorText &error)
+        {
+            body.clear();
+            body += error.c_str();
+        }
+
+        void setBody(HeapSafe::ChunkText &body, const JsonDocument &doc)
+        {
+            body.clear();
+            serializeJson(doc, body);
         }
 
         // SQMeter's settings, filtered as they arrive; false with the error body.
-        bool readSite(const Site::Endpoint &from, Site::SiteConfig &site, std::string &body)
+        bool readSite(const Site::Endpoint &from, Site::SiteConfig &site, HeapSafe::ChunkText &body)
         {
             DynamicJsonDocument filter(Site::CONFIG_FILTER_BYTES);
             Site::configFilter(filter);
@@ -92,13 +101,13 @@ namespace SQM
                 from, filter, doc, SafetyPoller::FetchLimits{CONNECT_MS, TOTAL_MS, SafetyPoller::TLS_PERSON_WAIT_MS});
             std::string why = "not SQMeter's settings";
             if (fetch.status <= 0)
-                body = errorBody("SQMeter not answering: " + (fetch.error.empty() ? std::string("no reply") : fetch.error));
+                setBody(body, errorBody("SQMeter not answering: " + (fetch.error.empty() ? std::string("no reply") : fetch.error)));
             else if (Safety::loginRefusalText(fetch.status, fetch.credentials) != nullptr)
-                body = errorBody(Safety::loginRefusalText(fetch.status, fetch.credentials)); // spec 020: not a generic failure
+                setBody(body, errorBody(Safety::loginRefusalText(fetch.status, fetch.credentials))); // spec 020: not a generic failure
             else if (fetch.status != 200)
-                body = errorBody("SQMeter answered HTTP " + std::to_string(fetch.status));
+                setBody(body, errorBody("SQMeter answered HTTP " + std::to_string(fetch.status)));
             else if (!fetch.parsed || !Site::readSiteConfig(doc, site, why))
-                body = errorBody("SQMeter's settings couldn't be read: " + why);
+                setBody(body, errorBody("SQMeter's settings couldn't be read: " + why));
             else
                 return true;
             return false;
@@ -119,25 +128,23 @@ namespace SQM
 
         // Spec 020 FR-038: one read of SQMeter's /api/safety, as the weather
         // poll makes it: 200 with the verdict, or 502 with why not.
-        int testSafety(const Site::Endpoint &to, std::string &body)
+        int testSafety(const Site::Endpoint &to, HeapSafe::ChunkText &body)
         {
             StaticJsonDocument<256> out;
             Safety::writeTestResult(out.to<JsonObject>(), SafetyPoller::getOnce(to, SafetyPoller::TLS_PERSON_WAIT_MS));
-            body.clear();
-            serializeJson(out, body);
+            setBody(body, out);
             return out["error"].isNull() ? 200 : 502;
         }
 
         // Spec 027: one read of N.I.N.A.'s mount, as the park poll makes it.
-        int testNina(const std::string &url, std::string &body)
+        int testNina(const std::string &url, HeapSafe::ChunkText &body)
         {
             const std::unique_ptr<Nina::Api> api = Nina::makeApi(Nina::ApiVersion::V2);
             const Safety::HttpOutcome reply = SafetyPoller::getOnce(Site::Endpoint{url, "", ""}, SafetyPoller::TLS_PERSON_WAIT_MS);
             StaticJsonDocument<384> out;
             const int status = Nina::writeTestAnswer(
                 out.to<JsonObject>(), Nina::testReading(*api, reply.status, reply.body, reply.error, SafetyPoller::nowMs()));
-            body.clear();
-            serializeJson(out, body);
+            setBody(body, out);
             return status;
         }
     } // namespace
@@ -181,7 +188,7 @@ namespace SQM
 
     // SQMeter's settings into the site document, with (spec 024) what became
     // of its secrets; never a secret's value.
-    int WebServer::fetchSite(SiteJob &job, std::string &body)
+    int WebServer::fetchSite(SiteJob &job, HeapSafe::ChunkText &body)
     {
         const auto site = std::unique_ptr<Site::SiteConfig>(new Site::SiteConfig());
         if (!readSite(job.from, *site, body))
@@ -198,11 +205,10 @@ namespace SQM
         Site::writeSecretsPart(out.as<JsonObject>(), secrets, states, job.address);
         if (out.overflowed())
         {
-            body = errorBody("SQMeter's settings are too long to copy");
+            setBody(body, errorBody("SQMeter's settings are too long to copy"));
             return 502;
         }
-        body.clear();
-        serializeJson(out, body);
+        setBody(body, out);
         return 200;
     }
 
@@ -307,14 +313,14 @@ namespace SQM
     void WebServer::runSiteJob(void *arg)
     {
         std::unique_ptr<SiteJob> job(static_cast<SiteJob *>(arg));
-        std::string body;
+        HeapSafe::ChunkText body;
         const int status = job->nina   ? testNina(job->from.url, body)
                            : job->test ? testSafety(job->from, body)
                                        : job->owner->fetchSite(*job, body);
         if (status != 200)
-            Logger::info(TAG, "%s: %s", job->nina ? "Test of N.I.N.A." : job->test ? "Test of SQMeter" : "Copy from SQMeter", body.c_str());
+            Logger::info(TAG, "%s: %s", job->nina ? "Test of N.I.N.A." : job->test ? "Test of SQMeter" : "Copy from SQMeter", body.str().c_str());
         if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())
-            request->send(status, "application/json", body.c_str());
+            WebReply::sendText(request.get(), status, "application/json", std::move(body));
         job.reset();
         siteJobRunning = false;
         vTaskDelete(nullptr);

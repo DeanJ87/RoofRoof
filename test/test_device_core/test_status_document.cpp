@@ -9,8 +9,9 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
-// /api/status fits Core::STATUS_DOC_CAPACITY in the worst case (SQMeter spec
+// Each /api/status section fits Core::STATUS_SECTION_CAPACITY in the worst case (SQMeter spec
 // 030 FR-008, constitution VI): a full pool silently drops the trailing sections
 // (diagnostics, MQTT, connections). The sections this library writes are
 // written for real; the device's own (src/WebServerStatus.cpp) are modelled
@@ -132,6 +133,8 @@ namespace
         for (const char *key : {"status", "limitPerEndpoint", "replaced", "stalledClosed"})
             live[key] = 4294967295U;
         connections["alpacaRestoredAfterRestart"] = true;
+        JsonObject shortOfMemory = connections.createNestedObject("shortOfMemory"); // spec 031
+        shortOfMemory["refused"] = shortOfMemory["skippedFrames"] = 4294967295U;
 
         // appendRoof (spec 003): every key filled, a fault with its longest text.
         RoofIo::Snapshot roof;
@@ -152,9 +155,12 @@ namespace
         roof.testBox.set = roof.testBox.park = roof.testBox.weather = roof.testBox.daylight = true;
         roof.testBox.until = 4294967295U;
         roof.needsPerson = {true, std::string(RoofIo::MAX_CHECK_TEXT, 'n')}; // spec 030
-        JsonObject out = doc.createNestedObject("roof");
-        RoofIo::writeStatus(out, roof);
-        RoofIo::writeCloseRearm(out, roof);
+        JsonObject roofOut = doc.createNestedObject("roof");
+        RoofIo::writeStatus(roofOut, roof);
+        RoofIo::writeDaylight(roofOut, roof);
+        RoofIo::writeCloseRearm(roofOut, roof);
+        RoofIo::writeMoveGuard(roofOut, roof);
+        RoofIo::writeHealth(roofOut, roof, true);
     }
 
     // Every member and element takes one slot.
@@ -214,20 +220,51 @@ namespace
     }
 } // namespace
 
+// Spec 031: the sections writeStatus writes one after another from one pool,
+// by their top-level keys, in document order. Every key is in one section.
+namespace
+{
+    const std::vector<std::vector<const char *>> SECTIONS = {
+        {"firmware", "uptime", "configRevision", "freeHeap", "stackFree"},
+        {"alerts", "alpaca"},
+        {"heapStages", "minFreeHeap", "maxAllocHeap", "heapSize", "cpuFreqMHz", "flashSize", "sketchSize", "freeSketchSpace",
+         "resetReason", "bootCount", "fsTotal", "fsUsed", "partitions", "time", "ntp"},
+        {"wifi", "ethernet", "pins"},
+        {"mqtt", "connections"},
+        {"roof"},
+        {"location", "sync"},
+    };
+} // namespace
+
 void test_status_document_fits()
 {
     const uint32_t now = 100000;
     const Config cfg = everythingOn();
-    DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY * 2);
+    DynamicJsonDocument doc(16384);
     deviceSections(doc, cfg);
     coreSections(doc, cfg, now);
     TEST_ASSERT_FALSE(doc.overflowed());
     TEST_ASSERT_TRUE(doc["alpaca"]["clients"].containsKey("dome"));
 
-    // With 20% headroom, like SQMeter's readings document.
-    const size_t used = onDevice(doc);
-    char detail[96];
-    snprintf(detail, sizeof detail, "pool %u bytes of %u", static_cast<unsigned>(used), static_cast<unsigned>(Core::STATUS_DOC_CAPACITY));
-    TEST_ASSERT_TRUE_MESSAGE(used * 12 / 10 <= Core::STATUS_DOC_CAPACITY, detail);
-    printf("status document on the device: %s\n", detail);
+    size_t keys = 0;
+    for (const auto &section : SECTIONS)
+    {
+        DynamicJsonDocument part(Core::STATUS_SECTION_CAPACITY * 4);
+        for (const char *key : section)
+        {
+            TEST_ASSERT_TRUE_MESSAGE(doc.containsKey(key), key);
+            part[key] = doc[key];
+            ++keys;
+        }
+        TEST_ASSERT_FALSE(part.overflowed());
+        // With 20% headroom, like SQMeter's readings document.
+        const size_t used = onDevice(part);
+        char detail[96];
+        snprintf(detail, sizeof detail, "%s section: pool %u bytes of %u", section.front(), static_cast<unsigned>(used),
+                 static_cast<unsigned>(Core::STATUS_SECTION_CAPACITY));
+        TEST_ASSERT_TRUE_MESSAGE(used * 12 / 10 <= Core::STATUS_SECTION_CAPACITY, detail);
+        printf("status document on the device: %s\n", detail);
+    }
+    // No top-level key is left out of a section.
+    TEST_ASSERT_EQUAL_UINT(doc.as<JsonObjectConst>().size(), keys);
 }

@@ -274,10 +274,10 @@ namespace SQM
                     addSensor(doc, entity, base);
             }
 
-            std::string payload(const Device &device, const Entity &entity, const Groups &groups)
+            void writeConfig(JsonDocument &doc, const Device &device, const Entity &entity, const Groups &groups)
             {
                 const std::string &base = device.baseTopic;
-                DynamicJsonDocument doc(2048); // the longest names: test_long_names_fit
+                doc.clear();
                 doc["name"] = entity.name;
                 doc["unique_id"] = device.id + "_" + entity.object;
                 doc["object_id"] = device.id + "_" + entity.object;
@@ -296,22 +296,23 @@ namespace SQM
                 dev["manufacturer"] = "RoofRoof";
                 dev["model"] = "RoofRoof";
                 dev["sw_version"] = device.version;
-
-                std::string out;
-                serializeJson(doc, out);
-                return out;
             }
         } // namespace
 
         void forEach(
             const Device &device,
             const Groups &groups,
-            const std::function<void(const std::string &topic, const std::string &payload)> &publish)
+            const std::function<void(const std::string &topic, const JsonDocument *config)> &publish)
         {
+            // One pool for every entity (spec 031: published straight from it).
+            DynamicJsonDocument doc(CONFIG_DOC_BYTES);
             for (const Entity &entity : ENTITIES)
             {
                 const std::string topic = device.prefix + "/" + entity.component + "/" + device.id + "/" + entity.object + "/config";
-                publish(topic, enabled(entity.group, groups) ? payload(device, entity, groups) : std::string());
+                const bool on = enabled(entity.group, groups);
+                if (on)
+                    writeConfig(doc, device, entity, groups);
+                publish(topic, on ? &doc : nullptr);
             }
         }
     } // namespace HaDiscovery
