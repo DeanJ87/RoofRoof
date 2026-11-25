@@ -118,8 +118,9 @@ namespace SQM
             {
                 out["safe"] = !check.reply.unsafe();
                 out["reasonFlags"] = check.reply.reasonFlags;
-                out["text"] =
-                    check.reply.unsafe() ? "SQMeter says unsafe: " + reasonFlagsText(check.reply.reasonFlags) : "SQMeter says safe";
+                out["reasons"] = check.reply.reasons; // spec 030
+                out["text"] = check.reply.unsafe() ? "SQMeter says unsafe: " + unsafeText(check.reply.reasonFlags, check.reply.reasons)
+                                                   : "SQMeter says safe";
             }
         }
 

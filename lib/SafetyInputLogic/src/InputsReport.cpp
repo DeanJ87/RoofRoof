@@ -29,6 +29,8 @@ namespace SQM
                 out["limitMs"] = s.limitMs;
                 out["safe"] = s.sqmeterSafe;
                 out["flags"] = s.sqmeterFlags;
+                out["reasons"] =
+                    s.sqmeterFlags != 0 || !s.sqmeterSafe ? unsafeText(s.sqmeterFlags, s.sqmeterReasons) : std::string(); // spec 030
                 out["text"] = clip(describeSource(s));
             }
 

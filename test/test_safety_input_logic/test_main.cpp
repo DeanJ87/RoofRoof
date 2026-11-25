@@ -359,7 +359,7 @@ void test_unsafe_when_any_source_unsafe_http(void)
     const WeatherVerdict v = evaluateWeather(in);
     TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
     TEST_ASSERT_EQUAL_UINT32(ReasonWeatherUnsafe, v.reasons);
-    TEST_ASSERT_EQUAL_STRING("unsafe: SQMeter HTTP says unsafe: reasonFlags 0x10", describe(v).c_str());
+    TEST_ASSERT_EQUAL_STRING("unsafe: SQMeter HTTP says unsafe: cloud cover", describe(v).c_str());
 }
 
 void test_unsafe_when_any_source_unsafe_mqtt(void)
@@ -385,7 +385,7 @@ void test_rain_bit9_gives_rain(void)
     const WeatherVerdict v = evaluateWeather(in);
     TEST_ASSERT_TRUE(v.verdict == Verdict::Unsafe);
     TEST_ASSERT_EQUAL_UINT32(ReasonRain, v.reasons);
-    TEST_ASSERT_EQUAL_STRING("unsafe: SQMeter HTTP says unsafe: reasonFlags 0x200 (rain)", describe(v).c_str());
+    TEST_ASSERT_EQUAL_STRING("unsafe: SQMeter HTTP says unsafe: rain", describe(v).c_str());
 }
 
 void test_rain_sensor_fault_bit10_unsafe(void)
