@@ -72,6 +72,6 @@ export const testNina = async (url: string): Promise<NinaAnswer> => {
     if (response.ok) return { ok: true, connected: body.connected === true, atPark: body.atPark === true };
     return { ok: false, reachable: body.reachable === true, error: deviceError(body, t('roof.result.refused')) };
   } catch {
-    return { ok: false, reachable: false, error: t('settings.sqmeterCopy.unreachable') };
+    return { ok: false, reachable: false, error: t('settings.couldNotReachTheDevice') };
   }
 };
