@@ -6,6 +6,7 @@
 #include <string>
 
 #include "Analog.h"
+#include "ConfigAutoClose.h"
 #include "PinMap.h"
 
 namespace SQM
@@ -349,44 +350,6 @@ namespace SQM
         float bandDeg = 0.5f;
         static constexpr float MIN_BAND_DEG = 0.1f;
         static constexpr float MAX_BAND_DEG = 2.0f;
-    };
-
-    // The automatic close's policy (spec 014; specs 005 and 013 fixed these).
-    // The defaults are the values those specs chose; lib/CloseSequenceLogic's
-    // ClosePolicy clamps them again.
-    struct AutoCloseConfig
-    {
-        uint32_t rearmMinutes = 10;       // the safe spell that ends a stand-down
-        uint32_t parkRequestSeconds = 30; // between park requests
-        uint32_t parkHoldSeconds = 4;     // the park must hold this long before the close
-        uint32_t retryMinutes = 5;        // the back-off after a failed attempt or close
-        uint32_t closeStartSeconds = 30;  // a waiting close must start within this
-        uint32_t closeGuardSeconds = 30;  // added to the move's own timeout
-        enum class NotStarted : uint8_t
-        {
-            Halt = 0,
-            Retry = 1,
-        };
-        NotStarted notStarted = NotStarted::Halt;
-        uint32_t remindMinutes = 30; // critical reminders and their throttle
-        // An Alpaca or MQTT stop of a close in unsafe weather counts as a
-        // person's stop (stand-down and its critical alert) instead of being refused.
-        bool remoteStop = false;
-
-        static constexpr uint32_t MIN_REARM_MINUTES = 5;
-        static constexpr uint32_t MAX_REARM_MINUTES = 60;
-        static constexpr uint32_t MIN_PARK_REQUEST_SECONDS = 10;
-        static constexpr uint32_t MAX_PARK_REQUEST_SECONDS = 120;
-        static constexpr uint32_t MIN_PARK_HOLD_SECONDS = 4;
-        static constexpr uint32_t MAX_PARK_HOLD_SECONDS = 30;
-        static constexpr uint32_t MIN_RETRY_MINUTES = 1;
-        static constexpr uint32_t MAX_RETRY_MINUTES = 30;
-        static constexpr uint32_t MIN_CLOSE_START_SECONDS = 25;
-        static constexpr uint32_t MAX_CLOSE_START_SECONDS = 120;
-        static constexpr uint32_t MIN_CLOSE_GUARD_SECONDS = 10;
-        static constexpr uint32_t MAX_CLOSE_GUARD_SECONDS = 120;
-        static constexpr uint32_t MIN_REMIND_MINUTES = 10;
-        static constexpr uint32_t MAX_REMIND_MINUTES = 120;
     };
 
     // Web UI preferences kept on the device (spec 014).
