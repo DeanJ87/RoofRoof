@@ -38,7 +38,8 @@ you move the roof by hand and tell the device where each end is.
 
 1. Turn on **I am at the roof, watching it**. The card lists the same checks as the run: the
    weather safe (and daylight not wanting the roof closed), the mount parked, no fault, the
-   automatic close idle, the supply and a settled Hall reading.
+   automatic close idle, the supply and a settled Hall reading (a failed Hall sensor is the
+   exception, below).
 2. **Hold to open** or **Hold to close** moves the roof at the slow duty for as long as you hold
    the button (mouse, finger, or Space or Enter held). Letting go stops it. If the page, the phone
    or the network goes, the device stops the roof within half a second by itself. A jog also
@@ -64,6 +65,12 @@ jog: on a new roof the motor direction setting may still be wrong, so **Hold to 
 roof. If it moves the wrong way, let go and fix **Settings → Roof → Direction and speed → Opening direction** (`roof.openDirection`). A jog
 stops when the weather or daylight turns, and the automatic close stops it before it makes its
 own checks. Nothing is kept across a restart, and nothing moves after one.
+
+With the Hall sensor failed (a `hallRail` fault), the hold buttons stay available for a person at
+the roof, with the warning **Nudging without the position sensor: watch the roof**: the jog then runs
+on time alone and can't stop at an end by itself, only while you hold the button and for at most the
+jog's limit ([Nudging without the Hall sensor](roof-motion.md#nudging-without-the-hall-sensor)). Any
+other fault still refuses a jog.
 
 Until the ends are taught, the state the dashboard shows at a magnet comes from the old settings and may name the wrong end: trust what you see at the roof.
 
