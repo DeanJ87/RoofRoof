@@ -49,14 +49,14 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 966863655e0a6c15
+fingerprint: 68e4a4cb04f1ca8b
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The roof's states
-    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command, or the automatic close towards closed, moves the roof, slowly, to the first magnet. With a Hall rail fault latched, the automatic close alone may also drive towards closed once on time alone (a blind close), which ends in error again; a person may nudge it either way on time alone, only while holding a button (a blind jog), which ends in error again too. Any fault from any state gives error, which only a person can clear (a Hall rail fault latched at rest clears itself after a minute of good readings).
+    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command, or the automatic close towards closed, moves the roof, slowly, to the first magnet. With a Hall rail fault latched, the automatic close alone may also drive towards closed once on time alone (a blind close), which ends in error again; a person may nudge it either way on time alone, only while holding a button (a blind jog), which ends in error again too. With the sensor working, a person may also jog past the magnets (an override); the roof is then unknown, even at a magnet, until a move reaches one. Any fault from any state gives error, which only a person can clear (a Hall rail fault latched at rest clears itself after a minute of good readings).
     [*] --> Closed: closed magnet read
     [*] --> Open: open magnet read
     [*] --> Unknown: no magnet read
@@ -99,7 +99,8 @@ stateDiagram-v2
     5. Abort part-way gives `unknown`. From `unknown`, only a person's open moves the roof (never an imaging app's, MQTT's or the automatic close's); a close may come from a person or from the [automatic close](close-on-unsafe.md#closing-when-the-position-is-unknown), at the slow duty, stopping at the first magnet.
     6. A magnet lost while the roof is at rest makes it `unknown`; a magnet read at rest makes it that end. New settings while `stopped` make it `unknown`, since the estimate used the old ones.
     7. Two moves start from `error`, both with a Hall rail fault latched and nothing else wrong, and both end in `error` again, still with the Hall fault: a [blind close](#blind-close), where the automatic close drives towards closed at the slow duty on time alone, and a person's [blind jog](#nudging-without-the-hall-sensor), either way at the slow duty, only while the button is held. Any fault, from any state, gives `error`. Only a person can clear it, except a Hall rail fault latched with the roof at rest, which clears itself after a minute of good readings at rest; the roof is then at the end whose magnet is read, or `unknown`.
-    8. A [calibration run](calibration-run.md)'s legs are `opening` and `closing` moves that a person starts: each stops at the first magnet after leaving its start magnet (whichever end the polarity setting names), at its time limit, or on a fault; the park interlock watches every leg; a stop part-way gives `stopped` or `unknown` as above.
+    8. A person's jog that [overrides the end magnets](#overriding-the-end-magnets) is an `opening` or `closing` move that doesn't stop at a magnet; it ends in `unknown`, even at a magnet, until a move reaches one or new roof settings are saved.
+    9. A [calibration run](calibration-run.md)'s legs are `opening` and `closing` moves that a person starts: each stops at the first magnet after leaving its start magnet (whichever end the polarity setting names), at its time limit, or on a fault; the park interlock watches every leg; a stop part-way gives `stopped` or `unknown` as above.
 
 ## Commands
 
@@ -209,6 +210,18 @@ refuses the jog (clear it first: with a working Hall sensor the jog is the norma
 invalid settings, a low or unreadable supply, and the jog's own checks (the weather safe, no daylight
 close, the mount parked). The automatic close and the blind close take over from a blind jog, as
 from any jog. Each nudge is held by a person, so repeated nudges have no total drive limit.
+
+### Overriding the end magnets
+
+With the Hall sensor working, a magnet that has shifted or a sensor that reads wrong can stop a jog
+in the wrong place. Turn on **Don't stop at the end magnets** next to the hold buttons (after **I am
+at the roof, watching it**): the warning **The roof won't stop at its ends: watch it** shows, and
+the next hold runs blind exactly as above, past any magnet. Afterwards the roof is `unknown`, even
+at a magnet: a magnet read at rest doesn't place it again until a move reaches a magnet (a person's
+Open or Close, which then stops there at once if it is the target's, or a normal jog) or new roof
+settings are saved (for example after teaching the ends again). Imaging apps and MQTT can't move it
+meanwhile (the position is unknown). Only a person can override the magnets; any latched fault but
+the Hall rail one refuses it.
 
 ## On the board
 

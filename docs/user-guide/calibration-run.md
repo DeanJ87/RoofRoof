@@ -70,7 +70,10 @@ With the Hall sensor failed (a `hallRail` fault), the hold buttons stay availabl
 the roof, with the warning **Nudging without the position sensor: watch the roof**: the jog then runs
 on time alone and can't stop at an end by itself, only while you hold the button and for at most the
 jog's limit ([Nudging without the Hall sensor](roof-motion.md#nudging-without-the-hall-sensor)). Any
-other fault still refuses a jog.
+other fault still refuses a jog. With the sensor working, **Don't stop at the end magnets** lets a
+person carry on past a magnet that has shifted or reads wrong, the same way ([Overriding the end
+magnets](roof-motion.md#overriding-the-end-magnets)); the position is then unknown until a move
+reaches a magnet or the ends are taught again.
 
 Until the ends are taught, the state the dashboard shows at a magnet comes from the old settings and may name the wrong end: trust what you see at the roof.
 

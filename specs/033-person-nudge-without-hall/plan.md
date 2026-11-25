@@ -13,6 +13,11 @@ toward either end. The readiness without the Hall (`blindReadiness()`: settings,
 sense) is shared by the blind close, the blind jog and `readinessRefusal()`. `Calib::attendedRefusal`
 lets a jog's start past the Hall rail fault (`StartInputs::jog`, set by `Teach::jog`), the controller
 decides. The web jog panel drops the Hall blockers for a jog and shows a warning Note.
+A person's override of the end magnets (`ignoreMagnets` on the jog's start: `JogRequest`,
+`StartInputs::ignoreMagnets`, `Controller::jog(target, origin, ignoreMagnets)`) runs the same blind
+jog with the Hall sensor working and sets `doubtMagnets`: `followHall()` then leaves the roof unknown
+at a magnet, and Open/Close skip the "already there" shortcut, until `arrive()` or `applySettings()`
+clears it. The jog panel has a "Don't stop at the end magnets" Toggle with a warning Note.
 
 ## Technical Context
 
@@ -40,7 +45,8 @@ full, so no CSS change (one i18n key only).
 - lib/RoofLogic: `RoofController.h`, `RoofController.cpp`, `RoofControllerCalibrate.cpp`, `RoofControllerBlind.cpp`.
 - lib/CalibrationLogic: `StartInputs::jog`, `attendedRefusal`, `Teach::jog`.
 - src/RoofTeach.cpp: a warning in the log when a blind jog starts.
-- web: `moveGate` (Calibrate.tsx), `JogPanel` (TeachCard.tsx), the wizard's motor screens, i18n.
+- web: `moveGate` (Calibrate.tsx), `JogPanel` (TeachCard.tsx), `useJog`, `teachApi`, the wizard's motor screens, i18n.
+- API: `tools/api/operations.json`, `docs/api/openapi.json`, `docs/api/rest.md`; demo core (`tools/demo-core/emulated_roof_teach.cpp`).
 - test: `test/test_roof_jog_blind`, `test/test_calibration_teach`, Vitest TeachCard and WizardMotor.
 
 ## Complexity Tracking

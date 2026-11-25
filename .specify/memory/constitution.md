@@ -8,8 +8,11 @@ Sync Impact Report
   (the keep-alive deadline on the step clock), at most the jog's limit (30 s at most), stopping on
   release, Stop, Abort, a stall seen as supply sag (`roof.blindSagVolts`) and every fault still
   checked. The Hall fault stays latched and the position unknown. Every other fault, invalid settings
-  and a low or unreadable supply still refuse it. Alpaca, MQTT and the automatic origins can't.
-- New risk (I): with no Hall sensor nothing stops the roof at its ends; the person watching, the
+  and a low or unreadable supply still refuse it. Alpaca, MQTT and the automatic origins can't. A
+  person may also start one with the Hall sensor working, overriding the end magnets (a shifted
+  magnet, a sensor reading wrong); afterwards a magnet read at rest doesn't place the roof until a
+  move reaches one or new roof settings are saved.
+- New risk (I): with no Hall sensor, or the magnets overridden, nothing stops the roof at its ends; the person watching, the
   keep-alive, the slow duty, the jog limit and the stall stop are the guards, and repeated nudges
   have no drive budget. The alternative, a part-open roof with a dead sensor that nobody can move
   from the web UI, was judged worse by the owner.
@@ -345,7 +348,10 @@ nothing has gone wrong.
     on time alone: slow duty, toward the end held, only while the button is held (the keep-alive
     deadline on the step clock), at most the jog's limit (30 s at most), stopping on release, Stop,
     Abort, a stall seen as supply sag and every fault still checked. The Hall fault stays latched
-    and the position unknown. Any other fault still refuses it; only a person may start one. Risk:
+    and the position unknown. Any other fault still refuses it; only a person may start one. A
+    person may also start one with the Hall sensor working, explicitly overriding the end magnets;
+    a magnet read at rest afterwards doesn't place the roof until a move reaches one or new roof
+    settings are saved. Risk:
     nothing stops the roof at its ends but the person watching, the keep-alive, the limit and the
     stall stop.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed

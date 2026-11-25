@@ -1,4 +1,4 @@
-# Feature Specification: A Person Can Nudge the Roof Without the Hall Sensor
+# Feature Specification: A Person Can Nudge the Roof Without the Hall Sensor or Past the Magnets
 
 **Feature Branch**: `spec/033-person-nudge-without-hall`
 
@@ -14,6 +14,9 @@ has failed. A Hall reading at a rail latches the Hall rail fault, the jog refuse
 fault (`faultLatched`), clearing the fault doesn't help (a dead sensor latches it again on the next
 step), and a reading that is not settled or at a rail refuses it too (`hallNotSettled`). A roof left
 part-open with a dead sensor could not be nudged from the web UI at all.
+
+The same goes for a working sensor that misleads: a magnet that has shifted, or a sensor that reads
+wrong, stops a jog at the first magnet it sees, and the person can't move the roof past it.
 
 ## Clarifications
 
@@ -44,6 +47,16 @@ part-open with a dead sensor could not be nudged from the web UI at all.
   teach screens) keeps its hold buttons and, above the Hall reading, a warning: "Nudging without the
   position sensor: watch the roof", saying it won't stop at either end by itself. The dashboard's
   explanation of the Hall rail fault says the roof can still be nudged on the Calibrate page.
+- Q: Can a person override the magnets with the Hall sensor working? → A: Yes, explicitly: a
+  **Don't stop at the end magnets** switch next to the hold buttons (after "I am at the roof"),
+  with the warning "The roof won't stop at its ends: watch it". The start request carries
+  `ignoreMagnets: true`; the jog then runs blind exactly as above. Only a person's; any latched
+  fault but the Hall rail one refuses it.
+- Q: The position after an override? → A: Unknown, even at a magnet: a magnet read at rest doesn't
+  place the roof (`magnetsDoubted`) until a move reaches a magnet (a person's Open or Close, which
+  stops at once if it is on the target's magnet, or a normal jog) or new roof settings are applied
+  (a re-teach saves them). Open and Close then aren't "already there" shortcuts; Alpaca and MQTT
+  can't move a roof whose position is unknown.
 - Q: The automatic close and a blind jog? → A: As with a jog (spec 019), the automatic close takes
   over: the jog is stopped first. The blind close (spec 030) stops a person's blind jog before it
   starts. Open, Close and a second jog are refused while one runs.
@@ -74,6 +87,20 @@ in the status.
 6. **Given** the Hall fault, **When** the page shows the jog, **Then** the hold buttons are available
    (after "I am at the roof") with the warning.
 
+### User Story 2 - Nudge past a magnet that misleads (Priority: P1)
+
+A magnet has shifted. The owner turns on **Don't stop at the end magnets**, reads the warning and
+holds a direction; the roof carries on past the magnet while held.
+
+**Acceptance Scenarios**:
+
+1. **Given** the Hall sensor working and the override on, **When** a person holds toward an end,
+   **Then** the jog doesn't stop at the magnet; without the override it does.
+2. **Given** an override jog ended at a magnet, **Then** the roof is unknown until a move reaches a
+   magnet or new settings are applied.
+3. **Given** the override, **When** Alpaca, MQTT or the automatic close asks, or another fault is
+   latched, **Then** it is refused.
+
 ### Edge Cases
 
 - A Hall sensor that reads normally again while the rail fault is still latched: the jog still runs
@@ -101,16 +128,23 @@ in the status.
   automatic close and the blind close stop it first.
 - **FR-007**: The web jog panel MUST keep the hold buttons available in that state with the warning
   "Nudging without the position sensor: watch the roof"; other faults still disable them.
+- **FR-008**: A person MAY start a jog with `ignoreMagnets`; it runs blind (FR-002) with the Hall
+  sensor working; any latched fault but the Hall rail one refuses it; other origins can't.
+- **FR-009**: After an override jog a magnet read at rest MUST NOT place the roof until a move
+  reaches a magnet or new settings are applied; Open and Close never treat the roof as already there
+  meanwhile.
+- **FR-010**: The jog panel MUST offer the override as an explicit switch, shown with the Hall sensor
+  working, and warn "The roof won't stop at its ends: watch it" while it is on.
 
 ### Key Entities
 
 - No new setting, route or status field. The status's `fault.kind`, `hall.level` and `jogging` say
-  everything the page needs.
+  everything the page needs. `POST /api/roof/jog` gains the optional `ignoreMagnets` (start only).
 
 ## Design *(mandatory for UI changes)*
 
-One warning Note (DS rule: a card's own problem is a Note, not a Banner) in the existing jog panel;
-no new component, no CSS.
+Warning Notes (DS rule: a card's own problem is a Note, not a Banner) and one existing Toggle in
+the jog panel; no new component, no CSS.
 
 ## Success Criteria *(mandatory)*
 
@@ -133,13 +167,20 @@ no new component, no CSS.
 - The automatic close and the blind close win over a person's blind jog, as they win over a jog.
 - "The roof page" is the Calibrate page, where the jog lives; the dashboard's Hall rail explanation
   points there. The setup wizard's direction and teach screens use the same panel.
-- The UI change is a single Note in an existing panel, reviewed in the PR rather than as a mockup.
+- The UI change is a Toggle and two Notes in an existing panel, reviewed in the PR rather than as a
+  mockup.
+- The override is chosen per visit (off when the page opens) and is sent with each start only; it
+  isn't offered while the Hall sensor has failed (the jog is blind anyway).
+- During a blind jog with no fault latched (an override, or the first moments after start-up) the
+  Hall rail check waits until it ends, as during the blind close: the magnets are ignored anyway.
 
 ## Left for the owner (bench)
 
 - Unplug the Hall sensor with the roof part-open: the Hall rail fault latches; the Calibrate page
   shows the warning and the hold buttons; holding Close moves the roof slowly, letting go stops it.
 - Hold to the chain's end: the supply-sag stop or the jog limit ends it.
+- With the sensor working, turn on **Don't stop at the end magnets** and hold past the open magnet:
+  the roof carries on; afterwards the dashboard says unknown until Open or Close reaches a magnet.
 
 ## Out of scope
 

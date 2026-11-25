@@ -17,7 +17,14 @@
 - [X] T006 [P] Web: `moveGate` drops the Hall blockers for a jog and flags it blind; `JogPanel` warning Note; wizard screens pass it on; i18n; Vitest (TeachCard, WizardMotor)
 - [X] T007 Demo core rebuilt (`tools/demo-core/build.sh`)
 
-## Phase 3: Polish
+## Phase 3: US2 override the end magnets (P1)
+
+- [X] T010 [P] Native tests: a normal jog stops at the end magnet, an override jog carries on past it, unknown afterwards until a move reaches a magnet, person only, faults refuse, keep-alive and limit, new settings trust the magnets; `parseJog` and the teach start with the override
+- [X] T011 Controller `ignoreMagnets` and `doubtMagnets`; `JogRequest::ignoreMagnets`, `StartInputs::ignoreMagnets`; firmware and demo core pass it
+- [X] T012 [P] Web: "Don't stop at the end magnets" Toggle and warning; `startJog(direction, ignoreMagnets)`; Vitest
+- [X] T013 API: operations.json, openapi.json, rest.md
+
+## Phase 4: Polish
 
 - [X] T008 Docs: user guide (roof motion, calibration/jog), troubleshooting of a dead Hall sensor
 - [X] T009 Quickstart §1 checks: native, firmware build, web, Playwright, quality gate, flash budget, docs build
