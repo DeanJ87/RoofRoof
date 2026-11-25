@@ -207,8 +207,8 @@ the first moments after start-up, a Hall reading at a rail or not yet settled), 
 
 Only a person can start one: Alpaca, MQTT and the automatic close can't. Every other fault still
 refuses the jog (clear it first: with a working Hall sensor the jog is the normal one), and so do
-invalid settings, a low or unreadable supply, and the jog's own checks (the weather safe, no daylight
-close, the mount parked). The automatic close and the blind close take over from a blind jog, as
+invalid settings, a low or unreadable supply, and, toward open only, the jog's own checks (the
+weather safe, no daylight close, the mount parked; see below). The automatic close and the blind close take over from a blind jog, as
 from any jog. Each nudge is held by a person, so repeated nudges have no total drive limit.
 
 ### Overriding the end magnets
@@ -222,6 +222,19 @@ Open or Close, which then stops there at once if it is the target's, or a normal
 settings are saved (for example after teaching the ends again). Imaging apps and MQTT can't move it
 meanwhile (the position is unknown). Only a person can override the magnets; any latched fault but
 the Hall rail one refuses it.
+
+## A person's jog toward closed
+
+A close always wins (constitution III), so a person's jog toward closed, normal or blind, is never
+refused or stopped by the weather (rain included), daylight closing, the mount not confirmed parked
+or the automatic close waiting, standing down or unable to move. With the park not confirmed the
+page warns **Mount not confirmed parked: watch the telescope**: the person at the roof can see it
+and let go; the park interlock doesn't watch this jog. A jog toward open keeps every check and the
+interlock. Everything else still applies: attended, hold to run, the slow duty, the jog's limit,
+the faults, a move or a waiting close refusing it, and the automatic close taking over when it moves
+the roof itself. The close sequence doesn't take the jog for its own close. Imaging apps, MQTT and
+Home Assistant can't jog. A wrong motor direction setting makes **Hold to close** open the roof:
+let go.
 
 ## On the board
 

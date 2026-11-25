@@ -30,8 +30,8 @@ full, so no CSS change (one i18n key only).
 | Principle | How it is kept |
 |---|---|
 | I Motion Safety | Constitution 9.0.0 adds the person's blind jog as a stated exception with its risk: person only, hold to run with the step-clock deadline, slow duty, the jog limit (at most 30 s), the supply-sag stall stop, every fault still checked; the Hall fault stays latched, position unknown. Every other fault still refuses. Native tests (test_roof_jog_blind, test_calibration_teach). |
-| II Parked mount | The jog's park gate is unchanged (spec 019); the park interlock still stops it. |
-| III Unsafe ends closed | Weather and daylight gates unchanged; the automatic close and the blind close take over a blind jog. |
+| II Parked mount | 9.0.0: a person's jog toward closed needs no confirmed park and isn't interlocked, with the warning to watch the telescope (risk stated); a jog toward open keeps the park check and interlock. Tests in test_calibration_teach and test_roof_gates. |
+| III Unsafe ends closed | A close always wins: a person's jog toward closed passes the weather, daylight and close-sequence gates; one toward open keeps them; the close sequence doesn't take a jog for its close (`applyRoof`); the automatic close and blind close still take over. |
 | IV Alpaca | Not touched: Alpaca can't jog. |
 | V Testable logic | All decisions in lib/RoofLogic and lib/CalibrationLogic with native tests. |
 | VI Budgets | Reuses the blind close's code; no route, setting or status field; no CSS. |

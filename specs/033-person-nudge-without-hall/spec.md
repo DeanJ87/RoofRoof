@@ -57,6 +57,14 @@ wrong, stops a jog at the first magnet it sees, and the person can't move the ro
   stops at once if it is on the target's magnet, or a normal jog) or new roof settings are applied
   (a re-teach saves them). Open and Close then aren't "already there" shortcuts; Alpaca and MQTT
   can't move a roof whose position is unknown.
+- Q: Does the weather, daylight or the park still hold back a jog? → A: Toward open, yes (unchanged).
+  Toward closed, never (constitution 9.0.0, II and III: a close always wins): a person's jog toward
+  closed, normal or blind, is neither refused nor stopped by unsafe weather (rain included), daylight
+  closing, the automatic close waiting, standing down or unable to move, or the mount not confirmed
+  parked. With the park not confirmed the page warns "Mount not confirmed parked: watch the
+  telescope" and the park interlock doesn't watch that jog (the person sees the telescope). A close
+  waiting for an upload and the busy blockers still refuse it. The close sequence doesn't take the
+  jog for a close of its own (it sees the roof as the jog leaves it: unknown, or in error).
 - Q: The automatic close and a blind jog? → A: As with a jog (spec 019), the automatic close takes
   over: the jog is stopped first. The blind close (spec 030) stops a person's blind jog before it
   starts. Open, Close and a second jog are refused while one runs.
@@ -107,8 +115,8 @@ holds a direction; the roof carries on past the magnet while held.
   blind (the fault says the sensor can't be trusted); clearing the fault gives the normal jog back.
 - Supply drops while nudging: the supply-minimum check stops it (the Hall fault stays the latched one).
 - A stall at the chain's end: the supply-sag stop of spec 030 ends it.
-- The weather unsafe, daylight closing or the park not confirmed: the jog's own gates (spec 019) are
-  unchanged and still refuse it.
+- The weather unsafe, daylight closing or the park not confirmed: a jog toward closed runs (with the
+  park warning); one toward open is refused and stopped as before.
 
 ## Requirements *(mandatory)*
 
@@ -135,6 +143,10 @@ holds a direction; the roof carries on past the magnet while held.
   meanwhile.
 - **FR-010**: The jog panel MUST offer the override as an explicit switch, shown with the Hall sensor
   working, and warn "The roof won't stop at its ends: watch it" while it is on.
+- **FR-011**: A person's jog toward closed (normal or blind) MUST NOT be refused or stopped by the
+  weather, daylight, the park or the automatic close's state, and the park interlock MUST NOT watch
+  it; a jog toward open keeps every gate. The page MUST warn "Mount not confirmed parked: watch the
+  telescope" when the park isn't confirmed, and the close sequence MUST NOT take the jog for its close.
 
 ### Key Entities
 
@@ -154,6 +166,10 @@ the jog panel; no new component, no CSS.
 
 ## Assumptions decided for the owner
 
+- A close always wins (constitution 9.0.0, II and III): a person's jog toward closed passes the
+  weather, daylight, park and automatic-close gates, with the telescope warning when unparked.
+  Risk: a wrong motor direction setting makes it open the roof over an unparked telescope until the
+  person lets go. The busy blockers (upload, hotspot, restart) and a waiting close still refuse it.
 - Constitution 9.0.0 (MAJOR): Principle I gains a third exception, a person's blind jog. Risk: with
   no Hall sensor nothing stops the roof at its ends; the person's eyes, the keep-alive, the slow duty,
   the jog's limit (30 s at most) and the supply-sag stall stop are the only guards.
@@ -179,10 +195,12 @@ the jog panel; no new component, no CSS.
 - Unplug the Hall sensor with the roof part-open: the Hall rail fault latches; the Calibrate page
   shows the warning and the hold buttons; holding Close moves the roof slowly, letting go stops it.
 - Hold to the chain's end: the supply-sag stop or the jog limit ends it.
+- In unsafe weather with the mount unparked: Hold to close moves the roof with the telescope
+  warning; Hold to open stays unavailable.
 - With the sensor working, turn on **Don't stop at the end magnets** and hold past the open magnet:
   the roof carries on; afterwards the dashboard says unknown until Open or Close reaches a magnet.
 
 ## Out of scope
 
-- Nudging while the weather is unsafe, daylight closes or the park isn't confirmed (spec 019's gates).
+- Overriding the weather, daylight or park for a jog toward open (spec 027's confirmed open is not a jog).
 - Alpaca, MQTT and the automatic close; a jog on the dashboard itself.

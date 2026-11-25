@@ -37,8 +37,8 @@ the ends** card at the top of the calibration page sets them from where the magn
 you move the roof by hand and tell the device where each end is.
 
 1. Turn on **I am at the roof, watching it**. The card lists the same checks as the run: the
-   weather safe (and daylight not wanting the roof closed), the mount parked, no fault, the
-   automatic close idle, the supply and a settled Hall reading (a failed Hall sensor is the
+   weather safe (and daylight not wanting the roof closed), the mount parked (these three and the
+   automatic close only for **Hold to open**), no fault, the automatic close idle, the supply and a settled Hall reading (a failed Hall sensor is the
    exception, below).
 2. **Hold to open** or **Hold to close** moves the roof at the slow duty for as long as you hold
    the button (mouse, finger, or Space or Enter held). Letting go stops it. If the page, the phone
@@ -60,11 +60,15 @@ you move the roof by hand and tell the device where each end is.
    nothing. Once saved, the roof at an end reads as that end: that is how the device learns where
    it is (it knows its position only at a magnet).
 
-Both directions need the weather safe and the mount parked, and the park interlock watches every
-jog: on a new roof the motor direction setting may still be wrong, so **Hold to open** may close the
-roof. If it moves the wrong way, let go and fix **Settings → Roof → Direction and speed → Opening direction** (`roof.openDirection`). A jog
-stops when the weather or daylight turns, and the automatic close stops it before it makes its
-own checks. Nothing is kept across a restart, and nothing moves after one.
+**Hold to open** needs the weather safe, no daylight close, the automatic close idle and the mount
+parked, and the park interlock watches it. **Hold to close** needs none of these: a close always
+wins, so it works in the rain, with daylight closing, while the automatic close waits or can't move,
+and with the mount not confirmed parked (then under the warning **Mount not confirmed parked: watch
+the telescope**; see [A person's jog toward closed](roof-motion.md#a-persons-jog-toward-closed)). On
+a new roof the motor direction setting may still be wrong, so **Hold to open** may close the roof
+and **Hold to close** may open it: watch the roof and the telescope. If it moves the wrong way, let go and fix **Settings → Roof → Direction and speed → Opening direction** (`roof.openDirection`). A jog
+toward open stops when the weather or daylight turns (one toward closed carries on), and the
+automatic close stops any jog before it makes its own checks. Nothing is kept across a restart, and nothing moves after one.
 
 With the Hall sensor failed (a `hallRail` fault), the hold buttons stay available for a person at
 the roof, with the warning **Nudging without the position sensor: watch the roof**: the jog then runs

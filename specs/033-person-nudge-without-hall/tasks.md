@@ -24,7 +24,14 @@
 - [X] T012 [P] Web: "Don't stop at the end magnets" Toggle and warning; `startJog(direction, ignoreMagnets)`; Vitest
 - [X] T013 API: operations.json, openapi.json, rest.md
 
-## Phase 4: Polish
+## Phase 4: US3 a close always wins (P1)
+
+- [X] T014 [P] Native tests: an opening jog needs safe weather, no daylight and the park; a closing jog (normal and blind) runs in unsafe weather, daylight and unparked with the sequence busy; weather or daylight turning stops only an opening jog; the park lost stops only an opening jog; the sequence doesn't take a jog for its close; gate functions per direction
+- [X] T015 `attendedRefusal` (`StartInputs::jogTarget`), `openMustStop`, `interlockLost`, `CloseSeq::applyRoof`
+- [X] T016 [P] Web: per-direction hold buttons (`MoveGate.closeBlocked`, `parkWarn`), the telescope warning; Vitest
+- [X] T017 Constitution 9.0.0 II and III; docs, REST, OpenAPI, changelog
+
+## Phase 5: Polish
 
 - [X] T008 Docs: user guide (roof motion, calibration/jog), troubleshooting of a dead Hall sensor
 - [X] T009 Quickstart §1 checks: native, firmware build, web, Playwright, quality gate, flash budget, docs build
