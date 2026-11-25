@@ -212,3 +212,41 @@ One pattern stands out and fits every report (settings saves, the start-up syncs
   with its own tests, not a diagnostics change; it is proposed as the next spec and recorded as an
   owner assumption.
 
+## R13. Field evidence: GET /api/config reproduces the panic
+
+- **Report**: on the bench board (main f3c98f6) six clients looping `GET /api/status`, `/api/diag`,
+  `/api/config` and the Dome's `shutterstatus` for 5 minutes gave about 10 panics (`ESP_RST_PANIC`)
+  with the roof at rest and no flash write; minimum free heap 59-122 KB and every stack well clear.
+  Each endpoint alone with 3 clients for 60 s: only `/api/config` restarted the board; status, diag
+  and Alpaca together: none. Saves (`POST /api/config`) had panicked too.
+- **Cause found in the code**: `WebServer::handleGetConfig` (`src/WebServerApi.cpp`) built the reply
+  with `Config::toJson(true)`: an ArduinoJson pool of 9.7 KB, then `serializeJson` into a
+  `std::string` that grows by doubling to a 16 KB capacity (copying 8 KB into 16 KB on the way),
+  then `beginResponse(200, type, json.c_str())`, which copies the text into a ~10 KB Arduino `String`
+  kept until the reply is sent. Each request therefore needs a contiguous 16 KB block and about
+  45 KB at its peak, and holds 10 KB per reply still in flight. Several readers at once fragment the
+  heap; once no 16 KB block is left, the `std::string` allocation fails. The build has no C++
+  exceptions (`CONFIG_COMPILER_CXX_EXCEPTIONS=n`), so libstdc++'s `bad_alloc` is `abort()`: a panic on
+  `async_tcp`, with plenty of total free heap. (The free-heap figure in `/api/status` is sampled
+  between requests, so it doesn't show the peak.)
+- **Fix**: `GET /api/config` fills the JSON document from `ConfigJson::write` (the body of
+  `Config::toJson`, moved to `lib/ConfigModel/include/ConfigJson.h`) into a pool whose allocation is
+  checked, writes the text into one checked buffer the size of the pool, shrinks it to the text and
+  hands it to the response, which frees it when sent: no growing string, no second copy, and `503`
+  instead of an abort when memory is short. `POST /api/config` is refused with `503` (nothing saved)
+  while the largest free block is under 20 KB or the free heap under 48 KB, since a save builds
+  several settings-sized strings and documents. `test/test_config_json_body` checks the document is
+  the same as `toJson` and that the longest settings fit the pool and the buffer;
+  `tools/load_config_get.py` is the board-level check (N clients reading the settings for 5 minutes;
+  pass: no restart).
+- **Not on the board yet**: this branch hasn't been flashed (bench check).
+- **SQMeter**: the same handler in `src/WebServerApi.cpp` `WebServer::handleGetConfig`
+  (`cfg.toJson(true)` into a `std::string`, then `request->send(200, "application/json",
+  json.c_str())`) and the same save path (`handleSetConfig` → `saveConfigCallback`, `Config::toJson`
+  in `lib/` and `src/ConfigStore.cpp`), built without C++ exceptions as well; the same fix applies.
+- **Move end**: nothing at the end of a move saves the settings or bumps the settings revision. The
+  revision moves only on a settings save (`updateConfigCallback`) and on SiteSync's saves
+  (`siteSaved`: the location from SQMeter, the followed groups). The dashboard reads `/api/config`
+  again on every revision change and on every (re)connection (`web/src/components/Dashboard.tsx`), so
+  every open page reading at once after a restart or reconnection is the burst that matters.
+

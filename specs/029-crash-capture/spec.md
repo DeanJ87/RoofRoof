@@ -285,6 +285,10 @@ Boundaries
 - **FR-028**: The user guide (Diagnostics), the REST reference,
   the OpenAPI document, the contract schemas and a developer page on decoding crashes MUST be
   updated.
+- **FR-029**: `GET /api/config` MUST build its reply only from allocations it checks (no growing
+  string, no second copy) and answer `503` when memory is short; `POST /api/config` MUST be refused
+  with `503`, saving nothing, while the largest free block or the free heap is below what a save
+  needs (research R13).
 
 ### Key Entities
 
@@ -346,7 +350,11 @@ Boundaries
 - The crash during the run of small settings saves, and the panics while the Hall input flapped
   (research R10), are not fixed here: the pure fault-store path was hammered natively and holds, and
   the record now names the crashing task and its stack, which is what will explain them.
-- A likely shared cause was found but not fixed here (research R12): the live settings are replaced
+- The panic reproduced under load (several clients reading `GET /api/config`) is fixed here (research
+  R13): the settings reply no longer grows a string whose failed allocation aborts the device, and a
+  save is refused with `503` while memory is short. Flashing it and running
+  `tools/load_config_get.py` is a bench check.
+- Another possible shared cause was found but not fixed here (research R12): the live settings are replaced
   in place on one task while other tasks read them without a lock (RoofRoof `updateConfigCallback`,
   `SiteSync`; SQMeter `saveConfigCallback`). The fix changes the platform's settings model across
   both projects and is proposed as its own spec; this spec's records will confirm or rule it out.

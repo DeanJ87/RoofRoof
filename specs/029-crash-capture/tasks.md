@@ -75,4 +75,5 @@ CI, demo and web, docs.
 
 - [X] T034 Withdraw the restart alert, the `<base>/device` message, the Home Assistant sensor and the ESP-IDF log hook (spec Out of scope); rebuild on main with spec 027
 - [X] T035 Plain-text documents written by hand (`crashesText`, `logText`) instead of ArduinoJson, sent whole; the record keeps the capture and snapshot as read; the last lines taken at `arm()`; records read newest-first by sequence; tests, web card, mocks, decode tool, OpenAPI (plain-text responses) and docs follow
+- [X] T036 Field evidence (research R13): `GET /api/config` from a checked pool and buffer (`ConfigJson::write`, `503` when short of memory); `POST /api/config` refused with `503` while memory is short; `test/test_config_json_body`; `tools/load_config_get.py`; REST and OpenAPI note the `503`
 

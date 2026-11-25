@@ -153,6 +153,8 @@ SQMeter's location is never a safety input: it only sets where the sun's altitud
 
 Read the full device configuration. Password fields are returned as `********` when a stored password exists.
 
+While the device is short of memory (several pages reading at once) it answers `503` instead of risking a restart; try again. A save (`POST /api/config`) is refused the same way, and nothing is saved.
+
 Every field, with its default, is in the [configuration reference](../user-guide/configuration.md#full-configuration-reference), including the `roof` section that sets how the roof moves ([Roof motion](../user-guide/roof-motion.md)).
 
 ```bash

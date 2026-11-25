@@ -396,7 +396,7 @@
           "Settings"
         ],
         "summary": "Settings",
-        "description": "Every setting. Passwords and keys are masked. The `X-Config-Revision` response header carries the settings revision, read before the settings (spec 021): it changes on every save, starts from a random value at each start, and a save can send it back as `baseRevision`.\n\nOpen: Read-only, every secret masked.",
+        "description": "Every setting. Passwords and keys are masked. The `X-Config-Revision` response header carries the settings revision, read before the settings (spec 021): it changes on every save, starts from a random value at each start, and a save can send it back as `baseRevision`. Spec 029: `503` while the device is short of memory (several pages reading at once); nothing is saved, try again.\n\nOpen: Read-only, every secret masked.",
         "security": [],
         "responses": {
           "200": {
@@ -405,6 +405,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Config"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -417,7 +427,7 @@
           "Settings"
         ],
         "summary": "Change settings",
-        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. Spec 021: a page sends `baseRevision` (the revision it loaded) and `baseValues` (the values it loaded for the fields it changes). At the current revision the save goes through; at another one, only if each base value still matches the device's (secrets compare masked); otherwise 409 with `conflicts` (the dotted names, at most 16) and `revision`, and nothing is saved. Without `baseRevision` nothing is checked. The answer carries the new `revision`. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it.\n\nNeeds the password when protection is on.",
+        "description": "Partial update: only the fields sent change. A masked or empty password keeps the stored one; `null` clears it. Spec 021: a page sends `baseRevision` (the revision it loaded) and `baseValues` (the values it loaded for the fields it changes). At the current revision the save goes through; at another one, only if each base value still matches the device's (secrets compare masked); otherwise 409 with `conflicts` (the dotted names, at most 16) and `revision`, and nothing is saved. Without `baseRevision` nothing is checked. The answer carries the new `revision`. A wrong value is refused with `error` naming it; a setting whose dependency is off is saved and reported inactive by `/api/settings/effective`. Refused with 409 while the roof is opening or closing or a close is waiting to start (flash writes stall its control task); while the save runs, an open is refused and a close waits for it. Spec 029: `503` while the device is short of memory (several pages reading at once); nothing is saved, try again.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -449,6 +459,16 @@
           },
           "409": {
             "description": "Not now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not enough free memory",
             "content": {
               "application/json": {
                 "schema": {
