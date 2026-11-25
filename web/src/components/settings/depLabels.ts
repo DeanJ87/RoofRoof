@@ -15,6 +15,7 @@ export const DEP_LABELS: Record<string, string> = {
   'alerts.events.unsafe_closing.level': t('settings.depLabels.theWeatherClosesTheRoof'),
   'alerts.events.roof_closed.level': t('settings.depLabels.theRoofClosedAfterUnsafe'),
   'alerts.events.safety_lost.level': t('settings.depLabels.aWeatherSourceIsLost'),
+  'alerts.events.nina_lost.level': t('settings.depLabels.ninaCantBeReached'),
   'alerts.events.daylight_open.level': t('settings.depLabels.theRoofIsOpenInDaylight'),
   'alerts.events.daylight_closed.level': t('settings.depLabels.theRoofClosedAfterDaylight'),
   'alerts.events.daylight_unknown.level': t('settings.depLabels.theDaylightCheckStopsWorking'),

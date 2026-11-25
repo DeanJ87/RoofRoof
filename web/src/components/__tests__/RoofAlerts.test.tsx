@@ -23,6 +23,7 @@ const ROOF_KEYS: AlertEventKey[] = [
   'unsafe_closing',
   'roof_closed',
   'safety_lost',
+  'nina_lost',
   'daylight_open',
   'daylight_closed',
   'daylight_unknown',
@@ -114,6 +115,15 @@ describe('Roof alert events', () => {
     expect(events.daylight_unknown.level).toBe(2);
   });
 
+  it('has the N.I.N.A. lost event: variables, wording and default (spec 027)', () => {
+    expect(EVENT_VARS.nina_lost).toEqual(['reason']);
+    expect(defaultText('nina_lost')).toEqual({
+      title: 'N.I.N.A. not reachable',
+      message: "N.I.N.A. can't be reached, so the park counts as not confirmed. {reason}",
+    });
+    expect(mergeAlertsConfig(undefined).events.nina_lost.level).toBe(2);
+  });
+
   it('waits on alerts first, then on daylight, for the daylight events', () => {
     const facts = { wifiConnected: true, mqttConnected: true, clockSet: true, alpacaDevices: 1 };
     const withAlerts = { ...mockConfig, alerts: mergeAlertsConfig({ ...mockConfig.alerts, enabled: true }) };
@@ -137,7 +147,7 @@ describe('Roof alert events', () => {
   it('lists the non-critical roof levels under alerts on, and not the critical ones', () => {
     const config: Config = { ...mockConfig, alerts: mergeAlertsConfig({ ...mockConfig.alerts, enabled: false }) };
     const view = viewOf(evaluate(config, { wifiConnected: true, mqttConnected: true, clockSet: true, alpacaDevices: 1 }));
-    for (const key of ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost'])
+    for (const key of ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost', 'nina_lost'])
       expect(view.get(`alerts.events.${key}.level`)).toMatchObject({ id: 'D-04', state: 'inactive', reason: 'alerts-off' });
     expect(view.get('alerts.events.mount_not_parked.level').state).toBe('unknown');
   });

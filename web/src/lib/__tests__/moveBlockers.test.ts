@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bypassedChecks, closePhaseBlocker, moveBlockers, releaseOffered } from '../moveBlockers';
 import { mockStatus } from '../../mocks/data';
-import { formatTime } from '../../i18n/format';
 import type { RoofStatus } from '../../types';
 
 // Spec 026: one explanation of why the roof can't move, for every page that refuses or holds a move.
@@ -59,10 +58,10 @@ describe('moveBlockers', () => {
     expect(park.fix?.href).toBe('/settings?tab=roof&section=park');
   });
 
-  it('Open is held by the weather and daylight, Close by the park', () => {
+  it('Open is held by the weather, daylight and (spec 027) the park, Close by the park', () => {
     const daylight = { mode: 'close', state: 'day', sunAltitudeDeg: 3, limitDeg: 0, text: 'Sun 3.0° ≥ 0.0°', closes: true } as const;
     const r = roof({ weather: 'unsafe', parkConfirmed: false, daylight });
-    expect(ids(r, 'open')).toEqual(['weather', 'daylight']);
+    expect(ids(r, 'open')).toEqual(['weather', 'daylight', 'park']);
     expect(ids(r, 'close')).toEqual(['park']);
     expect(ids(r, 'move')).toEqual(['weather', 'daylight', 'park']);
   });
@@ -87,6 +86,14 @@ describe('moveBlockers', () => {
     expect(blocker.meaning).toMatch(/calibration run/);
   });
 
+  // Spec 027: a Hall rail fault latched at rest clears itself; the page can't tell, so it says both.
+  it('a Hall rail fault says how it clears, and keeps Clear fault', () => {
+    const fault = { kind: 'hallRail', cause: 'logic', measured: 0, limit: 50, text: 'Hall reading 0 at a rail' } as const;
+    const [blocker] = moveBlockers(roof({ fault }), 'open', ctx);
+    expect(blocker.clears).toBe('At rest it clears itself after a minute of good readings; else press Clear fault.');
+    expect(blocker.fix).toMatchObject({ act: 'clearFault' });
+  });
+
   it('a pin setup fault links to the Pins page instead of Clear fault', () => {
     const fault = { kind: 'external', cause: 'pinSetup', measured: null, limit: null, text: 'No board chosen yet' } as const;
     expect(moveBlockers(roof({ fault }), 'open', ctx)[0].fix).toEqual({ label: 'Fix the pins', href: '/pins' });
@@ -98,13 +105,11 @@ describe('moveBlockers', () => {
 });
 
 describe('the automatic close on hold', () => {
-  it('says when it clears from the device countdown, and offers Release hold only while safe', () => {
-    const held = roof({ closePhase: 'heldByPerson', closeRearmSeconds: 600 });
+  it('says a person held it, when it lapses from the device countdown, and offers Release hold only while safe', () => {
+    const held = roof({ closePhase: 'heldByPerson', closeRearmSeconds: 545 });
     const blocker = closePhaseBlocker(held, ctx)!;
-    expect(blocker.title).toBe('Automatic close on hold until the roof opens or closes');
-    expect(blocker.clears).toBe(
-      `Clears at ${formatTime(new Date(ctx.nowMs + 600_000))} if the weather stays safe, or once the roof is closed.`,
-    );
+    expect(blocker.title).toBe('Automatic close held: a person pressed Stop');
+    expect(blocker.clears).toBe('Lapses in 9:05 with the weather safe, or once the roof is closed.');
     expect(blocker.fix).toMatchObject({ act: 'releaseHold', label: 'Release hold' });
     expect(releaseOffered(held)).toBe(true);
   });
@@ -112,7 +117,7 @@ describe('the automatic close on hold', () => {
   it('while unsafe: no countdown and no release, only "after 10 min of safe weather"', () => {
     const held = roof({ closePhase: 'halted', closeRearmSeconds: null, weather: 'unsafe' });
     const blocker = closePhaseBlocker(held, ctx)!;
-    expect(blocker.clears).toBe('Clears after 10 min of safe weather, or once the roof is closed.');
+    expect(blocker.clears).toBe('Lapses after 10 min of safe weather, or once the roof is closed.');
     expect(blocker.fix).toBeUndefined();
     expect(releaseOffered(held)).toBe(false);
   });

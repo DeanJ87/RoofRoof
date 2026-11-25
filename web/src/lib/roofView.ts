@@ -40,8 +40,9 @@ export const LIVE_MS = LIVE_QUIET_MS;
 
 export interface ButtonView {
   disabled: boolean;
-  reason: string; // why it is disabled; empty when enabled or busy
+  reason: string; // why it is disabled, or (blocked) why the device would refuse or wait; empty otherwise
   busy: boolean; // a command is in flight
+  blocked: boolean; // spec 027: usable, but a check stands in the way: pressing it says why (the move dialog)
 }
 
 export type PillTone = 'pill-green' | 'pill-amber' | 'pill-red' | 'pill-dim' | 'pill-cyan';
@@ -63,6 +64,7 @@ export interface RoofView {
   open: ButtonView;
   close: ButtonView;
   stop: { disabled: false };
+  stopShown: boolean; // spec 027: only while it has something to stop
   state: PillView;
   position: { percent: number | null; text: string };
   notes: NoteView[];
@@ -122,36 +124,47 @@ const hotspotHeld = (input: ViewInput) =>
   Boolean(input.live.status?.wifi?.apMode) ||
   (resultShown(input.result, input.live.status?.roof ?? null, input.now) && input.result.reason === 'hotspot');
 
+// Spec 027: what disables Open (nothing to do, or nothing a person can weigh), then what only blocks it.
 const openReason = (input: ViewInput, roof: RoofStatus): string | null => {
   if (roof.state === 'open') return t('roof.reason.alreadyOpen');
   if (roof.state === 'opening') return t('roof.reason.opening');
-  if (roof.weather !== 'safe') return t('roof.reason.weather', { text: deviceText(roof.weatherText) || t('roof.weather.unknown') });
-  if (roof.daylight?.closes) return t('roof.reason.daylight', { text: deviceText(roof.daylight.text) });
   // Spec 024 (parkSwitchCheck): with switches only, a switch that hasn't opened in 3 roof openings.
   if (roof.parkSwitches.check) return deviceText(roof.parkSwitches.check);
   if (hotspotHeld(input)) return t('roof.reason.hotspot');
-  return motionReason(roof);
+  return null;
+};
+
+const parkReason = (roof: RoofStatus) => (roof.parkConfirmed ? null : deviceText(roof.parkText) || t('roof.reason.notParked'));
+
+const openBlock = (roof: RoofStatus): string | null => {
+  if (roof.weather !== 'safe') return t('roof.reason.weather', { text: deviceText(roof.weatherText) || t('roof.weather.unknown') });
+  if (roof.daylight?.closes) return t('roof.reason.daylight', { text: deviceText(roof.daylight.text) });
+  return parkReason(roof) ?? motionReason(roof);
 };
 
 const closeReason = (roof: RoofStatus): string | null => {
   if (roof.state === 'closed') return t('roof.reason.alreadyClosed');
   if (roof.state === 'closing') return t('roof.reason.closing');
   if (roof.closePending) return t('roof.reason.closeWaiting');
-  if (!roof.parkConfirmed) return deviceText(roof.parkText) || t('roof.reason.notParked');
-  return motionReason(roof);
+  return null;
 };
 
-const button = (input: ViewInput, own: (roof: RoofStatus) => string | null): ButtonView => {
+const closeBlock = (roof: RoofStatus): string | null => parkReason(roof) ?? motionReason(roof);
+
+const button = (input: ViewInput, own: (roof: RoofStatus) => string | null, block: (roof: RoofStatus) => string | null): ButtonView => {
   const shared = sharedReason(input);
-  if (shared) return { disabled: true, reason: shared, busy: false };
-  if (input.inFlight === 'open' || input.inFlight === 'close') return { disabled: true, reason: '', busy: true };
-  if (input.inFlight === 'clear-fault') return { disabled: true, reason: t('roof.reason.clearingFault'), busy: false };
-  const reason = own(input.live.status!.roof!);
-  return { disabled: reason !== null, reason: reason ?? '', busy: false };
+  if (shared) return { disabled: true, reason: shared, busy: false, blocked: false };
+  if (input.inFlight === 'open' || input.inFlight === 'close') return { disabled: true, reason: '', busy: true, blocked: false };
+  if (input.inFlight === 'clear-fault') return { disabled: true, reason: t('roof.reason.clearingFault'), busy: false, blocked: false };
+  const roof = input.live.status!.roof!;
+  const reason = own(roof);
+  if (reason !== null) return { disabled: true, reason, busy: false, blocked: false };
+  const why = block(roof);
+  return { disabled: false, reason: why ?? '', busy: false, blocked: why !== null };
 };
 
-export const openButton = (input: ViewInput) => button(input, (roof) => openReason(input, roof));
-export const closeButton = (input: ViewInput) => button(input, closeReason);
+export const openButton = (input: ViewInput) => button(input, (roof) => openReason(input, roof), openBlock);
+export const closeButton = (input: ViewInput) => button(input, closeReason, closeBlock);
 
 const STATE_PILL: Record<RoofState, PillTone> = {
   closed: 'pill-green',
@@ -204,8 +217,34 @@ export const closePhasePill = (phase: RoofClosePhase): PillView | null => {
   return { label: t(`roof.closePhase.${phase}`), tone, text: t(`roof.closePhase.${phase}Hint`) };
 };
 
-const stateNotes = (roof: RoofStatus): NoteView[] => {
+/** Seconds as m:ss, for a countdown. */
+export const minSec = (seconds: number) => {
+  const whole = Math.max(0, Math.round(seconds));
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
+
+const OVERRIDE_LABEL = {
+  weatherNotSafe: 'roof.weather.label',
+  daylight: 'roof.daylight.label',
+  mountNotParked: 'roof.park.label',
+} as const;
+
+// Spec 027: a move waiting for the park, the last wait's failure, and a person's overrides in effect.
+const parkNotes = (roof: RoofStatus): NoteView[] => {
   const notes: NoteView[] = [];
+  const wait = roof.parkWait;
+  if (wait) {
+    const params = { command: t(wait.command === 'open' ? 'roof.open' : 'roof.close'), time: minSec(wait.leftSeconds) };
+    notes.push({ id: 'park-wait', tone: 'warn', text: t(wait.asked ? 'roof.parkWait.asked' : 'roof.parkWait.waiting', params) });
+  }
+  if (roof.parkWaitEnded) notes.push({ id: 'park-wait-ended', tone: 'warn', text: deviceText(roof.parkWaitEnded) });
+  const names = (roof.override ?? []).map((name) => t(OVERRIDE_LABEL[name]));
+  if (names.length) notes.push({ id: 'override', tone: 'warn', text: t('roof.override.active', { checks: names.join(', ') }) });
+  return notes;
+};
+
+const stateNotes = (roof: RoofStatus): NoteView[] => {
+  const notes = parkNotes(roof);
   if (!roof.positionKnown) notes.push({ id: 'unknown-position', tone: 'muted', text: t('roof.note.positionUnknown') });
   if (closeAttempting(roof.closePhase)) notes.push({ id: 'auto-close', tone: 'warn', text: t('roof.note.stopCallsOffClose') });
   return notes;
@@ -235,6 +274,7 @@ export const roofView = (input: ViewInput): RoofView => {
     stop: { disabled: false },
     // Spec 028: before the first status no state is shown, not even "not reporting".
     state: input.live.status ? statePill(roof) : { label: t('live.connecting'), tone: 'pill-dim', text: '' },
+    stopShown: stopShown(roof, isLive(input.live, input.now)),
     position: positionOf(roof),
     notes: roof ? stateNotes(roof) : [],
     result: resultNote(input.result, roof, input.now),
@@ -249,8 +289,16 @@ export const STOP_BAR_NO_STATUS_MS = 5000;
 export const stopBarShown = (status: SystemStatus | null, waitedMs = 0) => {
   if (!status) return waitedMs >= STOP_BAR_NO_STATUS_MS;
   const roof = status.roof;
-  return Boolean(roof && (moving(roof) || roof.closePending || roof.calibrating)); // spec 016: the whole run
+  // Spec 016: the whole run; spec 027: a move waiting for the park.
+  return Boolean(roof && (moving(roof) || roof.closePending || roof.calibrating || roof.parkWait));
 };
+
+/**
+ * Spec 027: the card's Stop shows while the roof moves, a close or a move waits, or a run is under way,
+ * and whenever the page can't see the roof live (it might be moving). Never disabled.
+ */
+export const stopShown = (roof: RoofStatus | null, live: boolean) =>
+  !live || !roof || moving(roof) || roof.closePending || Boolean(roof.calibrating) || Boolean(roof.parkWait);
 
 /**
  * Clear fault needs live data: the person must see the fault they clear. A pin setup fault

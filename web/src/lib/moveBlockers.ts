@@ -1,7 +1,8 @@
 import type { RoofStatus } from '../types';
 import { t, type MessageKey } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
-import { formatNumber, formatTime } from '../i18n/format';
+import { formatNumber } from '../i18n/format';
+import { minSec } from './roofView';
 
 // Spec 026: "Why can't the roof move?" in one place. Every page that refuses or
 // holds a move (the dashboard, Calibrate's jog, teach and calibration run, the
@@ -51,10 +52,10 @@ const settings = (section: string, label: MessageKey): BlockerFix => ({ label: t
 const STAND_DOWN = ['heldByPerson', 'halted'];
 const WORKING = ['waitPark', 'closing', 'retryWait'];
 
-/** When a stand-down ends by itself: a clock time while it counts down, else after the re-arm spell. */
+/** When a stand-down lapses by itself: the time left while it counts down, else after the re-arm spell. */
 const standDownClears = (roof: RoofStatus, ctx: BlockerContext): string => {
   const seconds = roof.closeRearmSeconds;
-  if (typeof seconds === 'number') return t('move.clears.at', { time: formatTime(new Date(ctx.nowMs + seconds * 1000)) });
+  if (typeof seconds === 'number') return t('move.clears.in', { time: minSec(seconds) });
   return t('move.clears.afterSafe', { minutes: ctx.rearmMinutes });
 };
 
@@ -91,9 +92,12 @@ export const faultBlocker = (roof: RoofStatus): Blocker | null => {
   const title = deviceText(fault.text);
   if (fault.cause === 'pinSetup')
     return make('fault', title, t('move.pinsWhy'), t('move.clears.pins'), { label: t('move.fix.pins'), href: '/pins' });
+  const fix: BlockerFix = { label: t('move.fix.clearFault'), act: 'clearFault' };
+  // Spec 027: a Hall rail fault latched at rest clears itself after a minute of good readings.
+  if (fault.kind === 'hallRail') return make('fault', title, t('move.hallRailWhy'), t('move.clears.hallRailFault'), fix);
   // A move that ran out of time: its limit comes from travel and speed (spec 026).
   const meaning = fault.kind === 'timeout' ? t('move.timeoutWhy') : t('move.faultWhy');
-  return make('fault', title, meaning, t('move.clears.fault'), { label: t('move.fix.clearFault'), act: 'clearFault' });
+  return make('fault', title, meaning, t('move.clears.fault'), fix);
 };
 
 const weatherBlocker = (roof: RoofStatus): Blocker | null => {
@@ -176,7 +180,7 @@ export const moveBlockers = (roof: RoofStatus | null | undefined, action: MoveAc
   if (action === 'move' && !roof.fault) found.push(closePhaseBlocker(roof, ctx));
   found.push(busyBlocker(roof, action));
   if (action !== 'close') found.push(weatherBlocker(roof), daylightBlocker(roof));
-  if (action !== 'open') found.push(parkBlocker(roof));
+  found.push(parkBlocker(roof)); // spec 027: Open needs the park too
   found.push(supplyBlocker(roof), hallBlocker(roof));
   return found.filter((item): item is Blocker => item !== null);
 };

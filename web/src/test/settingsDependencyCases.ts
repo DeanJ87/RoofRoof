@@ -72,17 +72,8 @@ export const CASES: Case[] = [
     fixLabel: 'Turn on Alpaca',
     fixTab: 'Network',
   },
-  {
-    id: 'D-13',
-    tab: 'network',
-    config: {
-      mqtt: { ...mqttOn, homeAssistant: { enabled: true, discoveryPrefix: 'homeassistant' } },
-      alerts: { ...alerts, enabled: false },
-    },
-    note: 'No alerts switch: Alerts are off',
-    fixLabel: 'Turn on alerts',
-    fixTab: 'Alerts',
-  },
+  // D-13 has no note: Home Assistant shows only with MQTT on, and (spec 027) its Alerts switch
+  // no longer waits for alerts. Its answers are checked in lib/__tests__/settingsDeps.test.ts.
   {
     id: 'D-28',
     tab: 'time',

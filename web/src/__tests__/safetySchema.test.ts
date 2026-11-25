@@ -38,9 +38,12 @@ describe('safety and park settings', () => {
     expect(withSafety({ mqtt: { enabled: false, topic: '' } })['safety.mqtt.topic']).toBeUndefined();
   });
 
-  it('allows an empty N.I.N.A. URL but not https', () => {
+  // Spec 027 (FR-012): https as well as http.
+  it('allows an empty N.I.N.A. URL, http and https, nothing else', () => {
     expect(withPark({ nina: { url: '', api: 'v2' } })['park.nina.url']).toBeUndefined();
-    expect(withPark({ nina: { url: 'https://nina:1888', api: 'v2' } })['park.nina.url']).toBe('N.I.N.A. URL must start with http://');
+    expect(withPark({ nina: { url: 'https://nina:1888', api: 'v2' } })['park.nina.url']).toBeUndefined();
+    expect(withPark({ nina: { url: 'http://nina:1888', api: 'v2' } })['park.nina.url']).toBeUndefined();
+    expect(withPark({ nina: { url: 'ftp://nina:1888', api: 'v2' } })['park.nina.url']).toBeDefined();
     expect(withPark({ nina: { url: 'http://', api: 'v2' } })['park.nina.url']).toBeDefined();
   });
 

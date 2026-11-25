@@ -45,7 +45,7 @@ export { FIX_LABEL, REASONS } from './settingsDepReasons';
 
 const EVENT_KEYS: AlertEventKey[] = ['client_lost', 'client_back', 'client_disconnected'];
 // The roof's non-critical events need alerts on; the critical two don't (spec 007).
-const ROOF_EVENT_KEYS: AlertEventKey[] = ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost'];
+const ROOF_EVENT_KEYS: AlertEventKey[] = ['move_fault', 'supply_low', 'unsafe_closing', 'roof_closed', 'safety_lost', 'nina_lost'];
 // The daylight events need alerts on and daylight on (spec 013).
 const DAYLIGHT_EVENT_KEYS: AlertEventKey[] = ['daylight_open', 'daylight_closed', 'daylight_unknown'];
 
@@ -98,7 +98,8 @@ const addMqtt = (c: Context) => {
   const mqttOn: Link = ['D-13', 'mqtt-off', on(c.config, 'mqtt.enabled')];
   const homeAssistant = on(c.config, 'mqtt.homeAssistant.enabled');
   c.add('mqtt.homeAssistant.enabled', 'D-13', homeAssistant, [mqttOn]);
-  c.add('mqtt.homeAssistant.alertsSwitch', 'D-13', homeAssistant, [mqttOn, ['D-13', 'alerts-off', on(c.config, 'alerts.enabled')]]);
+  // Spec 027: the Alerts switch is announced whenever discovery is on (no longer waits for alerts).
+  c.add('mqtt.homeAssistant.alertsSwitch', 'D-13', homeAssistant, [mqttOn]);
 };
 
 // The SQMeter MQTT safety source is read from RoofRoof's own broker (spec 004).

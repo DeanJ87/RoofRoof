@@ -16,6 +16,7 @@ export const EVENT_VARS: Partial<Record<AlertEventKey, string[]>> = {
   unsafe_closing: ['reason'],
   roof_closed: ['reason'],
   safety_lost: ['reason'],
+  nina_lost: ['reason'],
   daylight_open: ['reason', 'action'],
   daylight_closed: ['reason'],
   daylight_unknown: ['reason'],

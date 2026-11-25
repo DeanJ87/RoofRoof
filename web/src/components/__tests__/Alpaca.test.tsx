@@ -7,7 +7,7 @@ import Alpaca from '../Alpaca';
 import { describeClient } from '../../lib/alpacaClients';
 
 const dome = {
-  DeviceName: 'RoofRoof roof',
+  DeviceName: 'RoofRoof',
   DeviceType: 'Dome',
   DeviceNumber: 0,
   UniqueID: 'roofroof-dome-0',
@@ -24,7 +24,7 @@ describe('Alpaca', () => {
 
   it("lists the roof's Dome with its live shutter state (spec 006)", async () => {
     render(<Alpaca />);
-    expect(await screen.findByText('RoofRoof roof')).toBeInTheDocument();
+    expect(await screen.findByText('RoofRoof')).toBeInTheDocument();
     expect(screen.getByText('roofroof-a1b2c3d4e5f6-dome-0')).toBeInTheDocument();
     expect(await screen.findByText('ShutterStatus')).toBeInTheDocument();
     expect(screen.getByText('Slewing')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('Alpaca', () => {
     );
     render(<Alpaca />);
 
-    expect(await screen.findByText('RoofRoof roof')).toBeInTheDocument();
+    expect(await screen.findByText('RoofRoof')).toBeInTheDocument();
     expect(screen.getByText(`${window.location.origin}/setup/v1/dome/0/setup`)).toBeInTheDocument();
     expect(await screen.findByText('ShutterStatus')).toBeInTheDocument();
   });

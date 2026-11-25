@@ -1,5 +1,8 @@
 import { FunctionalComponent } from 'preact';
 import type { DiagLive } from '../../types/diag';
+import type { SystemStatus } from '../../types';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { ninaLine, sqmeterLine } from '../../lib/sourceHealth';
 import { Card, MetricTile, Note, Pill, ReadingRow } from '../ui';
 import { t, tMaybe } from '../../i18n';
 import { formatBytes, formatCount, formatNumber, formatUptime } from '../../i18n/format';
@@ -132,6 +135,20 @@ export const MemoryCard: FunctionalComponent<{ live: DiagLive }> = ({ live }) =>
       <ReadingRow label={t('diagnostics.stackLoop')} value={bytes(m.stackFree.loop)} />
       <ReadingRow label={t('diagnostics.stackNetwork')} value={bytes(m.stackFree.network)} />
       <SimulatedNote live={live} />
+    </Card>
+  );
+};
+
+// Spec 027 (FR-015): when SQMeter and N.I.N.A. last answered, or why not, from the page's /ws/status.
+export const SourcesCard: FunctionalComponent = () => {
+  const roof = useWebSocket<SystemStatus>('/ws/status').data?.roof;
+  const sqm = sqmeterLine(roof)?.text ?? (roof?.sqmeter?.on === false ? t('status.off') : DASH);
+  const nina = ninaLine(roof)?.text ?? (roof?.nina?.set === false ? t('status.notSet') : DASH);
+  return (
+    <Card title={t('diagnostics.sources')} icon="wifi" hint={t('diagnostics.sourcesHint')}>
+      {/* i18n-ignore: product names, as on SQMeter's own pages */}
+      <ReadingRow label="SQMeter" value={sqm} />
+      <ReadingRow label="N.I.N.A." value={nina} />
     </Card>
   );
 };

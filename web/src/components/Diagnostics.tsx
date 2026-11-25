@@ -9,7 +9,17 @@ import { LiveBuffer } from '../lib/diagChart';
 import { bodyOf } from '../lib/api';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
 import DiagChart from './diagnostics/DiagChart';
-import { ControlCard, DeviceCard, MemoryCard, RoofCard, SupplyCard, TimingCard, roofState, seconds } from './diagnostics/LiveCards';
+import {
+  ControlCard,
+  DeviceCard,
+  MemoryCard,
+  RoofCard,
+  SourcesCard,
+  SupplyCard,
+  TimingCard,
+  roofState,
+  seconds,
+} from './diagnostics/LiveCards';
 import { t, tMaybe } from '../i18n';
 import { deviceError } from '../i18n/deviceMessage';
 import { formatCount, formatDateTime, formatNumber } from '../i18n/format';
@@ -328,6 +338,7 @@ const LiveBody: FunctionalComponent<{ live: DiagLive; buffer: LiveBuffer }> = ({
         />
       </Card>
       <ControlCard live={live} />
+      <SourcesCard />
       <DeviceCard live={live} />
       <MemoryCard live={live} />
     </div>

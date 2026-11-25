@@ -84,7 +84,7 @@ test('roof card', async ({ page }) => {
   await page.goto('./?panel=hidden');
   await waitForDemoApp(page);
   const card = page.locator('[data-inventory="roof-card"]');
-  await expect(card.getByRole('button', { name: 'Stop', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Open', exact: true })).toBeVisible();
   await waitForLayout(page);
   await card.screenshot({ path: save('roof-card') });
 });

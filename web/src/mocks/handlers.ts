@@ -104,6 +104,12 @@ export const handlers = [
   // REST — config
   http.get('/api/config', () => HttpResponse.json(mockConfig)),
   http.get('/api/roof/inputs', () => HttpResponse.json(mockInputs)),
+  // Spec 027: Open and Close as the device answers a still roof; Stop always.
+  http.post('/api/roof/open', () => HttpResponse.json({ success: true, state: 'opening' })),
+  http.post('/api/roof/close', () => HttpResponse.json({ success: true, state: 'closed' })),
+  http.post('/api/roof/stop', () => HttpResponse.json({ success: true, state: 'stopped' })),
+  // Spec 027: Settings' N.I.N.A. Test: answering, the mount connected and parked.
+  http.post('/api/nina/test', () => HttpResponse.json({ reachable: true, connected: true, atPark: true, slewing: false })),
   http.get('/api/roof/calibration', () => HttpResponse.json(mockCalibration)),
   http.post('/api/roof/calibration/start', () => HttpResponse.json({ success: true, state: 'running' })),
   http.post('/api/roof/calibration/abort', () => HttpResponse.json({ success: true, state: 'stopped' })),

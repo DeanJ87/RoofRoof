@@ -109,15 +109,22 @@ for (const width of [320, 390]) {
     await page.goto('./#/');
     const roof = page.locator('[data-inventory="roof-card"]');
     await expect(roof).toBeVisible({ timeout: 15_000 });
-    for (const name of ['Open', 'Close', 'Stop']) {
+    const check = async (name: string) => {
       const control = roof.getByRole('button', { name, exact: true });
-      // Where a person scrolls it to: not under the bottom edge, where the tour offer sits on a phone
-      // (spec 028's Finish setup row in the Status card moves the Roof card down).
+      // To the middle: while the roof moves, the Stop bar and the tour offer both dock at the bottom.
       await control.evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await expectClear(page, control);
       const box = (await control.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(width);
-    }
+    };
+    for (const name of ['Open', 'Close']) await check(name);
+    // Spec 027: Stop shows only while the roof moves or a move waits: open the roof to see it.
+    // The demo's weather reads unknown until its first SQMeter reply: send until the Open is taken.
+    const open = () =>
+      page.evaluate(() => fetch('/api/roof/open', { method: 'POST', headers: { 'X-RoofRoof': '1' } }).then((r) => r.status));
+    await expect.poll(open, { timeout: 15_000 }).toBe(200);
+    await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toBeVisible({ timeout: 15_000 });
+    await check('Stop');
   });
 }

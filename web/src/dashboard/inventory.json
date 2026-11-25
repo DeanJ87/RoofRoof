@@ -432,6 +432,54 @@
       "location": "above:cards",
       "test": "setup-banner",
       "note": "From the settings (setup.state), not the status: outside the card grid, in the bench banner's slot."
+    },
+    {
+      "id": "roof-park-wait",
+      "label": "roof.parkWait.bar",
+      "sources": ["status.roof.parkWait.**", "status.roof.parkWaitEnded"],
+      "requiredBy": "027 FR-006, FR-011",
+      "visibility": {
+        "rule": "when",
+        "when": "an Open or Close waits for the mount to park, or the last wait failed"
+      },
+      "priority": 1,
+      "location": "card:roof",
+      "test": "roof-park-wait",
+      "note": "A note with the command, whether N.I.N.A. was asked and the time left, with Stop; a failed wait's reason as a warning note.",
+      "testIn": "unit",
+      "demoCannot": "The demo core with spec 027's park wait, overrides and source health is rebuilt separately; until then the card is tested with each state set directly"
+    },
+    {
+      "id": "roof-override",
+      "label": "move.dialog.openAnyway",
+      "sources": ["status.roof.override", "status.roof.openOverridable"],
+      "requiredBy": "027 FR-007, FR-010, FR-011",
+      "visibility": {
+        "rule": "when",
+        "when": "a person's override is in effect, or Open is pressed while blocked"
+      },
+      "priority": 1,
+      "location": "card:roof",
+      "test": "roof-override",
+      "note": "The overrides in effect as a warning note; the overridable reasons decide whether the move dialog offers Open anyway.",
+      "testIn": "unit",
+      "demoCannot": "The demo core with spec 027's park wait, overrides and source health is rebuilt separately; until then the card is tested with each state set directly"
+    },
+    {
+      "id": "roof-sources",
+      "label": "diagnostics.sources",
+      "sources": ["status.roof.sqmeter.**", "status.roof.nina.**"],
+      "requiredBy": "027 FR-015",
+      "visibility": {
+        "rule": "when",
+        "when": "SQMeter is on or a N.I.N.A. address is set"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-sources",
+      "note": "When SQMeter and N.I.N.A. last answered, behind the weather and park rows' \"?\"; a silent SQMeter or unreachable N.I.N.A. as a warning note under its row.",
+      "testIn": "unit",
+      "demoCannot": "The demo core with spec 027's park wait, overrides and source health is rebuilt separately; until then the card is tested with each state set directly"
     }
   ],
   "notShown": [

@@ -1,5 +1,5 @@
-import { ComponentChildren, FunctionalComponent } from 'preact';
-import { useId, useState } from 'preact/hooks';
+import { FunctionalComponent } from 'preact';
+import { useId } from 'preact/hooks';
 import { route } from 'preact-router';
 import type { LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
 import { locationLine } from '../lib/locationView';
@@ -10,15 +10,15 @@ import {
   parkPill,
   roofView,
   weatherPill,
-  type ButtonView,
   type LiveState,
   type PillView,
   type RoofView,
 } from '../lib/roofView';
 import { useRoofCommand } from '../hooks/useRoofCommand';
-import { closePhaseBlocker, faultBlocker, moveBlockers, type Blocker, type BlockerContext } from '../lib/moveBlockers';
+import { closePhaseBlocker, faultBlocker, type BlockerContext } from '../lib/moveBlockers';
+import { ninaLine, sqmeterLine } from '../lib/sourceHealth';
 import { MoveBlockers } from '../components/MoveBlockers';
-import type { RoofCommand } from '../lib/api';
+import { RoofButtons, type Send } from './RoofButtons';
 import { deviceText } from '../i18n/deviceMessage';
 import { formatCount, formatNumber } from '../i18n/format';
 import { t } from '../i18n';
@@ -30,13 +30,37 @@ import HallScale from './HallScale';
 // disabled Open or Close is described by the note with its reason.
 
 // A row whose value is a pill, with its reason behind "?" (DS-02, DS-04).
-const PillRow: FunctionalComponent<{ label: string; pill: PillView; id?: string }> = ({ label, pill, id }) => (
+// Spec 027: a source's health in good order goes in the "?" too, on its own line.
+const PillRow: FunctionalComponent<{ label: string; pill: PillView; id?: string; extra?: string }> = ({ label, pill, id, extra }) => (
   <div class="reading-row" data-inventory={id}>
     <span class="reading-label">
-      {label} {pill.text && <InfoTip text={pill.text} />}
+      {label}{' '}
+      {(pill.text || extra) && (
+        <InfoTip
+          text={
+            <>
+              {pill.text}
+              {pill.text && extra && <br />}
+              {extra}
+            </>
+          }
+        />
+      )}
     </span>
     <Pill tone={pill.tone}>{pill.label}</Pill>
   </div>
+);
+
+// Spec 027 (FR-015): SQMeter's last reply and N.I.N.A.'s reach; a problem is a note under its row.
+const HealthRow: FunctionalComponent<{ label: string; pill: PillView; line: { ok: boolean; text: string } | null }> = ({
+  label,
+  pill,
+  line,
+}) => (
+  <>
+    <PillRow label={label} pill={pill} extra={line?.ok ? line.text : undefined} />
+    {line && !line.ok && <Note tone="warn">{line.text}</Note>}
+  </>
 );
 
 const Position: FunctionalComponent<{ view: RoofView }> = ({ view }) => (
@@ -56,166 +80,20 @@ const Position: FunctionalComponent<{ view: RoofView }> = ({ view }) => (
   </div>
 );
 
-type Send = (command: RoofCommand) => void;
-
-// Spec 026: why Open or Close can't be used, from the shared blockers (the fault has its own
-// block below). A reason no blocker covers ("Already open", "Restarting") stays a one-line note.
-interface WhyView {
-  blockers: Blocker[]; // both buttons' together, each once
-  covered: { open: boolean; close: boolean }; // the button's own reason is in the list
-}
-
-const blockersFor = (view: RoofView, ctx: BlockerContext): WhyView => {
-  const roof = view.roof;
-  // At that end already (or moving there), only "no live data" explains more than the button does.
-  const own = (action: 'open' | 'close', disabled: boolean, here: string[]) =>
-    disabled
-      ? moveBlockers(roof, action, ctx).filter((b) => b.id !== 'fault' && (b.id === 'noLiveData' || !here.includes(roof?.state ?? '')))
-      : [];
-  const open = own('open', view.open.disabled, ['open', 'opening']);
-  const close = own('close', view.close.disabled, ['closed', 'closing']);
-  // Spec 026: a reason that holds only one button says which ("Close: Park check ..."), so a park
-  // blocker is never read as stopping Open.
-  const only = (blocker: Blocker, other: Blocker[], key: 'roof.reason.openPrefix' | 'roof.reason.closePrefix') =>
-    other.some((b) => b.id === blocker.id) ? blocker : { ...blocker, title: t(key, { reason: blocker.title }) };
-  const both = [
-    ...open.map((b) => only(b, close, 'roof.reason.openPrefix')),
-    ...close.map((b) => only(b, open, 'roof.reason.closePrefix')),
-  ];
-  const seen = new Set<string>();
-  const blockers = both.filter((blocker) => !seen.has(blocker.id) && Boolean(seen.add(blocker.id)));
-  return { blockers, covered: { open: open.length > 0, close: close.length > 0 } };
-};
-
-// A button's reason no blocker covers ("Already closed", "Restarting"), as its own note.
-const reasonNotes = (open: ButtonView, close: ButtonView, ids: { open: string; close: string }, covered: WhyView['covered']) => {
-  const notes: ComponentChildren[] = [];
-  // Spec 026: a reason both buttons share (a fault, a restart) is said once, for both, unprefixed.
-  const shared = Boolean(open.reason) && open.reason === close.reason && !covered.open && !covered.close;
-  if (open.reason && !covered.open)
-    notes.push(
-      <Note key="open" id={ids.open}>
-        {shared ? open.reason : t('roof.reason.openPrefix', { reason: open.reason })}
-      </Note>,
-    );
-  // A reason both share shows once, on the open note, unless that note isn't shown.
-  if (close.reason && !covered.close && (close.reason !== open.reason || covered.open))
-    notes.push(
-      <Note key="close" id={ids.close}>
-        {t('roof.reason.closePrefix', { reason: close.reason })}
-      </Note>,
-    );
-  return notes;
-};
-
-// Spec 014: with "Ask before Open and Close" on, Open and Close ask once
-// inline (the existing inline confirm pattern); Stop never asks (constitution VII).
-const Confirm: FunctionalComponent<{ asking: 'open' | 'close'; onYes: () => void; onNo: () => void }> = ({ asking, onYes, onNo }) => {
-  const question = asking === 'open' ? t('roof.confirmOpen') : t('roof.confirmClose');
-  return (
-    <div class="inline-confirm" role="group" aria-label={question} data-inventory="roof-confirm">
-      <span>{question}</span>
-      <Button onClick={onYes}>{asking === 'open' ? t('roof.open') : t('roof.close')}</Button>
-      <Button variant="ghost" onClick={onNo}>
-        {t('roof.cancel')}
-      </Button>
-    </div>
-  );
-};
-
-const Buttons: FunctionalComponent<{ view: RoofView; send: Send; confirm: boolean; ctx: BlockerContext }> = ({
-  view,
-  send,
-  confirm,
-  ctx,
-}) => {
-  const base = useId();
-  const [asking, setAsking] = useState<'open' | 'close' | null>(null);
-  const why = blockersFor(view, ctx);
-  const ids = { open: why.covered.open ? `${base}-why` : `${base}-open`, close: why.covered.close ? `${base}-why` : `${base}-close` };
-  const sharedNote = !why.covered.open && !why.covered.close && view.close.reason && view.close.reason === view.open.reason;
-  const closeId = sharedNote ? ids.open : ids.close;
-  const press = (command: 'open' | 'close') => (confirm ? setAsking(command) : send(command));
-  return (
-    <div class="roof-controls" data-inventory="roof-buttons">
-      <div class="btn-row">
-        <Button
-          onClick={() => press('open')}
-          disabled={view.open.disabled}
-          busy={view.open.busy}
-          busyLabel={t('roof.sending')}
-          describedBy={view.open.reason ? ids.open : undefined}
-        >
-          {t('roof.open')}
-        </Button>
-        <Button
-          onClick={() => press('close')}
-          disabled={view.close.disabled}
-          busy={view.close.busy}
-          busyLabel={t('roof.sending')}
-          describedBy={view.close.reason ? closeId : undefined}
-        >
-          {t('roof.close')}
-        </Button>
-        {/* Never disabled, never busy (constitution VII, FR-003). */}
-        <Button
-          variant="danger"
-          onClick={() => {
-            setAsking(null);
-            send('stop');
-          }}
-        >
-          {t('roof.stop')}
-        </Button>
-      </div>
-      {/* The question goes with the button: gone once the button is unavailable. */}
-      {asking && !view[asking].disabled && (
-        <Confirm
-          asking={asking}
-          onYes={() => {
-            setAsking(null);
-            send(asking);
-          }}
-          onNo={() => setAsking(null)}
-        />
-      )}
-      <Why view={view} why={why} ids={ids} whyId={`${base}-why`} />
-    </div>
-  );
-};
-
-// Under the buttons: the shared blockers (spec 026), a reason no blocker covers, the notes and the last answer.
-const Why: FunctionalComponent<{ view: RoofView; why: WhyView; ids: { open: string; close: string }; whyId: string }> = ({
-  view,
-  why,
-  ids,
-  whyId,
-}) => (
-  <>
-    {why.blockers.length > 0 && (
-      <div id={whyId}>
-        <MoveBlockers blockers={why.blockers} />
-      </div>
-    )}
-    {reasonNotes(view.open, view.close, ids, why.covered)}
-    {view.notes.map((note) => (
-      <Note key={note.id} tone={note.tone}>
-        {note.text}
-      </Note>
-    ))}
-    {view.result && <Note tone={view.result.tone}>{view.result.text}</Note>}
-  </>
-);
-
 // Clear fault needs live data, so the person sees the fault they clear (constitution I).
+// Spec 027: a Hall rail fault says how it clears and shows the live reading beside it.
 const Fault: FunctionalComponent<{ roof: RoofStatus; send: Send; busy: boolean; reason: string }> = ({ roof, send, busy, reason }) => {
   const id = useId();
   if (!roof.fault) return null;
+  const blocker = faultBlocker(roof);
+  const rail = roof.fault.kind === 'hallRail';
   return (
     <div class="roof-fault" data-inventory="roof-fault-card">
       <Note tone="bad">
-        {deviceText(roof.fault.text)} <InfoTip text={faultBlocker(roof)?.meaning} />
+        {deviceText(roof.fault.text)} <InfoTip text={blocker?.meaning} />
       </Note>
+      {rail && <ReadingRow label={t('roof.hall.label')} value={formatCount(roof.hall.counts)} />}
+      {rail && <Note>{blocker?.clears}</Note>}
       <Button
         small
         onClick={() => send('clear-fault')}
@@ -271,8 +149,8 @@ const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus;
   const hold = roof.closePhase === 'heldByPerson' || roof.closePhase === 'halted' ? closePhaseBlocker(roof, ctx) : null;
   return (
     <div data-inventory="roof-checks">
-      <PillRow label={t('roof.weather.label')} pill={weatherPill(roof)} />
-      <PillRow label={t('roof.park.label')} pill={parkPill(roof)} />
+      <HealthRow label={t('roof.weather.label')} pill={weatherPill(roof)} line={sqmeterLine(roof)} />
+      <HealthRow label={t('roof.park.label')} pill={parkPill(roof)} line={ninaLine(roof)} />
       {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
       {hold && <MoveBlockers blockers={[hold]} />}
@@ -356,7 +234,7 @@ const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = 
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>
         <Position view={view} />
-        <Buttons view={view} send={send} confirm={confirm} ctx={ctx} />
+        <RoofButtons view={view} send={send} confirm={confirm} ctx={ctx} />
         <PinsLink valid={live.status?.pins?.valid} />
         {roof && (
           <Details

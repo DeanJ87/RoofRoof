@@ -8,7 +8,7 @@ import { Button, Note } from './ui';
 import { announce } from '../lib/a11y';
 import { t } from '../i18n';
 
-// Stop on every page while the roof moves (constitution VII; spec 009 FR-014).
+// Stop on every page while the roof moves or a move waits (constitution VII; spec 009 FR-014, spec 027).
 // Pinned to the bottom of the page, not in the header or above the dashboard's
 // cards (DS-01). It follows the last status it saw, so a roof last seen moving
 // keeps its Stop while the live data is stale; with no status at all after a
@@ -21,6 +21,7 @@ const barLabel = (status: SystemStatus | null) => {
   if (state === 'opening') return t('roof.state.opening');
   if (state === 'closing') return t('roof.state.closing');
   if (status.roof?.calibrating) return t('calibrate.stopBar');
+  if (status.roof?.parkWait) return t('roof.parkWait.bar'); // spec 027
   return t('roof.closeWaiting');
 };
 

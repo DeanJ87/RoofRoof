@@ -115,7 +115,7 @@ describe('Open', () => {
     openButton(input({ live: live(status({ state: 'closed', ...roof }, apMode)) }));
 
   it('is enabled for a closed roof in safe weather', () => {
-    expect(open({})).toEqual({ disabled: false, reason: '', busy: false });
+    expect(open({})).toEqual({ disabled: false, reason: '', busy: false, blocked: false });
   });
 
   // Spec 024 (parkSwitchCheck): a park switch that hasn't opened in 3 roof openings refuses Open.
@@ -128,13 +128,18 @@ describe('Open', () => {
       switchesOnly: true,
       openings: [0, 3] as [number, number],
     };
-    expect(open({ parkSwitches: { ...parkSwitches, check } })).toEqual({ disabled: true, reason: check, busy: false });
+    expect(open({ parkSwitches: { ...parkSwitches, check } })).toEqual({ disabled: true, reason: check, busy: false, blocked: false });
     expect(open({ parkSwitches: { ...parkSwitches, check: null } }).disabled).toBe(false);
   });
 
+  // Spec 027: a check that blocks Open leaves it usable; a press opens the move dialog.
   it('needs the weather to be safe, and says why', () => {
     expect(open({ weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' }).reason).toContain('unsafe: rain (SQMeter HTTP)');
-    expect(open({ weather: 'unknown', weatherText: '' }).disabled).toBe(true);
+    expect(open({ weather: 'unknown', weatherText: '' })).toMatchObject({ disabled: false, blocked: true });
+  });
+
+  it('needs the park confirmed too (spec 027)', () => {
+    expect(open({ parkConfirmed: false, parkText: '' })).toMatchObject({ disabled: false, blocked: true, reason: 'Mount not parked' });
   });
 
   it('is refused in daylight when daylight closes the roof, and says why (spec 013)', () => {
@@ -147,20 +152,20 @@ describe('Open', () => {
       closes: true,
     };
     const result = open({ daylight });
-    expect(result.disabled).toBe(true);
+    expect(result.blocked).toBe(true);
     expect(result.reason).toBe('Daylight (Sun 3.2° ≥ 0.0°)');
     // Alert only, or night: Open is not refused.
-    expect(open({ daylight: { ...daylight, mode: 'alert', closes: false } }).disabled).toBe(false);
-    expect(open({ daylight: { ...daylight, state: 'night', closes: false } }).disabled).toBe(false);
+    expect(open({ daylight: { ...daylight, mode: 'alert', closes: false } }).blocked).toBe(false);
+    expect(open({ daylight: { ...daylight, state: 'night', closes: false } }).blocked).toBe(false);
     // Older firmware sends no daylight object.
-    expect(open({ daylight: undefined }).disabled).toBe(false);
+    expect(open({ daylight: undefined }).blocked).toBe(false);
     // The weather comes first when both refuse.
     const both = open({ daylight, weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' });
     expect(both.reason).toContain('unsafe: rain (SQMeter HTTP)');
     expect(both.reason).not.toContain('Daylight');
     // Close is not refused by daylight.
     const s = status({ state: 'open', daylight });
-    expect(closeButton(input({ live: live(s) })).disabled).toBe(false);
+    expect(closeButton(input({ live: live(s) })).blocked).toBe(false);
   });
 
   it('is refused while the setup hotspot is on, Close is not', () => {
@@ -196,10 +201,11 @@ describe('Close', () => {
   const close = (roof: Partial<RoofStatus>) => closeButton(input({ live: live(status({ state: 'open', ...roof })) }));
 
   it('is enabled for an open roof over a parked mount, whatever the weather', () => {
-    expect(close({ weather: 'unsafe' })).toEqual({ disabled: false, reason: '', busy: false });
+    expect(close({ weather: 'unsafe' })).toEqual({ disabled: false, reason: '', busy: false, blocked: false });
   });
 
-  it('needs the park confirmed, with the device’s reason', () => {
+  it('needs the park confirmed, with the device’s reason, and stays usable (spec 027)', () => {
+    expect(close({ parkConfirmed: false, parkText: '' }).blocked).toBe(true);
     expect(close({ parkConfirmed: false, parkText: 'Mount not parked: Park switch 1 open' }).reason).toBe(
       'Mount not parked: Park switch 1 open',
     );
@@ -220,7 +226,7 @@ describe('Close', () => {
 describe('a command in flight', () => {
   it('makes Open and Close busy, never Stop', () => {
     const view = roofView(input({ live: live(status({ state: 'stopped' })), inFlight: 'open' }));
-    expect(view.open).toEqual({ disabled: true, reason: '', busy: true });
+    expect(view.open).toEqual({ disabled: true, reason: '', busy: true, blocked: false });
     expect(view.close.busy).toBe(true);
     expect(view.stop.disabled).toBe(false);
   });
@@ -310,6 +316,33 @@ describe('pills and position', () => {
   });
 });
 
+const WAIT = { command: 'close' as const, origin: 'person' as const, leftSeconds: 225, asked: true };
+
+describe('spec 027 notes', () => {
+  it('says a move waits for the park, with the time left', () => {
+    const notes = roofView(input({ live: live(status({ parkWait: WAIT })) })).notes;
+    expect(notes[0]).toMatchObject({
+      id: 'park-wait',
+      tone: 'warn',
+      text: 'Close waits for the mount to park: N.I.N.A. was asked, 3:45 left',
+    });
+    const quiet = roofView(input({ live: live(status({ parkWait: { ...WAIT, command: 'open', asked: false, leftSeconds: 9 } })) }));
+    expect(quiet.notes[0].text).toBe('Open waits for the mount to park, 0:09 left');
+  });
+
+  it('says why the last wait ended, and which checks a person overrode', () => {
+    const notes = roofView(
+      input({
+        live: live(status({ state: 'open', parkWaitEnded: 'Mount not parked after 240 s', override: ['weatherNotSafe', 'daylight'] })),
+      }),
+    ).notes;
+    expect(notes.map((n) => n.text)).toEqual([
+      'Mount not parked after 240 s',
+      'Overridden until the roof closes or these clear: Weather, Daylight',
+    ]);
+  });
+});
+
 describe('the Stop bar', () => {
   it.each([
     [{ state: 'opening' }, true],
@@ -317,8 +350,18 @@ describe('the Stop bar', () => {
     [{ state: 'open', closePending: true }, true],
     [{ state: 'closed' }, false],
     [{ state: 'stopped' }, false],
+    [{ state: 'closed', parkWait: WAIT }, true],
   ] as [Partial<RoofStatus>, boolean][])('%o: %s', (roof, shown) => {
     expect(stopBarShown(status(roof))).toBe(shown);
+  });
+
+  // Spec 027: the card's Stop shows only while it has something to stop, or the roof can't be seen live.
+  it('the card shows Stop only while a move runs or waits', () => {
+    expect(roofView(input()).stopShown).toBe(false);
+    expect(roofView(input({ live: live(status({ state: 'opening' })) })).stopShown).toBe(true);
+    expect(roofView(input({ live: live(status({ parkWait: WAIT })) })).stopShown).toBe(true);
+    expect(roofView(input({ live: live(status({ closePending: true })) })).stopShown).toBe(true);
+    expect(roofView(input({ live: live(status(), { quiet: true }) })).stopShown).toBe(true);
   });
 
   it('is not shown without a status at first, and is once none has come for 5 s', () => {
@@ -366,6 +409,7 @@ describe('live data and results over time', () => {
       disabled: true,
       reason: 'Clearing the fault',
       busy: false,
+      blocked: false,
     });
   });
 

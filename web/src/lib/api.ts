@@ -38,11 +38,15 @@ export const timeoutSignal = (ms: number): AbortSignal => {
   return controller.signal;
 };
 
-/** POST a roof command (spec 003). 409 answers say why it was refused (`reason`, `error`). */
-export const roofCommand = (command: RoofCommand): Promise<Response> =>
+/**
+ * POST a roof command (spec 003). 409 answers say why it was refused (`reason`, `error`).
+ * Spec 027: a person's Open or Close may name the refusals it overrides.
+ */
+export const roofCommand = (command: RoofCommand, override?: string[]): Promise<Response> =>
   fetch(`/api/roof/${command}`, {
     method: 'POST',
-    headers: { [ROOF_COMMAND_HEADER]: '1' },
+    headers: override ? { [ROOF_COMMAND_HEADER]: '1', 'Content-Type': 'application/json' } : { [ROOF_COMMAND_HEADER]: '1' },
+    body: override ? JSON.stringify({ override }) : undefined,
     signal: timeoutSignal(ROOF_COMMAND_TIMEOUT_MS),
   });
 
