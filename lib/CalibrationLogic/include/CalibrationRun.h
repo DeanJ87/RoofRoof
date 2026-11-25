@@ -108,9 +108,9 @@ namespace SQM
             bool busy = false;        // something blocks an open (RoofIo::blockerDecision)
             std::string busyReason;   // "busy", "hotspot", "restarting"
             std::string busyText;
-            std::string faultText;      // the latched fault, worded
-            bool jog = false;           // spec 033: set by Teach::jog (a Hall rail fault doesn't refuse it)
-            bool ignoreMagnets = false; // spec 033: a jog's start overriding the end magnets
+            std::string faultText;                   // the latched fault, worded
+            bool jog = false;                        // spec 033: set by Teach::jog (a Hall rail fault doesn't refuse it)
+            bool ignoreMagnets = false;              // spec 033: a jog's start overriding the end magnets
             Roof::End jogTarget = Roof::End::Closed; // spec 033: a jog toward closed skips the weather, daylight, park and sequence gates
         };
 

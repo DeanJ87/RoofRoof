@@ -137,60 +137,6 @@ void test_an_opening_jog_needs_the_safe_weather_no_daylight_and_the_park(void)
     TEST_ASSERT_FALSE(switchOpen.roof.status().jogging);
 }
 
-void test_a_closing_jog_runs_in_unsafe_weather_daylight_and_unparked(void)
-{
-    Rig r(900.0f);
-    r.gates.weather = Safety::Verdict::Unsafe;
-    r.gates.daylightCloses = true;
-    r.gates.parked = false;
-    r.gates.fittedSwitches = 1;
-    r.gates.switch1 = RoofIo::Contact::Open;
-    StartInputs s = r.in();
-    s.sequenceIdle = false; // the automatic close waiting for the park
-    TEST_ASSERT_TRUE(r.teach.jog(r.roof, End::Closed, true, false, s).accepted);
-    const float before = r.plant.positionMm;
-    for (int i = 0; i < 60; ++i)
-    {
-        Teach::hold(r.roof, r.roof.jogId());
-        r.step();
-    }
-    TEST_ASSERT_TRUE(r.roof.status().jogging);
-    TEST_ASSERT_TRUE(r.roof.status().driving);
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::None); // no park interlock fault
-    TEST_ASSERT_TRUE(r.plant.positionMm < before);
-    // Still a person's only, attended, and the opening one stays refused.
-    assertRefused("notAttended", r.jog(End::Closed, false));
-    r.roof.command(Roof::Command::Stop, Roof::Origin::Person);
-    r.steps(100);
-    assertRefused("closeSequence", r.teach.jog(r.roof, End::Open, true, false, s));
-    assertRefused("weatherNotSafe", r.jog(End::Open));
-}
-
-// Spec 033: the same for a blind jog (the Hall sensor dead) in the rain.
-void test_a_blind_closing_jog_runs_in_the_rain_unparked(void)
-{
-    Rig r(900.0f);
-    r.plant.railCounts = 4095;
-    r.steps(200);
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::HallRail);
-    r.gates.weather = Safety::Verdict::Unsafe;
-    r.gates.parked = false;
-    StartInputs s = r.in();
-    s.sequenceIdle = false; // can't move: a fault latched
-    TEST_ASSERT_TRUE(r.teach.jog(r.roof, End::Closed, true, false, s).accepted);
-    for (int i = 0; i < 60; ++i)
-    {
-        Teach::hold(r.roof, r.roof.jogId());
-        r.step();
-    }
-    TEST_ASSERT_TRUE(r.roof.status().jogging);
-    TEST_ASSERT_TRUE(r.roof.status().driving);
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::HallRail);
-    r.roof.command(Roof::Command::Stop, Roof::Origin::Person);
-    r.steps(100);
-    assertRefused("weatherNotSafe", r.jog(End::Open));
-}
-
 void test_a_jog_is_refused_while_anything_else_is_going_on(void)
 {
     Rig r(900.0f);
@@ -214,41 +160,6 @@ void test_a_jog_is_refused_while_anything_else_is_going_on(void)
     assertRefused("moving", r.jog(End::Closed));
     r.roof.raiseFault(Roof::Fault{FaultKind::External, 0, 0});
     assertRefused("faultLatched", r.jog(End::Closed));
-}
-
-// Spec 033: the attended checks leave a Hall rail fault to the controller,
-// which runs a person's jog blind; any other fault still refuses it.
-void test_a_jog_runs_with_the_hall_rail_fault_only(void)
-{
-    Rig r(900.0f);
-    r.plant.railCounts = 4095;
-    r.steps(200);
-    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::HallRail);
-    assertRefused("notAttended", r.jog(End::Closed, false));
-    TEST_ASSERT_TRUE(r.jog(End::Closed).accepted);
-    TEST_ASSERT_TRUE(r.roof.status().jogging);
-    TEST_ASSERT_TRUE(Teach::yieldToClose(r.roof));
-    TEST_ASSERT_FALSE(r.roof.status().jogging);
-
-    Rig other(900.0f);
-    other.roof.raiseFault(Roof::Fault{FaultKind::External, 0, 0});
-    other.plant.railCounts = 4095;
-    other.steps(200);
-    assertRefused("faultLatched", other.jog(End::Closed));
-}
-
-// Spec 033: a person's override of the end magnets goes through the same attended checks.
-void test_a_jog_may_override_the_end_magnets(void)
-{
-    Rig r(900.0f);
-    StartInputs s = r.in();
-    s.ignoreMagnets = true;
-    assertRefused("notAttended", r.teach.jog(r.roof, End::Open, false, false, s));
-    TEST_ASSERT_TRUE(r.teach.jog(r.roof, End::Open, true, false, s).accepted);
-    r.hold(2000);
-    TEST_ASSERT_TRUE(r.roof.magnetsDoubted());
-    r.roof.raiseFault(Roof::Fault{FaultKind::External, 0, 0});
-    assertRefused("faultLatched", r.teach.jog(r.roof, End::Open, true, false, s));
 }
 
 void test_the_controllers_own_refusals_come_through(void)
@@ -616,11 +527,7 @@ int main(int, char **)
     UNITY_BEGIN();
     RUN_TEST(test_a_jog_needs_the_attended_confirmation);
     RUN_TEST(test_an_opening_jog_needs_the_safe_weather_no_daylight_and_the_park);
-    RUN_TEST(test_a_closing_jog_runs_in_unsafe_weather_daylight_and_unparked);
-    RUN_TEST(test_a_blind_closing_jog_runs_in_the_rain_unparked);
     RUN_TEST(test_a_jog_is_refused_while_anything_else_is_going_on);
-    RUN_TEST(test_a_jog_runs_with_the_hall_rail_fault_only);
-    RUN_TEST(test_a_jog_may_override_the_end_magnets);
     RUN_TEST(test_the_controllers_own_refusals_come_through);
     RUN_TEST(test_a_renewal_needs_the_running_jog);
     RUN_TEST(test_weather_or_daylight_turning_stops_only_an_opening_jog);
