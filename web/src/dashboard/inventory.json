@@ -217,7 +217,7 @@
       "priority": 2,
       "location": "card:roof",
       "test": "roof-buttons",
-      "note": "Open, Close and Stop, with the reason a button is disabled: a waiting close, the supply and its minimum, the setup hotspot, the stuck park switch check (spec 024)."
+      "note": "Open, Close and Stop. Spec 034: one short line per button with its first reason (from lib/moveBlockers.ts, e.g. 'Open: Weather unsafe'), the full reasons only in the move dialog a press opens; no line where the state pill or the fault already says it (at that end, moving there, a fault), only the button's tooltip. A disabled button's own reason (no live data, restarting, the setup hotspot, the stuck park switch check, a waiting close) is the line."
     },
     {
       "id": "roof-checks",
@@ -258,7 +258,7 @@
       "priority": 2,
       "location": "card:roof",
       "test": "roof-daylight",
-      "note": "The sun's reading as the device words it, the mode behind '?'. When daylight closes the roof, Open's reason says so."
+      "note": "The sun's reading as the device words it, the mode behind '?'. Under it where the location came from, or (spec 034) which one is kept, with why behind the '?'. When daylight closes the roof, Open's line says so in a few words."
     },
     {
       "id": "roof-readings",
@@ -505,7 +505,7 @@
       "priority": 2,
       "location": "card:roof",
       "test": "roof-sources",
-      "note": "When SQMeter and N.I.N.A. last answered, behind the weather and park rows' \"?\"; a silent SQMeter or unreachable N.I.N.A. as a warning note under its row.",
+      "note": "When SQMeter and N.I.N.A. last answered, behind the weather and park rows' \"?\"; a silent SQMeter or unreachable N.I.N.A. as a short warning note under its row, the device's reason behind the same \"?\" (spec 034).",
       "testIn": "unit",
       "demoCannot": "The demo core with spec 027's park wait, overrides and source health is rebuilt separately; until then the card is tested with each state set directly"
     }

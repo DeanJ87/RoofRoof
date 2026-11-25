@@ -83,7 +83,8 @@ const SqmeterLocation: FunctionalComponent<LocationProps> = ({ location, status,
         label={t('settings.roof.location')}
         value={set ? formatCoordinates(location.latitude, location.longitude, 4) : t('settings.roof.locationNotRead')}
       />
-      {line && <Note tone={line.problem ? 'warn' : 'muted'}>{line.text}</Note>}
+      {line?.why && <Note tone="warn">{line.why}</Note>}
+      {line && <Note tone={line.problem && !line.why ? 'warn' : 'muted'}>{line.text}</Note>}
     </div>
   );
 };

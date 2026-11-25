@@ -10,8 +10,13 @@ import { minSec } from './roofView';
 
 export interface HealthLine {
   ok: boolean;
-  text: string;
+  text: string; // short: the Roof card's note (spec 034)
+  detail?: string; // the device's own reason: the row's "?" and Diagnostics
 }
+
+/** The line with the device's reason after it, for Diagnostics. */
+export const healthText = (line: HealthLine) =>
+  line.detail ? t('roof.health.withDetail', { text: line.text, detail: line.detail }) : line.text;
 
 const span = (seconds: number) => (seconds < 60 ? t('units.seconds', { n: formatCount(seconds) }) : minSec(seconds));
 
@@ -21,13 +26,13 @@ export const sqmeterLine = (roof: RoofStatus | null | undefined): HealthLine | n
   const age = sqm.lastReplySeconds;
   if (sqm.state === 'good' && age !== null) return { ok: true, text: t('roof.health.sqmReplied', { ago: formatAgo(age * 1000) }) };
   if (sqm.state === 'waiting' && age === null) return null; // just started: nothing asked yet
-  const text = deviceText(sqm.text) || sqm.state;
-  return { ok: false, text: age === null ? t('roof.health.sqmNever', { text }) : t('roof.health.sqmSilent', { age: span(age), text }) };
+  const detail = deviceText(sqm.text) || sqm.state;
+  return { ok: false, text: age === null ? t('roof.health.sqmNever') : t('roof.health.sqmSilent', { age: span(age) }), detail };
 };
 
 export const ninaLine = (roof: RoofStatus | null | undefined): HealthLine | null => {
   const nina = roof?.nina;
   if (!nina?.set || nina.state === 'waiting') return null;
   if (nina.reachable) return { ok: true, text: t('roof.health.ninaAnswered', { ago: formatAgo(nina.ageSeconds * 1000) }) };
-  return { ok: false, text: t('roof.health.ninaLost', { text: deviceText(nina.text) || nina.state }) };
+  return { ok: false, text: t('roof.health.ninaLost'), detail: deviceText(nina.text) || nina.state };
 };

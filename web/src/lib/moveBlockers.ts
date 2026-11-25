@@ -24,6 +24,7 @@ export interface Blocker {
   id: string;
   tone: 'warn' | 'bad';
   title: string; // what stops it, with the value the device reports
+  short: string; // spec 034: two or three words for the Roof card; the rest is in the move dialog
   meaning: string; // what that means (behind "?")
   clears: string; // when it clears
   fix?: BlockerFix;
@@ -38,10 +39,20 @@ export interface BlockerContext {
 // A fault, a can't-move automatic close and a Hall reading at its limit are problems; the rest wait for something.
 const BAD = ['fault', 'cannotMove', 'hallRail'];
 
+// Spec 034: the Roof card's short label, where the title is longer than a few words.
+const SHORT: Record<string, MessageKey> = {
+  fault: 'roof.state.fault',
+  daylight: 'move.short.daylight',
+  park: 'roof.reason.notParked',
+  supply: 'diagnostics.fault.supplyLow',
+  calibrating: 'calibrate.title',
+};
+
 const make = (id: string, title: string, meaning: string, clears: string, fix?: BlockerFix): Blocker => ({
   id,
   tone: BAD.includes(id) ? 'bad' : 'warn',
   title,
+  short: SHORT[id] ? t(SHORT[id]) : title,
   meaning,
   clears,
   fix,
@@ -107,13 +118,14 @@ const weatherBlocker = (roof: RoofStatus): Blocker | null => {
   if (roof.weather === 'safe') return null;
   const text = deviceText(roof.weatherText) || t('roof.weather.unknown');
   const unsafe = roof.weather === 'unsafe';
-  return make(
+  const blocker = make(
     'weather',
     t('move.weather', { text }), // the device's text says unsafe or why it doubts
     t('move.weatherWhy'),
     t(unsafe ? 'move.clears.weather' : 'move.clears.weatherUnknown'),
     settings('safety', 'move.fix.weather'),
   );
+  return { ...blocker, short: t(unsafe ? 'move.short.weather' : 'move.short.weatherUnknown') };
 };
 
 const daylightBlocker = (roof: RoofStatus): Blocker | null =>

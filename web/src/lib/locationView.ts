@@ -9,6 +9,7 @@ import { t } from '../i18n';
 export interface LocationLine {
   text: string;
   problem: boolean; // the last read failed (shown as a warning, never as unsafe)
+  why?: string; // spec 034: with a kept location, the problem on its own (a "?" or a note of its own), never run on
 }
 
 // "read 3 min ago", "saved 19 Nov", or null when neither is known.
@@ -30,10 +31,7 @@ export const locationLine = (location: LocationStatus | undefined | null): Locat
   if (problem && problem !== 'waiting') {
     const what = t(`location.problem.${problem}`);
     if (!location.set) return { text: what, problem: true };
-    return {
-      text: when ? t('location.line.keeping', { problem: what, when }) : t('location.line.keepingNoAge', { problem: what }),
-      problem: true,
-    };
+    return { text: when ? t('location.line.using', { when }) : t('location.line.usingNoAge'), problem: true, why: what };
   }
   if (!location.set) return { text: t('location.problem.waiting'), problem: false };
   const from = location.gps ? 'gps' : 'sqmeter';

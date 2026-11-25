@@ -26,7 +26,7 @@ const send = async (request: () => Promise<Response>, done?: string) => {
   }
 };
 
-const Row: FunctionalComponent<{ blocker: Blocker; onDone?: () => void }> = ({ blocker, onDone }) => {
+const Row: FunctionalComponent<{ blocker: Blocker; brief?: boolean; onDone?: () => void }> = ({ blocker, brief, onDone }) => {
   const [asking, setAsking] = useState(false);
   const fix = blocker.fix;
   // The question goes with the offer: asked again from the start once it is offered again.
@@ -43,12 +43,16 @@ const Row: FunctionalComponent<{ blocker: Blocker; onDone?: () => void }> = ({ b
     await send(releaseHold, t('move.release.done'));
     onDone?.();
   };
+  const action = fix && !asking ? { label: fix.label, onClick: () => void act() } : undefined;
   return (
     <div class="move-blocker" data-blocker={blocker.id}>
-      <Note tone={blocker.tone} action={fix && !asking ? { label: fix.label, onClick: () => void act() } : undefined}>
-        {blocker.title} <InfoTip text={blocker.meaning} />
-      </Note>
-      <Note>{blocker.clears}</Note>
+      {/* Spec 034: brief, when a pill above already says what it is: only when it clears, with the fix. */}
+      {!brief && (
+        <Note tone={blocker.tone} action={action}>
+          {blocker.title} <InfoTip text={blocker.meaning} />
+        </Note>
+      )}
+      <Note action={brief ? action : undefined}>{blocker.clears}</Note>
       {/* Asked again only while the release is still offered (the device refuses it otherwise). */}
       {asking && fix?.act === 'releaseHold' && (
         <div class="inline-confirm" role="group" aria-label={t('move.release.confirm')}>
@@ -67,15 +71,16 @@ const Row: FunctionalComponent<{ blocker: Blocker; onDone?: () => void }> = ({ b
  * The blockers in order, the checks a test box bypasses (never shown as passing, constitution VII),
  * and with `ready`, a line saying nothing stops a move when the list is empty.
  */
-export const MoveBlockers: FunctionalComponent<{ blockers: Blocker[]; bypassed?: string[]; ready?: boolean; onDone?: () => void }> = ({
-  blockers,
-  bypassed = [],
-  ready,
-  onDone,
-}) => (
+export const MoveBlockers: FunctionalComponent<{
+  blockers: Blocker[];
+  bypassed?: string[];
+  ready?: boolean;
+  brief?: boolean;
+  onDone?: () => void;
+}> = ({ blockers, bypassed = [], ready, brief, onDone }) => (
   <div class="move-blockers" data-move-blockers={blockers.length}>
     {blockers.map((blocker) => (
-      <Row key={blocker.id} blocker={blocker} onDone={onDone} />
+      <Row key={blocker.id} blocker={blocker} brief={brief} onDone={onDone} />
     ))}
     {ready && blockers.length === 0 && <Note tone="ok">{t('move.ready')}</Note>}
     {bypassed.length > 0 && <Note tone="warn">{t('move.bypassed', { checks: bypassed.join(', ') })}</Note>}

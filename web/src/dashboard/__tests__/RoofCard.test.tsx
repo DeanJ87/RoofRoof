@@ -29,7 +29,7 @@ const button = (name: string) => screen.getByRole('button', { name });
 const FAULT = { kind: 'timeout', cause: 'logic' as const, measured: 61, limit: 60, text: 'No target magnet after 61 s >= 60 s timeout' };
 
 describe('RoofCard', () => {
-  it('shows a closed roof: state, position, Open enabled, Close disabled with its reason', () => {
+  it('shows a closed roof: state, position, Open enabled, Close disabled with its reason as a tooltip', () => {
     // inventory: roof-card
     show(live(status()));
     expect(screen.getByRole('heading', { name: 'Roof' })).toBeInTheDocument();
@@ -37,8 +37,10 @@ describe('RoofCard', () => {
     expect(screen.getByRole('meter', { name: 'Position' })).toHaveAttribute('aria-valuetext', '0% open');
     expect(button('Open')).toBeEnabled();
     expect(button('Close')).toBeDisabled();
-    const reason = document.getElementById(button('Close').getAttribute('aria-describedby')!);
-    expect(reason).toHaveTextContent('Close: Already closed');
+    // Spec 034: the state pill already says it: no note, the reason in the button's tooltip.
+    expect(button('Close')).toHaveAttribute('title', 'Already closed');
+    expect(button('Close')).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText(/Already closed/)).toBeNull();
     // Spec 027: still, nothing waiting: no Stop.
     expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
   });
@@ -60,7 +62,9 @@ describe('RoofCard', () => {
     expect(row.querySelector('[role="tooltip"], .info-tip, button')).not.toBeNull();
     // Spec 027: blocked, not greyed: a press says why.
     expect(button('Open')).toBeEnabled();
-    expect(screen.getByText(/^Open: Daylight check: the sun is up \(Sun 3\.2° ≥ 0\.0°\)/)).toBeInTheDocument();
+    // Spec 034: a few words under the button; the full reason is in the move dialog.
+    expect(screen.getByText('Open: Sun is up')).toBeInTheDocument();
+    expect(screen.queryByText(/Daylight check:/)).toBeNull();
   });
 
   it('shows the daylight line as Off, and leaves it out for older firmware', () => {
@@ -85,7 +89,10 @@ describe('RoofCard', () => {
     unmount();
     s.location = { ...s.location, problem: 'unreachable', readAgeSeconds: 7200 };
     show(live(s));
-    const problem = screen.getByText('SQMeter not answering: using the location read 2 h 0 min ago');
+    // Spec 034: which location is used; what went wrong is behind the row's "?".
+    const problem = screen.getByText('Using the location read 2 h 0 min ago');
+    const tips = Array.from(document.querySelectorAll('[data-inventory="roof-daylight"] [role="tooltip"]')).map((tip) => tip.textContent);
+    expect(tips.some((tip) => tip?.endsWith('SQMeter not answering'))).toBe(true);
     expect(problem).toHaveClass('note-muted');
     expect(problem.className).not.toMatch(/bad|ok|red|green/);
   });
@@ -109,8 +116,8 @@ describe('RoofCard', () => {
     expect(button('Stop')).not.toHaveAttribute('disabled');
     expect(button('Open')).toBeDisabled();
     expect(button('Close')).toBeDisabled();
-    // One blocker for the reason both share; both buttons point at it (spec 026).
-    expect(document.querySelectorAll('[data-blocker="noLiveData"]')).toHaveLength(1);
+    // One line for the reason both share; both buttons point at it (spec 026, 034).
+    expect(screen.getAllByText('No live data')).toHaveLength(1);
     expect(button('Close').getAttribute('aria-describedby')).toBe(button('Open').getAttribute('aria-describedby'));
   });
 
@@ -162,9 +169,11 @@ describe('RoofCard', () => {
     );
     show(live(status({ state: 'stopped', weather: 'unsafe', weatherText: 'unsafe: rain' })));
     fireEvent.click(button('Close'));
-    expect(await screen.findByText('Close: The device is restarting')).toBeInTheDocument();
-    const id = button('Close').getAttribute('aria-describedby');
-    expect(document.getElementById(id!)).toHaveTextContent('Close: The device is restarting');
+    // Both buttons are held by it now: one line, unprefixed, that both point at.
+    await waitFor(() =>
+      expect(document.getElementById(button('Close').getAttribute('aria-describedby')!)).toHaveTextContent(/^The device is restarting$/),
+    );
+    expect(button('Open').getAttribute('aria-describedby')).toBe(button('Close').getAttribute('aria-describedby'));
   });
 
   it('a latched fault: its text, Clear fault, and Open and Close disabled', async () => {
@@ -179,7 +188,9 @@ describe('RoofCard', () => {
     show(live(status({ state: 'error', fault: FAULT })));
     expect(screen.getByText('No target magnet after 61 s >= 60 s timeout')).toBeInTheDocument();
     expect(button('Open')).toBeDisabled();
-    expect(screen.getByText('Fault: clear it first')).toBeInTheDocument();
+    // Spec 034: the fault above says it once; the buttons carry it as a tooltip.
+    expect(button('Open')).toHaveAttribute('title', 'Fault');
+    expect(document.querySelector('[data-inventory="roof-buttons"] .note')).toBeNull();
     fireEvent.click(button('Clear fault'));
     await waitFor(() => expect(cleared).toBe(true));
   });
@@ -209,7 +220,9 @@ describe('RoofCard', () => {
     expect(within(checks).getByText('Unsafe')).toBeInTheDocument();
     expect(within(checks).getByText('Not parked')).toBeInTheDocument();
     expect(within(checks).getByText('Waiting for park')).toBeInTheDocument();
-    expect(screen.getByText(/^Close: Park check: Mount not parked: Park switch 1 open/)).toBeInTheDocument();
+    expect(screen.getByText('Close: Mount not parked')).toBeInTheDocument();
+    // The device's own text is behind the park row's "?", not under the buttons.
+    expect(document.querySelector('[data-inventory="roof-buttons"]')).not.toHaveTextContent('Park switch 1 open');
     expect(screen.getByText('Stop calls off the automatic close')).toBeInTheDocument();
   });
 
@@ -238,7 +251,7 @@ describe('RoofCard', () => {
     expect(screen.getByText("Minimum 11.5 V: below it the roof won't start, and a move stops with a fault.")).toBeInTheDocument();
     expect(screen.getByText('Limit 10.0 A: above it a move stops with a fault.')).toBeInTheDocument();
     expect(screen.getByText('Park switch 2')).toBeInTheDocument();
-    expect(screen.getByText(/^Open: Supply 10\.9 V is below 11\.5 V/)).toBeInTheDocument();
+    expect(screen.getByText('Open: Supply low')).toBeInTheDocument();
   });
 
   it('draws the Hall reading against the saved thresholds', () => {
@@ -324,9 +337,7 @@ describe('RoofCard', () => {
     // inventory: roof-weather-hold
     const hold = (leftSeconds: number, fired = false) => ({ countedSeconds: 60 - leftSeconds, leftSeconds, fired });
     const { unmount } = show(live(status({ weather: 'unsafe', weatherHold: hold(42) })));
-    expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toHaveTextContent(
-      'Weather unsafe: closing in 42 s unless it clears',
-    );
+    expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toHaveTextContent('Closing in 42 s unless it clears');
     unmount();
     const fired = show(live(status({ weather: 'unsafe', weatherHold: hold(0, true) })));
     expect(document.querySelector('[data-inventory="roof-weather-hold"]')).toBeNull();

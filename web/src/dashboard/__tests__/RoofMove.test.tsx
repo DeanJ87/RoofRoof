@@ -118,9 +118,11 @@ describe('the card (spec 027)', () => {
     expect(screen.getByText('Overridden until the roof closes or these clear: Daylight')).toBeInTheDocument();
   });
 
-  it('a held automatic close says who held it, when it lapses, and offers Release hold', () => {
+  it('a held automatic close says it is held, when it lapses, and offers Release hold', () => {
     show({ state: 'open', closePhase: 'heldByPerson', closeRearmSeconds: 300 });
-    expect(screen.getByText(/^Automatic close held: a person pressed Stop/)).toBeInTheDocument();
+    // Spec 034: the close phase pill and its "?" say who held it; one line for when it lapses.
+    expect(within(document.querySelector('[data-inventory="roof-close-phase"]') as HTMLElement).getByText('Held')).toBeInTheDocument();
+    expect(screen.queryByText(/^Automatic close held: a person pressed Stop/)).toBeNull();
     expect(screen.getByText('Lapses in 5:00 with the weather safe, or once the roof is closed.')).toBeInTheDocument();
     expect(button('Release hold')).toBeInTheDocument();
   });
@@ -146,7 +148,11 @@ describe('the card (spec 027)', () => {
       sqmeter: { on: true, state: 'unreachable', lastReplySeconds: 75, text: 'no reply' },
       nina: { set: true, state: 'unreachable', reachable: false, connected: false, atPark: false, ageSeconds: 80, text: 'refused' },
     });
-    expect(screen.getByText('No reply from SQMeter for 1:15: no reply').classList.contains('note-warn')).toBe(true);
-    expect(screen.getByText('N.I.N.A. not reachable: refused').classList.contains('note-warn')).toBe(true);
+    // Spec 034: a short note under each row; the device's reason is behind the row's "?".
+    expect(screen.getByText('No reply from SQMeter for 1:15').classList.contains('note-warn')).toBe(true);
+    expect(screen.getByText('N.I.N.A. not reachable').classList.contains('note-warn')).toBe(true);
+    const after = Array.from(document.querySelectorAll('[data-inventory="roof-checks"] [role="tooltip"]')).map((tip) => tip.textContent);
+    expect(after.some((tip) => tip?.endsWith('no reply'))).toBe(true);
+    expect(after.some((tip) => tip?.endsWith('refused'))).toBe(true);
   });
 });
