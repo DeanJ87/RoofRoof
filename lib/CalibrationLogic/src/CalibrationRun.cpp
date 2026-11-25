@@ -81,7 +81,11 @@ namespace SQM
                 return refuse("notAttended", "Confirm that you are at the roof and can see it");
             if (calibrating)
                 return refuse("calibrating", "A calibration run is already under way");
-            if (!in.sequenceIdle)
+            // Spec 033 (constitution 9.0.0, II and III): a person's jog toward
+            // closed is never held back by the weather, daylight, the park or
+            // the automatic close waiting; a close always wins.
+            const bool closingJog = in.jog && in.jogTarget == Roof::End::Closed;
+            if (!in.sequenceIdle && !closingJog)
                 return refuse("closeSequence", "The automatic close is busy: calibrate once it is idle");
             const Roof::Status &status = controller.status();
             // Spec 033: a person's jog runs blind with the Hall rail fault (the controller decides).
@@ -94,10 +98,10 @@ namespace SQM
                 return refuse("closeWaiting", "A close is waiting to start");
             if (in.settingsPending)
                 return refuse("settingsPending", "New roof settings are being applied: try again in a moment");
-            const RoofIo::GateRefusal open = RoofIo::openRefusal(in.gates);
+            const RoofIo::GateRefusal open = closingJog ? RoofIo::GateRefusal::None : RoofIo::openRefusal(in.gates);
             if (open != RoofIo::GateRefusal::None)
                 return refuse(RoofIo::gateRefusalName(open), RoofIo::describeGate(open, in.gates));
-            if (!RoofIo::parkHolds(in.gates))
+            if (!closingJog && !RoofIo::parkHolds(in.gates))
                 return refuse(
                     RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked),
                     RoofIo::describeGate(RoofIo::GateRefusal::MountNotParked, in.gates));

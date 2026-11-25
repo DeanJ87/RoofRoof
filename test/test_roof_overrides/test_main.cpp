@@ -133,6 +133,7 @@ void test_an_override_keeps_an_open_going_for_its_reasons_only(void)
     TEST_ASSERT_TRUE(openMustStop(opening, in, OverrideDaylight | OverrideWeather));
     Roof::Status jog = inState(Roof::State::Stopped);
     jog.jogging = true;
+    jog.target = Roof::End::Open;
     in.weather = Safety::Verdict::Safe;
     TEST_ASSERT_TRUE(openMustStop(jog, in, OverrideDaylight)); // a jog carries no override
 }

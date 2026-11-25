@@ -479,6 +479,24 @@ void test_nina_lost_closes_a_dead_hall_roof_blind_too(void)
             TEST_ASSERT_TRUE(d.ninaLost);
 }
 
+// Spec 033: a person's jog is never taken for a close to watch: the sequence
+// sees the roof as the jog leaves it (unknown, or still in error).
+void test_a_persons_jog_is_not_a_close_to_watch(void)
+{
+    Roof::Status jog;
+    jog.state = State::Closing;
+    jog.jogging = true;
+    Inputs in;
+    applyRoof(in, jog, false);
+    TEST_ASSERT_TRUE(in.roof == State::Unknown);
+    jog.fault.kind = Roof::FaultKind::HallRail;
+    applyRoof(in, jog, false);
+    TEST_ASSERT_TRUE(in.roof == State::Error);
+    jog.jogging = false;
+    applyRoof(in, jog, false);
+    TEST_ASSERT_TRUE(in.roof == State::Closing);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -497,5 +515,6 @@ int main(int, char **)
     RUN_TEST(test_the_nina_lost_bit_is_the_automatic_closes_alone);
     RUN_TEST(test_nina_lost_with_switches_needs_every_switch_closed_throughout);
     RUN_TEST(test_nina_lost_closes_a_dead_hall_roof_blind_too);
+    RUN_TEST(test_a_persons_jog_is_not_a_close_to_watch);
     return UNITY_END();
 }

@@ -547,7 +547,11 @@ namespace SQM
 
         void applyRoof(Inputs &in, const Roof::Status &status, bool closePending)
         {
-            in.roof = status.state;
+            // Spec 033: a person's jog is neither a close to watch nor a fault
+            // cleared: the sequence sees the roof as the jog leaves it (unknown,
+            // or still in error), and its own close takes over when it can.
+            const bool faulted = status.fault.kind != Roof::FaultKind::None;
+            in.roof = !status.jogging ? status.state : (faulted ? Roof::State::Error : Roof::State::Unknown);
             in.moveTimeoutMs = status.moveTimeoutMs;
             in.closePending = closePending;
             in.blindReady = status.blindReady; // spec 030

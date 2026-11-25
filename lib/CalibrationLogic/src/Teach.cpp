@@ -46,6 +46,7 @@ namespace SQM
         {
             StartInputs jogIn = in;
             jogIn.jog = true; // spec 033: a Hall rail fault is the controller's to judge
+            jogIn.jogTarget = target;
             Answer common = attendedRefusal(controller, attended, calibrating, jogIn);
             if (!common.accepted)
                 return common;
