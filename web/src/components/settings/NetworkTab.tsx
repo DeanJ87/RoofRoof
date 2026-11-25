@@ -143,7 +143,7 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
     <>
       <FollowsSqmeter group="mqtt" {...props} />
       <div class="form-grid">
-        <Field label={t('settings.network.broker')} error={error('mqttBroker')}>
+        <Field label={t('system.broker')} error={error('mqttBroker')}>
           <TextInput
             dataField="mqttBroker"
             value={config.mqtt.broker}
@@ -161,11 +161,11 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
             onChange={(v) => update(['mqtt', 'port'], Math.max(1, Math.min(65535, v || 1883)))}
           />
         </Field>
-        <Field label={t('settings.network.username')}>
+        <Field label={t('settings.device.username')}>
           <TextInput
             dataField="mqtt.username"
             value={config.mqtt.username}
-            placeholder={t('settings.network.optional')}
+            placeholder={t('settings.alerts.optional')}
             onInput={(v) => update(['mqtt', 'username'], v)}
           />
         </Field>
@@ -174,7 +174,7 @@ export const MqttFields: FunctionalComponent<SettingsTabProps> = (props) => {
             type="password"
             dataField="mqtt.password"
             value={config.mqtt.password ?? ''}
-            placeholder={t('settings.network.optional')}
+            placeholder={t('settings.alerts.optional')}
             onInput={(v) => update(['mqtt', 'password'], v)}
           />
           <NeedsNote status={status} need="mqttPassword" filled={!!config.mqtt.password} cleared={config.mqtt.password === null} />
@@ -273,9 +273,7 @@ const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, upd
 const mqttBadge = ({ config, status }: SettingsTabProps) => {
   const connected = status?.mqtt ? status.mqtt.connected : null;
   if (!config.mqtt.enabled || connected === null) return undefined;
-  return (
-    <StatusBadge tone={connected ? 'ok' : 'bad'} label={connected ? t('settings.network.connected') : t('settings.network.notConnected')} />
-  );
+  return <StatusBadge tone={connected ? 'ok' : 'bad'} label={connected ? t('system.connected') : t('glance.wifiNotConnected')} />;
 };
 
 // ASCOM Alpaca: discovery, the management API and the roof's Dome (spec 006).

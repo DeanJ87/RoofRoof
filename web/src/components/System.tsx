@@ -34,7 +34,7 @@ const restartDevice = () => restartWithToast();
 const usedPercent = (used: number, total: number) => (total > 0 ? (used / total) * 100 : 0);
 
 const FirmwareCard: FunctionalComponent<{ firmware: NonNullable<Status['firmware']> }> = ({ firmware }) => (
-  <Card title={t('system.firmware')} icon="cpu" tone="cyan">
+  <Card title={t('dashboard.firmware')} icon="cpu" tone="cyan">
     <div class="system-row-grid">
       <InfoRow label={t('system.name')} value={firmware.name} />
       <InfoRow label={t('system.version')} value={`v${firmware.version}`} tone="tone-cyan" />
@@ -50,11 +50,11 @@ const RuntimeCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
   return (
     <Card title={t('system.runtimeStatus')} icon="cpu" tone="violet">
       <div class="system-row-grid">
-        <InfoRow label={t('system.uptime')} value={formatUptime(status.uptime)} />
+        <InfoRow label={t('dashboard.uptime')} value={formatUptime(status.uptime)} />
         <InfoRow label={t('system.cpuFrequency')} value={t('system.cpufreqmhzMhz', { cpuFreqMHz: status.cpuFreqMHz })} />
         <div class="system-metric">
           <InfoRow label={t('system.freeHeap')} value={`${formatBytes(status.freeHeap)} / ${formatBytes(status.heapSize)}`} />
-          <ProgressMeter value={100 - heapUsedPercent} label={t('system.freeHeap2')} />
+          <ProgressMeter value={100 - heapUsedPercent} label={t('diagnostics.freeHeap')} />
         </div>
         <div class="system-metric">
           <InfoRow label={t('system.flash')} value={`${formatBytes(status.sketchSize)} / ${formatBytes(status.flashSize)}`} />
@@ -173,7 +173,7 @@ const EthernetCard: FunctionalComponent<{ ethernet: Status['ethernet'] }> = ({ e
         <>
           <InfoRow
             label={t('system.status')}
-            value={ethernet.link ? t('system.connected') : t('system.noLink')}
+            value={ethernet.link ? t('system.connected') : t('glance.noLink')}
             tone={ethernet.link ? 'tone-green' : 'tone-amber'}
           />
           {ethernet.link && (
@@ -220,7 +220,7 @@ const SetupCard: FunctionalComponent = () => {
     <Card title={t('system.setup')} icon="roof" tone="cyan" hint={t('system.setupHint')}>
       {setup && <InfoRow label={t('system.status')} value={t(SETUP_STATE[setup.state])} />}
       <div class="btn-row">
-        <Button onClick={() => route('/wizard?step=1')}>{t('system.runSetupWizard')}</Button>
+        <Button onClick={() => route('/wizard?step=1')}>{t('setup.run')}</Button>
       </div>
     </Card>
   );
@@ -236,9 +236,9 @@ const DiagLiveCard: FunctionalComponent<{ initial: DiagLive }> = ({ initial }) =
     <Card title={t('diagnostics.title')} icon="cpu" tone="violet" hint={t('system.diagnosticsHint')}>
       <div class="system-list">
         <InfoRow label={t('system.diagPhase')} value={t(`diagnostics.phaseName.${live.roof.phase}`)} />
-        <InfoRow label={t('system.diagSupply')} value={`${formatNumber(live.roof.supplyVolts, 2)} V`} />
-        <InfoRow label={t('system.diagCurrent')} value={`${formatNumber(live.roof.motorAmps, 2)} A`} />
-        <InfoRow label={t('system.diagStepTime')} value={`${formatCount(live.control.stepUs)} µs`} />
+        <InfoRow label={t('diagnostics.supply')} value={`${formatNumber(live.roof.supplyVolts, 2)} V`} />
+        <InfoRow label={t('diagnostics.current')} value={`${formatNumber(live.roof.motorAmps, 2)} A`} />
+        <InfoRow label={t('diagnostics.stepTime')} value={`${formatCount(live.control.stepUs)} µs`} />
       </div>
       <div class="btn-row">
         <Button onClick={() => route('/diagnostics')}>{t('settings.device.openDiagnostics')}</Button>
@@ -273,7 +273,7 @@ const ActionsCard: FunctionalComponent<{ confirming: boolean; setConfirming: (co
             {t('system.restartNow')}
           </Button>
           <Button variant="ghost" onClick={() => setConfirming(false)}>
-            {t('system.cancel')}
+            {t('settings.alerts.cancel')}
           </Button>
         </>
       ) : (

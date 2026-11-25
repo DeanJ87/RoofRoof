@@ -2885,6 +2885,11 @@ main:focus {
   border-color: var(--control-edge);
 }
 
+/* A choice card is tinted (and brighter when chosen): its detail takes --muted for 4.5:1 (DS-15). */
+.choice-detail {
+  color: var(--muted);
+}
+
 .choice-unavailable {
   color: var(--amber);
 }

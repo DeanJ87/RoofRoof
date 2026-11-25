@@ -27,7 +27,7 @@ export const useMqttTest = (config: Config) => {
       const result = await response.json();
       setMqttResult(
         result.success
-          ? { type: 'success', text: result.message || t('settings.network.connected') }
+          ? { type: 'success', text: result.message || t('system.connected') }
           : { type: 'error', text: deviceError(result, t('settings.network.connectionFailed')) },
       );
     } catch {

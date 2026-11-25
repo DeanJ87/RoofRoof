@@ -68,7 +68,7 @@ export const NtpFields: FunctionalComponent<SettingsTabProps & { followNote?: bo
       />
       {config.ntp.enabled && (
         <div class="form-grid">
-          <Field label={t('settings.time.server')} error={error('ntp.server1')}>
+          <Field label={t('system.server')} error={error('ntp.server1')}>
             <TextInput
               dataField="ntp.server1"
               value={config.ntp.server1}

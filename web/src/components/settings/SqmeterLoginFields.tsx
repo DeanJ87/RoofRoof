@@ -17,7 +17,7 @@ export const SqmeterLoginFields: FunctionalComponent<{ safety: SafetyConfig } & 
       <TextInput
         dataField="safety.http.username"
         value={safety.http.username ?? ''}
-        placeholder={t('settings.network.optional')}
+        placeholder={t('settings.alerts.optional')}
         onInput={(v) => update(['safety', 'http', 'username'], v)}
       />
     </Field>
@@ -26,7 +26,7 @@ export const SqmeterLoginFields: FunctionalComponent<{ safety: SafetyConfig } & 
         dataField="safety.http.password"
         type="password"
         value={safety.http.password ?? ''}
-        placeholder={t('settings.network.optional')}
+        placeholder={t('settings.alerts.optional')}
         onInput={(v) => update(['safety', 'http', 'password'], v)}
       />
     </Field>
