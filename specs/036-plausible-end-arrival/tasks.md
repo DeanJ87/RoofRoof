@@ -12,4 +12,11 @@
 - [x] T010 Web: schema, types, mocks, the Motion fields and the slow-duty note, the Diagnostics row and fault labels, i18n and the device catalogue
 - [x] T011 Fixtures, settings-deps catalogue, contract schemas, OpenAPI, demo core
 - [x] T012 Constitution 9.1.0, docs (roof motion, configuration, diagnostics, troubleshooting, REST), changelog, roadmap
-- [ ] T013 Firmware build, flash budget, quality gate, Playwright, docs build; PR with the bench checks
+- [x] T013 Firmware build, flash budget, quality gate, Playwright, docs build; PR with the bench checks
+
+## Phase 2: Convergence
+
+Assessed against spec.md (FR-001 to FR-016), plan.md and the constitution (9.1.0): every
+requirement has code and a native or web test; nothing left to build. The doubt across a restart
+once the fault is cleared, and the movement sag at the slow duty on the real roof, are recorded as
+assumptions and bench checks, not gaps.
