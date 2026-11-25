@@ -3,6 +3,9 @@
 
 #include "emulated_roof.h"
 
+#include <algorithm>
+#include <climits>
+
 #include "SwitchWatchStep.h"
 
 #include "MotionProfile.h"
@@ -86,6 +89,12 @@ namespace DemoRoof
         const uint64_t leftMs = sequence.standDownLeftMs(); // spec 026
         s.closeRearmSeconds = leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000);
         s.daylight = CloseSeq::daylightStatus(daylightView);
+        // Spec 030 (CloseOnUnsafe::weatherHoldStatus and needsPersonStatus).
+        s.weatherHold.countedSeconds = static_cast<int32_t>(std::min<uint64_t>(weatherHold.countedMs() / 1000, INT32_MAX));
+        const uint64_t holdLeft = weatherHold.leftMs();
+        s.weatherHold.leftSeconds = holdLeft == CloseSeq::WeatherHold::NOT_HOLDING ? -1 : static_cast<int32_t>((holdLeft + 999) / 1000);
+        s.weatherHold.fired = weatherHold.fired();
+        s.needsPerson = RoofIo::NeedsPersonStatus{needsPerson.active(), needsPerson.text()};
         s.testBox = testBoxState;
         // Spec 027 (RoofControl::refreshSnapshot): the wait for the park and the overrides.
         s.parkWait = RoofIo::waitView(guard.wait(), static_cast<uint32_t>(nowMs));

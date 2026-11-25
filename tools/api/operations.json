@@ -338,14 +338,19 @@
                 "type": "integer",
                 "description": "SQMeter's reason flags (0 when safe)."
               },
+              "reasons": {
+                "type": "string",
+                "description": "SQMeter's own reasons, joined with \"; \" (at most 160 bytes; empty when it sent none)."
+              },
               "text": {
                 "type": "string",
-                "description": "For people: \"SQMeter says safe\" or \"SQMeter says unsafe: reasonFlags 0x200 (rain)\"."
+                "description": "For people: \"SQMeter says safe\", or \"SQMeter says unsafe: \" with SQMeter's reasons, or without them the flags as words (\"rain\")."
               }
             },
             "required": [
               "safe",
               "reasonFlags",
+              "reasons",
               "text"
             ],
             "additionalProperties": false

@@ -57,6 +57,10 @@ The firmware divides the reading by the PWM duty that was applied (the sense out
 3. Set `roof.currentAmpsPerVolt` to its current value × (meter amps ÷ `roof.motorAmps`).
 4. Set `roof.maxCurrentAmps` above the steady running current and the start-up surge (which lasts well under the 250 ms the controller allows), and below the stall current.
 
+### Without current sense
+
+Current sense is not fitted on the first roof, and the firmware never needs it. A [blind close](../user-guide/roof-motion.md#blind-close) (the automatic close with a dead Hall sensor) then judges a stall from the 12 V supply instead: the supply sags about a volt while the motor runs and further when the chain stalls at the end, and `roof.blindSagVolts` (2.0 V by default) is the extra sag that stops it. Measure it as [commissioning stage 8](commissioning.md#stage-8-first-attended-moves-on-the-real-roof) describes. With current sense on, `roof.maxCurrentAmps` also stops a stalled blind close as `overCurrent`.
+
 ## Travel and speed
 
 The [calibration run](../user-guide/calibration-run.md) measures them with the motor connected: it times a slow open and close (and optionally a pair at the top duty) and proposes the speed for the travel you measured, the timeout margin, which end reads high and thresholds clear of the in-between noise. By hand: measure the travel between the two magnets' trigger points and set `roof.travelMm`; time a full move at 100% duty and set `roof.speedMmPerSecond` (travel ÷ seconds). Leave `roof.slowSpeedMmPerSecond` at 0 (speed proportional to the duty) or time a full travel at the slow duty and set it to travel ÷ seconds, with `roof.slowSpeedDutyPercent` = `roof.slowDutyPercent`. The [Roof motion](../user-guide/roof-motion.md#settings) page explains how the timeouts and the slow-down come from them.

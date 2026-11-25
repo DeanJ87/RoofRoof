@@ -113,6 +113,7 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "events": {
       "mount_not_parked": { "level": 4, "sound": "", "title": "", "message": "" },
       "roof_not_closed": { "level": 4, "sound": "", "title": "", "message": "" },
+      "needs_person": { "level": 4, "sound": "", "title": "", "message": "" },
       "move_fault": { "level": 3, "sound": "", "title": "", "message": "" },
       "supply_low": { "level": 2, "sound": "", "title": "", "message": "" },
       "unsafe_closing": { "level": 2, "sound": "", "title": "", "message": "" },
@@ -152,7 +153,9 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "maxCurrentAmps": 10,
     "currentAmpsPerVolt": 8.5,
     "minRunningAmps": 0,
-    "minSupplyVolts": 11
+    "minSupplyVolts": 11,
+    "blindClose": true,
+    "blindSagVolts": 2.0
   },
   "pins": {
     "preset": "unset",
@@ -182,7 +185,10 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "closeGuardSeconds": 30,
     "notStarted": "halt",
     "remindMinutes": 30,
-    "remoteStop": false
+    "remoteStop": false,
+    "unsafeHoldSeconds": 60,
+    "ninaLostClose": false,
+    "ninaLostMinutes": 5
   },
   "testBox": { "park": false, "weather": false, "daylight": false, "hours": 72, "until": 0 },
   "ui": { "confirmOpenClose": false },
@@ -282,7 +288,7 @@ Where the weather verdict and the park confirmation come from. See [Safety input
 | `safety.http.password` | string | `""` | SQMeter's password. A secret: shown as `********`, kept when that comes back, `null` clears it, encrypted in a backup with a passphrase. Saving an address with another host or port clears it unless a new one is sent with it. At most 64 characters |
 | `safety.mqtt.enabled` | bool | `false` | Read SQMeter's safety topics from this device's MQTT broker (needs MQTT on) |
 | `safety.mqtt.topic` | string | `"sqmeter"` | SQMeter's base topic |
-| `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600) |
+| `safety.staleSeconds` | int | `30` | SQMeter over HTTP counts as unsafe after this long without a good reply (10-600). The automatic close then waits for `autoClose.unsafeHoldSeconds` more, so a silent SQMeter starts it after both (about 90-95 s by default) |
 | `park.nina.url` | string | `""` | N.I.N.A. Advanced API base, `http://` or `https://` (no certificate check), e.g. `http://192.168.1.20:1888`; Settings has a **Test** for it ([`POST /api/nina/test`](../api/rest.md#post-apininatest)); empty means not configured, so the mount never counts as parked |
 | `park.nina.api` | string | `"v2"` | The API version; only `v2` for now |
 | `park.source` | string | `"nina"` | What confirms the park ([Safety inputs](safety-inputs.md#park)): `nina` (N.I.N.A. only), `switches` (the park switches only; the N.I.N.A. address is then optional) or `ninaAndSwitches` (both must agree). `nina` needs `park.switches` `none`, the others `one` or `two`; any other combination is refused. Settings saved before it, and a save that sends `park.switches` without it, take it from `park.switches` (`none`: `nina`; `one`, `two`: `ninaAndSwitches`). A motion setting: refused while the roof moves |
@@ -355,6 +361,8 @@ sense off.
 | `roof.currentAmpsPerVolt` | number | `8.5` | Motor amps per volt at the IBT-2's current-sense output, before the divider (0.5-100); set it by [calibration](../hardware/calibration.md#current-sense) |
 | `roof.minRunningAmps` | number | `0` | With current sense on, a running current below this after a second of driving counts as a broken sense wire (`currentUnreadable`); 0 = off (0-20). Set it from a [bench measurement](../hardware/calibration.md#current-sense) |
 | `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
+| `roof.blindClose` | bool | `true` | **Blind close**: with a Hall rail fault latched (and no other fault), the [automatic close](close-on-unsafe.md#blind-close-when-the-hall-sensor-has-failed) may drive the roof towards closed once, on time alone, at the slow duty, for at most a move from an unknown position's timeout. On after an update too. Off: a Hall fault leaves the roof where it is and the critical alert says it can't close. One blind close per latched fault, remembered across restarts |
+| `roof.blindSagVolts` | number | `2.0` | **Stall sag** (0.5-6.0 V): during a [blind close](roof-motion.md#blind-close), the supply sagging this far below its value at rest for 500 ms (after the first second) stops the motor as a stall. A running roof sags the supply by about 1 V; set it between that and the stall's sag from a [bench measurement](../hardware/commissioning.md#stage-8-first-attended-moves-on-the-real-roof) |
 
 ### Daylight and location
 
@@ -403,10 +411,13 @@ Where the [setup wizard](setup-wizard.md) stands (spec 015). These move nothing 
 
 ### Automatic close
 
-How the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) (and the daylight close) behaves. The defaults are the values the device has always used, and a configuration saved by an earlier release loads with them. Each range keeps the safety rules: no value lets the roof close onto an unparked mount, open by itself or stay open in unsafe weather without a critical alert.
+How the [close on unsafe weather](close-on-unsafe.md#settings-of-the-automatic-close) (and the daylight close) behaves. The older fields keep the values the device has always used, and a configuration saved by an earlier release loads with them (the weather hold and the blind close are new and start at their defaults). Each range keeps the safety rules: no value lets the roof close onto an unparked mount (unless you switch on the N.I.N.A.-lost close), open by itself or stay open in unsafe weather without a critical alert.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `autoClose.unsafeHoldSeconds` | int | `60` | **Unsafe hold** (0-300 s): the automatic close starts only once the weather has been unsafe this long, added up; a safe spell as long as this forgets the count. Rain starts it at once. `0` starts it as soon as the verdict turns unsafe. The verdict, the refusal of Open and the stop of an opening roof are never delayed. A silent SQMeter starts the close after `safety.staleSeconds` plus this (about 90-95 s by default): set the two together ([The weather hold](close-on-unsafe.md#the-weather-hold)) |
+| `autoClose.ninaLostClose` | bool | `false` | **Close when N.I.N.A. is lost**: with `park.source` `nina` or `ninaAndSwitches`, unsafe weather and N.I.N.A. unreachable, stale or unreadable for `autoClose.ninaLostMinutes` without a break, the automatic close closes without N.I.N.A.'s park (with `ninaAndSwitches`, only while every fitted switch reads closed). Never for Alpaca, MQTT or a person's command, never for daylight alone. **Risk:** with N.I.N.A. only, nothing confirms the park. Off: the roof never closes without a confirmed park ([The opt-in](close-on-unsafe.md#the-opt-in-close-without-ninas-park)) |
+| `autoClose.ninaLostMinutes` | int | `5` | **N.I.N.A. lost for** (1-60 min): how long N.I.N.A. must have been lost before `autoClose.ninaLostClose` applies |
 | `autoClose.rearmMinutes` | int | `10` | **Safe spell to re-arm** (5-60 min): after a person's Stop, a halted close or "can't close by itself", the automatic close acts again only once the roof is closed (or, after a Stop, an Open starts it moving) or the weather has been safe this long; a safe spell shorter than this doesn't restart an attempt's park time limit |
 | `autoClose.remindMinutes` | int | `30` | **Reminder interval** (10-120 min): a critical alert repeats this often while the roof stays open after it. The same event and cause alerts at most this often, and an alert no channel took is resent at gaps growing up to this, but neither waits longer than 30 minutes. Never off |
 | `autoClose.notStarted` | string | `"halt"` | **Close didn't start**: a close held back (by an upload, an MQTT connect or a network change) that hasn't started within the close start limit. `halt` stops and waits for a person or the safe spell; `retry` calls it off, raises "Roof didn't close" and tries again after the back-off, with the park confirmed again |
@@ -439,7 +450,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `enabled` | bool | `false` | Send alerts at all |
-| `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me; `mount_not_parked` and `roof_not_closed` 3 or 4 only |
+| `events.<event>.level` | int | see above | 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me; `mount_not_parked`, `roof_not_closed` and `needs_person` 3 or 4 only |
 | `events.<event>.sound` | string | `""` | Pushover sound; empty uses `pushover.sound` |
 | `events.<event>.title` / `.message` | string | `""` | Your own wording with `{variables}` (up to 80 / 240 characters); empty uses the default |
 | `sendMode` | string | `"any"` | When to send: `any` (any time, unless paused) or `whileConnected` (only while an imaging app has an Alpaca device connected) |
@@ -447,7 +458,7 @@ See [Alerts](alerts.md) for events, levels and channels.
 | `cooldownSeconds` | int | `300` | Minimum gap between alerts of the same kind (0-86400) |
 | `pushover`, `ntfy`, `webhook`, `mqtt` | object | off | Channel settings; secrets are masked in `GET /api/config` |
 
-Events: the roof's `mount_not_parked`, `roof_not_closed` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box` (urgent by default and never off; held by `enabled`, the pause and the send mode like the rest); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
+Events: the roof's `mount_not_parked`, `roof_not_closed`, `needs_person` (critical: sent whatever `enabled`, the pause or the send mode say), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box` (urgent by default and never off; held by `enabled`, the pause and the send mode like the rest); the imaging app's `client_lost`, `client_back`, `client_disconnected`. All the custom wording together must fit the device's storage: very long texts on many events (or very long channel settings) are refused with "the alert settings are too long to store". Paused or sending is live state, not a setting - see [When to send](alerts.md#when-to-send).
 
 ## Security Notes
 

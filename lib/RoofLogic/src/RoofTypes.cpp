@@ -65,6 +65,7 @@ namespace SQM
                 "notAPerson",
                 "moving",
                 "legInvalid",
+                "blindUnavailable",
             };
             return nameIn(reason, NAMES);
         }
@@ -73,6 +74,12 @@ namespace SQM
         {
             static const char *const NAMES[] = {"unsettled", "low", "between", "high", "rail"};
             return nameIn(level, NAMES);
+        }
+
+        const char *blindEndName(BlindEnd why)
+        {
+            static const char *const NAMES[] = {"limit", "stall", "fault", "stopped"};
+            return nameIn(why, NAMES);
         }
     } // namespace Roof
 } // namespace SQM

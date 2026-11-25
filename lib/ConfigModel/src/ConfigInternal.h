@@ -16,13 +16,13 @@ namespace SQM::ConfigDetail
 {
     inline constexpr const char *SECRET_MASK = "********";
 
-    constexpr size_t EVENT_COUNT = 15;
+    constexpr size_t EVENT_COUNT = 16;
     // Events from here on are the imaging-app events and the daylight events
     // (spec 013), persisted under their own key; the roof's (spec 007) come
     // first, in the main part.
-    constexpr size_t FIRST_CLIENT_EVENT = 7;
-    // The roof's critical events (spec 007): the first two.
-    constexpr size_t CRITICAL_EVENT_COUNT = 2;
+    constexpr size_t FIRST_CLIENT_EVENT = 8;
+    // The roof's critical events (spec 007, spec 030): the first three.
+    constexpr size_t CRITICAL_EVENT_COUNT = 3;
 
     inline bool setError(std::string *error, const std::string &message)
     {
@@ -46,6 +46,7 @@ namespace SQM::ConfigDetail
         return {{
             {"mount_not_parked", &a.mountNotParked},
             {"roof_not_closed", &a.roofNotClosed},
+            {"needs_person", &a.needsPerson},
             {"move_fault", &a.moveFault},
             {"supply_low", &a.supplyLow},
             {"unsafe_closing", &a.unsafeClosing},

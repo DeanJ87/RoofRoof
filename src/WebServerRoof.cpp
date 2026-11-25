@@ -328,6 +328,10 @@ namespace SQM
             s.closePhase = phase;
         if (standDownSeconds)
             s.closeRearmSeconds = standDownSeconds();
+        if (weatherHoldSource)
+            s.weatherHold = weatherHoldSource(); // spec 030
+        if (needsPersonSource)
+            s.needsPerson = needsPersonSource(); // spec 030
         if (daylightSource)
             s.daylight = daylightSource();
         s.testBox = testBoxState();

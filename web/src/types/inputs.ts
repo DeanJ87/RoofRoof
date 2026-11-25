@@ -11,7 +11,9 @@ export interface InputsSource {
   ageMs: number;
   limitMs: number;
   safe: boolean;
-  flags: number;
+  flags: number; // SQMeter's reasonFlags, for machines
+  // Spec 030 (absent on older firmware): SQMeter's reasons as words ("" when safe).
+  reasons?: string;
   text: string;
 }
 

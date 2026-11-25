@@ -87,9 +87,10 @@ namespace SQM
             uint32_t ageMs = 0;   // since the last good reply (or since start, without one)
             uint32_t limitMs = 0; // the stale limit
             bool sqmeterSafe = false;
-            uint32_t sqmeterFlags = 0; // from the last good reply, even when no longer fresh
-            std::string detail;        // the latest failure's text
-            bool replied = false;      // spec 027: a good reply since the source was switched on (ageMs counts from it)
+            uint32_t sqmeterFlags = 0;  // from the last good reply, even when no longer fresh
+            std::string sqmeterReasons; // spec 030: that reply's reasons as words ("" without them)
+            std::string detail;         // the latest failure's text
+            bool replied = false;       // spec 027: a good reply since the source was switched on (ageMs counts from it)
         };
 
         // The time a source is judged at.
@@ -155,8 +156,11 @@ namespace SQM
         // "safe", "unknown: ...", "unsafe: ...; ..." - every problem, with the
         // measured value and the limit or the input that failed (constitution III).
         std::string describe(const WeatherVerdict &verdict);
-        // "reasonFlags 0x200 (rain)": SQMeter's unsafe flags, for people.
+        // "cloud cover, rain": SQMeter's unsafe flags as words, for people
+        // (spec 030; an unknown bit reads "other reason (bit N)", none "no reason given").
         std::string reasonFlagsText(uint32_t flags);
+        // Spec 030: SQMeter's own reasons text, or the flags as words without it.
+        std::string unsafeText(uint32_t flags, const std::string &reasons);
         const char *verdictName(Verdict verdict);
         // "30 s", "30.5 s".
         std::string formatSeconds(uint32_t ms);

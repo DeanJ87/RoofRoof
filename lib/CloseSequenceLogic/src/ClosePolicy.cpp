@@ -24,6 +24,8 @@ namespace SQM
             out.closeStartMs = within(policy.closeStartMs, CLOSE_START_RANGE);
             out.closeGuardSlackMs = within(policy.closeGuardSlackMs, CLOSE_GUARD_SLACK_RANGE);
             out.remindMs = within(policy.remindMs, REMIND_RANGE);
+            out.unsafeHoldMs = within(policy.unsafeHoldMs, UNSAFE_HOLD_RANGE);
+            out.ninaLostMs = within(policy.ninaLostMs, NINA_LOST_RANGE);
             return out;
         }
 
@@ -40,6 +42,9 @@ namespace SQM
             p.remindMs = static_cast<uint64_t>(a.remindMinutes) * 60000u;
             p.retryNotStarted = a.notStarted == AutoCloseConfig::NotStarted::Retry;
             p.requestPark = config.park.requestPark;
+            p.unsafeHoldMs = static_cast<uint64_t>(a.unsafeHoldSeconds) * 1000u;
+            p.ninaLostClose = a.ninaLostClose && !config.park.switchesOnly(); // spec 030
+            p.ninaLostMs = static_cast<uint64_t>(a.ninaLostMinutes) * 60000u;
             return clamp(p);
         }
     } // namespace CloseSeq

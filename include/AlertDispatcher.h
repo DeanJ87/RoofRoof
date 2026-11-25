@@ -45,7 +45,15 @@ namespace SQM
     // Why each channel that's switched on can't be used right now (nullptr:
     // it can), e.g. "MQTT is off" - from the settings dependencies
     // (lib/SettingsDeps). Indexed by AlertChannel.
-    using ChannelBlocks = std::array<const char *, ALERT_CHANNEL_COUNT>;
+    // Spec 030: `forNow`, the channels blocked only until the network or the
+    // broker is back (a resend may get through then).
+    struct ChannelBlocks
+    {
+        std::array<const char *, ALERT_CHANNEL_COUNT> reasons{};
+        uint8_t forNow = 0;
+        const char *&operator[](size_t i) { return reasons[i]; }
+        const char *operator[](size_t i) const { return reasons[i]; }
+    };
 
     struct AlertRecord
     {
@@ -55,6 +63,9 @@ namespace SQM
         Alerts::Alert alert;
         DeliveryStatus status[ALERT_CHANNEL_COUNT] = {};
         std::string detail[ALERT_CHANNEL_COUNT];
+        // Spec 030: the channels skipped for now (no network, the broker not
+        // connected, another HTTPS request, an update): sending again may work.
+        uint8_t skippedForNow = 0;
     };
 
     // Delivers alerts. MQTT is published synchronously from the caller's
@@ -93,8 +104,8 @@ namespace SQM
         {
             Pending,   // a channel is still trying
             Delivered, // at least one channel sent it
-            Failed,    // a channel tried and failed (none sent); or the record is gone
-            NoChannel, // no channel was on and able to send (off, or blocked and skipped)
+            Failed,    // a channel tried and failed, or was skipped for now (none sent); or the record is gone
+            NoChannel, // no channel was on and able to send (off, or blocked for good: MQTT off)
         };
         Outcome outcome(uint32_t id) const;
         void clearRecent();

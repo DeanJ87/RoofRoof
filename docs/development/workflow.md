@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 60f5eb47831251e9
+fingerprint: 7a5c2f14ad89bcf7
 -->
 <figure class="diagram" markdown>
 
@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: c80e553b4237d13a
+fingerprint: 63b8d26198d31752
 -->
 <figure class="diagram" markdown>
 
@@ -110,6 +110,8 @@ pio device monitor
 ```
 
 Source lives in `src/` and `include/`. PlatformIO handles the toolchain.
+
+The project's own code (`src/` and `lib/`, not the framework or the libraries) is built with link-time optimisation (`scripts/lto.py`), which brings the firmware image to about 90% of the OTA slot (about 95% without it). None of that code is placed in IRAM, which is what makes it safe: the crash capture's hooks (the panic handler's callback, reached through `-Wl,--wrap=esp_panic_handler`, and the task watchdog's user handler) run from flash with or without it, and their `RTC_NOINIT_ATTR` memory keeps its RTC section. Keep it that way, or the script must change; after a change to the compiler flags, check on the `.elf` that `__wrap_esp_panic_handler` is linked and the capture is in `.rtc_noinit`, then boot and move the image on a board.
 
 ---
 

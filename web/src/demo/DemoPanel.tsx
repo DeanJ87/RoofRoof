@@ -1,3 +1,4 @@
+import './demo.css';
 import { FunctionalComponent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { route } from 'preact-router';

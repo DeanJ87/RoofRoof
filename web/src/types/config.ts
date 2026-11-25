@@ -94,6 +94,8 @@ export interface RoofConfig {
   currentAmpsPerVolt: number; // A/V at the IBT-2's current-sense output
   minRunningAmps: number; // broken-sense-wire floor, 0 = off
   minSupplyVolts: number;
+  blindClose: boolean; // spec 030: with the Hall sensor dead, close once on time alone
+  blindSagVolts: number; // 0.5..6: the supply sag that stops it as a stall
 }
 
 // The daylight failsafe and where the roof is (spec 013).
@@ -142,6 +144,9 @@ export interface AutoCloseConfig {
   notStarted: NotStartedPolicy;
   remindMinutes: number; // 10..120
   remoteStop: boolean;
+  unsafeHoldSeconds: number; // 0..300 (spec 030)
+  ninaLostClose: boolean; // spec 030: close without N.I.N.A.'s park once it has been lost a while
+  ninaLostMinutes: number; // 1..60
 }
 export interface UiConfig {
   confirmOpenClose: boolean; // Open and Close ask first; Stop never does

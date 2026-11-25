@@ -41,12 +41,12 @@ namespace SQM
             if (command == Roof::Command::Open)
             {
                 openBits = static_cast<uint8_t>(overrides & overridableNow(Roof::Command::Open, gates));
-                closeAside = false;
+                closeBits = 0;
             }
             else if (command == Roof::Command::Close)
             {
                 openBits = 0;
-                closeAside = (overrides & OverridePark) != 0;
+                closeBits = static_cast<uint8_t>(overrides & (OverridePark | OverrideNinaLost)); // spec 030: N.I.N.A. lost
             }
         }
 
@@ -66,8 +66,8 @@ namespace SQM
         {
             GuardStep out;
             openBits = status.state == Roof::State::Closed ? 0 : overrideStillApplies(openBits, gates);
-            if (closeAside && status.state != Roof::State::Closing && !closePending)
-                closeAside = false;
+            if (closeBits != 0 && status.state != Roof::State::Closing && !closePending)
+                closeBits = 0;
             if (!parkWait.waiting())
                 return out;
             if (!waitCheck.accepted)

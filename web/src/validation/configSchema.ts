@@ -213,6 +213,11 @@ export const autoCloseConfigSchema = z.object({
   notStarted: z.enum(['halt', 'retry']),
   remindMinutes: minutesOrSeconds(10, 120, t('validation.configSchema.reminderMustBeBetween')),
   remoteStop: z.boolean(),
+  // Spec 030: unsafe time before the automatic close starts (0: none).
+  unsafeHoldSeconds: minutesOrSeconds(0, 300, t('validation.configSchema.unsafeHoldMustBeBetween')),
+  // Spec 030: close without N.I.N.A.'s park once it has been lost this long (off by default).
+  ninaLostClose: z.boolean(),
+  ninaLostMinutes: minutesOrSeconds(1, 60, t('validation.configSchema.ninaLostMustBeBetween')),
 });
 
 export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });

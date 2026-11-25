@@ -44,19 +44,19 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 | `opening`, `closing` | A move is under way (including the half-second pause before the motor starts) |
 | `stopped` | Stopped part-way; the position is the estimate |
 | `unknown` | Between the magnets with no estimate |
-| `error` | A fault is latched; nothing moves until a person clears it |
+| `error` | A fault is latched; nothing moves until a person clears it (the one exception: a [blind close](#blind-close) after a Hall rail fault) |
 
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: 9a6a1f940bd65f56
+fingerprint: e7905b96d0a9be6c
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The roof's states
-    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command moves the roof, slowly, to the first magnet. Any fault from any state gives error, which only a person can clear (a Hall rail fault latched at rest clears itself after a minute of good readings).
+    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command, or the automatic close towards closed, moves the roof, slowly, to the first magnet. With a Hall rail fault latched, the automatic close alone may also drive towards closed once on time alone (a blind close), which ends in error again. Any fault from any state gives error, which only a person can clear (a Hall rail fault latched at rest clears itself after a minute of good readings).
     [*] --> Closed: closed magnet read
     [*] --> Open: open magnet read
     [*] --> Unknown: no magnet read
@@ -65,7 +65,9 @@ stateDiagram-v2
     Stopped --> Opening: open
     Stopped --> Closing: close
     Unknown --> Opening: open, by a person only (slow)
-    Unknown --> Closing: close, by a person only (slow)
+    Unknown --> Closing: close, by a person or the automatic close (slow)
+    Error --> Closing: blind close, the automatic close only, Hall rail fault latched (slow, on time alone)
+    Closing --> Error: the blind close ends (limit, stall or fault); the Hall fault stays latched
     Opening --> Open: open magnet read
     Closing --> Closed: closed magnet read
     Opening --> Closing: close (motor off for the dead time first)
@@ -92,16 +94,16 @@ stateDiagram-v2
     2. Open and close start `opening` or `closing`. Reading the target magnet ends the move at that end.
     3. A command for the other direction during a move switches the motor off for half a second, then turns it the other way. The same half-second pause comes before the first drive after start-up.
     4. Stop part-way gives `stopped`, with the estimated position; open or close carries on from there.
-    5. Abort part-way gives `unknown`. From `unknown`, only a person's open or close moves the roof, at the slow duty, stopping at the first magnet.
+    5. Abort part-way gives `unknown`. From `unknown`, only a person's open moves the roof (never an imaging app's, MQTT's or the automatic close's); a close may come from a person or from the [automatic close](close-on-unsafe.md#closing-when-the-position-is-unknown), at the slow duty, stopping at the first magnet.
     6. A magnet lost while the roof is at rest makes it `unknown`; a magnet read at rest makes it that end. New settings while `stopped` make it `unknown`, since the estimate used the old ones.
-    7. Any fault, from any state, gives `error`. Only a person can clear it, except a Hall rail fault latched with the roof at rest, which clears itself after a minute of good readings at rest; the roof is then at the end whose magnet is read, or `unknown`.
+    7. A [blind close](#blind-close) is the one move that starts from `error`: the automatic close, with a Hall rail fault latched and nothing else wrong, drives towards closed at the slow duty on time alone, and ends in `error` again, still with the Hall fault. Any fault, from any state, gives `error`. Only a person can clear it, except a Hall rail fault latched with the roof at rest, which clears itself after a minute of good readings at rest; the roof is then at the end whose magnet is read, or `unknown`.
     8. A [calibration run](calibration-run.md)'s legs are `opening` and `closing` moves that a person starts: each stops at the first magnet after leaving its start magnet (whichever end the polarity setting names), at its time limit, or on a fault; the park interlock watches every leg; a stop part-way gives `stopped` or `unknown` as above.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked: a command from the web UI, not an imaging app over [Alpaca](alpaca.md), an [MQTT command](mqtt.md#roof-commands) or the [automatic close](close-on-unsafe.md). Asking for the end the roof is already at, or the move already under way, changes nothing. |
+| Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, an Open is refused unless a person asked (a command from the web UI, not an imaging app over [Alpaca](alpaca.md), an [MQTT command](mqtt.md#roof-commands) or the automatic close), and a Close is also accepted from the [automatic close](close-on-unsafe.md#closing-when-the-position-is-unknown), slowly to the first magnet. Asking for the end the roof is already at, or the move already under way, changes nothing. |
 | Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted by the motion logic; an imaging app's or MQTT's stop is refused before it while a close runs or waits in weather that isn't safe ([Close on unsafe weather](close-on-unsafe.md)). |
 | Abort | Motor off at once; part-way, the position becomes unknown. With no move under way it changes nothing. Always accepted. |
 | Clear fault | Only a person can clear a fault, from the web UI; Alpaca and MQTT have no way to. A restart never clears one. A Hall rail fault latched with the roof at rest clears itself after a minute of good readings. |
@@ -112,7 +114,7 @@ A move from a known end starts at the **slow duty** and rises in a straight line
 duty** over the **ramp-up** time. Near the end it slows down: within the distance the roof covers
 at the top duty in the **ramp-down** time, the duty falls toward the slow duty as the estimate gets
 closer. Once the estimate says the roof has arrived, the motor carries on at the slow duty until
-the magnet is read. A move from an unknown position runs at the slow duty all the way.
+the magnet is read. A move from an unknown position runs at the slow duty all the way, and so does a blind close.
 
 The duty never goes above the top duty, and never above the slow duty when the position is unknown.
 Between any stop and the next start the motor stays off for half a second, so a change of direction
@@ -144,7 +146,7 @@ person clears it. Each records what was measured and the limit it broke.
 | `timeout` | No target magnet within the move's timeout (with current sense off, this is how a jam is caught) |
 | `didNotLeave` | A move from a magnet still on it after the **leave time** (jammed at the end, or the motor wired backwards) |
 | `wrongMagnet` | The other end's magnet is read, or the start magnet again more than a second after leaving it (or after the leave time). Back on it sooner counts as not yet left: noise as the reading crossed the threshold |
-| `hallRail` | Three of the last eight Hall readings at either end of its range: 400 counts or below (lower than the sensor can read through its divider: a lost 5 V or ground) or 4065 or above (sensor disconnected, shorted or an intermittent connector), moving or not. One latched **while moving** stops the motor and waits for a person to **Clear fault**. One latched **with the roof at rest** clears itself after a minute of good readings with the roof still at rest (any move, or a rail reading in that minute, starts it again), and the position is then read from the Hall afresh: at a magnet the roof is closed or open, between them it is unknown and only a person moves it. **Clear fault** still works at once. The flag survives a restart (a fault stored by firmware before spec 027 waits for **Clear fault** once). A rail reading with the roof at rest in the first half second after start-up isn't judged: the sensor and the ADC settle then, and a power-up transient used to latch this fault at every boot |
+| `hallRail` | Three of the last eight Hall readings at either end of its range: 400 counts or below (lower than the sensor can read through its divider: a lost 5 V or ground) or 4065 or above (sensor disconnected, shorted or an intermittent connector), moving or not. One latched **while moving** stops the motor and waits for a person to **Clear fault**. One latched **with the roof at rest** clears itself after a minute of good readings with the roof still at rest (any move, or a rail reading in that minute, starts it again), and the position is then read from the Hall afresh: at a magnet the roof is closed or open, between them it is unknown and only a person moves it. **Clear fault** still works at once. The flag survives a restart (a fault stored by firmware before spec 027 waits for **Clear fault** once). A Hall rail fault also raises the critical **Roof needs a person** alert at once, whenever it happens, and repeats it while it lasts. The [fault record](#on-the-board) also remembers whether the one [blind close](#blind-close) allowed for this fault has run. A rail reading with the roof at rest in the first half second after start-up isn't judged: the sensor and the ADC settle then, and a power-up transient used to latch this fault at every boot |
 | `overCurrent` | Current sense on, and the motor current at or above its limit for a quarter of a second |
 | `currentUnreadable` | Current sense on, and no current reading for a quarter of a second during a move |
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
@@ -155,6 +157,32 @@ person clears it. Each records what was measured and the limit it broke.
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A
 supply reading above 16 V, or a current reading below -0.5 A, can't be right on this hardware and
 is treated as unreadable.
+
+## Blind close
+
+With the Hall sensor itself dead, no magnet can end a move. A `hallRail` fault on its own, with
+`roof.blindClose` on (the default, also after an update), the weather unsafe and the park confirmed,
+lets the [automatic close](close-on-unsafe.md#blind-close-when-the-hall-sensor-has-failed) (and nothing
+else: never a person, Alpaca or MQTT) drive the roof towards closed on time alone:
+
+- the slow duty all the way, after the usual half-second dead time, for at most the move from an
+  unknown position's timeout (the whole travel at the slow speed plus the margin). Running out the
+  clock is not a fault;
+- the supply at rest is read just before the driver switches on. After the first second (the start-up
+  surge is not judged), a sag of at least `roof.blindSagVolts` (default 2.0 V, 0.5 to 6.0) held for
+  500 ms is taken as a stall at the chain's end and stops the motor. A running roof sags the 12 V
+  supply by about a volt (1.1 V in one measurement); a stall sags it further. Measure both on your
+  roof and set the value between them ([Commissioning](../hardware/commissioning.md#stage-8-first-attended-moves-on-the-real-roof)).
+  Current sense is not fitted;
+- every other check still applies: the supply minimum (11.0 V for 250 ms by default), a late control
+  step, the park interlock, and a Stop;
+- it ends in `error` again: the Hall fault stays latched and the position stays unknown. The status
+  shows `roof.blind` while it runs;
+- **one blind close per fault.** The fault record remembers that it has run (it survives a restart and
+  a power cut), so a board restarting in the rain doesn't drive the chain again at every boot. Clearing
+  the fault allows one more.
+
+Any other fault leaves the roof where it is, as before.
 
 ## On the board
 
@@ -180,7 +208,7 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
   it isn't, it latches `watchdogStopped` rather than wait silently. `roof.maxWatchdogBeatAgeMs`
   shows the worst age seen.
 - **A latched fault survives a restart.** It is saved within one step of being latched and latched
-  again at start-up before the first step. A saved record that can't be read back latches a fault
+  again at start-up before the first step, with the flag that its one blind close has run. A saved record that can't be read back latches a fault
   of its own. Clearing the fault removes it.
 - **If the control task or the watchdog can't start**, the motor driver is never switched on until
   a restart, and every command answers that the controller didn't start.
@@ -188,7 +216,7 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
   (a hung task restarted by the system watchdog), the fault is latched again at start-up. A power
   cut at that moment loses it; so does an NVS partition the system has to reformat at start-up.
 - **After a start-up** the roof is at the end whose magnet it reads, or `unknown` between the
-  magnets. Nothing moves until a command.
+  magnets. Nothing moves until a command, except that the [automatic close](close-on-unsafe.md) may close an unknown or Hall-failed roof once the weather has been unsafe long enough and the mount is parked. A restart with the roof's position unknown, a fault latched or the Hall sensor failed raises the critical **Roof needs a person** alert at once ([Alerts](alerts.md#roof-needs-a-person)).
 
 ### Weather and park checks
 
@@ -279,7 +307,7 @@ And before a move starts, **a close always wins**:
   II). The device keeps trying the saved network; the setup hotspot only opens at start-up.
 - **Power lost or a reset** (brown-out, crash, watchdog). The driver's enable line has a pull-down,
   so the motor stops at once and the worm gear holds the roof. After the restart the position is
-  unknown unless a magnet is read, nothing moves by itself, and a latched fault is still latched.
+  unknown unless a magnet is read, nothing moves until a command or the automatic close, and a latched fault is still latched.
   The log names the reason for the reset (power-on, brown-out, software restart, crash, watchdog).
   An automatic close that was running counts as a failed close and is tried again after its
   back-off.

@@ -18,6 +18,7 @@ export const defaultAlertsConfig: AlertsConfig = {
   events: {
     mount_not_parked: { level: 4, sound: '' },
     roof_not_closed: { level: 4, sound: '' },
+    needs_person: { level: 4, sound: '' },
     move_fault: { level: 3, sound: '' },
     supply_low: { level: 2, sound: '' },
     unsafe_closing: { level: 2, sound: '' },

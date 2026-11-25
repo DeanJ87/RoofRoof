@@ -85,7 +85,13 @@ namespace SQM
         // if a person has stopped the roof since the snapshot that showed
         // `personStopsSeen`, checked under the same lock as the command, so
         // the close can never start after a person's stop it hasn't seen.
-        Outcome automaticClose(uint32_t personStopsSeen);
+        // Spec 030: `overrides` may carry RoofIo::OverrideNinaLost (the
+        // N.I.N.A.-lost close; the fitted switches still count, also throughout).
+        Outcome automaticClose(uint32_t personStopsSeen, uint8_t overrides = 0);
+        // Spec 030 (constitution 8.0.0, I): the automatic close's blind close
+        // (Roof::Controller::blindClose), under the roof's lock, after the
+        // same person-stop check and the park gate every close passes.
+        Outcome automaticBlindClose(uint32_t personStopsSeen, uint8_t overrides = 0);
         Outcome clearFault(Roof::Origin origin);
         // Spec 016 (src/RoofCalibration.cpp): a person starts a calibration run
         // (refused unless every check passes; `sequenceIdle` is spec 005's
@@ -268,6 +274,8 @@ namespace SQM
         static Outcome blockedOutcome(const RoofIo::Blockers &now, Roof::State state);
         Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now, uint8_t overrides = 0);
         Outcome stopLocked(Roof::Command command, Roof::Origin origin);
+        Outcome blindLocked(uint8_t overrides);
+        Outcome withdrawnLocked() const;
         void runPendingClose();
         void stepCalibration(const Roof::Readings &readings);
         void endCalibrationFor(bool yieldToClose, const std::string &text);
@@ -336,6 +344,7 @@ namespace SQM
         Roof::State loggedState = Roof::State::Unknown;
         Roof::FaultKind loggedFault = Roof::FaultKind::None;
         uint32_t saveFailedAtMs = 0; // when saving the fault last failed (0: it didn't)
+        uint32_t loggedBlind = 0;    // spec 030: blind closes ended and logged
 
         // Shared without the lock.
         std::atomic<uint32_t> lastStepMs{0};

@@ -10,6 +10,7 @@
       "limitMs": 30000,
       "safe": true,
       "flags": 0,
+      "reasons": "",
       "text": ""
     },
     "mqtt": {
@@ -20,6 +21,7 @@
       "limitMs": 150000,
       "safe": false,
       "flags": 0,
+      "reasons": "no reason given",
       "text": ""
     }
   },

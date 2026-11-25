@@ -83,6 +83,11 @@ namespace SQM
             OverridePark = 1u << 0,
             OverrideWeather = 1u << 1,
             OverrideDaylight = 1u << 2,
+            // Spec 030 (autoClose.ninaLostClose): the automatic close's Close
+            // only, never a person's, a client's or MQTT's: N.I.N.A. has been
+            // lost long enough, so its park is set aside; every fitted park
+            // switch must still read closed, at the start and throughout.
+            OverrideNinaLost = 1u << 3,
         };
         // Only the source's own "unsafe", not rain: a person may override it.
         bool weatherOverridable(const GateInputs &in);
@@ -121,7 +126,9 @@ namespace SQM
         // way, including its dead time, and the park no longer holds
         // (closeMayContinue). `parkOverridden`: a person's confirmed close
         // (spec 027) runs without the park check.
-        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden = false);
+        // Spec 030: `ninaLost`, the automatic close's N.I.N.A.-lost close: only
+        // the fitted switches are checked.
+        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden = false, bool ninaLost = false);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
         // An open (or, spec 019, a jog either way) is under way and the verdict

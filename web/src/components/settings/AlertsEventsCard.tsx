@@ -14,6 +14,7 @@ type RowSpec = [AlertEventKey, string, string];
 const CRITICAL_ROWS: RowSpec[] = [
   ['mount_not_parked', t('settings.alerts.theMountDoesntPark'), t('settings.alerts.theMountDoesntParkHint')],
   ['roof_not_closed', t('settings.alerts.theRoofDoesntClose'), t('settings.alerts.theRoofDoesntCloseHint')],
+  ['needs_person', t('settings.alerts.theRoofNeedsAPerson'), t('settings.alerts.theRoofNeedsAPersonHint')],
 ];
 const ROOF_ROWS: RowSpec[] = [
   ['move_fault', t('settings.alerts.theRoofFaults'), t('settings.alerts.theRoofFaultsHint')],

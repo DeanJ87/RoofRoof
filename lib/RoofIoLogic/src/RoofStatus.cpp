@@ -99,6 +99,7 @@ namespace SQM
             writePosition(out, s);
             out["driving"] = st.driving;
             out["fromUnknown"] = st.fromUnknown;
+            out["blind"] = st.blind; // spec 030: a blind close (closing on time alone)
             out["moveElapsedMs"] = st.moveElapsedMs;
             out["moveTimeoutMs"] = st.moveTimeoutMs;
             JsonObject hall = out.createNestedObject("hall");
@@ -129,6 +130,7 @@ namespace SQM
             out["weatherText"] = s.weatherText;
             out["parkConfirmed"] = s.parkConfirmed;
             out["parkText"] = s.parkText;
+            out.createNestedObject("needsPerson")["active"] = s.needsPerson.active; // spec 030 (its text: writeCloseRearm)
             writeFault(out, s);
             out["watchdogTrips"] = s.watchdogTrips;
             out["maxStepGapMs"] = s.maxStepGapMs;
@@ -143,6 +145,13 @@ namespace SQM
                 out["closeRearmSeconds"] = s.closeRearmSeconds;
             else
                 out["closeRearmSeconds"] = nullptr;
+            // Spec 030: what the roof needs a person for (the status document only:
+            // the MQTT state document carries the flag, its buffer is nearly full).
+            out["needsPerson"]["text"] = capped(s.needsPerson.text);
+            JsonObject hold = out.createNestedObject("weatherHold");
+            hold["countedSeconds"] = s.weatherHold.countedSeconds;
+            hold["leftSeconds"] = s.weatherHold.leftSeconds;
+            hold["fired"] = s.weatherHold.fired;
         }
 
         void writeTestBox(JsonObject out, const TestBox::State &state)

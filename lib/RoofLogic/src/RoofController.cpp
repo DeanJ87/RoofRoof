@@ -27,6 +27,14 @@ namespace SQM
             {
                 return end == End::Open ? State::Open : State::Closed;
             }
+
+            // Constitution I: only a person moves a roof whose position is
+            // unknown; 8.0.0 (spec 030): also the automatic close, towards
+            // closed only, at the slow duty to the first magnet like a person's.
+            bool mayMoveFromUnknown(End target, Origin origin)
+            {
+                return origin == Origin::Person || (origin == Origin::Automatic && target == End::Closed);
+            }
         } // namespace
 
         Controller::Controller(const Settings &settings)
@@ -38,7 +46,7 @@ namespace SQM
         Output Controller::tick(const Readings &readings)
         {
             const uint32_t gapMs = readings.nowMs - lastStepMs;
-            const bool late = stepped && move.driving && gapMs > MAX_STEP_GAP_MS;
+            const bool late = stepped && (move.driving || blind.driving) && gapMs > MAX_STEP_GAP_MS;
             if (move.driving && stepped)
                 accountDrive(gapMs);
             stepped = true;
@@ -62,11 +70,22 @@ namespace SQM
                 else
                     followHall();
             }
-            current.driving = move.driving;
-            current.moveElapsedMs = move.driving ? readings.nowMs - move.driveStartMs : 0;
+            else if (blind.active)
+                stepBlind(readings); // spec 030: with the Hall rail fault latched
+            noteMove(readings.nowMs);
+            return out;
+        }
+
+        // The move's part of the status, after a step.
+        void Controller::noteMove(uint32_t nowMs)
+        {
+            current.driving = move.driving || blind.driving;
+            const uint32_t startMs = move.driving ? move.driveStartMs : blind.driveStartMs;
+            current.moveElapsedMs = current.driving ? nowMs - startMs : 0;
             current.calibrating = move.active && move.calibration;
             current.jogging = move.active && move.jog;
-            return out;
+            current.blind = blind.active;
+            current.blindReady = blindCloseReady();
         }
 
         // The gap just driven: the estimate, the drive budget and (spec 016) the
@@ -89,11 +108,15 @@ namespace SQM
             case Command::Close:
                 return requestMove(End::Closed, origin);
             case Command::Abort:
+                if (blind.active)
+                    endBlind(BlindEnd::Stopped);
                 stopMove(false);
                 return CommandResult{};
             case Command::Stop:
             default:
                 // Anything unrecognised stops: the safe reading of a bad command.
+                if (blind.active)
+                    endBlind(BlindEnd::Stopped);
                 stopMove(true);
                 return CommandResult{};
             }
@@ -107,6 +130,12 @@ namespace SQM
             {
                 bootSeen = true;
                 bootMs = nowMs;
+            }
+            // Spec 030: the blind close runs because the sensor is known dead.
+            if (blind.active)
+            {
+                goodAtRest.active = false;
+                return;
             }
             // A rail in the first moments after start-up, at rest, is the sensor
             // and the ADC settling: not judged (no move can start meanwhile: the
@@ -151,6 +180,7 @@ namespace SQM
                 return;
             goodAtRest.active = false;
             hallRailAtRest = false;
+            blindRan = false;
             current.fault = Fault{};
             current.positionKnown = false;
             current.state = State::Unknown;
@@ -172,7 +202,7 @@ namespace SQM
             const CommandResult notReady = readinessRefusal();
             if (!notReady.accepted)
                 return notReady;
-            if (!current.positionKnown && origin != Origin::Person)
+            if (!current.positionKnown && !mayMoveFromUnknown(target, origin))
                 return refused(Refusal::PositionUnknown);
             return CommandResult{};
         }
@@ -207,8 +237,9 @@ namespace SQM
             const CommandResult notReady = readinessRefusal();
             if (!notReady.accepted)
                 return notReady;
-            // constitution I: never by itself from an unknown position.
-            if (!current.positionKnown && origin != Origin::Person)
+            // constitution I: never by itself from an unknown position, except
+            // (8.0.0) the automatic close's Close.
+            if (!current.positionKnown && !mayMoveFromUnknown(target, origin))
                 return refused(Refusal::PositionUnknown);
 
             // A reversal stops first; the dead time runs before the new drive.
@@ -255,6 +286,8 @@ namespace SQM
 
         void Controller::latch(const Fault &fault)
         {
+            if (blind.active)
+                endBlind(BlindEnd::Fault, fault);
             endLeg(false);
             stopDriving();
             move = Move{};
@@ -293,8 +326,11 @@ namespace SQM
                 return refused(Refusal::NotAPerson);
             if (current.fault.kind == FaultKind::None)
                 return CommandResult{};
+            if (blind.active)
+                endBlind(BlindEnd::Stopped);
             current.fault = Fault{};
             hallRailAtRest = false;
+            blindRan = false;
             driveBudgetUsedMs[0] = driveBudgetUsedMs[1] = 0; // a person has looked at the roof
             current.positionKnown = false;
             current.state = State::Unknown;
@@ -304,7 +340,7 @@ namespace SQM
 
         CommandResult Controller::applySettings(const Settings &settings)
         {
-            if (move.active)
+            if (move.active || blind.active)
                 return refused(Refusal::Moving);
             config = settings;
             settingsValid = validSettings(settings);

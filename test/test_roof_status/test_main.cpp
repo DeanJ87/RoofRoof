@@ -385,10 +385,28 @@ void test_apply_checks_caps_long_texts(void)
     TEST_ASSERT_EQUAL_STRING(g.weatherText.c_str(), s.weatherText.c_str()); // at the limit: unchanged
 }
 
+// Spec 030 (FR-004): the weather hold next to the stand-down's countdown.
+void test_status_weather_hold(void)
+{
+    Snapshot s;
+    StaticJsonDocument<256> doc;
+    writeCloseRearm(doc.to<JsonObject>(), s);
+    TEST_ASSERT_TRUE(doc["closeRearmSeconds"].isNull());
+    TEST_ASSERT_EQUAL_INT(0, doc["weatherHold"]["countedSeconds"].as<int>());
+    TEST_ASSERT_EQUAL_INT(-1, doc["weatherHold"]["leftSeconds"].as<int>());
+    TEST_ASSERT_FALSE(doc["weatherHold"]["fired"].as<bool>());
+    s.weatherHold.countedSeconds = 18;
+    s.weatherHold.leftSeconds = 42;
+    writeCloseRearm(doc.to<JsonObject>(), s);
+    TEST_ASSERT_EQUAL_INT(18, doc["weatherHold"]["countedSeconds"].as<int>());
+    TEST_ASSERT_EQUAL_INT(42, doc["weatherHold"]["leftSeconds"].as<int>());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_every_fault_text_has_value_and_limit);
+    RUN_TEST(test_status_weather_hold);
     RUN_TEST(test_external_fault_texts_by_cause);
     RUN_TEST(test_refusal_texts);
     RUN_TEST(test_status_pin_setup_fault_names_the_reason);

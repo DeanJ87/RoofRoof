@@ -151,7 +151,10 @@ namespace
         // Spec 022: every bypass in effect, the longest text.
         roof.testBox.set = roof.testBox.park = roof.testBox.weather = roof.testBox.daylight = true;
         roof.testBox.until = 4294967295U;
-        RoofIo::writeStatus(doc.createNestedObject("roof"), roof);
+        roof.needsPerson = {true, std::string(RoofIo::MAX_CHECK_TEXT, 'n')}; // spec 030
+        JsonObject out = doc.createNestedObject("roof");
+        RoofIo::writeStatus(out, roof);
+        RoofIo::writeCloseRearm(out, roof);
     }
 
     // Every member and element takes one slot.

@@ -210,6 +210,30 @@
               ],
               "additionalProperties": false
             },
+            "needs_person": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "sound": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "level",
+                "message",
+                "sound",
+                "title"
+              ],
+              "additionalProperties": false
+            },
             "nina_lost": {
               "type": "object",
               "properties": {
@@ -388,6 +412,7 @@
             "daylight_unknown",
             "mount_not_parked",
             "move_fault",
+            "needs_person",
             "nina_lost",
             "roof_closed",
             "roof_not_closed",
@@ -653,6 +678,12 @@
         "closeStartSeconds": {
           "type": "number"
         },
+        "ninaLostClose": {
+          "type": "boolean"
+        },
+        "ninaLostMinutes": {
+          "type": "number"
+        },
         "notStarted": {
           "type": "string"
         },
@@ -673,18 +704,24 @@
         },
         "retryMinutes": {
           "type": "number"
+        },
+        "unsafeHoldSeconds": {
+          "type": "number"
         }
       },
       "required": [
         "closeGuardSeconds",
         "closeStartSeconds",
+        "ninaLostClose",
+        "ninaLostMinutes",
         "notStarted",
         "parkHoldSeconds",
         "parkRequestSeconds",
         "rearmMinutes",
         "remindMinutes",
         "remoteStop",
-        "retryMinutes"
+        "retryMinutes",
+        "unsafeHoldSeconds"
       ],
       "additionalProperties": false
     },
@@ -1025,6 +1062,12 @@
     "roof": {
       "type": "object",
       "properties": {
+        "blindClose": {
+          "type": "boolean"
+        },
+        "blindSagVolts": {
+          "type": "number"
+        },
         "calibrationLimitSeconds": {
           "type": "number"
         },
@@ -1090,6 +1133,8 @@
         }
       },
       "required": [
+        "blindClose",
+        "blindSagVolts",
         "calibrationLimitSeconds",
         "currentAmpsPerVolt",
         "currentSenseEnabled",

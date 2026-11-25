@@ -68,7 +68,7 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
-            constexpr size_t STATE_DOC_CAPACITY = 3584; // spec 027: the dashboard fields
+            constexpr size_t STATE_DOC_CAPACITY = 3840; // spec 027: the dashboard fields; spec 030: needsPerson
             constexpr size_t RESULT_DOC_CAPACITY = 1024;
 
             // How the broker delivered a message: live, or retained (left on the
@@ -140,7 +140,8 @@ namespace SQM
                 // SQMeter's health and daylight, published at once on a change.
                 uint8_t guard = 0;
                 bool ninaReachable = false;
-                std::string sources; // SQMeter's state and daylight's
+                std::string sources;      // SQMeter's state and daylight's
+                bool needsPerson = false; // spec 030
 
                 bool operator==(const StateKey &other) const;
                 bool operator!=(const StateKey &other) const { return !(*this == other); }

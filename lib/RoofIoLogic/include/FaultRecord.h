@@ -34,6 +34,11 @@ namespace SQM
             // clears itself after good readings at rest, also after a restart.
             // Byte 5 of the record (0 before spec 027: then a person clears it).
             bool atRest = false;
+            // Spec 030: a blind close has run for this Hall rail fault (one per
+            // fault, also across restarts). Bit 1 of byte 5: records without it
+            // read as "not done"; an image before spec 030 reads one with it as
+            // unreadable (a fault of its own: still no motion).
+            bool blindDone = false;
         };
 
         constexpr size_t FAULT_RECORD_BYTES = 16;

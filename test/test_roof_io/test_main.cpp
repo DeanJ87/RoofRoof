@@ -252,7 +252,7 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 7, true));     // cause out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 2, true));     // flags byte out of range (spec 027 uses bit 0)
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 4, true));     // flags byte out of range (specs 027 and 030 use bits 0 and 1)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(14, 0, false));   // checksum itself
     TEST_ASSERT_EQUAL(Decoded::Fault, decodeWith(7, 0x55, true));       // a changed value that checks out

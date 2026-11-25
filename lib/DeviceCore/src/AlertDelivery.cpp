@@ -61,6 +61,7 @@ namespace SQM
                 "question",       // DaylightUnknown
                 "construction",   // TestBox
                 "electric_plug",  // NinaLost
+                "rotating_light", // NeedsPerson
             };
             static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
             const size_t index = static_cast<size_t>(type);

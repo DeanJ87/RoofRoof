@@ -73,20 +73,42 @@ namespace SQM
                 return reasons;
             }
 
-            std::string hex(uint32_t value)
-            {
-                char text[16];
-                std::snprintf(text, sizeof(text), "0x%X", static_cast<unsigned>(value));
-                return text;
-            }
+            // Spec 030: SQMeter's reasonFlags bits as words (SQMeter's
+            // SafetyEvaluator.h, bits 0-17), for a reply without its reasons text.
+            constexpr const char *FLAG_NAMES[] = {
+                "manual override",
+                "no data",
+                "stale data",
+                "sensor fault",
+                "cloud cover",
+                "sky bright",
+                "humidity",
+                "dew point",
+                "environment sensor fault",
+                "rain",
+                "rain sensor fault",
+                "wind",
+                "wind gust",
+                "wind sensor fault",
+                "battery low",
+                "battery data",
+                "shutdown",
+                "external hold",
+            };
+            constexpr uint32_t FLAG_NAME_COUNT = sizeof(FLAG_NAMES) / sizeof(FLAG_NAMES[0]);
 
             std::string flagsText(uint32_t flags)
             {
-                std::string text = "reasonFlags " + hex(flags);
-                if (flags & SQMETER_RAIN)
-                    text += " (rain)";
-                if (flags & SQMETER_RAIN_SENSOR_FAULT)
-                    text += " (rain sensor fault)";
+                if (flags == 0)
+                    return "no reason given";
+                std::string text;
+                for (uint32_t bit = 0; bit < 32; ++bit)
+                {
+                    if ((flags & (1u << bit)) == 0)
+                        continue;
+                    text += text.empty() ? "" : ", ";
+                    text += bit < FLAG_NAME_COUNT ? std::string(FLAG_NAMES[bit]) : "other reason (bit " + std::to_string(bit) + ")";
+                }
                 return text;
             }
 
@@ -151,6 +173,7 @@ namespace SQM
             {
                 s.sqmeterSafe = record.last.safe;
                 s.sqmeterFlags = record.last.reasonFlags;
+                s.sqmeterReasons = record.last.reasons;
                 s.ageMs = saturatingAdd(elapsedMs(record.goodAtMs, clock.nowMs), record.last.evaluatedAgeMs);
             }
             else
@@ -202,7 +225,7 @@ namespace SQM
             case SourceState::Good:
                 if (s.sqmeterSafe && s.sqmeterFlags == 0)
                     return "";
-                return name + " says unsafe: " + flagsText(s.sqmeterFlags);
+                return name + " says unsafe: " + unsafeText(s.sqmeterFlags, s.sqmeterReasons);
             case SourceState::Stale:
                 return name + " stale: " + ageText(s);
             case SourceState::Unreachable:
@@ -218,6 +241,11 @@ namespace SQM
         std::string reasonFlagsText(uint32_t flags)
         {
             return flagsText(flags);
+        }
+
+        std::string unsafeText(uint32_t flags, const std::string &reasons)
+        {
+            return reasons.empty() ? flagsText(flags) : reasons;
         }
 
         std::string describe(const WeatherVerdict &v)

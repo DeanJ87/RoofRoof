@@ -18,8 +18,8 @@ namespace SQM
             {
                 return nowMs > sinceMs ? nowMs - sinceMs : 0;
             }
-            static_assert(static_cast<size_t>(Event::StoppedByPerson) < 8, "alertedAtMs has a row for every event");
-            static_assert(static_cast<size_t>(Cause::NotStarted) < 11, "alertedAtMs has a column for every cause");
+            static_assert(static_cast<size_t>(Event::NeedsPerson) < 9, "alertedAtMs has a row for every event");
+            static_assert(static_cast<size_t>(Cause::NinaLost) < 14, "alertedAtMs has a column for every cause");
         } // namespace
 
         bool Sequence::Run::lasted(bool holds, uint64_t nowMs, uint64_t ms)
@@ -60,6 +60,8 @@ namespace SQM
             parkConfirmed = parkHeld.lasted(in.parked, in.nowMs, policy.parkSettleMs);
             unknownConfirmed = unknown.lasted(in.roof == Roof::State::Unknown, in.nowMs, UNKNOWN_CONFIRM_MS);
             safeLong = safe.lasted(in.weatherSafe, in.nowMs, policy.rearmSafeMs);
+            // Spec 030: for unsafe weather only, never daylight alone.
+            ninaLostNow = given.ninaLost && !given.weatherSafe;
             // A close (anyone's) reached the closed magnet: the trouble is over,
             // so a new failure on the next spell alerts at once. A reading that
             // flickers back to closed at rest doesn't count: no alert storm.
@@ -67,7 +69,9 @@ namespace SQM
                 clearAlertThrottle();
             lastRoof = in.roof;
 
-            Decision out = withAlert(remindIfDue(decide(in, personStopped)));
+            Decision out = withAlert(remindIfDue(closeNotice(decide(in, personStopped))));
+            if (out.event == Event::NeedsPerson && current == Phase::Idle)
+                lastCritical.has = false; // the roof is closed: nothing to remind of
             out.daylight = daylightOnly;
             out.retryMs = policy.retryAfterMs;
             out.rearmMs = policy.rearmSafeMs;
@@ -128,14 +132,17 @@ namespace SQM
         {
             if (in.weatherSafe || in.roof == Roof::State::Closed)
                 return Decision{};
-            if (in.roof == Roof::State::Error)
+            if (in.roof == Roof::State::Error && !in.blindReady)
                 return enter(Phase::CannotMove, Event::CannotClose, Cause::FaultLatched);
             if (in.roof == Roof::State::Unknown)
             {
                 // Just after a restart the Hall reading hasn't settled yet.
                 if (!unknownConfirmed)
                     return Decision{};
-                return enter(Phase::CannotMove, Event::CannotClose, in.roofStarted ? Cause::PositionUnknown : Cause::RoofNotStarted);
+                // Spec 030 (constitution 8.0.0, I): a running controller closes
+                // from an unknown position (slow, to the first magnet) once the park is confirmed.
+                if (!in.roofStarted)
+                    return enter(Phase::CannotMove, Event::CannotClose, Cause::RoofNotStarted);
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
@@ -179,17 +186,33 @@ namespace SQM
                 out = enter(Phase::Idle, Event::Closed);
             else if (personStopped)
                 out = enter(Phase::HeldByPerson, Event::StoppedByPerson);
+            else if (in.roof == Roof::State::Error && current == Phase::Closing && closeKind == Cause::ClosedBlind && closeRan)
+            {
+                // Spec 030: the blind close ended (limit, stall, fault or stop):
+                // never a second one; a person must check the roof.
+                out = enter(Phase::CannotMove, Event::NeedsPerson, Cause::ClosedBlind);
+                out.ninaLost = noticeNina;
+                noticeCause = Cause::None;
+            }
             else if (in.roof == Roof::State::Error && current == Phase::Closing)
                 out = enter(Phase::CannotMove, Event::CloseFailed, Cause::Fault);
-            else if (in.roof == Roof::State::Error)
+            else if (in.roof == Roof::State::Error && !in.blindReady)
                 out = enter(Phase::CannotMove, Event::CannotClose, Cause::FaultLatched);
-            else if (in.roof == Roof::State::Unknown)
-                out = unknownConfirmed
-                          ? enter(Phase::CannotMove, Event::CannotClose, in.roofStarted ? Cause::PositionUnknown : Cause::RoofNotStarted)
-                          : Decision{};
+            else if (in.roof == Roof::State::Unknown && !in.roofStarted)
+                out = unknownConfirmed ? enter(Phase::CannotMove, Event::CannotClose, Cause::RoofNotStarted) : Decision{};
             else
                 return false;
             return true;
+        }
+
+        // Spec 030: what keeps an attempt from going on while it waits: a fault
+        // with no blind close to run, or (after start-up) a controller that
+        // didn't start. A running controller closes from an unknown position.
+        bool Sequence::blocksAttempt(const Inputs &in) const
+        {
+            if (in.roof == Roof::State::Error)
+                return !in.blindReady;
+            return in.roof == Roof::State::Unknown && !in.roofStarted;
         }
 
         Decision Sequence::waiting(const Inputs &in, bool personStopped)
@@ -208,10 +231,10 @@ namespace SQM
                 return enter(Phase::Closing); // a person's close: watch it
             // After a refused or interrupted close, no close until the back-off
             // ends, even across a brief safe spell (a flapping verdict).
-            if (parkConfirmed)
+            if (closeAllowed())
             {
                 if (!closeFailedOnce || elapsed(closeFailedAtMs, in.nowMs) >= policy.retryAfterMs)
-                    return closeNow();
+                    return closeNow(in);
                 // Parked, held back only by the back-off: not a park failure,
                 // so no "mount not parked" (its alert would name the wrong input).
                 return out;
@@ -314,9 +337,10 @@ namespace SQM
             // say) still stands the sequence down once it can.
             if (personStopped && current == Phase::CannotMove)
                 return enter(Phase::HeldByPerson, Event::StoppedByPerson);
-            // A person made the position known or cleared the fault: resume
-            // without a new park request until the back-off ends.
-            if (current == Phase::CannotMove && in.roof != Roof::State::Unknown && in.roof != Roof::State::Error)
+            // A person made the position known or cleared the fault (spec 030:
+            // or a blind close may run): resume without a new park request
+            // until the back-off ends.
+            if (current == Phase::CannotMove && !blocksAttempt(in))
             {
                 lastCritical.has = false; // "can't close by itself" no longer holds: nothing to remind of
                 return enter(Phase::RetryWait);
@@ -338,7 +362,10 @@ namespace SQM
                 return Decision{};
             closeUnanswered = false;
             if (answer == CloseAnswer::Started)
+            {
+                closeRan = true; // spec 030: its notice is due when it ends
                 return Decision{};
+            }
             // The gate keeps disagreeing with the park result: a refusal like any other.
             if (answer == CloseAnswer::ParkRefused && ++parkRefusals >= MAX_PARK_REFUSALS)
                 answer = CloseAnswer::Refused;
@@ -359,105 +386,6 @@ namespace SQM
             out.retryMs = policy.retryAfterMs;
             out.rearmMs = policy.rearmSafeMs;
             return out;
-        }
-
-        Sequence::Saved Sequence::saved() const
-        {
-            Saved out;
-            // The park request spacing is kept in any phase, while it matters.
-            out.requested = requested && elapsed(lastRequestMs, lastNowMs) < policy.parkRequestGapMs;
-            out.requestAgeMs = out.requested ? elapsed(lastRequestMs, lastNowMs) : 0;
-            out.daylight = daylightOnly;
-            // Asked to close but not yet answered: nothing has moved, so a
-            // restart now carries on from the step before (spec 010).
-            const bool unanswered = current == Phase::Closing && closeUnanswered;
-            const Phase phase = unanswered ? beforeClose : current;
-            const uint64_t sinceMs = unanswered ? beforeCloseSinceMs : phaseSinceMs;
-            const uint64_t wallStartMs = unanswered ? beforeCloseWallStartMs : phaseWallStartMs;
-            const bool standDown = phase == Phase::HeldByPerson || phase == Phase::Halted;
-            const bool waitingNow = phase == Phase::WaitPark || phase == Phase::RetryWait;
-            // A close under way: a restart ends it part-way (a brown-out at the
-            // motor's start, say), which restore() turns into a failed close.
-            if (phase == Phase::Closing)
-            {
-                out.phase = Phase::Closing;
-                return out;
-            }
-            if (!standDown && !waitingNow)
-                return out;
-            out.phase = phase;
-            out.event = lastCritical.has ? lastCritical.event : Event::None;
-            out.cause = lastCritical.has ? lastCritical.cause : Cause::None;
-            if (waitingNow)
-            {
-                out.unsafeMs = elapsed(sinceMs, lastNowMs);
-                out.wallMs = elapsed(wallStartMs, lastNowMs);
-                out.limitMs = attemptLimitMs;
-            }
-            else
-                out.unsafeMs = daylightCount(); // spec 013: the weather's count against a daylight stand-down
-            return out;
-        }
-
-        void Sequence::restore(const Saved &saved)
-        {
-            // Read back from memory that outlived a restart: only sane values.
-            const bool standDown = saved.phase == Phase::HeldByPerson || saved.phase == Phase::Halted;
-            const bool waitingThen = saved.phase == Phase::WaitPark || saved.phase == Phase::RetryWait;
-            const bool idleThen = saved.phase == Phase::Idle; // only the request spacing
-            const bool closingThen = saved.phase == Phase::Closing;
-            const bool eventOk = isCritical(saved.event) || (!standDown && saved.event == Event::None);
-            if ((!standDown && !waitingThen && !idleThen && !closingThen) || !eventOk ||
-                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::NotStarted))
-                return;
-            restoring = saved;
-            if (idleThen)
-                restoring.event = Event::None;
-            restorePending = true;
-            current = saved.phase;
-        }
-
-        // On the first step, once the time is known.
-        void Sequence::applyRestore()
-        {
-            restorePending = false;
-            current = restoring.phase;
-            // Counted back from now, with the restart's own time added; a time
-            // base too young to hold it is clamped (the caller offsets it).
-            const uint64_t extra = restoring.phase == Phase::WaitPark || restoring.phase == Phase::RetryWait ? RESTART_ALLOWANCE_MS : 0;
-            const uint64_t unsafeMs = restoring.unsafeMs + extra;
-            const uint64_t wallMs = restoring.wallMs + extra;
-            phaseSinceMs = lastNowMs - (unsafeMs < lastNowMs ? unsafeMs : lastNowMs);
-            phaseWallStartMs = lastNowMs - (wallMs < lastNowMs ? wallMs : lastNowMs);
-            // Never longer than the longest limit the settings allow.
-            const uint64_t longestMs = 1800000;
-            attemptLimitMs = restoring.limitMs != 0 && restoring.limitMs <= longestMs ? restoring.limitMs : parkTimeoutMs;
-            requested = restoring.requested;
-            daylightOnly = restoring.daylight && current != Phase::Idle;
-            lastRequestMs = lastNowMs - (restoring.requestAgeMs < lastNowMs ? restoring.requestAgeMs : lastNowMs);
-            lastCritical = LastCritical{};
-            lastCritical.has = isCritical(restoring.event);
-            lastCritical.event = restoring.event;
-            lastCritical.cause = restoring.cause;
-            lastCritical.limitMs = restoring.event == Event::ParkNotConfirmed ? attemptLimitMs : 0;
-            remindNow = current == Phase::HeldByPerson || current == Phase::Halted;
-            // Spec 013: a daylight stand-down keeps the weather's count across the restart.
-            heldUnsafeMs = daylightOnly && remindNow ? std::min<uint64_t>(restoring.unsafeMs, WEATHER_REARM_CONFIRM_MS) : 0;
-            if (current == Phase::Closing)
-            {
-                // A restart during a close: the close failed part-way. Back off
-                // and alert, so a restart loop at every close start isn't silent.
-                current = Phase::RetryWait;
-                phaseSinceMs = lastNowMs;
-                phaseWallStartMs = lastNowMs;
-                closeFailedOnce = true;
-                closeFailedAtMs = lastNowMs;
-                closeFailedInDaylight = daylightOnly;
-                lastCritical.has = true;
-                lastCritical.event = Event::CloseFailed;
-                lastCritical.cause = Cause::Interrupted;
-                remindNow = true;
-            }
         }
 
         RoofIo::SequenceState platformState(Phase phase)
@@ -490,15 +418,37 @@ namespace SQM
             return CloseAnswer::Refused;
         }
 
-        Decision Sequence::closeNow()
+        Decision Sequence::closeNow(const Inputs &in)
         {
             beforeClose = current;
             beforeCloseSinceMs = phaseSinceMs;
             beforeCloseWallStartMs = phaseWallStartMs;
             Decision out = enter(Phase::Closing);
-            out.action = Action::Close;
+            // Spec 030: in Error here only with a blind close ready.
+            const bool blind = in.roof == Roof::State::Error;
+            out.action = blind ? Action::BlindClose : Action::Close;
+            out.ninaLost = !parkConfirmed && ninaLostNow;
+            closeKind = blind                             ? Cause::ClosedBlind
+                        : in.roof == Roof::State::Unknown ? Cause::WasUnknown
+                        : out.ninaLost                    ? Cause::NinaLost
+                                                          : Cause::None;
+            closeKindNina = out.ninaLost;
             closeUnanswered = true;
             return out;
+        }
+
+        // Spec 030: a close that ran without a known position or N.I.N.A.'s
+        // park raises its critical notice once it has ended, on the first step
+        // with nothing else to say.
+        Decision Sequence::closeNotice(Decision decision)
+        {
+            if (decision.event != Event::None || noticeCause == Cause::None)
+                return decision;
+            decision.event = Event::NeedsPerson;
+            decision.cause = noticeCause;
+            decision.ninaLost = noticeNina;
+            noticeCause = Cause::None;
+            return decision;
         }
 
         Decision Sequence::failAttempt(Event event, Cause cause, Action action)
@@ -516,6 +466,18 @@ namespace SQM
 
         Decision Sequence::enter(Phase next, Event event, Cause cause)
         {
+            // Spec 030: a close that ran is over: its notice is due.
+            if (current == Phase::Closing && next != Phase::Closing && closeRan && closeKind != Cause::None)
+            {
+                noticeCause = closeKind;
+                noticeNina = closeKindNina;
+            }
+            if (next == Phase::Closing || current == Phase::Closing)
+            {
+                closeRan = false;
+                closeKind = Cause::None;
+                closeKindNina = false;
+            }
             current = next;
             closeUnanswered = false;
             phaseSinceMs = lastNowMs;
@@ -588,12 +550,13 @@ namespace SQM
             in.roof = status.state;
             in.moveTimeoutMs = status.moveTimeoutMs;
             in.closePending = closePending;
+            in.blindReady = status.blindReady; // spec 030
         }
 
         bool isCritical(Event event)
         {
             return event == Event::ParkNotConfirmed || event == Event::CloseFailed || event == Event::CannotClose ||
-                   event == Event::StoppedByPerson;
+                   event == Event::StoppedByPerson || event == Event::NeedsPerson;
         }
     } // namespace CloseSeq
 } // namespace SQM

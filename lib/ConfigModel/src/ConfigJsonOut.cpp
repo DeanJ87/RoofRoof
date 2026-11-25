@@ -190,6 +190,9 @@ namespace SQM
             out["notStarted"] = a.notStarted == AutoCloseConfig::NotStarted::Retry ? "retry" : "halt";
             out["remindMinutes"] = a.remindMinutes;
             out["remoteStop"] = a.remoteStop;
+            out["unsafeHoldSeconds"] = a.unsafeHoldSeconds;
+            out["ninaLostClose"] = a.ninaLostClose; // spec 030
+            out["ninaLostMinutes"] = a.ninaLostMinutes;
             doc.createNestedObject("ui")["confirmOpenClose"] = c.ui.confirmOpenClose;
         }
 
@@ -217,6 +220,8 @@ namespace SQM
             roof["currentAmpsPerVolt"] = r.currentAmpsPerVolt;
             roof["minRunningAmps"] = r.minRunningAmps;
             roof["minSupplyVolts"] = r.minSupplyVolts;
+            roof["blindClose"] = r.blindClose; // spec 030
+            roof["blindSagVolts"] = r.blindSagVolts;
         }
     } // namespace
 

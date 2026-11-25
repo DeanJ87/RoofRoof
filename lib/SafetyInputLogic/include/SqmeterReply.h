@@ -17,12 +17,18 @@ namespace SQM
         constexpr uint32_t SQMETER_RAIN = 1u << 9;
         constexpr uint32_t SQMETER_RAIN_SENSOR_FAULT = 1u << 10;
 
+        // Spec 030: the most of SQMeter's reasons text kept, in bytes.
+        constexpr size_t MAX_REASONS_TEXT = 160;
+
         // One good SQMeter answer.
         struct SqmeterReply
         {
             bool safe = false;
             uint32_t reasonFlags = 0;
             uint32_t evaluatedAgeMs = 0; // 0 when SQMeter didn't say
+            // Spec 030 (FR-011): SQMeter's "reasons" as words, joined with "; ",
+            // control characters dropped, at most MAX_REASONS_TEXT bytes ("" without them).
+            std::string reasons;
 
             // SQMeter's flags win over its `safe` (spec 004 FR-005).
             bool unsafe() const { return !safe || reasonFlags != 0; }
@@ -40,6 +46,9 @@ namespace SQM
 
         // The /api/safety document (also the <base>/safety payload).
         ReplyError parseSafetyJson(const std::string &body, SqmeterReply &out);
+        // Spec 030: `text` with control characters dropped and cut to at most
+        // `maxBytes` bytes, never inside a UTF-8 character.
+        std::string cleanReasonText(const std::string &text, size_t maxBytes = MAX_REASONS_TEXT);
         // "missing reasonFlags", ... for logs and reasons.
         const char *replyErrorText(ReplyError error);
         // <base>/safe: "1" -> true, "0" -> false, anything else -> nothing.

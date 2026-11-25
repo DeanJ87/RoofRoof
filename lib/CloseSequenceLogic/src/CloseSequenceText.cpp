@@ -72,6 +72,21 @@ namespace SQM
                 return withWhy("The close stopped before the roof was closed; " + triesAgain(decision) + ". Roof:", why);
             }
 
+            // Spec 030: the title names the input that is missing.
+            const char *parkTitle(ParkGap gap)
+            {
+                switch (gap)
+                {
+                case ParkGap::NinaLost:
+                    return "Can't close: N.I.N.A. unreachable, mount park unknown";
+                case ParkGap::SourcesDisagree:
+                    return "Can't close: N.I.N.A. and the park switches disagree";
+                case ParkGap::None:
+                    break;
+                }
+                return "Mount didn't park";
+            }
+
             AlertText parkMessage(const Decision &decision, const std::string &why)
             {
                 if (decision.cause == Cause::NinaNotConfigured)
@@ -80,12 +95,40 @@ namespace SQM
                         std::string(whyClose(decision)) + " and N.I.N.A. isn't set up (park.nina.url), so the park can't be "
                                                           "confirmed. The roof stays open."};
                 return {
-                    "Mount didn't park",
+                    parkTitle(decision.parkGap),
                     withWhy(
                         std::string(whyClose(decision)) + " and the park wasn't confirmed " +
                             (decision.limitMs == 0 ? std::string("in time") : "within " + seconds(decision.limitMs)) +
                             ", so the roof stays open. Park:",
                         why)};
+            }
+
+            // Spec 030: a close that ran without a known position or N.I.N.A.'s park.
+            AlertText needsPersonMessage(const Decision &decision, const std::string &why)
+            {
+                const std::string because = whyClose(decision);
+                const std::string nina =
+                    decision.ninaLost ? " It closed without N.I.N.A.'s park confirmation (autoClose.ninaLostClose)." : "";
+                if (decision.cause == Cause::ClosedBlind)
+                    return {
+                        "Roof closed blind: check the roof",
+                        withWhy(
+                            because +
+                                " and the Hall sensor is dead, so the roof was driven towards closed once, on time alone. "
+                                "Whether it closed is unknown: a person must check the roof." +
+                                nina + " Fault:",
+                            why)};
+                if (decision.cause == Cause::NinaLost)
+                    return {
+                        "Roof closed without N.I.N.A.'s park",
+                        because + " and N.I.N.A. couldn't be read for the set time, so the roof closed without N.I.N.A.'s park "
+                                  "confirmation (autoClose.ninaLostClose). A person must check the telescope and the roof."};
+                return {
+                    "Roof closed from an unknown position",
+                    because +
+                        " and the roof's position was unknown, so it closed slowly to the first magnet. A person must "
+                        "check the roof." +
+                        nina};
             }
 
             AlertText firstAlertFor(const Decision &decision, const std::string &why)
@@ -107,6 +150,8 @@ namespace SQM
                             "Roof can't close by itself",
                             because + " and the roof's position is unknown. A person must move it to a magnet."};
                     return {"Roof can't close by itself", withWhy(because + " and a fault is latched. Fault:", why)};
+                case Event::NeedsPerson:
+                    return needsPersonMessage(decision, why);
                 case Event::StoppedByPerson:
                     return {
                         "Automatic close stopped",
@@ -138,6 +183,19 @@ namespace SQM
             return requestPark || park.parked ? text : text + " (N.I.N.A. not asked to park: park requests are off)";
         }
 
+        ParkGap parkGapOf(const Safety::ParkResult &park)
+        {
+            constexpr uint32_t NINA_LOST = Safety::ParkNinaWaiting | Safety::ParkNinaUnreachable | Safety::ParkNinaUnreadable |
+                                           Safety::ParkNinaApiError | Safety::ParkNinaStale;
+            if (park.parked || park.bypassed)
+                return ParkGap::None;
+            if ((park.reasons & Safety::ParkSourcesDisagree) != 0)
+                return ParkGap::SourcesDisagree;
+            if (!park.switchesOnly && (park.reasons & NINA_LOST) != 0)
+                return ParkGap::NinaLost;
+            return ParkGap::None;
+        }
+
         std::string reasonFor(const Decision &decision, const Reasons &reasons)
         {
             switch (decision.cause)
@@ -147,6 +205,7 @@ namespace SQM
                 return reasons.park;
             case Cause::Fault:
             case Cause::FaultLatched:
+            case Cause::ClosedBlind:
                 return reasons.fault;
             case Cause::Refused:
                 return reasons.refusal;
@@ -178,7 +237,15 @@ namespace SQM
         const char *eventName(Event event)
         {
             static constexpr const char *NAMES[] = {
-                "none", "started", "endedSafe", "closed", "parkNotConfirmed", "closeFailed", "cannotClose", "stoppedByPerson"};
+                "none",
+                "started",
+                "endedSafe",
+                "closed",
+                "parkNotConfirmed",
+                "closeFailed",
+                "cannotClose",
+                "stoppedByPerson",
+                "needsPerson"};
             const size_t index = static_cast<size_t>(event);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }
@@ -196,7 +263,10 @@ namespace SQM
                 "positionUnknown",
                 "faultLatched",
                 "roofNotStarted",
-                "closeNotStarted"};
+                "closeNotStarted",
+                "wasUnknown",
+                "closedBlind",
+                "ninaLost"};
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }

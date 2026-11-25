@@ -126,6 +126,7 @@ namespace SQM
                 wanted[i] = false;
                 record.status[i] = DeliveryStatus::Skipped;
                 record.detail[i] = blocked[i];
+                record.skippedForNow |= static_cast<uint8_t>(blocked.forNow & (1u << i));
             }
         }
 
@@ -268,6 +269,10 @@ namespace SQM
             }
             // Only skipped (switched on but blocked, e.g. MQTT alerts with MQTT
             // off) or not sent: no channel can take it, so resending won't help.
+            // Spec 030: skipped for now (no network, the broker not connected) is
+            // a failure to retry, not "no channel": a critical alert raised
+            // before the network was up was dropped as undeliverable.
+            failed |= record.skippedForNow != 0;
             result = sent ? Outcome::Delivered : pending ? Outcome::Pending : failed ? Outcome::Failed : Outcome::NoChannel;
             break;
         }
@@ -423,6 +428,9 @@ namespace SQM
                 const size_t index = static_cast<size_t>(channel);
                 record.status[index] = status;
                 record.detail[index] = detail;
+                // The delivery task only skips for now (network, update, HTTPS busy).
+                if (status == DeliveryStatus::Skipped)
+                    record.skippedForNow |= static_cast<uint8_t>(1u << index);
                 ++revision;
                 break;
             }

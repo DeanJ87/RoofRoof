@@ -7,25 +7,25 @@ description: "RoofRoof alerts via ntfy, Pushover, webhook or MQTT: the roof's ev
 RoofRoof can send push notifications itself - over Pushover, ntfy, a webhook, or MQTT - so you hear about a change even when N.I.N.A. and the observatory PC aren't running.
 
 !!! note "What raises an alert"
-    The **roof's** events: two critical ones from the [close on unsafe weather](close-on-unsafe.md) (the mount didn't park, the roof didn't close) and eight others (a fault, a low supply, a lost weather source, the weather closing the roof, the roof closed afterwards, and three about daylight). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (the roof's [Dome](alpaca.md)), **Alerts resumed** and the **Send test** messages.
+    The **roof's** events: three critical ones from the [close on unsafe weather](close-on-unsafe.md) and the roof's state (the mount didn't park, the roof didn't close, the roof needs a person) and eight others (a fault, a low supply, a lost weather source, the weather closing the roof, the roof closed afterwards, and three about daylight). See [The roof](#the-roof). Then the three **imaging-app** events (see [The imaging app](#the-imaging-app)), which need an ASCOM Alpaca device (the roof's [Dome](alpaca.md)), **Alerts resumed** and the **Send test** messages.
 
 !!! warning "Set up a channel before the roof runs unattended"
-    The two critical roof alerts go to every channel that is switched on, even with **Send alerts** off or alerts paused. With no channel set up they reach nobody: only the serial log has them.
+    The three critical roof alerts go to every channel that is switched on, even with **Send alerts** off or alerts paused. With no channel set up they reach nobody: only the serial log has them.
 
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel.
 
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: e90507e40444db68
+fingerprint: 315c9a2b35089680
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
-    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch, and is sent again until a channel takes it.
-    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>N.I.N.A. can't be reached;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
+    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch. Every alert that no channel took is queued and sent again with a growing gap until one does, a newer one of the same event replaces it or its condition has ended; a critical one is also kept across a restart.
+    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof needs a person;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>N.I.N.A. can't be reached;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
     HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source, open in daylight)<br/>or 10 min (daylight check) or 1 min (N.I.N.A.),<br/>or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
@@ -35,15 +35,16 @@ flowchart TB
     ON -->|yes| MASTER{"Send alerts on?"}
     MASTER -->|no| NOPUSH["No channel is used"]
     MASTER -->|yes| INEFFECT{"Channel in effect?"}
-    CRITICAL(["Critical roof alert<br/>the mount didn't park (automatic close,<br/>or a move waiting for the park),<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me (Urgent at most on a test box)"]
+    CRITICAL(["Critical roof alert<br/>the mount didn't park (automatic close,<br/>or a move waiting for the park),<br/>the roof didn't close,<br/>the roof needs a person"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me (Urgent at most on a test box)"]
     CWORDING -->|"never paused, never switched off"| INEFFECT
-    SENT --> AGAIN["Critical alert no channel took:<br/>sent again after 1 min, doubling to 30 min"]
+    SENT --> AGAIN["Any alert no channel took:<br/>sent again after 1 min, doubling to 30 min;<br/>a critical one is kept over a restart"]
     INEFFECT -->|"no: MQTT off,<br/>no network"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
     INEFFECT -->|yes| MQTT["MQTT: published at once"]
     INEFFECT -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
     HTTP --> CANSEND{"Network free?"}
     CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>no network, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
+    SKIPPED --> AGAIN
     MQTT --> RECENT["Recent alerts: each channel's result"]
     INACTIVE --> RECENT
     SKIPPED --> RECENT
@@ -64,7 +65,7 @@ flowchart TB
     7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without a network: WiFi or Ethernet) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
-    10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts), or from an open or close that waited for the park and gave up, and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
+    10. **Critical roof alerts** (the mount didn't park, the roof didn't close, the roof needs a person) come from the [close on unsafe weather](close-on-unsafe.md#alerts), the roof's own state, or from an open or close that waited for the park and gave up, and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on. Every alert that no channel took, critical or not, is [sent again](#alerts-survive-an-outage).
 
 ---
 
@@ -75,7 +76,8 @@ Every event has its own **level**, and with Pushover on, its own **sound**:
 | Event | When | Default level |
 |---|---|---|
 | The mount doesn't park | **Critical.** The weather is unsafe and the park wasn't confirmed in time, so the roof stays open | Wake me |
-| The roof doesn't close | **Critical.** The automatic close failed, the roof can't move by itself, or a person stopped it: the roof is open while unsafe | Wake me |
+| The roof doesn't close | **Critical.** The automatic close failed or a person stopped it: the roof is open while unsafe | Wake me |
+| Roof needs a person | **Critical.** A restart with the position unknown or a fault latched; a Hall sensor failure; the automatic close unable to move; a close from an unknown position, blind, or without N.I.N.A.'s park. See [Roof needs a person](#roof-needs-a-person) | Wake me |
 | The roof faults | A move stopped with a fault | Urgent |
 | The 12 V supply is low | Below the roof's minimum supply for 30 s | Normal |
 | The weather closes the roof | The automatic close started because the weather isn't safe | Normal |
@@ -156,15 +158,27 @@ A crash isn't the end of a session: an imaging app that goes silent doesn't paus
 
 The roof's events come from the roof controller, the weather inputs and the [close on unsafe weather](close-on-unsafe.md).
 
-**Roof safety** (critical): **The mount doesn't park** and **The roof doesn't close**. The constitution requires them, so they:
+**Roof safety** (critical): **The mount doesn't park**, **The roof doesn't close** and **Roof needs a person**. The constitution requires them, so they:
 
 - can be **Urgent** or **Wake me** only, with a sound that makes a noise (not silent or vibrate only); the device refuses anything else, and sends a lower stored level as Urgent;
 - are sent at **Urgent** while a [test box](test-box.md#critical-alerts-on-a-test-box) park or weather bypass is in effect (or waiting for the clock with one that would be): a bench box never sends Pushover's emergency;
 - are sent to every channel that is switched on even with **Send alerts** off, while paused, in "Only while an imaging app is connected" with no app, and in the first minute after a start;
-- go out at most once every 30 minutes per cause, and again every 30 minutes ("Still: ...") while the roof stays open;
-- are sent again (after 1 minute, doubling to 30 minutes) until a channel takes one.
+- go out at most once every 30 minutes per cause, and again every reminder interval (30 minutes by default, `autoClose.remindMinutes`; "Still: ...") while the roof stays open or the condition lasts;
+- are sent again (after 1 minute, doubling to 30 minutes) until a channel takes one, and kept over a restart ([below](#alerts-survive-an-outage)).
 
-"The roof doesn't close" covers every case in which the roof is open while unsafe and needs a person; its title says which: **Roof didn't close** (a fault, a refusal, stopped part-way or too slow), **Roof can't close by itself** (the position is unknown, a fault is latched, the controller didn't start) or **Automatic close stopped** (a person pressed stop). [Close on unsafe weather](close-on-unsafe.md#alerts) explains each and what to do.
+"The roof doesn't close" covers the cases in which the close failed or was stopped while the roof is open and unsafe; its title says which: **Roof didn't close** (a fault, a refusal, stopped part-way or too slow) or **Automatic close stopped** (a person pressed stop). [Close on unsafe weather](close-on-unsafe.md#alerts) explains each and what to do.
+
+#### Roof needs a person
+
+**Roof needs a person** (`needs_person`, Wake me by default, never below Urgent) is sent whenever the roof can't be trusted to look after itself, and it never waits for the start-up minute. It goes out when:
+
+- the device **restarted** with the roof's position unknown, a fault latched, or the roof controller not started. It repeats at the reminder interval ("Still: Roof needs a person") until the condition ends: the fault is cleared, or a magnet has been read after a move, a teach or a person's move;
+- the device restarted with the roof **not reading closed** at a known position. Sent once and not repeated: an open roof at a known position is not a fault (a restart while imaging, say), but you are told;
+- the **Hall sensor reads at a rail** at any time, at once, with its reading and what to do, and again at the reminder interval while it lasts;
+- the automatic close **can't move** the roof (a fault latched, or the roof controller didn't start): **Roof can't close by itself**, repeated;
+- a close ran **from an unknown position**, **blind** (the Hall sensor is dead) or **without N.I.N.A.'s park**: the title names which ([Close on unsafe weather](close-on-unsafe.md#alerts)).
+
+The dashboard and Home Assistant show the same condition while it holds ([Dashboard](dashboard.md), [Home Assistant](../integration/home-assistant.md)). Earlier releases could leave a "can't move" unannounced: an alert raised in the first seconds after a restart, before the network was up, counted as having no channel and was dropped. It is now held and sent when a channel can take it.
 
 **Roof** (the usual rules: the master switch, the pause, the start-up minute and the cooldown):
 
@@ -184,6 +198,12 @@ A custom title or message that comes out longer than Pushover allows (200 / 1,02
 The roof events above wait at least a minute between two alerts of the same event, even with **Cooldown** set to 0.
 
 A fault, a low supply or a lost source that is already there when the device starts is announced once the start-up minute is over. One that was already announced before a reset (a crash, the watchdog, a restart) isn't repeated while it lasts; after a power cut it is announced again.
+
+### Alerts survive an outage
+
+An alert that no channel took (the access point restarting, no internet, Pushover or the broker unreachable) is not lost. Every alert waits in a queue and is sent again until a channel takes it: after 1 minute, then at doubling gaps up to 30 minutes (never longer than the reminder interval), and at once when the network or the broker comes back. It leaves the queue when a channel took it, when no channel is switched on to take it, when a newer alert of the same event replaces it, or when its condition has ended (a close alert for a roof that has since closed, say).
+
+The critical roof alerts waiting for a channel are also kept in the device's flash, one per event (written when queued and erased when delivered, a few writes per incident), so a restart or a power cut doesn't lose them. After the restart they are sent again, with "Sent before a restart at 2026-11-25 02:14." (the time it was queued, local) in the message (no time without a clock). A condition that is still there after the restart is also raised again from the device's fresh look at the roof.
 
 ### The imaging app
 
@@ -248,7 +268,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"RoofRoof","event":"client_lost","title":"The imaging app stopped checking","message":"No request reached the device for 2 min.","level":"urgent","timestamp":1759500000}
 ```
 
-`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `needs_person`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 

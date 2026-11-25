@@ -530,6 +530,10 @@
     "roof": {
       "type": "object",
       "properties": {
+        "blind": {
+          "type": "boolean",
+          "description": "Spec 030: the move is a blind close (the Hall sensor dead, closing on time alone)."
+        },
         "calibrating": {
           "type": "boolean"
         },
@@ -687,6 +691,23 @@
         },
         "moveTimeoutMs": {
           "type": "number"
+        },
+        "needsPerson": {
+          "type": "object",
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "active",
+            "text"
+          ],
+          "additionalProperties": false,
+          "description": "Spec 030: the roof needs a person (a restart with the position unknown, a fault, a Hall sensor failure, the automatic close unable to move), and what for."
         },
         "nina": {
           "type": "object",
@@ -962,11 +983,33 @@
         "weather": {
           "type": "string"
         },
+        "weatherHold": {
+          "type": "object",
+          "properties": {
+            "countedSeconds": {
+              "type": "integer"
+            },
+            "fired": {
+              "type": "boolean"
+            },
+            "leftSeconds": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "countedSeconds",
+            "fired",
+            "leftSeconds"
+          ],
+          "additionalProperties": false,
+          "description": "Spec 030: the automatic close's weather hold: unsafe seconds added up, seconds left before the close is wanted (-1: not counting), whether it has fired."
+        },
         "weatherText": {
           "type": "string"
         }
       },
       "required": [
+        "blind",
         "calibrating",
         "closePending",
         "closePhase",
@@ -984,6 +1027,7 @@
         "motorAmps",
         "moveElapsedMs",
         "moveTimeoutMs",
+        "needsPerson",
         "nina",
         "openOverridable",
         "override",
@@ -1004,6 +1048,7 @@
         "testBox",
         "watchdogTrips",
         "weather",
+        "weatherHold",
         "weatherText"
       ],
       "additionalProperties": false

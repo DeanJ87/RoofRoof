@@ -42,7 +42,7 @@ namespace SQM
         void recordHttpReply(SourceRecord &record, const HttpOutcome &outcome, TimeMs nowMs);
 
         // Spec 020 FR-038: one fetch for Settings' Test, as POST
-        // /api/sqmeter/test answers it: {"safe", "reasonFlags", "text"} or
+        // /api/sqmeter/test answers it: {"safe", "reasonFlags", "reasons", "text"} or
         // {"error"} (the reason, as a sentence).
         void writeTestResult(JsonObject out, const HttpOutcome &outcome);
 

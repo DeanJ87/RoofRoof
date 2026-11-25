@@ -357,6 +357,7 @@ void test_state_document_fits(void)
     s.health.sqmeterReplied = true;
     s.health.sqmeterAgeMs = 4294967295u;
     s.health.sqmeterState = "unreachable";
+    s.needsPerson = {true, std::string(MAX_CHECK_TEXT + 40, 'n')}; // spec 030: the flag only here
     DynamicJsonDocument doc(Mqtt::STATE_DOC_CAPACITY);
     Mqtt::writeState(doc.to<JsonObject>(), s, 4294967295u, true);
     TEST_ASSERT_FALSE(doc.overflowed());

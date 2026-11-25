@@ -99,6 +99,9 @@ namespace SQM
             NotAPerson, // clearing a fault (or a calibration leg) needs a person
             Moving,     // new settings, or a calibration leg, while a move is active
             LegInvalid, // spec 016: a calibration leg outside its ranges
+            // Spec 030: no blind close now (setting off, not a Hall rail fault
+            // alone, one already run for this fault, or not the automatic close).
+            BlindUnavailable,
         };
 
         // The answer to a command.
@@ -142,6 +145,10 @@ namespace SQM
             uint16_t hallCounts = 0;
             bool calibrating = false; // spec 016: the active move is a calibration leg (or a jog)
             bool jogging = false;     // spec 019: the active move is a person's jog
+            // Spec 030: the move is a blind close (Controller::blindClose), and
+            // one may start now (Controller::blindCloseReady).
+            bool blind = false;
+            bool blindReady = false;
         };
 
         // Spec 016: one leg of an attended calibration run (Controller::calibrate).
@@ -174,6 +181,26 @@ namespace SQM
             float dutyMs = 0.0f;                         // the duty fraction integrated over drivenMs
         };
 
+        // Spec 030 (constitution 8.0.0, I): how a blind close ended.
+        enum class BlindEnd : uint8_t
+        {
+            Limit,   // the time limit (unknownMoveTimeoutMs): not a fault
+            Stall,   // the supply sagged roof.blindSagVolts below its rest for BLIND_STALL_MS
+            Fault,   // a fault the controller still checks (supply, late step, raised)
+            Stopped, // Stop, Abort or a person clearing the fault
+        };
+
+        // How the last blind close ended (Controller::blindReport).
+        struct BlindReport
+        {
+            uint32_t ended = 0; // blind closes ended since construction
+            BlindEnd why = BlindEnd::Limit;
+            uint32_t drivenMs = 0;   // from the driver on to the stop
+            float restVolts = 0.0f;  // the supply just before driving
+            float deepestSag = 0.0f; // the most it sagged below that after the start-up surge
+            Fault fault;             // the fault that ended it (why Fault)
+        };
+
         // Stable machine names for status documents, logs and MQTT (never translated).
         const char *stateName(State state);
         const char *endName(End end);
@@ -181,5 +208,6 @@ namespace SQM
         const char *faultName(FaultKind kind);
         const char *refusalName(Refusal reason);
         const char *hallLevelName(HallLevel level);
+        const char *blindEndName(BlindEnd why);
     } // namespace Roof
 } // namespace SQM

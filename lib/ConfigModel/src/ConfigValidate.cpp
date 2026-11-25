@@ -276,6 +276,8 @@ namespace SQM
                 return setError(error, "Roof: minimum running current must be between 0 and 20 amps");
             if (!inRange(r.minSupplyVolts, RoofConfig::MIN_SUPPLY_VOLTS, RoofConfig::MAX_SUPPLY_VOLTS))
                 return setError(error, "Roof: minimum supply must be between 6 and 15 volts");
+            if (!inRange(r.blindSagVolts, RoofConfig::MIN_BLIND_SAG_VOLTS, RoofConfig::MAX_BLIND_SAG_VOLTS))
+                return setError(error, "Roof: blind close stall sag must be between 0.5 and 6 volts"); // spec 030
             return true;
         }
 
@@ -326,6 +328,14 @@ namespace SQM
                  A::MAX_CLOSE_GUARD_SECONDS,
                  "close guard must be between 10 and 120 seconds"},
                 {a.remindMinutes, A::MIN_REMIND_MINUTES, A::MAX_REMIND_MINUTES, "reminder interval must be between 10 and 120 minutes"},
+                {a.unsafeHoldSeconds,
+                 A::MIN_UNSAFE_HOLD_SECONDS,
+                 A::MAX_UNSAFE_HOLD_SECONDS,
+                 "unsafe hold must be between 0 and 300 seconds"},
+                {a.ninaLostMinutes,
+                 A::MIN_NINA_LOST_MINUTES,
+                 A::MAX_NINA_LOST_MINUTES,
+                 "N.I.N.A. lost time must be between 1 and 60 minutes"},
             };
             for (const Range &r : ranges)
                 if (r.value < r.min || r.value > r.max)

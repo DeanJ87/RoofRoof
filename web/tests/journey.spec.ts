@@ -63,7 +63,8 @@ test('held by a person: explained with when it clears, and released at the roof 
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('heldByPerson');
   const held = blocker(page, 'heldByPerson');
   await expect(held).toContainText('Automatic close held: a person pressed Stop');
-  await expect(held).toContainText(/Lapses in \d+:\d\d with the weather safe, or once the roof is closed\./);
+  // Spec 030: the count starts once the weather hold's clear spell has passed (60 s, 6 s at 10x).
+  await expect(held).toContainText(/Lapses in \d+:\d\d with the weather safe, or once the roof is closed\./, { timeout: 15_000 });
   // The same words on Calibrate, where it holds the jog and the run.
   await go(page, '/calibrate');
   const onCalibrate = page.locator('#calibrate-blockers [data-blocker="heldByPerson"]');

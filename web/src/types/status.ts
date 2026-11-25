@@ -223,6 +223,8 @@ export interface RoofStatus {
   target: 'open' | 'closed' | null;
   driving: boolean;
   fromUnknown: boolean;
+  // Spec 030 (absent on older firmware): the move is a blind close (the Hall sensor dead, on time alone).
+  blind?: boolean;
   moveElapsedMs: number;
   moveTimeoutMs: number;
   hall: { level: 'unsettled' | 'low' | 'between' | 'high' | 'rail'; counts: number };
@@ -248,6 +250,11 @@ export interface RoofStatus {
   closePhase: RoofClosePhase;
   // Spec 026: a stand-down's seconds left if nothing wants the roof closed meanwhile (null: not counting; absent: older firmware).
   closeRearmSeconds?: number | null;
+  // Spec 030 (absent on older firmware): the automatic close's weather hold: unsafe seconds added up,
+  // seconds left before the close is wanted (-1: not counting) and whether it has fired.
+  weatherHold?: { countedSeconds: number; leftSeconds: number; fired: boolean };
+  // Spec 030: the roof needs a person (a restart, a fault, the close unable to move), and what for.
+  needsPerson?: { active: boolean; text: string };
   weather: 'safe' | 'unsafe' | 'unknown';
   weatherText: string;
   parkConfirmed: boolean;

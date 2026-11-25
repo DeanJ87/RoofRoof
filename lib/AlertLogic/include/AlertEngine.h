@@ -40,15 +40,19 @@ namespace SQM
             TestBox,
             // Spec 027: N.I.N.A. can't be read, so the park counts as not confirmed.
             NinaLost,
+            // Spec 030: the roof needs a person (critical): a restart with the
+            // position unknown or a fault latched, a Hall sensor failure, the
+            // automatic close unable to move, or a close from an unknown position.
+            NeedsPerson,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::NinaLost) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::NeedsPerson) + 1;
 
         // The roof events constitution II and III require: never off, never
         // held back by the pause, the grace or the master switch.
         constexpr bool isCritical(AlertType type)
         {
-            return type == AlertType::MountNotParked || type == AlertType::RoofNotClosed;
+            return type == AlertType::MountNotParked || type == AlertType::RoofNotClosed || type == AlertType::NeedsPerson;
         }
 
         // How loudly an alert is delivered; set per event in the alert

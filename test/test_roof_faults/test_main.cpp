@@ -455,7 +455,9 @@ void test_clearing_between_the_magnets_leaves_the_position_unknown(void)
     b.step();
     TEST_ASSERT_TRUE(b.roof.clearFault(Origin::Person).accepted);
     TEST_ASSERT_TRUE(b.state() == State::Unknown);
-    TEST_ASSERT_TRUE(b.command(Command::Close, Origin::Automatic).reason == Refusal::PositionUnknown);
+    // Spec 030 (constitution 8.0.0): the automatic close may Close from here, nothing else may move it by itself.
+    TEST_ASSERT_TRUE(b.command(Command::Open, Origin::Automatic).reason == Refusal::PositionUnknown);
+    TEST_ASSERT_TRUE(b.command(Command::Close, Origin::Client).reason == Refusal::PositionUnknown);
     TEST_ASSERT_TRUE(b.command(Command::Close, Origin::Person).accepted);
     TEST_ASSERT_TRUE(b.roof.status().fromUnknown);
 }

@@ -77,7 +77,12 @@ void test_the_test_result_says_safe_unsafe_or_why_not(void)
     TEST_ASSERT_EQUAL_STRING("SQMeter says safe", doc["text"]);
     writeTestResult(doc.to<JsonObject>(), HttpOutcome{200, RAIN_JSON, ""});
     TEST_ASSERT_FALSE(doc["safe"].as<bool>());
-    TEST_ASSERT_EQUAL_STRING("SQMeter says unsafe: reasonFlags 0x200 (rain)", doc["text"]);
+    TEST_ASSERT_EQUAL_STRING("SQMeter says unsafe: rain", doc["text"]);
+    TEST_ASSERT_EQUAL_STRING("", doc["reasons"]);
+    // Spec 030: SQMeter's own words when it sends them.
+    writeTestResult(doc.to<JsonObject>(), HttpOutcome{200, R"({"safe":false,"reasonFlags":512,"reasons":["Rain detected"]})", ""});
+    TEST_ASSERT_EQUAL_STRING("SQMeter says unsafe: Rain detected", doc["text"]);
+    TEST_ASSERT_EQUAL_STRING("Rain detected", doc["reasons"]);
     writeTestResult(doc.to<JsonObject>(), HttpOutcome{-1, "", "connection refused"});
     TEST_ASSERT_TRUE(doc["safe"].isNull());
     TEST_ASSERT_EQUAL_STRING("SQMeter not answering: connection refused", doc["error"]);
@@ -135,6 +140,19 @@ void test_rain_json_then_safe_1_keeps_rain(void)
     TEST_ASSERT_TRUE(r.haveGood);
     TEST_ASSERT_EQUAL_UINT32(512, r.last.reasonFlags);
     TEST_ASSERT_TRUE(r.last.unsafe());
+}
+
+// Spec 030: the <base>/safety payload's reasons are kept with the reply, and
+// a bare <base>/safe after it keeps them as it keeps the flags.
+void test_mqtt_safety_reasons_are_kept(void)
+{
+    SourceRecord r = liveRecord();
+    applyMqttMessage(r, TOPICS, "sqmeter/safety", R"({"safe":false,"reasonFlags":16,"reasons":["Cloud 100% >= 30%"]})", NOW_MS);
+    applyMqttMessage(r, TOPICS, "sqmeter/safe", "0", NOW_MS + 10);
+    TEST_ASSERT_EQUAL_STRING("Cloud 100% >= 30%", r.last.reasons.c_str());
+    r.availability = Availability::Online;
+    const SourceStatus s = assessSource(r, SourceKind::SqmeterMqtt, SourceClock{MQTT_STALE_MS, 0, NOW_MS + 20});
+    TEST_ASSERT_EQUAL_STRING("SQMeter MQTT says unsafe: Cloud 100% >= 30%", describeSource(s).c_str());
 }
 
 void test_safe_0_is_unsafe(void)
@@ -214,6 +232,7 @@ int main(int, char **)
     RUN_TEST(test_safe_0_is_unsafe);
     RUN_TEST(test_bad_payloads_are_unreadable_and_never_good);
     RUN_TEST(test_other_topics_are_ignored);
+    RUN_TEST(test_mqtt_safety_reasons_are_kept);
     RUN_TEST(test_retained_safe_copy_never_counts);
     RUN_TEST(test_retained_unsafe_copy_counts);
     RUN_TEST(test_resubscribe_after_live_messages_skips_the_replay);

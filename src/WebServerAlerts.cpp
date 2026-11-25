@@ -1,5 +1,6 @@
 #include "WebServer.h"
 #include "Logger.h"
+#include "NetState.h"
 #include "PlatformGuard.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
@@ -86,6 +87,7 @@ namespace SQM
         const Core::AlertStep step = Core::runAlerts(alertEngine, in, Core::alertRules(cfg), Core::AlertSources{cfg}, clock);
         keepRoofAnnounced();
         sendAlerts(step, cfg);
+        sendQueuedAlerts(); // spec 030: everything waiting, the roof's critical alerts included
 
         // Only after this pass's alerts went out: a clean disconnect's
         // "imaging app disconnected" is sent before it pauses alerts.
@@ -117,7 +119,49 @@ namespace SQM
         if (step.outgoing.empty())
             return;
         for (const Alerts::Alert &alert : Core::alertsToSend(step.outgoing, cfg.alerts, alertSchedule.state().sending))
-            alertDispatcher->dispatch(alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+            alertOutbox.push(alert, false); // spec 030: sent again until a channel takes it
+    }
+
+    namespace
+    {
+        // A queued alert that no longer goes out (alerts paused or switched off since).
+        constexpr uint32_t HELD_BACK_ID = UINT32_MAX;
+
+        CloseSeq::Delivery deliveryOf(AlertDispatcher::Outcome outcome)
+        {
+            switch (outcome)
+            {
+            case AlertDispatcher::Outcome::Delivered:
+                return CloseSeq::Delivery::Delivered;
+            case AlertDispatcher::Outcome::Pending:
+                return CloseSeq::Delivery::Pending;
+            case AlertDispatcher::Outcome::NoChannel:
+                return CloseSeq::Delivery::NoChannel;
+            default:
+                return CloseSeq::Delivery::Failed;
+            }
+        }
+    } // namespace
+
+    // Spec 030: the outbox sends what is due; a critical alert gets its
+    // settings each time (raiseRoofAlert), the rest go out as they were raised
+    // unless alerts were paused or switched off meanwhile.
+    void WebServer::sendQueuedAlerts()
+    {
+        if (!alertDispatcher)
+            return;
+        const auto send = [this](const CloseSeq::QueuedAlert &queued) -> uint32_t
+        {
+            if (queued.critical)
+                return raiseRoofAlert(queued.alert);
+            const Config &cfg = getConfigCallback();
+            if (!Core::alertGoesOut(queued.alert.type, cfg.alerts, alertSchedule.state().sending))
+                return HELD_BACK_ID;
+            return alertDispatcher->dispatch(queued.alert, cfg.alerts, cfg.deviceName, ALERT_CHANNELS_ALL, channelBlocks());
+        };
+        const auto probe = [this](uint32_t id)
+        { return id == HELD_BACK_ID ? CloseSeq::Delivery::NoChannel : deliveryOf(alertDispatcher->outcome(id)); };
+        alertOutbox.handle(NetState::online(), send, probe);
     }
 
     uint32_t WebServer::raiseRoofAlert(const Alerts::Alert &alert)

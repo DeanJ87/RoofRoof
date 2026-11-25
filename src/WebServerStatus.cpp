@@ -112,16 +112,23 @@ namespace SQM
     ChannelBlocks WebServer::channelBlocks() const
     {
         const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), settingsFacts());
-        auto blocked = [&entries](const char *setting) -> const char *
+        uint8_t passing = 0;
+        auto blocked = [&entries, &passing](const char *setting, AlertChannel channel) -> const char *
         {
             const Deps::Reason *reason = Deps::reasonFor(entries, setting);
-            return reason != nullptr && std::strcmp(reason->code, "alerts-off") != 0 ? reason->text : nullptr;
+            if (reason == nullptr || std::strcmp(reason->code, "alerts-off") == 0)
+                return nullptr;
+            // Spec 030: the network or the broker coming back lets a resend through.
+            if (std::strcmp(reason->code, "wifi-disconnected") == 0 || std::strcmp(reason->code, "mqtt-disconnected") == 0)
+                passing |= alertChannelBit(channel);
+            return reason->text;
         };
         ChannelBlocks blocks{};
-        blocks[static_cast<size_t>(AlertChannel::Mqtt)] = blocked("alerts.mqtt.enabled");         // dep: D-01 D-02
-        blocks[static_cast<size_t>(AlertChannel::Pushover)] = blocked("alerts.pushover.enabled"); // dep: D-03
-        blocks[static_cast<size_t>(AlertChannel::Ntfy)] = blocked("alerts.ntfy.enabled");
-        blocks[static_cast<size_t>(AlertChannel::Webhook)] = blocked("alerts.webhook.enabled");
+        blocks[static_cast<size_t>(AlertChannel::Mqtt)] = blocked("alerts.mqtt.enabled", AlertChannel::Mqtt);             // dep: D-01 D-02
+        blocks[static_cast<size_t>(AlertChannel::Pushover)] = blocked("alerts.pushover.enabled", AlertChannel::Pushover); // dep: D-03
+        blocks[static_cast<size_t>(AlertChannel::Ntfy)] = blocked("alerts.ntfy.enabled", AlertChannel::Ntfy);
+        blocks[static_cast<size_t>(AlertChannel::Webhook)] = blocked("alerts.webhook.enabled", AlertChannel::Webhook);
+        blocks.forNow = passing;
         return blocks;
     }
 

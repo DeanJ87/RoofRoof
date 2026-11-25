@@ -13,7 +13,52 @@ namespace SQM
             {
                 return value.is<uint32_t>();
             }
+
+            // Spec 030: SQMeter's "reasons" array, read on its own so a long one
+            // never costs the verdict its reply: the words are only for people,
+            // and when the pool runs out the part read so far is kept.
+            std::string readReasons(const std::string &body)
+            {
+                StaticJsonDocument<32> filter;
+                filter["reasons"] = true;
+                StaticJsonDocument<512> doc;
+                const DeserializationError error = deserializeJson(doc, body, DeserializationOption::Filter(filter));
+                if (error && error != DeserializationError::NoMemory)
+                    return std::string();
+                std::string text;
+                for (JsonVariantConst item : doc["reasons"].as<JsonArrayConst>())
+                {
+                    if (!item.is<const char *>())
+                        continue;
+                    text += text.empty() ? "" : "; ";
+                    text += item.as<const char *>();
+                    if (text.size() > 2 * MAX_REASONS_TEXT)
+                        break; // enough to fill the kept text
+                }
+                return cleanReasonText(text);
+            }
         } // namespace
+
+        std::string cleanReasonText(const std::string &text, size_t maxBytes)
+        {
+            std::string out;
+            out.reserve(text.size() < maxBytes ? text.size() : maxBytes + 1);
+            for (const char c : text)
+            {
+                const unsigned char byte = static_cast<unsigned char>(c);
+                if (byte < 0x20 || byte == 0x7F)
+                    continue; // control characters never reach a log line or a notification
+                out += c;
+                if (out.size() > maxBytes)
+                    break;
+            }
+            if (out.size() <= maxBytes)
+                return out;
+            size_t cut = maxBytes;
+            while (cut > 0 && (static_cast<unsigned char>(out[cut]) & 0xC0) == 0x80)
+                --cut; // never split a UTF-8 character
+            return out.substr(0, cut);
+        }
 
         ReplyError parseSafetyJson(const std::string &body, SqmeterReply &out)
         {
@@ -37,6 +82,7 @@ namespace SQM
             out.safe = doc["safe"].as<bool>();
             out.reasonFlags = doc["reasonFlags"].as<uint32_t>();
             out.evaluatedAgeMs = age.isNull() ? 0 : age.as<uint32_t>();
+            out.reasons = readReasons(body);
             return ReplyError::None;
         }
 

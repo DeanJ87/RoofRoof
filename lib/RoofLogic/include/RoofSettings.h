@@ -78,6 +78,11 @@ namespace SQM
         constexpr uint32_t JOG_KEEPALIVE_MS = 150;
         constexpr uint32_t JOG_MAX_MS = 30000;
 
+        // Spec 030 (research R6): a blind close judges the supply sag only after
+        // the motor's start-up surge, and stops on a sag held this long.
+        constexpr uint32_t BLIND_SURGE_MS = 1000;
+        constexpr uint32_t BLIND_STALL_MS = 500;
+
         // Whether a supply reading can be believed: finite and at most MAX_SUPPLY_READING_VOLTS.
         bool supplyReadable(float volts);
         // Whether a current reading can be believed: finite and at least MIN_CURRENT_READING_AMPS.
@@ -109,6 +114,9 @@ namespace SQM
             // Spec 023 review: the analog setup that scales the readings passes its
             // checks (Config's analogUsable); false refuses every move.
             bool analogUsable = true;
+            // Spec 030: the blind close is allowed, and its stall threshold.
+            bool blindClose = true;
+            float blindSagVolts = 2.0f;
         };
 
         // Whether `settings` are within the ranges RoofConfig documents. The

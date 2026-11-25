@@ -75,7 +75,8 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `positionKnown`, `positionMm`, `positionPercent` | 0 is closed; `null` while the position is unknown |
 | `target` | `open` or `closed` while opening or closing, else `null` |
 | `driving` | the motor driver is on (false during the 500 ms dead time) |
-| `fromUnknown` | the move started from an unknown position (slow, to the first magnet) |
+| `fromUnknown` | the move started from an unknown position (slow, to the first magnet); a person's, or the [automatic close's](../user-guide/close-on-unsafe.md#closing-when-the-position-is-unknown) |
+| `blind` | spec 030: the move is a [blind close](../user-guide/roof-motion.md#blind-close): the Hall sensor is dead (a Hall rail fault is latched) and the automatic close drives towards closed on time alone, at the slow duty. `state` reads `closing` while it runs and `error` again afterwards |
 | `moveElapsedMs`, `moveTimeoutMs` | time driven in this move and its limit |
 | `hall.level`, `hall.counts` | `unsettled`, `low`, `between`, `high` or `rail`, and the raw 12-bit reading ([calibration](../hardware/calibration.md)) |
 | `supplyVolts`, `supplyLow`, `minSupplyVolts` | the 12 V supply (`null` when unreadable), whether it is unreadable or below the minimum, and the minimum |
@@ -83,7 +84,9 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `parkSwitches` | `fitted` (0-2) and each switch: `closed`, `open`, `unreadable` or `notFitted`; `switchesOnly`: the park switches are the only park source (`park.source` `switches`); `openings`: for each switch, roof openings since it last read open (kept across restarts); `check`: with the switches only, why Open is refused because a switch hasn't opened in the last 3 roof openings (`parkSwitchCheck`), else `null` ([Safety inputs](../user-guide/safety-inputs.md#park-switches-only)) |
 | `closePending` | a close was accepted and waits for an upload or MQTT connect to finish |
 | `calibrating` | a [calibration run](../user-guide/calibration-run.md) is under way, pauses at each end included; open and close are refused (`calibrating`) and the Stop bar shows |
-| `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
+| `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase (`cannotMove` now means a fault the blind close can't answer, a blind close that has ended, or a roof controller that didn't start; an unknown position closes slowly instead): `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
+| `weatherHold` | spec 030: the automatic close's [weather hold](../user-guide/close-on-unsafe.md#the-weather-hold): `countedSeconds` (unsafe time added up), `leftSeconds` (until the close is wanted; `-1` while it isn't counting down, or once it has fired) and `fired` (the close is wanted). The verdict, `weather` and the refusal of Open are not delayed by it. Only in the status document, not on MQTT |
+| `needsPerson` | spec 030: `active` (the roof needs a person: a restart with the position unknown or a fault latched, a Hall sensor failure, the automatic close unable to move; also the MQTT state's `roof.needsPerson.active`) and `text` (what for and what to do; `""` when not active; only in the status document) |
 | `closeRearmSeconds` | spec 026: while the automatic close stands down (`heldByPerson`, `halted`), the seconds until it ends by itself if the weather stays safe and daylight doesn't want the roof closed; `null` while it isn't counting down (idle, or something wants the roof closed now) |
 | `parkWait`, `parkWaitEnded` | spec 027: `null`, or while an Open or Close waits for the mount to park `{ "command": "open"\|"close", "origin": "person"\|"alpaca"\|"mqtt"\|"automatic", "leftSeconds", "asked" }` (`leftSeconds` until the wait gives up, `asked`: N.I.N.A. has been asked to park); `parkWaitEnded` is the text of the last wait that ended without running (it gave up, or another check refused the command), or `null`. An Alpaca client reads that as an error until its next command |
 | `override`, `openOverridable` | spec 027: the names (`weatherNotSafe`, `daylight`, `mountNotParked`) of the person's confirmed overrides in effect now, and of the refusals a person may override for an Open now (`weatherNotSafe` only while SQMeter alone says unsafe: never for rain or a source in doubt) |
@@ -297,12 +300,12 @@ curl -u admin:password -X POST http://roofroof.local/api/sqmeter/test \
 ```
 
 ```json
-{ "safe": false, "reasonFlags": 512, "text": "SQMeter says unsafe: reasonFlags 0x200 (rain)" }
+{ "safe": false, "reasonFlags": 512, "reasons": "Rain 4.2 mm/h", "text": "SQMeter says unsafe: Rain 4.2 mm/h" }
 ```
 
 | Status | When |
 |---|---|
-| 200 | SQMeter answered: `safe`, `reasonFlags` and `text` |
+| 200 | SQMeter answered: `safe`, `reasonFlags`, `reasons` (SQMeter's own reasons text, joined with "; ", at most 160 bytes; `""` when it sent none) and `text` (SQMeter's reasons, or without them the flags as words: "rain") |
 | 400 | no address set, or not a valid address |
 | 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
 | 502 | `error` says why: `"SQMeter not answering: connection refused"`, `"SQMeter wants a password"`, `"SQMeter refused the password"`, `"That address answered HTTP 404, not like SQMeter's /api/safety"`, or `"That address answered, but not like SQMeter's /api/safety (missing safe)"` (another of SQMeter's pages, say) |
@@ -672,8 +675,8 @@ The weather sources, the park and N.I.N.A. as the device last evaluated them (on
   "weather": {
     "verdict": "safe",
     "text": "safe",
-    "http": { "enabled": true, "state": "good", "generation": 1, "ageMs": 2100, "limitMs": 30000, "safe": true, "flags": 0, "text": "" },
-    "mqtt": { "enabled": false, "state": "off", "generation": 0, "ageMs": 0, "limitMs": 150000, "safe": false, "flags": 0, "text": "" }
+    "http": { "enabled": true, "state": "good", "generation": 1, "ageMs": 2100, "limitMs": 30000, "safe": true, "flags": 0, "reasons": "", "text": "" },
+    "mqtt": { "enabled": false, "state": "off", "generation": 0, "ageMs": 0, "limitMs": 150000, "safe": false, "flags": 0, "reasons": "", "text": "" }
   },
   "park": { "parked": true, "text": "parked" },
   "nina": { "state": "good", "generation": 1, "connected": true, "atPark": true, "slewing": false, "ageMs": 900, "text": "" }
@@ -683,7 +686,7 @@ The weather sources, the park and N.I.N.A. as the device last evaluated them (on
 | Field | |
 |---|---|
 | `weather.verdict`, `weather.text` | `safe`, `unsafe` or `unknown`, and the same text as `roof.weatherText` in the status |
-| `weather.http`, `weather.mqtt` | Each SQMeter source: `state` (`off`, `waiting`, `good`, `stale`, `unreachable`, `unreadable`, `offline`), `ageMs` since its last good reply, the stale `limitMs`, SQMeter's `safe` and `flags` (its `reasonFlags`) from that reply, and the reason `text` ("" when off, or good and safe) |
+| `weather.http`, `weather.mqtt` | Each SQMeter source: `state` (`off`, `waiting`, `good`, `stale`, `unreachable`, `unreadable`, `offline`), `ageMs` since its last good reply, the stale `limitMs`, SQMeter's `safe` and `flags` (its `reasonFlags`) from that reply, `reasons` (SQMeter's own reasons text from that reply, `""` when it is safe or sent none; without it `text` words the flags: "cloud cover", "rain"), and the reason `text` ("" when off, or good and safe) |
 | `park.parked`, `park.text` | The park rule's answer, as `roof.parkConfirmed` and `roof.parkText` |
 | `nina.state` | `notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`; `connected`, `atPark` and `slewing` only mean something when it is `good`; `ageMs` since the reading; `text` the failure |
 | `…generation` | Goes up when that source's settings change (its record starts again), so a client can tell a reading of the new settings from an old one |

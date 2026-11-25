@@ -1,10 +1,10 @@
 // 0 off, 1 quiet, 2 normal, 3 urgent, 4 wake me
 export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 
-// The roof's events (spec 007; the first two critical: never off, never held
+// The roof's events (spec 007; the critical ones (spec 030 adds needs_person): never off, never held
 // back by the pause or the master switch), then the imaging-app events
 // (SQMeter spec 021).
-export type RoofCriticalEventKey = 'mount_not_parked' | 'roof_not_closed';
+export type RoofCriticalEventKey = 'mount_not_parked' | 'roof_not_closed' | 'needs_person';
 export type DaylightEventKey = 'daylight_open' | 'daylight_closed' | 'daylight_unknown';
 export type RoofEventKey =
   | RoofCriticalEventKey
