@@ -1,6 +1,46 @@
 <!--
 Sync Impact Report
-- Version: 5.0.1 -> 6.0.0 (MAJOR: Principle II's test-box exception loses a refusal, which relaxes
+- Version: 6.0.0 -> 7.0.0 (MAJOR: a person may confirm past two guards, which relaxes Principles II
+  and III; a Hall rail reading at rest clears itself, which relaxes Principle I. The park check now
+  also gates Open and commands wait for the park, which is more protective).
+- Modified: I. Motion Safety. A Hall reading at a rail that latched with the motor off clears itself
+  after 60 s of readings off the rails with the roof at rest, also after a restart (the stored fault
+  record carries the flag; records from before 7.0.0 wait for a person); the position is then read
+  afresh. One that latched while driving still waits for a person. A rail reading at rest in the
+  first 500 ms after start-up isn't judged (a power-up transient latched the fault at every boot).
+- New risk (I): an intermittent Hall connector at rest is no longer held for a person. Mitigations:
+  the clear needs a minute of good readings at rest; a rail while driving still latches for a person
+  and stops the motor at once; the position is unknown until the Hall reads a magnet again, so the
+  roof can't move by itself from where it doesn't know it is.
+- Modified: II. Close Only Onto a Parked Mount. The park rule gates Open as well as Close (a roll-off
+  roof moving over a telescope that points up can hit it either way), and its re-check runs during an
+  open. An Open or Close refused only for the park waits for it when N.I.N.A. can be asked (Principle
+  III's park request, from every origin) and moves only once the park is confirmed, with the same time
+  limit and critical alert as the automatic close. New: **a person's confirmed close**: a person,
+  authenticated, after a warning that the mount is not confirmed parked, may close once without the
+  park check (start and re-check). Alpaca, MQTT and the automatic close never can.
+- New risk (II): a person who confirms "Close anyway" with the mount not parked closes onto it. Before,
+  only a mount parked by N.I.N.A. or the switches could be closed onto. Mitigations: only a person
+  with the password, only from a dialog that says the roof could hit the telescope, only for that one
+  close (the next one checks again), never from Alpaca, MQTT, Home Assistant or the automatic close;
+  the device first asks N.I.N.A. to park when it can.
+- Modified: III. Unsafe Ends Closed. "Refused while the verdict is unsafe" gains **a person's confirmed
+  open**: a person, authenticated, may open past daylight and past SQMeter's own "unsafe" for anything
+  but rain, naming each reason. Rain, a failed rain sensor and every kind of doubt about the source
+  (missing, stale, unreachable, unreadable, offline) can't be overridden. The override lasts until the
+  roof reads closed, a Close, the overridden reasons clearing, or a reason not overridden appearing;
+  meanwhile those reasons don't stop the open or start the automatic close.
+- New risk (III): the roof can stand open in cloud or wind SQMeter calls unsafe, or in daylight, with
+  the automatic close standing back for those reasons. Mitigations: never for rain or doubt about the
+  source, which still close the roof at once; the override is shown on every interface while in
+  effect; it ends by itself when its reasons clear; only a person with the password can set it.
+- Clarified (III, no rule change): the test box's weather bypass stays out of effect while an SQMeter
+  source is on, so a silent SQMeter still closes the roof.
+- Why: owner decisions after the first nights with a real N.I.N.A. (spec 027).
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/roof-motion.md,
+  docs/user-guide/safety-inputs.md, docs/user-guide/dashboard.md, docs/user-guide/alpaca.md,
+  specs/027-nina-park-and-open-guards/spec.md.
+- Earlier: 5.0.1 -> 6.0.0 (MAJOR: Principle II's test-box exception loses a refusal, which relaxes
   it; Principle III states the stand-down after a person's stop and gains a way it ends, which is
   more protective).
 - Modified: II. Close Only Onto a Parked Mount, the test-box exception. "No telescope" still never
@@ -239,7 +279,11 @@ nothing has gone wrong.
   - a timeout or "no magnet before the timeout";
   - over-current or a stall, when current sense is fitted;
   - the magnet for the wrong end;
-  - a Hall reading at either rail (sensor disconnected);
+  - a Hall reading at either rail (sensor disconnected). One that latched with the motor off
+    clears itself after 60 s of readings off the rails with the roof at rest (also after a restart:
+    the stored fault says it latched at rest), and the position is then unknown until the Hall reads
+    a magnet; one that latched while driving waits for a person. A rail reading at rest in the first
+    500 ms after start-up (the sensor and the ADC settling) isn't judged; no move can start then;
   - supply voltage below its limit;
   - a missed control-loop deadline.
 
@@ -256,8 +300,9 @@ nothing has gone wrong.
 
 Closing onto an unparked telescope is the most expensive failure this device can cause.
 
-- The roof MUST NOT close unless the mount is confirmed parked by its park source (`park.source`),
-  all fresh at the moment the close starts:
+- The roof MUST NOT open or close unless the mount is confirmed parked by its park source
+  (`park.source`), all fresh at the moment the move starts (a roof already at the end asked for has
+  nothing to do and isn't checked):
   - **N.I.N.A. only**: N.I.N.A. reports `AtPark`;
   - **N.I.N.A. and park switches**: N.I.N.A. reports `AtPark` AND every fitted park switch
     (`park.switches`) is closed;
@@ -274,9 +319,15 @@ Closing onto an unparked telescope is the most expensive failure this device can
   and refuses Open until it has been seen open.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed.
-- Every close request is checked the same way, whatever its source: Alpaca `CloseShutter`, the
-  web UI, MQTT, Home Assistant or the automatic close. No path skips the check.
-- The park interlock is re-checked throughout the close. A mount that reports unparked, or a fitted
+- Every open and close request is checked the same way, whatever its source: Alpaca
+  `OpenShutter` and `CloseShutter`, the web UI, MQTT, Home Assistant or the automatic close. A request
+  refused only for the park waits for it when N.I.N.A. can be asked (Principle III's steps 2 and 3,
+  with their time limit and critical alert) and moves only once the park is confirmed; otherwise it
+  is refused saying why. No path skips the check, except a person's confirmed close (below).
+- **A person's confirmed close.** A person (authenticated), warned that the mount is not confirmed
+  parked and the roof could hit the telescope, may confirm one close without the park check, at its
+  start and during it. Alpaca, MQTT, Home Assistant and the automatic close never can.
+- The park interlock is re-checked throughout an open and a close. A mount that reports unparked, or a fitted
   park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
   source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
   unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
@@ -316,7 +367,14 @@ Doubt about the weather MUST resolve to "unsafe".
 - Losing every way to confirm the park while unsafe leaves the roof open and raises a critical
   alert. The alert path MUST NOT depend on the device that failed where another path exists.
 - The roof MUST NOT open by itself. Opening is always a person's or a client's command, and it is
-  refused while the verdict is unsafe.
+  refused while the verdict is unsafe, except a person's confirmed open.
+- **A person's confirmed open.** A person (authenticated) may open past daylight and past the
+  weather source's own report of unsafe for anything but rain, naming each reason after they are
+  listed. Rain, a failed rain sensor and any doubt about a source (missing, stale, unreachable,
+  unreadable, offline) can't be overridden. The override lasts until the roof reads closed, a close
+  is accepted, the overridden reasons clear, or a reason not overridden appears; meanwhile those
+  reasons neither stop the open nor start the automatic close, and everything else does. It is shown
+  on every interface while in effect. Alpaca, MQTT and Home Assistant never override.
 - **A person's stop.** A person's Stop during the automatic close stands it down, so the close
   never fights someone at the roof; it raises a critical alert. The stand-down ends, and the close
   is armed again, when the roof reads closed, when the weather has been safe for the re-arm spell,
@@ -514,4 +572,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 6.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-24
+**Version**: 7.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
