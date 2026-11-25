@@ -233,6 +233,9 @@ export const demoHandlers = [
       : HttpResponse.json({ error: 'Missing X-RoofRoof header' }, { status: 403 }),
   ),
   http.get('/api/diag/moves/:id', ({ request, params }) => diagMoveReply(Number(params.id), request)),
+  // Crash capture (spec 029): the firmware's writers; the demo doesn't crash
+  http.get('/api/diag/crashes', () => HttpResponse.text(demoDevice.crashesDocument())),
+  http.get('/api/diag/log', () => HttpResponse.text(demoDevice.logDocument())),
 
   // Network (simulated: nothing is contacted)
   http.get('/api/wifi/scan', () => HttpResponse.json({ success: true, scanning: false, networks: mockWifiNetworks })),

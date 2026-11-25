@@ -44,5 +44,7 @@ EMSCRIPTEN_BINDINGS(roofroof_core)
         .function("diagDocument", &EmulatedDevice::diagDocument)
         .function("diagMoves", &EmulatedDevice::diagMoves)
         .function("diagMove", &EmulatedDevice::diagMove)
-        .function("diagClear", &EmulatedDevice::diagClear);
+        .function("diagClear", &EmulatedDevice::diagClear)
+        .function("crashesDocument", &EmulatedDevice::crashesDocument)
+        .function("logDocument", &EmulatedDevice::logDocument);
 }

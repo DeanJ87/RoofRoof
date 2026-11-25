@@ -8,6 +8,7 @@ import { clearMoves, fetchDiag, fetchFile, fetchMove, fetchMoves, moveUrl } from
 import { LiveBuffer } from '../lib/diagChart';
 import { bodyOf } from '../lib/api';
 import { Button, Card, Note, Pill, ReadingRow } from './ui';
+import CrashesCard from './diagnostics/CrashesCard';
 import DiagChart from './diagnostics/DiagChart';
 import {
   ControlCard,
@@ -27,7 +28,8 @@ import { formatCount, formatDateTime, formatNumber } from '../i18n/format';
 // Advanced diagnostics (spec 017 FR-032, FR-033): live tiles from /ws/diag,
 // the move in progress or a chosen move as a chart, the move list with its
 // downloads, and Clear log. With the mode off the page says so and opens no
-// stream. Stop stays in the Layout's bar.
+// stream. Stop stays in the Layout's bar. The Crashes card (spec 029) shows
+// either way: crash capture always runs.
 
 const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 const DASH = '--';
@@ -341,6 +343,7 @@ const LiveBody: FunctionalComponent<{ live: DiagLive; buffer: LiveBuffer }> = ({
       <SourcesCard />
       <DeviceCard live={live} />
       <MemoryCard live={live} />
+      <CrashesCard />
     </div>
   );
 };
@@ -357,6 +360,7 @@ const Diagnostics: FunctionalComponent = () => {
       <Card title={t('diagnostics.title')} icon="cpu">
         {doc ? <DiagOffNote /> : <Note tone="bad">{t('diagnostics.unreachable')}</Note>}
       </Card>
+      <CrashesCard />
     </div>
   );
 };

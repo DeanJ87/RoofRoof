@@ -128,6 +128,10 @@ public:
     std::string diagMove(double id, bool csv) const;
     // POST /api/diag/moves/clear: {status, body} like the device (409 while moving).
     std::string diagClear();
+    // Spec 029: GET /api/diag/crashes (no records: the demo doesn't crash) and
+    // GET /api/diag/log (one line saying the demo keeps no log), plain text by the firmware's writers.
+    std::string crashesDocument() const;
+    std::string logDocument() const;
 
     // --- Settings ----------------------------------------------------------
     std::string getConfig(bool redacted) const { return cfg.toJson(redacted); }

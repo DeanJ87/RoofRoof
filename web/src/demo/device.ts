@@ -260,6 +260,10 @@ class DemoDevice {
   diagMoves = () => this.core.diagMoves();
   diagMove = (id: number, csv: boolean) => this.core.diagMove(id, csv);
 
+  /** GET /api/diag/crashes and /api/diag/log (spec 029). */
+  crashesDocument = () => this.core.crashesDocument();
+  logDocument = () => this.core.logDocument();
+
   /** POST /api/diag/moves/clear (spec 017): refused while the roof moves. */
   diagClear(): Reply {
     const reply = JSON.parse(this.core.diagClear());

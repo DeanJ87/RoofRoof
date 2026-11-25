@@ -22,7 +22,7 @@ SOURCES=(tools/demo-core/bridge.cpp tools/demo-core/emulated_device.cpp tools/de
   lib/SettingsDeps/src/*.cpp lib/NetAddress/src/*.cpp lib/ConfigBackup/src/*.cpp
   lib/RoofLogic/src/*.cpp lib/DriverLogic/src/*.cpp lib/RoofPlantLogic/src/*.cpp lib/RoofIoLogic/src/*.cpp
   lib/CloseSequenceLogic/src/*.cpp lib/CalibrationLogic/src/*.cpp lib/SafetyInputLogic/src/*.cpp lib/NinaLogic/src/*.cpp lib/DaylightLogic/src/*.cpp
-  lib/DiagLogic/src/*.cpp lib/BoardLogic/src/*.cpp)
+  lib/DiagLogic/src/*.cpp lib/BoardLogic/src/*.cpp lib/CrashLogic/src/*.cpp)
 INCLUDES=()
 for d in lib/*/include; do INCLUDES+=("-I$d"); done
 
