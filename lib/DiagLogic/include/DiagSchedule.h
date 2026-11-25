@@ -7,14 +7,16 @@
 
 #include <cstdint>
 
+#include "ConnectionBudget.h"
 #include "SummaryList.h"
 
 namespace SQM
 {
     namespace Diag
     {
-        constexpr uint32_t STREAM_MOVING_MS = 250;
-        constexpr uint32_t STREAM_REST_MS = 2000;
+        // The live schedule both streams share (spec 028).
+        constexpr uint32_t STREAM_MOVING_MS = ConnectionBudget::LIVE_MOVING_MS;
+        constexpr uint32_t STREAM_REST_MS = ConnectionBudget::LIVE_REST_MS;
         constexpr uint32_t MQTT_LIVE_MS = 60000;
         constexpr const char *MQTT_LIVE_SUBTOPIC = "diag";
         constexpr const char *MQTT_MOVE_SUBTOPIC = "diag/move";

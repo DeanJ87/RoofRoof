@@ -4,6 +4,7 @@ import { backupReply } from './backup';
 import { existingRealSender, withRealResults } from './realSend';
 import { mockStatus, mockWifiNetworks } from '../mocks/data';
 import { ROOF_COMMAND_HEADER } from '../lib/api';
+import { liveIntervalMs } from '../lib/liveStream';
 
 // The demo's requests, answered by the emulated device (./device.ts) the way
 // the firmware answers them. Anything a real device would send somewhere
@@ -133,7 +134,7 @@ const diagMoveReply = (id: number, request: Request) => {
   });
 };
 
-// The roof moves: /ws/diag sends every 250 ms then, every 2 s otherwise (spec 017).
+// The roof moves: both streams send every 500 ms then, every 2 s otherwise (spec 028).
 const roofMoving = () => {
   const state = (demoDevice.statusParts().roof as { state?: string } | undefined)?.state;
   return state === 'opening' || state === 'closing';
@@ -255,9 +256,14 @@ export const demoHandlers = [
 
   // Live updates, at the device's rates
   ws.link('*/ws/status').addEventListener('connection', ({ client }) => {
-    const send = () => client.send(JSON.stringify(statusDocument()));
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    // On the live schedule, restarted by every send (as the device does).
+    const send = () => {
+      if (timer) clearTimeout(timer);
+      client.send(JSON.stringify(statusDocument()));
+      timer = setTimeout(send, liveIntervalMs(roofMoving()));
+    };
     send();
-    const interval = setInterval(send, 2000);
     // As on the device: a change to the recent alerts, the settings or the
     // roof's state or fault is pushed at once.
     const revisions = () => `${recentRevision()}:${configRevision()}:${roofRevision()}`;
@@ -270,7 +276,7 @@ export const demoHandlers = [
       }
     });
     client.addEventListener('close', () => {
-      clearInterval(interval);
+      if (timer) clearTimeout(timer);
       unsubscribe();
     });
   }),
@@ -284,7 +290,7 @@ export const demoHandlers = [
         return;
       }
       client.send(document);
-      timer = setTimeout(send, roofMoving() ? 250 : 2000);
+      timer = setTimeout(send, liveIntervalMs(roofMoving()));
     };
     send();
     client.addEventListener('close', () => {

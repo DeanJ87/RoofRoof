@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 // How the device's TCP connections are shared (SQMeter spec 011 FR-008, 013
 // FR-012). lwIP allows CONFIG_LWIP_MAX_ACTIVE_TCP (16) at once; every HTTP
@@ -47,6 +48,19 @@ namespace SQM
         constexpr bool stalledTooLong(unsigned long fullSinceMs, unsigned long nowMs)
         {
             return fullSinceMs != 0 && nowMs - fullSinceMs >= STALL_CLOSE_MS;
+        }
+
+        // Live updates (spec 028): both streams (/ws/status, /ws/diag) send on
+        // connect and then at one rate: every 2 s at rest, every 500 ms while the
+        // roof is opening or closing. A status document is about 4 KB, so three
+        // clients at this rate stay near 24 KB/s during a move.
+        constexpr uint32_t LIVE_REST_MS = 2000;
+        constexpr uint32_t LIVE_MOVING_MS = 500;
+
+        // How long after the last live update the next one is due.
+        constexpr uint32_t liveIntervalMs(bool roofMoving)
+        {
+            return roofMoving ? LIVE_MOVING_MS : LIVE_REST_MS;
         }
 
         // Should a new client's endpoint drop its oldest client?

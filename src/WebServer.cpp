@@ -1,6 +1,7 @@
 #include "WebServer.h"
 #include "AlpacaDiscovery.h"
 #include "CaptivePortal.h"
+#include "ConnectionBudget.h"
 #include "HeapTrace.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
@@ -324,16 +325,23 @@ namespace SQM
 
         sendPendingAlertTest();
 
-        // Status every 2 seconds, and at once when the recent alerts or the
-        // settings change, or (at most every 250 ms) the roof's state or fault
-        // or the automatic close's phase (spec 008).
+        broadcastStatusIfDue(now);
+    }
+
+    // Status on the live schedule (spec 028: every 2 s, every 500 ms while the
+    // roof moves), and at once when the recent alerts or the settings change,
+    // or (at most every 250 ms) the roof's state or fault or the automatic
+    // close's phase (spec 008).
+    void WebServer::broadcastStatusIfDue(uint32_t now)
+    {
         const uint32_t alertsRevision = alertDispatcher ? alertDispatcher->recentRevision() : 0;
         const uint32_t roofRevision = roof != nullptr ? roof->revision() : 0;
         const char *phase = closePhase ? closePhase() : nullptr;
         const bool roofChanged =
             (roofRevision != lastRoofRevision || phase != lastClosePhase) && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
         const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
-        if (now - lastStatusBroadcast >= WS_STATUS_BROADCAST_INTERVAL_MS || changed)
+        const bool moving = roof != nullptr && Diag::moving(roof->state());
+        if (now - lastStatusBroadcast >= ConnectionBudget::liveIntervalMs(moving) || changed)
         {
             broadcastStatusData();
             lastStatusBroadcast = now;
