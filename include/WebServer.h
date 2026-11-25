@@ -199,6 +199,7 @@ namespace SQM
         // Spec 029 (src/WebServerCrash.cpp).
         void setupCrashRoutes();
         void handleCrashDocument(AsyncWebServerRequest *request);
+        void handleHeapCensus(AsyncWebServerRequest *request); // spec 038
         uint32_t lastRoofRevision = 0;
         uint32_t lastRoofBroadcast = 0;
         ClosePhase closePhase;
