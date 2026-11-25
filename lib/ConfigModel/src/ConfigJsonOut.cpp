@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "ConfigJson.h"
 #include "ConfigPins.h"
 #include <ArduinoJson.h>
 
@@ -232,40 +233,44 @@ namespace SQM
 
     std::string Config::toJson(bool redactSecrets, bool includeAlerts) const
     {
-        DynamicJsonDocument doc(9728); // see alertsToJson; spec 023 added the pins and analog groups, spec 027 an event
-        doc["deviceName"] = deviceName;
-        appendNetwork(doc, *this, redactSecrets);
-        appendTime(doc, *this);
-        doc.createNestedObject("alpaca")["enabled"] = alpaca.enabled;
-        appendSafety(doc, *this, redactSecrets);
-        appendRoof(doc, roof);
-        ConfigPins::write(doc.createNestedObject("pins"), pins);
-        ConfigPins::writeAnalog(doc.createNestedObject("analog"), analog);
-        doc.createNestedObject("network")["mode"] = network.mode == NetworkConfig::Mode::Ethernet ? "ethernet"
-                                                    : network.mode == NetworkConfig::Mode::Wifi   ? "wifi"
-                                                                                                  : "auto";
-        appendDaylight(doc, *this);
-        appendSync(doc, sqmeterSync);
-        JsonObject setupOut = doc.createNestedObject("setup");
-        setupOut["state"] = setupStateName(setup.state);
-        setupOut["step"] = setup.step;
-        JsonObject diagOut = doc.createNestedObject("diag");
-        diagOut["enabled"] = diag.enabled;
-        diagOut["keepSummaries"] = diag.keepSummaries;
-        diagOut["mqtt"] = diag.mqtt;
-        appendAutoClose(doc, *this);
-        JsonObject testBoxOut = doc.createNestedObject("testBox");
-        testBoxOut["park"] = testBox.park;
-        testBoxOut["weather"] = testBox.weather;
-        testBoxOut["daylight"] = testBox.daylight;
-        testBoxOut["hours"] = testBox.hours;
-        testBoxOut["until"] = testBox.until;
-        if (includeAlerts)
-            appendAlerts(doc.createNestedObject("alerts"), alerts, redactSecrets, AlertsPart::All);
-
+        DynamicJsonDocument doc(ConfigJson::CAPACITY);
+        ConfigJson::write(*this, doc, redactSecrets, includeAlerts);
         std::string output;
         serializeJson(doc, output);
         return output;
+    }
+
+    void ConfigJson::write(const Config &c, JsonDocument &doc, bool redactSecrets, bool includeAlerts)
+    {
+        doc["deviceName"] = c.deviceName;
+        appendNetwork(doc, c, redactSecrets);
+        appendTime(doc, c);
+        doc.createNestedObject("alpaca")["enabled"] = c.alpaca.enabled;
+        appendSafety(doc, c, redactSecrets);
+        appendRoof(doc, c.roof);
+        ConfigPins::write(doc.createNestedObject("pins"), c.pins);
+        ConfigPins::writeAnalog(doc.createNestedObject("analog"), c.analog);
+        doc.createNestedObject("network")["mode"] = c.network.mode == NetworkConfig::Mode::Ethernet ? "ethernet"
+                                                    : c.network.mode == NetworkConfig::Mode::Wifi   ? "wifi"
+                                                                                                    : "auto";
+        appendDaylight(doc, c);
+        appendSync(doc, c.sqmeterSync);
+        JsonObject setupOut = doc.createNestedObject("setup");
+        setupOut["state"] = setupStateName(c.setup.state);
+        setupOut["step"] = c.setup.step;
+        JsonObject diagOut = doc.createNestedObject("diag");
+        diagOut["enabled"] = c.diag.enabled;
+        diagOut["keepSummaries"] = c.diag.keepSummaries;
+        diagOut["mqtt"] = c.diag.mqtt;
+        appendAutoClose(doc, c);
+        JsonObject testBoxOut = doc.createNestedObject("testBox");
+        testBoxOut["park"] = c.testBox.park;
+        testBoxOut["weather"] = c.testBox.weather;
+        testBoxOut["daylight"] = c.testBox.daylight;
+        testBoxOut["hours"] = c.testBox.hours;
+        testBoxOut["until"] = c.testBox.until;
+        if (includeAlerts)
+            appendAlerts(doc.createNestedObject("alerts"), c.alerts, redactSecrets, Config::AlertsPart::All);
     }
 
 } // namespace SQM
