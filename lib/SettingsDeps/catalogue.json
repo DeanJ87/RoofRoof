@@ -235,6 +235,7 @@
         "alerts.events.unsafe_closing.level",
         "alerts.events.roof_closed.level",
         "alerts.events.safety_lost.level",
+        "alerts.events.nina_lost.level",
         "alerts.events.daylight_open.level",
         "alerts.events.daylight_closed.level",
         "alerts.events.daylight_unknown.level",
@@ -265,10 +266,9 @@
         "mqtt.homeAssistant.enabled",
         "mqtt.homeAssistant.alertsSwitch"
       ],
-      "dependsOn": "MQTT on; the Alerts switch also needs alerts on",
+      "dependsOn": "MQTT on",
       "reasons": [
-        "mqtt-off",
-        "alerts-off"
+        "mqtt-off"
       ]
     },
     {

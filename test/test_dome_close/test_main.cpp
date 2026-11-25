@@ -164,8 +164,13 @@ void test_mqtt_open_and_stop_loop_still_ends_closed(void)
         3600ull * 1000,
         [&](uint64_t t)
         {
+            // Spec 027: an Open of a roof already open succeeds with nothing to do.
             if (t % 900 == 0)
-                TEST_ASSERT_FALSE(roof.command(Command::Open, Origin::Mqtt));
+            {
+                const bool open = roof.bench.state() == State::Open;
+                TEST_ASSERT_TRUE(roof.command(Command::Open, Origin::Mqtt) == open);
+                TEST_ASSERT_TRUE(roof.bench.state() != State::Opening);
+            }
             if (t % 1300 == 0)
             {
                 const bool closing = roof.bench.state() == State::Closing || roof.closePending;

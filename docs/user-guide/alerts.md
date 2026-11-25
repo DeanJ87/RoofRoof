@@ -17,7 +17,7 @@ Configure everything in **Settings → Alerts**: turn on **Send alerts** (the ma
 <!-- diagram: DIA-06
 sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
 blocking: false
-fingerprint: 75445b0933b9d1cf
+fingerprint: e90507e40444db68
 -->
 <figure class="diagram" markdown>
 
@@ -25,17 +25,17 @@ fingerprint: 75445b0933b9d1cf
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
     accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch, and is sent again until a channel takes it.
-    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
+    CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>N.I.N.A. can't be reached;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
-    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source, open in daylight)<br/>or 10 min (daylight check), or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
+    HELD -->|yes| LATER["<b>Sent later if it still holds</b><br/>in the start-up minute, in its first 30 s<br/>(supply, weather source, open in daylight)<br/>or 10 min (daylight check) or 1 min (N.I.N.A.),<br/>or within the<br/>cooldown, 5 min by default<br/>(not &quot;imaging app is back&quot;)"]
     HELD -->|no| WORDING["Default or your own wording;<br/>events raised together become one notification"]
     WORDING --> ON{"Sending alerts?"}
     ON -->|"no: paused, or waiting for an imaging app"| NOTHING["Nothing sent"]
     ON -->|yes| MASTER{"Send alerts on?"}
     MASTER -->|no| NOPUSH["No channel is used"]
     MASTER -->|yes| INEFFECT{"Channel in effect?"}
-    CRITICAL(["Critical roof alert<br/>the mount didn't park,<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me (Urgent at most on a test box)"]
+    CRITICAL(["Critical roof alert<br/>the mount didn't park (automatic close,<br/>or a move waiting for the park),<br/>the roof didn't close"]) --> CWORDING["Default or your own wording, reason kept;<br/>Urgent or Wake me (Urgent at most on a test box)"]
     CWORDING -->|"never paused, never switched off"| INEFFECT
     SENT --> AGAIN["Critical alert no channel took:<br/>sent again after 1 min, doubling to 30 min"]
     INEFFECT -->|"no: MQTT off,<br/>no network"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
@@ -55,16 +55,16 @@ flowchart TB
 
 ??? info "Diagram in words"
 
-    1. The device compares the roof (a fault, the supply, the weather sources, the automatic close, the daylight failsafe) and the imaging app (is each Alpaca device still being checked?) with what you were last told, every second.
+    1. The device compares the roof (a fault, the supply, the weather sources, the automatic close, the daylight failsafe, N.I.N.A.) and the imaging app (is each Alpaca device still being checked?) with what you were last told, every second.
     2. **Tracked silently, never announced**: an event whose level is Off, and imaging-app events for a device no app has used since boot.
-    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply, a lost weather source or the roof open in daylight for its first 30 seconds; the daylight check unable to run for its first 10 minutes; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" is not held by the cooldown.
+    3. **Held back for now, sent later if still true**: anything in the first minute after a start; a low supply, a lost weather source or the roof open in daylight for its first 30 seconds; the daylight check unable to run for its first 10 minutes; N.I.N.A. unreachable for its first minute; a change within the cooldown since that event's last alert (5 minutes by default). "The imaging app is back" is not held by the cooldown.
     4. The alert gets its default or custom wording; events raised in the same second become one notification.
     5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical roof alerts.
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
     7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without a network: WiFi or Ethernet) is **skipped** with the reason, and nothing is attempted.
     8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
-    10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts) and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
+    10. **Critical roof alerts** (the mount didn't park, the roof didn't close) come from the [close on unsafe weather](close-on-unsafe.md#alerts), or from an open or close that waited for the park and gave up, and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on; one that no channel took is sent again after a minute, then at doubling gaps up to 30 minutes.
 
 ---
 
@@ -176,6 +176,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - **Roof closed after daylight** (`daylight_closed`, default Normal): the roof reached closed during a close that began because of daylight; `{reason}` is the sun.
 - **Test box mode on** (`test_box`, default Urgent): a bypass of [test box mode](test-box.md) has come into effect (turned on, or a new one added). A restart doesn't send it again for a bypass already in effect: the banner on every page and the status keep showing it. `{reason}` is the bypass text ("Test box: park check (no telescope), weather check (no weather source) bypassed until 2026-11-26 12:26 UTC"), and the message ends "Faults still stop the roof." Its level is Quiet at the lowest and Urgent at the highest: never **Wake me**, which on Pushover is an emergency repeated every minute until acknowledged and is kept for the critical roof alerts. Like every other non-critical alert it waits for **Send alerts** and is held while alerts are paused or outside the send mode (a bypass that comes into effect then isn't sent later), and it waits out the start-up minute.
 - **Daylight check not working** (`daylight_unknown`, default Normal): the mode is on and the check couldn't run for 10 minutes without a break: `{reason}` is "Location not set" or "Clock not set". A clock set by NTP within 10 minutes of a restart never sends it. Nothing moves, refuses or closes meanwhile.
+- **N.I.N.A. not reachable** (`nina_lost`, default Normal): a N.I.N.A. address is set and RoofRoof couldn't read the mount's park from N.I.N.A. (unreachable, unreadable, an API error or a stale reading) for 60 seconds without a break. `{reason}` is the park result's text. The park then counts as not confirmed and the roof won't move onto it. Not again until N.I.N.A. has been read and is lost again. With no address set, it is never sent.
 - **A weather source is lost**: SQMeter over HTTP or MQTT stale, unreachable, unreadable or offline, for 30 seconds. Having no weather source switched on is a setting, not a loss. Not again until every source is back.
 
 A custom title or message that comes out longer than Pushover allows (200 / 1,024 characters) is replaced by the built-in one.
@@ -200,7 +201,7 @@ Nothing is sent about a device no app has used since the device restarted. The e
 
 **N.I.N.A.** - choose **Only while an imaging app is connected**, or call the API from a sequence (e.g. an *External Script* instruction): `curl -X POST http://roofroof.local/api/alerts/arm` to resume at the start, `.../api/alerts/disarm` to pause at the end.
 
-**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically (on = sending, off = paused). Without it, the device publishes `<base>/alerts/armed` (retained `1` sending / `0` paused) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
+**Home Assistant (MQTT)** - with [MQTT discovery](mqtt.md#home-assistant) on, an *Alerts* switch appears automatically (on = sending, off = paused). The switch is announced whenever discovery is on; the other entities are in [Home Assistant](../integration/home-assistant.md). Without it, the device publishes `<base>/alerts/armed` (retained `1` sending / `0` paused) and listens on `<base>/alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`):
 
 ```yaml
 mqtt:
@@ -247,7 +248,7 @@ POSTs a JSON body to any `http://` or `https://` URL - e.g. a Home Assistant web
 {"device":"RoofRoof","event":"client_lost","title":"The imaging app stopped checking","message":"No request reached the device for 2 min.","level":"urgent","timestamp":1759500000}
 ```
 
-`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `test_box`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
+`event` is one of `alerts_on`, `mount_not_parked`, `roof_not_closed`, `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `test_box`, `client_lost`, `client_back`, `client_disconnected`, `test`. An optional **Authorization header** value is sent as-is (e.g. `Bearer <token>`).
 
 HTTPS webhooks are verified against a built-in set of common root CAs (Let's Encrypt, DigiCert, Sectigo/USERTrust, Google Trust Services, Amazon). For a self-signed server on your own network, either use `http://` or turn on **Skip certificate checks** - only do that on a network you trust.
 

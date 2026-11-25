@@ -16,7 +16,8 @@ namespace SQM
     {
         namespace Internal
         {
-            constexpr const char *DRIVER_INFO = "RoofRoof ESP32 firmware, native Alpaca";
+            // Spec 027: DriverInfo is "RoofRoof v<firmware version>".
+            constexpr const char *DRIVER_NAME = "RoofRoof";
             constexpr const char *DISABLED_MESSAGE = "Alpaca support is disabled in device settings";
             constexpr const char *BAD_REQUEST = "Invalid Alpaca device type, device number, method or HTTP verb";
 

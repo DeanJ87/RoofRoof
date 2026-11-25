@@ -10,6 +10,7 @@
 
 #include "AlpacaDome.h"
 #include "FaultRecord.h"
+#include "RoofStatus.h"
 #include "RoofTypes.h"
 
 namespace SQM
@@ -19,9 +20,18 @@ namespace SQM
         // ShutterStatus and Slewing. Only the closed magnet reads closed and
         // only the open magnet open; a waiting close reads closing; stopped
         // part-way, an unknown position, a fault or a controller that isn't
-        // running reads error.
-        Alpaca::DomeStatus domeStatus(const Roof::Status &status, bool closePending, bool running);
+        // running reads error. Spec 027: a command waiting for the park reads
+        // opening or closing (Slewing true); a wait that gave up or was refused
+        // reads error until the next command.
+        Alpaca::DomeStatus domeStatus(const Roof::Status &status, bool closePending, bool running, const WaitView &wait = WaitView());
 
+        // Spec 027: the Dome description's prefix while ShutterStatus reads
+        // error after a failed park wait ("Last move not run: <why>: "), "" else,
+        // so N.I.N.A. can show why.
+        std::string domeWaitPrefix(const WaitView &wait);
+        // Spec 027 (constitution 7.0.0): "CHECKS OVERRIDDEN: " while a person's
+        // override is in effect (OverrideBit), "" else.
+        std::string domeOverridePrefix(uint8_t overrideBits);
         // OpenShutter -> Open, CloseShutter -> Close, AbortSlew -> Stop (the
         // position estimate is kept).
         Roof::Command roofCommand(Alpaca::DomeAction action);

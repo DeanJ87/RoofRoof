@@ -5,7 +5,7 @@ import Settings from '../Settings';
 import { mockDiag } from '../../mocks/handlers';
 import { mockDiagLive } from '../../mocks/diag';
 import { mockDevice } from '../../test/mockDevice';
-import { mockConfig } from '../../mocks/data';
+import { mockConfig, mockStatus } from '../../mocks/data';
 
 // The Diagnostics page and its settings (spec 017 FR-030, FR-032, FR-033).
 
@@ -42,6 +42,25 @@ describe('Diagnostics page', () => {
       expect(within(rows[2]).queryByRole('button')).toBeNull();
       expect(within(rows[2]).getByText('Kept')).toBeInTheDocument();
       expect(within(rows[2]).getByText('Fault')).toBeInTheDocument();
+    });
+
+    // Spec 027 (FR-015): when SQMeter and N.I.N.A. last answered, from /ws/status.
+    it('says when SQMeter and N.I.N.A. last answered, or why not', async () => {
+      const roof = {
+        ...mockStatus.roof!,
+        sqmeter: { on: true, state: 'stale' as const, lastReplySeconds: 75, text: 'no reply' },
+        nina: { ...mockStatus.roof!.nina!, reachable: false, state: 'unreachable' as const, text: 'connection refused' },
+      };
+      vi.mocked(useWebSocket).mockImplementation(((path: string) => ({
+        data: path === '/ws/status' ? { ...mockStatus, roof } : null,
+        connected: true,
+        lastMessageAt: null,
+      })) as unknown as typeof useWebSocket);
+      render(<Diagnostics />);
+      const card = (await screen.findByRole('heading', { name: 'Sources' })).closest('.sq-card, .card, section') as HTMLElement;
+      expect(card).toHaveTextContent('No reply from SQMeter for 1:15: no reply');
+      expect(card).toHaveTextContent('N.I.N.A. not reachable: connection refused');
+      vi.mocked(useWebSocket).mockImplementation(() => ({ data: null, connected: false, lastMessageAt: null }) as never);
     });
 
     it("shows a chosen move's chart with its downloads", async () => {

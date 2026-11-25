@@ -38,9 +38,11 @@ namespace SQM
             // Spec 022: a test-box bypass came into effect (sent like any other
             // alert: the pause, the send mode and the master switch hold it).
             TestBox,
+            // Spec 027: N.I.N.A. can't be read, so the park counts as not confirmed.
+            NinaLost,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::TestBox) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::NinaLost) + 1;
 
         // The roof events constitution II and III require: never off, never
         // held back by the pause, the grace or the master switch.
@@ -106,6 +108,8 @@ namespace SQM
             bool onDaylightUnknown = true;
             // Spec 022 (its level is never off in the settings; false only in tests).
             bool onTestBox = true;
+            // Spec 027: N.I.N.A. can't be reached or read.
+            bool onNinaLost = true;
         };
 
         // A low supply or a lost weather source must last this long before it
@@ -114,6 +118,8 @@ namespace SQM
         // The daylight check must have been unable to run this long before it
         // is announced: NTP sets the clock within it after a restart (spec 013).
         constexpr uint32_t DAYLIGHT_UNKNOWN_SETTLE_SECONDS = 600;
+        // N.I.N.A. must have been unreachable or unreadable this long (spec 027).
+        constexpr uint32_t NINA_LOST_SETTLE_SECONDS = 60;
         // The roof's condition events wait at least this long between two
         // alerts of the same event, whatever the cooldown setting (0 allowed):
         // a verdict flapping every few seconds can't turn into an alert each.
@@ -151,6 +157,9 @@ namespace SQM
             std::string daylightMissing;      // "Location not set", "Clock not set"
             uint32_t daylightClosedCount = 0; // daylight episodes that ended closed, since start
             std::string daylightClosedSun;    // the sun's text when that episode began
+            // Spec 027: an address is set and N.I.N.A. can't be read.
+            bool ninaLost = false;
+            std::string ninaLostText; // why, from the park result
             // Spec 022: the test box's bypasses in effect (TestBox::Bit) and the
             // status text naming them.
             uint8_t testBox = 0;
@@ -279,7 +288,7 @@ namespace SQM
             // The roof (src/RoofEvents.cpp): a condition alerts on its rising
             // edge only, once it has held for its settle time, outside the
             // grace and the cooldown; its end resets it silently.
-            Tracker roofFault, roofSupply, roofSource, roofClosing, daylightOpen, daylightUnknown;
+            Tracker roofFault, roofSupply, roofSource, roofClosing, daylightOpen, daylightUnknown, ninaLost;
             // A count that rises once per close: each rise alerts once, held
             // through the grace and the cooldown.
             struct Count

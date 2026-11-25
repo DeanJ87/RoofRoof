@@ -127,6 +127,7 @@ export const mockConfig: Config = {
       unsafe_closing: { level: 2, sound: '' },
       roof_closed: { level: 2, sound: '' },
       safety_lost: { level: 2, sound: '' },
+      nina_lost: { level: 2, sound: '' },
       daylight_open: { level: 3, sound: '' },
       daylight_closed: { level: 2, sound: '' },
       daylight_unknown: { level: 2, sound: '' },

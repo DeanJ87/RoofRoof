@@ -7,7 +7,15 @@ export type AlertLevel = 0 | 1 | 2 | 3 | 4;
 export type RoofCriticalEventKey = 'mount_not_parked' | 'roof_not_closed';
 export type DaylightEventKey = 'daylight_open' | 'daylight_closed' | 'daylight_unknown';
 export type RoofEventKey =
-  RoofCriticalEventKey | 'move_fault' | 'supply_low' | 'unsafe_closing' | 'roof_closed' | 'safety_lost' | DaylightEventKey | 'test_box'; // spec 022: never off
+  | RoofCriticalEventKey
+  | 'move_fault'
+  | 'supply_low'
+  | 'unsafe_closing'
+  | 'roof_closed'
+  | 'safety_lost'
+  | 'nina_lost'
+  | DaylightEventKey
+  | 'test_box'; // spec 022: never off
 export type AlertEventKey = RoofEventKey | 'client_lost' | 'client_back' | 'client_disconnected';
 
 // sound: Pushover sound name; empty uses the Pushover default.

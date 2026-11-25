@@ -4,6 +4,8 @@
 
 #include "emulated_device.h"
 
+#include "NinaTest.h"
+
 using namespace DemoCore;
 
 namespace
@@ -267,4 +269,38 @@ std::string EmulatedDevice::sqmeterSite(const std::string &body)
     Site::writeSiteDocument(out.to<JsonObject>(), address, site);
     Site::writeSecretsPart(out.as<JsonObject>(), secrets, Site::secretStates(site.secrets, cfg), address);
     return response(200, serialize(out));
+}
+
+// Spec 027: POST /api/nina/test (WebServer::handleNinaTest): the typed
+// address or the saved one, then one read of the simulated mount, answered by
+// the firmware's own Nina::writeTestAnswer. The simulated N.I.N.A. always
+// answers (the Demo panel has no way to make it fail).
+std::string EmulatedDevice::ninaTest(const std::string &body)
+{
+    std::string address = cfg.park.ninaUrl;
+    if (body.find_first_not_of(" \t\r\n") != std::string::npos)
+    {
+        StaticJsonDocument<512> in;
+        const bool read = !deserializeJson(in, body) && in.is<JsonObject>();
+        if (!read || (!in["url"].isNull() && !in["url"].is<const char *>()))
+            return response(400, errorJson("The body must be JSON, at most 512 bytes: {\"url\"}, a string"));
+        if (in["url"].is<const char *>())
+            address = in["url"].as<const char *>();
+    }
+    if (address.rfind("http://", 0) != 0 && address.rfind("https://", 0) != 0)
+        return response(
+            400, errorJson(address.empty() ? "N.I.N.A.'s address isn't set" : "N.I.N.A.'s address must start with http:// or https://"));
+    if (!platformHold("flashWrite").empty())
+        return response(409, errorJson("The roof is busy: try again once it is still"));
+    runRoof();
+    const DemoRoof::Mount &mount = roof.mountState();
+    Nina::MountReading reading;
+    reading.status = Nina::ReadingStatus::Good;
+    reading.connected = true;
+    reading.atPark = mount.atPark && !mount.slewing;
+    reading.slewing = mount.slewing;
+    reading.takenAtMs = nowMs;
+    StaticJsonDocument<384> out;
+    const int status = Nina::writeTestAnswer(out.to<JsonObject>(), reading);
+    return response(status, serialize(out));
 }

@@ -91,11 +91,11 @@ The hard timeout is the time the move should take plus the margin: about `travel
 
 **Alerts first.** In **Settings → Alerts** turn on **Send alerts**, set up a channel and use **Send test** ([Alerts](../user-guide/alerts.md)). The critical alerts below go nowhere otherwise.
 
-**Weather.** In **Settings → Roof → Weather sources** switch on the HTTP source, set SQMeter's address (`safety.http.url`, e.g. `192.168.1.50`) and press **Test** ([Safety inputs](../user-guide/safety-inputs.md)). Opening is refused unless the verdict is safe, so wait for `Weather safe` first. To make it unsafe, use SQMeter's manual override, or unplug SQMeter: within the stale time (`safety.staleSeconds`, default 30 s) the verdict turns unsafe.
+**Weather.** In **Settings → Roof → Weather sources** switch on the HTTP source, set SQMeter's address (`safety.http.url`, e.g. `192.168.1.50`) and press **Test** ([Safety inputs](../user-guide/safety-inputs.md)). Opening is refused unless the verdict is safe (and, like closing, the mount is confirmed parked: see Park below), so wait for `Weather safe` first. To make it unsafe, use SQMeter's manual override, or unplug SQMeter: within the stale time (`safety.staleSeconds`, default 30 s) the verdict turns unsafe.
 
-**Park.** The close on unsafe weather closes the roof only onto a mount that N.I.N.A. confirms is parked. To test that, run N.I.N.A. with the Advanced API plugin and a simulator mount, and set `park.nina.url` to `http://<pc>:1888`. Leave `park.switches` at `none`, as there are no switches.
+**Park.** The roof opens or closes only with a mount that N.I.N.A. confirms is parked (an open needs it as well as a close). To test that, run N.I.N.A. with the Advanced API plugin and a simulator mount, and set `park.nina.url` to `http://<pc>:1888`. Leave `park.switches` at `none`, as there are no switches.
 
-Without N.I.N.A. the park is never confirmed. With `park.nina.url` empty it fails at once, and with a URL that nothing answers it fails after `park.timeoutSeconds` (default 240 s). Either way a critical **mount didn't park** alert is sent and the roof stays open, by design: the roof never closes onto a mount that isn't confirmed parked.
+For a bench with no telescope, turn on the park bypass of [test box mode](../user-guide/test-box.md) instead, so Open and Close run. Without N.I.N.A. or the bypass the park is never confirmed, and Open and Close are refused saying N.I.N.A. can't be asked. With `park.nina.url` empty it fails at once, and with a URL that nothing answers it fails after `park.timeoutSeconds` (default 240 s). Either way a critical **mount didn't park** alert is sent and the roof stays open, by design: the roof never closes onto a mount that isn't confirmed parked.
 
 !!! warning "Unsafe weather with the roof open starts the automatic close"
     With the roof not closed, the mount parked and the verdict unsafe, the controller commands a close. With Option A and the pot at the closed end this does nothing. With the pot elsewhere, or Option B, the close runs to its timeout and latches a fault. Keep your hand near the 12 V switch.
@@ -103,7 +103,7 @@ Without N.I.N.A. the park is never confirmed. With `park.nina.url` empty it fail
 ## A first run
 
 1. Pot in the middle (or Option B), weather safe, supply reading about 12 V, no fault.
-2. Press **Open**. The motor runs slowly. With Option A turn the pot to the high end and the roof reads Open; with Option B wait for the timeout fault, then **Clear fault**.
+2. Press **Open** (with the park confirmed or bypassed, else it is refused or waits for the park). The motor runs slowly. With Option A turn the pot to the high end and the roof reads Open; with Option B wait for the timeout fault, then **Clear fault**.
 3. With Option A, press **Close**, turn the pot off the high end within 10 s and then to the low end. Press **Stop** once mid-move to see the motor stop.
 4. Try the weather and park cases above.
 

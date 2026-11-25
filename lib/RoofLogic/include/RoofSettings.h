@@ -48,6 +48,12 @@ namespace SQM
         // single ADC spike doesn't.
         constexpr uint8_t HALL_RAIL_LATCH_READINGS = 3;
         constexpr uint8_t HALL_RAIL_WINDOW_READINGS = 8;
+        // Spec 027: a Hall rail fault latched at rest clears after this long of
+        // readings off the rails, still at rest (constitution 7.0.0, I).
+        constexpr uint32_t HALL_REST_CLEAR_MS = 60000;
+        // Spec 027: a rail reading at rest this soon after start-up is not judged
+        // (a power-up transient latched "Hall sensor at a rail" at every boot).
+        constexpr uint32_t HALL_BOOT_SETTLE_MS = 500;
         // Over-current and a low supply must last this long while driving: longer
         // than the motor's start-up surge, far shorter than a stall that heats it.
         constexpr uint32_t CONFIRM_MS = 250;

@@ -41,6 +41,9 @@ namespace SQM
                 "Daylight check not working",
                 "The daylight failsafe can't tell day from night, so it won't alert or close. {reason}"};
 
+            constexpr Wording NINA_LOST = {
+                AlertType::NinaLost, "N.I.N.A. not reachable", "N.I.N.A. can't be reached, so the park counts as not confirmed. {reason}"};
+
             constexpr Wording TEST_BOX = {
                 AlertType::TestBox, "Test box mode on", "Checks bypassed for a test box: {reason}. Faults still stop the roof."};
 
@@ -64,6 +67,7 @@ namespace SQM
                 BitClosing = 1u << 3,
                 BitDaylightOpen = 1u << 4,
                 BitDaylightUnknown = 1u << 5,
+                BitNinaLost = 1u << 6,
             };
         } // namespace
 
@@ -172,6 +176,8 @@ namespace SQM
                 alerts.push_back(roofAlert(DAYLIGHT_OPEN, roof.daylightSun, roof.daylightAction));
             if (rise(daylightUnknown, roof.daylightUnknown, emit(rules.onDaylightUnknown, DAYLIGHT_UNKNOWN_SETTLE_SECONDS), inGrace))
                 alerts.push_back(roofAlert(DAYLIGHT_UNKNOWN, roof.daylightMissing));
+            if (rise(ninaLost, roof.ninaLost, emit(rules.onNinaLost, NINA_LOST_SETTLE_SECONDS), inGrace))
+                alerts.push_back(roofAlert(NINA_LOST, roof.ninaLostText));
             if (counted(daylightClosed, roof.daylightClosedCount, roof.daylightClosedSun, emit(rules.onDaylightClosed, 0), inGrace))
                 alerts.push_back(roofAlert(DAYLIGHT_CLOSED, daylightClosed.text));
         }
@@ -209,6 +215,8 @@ namespace SQM
                 bits |= BitDaylightOpen;
             if (daylightUnknown.notified)
                 bits |= BitDaylightUnknown;
+            if (ninaLost.notified)
+                bits |= BitNinaLost;
             return bits;
         }
 
@@ -226,6 +234,7 @@ namespace SQM
             restore(roofClosing, (bits & BitClosing) != 0);
             restore(daylightOpen, (bits & BitDaylightOpen) != 0);
             restore(daylightUnknown, (bits & BitDaylightUnknown) != 0);
+            restore(ninaLost, (bits & BitNinaLost) != 0);
         }
 
         uint32_t announcedCheck(uint32_t bits)
@@ -235,7 +244,7 @@ namespace SQM
 
         bool announcedValid(uint32_t bits, uint32_t check)
         {
-            return bits <= 0x3Fu && check == announcedCheck(bits);
+            return bits <= 0x7Fu && check == announcedCheck(bits);
         }
 
         void AlertEngine::addRoofWaits(std::vector<Wait> &out, uint32_t now, const AlertRules &rules) const
@@ -257,6 +266,7 @@ namespace SQM
             add(alertTypeName(AlertType::UnsafeClosing), roofClosing, 0);
             add(alertTypeName(AlertType::DaylightOpen), daylightOpen, ROOF_SETTLE_SECONDS);
             add(alertTypeName(AlertType::DaylightUnknown), daylightUnknown, DAYLIGHT_UNKNOWN_SETTLE_SECONDS);
+            add(alertTypeName(AlertType::NinaLost), ninaLost, NINA_LOST_SETTLE_SECONDS);
         }
     } // namespace Alerts
 } // namespace SQM

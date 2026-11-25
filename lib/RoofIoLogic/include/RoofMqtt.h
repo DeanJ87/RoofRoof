@@ -68,7 +68,7 @@ namespace SQM
 
             // The JSON pools for the documents, sized by test_state_document_fits
             // and test_result_document_fits (on the host, whose slots are bigger).
-            constexpr size_t STATE_DOC_CAPACITY = 2560;
+            constexpr size_t STATE_DOC_CAPACITY = 3584; // spec 027: the dashboard fields
             constexpr size_t RESULT_DOC_CAPACITY = 1024;
 
             // How the broker delivered a message: live, or retained (left on the
@@ -136,6 +136,11 @@ namespace SQM
                 // Spec 022: the test box's bypasses in effect, set, expired or waiting.
                 uint8_t testBox = 0;
                 uint8_t testBoxFlags = 0;
+                // Spec 027: the wait for the park, the overrides, N.I.N.A.'s and
+                // SQMeter's health and daylight, published at once on a change.
+                uint8_t guard = 0;
+                bool ninaReachable = false;
+                std::string sources; // SQMeter's state and daylight's
 
                 bool operator==(const StateKey &other) const;
                 bool operator!=(const StateKey &other) const { return !(*this == other); }

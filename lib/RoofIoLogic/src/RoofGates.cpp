@@ -1,6 +1,7 @@
 #include "RoofGates.h"
 
 #include <cstdio>
+#include <string>
 
 namespace SQM
 {
@@ -44,17 +45,56 @@ namespace SQM
             return in.parked && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
         }
 
-        GateRefusal gateCommand(Roof::Command command, const GateInputs &in)
+        bool weatherOverridable(const GateInputs &in)
         {
+            return in.weather == Safety::Verdict::Unsafe && in.weatherReasons == Safety::ReasonWeatherUnsafe;
+        }
+
+        uint8_t overridableNow(Roof::Command command, const GateInputs &in)
+        {
+            if (command == Roof::Command::Close)
+                return parkHolds(in) ? 0 : OverridePark;
+            if (command != Roof::Command::Open)
+                return 0;
+            return static_cast<uint8_t>((weatherOverridable(in) ? OverrideWeather : 0) | (in.daylightCloses ? OverrideDaylight : 0));
+        }
+
+        uint8_t overrideStillApplies(uint8_t active, const GateInputs &in)
+        {
+            const bool weatherOut = in.weather != Safety::Verdict::Safe;
+            if (weatherOut && ((active & OverrideWeather) == 0 || !weatherOverridable(in)))
+                return 0; // a weather reason the person didn't confirm
+            if (in.daylightCloses && (active & OverrideDaylight) == 0)
+                return 0;
+            return static_cast<uint8_t>((weatherOut ? OverrideWeather : 0) | (in.daylightCloses ? OverrideDaylight : 0));
+        }
+
+        uint8_t overrideBit(const char *name)
+        {
+            const std::string n = name != nullptr ? name : "";
+            if (n == "mountNotParked")
+                return OverridePark;
+            if (n == "weatherNotSafe")
+                return OverrideWeather;
+            return n == "daylight" ? OverrideDaylight : 0;
+        }
+
+        GateRefusal gateCommand(Roof::Command command, const GateInputs &in, uint8_t overrides)
+        {
+            const bool parkSetAside = (overrides & OverridePark) != 0;
             switch (command)
             {
             case Roof::Command::Open:
             {
-                const GateRefusal refusal = openRefusal(in);
-                return refusal == GateRefusal::None && in.stuckSwitch != 0 ? GateRefusal::SwitchCheck : refusal;
+                const GateRefusal refusal = openRefusal(in, overrides);
+                if (refusal != GateRefusal::None)
+                    return refusal;
+                if (in.stuckSwitch != 0)
+                    return GateRefusal::SwitchCheck;
+                return parkSetAside || parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
             }
             case Roof::Command::Close:
-                return parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
+                return parkSetAside || parkHolds(in) ? GateRefusal::None : GateRefusal::MountNotParked;
             default:
                 return GateRefusal::None;
             }
@@ -77,11 +117,15 @@ namespace SQM
             return (in.parked || in.ninaGrace) && readingFresh(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
         }
 
-        bool interlockLost(const Roof::Status &status, const GateInputs &in)
+        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden)
         {
             // Spec 016: any calibration leg too. Until the person confirms the open
             // end, a leg may drive the roof the other way (a motor wired backwards).
-            return (status.state == Roof::State::Closing || status.calibrating) && !closeMayContinue(in);
+            // Spec 027: an open too (the roof passes over the telescope either way).
+            if (parkOverridden && status.state == Roof::State::Closing)
+                return false;
+            const bool watched = status.state == Roof::State::Closing || status.state == Roof::State::Opening || status.calibrating;
+            return watched && !closeMayContinue(in);
         }
 
         uint32_t interlockBits(const GateInputs &in)
@@ -98,17 +142,21 @@ namespace SQM
             return bits;
         }
 
-        bool openMustStop(const Roof::Status &status, const GateInputs &in)
+        bool openMustStop(const Roof::Status &status, const GateInputs &in, uint8_t overrides)
         {
             // Spec 019: a jog in either direction (the motor direction may be wrong).
-            return (status.state == Roof::State::Opening || status.jogging) && openRefusal(in) != GateRefusal::None;
+            // A jog never carries an override.
+            if (status.jogging)
+                return openRefusal(in) != GateRefusal::None;
+            return status.state == Roof::State::Opening && openRefusal(in, overrides) != GateRefusal::None;
         }
 
-        GateRefusal openRefusal(const GateInputs &in)
+        GateRefusal openRefusal(const GateInputs &in, uint8_t overrides)
         {
-            if (in.weather != Safety::Verdict::Safe)
+            const bool weatherSetAside = (overrides & OverrideWeather) != 0 && weatherOverridable(in);
+            if (in.weather != Safety::Verdict::Safe && !weatherSetAside)
                 return GateRefusal::WeatherNotSafe;
-            return in.daylightCloses ? GateRefusal::Daylight : GateRefusal::None;
+            return in.daylightCloses && (overrides & OverrideDaylight) == 0 ? GateRefusal::Daylight : GateRefusal::None;
         }
 
         const char *gateRefusalName(GateRefusal refusal)

@@ -228,7 +228,8 @@ test('Roof card: state, position, buttons with reasons, checks, readings and the
   await expect(roof.getByRole('button', { name: 'Open', exact: true })).toBeEnabled();
   await expect(roof.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
   await expect(item(page, 'roof-buttons')).toContainText('Close: Already closed');
-  await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toBeEnabled();
+  // Spec 027: a still roof with nothing waiting shows Open and Close, no Stop.
+  await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0);
   await expect(item(page, 'roof-checks')).toContainText('Safe');
   await expect(item(page, 'roof-checks')).toContainText('Parked');
   await expect(item(page, 'roof-daylight')).toContainText('Daylight');
@@ -311,7 +312,13 @@ test('daylight: with alert and close and the sun up the open roof closes, and Op
   await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('closed');
   await expect(item(page, 'roof-daylight')).toContainText('Sun');
   await expect(item(page, 'roof-buttons')).toContainText('Daylight check: the sun is up');
-  await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeDisabled();
+  // Spec 027: blocked, not greyed: a press lists the reasons in the move dialog.
+  await item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: /reasons? Open is blocked$/ })).toBeVisible();
+  await expect(dialog).toContainText('Daylight check: the sun is up');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toHaveCount(0);
   expect(await roofCommand(page, 'open')).toBe(409);
   // The sun is down again: Open is back.
   await panelChoice(page, 'Sun up: Off');

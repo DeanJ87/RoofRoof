@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include "NinaTest.h"
 #include "SafetyPoller.h"
 #include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
@@ -126,6 +127,19 @@ namespace SQM
             serializeJson(out, body);
             return out["error"].isNull() ? 200 : 502;
         }
+
+        // Spec 027: one read of N.I.N.A.'s mount, as the park poll makes it.
+        int testNina(const std::string &url, std::string &body)
+        {
+            const std::unique_ptr<Nina::Api> api = Nina::makeApi(Nina::ApiVersion::V2);
+            const Safety::HttpOutcome reply = SafetyPoller::getOnce(Site::Endpoint{url, "", ""}, SafetyPoller::TLS_PERSON_WAIT_MS);
+            StaticJsonDocument<384> out;
+            const int status = Nina::writeTestAnswer(
+                out.to<JsonObject>(), Nina::testReading(*api, reply.status, reply.body, reply.error, SafetyPoller::nowMs()));
+            body.clear();
+            serializeJson(out, body);
+            return status;
+        }
     } // namespace
 
     struct WebServer::SiteJob
@@ -136,6 +150,7 @@ namespace SQM
         bool test = false;   // /api/sqmeter/test: one weather read
         WebServer *owner = nullptr;
         bool savedAddress = false; // spec 024: the secrets are read only at the saved address
+        bool nina = false;         // spec 027: /api/nina/test, `from.url` the mount info URL
     };
 
     // Spec 024: which secrets SQMeter's equal RoofRoof's saved ones, under the
@@ -205,6 +220,33 @@ namespace SQM
             [this](AsyncWebServerRequest *request) { handleSqmeterSite(request, true); },
             nullptr,
             collectBody);
+        server.on("/api/nina/test", HTTP_POST, [this](AsyncWebServerRequest *request) { handleNinaTest(request); }, nullptr, collectBody);
+    }
+
+    // Spec 027: Settings' N.I.N.A. Test, at the typed address or the saved one.
+    void WebServer::handleNinaTest(AsyncWebServerRequest *request)
+    {
+        if (!requireAuth(request))
+            return;
+        std::string address;
+        Site::TypedLogin unused;
+        if (!addressFrom(request, getConfigCallback().park.ninaUrl, address, unused))
+        {
+            request->send(400, "application/json", errorBody("The body must be JSON, at most 512 bytes: {\"url\"}, a string").c_str());
+            return;
+        }
+        if (address.rfind("http://", 0) != 0 && address.rfind("https://", 0) != 0)
+        {
+            const char *why = address.empty() ? "N.I.N.A.'s address isn't set" : "N.I.N.A.'s address must start with http:// or https://";
+            request->send(400, "application/json", errorBody(why).c_str());
+            return;
+        }
+        if (!siteJobAllowed(request))
+            return;
+        const std::unique_ptr<Nina::Api> api = Nina::makeApi(Nina::ApiVersion::V2);
+        auto *job = new SiteJob{request->pause(), address, Site::Endpoint{Nina::testUrl(address, *api), "", ""}, true, this};
+        job->nina = true;
+        launchSiteJob(job);
     }
 
     void WebServer::handleSqmeterSite(AsyncWebServerRequest *request, bool test)
@@ -228,39 +270,49 @@ namespace SQM
             request->send(400, "application/json", errorBody(why).c_str());
             return;
         }
-        // Spec 010: no extra network work while the roof is busy.
-        if (roofBusy && roofBusy())
-        {
-            request->send(409, "application/json", errorBody("The roof is busy: try again once it is still").c_str());
+        if (!siteJobAllowed(request))
             return;
-        }
-        bool idle = false;
-        if (!siteJobRunning.compare_exchange_strong(idle, true))
-        {
-            request->send(409, "application/json", errorBody("A read of SQMeter is already running").c_str());
-            return;
-        }
         const char *path = test ? Site::SAFETY_PATH : Site::CONFIG_PATH;
         const SafetyConfig &saved = getConfigCallback().safety;
-        auto *job = new SiteJob{
-            request->pause(), address, Site::copyEndpoint(saved, address, login, path), test, this, Site::savedAddress(address, saved)};
-        if (xTaskCreatePinnedToCore(runSiteJob, "site_job", SITE_JOB_STACK_BYTES, job, 1, nullptr, SITE_JOB_CORE) != pdPASS)
-        {
-            const AsyncWebServerRequestPtr paused = job->request;
-            delete job;
-            siteJobRunning = false;
-            if (std::shared_ptr<AsyncWebServerRequest> again = paused.lock())
-                again->send(503, "application/json", errorBody("Not enough free memory to read SQMeter").c_str());
-        }
+        launchSiteJob(new SiteJob{
+            request->pause(), address, Site::copyEndpoint(saved, address, login, path), test, this, Site::savedAddress(address, saved)});
+    }
+
+    // Spec 010: no extra network work while the roof is busy; one read at a time.
+    bool WebServer::siteJobAllowed(AsyncWebServerRequest *request)
+    {
+        const char *why = nullptr;
+        bool idle = false;
+        if (roofBusy && roofBusy())
+            why = "The roof is busy: try again once it is still";
+        else if (!siteJobRunning.compare_exchange_strong(idle, true))
+            why = "A read is already running: try again in a moment";
+        if (why != nullptr)
+            request->send(409, "application/json", errorBody(why).c_str());
+        return why == nullptr;
+    }
+
+    // The job on its own short-lived task (constitution VI).
+    void WebServer::launchSiteJob(SiteJob *job)
+    {
+        if (xTaskCreatePinnedToCore(runSiteJob, "site_job", SITE_JOB_STACK_BYTES, job, 1, nullptr, SITE_JOB_CORE) == pdPASS)
+            return;
+        const AsyncWebServerRequestPtr paused = job->request;
+        delete job;
+        siteJobRunning = false;
+        if (std::shared_ptr<AsyncWebServerRequest> again = paused.lock())
+            again->send(503, "application/json", errorBody("Not enough free memory for the read").c_str());
     }
 
     void WebServer::runSiteJob(void *arg)
     {
         std::unique_ptr<SiteJob> job(static_cast<SiteJob *>(arg));
         std::string body;
-        const int status = job->test ? testSafety(job->from, body) : job->owner->fetchSite(*job, body);
+        const int status = job->nina   ? testNina(job->from.url, body)
+                           : job->test ? testSafety(job->from, body)
+                                       : job->owner->fetchSite(*job, body);
         if (status != 200)
-            Logger::info(TAG, "%s: %s", job->test ? "Test of SQMeter" : "Copy from SQMeter", body.c_str());
+            Logger::info(TAG, "%s: %s", job->nina ? "Test of N.I.N.A." : job->test ? "Test of SQMeter" : "Copy from SQMeter", body.c_str());
         if (std::shared_ptr<AsyncWebServerRequest> request = job->request.lock())
             request->send(status, "application/json", body.c_str());
         job.reset();

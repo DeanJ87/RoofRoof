@@ -62,12 +62,12 @@ test('held by a person: explained with when it clears, and released at the roof 
   await panelChoice(page, 'Weather: Safe');
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('heldByPerson');
   const held = blocker(page, 'heldByPerson');
-  await expect(held).toContainText('Automatic close on hold until the roof opens or closes');
-  await expect(held).toContainText(/Clears at .+ if the weather stays safe, or once the roof is closed\./);
+  await expect(held).toContainText('Automatic close held: a person pressed Stop');
+  await expect(held).toContainText(/Lapses in \d+:\d\d with the weather safe, or once the roof is closed\./);
   // The same words on Calibrate, where it holds the jog and the run.
   await go(page, '/calibrate');
   const onCalibrate = page.locator('#calibrate-blockers [data-blocker="heldByPerson"]');
-  await expect(onCalibrate).toContainText('Automatic close on hold until the roof opens or closes');
+  await expect(onCalibrate).toContainText('Automatic close held: a person pressed Stop');
   await onCalibrate.getByRole('button', { name: 'Release hold' }).click();
   await page.getByRole('button', { name: "I'm at the roof: release" }).click();
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('idle');
@@ -82,7 +82,7 @@ test('no release while the weather is unsafe: the hold says it clears after a sa
   expect(await roofCommand(page, 'stop')).toBe(200);
   await expect.poll(async () => (await roof(page)).closePhase, { timeout: 10_000 }).toBe('heldByPerson');
   const held = blocker(page, 'heldByPerson');
-  await expect(held).toContainText(/Clears after \d+ min of safe weather/);
+  await expect(held).toContainText(/Lapses after \d+ min of safe weather/);
   await expect(held.getByRole('button', { name: 'Release hold' })).toHaveCount(0);
   const refused = await page.evaluate(() =>
     fetch('/api/roof/release-hold', {

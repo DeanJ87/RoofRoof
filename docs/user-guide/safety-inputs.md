@@ -9,7 +9,7 @@ RoofRoof keeps two answers up to date, once a second:
 - **Weather**: safe, unsafe (with the reasons) or unknown.
 - **Park**: parked or not parked (with the reasons).
 
-The roof uses them to refuse an open while the weather isn't safe and a close while the mount isn't confirmed parked, and to [close by itself when the weather turns unsafe](close-on-unsafe.md). Each change is also written to the log (serial, `Safety` tag).
+The roof uses them to refuse an open while the weather isn't safe, and an open or a close while the mount isn't confirmed parked (when N.I.N.A. can be asked, the command [waits for the park](close-on-unsafe.md#park-before-every-move) instead), and to [close by itself when the weather turns unsafe](close-on-unsafe.md). Each change is also written to the log (serial, `Safety` tag).
 
 Doubt always lands on the safe side: a source that stops answering, answers late or answers something unreadable makes the weather **unsafe** and the mount **not parked**.
 
@@ -83,9 +83,10 @@ While the roof closes (and during every calibration leg and jog), the park is ch
 RoofRoof talks to N.I.N.A. through the **Advanced API** plugin (version 2.2.15 or newer, API v2):
 
 1. In N.I.N.A., install **Advanced API** from the plugin list, turn the API on and note its port (default 1888).
-2. Set `park.nina.url` to `http://<pc running N.I.N.A.>:<port>`, for example `http://192.168.1.20:1888`.
+2. Set `park.nina.url` to `http://<pc running N.I.N.A.>:<port>`, for example `http://192.168.1.20:1888`. An `https://` address works too (for N.I.N.A. behind a TLS proxy); the certificate isn't checked, as for SQMeter's https address.
+3. Press **Test** next to the address in **Settings → Roof → Mount park**: it reads N.I.N.A.'s mount once and says whether N.I.N.A. answered, whether the mount is connected and whether it is parked, or why not ([`POST /api/nina/test`](../api/rest.md#post-apininatest)). Nothing is saved by it. **May ask N.I.N.A. to park** sits under the address.
 
-RoofRoof reads `GET /v2/api/equipment/mount/info` every 2 s and, when the close sequence asks, sends `GET /v2/api/equipment/mount/park`. N.I.N.A. answers a park request at once and parks in the background; RoofRoof only trusts the park once mount info says `AtPark`.
+RoofRoof reads `GET /v2/api/equipment/mount/info` every 2 s and, when the close sequence asks or an Open or Close is [waiting for the park](close-on-unsafe.md#park-before-every-move), sends `GET /v2/api/equipment/mount/park`. N.I.N.A. answers a park request at once and parks in the background; RoofRoof only trusts the park once mount info says `AtPark`.
 
 !!! danger "A RoofRoof parks the mount its N.I.N.A. drives"
     Whenever the weather turns unsafe, RoofRoof asks the N.I.N.A. at `park.nina.url` to park. A bench or spare RoofRoof pointed at the N.I.N.A. that is imaging with your real mount will park that mount mid-session. On a bench, leave the address empty and use [test box mode](test-box.md), or turn off **May ask N.I.N.A. to park** (`park.requestPark`, on by default): the automatic close then only waits for the park.
@@ -104,4 +105,8 @@ curl -X POST http://roofroof.local/api/config -H "Content-Type: application/json
 Then watch the log: within a few seconds it shows `Weather safe` (or the reasons it isn't) and `Park: parked` or `Park: not parked: ...`.
 
 !!! warning "Plain http on the local network"
-    SQMeter and N.I.N.A. are reached over plain `http://`; neither offers TLS. Keep them, like RoofRoof, on a trusted network.
+    SQMeter and N.I.N.A. are usually reached over plain `http://`. With `https://` the certificate isn't checked (it protects against listening in, not against a fake server). Keep them, like RoofRoof, on a trusted network.
+
+### When N.I.N.A. can't be read
+
+With an address set and no good reading from N.I.N.A. for 60 seconds without a break (unreachable, unreadable, an API error or a stale reading), the **N.I.N.A. not reachable** alert (`nina_lost`, Normal by default) goes out with the error, the dashboard's Mount park row says so, and `roof.nina` in the status shows the state. The park then counts as not confirmed. Without an address nothing is sent ([Alerts](alerts.md#the-roof)).

@@ -342,9 +342,37 @@ void test_flickering_closed_magnet_sends_no_storm(void)
     TEST_ASSERT_TRUE_MESSAGE(closedAlerts <= 1, std::to_string(closedAlerts).c_str());
 }
 
+// Spec 027: N.I.N.A. lost needs an address and an unreachable, unreadable,
+// API-error or stale reading.
+void test_nina_conditions(void)
+{
+    Safety::ParkResult park;
+    park.reasons = Safety::ParkNinaUnreachable;
+    Alerts::RoofInputs roof;
+    updateNinaConditions(roof, park, true);
+    TEST_ASSERT_TRUE(roof.ninaLost);
+    TEST_ASSERT_TRUE(roof.ninaLostText.find("N.I.N.A.") != std::string::npos);
+    updateNinaConditions(roof, park, false); // no address: nothing to lose
+    TEST_ASSERT_FALSE(roof.ninaLost);
+    TEST_ASSERT_EQUAL_STRING("", roof.ninaLostText.c_str());
+    for (uint32_t bit : {Safety::ParkNinaUnreadable, Safety::ParkNinaApiError, Safety::ParkNinaStale})
+    {
+        park.reasons = bit;
+        updateNinaConditions(roof, park, true);
+        TEST_ASSERT_TRUE(roof.ninaLost);
+    }
+    for (uint32_t bit : {Safety::ParkNinaNotConfigured, Safety::ParkNinaWaiting, Safety::ParkMountNotAtPark, Safety::ParkSwitch1Open})
+    {
+        park.reasons = bit;
+        updateNinaConditions(roof, park, true);
+        TEST_ASSERT_FALSE(roof.ninaLost);
+    }
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
+    RUN_TEST(test_nina_conditions);
     RUN_TEST(test_every_critical_event_has_a_type);
     RUN_TEST(test_critical_alert_keeps_spec_005_wording_and_variables);
     RUN_TEST(test_critical_alert_fills_the_shared_variables);

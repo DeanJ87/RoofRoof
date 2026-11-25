@@ -445,6 +445,15 @@ void handleSafety()
         handedCloses = closesNow;
     }
     closeOnUnsafe.handle(*safetyInputs, roofControl);
+    // Spec 027: a command waiting for the park asks N.I.N.A.; a wait that gave up alerts.
+    if (roofControl.takeParkRequest() && safetyInputs->ninaSet())
+    {
+        Logger::info("Roof", "Asking N.I.N.A. to park the mount before the roof moves");
+        safetyInputs->requestPark();
+    }
+    std::string gaveUp;
+    if (roofControl.takeWaitAlert(gaveUp))
+        closeOnUnsafe.parkWaitFailed(gaveUp);
 }
 
 // Spec 023: NTP and command-line OTA start the first time the device is on a

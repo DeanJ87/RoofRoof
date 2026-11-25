@@ -49,14 +49,14 @@ after a fault, and when the reading leaves a magnet while the roof is at rest.
 <!-- diagram: DIA-21
 sources: lib/RoofLogic/src/RoofController.cpp lib/RoofLogic/src/RoofControllerStep.cpp lib/RoofLogic/include/RoofTypes.h
 blocking: true
-fingerprint: dcd4cce41c420dd0
+fingerprint: 9a6a1f940bd65f56
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The roof's states
-    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command moves the roof, slowly, to the first magnet. Any fault from any state gives error, which only a person can clear.
+    accDescr: The roof starts closed or open when a magnet is read, otherwise unknown. Open and close commands start opening or closing; reaching the target magnet ends the move at that end. Stop part-way gives stopped, which can carry on in either direction. Abort part-way gives unknown, from which only a person's command moves the roof, slowly, to the first magnet. Any fault from any state gives error, which only a person can clear (a Hall rail fault latched at rest clears itself after a minute of good readings).
     [*] --> Closed: closed magnet read
     [*] --> Open: open magnet read
     [*] --> Unknown: no magnet read
@@ -80,6 +80,7 @@ stateDiagram-v2
     Opening --> Error: fault
     Closing --> Error: fault
     Error --> Unknown: a person clears it (or the end, at a magnet)
+    Error --> Unknown: Hall rail fault at rest, a minute of good readings
 ```
 
 <figcaption>The roof's states. Any state can go to error on a Hall sensor fault or a fault raised from outside. A <a href="../calibration-run/">calibration run</a>'s legs and a person's <a href="../calibration-run/#teach-the-ends">jog</a> are opening and closing moves too; a jog keeps no estimate, so one that stops part-way (let go, or not renewed) leaves the roof unknown.</figcaption>
@@ -93,7 +94,7 @@ stateDiagram-v2
     4. Stop part-way gives `stopped`, with the estimated position; open or close carries on from there.
     5. Abort part-way gives `unknown`. From `unknown`, only a person's open or close moves the roof, at the slow duty, stopping at the first magnet.
     6. A magnet lost while the roof is at rest makes it `unknown`; a magnet read at rest makes it that end. New settings while `stopped` make it `unknown`, since the estimate used the old ones.
-    7. Any fault, from any state, gives `error`. Only a person can clear it; the roof is then at the end whose magnet is read, or `unknown`.
+    7. Any fault, from any state, gives `error`. Only a person can clear it, except a Hall rail fault latched with the roof at rest, which clears itself after a minute of good readings at rest; the roof is then at the end whose magnet is read, or `unknown`.
     8. A [calibration run](calibration-run.md)'s legs are `opening` and `closing` moves that a person starts: each stops at the first magnet after leaving its start magnet (whichever end the polarity setting names), at its time limit, or on a fault; the park interlock watches every leg; a stop part-way gives `stopped` or `unknown` as above.
 
 ## Commands
@@ -103,7 +104,7 @@ stateDiagram-v2
 | Open, Close | Start a move. Refused, with the reason, while a fault is latched, while the Hall reading hasn't settled, while the supply is below its minimum (with the voltage and the limit) or can't be read, while current sense is on and gives no reading, and while the settings are invalid. With the position unknown, refused unless a person asked: a command from the web UI, not an imaging app over [Alpaca](alpaca.md), an [MQTT command](mqtt.md#roof-commands) or the [automatic close](close-on-unsafe.md). Asking for the end the roof is already at, or the move already under way, changes nothing. |
 | Stop | Motor off at once; the estimate is kept (`stopped`). Always accepted by the motion logic; an imaging app's or MQTT's stop is refused before it while a close runs or waits in weather that isn't safe ([Close on unsafe weather](close-on-unsafe.md)). |
 | Abort | Motor off at once; part-way, the position becomes unknown. With no move under way it changes nothing. Always accepted. |
-| Clear fault | Only a person can clear a fault, from the web UI; Alpaca and MQTT have no way to. A restart never clears one. |
+| Clear fault | Only a person can clear a fault, from the web UI; Alpaca and MQTT have no way to. A restart never clears one. A Hall rail fault latched with the roof at rest clears itself after a minute of good readings. |
 
 ## The speed profile
 
@@ -143,7 +144,7 @@ person clears it. Each records what was measured and the limit it broke.
 | `timeout` | No target magnet within the move's timeout (with current sense off, this is how a jam is caught) |
 | `didNotLeave` | A move from a magnet still on it after the **leave time** (jammed at the end, or the motor wired backwards) |
 | `wrongMagnet` | The other end's magnet is read, or the start magnet again more than a second after leaving it (or after the leave time). Back on it sooner counts as not yet left: noise as the reading crossed the threshold |
-| `hallRail` | Three of the last eight Hall readings at either end of its range: 400 counts or below (lower than the sensor can read through its divider: a lost 5 V or ground) or 4065 or above (sensor disconnected, shorted or an intermittent connector), moving or not |
+| `hallRail` | Three of the last eight Hall readings at either end of its range: 400 counts or below (lower than the sensor can read through its divider: a lost 5 V or ground) or 4065 or above (sensor disconnected, shorted or an intermittent connector), moving or not. One latched **while moving** stops the motor and waits for a person to **Clear fault**. One latched **with the roof at rest** clears itself after a minute of good readings with the roof still at rest (any move, or a rail reading in that minute, starts it again), and the position is then read from the Hall afresh: at a magnet the roof is closed or open, between them it is unknown and only a person moves it. **Clear fault** still works at once. The flag survives a restart (a fault stored by firmware before spec 027 waits for **Clear fault** once). A rail reading with the roof at rest in the first half second after start-up isn't judged: the sensor and the ADC settle then, and a power-up transient used to latch this fault at every boot |
 | `overCurrent` | Current sense on, and the motor current at or above its limit for a quarter of a second |
 | `currentUnreadable` | Current sense on, and no current reading for a quarter of a second during a move |
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
@@ -193,14 +194,20 @@ The controller runs in its own task on the ESP32, apart from WiFi, the web serve
 
 Before the motion logic sees a command:
 
-- **Open** is refused unless the [weather verdict](safety-inputs.md) is safe. An open in progress
-  stops (no fault, the estimate kept) as soon as the verdict is no longer safe.
+- **Open** is refused unless the [weather verdict](safety-inputs.md) is safe and the mount is
+  confirmed parked (as for a close, below: the telescope can be hit either way). An open in progress
+  stops (no fault, the estimate kept) as soon as the verdict is no longer safe or the park is lost.
+  A person may [confirm an open](close-on-unsafe.md#a-persons-confirmed-open) past daylight and past
+  the weather SQMeter alone calls unsafe (not rain, not doubt).
 - **Open** is also refused, with the [park switches only](safety-inputs.md#park-switches-only), while
   a park switch hasn't opened in the last 3 roof openings (`parkSwitchCheck`).
 - **Close** is refused unless the mount is confirmed parked by the park source: N.I.N.A. reports it
   at park, every fitted park switch reads closed, or both ([Safety inputs](safety-inputs.md#park)). During the close this is checked every step; if it no longer
   holds, the motor stops with an `external` fault, cause `parkInterlock`, naming the input that
   failed. The weather never blocks a close.
+- An Open or Close refused only for the park **waits for it** when N.I.N.A. can be asked, and moves
+  only once the park has held ([Park before every move](close-on-unsafe.md#park-before-every-move)).
+  A person may [close once without the park](close-on-unsafe.md#a-persons-confirmed-close).
 - **Stop** is always accepted.
 
 If the safety inputs haven't been handed to the controller for 5 s (a stalled main loop), the

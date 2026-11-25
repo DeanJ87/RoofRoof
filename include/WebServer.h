@@ -390,8 +390,12 @@ namespace SQM
         // Spec 022: the test box's bypasses in effect now, from the settings and the clock.
         TestBox::State testBoxState() const;
 
+        // Spec 027: POST /api/nina/test (src/WebServerSite.cpp).
+        void handleNinaTest(AsyncWebServerRequest *request);
         // Spec 020: POST /api/sqmeter/site and /api/sqmeter/test (src/WebServerSite.cpp).
         struct SiteJob;
+        bool siteJobAllowed(AsyncWebServerRequest *request);
+        void launchSiteJob(SiteJob *job);
         static inline std::atomic<bool> siteJobRunning{false};
         SiteStatus siteStatus;
         BusyProbe roofBusy;

@@ -688,6 +688,54 @@
         "moveTimeoutMs": {
           "type": "number"
         },
+        "nina": {
+          "type": "object",
+          "properties": {
+            "ageSeconds": {
+              "type": "integer"
+            },
+            "atPark": {
+              "type": "boolean"
+            },
+            "connected": {
+              "type": "boolean"
+            },
+            "reachable": {
+              "type": "boolean"
+            },
+            "set": {
+              "type": "boolean"
+            },
+            "state": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ageSeconds",
+            "atPark",
+            "connected",
+            "reachable",
+            "set",
+            "state",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "openOverridable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "override": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "parkConfirmed": {
           "type": "boolean"
         },
@@ -745,6 +793,39 @@
         "parkText": {
           "type": "string"
         },
+        "parkWait": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "asked": {
+              "type": "boolean"
+            },
+            "command": {
+              "type": "string"
+            },
+            "leftSeconds": {
+              "type": "integer"
+            },
+            "origin": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "asked",
+            "command",
+            "leftSeconds",
+            "origin"
+          ],
+          "additionalProperties": false
+        },
+        "parkWaitEnded": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
         "positionKnown": {
           "type": "boolean"
         },
@@ -767,6 +848,33 @@
             "bench",
             "demo"
           ]
+        },
+        "sqmeter": {
+          "type": "object",
+          "properties": {
+            "lastReplySeconds": {
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "on": {
+              "type": "boolean"
+            },
+            "state": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "lastReplySeconds",
+            "on",
+            "state",
+            "text"
+          ],
+          "additionalProperties": false
         },
         "state": {
           "type": "string",
@@ -876,13 +984,19 @@
         "motorAmps",
         "moveElapsedMs",
         "moveTimeoutMs",
+        "nina",
+        "openOverridable",
+        "override",
         "parkConfirmed",
         "parkSwitches",
         "parkText",
+        "parkWait",
+        "parkWaitEnded",
         "positionKnown",
         "positionMm",
         "positionPercent",
         "simulation",
+        "sqmeter",
         "state",
         "supplyLow",
         "supplyVolts",

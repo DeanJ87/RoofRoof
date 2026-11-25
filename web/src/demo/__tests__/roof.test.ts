@@ -33,7 +33,7 @@ const tick = (ms: number) => {
   }
 };
 const roof = (): Roof => JSON.parse(core.statusParts()).roof;
-const command = (name: string) => JSON.parse(core.roofCommand(name)) as { status: number; body: Record<string, unknown> };
+const command = (name: string, body = '') => JSON.parse(core.roofCommand(name, body)) as { status: number; body: Record<string, unknown> };
 const inject = (change: object) => JSON.parse(core.roofInject(JSON.stringify(change)));
 const alertTitles = (): string[] => JSON.parse(core.recentAlerts()).alerts.map((a: { title: string }) => a.title);
 const runUntil = (done: () => boolean, maxMs: number) => {
@@ -116,14 +116,47 @@ describe('demo roof', () => {
     expect(alertTitles().some((t) => /park/i.test(t))).toBe(true);
   });
 
-  it('a close with the mount unparked is refused', () => {
+  it('a close with the mount unparked waits for the park, then closes (spec 027)', () => {
     command('open');
     runUntil(() => roof().state === 'open', 120000);
     inject({ mount: 'unpark' });
     tick(2000);
-    const refused = command('close');
-    expect(refused.status).toBe(409);
-    expect(refused.body.reason).toBe('mountNotParked');
+    const waiting = command('close');
+    expect(waiting.status).toBe(202);
+    expect(waiting.body.pending).toBe(true);
+    tick(1000);
+    expect((roof() as unknown as { parkWait: { command: string } | null }).parkWait?.command).toBe('close');
+    expect(inject({}).mount).toBe('slewing'); // N.I.N.A. was asked to park
+    expect(roof().state).toBe('open');
+    expect(runUntil(() => roof().state === 'closed', 180000)).toBeGreaterThan(0);
+    expect((roof() as unknown as { parkWait: unknown }).parkWait).toBeNull();
+  });
+
+  it('a waiting close that the park never holds for gives up with a critical alert (spec 027)', () => {
+    core.applyConfig(JSON.stringify({ park: { timeoutSeconds: 30 } }));
+    command('open');
+    runUntil(() => roof().state === 'open', 120000);
+    inject({ mount: 'unpark', parkFails: true });
+    tick(2000);
+    expect(command('close').status).toBe(202);
+    tick(40000);
+    expect(roof().state).toBe('open');
+    expect((roof() as unknown as { parkWaitEnded: string | null }).parkWaitEnded).toMatch(/park/i);
+    expect(alertTitles().some((t) => /park/i.test(t))).toBe(true);
+  });
+
+  it('a bad override body is refused with 400 (spec 027)', () => {
+    expect(command('open', '{"override": ["mountNotParked", "nonsense"]}').status).toBe(400);
+    expect(command('close', 'not json').status).toBe(400);
+  });
+
+  it('the N.I.N.A. Test answers from the simulated mount (spec 027)', () => {
+    const parked = JSON.parse(core.ninaTest(''));
+    expect(parked.status).toBe(200);
+    expect(parked.body).toMatchObject({ reachable: true, connected: true, atPark: true, slewing: false });
+    inject({ mount: 'unpark' });
+    expect(JSON.parse(core.ninaTest('{"url":"http://nina.local:1888"}')).body.atPark).toBe(false);
+    expect(JSON.parse(core.ninaTest('{"url":"nina.local"}')).status).toBe(400);
   });
 
   it('a jam faults the move; clear fault needs the jam gone', () => {

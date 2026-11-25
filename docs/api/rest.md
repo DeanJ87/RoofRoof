@@ -49,7 +49,7 @@ curl http://roofroof.local/api/status
   "alpaca": { "enabled": true, "clients": { "dome": { "connected": true, "watching": true, "silent": false, "lastCheckedAgeMs": 1200, "clientId": 4711 } } },
   "mqtt": { "enabled": true, "connected": true, "broker": "192.168.1.10", "port": 1883, "topic": "roofroof", "availabilityTopic": "roofroof/availability" },
   "connections": { "tcpLimit": 16, "liveUpdates": { "status": 1, "limitPerEndpoint": 3, "replaced": 0, "stalledClosed": 0 }, "alpacaRestoredAfterRestart": false },
-  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted", "switchesOnly": false, "openings": [0, 0], "check": null }, "closePending": false, "calibrating": false, "closePhase": "idle", "closeRearmSeconds": null, "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off" }
+  "roof": { "state": "closed", "positionKnown": true, "positionMm": 0, "positionPercent": 0, "target": null, "driving": false, "fromUnknown": false, "moveElapsedMs": 0, "moveTimeoutMs": 0, "hall": { "level": "low", "counts": 712 }, "supplyVolts": 12.46, "supplyLow": false, "minSupplyVolts": 11, "currentSense": false, "motorAmps": null, "maxCurrentAmps": 10, "parkSwitches": { "fitted": 1, "switch1": "closed", "switch2": "notFitted", "switchesOnly": false, "openings": [0, 0], "check": null }, "closePending": false, "calibrating": false, "closePhase": "idle", "closeRearmSeconds": null, "parkWait": null, "parkWaitEnded": null, "override": [], "openOverridable": [], "weather": "safe", "weatherText": "safe", "parkConfirmed": true, "parkText": "parked", "daylight": { "mode": "alert", "state": "night", "sunAltitudeDeg": -14.2, "limitDeg": 0, "text": "Sun -14.2° < 0.0°", "closes": false }, "fault": null, "watchdogTrips": 0, "maxStepGapMs": 21, "maxWatchdogBeatAgeMs": 12, "simulation": "off", "nina": { "set": true, "state": "good", "reachable": true, "connected": true, "atPark": true, "ageSeconds": 2, "text": "" }, "sqmeter": { "on": true, "state": "good", "lastReplySeconds": 3, "text": "Replied 3 s ago: safe" } }
 }
 ```
 
@@ -85,6 +85,10 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `calibrating` | a [calibration run](../user-guide/calibration-run.md) is under way, pauses at each end included; open and close are refused (`calibrating`) and the Stop bar shows |
 | `closePhase` | the [automatic close](../user-guide/close-on-unsafe.md)'s phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` |
 | `closeRearmSeconds` | spec 026: while the automatic close stands down (`heldByPerson`, `halted`), the seconds until it ends by itself if the weather stays safe and daylight doesn't want the roof closed; `null` while it isn't counting down (idle, or something wants the roof closed now) |
+| `parkWait`, `parkWaitEnded` | spec 027: `null`, or while an Open or Close waits for the mount to park `{ "command": "open"\|"close", "origin": "person"\|"alpaca"\|"mqtt"\|"automatic", "leftSeconds", "asked" }` (`leftSeconds` until the wait gives up, `asked`: N.I.N.A. has been asked to park); `parkWaitEnded` is the text of the last wait that ended without running (it gave up, or another check refused the command), or `null`. An Alpaca client reads that as an error until its next command |
+| `override`, `openOverridable` | spec 027: the names (`weatherNotSafe`, `daylight`, `mountNotParked`) of the person's confirmed overrides in effect now, and of the refusals a person may override for an Open now (`weatherNotSafe` only while SQMeter alone says unsafe: never for rain or a source in doubt) |
+| `nina` | spec 027: the park source's health: `set` (an address is saved), `state` (`notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`), `reachable`, `connected` (the mount is connected in N.I.N.A.), `atPark`, `ageSeconds` since the last reading and `text` (why, when it isn't good) |
+| `sqmeter` | spec 027: the weather source's health: `on` (a source is switched on), `state` (`off`, `waiting`, `good`, `stale`, `unreachable`, `unreadable` or `offline`: as in [`GET /api/roof/inputs`](#get-apiroofinputs)), `lastReplySeconds` (`null` without a good reply) and `text` |
 | `weather`, `weatherText` | the weather verdict the roof's command checks use now (`safe`, `unsafe` or `unknown`; unknown and unsafe when the main loop hasn't handed it over for 5 s) and its reason, at most 200 bytes |
 | `parkConfirmed`, `parkText` | whether a close would pass the park check now (N.I.N.A. and every fitted switch), and why, at most 200 bytes |
 | `daylight` | the [daylight failsafe](../user-guide/close-on-unsafe.md#daylight-failsafe): `mode` (`off`, `alert` or `close`), `state` (`off`, `unknown`, `night` or `day`), `sunAltitudeDeg` (`null` while off or unknown), `limitDeg` (the threshold), `text` ("Sun 3.2° ≥ 0.0°", "Sun -4.1° < 0.0°", "Location not set", "Clock not set" or "Off") and `closes` (daylight wants the roof closed now: mode `close` and state `day`) |
@@ -300,6 +304,27 @@ curl -u admin:password -X POST http://roofroof.local/api/sqmeter/test \
 | 400 | no address set, or not a valid address |
 | 409 | the roof moving, a close waiting, the automatic close working, or another read of SQMeter running |
 | 502 | `error` says why: `"SQMeter not answering: connection refused"`, `"SQMeter wants a password"`, `"SQMeter refused the password"`, `"That address answered HTTP 404, not like SQMeter's /api/safety"`, or `"That address answered, but not like SQMeter's /api/safety (missing safe)"` (another of SQMeter's pages, say) |
+| 503 | not enough memory to start the read |
+
+### `POST /api/nina/test`
+
+Spec 027: the **N.I.N.A. Test** next to N.I.N.A.'s address in Settings. The device reads N.I.N.A.'s mount information once, as the park check does, at the body's `url` or, without a body, the saved address, and says what it found. The address starts with `http://` or `https://`. Nothing is saved. Needs the password when protection is on.
+
+```bash
+curl -u admin:password -X POST http://roofroof.local/api/nina/test \
+  -H "Content-Type: application/json" -d '{"url": "https://nina.local:1888"}'
+```
+
+```json
+{ "reachable": true, "connected": true, "atPark": false, "slewing": false }
+```
+
+| Status | When |
+|---|---|
+| 200 | N.I.N.A. answered: `reachable`, `connected` (the mount is connected in N.I.N.A.), `atPark` and `slewing` |
+| 400 | a body that isn't `{"url": "..."}` (a string, at most 512 bytes), no address, or an address that doesn't start with `http://` or `https://` |
+| 409 | the roof is busy, or another read runs |
+| 502 | `error` says why, with `reachable` false when nothing answered: `"N.I.N.A. not responding: connection refused"`, or `"N.I.N.A. answered, but: ..."` |
 | 503 | not enough memory to start the read |
 
 ---
@@ -597,6 +622,8 @@ curl -X POST -H "X-RoofRoof: 1" http://roofroof.local/api/roof/open
 { "success": true, "state": "opening" }
 ```
 
+An open or close may carry a body `{"override": [...]}` (see below) and, when the mount isn't parked but N.I.N.A. can be asked, is accepted with `202` and waits for the park: `{ "success": true, "state": "closed", "pending": true, "message": "Waiting for the mount to park: N.I.N.A. was asked; the open runs once the park holds" }`.
+
 A refusal is `409` with the reason and a text that states the measured value and the limit, or the input that failed:
 
 ```json
@@ -605,12 +632,16 @@ A refusal is `409` with the reason and a text that states the measured value and
 
 ### `POST /api/roof/open`
 
-Open. Refused (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`parkSwitchCheck`) with the park switches only while `roof.parkSwitches.check` is set (a switch hasn't opened in the last 3 roof openings), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`: "No board chosen yet: choose the board and its pins", or "Pin setup invalid: " and the first broken pin rule or "The saved pin setup couldn't be read"; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true.
+Open. Refused (`mountNotParked`, spec 027: the telescope passes under the roof either way, so an open needs the park as a close does) unless the mount is confirmed parked, (`weatherNotSafe`) unless the weather verdict is safe, (`daylight`, "Daylight: Sun 3.2° ≥ 0.0°") while `roof.daylight.closes` is true (the weather reason comes first when both apply), (`parkSwitchCheck`) with the park switches only while `roof.parkSwitches.check` is set (a switch hasn't opened in the last 3 roof openings), (`busy`) while an upload, command-line OTA or a settings save is writing the flash, an MQTT connect is under way or a restart is scheduled, (`hotspot`) while the setup hotspot (no password) is on, while nothing is driven (`pinSetup`: "No board chosen yet: choose the board and its pins", or "Pin setup invalid: " and the first broken pin rule or "The saved pin setup couldn't be read"; [Pins](../user-guide/pins.md#when-nothing-is-driven)), and by the motion logic: `faultLatched`, `hallNotSettled`, `supplyLow`, `supplyUnreadable`, `currentUnreadable`, `settingsInvalid`. The motor starts after the 500 ms dead time and stops on the open magnet. An open in progress stops (no fault) as soon as the weather is no longer safe, or `roof.daylight.closes` becomes true, or the park is lost.
+
+**Waiting for the park.** When the park is the only thing refusing the open and N.I.N.A. can be asked (an address is set and **Ask N.I.N.A. to park** is on), the open is accepted with `202` and `pending`: N.I.N.A. is asked to park (again every park request gap), and once the park has held for the park hold time the open runs through every check again. `roof.parkWait` shows the wait. It ends at the park wait limit (`park.timeoutSeconds`) with the critical "mount not parked" alert, on any stop, on a new command, or when another check refuses the command (`roof.parkWaitEnded` says why). When N.I.N.A. can't be asked, the refusal says so: "Mount not parked: ...: no N.I.N.A. address to ask for the park: park the mount, or set N.I.N.A.'s address" or "...: asking N.I.N.A. to park is off (Settings, Roof, N.I.N.A.): park the mount, or turn it on".
+
+**Overrides.** An optional body names the refusals a person confirms for this one command: `{"override": ["weatherNotSafe", "daylight"]}`. `weatherNotSafe` only counts while SQMeter alone says unsafe (never for rain or a weather source in doubt); the park, a park switch check and faults can't be overridden on an Open. The override stays in effect while the roof opens and ends when the roof reads closed, a close is accepted, or a refusal it doesn't cover appears (`roof.override` shows it, `roof.openOverridable` what may be overridden now). A body that isn't JSON of that shape (at most 256 bytes) or names anything else is refused with `400` and `error`, and nothing happens.
 
 
 ### `POST /api/roof/close`
 
-Close. Refused (`mountNotParked`) unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed, as the [safety inputs](../user-guide/safety-inputs.md) decide. During the close the park is checked every 20 ms; if it is lost the motor stops with a `parkInterlock` fault. The weather never blocks a close.
+Close. Refused (`mountNotParked`) unless the mount is confirmed parked: N.I.N.A. reports it at park and every fitted park switch reads closed, as the [safety inputs](../user-guide/safety-inputs.md) decide. During the close the park is checked every 20 ms; if it is lost the motor stops with a `parkInterlock` fault. The weather never blocks a close. If only the park refuses it and N.I.N.A. can be asked, the close waits for the park as an open does (`202`; see above). An optional body `{"override": ["mountNotParked"]}` is a person's confirmed close without the park, for that close only: the park isn't re-checked while it closes, and a `parkInterlock` fault can't come from it. A bad body is refused with `400`.
 
 A close always wins, as long as it would run (past the park check and the motion checks, and not already closed or closing): it cancels a scheduled restart (except the one that remounts a rewritten web UI) and stops an upload in progress (that upload fails with `409` "Upload stopped: the roof is closing"). Once a restart has passed its last check, open and close are refused (`restarting`, "The device is restarting") for the moment before the reset. If an upload, a settings save, a WiFi change or scan, or an MQTT connect is still finishing, the close is accepted as waiting and starts as soon as it is done, within a few seconds (`roof.closePending` in the status); stop or open cancels it:
 
@@ -948,7 +979,7 @@ See [Alerts](../user-guide/alerts.md) for setup.
 
 Queues a test notification on the given (saved and enabled) channel(s). Returns `202 {"success":true}`; delivery happens in the background - check `/api/alerts/recent` for the result. `400` if the channel is unknown or not enabled. A channel that is switched on but can't deliver right now (MQTT off, no WiFi) is recorded as `skipped` with the reason, never `failed`. Requires HTTP auth when enabled.
 
-Add `event=<event>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Events: `mount_not_parked`, `roof_not_closed` (critical: sent at level 3 or above), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `client_lost`, `client_back`, `client_disconnected`. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`.
+Add `event=<event>&level=<1-4>&sound=<pushover sound>` to send a sample of that event (title "Test: ...") at that level and sound instead. Events: `mount_not_parked`, `roof_not_closed` (critical: sent at level 3 or above), `move_fault`, `supply_low`, `unsafe_closing`, `roof_closed`, `daylight_open`, `daylight_closed`, `daylight_unknown`, `safety_lost`, `nina_lost`, `client_lost`, `client_back`, `client_disconnected`. `title` and `message` (up to 80 / 240 characters) try out custom wording with `{variables}`.
 
 ### `GET /api/alerts/armed`, `POST /api/alerts/arm`, `POST /api/alerts/disarm`
 

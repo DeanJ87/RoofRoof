@@ -119,6 +119,7 @@ namespace SQM
                 c.add("alerts.events.unsafe_closing.level", "D-04", a.unsafeClosing.level != 0, {alertsOn});
                 c.add("alerts.events.roof_closed.level", "D-04", a.roofClosed.level != 0, {alertsOn});
                 c.add("alerts.events.safety_lost.level", "D-04", a.safetyLost.level != 0, {alertsOn});
+                c.add("alerts.events.nina_lost.level", "D-04", a.ninaLost.level != 0, {alertsOn});
                 // Spec 013: the daylight events need alerts on and daylight on.
                 const Link daylightOn{"D-44", "daylight-off", c.cfg.daylight.mode != DaylightConfig::Mode::Off};
                 c.add("alerts.events.daylight_open.level", "D-04", a.daylightOpen.level != 0, {alertsOn, daylightOn});
@@ -162,8 +163,8 @@ namespace SQM
                 const MQTTConfig &mqtt = c.cfg.mqtt;
                 const Link mqttOn{"D-13", "mqtt-off", mqtt.enabled};
                 c.add("mqtt.homeAssistant.enabled", "D-13", mqtt.homeAssistant, {mqttOn});
-                const Link alerting{"D-13", "alerts-off", c.cfg.alerts.enabled};
-                c.add("mqtt.homeAssistant.alertsSwitch", "D-13", mqtt.homeAssistant, {mqttOn, alerting});
+                // Spec 027: the Alerts switch is announced whenever discovery is on.
+                c.add("mqtt.homeAssistant.alertsSwitch", "D-13", mqtt.homeAssistant, {mqttOn});
             }
 
             // The SQMeter MQTT safety source is read from RoofRoof's own broker (spec 004).

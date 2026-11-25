@@ -22,6 +22,7 @@
 #include "Config.h"
 #include "FaultRecord.h"
 #include "MotionGuards.h"
+#include "MoveGuard.h"
 #include "ParkRule.h"
 #include "PlatformHold.h"
 #include "RoofController.h"
@@ -72,7 +73,14 @@ namespace SQM
         // Any task. Open and close pass the weather and park gates first. A
         // stop is refused only for an Alpaca client while a close runs or waits
         // in weather that isn't safe (spec 006); a person's never is. The output is applied before this returns.
-        Outcome command(Roof::Command command, Roof::Origin origin);
+        // Spec 027 (src/RoofControlGuard.cpp): an Open or Close refused only for
+        // the park waits for it (accepted, `pending`); a person's `overrides`
+        // (RoofIo::OverrideBit) set the overridable refusals aside.
+        Outcome command(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0);
+        // Main loop, spec 027: a wait wants N.I.N.A. asked to park (once per call).
+        bool takeParkRequest() { return parkRequestWanted.exchange(false); }
+        // Main loop, spec 027: a wait gave up; its text for the critical alert.
+        bool takeWaitAlert(std::string &text);
         // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
         // if a person has stopped the roof since the snapshot that showed
         // `personStopsSeen`, checked under the same lock as the command, so
@@ -251,11 +259,14 @@ namespace SQM
         void refreshSnapshot();
         Outcome outcomeOf(const Roof::CommandResult &result);
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
-        Outcome precheck(Roof::Command command, Roof::Origin origin) const;
-        RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin) const;
+        Outcome precheck(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0) const;
+        RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0, bool parkAside = false) const;
+        Outcome admitLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides, const RoofIo::Blockers &now);
+        void stepGuard(const RoofIo::GateInputs &now);
+        RoofIo::CommandCheck checkWait() const;
         Outcome runChecked(Roof::Command command, Roof::Origin origin);
         static Outcome blockedOutcome(const RoofIo::Blockers &now, Roof::State state);
-        Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now);
+        Outcome commandLocked(Roof::Command command, Roof::Origin origin, const RoofIo::Blockers &now, uint8_t overrides = 0);
         Outcome stopLocked(Roof::Command command, Roof::Origin origin);
         void runPendingClose();
         void stepCalibration(const Roof::Readings &readings);
@@ -289,6 +300,9 @@ namespace SQM
         uint32_t personStops = 0;
         uint32_t remoteStops = 0; // spec 014: those of personStops that were a remote stop honoured by autoClose.remoteStop
         Roof::Origin closeOrigin = Roof::Origin::Person;
+        uint8_t closeOverrides = 0; // spec 027: a person's confirmed close, deferred
+        RoofIo::MoveGuard guard;    // spec 027: the wait for the park and the overrides in effect
+        std::string waitAlertText;  // a wait that gave up, for the main loop's alert
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
@@ -332,6 +346,8 @@ namespace SQM
         std::atomic<bool> remoteStopsClose{false}; // spec 014: autoClose.remoteStop
         std::atomic<uint8_t> stateNow{0};          // Roof::State, as of the last snapshot
         std::atomic<bool> closeWaitingNow{false};
+        std::atomic<bool> parkRequestWanted{false}; // spec 027
+        std::atomic<bool> waitAlertWanted{false};
         std::atomic<bool> calibratingNow{false}; // spec 016: calibration.active(), for moving()
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;

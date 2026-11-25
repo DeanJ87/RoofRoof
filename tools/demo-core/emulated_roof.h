@@ -23,6 +23,7 @@
 #include "Config.h"
 #include "Daylight.h"
 #include "DiagDocuments.h"
+#include "MoveGuard.h"
 #include "MoveLog.h"
 #include "FaultRecord.h"
 #include "InputsReport.h"
@@ -80,6 +81,7 @@ namespace DemoRoof
         std::string reason;
         std::string text;
         Roof::State state = Roof::State::Unknown;
+        bool pending = false; // spec 027: accepted, waiting for the park (202)
     };
 
     // Spec 020: the simulated SQMeter's login, when the Demo panel locks it.
@@ -122,7 +124,10 @@ namespace DemoRoof
         void setClock(int64_t epochSeconds) { epoch = epochSeconds; }
 
         // POST /api/roof/* (a person) and the Alpaca Dome (a client).
-        Outcome command(Roof::Command command, Roof::Origin origin);
+        // Spec 027 (emulated_roof_guard.cpp): an Open or Close refused only for
+        // the park waits for it (accepted, `pending`); a person's `overrides`
+        // (RoofIo::OverrideBit) set the overridable refusals aside.
+        Outcome command(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0);
         Outcome clearFault();
         // Spec 016: RoofControl's calibration run (the same library), as a person.
         Outcome startCalibration(const Calib::Request &request);
@@ -190,7 +195,12 @@ namespace DemoRoof
         void carryOut(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons);
         Outcome automaticClose(uint32_t personStopsSeen);
-        Outcome runChecked(Roof::Command command, Roof::Origin origin);
+        Outcome runChecked(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0);
+        // Spec 027 (emulated_roof_guard.cpp): RoofControlGuard's admitLocked and stepGuard.
+        RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides, bool parkAside) const;
+        Outcome admit(Roof::Command command, Roof::Origin origin, uint8_t overrides);
+        void stepGuard();
+        uint8_t overrideBits() const;
         Outcome outcomeOf(const Roof::CommandResult &result) const;
         void checkGates();
         void stepCalibration(const Roof::Readings &in);
@@ -233,6 +243,7 @@ namespace DemoRoof
         uint32_t personStops = 0;
         Diag::MoveLog *diagLog = nullptr;
         Roof::Origin moveOrigin = Roof::Origin::Person; // of the last accepted open or close
+        RoofIo::MoveGuard guard;                        // spec 027: the wait for the park and the overrides in effect
         uint32_t remoteStops = 0;                       // spec 014: of personStops, the honoured remote stops
         float motorAmps = 0.0f;
 

@@ -347,6 +347,12 @@ namespace SQM
         // doubt, constitution III); N.I.N.A. counts as configured unless the
         // park result says it isn't.
         void applySafety(Inputs &in, Safety::Verdict verdict, const Safety::ParkResult &park);
+        // Spec 027 (constitution 7.0.0, III): a person's Open override in effect
+        // (RoofIo::OverrideBit, from the roof's snapshot) keeps its reasons from
+        // starting the close: the weather counts as safe only while the source
+        // alone says unsafe (no rain, no doubt), daylight as not wanting a close.
+        // The verdict itself is unchanged.
+        void applyOverride(Inputs &in, uint8_t overrides, const Safety::WeatherVerdict &weather);
         // The roof's status into `in`.
         void applyRoof(Inputs &in, const Roof::Status &status, bool closePending);
 

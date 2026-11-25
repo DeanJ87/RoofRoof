@@ -155,6 +155,13 @@ export const mockStatus: SystemStatus = {
       parkRequests: true,
       text: '',
     },
+    // Spec 027: nothing waits for the park, nothing overridden, both sources answering.
+    parkWait: null,
+    parkWaitEnded: null,
+    override: [],
+    openOverridable: [],
+    nina: { set: true, state: 'good', reachable: true, connected: true, atPark: true, ageSeconds: 2, text: '' },
+    sqmeter: { on: true, state: 'good', lastReplySeconds: 12, text: '' },
   },
   // Spec 020: the location is typed in (and not yet set).
   location: { source: 'manual', set: false, gps: false, savedAt: null, readAgeSeconds: null, problem: null },
@@ -205,7 +212,7 @@ export const mockWifiNetworks: WiFiNetwork[] = [
 
 // The roof's Dome (spec 006), as /management/v1/configureddevices lists it.
 export const mockAlpacaDevices: AlpacaConfiguredDevice[] = [
-  { DeviceName: 'RoofRoof roof', DeviceType: 'Dome', DeviceNumber: 0, UniqueID: 'roofroof-a1b2c3d4e5f6-dome-0' },
+  { DeviceName: 'RoofRoof', DeviceType: 'Dome', DeviceNumber: 0, UniqueID: 'roofroof-a1b2c3d4e5f6-dome-0' },
 ];
 
 export const mockRecentAlerts: AlertRecord[] = [

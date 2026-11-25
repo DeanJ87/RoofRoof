@@ -83,7 +83,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 
 | | Check | Result |
 |---|---|---|
-| ☐ 6.1 | Open refused with no weather source; close refused with N.I.N.A. off or a park switch open; a switch opened mid-close stops with `parkInterlock`; between the magnets only a person's open or close is accepted (not N.I.N.A. or MQTT) | |
+| ☐ 6.1 | Open refused with no weather source; open and close refused with a park switch open, or with N.I.N.A. off and park requests off (with requests on they wait for the park, then give up); a confirmed close without the park closes once; a switch opened mid-close stops with `parkInterlock`; between the magnets only a person's open or close is accepted (not N.I.N.A. or MQTT) | |
 | ☐ 6.2 | EN high only while driving; RPWM and LPWM never both high; 20 kHz | |
 | ☐ 6.3 | Stop drops EN at once; `stopped`; a start waits 0.5 s | |
 | ☐ 6.4 | No magnet: `timeout` fault after the expected time plus margin | s |
@@ -146,10 +146,10 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 
 | | Check | Result |
 |---|---|---|
-| ☐ 9.1 | (steps 9.1 to 9.7 first with the motor disconnected, see 7.14; 9.2 and 9.5 again on the real roof) Alpaca on, restarted; N.I.N.A. discovers **RoofRoof roof** and connects | |
+| ☐ 9.1 | (steps 9.1 to 9.7 first with the motor disconnected, see 7.14; 9.2 and 9.5 again on the real roof) Alpaca on, restarted; N.I.N.A. discovers **RoofRoof** and connects | |
 | ☐ 9.2 | Open and close from N.I.N.A.; ShutterStatus runs opening, open, closing, closed | |
 | ☐ 9.3 | Unsafe: Open shows the weather reason, nothing moves | |
-| ☐ 9.4 | Unparked: Close shows the park reason | |
+| ☐ 9.4 | Unparked: Open and Close succeed and wait while N.I.N.A. is asked to park (ShutterStatus opening or closing), then run; with park requests off they show the park reason | |
 | ☐ 9.5 | N.I.N.A. Stop works in safe weather; with Remote Stop off, in an unsafe close it shows an error and the close continues; web UI Stop still stops it; no **Automatic close stopped** alert | |
 | ☐ 9.6 | After a boot between the magnets, Open and Close say only a person can move the roof | |
 | ☐ 9.7 | Alpaca off: every Dome command, Stop included, says "disabled" | |

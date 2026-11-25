@@ -243,7 +243,10 @@ void test_dependents_survive_dependency_round_trip()
         {R"({"mqtt":{"enabled":false}})", R"({"mqtt":{"enabled":true}})", "alerts.mqtt.enabled", "inactive:mqtt-off"},
         {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.sendMode", "inactive:alpaca-off"},
         {R"({"alpaca":{"enabled":false}})", R"({"alpaca":{"enabled":true}})", "alerts.events.client_lost.level", "inactive:alpaca-off"},
-        {R"({"alerts":{"enabled":false}})", R"({"alerts":{"enabled":true}})", "mqtt.homeAssistant.alertsSwitch", "inactive:alerts-off"},
+        {R"({"mqtt":{"enabled":false}})",
+         R"({"mqtt":{"enabled":true}})",
+         "mqtt.homeAssistant.alertsSwitch",
+         "inactive:mqtt-off"}, // spec 027
     };
     for (const auto &trip : trips)
     {

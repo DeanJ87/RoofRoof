@@ -89,6 +89,7 @@ namespace SQM
             bool sqmeterSafe = false;
             uint32_t sqmeterFlags = 0; // from the last good reply, even when no longer fresh
             std::string detail;        // the latest failure's text
+            bool replied = false;      // spec 027: a good reply since the source was switched on (ageMs counts from it)
         };
 
         // The time a source is judged at.

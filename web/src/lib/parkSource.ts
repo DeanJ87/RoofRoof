@@ -1,5 +1,8 @@
 import type { Config, ParkConfig, ParkSource, ParkSwitches } from '../types';
 import type { ConfigPath } from '../components/settings/context';
+import { bodyOf, postJson } from './api';
+import { deviceError } from '../i18n/deviceMessage';
+import { t } from '../i18n';
 
 // Spec 024: what confirms the mount's park (N.I.N.A., the park switches, or
 // both) and how many switches are fitted, shared by Settings → Roof and the
@@ -56,4 +59,19 @@ export const parkWarnings = (park: ParkConfig, testBox?: Config['testBox']): Par
   out.push('wiring');
   if (testBox?.park) out.push('testBox');
   return out;
+};
+
+/** Spec 027 (FR-013): N.I.N.A.'s answer to one read of the mount, through the device. */
+export type NinaAnswer = { ok: true; connected: boolean; atPark: boolean } | { ok: false; reachable: boolean; error: string };
+
+/** Settings' Test: reads N.I.N.A.'s mount once at the address as typed (saved or not); nothing is saved. */
+export const testNina = async (url: string): Promise<NinaAnswer> => {
+  try {
+    const response = await postJson('/api/nina/test', { url: url.trim() });
+    const body = await bodyOf(response);
+    if (response.ok) return { ok: true, connected: body.connected === true, atPark: body.atPark === true };
+    return { ok: false, reachable: body.reachable === true, error: deviceError(body, t('roof.result.refused')) };
+  } catch {
+    return { ok: false, reachable: false, error: t('settings.couldNotReachTheDevice') };
+  }
 };

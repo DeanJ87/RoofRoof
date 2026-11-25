@@ -64,6 +64,7 @@ namespace SQM
             a.daylightClosed = {2, "", "", ""};
             a.daylightUnknown = {2, "", "", ""};
             a.testBox = {3, "", "", ""};
+            a.ninaLost = {2, "", "", ""};
             a.sendMode = AlertsConfig::SendMode::Any;
             a.clientSilentSeconds = 120;
             a.cooldownSeconds = 300;

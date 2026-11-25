@@ -17,10 +17,17 @@ namespace SQM
             }
         } // namespace
 
-        Alpaca::DomeStatus domeStatus(const Roof::Status &status, bool closePending, bool running)
+        Alpaca::DomeStatus domeStatus(const Roof::Status &status, bool closePending, bool running, const WaitView &wait)
         {
             using Alpaca::ShutterState;
             if (!running)
+                return at(ShutterState::Error, false);
+            // Spec 027: at rest, the move to come once the mount is parked, or
+            // the wait's failure until the next command.
+            const bool moving = status.state == Roof::State::Opening || status.state == Roof::State::Closing;
+            if (wait.waiting && !moving)
+                return at(wait.command == Roof::Command::Open ? ShutterState::Opening : ShutterState::Closing, true);
+            if (wait.failed && !moving)
                 return at(ShutterState::Error, false);
             switch (status.state)
             {
@@ -43,6 +50,18 @@ namespace SQM
             // Stopped part-way or unknown: neither open nor closed, so neither
             // "wait for open" nor "wait for closed" is satisfied by it.
             return at(ShutterState::Error, false);
+        }
+
+        std::string domeWaitPrefix(const WaitView &wait)
+        {
+            if (wait.waiting || !wait.failed)
+                return "";
+            return "Last move not run: " + wait.text + ": ";
+        }
+
+        std::string domeOverridePrefix(uint8_t overrideBits)
+        {
+            return overrideBits != 0 ? "CHECKS OVERRIDDEN: " : "";
         }
 
         Roof::Command roofCommand(Alpaca::DomeAction action)

@@ -25,7 +25,8 @@ export interface Core extends BackupCore {
   loadState(json: string): boolean;
   pending(): string;
   // The simulated roof (spec 011, tools/demo-core/emulated_device_roof.cpp).
-  roofCommand(name: string): string;
+  // Spec 027: open and close take the optional override body ("" for none).
+  roofCommand(name: string, body: string): string;
   // Spec 016: start (with the body), abort, status.
   calibration(action: string, body: string): string;
   // Spec 019: jog, mark, confirm, discard (with their bodies), status.
@@ -36,6 +37,8 @@ export interface Core extends BackupCore {
   pins(action: string, body: string): string;
   // Spec 020: POST /api/sqmeter/test, one read of the simulated SQMeter's /api/safety.
   sqmeterTest(body: string): string;
+  // Spec 027: POST /api/nina/test, one read of the simulated mount.
+  ninaTest(body: string): string;
   roofInject(json: string): string;
   roofPanel(): string;
   platformHold(action: string): string;

@@ -1,5 +1,6 @@
 # PlatformIO
 .pio/
+include/version_commit.h
 .vscode/
 .clang_complete
 .gcc-flags.json

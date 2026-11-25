@@ -90,6 +90,7 @@ namespace SQM
                 "daylight_closed",
                 "daylight_unknown",
                 "test_box",
+                "nina_lost",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);

@@ -5,6 +5,7 @@
 #include <unity.h>
 
 #include "NinaApi.h"
+#include "NinaTest.h"
 #include "fixtures.h"
 
 using namespace SQM::Nina;
@@ -196,6 +197,25 @@ void test_parse_api_version(void)
     TEST_ASSERT_EQUAL_STRING("v2", apiVersionName(ApiVersion::V2));
 }
 
+// Spec 027: Settings' Test answers what N.I.N.A. reports, or why not.
+void test_nina_test_url_and_answers(void)
+{
+    const ApiV2 api;
+    TEST_ASSERT_EQUAL_STRING("https://nina.local:1888/v2/api/equipment/mount/info", testUrl("https://nina.local:1888/", api).c_str());
+    StaticJsonDocument<512> doc;
+    TEST_ASSERT_EQUAL_INT(200, writeTestAnswer(doc.to<JsonObject>(), testReading(api, 200, Fixtures::INFO_PARKED, "", 0)));
+    TEST_ASSERT_TRUE(doc["reachable"].as<bool>());
+    TEST_ASSERT_TRUE(doc["connected"].as<bool>());
+    TEST_ASSERT_TRUE(doc["atPark"].as<bool>());
+    TEST_ASSERT_TRUE(doc["error"].isNull());
+    TEST_ASSERT_EQUAL_INT(502, writeTestAnswer(doc.to<JsonObject>(), testReading(api, 0, "", "connection refused", 0)));
+    TEST_ASSERT_FALSE(doc["reachable"].as<bool>());
+    TEST_ASSERT_EQUAL_STRING("N.I.N.A. not responding: connection refused", doc["error"].as<const char *>());
+    TEST_ASSERT_EQUAL_INT(502, writeTestAnswer(doc.to<JsonObject>(), testReading(api, 500, "oops", "", 0)));
+    TEST_ASSERT_TRUE(doc["reachable"].as<bool>());
+    TEST_ASSERT_FALSE(doc["atPark"].as<bool>());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -223,5 +243,6 @@ int main(int, char **)
     RUN_TEST(test_failed_reading_is_not_parked);
     RUN_TEST(test_make_api_v2);
     RUN_TEST(test_parse_api_version);
+    RUN_TEST(test_nina_test_url_and_answers);
     return UNITY_END();
 }

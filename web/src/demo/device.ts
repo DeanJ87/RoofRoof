@@ -196,9 +196,9 @@ class DemoDevice {
     return { status: reply.status, body, contentType: reply.contentType };
   }
 
-  /** POST /api/roof/<name> as a person (spec 011): open, close, stop, clear-fault. */
-  roofCommand(name: string): Reply {
-    const reply = JSON.parse(this.core.roofCommand(name));
+  /** POST /api/roof/<name> as a person (spec 011): open, close, stop, clear-fault; spec 027: open and close take an optional override body. */
+  roofCommand(name: string, body = ''): Reply {
+    const reply = JSON.parse(this.core.roofCommand(name, body));
     this.persist();
     this.notify();
     return { status: reply.status, body: JSON.stringify(reply.body) };
@@ -223,6 +223,12 @@ class DemoDevice {
   /** Test SQMeter's address (spec 020): one read of the simulated SQMeter's /api/safety. */
   sqmeterTest(body = ''): Reply {
     const reply = JSON.parse(this.core.sqmeterTest(body));
+    return { status: reply.status, body: JSON.stringify(reply.body) };
+  }
+
+  /** Test N.I.N.A.'s address (spec 027): one read of the simulated mount. */
+  ninaTest(body = ''): Reply {
+    const reply = JSON.parse(this.core.ninaTest(body));
     return { status: reply.status, body: JSON.stringify(reply.body) };
   }
 

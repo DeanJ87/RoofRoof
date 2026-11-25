@@ -10,7 +10,6 @@ import { EthernetCard } from './EthernetCard';
 import { hasEthernet } from '../../lib/pinsView';
 import {
   ActionButton,
-  DepNote,
   DepToggle,
   Field,
   Group,
@@ -246,11 +245,6 @@ const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, upd
         onChange={(v) => update(['mqtt', 'homeAssistant', 'enabled'], v)}
         hint={t('settings.network.announcesTheDeviceToHomeAssistant')}
       />
-      {homeAssistant.enabled && deps.get('mqtt.homeAssistant.alertsSwitch').state === 'inactive' && (
-        <div class="indent">
-          <DepNote entry={deps.get('mqtt.homeAssistant.alertsSwitch')} onFix={fix} prefix={t('settings.network.noAlertsSwitch')} />
-        </div>
-      )}
       {homeAssistant.enabled && (
         <div class="form-grid indent">
           <Field

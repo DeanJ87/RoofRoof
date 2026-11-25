@@ -388,13 +388,53 @@ void test_closed_respects_the_cooldown(void)
     TEST_ASSERT_EQUAL(1, count(run(engine, 400, 400, roof), AlertType::RoofClosed));
 }
 
+namespace
+{
+    AlertInputs ninaAt(uint32_t now, bool lost)
+    {
+        AlertInputs in = at(now, Roof{});
+        in.roof.ninaLost = lost;
+        in.roof.ninaLostText = lost ? "not parked: N.I.N.A. unreachable" : "";
+        return in;
+    }
+} // namespace
+
+// Spec 027: N.I.N.A. lost settles for 60 s, alerts once with its reason,
+// and the announced bit survives a restart.
+void test_nina_lost_settles_alerts_once_and_is_kept(void)
+{
+    TEST_ASSERT_EQUAL_STRING("nina_lost", alertTypeName(AlertType::NinaLost));
+    TEST_ASSERT_EQUAL(60, NINA_LOST_SETTLE_SECONDS);
+    AlertEngine engine = started();
+    size_t sent = 0;
+    for (uint32_t t = 100; t < 160; ++t) // lost from 100: 59 s held at 159
+        sent += count(engine.update(ninaAt(t, true), rules()), AlertType::NinaLost);
+    TEST_ASSERT_EQUAL(0, sent);
+    std::vector<Alert> out = engine.update(ninaAt(160, true), rules());
+    TEST_ASSERT_EQUAL(1, count(out, AlertType::NinaLost));
+    for (const Alert &a : out)
+        if (a.type == AlertType::NinaLost)
+        {
+            TEST_ASSERT_EQUAL_STRING("N.I.N.A. not reachable", a.title.c_str());
+            TEST_ASSERT_NOT_NULL(strstr(a.message.c_str(), "N.I.N.A. unreachable"));
+        }
+    for (uint32_t t = 161; t < 700; ++t)
+        TEST_ASSERT_EQUAL(0, count(engine.update(ninaAt(t, true), rules()), AlertType::NinaLost));
+    const uint8_t bits = engine.announcedRoof();
+    TEST_ASSERT_TRUE((bits & 0x40) != 0);
+    AlertEngine again;
+    again.restoreAnnouncedRoof(bits);
+    for (uint32_t t = 0; t < 400; ++t)
+        TEST_ASSERT_EQUAL(0, count(again.update(ninaAt(t, true), rules()), AlertType::NinaLost));
+}
+
 void test_announced_check_word(void)
 {
-    // Spec 013 added bits 4 (daylight open) and 5 (daylight unknown).
-    for (uint32_t bits = 0; bits <= 0x3F; ++bits)
+    // Spec 013 added bits 4 (daylight open) and 5 (daylight unknown); spec 027 bit 6 (N.I.N.A. lost).
+    for (uint32_t bits = 0; bits <= 0x7F; ++bits)
         TEST_ASSERT_TRUE(announcedValid(bits, announcedCheck(bits)));
     TEST_ASSERT_FALSE(announcedValid(0x03, announcedCheck(0x02)));
-    TEST_ASSERT_FALSE(announcedValid(0x40, announcedCheck(0x40)));
+    TEST_ASSERT_FALSE(announcedValid(0x80, announcedCheck(0x80)));
 }
 
 // SC-003: random roof conditions over time. Each condition event is never
@@ -509,6 +549,7 @@ int main(int, char **)
     RUN_TEST(test_waiting_sources_keep_a_restored_loss);
     RUN_TEST(test_closing_bit_survives_a_reset);
     RUN_TEST(test_closed_respects_the_cooldown);
+    RUN_TEST(test_nina_lost_settles_alerts_once_and_is_kept);
     RUN_TEST(test_announced_check_word);
     return UNITY_END();
 }

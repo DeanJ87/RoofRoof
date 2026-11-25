@@ -41,6 +41,14 @@ describe('RoofStopBar', () => {
     expect(document.body.classList.contains('has-stop-bar')).toBe(true);
   });
 
+  // Spec 027: a move waiting for the park can be stopped from every page.
+  it('shows Stop while a move waits for the park, saying so', () => {
+    current = withRoof({ state: 'closed', parkWait: { command: 'open', origin: 'alpaca', leftSeconds: 90, asked: true } });
+    render(<RoofStopBar />);
+    expect(screen.getByRole('region', { name: 'Roof moving' })).toHaveTextContent('Waiting for the park');
+    expect(screen.getByRole('button', { name: 'Stop roof' })).toBeEnabled();
+  });
+
   it('stays while the live data is lost, if the roof was last seen moving', () => {
     current = withRoof({ state: 'closing' });
     connected = false;

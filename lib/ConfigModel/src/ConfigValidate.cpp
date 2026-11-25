@@ -162,9 +162,9 @@ namespace SQM
             return true;
         }
 
-        // N.I.N.A. serves plain http only (spec 004 research D9). SQMeter's
-        // address may be https (spec 020 FR-039); its form is checked on a
-        // save (validateSqmeterAddress).
+        // N.I.N.A.'s address may be http or (spec 027, behind a TLS proxy) https.
+        // SQMeter's address may be https (spec 020 FR-039); its form is checked
+        // on a save (validateSqmeterAddress).
         bool validateSafety(const Config &c, std::string *error)
         {
             const SafetyConfig &s = c.safety;
@@ -174,8 +174,9 @@ namespace SQM
                 return setError(error, "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels");
             if (s.staleSeconds < SafetyConfig::MIN_STALE_SECONDS || s.staleSeconds > SafetyConfig::MAX_STALE_SECONDS)
                 return setError(error, "Safety: stale time must be between 10 and 600 seconds");
-            if (!c.park.ninaUrl.empty() && c.park.ninaUrl.rfind("http://", 0) != 0)
-                return setError(error, "N.I.N.A. URL must start with http://");
+            const std::string &nina = c.park.ninaUrl;
+            if (!nina.empty() && nina.rfind("http://", 0) != 0 && nina.rfind("https://", 0) != 0)
+                return setError(error, "N.I.N.A. URL must start with http:// or https://");
             if (c.park.timeoutSeconds < ParkConfig::MIN_TIMEOUT_SECONDS || c.park.timeoutSeconds > ParkConfig::MAX_TIMEOUT_SECONDS)
                 return setError(error, "Park: time limit must be between 30 and 1800 seconds");
             return true;

@@ -195,12 +195,12 @@ namespace SQM
         EventSetting clientLost;
         EventSetting clientBack;
         EventSetting clientDisconnected;
-        // The daylight failsafe (spec 013): the roof open in daylight, closed
-        // after a daylight close, and the check unable to run. Persisted with
+        // Spec 013 daylight events (open, closed, check can't run), persisted with
         // the imaging-app events (the main part holds the long channel settings).
         EventSetting daylightOpen;
         EventSetting daylightClosed;
         EventSetting daylightUnknown;
+        EventSetting ninaLost; // spec 027: N.I.N.A. can't be read
         // Spec 022: a test-box bypass came into effect, or is in effect after a
         // boot. Level 1 (quiet) to 4: never off (MIN_TEST_BOX_LEVEL).
         EventSetting testBox;

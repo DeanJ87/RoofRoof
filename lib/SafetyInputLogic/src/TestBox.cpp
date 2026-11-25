@@ -39,6 +39,7 @@ namespace SQM
             s.set = config.any();
             s.until = config.until;
             s.parkRequests = sources.ninaConfigured && sources.requestPark;
+            s.weatherBesideSource = config.weather && sources.sqmeterOn;
             if (!s.set)
                 return s;
             const bool park = config.park && !sources.ninaConfigured && !sources.switchesOnly;
@@ -116,7 +117,8 @@ namespace SQM
             append(parts, s.daylight, "daylight close");
             if (parts.empty())
                 return "Test box bypasses set but not in effect: a N.I.N.A. address or weather source is set";
-            return "Test box: " + parts + " bypassed until " + formatUtc(s.until);
+            const std::string note = s.weatherBesideSource ? " (weather check not bypassed: SQMeter is on)" : "";
+            return "Test box: " + parts + " bypassed until " + formatUtc(s.until) + note;
         }
 
         std::string domePrefix(const State &s)

@@ -13,9 +13,11 @@ When the weather is not safe and the roof is not closed, RoofRoof closes it by i
 3. it closes the roof through the same checks as any other close (the park is checked at the
    start and on every control step while closing), and watches it reach the closed magnet.
 
-The roof **never opens by itself**, and you can't open it while the weather isn't safe: there is
-no override. An open already under way stops as soon as the weather isn't safe, so the roof opens
-no further; the sequence then parks and closes from there.
+The roof **never opens by itself**, and an Open is refused while the weather isn't safe. Only a
+person at the web UI or the REST API, with the password, can confirm one past the weather SQMeter
+alone calls unsafe (never rain, never a source in doubt) and past daylight ([A person's confirmed open](#a-persons-confirmed-open)).
+An open already under way stops as soon as the weather isn't safe (unless confirmed that way), so
+the roof opens no further; the sequence then parks and closes from there.
 
 "Not safe" means unsafe *or unknown*: doubt counts as unsafe. After a restart with the roof open,
 the device asks for a park until a weather source has said safe.
@@ -27,14 +29,14 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: c5f88817fb42c465
+fingerprint: 1e53262e73ddb35c
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The close on unsafe weather
-    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park (unless park requests are off: then it only waits for the park); a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes, or earlier when a person at the roof releases the hold while it is safe; a stood-down one also ends when an Open (a person's or an imaging app's) starts the roof moving. A safe verdict before the close ends the sequence; a close already commanded runs to the end. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
+    accDescr: From idle, an unsafe verdict with the roof not closed starts an attempt that asks N.I.N.A. to park (unless park requests are off: then it only waits for the park); a roof already closing is only watched. When the park has held for 4 s the roof is closed. Reaching the closed magnet ends the sequence. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. A fault, or a position unknown for 2 s, stands the sequence down until a person acts. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes, or earlier when a person at the roof releases the hold while it is safe; a stood-down one also ends when an Open (a person's or an imaging app's) starts the roof moving. A safe verdict before the close ends the sequence; a close already commanded runs to the end. A person's confirmed open (the weather SQMeter alone calls unsafe, or daylight) keeps those reasons from starting the sequence while it is in effect; rain and any doubt about the source still do. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
     [*] --> Idle
     Idle --> WaitPark: not safe, roof not closed (park request)
     Idle --> Closing: not safe, a close already running
@@ -84,9 +86,56 @@ stateDiagram-v2
     7. If the roof faults, or its position is unknown for 2 s, nothing is sent and a critical alert says it can't close by itself (`CannotMove`). Once a person has made the position known or cleared the fault, the 5-minute wait follows.
     8. A person's stop or abort during the sequence, or while it can't move, stands it down (`HeldByPerson`) with a critical alert: nothing more is sent or moved.
     9. `CannotMove`, `HeldByPerson` and `Halted` end when the roof reads closed, or the weather has been safe for 10 minutes without a break. `HeldByPerson` and `Halted` also end earlier when a person at the roof presses **Release hold** while the weather is safe and daylight doesn't want the roof closed ([Release hold](#release-hold)), and `HeldByPerson` ends as soon as an Open (the dashboard's, N.I.N.A.'s or MQTT's) starts the roof moving ([Opening ends the hold](#opening-ends-the-hold)); ending a stand-down moves nothing, the close is only armed again.
-    10. A safe verdict while waiting ends the sequence (with the daylight close on, only when the sun isn't up either). A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
+    10. While a person's confirmed open is in effect, the weather counts as safe for this sequence only when SQMeter alone says unsafe (no rain, no doubt), and daylight as not wanting a close; the verdict itself is unchanged, and the first reason that wasn't confirmed starts the sequence as usual. A safe verdict while waiting ends the sequence (with the daylight close on, only when the sun isn't up either). A close already commanded runs to the closed magnet. If it turns unsafe again within 10 minutes, the attempt carries on where it was, its time limit still running.
     11. An attempt that began only because of daylight, or a weather attempt or stand-down the weather has left for 10 minutes while daylight still wants a close, is a daylight attempt until the weather first turns unsafe. Then a waiting or stood-down (can't move) daylight attempt ends at once (`Idle`) and the weather attempt starts on the same pass; one a person stood down, or a halted one, ends once the weather has been not safe for 30 s in all since the stop, added up over unsafe spells (a new stop starts the count again); a person's stop on that very pass stands it down as a daylight stand-down (the 30 s count then applies). An attempt waiting for the park becomes the weather's own attempt, with its full time limit from then.
 12. A restart of the device (not a power cut) keeps a stand-down, and an attempt or back-off with the time it has run (plus 10 s for the restart), so a board that keeps restarting still reaches its limits. A restart after the close was asked for but before the roof took it carries on from the park wait; it isn't a failed close.
+
+## Park before every move
+
+The park rule gates **Open as well as Close**: a roll-off roof moving over a telescope that points
+up can hit it either way. An Open or Close that only the park refuses, from the web UI, REST,
+[Alpaca](alpaca.md) or [MQTT](mqtt.md#roof-commands), doesn't just fail when RoofRoof can ask
+N.I.N.A. to park (a N.I.N.A. address is set and **May ask N.I.N.A. to park** is on). It is accepted
+as **waiting for the park**: N.I.N.A. is asked at once and again every park request gap, and once
+the park has held for the park hold time the command runs through every check again. The roof never
+moves before that. The wait ends:
+
+- when the park holds (the move runs);
+- at the park time limit (`park.timeoutSeconds`, 240 s by default) with the critical **Mount didn't
+  park** alert naming the command, the roof staying where it is;
+- on any Stop or Abort, or a new Open or Close;
+- when another check refuses the command (the weather turns unsafe for a waiting Open, a fault, the supply);
+- when the automatic close starts: it calls off a waiting Open, and a waiting Close carries on beside it.
+
+The dashboard shows the wait and its time left, with Stop; an imaging app sees `ShutterStatus`
+opening or closing while it waits, and error after a failed wait ([Alpaca](alpaca.md#the-park-wait)).
+When N.I.N.A. can't be asked (no address, or park requests off), the command is refused and says so.
+With the park switches as the only source, the fitted switches confirm the park and nobody is asked.
+
+### A person's confirmed close
+
+A person with the web UI or REST password may close **once** without the park confirmed: **Close
+anyway** in the dialog the dashboard shows when the park isn't confirmed (REST: body
+`{"override": ["mountNotParked"]}`). The dialog says the mount isn't confirmed parked and the roof
+could hit the telescope. The device first asks N.I.N.A. to park when it can. That close runs without
+the park check at its start and without the re-check while it closes; the next Close checks the
+park again. Alpaca, MQTT, Home Assistant and the automatic close can never do this.
+
+### A person's confirmed open
+
+A person may open past two refusals, naming each: **daylight** (the daylight failsafe is on "Alert
+and close" and the sun is up) and **weather**, only while SQMeter itself says unsafe for anything
+but rain, as for thin cloud or wind. Rain or a failed rain sensor, any doubt about the weather
+source (missing, stale, unreachable, unreadable, offline), an unparked mount, a fault, an unknown
+position, a suspect park switch, the supply and a busy device can't be overridden. The dashboard's
+dialog lists every reason Open is refused and offers **Open anyway** only when each can be
+overridden; REST takes `{"override": ["weatherNotSafe", "daylight"]}`.
+
+The override lasts until the roof reads closed, a Close is accepted, every reason confirmed has
+cleared, or a reason that wasn't confirmed appears (rain, a lost source, the park). Meanwhile
+those reasons neither stop the opening roof nor start the automatic close; anything else does, and
+the roof can stand open in cloud or in daylight with the automatic close standing back for them.
+The override is shown on the dashboard and in the status (`roof.override`) while it is in effect.
 
 ## Release hold
 
@@ -109,7 +158,7 @@ Assistant), and the log records it.
 Opening the roof yourself also ends a person's stand-down, at once. An Open that starts the roof moving,
 from the dashboard, N.I.N.A. (Alpaca) or MQTT, arms the automatic close again exactly as the end of
 the re-arm spell does, so rain soon after closes the roof (after the park is confirmed) as on any
-other night. An Open that is refused leaves the roof where it is and keeps the hold. While the hold
+other night. An Open that is refused leaves the roof where it is and keeps the hold. An Open waiting for the park ends it only once the roof starts to move. While the hold
 stands, the dashboard says "Automatic close on hold until the roof opens or closes". A close that
 took too long (`Halted`) is not ended by an Open: it waits for the roof to be closed, the re-arm
 spell or **Release hold**, and its critical alert keeps being sent until a channel takes it.
@@ -122,7 +171,7 @@ names it.
 
 | What | Limit (default) | Setting | Then |
 |---|---|---|---|
-| The park confirmed | 240 s (30-1800); immediately without N.I.N.A. | `park.timeoutSeconds` | "Mount didn't park" (critical); the roof stays open |
+| The park confirmed | 240 s (30-1800); immediately without N.I.N.A. | `park.timeoutSeconds` | "Mount didn't park" (critical); the roof stays open. The same limit ends a waiting Open or Close ([Park before every move](#park-before-every-move)) |
 | Between park requests | at least 30 s, whatever the weather does; repeated every 30 s while waiting | `autoClose.parkRequestSeconds` | - |
 | The park must hold before closing | 4 s without a break | `autoClose.parkHoldSeconds` | - |
 | After a failed attempt | 5 minutes before the next park request | `autoClose.retryMinutes` | a new attempt |
@@ -164,6 +213,7 @@ an unknown position or stay open in unsafe weather without a critical alert:
 
 Some choices stay fixed, because the safety rules need them: no open while the setup hotspot is
 on, no close in the moment before a restart, and a person's Stop always works.
+A wait for the park has no setting of its own: it uses the park time limit, the park request spacing and the park hold above.
 
 ## Alerts
 
@@ -239,11 +289,11 @@ park is confirmed, never onto an unparked mount, and uses the same time limits, 
 alerts, worded for daylight (see below). Nothing in it opens the roof.
 
 **Opening.** While the sun is up in **Alert and close**, every open is refused (web UI, REST,
-[Alpaca](alpaca.md), [MQTT](mqtt.md) and Home Assistant) with the reason `daylight` and the sun's
+[Alpaca](alpaca.md), [MQTT](mqtt.md) and Home Assistant; a person may [confirm one](#a-persons-confirmed-open)) with the reason `daylight` and the sun's
 altitude and the threshold (`Daylight: Sun 3.2° ≥ 0.0°`). An open under way is stopped, as it is for
 unsafe weather; the sequence then parks and closes. When the weather is also unsafe, the weather
 reason is the one named. **Off** and **Alert** never refuse or stop anything. To open the roof in
-daylight, set the mode to Alert or Off first.
+daylight without confirming each time, set the mode to Alert or Off first.
 
 **Test box.** With the daylight bypass of [test box mode](test-box.md) in effect, there is no daylight close and no refusal to open in daylight, until its deadline. Unsafe weather is not affected.
 

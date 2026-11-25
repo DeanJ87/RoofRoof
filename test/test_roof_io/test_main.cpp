@@ -252,7 +252,7 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 0, true));     // kind None
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(3, 11, true));    // kind out of range
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(4, 7, true));     // cause out of range
-    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 1, true));     // reserved byte
+    TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(5, 2, true));     // flags byte out of range (spec 027 uses bit 0)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(7, 0x55, false)); // checksum
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeWith(14, 0, false));   // checksum itself
     TEST_ASSERT_EQUAL(Decoded::Fault, decodeWith(7, 0x55, true));       // a changed value that checks out
@@ -262,6 +262,29 @@ void test_damaged_record_is_a_fault(void)
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeFault(bytes, sizeof(bytes) - 1, out)); // short
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeFault(bytes, sizeof(bytes), out));     // zeros
     TEST_ASSERT_EQUAL(Decoded::Unreadable, decodeFault(nullptr, 16, out));
+}
+
+// Spec 027: a Hall rail fault latched at rest keeps that over a restart;
+// records from before (byte 5 zero) read as not at rest.
+void test_fault_record_keeps_at_rest(void)
+{
+    FaultRecord rail;
+    rail.fault = Roof::Fault{Roof::FaultKind::HallRail, 189.0f, 400.0f};
+    rail.atRest = true;
+    uint8_t bytes[FAULT_RECORD_BYTES];
+    encodeFault(rail, bytes);
+    FaultRecord out;
+    TEST_ASSERT_EQUAL(Decoded::Fault, decodeFault(bytes, sizeof(bytes), out));
+    TEST_ASSERT_TRUE(out.atRest);
+    rail.atRest = false;
+    encodeFault(rail, bytes);
+    TEST_ASSERT_EQUAL(Decoded::Fault, decodeFault(bytes, sizeof(bytes), out));
+    TEST_ASSERT_FALSE(out.atRest);
+    FaultRecord other = externalRecord(FaultCause::Watchdog, 1.0f, 1.0f);
+    other.atRest = true; // only a Hall rail fault carries it
+    encodeFault(other, bytes);
+    TEST_ASSERT_EQUAL(Decoded::Fault, decodeFault(bytes, sizeof(bytes), out));
+    TEST_ASSERT_FALSE(out.atRest);
 }
 
 void test_external_records_and_cause_names(void)
@@ -299,6 +322,7 @@ int main(int, char **)
     RUN_TEST(test_fault_record_keeps_nan);
     RUN_TEST(test_empty_store_is_no_fault);
     RUN_TEST(test_damaged_record_is_a_fault);
+    RUN_TEST(test_fault_record_keeps_at_rest);
     RUN_TEST(test_external_records_and_cause_names);
     return UNITY_END();
 }

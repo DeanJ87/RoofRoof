@@ -9,7 +9,7 @@ import { setupStages } from '../../lib/setupProgress';
 import { SetupStages, stagesDone } from '../SetupProgress';
 import TravelCard from './TravelCard';
 import { presetLabel } from '../../lib/pinsView';
-import TestBoxCard, { RequestParkToggle } from './TestBoxCard';
+import TestBoxCard from './TestBoxCard';
 import SqmeterCopy from './SqmeterCopy';
 import { SqmeterLoginFields } from './SqmeterLoginFields';
 import { SqmeterAddressTest } from './SqmeterAddressTest';
@@ -17,7 +17,7 @@ import { sqmeterHttps } from '../../lib/sqmeterAddress';
 import { FollowsSqmeter } from './FollowsSqmeter';
 import { fromCopy, synced } from '../../lib/syncView';
 import { DegreesField, LocationFields } from './LocationFields';
-import { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps } from './ParkFields';
+import { NinaFields, NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps } from './ParkFields';
 export { NinaUrlField, ParkNotes, ParkSourceField, ParkSwitchesField, type ParkProps };
 import HallScale from '../../dashboard/HallScale';
 import { t } from '../../i18n';
@@ -286,8 +286,7 @@ const ParkCard: FunctionalComponent<ParkProps> = (props) => (
     <div class="form-grid">
       <ParkSourceField {...props} />
       <ParkSwitchesField {...props} />
-      <NinaUrlField {...props} />
-      <RequestParkToggle {...props} />
+      <NinaFields {...props} />
       <Num
         at={['park', 'timeoutSeconds']}
         label={t('settings.roof.parkTimeLimit')}

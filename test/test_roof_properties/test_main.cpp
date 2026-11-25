@@ -8,10 +8,12 @@
 //       and after start-up, timed from steps (commands carry no time);
 //       the direction is the one the target needs;
 //   P2  the duty never exceeds the top duty, nor the slow duty from unknown;
-//   P3  a latched fault keeps the driver off until a person clears it;
+//   P3  a latched fault keeps the driver off until a person clears it (spec
+//       027: or, for a Hall rail fault latched at rest, until it clears itself);
 //   P4  no motion after the position became unknown without a person's command;
 //   P5  no driven period outlasts its timeout or (from a magnet) the leave time;
-//   P7  three rail readings among the last eight, consecutive or not, latch a
+//   P7  three rail readings among the last eight, consecutive or not (spec 027:
+//       after the boot settle, or while moving), latch a
 //       fault on that step;
 //   P8  the driving toward each end since a magnet was last read (or a person
 //       cleared a fault) never reaches the drive budget, and a free roof
@@ -124,6 +126,9 @@ namespace
         bool onLeftStart = false;
         bool needsPerson = false; // P4: position unknown at rest, and no person's command since
         bool faultSeen = false;
+        bool restClearable = false; // spec 027: the fault is a Hall rail latched at rest
+        bool stepSeen = false;      // spec 027: the first step, for the boot settle
+        uint32_t firstStepMs = 0;
 
         void fail(const char *property) const
         {
@@ -214,12 +219,22 @@ namespace
         }
 
         // P3, P4 after a step or a command.
+        // Spec 027: a Hall rail fault latched at rest may clear itself.
+        void trackFault(const Controller &roof)
+        {
+            const FaultKind kind = roof.status().fault.kind;
+            if (kind == FaultKind::None && faultSeen && restClearable)
+                faultSeen = false;
+            if (kind != FaultKind::None)
+                faultSeen = true;
+            restClearable = roof.faultClearsAtRest();
+        }
+
         void checkLatchAndUnknown(const Controller &roof)
         {
             const Status &st = roof.status();
             const bool on = roof.output().command != Driver::Command::Off;
-            if (st.fault.kind != FaultKind::None)
-                faultSeen = true;
+            trackFault(roof);
             if (faultSeen && on)
                 fail("P3 a latched fault keeps the driver off");
             if (st.fault.kind != FaultKind::None && st.state != State::Error)
@@ -272,7 +287,14 @@ namespace
             int rails = 0;
             for (int bit = 0; bit < 8; ++bit)
                 rails += (railHistory >> bit) & 1;
-            if (rails >= 3 && st.fault.kind == FaultKind::None)
+            if (!stepSeen)
+            {
+                stepSeen = true;
+                firstStepMs = nowMs;
+            }
+            // Spec 027: not judged at rest in the first moments after start-up.
+            const bool settling = nowMs - firstStepMs < HALL_BOOT_SETTLE_MS && st.state != State::Opening && st.state != State::Closing;
+            if (rails >= 3 && st.fault.kind == FaultKind::None && !settling)
                 fail("P7 three rail readings in eight latch a fault");
             if (st.hall == HallLevel::High || st.hall == HallLevel::Low)
                 drivenSinceMagnetMs[0] = drivenSinceMagnetMs[1] = 0;

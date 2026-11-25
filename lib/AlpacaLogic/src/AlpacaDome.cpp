@@ -14,13 +14,14 @@ namespace SQM
     {
         DeviceInfo domeDeviceInfo(const char *simulation, const std::string &testBox)
         {
-            std::string description = "Roll-off roof: shutter open, close and stop only";
+            // Spec 027: N.I.N.A. lists the device as "RoofRoof"; the description stays short.
+            std::string description = "Roll-off roof, shutter only";
             const std::string kind = simulation != nullptr ? simulation : "off";
             if (kind == "bench")
                 description = "BENCH MODE (simulated roof, no motor): " + description;
             else if (kind == "demo")
                 description = "Demo (simulated roof): " + description;
-            return {"Dome", "dome", 0, "RoofRoof roof", testBox + description, 3};
+            return {"Dome", "dome", 0, "RoofRoof", testBox + description, 3};
         }
 
         namespace Internal

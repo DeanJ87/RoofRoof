@@ -112,7 +112,6 @@ export const alpacaConfigSchema = z.object({
 
 // SQMeter and N.I.N.A. serve plain http only; the device's rules and messages
 // (lib/ConfigModel ConfigValidate.cpp, spec 004 contracts/settings.md).
-const isPlainHttp = (url: string) => url.startsWith('http://');
 // The device's length limits are in UTF-8 bytes.
 const utf8Bytes = (value: string) => new TextEncoder().encode(value).length;
 
@@ -163,7 +162,7 @@ export const parkConfigSchema = z
         if (value === '') return;
         const url = parseHttpUrl(value);
         if (url.error) ctx.addIssue({ code: 'custom', message: url.error });
-        else if (!isPlainHttp(value)) ctx.addIssue({ code: 'custom', message: t('validation.configSchema.ninaUrlMustStartWithHttp') });
+        // Spec 027: http or https (parseHttpUrl refuses any other scheme).
       }),
       api: z.literal('v2'),
     }),

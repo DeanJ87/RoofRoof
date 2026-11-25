@@ -12,11 +12,14 @@ std::string EmulatedDevice::statusParts() const
     doc["uptime"] = (nowMs - bootMs) / 1000;
     Core::writeAlertSchedule(doc.createNestedObject("alerts"), schedule.state(), cfg, nowMs);
     Core::writeClientWatch(doc.createNestedObject("alpaca"), clientWatch, devices(), cfg, nowMs);
-    const RoofIo::Snapshot snapshot = roof.snapshot();
+    RoofIo::Snapshot snapshot = roof.snapshot();
+    snapshot.health = RoofIo::healthOf(roof.inputs(), !cfg.park.ninaUrl.empty()); // spec 027, as WebServer::roofSnapshot
     JsonObject roofOut = doc.createNestedObject("roof");
     RoofIo::writeStatus(roofOut, snapshot); // the firmware's own writer (spec 011)
     RoofIo::writeDaylight(roofOut, snapshot);
     RoofIo::writeCloseRearm(roofOut, snapshot);
+    RoofIo::writeMoveGuard(roofOut, snapshot); // spec 027
+    RoofIo::writeHealth(roofOut, snapshot, true);
     writeLocation(doc.createNestedObject("location")); // spec 020
     writeSync(doc.createNestedObject("sync"));
     // Spec 023: the demo board is a DevKit on Wi-Fi.

@@ -100,6 +100,16 @@ namespace SQM
             // The raw Hall readings up to the step the latched fault was taken on
             // (empty before any fault): a wrong magnet from noise shows as a burst.
             const HallTrail &faultHall() const { return faultTrail; }
+            // Spec 027: an Open or Close of a roof already resting at that end
+            // (no move under way): nothing to do.
+            bool atEnd(Command command) const;
+            // Spec 027: the latched fault is a Hall rail reading taken with no
+            // move under way (it clears itself after HALL_REST_CLEAR_MS of good
+            // readings at rest).
+            bool faultClearsAtRest() const { return current.fault.kind == FaultKind::HallRail && hallRailAtRest; }
+            // Spec 027: a Hall rail fault restored after a restart that was
+            // latched at rest (its record says so) clears itself the same way.
+            void restoreRestRail() { hallRailAtRest = current.fault.kind == FaultKind::HallRail; }
 
         private:
             // The move in progress.
@@ -158,6 +168,8 @@ namespace SQM
             void stopDriving();
             void latch(const Fault &fault);
             void noteHall(uint16_t counts);
+            void clearRestRail(uint32_t nowMs);
+            void checkHallRail(uint16_t counts, uint32_t nowMs);
             void followHall();
             void settleIdle();
             bool magnetEnd(End &end) const;
@@ -193,6 +205,11 @@ namespace SQM
             Pending currentUnreadable;
             CalibrationReport legReport;
             uint32_t faultsLatched = 0;
+            // Spec 027: the Hall rail fault latched at rest, and good readings since.
+            bool hallRailAtRest = false;
+            bool bootSeen = false; // spec 027: the first step's time, for HALL_BOOT_SETTLE_MS
+            uint32_t bootMs = 0;
+            Pending goodAtRest;
             uint32_t jogCount = 0;
         };
     } // namespace Roof

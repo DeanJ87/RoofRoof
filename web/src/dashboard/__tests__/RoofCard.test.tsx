@@ -39,7 +39,8 @@ describe('RoofCard', () => {
     expect(button('Close')).toBeDisabled();
     const reason = document.getElementById(button('Close').getAttribute('aria-describedby')!);
     expect(reason).toHaveTextContent('Close: Already closed');
-    expect(button('Stop')).toBeEnabled();
+    // Spec 027: still, nothing waiting: no Stop.
+    expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
   });
 
   it('shows the daylight line with the mode behind the hint, and why Open is off (spec 013)', () => {
@@ -57,7 +58,8 @@ describe('RoofCard', () => {
     expect(within(row as HTMLElement).getByText('Daylight')).toBeInTheDocument();
     expect(row).toHaveTextContent('Sun 3.2° ≥ 0.0°');
     expect(row.querySelector('[role="tooltip"], .info-tip, button')).not.toBeNull();
-    expect(button('Open')).toBeDisabled();
+    // Spec 027: blocked, not greyed: a press says why.
+    expect(button('Open')).toBeEnabled();
     expect(screen.getByText(/^Open: Daylight check: the sun is up \(Sun 3\.2° ≥ 0\.0°\)/)).toBeInTheDocument();
   });
 
@@ -149,7 +151,6 @@ describe('RoofCard', () => {
     fireEvent.click(button('Open'));
     expect((await screen.findAllByText('The device is restarting')).length).toBeGreaterThan(0);
     expect(button('Close')).toBeDisabled();
-    expect(button('Stop')).toBeEnabled();
   });
 
   // Spec 026: a reason both buttons share is never lost when one button also has a blocker.
@@ -287,8 +288,6 @@ describe('RoofCard', () => {
     fireEvent.click(button('Open'));
     fireEvent.click(within(screen.getByRole('group', { name: 'Open the roof?' })).getByRole('button', { name: 'Open' }));
     await waitFor(() => expect(sent).toEqual(['open']));
-    fireEvent.click(button('Stop'));
-    await waitFor(() => expect(sent).toEqual(['open', 'stop']));
   });
 
   it('sends Open at once without the option', async () => {

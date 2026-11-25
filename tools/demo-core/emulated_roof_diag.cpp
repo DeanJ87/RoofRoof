@@ -87,6 +87,10 @@ namespace DemoRoof
         s.closeRearmSeconds = leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000);
         s.daylight = CloseSeq::daylightStatus(daylightView);
         s.testBox = testBoxState;
+        // Spec 027 (RoofControl::refreshSnapshot): the wait for the park and the overrides.
+        s.parkWait = RoofIo::waitView(guard.wait(), static_cast<uint32_t>(nowMs));
+        s.overrideBits = overrideBits();
+        s.openOverridable = RoofIo::overridableNow(Roof::Command::Open, gates);
         return s;
     }
 } // namespace DemoRoof

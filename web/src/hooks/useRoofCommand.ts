@@ -45,9 +45,14 @@ export const unreachable = (command: RoofCommand, at: number, stateAt: RoofState
 });
 
 /** Sends a command and records its answer, with the roof's state as last seen when the answer arrives. */
-export const sendRoofCommand = async (command: RoofCommand, state: () => RoofState | null, now = Date.now): Promise<CommandResult> => {
+export const sendRoofCommand = async (
+  command: RoofCommand,
+  state: () => RoofState | null,
+  now = Date.now,
+  override?: string[],
+): Promise<CommandResult> => {
   try {
-    const response = await roofCommand(command);
+    const response = await roofCommand(command, override);
     return await readAnswer(command, response, now(), state());
   } catch (error) {
     const timedOut = error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError');
@@ -68,10 +73,10 @@ export const useRoofCommand = (state: RoofState | null) => {
     [],
   );
 
-  const send = async (command: RoofCommand) => {
+  const send = async (command: RoofCommand, override?: string[]) => {
     // Stop never waits for, or blocks on, anything (constitution VII).
     if (command !== 'stop') setInFlight(command);
-    const answer = await sendRoofCommand(command, () => current.current);
+    const answer = await sendRoofCommand(command, () => current.current, Date.now, override);
     if (!mounted.current) return;
     setResult(answer);
     // The note under the buttons, read out once (A11Y: status messages).

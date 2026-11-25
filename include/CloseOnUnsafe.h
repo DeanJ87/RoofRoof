@@ -30,6 +30,9 @@ namespace SQM
     class CloseOnUnsafe
     {
     public:
+        // Spec 027: a command waiting for the park gave up: the critical
+        // "mount not parked" alert with its text.
+        void parkWaitFailed(const std::string &text);
         // Hands an alert to the dispatcher; returns its record id (0: not stored).
         using AlertSink = std::function<uint32_t(const Alerts::Alert &)>;
         // How the alert with that record id went.
@@ -86,6 +89,7 @@ namespace SQM
         void report(const CloseSeq::Decision &decision, const CloseSeq::Reasons &reasons, const std::string &weather);
         void countClosed(CloseSeq::Phase before, const CloseSeq::Decision &decision);
         void logHoldEnd(CloseSeq::Phase before, const CloseSeq::Inputs &in) const;
+        void updateConditions(const RoofIo::Snapshot &snap, SafetyInputs &safety);
         void send(const Alerts::Alert &alert, uint64_t nowMs);
         void retryAlert(uint64_t nowMs);
 

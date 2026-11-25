@@ -114,7 +114,11 @@ void test_rejections_say_why()
     TEST_ASSERT_EQUAL_STRING(
         "SQMeter MQTT topic: use letters, numbers, _ and -, with / between levels",
         rejectReason(R"({"safety":{"mqtt":{"enabled":true,"topic":"sqm/#"}}})").c_str());
-    TEST_ASSERT_EQUAL_STRING("N.I.N.A. URL must start with http://", rejectReason(R"({"park":{"nina":{"url":"nina:1888"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "N.I.N.A. URL must start with http:// or https://", rejectReason(R"({"park":{"nina":{"url":"nina:1888"}}})").c_str());
+    // Spec 027: an https N.I.N.A. (behind a TLS proxy) is accepted.
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"park":{"nina":{"url":"https://nina.local:1888"}}})").c_str());
+    TEST_ASSERT_EQUAL_STRING("", rejectReason(R"({"park":{"nina":{"url":"http://192.168.1.25:1888"}}})").c_str());
     TEST_ASSERT_EQUAL_STRING("N.I.N.A. API version must be v2", rejectReason(R"({"park":{"nina":{"api":"v3"}}})").c_str());
     TEST_ASSERT_EQUAL_STRING("Park switches must be none, one or two", rejectReason(R"({"park":{"switches":"both"}})").c_str());
     TEST_ASSERT_EQUAL_STRING("Park switches must be none, one or two", rejectReason(R"({"park":{"switches":2}})").c_str());

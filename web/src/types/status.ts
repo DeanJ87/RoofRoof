@@ -187,6 +187,34 @@ export interface RoofTestBox {
   text: string; // the device's text naming them, "" when none is set
 }
 
+// Spec 027: a person's override names, as the device's gates name the refusals.
+export type RoofOverride = 'weatherNotSafe' | 'daylight' | 'mountNotParked';
+
+// Spec 027: an Open or Close waiting for N.I.N.A. to park the mount.
+export interface RoofParkWait {
+  command: 'open' | 'close';
+  origin: 'person' | 'alpaca' | 'mqtt' | 'automatic';
+  leftSeconds: number;
+  asked: boolean; // N.I.N.A. was asked to park
+}
+
+// Spec 027: the health of N.I.N.A. and of SQMeter as the device last read them.
+export interface RoofNinaHealth {
+  set: boolean; // an address is set
+  state: 'notConfigured' | 'waiting' | 'good' | 'unreachable' | 'unreadable' | 'apiError';
+  reachable: boolean;
+  connected: boolean;
+  atPark: boolean;
+  ageSeconds: number;
+  text: string;
+}
+export interface RoofSqmeterHealth {
+  on: boolean;
+  state: 'off' | 'waiting' | 'good' | 'stale' | 'unreachable' | 'unreadable' | 'offline';
+  lastReplySeconds: number | null; // null without a good reply
+  text: string;
+}
+
 export interface RoofStatus {
   state: RoofState;
   positionKnown: boolean;
@@ -232,4 +260,11 @@ export interface RoofStatus {
   // Spec 011: the real roof, bench firmware (simulated roof, motor never driven) or the browser demo.
   simulation: RoofSimulation;
   testBox?: RoofTestBox;
+  // Spec 027 (absent on older firmware).
+  parkWait?: RoofParkWait | null;
+  parkWaitEnded?: string | null; // the last wait gave up or was refused
+  override?: RoofOverride[]; // a person's overrides in effect
+  openOverridable?: RoofOverride[]; // the Open refusals a person may override now
+  nina?: RoofNinaHealth;
+  sqmeter?: RoofSqmeterHealth;
 }

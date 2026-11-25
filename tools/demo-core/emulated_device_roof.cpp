@@ -4,6 +4,7 @@
 #include "emulated_device.h"
 
 #include "CalibrationDocument.h"
+#include "MoveGuard.h"
 #include "PlatformHold.h"
 #include "Teach.h"
 #include "RoofStatus.h"
@@ -13,13 +14,18 @@ using namespace DemoCore;
 
 namespace
 {
-    // The device's sendOutcome (src/WebServerRoof.cpp): 200 with the state, or
-    // 409 with the refusal's reason and text.
+    // The device's sendOutcome (src/WebServerRoof.cpp): 200 with the state,
+    // 202 (spec 027) waiting for the park, or 409 with the refusal's reason and text.
     std::string outcomeBody(const DemoRoof::Outcome &outcome)
     {
         StaticJsonDocument<512> doc;
         doc["success"] = outcome.accepted;
         doc["state"] = Roof::stateName(outcome.state);
+        if (outcome.pending)
+        {
+            doc["pending"] = true;
+            doc["message"] = outcome.text;
+        }
         if (!outcome.accepted)
         {
             doc["reason"] = outcome.reason;
@@ -31,14 +37,19 @@ namespace
     }
 } // namespace
 
-std::string EmulatedDevice::roofCommand(const std::string &name)
+std::string EmulatedDevice::roofCommand(const std::string &name, const std::string &body)
 {
     runRoof(); // what the device sees now
     DemoRoof::Outcome outcome;
+    // Spec 027: an Open's or Close's optional body names a person's overrides (400 when bad).
+    uint8_t overrides = 0;
+    std::string error;
+    if ((name == "open" || name == "close") && !RoofIo::parseOverrides(body, overrides, error))
+        return response(400, errorJson(error));
     if (name == "open")
-        outcome = roof.command(Roof::Command::Open, Roof::Origin::Person);
+        outcome = roof.command(Roof::Command::Open, Roof::Origin::Person, overrides);
     else if (name == "close")
-        outcome = roof.command(Roof::Command::Close, Roof::Origin::Person);
+        outcome = roof.command(Roof::Command::Close, Roof::Origin::Person, overrides);
     else if (name == "stop")
         outcome = roof.command(Roof::Command::Stop, Roof::Origin::Person);
     else if (name == "clear-fault")
@@ -51,7 +62,7 @@ std::string EmulatedDevice::roofCommand(const std::string &name)
     }
     else
         return response(404, errorJson("Not found"));
-    return response(outcome.accepted ? 200 : 409, outcomeBody(outcome));
+    return response(!outcome.accepted ? 409 : (outcome.pending ? 202 : 200), outcomeBody(outcome));
 }
 
 std::string EmulatedDevice::calibration(const std::string &action, const std::string &body)

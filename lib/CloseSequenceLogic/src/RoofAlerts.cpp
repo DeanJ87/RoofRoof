@@ -88,6 +88,17 @@ namespace SQM
             return alert;
         }
 
+        Alerts::Alert parkWaitAlert(const std::string &why)
+        {
+            Alerts::Alert alert;
+            alert.type = Alerts::AlertType::MountNotParked;
+            alert.level = Alerts::AlertLevel::Wake;
+            alert.title = "Mount not parked";
+            alert.message = why + ". N.I.N.A. was asked to park; the roof has not moved.";
+            alert.vars = {{"reason", why}, {"limit", ""}, {"details", alert.message}};
+            return alert;
+        }
+
         bool closedAfterAttempt(Phase before, Event event)
         {
             // A person closing the roof after a stop or a halted close counts
@@ -148,6 +159,14 @@ namespace SQM
             if (sequence.phase != Phase::Idle && sequence.daylight)
                 roof.daylightClosedSun = Daylight::describe(daylight);
             roof.daylightClosedCount = sequence.daylightClosedCount;
+        }
+
+        void updateNinaConditions(Alerts::RoofInputs &roof, const Safety::ParkResult &park, bool ninaSet)
+        {
+            constexpr uint32_t LOST =
+                Safety::ParkNinaUnreachable | Safety::ParkNinaUnreadable | Safety::ParkNinaApiError | Safety::ParkNinaStale;
+            roof.ninaLost = ninaSet && (park.reasons & LOST) != 0;
+            roof.ninaLostText = roof.ninaLost ? Safety::describe(park) : std::string();
         }
 
         RoofIo::DaylightStatus daylightStatus(const Daylight::View &daylight)
