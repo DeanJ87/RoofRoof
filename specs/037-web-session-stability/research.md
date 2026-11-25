@@ -43,5 +43,9 @@ Decision: 10 s, back-off reset on a reading, last values greyed, 4429 shown and 
 
 ## R5 Measurements after
 
-See the PR: `tools/soak/ws_soak.py` with the soak build (moving cadence at rest) and then the
-release build.
+`tools/soak/ws_soak.py`, 4 pages, `/api/status` 2 Hz, `/api/diag` 10 s, Alpaca 1 Hz, 10 min,
+roof closed. No restart in any run. Soak build (moving cadence), 2 x 5 KB pool and reply cap:
+`heap8Bit.largest` min 8,180 B, median 21,492 B; free min 23,900 B; lowest since start 1,740 B.
+Release build rebased on 035 and 036 (rest cadence): largest min 10,228 B, median 24,564 B; free
+min 21,076 B; lowest since start 584 B; status polls 594 ok, 22 busy, 3 timeouts. The largest block
+at rest is about 21-37 KB, so the soak's floor is 8 KB (above the guard's 6 KB).
