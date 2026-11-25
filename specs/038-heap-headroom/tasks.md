@@ -8,4 +8,5 @@
 - [x] T006 `ws_soak.py` `--free-floor`, `--clients 0`, `verdict()` + test
 - [x] T007 Developer page `docs/development/heap-budget.md` with the budget table; roadmap; changelog
 - [x] T009 `ConnectionBudget::NetworkSettle` + test; `NetState::tick/settledFor`; MQTT reconnect and the alert outbox wait
-- [ ] T008 Bench: flash (closed, at rest), census at rest, at-rest floor check, 10-minute soak; numbers into the budget table and research R6
+- [x] T008a Bench: flashed (closed, at rest), census at rest, at-rest readings into the budget table and research R6
+- [ ] T008b Bench: 10-minute spec 037 soak and a clean 3-minute at-rest floor check (the board stopped answering after the last flash)

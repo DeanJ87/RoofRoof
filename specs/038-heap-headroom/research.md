@@ -92,4 +92,19 @@ roof), MQTT 3 s later, queued alerts 8 s later (`ConnectionBudget::NetworkSettle
 
 ## R6 Measurements after
 
-See the budget table in `docs/development/heap-budget.md` (filled from the bench).
+Flashed with the roof closed and at rest, 3 pages open (not ours), N.I.N.A. polling Alpaca.
+
+- Census at rest (`GET /api/diag/heap`, 3.5 min): free 69.3 KB in 32 blocks, largest 57.3 KB, in use
+  188 KB in 661 blocks; the 113.8 KB region at 0x3ffe4350 holds the largest block. Task stacks as
+  blocks: loop 10,752, `async_tcp` 8,704, `esp_timer` 4,864 (each stack plus 512 B), least left
+  2,940 / 3,492 / 3,768 B; `safetyPoll` 3,612 B left.
+- At rest the largest block stayed at 57.3 KB for the first 75 s of the floor check, dipping to
+  38.9 KB during page polls; then the access point dropped every connection (pages, N.I.N.A., MQTT)
+  for about 20 s. On reconnect the lowest free since start reached 1,768 B (main: 352 B in the same
+  kind of event), 20 replies were answered busy, nothing restarted and the reserve wasn't used; the
+  largest block settled at 36.9 KB afterwards.
+- The pioarduino hybrid build shares its rebuilt framework libraries between checkouts and decides
+  whether to rebuild from the project's own `sdkconfig.defaults`; a build in another checkout with
+  different options silently replaces them. The first flash here carried main's `esp_timer` stack
+  (the census showed a 9,216 B block). Delete `sdkconfig.defaults` to force the rebuild when
+  another checkout has built since.

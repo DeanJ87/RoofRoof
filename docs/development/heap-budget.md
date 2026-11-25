@@ -51,11 +51,13 @@ On the board:
 
 | Reading | Before 038 (main) | After 038 |
 |---|---:|---:|
-| Fresh boot, `heap8Bit` free / largest | 64.8 KB / 38.9 KB | bench (pending) |
-| At rest, largest block | 21-37 KB | bench (pending) |
+| Fresh boot (uptime 7 s), `heap8Bit` free / largest | 64.8 KB / 38.9 KB | 62.6 KB / 34.8 KB |
+| At rest after 3-4 min, 3 pages open: free / largest | 45-56 KB / 13-37 KB | 67.6-69.3 KB / 57.3-61.4 KB |
+| `heapStages` "setup complete" largest | 69,620 B | 77,812 B |
+| Least stack left: loop / `async_tcp` / `esp_timer` | 4,996 / 6,264 / - B | 2,940 / 3,492 / 3,768 B |
+| Network drop and return at rest, 3 pages: lowest free since start | 352 B | 1,768 B (no restart, reserve not needed, 20 replies busy) |
 | Spec 037 soak, 10 min: largest block lowest | 10.2 KB | bench (pending) |
 | Spec 037 soak: free heap lowest | 21.1 KB | bench (pending) |
-| Spec 037 soak: lowest free since start | 584 B | bench (pending) |
 
 ## Floors
 
