@@ -4,7 +4,7 @@ import { route } from 'preact-router';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useDiagLive } from '../hooks/useDiagLive';
-import LiveWaiting from './LiveWaiting';
+import LiveWaiting, { LiveStale } from './LiveWaiting';
 import type { SetupConfig, SystemStatus } from '../types';
 import { Button, Card, Pill, ProgressMeter, ReadingRow } from './ui';
 import { restartWithToast } from './toast';
@@ -286,13 +286,14 @@ const ActionsCard: FunctionalComponent<{ confirming: boolean; setConfirming: (co
 );
 
 const System: FunctionalComponent = () => {
-  const { data: status, reconnecting } = useWebSocket<SystemStatus>('/ws/status');
+  const { data: current, reconnecting, lastKnown, tooMany } = useWebSocket<SystemStatus>('/ws/status');
+  const status = current ?? lastKnown ?? null; // spec 037: the last reading, greyed, after a drop
   const [confirmRestart, setConfirmRestart] = useState(false);
 
-  // Spec 028: no reading from this connection, no values.
-  if (!status) return <LiveWaiting reconnecting={reconnecting} />;
+  // Spec 028: nothing received yet, no values.
+  if (!status) return <LiveWaiting reconnecting={reconnecting} tooMany={tooMany} />;
 
-  return (
+  const page = (
     <div class="panel-page system-page page-enter">
       {status.firmware && <FirmwareCard firmware={status.firmware} />}
       <RuntimeCard status={status} />
@@ -307,6 +308,7 @@ const System: FunctionalComponent = () => {
       <ActionsCard confirming={confirmRestart} setConfirming={setConfirmRestart} />
     </div>
   );
+  return current ? page : <LiveStale tooMany={tooMany}>{page}</LiveStale>;
 };
 
 export default System;

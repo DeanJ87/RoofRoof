@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LIVE_QUIET_MS, isQuiet, liveIntervalMs, reconnectDelay } from '../liveStream';
+import { LIVE_QUIET_MS, TOO_MANY_PAGES, isHeartbeat, isQuiet, liveIntervalMs, reconnectDelay } from '../liveStream';
 
 describe('live stream schedule (spec 028)', () => {
   it('matches the device: 2 s at rest, 500 ms while the roof moves', () => {
@@ -15,9 +15,17 @@ describe('live stream schedule (spec 028)', () => {
     expect(reconnectDelay(20, 0.999)).toBeLessThan(31000);
   });
 
-  it('counts a socket quiet after two and a half rest intervals', () => {
-    expect(LIVE_QUIET_MS).toBe(5000);
-    expect(isQuiet(1000, 1000 + 4999)).toBe(false);
-    expect(isQuiet(1000, 1000 + 5000)).toBe(true);
+  it('counts a socket quiet after five rest intervals (spec 037)', () => {
+    expect(LIVE_QUIET_MS).toBe(10000);
+    expect(LIVE_QUIET_MS).toBeGreaterThanOrEqual(3 * liveIntervalMs(false) + 2000);
+    expect(isQuiet(1000, 1000 + 9999)).toBe(false);
+    expect(isQuiet(1000, 1000 + 10000)).toBe(true);
+  });
+
+  it('knows the heartbeat and the refusal code', () => {
+    expect(isHeartbeat({ heartbeat: true })).toBe(true);
+    expect(isHeartbeat({ roof: {} })).toBe(false);
+    expect(isHeartbeat(null)).toBe(false);
+    expect(TOO_MANY_PAGES).toBe(4429);
   });
 });

@@ -19,7 +19,7 @@ export interface SystemStatus {
   // Who holds the device's connections (SQMeter spec 011 FR-008).
   connections?: {
     tcpLimit: number;
-    liveUpdates: { status: number; limitPerEndpoint: number; replaced: number; stalledClosed: number };
+    liveUpdates: { status: number; limitPerEndpoint: number; refused: number; stalledClosed: number };
     alpacaRestoredAfterRestart: boolean;
     // Spec 031: requests answered "busy" and live frames skipped for memory, since start.
     shortOfMemory?: { refused: number; skippedFrames: number };
@@ -27,6 +27,7 @@ export interface SystemStatus {
   freeHeap: number;
   minFreeHeap?: number;
   maxAllocHeap?: number;
+  heap8Bit?: { free: number; largest: number; minFree: number }; // spec 037: what malloc uses
   heapSize: number;
   stackFree?: { asyncTcp: number; loop: number; roof: number };
   heapStages?: { stage: string; free: number; largest: number }[];

@@ -2,6 +2,9 @@
 #include "ConnectionBudget.h"
 #include "Logger.h"
 
+#include <cstdint>
+#include <vector>
+
 // Live updates: /ws/status, kept within the connection budget (SQMeter spec
 // 011 FR-008). RoofRoof spec 008 adds the roof's live stream.
 
@@ -9,18 +12,24 @@ namespace SQM
 {
     void WebServer::setupWebSocket()
     {
+        WebReply::reserveFrames();
         wsStatus.onEvent([this](AsyncWebSocket *, AsyncWebSocketClient *client, AwsEventType type, void *, uint8_t *, size_t)
                          { onStatusWebSocketEvent(client, type); });
         server.addHandler(&wsStatus);
     }
 
-    void WebServer::prepareWebSocketClient(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client)
+    bool WebServer::prepareWebSocketClient(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client)
     {
         // Ping quiet clients so a peer that vanished is noticed (AsyncTCP drops
         // one that doesn't acknowledge); SQMeter spec 011 FR-008.
         client->keepAlivePeriod(ConnectionBudget::WEBSOCKET_PING_SECONDS);
+        // Spec 037: one past the limit is refused, from the loop task
+        // (capWebSocketClients): closing it here, inside the library's connect
+        // callback, could free it while the library still holds it.
+        const bool refused = ConnectionBudget::overLimit(socket.count());
         const std::lock_guard<std::mutex> lock(wsClientsLock);
-        clients[client->id()] = 0;
+        clients[client->id()] = refused ? WS_REFUSE : 0;
+        return !refused;
     }
 
     void WebServer::noteWebSocketClosed(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client)
@@ -29,12 +38,26 @@ namespace SQM
         clients.erase(client->id());
     }
 
-    void WebServer::capWebSocketClients(AsyncWebSocket &socket)
+    void WebServer::capWebSocketClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients)
     {
-        // cleanupClients closes the oldest client past the limit, one per pass.
-        if (ConnectionBudget::overLimit(socket.count()))
-            ++wsReplaced;
-        socket.cleanupClients(ConnectionBudget::WEBSOCKETS_PER_ENDPOINT);
+        std::vector<uint32_t> refuse;
+        {
+            const std::lock_guard<std::mutex> lock(wsClientsLock);
+            for (auto &entry : clients)
+                if (entry.second == WS_REFUSE)
+                {
+                    refuse.push_back(entry.first);
+                    entry.second = WS_REFUSED;
+                }
+        }
+        // By id, under the socket's own lock (never ours: see closeStalledClients).
+        for (uint32_t id : refuse)
+        {
+            ++wsRefused;
+            socket.close(id, ConnectionBudget::TOO_MANY_PAGES, "too many open pages");
+        }
+        // Only frees clients that have gone; never closes one (the limit is kept above).
+        socket.cleanupClients(UINT16_MAX);
     }
 
     void WebServer::closeStalledClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, uint32_t now)
@@ -51,6 +74,8 @@ namespace SQM
         }
         for (auto &entry : snapshot)
         {
+            if (entry.second >= WS_REFUSED)
+                continue; // being refused (capWebSocketClients)
             // By id, under the socket's own lock: the network task can drop a
             // client at any moment.
             if (socket.availableForWrite(entry.first))
@@ -84,14 +109,16 @@ namespace SQM
 
         HeapSafe::ChunkText text;
         writeStatus(text);
-        WebReply::textAll(wsStatus, text);
+        if (!WebReply::textAll(wsStatus, text))
+            WebReply::heartbeatAll(wsStatus); // spec 037: short of memory, still alive
     }
 
     void WebServer::sendFirstStatus(AsyncWebSocketClient *client) const
     {
         HeapSafe::ChunkText text;
         writeStatus(text);
-        WebReply::text(client, text);
+        if (!WebReply::text(client, text))
+            WebReply::heartbeat(client);
     }
 
     void WebServer::onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)
@@ -99,9 +126,13 @@ namespace SQM
         switch (type)
         {
         case WS_EVT_CONNECT:
-            prepareWebSocketClient(wsStatusClients, client);
+            if (!prepareWebSocketClient(wsStatus, wsStatusClients, client))
+            {
+                Logger::warn(TAG, "Status WebSocket client %u refused: too many open pages", client->id());
+                break;
+            }
             Logger::info(TAG, "Status WebSocket client connected: %u", client->id());
-            // The first frame; skipped while memory is short (the next broadcast follows).
+            // The first frame; a heartbeat while memory is short (the next broadcast follows).
             sendFirstStatus(client);
             break;
 

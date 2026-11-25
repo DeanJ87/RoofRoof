@@ -15,9 +15,14 @@ namespace SQM
     {
         constexpr size_t TCP_CONNECTIONS = 16; // CONFIG_LWIP_MAX_ACTIVE_TCP
 
-        // WebSocket clients per endpoint (/ws/status; SQMeter also had /ws/sensors). A new one
-        // past the limit replaces the oldest.
+        // WebSocket clients per endpoint (/ws/status, /ws/diag). Spec 037: a new one past the
+        // limit is refused (closed with TOO_MANY_PAGES); the pages already open keep theirs.
+        // Replacing the oldest instead made two pages over the limit take turns knocking each
+        // other off, a reconnect every second or two. A tab that stopped reading is still
+        // closed (stalledTooLong), and one that vanished misses its pings.
         constexpr size_t WEBSOCKETS_PER_ENDPOINT = 3;
+        // The close code a refused client gets (4000-4999 are the application's; 429 as in HTTP).
+        constexpr uint16_t TOO_MANY_PAGES = 4429;
         constexpr size_t WEBSOCKET_ENDPOINTS = 2;
 
         // Outbound: MQTT, plus one TLS connection at a time (alerts share one
@@ -52,7 +57,9 @@ namespace SQM
 
         // Live updates (spec 028): both streams (/ws/status, /ws/diag) send on
         // connect and then at one rate: every 2 s at rest, every 500 ms while the
-        // roof is opening or closing. A status document is about 4 KB, so three
+        // roof is opening or closing. Spec 037: when memory is too short for a
+        // whole document, a HEARTBEAT goes instead, so pages don't take the gap
+        // for a dead connection and reconnect (which costs more memory). A status document is about 4 KB, so three
         // clients at this rate stay near 24 KB/s during a move.
         constexpr uint32_t LIVE_REST_MS = 2000;
         constexpr uint32_t LIVE_MOVING_MS = 500;
@@ -63,7 +70,10 @@ namespace SQM
             return roofMoving ? LIVE_MOVING_MS : LIVE_REST_MS;
         }
 
-        // Should a new client's endpoint drop its oldest client?
+        // What a page is sent in place of a document it couldn't be given.
+        constexpr const char *HEARTBEAT = "{\"heartbeat\":true}";
+
+        // Should a new client be refused? `clientsOnEndpoint` counts it too.
         constexpr bool overLimit(size_t clientsOnEndpoint)
         {
             return clientsOnEndpoint > WEBSOCKETS_PER_ENDPOINT;

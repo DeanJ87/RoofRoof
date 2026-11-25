@@ -35,7 +35,7 @@
     "liveUpdates": {
       "status": 1,
       "limitPerEndpoint": 3,
-      "replaced": 0,
+      "refused": 0,
       "stalledClosed": 0
     },
     "alpacaRestoredAfterRestart": false,
@@ -47,6 +47,7 @@
   "freeHeap": 214320,
   "minFreeHeap": 156056,
   "maxAllocHeap": 110580,
+  "heap8Bit": { "free": 98000, "largest": 51200, "minFree": 61000 },
   "heapSize": 327680,
   "stackFree": {
     "asyncTcp": 3360,

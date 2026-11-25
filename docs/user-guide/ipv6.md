@@ -54,7 +54,7 @@ the device's own for the local-network check below.
 <!-- diagram: DIA-16
 sources: lib/NetAddress/ src/Ipv6Network.cpp
 blocking: true
-fingerprint: a1b5706d03967126
+fingerprint: 71099bdbf5606706
 -->
 <figure class="diagram" markdown>
 

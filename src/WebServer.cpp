@@ -303,7 +303,7 @@ namespace SQM
 
     void WebServer::handle()
     {
-        capWebSocketClients(wsStatus);
+        capWebSocketClients(wsStatus, wsStatusClients);
         rememberAlpacaConnections();
         pollWiFiConnect();
 
@@ -344,7 +344,13 @@ namespace SQM
         const bool roofChanged =
             (roofRevision != lastRoofRevision || phase != lastClosePhase) && now - lastRoofBroadcast >= RoofIo::STATUS_BROADCAST_MIN_MS;
         const bool changed = alertsRevision != lastAlertsRevision || configRevision != lastConfigRevision || roofChanged;
+#ifdef ROOFROOF_SOAK_MOVING_CADENCE
+        // Spec 037: a soak build (PLATFORMIO_BUILD_FLAGS) sends at the moving
+        // rate with the roof at rest, for tools/soak/ws_soak.py. Never released.
+        const bool moving = true;
+#else
         const bool moving = roof != nullptr && Diag::moving(roof->state());
+#endif
         if (now - lastStatusBroadcast >= ConnectionBudget::liveIntervalMs(moving) || changed)
         {
             broadcastStatusData();

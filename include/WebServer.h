@@ -159,15 +159,18 @@ namespace SQM
         AsyncWebSocket wsStatus;           // /ws/status
         AsyncWebSocket wsDiag{"/ws/diag"}; // spec 017: the live diagnostics stream
         std::map<uint32_t, uint32_t> wsDiagClients;
-        // Live-update clients closed since boot (SQMeter spec 011 FR-008): the
-        // oldest past the per-endpoint limit, and ones that stopped reading.
-        uint32_t wsReplaced = 0;
+        // Live-update clients closed since boot (SQMeter spec 011 FR-008): new
+        // ones past the per-endpoint limit (spec 037), and ones that stopped reading.
+        uint32_t wsRefused = 0;
         uint32_t wsStalled = 0;
         // Live-update clients by id, with when each one's queue was first seen
-        // full (0 = not full). Events arrive on the network task, the sweep
-        // runs on the loop task.
+        // full (0 = not full), or WS_REFUSE / WS_REFUSED for one past the limit
+        // (spec 037). Events arrive on the network task, the sweep runs on the
+        // loop task.
         std::map<uint32_t, uint32_t> wsStatusClients;
         std::mutex wsClientsLock;
+        static constexpr uint32_t WS_REFUSED = UINT32_MAX - 1; // closed with TOO_MANY_PAGES
+        static constexpr uint32_t WS_REFUSE = UINT32_MAX;      // to be closed by the loop task
         // Imaging-app connections restored after a restart the device caused.
         bool alpacaConnectionsRestored = false;
 
@@ -472,8 +475,9 @@ namespace SQM
         void handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json);
 
         // WebSocket handlers
-        void prepareWebSocketClient(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
-        void capWebSocketClients(AsyncWebSocket &socket);
+        // False: the client is past the limit and will be refused (spec 037).
+        bool prepareWebSocketClient(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
+        void capWebSocketClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients);
         void noteWebSocketClosed(std::map<uint32_t, uint32_t> &clients, AsyncWebSocketClient *client);
         void closeStalledClients(AsyncWebSocket &socket, std::map<uint32_t, uint32_t> &clients, uint32_t now);
         void appendConnections(JsonDocument &doc) const;

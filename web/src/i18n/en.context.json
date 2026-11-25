@@ -616,6 +616,8 @@
   "layout.updates": "Page header and navigation: an option in a list or a short label; max 12 chars.",
   "live.connecting": "Heading of a live page (dashboard, System, Diagnostics) before its first reading from the device arrives; also the Roof card's state pill then (max 16 chars).",
   "live.reconnecting": "Heading of a live page after its connection to the device dropped, until a new reading arrives.",
+  "live.tooMany": "Heading (and badge) when the device refused this page's live connection because 3 pages already have one (max 16 chars).",
+  "live.tooManyHint": "Sentence under 'Too many open pages': what to do; the page retries by itself every minute.",
   "location.line.gps": "Dashboard daylight row and Settings: a status line (a sentence); max 90 chars. {when} is e.g. \"read 3 min ago\".",
   "location.line.gpsNoAge": "Dashboard daylight row and Settings: a status line (a sentence); max 90 chars.",
   "location.line.manual": "Dashboard daylight row: a status line (a sentence); max 90 chars.",

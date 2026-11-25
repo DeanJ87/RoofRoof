@@ -279,7 +279,8 @@ namespace SQM
                 client->close(); // FR-006: nothing streams while off
                 return;
             }
-            prepareWebSocketClient(wsDiagClients, client);
+            if (!prepareWebSocketClient(wsDiag, wsDiagClients, client))
+                return; // spec 037: too many open pages
             HeapSafe::ChunkText text;
             writeDiagLive(text);
             WebReply::text(client, text);
@@ -300,7 +301,7 @@ namespace SQM
             wsDiag.closeAll();
             return;
         }
-        capWebSocketClients(wsDiag);
+        capWebSocketClients(wsDiag, wsDiagClients);
         if (now - lastDiagBroadcast < Diag::streamIntervalMs(roof->state()))
             return;
         lastDiagBroadcast = now;

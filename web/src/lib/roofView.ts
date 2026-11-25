@@ -29,7 +29,7 @@ export const RESTART_HOLD_MS = 30000;
 export interface LiveState {
   status: SystemStatus | null;
   connected: boolean; // the socket is open
-  quiet: boolean; // no message for more than 5 s
+  quiet: boolean; // no message for longer than LIVE_QUIET_MS, or the last reading after a drop (spec 037)
   reconnectedAt: number | null; // when a message last arrived after the socket was lost
   lastMessageAt?: number | null; // when the last message arrived (ms), checked against `now` too
 }

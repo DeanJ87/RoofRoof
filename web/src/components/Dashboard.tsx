@@ -14,7 +14,7 @@ import { dashboardCards } from './dashboard/cards';
 import { DEFAULT_ORDER, loadOrder, saveOrder } from './dashboard/order';
 import { useReconnectedAt } from '../hooks/useRoofCommand';
 import RoofCard from '../dashboard/RoofCard';
-import LiveWaiting from './LiveWaiting';
+import LiveWaiting, { LiveStale } from './LiveWaiting';
 
 const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: boolean) => void; reset: () => void }> = ({
   arranging,
@@ -36,7 +36,9 @@ const Toolbar: FunctionalComponent<{ arranging: boolean; setArranging: (on: bool
 const Dashboard: FunctionalComponent = () => {
   const [savedOrder, setSavedOrder] = useState<string[]>(loadOrder);
   const [arranging, setArranging] = useState(false);
-  const { data: status, connected, lastMessageAt, reconnecting } = useWebSocket<SystemStatus>('/ws/status');
+  const { data: current, connected, lastMessageAt, reconnecting, lastKnown, tooMany } = useWebSocket<SystemStatus>('/ws/status');
+  // Spec 037: after a drop the last reading stays, greyed and never live.
+  const status = current ?? lastKnown ?? null;
   const reconnectedAt = useReconnectedAt(connected, lastMessageAt);
   const [config, setConfig] = useState<Config | null>(null);
   const configRevision = status?.configRevision;
@@ -54,15 +56,16 @@ const Dashboard: FunctionalComponent = () => {
   const items = glanceItems({ status, config, effective, schedule });
   const onAction = () => void pauseOrResume(true);
 
-  // Spec 028: a quiet socket is closed by useWebSocket, so the status shown is never quiet.
-  const live = { status, connected, quiet: false, reconnectedAt, lastMessageAt };
-  // Spec 028: no reading from this connection, no state: the waiting note, on
-  // first load and after a drop. Stop never waits for live data: the Roof card
-  // (Stop enabled, Open and Close disabled with "No live data") shows under it.
+  // Spec 028: a quiet socket is closed by useWebSocket, so the status shown is
+  // never quiet; spec 037: the last reading after a drop counts as quiet (not live).
+  const live = { status, connected, quiet: !current, reconnectedAt, lastMessageAt };
+  // Spec 028: nothing received yet, no state: the waiting note. Stop never
+  // waits for live data: the Roof card (Stop enabled, Open and Close disabled
+  // with "No live data") shows under it.
   if (!status)
     return (
       <div class="dashboard page-enter">
-        <LiveWaiting reconnecting={reconnecting} />
+        <LiveWaiting reconnecting={reconnecting} tooMany={tooMany} />
         <RoofCard live={live} />
       </div>
     );
@@ -87,10 +90,11 @@ const Dashboard: FunctionalComponent = () => {
     saveOrder([]);
   };
 
+  const page = <Masonry items={ordered} editing={arranging} onMove={move} />;
   return (
     <div class="dashboard page-enter">
       <Toolbar arranging={arranging} setArranging={setArranging} reset={reset} />
-      <Masonry items={ordered} editing={arranging} onMove={move} />
+      {current ? page : <LiveStale tooMany={tooMany}>{page}</LiveStale>}
     </div>
   );
 };

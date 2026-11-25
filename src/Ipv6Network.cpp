@@ -1,11 +1,14 @@
 #include "Ipv6Network.h"
 
+#include "HeapGuard.h"
 #include "Logger.h"
+#include "NothrowNew.h"
 #include "NetAddress.h"
 #include "NetState.h"
 #include "WiFiManager.h"
 
 #include <cstring>
+#include <esp_heap_caps.h>
 #include <lwip/mld6.h>
 #include <lwip/tcpip.h>
 
@@ -61,9 +64,20 @@ namespace SQM
                             return;
                         }
                     }
-                    // As AsyncWebServer does for its own listener.
+                    // Spec 037: with almost no memory left, even the request's
+                    // own bookkeeping can't be had: refuse the connection
+                    // (the client retries) instead of failing inside the library.
+                    if (!HeapSafe::acceptFits(static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))))
+                    {
+                        client->abort();
+                        delete client;
+                        return;
+                    }
+                    // As AsyncWebServer does for its own listener. Its
+                    // new (std::nothrow) returns nullptr when memory runs out
+                    // (lib/HeapSafe NothrowNew), handled here.
                     client->setRxTimeout(3);
-                    if (!AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
+                    if (!HeapSafe::NOTHROW_NEW_REPLACED || !AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
                     {
                         client->abort();
                         delete client;

@@ -125,7 +125,7 @@
             "limitPerEndpoint": {
               "type": "number"
             },
-            "replaced": {
+            "refused": {
               "type": "number"
             },
             "stalledClosed": {
@@ -137,7 +137,7 @@
           },
           "required": [
             "limitPerEndpoint",
-            "replaced",
+            "refused",
             "stalledClosed",
             "status"
           ],
@@ -364,6 +364,27 @@
     },
     "maxAllocHeap": {
       "type": "number"
+    },
+    "heap8Bit": {
+      "type": "object",
+      "description": "Spec 037: the byte-addressable heap malloc and new use (freeHeap and maxAllocHeap also count the IRAM heap).",
+      "properties": {
+        "free": {
+          "type": "number"
+        },
+        "largest": {
+          "type": "number"
+        },
+        "minFree": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "free",
+        "largest",
+        "minFree"
+      ],
+      "additionalProperties": false
     },
     "minFreeHeap": {
       "type": "number"

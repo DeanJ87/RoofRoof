@@ -31,7 +31,7 @@ export const mockStatus: SystemStatus = {
   resetReason: 3,
   connections: {
     tcpLimit: 16,
-    liveUpdates: { status: 1, limitPerEndpoint: 3, replaced: 0, stalledClosed: 0 },
+    liveUpdates: { status: 1, limitPerEndpoint: 3, refused: 0, stalledClosed: 0 },
     alpacaRestoredAfterRestart: false,
     shortOfMemory: { refused: 0, skippedFrames: 0 },
   },

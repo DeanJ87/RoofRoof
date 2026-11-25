@@ -44,6 +44,13 @@ namespace SQM
             return largestBlock >= MIN_BLOCK_BYTES && freeHeap >= MIN_FREE_BYTES;
         }
 
+        bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight)
+        {
+            if (path == nullptr || essential(path, isPost) || !under(path, "/api"))
+                return true;
+            return repliesInFlight < MAX_REPLIES_IN_FLIGHT;
+        }
+
         bool frameFits(size_t length, uint32_t largestBlock)
         {
             return largestBlock >= FRAME_MARGIN_BYTES && largestBlock - FRAME_MARGIN_BYTES >= length;
