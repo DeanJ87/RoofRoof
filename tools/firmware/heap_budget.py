@@ -72,7 +72,7 @@ def section_sizes(elf: bytes, names: tuple[str, ...]) -> dict[str, int]:
     """Sizes of the named sections of a 32-bit little-endian ELF."""
     if elf[:4] != b"\x7fELF" or elf[4] != 1:
         raise ValueError("not a 32-bit ELF")
-    shoff, = struct.unpack_from("<I", elf, 0x20)
+    (shoff,) = struct.unpack_from("<I", elf, 0x20)
     shentsize, shnum, shstrndx = struct.unpack_from("<HHH", elf, 0x2E)
     headers = [struct.unpack_from("<IIIIII", elf, shoff + i * shentsize) for i in range(shnum)]
     strtab = headers[shstrndx][4]

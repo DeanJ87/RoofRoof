@@ -2,6 +2,7 @@
 
 #include <WiFi.h>
 
+#include "ConnectionBudget.h"
 #include "EthernetLink.h"
 #include "WiFiManager.h"
 
@@ -26,8 +27,19 @@ namespace SQM
 
         namespace
         {
-            bool ethernetOnlyMode = false; // set once in setup()
+            bool ethernetOnlyMode = false;          // set once in setup()
+            ConnectionBudget::NetworkSettle settle; // main loop only
         } // namespace
+
+        void tick()
+        {
+            settle.update(online(), millis());
+        }
+
+        bool settledFor(uint32_t ms)
+        {
+            return settle.settled(millis(), ms);
+        }
 
         void setEthernetOnly(bool on)
         {

@@ -15,6 +15,10 @@ namespace SQM
         bool wifiUp();
         bool ethernetUp();
         bool online();
+        // Spec 038: called once per main-loop pass; whether the network has
+        // been up at least `ms` (ConnectionBudget::NetworkSettle).
+        void tick();
+        bool settledFor(uint32_t ms);
         bool hotspotOn();
         // Spec 023: Ethernet only is in effect since boot (the radio stays off).
         void setEthernetOnly(bool on);

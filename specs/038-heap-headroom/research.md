@@ -9,13 +9,13 @@ From the build (`.elf` sections, `sdkconfig.esp32dev`), the start-up trace (`/ap
 |---|---:|---:|---|
 | config loaded | 279,652 | 110,580 | core, loop task, timer task, settings |
 | roof | 276,100 | 110,580 | roof task (6 KB) |
-| wifi | 202,188 | 110,580 | Wi-Fi driver, lwIP, mDNS, their tasks (74 KB, outside the largest region) |
+| wifi | 202,188 | 110,580 | WiFi driver, lwIP, mDNS, their tasks (74 KB, outside the largest region) |
 | mqtt / safety inputs | 186,676 | 110,580 | MQTT buffer, `safetyPoll` task (8 KB) |
 | web server routes | 157,376 | 94,196 | handlers, `async_tcp` task (11 KB), frame pool (10 KB) |
 | setup complete | 134,744 | 69,620 | alert outbox, Alpaca discovery, listener |
 
 Static data is 61.2 KB (`.dram0.data` 21.1 KB + `.dram0.bss` 40.1 KB); the largest symbols are the
-roof's state (4.7 KB), the timer interrupt stack (4.2 KB), Wi-Fi's connection manager (3.9 KB) and
+roof's state (4.7 KB), the timer interrupt stack (4.2 KB), WiFi's connection manager (3.9 KB) and
 the close sequence (2.5 KB): nothing cheap to cut.
 
 A fresh boot of main reads `heap8Bit` free 64.8 KB, largest 38.9 KB; after a while at rest 21-37 KB;
@@ -36,7 +36,7 @@ bench and shakedown runs (hours, settings saves, uploads, alerts):
 | alerts | 8,192 | - | TLS handshake | unchanged; started on demand and exits when idle |
 
 The timer task runs the roof's 10 ms motor watchdog (a GPIO write), the restart timer (a check and
-`ESP.restart()`) and the Wi-Fi driver's timers. The census (`GET /api/diag/heap`) now reports every
+`ESP.restart()`) and the WiFi driver's timers. The census (`GET /api/diag/heap`) now reports every
 task's least stack left, so these margins can be watched on the board.
 
 ## R3 What aborts
@@ -58,7 +58,7 @@ handler doesn't allocate or log. A second failure before the retake aborts as be
   no per-connection allocation: the one listener (`Ipv6Network::listen`) is the same `AsyncServer`
   the web server would make, and checks the peer only for IPv6 clients. Compiling it out would
   save about 1 KB of neighbour caches and drop a feature.
-- **Wi-Fi buffers**: the Arduino core sets them at run time (`WiFiGeneric.cpp`: 4 static RX,
+- **WiFi buffers**: the Arduino core sets them at run time (`WiFiGeneric.cpp`: 4 static RX,
   32 dynamic RX, 32 dynamic TX, 4 cached TX) whatever `sdkconfig` says; the dynamic ones are taken
   only while traffic is in flight. Changing them (or AMPDU) needs `useStaticBuffers(true)` and its
   own reconnect and throughput soak: a follow-up.
@@ -76,6 +76,14 @@ handler doesn't allocate or log. A second failure before the retake aborts as be
 `CONFIG_LWIP_TCP_SND_BUF_DEFAULT` 5,744 B let each connection hold 4 segments of unacknowledged
 data: with 4 pages each sent a 4.4 KB status frame and two status replies in flight, up to about
 30 KB at once. 2 segments (2,872 B, lwIP's minimum of 2 x MSS) halves that peak.
+
+## R5b The reconnect burst
+
+On main at rest, the end of a 2-minute access-point outage took `heap8Bit` to 24.0 KB free, 11.3 KB
+largest and 352 B lowest since start (one `/api/status` answered busy): WiFi, MQTT's connect and
+Home Assistant discovery, the safety polls, N.I.N.A.'s park reads, NTP and the outbox's queued
+outage alerts all ran in the same seconds. Decision: the safety polls first (they decide the
+roof), MQTT 3 s later, queued alerts 8 s later (`ConnectionBudget::NetworkSettle`).
 
 ## R6 Measurements after
 

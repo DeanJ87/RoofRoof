@@ -30,4 +30,5 @@ with a small reserve, and keep the savings with a CI budget and a bench floor.
 | send buffer | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT=2872` |
 | status | `heap8Bit.reserveSpent`; schema, types, inventory, example |
 | CI budget | `tools/firmware/heap_budget.py`, `heap-budget.json`, tests; build workflow |
+| reconnect stagger | `ConnectionBudget::NetworkSettle` (`MQTT_SETTLE_MS` 3 s, `ALERT_SETTLE_MS` 8 s), `NetState::tick()` in `loop()`, `MQTTClient::reconnect`, `AlertOutbox::handle` |
 | bench floor | `tools/soak/ws_soak.py` `--free-floor`, `--clients 0`, `verdict()` |

@@ -62,6 +62,12 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
 2. **Given** the board on the bench, **When** `tools/soak/ws_soak.py --clients 0 --also --floor
    40960` runs at rest, **Then** it fails if the largest block drops below 40 KB.
 
+### User Story 5 - A network return isn't a heap cliff (P1)
+
+1. **Given** the roof's network was down 2 minutes with alerts queued, **When** it comes back,
+   **Then** the safety polls resume at once, MQTT reconnects after 3 s and the queued alerts go
+   from 8 s, so their TLS sessions don't coincide with MQTT's discovery burst.
+
 ### Edge cases
 
 - A failure inside the heap walk's callback can't happen: it only counts into fixed arrays.
@@ -88,13 +94,20 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
   `tools/firmware/heap-budget.json`.
 - **FR-006**: `tools/soak/ws_soak.py` MUST also fail on a free-heap floor (`--free-floor`) and run
   with no pages (`--clients 0`) for the at-rest check.
-- **FR-007**: No change to motion, close, park, weather or alert behaviour.
+- **FR-007**: No change to motion, close, park or weather behaviour; alerts change only in when a
+  queued one is sent after the network returns (FR-008).
+- **FR-008**: After the network comes back (or first comes up) the work that reconnects MUST be
+  staggered: the safety polls at once, MQTT (with its discovery documents) after
+  `ConnectionBudget::MQTT_SETTLE_MS` (3 s), queued alerts after `ALERT_SETTLE_MS` (8 s) of the
+  network being up (`ConnectionBudget::NetworkSettle`, fed by the main loop).
 
 ## Success Criteria
 
 - **SC-001**: At rest, largest free block at least 40 KB (bench).
 - **SC-002**: Spec 037's soak for 10 minutes: no restart, largest block at least 20 KB, free heap at
   least 15 KB (bench).
+- **SC-004**: After a 2-minute network outage at rest, `heap8Bit.minFree` stays above 8 KB and no
+  reply is refused (bench, network blocked at the access point).
 - **SC-003**: Flash stays under 91% of the app slot; LittleFS and the UI unchanged.
 
 ## Assumptions decided for the owner
@@ -110,8 +123,11 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
   (milliseconds on the LAN); Alpaca replies are small and unaffected.
 - **Heap poisoning stays on** (light: about 8-12 B per block) because it turns a buffer overrun
   into a recorded crash rather than silent corruption.
+- **Reconnect work staggered** after a network return: MQTT 3 s later (its weather and commands
+  stay stale, so unsafe, for those seconds; Stop is also on the page and Alpaca), queued alerts
+  8 s later (they had already waited for the network). The safety polls are not delayed.
 - **Not taken (research R4)**: compiling IPv6 out (it is a setting, off by default, and costs no
-  memory per IPv4 connection); fewer Wi-Fi buffers or no AMPDU (the framework sets the buffer
+  memory per IPv4 connection); fewer WiFi buffers or no AMPDU (the framework sets the buffer
   counts at run time, and each needs its own reconnect and throughput soak); smaller TLS buffers
   (dynamic and asymmetric already; servers without fragment negotiation need 16 KB in);
   starting the alert task at boot (8 KB held for good instead of on demand).
@@ -119,4 +135,4 @@ data each; and the buffers spec 037 keeps (2 x 5 KB frames, the MQTT buffer).
 ## Out of scope
 
 The web server library's own allocations; rewriting `GET /api/config` in sections (its 2 x 9.7 KB
-blocks are transient and guarded); Wi-Fi driver buffer counts; TLS settings; UI changes.
+blocks are transient and guarded); WiFi driver buffer counts; TLS settings; UI changes.

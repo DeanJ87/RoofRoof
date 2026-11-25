@@ -548,6 +548,7 @@ void loop()
 
     wifiManager->setRetryPaused(webServer->isWifiConnectPending());
     wifiManager->handle();
+    NetState::tick();  // spec 038: how long the network has been up
     startWhenOnline(); // spec 023
 
     // Joined a network from the setup hotspot: restart so time, MQTT, Alpaca

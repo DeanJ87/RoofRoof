@@ -64,11 +64,11 @@ namespace SQM
 
             static size_t bucketOf(size_t bytes);
             size_t regionCount() const { return regions; }
-            const Region &region(size_t index) const { return region_[index]; }
-            const Bucket &usedBucket(size_t index) const { return used_[index]; }
-            const Bucket &freeBucket(size_t index) const { return free_[index]; }
+            const Region &region(size_t index) const { return regionList[index]; }
+            const Bucket &usedBucket(size_t index) const { return usedBuckets[index]; }
+            const Bucket &freeBucket(size_t index) const { return freeBuckets[index]; }
             size_t topCount() const { return tops; }
-            const Block &top(size_t index) const { return top_[index]; }
+            const Block &top(size_t index) const { return topBlocks[index]; }
             // The watched task whose stack starts inside the block at
             // `address` (allowing for the allocator's header), or nullptr.
             TaskStack *stackAt(uintptr_t address) const;
@@ -84,14 +84,14 @@ namespace SQM
             void writeTops(ChunkText &out) const;
             void writeTasks(ChunkText &out) const;
 
-            Region region_[MAX_REGIONS];
+            Region regionList[MAX_REGIONS];
             size_t regions = 0;
-            Bucket used_[BUCKETS];
-            Bucket free_[BUCKETS];
-            Block top_[TOP_USED]; // largest first
+            Bucket usedBuckets[BUCKETS];
+            Bucket freeBuckets[BUCKETS];
+            Block topBlocks[TOP_USED]; // largest first
             size_t tops = 0;
-            TaskStack *tasks_ = nullptr;
-            size_t taskCount_ = 0;
+            TaskStack *watched = nullptr;
+            size_t watchedCount = 0;
         };
     } // namespace HeapSafe
 } // namespace SQM

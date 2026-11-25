@@ -41,11 +41,11 @@ namespace SQM
         HeapCensus::Region *HeapCensus::regionFor(uintptr_t start, uintptr_t end)
         {
             for (size_t i = 0; i < regions; ++i)
-                if (region_[i].start == start)
-                    return &region_[i];
+                if (regionList[i].start == start)
+                    return &regionList[i];
             if (regions == MAX_REGIONS)
                 return nullptr;
-            Region &fresh = region_[regions++];
+            Region &fresh = regionList[regions++];
             fresh.start = start;
             fresh.bytes = end > start ? end - start : 0;
             return &fresh;
@@ -53,15 +53,15 @@ namespace SQM
 
         void HeapCensus::keepIfLarge(uintptr_t address, size_t bytes)
         {
-            if (tops == TOP_USED && bytes <= top_[TOP_USED - 1].bytes)
+            if (tops == TOP_USED && bytes <= topBlocks[TOP_USED - 1].bytes)
                 return;
             size_t at = tops < TOP_USED ? tops++ : TOP_USED - 1;
-            while (at > 0 && top_[at - 1].bytes < bytes)
+            while (at > 0 && topBlocks[at - 1].bytes < bytes)
             {
-                top_[at] = top_[at - 1];
+                topBlocks[at] = topBlocks[at - 1];
                 --at;
             }
-            top_[at] = {address, bytes};
+            topBlocks[at] = {address, bytes};
         }
 
         bool HeapCensus::add(uintptr_t regionStart, uintptr_t regionEnd, uintptr_t address, size_t bytes, bool used)
@@ -69,7 +69,7 @@ namespace SQM
             Region *region = regionFor(regionStart, regionEnd);
             if (region == nullptr)
                 return false;
-            Bucket &bucket = (used ? used_ : free_)[bucketOf(bytes)];
+            Bucket &bucket = (used ? usedBuckets : freeBuckets)[bucketOf(bytes)];
             ++bucket.count;
             bucket.bytes += bytes;
             if (used)
@@ -90,15 +90,15 @@ namespace SQM
 
         void HeapCensus::watch(TaskStack *tasks, size_t taskCount)
         {
-            tasks_ = tasks;
-            taskCount_ = tasks != nullptr ? taskCount : 0;
+            watched = tasks;
+            watchedCount = tasks != nullptr ? taskCount : 0;
         }
 
         TaskStack *HeapCensus::stackAt(uintptr_t address) const
         {
-            for (size_t i = 0; i < taskCount_; ++i)
-                if (tasks_[i].base >= address && tasks_[i].base < address + BLOCK_HEADER_SLACK)
-                    return &tasks_[i];
+            for (size_t i = 0; i < watchedCount; ++i)
+                if (watched[i].base >= address && watched[i].base < address + BLOCK_HEADER_SLACK)
+                    return &watched[i];
             return nullptr;
         }
 
@@ -107,7 +107,7 @@ namespace SQM
             line(out, "Regions (start, size, free, largest free, blocks used/free):");
             for (size_t i = 0; i < regions; ++i)
             {
-                const Region &r = region_[i];
+                const Region &r = regionList[i];
                 line(
                     out,
                     "  0x%08" PRIxPTR " %7u B  free %6u  largest %6u  blocks %u/%u",
@@ -128,10 +128,10 @@ namespace SQM
                     out,
                     "  %-6s used %4u %7u B  free %4u %7u B",
                     BUCKET_NAMES[i],
-                    static_cast<unsigned>(used_[i].count),
-                    static_cast<unsigned>(used_[i].bytes),
-                    static_cast<unsigned>(free_[i].count),
-                    static_cast<unsigned>(free_[i].bytes));
+                    static_cast<unsigned>(usedBuckets[i].count),
+                    static_cast<unsigned>(usedBuckets[i].bytes),
+                    static_cast<unsigned>(freeBuckets[i].count),
+                    static_cast<unsigned>(freeBuckets[i].bytes));
         }
 
         void HeapCensus::writeTops(ChunkText &out) const
@@ -139,12 +139,12 @@ namespace SQM
             line(out, "Largest blocks in use:");
             for (size_t i = 0; i < tops; ++i)
             {
-                const TaskStack *stack = stackAt(top_[i].address);
+                const TaskStack *stack = stackAt(topBlocks[i].address);
                 line(
                     out,
                     "  0x%08" PRIxPTR " %6u B%s%s",
-                    top_[i].address,
-                    static_cast<unsigned>(top_[i].bytes),
+                    topBlocks[i].address,
+                    static_cast<unsigned>(topBlocks[i].bytes),
                     stack != nullptr ? "  stack of " : "",
                     stack != nullptr ? stack->name : "");
             }
@@ -153,9 +153,9 @@ namespace SQM
         void HeapCensus::writeTasks(ChunkText &out) const
         {
             line(out, "Task stacks (heap block, least left since start):");
-            for (size_t i = 0; i < taskCount_; ++i)
+            for (size_t i = 0; i < watchedCount; ++i)
             {
-                const TaskStack &task = tasks_[i];
+                const TaskStack &task = watched[i];
                 char size[16] = "-";
                 if (task.blockBytes > 0)
                     snprintf(size, sizeof(size), "%u", static_cast<unsigned>(task.blockBytes));

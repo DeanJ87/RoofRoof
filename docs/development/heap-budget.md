@@ -24,16 +24,16 @@ Kept for the device's lifetime (bytes):
 
 | Consumer | Before 038 | After 038 | Notes |
 |---|---:|---:|---|
-| Static data (`.dram0.data` + `.dram0.bss`) | 61,212 | 61,228 | the roof's state, timer interrupt stack, Wi-Fi |
+| Static data (`.dram0.data` + `.dram0.bss`) | 61,212 | 61,228 | the roof's state, timer interrupt stack, WiFi |
 | loop task stack | 12,288 | 10,240 | measured peak about 7.3 KB |
 | `async_tcp` task stack | 11,264 | 8,192 | measured peak about 5 KB |
-| `esp_timer` task stack | 8,192 | 4,096 | motor watchdog, restart timer, Wi-Fi timers |
+| `esp_timer` task stack | 8,192 | 4,096 | motor watchdog, restart timer, WiFi timers |
 | `safetyPoll` task stack | 8,192 | 8,192 | room for an https SQMeter's TLS handshake |
 | roof task stack | 6,144 | 6,144 | measured peak about 3.3 KB |
 | Frame pool (spec 037) | 10,240 | 10,240 | 2 x 5 KB live-update frames |
 | MQTT buffer | 3,072 | 3,072 | the largest MQTT document |
 | Emergency reserve | 0 | 2,048 | given up instead of `abort()` |
-| Wi-Fi static RX buffers | 6,400 | 6,400 | 4 x 1.6 KB, set by the Arduino core at run time |
+| WiFi static RX buffers | 6,400 | 6,400 | 4 x 1.6 KB, set by the Arduino core at run time |
 | **Sum of the above** | **127,004** | **119,852** | **-7.2 KB** |
 
 On demand (taken while in use, then freed):
@@ -45,7 +45,7 @@ On demand (taken while in use, then freed):
 | Unsent data per connection | up to 5,744 | up to 2,872 | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT` |
 | Status reply | 3 KB pool + 1 KB pieces | same | at most 2 replies in flight (spec 037) |
 | `GET /api/config` | 2 x 9.7 KB | same | behind the memory guard |
-| Wi-Fi dynamic RX/TX buffers | up to 32 each | same | 1.6 KB each, while traffic is in flight |
+| WiFi dynamic RX/TX buffers | up to 32 each | same | 1.6 KB each, while traffic is in flight |
 
 On the board:
 
@@ -76,3 +76,12 @@ can't fail softly without exceptions, so the firmware keeps a 2 KB reserve: the 
 frees it and the allocation is retried. While it is spent the memory guard answers non-essential
 requests busy; the main loop takes it back once the largest block is 8 KB again and logs the use.
 `heap8Bit.reserveSpent` counts the uses since start.
+
+## After a network outage
+
+Everything that lost its connection used to reconnect in the same second: MQTT and its Home
+Assistant discovery documents, the queued alerts with their TLS sessions, the safety polls, the
+clock. On main that took the heap's lowest point to 352 B. Now the safety polls resume at once,
+MQTT waits until the network has been up 3 s and the alert outbox 8 s
+(`ConnectionBudget::NetworkSettle`). Check it on the bench by blocking the roof's access point for
+2 minutes while `ws_soak.py` samples, then reading `heap8Bit.minFree`.
