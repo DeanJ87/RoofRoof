@@ -95,7 +95,7 @@ test('crashes: the card shows with the mode off, empty in the demo, and copies t
   const card = page.locator('section', { has: page.getByRole('heading', { name: 'Crashes' }) });
   await expect(card.getByText('No crashes recorded.')).toBeVisible();
   await card.getByRole('button', { name: 'Copy log' }).click();
-  await expect(page.getByText('Copied')).toBeVisible();
+  await expect(page.getByText('Copied', { exact: true }).first()).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('The simulated device keeps no log');
   const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   expect(results.violations).toEqual([]);
