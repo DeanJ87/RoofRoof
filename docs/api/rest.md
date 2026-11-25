@@ -897,7 +897,7 @@ The move summaries, newest first: up to `maxSummaries` (32).
       "durationMs": 50500, "drivenMs": 49900, "fromUnknown": false,
       "peakAmps": 6.10, "averageAmps": 3.30, "stallAmps": null,
       "restVolts": 12.62, "minVolts": 12.01, "sagVolts": 0.61,
-      "hallStart": 1020, "hallEnd": 3120
+      "hallStart": 1020, "hallEnd": 3120, "hallPeak": 3120, "hallPeakMs": 50400, "hallPeakMm": 1850
     }
   ]
 }
@@ -909,6 +909,7 @@ The move summaries, newest first: up to `maxSummaries` (32).
 | `origin` | `person`, `automatic`, `client` (an Alpaca client) or `mqtt` |
 | `result` | `arrived`, `stopped` or `fault`. For `fault`, `fault` is `{"kind", "measured", "limit"}` as in the status, else `null` |
 | `stallAmps` | Only for a fault while driving; else `null` |
+| `hallPeak`, `hallPeakMs`, `hallPeakMm` | The Hall reading furthest from `hallStart`, the time from the move's start, and the estimated position then (`null` while the position was unknown). `null` in a kept summary. A peak well short of the end on a move that faulted `endTooEarly` shows where the stray reading was |
 | `kept` | Loaded from the kept file: `startMs` and `endMs` are `null` and `profile` is `false` |
 | `profile` | The move is still held with its profile, so `GET /api/diag/moves/{id}` answers |
 | `startEpoch`, `endEpoch` | Unix seconds; `0` when the clock wasn't set |

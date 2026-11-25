@@ -102,6 +102,11 @@ export interface DiagSummary {
   sagVolts: number | null;
   hallStart: number | null;
   hallEnd: number | null;
+  /** Spec 036: the reading furthest from hallStart, ms from the start and the
+   * estimated position (null while unknown); null in a kept summary. */
+  hallPeak: number | null;
+  hallPeakMs: number | null;
+  hallPeakMm: number | null;
 }
 
 export interface DiagMoves {

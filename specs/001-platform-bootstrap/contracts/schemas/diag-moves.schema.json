@@ -56,6 +56,24 @@
           "hallEnd": {
             "type": "number"
           },
+          "hallPeak": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "hallPeakMm": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
+          "hallPeakMs": {
+            "type": [
+              "null",
+              "number"
+            ]
+          },
           "hallStart": {
             "type": "number"
           },
@@ -120,6 +138,9 @@
           "fault",
           "fromUnknown",
           "hallEnd",
+          "hallPeak",
+          "hallPeakMm",
+          "hallPeakMs",
           "hallStart",
           "id",
           "kept",

@@ -29,8 +29,32 @@ The controller knows where the roof is in only two ways:
   the other end's. The reading must be the same three times in a row before it counts, and leaving
   a magnet needs the reading 40 counts past its threshold, so noise can't make it flicker.
 - **Estimated from time.** During a move from a known end, the position is estimated from the time
-  driven and the duty, at the speed you set. The estimate only decides where to slow down: the
-  magnet always ends the move.
+  driven and the duty, at the speed you set. The estimate decides where to slow down and whether
+  an end magnet can be believed (below): the magnet ends the move.
+
+### An end magnet must be plausible
+
+A stray field, a magnet that has shifted or a threshold taught too close to the reading between
+the magnets can make the end's level appear part-way. Taken as the end, the roof would report open
+(and Alpaca `ShutterOpen`) while it is a third open. So, for a move from a known position, the
+target's magnet counts only once the estimate has covered **End believed from**
+(`roof.endPlausiblePercent`, default 80 %) of the travel toward that end. Read earlier:
+
+1. The move goes on at the slow duty toward that end. The state stays **Opening** or **Closing**.
+2. It is accepted once the reading has lasted a second and either the estimate reaches the
+   plausible point, or the reading is **clearly at the magnet** (past its threshold by half the gap
+   between the two thresholds).
+3. If the reading goes away, or isn't accepted within 5 s, the roof stops with the fault
+   `endTooEarly` ("End too early: magnet or sensor problem"), the position unknown, and the
+   critical **Roof needs a person** alert.
+
+Afterwards (also after a Stop or a reversal while the reading was held) that end's magnet doesn't
+place the roof, and Open (or Close) toward it is refused until the roof has reached the other end
+or the Hall thresholds are saved again (a teach or calibration). Check the magnets and teach the
+thresholds again. A move from an unknown position has no estimate: it stops at the first magnet as
+before, and the log says the end wasn't checked. Calibration legs and jogs measure, so they stop at
+the first magnet too. The **Diagnostics** move summary shows the **Hall peak**: the reading furthest
+from the start, when and where it was.
 
 Everything else is **unknown**: after a start-up between the magnets, after an abort part-way,
 after a fault, and when the reading leaves a magnet while the roof is at rest.
@@ -155,6 +179,9 @@ person clears it. Each records what was measured and the limit it broke.
 | `supplyLow` | The supply below its minimum, or unreadable, for a quarter of a second during a move |
 | `lateStep` | The control loop ran more than 100 ms late while the motor was on |
 | `driveBudget` | The motor has run toward one end, in total, for longer than the longest single move (the whole travel at the slow duty plus the margin) since a magnet was last read, for example a jammed roof stopped and restarted many times. Each direction is counted separately, so reversing once part-way never trips it. |
+| `endTooEarly` | The target's magnet read before the estimate allowed it and not confirmed ([above](#an-end-magnet-must-be-plausible)). Measured: the estimated progress in percent; limit: **End believed from**. Raises **Roof needs a person** at once |
+| `noEndMagnet` | A move from a known position has driven **End magnet expected by** (`roof.endOverrunPercent`, default 115 %) of its expected time, and at least 3 s more, without its magnet: the magnet has shifted or the speed setting is too high. By then the roof creeps at the slow duty, so it isn't pushed into the end stop at speed until the timeout. A roof more than about 7 % slower than its speed setting creeps long enough to reach it: run the calibration, or raise the setting. Raises **Roof needs a person** at once |
+| `noMovement` | Driving showed no sign of moving for **Movement check time** (`roof.motionCheckSeconds`, default 10 s, twice that for a jog or calibration leg) after the first second: the supply never sagged by **Movement sag** (`roof.motionSagVolts`, default 0.2 V, held a quarter of a second) and the Hall reading didn't change by 60 counts. The reading is flat between the magnets, so the sag is the usual sign: a moving roof sags it 0.8 to 1.1 V at full duty; a slow duty too low to turn the motor barely does. 0 V turns the check off. Raises **Roof needs a person** at once |
 | `external` | Raised by the hardware layer; its `cause` says which: `watchdog` (the control task stopped stepping with the motor on), `watchdogStopped` (the watchdog timer itself stopped with the motor on), `parkInterlock` (the park confirmation was lost during a close) or `storedUnreadable` (the fault saved before a restart couldn't be read back) |
 
 A low supply at rest does not latch a fault: open and close are refused until it recovers. A
@@ -376,4 +403,10 @@ are meant to be replaced by the values measured on the roof:
 - the **travel** and **speed** (time a full move at 100% duty);
 - the **Hall thresholds** and which end reads high, from the live reading at each end;
 - the **open direction**, if the motor turns the wrong way;
-- **current sense**, once the IBT-2's current outputs are wired.
+- **current sense**, once the IBT-2's current outputs are wired;
+- the **slow duty**: keep it at 40 % or more (the Motion card warns below that). At 25 % the roof
+  has crawled at a few millimetres a second with almost no supply sag, which the movement check
+  stops;
+- **End believed from**, **End magnet expected by**, **Movement sag** and **Movement check time**
+  (spec 036): measure the supply sag at the slow duty on the roof and keep **Movement sag** below
+  it.

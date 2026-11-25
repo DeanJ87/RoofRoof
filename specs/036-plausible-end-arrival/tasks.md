@@ -11,5 +11,5 @@
 - [x] T009 Existing tests adjusted where the new checks rightly change the outcome: hall-noise arrival after 3 s, P6 in the property test, the timeout and drive-budget tests (overrun off), the slower-roof test (130 %), the fault-record kind bound
 - [x] T010 Web: schema, types, mocks, the Motion fields and the slow-duty note, the Diagnostics row and fault labels, i18n and the device catalogue
 - [x] T011 Fixtures, settings-deps catalogue, contract schemas, OpenAPI, demo core
-- [x] T012 Constitution 8.1.0, docs (roof motion, configuration, diagnostics, troubleshooting, REST), changelog, roadmap
+- [x] T012 Constitution 9.1.0, docs (roof motion, configuration, diagnostics, troubleshooting, REST), changelog, roadmap
 - [ ] T013 Firmware build, flash budget, quality gate, Playwright, docs build; PR with the bench checks

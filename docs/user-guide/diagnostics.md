@@ -80,7 +80,10 @@ A summary has:
 - the duration and the time the motor was driven, and whether it began from an unknown position;
 - the peak and average current, the supply at rest, the lowest supply and the sag;
 - the stall current: only for a fault while driving, the average of the last 260 ms of current readings;
-- the Hall reading at the start and the end.
+- the Hall reading at the start and the end;
+- the **Hall peak**: the reading furthest from the start, when (from the move's start) and where
+  (the estimated position, when known). A move that faulted `endTooEarly` shows where the stray
+  reading was. Kept summaries (from before a restart) don't hold it.
 
 A profile point covers 250 ms at first. When the 120 points are full, pairs of points merge and the interval doubles. The whole move always fits in 120 points, however long it takes.
 
