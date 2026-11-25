@@ -15,8 +15,9 @@ or moved.
     python3 tools/soak/ws_soak.py --host 192.168.1.245 --clients 4 \
         --also /api/status@0.5 /api/diag@10 "/api/v1/dome/0/shutterstatus?ClientID=1&ClientTransactionID=1@1"
 
-Pass: the device never restarted and its largest free block stayed at or above
---floor bytes. Exit status 0 on a pass, 1 on a fail, 2 when it couldn't be
+Pass: the device never restarted and the largest free block of its
+byte-addressable heap (/api/status heap8Bit.largest) stayed at or above --floor
+bytes in every sample. Exit status 0 on a pass, 1 on a fail, 2 when it couldn't be
 reached. Only the Python standard library is used.
 """
 
@@ -290,7 +291,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--sample", type=float, default=10, help="seconds between heap samples")
     parser.add_argument("--also", nargs="*", default=["/api/status"], help='paths polled, each "path" or "path@seconds"')
     parser.add_argument("--http-every", type=float, default=2, help="seconds between polls of each --also path")
-    parser.add_argument("--floor", type=int, default=20480, help="lowest acceptable largest free block (bytes)")
+    # heap8Bit.largest: about 21 KB at rest with the frame pool reserved; the memory guard needs 6 KB.
+    parser.add_argument("--floor", type=int, default=8192, help="lowest acceptable largest free block (bytes)")
     return parser.parse_args(argv)
 
 
