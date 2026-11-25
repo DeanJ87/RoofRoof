@@ -1,5 +1,6 @@
 #include "LogRing.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "CrashTypes.h"
@@ -127,6 +128,17 @@ namespace SQM
             if (!headerIntact(ring))
                 return 0;
             size_t n = 0;
+            if (out == ring.lines)
+            {
+                // In place (a copy of the ring read into its own lines, spec 031):
+                // rotate the oldest line to the front first, or a wrapped ring's
+                // later lines would read slots already overwritten.
+                std::rotate(out, out + slotOf(ring, 0), out + RING_LINES);
+                for (size_t i = 0; i < ring.count && n < max; ++i)
+                    if (lineIntact(out[i]))
+                        out[n++] = out[i];
+                return n;
+            }
             for (size_t i = 0; i < ring.count && n < max; ++i)
             {
                 const LogLine &line = ring.lines[slotOf(ring, i)];

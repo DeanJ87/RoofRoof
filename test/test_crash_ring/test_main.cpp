@@ -95,6 +95,26 @@ void test_start_empties_out_of_range_header()
     TEST_ASSERT_EQUAL_UINT16(1, ring.boot);
 }
 
+// Spec 031: a copy of the ring read into its own lines (src/CrashLog.cpp's log
+// reply) once the ring has wrapped: each line once, oldest first. It repeated
+// a few lines over and over before.
+void test_copy_in_place_after_wrapping()
+{
+    for (int pushes : {60, 96, 50, 7})
+    {
+        fill(0);
+        start(ring, false);
+        for (int i = 0; i < pushes; ++i)
+            push(ring, static_cast<uint32_t>(i), Level::Info, std::to_string(i).c_str());
+        LogRing copyOf = ring;
+        const size_t n = copy(copyOf, copyOf.lines, RING_LINES);
+        const int kept = pushes < static_cast<int>(RING_LINES) ? pushes : static_cast<int>(RING_LINES);
+        TEST_ASSERT_EQUAL_UINT32(kept, n);
+        for (int i = 0; i < kept; ++i)
+            TEST_ASSERT_EQUAL_STRING(std::to_string(pushes - kept + i).c_str(), copyOf.lines[i].text);
+    }
+}
+
 void test_push_keeps_newest_oldest_first()
 {
     fill(0);
@@ -180,5 +200,6 @@ int main(int, char **)
     RUN_TEST(test_damaged_line_skipped);
     RUN_TEST(test_level_names);
     RUN_TEST(test_ring_fits_rtc_memory);
+    RUN_TEST(test_copy_in_place_after_wrapping);
     return UNITY_END();
 }
