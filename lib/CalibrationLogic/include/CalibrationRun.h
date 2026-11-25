@@ -109,6 +109,7 @@ namespace SQM
             std::string busyReason;   // "busy", "hotspot", "restarting"
             std::string busyText;
             std::string faultText; // the latched fault, worded
+            bool jog = false;      // spec 033: set by Teach::jog (a Hall rail fault doesn't refuse it)
         };
 
         // One control step's view, after the controller's tick.

@@ -163,6 +163,27 @@ void test_a_jog_is_refused_while_anything_else_is_going_on(void)
     assertRefused("faultLatched", r.jog(End::Closed));
 }
 
+// Spec 033: the attended checks leave a Hall rail fault to the controller,
+// which runs a person's jog blind; any other fault still refuses it.
+void test_a_jog_runs_with_the_hall_rail_fault_only(void)
+{
+    Rig r(900.0f);
+    r.plant.railCounts = 4095;
+    r.steps(200);
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::HallRail);
+    assertRefused("notAttended", r.jog(End::Closed, false));
+    TEST_ASSERT_TRUE(r.jog(End::Closed).accepted);
+    TEST_ASSERT_TRUE(r.roof.status().jogging);
+    TEST_ASSERT_TRUE(Teach::yieldToClose(r.roof));
+    TEST_ASSERT_FALSE(r.roof.status().jogging);
+
+    Rig other(900.0f);
+    other.roof.raiseFault(Roof::Fault{FaultKind::External, 0, 0});
+    other.plant.railCounts = 4095;
+    other.steps(200);
+    assertRefused("faultLatched", other.jog(End::Closed));
+}
+
 void test_the_controllers_own_refusals_come_through(void)
 {
     Rig r(900.0f);
@@ -505,6 +526,7 @@ int main(int, char **)
     RUN_TEST(test_a_jog_needs_the_attended_confirmation);
     RUN_TEST(test_both_directions_need_the_safe_weather_no_daylight_and_the_park);
     RUN_TEST(test_a_jog_is_refused_while_anything_else_is_going_on);
+    RUN_TEST(test_a_jog_runs_with_the_hall_rail_fault_only);
     RUN_TEST(test_the_controllers_own_refusals_come_through);
     RUN_TEST(test_a_renewal_needs_the_running_jog);
     RUN_TEST(test_weather_or_daylight_turning_stops_a_jog_either_way);

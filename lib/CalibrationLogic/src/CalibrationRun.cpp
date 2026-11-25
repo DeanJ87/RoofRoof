@@ -84,7 +84,9 @@ namespace SQM
             if (!in.sequenceIdle)
                 return refuse("closeSequence", "The automatic close is busy: calibrate once it is idle");
             const Roof::Status &status = controller.status();
-            if (status.fault.kind != Roof::FaultKind::None)
+            // Spec 033: a person's jog runs blind with the Hall rail fault (the controller decides).
+            const bool blindJog = in.jog && status.fault.kind == Roof::FaultKind::HallRail;
+            if (status.fault.kind != Roof::FaultKind::None && !blindJog)
                 return refuse("faultLatched", "A fault is latched: " + in.faultText);
             if (RoofIo::roofMoving(status.state))
                 return refuse("moving", "The roof is moving");

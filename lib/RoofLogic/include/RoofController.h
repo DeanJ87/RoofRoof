@@ -67,6 +67,14 @@ namespace SQM
             // timeout and every move's drive budget. It runs only while renewed:
             // the step stops it once JOG_HOLD_MS of step time pass without a
             // holdJog(). Refused as calibrate() refuses a leg.
+            // Spec 033 (constitution 9.0.0, I): a person's jog while the Hall
+            // sensor can't place the roof (the Hall rail fault latched and no
+            // other fault, or the reading at a rail or not settled) runs blind
+            // instead (RoofControllerBlind.cpp): toward `target` at the slow
+            // duty on time alone, while renewed, up to jogLimitMs(), stopped by
+            // a stall, Stop, Abort or any fault the blind close stops on. It
+            // needs valid settings and power only; the fault stays latched and
+            // the position unknown. Status::jogging is set, Status::blind isn't.
             CommandResult jog(End target, Origin origin);
             CommandResult checkJog(End target, Origin origin) const;
             // Renews the jog `id` (from jogId() after its start): false, and
@@ -148,10 +156,8 @@ namespace SQM
                 CalibrationLeg leg;
                 HallLevel startLevel = HallLevel::Unsettled;
                 float dutyMs = 0.0f;
-                // Spec 019: a jog, and when it stops unless renewed.
+                // Spec 019: a jog (its keep-alive is jogHoldPending and jogHoldUntilMs).
                 bool jog = false;
-                bool holdPending = false; // renewed since the last step: stamped by the next
-                uint32_t holdUntilMs = 0;
             };
 
             // When a condition that must last CONFIRM_MS was first seen.
@@ -171,6 +177,8 @@ namespace SQM
             uint32_t budgetLimitMs() const;
             CalibrationLeg jogLeg(End target) const;
             bool jogExpired(uint32_t nowMs);
+            bool jogRunning(uint32_t id) const;
+            bool hallBlind() const;
             void endLeg(bool arrived);
             bool checkTimes(uint32_t nowMs);
             bool checkElectrical(const Readings &readings);
@@ -190,7 +198,11 @@ namespace SQM
                 float restVolts = 0.0f;
                 float deepestSag = 0.0f;
                 Pending sag; // the sag at or past the threshold
+                End target = End::Closed;
+                bool jog = false; // spec 033: a person's blind jog, not the blind close
             };
+            CommandResult blindReadiness() const;
+            void startBlind(End target, uint32_t limitMs);
             void stepBlind(const Readings &readings);
             bool blindStalled(const Readings &readings, uint32_t drivenMs);
             void endBlind(BlindEnd why, const Fault &fault = Fault{});
@@ -246,6 +258,10 @@ namespace SQM
             uint32_t bootMs = 0;
             Pending goodAtRest;
             uint32_t jogCount = 0;
+            // Spec 019: renewed since the last step (stamped by the next), and
+            // when the jog under way stops unless renewed.
+            bool jogHoldPending = false;
+            uint32_t jogHoldUntilMs = 0;
             Blind blind;
             BlindReport blindLast;
             bool blindRan = false;

@@ -44,7 +44,9 @@ namespace SQM
 
         Answer Teach::jog(Roof::Controller &controller, Roof::End target, bool attended, bool calibrating, const StartInputs &in)
         {
-            Answer common = attendedRefusal(controller, attended, calibrating, in);
+            StartInputs jogIn = in;
+            jogIn.jog = true; // spec 033: a Hall rail fault is the controller's to judge
+            Answer common = attendedRefusal(controller, attended, calibrating, jogIn);
             if (!common.accepted)
                 return common;
             const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person);

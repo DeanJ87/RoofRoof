@@ -44,7 +44,7 @@ namespace SQM
                 return refusedLeg(Refusal::NotAPerson);
             if (current.fault.kind != FaultKind::None)
                 return refusedLeg(Refusal::FaultLatched);
-            if (move.active)
+            if (move.active || blind.active)
                 return refusedLeg(Refusal::Moving);
             const CommandResult notReady = readinessRefusal();
             if (!notReady.accepted)
@@ -93,21 +93,46 @@ namespace SQM
             return std::min(JOG_MAX_MS, unknownMoveTimeoutMs(config));
         }
 
+        // Spec 033 (constitution 9.0.0, I): the Hall sensor can't place the
+        // roof (its rail fault latched and no other, or a reading at a rail or
+        // not settled): a person's jog then runs blind.
+        bool Controller::hallBlind() const
+        {
+            if (current.fault.kind != FaultKind::None)
+                return current.fault.kind == FaultKind::HallRail;
+            return current.hall == HallLevel::Unsettled || current.hall == HallLevel::Rail;
+        }
+
         CommandResult Controller::checkJog(End target, Origin origin) const
         {
-            return checkCalibrate(jogLeg(target), origin);
+            if (origin != Origin::Person || !hallBlind())
+                return checkCalibrate(jogLeg(target), origin);
+            if (move.active || blind.active)
+                return refusedLeg(Refusal::Moving);
+            return blindReadiness();
         }
 
         // A jog never keeps an estimate: stopped part-way, the position is
-        // unknown; at a magnet it is that magnet's end.
+        // unknown; at a magnet it is that magnet's end. Spec 033: a blind jog
+        // runs as the blind close does, toward `target`, with the jog's limit
+        // and its keep-alive; the Hall fault stays latched.
         CommandResult Controller::jog(End target, Origin origin)
         {
-            const CommandResult answer = calibrate(jogLeg(target), origin);
+            const bool blindJog = origin == Origin::Person && hallBlind();
+            const CommandResult answer = blindJog ? checkJog(target, origin) : calibrate(jogLeg(target), origin);
             if (!answer.accepted)
                 return answer;
-            move.jog = true;
-            move.holdPending = true; // the first step stamps the deadline
-            move.fromUnknown = true;
+            if (blindJog)
+            {
+                startBlind(target, jogLimitMs());
+                blind.jog = true;
+            }
+            else
+            {
+                move.jog = true;
+                move.fromUnknown = true;
+            }
+            jogHoldPending = true; // the first step stamps the deadline
             current.fromUnknown = true;
             current.positionKnown = false; // until it stops at a magnet
             current.jogging = true;
@@ -115,19 +140,27 @@ namespace SQM
             return CommandResult{};
         }
 
+        bool Controller::jogRunning(uint32_t id) const
+        {
+            return ((move.active && move.jog) || (blind.active && blind.jog)) && id == jogCount;
+        }
+
         bool Controller::holdJog(uint32_t id)
         {
-            if (!move.active || !move.jog || id != jogCount)
+            if (!jogRunning(id))
                 return false;
-            move.holdPending = true;
+            jogHoldPending = true;
             return true;
         }
 
         bool Controller::releaseJog(uint32_t id)
         {
-            if (!move.active || !move.jog || id != jogCount)
+            if (!jogRunning(id))
                 return false;
-            stopMove(true);
+            if (blind.active)
+                endBlind(BlindEnd::Stopped);
+            else
+                stopMove(true);
             return true;
         }
 
@@ -135,12 +168,12 @@ namespace SQM
         // delayed renewal can only end a jog sooner (constitution I).
         bool Controller::jogExpired(uint32_t nowMs)
         {
-            if (move.holdPending)
+            if (jogHoldPending)
             {
-                move.holdUntilMs = nowMs + JOG_HOLD_MS;
-                move.holdPending = false;
+                jogHoldUntilMs = nowMs + JOG_HOLD_MS;
+                jogHoldPending = false;
             }
-            return static_cast<int32_t>(nowMs - move.holdUntilMs) >= 0;
+            return static_cast<int32_t>(nowMs - jogHoldUntilMs) >= 0;
         }
 
         // At the drive's start (after the dead time). The estimate is kept only

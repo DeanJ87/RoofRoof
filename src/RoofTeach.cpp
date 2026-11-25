@@ -19,6 +19,7 @@ namespace SQM
         if (lock == nullptr || !started.load())
             return notStarted();
         Outcome outcome;
+        bool blindJog = false;
         {
             RoofLocked held(lock);
             Calib::Answer answer;
@@ -47,12 +48,15 @@ namespace SQM
             applyOutput();
             refreshSnapshot();
             id = controller.jogId();
+            blindJog = controller.status().jogging && controller.status().fault.kind != Roof::FaultKind::None; // spec 033
             limitMs = controller.jogLimitMs();
             outcome = Outcome{answer.accepted, answer.reason, answer.text, controller.status().state};
         }
         if (request.id == 0)
         {
-            if (outcome.accepted)
+            if (outcome.accepted && blindJog)
+                Logger::warn(TAG, "Jog toward %s started by a person without the Hall sensor", Roof::endName(request.target));
+            else if (outcome.accepted)
                 Logger::info(TAG, "Jog toward %s started by a person", Roof::endName(request.target));
             else
                 Logger::warn(TAG, "Jog refused: %s", outcome.text.c_str());
