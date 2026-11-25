@@ -25,7 +25,7 @@ Under the **base topic** (**Settings → Network → MQTT → Base topic**, defa
 
 With **SQMeter over MQTT** as a weather source, the device also subscribes to SQMeter's own `<sqmeter>/availability`, `<sqmeter>/safe` and `<sqmeter>/safety` (base topic `safety.mqtt.topic`, default `sqmeter`). It never publishes to them.
 
-The `roof` object of the state document is the status's `roof` object ([REST API](../api/rest.md#get-apistatus)) plus `closeRearmSeconds`, `daylightState` (`off`, `unknown`, `night` or `day`) and `blocked` (a line saying why the roof can't move now, or `""`), and without the long `text` fields of `nina` and `sqmeter`. While the roof moves, a close waits or the automatic close works, the document is published only when the move starts, reverses, ends or faults.
+The `roof` object of the state document is the status's `roof` object ([REST API](../api/rest.md#get-apistatus)) plus `closeRearmSeconds`, `daylightState` (`off`, `unknown`, `night` or `day`) and `blocked` (a line saying why the roof can't move now, or `""`), and without the long `text` fields of `nina` and `sqmeter`. While the roof moves, the document is published as the move starts (within a fraction of a second: `state` `opening` or `closing`, `driving`, `target`, the starting `positionPercent`), every 3 s with the position, and at a reversal, fault or the end; the Roof cover shows opening and closing. While a close waits with the roof still, it is published only when that starts or ends.
 
 ## Entities
 

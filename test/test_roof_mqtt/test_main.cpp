@@ -395,6 +395,54 @@ void test_state_document_fits_with_escaped_texts(void)
     TEST_ASSERT_TRUE(text.size() < 2900);
 }
 
+// Spec 032: the largest document while the roof moves (every text at its
+// longest and escaped, every dashboard field set), with a long base topic,
+// fits PubSubClient's buffer: streamed since spec 031, it would still fit whole.
+void test_the_largest_moving_document_fits_the_client_buffer(void)
+{
+    Snapshot s = closedRoof();
+    s.status.state = Roof::State::Closing;
+    s.status.target = Roof::End::Closed;
+    s.status.driving = s.status.blind = s.status.fromUnknown = true;
+    s.travelMm = 4000;
+    s.status.positionMm = 1234.5f;
+    s.status.moveElapsedMs = s.status.moveTimeoutMs = 4294967295u;
+    s.currentSense = true;
+    s.motorAmps = 123.45f;
+    s.fittedSwitches = 2;
+    s.stuckSwitch = 3;
+    s.closePending = s.calibrating = true;
+    s.watchdogTrips = s.maxStepGapMs = s.maxWatchdogBeatAgeMs = 4294967295u;
+    s.closePhase = "retryWait";
+    s.weatherText = std::string(MAX_CHECK_TEXT, '"'); // escaped: twice as long
+    s.parkText = std::string(MAX_CHECK_TEXT, '\\');
+    s.testBox.set = s.testBox.park = s.testBox.weather = s.testBox.daylight = true;
+    s.testBox.until = 4294967295u;
+    s.parkWait.waiting = s.parkWait.failed = true;
+    s.parkWait.text = std::string(160, '"');
+    s.overrideBits = s.openOverridable = 7;
+    s.daylight.state = "transition";
+    s.daylight.text = std::string(160, '"');
+    s.closeRearmSeconds = 2147483647;
+    s.health.ninaSet = true;
+    s.health.ninaState = "notConfigured";
+    s.health.sqmeterReplied = true;
+    s.health.sqmeterAgeMs = 4294967295u;
+    s.health.sqmeterState = "unreachable";
+    s.needsPerson = {true, std::string(MAX_CHECK_TEXT + 40, 'n')};
+    DynamicJsonDocument doc(Mqtt::STATE_DOC_CAPACITY);
+    Mqtt::writeState(doc.to<JsonObject>(), s, 4294967295u, true);
+    TEST_ASSERT_FALSE(doc.overflowed());
+    std::string text;
+    serializeJson(doc, text);
+    const std::string topic = std::string(128, 't') + "/" + Mqtt::STATE_SUBTOPIC;
+    TEST_ASSERT_TRUE_MESSAGE(5 + 2 + topic.size() + text.size() <= Mqtt::CLIENT_BUFFER_BYTES, text.c_str());
+    TEST_ASSERT_TRUE(doc["roof"]["positionPercent"].is<float>());
+    TEST_ASSERT_EQUAL_STRING("closing", doc["roof"]["state"]);
+    TEST_ASSERT_EQUAL_STRING("closed", doc["roof"]["target"]);
+    TEST_ASSERT_TRUE(doc["roof"]["driving"].as<bool>());
+}
+
 // Every request is MQTT's: never a person (constitution I).
 void test_every_request_is_mqtt_s(void)
 {
@@ -423,5 +471,6 @@ int main(int, char **)
     RUN_TEST(test_result_document_fits);
     RUN_TEST(test_state_document_fits_with_escaped_texts);
     RUN_TEST(test_every_request_is_mqtt_s);
+    RUN_TEST(test_the_largest_moving_document_fits_the_client_buffer);
     return UNITY_END();
 }
