@@ -96,6 +96,10 @@ export interface RoofConfig {
   minSupplyVolts: number;
   blindClose: boolean; // spec 030: with the Hall sensor dead, close once on time alone
   blindSagVolts: number; // 0.5..6: the supply sag that stops it as a stall
+  endPlausiblePercent: number; // spec 036, 50..95: an end magnet read earlier is checked before it is believed
+  endOverrunPercent: number; // spec 036, 105..200: no end magnet by this share of the expected time stops the move
+  motionSagVolts: number; // spec 036, 0 (off) or 0.05..2: the supply sag that shows the roof moving
+  motionCheckSeconds: number; // spec 036, 5..60: how long driving may show no sign of movement
 }
 
 // The daylight failsafe and where the roof is (spec 013).

@@ -103,7 +103,9 @@ void test_the_first_drive_after_start_up_waits_the_dead_time(void)
 // fresh timeout each time. The total driving since a magnet is capped.
 void test_repeated_restarts_hit_the_drive_budget(void)
 {
-    Bench b;
+    Settings isolated;
+    isolated.endOverrunPercent = 0; // spec 036: off, so this limit is what stops it
+    Bench b(isolated);
     openFor(b, 5000);
     b.sim.jammed = true; // stuck part-way; current sense off
     b.command(Command::Stop);
@@ -182,7 +184,9 @@ void test_a_reversal_near_the_end_never_trips_the_drive_budget(void)
 // Cycling one way still trips: the per-direction budget keeps the jam protection.
 void test_the_budget_still_trips_restarts_in_one_direction(void)
 {
-    Bench b;
+    Settings isolated;
+    isolated.endOverrunPercent = 0; // spec 036: off, so this limit is what stops it
+    Bench b(isolated);
     openFor(b, 2000);
     b.sim.jammed = true;
     b.command(Command::Stop);
@@ -299,7 +303,9 @@ namespace
 // The timeout's start (move.driveStartMs): a missing magnet still times out at the limit.
 void test_after_a_long_idle_the_timeout_counts_from_this_drive(void)
 {
-    Bench b;
+    Settings isolated;
+    isolated.endOverrunPercent = 0; // spec 036: off, so this limit is what stops it
+    Bench b(isolated);
     b.sim.openMagnetMissing = true;
     idleFor(b, THIRTY_DAYS_MS);
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);

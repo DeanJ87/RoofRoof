@@ -1,6 +1,22 @@
 <!--
 Sync Impact Report
-- Version: 8.0.0 -> 9.0.0 (MAJOR: Principle I lets a person nudge the roof with the Hall sensor
+- Version: 9.0.0 -> 9.1.0 (MINOR: Principle I is tightened. An end magnet counts only where the
+  position estimate makes it plausible, a move that overruns its expected time without its magnet
+  stops, and driving with no sign of movement stops. Nothing is relaxed.)
+- Modified: I. Motion Safety. "Stop on its target magnet" now means a plausible reading: for a move
+  from a known position the target's magnet is believed only once the estimate has covered
+  `roof.endPlausiblePercent` of the travel; read earlier, the move goes on at the slow duty and
+  accepts it only if it lasts and becomes plausible (or is clearly at the magnet) within a few
+  seconds, else the end-too-early fault. That end then doesn't place the roof until the other end
+  is reached or the Hall settings are saved again. New motion faults: no end magnet by
+  `roof.endOverrunPercent` of the expected time; no movement (no supply sag of
+  `roof.motionSagVolts` and no Hall change for `roof.motionCheckSeconds`). Each raises the
+  needs-person alert at once.
+- Why: field run (spec 036): a reading past a re-taught threshold a third of the way was taken as
+  open, so Alpaca reported the shutter open; a shifted magnet let a move push into the end stop
+  until the time guard; a low slow duty crawled for minutes with nothing seen.
+- Templates: no change. Docs: docs/user-guide/roof-motion.md, specs/036-plausible-end-arrival/spec.md.
+- Earlier: 8.0.0 -> 9.0.0 (MAJOR: Principle I lets a person nudge the roof with the Hall sensor
   failed, which no magnet can stop. It relaxes a safety principle, so it states its risk.)
 - Modified: I. Motion Safety. A third owner-decided exception: a **person's blind jog**. With the
   Hall rail fault the latched fault (and no other), or no fault and the Hall reading at a rail or not
@@ -362,6 +378,18 @@ nothing has gone wrong.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed
   settings, plus a margin) and MUST stop on its target magnet. The timeout is enforced by the
   motion code itself, never by a client.
+  - **The target magnet must be plausible** (9.1.0). For a move from a known position, its magnet
+    counts only once the position estimate has covered `roof.endPlausiblePercent` of the travel
+    toward it. Read earlier, the move continues at the slow duty and accepts it only if the reading
+    lasts and becomes plausible, or is clearly at the magnet, within a few seconds; otherwise it
+    stops with a motion fault and the position unknown, and that end's magnet doesn't place the
+    roof until the other end is reached or the Hall settings are saved again. The state never
+    reports that end meanwhile. Moves from an unknown position and calibration legs have no
+    estimate to judge by and stop at the first magnet as before.
+  - A move from a known position that has driven `roof.endOverrunPercent` of its expected time
+    without its magnet stops then, before the hard timeout. Any move that shows no sign of
+    movement (no supply sag of `roof.motionSagVolts`, no Hall change) for
+    `roof.motionCheckSeconds` (twice that for a person's jog or a calibration leg) stops.
   - The one exception is an attended calibration run, which measures travel and speed. Before
     they are measured, each leg's hard timeout is the `roof.calibrationLimitSeconds` setting,
     bounded to 30-600 s and enforced by the motion code. Later legs are bounded by the times
@@ -371,6 +399,7 @@ nothing has gone wrong.
   Hall rail fault's only exceptions are the blind close and a person's blind jog above.
   Motion faults include:
   - a timeout or "no magnet before the timeout";
+  - an end magnet read too early, no end magnet where expected, or no movement seen (9.1.0);
   - over-current or a stall, when current sense is fitted;
   - the magnet for the wrong end;
   - a Hall reading at either rail (sensor disconnected). One that latched with the motor off
@@ -694,4 +723,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 9.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
+**Version**: 9.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25

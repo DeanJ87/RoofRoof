@@ -258,14 +258,44 @@ namespace SQM
             Logger::warn(TAG, "Hall readings before the fault:%s", text);
     }
 
+    // Spec 036: how the last end magnet was judged; one from an unknown
+    // position isn't checked against an estimate, and says so.
+    void RoofControl::logEnd(const Roof::EndCheckReport &end)
+    {
+        loggedEnd = end.ended;
+        if (end.result == Roof::EndCheck::Plausible)
+            Logger::info(
+                TAG,
+                "Reached the %s magnet at %.0f%% of the travel (estimate)",
+                Roof::endName(end.target),
+                static_cast<double>(end.progressPercent));
+        else if (end.result == Roof::EndCheck::Unchecked)
+            Logger::warn(
+                TAG,
+                "Reached the %s magnet from an unknown position: not checked against an estimate (%u counts)",
+                Roof::endName(end.target),
+                static_cast<unsigned>(end.counts));
+        else
+            Logger::warn(
+                TAG,
+                "The %s magnet read early at %.0f%% of the travel (%u counts), %s after %u ms at the slow duty",
+                Roof::endName(end.target),
+                static_cast<double>(end.progressPercent),
+                static_cast<unsigned>(end.counts),
+                end.result == Roof::EndCheck::Late ? "accepted" : "not confirmed",
+                static_cast<unsigned>(end.heldMs));
+    }
+
     void RoofControl::logChanges()
     {
         std::string text;
         Roof::BlindReport blind;
+        Roof::EndCheckReport end;
         {
             RoofLocked held(lock);
             text.swap(notice);
             blind = controller.blindReport();
+            end = controller.endCheckReport();
         }
         if (!text.empty())
             Logger::warn(TAG, "%s", text.c_str());
@@ -281,6 +311,8 @@ namespace SQM
                 static_cast<double>(blind.restVolts),
                 static_cast<double>(blind.deepestSag));
         }
+        if (end.ended != loggedEnd)
+            logEnd(end);
         RoofIo::Snapshot now = snapshot();
         if (now.status.fault.kind != loggedFault && now.status.fault.kind != Roof::FaultKind::None)
         {

@@ -29,6 +29,10 @@ const FIELDS = [
   'roof.minSupplyVolts',
   'roof.blindClose',
   'roof.blindSagVolts',
+  'roof.endPlausiblePercent',
+  'roof.endOverrunPercent',
+  'roof.motionSagVolts',
+  'roof.motionCheckSeconds',
   'safety.http.enabled',
   'safety.http.url',
   'safety.mqtt.enabled',
@@ -76,6 +80,17 @@ describe('Roof tab', () => {
     expect(field('roof.maxCurrentAmps')).toBeNull();
     fireEvent.click(screen.getByLabelText('Current sense'));
     for (const path of ['roof.maxCurrentAmps', 'roof.currentAmpsPerVolt', 'roof.minRunningAmps']) expect(field(path), path).not.toBeNull();
+  });
+
+  it('has the end and movement checks, and warns below a 40 % slow duty (spec 036)', async () => {
+    mockDevice();
+    await openRoofTab();
+    for (const path of ['roof.endPlausiblePercent', 'roof.endOverrunPercent', 'roof.motionSagVolts', 'roof.motionCheckSeconds'])
+      expect(await findField(path), path).not.toBeNull();
+    expect(screen.queryByText(/Slow duty under 40 %/)).toBeNull();
+    fireEvent.input(field('roof.slowDutyPercent')!, { target: { value: '25' } });
+    fireEvent.change(field('roof.slowDutyPercent')!, { target: { value: '25' } });
+    expect(await screen.findByText(/Slow duty under 40 %/)).toBeInTheDocument();
   });
 
   it('has the Daylight card: mode, limit, location; latitude and longitude once the location is set (spec 013)', async () => {

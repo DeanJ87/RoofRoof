@@ -1077,6 +1077,12 @@
         "currentSenseEnabled": {
           "type": "boolean"
         },
+        "endOverrunPercent": {
+          "type": "number"
+        },
+        "endPlausiblePercent": {
+          "type": "number"
+        },
         "hallHighCounts": {
           "type": "number"
         },
@@ -1099,6 +1105,12 @@
           "type": "number"
         },
         "minSupplyVolts": {
+          "type": "number"
+        },
+        "motionCheckSeconds": {
+          "type": "number"
+        },
+        "motionSagVolts": {
           "type": "number"
         },
         "openDirection": {
@@ -1138,6 +1150,8 @@
         "calibrationLimitSeconds",
         "currentAmpsPerVolt",
         "currentSenseEnabled",
+        "endOverrunPercent",
+        "endPlausiblePercent",
         "hallHighCounts",
         "hallHighEnd",
         "hallLowCounts",
@@ -1146,6 +1160,8 @@
         "measured",
         "minRunningAmps",
         "minSupplyVolts",
+        "motionCheckSeconds",
+        "motionSagVolts",
         "openDirection",
         "rampDownMs",
         "rampUpMs",

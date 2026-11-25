@@ -29,7 +29,10 @@
       "minVolts": 12.3,
       "sagVolts": 0.3,
       "hallStart": 3532,
-      "hallEnd": 565
+      "hallEnd": 565,
+      "hallPeak": 565,
+      "hallPeakMs": 48400,
+      "hallPeakMm": 0
     },
     {
       "id": 1,
@@ -56,7 +59,10 @@
       "minVolts": 12.3,
       "sagVolts": null,
       "hallStart": 565,
-      "hallEnd": 3532
+      "hallEnd": 3532,
+      "hallPeak": 3532,
+      "hallPeakMs": 49480,
+      "hallPeakMm": 1850
     }
   ]
 }

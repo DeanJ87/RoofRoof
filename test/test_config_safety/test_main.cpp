@@ -203,7 +203,7 @@ void test_pre_004_config_loads_with_sources_off()
     Config stored = Config::createDefault();
     stored.mqtt.enabled = true;
     stored.mqtt.broker = "10.0.0.2";
-    DynamicJsonDocument doc(4096);
+    DynamicJsonDocument doc(8192);
     deserializeJson(doc, stored.toJson(false, false));
     doc.remove("safety");
     doc.remove("park");

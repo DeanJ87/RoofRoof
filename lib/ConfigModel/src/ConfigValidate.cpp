@@ -247,6 +247,15 @@ namespace SQM
                 return setError(error, "Roof: slow duty must be between 10 and 100 percent");
             if (r.slowDutyPercent > r.topDutyPercent)
                 return setError(error, "Roof: slow duty can't be above the top duty");
+            if (r.endPlausiblePercent < RoofConfig::MIN_END_PLAUSIBLE_PERCENT ||
+                r.endPlausiblePercent > RoofConfig::MAX_END_PLAUSIBLE_PERCENT)
+                return setError(error, "Roof: end plausible point must be between 50 and 95 percent"); // spec 036
+            if (r.endOverrunPercent < RoofConfig::MIN_END_OVERRUN_PERCENT || r.endOverrunPercent > RoofConfig::MAX_END_OVERRUN_PERCENT)
+                return setError(error, "Roof: end overrun must be between 105 and 200 percent");
+            if (r.motionSagVolts != 0.0f && !inRange(r.motionSagVolts, RoofConfig::MIN_MOTION_SAG_VOLTS, RoofConfig::MAX_MOTION_SAG_VOLTS))
+                return setError(error, "Roof: movement check sag must be 0 (off) or between 0.05 and 2 volts");
+            if (r.motionCheckSeconds < RoofConfig::MIN_MOTION_CHECK_SECONDS || r.motionCheckSeconds > RoofConfig::MAX_MOTION_CHECK_SECONDS)
+                return setError(error, "Roof: movement check time must be between 5 and 60 seconds");
             return true;
         }
 

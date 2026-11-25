@@ -68,7 +68,7 @@ namespace SQM
         };
 
         // Sag at full duty for a plant set up from the settings (research R5).
-        constexpr float SETTINGS_SAG_VOLTS = 0.3f;
+        constexpr float SETTINGS_SAG_VOLTS = 1.0f; // spec 036: the field roof's 0.8-1.1 V
 
         // A plant that matches `settings`: the travel and speed; the Hall
         // counts halfway between each threshold and its rail, and halfway

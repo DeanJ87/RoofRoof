@@ -180,8 +180,17 @@ const MoveSummary: FunctionalComponent<{ move: DiagSummary }> = ({ move }) => (
       value={`${formatCount(move.hallStart)} → ${formatCount(move.hallEnd)}`}
       valueClass="ltr"
     />
+    {move.hallPeak !== null && <ReadingRow label={t('diagnostics.hallPeak')} value={hallPeakText(move)} />}
   </div>
 );
+
+// Spec 036: the reading furthest from the start, when and where (the estimate).
+const hallPeakText = (move: DiagSummary): string => {
+  const at = { counts: formatCount(move.hallPeak), seconds: seconds(move.hallPeakMs ?? 0) };
+  return move.hallPeakMm === null
+    ? t('diagnostics.hallPeakAtTime', at)
+    : t('diagnostics.hallPeakAt', { ...at, mm: formatCount(move.hallPeakMm) });
+};
 
 // While the roof moves, Clear log is refused; the reason sits under it (constitution VII).
 const ClearLog: FunctionalComponent<{ busy: boolean; onCleared: () => void }> = ({ busy, onCleared }) => {

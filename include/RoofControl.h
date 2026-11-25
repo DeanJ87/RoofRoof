@@ -287,6 +287,7 @@ namespace SQM
         void persistWatch();
         void logChanges();
         void logFaultHall();
+        void logEnd(const Roof::EndCheckReport &end);
 
         mutable SemaphoreHandle_t lock = nullptr;
         TaskHandle_t task = nullptr;
@@ -345,6 +346,7 @@ namespace SQM
         Roof::FaultKind loggedFault = Roof::FaultKind::None;
         uint32_t saveFailedAtMs = 0; // when saving the fault last failed (0: it didn't)
         uint32_t loggedBlind = 0;    // spec 030: blind closes ended and logged
+        uint32_t loggedEnd = 0;      // spec 036: end checks judged and logged
 
         // Shared without the lock.
         std::atomic<uint32_t> lastStepMs{0};

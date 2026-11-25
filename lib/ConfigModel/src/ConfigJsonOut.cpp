@@ -1,3 +1,4 @@
+#include <cmath>
 #include "Config.h"
 #include "ConfigInternal.h"
 #include "ConfigJson.h"
@@ -222,6 +223,10 @@ namespace SQM
             roof["minSupplyVolts"] = r.minSupplyVolts;
             roof["blindClose"] = r.blindClose; // spec 030
             roof["blindSagVolts"] = r.blindSagVolts;
+            roof["endPlausiblePercent"] = r.endPlausiblePercent; // spec 036
+            roof["endOverrunPercent"] = r.endOverrunPercent;
+            roof["motionSagVolts"] = std::round(static_cast<double>(r.motionSagVolts) * 100.0) / 100.0; // 0.2, not 0.200000003
+            roof["motionCheckSeconds"] = r.motionCheckSeconds;
         }
     } // namespace
 

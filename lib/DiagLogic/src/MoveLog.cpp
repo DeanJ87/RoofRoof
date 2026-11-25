@@ -1,6 +1,7 @@
 #include "MoveLog.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 #include "RoofSettings.h"
 
@@ -104,6 +105,7 @@ namespace SQM
             s.calibration = sample.status.calibrating;
             s.hallStart = sample.status.hallCounts;
             s.hallEnd = sample.status.hallCounts;
+            notePeak(sample, s);
             s.endState = sample.status.state;
             s.active = true;
             acc = Accumulator();
@@ -124,6 +126,10 @@ namespace SQM
             s.endMs = sample.nowMs;
             s.hallEnd = sample.status.hallCounts;
             s.endState = sample.status.state;
+            const int fromStart = static_cast<int>(sample.status.hallCounts) - s.hallStart;
+            const int peakFromStart = static_cast<int>(s.hallPeak) - s.hallStart;
+            if (std::abs(fromStart) > std::abs(peakFromStart))
+                notePeak(sample, s);
             if (sample.status.driving)
             {
                 if (!drivenYet)
@@ -136,6 +142,14 @@ namespace SQM
             }
             advancePoints(sample.nowMs - s.startMs, sample.output.duty);
             accumulate(sample);
+        }
+
+        // Spec 036: where the Hall reading went furthest from its start.
+        void MoveLog::notePeak(const Sample &sample, Summary &s)
+        {
+            s.hallPeak = sample.status.hallCounts;
+            s.hallPeakMs = sample.nowMs - s.startMs;
+            s.hallPeakMm = sample.status.positionKnown ? sample.status.positionMm : NAN;
         }
 
         void MoveLog::recordDriven(const Sample &sample, Summary &s)

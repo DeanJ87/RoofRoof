@@ -296,6 +296,15 @@ namespace SQM
         // upgrade); a supply sag this far below its rest stops it as a stall.
         bool blindClose = true;
         float blindSagVolts = 2.0f;
+        // Spec 036 (constitution 9.1.0, I): an end magnet read before the estimate
+        // has covered this much of the travel toward it is too early to believe.
+        uint32_t endPlausiblePercent = 80;
+        // Spec 036: no end magnet by this percentage of the expected move time stops
+        // the move; driving with no supply sag of motionSagVolts (0 = off) and no Hall
+        // change for motionCheckSeconds is "no movement".
+        uint32_t endOverrunPercent = 115;
+        float motionSagVolts = 0.2f;
+        uint32_t motionCheckSeconds = 10;
 
         // Spec 023: what the roof's gates compare the analog readings with.
         Board::AnalogGates analogGates() const;
@@ -331,6 +340,16 @@ namespace SQM
         static constexpr float MAX_SUPPLY_VOLTS = 15.0f;
         static constexpr float MIN_BLIND_SAG_VOLTS = 0.5f;
         static constexpr float MAX_BLIND_SAG_VOLTS = 6.0f;
+        static constexpr uint32_t MIN_END_PLAUSIBLE_PERCENT = 50;
+        static constexpr uint32_t MAX_END_PLAUSIBLE_PERCENT = 95;
+        static constexpr uint32_t MIN_END_OVERRUN_PERCENT = 105;
+        static constexpr uint32_t MAX_END_OVERRUN_PERCENT = 200;
+        static constexpr float MIN_MOTION_SAG_VOLTS = 0.05f; // or 0: off
+        static constexpr float MAX_MOTION_SAG_VOLTS = 2.0f;
+        static constexpr uint32_t MIN_MOTION_CHECK_SECONDS = 5;
+        static constexpr uint32_t MAX_MOTION_CHECK_SECONDS = 60;
+        // Spec 036: below this slow duty the roof may crawl with no sign of moving (the UI warns).
+        static constexpr uint32_t ADVISED_SLOW_DUTY_PERCENT = 40;
     };
 
     // Spec 023 review: whether the analog setup passes its checks against these

@@ -70,6 +70,8 @@ describe('Diagnostics page', () => {
       expect(await screen.findByRole('img', { name: /current averages/ })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Download CSV' })).toHaveAttribute('href', '/api/diag/moves/11?format=csv');
       expect(screen.getByRole('link', { name: 'Download JSON' })).toHaveAttribute('href', '/api/diag/moves/11');
+      // Spec 036: where the Hall reading peaked.
+      expect(screen.getByText('Hall peak')).toBeInTheDocument();
     });
 
     it('keeps Clear log unavailable while the roof moves, with the reason', async () => {

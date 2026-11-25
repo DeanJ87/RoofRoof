@@ -190,6 +190,10 @@ void test_a_full_open_is_one_arrived_move()
     TEST_ASSERT_TRUE(s.drivenMs > 0 && s.drivenMs <= s.durationMs());
     TEST_ASSERT_EQUAL_UINT16(rig.plant.lowMagnetCounts, s.hallStart);
     TEST_ASSERT_EQUAL_UINT16(rig.plant.highMagnetCounts, s.hallEnd);
+    // Spec 036: the reading furthest from the start, at the open end, when and where.
+    TEST_ASSERT_EQUAL_UINT16(rig.plant.highMagnetCounts, s.hallPeak);
+    TEST_ASSERT_TRUE(s.hallPeakMs > 0 && s.hallPeakMs <= s.durationMs());
+    TEST_ASSERT_TRUE(s.hallPeakMm > 1800.0f);
     TEST_ASSERT_TRUE(s.peakAmps >= s.averageAmps && s.averageAmps > 0.0f);
     TEST_ASSERT_FLOAT_WITHIN(0.05f, 12.6f, s.restVolts);
     TEST_ASSERT_TRUE(s.minVolts < s.restVolts);

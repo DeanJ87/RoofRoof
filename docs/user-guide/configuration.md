@@ -155,7 +155,11 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "minRunningAmps": 0,
     "minSupplyVolts": 11,
     "blindClose": true,
-    "blindSagVolts": 2.0
+    "blindSagVolts": 2.0,
+    "endPlausiblePercent": 80,
+    "endOverrunPercent": 115,
+    "motionSagVolts": 0.2,
+    "motionCheckSeconds": 10
   },
   "pins": {
     "preset": "unset",
@@ -363,6 +367,10 @@ sense off.
 | `roof.minSupplyVolts` | number | `11` | Supply below which a move is refused, or stopped as a fault (6-15) |
 | `roof.blindClose` | bool | `true` | **Blind close**: with a Hall rail fault latched (and no other fault), the [automatic close](close-on-unsafe.md#blind-close-when-the-hall-sensor-has-failed) may drive the roof towards closed once, on time alone, at the slow duty, for at most a move from an unknown position's timeout. On after an update too. Off: a Hall fault leaves the roof where it is and the critical alert says it can't close. One blind close per latched fault, remembered across restarts |
 | `roof.blindSagVolts` | number | `2.0` | **Stall sag** (0.5-6.0 V): during a [blind close](roof-motion.md#blind-close), the supply sagging this far below its value at rest for 500 ms (after the first second) stops the motor as a stall. A running roof sags the supply by about 1 V; set it between that and the stall's sag from a [bench measurement](../hardware/commissioning.md#stage-8-first-attended-moves-on-the-real-roof) |
+| `roof.endPlausiblePercent` | integer | `80` | **End believed from** (50-95 %): for a move from a known position, an end magnet read before the estimate has covered this much of the travel is held at the slow duty and believed only if it lasts and becomes plausible (or is clearly at the magnet); else the `endTooEarly` fault. See [An end magnet must be plausible](roof-motion.md#an-end-magnet-must-be-plausible) |
+| `roof.endOverrunPercent` | integer | `115` | **End magnet expected by** (105-200 %): a move from a known position that has driven this share of its expected time (and at least 3 s more) without its magnet stops with `noEndMagnet`, before the timeout. Raise it only for a roof slower than its speed setting that you can't calibrate |
+| `roof.motionSagVolts` | number | `0.2` | **Movement sag** (0 = off, or 0.05-2.0 V): while driving, a supply sag this large (held 250 ms) or a Hall change shows the roof moving; neither within the check time stops it with `noMovement`. Keep it below the sag you measure at the slow duty |
+| `roof.motionCheckSeconds` | integer | `10` | **Movement check time** (5-60 s): how long driving may show no sign of movement (after the first second); twice this for a person's jog or a calibration leg |
 
 ### Daylight and location
 

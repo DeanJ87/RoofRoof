@@ -1,4 +1,4 @@
 {
-  "esp32dev": 1654576,
-  "overBudgetReason": "033: blind jog, magnet override and the closing jog (+2.6 KB)"
+  "esp32dev": 1660240,
+  "overBudgetReason": "036: plausible end check, overrun and movement checks (+5.5 KB)"
 }

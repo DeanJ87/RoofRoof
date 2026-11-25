@@ -79,6 +79,9 @@ export const mockDiagSummary: DiagSummary = {
   sagVolts: 0.61,
   hallStart: 1020,
   hallEnd: 3120,
+  hallPeak: 3120,
+  hallPeakMs: 50400,
+  hallPeakMm: 1850,
 };
 
 // A move from before the last restart: no profile, no uptime times.
@@ -94,6 +97,9 @@ export const mockDiagKept: DiagSummary = {
   endState: 'open',
   result: 'fault',
   fault: { kind: 'overCurrent', measured: 9.2, limit: 8 },
+  hallPeak: null,
+  hallPeakMs: null,
+  hallPeakMm: null,
 };
 
 export const mockDiagMoves: DiagMoves = {

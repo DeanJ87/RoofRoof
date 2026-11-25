@@ -1,8 +1,7 @@
-// The motion logic's safety properties under random use (spec 002 SC-001;
-// constitution I). Thousands of seeded sequences of random settings, commands,
-// origins, step timing, Hall noise and glitches, supply dips, current spikes,
-// jams, wrong wiring and missing magnets drive a simulated roof. After every
-// step and command an independent observer checks:
+// The motion logic's safety properties under random use (spec 002 SC-001; constitution I).
+// Thousands of seeded sequences of random settings, commands, origins, step timing, Hall noise
+// and glitches, supply dips, current spikes, jams, wrong wiring and missing magnets drive a
+// simulated roof. After every step and command an independent observer checks:
 //
 //   P1  never both directions; Off for the dead time between driven periods,
 //       and after start-up, timed from steps (commands carry no time);
@@ -13,13 +12,12 @@
 //   P4  no motion from unknown without a person's command (spec 030: or the automatic Close);
 //   P5  no driven period outlasts its timeout or (from a magnet) the leave time;
 //   P7  three rail readings among the last eight, consecutive or not (spec 027:
-//       after the boot settle, or while moving), latch a
-//       fault on that step;
+//       after the boot settle, or while moving), latch a fault on that step;
 //   P8  the driving toward each end since a magnet was last read (or a person
 //       cleared a fault) never reaches the drive budget, and a free roof
 //       reversed once part-way never trips it (P8b);
 //   P6  the target magnet ends the move, at that end, on the step it is
-//       confirmed.
+//       confirmed (spec 036: where the estimate makes it plausible).
 //
 // A failure names the seed and the step, so it can be replayed.
 
@@ -188,7 +186,7 @@ namespace
                 return;
             End at = End::Closed;
             const bool atMagnet = magnet(st.hall, at);
-            if (atMagnet && at == st.target)
+            if (atMagnet && at == st.target && !st.earlyEnd) // spec 036: an early reading is held
                 fail("P6 the target magnet ends the move");
             if (!atMagnet)
                 onLeftStart = true;
@@ -252,14 +250,16 @@ namespace
 
         // P6 also means the move ends *at its end*, not as a fault: a step that
         // confirms the target magnet of a move in progress leaves the roof there
-        // (unless the step itself was late, which is checked first).
-        void checkArrival(const Controller &roof, State before, End target) const
+        // (unless the step was late; spec 036: or the estimate before it calls the reading early).
+        void checkArrival(const Controller &roof, const Status &was, End target) const
         {
-            if (before != State::Opening && before != State::Closing)
+            if (was.state != State::Opening && was.state != State::Closing)
                 return;
             const Status &st = roof.status();
+            const float done = target == End::Open ? was.positionMm : settings.travelMm - was.positionMm;
+            const bool early = was.positionKnown && !was.fromUnknown && done * 100.0f / settings.travelMm < settings.endPlausiblePercent;
             End at = End::Closed;
-            if (!magnet(st.hall, at) || at != target || st.fault.kind == FaultKind::LateStep)
+            if (!magnet(st.hall, at) || at != target || st.fault.kind == FaultKind::LateStep || st.earlyEnd || was.earlyEnd || early)
                 return;
             if (st.state != (target == End::Open ? State::Open : State::Closed))
                 fail("P6 reaching the target magnet ends the move at that end");
@@ -455,7 +455,7 @@ namespace
             const uint32_t gapMs = randomGapMs(rng);
             sim.drive(roof.output(), gapMs);
             nowMs += gapMs;
-            const State before = roof.status().state;
+            const Status before = roof.status(); // spec 036: the estimate before the step
             const End target = roof.status().target;
             const Readings readings = readingsWith(sim, nowMs, glitches, rng);
             obs.beforeStep(gapMs);
@@ -471,7 +471,7 @@ namespace
     struct Coverage
     {
         uint32_t arrived = 0;
-        uint32_t faults[11] = {};
+        uint32_t faults[static_cast<int>(FaultKind::NoMovement) + 1] = {};
         uint32_t unknownMoves = 0;
     };
 } // namespace
@@ -524,7 +524,7 @@ void test_property_sequences_reach_every_fault_and_both_ends(void)
         "coverage: %u arrivals, %u steps driving from unknown, faults:",
         static_cast<unsigned>(seen.arrived),
         static_cast<unsigned>(seen.unknownMoves));
-    for (int kind = 1; kind < 11; ++kind)
+    for (int kind = 1; kind <= static_cast<int>(FaultKind::NoMovement); ++kind)
         printf(" %s %u", faultName(static_cast<FaultKind>(kind)), static_cast<unsigned>(seen.faults[kind]));
     printf("\n");
     TEST_ASSERT_TRUE(seen.arrived > 100);

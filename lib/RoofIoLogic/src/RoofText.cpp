@@ -116,6 +116,15 @@ namespace SQM
                     return format("Control step %.0f ms late > %.0f ms", measured, limit);
                 case Roof::FaultKind::DriveBudget:
                     return format("Driven %.1f s without reaching a magnet >= %.1f s budget", seconds(f.measured), seconds(f.limit));
+                case Roof::FaultKind::EndTooEarly: // spec 036
+                    return format(
+                        "End too early: magnet or sensor problem (end magnet read at %.0f percent of the travel < %.0f percent)",
+                        measured,
+                        limit);
+                case Roof::FaultKind::NoEndMagnet:
+                    return format("No end magnet where expected: driven %.1f s >= %.1f s", seconds(f.measured), seconds(f.limit));
+                case Roof::FaultKind::NoMovement:
+                    return format("No movement detected: supply sag %.2f V < %.2f V and the Hall reading unchanged", measured, limit);
                 default:
                     return format("Fault raised: %g (limit %g)", measured, limit);
                 }
@@ -169,6 +178,8 @@ namespace SQM
                 return "Calibration leg outside its ranges";
             case Roof::Refusal::BlindUnavailable:
                 return "No blind close: it is off, already ran for this fault, or the fault isn't the Hall sensor's alone";
+            case Roof::Refusal::EndDoubted: // spec 036
+                return "That end's magnet was read too early: move the roof to the other end first, or teach the Hall sensor again";
             }
             return "Refused";
         }

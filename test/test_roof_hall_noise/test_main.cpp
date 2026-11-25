@@ -11,6 +11,7 @@
 #include "Config.h"
 #include "HallFilter.h"
 #include "RoofController.h"
+#include "MotionProfile.h"
 #include "RoofSettings.h"
 
 using namespace SQM;
@@ -203,12 +204,13 @@ void test_back_on_the_start_magnet_after_the_leave_time(void)
 }
 
 // Arriving still stops promptly: within the persistence and the median's delay.
+// Spec 036: where the estimate allows it (most of the travel driven).
 void test_arrival_within_the_bound(void)
 {
     Rig rig;
     rig.restOpen();
     TEST_ASSERT_TRUE(rig.roof.command(Command::Close, Origin::Person).accepted);
-    rig.hold(BETWEEN, 3000);
+    rig.hold(BETWEEN, expectedMoveMs(fieldSettings(), static_cast<float>(fieldSettings().travelMm)) - 1000);
     uint32_t ms = 0;
     while (rig.roof.status().state == State::Closing && ms < 2000)
     {

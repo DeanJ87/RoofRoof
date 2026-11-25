@@ -3810,7 +3810,10 @@
                       "minVolts": 12.3,
                       "sagVolts": 0.3,
                       "hallStart": 3532,
-                      "hallEnd": 565
+                      "hallEnd": 565,
+                      "hallPeak": 565,
+                      "hallPeakMs": 48400,
+                      "hallPeakMm": 0
                     },
                     {
                       "id": 1,
@@ -3837,7 +3840,10 @@
                       "minVolts": 12.3,
                       "sagVolts": null,
                       "hallStart": 565,
-                      "hallEnd": 3532
+                      "hallEnd": 3532,
+                      "hallPeak": 3532,
+                      "hallPeakMs": 49480,
+                      "hallPeakMm": 1850
                     }
                   ]
                 }
@@ -7166,6 +7172,12 @@
               "currentSenseEnabled": {
                 "type": "boolean"
               },
+              "endOverrunPercent": {
+                "type": "number"
+              },
+              "endPlausiblePercent": {
+                "type": "number"
+              },
               "hallHighCounts": {
                 "type": "number"
               },
@@ -7188,6 +7200,12 @@
                 "type": "number"
               },
               "minSupplyVolts": {
+                "type": "number"
+              },
+              "motionCheckSeconds": {
+                "type": "number"
+              },
+              "motionSagVolts": {
                 "type": "number"
               },
               "openDirection": {
@@ -7227,6 +7245,8 @@
               "calibrationLimitSeconds",
               "currentAmpsPerVolt",
               "currentSenseEnabled",
+              "endOverrunPercent",
+              "endPlausiblePercent",
               "hallHighCounts",
               "hallHighEnd",
               "hallLowCounts",
@@ -7235,6 +7255,8 @@
               "measured",
               "minRunningAmps",
               "minSupplyVolts",
+              "motionCheckSeconds",
+              "motionSagVolts",
               "openDirection",
               "rampDownMs",
               "rampUpMs",
@@ -8295,6 +8317,12 @@
               "currentSenseEnabled": {
                 "type": "boolean"
               },
+              "endOverrunPercent": {
+                "type": "number"
+              },
+              "endPlausiblePercent": {
+                "type": "number"
+              },
               "hallHighCounts": {
                 "type": "number"
               },
@@ -8317,6 +8345,12 @@
                 "type": "number"
               },
               "minSupplyVolts": {
+                "type": "number"
+              },
+              "motionCheckSeconds": {
+                "type": "number"
+              },
+              "motionSagVolts": {
                 "type": "number"
               },
               "openDirection": {
@@ -8859,6 +8893,24 @@
               "hallEnd": {
                 "type": "number"
               },
+              "hallPeak": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "hallPeakMm": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
+              "hallPeakMs": {
+                "type": [
+                  "null",
+                  "number"
+                ]
+              },
               "hallStart": {
                 "type": "number"
               },
@@ -8914,6 +8966,9 @@
               "fault",
               "fromUnknown",
               "hallEnd",
+              "hallPeak",
+              "hallPeakMm",
+              "hallPeakMs",
               "hallStart",
               "id",
               "kept",
@@ -9007,6 +9062,24 @@
                 "hallEnd": {
                   "type": "number"
                 },
+                "hallPeak": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "hallPeakMm": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
+                "hallPeakMs": {
+                  "type": [
+                    "null",
+                    "number"
+                  ]
+                },
                 "hallStart": {
                   "type": "number"
                 },
@@ -9071,6 +9144,9 @@
                 "fault",
                 "fromUnknown",
                 "hallEnd",
+                "hallPeak",
+                "hallPeakMm",
+                "hallPeakMs",
                 "hallStart",
                 "id",
                 "kept",
@@ -10223,7 +10299,10 @@
                       "supplyLow",
                       "lateStep",
                       "driveBudget",
-                      "external"
+                      "external",
+                      "endTooEarly",
+                      "noEndMagnet",
+                      "noMovement"
                     ]
                   },
                   "limit": {

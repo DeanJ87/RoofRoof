@@ -442,6 +442,18 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the web server library's allocations; the bounded once-a-second copies (device
   list, safety snapshot, discovery key); any change to what alerts say or when they retry.
 
+### 036 Plausible ends and a moving roof (base: main after 035)
+
+- **Scope:**
+  - `lib/RoofLogic`: an end magnet counts only where the position estimate allows
+    (`roof.endPlausiblePercent`); an early reading is held at the slow duty, then accepted or the
+    `endTooEarly` fault, and that end doubted until the other end or a re-teach.
+  - `noEndMagnet` (no magnet by `roof.endOverrunPercent` of the expected time) and `noMovement`
+    (no supply sag of `roof.motionSagVolts` and no Hall change for `roof.motionCheckSeconds`).
+  - Each raises needs-person at once; the move summary's Hall peak; a slow-duty warning under 40 %.
+- **Out of scope:** current sense as a movement sign; keeping the doubt across a restart once the
+  fault is cleared; any new position sensor.
+
 ## Merge order
 
 ```text

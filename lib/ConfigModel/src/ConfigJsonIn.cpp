@@ -57,9 +57,8 @@ namespace SQM
             value = value.substr(start, value.find_last_not_of(" \t\r\n") - start + 1);
         }
 
-        // Settings stored as unsigned integers. ArduinoJson turns -1 or 1.5
-        // into the default instead of failing, so reject them up front, as
-        // the web UI does (test/fixtures/config-ranges.json).
+        // Settings stored as unsigned integers. ArduinoJson turns -1 or 1.5 into the default
+        // instead of failing, so reject them up front, as the web UI does (config-ranges.json).
         bool checkWholeNumbers(const JsonDocument &doc, std::string *error)
         {
             static const char *const FIELDS[][2] = {
@@ -311,11 +310,14 @@ namespace SQM
             roof.take("minSupplyVolts", r.minSupplyVolts);
             roof.take("blindClose", r.blindClose); // spec 030: absent (an upgrade) keeps the default, on
             roof.take("blindSagVolts", r.blindSagVolts);
+            roof.take("endPlausiblePercent", r.endPlausiblePercent); // spec 036: absent (an upgrade) keeps 80
+            roof.take("endOverrunPercent", r.endOverrunPercent);
+            roof.take("motionSagVolts", r.motionSagVolts);
+            roof.take("motionCheckSeconds", r.motionCheckSeconds);
             return applyRoofEnums(roof, r, error);
         }
 
-        // The imaging-app alert settings as stored under their own NVS key
-        // (ConfigStore splices them in as "alertsClient").
+        // The imaging-app alert settings as stored under their own NVS key ("alertsClient").
         bool applyAlertsClient(const Section &client, AlertsConfig &a, std::string *error)
         {
             if (client.isNull())

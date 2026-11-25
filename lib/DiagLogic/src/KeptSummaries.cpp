@@ -85,7 +85,7 @@ namespace SQM
                 const uint8_t result = at[55] & 3;
                 const uint8_t fault = static_cast<uint8_t>((at[55] >> 3) & 0x0F);
                 if (at[52] > static_cast<uint8_t>(Roof::Origin::Mqtt) || at[53] > 1 || at[54] > static_cast<uint8_t>(Roof::State::Error) ||
-                    result > static_cast<uint8_t>(Result::Fault) || fault > static_cast<uint8_t>(Roof::FaultKind::External))
+                    result > static_cast<uint8_t>(Result::Fault) || fault > static_cast<uint8_t>(Roof::FaultKind::NoMovement))
                     return false;
                 s = Summary();
                 s.kept = true;

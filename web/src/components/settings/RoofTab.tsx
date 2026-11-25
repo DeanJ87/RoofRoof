@@ -1,4 +1,4 @@
-import { ComponentChildren, FunctionalComponent } from 'preact';
+import { ComponentChildren, Fragment, FunctionalComponent } from 'preact';
 import { route } from 'preact-router';
 import type { DaylightConfig, LocationConfig, RoofConfig, SafetyConfig } from '../../types';
 import type { SettingsTabProps } from './context';
@@ -8,6 +8,7 @@ import { Button, Note, Pill, ReadingRow } from '../ui';
 import { setupStages } from '../../lib/setupProgress';
 import { SetupStages, stagesDone } from '../SetupProgress';
 import TravelCard from './TravelCard';
+import { ADVISED_SLOW_DUTY_PERCENT, MOTION_CHECKS } from './motionChecks';
 import { presetLabel } from '../../lib/pinsView';
 import TestBoxCard from './TestBoxCard';
 import SqmeterCopy from './SqmeterCopy';
@@ -88,7 +89,12 @@ const MotionCard: FunctionalComponent<RoofProps> = (props) => (
         integer: true,
         hint: t('settings.roof.leaveMagnetHint'),
       })}
+      {MOTION_CHECKS.map((c) => (
+        <Fragment key={c.key}>{roofNum(props, c.key, t(c.label), { unit: c.unit, integer: c.integer, hint: t(c.hint) })}</Fragment>
+      ))}
     </div>
+    {/* Spec 036: a slow duty this low crawled with no sign of moving in the field. */}
+    {props.roof.slowDutyPercent < ADVISED_SLOW_DUTY_PERCENT && <Note tone="warn">{t('settings.roof.slowDutyLow')}</Note>}
     {/* Spec 030: with the Hall sensor failed, the automatic close on time alone. */}
     <Toggle
       dataField="roof.blindClose"

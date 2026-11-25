@@ -71,7 +71,9 @@ namespace
 // exactly its limit, still driving one step before.
 void test_fault_timeout_at_the_limit_not_before(void)
 {
-    Bench b;
+    Settings s;
+    s.endOverrunPercent = 200; // spec 036: past the timeout, so the timeout is what stops it
+    Bench b(s);
     b.sim.openMagnetMissing = true;
     TEST_ASSERT_TRUE(b.command(Command::Open).accepted);
     Status before;
