@@ -118,7 +118,7 @@ const alerts = ({ config }: ReviewInput): Check => {
   const channels = a
     ? [a.pushover.enabled, a.ntfy.enabled, a.webhook.enabled, a.mqtt.enabled && config.mqtt.enabled].filter(Boolean).length
     : 0;
-  if (!a?.enabled || channels === 0) return bad(t('wizard.review.noAlertChannel'));
+  if (!a?.enabled || channels === 0) return bad(t('wizard.alerts.noChannel'));
   return ok(t('wizard.review.alertChannels', { count: channels }));
 };
 
