@@ -349,7 +349,7 @@ namespace SQM
         JsonObject live = connections.createNestedObject("liveUpdates");
         live["status"] = wsStatus.count();
         live["limitPerEndpoint"] = ConnectionBudget::WEBSOCKETS_PER_ENDPOINT;
-        live["replaced"] = wsReplaced;
+        live["refused"] = wsRefused;
         live["stalledClosed"] = wsStalled;
         connections["alpacaRestoredAfterRestart"] = alpacaConnectionsRestored;
         // Spec 031: requests answered "busy" and live frames skipped for memory.

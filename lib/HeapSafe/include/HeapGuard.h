@@ -16,6 +16,10 @@ namespace SQM
         // 2.9 KB send buffer, each its own block.
         constexpr uint32_t MIN_BLOCK_BYTES = 6144;
         constexpr uint32_t MIN_FREE_BYTES = 24576;
+        // Spec 037: below this largest free block a new connection is refused
+        // before the web server allocates its request (about 1 KB with its
+        // shared pointer); past that point it couldn't be answered anyway.
+        constexpr uint32_t MIN_ACCEPT_BLOCK_BYTES = 2048;
         // Room left beside a WebSocket frame for the network's own buffers.
         constexpr uint32_t FRAME_MARGIN_BYTES = 4096;
 
@@ -30,5 +34,10 @@ namespace SQM
         bool alertFits(uint32_t largestBlock, uint32_t freeHeap);
         // Whether a WebSocket frame of `length` bytes may be allocated.
         bool frameFits(size_t length, uint32_t largestBlock);
+        // Whether a new connection may be accepted.
+        constexpr bool acceptFits(uint32_t largestBlock)
+        {
+            return largestBlock >= MIN_ACCEPT_BLOCK_BYTES;
+        }
     } // namespace HeapSafe
 } // namespace SQM

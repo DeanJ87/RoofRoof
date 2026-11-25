@@ -14,7 +14,7 @@ class FakeSocket {
   readyState = FakeSocket.CONNECTING;
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event?: { code: number }) => void) | null = null;
   closed = false;
   constructor(readonly url: string) {
     FakeSocket.made.push(this);
@@ -26,9 +26,9 @@ class FakeSocket {
   send(data: unknown) {
     this.onmessage?.({ data: JSON.stringify(data) });
   }
-  drop() {
+  drop(code = 1006) {
     this.readyState = FakeSocket.CLOSED;
-    this.onclose?.();
+    this.onclose?.({ code });
   }
   close() {
     this.closed = true;
@@ -85,7 +85,7 @@ describe('useWebSocket', () => {
     unmount();
   });
 
-  it('closes a socket that has been quiet for 5 s and opens a new one at once', () => {
+  it('closes a socket that has been quiet for 10 s and opens a new one after the back-off', () => {
     const { result, unmount } = renderHook(() => useWebSocket<{ n: number }>('/ws/c'));
     act(() => {
       last().open();
@@ -93,16 +93,21 @@ describe('useWebSocket', () => {
     });
     const first = last();
     act(() => {
-      vi.advanceTimersByTime(4000);
+      vi.advanceTimersByTime(9000);
     });
     expect(result.current.data).toEqual({ n: 1 });
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(1500);
     });
     expect(first.closed).toBe(true);
-    expect(FakeSocket.made).toHaveLength(2);
+    expect(FakeSocket.made).toHaveLength(1);
     expect(result.current.data).toBeNull();
+    expect(result.current.lastKnown).toEqual({ n: 1 }); // spec 037: kept, greyed, never live
     expect(result.current.reconnecting).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(FakeSocket.made).toHaveLength(2);
     unmount();
   });
 
@@ -123,5 +128,65 @@ describe('useWebSocket', () => {
     const socket = last();
     unmount();
     expect(socket.closed).toBe(true);
+  });
+
+  // Spec 037 FR-005 to FR-007.
+  it('takes a heartbeat as a sign of life, not a reading', () => {
+    const { result, unmount } = renderHook(() => useWebSocket<{ n: number }>('/ws/f'));
+    act(() => {
+      last().open();
+      last().send({ n: 1 });
+    });
+    for (let i = 0; i < 4; i++)
+      act(() => {
+        vi.advanceTimersByTime(4000);
+        last().send({ heartbeat: true });
+      });
+    expect(FakeSocket.made).toHaveLength(1); // 16 s without a reading, still connected
+    expect(result.current.data).toEqual({ n: 1 });
+    unmount();
+  });
+
+  it('says too many pages are open and retries only after a minute', () => {
+    const { result, unmount } = renderHook(() => useWebSocket<{ n: number }>('/ws/g'));
+    act(() => last().open());
+    act(() => last().drop(4429));
+    expect(result.current.tooMany).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(59000);
+    });
+    expect(FakeSocket.made).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(FakeSocket.made).toHaveLength(2);
+    act(() => {
+      last().open();
+      last().send({ n: 1 });
+    });
+    expect(result.current.tooMany).toBe(false);
+    unmount();
+  });
+
+  it('backs off when a socket opens and closes again without a reading', () => {
+    const { unmount } = renderHook(() => useWebSocket<{ n: number }>('/ws/h'));
+    const delays: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      act(() => {
+        last().open();
+        last().drop();
+      });
+      const before = FakeSocket.made.length;
+      let waited = 0;
+      while (FakeSocket.made.length === before) {
+        act(() => {
+          vi.advanceTimersByTime(250);
+        });
+        waited += 250;
+      }
+      delays.push(waited);
+    }
+    expect(delays[3]).toBeGreaterThanOrEqual(8000); // 1, 2, 4, 8 s: no tight loop
+    unmount();
   });
 });

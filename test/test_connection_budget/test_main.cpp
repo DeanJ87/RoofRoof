@@ -59,10 +59,13 @@ void test_live_updates_leave_room_for_imaging_apps()
     TEST_ASSERT_EQUAL(8, Budget::httpReserve());
 }
 
-void test_oldest_client_is_replaced_past_the_limit()
+void test_a_new_client_past_the_limit_is_refused()
 {
     TEST_ASSERT_FALSE(Budget::overLimit(Budget::WEBSOCKETS_PER_ENDPOINT));
     TEST_ASSERT_TRUE(Budget::overLimit(Budget::WEBSOCKETS_PER_ENDPOINT + 1));
+    // Spec 037: an application close code the page recognises.
+    TEST_ASSERT_EQUAL(4429, Budget::TOO_MANY_PAGES);
+    TEST_ASSERT_EQUAL_STRING("{\"heartbeat\":true}", Budget::HEARTBEAT);
 }
 
 void test_a_brief_backlog_is_not_a_stall()
@@ -153,7 +156,7 @@ int main()
 {
     UNITY_BEGIN();
     RUN_TEST(test_live_updates_leave_room_for_imaging_apps);
-    RUN_TEST(test_oldest_client_is_replaced_past_the_limit);
+    RUN_TEST(test_a_new_client_past_the_limit_is_refused);
     RUN_TEST(test_a_brief_backlog_is_not_a_stall);
     RUN_TEST(test_live_updates_share_one_rate);
     RUN_TEST(test_only_restarts_the_device_caused_keep_connections);

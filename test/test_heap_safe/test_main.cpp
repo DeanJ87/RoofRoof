@@ -325,6 +325,16 @@ void test_frame_needs_its_length_plus_margin()
     TEST_ASSERT_TRUE(frameFits(0, FRAME_MARGIN_BYTES));
 }
 
+// Spec 037 FR-002: almost no memory left, a new connection is refused before
+// the web server allocates its request.
+void test_a_connection_is_accepted_only_with_room_for_its_request()
+{
+    TEST_ASSERT_FALSE(acceptFits(0));
+    TEST_ASSERT_FALSE(acceptFits(MIN_ACCEPT_BLOCK_BYTES - 1));
+    TEST_ASSERT_TRUE(acceptFits(MIN_ACCEPT_BLOCK_BYTES));
+    TEST_ASSERT_TRUE(MIN_ACCEPT_BLOCK_BYTES < MIN_BLOCK_BYTES); // Alpaca still gets in when replies are refused
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -345,5 +355,6 @@ int main(int, char **)
     RUN_TEST(test_pages_and_reads_are_not_essential);
     RUN_TEST(test_guard_limits_at_their_boundaries);
     RUN_TEST(test_frame_needs_its_length_plus_margin);
+    RUN_TEST(test_a_connection_is_accepted_only_with_room_for_its_request);
     return UNITY_END();
 }

@@ -32,11 +32,13 @@ namespace SQM
         // The shared 503 (contracts/busy-reply.md), counted.
         void sendBusy(AsyncWebServerRequest *request);
 
-        // A WebSocket frame from pieces: copied into one buffer only when the
-        // largest free block holds it plus a margin; otherwise skipped and
-        // counted. True when queued.
+        // A WebSocket frame from pieces, copied into one of a few buffers kept
+        // for the device's lifetime (spec 037); skipped and counted while each
+        // is still being sent. True when queued.
         bool textAll(AsyncWebSocket &socket, const HeapSafe::ChunkText &text);
         bool text(AsyncWebSocketClient *client, const HeapSafe::ChunkText &text);
+        // The frame buffers, at start while memory is plentiful (spec 037).
+        void reserveFrames();
 
         // The memory guard (FR-008): refuses non-essential requests before
         // their handler runs while the heap is short.

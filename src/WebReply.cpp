@@ -1,5 +1,6 @@
 #include "WebReply.h"
 
+#include "FramePool.h"
 #include "HeapGuard.h"
 #include <AsyncWebSocket.h>
 #include <ESPAsyncWebServer.h>
@@ -55,15 +56,27 @@ namespace SQM
                 size_t offset_ = 0;
             };
 
-            // The frame's one buffer, only when the heap can spare it (research R5).
+            // Spec 037: frames come from buffers kept for the device's lifetime.
+            HeapSafe::FramePool framePool;
+
+            // The frame's one buffer: a pooled one; past the pool's size, a
+            // fresh one only when the heap can spare it (spec 031 research R5).
+            // None free (a client is still sending each): skipped.
             std::shared_ptr<std::vector<uint8_t>> frameOf(const HeapSafe::ChunkText &text)
             {
-                if (!text.ok() || text.size() == 0 || !HeapSafe::frameFits(text.size(), largestBlock()))
+                if (!text.ok() || text.size() == 0)
                 {
                     ++skippedCount;
                     return nullptr;
                 }
-                auto frame = std::make_shared<std::vector<uint8_t>>(text.size()); // heap-audit: checked by frameFits above
+                std::shared_ptr<std::vector<uint8_t>> frame = framePool.take(text.size());
+                if (!frame && text.size() > HeapSafe::FramePool::CAPACITY && HeapSafe::frameFits(text.size(), largestBlock()))
+                    frame = std::make_shared<std::vector<uint8_t>>(text.size()); // heap-audit: checked by frameFits above
+                if (!frame)
+                {
+                    ++skippedCount;
+                    return nullptr;
+                }
                 text.read(0, frame->data(), frame->size());
                 return frame;
             }
@@ -113,6 +126,11 @@ namespace SQM
         {
             auto frame = frameOf(text);
             return frame && client->text(frame);
+        }
+
+        void reserveFrames()
+        {
+            framePool.reserve();
         }
 
         void installGuard(AsyncWebServer &server)
