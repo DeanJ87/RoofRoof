@@ -3,6 +3,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import { getTimezoneFriendlyName } from '../utils/timezone';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useDiagLive } from '../hooks/useDiagLive';
+import LiveWaiting from './LiveWaiting';
 import type { SetupConfig, SystemStatus } from '../types';
 import { Button, Card, Pill, ProgressMeter, ReadingRow } from './ui';
 import { restartWithToast } from './toast';
@@ -68,7 +70,7 @@ const RuntimeCard: FunctionalComponent<{ status: Status }> = ({ status }) => {
             {status.ntp?.synced && <Pill tone="pill-green">NTP</Pill>}
           </div>
           <strong class="system-time">{status.time.iso}</strong>
-          <p class="system-subtle">{getTimezoneFriendlyName(status.time.timezone)}</p>
+          <p class="subtext">{getTimezoneFriendlyName(status.time.timezone)}</p>
         </div>
       </div>
     </Card>
@@ -107,7 +109,7 @@ const NtpCard: FunctionalComponent<{ ntp: Ntp }> = ({ ntp }) => (
         <InfoRow label={t('system.clockDrift')} value={`${ntp.drift}s`} />
       </div>
     ) : (
-      <p class="system-subtle">{t('system.ntpIsDisabled')}</p>
+      <p class="subtext">{t('system.ntpIsDisabled')}</p>
     )}
   </Card>
 );
@@ -125,7 +127,7 @@ const MqttCard: FunctionalComponent<{ mqtt: NonNullable<Status['mqtt']> }> = ({ 
         <InfoRow label={t('system.topic')} value={mqtt.topic} />
       </div>
     ) : (
-      <p class="system-subtle">{t('system.mqttIsDisabled')}</p>
+      <p class="subtext">{t('system.mqttIsDisabled')}</p>
     )}
   </Card>
 );
@@ -225,12 +227,13 @@ const SetupCard: FunctionalComponent = () => {
 };
 
 // Spec 017 FR-031: a few live values while advanced diagnostics is on; no card
-// (and no stream) while it is off.
+// (and no stream) while it is off. Spec 028: the page-load document only until
+// the stream has connected; after a drop, no values until the next reading.
 const DiagLiveCard: FunctionalComponent<{ initial: DiagLive }> = ({ initial }) => {
-  const { data } = useWebSocket<DiagDocument>('/ws/diag');
-  const live = data?.enabled ? data : initial;
+  const live = useDiagLive(initial);
+  if (!live) return null;
   return (
-    <Card title={t('system.diagnostics')} icon="cpu" tone="violet" hint={t('system.diagnosticsHint')}>
+    <Card title={t('diagnostics.title')} icon="cpu" tone="violet" hint={t('system.diagnosticsHint')}>
       <div class="system-list">
         <InfoRow label={t('system.diagPhase')} value={t(`diagnostics.phaseName.${live.roof.phase}`)} />
         <InfoRow label={t('system.diagSupply')} value={`${formatNumber(live.roof.supplyVolts, 2)} V`} />
@@ -238,7 +241,7 @@ const DiagLiveCard: FunctionalComponent<{ initial: DiagLive }> = ({ initial }) =
         <InfoRow label={t('system.diagStepTime')} value={`${formatCount(live.control.stepUs)} µs`} />
       </div>
       <div class="btn-row">
-        <Button onClick={() => route('/diagnostics')}>{t('system.openDiagnostics')}</Button>
+        <Button onClick={() => route('/diagnostics')}>{t('settings.device.openDiagnostics')}</Button>
       </div>
     </Card>
   );
@@ -283,17 +286,11 @@ const ActionsCard: FunctionalComponent<{ confirming: boolean; setConfirming: (co
 );
 
 const System: FunctionalComponent = () => {
-  const { data: status, connected } = useWebSocket<SystemStatus>('/ws/status');
+  const { data: status, reconnecting } = useWebSocket<SystemStatus>('/ws/status');
   const [confirmRestart, setConfirmRestart] = useState(false);
 
-  if (!connected || !status) {
-    return (
-      <div class="empty-state">
-        <h2>{t('common.loading')}</h2>
-        <p>{t('system.connectingToDevice')}</p>
-      </div>
-    );
-  }
+  // Spec 028: no reading from this connection, no values.
+  if (!status) return <LiveWaiting reconnecting={reconnecting} />;
 
   return (
     <div class="panel-page system-page page-enter">

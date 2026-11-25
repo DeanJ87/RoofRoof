@@ -2,7 +2,8 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { route } from 'preact-router';
 import type { DiagDocument, DiagLive, DiagMove, DiagMoves, DiagPoint, DiagSummary } from '../types/diag';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { useDiagLive } from '../hooks/useDiagLive';
+import LiveWaiting from './LiveWaiting';
 import { clearMoves, fetchDiag, fetchFile, fetchMove, fetchMoves, moveUrl } from '../lib/diagApi';
 import { LiveBuffer } from '../lib/diagChart';
 import { bodyOf } from '../lib/api';
@@ -120,9 +121,8 @@ export const MoveList: FunctionalComponent<{
                   </Button>
                 ) : (
                   <>
-                    {formatCount(move.id)} {move.kept && <span class="system-subtle">{t('diagnostics.kept')}</span>}{' '}
-                    {move.calibration && <span class="system-subtle">{t('diagnostics.calibrationLeg')}</span>}{' '}
-                    {move.calibration && <span class="system-subtle">{t('diagnostics.calibrationLeg')}</span>}
+                    {formatCount(move.id)} {move.kept && <span class="subtext">{t('diagnostics.kept')}</span>}{' '}
+                    {move.calibration && <span class="subtext">{t('diagnostics.calibrationLeg')}</span>}
                   </>
                 )}
               </td>
@@ -285,10 +285,15 @@ const ChartCard: FunctionalComponent<{ live: DiagLive; buffer: LiveBuffer; moves
 
 // --- The page ---------------------------------------------------------------------
 
+// Spec 028: no reading from the current connection, no values (the chart's
+// points from earlier readings are kept for when it is back).
 const LivePage: FunctionalComponent<{ initial: DiagLive }> = ({ initial }) => {
-  const { data } = useWebSocket<DiagDocument>('/ws/diag');
-  const live = data?.enabled ? data : initial;
+  const live = useDiagLive(initial);
   const buffer = useMemo(() => new LiveBuffer(), []);
+  return live ? <LiveBody live={live} buffer={buffer} /> : <LiveWaiting reconnecting />;
+};
+
+const LiveBody: FunctionalComponent<{ live: DiagLive; buffer: LiveBuffer }> = ({ live, buffer }) => {
   const [, setVersion] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const { moves, reload } = useMoves(live);
@@ -334,12 +339,7 @@ const Diagnostics: FunctionalComponent = () => {
   useEffect(() => {
     void fetchDiag().then(setDoc);
   }, []);
-  if (doc === undefined)
-    return (
-      <div class="empty-state">
-        <h2>{t('common.loading')}</h2>
-      </div>
-    );
+  if (doc === undefined) return <LiveWaiting />;
   if (doc?.enabled) return <LivePage initial={doc} />;
   return (
     <div class="panel-page page-enter">

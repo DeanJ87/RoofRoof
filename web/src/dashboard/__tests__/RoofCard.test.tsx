@@ -262,6 +262,13 @@ describe('RoofCard', () => {
     expect(screen.getByText('Not reporting')).toBeInTheDocument();
     expect(button('Stop')).toBeEnabled();
   });
+  it('no status yet: Connecting, never a roof state; Stop still there (spec 028)', () => {
+    show({ status: null, connected: false, quiet: false, reconnectedAt: null, lastMessageAt: null });
+    expect(screen.getByText('Connecting')).toBeInTheDocument();
+    expect(screen.queryByText('Closed')).not.toBeInTheDocument();
+    expect(button('Open')).toBeDisabled();
+    expect(button('Stop')).toBeEnabled();
+  });
   // Spec 014: "Ask before Open and Close".
   it('asks before Open and Close when set, and never before Stop', async () => {
     const sent: string[] = [];

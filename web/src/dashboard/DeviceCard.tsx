@@ -72,7 +72,7 @@ const Ipv6Rows: FunctionalComponent<{ ipv6: NonNullable<SystemStatus['wifi']['ip
   if (!addresses.length)
     return (
       <Row label={t('glance.ipv6')} inventory="ipv6">
-        <span class="reading-value system-subtle">{t('glance.ipv6None')}</span>
+        <span class="reading-value subtext">{t('glance.ipv6None')}</span>
       </Row>
     );
   return (

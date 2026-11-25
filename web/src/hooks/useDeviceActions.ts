@@ -19,7 +19,7 @@ export const useDeviceActions = () => {
         response.ok ? { type: 'success', text: success } : { type: 'error', text: deviceError(body, t('settings.device.failed')) },
       );
     } catch {
-      setActionResult({ type: 'error', text: t('settings.device.couldNotReachTheDevice') });
+      setActionResult({ type: 'error', text: t('settings.couldNotReachTheDevice') });
     }
   };
 

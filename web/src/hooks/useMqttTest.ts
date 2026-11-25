@@ -31,7 +31,7 @@ export const useMqttTest = (config: Config) => {
           : { type: 'error', text: deviceError(result, t('settings.network.connectionFailed')) },
       );
     } catch {
-      setMqttResult({ type: 'error', text: t('settings.network.couldNotReachTheDevice') });
+      setMqttResult({ type: 'error', text: t('settings.couldNotReachTheDevice') });
     } finally {
       setTestingMqtt(false);
     }

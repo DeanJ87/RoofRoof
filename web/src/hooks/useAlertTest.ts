@@ -73,7 +73,7 @@ const runTest = async (setResult: SetResult, target: string, query: string, matc
     }
     await followResult(setResult, target, before, matcher);
   } catch {
-    setResult({ target, type: 'error', text: t('settings.alerts.couldNotReachTheDevice') });
+    setResult({ target, type: 'error', text: t('settings.couldNotReachTheDevice') });
   }
 };
 
@@ -89,7 +89,7 @@ const ringPhones = (setResult: SetResult, key: AlertEventKey, query: string) => 
           : { target: key, type: 'error', text: deviceError(body, t('settings.alerts.testFailed')) },
       );
     })
-    .catch(() => setResult({ target: key, type: 'error', text: t('settings.alerts.couldNotReachTheDevice') }));
+    .catch(() => setResult({ target: key, type: 'error', text: t('settings.couldNotReachTheDevice') }));
 };
 
 export const useAlertTest = () => {

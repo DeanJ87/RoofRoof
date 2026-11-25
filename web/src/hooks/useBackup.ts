@@ -30,7 +30,7 @@ export const passphraseProblem = (passphrase: string, repeat: string): { passphr
   return passphrase === repeat ? {} : { repeat: t('settings.backup.passphrasesDontMatch') };
 };
 
-const unreachable = () => t('settings.backup.couldNotReachTheDevice');
+const unreachable = () => t('settings.couldNotReachTheDevice');
 
 export const useBackup = (deviceName: string) => {
   const [passphrase, setPassphrase] = useState('');

@@ -37,13 +37,10 @@ export interface GlanceInput {
   status: SystemStatus | null;
   config: Config | null;
   effective: EffectiveReport | null;
-  connected: boolean; // the stream is open
-  quiet: boolean; // no message for longer than the quiet threshold
   schedule: AlertSchedule | null; // live alert schedule (useAlertSchedule)
 }
 
 const PRIORITY: Record<string, number> = {
-  freshness: 1,
   'alerts-state': 3,
   'alerts-mode-not-in-effect': 3,
   'no-channel': 3,
@@ -73,14 +70,6 @@ const settingsLink = (tab: string, anchor?: string): GlanceFix => ({
   label: t('glance.openSettings'),
   href: appHref(`/settings?tab=${tab}${anchor ? `&section=${anchor}` : ''}`),
 });
-
-// The live connection to the device, when it isn't live.
-const freshness = ({ connected, quiet }: GlanceInput): GlanceItem | null => {
-  const label = t('status.data');
-  if (!connected) return item('freshness', 'problem', { label, state: t('status.offline'), detail: t('status.offlineHint') });
-  if (quiet) return item('freshness', 'problem', { label, state: t('status.noUpdates'), detail: t('status.noUpdatesHint') });
-  return null;
-};
 
 const alertsItem = ({ config, schedule }: GlanceInput): GlanceItem | null => {
   if (!config?.alerts) return null;
@@ -214,7 +203,6 @@ const testBoxItem = ({ status }: GlanceInput): GlanceItem | null =>
 /** Everything the Status card shows, most important first. */
 export const glanceItems = (input: GlanceInput): GlanceItem[] => {
   const items = [
-    freshness(input),
     alertsItem(input),
     sendModeItem(input),
     channelsItem(input),

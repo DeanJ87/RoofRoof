@@ -11,8 +11,6 @@ const input = (over: Partial<GlanceInput> = {}): GlanceInput => ({
   status: structuredClone(mockStatus),
   config: structuredClone(mockConfig),
   effective: { facts: {} as EffectiveReport['facts'], settings: [] },
-  connected: true,
-  quiet: false,
   schedule: { armed: true, mode: 'any', reason: 'none', since: null, sinceAgeMs: null },
   ...over,
 });
@@ -48,13 +46,6 @@ describe('glanceItems', () => {
         ['Imaging app', 'Connected'],
       ]),
     );
-  });
-
-  it('says when the data is offline or quiet', () => {
-    // inventory: freshness
-    expect(glanceItems(input({ connected: false }))[0]).toMatchObject({ id: 'freshness', severity: 'problem', state: 'Offline' });
-    expect(glanceItems(input({ quiet: true }))[0].state).toBe('No updates');
-    expect(glanceItems(input()).some((i) => i.id === 'freshness')).toBe(false);
   });
 
   it('shows paused alerts with a Resume action (FR-008)', () => {
@@ -156,8 +147,7 @@ describe('glanceItems', () => {
   it('orders problems by the spec priority', () => {
     const status = withStatus((s) => (s.time.epoch = 0));
     const config = withConfig((c) => (c.alerts!.enabled = false));
-    const order = glanceItems(input({ connected: false, status, config })).map((item) => item.id);
-    expect(order.indexOf('freshness')).toBeLessThan(order.indexOf('alerts-state'));
+    const order = glanceItems(input({ status, config })).map((item) => item.id);
     expect(order.indexOf('alerts-state')).toBeLessThan(order.indexOf('clock-location'));
   });
   // Spec 009 FR-015, FR-016: the roof's problems, not its state (DS-07, DS-08).
