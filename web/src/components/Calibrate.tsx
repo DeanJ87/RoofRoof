@@ -32,6 +32,7 @@ export interface MoveGate {
   blockers: Blocker[];
   bypassed: string[];
   blocked: string; // the first blocker's line, or '' when nothing stops a move
+  blind?: boolean; // spec 033: a jog would run without the Hall sensor
 }
 
 /** The shared "why can't it move" list for the jog, teach and the calibration run. */
@@ -320,8 +321,16 @@ export const acceptRoof = async (editor: ReturnType<typeof useConfigEditor>, nex
  * apply while one is held (spec 019).
  */
 export const moveGate = (roof: RoofStatus, fresh: boolean, rearmMinutes: number, jog = false): MoveGate => {
-  const blockers = moveBlockers(roof, 'move', { live: fresh, rearmMinutes, nowMs: Date.now() }).filter((b) => !jog || b.id !== 'moving');
-  return { blockers, bypassed: bypassedChecks(roof), blocked: blockers[0]?.title ?? '' };
+  const all = moveBlockers(roof, 'move', { live: fresh, rearmMinutes, nowMs: Date.now() });
+  // Spec 033: a person's jog runs blind when the Hall sensor has failed; any other fault still stops it.
+  const hall = (b: Blocker) => b.id === 'hall' || b.id === 'hallRail' || (b.id === 'fault' && roof.fault?.kind === 'hallRail');
+  const blockers = all.filter((b) => !jog || (b.id !== 'moving' && !hall(b)));
+  return {
+    blockers,
+    bypassed: bypassedChecks(roof),
+    blocked: blockers[0]?.title ?? '',
+    blind: jog && all.some(hall) && (!roof.fault || roof.fault.kind === 'hallRail'),
+  };
 };
 
 /** The re-arm spell for "clears at" lines: the saved setting, or its default. */
@@ -365,6 +374,7 @@ const Calibrate: FunctionalComponent = () => {
               config={config}
               checks={null}
               blocked={jog.blocked}
+              blind={jog.blind}
               onChanged={() => {
                 refreshTeach();
                 editor.reload();

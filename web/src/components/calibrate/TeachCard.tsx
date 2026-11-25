@@ -194,6 +194,7 @@ interface JogPanelProps {
   config: RoofConfig;
   checks: ComponentChildren;
   blocked: string; // why a jog can't start now ('' when it can, apart from the confirmation)
+  blind?: boolean; // spec 033: the Hall sensor has failed: the jog runs blind
   onPress?: () => void;
 }
 
@@ -201,7 +202,7 @@ interface JogPanelProps {
  * The attended jog (spec 019): the checks, "I am at the roof", the live Hall reading and the
  * hold buttons, with Stop while the roof moves. Also the setup wizard's direction screen (spec 025).
  */
-export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, onPress }) => {
+export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, blind, onPress }) => {
   const [attended, setAttended] = useState(false);
   const [problem, setProblem] = useState('');
   const jog = useJog((text) => setProblem(text || t('teach.jogEnded')));
@@ -220,6 +221,11 @@ export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, che
         checked={attended}
         onChange={setAttended}
       />
+      {blind && (
+        <Note tone="warn" id="jog-blind">
+          {t('teach.blindJog')}
+        </Note>
+      )}
       <ReadingRow label={t('calibrate.hallNow')} value={String(roof.hall.counts)} />
       <HallScale counts={roof.hall.counts} low={config.hallLowCounts} high={config.hallHighCounts} />
       <JogControls

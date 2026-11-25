@@ -93,6 +93,34 @@ describe('TeachCard', () => {
     expect(teachCard().getByText('Park check: not parked: N.I.N.A. not responding')).toBeInTheDocument();
   });
 
+  // Spec 033: a failed Hall sensor doesn't take the nudge away; any other fault still does.
+  const hallDead = (kind = 'hallRail'): SystemStatus => {
+    const s = ready('closed');
+    s.roof!.state = 'error';
+    s.roof!.hall = { counts: 4095, level: 'rail' };
+    s.roof!.fault = { kind, cause: 'logic', measured: 4095, limit: 4095, text: 'Hall sensor reading at its rail' };
+    return s;
+  };
+
+  it('keeps the hold buttons with a warning when the Hall sensor has failed', async () => {
+    live(hallDead());
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled();
+    expect(document.getElementById('jog-blind')).toHaveTextContent('Nudging without the position sensor: watch the roof.');
+  });
+
+  it('still refuses the hold buttons for any other fault', async () => {
+    live(hallDead('overCurrent'));
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-blind')).not.toBeInTheDocument();
+  });
+
   it('a press starts a jog, keep-alives renew it with its id, and the release stops that jog', async () => {
     const posts = record();
     render(<Calibrate />);

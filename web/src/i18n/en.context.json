@@ -1646,6 +1646,7 @@
   "system.version": "System page (device diagnostics): a field or control label; max 12 chars.",
   "teach.attended": "Calibration page -> Teach card: the confirmation toggle a person must turn on before the hold buttons work; max 48 chars.",
   "teach.attendedHint": "Calibration page -> Teach card: hint for the at-the-roof confirmation toggle.",
+  "teach.blindJog": "Calibration page and setup wizard -> Jog panel: warning shown when the Hall sensor has failed and a held jog runs on time alone (spec 033).",
   "teach.closedReading": "Calibration page -> Teach card: label of the Hall reading taken at the closed end; max 24 chars.",
   "teach.confirm": "Calibration page -> Teach card: saves the proposed Hall settings; max 24 chars.",
   "teach.discard": "Calibration page -> Teach card: drops the marks and the proposal; max 16 chars.",
