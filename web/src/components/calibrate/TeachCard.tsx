@@ -133,12 +133,13 @@ const Proposal: FunctionalComponent<{ proposal: TeachProposal; config: RoofConfi
 
 // The two hold-to-run buttons, and Stop while the roof moves (never disabled).
 const JogControls: FunctionalComponent<{
-  why: string;
+  why: string; // why Hold to open can't start ('' when it can)
+  closeWhy: string; // spec 033: why Hold to close can't start
   moving: boolean;
   held: JogDirection | null;
   onPress: (direction: JogDirection) => void;
   onRelease: () => void;
-}> = ({ why, moving, held, onPress, onRelease }) => (
+}> = ({ why, closeWhy, moving, held, onPress, onRelease }) => (
   <>
     <div class="btn-row" data-teach-jog>
       {(['close', 'open'] as const).map((direction) => (
@@ -146,7 +147,7 @@ const JogControls: FunctionalComponent<{
           key={direction}
           direction={direction}
           held={held === direction}
-          disabled={why !== ''}
+          disabled={(direction === 'open' ? why : closeWhy) !== ''}
           describedBy="teach-why"
           onPress={onPress}
           onRelease={onRelease}
@@ -163,7 +164,7 @@ const JogControls: FunctionalComponent<{
         </Button>
       </div>
     )}
-    <Note id="teach-why">{why || t('teach.holdHint')}</Note>
+    <Note id="teach-why">{why || closeWhy || t('teach.holdHint')}</Note>
   </>
 );
 
@@ -195,6 +196,8 @@ interface JogPanelProps {
   checks: ComponentChildren;
   blocked: string; // why a jog can't start now ('' when it can, apart from the confirmation)
   blind?: boolean; // spec 033: the Hall sensor has failed: the jog runs blind
+  closeBlocked?: string; // spec 033: why a jog toward closed can't start (defaults to `blocked`)
+  parkWarn?: boolean; // spec 033: a jog toward closed runs with the mount not confirmed parked
   onPress?: () => void;
 }
 
@@ -202,9 +205,10 @@ interface JogPanelProps {
  * The attended jog (spec 019): the checks, "I am at the roof", the live Hall reading and the
  * hold buttons, with Stop while the roof moves. Also the setup wizard's direction screen (spec 025).
  */
-export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, blind, onPress }) => {
+export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, checks, blocked, blind, closeBlocked, parkWarn, onPress }) => {
   const [attended, setAttended] = useState(false);
   const [ignoreMagnets, setIgnoreMagnets] = useState(false);
+  const notAttended = (why: string) => why || (attended ? '' : t('calibrate.reason.notAttended'));
   const [problem, setProblem] = useState('');
   const jog = useJog((text) => setProblem(text || t('teach.jogEnded')));
   const press = (direction: JogDirection) => {
@@ -242,10 +246,16 @@ export const JogPanel: FunctionalComponent<JogPanelProps> = ({ roof, config, che
           {t('teach.ignoreMagnetsWarn')}
         </Note>
       )}
+      {parkWarn && (
+        <Note tone="warn" id="jog-unparked">
+          {t('teach.closeUnparked')}
+        </Note>
+      )}
       <ReadingRow label={t('calibrate.hallNow')} value={String(roof.hall.counts)} />
       <HallScale counts={roof.hall.counts} low={config.hallLowCounts} high={config.hallHighCounts} />
       <JogControls
-        why={blocked || (attended ? '' : t('calibrate.reason.notAttended'))}
+        why={notAttended(blocked)}
+        closeWhy={notAttended(closeBlocked ?? blocked)}
         moving={roof.state === 'opening' || roof.state === 'closing'}
         held={jog.active}
         onPress={press}

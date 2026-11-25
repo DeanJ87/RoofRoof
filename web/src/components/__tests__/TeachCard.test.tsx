@@ -122,6 +122,34 @@ describe('TeachCard', () => {
     expect(document.getElementById('jog-blind')).not.toBeInTheDocument();
   });
 
+  // Spec 033: a close always wins: Hold to close passes the weather, daylight and park; Hold to open doesn't.
+  it('in unsafe weather only Hold to close is available', async () => {
+    const s = ready();
+    s.roof!.weather = 'unsafe';
+    s.roof!.weatherText = 'unsafe: rain';
+    s.roof!.closePhase = 'waitPark';
+    live(s);
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-unparked')).not.toBeInTheDocument();
+  });
+
+  it('with the mount not confirmed parked Hold to close is available with a warning', async () => {
+    const s = ready();
+    s.roof!.parkConfirmed = false;
+    s.roof!.parkText = 'not parked: N.I.N.A. not responding';
+    live(s);
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-unparked')).toHaveTextContent('Mount not confirmed parked: watch the telescope.');
+  });
+
   it('a press starts a jog, keep-alives renew it with its id, and the release stops that jog', async () => {
     const posts = record();
     render(<Calibrate />);

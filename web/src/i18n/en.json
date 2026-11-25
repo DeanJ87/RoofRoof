@@ -1673,6 +1673,7 @@
   "teach.attended": "I am at the roof, watching it",
   "teach.attendedHint": "The roof moves only while you hold a button, and stops within half a second if this page or the network goes. Stay where you can see the roof and reach Stop or the 12 V switch.",
   "teach.blindJog": "Nudging without the position sensor: watch the roof. It won't stop at an end by itself.",
+  "teach.closeUnparked": "Mount not confirmed parked: watch the telescope.",
   "teach.closedReading": "Closed end",
   "teach.confirm": "Confirm and save",
   "teach.discard": "Discard",
