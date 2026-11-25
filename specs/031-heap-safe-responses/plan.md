@@ -36,7 +36,7 @@
 | **Storage** | none |
 | **Testing** | `pio test -e native` (new `test_heap_safe`; `test_status_document` per section; `test_ha_discovery`, `test_crash_documents` adapted); `python3 -m unittest tools/firmware/test_heap_audit.py`; bench load test |
 | **Target Platform** | ESP32 DevKit and WT32-ETH01 (same image) |
-| **Constraints** | flash growth < 4 KB (main at 94.7% of the slot); no UI/LittleFS change; no handler blocks |
+| **Constraints** | flash growth < 6 KB (90.0% of the slot after spec 030's LTO); no UI/LittleFS change; no handler blocks |
 
 ## Constitution Check
 

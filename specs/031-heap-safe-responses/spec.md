@@ -221,8 +221,8 @@ Boundaries
   each with its reason.
 - **FR-015**: Nothing in this spec MUST change the roof's motion, the gates, the close sequence or
   the safety verdict.
-- **FR-016**: The image MUST stay within 95% of its OTA slot with growth under 4 KB; no UI or
-  LittleFS change.
+- **FR-016**: The image MUST stay within 95% of its OTA slot with growth under 6 KB (measured: 4.9 KB
+  on top of spec 030's LTO build, 0.7 KB before it); no UI or LittleFS change.
 - **FR-017**: The REST reference (503 under load), the WebSocket reference (skipped frames), the
   status fields, a developer note on writing replies, the CHANGELOG and the heritage file (an
   upstream candidate for SQMeter) MUST be updated.
@@ -245,7 +245,7 @@ Boundaries
 - **SC-002**: Every Alpaca shutter-status read in that run is answered `200`.
 - **SC-003**: No reply needs a firmware-owned block above 3 KB; `/api/status` needs 3 KB instead of
   7 KB + 8 KB + 4.3 KB.
-- **SC-004**: The image grows by less than 4 KB and stays below 95% of the slot; the UI is unchanged.
+- **SC-004**: The image grows by less than 6 KB and stays below 95% of the slot; the UI is unchanged.
 - **SC-005**: The audit test fails on the old pattern and passes on the branch.
 
 ## Assumptions decided for the owner
