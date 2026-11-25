@@ -83,7 +83,7 @@ namespace SQM
         constexpr uint32_t BLIND_SURGE_MS = 1000;
         constexpr uint32_t BLIND_STALL_MS = 500;
 
-        // Spec 036 (constitution 8.1.0, I): an end magnet read early (before
+        // Spec 036 (constitution 9.1.0, I): an end magnet read early (before
         // roof.endPlausiblePercent of the travel) holds the move at the slow duty
         // toward it. It is accepted once the reading has lasted EARLY_END_PERSIST_MS
         // and either the estimate reaches the plausible point or the reading is

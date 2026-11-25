@@ -296,7 +296,7 @@ namespace SQM
         // upgrade); a supply sag this far below its rest stops it as a stall.
         bool blindClose = true;
         float blindSagVolts = 2.0f;
-        // Spec 036 (constitution 8.1.0, I): an end magnet read before the estimate
+        // Spec 036 (constitution 9.1.0, I): an end magnet read before the estimate
         // has covered this much of the travel toward it is too early to believe.
         uint32_t endPlausiblePercent = 80;
         // Spec 036: no end magnet by this percentage of the expected move time stops

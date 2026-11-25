@@ -5,7 +5,7 @@
 
 #include "MotionProfile.h"
 
-// Spec 036 (constitution 8.1.0, I): two signs that a move is not doing what the
+// Spec 036 (constitution 9.1.0, I): two signs that a move is not doing what the
 // estimate says, each a motion fault before the hard timeout.
 // - No end magnet where expected: a move from a known position that has driven
 //   roof.endOverrunPercent of its expected time (at least END_OVERRUN_MIN_MS

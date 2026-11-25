@@ -195,13 +195,10 @@ namespace SQM
         {
             if (command != Command::Open && command != Command::Close)
                 return CommandResult{};
-            if (current.fault.kind != FaultKind::None)
-                return refused(Refusal::FaultLatched);
-            if (blind.active || (move.active && move.jog))
-                return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
             const End target = command == Command::Open ? End::Open : End::Closed;
-            if (doubted(target))
-                return refused(Refusal::EndDoubted); // spec 036
+            const CommandResult blocked = blockedRefusal(target);
+            if (!blocked.accepted)
+                return blocked;
             End at = End::Closed;
             if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{};
@@ -210,6 +207,20 @@ namespace SQM
                 return notReady;
             if (!current.positionKnown && !mayMoveFromUnknown(target, origin))
                 return refused(Refusal::PositionUnknown);
+            return CommandResult{};
+        }
+
+        // A fault, a jog that can't be taken over, or (spec 036) a doubted end.
+        CommandResult Controller::blockedRefusal(End target) const
+        {
+            if (current.fault.kind != FaultKind::None)
+                return refused(Refusal::FaultLatched);
+            if (blind.active || (move.active && move.jog))
+                return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
+            // Spec 036: not toward a magnet read too early until the roof has
+            // reached the other end (or new Hall settings are applied).
+            if (doubted(target))
+                return refused(Refusal::EndDoubted);
             return CommandResult{};
         }
 
@@ -227,14 +238,9 @@ namespace SQM
 
         CommandResult Controller::requestMove(End target, Origin origin)
         {
-            if (current.fault.kind != FaultKind::None)
-                return refused(Refusal::FaultLatched);
-            if (blind.active || (move.active && move.jog))
-                return refused(Refusal::Moving); // spec 019: a jog is never taken over (spec 033: a blind one too)
-            // Spec 036: not toward a magnet read too early until the roof has
-            // reached the other end (or new Hall settings are applied).
-            if (doubted(target))
-                return refused(Refusal::EndDoubted);
+            const CommandResult blocked = blockedRefusal(target);
+            if (!blocked.accepted)
+                return blocked;
             End at = End::Closed;
             if (move.active ? move.target == target : (!doubtMagnets && magnetEnd(at) && at == target))
                 return CommandResult{}; // already there, or already on its way

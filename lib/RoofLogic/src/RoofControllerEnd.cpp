@@ -2,7 +2,7 @@
 
 #include "MotionProfile.h"
 
-// Spec 036 (constitution 8.1.0, I): an end magnet is believed only where the
+// Spec 036 (constitution 9.1.0, I): an end magnet is believed only where the
 // estimate says the roof can be. A stray field, a shifted magnet or a threshold
 // taught too close to the reading in between can make the target's level appear
 // part-way; taken as an arrival, the roof would report open (or closed) while

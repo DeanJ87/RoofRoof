@@ -74,7 +74,7 @@ namespace SQM
             LateStep,          // a control step later than MAX_STEP_GAP_MS while driving
             DriveBudget,       // driven too long in total without reaching a magnet
             External,          // raised by the caller (watchdog, park interlock)
-            // Spec 036 (constitution 8.1.0, I): the target's magnet read well before the
+            // Spec 036 (constitution 9.1.0, I): the target's magnet read well before the
             // estimate says the roof can be there, and not confirmed (measured: the
             // estimated progress in percent of the travel, limit: roof.endPlausiblePercent).
             // Appended: kinds are stored by number (fault record, kept summaries).
@@ -218,7 +218,7 @@ namespace SQM
             Fault fault;             // the fault that ended it (why Fault)
         };
 
-        // Spec 036 (constitution 8.1.0, I): how a move's arrival at its magnet was judged.
+        // Spec 036 (constitution 9.1.0, I): how a move's arrival at its magnet was judged.
         enum class EndCheck : uint8_t
         {
             Plausible, // read at or past roof.endPlausiblePercent of the travel: arrived

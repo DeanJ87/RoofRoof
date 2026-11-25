@@ -1,4 +1,4 @@
-// Spec 036 (constitution 8.1.0, I): an end magnet read where the estimate says
+// Spec 036 (constitution 9.1.0, I): an end magnet read where the estimate says
 // the roof can't be is not an arrival. Read early, the move goes on at the slow
 // duty; the magnet is accepted once it has lasted and the estimate reaches
 // roof.endPlausiblePercent or the reading is clearly at the magnet; else the

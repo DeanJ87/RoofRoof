@@ -144,7 +144,7 @@ namespace SQM
             // After a restart: the record says one ran for this Hall rail fault.
             void restoreBlindDone() { blindRan = current.fault.kind == FaultKind::HallRail; }
 
-            // Spec 036 (constitution 8.1.0, I), RoofControllerEnd.cpp: a move from
+            // Spec 036 (constitution 9.1.0, I), RoofControllerEnd.cpp: a move from
             // a known position believes its target's magnet only once the estimate
             // has covered roof.endPlausiblePercent of the travel toward it. Read
             // earlier, the move goes on at the slow duty and accepts it as
@@ -263,6 +263,7 @@ namespace SQM
             // Commands, idle and the latch (RoofController.cpp).
             CommandResult requestMove(End target, Origin origin);
             CommandResult readinessRefusal() const;
+            CommandResult blockedRefusal(End target) const;
             void stopMove(bool keepEstimate);
             void stopDriving();
             void latch(const Fault &fault);
