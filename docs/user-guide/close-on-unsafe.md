@@ -33,7 +33,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/src/CloseSequenceRestore.cpp lib/CloseSequenceLogic/src/WeatherHold.cpp lib/CloseSequenceLogic/src/NinaLost.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: cfb19ab58eb7da35
+fingerprint: 06ab5432b006df74
 -->
 <figure class="diagram" markdown>
 
@@ -271,8 +271,8 @@ The override is shown on the dashboard and in the status (`roof.override`) while
 
 A person's **Stop** during the automatic close stands it down (`HeldByPerson`), and so does a close
 that took too long (`Halted`). The stand-down exists so the close doesn't fight someone who stopped
-it, for example a person working under the roof in the rain. Meanwhile the roof doesn't jog, teach
-or run a calibration either, and the dashboard and Calibrate say why and when it clears: at a clock
+it, for example a person working under the roof in the rain. Meanwhile the roof doesn't jog toward
+open, teach or run a calibration either (a person's jog toward closed always works), and the dashboard and Calibrate say why and when it clears: at a clock
 time while the weather is safe (after the re-arm spell, 10 minutes by default), or once the roof is
 closed.
 

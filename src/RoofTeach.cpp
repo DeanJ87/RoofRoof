@@ -19,6 +19,7 @@ namespace SQM
         if (lock == nullptr || !started.load())
             return notStarted();
         Outcome outcome;
+        bool blindJog = false;
         {
             RoofLocked held(lock);
             Calib::Answer answer;
@@ -40,6 +41,7 @@ namespace SQM
                 in.busyReason = RoofIo::blockerReason(now);
                 in.busyText = RoofIo::blockerText(now);
                 in.faultText = RoofIo::describeFault(fault);
+                in.ignoreMagnets = request.ignoreMagnets;
                 answer = teach.jog(controller, request.target, request.attended, calibration.active(), in);
                 if (answer.accepted)
                     moveOrigin = Roof::Origin::Person;
@@ -47,12 +49,19 @@ namespace SQM
             applyOutput();
             refreshSnapshot();
             id = controller.jogId();
+            // Spec 033: running on time alone (the Hall sensor failed, or the magnets overridden).
+            blindJog = controller.status().jogging && (controller.status().fault.kind != Roof::FaultKind::None || request.ignoreMagnets);
             limitMs = controller.jogLimitMs();
             outcome = Outcome{answer.accepted, answer.reason, answer.text, controller.status().state};
         }
         if (request.id == 0)
         {
-            if (outcome.accepted)
+            if (outcome.accepted && blindJog)
+                Logger::warn(
+                    TAG,
+                    "Jog toward %s started by a person without the end magnets (Hall sensor failed or overridden)",
+                    Roof::endName(request.target));
+            else if (outcome.accepted)
                 Logger::info(TAG, "Jog toward %s started by a person", Roof::endName(request.target));
             else
                 Logger::warn(TAG, "Jog refused: %s", outcome.text.c_str());

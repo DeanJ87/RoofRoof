@@ -91,7 +91,15 @@ export const DirectionScreen: FunctionalComponent<WizardPageProps> = (props) => 
         const gate = moveGate(roof, props.fresh, rearmOf(props.saved), true);
         return (
           <>
-            <JogPanel roof={roof} config={config} checks={<Blockers gate={gate} />} blocked={gate.blocked} />
+            <JogPanel
+              roof={roof}
+              config={config}
+              checks={<Blockers gate={gate} />}
+              blocked={gate.blocked}
+              blind={gate.blind}
+              closeBlocked={gate.closeBlocked}
+              parkWarn={gate.parkWarn}
+            />
             <ChoiceGroup
               {...choice}
               options={[
@@ -126,6 +134,9 @@ export const TeachScreen: FunctionalComponent<WizardPageProps> = (props) => {
             config={config}
             checks={<Blockers gate={gate} />}
             blocked={gate.blocked}
+            blind={gate.blind}
+            closeBlocked={gate.closeBlocked}
+            parkWarn={gate.parkWarn}
             onChanged={() => {
               refresh();
               props.reload();

@@ -75,6 +75,23 @@ describe('Wizard: the motor screens', () => {
     expect(screen.getAllByText('Park check: not parked: N.I.N.A. not responding').length).toBeGreaterThan(0);
   });
 
+  // Spec 033: with the Hall sensor failed the person can still nudge the roof, warned.
+  for (const id of ['direction', 'teach'])
+    it(`${id}: a failed Hall sensor leaves the hold buttons, with the warning`, async () => {
+      const s = ready();
+      s.roof!.state = 'error';
+      s.roof!.hall = { counts: 0, level: 'rail' };
+      s.roof!.fault = { kind: 'hallRail', cause: 'logic', measured: 0, limit: 0, text: 'Hall sensor reading at its rail' };
+      live(s);
+      at(`screen=${id}`);
+      render(<Wizard />);
+      await onScreen(id);
+      fireEvent.click(await screen.findByRole('switch', { name: 'I am at the roof, watching it' }));
+      await waitFor(async () => expect(await holdOpen()).toBeEnabled());
+      expect(button('Hold to close')).toBeEnabled();
+      expect(document.getElementById('jog-blind')).toHaveTextContent('Nudging without the position sensor: watch the roof.');
+    });
+
   it('a test box names the checks it bypasses', async () => {
     const s = ready();
     s.roof!.testBox = { ...s.roof!.testBox!, set: true, active: true, park: true, weather: true, until: 2000000000 };

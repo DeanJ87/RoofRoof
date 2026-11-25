@@ -72,36 +72,61 @@ namespace SQM
             return nameIn(ending, NAMES);
         }
 
+        namespace
+        {
+            // The weather, daylight and park (spec 016 FR-003). Spec 033
+            // (constitution 9.0.0, II and III): never for a person's jog toward
+            // closed; a close always wins.
+            Answer gateRefusal(const RoofIo::GateInputs &gates, bool closingJog)
+            {
+                if (closingJog)
+                    return Answer{};
+                const RoofIo::GateRefusal open = RoofIo::openRefusal(gates);
+                if (open != RoofIo::GateRefusal::None)
+                    return refuse(RoofIo::gateRefusalName(open), RoofIo::describeGate(open, gates));
+                if (!RoofIo::parkHolds(gates))
+                    return refuse(
+                        RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked),
+                        RoofIo::describeGate(RoofIo::GateRefusal::MountNotParked, gates));
+                return Answer{};
+            }
+
+            // The roof's state: a fault (spec 033: a jog's Hall rail fault is the
+            // controller's to judge), a move, a waiting close, new settings.
+            Answer stateRefusal(const Roof::Status &status, const StartInputs &in)
+            {
+                const bool blindJog = in.jog && status.fault.kind == Roof::FaultKind::HallRail;
+                if (status.fault.kind != Roof::FaultKind::None && !blindJog)
+                    return refuse("faultLatched", "A fault is latched: " + in.faultText);
+                if (RoofIo::roofMoving(status.state))
+                    return refuse("moving", "The roof is moving");
+                if (in.closePending)
+                    return refuse("closeWaiting", "A close is waiting to start");
+                if (in.settingsPending)
+                    return refuse("settingsPending", "New roof settings are being applied: try again in a moment");
+                return Answer{};
+            }
+        } // namespace
+
         // Spec 016 FR-001 to FR-004, in this order: the request, the run, the
         // close sequence and the roof, then the weather, the park and the
-        // blockers. Spec 019's jog starts with the same checks.
+        // blockers. Spec 019's jog starts with the same checks; spec 033: a
+        // person's jog toward closed skips the close sequence and the gates.
         Answer attendedRefusal(const Roof::Controller &controller, bool attended, bool calibrating, const StartInputs &in)
         {
             if (!attended)
                 return refuse("notAttended", "Confirm that you are at the roof and can see it");
             if (calibrating)
                 return refuse("calibrating", "A calibration run is already under way");
-            if (!in.sequenceIdle)
+            const bool closingJog = in.jog && in.jogTarget == Roof::End::Closed;
+            if (!in.sequenceIdle && !closingJog)
                 return refuse("closeSequence", "The automatic close is busy: calibrate once it is idle");
-            const Roof::Status &status = controller.status();
-            if (status.fault.kind != Roof::FaultKind::None)
-                return refuse("faultLatched", "A fault is latched: " + in.faultText);
-            if (RoofIo::roofMoving(status.state))
-                return refuse("moving", "The roof is moving");
-            if (in.closePending)
-                return refuse("closeWaiting", "A close is waiting to start");
-            if (in.settingsPending)
-                return refuse("settingsPending", "New roof settings are being applied: try again in a moment");
-            const RoofIo::GateRefusal open = RoofIo::openRefusal(in.gates);
-            if (open != RoofIo::GateRefusal::None)
-                return refuse(RoofIo::gateRefusalName(open), RoofIo::describeGate(open, in.gates));
-            if (!RoofIo::parkHolds(in.gates))
-                return refuse(
-                    RoofIo::gateRefusalName(RoofIo::GateRefusal::MountNotParked),
-                    RoofIo::describeGate(RoofIo::GateRefusal::MountNotParked, in.gates));
-            if (in.busy)
+            Answer answer = stateRefusal(controller.status(), in);
+            if (answer.accepted)
+                answer = gateRefusal(in.gates, closingJog);
+            if (answer.accepted && in.busy)
                 return refuse(in.busyReason.empty() ? "busy" : in.busyReason, in.busyText);
-            return Answer{};
+            return answer;
         }
 
         // Then the roof's own readiness (roofRefusal).

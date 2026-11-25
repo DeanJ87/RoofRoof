@@ -22,6 +22,7 @@ namespace DemoRoof
             in.settingsPending = settingsPending;
             in.gates = gates;
             in.faultText = RoofIo::describeFault(fault);
+            in.ignoreMagnets = request.ignoreMagnets;
             answer = teach.jog(controller, request.target, request.attended, calibration.active(), in);
             if (answer.accepted)
                 moveOrigin = Roof::Origin::Person;

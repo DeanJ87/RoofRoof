@@ -129,6 +129,10 @@ namespace SQM
             if (!body["attended"].is<bool>())
                 return fail(error, "attended must be true or false");
             out.attended = body["attended"].as<bool>();
+            JsonVariantConst ignore = body["ignoreMagnets"];
+            if (!ignore.isNull() && !ignore.is<bool>())
+                return fail(error, "ignoreMagnets must be true or false");
+            out.ignoreMagnets = ignore.as<bool>();
             return true;
         }
 

@@ -93,6 +93,63 @@ describe('TeachCard', () => {
     expect(teachCard().getByText('Park check: not parked: N.I.N.A. not responding')).toBeInTheDocument();
   });
 
+  // Spec 033: a failed Hall sensor doesn't take the nudge away; any other fault still does.
+  const hallDead = (kind = 'hallRail'): SystemStatus => {
+    const s = ready('closed');
+    s.roof!.state = 'error';
+    s.roof!.hall = { counts: 4095, level: 'rail' };
+    s.roof!.fault = { kind, cause: 'logic', measured: 4095, limit: 4095, text: 'Hall sensor reading at its rail' };
+    return s;
+  };
+
+  it('keeps the hold buttons with a warning when the Hall sensor has failed', async () => {
+    live(hallDead());
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled();
+    expect(document.getElementById('jog-blind')).toHaveTextContent('Nudging without the position sensor: watch the roof.');
+    expect(teachCard().queryByRole('switch', { name: "Don't stop at the end magnets" })).toBeNull();
+  });
+
+  it('still refuses the hold buttons for any other fault', async () => {
+    live(hallDead('overCurrent'));
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-blind')).not.toBeInTheDocument();
+  });
+
+  // Spec 033: a close always wins: Hold to close passes the weather, daylight and park; Hold to open doesn't.
+  it('in unsafe weather only Hold to close is available', async () => {
+    const s = ready();
+    s.roof!.weather = 'unsafe';
+    s.roof!.weatherText = 'unsafe: rain';
+    s.roof!.closePhase = 'waitPark';
+    live(s);
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-unparked')).not.toBeInTheDocument();
+  });
+
+  it('with the mount not confirmed parked Hold to close is available with a warning', async () => {
+    const s = ready();
+    s.roof!.parkConfirmed = false;
+    s.roof!.parkText = 'not parked: N.I.N.A. not responding';
+    live(s);
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    await waitFor(() => expect(teachCard().getByRole('button', { name: 'Hold to close' })).toBeEnabled());
+    expect(teachCard().getByRole('button', { name: 'Hold to open' })).toBeDisabled();
+    expect(document.getElementById('jog-unparked')).toHaveTextContent('Mount not confirmed parked: watch the telescope.');
+  });
+
   it('a press starts a jog, keep-alives renew it with its id, and the release stops that jog', async () => {
     const posts = record();
     render(<Calibrate />);
@@ -110,6 +167,23 @@ describe('TeachCard', () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(posts.length).toBe(count); // no keep-alive after the release
     expect(open).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  // Spec 033: the person may override the end magnets, warned; the start says so, the renewals don't need to.
+  it('overriding the end magnets warns and sends the override with the start only', async () => {
+    const posts = record();
+    render(<Calibrate />);
+    await screen.findByRole('heading', { level: 2, name: 'Teach the ends' });
+    await attend();
+    expect(document.getElementById('jog-override')).not.toBeInTheDocument();
+    fireEvent.click(teachCard().getByRole('switch', { name: "Don't stop at the end magnets" }));
+    expect(document.getElementById('jog-override')).toHaveTextContent("The roof won't stop at its ends: watch it.");
+    const close = teachCard().getByRole('button', { name: 'Hold to close' });
+    fireEvent.pointerDown(close);
+    await waitFor(() => expect(posts.filter((p) => p.path === '/api/roof/jog').length).toBeGreaterThanOrEqual(2), { timeout: 2000 });
+    expect(posts[0].body).toEqual({ direction: 'close', attended: true, ignoreMagnets: true });
+    expect(posts[1].body).toEqual({ direction: 'close', attended: true, id: 4 });
+    fireEvent.pointerUp(close);
   });
 
   it('leaving the button or hiding the page releases it', async () => {

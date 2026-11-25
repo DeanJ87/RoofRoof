@@ -1,6 +1,30 @@
 <!--
 Sync Impact Report
-- Version: 7.0.0 -> 8.0.0 (MAJOR: Principle I lets the automatic close move from an unknown position,
+- Version: 8.0.0 -> 9.0.0 (MAJOR: Principle I lets a person nudge the roof with the Hall sensor
+  failed, which no magnet can stop. It relaxes a safety principle, so it states its risk.)
+- Modified: I. Motion Safety. A third owner-decided exception: a **person's blind jog**. With the
+  Hall rail fault the latched fault (and no other), or no fault and the Hall reading at a rail or not
+  settled, a person's jog (spec 019) runs on time alone: slow duty, only while the button is held
+  (the keep-alive deadline on the step clock), at most the jog's limit (30 s at most), stopping on
+  release, Stop, Abort, a stall seen as supply sag (`roof.blindSagVolts`) and every fault still
+  checked. The Hall fault stays latched and the position unknown. Every other fault, invalid settings
+  and a low or unreadable supply still refuse it. Alpaca, MQTT and the automatic origins can't. A
+  person may also start one with the Hall sensor working, overriding the end magnets (a shifted
+  magnet, a sensor reading wrong); afterwards a magnet read at rest doesn't place the roof until a
+  move reaches one or new roof settings are saved.
+- New risk (I): with no Hall sensor, or the magnets overridden, nothing stops the roof at its ends; the person watching, the
+  keep-alive, the slow duty, the jog limit and the stall stop are the guards, and repeated nudges
+  have no drive budget. The alternative, a part-open roof with a dead sensor that nobody can move
+  from the web UI, was judged worse by the owner.
+- Modified: II. Close Only Onto a Parked Mount, and III. Unsafe Ends Closed. A person's jog toward
+  closed (normal or blind) is never held back by the weather, daylight, the park or the automatic
+  close's state; with the park not confirmed the person is warned to watch the telescope. A jog
+  toward open keeps every gate. New risk (II): with a wrong motor direction setting a "close" jog
+  opens the roof over an unparked telescope until the person lets go.
+- Why: owner decision after a roof was left part-open with a failed Hall sensor (spec 033).
+- Templates: no change. Docs: docs/user-guide/roof-motion.md, docs/user-guide/calibration.md,
+  specs/033-person-nudge-without-hall/spec.md.
+- Earlier: 7.0.0 -> 8.0.0 (MAJOR: Principle I lets the automatic close move from an unknown position,
   with the Hall sensor working or failed; Principle III lets the automatic close wait out a hold
   before it starts for anything but rain; Principle II gains an owner-selectable close without
   N.I.N.A.'s park, off by default. Each relaxes a safety principle, so each states its risk.)
@@ -324,6 +348,17 @@ nothing has gone wrong.
       other fault and on Stop. The Hall fault stays latched. One blind close per latched fault,
       remembered across restarts. Risk: the chain is driven into its end until the stall stop or
       the time limit.
+  - **A person's blind jog** (owner decision, 9.0.0). With the Hall rail fault the latched fault
+    (and no other), or no fault and the Hall reading at a rail or not settled, a person's jog runs
+    on time alone: slow duty, toward the end held, only while the button is held (the keep-alive
+    deadline on the step clock), at most the jog's limit (30 s at most), stopping on release, Stop,
+    Abort, a stall seen as supply sag and every fault still checked. The Hall fault stays latched
+    and the position unknown. Any other fault still refuses it; only a person may start one. A
+    person may also start one with the Hall sensor working, explicitly overriding the end magnets;
+    a magnet read at rest afterwards doesn't place the roof until a move reaches one or new roof
+    settings are saved. Risk:
+    nothing stops the roof at its ends but the person watching, the keep-alive, the limit and the
+    stall stop.
 - Every move MUST have a hard timeout (the expected travel time from the measured travel and speed
   settings, plus a margin) and MUST stop on its target magnet. The timeout is enforced by the
   motion code itself, never by a client.
@@ -332,7 +367,8 @@ nothing has gone wrong.
     bounded to 30-600 s and enforced by the motion code. Later legs are bounded by the times
     already measured. The drive budget and every motion fault below still apply, and each leg
     stops at the first magnet it reaches.
-- Any motion fault MUST stop the motor, drop EN and lock out motion until a person clears it.
+- Any motion fault MUST stop the motor, drop EN and lock out motion until a person clears it; the
+  Hall rail fault's only exceptions are the blind close and a person's blind jog above.
   Motion faults include:
   - a timeout or "no magnet before the timeout";
   - over-current or a stall, when current sense is fitted;
@@ -395,6 +431,13 @@ Closing onto an unparked telescope is the most expensive failure this device can
 - **A person's confirmed close.** A person (authenticated), warned that the mount is not confirmed
   parked and the roof could hit the telescope, may confirm one close without the park check, at its
   start and during it. Alpaca, MQTT, Home Assistant and the automatic close never can.
+- **A person's jog toward closed** (owner decision, 9.0.0). A person at the roof, holding a jog
+  toward closed (Principle I's hold to run, slow duty, the jog's limit), needs no confirmed park,
+  at its start or during it, and is warned "Mount not confirmed parked: watch the telescope": they
+  can see the telescope and let go. A jog toward open keeps the park check and the interlock.
+  Alpaca, MQTT, Home Assistant and the automatic close never can. Risk: with the motor direction
+  setting wrong, "toward closed" drives the roof open over an unparked telescope until the person
+  lets go.
 - The park interlock is re-checked throughout an open and a close. A mount that reports unparked, or a fitted
   park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
   source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
@@ -449,6 +492,10 @@ Doubt about the weather MUST resolve to "unsafe".
   is accepted, the overridden reasons clear, or a reason not overridden appears; meanwhile those
   reasons neither stop the open nor start the automatic close, and everything else does. It is shown
   on every interface while in effect. Alpaca, MQTT and Home Assistant never override.
+- **A person's jog toward closed** (9.0.0). A close always wins: a person's jog toward closed (also a
+  blind one, Principle I) is never refused or stopped by the weather, daylight or the automatic close
+  waiting, standing down or unable to move; a jog toward open keeps every gate. The automatic close
+  still takes over from a jog when it moves the roof itself.
 - **A person's stop.** A person's Stop during the automatic close stands it down, so the close
   never fights someone at the roof; it raises a critical alert. The stand-down ends, and the close
   is armed again, when the roof reads closed, when the weather has been safe for the re-arm spell,
@@ -647,4 +694,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 8.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
+**Version**: 9.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25

@@ -95,13 +95,15 @@ namespace SQM
 
         void writeTeachDocument(JsonObject out, const TeachReport &report);
 
-        // POST /api/roof/jog: {"direction": "open"|"close", "attended": bool, "id": int (optional, >0)}.
+        // POST /api/roof/jog: {"direction": "open"|"close", "attended": bool, "id": int (optional, >0),
+        // "ignoreMagnets": bool (optional, spec 033: the start overrides the end magnets)}.
         struct JogRequest
         {
             Roof::End target = Roof::End::Closed;
             bool attended = false;
             uint32_t id = 0;      // 0: start a jog; else renew (or release) this one
             bool release = false; // with `id`: the button was let go
+            bool ignoreMagnets = false;
         };
         bool parseJog(JsonVariantConst body, JogRequest &out, const char *&error);
         // POST /api/roof/teach/mark: {"at": "closed"|"open"|"partWay"}.

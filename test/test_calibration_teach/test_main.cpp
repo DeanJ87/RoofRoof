@@ -117,25 +117,24 @@ void test_a_jog_needs_the_attended_confirmation(void)
     TEST_ASSERT_TRUE(r.roof.status().jogging);
 }
 
-void test_both_directions_need_the_safe_weather_no_daylight_and_the_park(void)
+// A jog toward open needs the safe weather, no daylight close and the park;
+// spec 033: one toward closed needs none of them (a close always wins).
+void test_an_opening_jog_needs_the_safe_weather_no_daylight_and_the_park(void)
 {
-    for (End target : {End::Open, End::Closed})
-    {
-        Rig unsafe(900.0f);
-        unsafe.gates.weather = Safety::Verdict::Unsafe;
-        assertRefused("weatherNotSafe", unsafe.jog(target));
-        Rig daylight(900.0f);
-        daylight.gates.daylightCloses = true;
-        assertRefused("daylight", daylight.jog(target));
-        Rig unparked(900.0f);
-        unparked.gates.parked = false;
-        assertRefused("mountNotParked", unparked.jog(target));
-        Rig switchOpen(900.0f);
-        switchOpen.gates.fittedSwitches = 1;
-        switchOpen.gates.switch1 = RoofIo::Contact::Open;
-        assertRefused("mountNotParked", switchOpen.jog(target));
-        TEST_ASSERT_FALSE(switchOpen.roof.status().jogging);
-    }
+    Rig unsafe(900.0f);
+    unsafe.gates.weather = Safety::Verdict::Unsafe;
+    assertRefused("weatherNotSafe", unsafe.jog(End::Open));
+    Rig daylight(900.0f);
+    daylight.gates.daylightCloses = true;
+    assertRefused("daylight", daylight.jog(End::Open));
+    Rig unparked(900.0f);
+    unparked.gates.parked = false;
+    assertRefused("mountNotParked", unparked.jog(End::Open));
+    Rig switchOpen(900.0f);
+    switchOpen.gates.fittedSwitches = 1;
+    switchOpen.gates.switch1 = RoofIo::Contact::Open;
+    assertRefused("mountNotParked", switchOpen.jog(End::Open));
+    TEST_ASSERT_FALSE(switchOpen.roof.status().jogging);
 }
 
 void test_a_jog_is_refused_while_anything_else_is_going_on(void)
@@ -186,10 +185,12 @@ void test_a_renewal_needs_the_running_jog(void)
     TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
 }
 
-void test_weather_or_daylight_turning_stops_a_jog_either_way(void)
+// Weather or daylight turning stops a jog toward open; spec 033: never one toward closed.
+void test_weather_or_daylight_turning_stops_only_an_opening_jog(void)
 {
     for (End target : {End::Open, End::Closed})
     {
+        const bool stops = target == End::Open;
         Rig r(900.0f);
         TEST_ASSERT_TRUE(r.jog(target).accepted);
         for (int i = 0; i < 20; ++i)
@@ -201,32 +202,49 @@ void test_weather_or_daylight_turning_stops_a_jog_either_way(void)
         r.gates.weather = Safety::Verdict::Unsafe;
         Teach::hold(r.roof, r.roof.jogId());
         r.step();
-        TEST_ASSERT_FALSE(r.roof.status().jogging);
-        TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+        TEST_ASSERT_EQUAL(!stops, r.roof.status().jogging);
         TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::None);
+        if (stops)
+            TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
 
         Rig d(900.0f);
         TEST_ASSERT_TRUE(d.jog(target).accepted);
-        d.steps(100);
+        for (int i = 0; i < 20; ++i)
+        {
+            Teach::hold(d.roof, d.roof.jogId());
+            d.step();
+        }
         d.gates.daylightCloses = true;
+        Teach::hold(d.roof, d.roof.jogId());
         d.step();
-        TEST_ASSERT_FALSE(d.roof.status().jogging);
+        TEST_ASSERT_EQUAL(!stops, d.roof.status().jogging);
     }
 }
 
-void test_the_park_lost_while_jogging_is_a_fault_either_way(void)
+// The park lost while jogging toward open is a fault; spec 033: toward closed the person watches.
+void test_the_park_lost_while_jogging_open_is_a_fault(void)
 {
-    for (End target : {End::Open, End::Closed})
+    Rig r(900.0f);
+    TEST_ASSERT_TRUE(r.jog(End::Open).accepted);
+    r.steps(100);
+    r.gates.parked = false;
+    r.step();
+    TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::External);
+    TEST_ASSERT_FALSE(r.roof.status().jogging);
+    TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+
+    Rig c(900.0f);
+    TEST_ASSERT_TRUE(c.jog(End::Closed).accepted);
+    for (int i = 0; i < 20; ++i)
     {
-        Rig r(900.0f);
-        TEST_ASSERT_TRUE(r.jog(target).accepted);
-        r.steps(100);
-        r.gates.parked = false;
-        r.step();
-        TEST_ASSERT_TRUE(r.roof.status().fault.kind == FaultKind::External);
-        TEST_ASSERT_FALSE(r.roof.status().jogging);
-        TEST_ASSERT_TRUE(r.roof.output().command == Driver::Command::Off);
+        Teach::hold(c.roof, c.roof.jogId());
+        c.step();
     }
+    c.gates.parked = false;
+    Teach::hold(c.roof, c.roof.jogId());
+    c.step();
+    TEST_ASSERT_TRUE(c.roof.status().fault.kind == FaultKind::None);
+    TEST_ASSERT_TRUE(c.roof.status().jogging);
 }
 
 // --- The window and the marks ----------------------------------------------------
@@ -428,8 +446,13 @@ void test_the_request_bodies(void)
     TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
     TEST_ASSERT_TRUE(jog.target == End::Open);
     TEST_ASSERT_EQUAL_UINT32(7, jog.id);
+    TEST_ASSERT_FALSE(jog.ignoreMagnets);
+    deserializeJson(doc, R"({"direction":"open","attended":true,"ignoreMagnets":true})");
+    TEST_ASSERT_TRUE(parseJog(doc.as<JsonVariantConst>(), jog, error));
+    TEST_ASSERT_TRUE(jog.ignoreMagnets);
     for (const char *body :
          {R"({"direction":"closed","attended":true})",
+          R"({"direction":"open","attended":true,"ignoreMagnets":1})",
           R"({"direction":"open"})",
           R"({"direction":"open","attended":true,"id":0})",
           R"({"direction":"open","attended":true,"id":"7"})"})
@@ -503,12 +526,12 @@ int main(int, char **)
 {
     UNITY_BEGIN();
     RUN_TEST(test_a_jog_needs_the_attended_confirmation);
-    RUN_TEST(test_both_directions_need_the_safe_weather_no_daylight_and_the_park);
+    RUN_TEST(test_an_opening_jog_needs_the_safe_weather_no_daylight_and_the_park);
     RUN_TEST(test_a_jog_is_refused_while_anything_else_is_going_on);
     RUN_TEST(test_the_controllers_own_refusals_come_through);
     RUN_TEST(test_a_renewal_needs_the_running_jog);
-    RUN_TEST(test_weather_or_daylight_turning_stops_a_jog_either_way);
-    RUN_TEST(test_the_park_lost_while_jogging_is_a_fault_either_way);
+    RUN_TEST(test_weather_or_daylight_turning_stops_only_an_opening_jog);
+    RUN_TEST(test_the_park_lost_while_jogging_open_is_a_fault);
     RUN_TEST(test_a_mark_needs_a_second_at_rest);
     RUN_TEST(test_a_mark_needs_a_settled_hall_reading);
     RUN_TEST(test_teaching_the_three_places_proposes_thresholds_that_read_the_magnets);

@@ -128,6 +128,10 @@ namespace SQM
             // Spec 027: an open too (the roof passes over the telescope either way).
             if (parkOverridden && status.state == Roof::State::Closing)
                 return false;
+            // Spec 033 (constitution 9.0.0, II): a person at the roof jogging it
+            // toward closed watches the telescope themselves.
+            if (status.jogging && status.target == Roof::End::Closed)
+                return false;
             if (ninaLost && status.state == Roof::State::Closing)
                 return !switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
             const bool watched = status.state == Roof::State::Closing || status.state == Roof::State::Opening || status.calibrating;
@@ -152,8 +156,9 @@ namespace SQM
         {
             // Spec 019: a jog in either direction (the motor direction may be wrong).
             // A jog never carries an override.
+            // Spec 033: a jog toward closed never (a close always wins, constitution III).
             if (status.jogging)
-                return openRefusal(in) != GateRefusal::None;
+                return status.target == Roof::End::Open && openRefusal(in) != GateRefusal::None;
             return status.state == Roof::State::Opening && openRefusal(in, overrides) != GateRefusal::None;
         }
 

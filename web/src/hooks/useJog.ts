@@ -53,12 +53,12 @@ export const useJog = (onProblem: (text: string, reason: string) => void) => {
     });
   };
 
-  const press = (direction: JogDirection) => {
+  const press = (direction: JogDirection, ignoreMagnets = false) => {
     if (held.current) return;
     const now: Held = { direction, pressedAt: performance.now(), id: null, released: false, renewing: false };
     held.current = now;
     setActive(direction);
-    void startJog(direction).then((answer) => {
+    void startJog(direction, ignoreMagnets).then((answer) => {
       if (now.released) {
         if (answer.ok && answer.id !== undefined) void releaseJog(direction, answer.id); // released before the answer
         return;

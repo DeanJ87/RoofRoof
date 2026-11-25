@@ -5,7 +5,7 @@
 <!-- diagram: DIA-11
 sources: lib/ tools/demo-core/bridge.cpp platformio.ini
 blocking: false
-fingerprint: 7a5c2f14ad89bcf7
+fingerprint: 56de07a17b02dd9d
 -->
 <figure class="diagram" markdown>
 
@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: 63b8d26198d31752
+fingerprint: bd86482c8a6b129c
 -->
 <figure class="diagram" markdown>
 

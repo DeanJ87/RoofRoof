@@ -44,10 +44,13 @@ namespace SQM
 
         Answer Teach::jog(Roof::Controller &controller, Roof::End target, bool attended, bool calibrating, const StartInputs &in)
         {
-            Answer common = attendedRefusal(controller, attended, calibrating, in);
+            StartInputs jogIn = in;
+            jogIn.jog = true; // spec 033: a Hall rail fault is the controller's to judge
+            jogIn.jogTarget = target;
+            Answer common = attendedRefusal(controller, attended, calibrating, jogIn);
             if (!common.accepted)
                 return common;
-            const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person);
+            const Roof::CommandResult result = controller.jog(target, Roof::Origin::Person, in.ignoreMagnets);
             if (!result.accepted)
                 return refuse(Roof::refusalName(result.reason), RoofIo::describeRefusal(result));
             return Answer{};

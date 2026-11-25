@@ -32,6 +32,9 @@ export interface MoveGate {
   blockers: Blocker[];
   bypassed: string[];
   blocked: string; // the first blocker's line, or '' when nothing stops a move
+  blind?: boolean; // spec 033: a jog would run without the Hall sensor
+  closeBlocked?: string; // spec 033: why a jog toward closed can't start ('' when it can)
+  parkWarn?: boolean; // spec 033: a jog toward closed would run with the mount not confirmed parked
 }
 
 /** The shared "why can't it move" list for the jog, teach and the calibration run. */
@@ -319,9 +322,25 @@ export const acceptRoof = async (editor: ReturnType<typeof useConfigEditor>, nex
  * Spec 026: what stops an attended move now. `jog`: a jog needs what a run needs, but "moving" doesn't
  * apply while one is held (spec 019).
  */
+// What holds back only a jog toward open (spec 033).
+const OPEN_ONLY = ['weather', 'daylight', 'park', 'waitPark', 'closing', 'retryWait', 'heldByPerson', 'halted', 'cannotMove'];
+
 export const moveGate = (roof: RoofStatus, fresh: boolean, rearmMinutes: number, jog = false): MoveGate => {
-  const blockers = moveBlockers(roof, 'move', { live: fresh, rearmMinutes, nowMs: Date.now() }).filter((b) => !jog || b.id !== 'moving');
-  return { blockers, bypassed: bypassedChecks(roof), blocked: blockers[0]?.title ?? '' };
+  const all = moveBlockers(roof, 'move', { live: fresh, rearmMinutes, nowMs: Date.now() });
+  // Spec 033: a person's jog runs blind when the Hall sensor has failed; any other fault still stops it.
+  const hall = (b: Blocker) => b.id === 'hall' || b.id === 'hallRail' || (b.id === 'fault' && roof.fault?.kind === 'hallRail');
+  const blockers = all.filter((b) => !jog || (b.id !== 'moving' && !hall(b)));
+  // Spec 033: a person's jog toward closed passes the weather, daylight, park and automatic close (a close always wins).
+  const forClose = blockers.filter((b) => !jog || !OPEN_ONLY.includes(b.id));
+  const closeBlocked = forClose[0]?.title ?? '';
+  return {
+    blockers,
+    bypassed: bypassedChecks(roof),
+    blocked: blockers[0]?.title ?? '',
+    blind: jog && all.some(hall) && (!roof.fault || roof.fault.kind === 'hallRail'),
+    closeBlocked,
+    parkWarn: jog && closeBlocked === '' && blockers.some((b) => b.id === 'park'),
+  };
 };
 
 /** The re-arm spell for "clears at" lines: the saved setting, or its default. */
@@ -365,6 +384,9 @@ const Calibrate: FunctionalComponent = () => {
               config={config}
               checks={null}
               blocked={jog.blocked}
+              blind={jog.blind}
+              closeBlocked={jog.closeBlocked}
+              parkWarn={jog.parkWarn}
               onChanged={() => {
                 refreshTeach();
                 editor.reload();

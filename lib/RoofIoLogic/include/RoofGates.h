@@ -123,7 +123,8 @@ namespace SQM
         // Never used to start a move (gateCommand uses parkHolds).
         bool closeMayContinue(const GateInputs &in);
         // A close, an open (spec 027) or (spec 016) any calibration leg is under
-        // way, including its dead time, and the park no longer holds
+        // way, including its dead time, and the park no longer holds (spec 033:
+        // never for a person's jog toward closed: they watch the telescope)
         // (closeMayContinue). `parkOverridden`: a person's confirmed close
         // (spec 027) runs without the park check.
         // Spec 030: `ninaLost`, the automatic close's N.I.N.A.-lost close: only
@@ -131,7 +132,7 @@ namespace SQM
         bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden = false, bool ninaLost = false);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
-        // An open (or, spec 019, a jog either way) is under way and the verdict
+        // An open (or, spec 019, a jog toward open; spec 033: never one toward closed) is under way and the verdict
         // is no longer safe, or daylight wants the roof closed: stop it.
         // Spec 027: an Open override in effect (OverrideBit) sets its reasons aside.
         bool openMustStop(const Roof::Status &status, const GateInputs &in, uint8_t overrides = 0);

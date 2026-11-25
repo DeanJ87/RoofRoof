@@ -193,6 +193,8 @@ void test_open_stops_when_not_safe(void)
 
 // Spec 019: a jog stops in either direction, whatever its state; the
 // interlock watches it as a calibration-type move.
+// A jog toward open stops when not safe or daylight closes and is interlocked;
+// spec 033: one toward closed is never stopped by them (a person at the roof watches).
 void test_a_jog_stops_when_not_safe_or_daylight_and_is_interlocked(void)
 {
     GateInputs unsafe = parkedWith(0);
@@ -206,11 +208,16 @@ void test_a_jog_stops_when_not_safe_or_daylight_and_is_interlocked(void)
         Roof::Status jog = inState(state);
         jog.jogging = true;
         jog.calibrating = true;
+        jog.target = Roof::End::Open;
         TEST_ASSERT_TRUE_MESSAGE(openMustStop(jog, unsafe), Roof::stateName(state));
         TEST_ASSERT_TRUE_MESSAGE(openMustStop(jog, daylight), Roof::stateName(state));
         TEST_ASSERT_FALSE(openMustStop(jog, parkedWith(0)));
         TEST_ASSERT_TRUE(interlockLost(jog, lost));
         TEST_ASSERT_FALSE(interlockLost(jog, parkedWith(0)));
+        jog.target = Roof::End::Closed;
+        TEST_ASSERT_FALSE_MESSAGE(openMustStop(jog, unsafe), Roof::stateName(state));
+        TEST_ASSERT_FALSE(openMustStop(jog, daylight));
+        TEST_ASSERT_FALSE(interlockLost(jog, lost));
     }
 }
 
