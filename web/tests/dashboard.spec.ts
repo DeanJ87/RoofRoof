@@ -227,7 +227,9 @@ test('Roof card: state, position, buttons with reasons, checks, readings and the
   await expect(roof.getByRole('meter', { name: 'Position' })).toHaveAttribute('aria-valuetext', '0% open');
   await expect(roof.getByRole('button', { name: 'Open', exact: true })).toBeEnabled();
   await expect(roof.getByRole('button', { name: 'Close', exact: true })).toBeDisabled();
-  await expect(item(page, 'roof-buttons')).toContainText('Close: Already closed');
+  // Spec 034: Close is greyed with its reason as a tooltip; the state pill already says Closed.
+  await expect(roof.getByRole('button', { name: 'Close', exact: true })).toHaveAttribute('title', 'Already closed');
+  await expect(item(page, 'roof-buttons')).not.toContainText('Already closed');
   // Spec 027: a still roof with nothing waiting shows Open and Close, no Stop.
   await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0);
   await expect(item(page, 'roof-checks')).toContainText('Safe');
@@ -291,7 +293,7 @@ test('unsafe weather: the close phase on the Roof card; a person stopping it sho
   await expect(item(page, 'roof-close-phase')).toHaveCount(0);
   await panelChoice(page, 'Weather: Unsafe');
   // Spec 030: the hold counts down first (60 s, 6 s at 10x), then the close starts.
-  await expect(item(page, 'roof-weather-hold')).toContainText(/closing in \d+ s unless it clears/, { timeout: 10_000 });
+  await expect(item(page, 'roof-weather-hold')).toContainText(/^Closing in \d+ s unless it clears$/, { timeout: 10_000 });
   await expect(item(page, 'roof-close-phase')).toBeVisible({ timeout: 20_000 });
   await expect(item(page, 'roof-weather-hold')).toHaveCount(0);
   await expect.poll(() => roofState(page), { timeout: 30_000 }).toBe('closing');
@@ -314,7 +316,9 @@ test('daylight: with alert and close and the sun up the open roof closes, and Op
   await expect.poll(() => roofState(page), { timeout: 40_000 }).toMatch(/closing|closed/);
   await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('closed');
   await expect(item(page, 'roof-daylight')).toContainText('Sun');
-  await expect(item(page, 'roof-buttons')).toContainText('Daylight check: the sun is up');
+  // Spec 034: a few words under the button; the full reason only in the dialog a press opens.
+  await expect(item(page, 'roof-buttons')).toContainText('Open: Sun is up');
+  await expect(item(page, 'roof-buttons')).not.toContainText('Daylight check');
   // Spec 027: blocked, not greyed: a press lists the reasons in the move dialog.
   await item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true }).click();
   const dialog = page.getByRole('dialog');
@@ -328,6 +332,36 @@ test('daylight: with alert and close and the sun up the open roof closes, and Op
   await expect(item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true })).toBeEnabled({ timeout: 20_000 });
 });
 
+// Spec 034: each fact once on the Roof card. A silent SQMeter is a short note under the weather row
+// (the device's reason behind its "?"), Open says two words, and only the move dialog lists it in full.
+test('a silent SQMeter: one short line per fact, the full reason in the move dialog', async ({ page }) => {
+  // inventory: roof-buttons  inventory: roof-checks
+  test.setTimeout(120_000);
+  await open(page);
+  await roofReady(page);
+  await fast(page);
+  await panelChoice(page, 'SQMeter offline: On');
+  await expect
+    .poll(async () => (await page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.weather)) as string, {
+      timeout: 60_000,
+    })
+    .not.toBe('safe');
+  const checks = item(page, 'roof-checks');
+  await expect(checks.locator('.note-warn').first()).toHaveText(/^No reply from SQMeter (for [\d:]+( s)?|yet)$/, { timeout: 20_000 });
+  const buttons = item(page, 'roof-buttons');
+  await expect(buttons).toContainText(/Open: Weather (unsafe|unknown)/);
+  await expect(buttons).not.toContainText('Clears');
+  await expect(buttons).not.toContainText('SQMeter');
+  await expect(buttons).not.toContainText('Already closed');
+  await item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: /reasons? Open is blocked$/ })).toBeVisible();
+  await expect(dialog).toContainText('Weather check:');
+  await expect(dialog).toContainText('Clears once');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await panelChoice(page, 'SQMeter offline: Off');
+});
+
 // Spec 020: under the daylight line, where the location came from and how old it is; a dead SQMeter keeps the last one.
 test('daylight: the location from SQMeter, its age, and SQMeter offline', async ({ page }) => {
   // inventory: roof-daylight
@@ -338,7 +372,8 @@ test('daylight: the location from SQMeter, its age, and SQMeter offline', async 
   const daylight = item(page, 'roof-daylight');
   await expect(daylight).toContainText("Location from SQMeter's GPS, read", { timeout: 30_000 });
   await panelChoice(page, 'SQMeter offline: On');
-  await expect(daylight).toContainText('SQMeter not answering: using the location read', { timeout: 90_000 });
+  // Spec 034: which location is used; what went wrong is behind the row's "?".
+  await expect(daylight.locator('.note')).toHaveText(/^Using the location read/, { timeout: 90_000 });
   await expect(daylight.locator('.tone-red, .note-bad')).toHaveCount(0);
   await panelChoice(page, 'SQMeter offline: Off');
 });

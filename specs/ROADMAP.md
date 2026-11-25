@@ -419,6 +419,17 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the web server library's own allocations; ArduinoJson 7; the backup and settings
   save (already guarded); UI changes.
 
+### 034 The Roof card says each fact once (base: main after 031)
+
+- **Scope:**
+  - Under Open and Close one short line per button from the shared blockers (`Blocker.short`); the
+    full reasons stay in spec 027's move dialog. No line where the state pill or the fault says it.
+  - Source health, the weather hold, the location fallback and a stand-down each as one short line
+    in their own row, the device's reason behind that row's "?" (Diagnostics keeps it in full).
+  - Fewer bytes: the run-on reason strings go.
+- **Out of scope:** the move dialog, Calibrate and the wizard's blocker lists, the Status card, the
+  nudge controls (spec 033), firmware.
+
 ## Merge order
 
 ```text

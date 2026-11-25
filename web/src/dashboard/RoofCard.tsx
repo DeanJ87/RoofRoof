@@ -1,4 +1,4 @@
-import { FunctionalComponent } from 'preact';
+import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useId } from 'preact/hooks';
 import { route } from 'preact-router';
 import type { LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
@@ -16,7 +16,7 @@ import {
 } from '../lib/roofView';
 import { useRoofCommand } from '../hooks/useRoofCommand';
 import { closePhaseBlocker, faultBlocker, type BlockerContext } from '../lib/moveBlockers';
-import { ninaLine, sqmeterLine } from '../lib/sourceHealth';
+import { ninaLine, sqmeterLine, type HealthLine } from '../lib/sourceHealth';
 import { MoveBlockers } from '../components/MoveBlockers';
 import { RoofButtons, type Send } from './RoofButtons';
 import { deviceText } from '../i18n/deviceMessage';
@@ -51,17 +51,17 @@ const PillRow: FunctionalComponent<{ label: string; pill: PillView; id?: string;
   </div>
 );
 
-// Spec 027 (FR-015): SQMeter's last reply and N.I.N.A.'s reach; a problem is a note under its row.
-const HealthRow: FunctionalComponent<{ label: string; pill: PillView; line: { ok: boolean; text: string } | null }> = ({
-  label,
-  pill,
-  line,
-}) => (
-  <>
-    <PillRow label={label} pill={pill} extra={line?.ok ? line.text : undefined} />
-    {line && !line.ok && <Note tone="warn">{line.text}</Note>}
-  </>
-);
+// Spec 027 (FR-015): SQMeter's last reply and N.I.N.A.'s reach; a problem is a short note under its row.
+// Spec 034: the device's own reason goes in the row's "?", once (the pill's text often carries it already).
+const HealthRow: FunctionalComponent<{ label: string; pill: PillView; line: HealthLine | null }> = ({ label, pill, line }) => {
+  const detail = line?.detail && !pill.text.includes(line.detail) ? line.detail : undefined;
+  return (
+    <>
+      <PillRow label={label} pill={pill} extra={line?.ok ? line.text : detail} />
+      {line && !line.ok && <Note tone="warn">{line.text}</Note>}
+    </>
+  );
+};
 
 const Position: FunctionalComponent<{ view: RoofView }> = ({ view }) => (
   <div data-inventory="roof-position">
@@ -113,7 +113,7 @@ const SWITCH_KEY = { closed: 'roof.switch.closed', open: 'roof.switch.open', unr
 const switchText = (value: RoofSwitch) => (value === 'notFitted' ? '' : t(SWITCH_KEY[value]));
 
 // A reading with its limit behind "?" (FR-011).
-const HintRow: FunctionalComponent<{ label: string; hint: string; value: string; valueClass?: string }> = ({
+const HintRow: FunctionalComponent<{ label: string; hint: ComponentChildren; value: string; valueClass?: string }> = ({
   label,
   hint,
   value,
@@ -129,13 +129,25 @@ const HintRow: FunctionalComponent<{ label: string; hint: string; value: string;
 
 // The daylight check (spec 013): what the sun is doing as the device words it, the mode behind "?".
 // Spec 020: under it, where the location came from and how old it is; never a verdict (FR-011).
+// Spec 034: a failed read says only which location is used; why is in the row's "?".
 export const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight; location?: LocationStatus }> = ({ daylight, location }) => {
   const line = locationLine(location);
+  const mode = t('roof.daylight.hint', { mode: t(`roof.daylight.mode.${daylight.mode}`) });
   return (
     <div data-inventory="roof-daylight">
       <HintRow
         label={t('roof.daylight.label')}
-        hint={t('roof.daylight.hint', { mode: t(`roof.daylight.mode.${daylight.mode}`) })}
+        hint={
+          line?.why ? (
+            <>
+              {mode}
+              <br />
+              {line.why}
+            </>
+          ) : (
+            mode
+          )
+        }
         value={deviceText(daylight.text)}
       />
       {line && <Note>{line.text}</Note>}
@@ -156,7 +168,8 @@ const WeatherHold: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
 
 const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus; ctx: BlockerContext }> = ({ roof, location, ctx }) => {
   const phase = closePhasePill(roof.closePhase);
-  // Spec 026: a stand-down says when it clears, with Release hold while that is allowed.
+  // Spec 026: a stand-down says when it clears, with Release hold while that is allowed; spec 034: the
+  // pill above and its "?" already say what it is, so only that line.
   const hold = roof.closePhase === 'heldByPerson' || roof.closePhase === 'halted' ? closePhaseBlocker(roof, ctx) : null;
   return (
     <div data-inventory="roof-checks">
@@ -165,7 +178,7 @@ const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus;
       <HealthRow label={t('roof.park.label')} pill={parkPill(roof)} line={ninaLine(roof)} />
       {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
-      {hold && <MoveBlockers blockers={[hold]} />}
+      {hold && <MoveBlockers blockers={[hold]} brief />}
     </div>
   );
 };

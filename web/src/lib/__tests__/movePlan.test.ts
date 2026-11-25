@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { movePlan } from '../movePlan';
-import { ninaLine, sqmeterLine } from '../sourceHealth';
+import { healthText, ninaLine, sqmeterLine } from '../sourceHealth';
 import { mockStatus } from '../../mocks/data';
 import type { RoofStatus } from '../../types';
 
@@ -54,16 +54,17 @@ describe('source health', () => {
   it("SQMeter's last reply, or how long it has been silent and why", () => {
     expect(sqmeterLine(roof())).toEqual({ ok: true, text: 'SQMeter last replied 12 s ago' });
     const silent = roof({ sqmeter: { on: true, state: 'unreachable', lastReplySeconds: 75, text: 'no reply' } });
-    expect(sqmeterLine(silent)).toEqual({ ok: false, text: 'No reply from SQMeter for 1:15: no reply' });
+    expect(sqmeterLine(silent)).toEqual({ ok: false, text: 'No reply from SQMeter for 1:15', detail: 'no reply' });
+    expect(healthText(sqmeterLine(silent)!)).toBe('No reply from SQMeter for 1:15: no reply');
     const never = roof({ sqmeter: { on: true, state: 'unreachable', lastReplySeconds: null, text: 'HTTP 404' } });
-    expect(sqmeterLine(never)?.text).toBe('No reply from SQMeter yet: HTTP 404');
+    expect(sqmeterLine(never)).toEqual({ ok: false, text: 'No reply from SQMeter yet', detail: 'HTTP 404' });
     expect(sqmeterLine(roof({ sqmeter: { on: false, state: 'off', lastReplySeconds: null, text: '' } }))).toBeNull();
   });
 
   it("N.I.N.A.'s reach, only with an address set", () => {
     expect(ninaLine(roof())).toEqual({ ok: true, text: 'N.I.N.A. answered 2 s ago' });
     const lost = roof({ nina: { ...mockStatus.roof!.nina!, reachable: false, state: 'unreachable', text: 'connection refused' } });
-    expect(ninaLine(lost)).toEqual({ ok: false, text: 'N.I.N.A. not reachable: connection refused' });
+    expect(ninaLine(lost)).toEqual({ ok: false, text: 'N.I.N.A. not reachable', detail: 'connection refused' });
     expect(ninaLine(roof({ nina: { ...mockStatus.roof!.nina!, set: false } }))).toBeNull();
   });
 });

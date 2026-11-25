@@ -29,17 +29,21 @@ describe('locationLine', () => {
     expect(locationLine(undefined)).toBeNull();
   });
 
+  // Spec 034: what went wrong and which location is used are two facts, never run together.
   it('says what went wrong, and that the kept location is used', () => {
     expect(locationLine(at({ problem: 'unreachable', readAgeSeconds: 7200 }))).toEqual({
-      text: 'SQMeter not answering: using the location read 2 h 0 min ago',
+      text: 'Using the location read 2 h 0 min ago',
       problem: true,
+      why: 'SQMeter not answering',
     });
-    expect(text({ problem: 'unreadable' })).toBe("SQMeter's answer can't be read: using the kept location");
+    expect(text({ problem: 'unreadable' })).toBe('Using the kept location');
+    expect(locationLine(at({ problem: 'unreadable' }))?.why).toBe("SQMeter's answer can't be read");
     expect(text({ problem: 'noLocation', set: false })).toBe('SQMeter has no location');
     expect(text({ problem: 'passwordNeeded', set: false })).toBe('SQMeter wants a password');
-    expect(text({ problem: 'passwordRefused', readAgeSeconds: 60 })).toBe(
-      'SQMeter refused the password: using the location read 1 min ago',
-    );
+    expect(locationLine(at({ problem: 'passwordRefused', readAgeSeconds: 60 }))).toMatchObject({
+      text: 'Using the location read 1 min ago',
+      why: 'SQMeter refused the password',
+    });
     expect(text({ problem: 'noAddress', set: false })).toBe("SQMeter's address isn't set");
     expect(text({ problem: 'waiting', set: false })).toBe("Waiting for SQMeter's location");
     expect(text({ problem: 'waiting', readAgeSeconds: 60 })).toBe("Location from SQMeter's GPS, read 1 min ago");

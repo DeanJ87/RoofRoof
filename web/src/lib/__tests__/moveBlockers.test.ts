@@ -58,6 +58,26 @@ describe('moveBlockers', () => {
     expect(park.fix?.href).toBe('/settings?tab=roof&section=park');
   });
 
+  // Spec 034: the Roof card shows a few words per button; the title and the rest stay for the move dialog.
+  it.each([
+    ['weather', { weather: 'unsafe', weatherText: 'unsafe: SQMeter HTTP unreachable: connection refused' }, 'Weather unsafe'],
+    ['weather', { weather: 'unknown', weatherText: '' }, 'Weather unknown'],
+    ['park', { parkConfirmed: false, parkText: 'N.I.N.A. reports not parked' }, 'Mount not parked'],
+    [
+      'daylight',
+      { daylight: { mode: 'close', state: 'day', sunAltitudeDeg: 3, limitDeg: 0, text: 'Sun 3.0° ≥ 0.0°', closes: true } },
+      'Sun is up',
+    ],
+    ['supply', { supplyLow: true, supplyVolts: 10.2 }, 'Supply low'],
+    ['calibrating', { calibrating: true }, 'Calibration run'],
+    ['hall', { hall: { counts: 1200, level: 'unsettled' } }, 'Hall reading not settled'],
+    ['closeWaiting', { closePending: true }, 'A close is waiting to start'],
+  ] as [string, Partial<RoofStatus>, string][])('%s has a short label for the Roof card', (id, change, short) => {
+    const found = moveBlockers(roof(change), 'open', ctx).find((b) => b.id === id);
+    expect(found?.short).toBe(short);
+    expect(short.length).toBeLessThanOrEqual(32);
+  });
+
   it('Open is held by the weather, daylight and (spec 027) the park, Close by the park', () => {
     const daylight = { mode: 'close', state: 'day', sunAltitudeDeg: 3, limitDeg: 0, text: 'Sun 3.0° ≥ 0.0°', closes: true } as const;
     const r = roof({ weather: 'unsafe', parkConfirmed: false, daylight });

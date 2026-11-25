@@ -132,17 +132,22 @@ describe('Open', () => {
     expect(open({ parkSwitches: { ...parkSwitches, check: null } }).disabled).toBe(false);
   });
 
-  // Spec 027: a check that blocks Open leaves it usable; a press opens the move dialog.
-  it('needs the weather to be safe, and says why', () => {
-    expect(open({ weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' }).reason).toContain('unsafe: rain (SQMeter HTTP)');
+  // Spec 027: a check that blocks Open leaves it usable; a press opens the move dialog. Spec 034: the
+  // card words it from lib/moveBlockers.ts (moveBlockers.test.ts), so the view carries no text for it.
+  it('needs the weather to be safe', () => {
+    expect(open({ weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' })).toMatchObject({
+      disabled: false,
+      blocked: true,
+      reason: '',
+    });
     expect(open({ weather: 'unknown', weatherText: '' })).toMatchObject({ disabled: false, blocked: true });
   });
 
   it('needs the park confirmed too (spec 027)', () => {
-    expect(open({ parkConfirmed: false, parkText: '' })).toMatchObject({ disabled: false, blocked: true, reason: 'Mount not parked' });
+    expect(open({ parkConfirmed: false, parkText: '' })).toMatchObject({ disabled: false, blocked: true, reason: '' });
   });
 
-  it('is refused in daylight when daylight closes the roof, and says why (spec 013)', () => {
+  it('is blocked in daylight when daylight closes the roof (spec 013)', () => {
     const daylight = {
       mode: 'close' as const,
       state: 'day' as const,
@@ -152,17 +157,12 @@ describe('Open', () => {
       closes: true,
     };
     const result = open({ daylight });
-    expect(result.blocked).toBe(true);
-    expect(result.reason).toBe('Daylight (Sun 3.2° ≥ 0.0°)');
+    expect(result).toMatchObject({ disabled: false, blocked: true, reason: '' });
     // Alert only, or night: Open is not refused.
     expect(open({ daylight: { ...daylight, mode: 'alert', closes: false } }).blocked).toBe(false);
     expect(open({ daylight: { ...daylight, state: 'night', closes: false } }).blocked).toBe(false);
     // Older firmware sends no daylight object.
     expect(open({ daylight: undefined }).blocked).toBe(false);
-    // The weather comes first when both refuse.
-    const both = open({ daylight, weather: 'unsafe', weatherText: 'unsafe: rain (SQMeter HTTP)' });
-    expect(both.reason).toContain('unsafe: rain (SQMeter HTTP)');
-    expect(both.reason).not.toContain('Daylight');
     // Close is not refused by daylight.
     const s = status({ state: 'open', daylight });
     expect(closeButton(input({ live: live(s) })).blocked).toBe(false);
@@ -180,16 +180,21 @@ describe('Open', () => {
   });
 
   it('is disabled with a fault before anything else the roof says', () => {
-    expect(open({ fault: FAULT, weather: 'unsafe' }).reason).toBe('Fault: clear it first');
+    expect(open({ fault: FAULT, weather: 'unsafe' }).reason).toBe('Fault');
   });
 
-  it('states the supply and its limit', () => {
-    expect(open({ supplyLow: true, supplyVolts: 10.9, minSupplyVolts: 11.5 }).reason).toBe('Supply 10.9 V is below 11.5 V');
-    expect(open({ supplyLow: true, supplyVolts: null, minSupplyVolts: 11.5 }).reason).toBe('Supply unreadable (minimum 11.5 V)');
-  });
-
-  it('waits for the Hall reading to settle', () => {
-    expect(open({ hall: { level: 'unsettled', counts: 0 } }).reason).toBe('Hall reading not settled');
+  it('is blocked on a low supply or an unsettled Hall reading', () => {
+    expect(open({ supplyLow: true, supplyVolts: 10.9, minSupplyVolts: 11.5 })).toMatchObject({
+      disabled: false,
+      blocked: true,
+      reason: '',
+    });
+    expect(open({ supplyLow: true, supplyVolts: null, minSupplyVolts: 11.5 })).toMatchObject({
+      disabled: false,
+      blocked: true,
+      reason: '',
+    });
+    expect(open({ hall: { level: 'unsettled', counts: 0 } })).toMatchObject({ disabled: false, blocked: true, reason: '' });
   });
 
   it('stays usable from an unknown position: a person may move it, slowly', () => {
@@ -204,12 +209,12 @@ describe('Close', () => {
     expect(close({ weather: 'unsafe' })).toEqual({ disabled: false, reason: '', busy: false, blocked: false });
   });
 
-  it('needs the park confirmed, with the device’s reason, and stays usable (spec 027)', () => {
-    expect(close({ parkConfirmed: false, parkText: '' }).blocked).toBe(true);
-    expect(close({ parkConfirmed: false, parkText: 'Mount not parked: Park switch 1 open' }).reason).toBe(
-      'Mount not parked: Park switch 1 open',
-    );
-    expect(close({ parkConfirmed: false, parkText: '' }).reason).toBe('Mount not parked');
+  it('needs the park confirmed, and stays usable (spec 027)', () => {
+    expect(close({ parkConfirmed: false, parkText: 'Mount not parked: Park switch 1 open' })).toMatchObject({
+      disabled: false,
+      blocked: true,
+      reason: '',
+    });
   });
 
   it('is disabled when closed, closing or a close waits', () => {

@@ -2,7 +2,6 @@ import type { RoofClosePhase, RoofState, RoofStatus, SystemStatus } from '../typ
 import type { RoofCommand } from './api';
 import { t } from '../i18n';
 import { deviceText } from '../i18n/deviceMessage';
-import { formatNumber } from '../i18n/format';
 import { LIVE_QUIET_MS } from './liveStream';
 
 // What the Roof card, the Stop bar and the Status card show for the roof
@@ -40,7 +39,7 @@ export const LIVE_MS = LIVE_QUIET_MS;
 
 export interface ButtonView {
   disabled: boolean;
-  reason: string; // why it is disabled, or (blocked) why the device would refuse or wait; empty otherwise
+  reason: string; // why it is disabled; empty otherwise (a blocked button's reasons come from lib/moveBlockers.ts)
   busy: boolean; // a command is in flight
   blocked: boolean; // spec 027: usable, but a check stands in the way: pressing it says why (the move dialog)
 }
@@ -97,28 +96,20 @@ export const resultShown = (result: CommandResult | null, roof: RoofStatus | nul
 export const restartHeld = (result: CommandResult | null, live: LiveState, now: number) =>
   result?.reason === 'restarting' && now - result.at < RESTART_HOLD_MS && !(live.reconnectedAt !== null && live.reconnectedAt > result.at);
 
-const volts = (value: number) => formatNumber(value, 1);
-
-export const supplyReason = (roof: RoofStatus): string | null => {
-  if (!roof.supplyLow) return null;
-  return roof.supplyVolts === null
-    ? t('roof.reason.supplyUnreadable', { min: volts(roof.minSupplyVolts) })
-    : t('roof.reason.supplyLow', { volts: volts(roof.supplyVolts), min: volts(roof.minSupplyVolts) });
-};
-
 // Reasons both buttons share, first match wins.
 const sharedReason = (input: ViewInput): string | null => {
   const { live, result, now } = input;
   if (!isLive(live, now)) return t('roof.reason.noLiveData');
   if (!live.status?.roof) return t('roof.reason.notReporting');
   if (restartHeld(result, live, now)) return t('roof.reason.restarting');
-  if (live.status.roof.fault) return t('roof.reason.fault');
+  if (live.status.roof.fault) return t('roof.state.fault');
   return null;
 };
 
-// What the motion logic refuses for either direction (spec 002).
-const motionReason = (roof: RoofStatus): string | null =>
-  supplyReason(roof) ?? (roof.hall.level === 'unsettled' ? t('roof.reason.hallNotSettled') : null);
+// Spec 034: what only blocks a button (a press opens the move dialog); the Roof card words it from
+// lib/moveBlockers.ts. The motion logic refuses either direction on a low supply or an unsettled Hall (spec 002).
+const motionBlocked = (roof: RoofStatus) => roof.supplyLow || roof.hall.level === 'unsettled';
+const closeBlock = (roof: RoofStatus) => !roof.parkConfirmed || motionBlocked(roof);
 
 const hotspotHeld = (input: ViewInput) =>
   Boolean(input.live.status?.wifi?.apMode) ||
@@ -134,13 +125,7 @@ const openReason = (input: ViewInput, roof: RoofStatus): string | null => {
   return null;
 };
 
-const parkReason = (roof: RoofStatus) => (roof.parkConfirmed ? null : deviceText(roof.parkText) || t('roof.reason.notParked'));
-
-const openBlock = (roof: RoofStatus): string | null => {
-  if (roof.weather !== 'safe') return t('roof.reason.weather', { text: deviceText(roof.weatherText) || t('roof.weather.unknown') });
-  if (roof.daylight?.closes) return t('roof.reason.daylight', { text: deviceText(roof.daylight.text) });
-  return parkReason(roof) ?? motionReason(roof);
-};
+const openBlock = (roof: RoofStatus) => roof.weather !== 'safe' || Boolean(roof.daylight?.closes) || closeBlock(roof);
 
 const closeReason = (roof: RoofStatus): string | null => {
   if (roof.state === 'closed') return t('roof.reason.alreadyClosed');
@@ -149,9 +134,7 @@ const closeReason = (roof: RoofStatus): string | null => {
   return null;
 };
 
-const closeBlock = (roof: RoofStatus): string | null => parkReason(roof) ?? motionReason(roof);
-
-const button = (input: ViewInput, own: (roof: RoofStatus) => string | null, block: (roof: RoofStatus) => string | null): ButtonView => {
+const button = (input: ViewInput, own: (roof: RoofStatus) => string | null, block: (roof: RoofStatus) => boolean): ButtonView => {
   const shared = sharedReason(input);
   if (shared) return { disabled: true, reason: shared, busy: false, blocked: false };
   if (input.inFlight === 'open' || input.inFlight === 'close') return { disabled: true, reason: '', busy: true, blocked: false };
@@ -159,8 +142,7 @@ const button = (input: ViewInput, own: (roof: RoofStatus) => string | null, bloc
   const roof = input.live.status!.roof!;
   const reason = own(roof);
   if (reason !== null) return { disabled: true, reason, busy: false, blocked: false };
-  const why = block(roof);
-  return { disabled: false, reason: why ?? '', busy: false, blocked: why !== null };
+  return { disabled: false, reason: '', busy: false, blocked: block(roof) };
 };
 
 export const openButton = (input: ViewInput) => button(input, (roof) => openReason(input, roof), openBlock);

@@ -129,8 +129,9 @@ the close's start waits.
   already fired. After a plain start the hold is empty and the start-up window, while the sources
   still read "waiting", counts as doubt and is held like the rest.
 
-The dashboard's Roof card shows the count while it runs ("Unsafe: closing in 42 s unless it
-clears"), and the status has it as `roof.weatherHold` (`countedSeconds`, `leftSeconds`, `fired`).
+The dashboard's Roof card shows the count under its **Weather** row while it runs ("Closing in 42 s
+unless it clears"), and the status has it as `roof.weatherHold` (`countedSeconds`, `leftSeconds`,
+`fired`).
 
 ## Closing when the position is unknown
 
@@ -522,8 +523,9 @@ follows SQMeter, the device owns it: Settings shows it read-only, and a settings
 older value back.
 
 **Where it shows.** The dashboard's daylight row and Settings say where the location came from
-and how old it is: "From SQMeter (GPS), read 3 min ago", or "SQMeter not answering" with the age of
-the kept location. If SQMeter has no location, or can't be reached, the kept one stays; with none
+and how old it is: "Location from SQMeter's GPS, read 3 min ago", or which location is kept
+("Using the location read 2 h ago") and why ("SQMeter not answering": a note of its own in Settings,
+behind the daylight row's "?" on the dashboard). If SQMeter has no location, or can't be reached, the kept one stays; with none
 kept, daylight shows "Location not set" and does nothing, as before. No alert is sent: the location
 isn't a safety input.
 
