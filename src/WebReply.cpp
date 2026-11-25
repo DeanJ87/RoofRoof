@@ -1,5 +1,6 @@
 #include "WebReply.h"
 
+#include "ConnectionBudget.h"
 #include "FramePool.h"
 #include "HeapGuard.h"
 #include <AsyncWebSocket.h>
@@ -130,6 +131,16 @@ namespace SQM
         {
             auto frame = frameOf(text);
             return frame && client->text(frame);
+        }
+
+        void heartbeatAll(AsyncWebSocket &socket)
+        {
+            socket.textAll(ConnectionBudget::HEARTBEAT);
+        }
+
+        void heartbeat(AsyncWebSocketClient *client)
+        {
+            client->text(ConnectionBudget::HEARTBEAT);
         }
 
         void reserveFrames()

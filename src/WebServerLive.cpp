@@ -110,7 +110,7 @@ namespace SQM
         HeapSafe::ChunkText text;
         writeStatus(text);
         if (!WebReply::textAll(wsStatus, text))
-            wsStatus.textAll(ConnectionBudget::HEARTBEAT); // spec 037: short of memory, still alive
+            WebReply::heartbeatAll(wsStatus); // spec 037: short of memory, still alive
     }
 
     void WebServer::sendFirstStatus(AsyncWebSocketClient *client) const
@@ -118,7 +118,7 @@ namespace SQM
         HeapSafe::ChunkText text;
         writeStatus(text);
         if (!WebReply::text(client, text))
-            client->text(ConnectionBudget::HEARTBEAT);
+            WebReply::heartbeat(client);
     }
 
     void WebServer::onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)

@@ -37,6 +37,10 @@ namespace SQM
         // is still being sent. True when queued.
         bool textAll(AsyncWebSocket &socket, const HeapSafe::ChunkText &text);
         bool text(AsyncWebSocketClient *client, const HeapSafe::ChunkText &text);
+        // Spec 037: the short ConnectionBudget::HEARTBEAT in place of a frame
+        // that couldn't be sent (a few bytes from the heap).
+        void heartbeatAll(AsyncWebSocket &socket);
+        void heartbeat(AsyncWebSocketClient *client);
         // The frame buffers, at start while memory is plentiful (spec 037).
         void reserveFrames();
 
