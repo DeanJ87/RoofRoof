@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 
+#include "ChunkText.h"
 #include "CrashRecord.h"
 #include "LogRing.h"
 
@@ -26,12 +27,15 @@ namespace SQM
         };
 
         // Appends one record, a line per fact, starting "Record <seq>: <kind>".
-        void writeRecord(std::string &out, const Record &record);
+        void writeRecord(HeapSafe::ChunkText &out, const Record &record);
 
         // The records document: this start, then each record after a blank line; `records` newest first.
+        // Written in 1 KB pieces (spec 031); the std::string form is for the tests and the demo.
+        void crashesText(HeapSafe::ChunkText &out, const BootView &boot, const Record *records, size_t count);
         std::string crashesText(const BootView &boot, const Record *records, size_t count);
 
         // The log as text, oldest first: "#<boot> <seconds>s <LEVEL> <text>" per line.
+        void logText(HeapSafe::ChunkText &out, const LogLine *lines, size_t count);
         std::string logText(const LogLine *lines, size_t count);
     } // namespace Crash
 } // namespace SQM

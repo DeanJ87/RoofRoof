@@ -1,0 +1,8 @@
+{
+  "name": "HeapSafe",
+  "version": "0.1.0",
+  "description": "Replies built without large or unchecked allocations: a text in 1 KB pieces, a sectioned JSON writer, a buffered stream writer and the memory guard's rule (pure logic, spec 031)",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "^6.21.3"
+  }
+}

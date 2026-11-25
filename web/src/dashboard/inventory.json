@@ -647,6 +647,21 @@
       "shownOn": "API (docs: troubleshooting)"
     },
     {
+      "match": "status.connections.shortOfMemory",
+      "reason": "Memory diagnostics (spec 031): the group holding the two counters below; read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.shortOfMemory.refused",
+      "reason": "Memory diagnostics: requests answered busy while the heap was short (spec 031); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.connections.shortOfMemory.skippedFrames",
+      "reason": "Memory diagnostics: live frames skipped while the heap was short (spec 031); read from the API",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
       "match": "status.mqtt.availabilityTopic",
       "reason": "MQTT connection details",
       "shownOn": "System, Settings → Network"

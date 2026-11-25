@@ -33,6 +33,7 @@ export const mockStatus: SystemStatus = {
     tcpLimit: 16,
     liveUpdates: { status: 1, limitPerEndpoint: 3, replaced: 0, stalledClosed: 0 },
     alpacaRestoredAfterRestart: false,
+    shortOfMemory: { refused: 0, skippedFrames: 0 },
   },
   freeHeap: 214320,
   minFreeHeap: 156056,

@@ -78,5 +78,6 @@ ws.onmessage = (event) => {
 - Both streams share one schedule (2 s at rest, 500 ms while the roof moves), so the dashboard and the Diagnostics page update at the same rate.
 - A client should treat a socket that has sent nothing for 5 s as dead (more than two missed messages), and never show the last message of a closed socket as current. The web UI closes such a socket, says it is reconnecting, and tries again after 1 s, doubling to 30 s; when the page comes back to the foreground it reconnects at once.
 - The server broadcasts to all connected clients simultaneously, and limits how many it keeps per endpoint (`connections` in the status).
+- While the device is short of memory (many clients at once can fragment it), a message is skipped rather than risk a restart, including the first one after connecting; the next one follows on the usual schedule. `connections.shortOfMemory.skippedFrames` in the status counts them.
 - There is no authentication on the WebSocket endpoint.
 - The WebSocket at `/ws/sensors` no longer exists.

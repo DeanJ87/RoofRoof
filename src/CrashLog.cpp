@@ -17,6 +17,7 @@
 #include <cstring>
 #include <ctime>
 #include <memory>
+#include <new>
 
 #include "DeviceCore.h"
 #include "FlashGuard.h"
@@ -92,7 +93,9 @@ namespace SQM
             // The ring as it is now, copied under its lock; read outside it.
             std::unique_ptr<Crash::LogRing> ringCopy()
             {
-                std::unique_ptr<Crash::LogRing> copy(new Crash::LogRing());
+                std::unique_ptr<Crash::LogRing> copy(new (std::nothrow) Crash::LogRing()); // spec 031: null when short
+                if (!copy)
+                    return copy;
                 portENTER_CRITICAL(&ringLock);
                 memcpy(copy.get(), &ring, sizeof(ring));
                 portEXIT_CRITICAL(&ringLock);
@@ -281,19 +284,29 @@ namespace SQM
             push(uptimeMs(), static_cast<Crash::Level>(level), text);
         }
 
-        std::string logText()
+        void logText(HeapSafe::ChunkText &out)
         {
             if (!ringReady)
-                return std::string();
+                return;
             // The copy is the ring's own size; its lines are read in place.
             const std::unique_ptr<Crash::LogRing> kept = ringCopy();
+            if (!kept)
+            {
+                out.fail();
+                return;
+            }
             const size_t count = Crash::copy(*kept, kept->lines, Crash::RING_LINES);
-            return Crash::logText(kept->lines, count);
+            Crash::logText(out, kept->lines, count);
         }
 
-        std::string crashesText()
+        void crashesText(HeapSafe::ChunkText &out)
         {
-            std::unique_ptr<Crash::Record[]> kept(new Crash::Record[Crash::KEEP]);
+            std::unique_ptr<Crash::Record[]> kept(new (std::nothrow) Crash::Record[Crash::KEEP]);
+            if (!kept)
+            {
+                out.fail();
+                return;
+            }
             size_t count = 0;
             nvs_handle_t nvs;
             if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &nvs) == ESP_OK) // else nothing stored yet
@@ -306,7 +319,7 @@ namespace SQM
                         ++count;
                 nvs_close(nvs);
             }
-            return Crash::crashesText(bootView(), kept.get(), count);
+            Crash::crashesText(out, bootView(), kept.get(), count);
         }
 
         Crash::BootView bootView()

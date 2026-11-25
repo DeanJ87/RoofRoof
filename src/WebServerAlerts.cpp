@@ -1,4 +1,5 @@
 #include "WebServer.h"
+#include "JsonStream.h"
 #include "Logger.h"
 #include "NetState.h"
 #include "PlatformGuard.h"
@@ -418,43 +419,59 @@ namespace SQM
     {
         StaticJsonDocument<384> doc;
         Core::writeAlertSchedule(doc.to<JsonObject>(), sharedSchedule(), getConfigCallback(), millis());
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
-    void WebServer::handleAlertsRecent(AsyncWebServerRequest *request)
+    namespace
     {
-        const std::vector<AlertRecord> records = alertDispatcher->recent();
-        DynamicJsonDocument doc(8192);
-        doc["enabled"] = getConfigCallback().alerts.enabled;
-        doc["armed"] = sharedSchedule().sending;
-        JsonArray arr = doc.createNestedArray("alerts");
-        const uint32_t nowSeconds = millis() / 1000;
-        for (auto it = records.rbegin(); it != records.rend(); ++it) // newest first
+        // One record's pool: the title, the message and every channel's detail are copied in.
+        constexpr size_t RECENT_ALERT_DOC_BYTES = 1536;
+
+        // One record of /api/alerts/recent.
+        void writeRecentAlert(JsonObject item, const AlertRecord &record, uint32_t nowSeconds)
         {
-            JsonObject item = arr.createNestedObject();
-            item["id"] = it->id;
-            item["event"] = Alerts::alertTypeName(it->alert.type);
-            item["title"] = it->alert.title;
-            item["message"] = it->alert.message;
-            item["level"] = Alerts::alertLevelName(it->alert.level);
-            item["ageSeconds"] = nowSeconds - it->uptimeSeconds;
-            if (it->epochSeconds != 0)
-                item["timestamp"] = it->epochSeconds;
+            item["id"] = record.id;
+            item["event"] = Alerts::alertTypeName(record.alert.type);
+            item["title"] = record.alert.title;
+            item["message"] = record.alert.message;
+            item["level"] = Alerts::alertLevelName(record.alert.level);
+            item["ageSeconds"] = nowSeconds - record.uptimeSeconds;
+            if (record.epochSeconds != 0)
+                item["timestamp"] = record.epochSeconds;
             JsonObject channels = item.createNestedObject("channels");
             for (size_t i = 0; i < ALERT_CHANNEL_COUNT; ++i)
             {
-                if (it->status[i] == DeliveryStatus::NotSent)
+                if (record.status[i] == DeliveryStatus::NotSent)
                     continue;
                 JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
-                ch["status"] = deliveryStatusName(it->status[i]);
-                ch["detail"] = it->detail[i];
+                ch["status"] = deliveryStatusName(record.status[i]);
+                ch["detail"] = record.detail[i];
             }
         }
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
+    } // namespace
+
+    // Spec 031: one record at a time from a small pool (it was one 8 KB pool).
+    void WebServer::handleAlertsRecent(AsyncWebServerRequest *request)
+    {
+        const std::vector<AlertRecord> records = alertDispatcher->recent();
+        DynamicJsonDocument doc(RECENT_ALERT_DOC_BYTES);
+        HeapSafe::ChunkText text;
+        HeapSafe::JsonStream json(text);
+        json.beginObject();
+        doc["enabled"] = getConfigCallback().alerts.enabled;
+        doc["armed"] = sharedSchedule().sending;
+        json.members(doc);
+        json.beginArray("alerts");
+        const uint32_t nowSeconds = millis() / 1000;
+        for (auto it = records.rbegin(); it != records.rend(); ++it) // newest first
+        {
+            doc.clear();
+            writeRecentAlert(doc.to<JsonObject>(), *it, nowSeconds);
+            json.element(doc);
+        }
+        json.endArray();
+        json.endObject();
+        WebReply::sendText(request, 200, "application/json", std::move(text));
     }
 
 } // namespace SQM

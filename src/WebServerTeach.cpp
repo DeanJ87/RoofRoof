@@ -33,9 +33,7 @@ namespace SQM
                 doc["reason"] = outcome.reason;
                 doc["error"] = outcome.text;
             }
-            std::string body;
-            serializeJson(doc, body);
-            request->send(outcome.accepted ? 200 : 409, "application/json", body.c_str());
+            WebReply::sendJson(request, outcome.accepted ? 200 : 409, doc);
         }
 
         const RoofControl::Outcome NOT_RUNNING{false, "notStarted", "The roof controller isn't running", Roof::State::Unknown};
@@ -158,8 +156,6 @@ namespace SQM
         const Calib::TeachReport report = roof != nullptr ? roof->teachReport() : Calib::TeachReport();
         DynamicJsonDocument doc(Calib::TEACH_DOCUMENT_CAPACITY);
         Calib::writeTeachDocument(doc.to<JsonObject>(), report);
-        std::string body;
-        serializeJson(doc, body);
-        request->send(200, "application/json", body.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 } // namespace SQM

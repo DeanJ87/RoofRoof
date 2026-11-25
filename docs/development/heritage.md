@@ -21,6 +21,7 @@ Changes that fix or generalise something SQMeter also has, and could be offered 
 | `product` field in the firmware marker | `lib/FirmwareImage`, `src/FirmwareMarker.cpp`, `test/test_firmware_image` | Lets a device refuse an image built for another product, not only another layout or build. Contract: `specs/001-platform-bootstrap/contracts/firmware-marker.md`. |
 | Generic Alpaca device list | `lib/AlpacaLogic` (`Alpaca::DeviceInfo`, `Backend::devices()`, `MAX_DEVICES`) | SQMeter hard-codes its two devices (ObservingConditions and SafetyMonitor) in the router. A list the backend supplies serves any device type and also covers the zero-device case. |
 | Home Assistant MQTT discovery | `lib/HaDiscovery`, `test/test_ha_discovery` | New, small, pure logic with native tests; entities are a table, so any device can add rows. |
+| Heap-safe replies | `lib/HeapSafe`, `src/WebReply.cpp`, `include/WebReply.h`, `tools/firmware/test_heap_audit.py` (spec 031) | SQMeter builds its replies the way RoofRoof did before spec 031 (`serializeJson` into a doubling `std::string`, then a `String` copy; WebSocket text from a string) and also has no C++ exceptions, so a fragmented heap aborts it the same way. The piece buffer, the sectioned writer, the streamed MQTT publish and the memory guard port as they are. |
 
 ## Firmware
 

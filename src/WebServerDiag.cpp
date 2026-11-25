@@ -5,6 +5,7 @@
 #include "RoofControl.h"
 #include "RoofReadings.h"
 #include "WebServer.h"
+#include <new>
 #include <WiFi.h>
 #include <ctime>
 #include <esp_heap_caps.h>
@@ -140,15 +141,18 @@ namespace SQM
         return s;
     }
 
-    std::string WebServer::diagLiveJson() const
+    void WebServer::writeDiagLive(HeapSafe::ChunkText &out) const
     {
         Diag::RoofLive live;
         roof->diagLive(live);
         DynamicJsonDocument doc(Diag::LIVE_DOC_CAPACITY);
+        if (doc.capacity() == 0)
+        {
+            out.fail();
+            return;
+        }
         Diag::writeLive(doc.to<JsonObject>(), live, diagSystem());
-        std::string body;
-        serializeJson(doc, body);
-        return body;
+        serializeJson(doc, out);
     }
 
     void WebServer::handleDiagLive(AsyncWebServerRequest *request)
@@ -163,7 +167,29 @@ namespace SQM
             sendOff(request);
             return;
         }
-        request->send(200, "application/json", diagLiveJson().c_str());
+        HeapSafe::ChunkText text;
+        writeDiagLive(text);
+        WebReply::sendText(request, 200, "application/json", std::move(text));
+    }
+
+    void WebServer::sendMoveList(AsyncWebServerRequest *request, const Diag::Clock &clock)
+    {
+        // Spec 031: the copy is checked (a few KB), "busy" when short.
+        std::shared_ptr<Diag::SummaryList> summaries(new (std::nothrow) Diag::SummaryList());
+        if (!summaries)
+        {
+            WebReply::sendBusy(request);
+            return;
+        }
+        diagnostics->copySummaries(*summaries);
+        Diag::ListView view;
+        view.held.count = roof->diagIds(view.held.ids);
+        view.keep = diagnostics->keepSummaries();
+        view.clock = clock;
+        sendChunked(
+            request,
+            "application/json",
+            [summaries, view](size_t index, std::string &out) { return Diag::listPart(*summaries, view, index, out); });
     }
 
     void WebServer::handleDiagMoves(AsyncWebServerRequest *request)
@@ -186,19 +212,16 @@ namespace SQM
         const Diag::Clock clock = clockNow();
         if (list)
         {
-            auto summaries = std::make_shared<Diag::SummaryList>();
-            diagnostics->copySummaries(*summaries);
-            Diag::ListView view;
-            view.held.count = roof->diagIds(view.held.ids);
-            view.keep = diagnostics->keepSummaries();
-            view.clock = clock;
-            sendChunked(
-                request,
-                "application/json",
-                [summaries, view](size_t index, std::string &out) { return Diag::listPart(*summaries, view, index, out); });
+            sendMoveList(request, clock);
             return;
         }
-        auto move = std::make_shared<Diag::Move>();
+        // Spec 031: the copy is checked (a few KB), "busy" when short.
+        std::shared_ptr<Diag::Move> move(new (std::nothrow) Diag::Move());
+        if (!move)
+        {
+            WebReply::sendBusy(request);
+            return;
+        }
         if (!roof->diagMove(id, *move))
         {
             request->send(404, "application/json", createErrorJson("That move isn't held any more").c_str());
@@ -257,7 +280,9 @@ namespace SQM
                 return;
             }
             prepareWebSocketClient(wsDiagClients, client);
-            client->text(diagLiveJson().c_str());
+            HeapSafe::ChunkText text;
+            writeDiagLive(text);
+            WebReply::text(client, text);
         }
         else if (type == WS_EVT_DISCONNECT)
         {
@@ -281,7 +306,11 @@ namespace SQM
         lastDiagBroadcast = now;
         closeStalledClients(wsDiag, wsDiagClients, now);
         if (wsDiag.count() > 0)
-            wsDiag.textAll(diagLiveJson().c_str());
+        {
+            HeapSafe::ChunkText text;
+            writeDiagLive(text);
+            WebReply::textAll(wsDiag, text);
+        }
     }
 
     // Main loop: <base>/diag every minute and each finished move once, never
@@ -301,7 +330,11 @@ namespace SQM
             return;
         if (diagMqtt.liveDue(now, false))
         {
-            mqttClient->publishSubtopic(Diag::MQTT_LIVE_SUBTOPIC, diagLiveJson(), false);
+            Diag::RoofLive live;
+            roof->diagLive(live);
+            DynamicJsonDocument doc(Diag::LIVE_DOC_CAPACITY);
+            Diag::writeLive(doc.to<JsonObject>(), live, diagSystem());
+            mqttClient->publishSubtopicJson(Diag::MQTT_LIVE_SUBTOPIC, doc, false);
             diagMqtt.livePublished(now);
         }
         // The list is copied only when it has changed or a summary is still to go.
@@ -321,7 +354,9 @@ namespace SQM
         if (next < 0)
             return;
         const Diag::Summary &summary = summaries->at(static_cast<uint8_t>(next));
-        if (mqttClient->publishSubtopic(Diag::MQTT_MOVE_SUBTOPIC, Diag::summaryJson(summary, clockNow(), false), false))
+        DynamicJsonDocument doc(Diag::SUMMARY_DOC_CAPACITY);
+        Diag::writeSummary(doc.to<JsonObject>(), summary, clockNow(), false);
+        if (mqttClient->publishSubtopicJson(Diag::MQTT_MOVE_SUBTOPIC, doc, false))
             diagMqtt.summaryPublished(summary.id); // a failed one goes again on the next check
     }
 } // namespace SQM

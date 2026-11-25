@@ -107,9 +107,7 @@ namespace SQM
         const std::vector<Deps::Entry> entries = Deps::evaluate(getConfigCallback(), facts);
         DynamicJsonDocument doc(Deps::reportCapacity(entries));
         Deps::writeReport(doc.to<JsonObject>(), entries, facts);
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
     namespace
@@ -216,9 +214,7 @@ namespace SQM
             Logger::warn(TAG, "Config rejected: %s", reason.c_str());
             doc["error"] = reason;
         }
-        std::string out;
-        serializeJson(doc, out);
-        request->send(code, "application/json", out.c_str());
+        WebReply::sendJson(request, code, doc);
     }
 
     void WebServer::handleWiFiConnect(AsyncWebServerRequest *request, JsonVariant &json)
@@ -273,15 +269,14 @@ namespace SQM
         doc["success"] = true;
         doc["pending"] = true;
         doc["message"] = "Connection started";
-        String responseStr;
-        serializeJson(doc, responseStr);
-        request->send(202, "application/json", responseStr.c_str());
+        WebReply::sendJson(request, 202, doc);
     }
 
     void WebServer::handleGetStatus(AsyncWebServerRequest *request)
     {
-        std::string json = createStatusJson();
-        request->send(200, "application/json", json.c_str());
+        HeapSafe::ChunkText text;
+        writeStatus(text);
+        WebReply::sendText(request, 200, "application/json", std::move(text));
     }
 
     void WebServer::handleGetConfig(AsyncWebServerRequest *request)
@@ -387,9 +382,7 @@ namespace SQM
             net["encryption"] = (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "open" : "secured";
         }
 
-        std::string json;
-        serializeJson(doc, json);
-        request->send(200, "application/json", json.c_str());
+        WebReply::sendJson(request, 200, doc);
         WiFi.scanDelete();
     }
 
@@ -525,9 +518,7 @@ namespace SQM
             StaticJsonDocument<192> reply;
             reply["success"] = false;
             reply["error"] = std::string("MQTT broker: ") + Net::hostErrorText(hostError);
-            std::string body;
-            serializeJson(reply, body);
-            request->send(400, "application/json", body.c_str());
+            WebReply::sendJson(request, 400, reply);
             return;
         }
         if (host.port != 0)
@@ -558,9 +549,7 @@ namespace SQM
             response["state"] = state;
         }
 
-        String responseStr;
-        serializeJson(response, responseStr);
-        request->send(connected ? 200 : 502, "application/json", responseStr.c_str());
+        WebReply::sendJson(request, connected ? 200 : 502, response);
     }
 
 } // namespace SQM

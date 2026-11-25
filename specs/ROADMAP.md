@@ -407,6 +407,18 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** a core dump partition or any partition change; fixing a particular crash; a clear
   command.
 
+### 031 Heap-safe replies (base: main after 029)
+
+- **Scope:**
+  - Every reply the firmware builds (REST, WebSocket, MQTT, crash text) written in checked 1 KB
+    pieces or streamed, never into a growing string; `/api/status` built a section at a time from one
+    3 KB pool; `503` "busy" instead of an abort when memory runs out.
+  - A memory guard that answers non-essential requests `503` while the heap is fragmented; Alpaca,
+    the roof's commands and uploads are never refused by it.
+  - `lib/HeapSafe` with native tests; a CI audit against the old pattern; counters in the status.
+- **Out of scope:** the web server library's own allocations; ArduinoJson 7; the backup and settings
+  save (already guarded); UI changes.
+
 ## Merge order
 
 ```text

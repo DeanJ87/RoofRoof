@@ -143,6 +143,22 @@
           ],
           "additionalProperties": false
         },
+        "shortOfMemory": {
+          "type": "object",
+          "properties": {
+            "refused": {
+              "type": "number"
+            },
+            "skippedFrames": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "refused",
+            "skippedFrames"
+          ],
+          "additionalProperties": false
+        },
         "tcpLimit": {
           "type": "number"
         }
@@ -150,6 +166,7 @@
       "required": [
         "alpacaRestoredAfterRestart",
         "liveUpdates",
+        "shortOfMemory",
         "tcpLimit"
       ],
       "additionalProperties": false

@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 
+#include "ChunkText.h"
 #include "CrashDocuments.h"
 
 namespace SQM
@@ -31,10 +32,10 @@ namespace SQM
         void logLine(uint8_t level, const char *tag, const char *format, va_list args);
 
         // GET /api/diag/log: the ring's lines as text, oldest first (from a copy taken under its lock).
-        std::string logText();
+        void logText(HeapSafe::ChunkText &out);
 
         // GET /api/diag/crashes: the kept records, newest first (read from NVS).
-        std::string crashesText();
+        void crashesText(HeapSafe::ChunkText &out);
 
         // This start as the documents show it.
         Crash::BootView bootView();

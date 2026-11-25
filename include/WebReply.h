@@ -1,0 +1,58 @@
+#pragma once
+
+// Spec 031: every reply the firmware builds goes out through here.
+//
+// The firmware has no C++ exceptions: a std::string, std::vector or `new`
+// that can't get memory calls abort(). A reply is written into a
+// HeapSafe::ChunkText (1 KB pieces from malloc, each checked) and sent from
+// those pieces; when memory runs out the client gets 503 "busy, try again"
+// and the device keeps running. tools/firmware/test_heap_audit.py keeps
+// replies from being written into growing strings again.
+
+#include "ChunkText.h"
+
+#include <ArduinoJson.h>
+#include <cstdint>
+
+class AsyncWebServer;
+class AsyncWebServerRequest;
+class AsyncWebSocket;
+class AsyncWebSocketClient;
+
+namespace SQM
+{
+    namespace WebReply
+    {
+        // Sends `text` (moved into the response, freed once sent). 503 when the
+        // text is incomplete or the response can't be allocated.
+        void sendText(AsyncWebServerRequest *request, int code, const char *type, HeapSafe::ChunkText &&text);
+        // Serializes `doc` into pieces and sends it; 503 when its pool or a
+        // piece couldn't be allocated.
+        void sendJson(AsyncWebServerRequest *request, int code, const JsonDocument &doc);
+        // The shared 503 (contracts/busy-reply.md), counted.
+        void sendBusy(AsyncWebServerRequest *request);
+
+        // A WebSocket frame from pieces: copied into one buffer only when the
+        // largest free block holds it plus a margin; otherwise skipped and
+        // counted. True when queued.
+        bool textAll(AsyncWebSocket &socket, const HeapSafe::ChunkText &text);
+        bool text(AsyncWebSocketClient *client, const HeapSafe::ChunkText &text);
+
+        // The memory guard (FR-008): refuses non-essential requests before
+        // their handler runs while the heap is short.
+        void installGuard(AsyncWebServer &server);
+
+        // A short error reply ({"error": "..."}) on the stack: no heap (the
+        // message is cut to fit).
+        struct ErrorText
+        {
+            char text[384];
+            const char *c_str() const { return text; }
+        };
+        ErrorText errorJson(const char *message);
+
+        // Since start (FR-010).
+        uint32_t refused();
+        uint32_t skippedFrames();
+    } // namespace WebReply
+} // namespace SQM

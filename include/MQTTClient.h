@@ -4,6 +4,7 @@
 
 #include "Config.h"
 #include "RoofMqtt.h"
+#include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <functional>
 #include "DualStackClient.h"
@@ -64,6 +65,11 @@ namespace SQM
         // are built by WebServer (lib/Readings).
         bool publishSubtopic(const std::string &subtopic, const std::string &payload, bool retained);
         bool publishTopic(const std::string &topic, const std::string &payload, bool retained);
+        // Spec 031: a document streamed from its pool to the broker (no text
+        // copy, a 128-byte stack buffer); false when not sent. A document whose
+        // pool couldn't be allocated is not sent.
+        bool publishJson(const std::string &topic, const JsonDocument &doc, bool retained);
+        bool publishSubtopicJson(const std::string &subtopic, const JsonDocument &doc, bool retained);
 
         // Any task (a settings save runs on the web server's task): only hands
         // the settings over. handle() applies them on the main loop, so the

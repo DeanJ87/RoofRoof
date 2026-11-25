@@ -63,10 +63,7 @@ namespace SQM
                 doc["reason"] = outcome.reason;
                 doc["error"] = outcome.text;
             }
-            std::string body;
-            serializeJson(doc, body);
-            const int status = !outcome.accepted ? 409 : (outcome.pending ? 202 : 200);
-            request->send(status, "application/json", body.c_str());
+            WebReply::sendJson(request, !outcome.accepted ? 409 : (outcome.pending ? 202 : 200), doc);
         }
     } // namespace
 
@@ -126,9 +123,7 @@ namespace SQM
         }
         DynamicJsonDocument doc(Safety::INPUTS_REPORT_CAPACITY);
         Safety::writeInputsReport(doc.to<JsonObject>(), *report);
-        std::string body;
-        serializeJson(doc, body);
-        request->send(200, "application/json", body.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
     void WebServer::handleRoofCommand(AsyncWebServerRequest *request, Roof::Command command)
@@ -215,9 +210,7 @@ namespace SQM
             doc["reason"] = outcome.reason;
             doc["error"] = outcome.text;
         }
-        std::string body;
-        serializeJson(doc, body);
-        request->send(outcome.accepted ? 200 : 409, "application/json", body.c_str());
+        WebReply::sendJson(request, outcome.accepted ? 200 : 409, doc);
     }
 
     void WebServer::handleCalibrationConfirm(AsyncWebServerRequest *request, JsonVariant &json)
@@ -258,9 +251,7 @@ namespace SQM
         const Calib::Report report = roof != nullptr ? roof->calibrationReport(nowMs) : Calib::Report();
         DynamicJsonDocument doc(Calib::DOCUMENT_CAPACITY);
         Calib::writeDocument(doc.to<JsonObject>(), report, nowMs);
-        std::string body;
-        serializeJson(doc, body);
-        request->send(200, "application/json", body.c_str());
+        WebReply::sendJson(request, 200, doc);
     }
 
     void WebServer::setRoof(RoofControl *control)
@@ -404,12 +395,8 @@ namespace SQM
             result.accepted ? "accepted" : "refused",
             result.text.empty() ? "" : ": ",
             result.text.c_str());
-        DynamicJsonDocument doc(RoofIo::Mqtt::RESULT_DOC_CAPACITY);
-        RoofIo::Mqtt::writeResult(doc.to<JsonObject>(), result);
-        std::string body;
-        serializeJson(doc, body);
         if (pendingRoofResults.size() < 4) // a flood of commands keeps the first answers
-            pendingRoofResults.push_back(std::move(body));
+            pendingRoofResults.push_back(std::move(result));
     }
 
     void WebServer::publishRoofResults()
@@ -417,8 +404,12 @@ namespace SQM
         if (pendingRoofResults.empty())
             return;
         if (mqttClient != nullptr && mqttClient->isConnected())
-            for (const std::string &body : pendingRoofResults)
-                mqttClient->publishSubtopic(RoofIo::Mqtt::RESULT_SUBTOPIC, body, false);
+            for (const RoofIo::Mqtt::Result &result : pendingRoofResults)
+            {
+                DynamicJsonDocument doc(RoofIo::Mqtt::RESULT_DOC_CAPACITY);
+                RoofIo::Mqtt::writeResult(doc.to<JsonObject>(), result);
+                mqttClient->publishSubtopicJson(RoofIo::Mqtt::RESULT_SUBTOPIC, doc, false);
+            }
         pendingRoofResults.clear();
     }
 
@@ -444,12 +435,10 @@ namespace SQM
         const time_t epoch = time(nullptr);
         DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
         RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
-        std::string body;
-        serializeJson(doc, body);
         // A failed publish isn't retried at once (the link is going, and the
         // reconnect publishes again); while the roof is busy nothing more is
         // tried on this connection (research R4).
-        const bool ok = mqttClient->publishSubtopic(RoofIo::Mqtt::STATE_SUBTOPIC, body, true);
+        const bool ok = mqttClient->publishSubtopicJson(RoofIo::Mqtt::STATE_SUBTOPIC, doc, true);
         roofStateSchedule.published(key, connection, now, ok);
     }
 } // namespace SQM

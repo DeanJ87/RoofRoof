@@ -82,8 +82,16 @@ namespace SQM
         if (wsStatus.count() == 0)
             return;
 
-        std::string json = createStatusJson();
-        wsStatus.textAll(json.c_str());
+        HeapSafe::ChunkText text;
+        writeStatus(text);
+        WebReply::textAll(wsStatus, text);
+    }
+
+    void WebServer::sendFirstStatus(AsyncWebSocketClient *client) const
+    {
+        HeapSafe::ChunkText text;
+        writeStatus(text);
+        WebReply::text(client, text);
     }
 
     void WebServer::onStatusWebSocketEvent(AsyncWebSocketClient *client, AwsEventType type)
@@ -93,8 +101,8 @@ namespace SQM
         case WS_EVT_CONNECT:
             prepareWebSocketClient(wsStatusClients, client);
             Logger::info(TAG, "Status WebSocket client connected: %u", client->id());
-            // Send initial status data
-            client->text(createStatusJson().c_str());
+            // The first frame; skipped while memory is short (the next broadcast follows).
+            sendFirstStatus(client);
             break;
 
         case WS_EVT_DISCONNECT:

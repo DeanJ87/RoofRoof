@@ -139,6 +139,7 @@ namespace SQM
             DynamicJsonDocument doc(SUMMARY_DOC_CAPACITY); // on the heap: callers run on small task stacks
             writeSummary(doc.to<JsonObject>(), summary, clock, held);
             std::string text;
+            text.reserve(measureJson(doc)); // spec 031: one exact allocation, at most SUMMARY_DOC_CAPACITY's text
             serializeJson(doc, text);
             return text;
         }

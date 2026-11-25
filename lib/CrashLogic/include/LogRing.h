@@ -56,6 +56,7 @@ namespace SQM
         void push(LogRing &ring, uint32_t ms, Level level, const char *text);
 
         // The intact lines, oldest first; at most `max`. Returns how many.
+        // `out` may be the ring's own lines (a copy read in place).
         size_t copy(const LogRing &ring, LogLine *out, size_t max);
 
         // `text` without colour codes (ESC [ ... letter), control characters

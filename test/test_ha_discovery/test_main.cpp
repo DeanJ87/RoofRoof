@@ -15,6 +15,15 @@ namespace
     const char *const CONNECTIVITY_TOPIC = "homeassistant/binary_sensor/roofroof_aabbccddeeff/connectivity/config";
     const char *const SWITCH_TOPIC = "homeassistant/switch/roofroof_aabbccddeeff/alerts/config";
 
+    // What is published: the document's text, empty for a removal.
+    std::string textOf(const JsonDocument *config)
+    {
+        std::string text;
+        if (config != nullptr)
+            serializeJson(*config, text);
+        return text;
+    }
+
     std::map<std::string, std::string> announce(bool alertsSwitch, bool roofCommands = false, bool currentSense = false)
     {
         Groups groups;
@@ -22,7 +31,7 @@ namespace
         groups.roofCommands = roofCommands;
         groups.currentSense = currentSense;
         std::map<std::string, std::string> out;
-        forEach(DEVICE, groups, [&](const std::string &topic, const std::string &payload) { out[topic] = payload; });
+        forEach(DEVICE, groups, [&](const std::string &topic, const JsonDocument *config) { out[topic] = textOf(config); });
         return out;
     }
     std::string topicOf(const char *component, const char *object)
@@ -210,8 +219,11 @@ void test_long_names_fit(void)
     forEach(
         longDevice,
         groups,
-        [&](const std::string &, const std::string &payload)
+        [&](const std::string &, const JsonDocument *config)
         {
+            TEST_ASSERT_NOT_NULL(config);
+            TEST_ASSERT_FALSE(config->overflowed());
+            const std::string payload = textOf(config);
             DynamicJsonDocument doc(4096);
             TEST_ASSERT_FALSE(deserializeJson(doc, payload));
             TEST_ASSERT_EQUAL_STRING(std::string(64, 'n').c_str(), doc["device"]["name"]);

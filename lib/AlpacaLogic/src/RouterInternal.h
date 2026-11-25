@@ -63,6 +63,8 @@ namespace SQM
                     doc["ErrorNumber"] = errorNumber;
                     doc["ErrorMessage"] = errorMessage;
                     Response response;
+                    // Spec 031: sized once (no growth by doubling); a few hundred bytes at most.
+                    response.body.reserve(measureJson(doc));
                     serializeJson(doc, response.body);
                     return response;
                 }

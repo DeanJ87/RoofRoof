@@ -88,9 +88,9 @@ namespace
 
     std::string recordText(const Record &r)
     {
-        std::string out;
+        SQM::HeapSafe::ChunkText out;
         writeRecord(out, r);
-        return out;
+        return out.str();
     }
 
     bool has(const std::string &text, const std::string &part)

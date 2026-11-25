@@ -151,6 +151,9 @@ namespace SQM
         // CRITICAL: Register API routes BEFORE static file serving
         // Otherwise /api/* requests get treated as filesystem paths
         restoreAlpacaConnections();
+        // Spec 031: while the heap is short, every request but Alpaca, the
+        // roof's commands and the uploads gets "busy" before its handler runs.
+        WebReply::installGuard(server);
         setupAPIRoutes();
         setupWebSocket();
         setupOTA();
@@ -482,14 +485,9 @@ namespace SQM
         return true;
     }
 
-    std::string WebServer::createErrorJson(const char *error)
+    WebReply::ErrorText WebServer::createErrorJson(const char *error)
     {
-        StaticJsonDocument<128> doc;
-        doc["error"] = error;
-
-        std::string json;
-        serializeJson(doc, json);
-        return json;
+        return WebReply::errorJson(error);
     }
 
 } // namespace SQM

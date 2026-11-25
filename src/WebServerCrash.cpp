@@ -31,7 +31,12 @@ namespace SQM
         }
         if (!requireAuth(request))
             return;
-        // Built whole (a few KB at most) from a copy, outside every lock.
-        request->send(200, "text/plain; charset=utf-8", (crashes ? CrashLog::crashesText() : CrashLog::logText()).c_str());
+        // Built from a copy, outside every lock, in 1 KB pieces (spec 031).
+        HeapSafe::ChunkText text;
+        if (crashes)
+            CrashLog::crashesText(text);
+        else
+            CrashLog::logText(text);
+        WebReply::sendText(request, 200, "text/plain; charset=utf-8", std::move(text));
     }
 } // namespace SQM

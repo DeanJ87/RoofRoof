@@ -4,6 +4,8 @@
 // entities as retained config messages under the discovery prefix. RoofRoof spec 008
 // adds the roof's cover, sensors and fault sensor (contracts/mqtt.md).
 
+#include <ArduinoJson.h>
+#include <cstddef>
 #include <functional>
 #include <string>
 
@@ -33,11 +35,15 @@ namespace SQM
             bool currentSense = false;
         };
 
-        // Calls `publish(topic, payload)` for every entity: its config when its
-        // group is enabled, an empty payload (removes the entity) when not.
+        // One entity's config document pool: the longest names (test_long_names_fit).
+        constexpr size_t CONFIG_DOC_BYTES = 2048;
+
+        // Calls `publish(topic, config)` for every entity: its config document
+        // when its group is enabled, null (an empty payload removes the entity)
+        // when not. The document is reused for the next entity (spec 031).
         void forEach(
             const Device &device,
             const Groups &groups,
-            const std::function<void(const std::string &topic, const std::string &payload)> &publish);
+            const std::function<void(const std::string &topic, const JsonDocument *config)> &publish);
     } // namespace HaDiscovery
 } // namespace SQM

@@ -7,6 +7,8 @@
 #include "RoofControl.h"
 #include "RoofMqtt.h"
 #include "WebServer.h"
+#include "JsonStream.h"
+#include "WebReply.h"
 #include "version.h"
 #include <ArduinoJson.h>
 #include <LittleFS.h>
@@ -83,12 +85,19 @@ namespace SQM
         if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
             return;
 
-        auto publish = [this](const std::string &topic, const std::string &payload) { mqttClient->publishTopic(topic, payload, true); };
+        // Spec 031: each config streamed from the discovery pool; an empty payload removes.
+        auto publish = [this](const std::string &topic, const JsonDocument *config)
+        {
+            if (config != nullptr)
+                mqttClient->publishJson(topic, *config, true);
+            else
+                mqttClient->publishTopic(topic, std::string(), true);
+        };
         if (!discoveryKey.empty() && discoveryWasOn &&
             (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
         {
             // Remove what was announced under the old settings.
-            HaDiscovery::forEach(discoveryDevice, groups, [&](const std::string &topic, const std::string &) { publish(topic, ""); });
+            HaDiscovery::forEach(discoveryDevice, groups, [&](const std::string &topic, const JsonDocument *) { publish(topic, nullptr); });
         }
         if (mqtt.homeAssistant)
             HaDiscovery::forEach(device, groups, publish);
@@ -332,36 +341,67 @@ namespace SQM
         live["replaced"] = wsReplaced;
         live["stalledClosed"] = wsStalled;
         connections["alpacaRestoredAfterRestart"] = alpacaConnectionsRestored;
+        // Spec 031: requests answered "busy" and live frames skipped for memory.
+        JsonObject shortOfMemory = connections.createNestedObject("shortOfMemory");
+        shortOfMemory["refused"] = WebReply::refused();
+        shortOfMemory["skippedFrames"] = WebReply::skippedFrames();
     }
 
-    std::string WebServer::createStatusJson() const
+    // Spec 031: written a section at a time from one small pool (research R4),
+    // in the order the document always had; each section's size is pinned by
+    // test_status_document_fits.
+    void WebServer::writeStatus(HeapSafe::ChunkText &out) const
     {
-        // Sized by test_status_document_fits.
-        DynamicJsonDocument doc(Core::STATUS_DOC_CAPACITY);
-        appendFirmware(doc);
-        appendRuntime(doc);
-        JsonObject alerts = doc.createNestedObject("alerts");
-        Core::writeAlertSchedule(alerts, sharedSchedule(), getConfigCallback(), millis());
-        alerts["recentRevision"] = alertDispatcher ? alertDispatcher->recentRevision() : 0;
-        Core::writeClientWatch(
-            doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
-        appendMemory(doc);
-        appendPartitions(doc);
-        appendTime(doc);
-        appendWifi(doc);
-        EthernetLink::appendStatus(doc); // spec 023
-        appendPinsStatus(doc);
-        appendMqttStatus(doc);
-        appendConnections(doc);
-        appendRoof(doc);
-        appendSite(doc);
-        // A full pool drops the trailing sections silently: say so.
-        if (doc.overflowed())
-            Logger::warn(TAG, "/api/status document overflowed %u bytes", static_cast<unsigned>(doc.capacity()));
-
-        std::string json;
-        serializeJson(doc, json);
-        return json;
+        DynamicJsonDocument doc(Core::STATUS_SECTION_CAPACITY);
+        HeapSafe::JsonStream json(out);
+        const auto section = [&doc, &json](auto write)
+        {
+            doc.clear();
+            write();
+            json.members(doc);
+        };
+        json.beginObject();
+        section(
+            [&]()
+            {
+                appendFirmware(doc);
+                appendRuntime(doc);
+            });
+        section(
+            [&]()
+            {
+                JsonObject alerts = doc.createNestedObject("alerts");
+                Core::writeAlertSchedule(alerts, sharedSchedule(), getConfigCallback(), millis());
+                alerts["recentRevision"] = alertDispatcher ? alertDispatcher->recentRevision() : 0;
+                Core::writeClientWatch(
+                    doc.createNestedObject("alpaca"), sharedClientWatch(), alpacaBackend.devices(), getConfigCallback(), millis());
+            });
+        section(
+            [&]()
+            {
+                appendMemory(doc);
+                appendPartitions(doc);
+                appendTime(doc);
+            });
+        section(
+            [&]()
+            {
+                appendWifi(doc);
+                EthernetLink::appendStatus(doc);
+                appendPinsStatus(doc);
+            }); // spec 023
+        section(
+            [&]()
+            {
+                appendMqttStatus(doc);
+                appendConnections(doc);
+            });
+        section([&]() { appendRoof(doc); });
+        section([&]() { appendSite(doc); });
+        json.endObject();
+        // A full pool drops a section's trailing members silently: say so.
+        if (json.overflowed())
+            Logger::warn(TAG, "/api/status section overflowed its %u-byte pool", static_cast<unsigned>(doc.capacity()));
     }
 
 } // namespace SQM
