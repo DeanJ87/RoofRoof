@@ -1,7 +1,7 @@
 import { ComponentChildren, FunctionalComponent } from 'preact';
 import { useId } from 'preact/hooks';
 import { route } from 'preact-router';
-import type { LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
+import type { AutoCloseConfig, LocationStatus, RoofConfig, RoofDaylight, RoofStatus, RoofSwitch } from '../types';
 import { locationLine } from '../lib/locationView';
 import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui';
 import {
@@ -246,15 +246,25 @@ export interface RoofCardProps {
   config?: RoofConfig;
   confirm?: boolean; // spec 014: ui.confirmOpenClose
   rearmMinutes?: number; // autoClose.rearmMinutes, for "clears at" (spec 026)
+  autoClose?: Pick<AutoCloseConfig, 'personStopLapse' | 'stopHoldMinutes'>; // spec 044: when a person's Stop lapses
 }
 
-const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = false, rearmMinutes = 10 }) => {
+// What the held line needs to say when the hold clears (spec 026; spec 044: a person's Stop lapsing).
+const blockerContext = (live: boolean, rearmMinutes: number, nowMs: number, autoClose: RoofCardProps['autoClose']): BlockerContext => ({
+  live,
+  rearmMinutes,
+  nowMs,
+  stopLapse: autoClose?.personStopLapse,
+  stopHoldMinutes: autoClose?.stopHoldMinutes,
+});
+
+const RoofCard: FunctionalComponent<RoofCardProps> = ({ live, config, confirm = false, rearmMinutes = 10, autoClose }) => {
   const roof = live.status?.roof ?? null;
   const { result, inFlight, send } = useRoofCommand(roof?.state ?? null);
   const input = { live, result, inFlight, now: Date.now() };
   const view = roofView(input);
   const clearReason = inFlight === 'open' || inFlight === 'close' ? t('roof.sending') : clearFaultReason(input);
-  const ctx: BlockerContext = { live: view.live, rearmMinutes, nowMs: input.now };
+  const ctx = blockerContext(view.live, rearmMinutes, input.now, autoClose);
   return (
     <div class="roof-card" data-inventory="roof-card">
       <Card title={t('roof.title')} icon="roof" hint={t('roof.hint')} actions={<Pill tone={view.state.tone}>{view.state.label}</Pill>}>

@@ -304,6 +304,7 @@
                       "closes": false
                     },
                     "closeRearmSeconds": null,
+                    "closeRearmLapse": false,
                     "weatherHold": {
                       "countedSeconds": 0,
                       "leftSeconds": -1,
@@ -6852,6 +6853,14 @@
               "parkRequestSeconds": {
                 "type": "number"
               },
+              "personStopLapse": {
+                "type": "string",
+                "enum": [
+                  "never",
+                  "rain",
+                  "always"
+                ]
+              },
               "rearmMinutes": {
                 "type": "number"
               },
@@ -6862,6 +6871,9 @@
                 "type": "boolean"
               },
               "retryMinutes": {
+                "type": "number"
+              },
+              "stopHoldMinutes": {
                 "type": "number"
               },
               "unsafeHoldSeconds": {
@@ -6876,10 +6888,12 @@
               "notStarted",
               "parkHoldSeconds",
               "parkRequestSeconds",
+              "personStopLapse",
               "rearmMinutes",
               "remindMinutes",
               "remoteStop",
               "retryMinutes",
+              "stopHoldMinutes",
               "unsafeHoldSeconds"
             ],
             "additionalProperties": false
@@ -8088,6 +8102,14 @@
               "parkRequestSeconds": {
                 "type": "number"
               },
+              "personStopLapse": {
+                "type": "string",
+                "enum": [
+                  "never",
+                  "rain",
+                  "always"
+                ]
+              },
               "rearmMinutes": {
                 "type": "number"
               },
@@ -8098,6 +8120,9 @@
                 "type": "boolean"
               },
               "retryMinutes": {
+                "type": "number"
+              },
+              "stopHoldMinutes": {
                 "type": "number"
               },
               "unsafeHoldSeconds": {
@@ -10311,6 +10336,9 @@
               "closePhase": {
                 "type": "string"
               },
+              "closeRearmLapse": {
+                "type": "boolean"
+              },
               "closeRearmSeconds": {
                 "type": [
                   "integer",
@@ -10784,6 +10812,7 @@
               "calibrating",
               "closePending",
               "closePhase",
+              "closeRearmLapse",
               "closeRearmSeconds",
               "currentSense",
               "daylight",

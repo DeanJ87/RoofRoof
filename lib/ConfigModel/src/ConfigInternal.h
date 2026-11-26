@@ -90,6 +90,21 @@ namespace SQM::ConfigDetail
         return "alert";
     }
 
+    // Spec 044: autoClose.personStopLapse's names.
+    inline const char *personStopLapseName(AutoCloseConfig::PersonStopLapse lapse)
+    {
+        switch (lapse)
+        {
+        case AutoCloseConfig::PersonStopLapse::Rain:
+            return "rain";
+        case AutoCloseConfig::PersonStopLapse::Always:
+            return "always";
+        case AutoCloseConfig::PersonStopLapse::Never:
+            break;
+        }
+        return "never";
+    }
+
     inline const char *setupStateName(SetupConfig::State state)
     {
         switch (state)
@@ -297,5 +312,7 @@ namespace SQM::ConfigDetail
     bool applyNetwork(const Section &network, NetworkConfig &n, std::string *error);
     // Spec 022.
     void applyTestBox(const Section &t, TestBoxConfig &c);
+    // Spec 014's autoClose.notStarted and spec 044's autoClose.personStopLapse (ConfigJsonGroups.cpp).
+    bool applyAutoCloseChoices(const Section &autoClose, AutoCloseConfig &c, std::string *error);
 
 } // namespace SQM::ConfigDetail

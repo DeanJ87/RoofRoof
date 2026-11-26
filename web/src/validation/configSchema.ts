@@ -218,6 +218,9 @@ export const autoCloseConfigSchema = z.object({
   // Spec 030: close without N.I.N.A.'s park once it has been lost this long (off by default).
   ninaLostClose: z.boolean(),
   ninaLostMinutes: minutesOrSeconds(1, 60, t('validation.configSchema.ninaLostMustBeBetween')),
+  // Spec 044: a person's Stop of the automatic close lapses never (default), in rain or always, after stopHoldMinutes.
+  personStopLapse: z.enum(['never', 'rain', 'always']),
+  stopHoldMinutes: minutesOrSeconds(2, 60, t('validation.configSchema.stopHoldMustBeBetween')),
 });
 
 export const uiConfigSchema = z.object({ confirmOpenClose: z.boolean() });

@@ -106,6 +106,23 @@ namespace SQM
             return alert;
         }
 
+        Alerts::Alert holdLapsedAlert(const Decision &decision, const std::string &weather)
+        {
+            const AlertText text = alertFor(decision, weather);
+            Alerts::Alert alert;
+            alert.type = Alerts::AlertType::RoofNotClosed;
+            alert.level = Alerts::AlertLevel::Wake;
+            alert.title = text.title;
+            alert.message = text.message;
+            alert.vars = {
+                {"reason", decision.lapsedInRain ? "Hold lapsed: still raining" : "Hold lapsed: still unsafe"},
+                {"limit", std::to_string((decision.stopHoldMs + 59999) / 60000) + " min"},
+                {"details", text.message},
+                {"reminder", "no"},
+            };
+            return alert;
+        }
+
         Alerts::Alert parkOverrideAlert(const std::string &text)
         {
             Alerts::Alert alert;

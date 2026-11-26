@@ -327,7 +327,7 @@
     {
       "id": "roof-close-phase",
       "label": "roof.closePhase.label",
-      "sources": ["status.roof.closePhase", "status.roof.closeRearmSeconds"],
+      "sources": ["status.roof.closePhase", "status.roof.closeRearmSeconds", "status.roof.closeRearmLapse"],
       "requiredBy": "009 FR-011",
       "visibility": {
         "rule": "when",

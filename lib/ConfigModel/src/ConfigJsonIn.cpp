@@ -92,6 +92,7 @@ namespace SQM
                 {"autoClose", "remindMinutes"},
                 {"autoClose", "unsafeHoldSeconds"},
                 {"autoClose", "ninaLostMinutes"},
+                {"autoClose", "stopHoldMinutes"},
             };
             for (const auto &field : FIELDS)
             {
@@ -412,8 +413,7 @@ namespace SQM
             return strict ? setError(error, "Setup: state must be new, offered or done") : true;
         }
 
-        // Spec 014. A not-started policy that isn't one of the two names is
-        // refused, never read as a default.
+        // Spec 014: the automatic close's policy (its named choices: ConfigJsonGroups.cpp).
         bool applyAutoClose(const Section &root, Config &cfg, std::string *error)
         {
             const Section a = root.child("autoClose");
@@ -429,16 +429,9 @@ namespace SQM
             a.take("ninaLostClose", c.ninaLostClose); // spec 030
             a.take("ninaLostMinutes", c.ninaLostMinutes);
             a.take("remoteStop", c.remoteStop);
+            a.take("stopHoldMinutes", c.stopHoldMinutes); // spec 044
             root.child("ui").take("confirmOpenClose", cfg.ui.confirmOpenClose);
-            if (!a.has("notStarted"))
-                return true;
-            const std::string choice = a["notStarted"].is<const char *>() ? a["notStarted"].as<const char *>() : "";
-            if (choice == "halt" || choice == "retry")
-            {
-                c.notStarted = choice == "retry" ? AutoCloseConfig::NotStarted::Retry : AutoCloseConfig::NotStarted::Halt;
-                return true;
-            }
-            return setError(error, "Automatic close: notStarted must be halt or retry");
+            return applyAutoCloseChoices(a, c, error); // notStarted, personStopLapse (spec 044)
         }
 
         bool isPushoverKey(const std::string &key)

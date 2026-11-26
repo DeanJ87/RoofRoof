@@ -26,6 +26,7 @@ namespace SQM
             out.remindMs = within(policy.remindMs, REMIND_RANGE);
             out.unsafeHoldMs = within(policy.unsafeHoldMs, UNSAFE_HOLD_RANGE);
             out.ninaLostMs = within(policy.ninaLostMs, NINA_LOST_RANGE);
+            out.stopHoldMs = within(policy.stopHoldMs, STOP_HOLD_RANGE);
             return out;
         }
 
@@ -45,6 +46,12 @@ namespace SQM
             p.unsafeHoldMs = static_cast<uint64_t>(a.unsafeHoldSeconds) * 1000u;
             p.ninaLostClose = a.ninaLostClose && !config.park.switchesOnly(); // spec 030
             p.ninaLostMs = static_cast<uint64_t>(a.ninaLostMinutes) * 60000u;
+            // Spec 044.
+            using Lapse = AutoCloseConfig::PersonStopLapse;
+            p.stopLapse = a.personStopLapse == Lapse::Always ? StopLapse::Always
+                          : a.personStopLapse == Lapse::Rain ? StopLapse::Rain
+                                                             : StopLapse::Never;
+            p.stopHoldMs = static_cast<uint64_t>(a.stopHoldMinutes) * 60000u;
             return clamp(p);
         }
     } // namespace CloseSeq

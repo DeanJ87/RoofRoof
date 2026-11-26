@@ -142,6 +142,29 @@ describe('the automatic close on hold', () => {
     expect(releaseOffered(held)).toBe(false);
   });
 
+  it('spec 044: counts down to a lapsing Stop, in rain or any unsafe weather, and says when it would lapse', () => {
+    const lapsing = roof({ closePhase: 'heldByPerson', closeRearmSeconds: 252, closeRearmLapse: true, weather: 'unsafe' });
+    expect(closePhaseBlocker(lapsing, { ...ctx, stopLapse: 'rain', stopHoldMinutes: 5 })!.clears).toBe(
+      'The close goes ahead by itself in 4:12 if it keeps raining; press Stop again to hold it.',
+    );
+    expect(closePhaseBlocker(lapsing, { ...ctx, stopLapse: 'always', stopHoldMinutes: 5 })!.clears).toBe(
+      'The close goes ahead by itself in 4:12 if it stays unsafe; press Stop again to hold it.',
+    );
+    // Rain set, unsafe without rain: nothing counts, the note says what would.
+    const waiting = roof({ closePhase: 'heldByPerson', closeRearmSeconds: null, weather: 'unsafe' });
+    expect(closePhaseBlocker(waiting, { ...ctx, stopLapse: 'rain', stopHoldMinutes: 7 })!.clears).toBe(
+      'After 10 min safe or once closed; after 7 min of rain the close goes ahead.',
+    );
+    // Never (the default), and a halted close: as before.
+    expect(closePhaseBlocker(waiting, { ...ctx, stopLapse: 'never' })!.clears).toBe(
+      'Lapses after 10 min of safe weather, or once the roof is closed.',
+    );
+    const halted = roof({ closePhase: 'halted', closeRearmSeconds: null, weather: 'unsafe' });
+    expect(closePhaseBlocker(halted, { ...ctx, stopLapse: 'always' })!.clears).toBe(
+      'Lapses after 10 min of safe weather, or once the roof is closed.',
+    );
+  });
+
   it('no release while the weather hold has fired, even with the weather safe again (spec 030)', () => {
     const held = roof({
       closePhase: 'heldByPerson',

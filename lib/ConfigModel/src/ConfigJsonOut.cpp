@@ -194,6 +194,8 @@ namespace SQM
             out["unsafeHoldSeconds"] = a.unsafeHoldSeconds;
             out["ninaLostClose"] = a.ninaLostClose; // spec 030
             out["ninaLostMinutes"] = a.ninaLostMinutes;
+            out["personStopLapse"] = personStopLapseName(a.personStopLapse); // spec 044
+            out["stopHoldMinutes"] = a.stopHoldMinutes;
             doc.createNestedObject("ui")["confirmOpenClose"] = c.ui.confirmOpenClose;
         }
 

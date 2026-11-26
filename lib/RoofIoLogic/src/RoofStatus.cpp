@@ -145,6 +145,7 @@ namespace SQM
                 out["closeRearmSeconds"] = s.closeRearmSeconds;
             else
                 out["closeRearmSeconds"] = nullptr;
+            out["closeRearmLapse"] = s.closeRearmSeconds >= 0 && s.closeRearmLapse; // spec 044
             // Spec 030: what the roof needs a person for (the status document only:
             // the MQTT state document carries the flag, its buffer is nearly full).
             out["needsPerson"]["text"] = capped(s.needsPerson.text);

@@ -319,7 +319,11 @@ namespace SQM
         if (phase != nullptr)
             s.closePhase = phase;
         if (standDownSeconds)
-            s.closeRearmSeconds = standDownSeconds();
+        {
+            const RoofIo::CloseRearm rearm = standDownSeconds();
+            s.closeRearmSeconds = rearm.seconds;
+            s.closeRearmLapse = rearm.lapse; // spec 044
+        }
         if (weatherHoldSource)
             s.weatherHold = weatherHoldSource(); // spec 030
         if (needsPersonSource)

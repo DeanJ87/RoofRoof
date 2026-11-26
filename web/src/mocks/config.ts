@@ -97,6 +97,8 @@ export const mockConfig: Config = {
     unsafeHoldSeconds: 60,
     ninaLostClose: false,
     ninaLostMinutes: 5,
+    personStopLapse: 'never',
+    stopHoldMinutes: 5,
   },
   ui: { confirmOpenClose: false },
   diag: { enabled: false, keepSummaries: false, mqtt: false },

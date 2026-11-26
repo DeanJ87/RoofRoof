@@ -284,6 +284,12 @@
       "max": 60
     },
     {
+      "path": "autoClose.stopHoldMinutes",
+      "int": true,
+      "min": 2,
+      "max": 60
+    },
+    {
       "path": "testBox.hours",
       "int": true,
       "min": 1,

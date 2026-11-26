@@ -693,6 +693,14 @@
         "parkRequestSeconds": {
           "type": "number"
         },
+        "personStopLapse": {
+          "type": "string",
+          "enum": [
+            "never",
+            "rain",
+            "always"
+          ]
+        },
         "rearmMinutes": {
           "type": "number"
         },
@@ -703,6 +711,9 @@
           "type": "boolean"
         },
         "retryMinutes": {
+          "type": "number"
+        },
+        "stopHoldMinutes": {
           "type": "number"
         },
         "unsafeHoldSeconds": {
@@ -717,10 +728,12 @@
         "notStarted",
         "parkHoldSeconds",
         "parkRequestSeconds",
+        "personStopLapse",
         "rearmMinutes",
         "remindMinutes",
         "remoteStop",
         "retryMinutes",
+        "stopHoldMinutes",
         "unsafeHoldSeconds"
       ],
       "additionalProperties": false

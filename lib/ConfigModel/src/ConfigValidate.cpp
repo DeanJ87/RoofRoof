@@ -345,6 +345,7 @@ namespace SQM
                  A::MIN_NINA_LOST_MINUTES,
                  A::MAX_NINA_LOST_MINUTES,
                  "N.I.N.A. lost time must be between 1 and 60 minutes"},
+                {a.stopHoldMinutes, A::MIN_STOP_HOLD_MINUTES, A::MAX_STOP_HOLD_MINUTES, "Stop hold must be between 2 and 60 minutes"},
             };
             for (const Range &r : ranges)
                 if (r.value < r.min || r.value > r.max)

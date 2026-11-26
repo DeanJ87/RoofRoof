@@ -51,6 +51,7 @@ namespace SQM
                 stopWasRemote = given.remoteStops != seenRemote;
             seenRemote = given.remoteStops;
             trackEpisode(given, personStopped, restoredNow);
+            trackLapse(given, personStopped);
             // Spec 013: daylight wants the roof closed as unsafe weather does.
             // From here on "weather safe" reads "nothing wants the roof
             // closed": with daylight false this is spec 005, step for step.
@@ -75,6 +76,8 @@ namespace SQM
             out.daylight = daylightOnly;
             out.retryMs = policy.retryAfterMs;
             out.rearmMs = policy.rearmSafeMs;
+            out.stopLapse = policy.stopLapse; // spec 044
+            out.stopHoldMs = policy.stopHoldMs;
             out.remoteStop = out.event == Event::StoppedByPerson && stopWasRemote;
             return out;
         }
@@ -320,6 +323,15 @@ namespace SQM
         {
             if (in.roof == Roof::State::Closed)
                 return enter(Phase::Idle, Event::Closed);
+            // Spec 044: a person's stop lapsed (autoClose.personStopLapse): armed
+            // again, and the next step starts the attempt through every gate.
+            // (trackLapse: only for a person's stand-down, never on a new stop.)
+            if (lapseDue)
+            {
+                Decision out = enter(Phase::Idle, Event::HoldLapsed);
+                out.lapsedInRain = lapseInRain;
+                return out;
+            }
             // Safe for policy.rearmSafeMs since standing down, not since before it.
             if (safeLong && elapsed(phaseSinceMs, in.nowMs) >= policy.rearmSafeMs)
                 return enter(Phase::Idle, Event::EndedSafe);
@@ -350,6 +362,8 @@ namespace SQM
 
         uint64_t Sequence::standDownLeftMs() const
         {
+            if (standDownLapses())
+                return holdLapse.leftMs();
             if ((current != Phase::HeldByPerson && current != Phase::Halted) || !safe.on)
                 return NOT_COUNTING;
             const uint64_t endsMs = std::max(safe.sinceMs, phaseSinceMs) + policy.rearmSafeMs;

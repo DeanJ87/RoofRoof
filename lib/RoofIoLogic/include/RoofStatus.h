@@ -84,6 +84,15 @@ namespace SQM
 
         // A consistent copy of everything the section shows, taken under the
         // roof's lock and written outside it.
+        // Spec 026/044: a stand-down's countdown as the close sequence shares it
+        // (CloseOnUnsafe::standDown): the seconds left (-1: not counting), and
+        // whether they count down to a person's stop lapsing.
+        struct CloseRearm
+        {
+            int32_t seconds = -1;
+            bool lapse = false;
+        };
+
         struct Snapshot
         {
             Roof::Status status;
@@ -121,6 +130,9 @@ namespace SQM
             // Spec 026: a stand-down's seconds left if nothing wants the roof
             // closed meanwhile (CloseSeq::Sequence::standDownLeftMs); -1: not counting (null).
             int32_t closeRearmSeconds = -1;
+            // Spec 044: those seconds count down to a person's stop lapsing, after
+            // which the close goes ahead (CloseSeq::Sequence::standDownLapses).
+            bool closeRearmLapse = false;
             WeatherHoldStatus weatherHold; // spec 030, filled in by the caller
             NeedsPersonStatus needsPerson; // spec 030, filled in by the caller
             // Spec 011: "off" (the real roof), "bench" (bench firmware: simulated
@@ -173,7 +185,8 @@ namespace SQM
         // Spec 027: the MQTT state document's "closeRearmSeconds",
         // "daylightState" and "blocked" for Home Assistant.
         void writeDashboard(JsonObject out, const Snapshot &snapshot);
-        // Spec 026: the roof object's "closeRearmSeconds", and spec 030's
+        // Spec 026: the roof object's "closeRearmSeconds" (spec 044: and
+        // "closeRearmLapse"), and spec 030's
         // "weatherHold" and "needsPerson.text" (the status document only).
         void writeCloseRearm(JsonObject out, const Snapshot &snapshot);
     } // namespace RoofIo

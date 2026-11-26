@@ -36,6 +36,19 @@ namespace SQM
         // without N.I.N.A.'s park (the fitted switches must still read closed).
         bool ninaLostClose = false;
         uint32_t ninaLostMinutes = 5;
+        // Spec 044 (owner setting): whether a person's Stop of the automatic
+        // close lapses by itself. Never (the default, spec 030's behaviour): it
+        // holds until the roof is closed, an Open moves it, a person releases it
+        // or the safe spell. Rain: it lapses after stopHoldMinutes of rain (or a
+        // failed rain sensor). Always: after stopHoldMinutes of any unsafe weather.
+        enum class PersonStopLapse : uint8_t
+        {
+            Never = 0,
+            Rain = 1,
+            Always = 2,
+        };
+        PersonStopLapse personStopLapse = PersonStopLapse::Never;
+        uint32_t stopHoldMinutes = 5;
 
         static constexpr uint32_t MIN_REARM_MINUTES = 5;
         static constexpr uint32_t MAX_REARM_MINUTES = 60;
@@ -55,5 +68,7 @@ namespace SQM
         static constexpr uint32_t MAX_UNSAFE_HOLD_SECONDS = 300;
         static constexpr uint32_t MIN_NINA_LOST_MINUTES = 1;
         static constexpr uint32_t MAX_NINA_LOST_MINUTES = 60;
+        static constexpr uint32_t MIN_STOP_HOLD_MINUTES = 2;
+        static constexpr uint32_t MAX_STOP_HOLD_MINUTES = 60;
     };
 } // namespace SQM

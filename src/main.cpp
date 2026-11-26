@@ -361,7 +361,7 @@ void startServices()
     webServer->setDiagnostics(&diagnostics);
     // Spec 008: the automatic close's phase in the status and the MQTT document.
     webServer->setClosePhase([]() { return CloseSeq::phaseName(closeOnUnsafe.phase()); });
-    webServer->setCloseHold([]() { return closeOnUnsafe.standDownSeconds(); }, []() { return closeOnUnsafe.requestRelease(); });
+    webServer->setCloseHold([]() { return closeOnUnsafe.standDown(); }, []() { return closeOnUnsafe.requestRelease(); });
     webServer->setWeatherHold([]() { return closeOnUnsafe.weatherHoldStatus(); }); // spec 030
     webServer->setDaylight([]() { return closeOnUnsafe.daylightStatus(); });
     // Spec 015: the wizard's Test reads the inputs as the main loop last saw them.

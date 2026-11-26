@@ -43,7 +43,7 @@ flowchart TB
 <!-- diagram: DIA-14
 sources: .specify/memory/constitution.md .claude/skills/
 blocking: false
-fingerprint: bb4b1fdfd0f6d03a
+fingerprint: 36c9d725ebdeb79c
 -->
 <figure class="diagram" markdown>
 

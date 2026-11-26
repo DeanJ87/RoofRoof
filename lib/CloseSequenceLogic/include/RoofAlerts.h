@@ -33,6 +33,13 @@ namespace SQM
         // Spec 027: an Open or Close that waited for the park and gave up
         // (RoofIo::ParkWait): "mount not parked", with its text.
         Alerts::Alert parkWaitAlert(const std::string &why);
+        // Spec 044: a person's stop lapsed (Event::HoldLapsed) and the close goes
+        // ahead: "Hold lapsed: closing because it's still raining". The roof is
+        // about to move by itself after a person stopped it, so it goes out as
+        // the roof-not-closed event (critical: past the pause, never below
+        // Urgent), as a report that stays queued until a channel takes it.
+        // `weather` is the verdict's text.
+        Alerts::Alert holdLapsedAlert(const Decision &decision, const std::string &weather);
         // Spec 039: a person's Open or Close set the park check aside
         // (RoofIo::parkOverrideText): an information alert at the normal level.
         Alerts::Alert parkOverrideAlert(const std::string &text);

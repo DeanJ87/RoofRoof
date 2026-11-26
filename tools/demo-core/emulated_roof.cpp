@@ -412,6 +412,7 @@ namespace DemoRoof
         holdWeather(in);                                      // spec 030
         watchNina(in);                                        // spec 030
         in.releaseHold = releaseWanted;                       // spec 026
+        in.raining = CloseSeq::rainForLapse(verdict.reasons); // spec 044
         releaseWanted = false;
         sequence.setParkTimeoutMs(parkCfg.timeoutSeconds * 1000);
         sequence.setPolicy(policy);
@@ -474,6 +475,11 @@ namespace DemoRoof
     // A critical event goes to the alert sink once per episode (decision.alert).
     void EmulatedRoof::report(const CloseSeq::Decision &given, const CloseSeq::Reasons &reasons)
     {
+        if (given.event == CloseSeq::Event::HoldLapsed) // spec 044 (CloseOnUnsafe::report)
+        {
+            critical.push_back(CloseSeq::holdLapsedAlert(given, Safety::describe(verdict)));
+            return;
+        }
         if (!CloseSeq::isCritical(given.event) || !given.alert)
             return;
         CloseSeq::Decision decision = given;

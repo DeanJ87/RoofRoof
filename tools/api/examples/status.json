@@ -212,6 +212,7 @@
       "closes": false
     },
     "closeRearmSeconds": null,
+    "closeRearmLapse": false,
     "weatherHold": {
       "countedSeconds": 0,
       "leftSeconds": -1,
