@@ -31,7 +31,9 @@ namespace SQM
             for (const char *prefix : {"/api/v1", "/management", "/setup", "/api/update"})
                 if (under(path, prefix))
                     return true;
-            return isPost && startsWith(path, "/api/roof/");
+            // Fix 041: a person's restart too (a few bytes each way), so a
+            // short or stuck heap never locks them out of the one way back.
+            return isPost && (startsWith(path, "/api/roof/") || under(path, "/api/restart"));
         }
 
         bool admit(const char *path, bool isPost, uint32_t largestBlock, uint32_t freeHeap)

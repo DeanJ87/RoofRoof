@@ -63,7 +63,8 @@ namespace SQM
                 doc["reason"] = outcome.reason;
                 doc["error"] = outcome.text;
             }
-            WebReply::sendJson(request, !outcome.accepted ? 409 : (outcome.pending ? 202 : 200), doc);
+            // Fix 041: from the stack, so a person's Close, Stop or clear-fault is answered on a short heap.
+            WebReply::sendSmallJson(request, !outcome.accepted ? 409 : (outcome.pending ? 202 : 200), doc);
         }
     } // namespace
 

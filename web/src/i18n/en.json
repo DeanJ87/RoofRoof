@@ -231,6 +231,7 @@
   "device.api.theBackupCouldnTBeMade": "The backup couldn't be made",
   "device.api.theBodyMustBeJsonAt": "The body must be JSON, at most 512 bytes: {\"url\"}, a string",
   "device.api.theBodyMustBeJsonAt2": "The body must be JSON, at most 512 bytes: {\"url\", \"username\", \"password\"}, each a string",
+  "device.api.theDeviceIsShortOfMemory": "The device is short of memory: nothing was saved, try again",
   "device.api.theRoofIsMovingStopIt": "The roof is moving: stop it first, then try again",
   "device.api.titleIsUpTo80Characters": "Title is up to 80 characters and message up to 240",
   "device.api.typeTheMqttPasswordToTest": "Type the MQTT password to test a broker other than the saved one",

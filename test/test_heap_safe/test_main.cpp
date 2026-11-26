@@ -13,6 +13,7 @@
 #include "ChunkText.h"
 #include "HeapGuard.h"
 #include "JsonStream.h"
+#include "ReplyLedger.h"
 
 using namespace SQM::HeapSafe;
 
@@ -286,6 +287,11 @@ void test_alpaca_roof_commands_and_uploads_are_essential()
     TEST_ASSERT_TRUE(essential("/api/roof/close", true));
     TEST_ASSERT_TRUE(essential("/api/update", true));
     TEST_ASSERT_TRUE(essential("/api/update/fs", true));
+    // Fix 041: a person is never locked out of a restart, a fault clear or a close.
+    TEST_ASSERT_TRUE(essential("/api/restart", true));
+    TEST_ASSERT_TRUE(essential("/api/roof/clear-fault", true));
+    TEST_ASSERT_TRUE(admit("/api/restart", true, 0, 0));
+    TEST_ASSERT_TRUE(replySlotFree("/api/restart", true, 99));
 }
 
 void test_pages_and_reads_are_not_essential()
@@ -302,6 +308,8 @@ void test_pages_and_reads_are_not_essential()
     TEST_ASSERT_FALSE(essential("/setupx", false));
     TEST_ASSERT_FALSE(essential("/api/v10", false));
     TEST_ASSERT_FALSE(essential("/api/updates", true));
+    TEST_ASSERT_FALSE(essential("/api/restart", false));
+    TEST_ASSERT_FALSE(essential("/api/restartx", true));
     TEST_ASSERT_FALSE(essential(nullptr, false));
 }
 
@@ -349,6 +357,46 @@ void test_api_replies_in_flight_are_capped_but_not_essential_ones()
     TEST_ASSERT_TRUE(replySlotFree("/apiary", false, 9));
 }
 
+// Fix 041 (F35): replies whose connection stopped moving held the cap shut;
+// after ReplyLedger::STALE_MS they no longer count, and a person gets in.
+void test_stuck_replies_stop_holding_the_cap()
+{
+    ReplyLedger ledger;
+    const size_t a = ledger.open(1000);
+    const size_t b = ledger.open(1200);
+    TEST_ASSERT_NOT_EQUAL(ReplyLedger::NO_SLOT, a);
+    TEST_ASSERT_NOT_EQUAL(ReplyLedger::NO_SLOT, b);
+    TEST_ASSERT_EQUAL_UINT32(2, ledger.sending(1500));
+    TEST_ASSERT_FALSE(replySlotFree("/api/status", false, ledger.sending(1500)));
+    // Never closed (the network changed under them): held until they are stale.
+    TEST_ASSERT_FALSE(replySlotFree("/api/status", false, ledger.sending(1000 + ReplyLedger::STALE_MS - 1)));
+    TEST_ASSERT_EQUAL_UINT32(1, ledger.sending(1000 + ReplyLedger::STALE_MS));
+    TEST_ASSERT_EQUAL_UINT32(1, ledger.stale(1000 + ReplyLedger::STALE_MS));
+    TEST_ASSERT_TRUE(replySlotFree("/api/status", false, ledger.sending(1000 + ReplyLedger::STALE_MS)));
+    TEST_ASSERT_EQUAL_UINT32(0, ledger.sending(5U * 60U * 1000U)); // five minutes on: nothing holds the cap
+    TEST_ASSERT_EQUAL_UINT32(2, ledger.stale(5U * 60U * 1000U));
+    // Closing frees the slot; a new reply counts again.
+    ledger.close(a);
+    ledger.close(b);
+    TEST_ASSERT_EQUAL_UINT32(0, ledger.stale(5U * 60U * 1000U));
+    ledger.open(300000);
+    TEST_ASSERT_EQUAL_UINT32(1, ledger.sending(300001));
+}
+
+void test_a_full_ledger_counts_no_more_and_wraps_the_clock()
+{
+    ReplyLedger ledger;
+    for (size_t i = 0; i < ReplyLedger::SLOTS; ++i)
+        TEST_ASSERT_EQUAL(i, ledger.open(0)); // 0 is a time too
+    TEST_ASSERT_EQUAL(ReplyLedger::NO_SLOT, ledger.open(5));
+    ledger.close(ReplyLedger::NO_SLOT); // nothing to do
+    TEST_ASSERT_EQUAL_UINT32(ReplyLedger::SLOTS, ledger.sending(5));
+    ReplyLedger wrap;
+    wrap.open(0xFFFFFF00U);
+    TEST_ASSERT_EQUAL_UINT32(1, wrap.sending(0x00000100U)); // 512 ms later, across the wrap
+    TEST_ASSERT_EQUAL_UINT32(0, wrap.sending(0xFFFFFF00U + ReplyLedger::STALE_MS));
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -371,5 +419,7 @@ int main(int, char **)
     RUN_TEST(test_frame_needs_its_length_plus_margin);
     RUN_TEST(test_a_connection_is_accepted_only_with_room_for_its_request);
     RUN_TEST(test_api_replies_in_flight_are_capped_but_not_essential_ones);
+    RUN_TEST(test_stuck_replies_stop_holding_the_cap);
+    RUN_TEST(test_a_full_ledger_counts_no_more_and_wraps_the_clock);
     return UNITY_END();
 }

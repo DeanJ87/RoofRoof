@@ -22,7 +22,8 @@ namespace SQM
 {
     namespace
     {
-        constexpr uint32_t BACKUP_JOB_STACK_BYTES = 8192;
+        // Fix 041: a preview parses and checks the whole settings (tools/firmware/stack_depth.py).
+        constexpr uint32_t BACKUP_JOB_STACK_BYTES = 10 * 1024;
         constexpr BaseType_t BACKUP_JOB_CORE = 1; // beside the loop task: core 0's idle task stays fed (research R3)
         constexpr uint32_t PREVIEW_TTL_MS = 10UL * 60UL * 1000UL;
         constexpr uint32_t RESTORE_RESTART_DELAY_MS = 2000;
@@ -115,13 +116,21 @@ namespace SQM
             request->send(409, "application/json", createErrorJson(RoofIo::holdText(write.refused())).c_str());
             return false;
         }
+        bool ran = false;
         bool edited = false;
         const bool saved = updateConfigCallback(
             [&](const Config &live, Config &next)
             {
+                ran = true;
                 edited = edit(live, next);
                 return edited;
             });
+        if (!ran)
+        {
+            // Fix 041: the save task couldn't be started (memory short).
+            request->send(503, "application/json", createErrorJson("The device is short of memory: nothing was saved, try again").c_str());
+            return false;
+        }
         if (!edited)
             return false; // the caller answers
         if (!saved)
