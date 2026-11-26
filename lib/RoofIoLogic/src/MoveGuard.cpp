@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include "RoofText.h"
+
 namespace SQM
 {
     namespace RoofIo
@@ -36,17 +38,21 @@ namespace SQM
             return Admission{Admit::Wait, "", parkWaitText(command)};
         }
 
-        void MoveGuard::ran(Roof::Command command, uint8_t overrides, const GateInputs &gates)
+        void MoveGuard::ran(Roof::Command command, Roof::Origin origin, uint8_t overrides, const GateInputs &gates)
         {
+            const uint8_t allowed = allowedOverrides(command, origin, overrides);
             if (command == Roof::Command::Open)
             {
-                openBits = static_cast<uint8_t>(overrides & overridableNow(Roof::Command::Open, gates));
+                openBits =
+                    static_cast<uint8_t>(allowed & overridableNow(Roof::Command::Open, gates) & (OverrideWeather | OverrideDaylight));
+                openPark = (allowed & OverridePark) != 0; // spec 039
                 closeBits = 0;
             }
             else if (command == Roof::Command::Close)
             {
                 openBits = 0;
-                closeBits = static_cast<uint8_t>(overrides & (OverridePark | OverrideNinaLost)); // spec 030: N.I.N.A. lost
+                openPark = false;
+                closeBits = static_cast<uint8_t>(allowed & (OverridePark | OverrideNinaLost)); // spec 030: N.I.N.A. lost
             }
         }
 
@@ -68,6 +74,9 @@ namespace SQM
             openBits = status.state == Roof::State::Closed ? 0 : overrideStillApplies(openBits, gates);
             if (closeBits != 0 && status.state != Roof::State::Closing && !closePending)
                 closeBits = 0;
+            // Spec 039: for that one open only; it ends with the open (stopped, reached, reversed).
+            if (openPark && status.state != Roof::State::Opening)
+                openPark = false;
             if (!parkWait.waiting())
                 return out;
             if (!waitCheck.accepted)
@@ -93,7 +102,7 @@ namespace SQM
             JsonVariantConst list = doc["override"];
             if (!read || (!list.isNull() && !list.is<JsonArrayConst>()))
             {
-                error = "The body must be JSON: {\"override\": [\"weatherNotSafe\", \"daylight\"]} or {\"override\": [\"mountNotParked\"]}";
+                error = "The body must be JSON: {\"override\": [\"weatherNotSafe\", \"daylight\", \"mountNotParked\"]}";
                 return false;
             }
             for (JsonVariantConst name : list.as<JsonArrayConst>())
@@ -101,7 +110,7 @@ namespace SQM
                 const uint8_t bit = name.is<const char *>() ? overrideBit(name.as<const char *>()) : 0;
                 if (bit == 0)
                 {
-                    error = "Only mountNotParked (Close), weatherNotSafe and daylight (Open) can be overridden";
+                    error = "Only mountNotParked (Open or Close), weatherNotSafe and daylight (Open) can be overridden";
                     return false;
                 }
                 bits = static_cast<uint8_t>(bits | bit);
@@ -113,6 +122,14 @@ namespace SQM
         {
             return std::string("Waiting for the mount to park: N.I.N.A. was asked; the ") + commandWord(command) +
                    " runs once the park holds";
+        }
+
+        std::string parkOverrideText(Roof::Command command, const GateInputs &gates)
+        {
+            const std::string why =
+                parkHolds(gates) ? std::string("the park was confirmed") : describeGate(GateRefusal::MountNotParked, gates);
+            return std::string(commandWord(command)) + " with the park check set aside by a person (" + why +
+                   "): the roof passes over the telescope, watch it";
         }
 
         const char *overrideName(uint8_t bit)

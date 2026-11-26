@@ -18,19 +18,27 @@ describe('movePlan', () => {
     expect(movePlan(roof({ state: 'open' }), 'close', ctx)).toBeNull();
   });
 
-  it('only the park blocks an Open: it goes, and the device asks N.I.N.A. to park first', () => {
-    expect(movePlan(roof({ parkConfirmed: false }), 'open', ctx)).toBeNull();
+  it('only the park blocks an Open: the dialog may wait for it or open anyway (spec 039)', () => {
+    const plan = movePlan(roof({ parkConfirmed: false, openOverridable: ['mountNotParked'] }), 'open', ctx)!;
+    expect(plan.override).toEqual(['mountNotParked']);
+    expect(plan.parkOnly).toBe(true);
+    // A device that doesn't offer the park: nothing to override.
+    expect(movePlan(roof({ parkConfirmed: false, openOverridable: [] }), 'open', ctx)!.override).toBeNull();
   });
 
-  it('daylight and cloud a person may override: Open anyway names them, never the park', () => {
+  it('daylight, cloud and the park a person may override: Open anyway names each (spec 039: the park too)', () => {
     const plan = movePlan(
-      roof({ ...cloud, daylight, parkConfirmed: false, openOverridable: ['weatherNotSafe', 'daylight', 'mountNotParked'] }),
+      roof({ ...cloud, daylight, parkConfirmed: false, openOverridable: ['mountNotParked', 'weatherNotSafe', 'daylight'] }),
       'open',
       ctx,
     )!;
     expect(plan.reasons.map((b) => b.id)).toEqual(['weather', 'daylight', 'park']);
-    expect(plan.override).toEqual(['weatherNotSafe', 'daylight']);
+    expect(plan.override).toEqual(['mountNotParked', 'weatherNotSafe', 'daylight']);
     expect(plan.park).toBe(true);
+    expect(plan.parkOnly).toBe(false);
+    // Only what is in the way is named.
+    const day = movePlan(roof({ daylight, openOverridable: ['weatherNotSafe', 'daylight'] }), 'open', ctx)!;
+    expect(day.override).toEqual(['daylight']);
   });
 
   it('rain, a lost source or the supply: every reason listed, no override', () => {

@@ -106,6 +106,17 @@ namespace SQM
             return alert;
         }
 
+        Alerts::Alert parkOverrideAlert(const std::string &text)
+        {
+            Alerts::Alert alert;
+            alert.type = Alerts::AlertType::CheckOverridden;
+            alert.level = Alerts::AlertLevel::Normal;
+            alert.title = "Park check overridden";
+            alert.message = text + ".";
+            alert.vars = {{"reason", text}, {"details", alert.message}};
+            return alert;
+        }
+
         bool closedAfterAttempt(Phase before, Event event)
         {
             // A person closing the roof after a stop or a halted close counts

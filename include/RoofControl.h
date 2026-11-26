@@ -81,6 +81,9 @@ namespace SQM
         bool takeParkRequest() { return parkRequestWanted.exchange(false); }
         // Main loop, spec 027: a wait gave up; its text for the critical alert.
         bool takeWaitAlert(std::string &text);
+        // Main loop, spec 039: a person's Open or Close set the park aside; its
+        // text for the information alert (once per override).
+        bool takeOverrideAlert(std::string &text);
         // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
         // if a person has stopped the roof since the snapshot that showed
         // `personStopsSeen`, checked under the same lock as the command, so
@@ -267,6 +270,8 @@ namespace SQM
         Outcome runLocked(Roof::Command command, Roof::Origin origin);
         Outcome precheck(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0) const;
         RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0, bool parkAside = false) const;
+        std::string parkOverrideNow(Roof::Command command, Roof::Origin origin, uint8_t overrides) const; // spec 039
+        std::string noteParkOverride(const std::string &text);
         Outcome admitLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides, const RoofIo::Blockers &now);
         void stepGuard(const RoofIo::GateInputs &now);
         RoofIo::CommandCheck checkWait() const;
@@ -312,6 +317,7 @@ namespace SQM
         uint8_t closeOverrides = 0; // spec 027: a person's confirmed close, deferred
         RoofIo::MoveGuard guard;    // spec 027: the wait for the park and the overrides in effect
         std::string waitAlertText;  // a wait that gave up, for the main loop's alert
+        std::string overrideText;   // spec 039: a person's park override, for the main loop's alert
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
@@ -359,7 +365,8 @@ namespace SQM
         std::atomic<bool> closeWaitingNow{false};
         std::atomic<bool> parkRequestWanted{false}; // spec 027
         std::atomic<bool> waitAlertWanted{false};
-        std::atomic<bool> calibratingNow{false}; // spec 016: calibration.active(), for moving()
+        std::atomic<bool> overrideAlertWanted{false}; // spec 039
+        std::atomic<bool> calibratingNow{false};      // spec 016: calibration.active(), for moving()
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;
         // Spec 017: set with the log; the control task times its steps while set.

@@ -73,8 +73,11 @@ namespace SQM
             // called off (a close always wins); a waiting Close carries on.
             void closeWins();
             // The command ran and was accepted: its overrides take effect (an
-            // Open's weather and daylight, a Close's park), as `gates` show now.
-            void ran(Roof::Command command, uint8_t overrides, const GateInputs &gates);
+            // Open's weather, daylight and, spec 039, park; a Close's park), as
+            // `gates` show now. Spec 039: only what `origin` may set
+            // (allowedOverrides), so no client, MQTT or automatic move ever
+            // carries a person's override, whatever the caller hands over.
+            void ran(Roof::Command command, Roof::Origin origin, uint8_t overrides, const GateInputs &gates);
             // Any accepted stop or abort.
             void stopped();
             // One control step. `waitCheck`: the waiting command's check with
@@ -89,6 +92,14 @@ namespace SQM
             uint8_t openOverride() const { return openBits; }
             // A person's confirmed close is under way: no park re-check.
             bool closeParkOverride() const { return (closeBits & OverridePark) != 0; }
+            // Spec 039: a person's confirmed open past the park is under way: no
+            // park re-check while it opens (the weather's and every fault's still apply).
+            bool openParkOverride() const { return openPark; }
+            // The overrides in effect, for the status (OverrideBit).
+            uint8_t inEffect() const
+            {
+                return static_cast<uint8_t>(openBits | ((closeBits & OverridePark) != 0 || openPark ? OverridePark : 0));
+            }
             // Spec 030: the automatic close's N.I.N.A.-lost close is under way:
             // the park re-check looks at the fitted switches only.
             bool closeNinaLost() const { return (closeBits & OverrideNinaLost) != 0; }
@@ -96,12 +107,14 @@ namespace SQM
         private:
             MoveGuardSettings settings;
             ParkWait parkWait;
-            uint8_t openBits = 0;
+            uint8_t openBits = 0;  // OverrideWeather, OverrideDaylight
             uint8_t closeBits = 0; // OverridePark, OverrideNinaLost
+            bool openPark = false; // spec 039: the open under way has the park set aside
         };
 
         // Spec 027: the body of POST /api/roof/open or /close: none, or
-        // {"override": ["weatherNotSafe", "daylight"]} (or ["mountNotParked"]).
+        // {"override": ["weatherNotSafe", "daylight", "mountNotParked"]} (Close:
+        // ["mountNotParked"]; spec 039: an Open may name the park too).
         // False, with `error`, for a body that isn't that shape or names
         // something that can't be overridden.
         bool parseOverrides(const std::string &body, uint8_t &bits, std::string &error);
@@ -110,5 +123,9 @@ namespace SQM
         std::string parkWaitText(Roof::Command command);
         // The override names in effect, for the status ("weatherNotSafe", "daylight", "mountNotParked").
         const char *overrideName(uint8_t bit);
+        // Spec 039: the log line and alert text when a person's Open or Close
+        // sets the park aside: "Open with the park check set aside by a person
+        // (Mount not parked: ...): watch the telescope".
+        std::string parkOverrideText(Roof::Command command, const GateInputs &gates);
     } // namespace RoofIo
 } // namespace SQM

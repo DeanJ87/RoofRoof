@@ -8,7 +8,8 @@ import { t } from '../i18n';
 
 // Spec 027 (FR-011): a press of a blocked Open or Close. The wizard's modal dialog (DS-11) with the
 // Stop bar inside it, every reason in the blockers' words, and the override only when every reason
-// may be overridden (danger: the person takes the risk). Cancel after a Close that was sent ends it.
+// may be overridden (danger: the person takes the risk). Cancel after a move that was sent ends it.
+// Spec 039: an Open past the park warns that the roof passes over the telescope.
 // Opened from a card, so it renders at the body (a card's transform would hold a fixed dialog) and
 // makes the page behind it inert, as Layout does for the wizard.
 
@@ -34,7 +35,8 @@ const AtBody: FunctionalComponent<{ dialog: VNode }> = ({ dialog }) => {
 
 const whyKey = (plan: MovePlan) => {
   if (!plan.override) return 'move.dialog.hardWhy';
-  return plan.action === 'open' ? 'move.dialog.openWhy' : 'move.dialog.closeWhy';
+  if (plan.action === 'close') return 'move.dialog.closeWhy';
+  return plan.park ? 'move.dialog.openParkWhy' : 'move.dialog.openWhy';
 };
 
 const Dialog: FunctionalComponent<{
@@ -55,7 +57,7 @@ const Dialog: FunctionalComponent<{
           {t(open ? 'move.dialog.openAnyway' : 'move.dialog.closeAnyway')}
         </Button>
       )}
-      {plan.override && !open && (
+      {plan.override && plan.parkOnly && (
         <Button variant="primary" onClick={onWait}>
           {t('move.dialog.wait')}
         </Button>
@@ -71,8 +73,7 @@ const Dialog: FunctionalComponent<{
         {t('move.dialog.title', { count: plan.reasons.length, action })}
       </h2>
       <MoveBlockers blockers={plan.reasons} />
-      {plan.override && !open && <Note tone="bad">{t('move.dialog.parkRisk')}</Note>}
-      {plan.override && open && plan.park && <Note tone="warn">{t('move.dialog.parkFirst')}</Note>}
+      {plan.override && plan.park && <Note tone="bad">{t(open ? 'move.dialog.openParkRisk' : 'move.dialog.parkRisk')}</Note>}
     </Modal>
   );
 };

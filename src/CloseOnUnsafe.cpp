@@ -337,6 +337,11 @@ namespace SQM
         send(CloseSeq::parkWaitAlert(text), false); // a person's command gave up: sent until a channel takes it
     }
 
+    void CloseOnUnsafe::parkOverridden(const std::string &text)
+    {
+        send(CloseSeq::parkOverrideAlert(text), false); // it happened, whatever the roof does next
+    }
+
     // Spec 030: through the alert outbox, sent again until a channel takes it.
     void CloseOnUnsafe::send(const Alerts::Alert &alert, bool resolvable)
     {

@@ -74,7 +74,7 @@ The **Roof** card shows the roof as its control task sees it, live:
 
 **The move dialog.** When Open or Close would be refused, pressing it opens a dialog that lists every reason, each with its text:
 
-- **Open** with only daylight and the weather SQMeter alone calls unsafe (not rain) in the way offers **Open anyway**. It confirms each reason for this one opening, and the card then says the checks are overridden while it lasts. If any reason can't be overridden (rain, a weather source in doubt, an unparked mount, a fault, the supply), the dialog lists them all and offers no override.
+- **Open** with only daylight, the weather SQMeter alone calls unsafe (not rain) and the park in the way offers **Open anyway**. It confirms each reason for this one opening, and the card then says the checks are overridden while it lasts. With the park among them the dialog warns in red that the roof passes over the telescope: check the camera first. An Open blocked only by the park goes at once and waits for the park, with **Wait for the park** and **Open anyway** (spec 039). If any reason can't be overridden (rain, a weather source in doubt, a fault, the supply), the dialog lists them all and offers no override.
 - **Close** with the park not confirmed first asks N.I.N.A. to park when it can, and says the mount isn't confirmed parked and the roof could hit the telescope. **Close anyway** closes once without the park check; the next Close checks again.
 
 An override is a person's, with the password: Alpaca, MQTT and Home Assistant never have one ([A person's confirmed open](close-on-unsafe.md#a-persons-confirmed-open)).

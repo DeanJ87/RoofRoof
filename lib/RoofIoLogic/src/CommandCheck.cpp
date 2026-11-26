@@ -85,8 +85,9 @@ namespace SQM
                 return command == Roof::Command::Close ? static_cast<uint8_t>(requested & OverrideNinaLost) : 0;
             if (origin != Roof::Origin::Person)
                 return 0;
+            // Spec 039 (constitution 10.0.0): a person's Open may set the park aside too.
             if (command == Roof::Command::Open)
-                return static_cast<uint8_t>(requested & (OverrideWeather | OverrideDaylight));
+                return static_cast<uint8_t>(requested & (OverrideWeather | OverrideDaylight | OverridePark));
             return command == Roof::Command::Close ? static_cast<uint8_t>(requested & OverridePark) : 0;
         }
 

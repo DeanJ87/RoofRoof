@@ -249,20 +249,33 @@ anyway** in the dialog the dashboard shows when the park isn't confirmed (REST: 
 `{"override": ["mountNotParked"]}`). The dialog says the mount isn't confirmed parked and the roof
 could hit the telescope. The device first asks N.I.N.A. to park when it can. That close runs without
 the park check at its start and without the re-check while it closes; the next Close checks the
-park again. Alpaca, MQTT, Home Assistant and the automatic close can never do this.
+park again. Alpaca, MQTT, Home Assistant and the automatic close can never do this. The close
+raises the information alert "Park check overridden".
 
 ### A person's confirmed open
 
-A person may open past two refusals, naming each: **daylight** (the daylight failsafe is on "Alert
-and close" and the sun is up) and **weather**, only while SQMeter itself says unsafe for anything
-but rain, as for thin cloud or wind. Rain or a failed rain sensor, any doubt about the weather
-source (missing, stale, unreachable, unreadable, offline), an unparked mount, a fault, an unknown
-position, a suspect park switch, the supply and a busy device can't be overridden. The dashboard's
-dialog lists every reason Open is refused and offers **Open anyway** only when each can be
-overridden; REST takes `{"override": ["weatherNotSafe", "daylight"]}`.
+A person may open past three refusals, naming each: **daylight** (the daylight failsafe is on "Alert
+and close" and the sun is up), **weather**, only while SQMeter itself says unsafe for anything
+but rain, as for thin cloud or wind, and (spec 039) **the park**: the mount not confirmed parked,
+for example when the camera shows it parked but N.I.N.A. doesn't say so. Rain or a failed rain
+sensor, any doubt about the weather source (missing, stale, unreachable, unreadable, offline), a
+fault, an unknown position, a suspect park switch, the supply and a busy device can't be
+overridden. The dashboard's dialog lists every reason Open is refused and offers **Open anyway**
+only when each can be overridden; REST takes `{"override": ["weatherNotSafe", "daylight",
+"mountNotParked"]}`.
 
-The override lasts until the roof reads closed, a Close is accepted, every reason confirmed has
-cleared, or a reason that wasn't confirmed appears (rain, a lost source, the park). Meanwhile
+**Past the park.** The roof passes over the telescope as it opens, so the dialog warns in red:
+look at the camera first. An Open blocked only by the park is sent at once, as a Close is: the
+device asks N.I.N.A. to park and opens once it is parked; **Wait for the park** leaves it waiting,
+**Open anyway** opens now, and **Cancel** stops the wait. An open past the park runs without the
+park check at its start and without the park interlock while it opens: it is that one open's, and
+the next one checks again. Everything else still stops it: the weather (unless that was
+overridden too), daylight (likewise), a fault, Stop. The override is written to the log and sent
+as an information alert, "Park check overridden" (it goes out like any ordinary alert: the pause
+and the master switch hold it). The same alert follows a confirmed close past the park.
+
+The weather and daylight override lasts until the roof reads closed, a Close is accepted, every reason confirmed has
+cleared, or a reason that wasn't confirmed appears (rain, a lost source). Meanwhile
 those reasons neither stop the opening roof nor start the automatic close; anything else does, and
 the roof can stand open in cloud or in daylight with the automatic close standing back for them.
 The override is shown on the dashboard and in the status (`roof.override`) while it is in effect.

@@ -267,10 +267,18 @@ void test_rules_follow_the_roof_levels()
     for (size_t i = 0; i < Alerts::ALERT_TYPE_COUNT; ++i)
     {
         const Alerts::AlertType type = static_cast<Alerts::AlertType>(i);
-        if (type == Alerts::AlertType::AlertsOn || type == Alerts::AlertType::Test)
+        // Spec 039: the park override's information alert has no setting of its own.
+        if (type == Alerts::AlertType::AlertsOn || type == Alerts::AlertType::Test || type == Alerts::AlertType::CheckOverridden)
             continue;
         TEST_ASSERT_NOT_NULL_MESSAGE(Core::eventSettingFor(cfg.alerts, type), Alerts::alertTypeName(type));
     }
+}
+
+// Spec 039: the park override's information alert goes out at Normal with no setting of its own.
+void test_the_override_alert_has_no_setting()
+{
+    const Config cfg = Config::createDefault();
+    TEST_ASSERT_NULL(Core::eventSettingFor(cfg.alerts, Alerts::AlertType::CheckOverridden));
 }
 
 void test_engine_roof_alerts_get_their_settings()
@@ -432,6 +440,7 @@ int main(int, char **)
     RUN_TEST(test_critical_custom_wording_keeps_the_reason);
     RUN_TEST(test_critical_reminder_title_keeps_still);
     RUN_TEST(test_rules_follow_the_roof_levels);
+    RUN_TEST(test_the_override_alert_has_no_setting);
     RUN_TEST(test_engine_roof_alerts_get_their_settings);
     RUN_TEST(test_samples_for_every_roof_event);
     RUN_TEST(test_stored_critical_setting_is_raised_not_dropped);

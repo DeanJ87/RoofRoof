@@ -214,13 +214,13 @@ namespace SQM
             closePending = true;
             closeOrigin = origin;
             closeOverrides = overrides;
-            guard.ran(command, overrides, currentGates()); // spec 027: a confirmed close keeps its override while it waits
+            guard.ran(command, origin, overrides, currentGates()); // spec 027: a confirmed close keeps its override while it waits
             refreshSnapshot();
             return Outcome{true, "", std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now), state, true};
         }
         const Outcome outcome = runLocked(command, origin);
         if (outcome.accepted)
-            guard.ran(command, RoofIo::allowedOverrides(command, origin, overrides), currentGates()); // spec 027
+            guard.ran(command, origin, overrides, currentGates()); // spec 027; spec 039: filtered by origin
         if (command == Roof::Command::Open && outcome.accepted)
         {
             closePending = false; // an open that runs replaces a waiting close
@@ -234,6 +234,7 @@ namespace SQM
         if (lock == nullptr || !started.load())
             return notStarted();
         Outcome outcome;
+        std::string overrode; // spec 039: a person's park override, logged after the lock
         {
             RoofLocked held(lock);
             // Probed under the lock (spec 010 FR-001): a platform action
@@ -242,14 +243,39 @@ namespace SQM
             const bool stopping = command == Roof::Command::Stop || command == Roof::Command::Abort;
             const RoofIo::Blockers now = blockers && !stopping ? blockers() : RoofIo::Blockers();
             const bool move = command == Roof::Command::Open || command == Roof::Command::Close;
+            const std::string parkText = parkOverrideNow(command, origin, overrides); // spec 039
             outcome = move && origin != Roof::Origin::Automatic ? admitLocked(command, origin, overrides, now)
                                                                 : commandLocked(command, origin, now);
+            if (!parkText.empty() && outcome.accepted)
+                overrode = noteParkOverride(parkText);
         }
+        if (!overrode.empty())
+            Logger::warn(TAG, "%s", overrode.c_str()); // spec 039: outside the lock
         if (!outcome.accepted)
             Logger::warn(TAG, "Command refused: %s", outcome.text.c_str());
         else if (outcome.pending)
             Logger::info(TAG, "%s", outcome.text.c_str());
         return outcome;
+    }
+
+    // Under the lock, spec 039: a person's Open or Close sets the park aside
+    // for a move that will happen (the park doesn't hold, the roof isn't
+    // there yet): the text for the log and the alert, "" otherwise.
+    std::string RoofControl::parkOverrideNow(Roof::Command command, Roof::Origin origin, uint8_t overrides) const
+    {
+        const bool move = command == Roof::Command::Open || command == Roof::Command::Close;
+        if (!move || origin != Roof::Origin::Person || (overrides & RoofIo::OverridePark) == 0 || controller.atEnd(command))
+            return std::string();
+        const RoofIo::GateInputs now = currentGates();
+        return RoofIo::parkHolds(now) ? std::string() : RoofIo::parkOverrideText(command, now);
+    }
+
+    // Under the lock, spec 039: the accepted override for the main loop's alert.
+    std::string RoofControl::noteParkOverride(const std::string &text)
+    {
+        overrideText = text;
+        overrideAlertWanted.store(true);
+        return text;
     }
 
     RoofControl::Outcome RoofControl::clearFault(Roof::Origin origin)

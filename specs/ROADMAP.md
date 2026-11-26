@@ -480,6 +480,19 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** WiFi driver buffer counts, TLS settings, compiling IPv6 out, the web server
   library's allocations, UI changes.
 
+### 039 A person may open past the park (base: main after 038)
+
+- **Scope:**
+  - Constitution 10.0.0: who may set a check aside (a person, warned and confirming; never an
+    automation); a person's confirmed open past the park.
+  - The park override for one Open, kept through it so the park interlock doesn't stop it; logged
+    and alerted (`check_overridden`); every override filtered by origin where it is kept.
+  - The move dialog's red warning, **Open anyway** with the park, **Wait for the park** for a
+    park-only Open.
+  - The override audit table (spec.md) and F31's end-to-end test.
+- **Out of scope:** the follow-ups F-1 to F-6 in spec.md (rain, jog toward open, calibration run,
+  the suspect switch, the supply, `autoClose.remoteStop`).
+
 ## Merge order
 
 ```text
