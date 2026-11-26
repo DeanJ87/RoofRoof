@@ -5,7 +5,7 @@
 #include <ctime>
 #include <esp_heap_caps.h>
 
-#include "ConnectionBudget.h"
+#include "NetworkReturn.h"
 #include "DeviceCore.h"
 #include "HeapGuard.h"
 #include "KeptAlert.h"
@@ -88,14 +88,19 @@ namespace SQM
     void AlertOutbox::handle(bool networkUp, const CloseSeq::AlertQueue::Send &send, const CloseSeq::AlertQueue::Probe &probe)
     {
         const uint32_t now = millis();
-        if (stepped && now - lastStepMs < STEP_EVERY_MS)
+        // Spec 048: one step a second, one every 5 s for a minute after the
+        // link comes back (each step sends at most one alert). Not after
+        // requests come back on a kept link: that can be nothing more than a
+        // page opened after a quiet spell, and the alerts' MQTT channel waits
+        // for its own reconnect then anyway.
+        const uint32_t sinceReturn = NetState::sinceLinkUp();
+        if (stepped && now - lastStepMs < ConnectionBudget::alertGapMs(networkUp, sinceReturn))
             return;
         stepped = true;
         lastStepMs = now;
-        // Spec 038: queued alerts wait a few seconds after the network comes
-        // back, behind MQTT's reconnect, so their TLS sessions don't land in
-        // the same moment.
-        if (networkUp && !NetState::settledFor(ConnectionBudget::ALERT_SETTLE_MS))
+        // Spec 038/048: queued alerts wait after the network comes back,
+        // behind MQTT's reconnect, so their sends don't land in the same moment.
+        if (!ConnectionBudget::alertsMayGo(networkUp, sinceReturn))
             return;
         // Spec 035: a send on a heap too short for it would abort the device
         // (no exceptions); the alert waits for the next step instead.

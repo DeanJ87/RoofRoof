@@ -1,6 +1,7 @@
 #include "Ipv6Network.h"
 
 #include "HeapGuard.h"
+#include "InboundGate.h"
 #include "Logger.h"
 #include "NothrowNew.h"
 #include "NetAddress.h"
@@ -67,21 +68,34 @@ namespace SQM
                     // Spec 037: with almost no memory left, even the request's
                     // own bookkeeping can't be had: refuse the connection
                     // (the client retries) instead of failing inside the library.
-                    if (!HeapSafe::acceptFits(static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT))))
+                    const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+                    if (!HeapSafe::acceptFits(largest))
                     {
                         client->abort();
                         delete client;
                         return;
                     }
+                    // Spec 048: past the connections allowed now (fewer just
+                    // after a network return), a fixed 503 and closed.
+                    if (!InboundGate::admit(client, largest))
+                        return;
                     // As AsyncWebServer does for its own listener. Its
                     // new (std::nothrow) returns nullptr when memory runs out
                     // (lib/HeapSafe NothrowNew), handled here.
                     client->setRxTimeout(3);
-                    if (!HeapSafe::NOTHROW_NEW_REPLACED || !AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client))
+                    std::shared_ptr<AsyncWebServerRequest> request;
+                    if (HeapSafe::NOTHROW_NEW_REPLACED)
+                        request = AsyncWebServerRequest::create(static_cast<AsyncWebServer *>(arg), client);
+                    if (!request)
                     {
                         client->abort();
                         delete client;
+                        return;
                     }
+                    // Counted while the request lives (spec 048). An upload
+                    // sets its own handler, which ends the count: it runs for
+                    // minutes, past what the gate counts anyway.
+                    request->onDisconnect([ticket = InboundGate::Ticket()]() { (void)ticket; });
                 },
                 &server);
             listener->begin();

@@ -7,6 +7,7 @@
 #include "HeapReserve.h"
 #include "HeapGuard.h"
 #include "Logger.h"
+#include "NetState.h"
 #include "ReplyLedger.h"
 #include <AsyncWebSocket.h>
 #include <ESPAsyncWebServer.h>
@@ -227,8 +228,11 @@ namespace SQM
                 [](AsyncWebServerRequest *request, ArMiddlewareNext next)
                 {
                     const uint32_t freeHeap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+                    // Spec 048: one built reply at a time in a network return's window.
+                    const uint32_t limit = ConnectionBudget::repliesAllowed(
+                        NetState::phase() == ConnectionBudget::ReturnPhase::Window, HeapSafe::MAX_REPLIES_IN_FLIGHT);
                     if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, guardBlock(), freeHeap) &&
-                        HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesSending()))
+                        HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesSending(), limit))
                         next();
                     else
                         sendBusy(request);

@@ -67,15 +67,24 @@ namespace SQM
     }
 
     // Home Assistant discovery whenever the connection or the settings change.
+    // Spec 048: one config at a time (HaDiscovery::Pacer), and nothing again
+    // after a reconnect to a broker that kept this boot's set.
     void WebServer::publishDiscovery()
     {
         if (mqttClient == nullptr || !mqttClient->isConnected() || roofBusyForMqtt())
             return;
+        const uint32_t connection = mqttClient->connectionCount();
+        const uint32_t revision = configRevision.load();
+        if (connection != discoveryConnection || revision != discoveryRevision)
+            restartDiscovery(connection, revision);
+        stepDiscovery();
+    }
+
+    void WebServer::restartDiscovery(uint32_t connection, uint32_t revision)
+    {
         const Config &cfg = getConfigCallback();
         const MQTTConfig &mqtt = cfg.mqtt;
         const HaDiscovery::Groups groups = discoveryGroups(cfg);
-
-        // Rebuilt from scratch when anything it depends on changes.
         char mac[13];
         snprintf(mac, sizeof(mac), "%012llx", static_cast<unsigned long long>(ESP.getEfuseMac()));
         HaDiscovery::Device device{
@@ -85,30 +94,99 @@ namespace SQM
             mqtt.topic,
             mqtt.discoveryPrefix};
         const std::string key = discoveryKeyOf(mqtt.homeAssistant, device, groups);
-        if (key == discoveryKey && mqttClient->connectionCount() == discoveryConnection)
-            return;
+        const bool sameConnection = connection == discoveryConnection;
+        discoveryConnection = connection;
+        discoveryRevision = revision;
+        if (key == discoveryKey && sameConnection)
+            return; // a save that changed nothing discovery depends on
 
-        // Spec 031: each config streamed from the discovery pool; an empty payload removes.
-        auto publish = [this](const std::string &topic, const JsonDocument *config)
-        {
-            if (config != nullptr)
-                mqttClient->publishJson(topic, *config, true);
-            else
-                mqttClient->publishTopic(topic, std::string(), true);
-        };
         if (!discoveryKey.empty() && discoveryWasOn &&
             (!mqtt.homeAssistant || discoveryDevice.prefix != device.prefix || discoveryDevice.baseTopic != device.baseTopic))
         {
-            // Remove what was announced under the old settings.
-            HaDiscovery::forEach(discoveryDevice, groups, [&](const std::string &topic, const JsonDocument *) { publish(topic, nullptr); });
+            // Remove what was announced under the old settings (a person's
+            // save, not a return: at once, an empty retained payload each).
+            HaDiscovery::forEach(
+                discoveryDevice,
+                groups,
+                [this](const std::string &topic, const JsonDocument *) { mqttClient->publishTopic(topic, std::string(), true); });
         }
-        if (mqtt.homeAssistant)
-            HaDiscovery::forEach(device, groups, publish);
-
         discoveryKey = key;
-        discoveryConnection = mqttClient->connectionCount();
         discoveryDevice = device;
+        discoveryGroupsNow = groups;
         discoveryWasOn = mqtt.homeAssistant;
+        discoveryMarker = HaDiscovery::markerOf(key);
+        if (!mqtt.homeAssistant)
+        {
+            discoveryPacer = HaDiscovery::Pacer{};
+            return;
+        }
+        // The broker's marker is trusted only for a set this boot sent whole.
+        discoveryPacer.start(discoveryMarker, millis(), discoveryMarker == discoveryPublished);
+    }
+
+    void WebServer::stepDiscovery()
+    {
+        if (!discoveryPacer.running() || !mqttClient->mayWrite())
+            return;
+        // Spec 048: not into a heap a network return has already cut up.
+        const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        if (!ConnectionBudget::backgroundFits(largest, NetState::phase() != ConnectionBudget::ReturnPhase::Settled))
+            return;
+        const uint32_t now = millis();
+        const HaDiscovery::Pacer::Step step = discoveryPacer.next(now, HaDiscovery::count());
+        bool done = true;
+        switch (step.kind)
+        {
+        case HaDiscovery::Pacer::Kind::Entity:
+        {
+            // Spec 031: streamed from the document's pool; an empty payload removes.
+            DynamicJsonDocument doc(HaDiscovery::CONFIG_DOC_BYTES);
+            HaDiscovery::publishOne(
+                step.index,
+                discoveryDevice,
+                discoveryGroupsNow,
+                doc,
+                [this, &done](const std::string &topic, const JsonDocument *config)
+                {
+                    done = config != nullptr ? mqttClient->publishJson(topic, *config, true)
+                                             : mqttClient->publishTopic(topic, std::string(), true);
+                });
+            break;
+        }
+        case HaDiscovery::Pacer::Kind::Marker:
+        {
+            char text[HaDiscovery::MARKER_TEXT_BYTES];
+            HaDiscovery::markerText(discoveryMarker, text);
+            done = mqttClient->publishSubtopicBytes(HaDiscovery::MARKER_SUBTOPIC, text, sizeof(text) - 1, true);
+            if (done)
+            {
+                discoveryPublished = discoveryMarker;
+                NetState::noteDiscovery(ConnectionBudget::DiscoveryOutcome::Published);
+            }
+            break;
+        }
+        case HaDiscovery::Pacer::Kind::Skip:
+            Logger::info(TAG, "Home Assistant discovery: the broker kept it, nothing sent again");
+            NetState::noteDiscovery(ConnectionBudget::DiscoveryOutcome::Skipped);
+            break;
+        case HaDiscovery::Pacer::Kind::Wait:
+        case HaDiscovery::Pacer::Kind::Done:
+            break;
+        }
+        // A config that didn't go out is tried again after the gap.
+        if (done)
+            discoveryPacer.done(step, now);
+    }
+
+    // Spec 048: the broker's retained marker, handed to the pacer.
+    void WebServer::subscribeDiscoveryMarker()
+    {
+        if (mqttClient == nullptr)
+            return;
+        mqttClient->onCommand(
+            HaDiscovery::MARKER_SUBTOPIC,
+            [this](const std::string &payload, RoofIo::Mqtt::Delivery)
+            { discoveryPacer.markerSeen(HaDiscovery::parseMarker(payload.data(), payload.size())); });
     }
 
     // Spec 035: no allocation (the Alpaca device list is a copy, and the
@@ -179,7 +257,8 @@ namespace SQM
             heap8["minFree"] = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
             heap8["reserveSpent"] = HeapSafe::reserve().spent(); // spec 038
             // Spec 045: the lowest largest block over the last 15 and 60
-            // minutes (one reading a second): fragmentation over a session.
+            // minutes (one reading a second; ten while a network return is
+            // followed, spec 048): fragmentation over a session.
             heap8["largestLow15m"] = HeapSafe::trend().lowestLargest(15);
             heap8["largestLow60m"] = HeapSafe::trend().lowestLargest(60);
             doc["heapSize"] = ESP.getHeapSize();

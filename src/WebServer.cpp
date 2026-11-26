@@ -156,6 +156,7 @@ namespace SQM
         restoreAlertSchedule();
         subscribeArmCommands();
         subscribeRoofCommands();
+        subscribeDiscoveryMarker(); // spec 048
         Logger::info(TAG, "Starting web server on port %d", PORT);
 
         // CRITICAL: Register API routes BEFORE static file serving

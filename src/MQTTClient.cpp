@@ -1,6 +1,8 @@
 #include "MQTTClient.h"
 #include "BufferedWriter.h"
 #include "ConnectionBudget.h"
+#include "NetworkReturn.h"
+#include <esp_heap_caps.h>
 #include "NetState.h"
 #include "NetAddress.h"
 #include "Logger.h"
@@ -235,17 +237,17 @@ namespace SQM
         }
     }
 
-    void MQTTClient::connect()
+    bool MQTTClient::connect()
     {
         if (!config.enabled)
-            return;
+            return false;
         // Marked in flight before the hold is asked, so a close accepted in
         // between sees the connect and waits for it; cleared if held.
         connectInFlight = true;
         if (connectHold && connectHold())
         {
             connectInFlight = false;
-            return;
+            return false;
         }
 
         Logger::info(TAG, "Connecting to MQTT broker: %s port %d", config.broker.c_str(), brokerPort);
@@ -271,28 +273,37 @@ namespace SQM
             publishAvailability(true);
             subscribeAll();
             ++connections;
+            NetState::noteMqttConnected(); // spec 048: in the return's record
         }
         else
         {
             Logger::error(TAG, "Failed to connect to MQTT broker, state: %d", mqttClient->state());
         }
+        return true;
     }
 
+    // Spec 048: one attempt at a time (connect() runs to its end on this
+    // loop), MQTT_RETURN_DELAY_MS after the network comes back, backing off
+    // while the broker doesn't answer, and not into a heap the return has
+    // already cut up.
     void MQTTClient::reconnect()
     {
-        const uint32_t now = millis();
-
-        if (now - lastReconnectAttempt < RECONNECT_INTERVAL_MS)
+        const uint32_t returnsNow = NetState::returns();
+        if (returnsNow != returnsSeen)
         {
-            return;
+            returnsSeen = returnsNow;
+            retry.networkReturned();
         }
-        // Spec 038: not in the burst right after the network comes back.
-        if (!NetState::settledFor(ConnectionBudget::MQTT_SETTLE_MS))
+        if (!retry.due(millis(), NetState::online(), NetState::sinceReturn()))
+            return;
+        const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        if (!ConnectionBudget::backgroundFits(largest, NetState::phase() != ConnectionBudget::ReturnPhase::Settled))
             return;
 
-        lastReconnectAttempt = now;
+        lastReconnectAttempt = millis();
         Logger::info(TAG, "Attempting MQTT reconnection...");
-        connect();
+        if (connect())
+            retry.finished(millis(), mqttClient->connected());
     }
 
     void MQTTClient::publishAvailability(bool online)

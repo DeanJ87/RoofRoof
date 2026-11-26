@@ -341,9 +341,19 @@ namespace SQM
         portMUX_TYPE pendingAlertTestLock = portMUX_INITIALIZER_UNLOCKED;
         std::string discoveryKey;
         uint32_t discoveryConnection = 0xFFFFFFFF;
+        uint32_t discoveryRevision = 0;
         HaDiscovery::Device discoveryDevice;
+        HaDiscovery::Groups discoveryGroupsNow;
         bool discoveryWasOn = false;
+        // Spec 048: one config at a time; the marker of this set, and of the
+        // set this boot last sent whole (0: none).
+        HaDiscovery::Pacer discoveryPacer;
+        uint32_t discoveryMarker = 0;
+        uint32_t discoveryPublished = 0;
         void publishDiscovery();
+        void restartDiscovery(uint32_t connection, uint32_t revision);
+        void stepDiscovery();
+        void subscribeDiscoveryMarker();
         void processAlerts();
         void watchClients(Alerts::AlertInputs &inputs, const Config &cfg, const std::string &localTime);
         void sendAlerts(const Core::AlertStep &step, const Config &cfg);
