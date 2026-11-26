@@ -14,6 +14,8 @@ namespace SQM
         {
             constexpr const char *INFO_PATH = "/v2/api/equipment/mount/info";
             constexpr const char *PARK_PATH = "/v2/api/equipment/mount/park";
+            // Spec 050: StopSlew() only (ninaAPI V2/Equipment/Mount.cs, MountStopSlew).
+            constexpr const char *STOP_SLEW_PATH = "/v2/api/equipment/mount/slew/stop";
             constexpr int HTTP_OK = 200;
             // The filtered reply is small; the full info reply is several KB.
             constexpr size_t PARSE_DOC_BYTES = 512;
@@ -87,6 +89,30 @@ namespace SQM
                 reading.slewing = slewing;
                 return reading;
             }
+
+            // A reply whose Response is text (park, stop slew): true with the
+            // text, or false with why it failed in `failed`.
+            bool readText(int httpStatus, const std::string &body, std::string &text, ParkReply &failed)
+            {
+                DynamicJsonDocument doc(PARSE_DOC_BYTES);
+                if (!readEnvelope(body, ResponseKind::Text, doc) || !doc["Success"].is<bool>())
+                {
+                    failed = ParkReply{ParkOutcome::Unreadable, httpText(httpStatus)};
+                    return false;
+                }
+                if (!doc["Success"].as<bool>())
+                {
+                    failed = ParkReply{ParkOutcome::Refused, errorText(doc.as<JsonVariantConst>(), httpStatus)};
+                    return false;
+                }
+                if (httpStatus != HTTP_OK)
+                {
+                    failed = ParkReply{ParkOutcome::Unreadable, httpText(httpStatus)};
+                    return false;
+                }
+                text = doc["Response"].is<const char *>() ? doc["Response"].as<const char *>() : "";
+                return true;
+            }
         } // namespace
 
         MountReading failedReading(ReadingStatus status, const std::string &detail, uint64_t nowMs)
@@ -124,20 +150,32 @@ namespace SQM
             return readMount(doc["Response"].as<JsonObjectConst>(), nowMs);
         }
 
+        Request ApiV2::stopSlewRequest() const
+        {
+            return Request{Method::Get, STOP_SLEW_PATH, "", ""};
+        }
+
         ParkReply ApiV2::parsePark(int httpStatus, const std::string &body) const
         {
-            DynamicJsonDocument doc(PARSE_DOC_BYTES);
-            if (!readEnvelope(body, ResponseKind::Text, doc) || !doc["Success"].is<bool>())
-                return ParkReply{ParkOutcome::Unreadable, httpText(httpStatus)};
-            if (!doc["Success"].as<bool>())
-                return ParkReply{ParkOutcome::Refused, errorText(doc.as<JsonVariantConst>(), httpStatus)};
-            const std::string text = doc["Response"].is<const char *>() ? doc["Response"].as<const char *>() : "";
-            if (httpStatus != HTTP_OK)
-                return ParkReply{ParkOutcome::Unreadable, httpText(httpStatus)};
+            std::string text;
+            ParkReply failed;
+            if (!readText(httpStatus, body, text, failed))
+                return failed;
             if (text == "Parking")
                 return ParkReply{ParkOutcome::Accepted, text};
             if (text == "Mount already parked")
                 return ParkReply{ParkOutcome::AlreadyParked, text};
+            return ParkReply{ParkOutcome::Unreadable, "unexpected reply: " + text};
+        }
+
+        ParkReply ApiV2::parseStopSlew(int httpStatus, const std::string &body) const
+        {
+            std::string text;
+            ParkReply failed;
+            if (!readText(httpStatus, body, text, failed))
+                return failed;
+            if (text == "Stopped slew")
+                return ParkReply{ParkOutcome::Accepted, text};
             return ParkReply{ParkOutcome::Unreadable, "unexpected reply: " + text};
         }
 

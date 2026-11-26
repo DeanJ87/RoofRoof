@@ -578,6 +578,7 @@ void loop()
 
     if (mqttClient)
         mqttClient->handle();
+    safetyPoller.setMountMayMove(roofControl.parkRequestAllowed()); // spec 050: checked again when a park is sent
     handleSafety();
     siteSync.handle(roofBusy());                      // spec 020
     safetyPoller.setRoofMoving(roofControl.moving()); // spec 047: the weather polled faster while moving

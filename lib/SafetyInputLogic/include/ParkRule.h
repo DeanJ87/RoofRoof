@@ -70,6 +70,9 @@ namespace SQM
             // telescope") stands in for N.I.N.A. (TestBox::applyPark).
             bool bypassed = false;
             bool switchesOnly = false; // spec 024: confirmed by the switches alone
+            // Spec 050: a park request waits for the mount to stop slewing
+            // (SafetyPoller's ParkSender); describe() says so.
+            bool askWaiting = false;
         };
 
         ParkResult evaluatePark(const ParkInputs &inputs);

@@ -87,6 +87,9 @@ namespace SQM
             // `httpStatus` is the HTTP status code (> 0) of a reply that arrived.
             virtual MountReading parseMountInfo(int httpStatus, const std::string &body, uint64_t nowMs) const = 0;
             virtual ParkReply parsePark(int httpStatus, const std::string &body) const = 0;
+            // Spec 050: stop a slew (no park). Accepted: N.I.N.A. asked the mount to stop.
+            virtual Request stopSlewRequest() const = 0;
+            virtual ParkReply parseStopSlew(int httpStatus, const std::string &body) const = 0;
         };
 
         // The v2 API (plugin 2.2.15.0 or newer).
@@ -98,6 +101,8 @@ namespace SQM
             Request parkRequest() const override;
             MountReading parseMountInfo(int httpStatus, const std::string &body, uint64_t nowMs) const override;
             ParkReply parsePark(int httpStatus, const std::string &body) const override;
+            Request stopSlewRequest() const override;
+            ParkReply parseStopSlew(int httpStatus, const std::string &body) const override;
         };
 
         // The implementation for `version`.

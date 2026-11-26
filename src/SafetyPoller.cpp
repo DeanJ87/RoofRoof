@@ -338,6 +338,7 @@ namespace SQM
             state.lastParkAtMs = 0;
             ++state.ninaGeneration;
             parkRequested = false;
+            state.parkWaitingForSlew = false; // spec 050: the poller drops its waiting request too
         }
         targets = newTargets;
         xSemaphoreGive(mutex);
@@ -388,22 +389,6 @@ namespace SQM
         return copy;
     }
 
-    void SafetyPoller::requestPark()
-    {
-        parkRequested = true;
-    }
-
-    SafetyPoller::Snapshot SafetyPoller::snapshot() const
-    {
-        if (mutex == nullptr)
-            return Snapshot{};
-        xSemaphoreTake(mutex, portMAX_DELAY);
-        Snapshot copy = state;
-        copy.parkPending = parkRequested;
-        xSemaphoreGive(mutex);
-        return copy;
-    }
-
     SafetyPoller::Targets SafetyPoller::currentTargets(uint32_t &sqmeterGeneration, uint32_t &ninaGeneration) const
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
@@ -435,16 +420,23 @@ namespace SQM
                 api = Nina::makeApi(now.ninaApi);
                 seenNina = ninaGeneration;
                 schedule.ninaChanged(); // new settings: poll at once
+                parkSender.reset();     // spec 050: a waiting request goes with the old settings
             }
             if (seenSqmeter != sqmeterGeneration)
             {
                 seenSqmeter = sqmeterGeneration;
                 schedule.sqmeterChanged();
             }
-            // A request is answered once, never kept for later: a park sent
-            // long after it was asked for could stop a night's imaging.
+            // Spec 050: a request is decided on a N.I.N.A. reading taken after
+            // it (read at once); it waits while the mount slews, at most
+            // Safety::PARK_SLEW_WAIT_MS, and takes in any request meanwhile.
             if (parkRequested.exchange(false))
-                sendPark(*api, now, ninaGeneration);
+            {
+                if (parkSender.request(nowMs()))
+                    schedule.ninaWanted();
+                else
+                    Logger::debug(TAG, "Park request joins the one waiting for the mount to stop slewing");
+            }
             // N.I.N.A. first: its reading must stay fresh for the park check.
             // Spec 047: also just before a weather poll, which may take 8 s.
             const bool moving = roofMoving.load();
@@ -455,6 +447,9 @@ namespace SQM
                 pollNina(*api, now, ninaGeneration);
                 schedule.ninaRead(started, nowMs());
             }
+            const Safety::ParkSendEvent parkStep = parkSender.waiting() ? stepPark(now, ninaGeneration) : Safety::ParkSendEvent::None;
+            if (Safety::asksNina(parkStep))
+                sendPark(*api, now, ninaGeneration, parkStep == Safety::ParkSendEvent::StopSlew);
             if (pass.sqmeter)
             {
                 schedule.sqmeterPolled(nowMs());
@@ -573,17 +568,23 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::sendPark(const Nina::Api &api, const Targets &now, uint32_t generation)
+    void SafetyPoller::sendPark(const Nina::Api &api, const Targets &now, uint32_t generation, bool stopOnly)
     {
         Nina::ParkReply parsed{Nina::ParkOutcome::Refused, "N.I.N.A. not configured"};
         if (!now.ninaUrl.empty())
         {
-            // v2's park is a GET (research R2).
-            const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, api.parkRequest());
-            parsed =
-                reply.status > 0 ? api.parsePark(reply.status, reply.body) : Nina::ParkReply{Nina::ParkOutcome::Unreadable, reply.error};
+            // v2's park (and spec 050's stop slew) is a GET (research R2).
+            const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, stopOnly ? api.stopSlewRequest() : api.parkRequest());
+            parsed = reply.status <= 0 ? Nina::ParkReply{Nina::ParkOutcome::Unreadable, reply.error}
+                     : stopOnly        ? api.parseStopSlew(reply.status, reply.body)
+                                       : api.parsePark(reply.status, reply.body);
         }
-        Logger::info(TAG, "N.I.N.A. park request: %s", parsed.detail.c_str());
+        Logger::info(TAG, "N.I.N.A. %s request: %s", stopOnly ? "stop slew" : "park", parsed.detail.c_str());
+        if (stopOnly)
+        {
+            schedule.ninaWanted(); // the park waits for a reading that says the mount is still
+            return;
+        }
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.ninaGeneration)
         {

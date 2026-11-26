@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NinaApi.h"
+#include "ParkSend.h"
 #include "PollSchedule.h"
 #include "SafetyInput.h"
 #include "SafetySettings.h"
@@ -43,7 +44,9 @@ namespace SQM
         {
             Safety::SourceRecord sqmeter;
             Nina::MountReading nina;
-            bool parkPending = false;  // asked for, not sent yet
+            bool parkPending = false; // asked for, not sent yet
+            // Spec 050: a request waits for the mount to stop slewing.
+            bool parkWaitingForSlew = false;
             Nina::ParkReply lastPark;  // the latest park request's outcome
             uint64_t lastParkAtMs = 0; // 0 = none sent
             // Bumped when that part's settings change, so a reply to the old
@@ -70,9 +73,15 @@ namespace SQM
         // New settings. Only the parts `change` names start again from nothing
         // (Safety::settingsChange decides); an unrelated save keeps every reading.
         void configure(const Targets &targets, const Safety::SettingsChange &change);
-        // Ask N.I.N.A. to park the mount (spec 005 calls this). Any task; the
-        // poller sends it before its next mount-info poll.
+        // Ask N.I.N.A. to park the mount (spec 005 calls this). Any task. Spec
+        // 050: the poller sends it once a N.I.N.A. reading taken after the
+        // request says the mount isn't slewing (Safety::ParkSender), and not at
+        // all if it reads parked; a request while one waits joins it.
         void requestPark();
+        // Spec 050 (spec 043): the roof is at an end now
+        // (RoofIo::parkRequestAllowed), set by the main loop every pass and
+        // checked again when the park is sent.
+        void setMountMayMove(bool may) { mountMayMove.store(may); }
         Snapshot snapshot() const;
 
         // Spec 020: where SQMeter is (the weather source's address) and
@@ -137,7 +146,10 @@ namespace SQM
         void run();
         void pollSqmeter(const Targets &targets, uint32_t generation);
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
-        void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation);
+        // Spec 050: `stopOnly` sends the stop slew instead (no park, not recorded as one).
+        void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation, bool stopOnly);
+        // Spec 050: a waiting park request, decided on the latest reading: what to send now.
+        Safety::ParkSendEvent stepPark(const Targets &targets, uint32_t generation);
         void pollLocation(const Site::Endpoint &from, uint32_t generation);
         // Spec 020: a location read in this pass, if due (never in a pass that
         // polled SQMeter's safety, never while the roof is busy).
@@ -170,5 +182,8 @@ namespace SQM
         // poll, the weather faster while the roof moves.
         Safety::PollSchedule schedule;
         std::atomic<bool> roofMoving{false};
+        // Spec 050: the poller task's own (its flag is copied into `state`).
+        Safety::ParkSender parkSender;
+        std::atomic<bool> mountMayMove{false};
     };
 } // namespace SQM

@@ -175,6 +175,36 @@ move](#park-before-every-move)): the dashboard warns that the roof could hit the
 imaging sequence should check the same thing before its own slews: [Hardening your N.I.N.A.
 sequence](alpaca.md#hardening-your-nina-sequence).
 
+## A park request never stops a slew
+
+N.I.N.A.'s Advanced API stops a slewing mount and asks it to park straight away, and a mount that is
+already parking reads as slewing. An OnStep mount refuses the park while it is still decelerating, so
+a park request sent during any slew (N.I.N.A.'s own sequence parking it, a goto, RoofRoof's earlier
+request still under way) leaves the mount stopped, neither parked nor slewing, and nothing retries
+(constitution 12.1.0, II). RoofRoof therefore decides each
+park request on a N.I.N.A. reading taken after it (it reads N.I.N.A. at once):
+
+- the mount is slewing: nothing is sent yet. The log says `Not asking N.I.N.A. to park yet: the
+  mount is slewing (waiting up to 180 s for it to stop)`, and the park check's text (the Roof
+  card's park row, a refused command's reason) ends `waiting for the mount to stop slewing before
+  asking N.I.N.A. to park`. N.I.N.A. is read every 2 s as usual;
+- the mount is parked: nothing is sent (`The mount is already parked: no park request sent`);
+- otherwise (stopped somewhere else, or not connected): the park is sent, once;
+- N.I.N.A. can't be read: the park is sent as before, unless its last good reading is still within
+  its freshness (10 s) and says slewing.
+
+Requests while one waits (the automatic close and a command's park wait each ask again every park
+request gap) join it, and a request soon after RoofRoof's own send is decided only on a reading
+taken 10 s after it.
+
+The one exception is deliberate: a mount still slewing after 180 s isn't parking. RoofRoof then asks
+N.I.N.A. to stop the slew on its own (`GET /v2/api/equipment/mount/slew/stop`, no park), with a
+warning in the log, and waits for a reading taken after the stop that says the mount is still: then
+it sends the park once (or nothing, if the mount reads parked). If the mount still reads slewing
+30 s after the stop, the park is sent anyway, with another warning. The roof is checked again when
+the park is sent: if it has left its magnet meanwhile, nothing is sent. Only `AtPark` in a fresh reading ever
+confirms the park; N.I.N.A.'s answer to the request (or its own "Mount has parked") never does.
+
 ## Closing when the position is unknown
 
 The automatic close used to stay put from an unknown position: after a crash 10 s into
