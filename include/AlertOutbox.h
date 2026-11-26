@@ -23,13 +23,13 @@ namespace SQM
         void push(const Alerts::Alert &alert, bool resolvable);
         void resolve(Alerts::AlertType type) { queue.resolve(type); }
         void setMaxGap(uint64_t ms) { queue.setMaxGap(ms); }
-        // Every pass: sends what is due (about once a second) and brings the
+        // Every pass: sends what is due (about once a second; every 5 s for a
+        // minute after the network returns, spec 048) and brings the
         // kept records in line with the queue when a flash write may run.
         void handle(bool networkUp, const CloseSeq::AlertQueue::Send &send, const CloseSeq::AlertQueue::Probe &probe);
 
     private:
         static constexpr const char *TAG = "AlertQueue";
-        static constexpr uint32_t STEP_EVERY_MS = 1000;
         static constexpr size_t KEPT_TYPES = 3;
         static const Alerts::AlertType KEPT[KEPT_TYPES];
 

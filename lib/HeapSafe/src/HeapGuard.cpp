@@ -48,9 +48,14 @@ namespace SQM
 
         bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight)
         {
+            return replySlotFree(path, isPost, repliesInFlight, MAX_REPLIES_IN_FLIGHT);
+        }
+
+        bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight, uint32_t limit)
+        {
             if (path == nullptr || essential(path, isPost) || !under(path, "/api"))
                 return true;
-            return repliesInFlight < MAX_REPLIES_IN_FLIGHT;
+            return repliesInFlight < limit;
         }
 
         bool frameFits(size_t length, uint32_t largestBlock)

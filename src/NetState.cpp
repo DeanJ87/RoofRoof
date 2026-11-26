@@ -2,8 +2,10 @@
 
 #include <WiFi.h>
 
-#include "ConnectionBudget.h"
+#include <atomic>
+
 #include "EthernetLink.h"
+#include "InboundGate.h"
 #include "WiFiManager.h"
 
 namespace SQM
@@ -27,18 +29,79 @@ namespace SQM
 
         namespace
         {
-            bool ethernetOnlyMode = false;          // set once in setup()
-            ConnectionBudget::NetworkSettle settle; // main loop only
+            bool ethernetOnlyMode = false; // set once in setup()
+            // Spec 048: written by the main loop under the lock, copied under it.
+            ConnectionBudget::NetworkReturn netReturns;
+            portMUX_TYPE returnsLock = portMUX_INITIALIZER_UNLOCKED;
+            std::atomic<uint8_t> phaseNow{static_cast<uint8_t>(ConnectionBudget::ReturnPhase::Settled)};
+            std::atomic<uint32_t> returnsNow{0};
         } // namespace
 
         void tick()
         {
-            settle.update(online(), millis());
+            const uint32_t now = millis();
+            const bool up = online();
+            const uint32_t lastInbound = InboundGate::lastArrivalMs();
+            const size_t live = InboundGate::live();
+            const uint32_t refused = InboundGate::refused();
+            portENTER_CRITICAL(&returnsLock);
+            netReturns.update(up, now, lastInbound);
+            netReturns.noteInbound(now, live, refused);
+            const ConnectionBudget::ReturnPhase phase = netReturns.phase(now);
+            const uint32_t count = netReturns.returns();
+            portEXIT_CRITICAL(&returnsLock);
+            phaseNow.store(static_cast<uint8_t>(phase));
+            returnsNow.store(count);
         }
 
-        bool settledFor(uint32_t ms)
+        uint32_t sinceReturn()
         {
-            return settle.settled(millis(), ms);
+            return netReturns.sinceReturn(millis()); // the main loop is the only writer
+        }
+
+        uint32_t returns()
+        {
+            return returnsNow.load();
+        }
+
+        uint32_t sinceLinkUp()
+        {
+            return netReturns.sinceLinkUp(millis());
+        }
+
+        ConnectionBudget::ReturnPhase phase()
+        {
+            return static_cast<ConnectionBudget::ReturnPhase>(phaseNow.load());
+        }
+
+        void noteHeap(uint32_t largestBlock, uint32_t freeBytes)
+        {
+            const uint32_t now = millis();
+            portENTER_CRITICAL(&returnsLock);
+            netReturns.noteHeap(now, largestBlock, freeBytes);
+            portEXIT_CRITICAL(&returnsLock);
+        }
+
+        void noteMqttConnected()
+        {
+            const uint32_t now = millis();
+            portENTER_CRITICAL(&returnsLock);
+            netReturns.noteMqttConnected(now);
+            portEXIT_CRITICAL(&returnsLock);
+        }
+
+        void noteDiscovery(ConnectionBudget::DiscoveryOutcome outcome)
+        {
+            portENTER_CRITICAL(&returnsLock);
+            netReturns.noteDiscovery(outcome);
+            portEXIT_CRITICAL(&returnsLock);
+        }
+
+        void copyReturns(ConnectionBudget::NetworkReturn &out)
+        {
+            portENTER_CRITICAL(&returnsLock);
+            out = netReturns;
+            portEXIT_CRITICAL(&returnsLock);
         }
 
         void setEthernetOnly(bool on)

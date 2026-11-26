@@ -527,6 +527,18 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     before each weather poll so a slow SQMeter can't starve the park reading (F45/F46).
 - **Out of scope:** a separate task for N.I.N.A. (a second 8 KB stack; spec.md says why not).
 
+### 048 A gradual network return (base: main after 046)
+
+- **Scope:**
+  - The minute after the network comes back (finding F51): `ConnectionBudget::NetworkReturn` (the
+    link back, or requests back after 30 s of none), inbound connections capped at accept with a
+    fixed 503 (`InboundGate`), one built reply at a time, MQTT 10 s later with backoff, discovery
+    one config per 200 ms and skipped when the broker kept it (retained marker), queued alerts from
+    15 s one per 5 s.
+  - The census's trend marks the returns and lists each with the heap's lows after it (10 Hz);
+    `tools/soak/return_soak.py` cuts the network N times.
+- **Out of scope:** the safety poller (spec 047), WiFi and lwIP buffers, a move's own heap use.
+
 ## Merge order
 
 ```text

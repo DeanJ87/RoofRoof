@@ -8,6 +8,7 @@
 #include <PubSubClient.h>
 #include <functional>
 #include "DualStackClient.h"
+#include "NetworkReturn.h"
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -112,7 +113,6 @@ namespace SQM
         void subscribeAll();
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
-        static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
         // A base topic (up to 128 characters) and a short subtopic (spec 046).
         static constexpr size_t TOPIC_BYTES = 160;
         // Reads (and the CONNACK wait) give up after this many seconds: well
@@ -152,8 +152,11 @@ namespace SQM
         uint32_t lastReconnectAttempt;
         uint32_t lastPublish;
 
-        void connect();
+        // False when no attempt was made (off, or held while the roof is busy).
+        bool connect();
         void reconnect();
+        ConnectionBudget::MqttRetry retry; // spec 048
+        uint32_t returnsSeen = 0;
         void publishAvailability(bool online);
         std::string buildClientId() const;
         std::string getAvailabilityTopic() const;

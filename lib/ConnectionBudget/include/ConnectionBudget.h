@@ -36,29 +36,9 @@ namespace SQM
         }
 
         // Spec 038: when the network comes back everything reconnected at once
-        // (MQTT and its discovery documents, the queued alerts' TLS sessions,
-        // the safety polls, the clock), which took the heap to 352 B on the
-        // bench. The safety polls go at once; MQTT waits MQTT_SETTLE_MS and the
-        // queued alerts ALERT_SETTLE_MS after the network is up.
-        constexpr uint32_t MQTT_SETTLE_MS = 3000;
-        constexpr uint32_t ALERT_SETTLE_MS = 8000;
-
-        // How long the network has been up (fed once per main-loop pass).
-        class NetworkSettle
-        {
-        public:
-            void update(bool online, uint32_t nowMs)
-            {
-                if (!online)
-                    since = 0;
-                else if (since == 0)
-                    since = nowMs | 1; // 0 means down
-            }
-            bool settled(uint32_t nowMs, uint32_t needMs) const { return since != 0 && nowMs - since >= needMs; }
-
-        private:
-            uint32_t since = 0;
-        };
+        // (MQTT and its discovery documents, the queued alerts, the safety
+        // polls, the clock), which took the heap to 352 B on the bench. Spec
+        // 048 spreads that out: NetworkReturn.h.
 
         // An imaging app polling two devices, plus a browser loading a page.
         constexpr size_t MIN_HTTP_RESERVE = 6;

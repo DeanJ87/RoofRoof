@@ -35,7 +35,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 ---
 
 !!! note "While the roof moves"
-    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, while the roof is busy all MQTT writes and reads in one pass of the main loop share 500 ms (a read only runs once a whole message has arrived, and a write gets at most 250 ms; at rest a write gets 1 s), and running out drops the connection, and a write only starts with its whole 250 ms left in the pass (otherwise it waits for the next pass rather than being cut short). While the roof moves, the state document goes out as soon as the move starts (`opening` or `closing`, `driving`, `target` and the starting `positionPercent`), every 3 s after that with the position, at a reversal or fault, and when the move ends. While a close waits or the [automatic close](close-on-unsafe.md) is attempting with the roof still, it is only published when that starts or ends (at most twice, 5 s apart). A failed publish while busy is tried again 5 s later; it never holds back the end of the move or the documents at rest. Home Assistant discovery waits until the roof is at rest. The live position is also in [`/ws/status`](../api/websocket.md).
+    If the broker connection drops while the roof is opening or closing, the device waits until the roof stops before reconnecting, and a read from the broker gives up after 3 s: a dead broker must never hold up the main loop that hands the weather and park checks to the roof ([Roof motion](roof-motion.md#weather-and-park-checks)). Saving new MQTT settings answers at once; the main loop then disconnects from the old broker and connects to the new one, under the same rules. For the same reason, while the roof is busy all MQTT writes and reads in one pass of the main loop share 500 ms (a read only runs once a whole message has arrived, and a write gets at most 250 ms; at rest a write gets 1 s), and running out drops the connection, and a write only starts with its whole 250 ms left in the pass (otherwise it waits for the next pass rather than being cut short). While the roof moves, the state document goes out as soon as the move starts (`opening` or `closing`, `driving`, `target` and the starting `positionPercent`), every 3 s after that with the position, at a reversal or fault, and when the move ends. While a close waits or the [automatic close](close-on-unsafe.md) is attempting with the roof still, it is only published when that starts or ends (at most twice, 5 s apart). A failed publish while busy is tried again 5 s later; it never holds back the end of the move or the documents at rest. Home Assistant discovery waits until the roof is at rest. After the network comes back, the device waits 10 s before reconnecting (spec 048), so the clients polling it and the safety polls are served first; then it tries once every 5 s, doubling the gap after each failure up to 30 s. The live position is also in [`/ws/status`](../api/websocket.md).
 
 ## Topics
 
@@ -52,6 +52,7 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 | `<base>/telemetry` | No | Telemetry for long-term logging ([below](#telemetry-influxdb)): the full sample while the roof moves, `{"ts","volts"}` at rest | With **Publish telemetry** on (the default): about once a second while the roof moves and for 3 s after; at rest every `mqtt.telemetry.restVoltsSeconds` (60 s) or sooner on a 0.2 V change |
 | `<base>/move` | No | One record per finished move ([below](#telemetry-influxdb)) | With **Publish telemetry** and [advanced diagnostics](diagnostics.md) on: once per finished move |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
+| `<base>/discovery` | Yes | 8 hex digits naming the Home Assistant discovery set last sent whole (spec 048); also subscribed, to read back after a reconnect | After the last discovery config |
 
 With **SQMeter over MQTT** switched on as a weather source (see [Safety inputs](safety-inputs.md)), RoofRoof also listens to SQMeter's own topics on the same broker, under SQMeter's base topic (`safety.mqtt.topic`, default `sqmeter`):
 
@@ -256,14 +257,14 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: defdc1d67a3a626c
+fingerprint: 731eec77ceb25659
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: RoofRoof listens on roof/set (only with roof commands on, never retained, through the same checks as every command), alerts/armed/set and, when SQMeter over MQTT is a weather source, SQMeter's availability, safe and safety topics; it publishes state, roof/result, availability, alerts, alerts/armed, and with telemetry on telemetry and move, under its base topic, plus Home Assistant discovery under the discovery prefix.
+    accDescr: RoofRoof listens on roof/set (only with roof commands on, never retained, through the same checks as every command), alerts/armed/set and, when SQMeter over MQTT is a weather source, SQMeter's availability, safe and safety topics; it publishes state, roof/result, availability, alerts, alerts/armed, and with telemetry on telemetry and move, under its base topic, plus Home Assistant discovery under the discovery prefix, paced, and a discovery marker under its base topic that it reads back on a reconnect.
     ROOFSET["roof/set<br/>OPEN, CLOSE, STOP; only with roof commands on,<br/>never retained, the same checks as every command"] -->|command| D["RoofRoof"]
     SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D
     SQM["sqmeter/availability, /safe, /safety<br/>SQMeter's topics, when that source is on"] -->|weather| D
@@ -273,7 +274,8 @@ flowchart LR
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
     D --> TELE["telemetry: 1 Hz while moving, the supply at rest;<br/>move: one record per move<br/>not retained, with telemetry on"]
-    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on: Connectivity, the Roof cover,<br/>its sensors, fault and needs-a-person sensor; the Alerts switch<br/>(whenever discovery is on)"]
+    D --> DISC["homeassistant/.../config<br/>retained, when discovery is on: Connectivity, the Roof cover,<br/>its sensors, fault and needs-a-person sensor; the Alerts switch<br/>(whenever discovery is on); one every 200 ms"]
+    D --> MARK["discovery: the set's marker<br/>retained, after the last config;<br/>read back on a reconnect"]
 ```
 
 <figcaption>MQTT topic map: the topics RoofRoof listens to (left) and what it publishes (right). Its own topics sit under the base topic, default <code>roofroof</code>; SQMeter's under SQMeter's, default <code>sqmeter</code>.</figcaption>
@@ -294,7 +296,7 @@ flowchart LR
 
     When SQMeter over MQTT is a weather source, it also listens on SQMeter's `availability`, `safe` and `safety` topics under SQMeter's base topic (default `sqmeter`). It never publishes to them.
 
-    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), and clears them when discovery is switched off or moved: the Connectivity sensor, the Roof cover, its position, supply, Hall and (with current sense on) motor current sensors, the Roof fault sensor and the Needs a person sensor always; the weather, park, automatic close, daylight, SQMeter and N.I.N.A. entities; and the Alerts switch, whenever discovery is on.
+    With Home Assistant discovery on, it also publishes retained `config` topics under the discovery prefix (default `homeassistant`), one every 200 ms, then a retained `discovery` marker under its base topic, which it listens to as well so that a reconnect to a broker that kept the set sends nothing again; it clears the configs when discovery is switched off or moved: the Connectivity sensor, the Roof cover, its position, supply, Hall and (with current sense on) motor current sensors, the Roof fault sensor and the Needs a person sensor always; the weather, park, automatic close, daylight, SQMeter and N.I.N.A. entities; and the Alerts switch, whenever discovery is on.
 
 !!! note "The same in every language"
     Topics and payloads never change with the UI language, including Home Assistant discovery. Alert titles and messages are English (or your own alert wording) for people to read: automate on the alert `event`.
@@ -314,7 +316,7 @@ Turn on **Settings → Network → MQTT → Home Assistant → MQTT discovery**.
 - **Weather safe**, **Mount parked**, **Automatic close held** (binary sensors), **Automatic close** (the phase), **Hold lapses in** (seconds), **Roof blocked** (why the roof can't move, as a line of text), **Waiting for park** (seconds left), **Daylight**, and, as diagnostics, **SQMeter last reply** (seconds) and **N.I.N.A. reachable**.
 - **Switch**: *Alerts* - on while sending, off while paused (see [When to send](alerts.md#when-to-send)). It is announced whenever discovery is on.
 
-Every entity except Connectivity is unavailable while the device is offline. The discovery prefix defaults to `homeassistant`. Discovery is published again on every reconnect and when a setting it depends on changes (but not while the roof moves).
+Every entity except Connectivity is unavailable while the device is offline. The discovery prefix defaults to `homeassistant`. Discovery is published again when a setting it depends on changes, after a restart and on a reconnect to a broker that lost it (but not while the roof moves). The configs go out one every 200 ms rather than all at once, and then a retained marker on `<base>/discovery` names the set; on a later reconnect the device reads the marker back and, when the broker kept that set, sends nothing again (spec 048). To make the device send everything again, restart it or clear the marker: `mosquitto_pub -r -n -t roofroof/discovery`.
 
 [Home Assistant](../integration/home-assistant.md) lists every entity with its id, unit, source field and availability, and an example dashboard card. See [Alerts](alerts.md) for the alert events.
 

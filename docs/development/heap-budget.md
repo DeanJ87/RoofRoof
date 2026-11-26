@@ -125,12 +125,40 @@ requests busy; the main loop takes it back once the largest block is 8 KB again 
 
 ## After a network outage
 
-Everything that lost its connection used to reconnect in the same second: MQTT and its Home
-Assistant discovery documents, the queued alerts with their TLS sessions, the safety polls, the
-clock. On main that took the heap's lowest point to 352 B. Now the safety polls resume at once,
-MQTT waits until the network has been up 3 s and the alert outbox 8 s
-(`ConnectionBudget::NetworkSettle`). Check it on the bench by blocking the roof's access point for
-2 minutes while `ws_soak.py` samples, then reading `heap8Bit.minFree`.
+Everything that lost its connection used to reconnect in the same seconds: the clients polling the
+device, MQTT and all its Home Assistant discovery documents, the queued alerts, the safety polls,
+the clock. On main before spec 038 that took the heap's lowest point to 352 B; with spec 038's
+stagger (MQTT 3 s, alerts 8 s) the board still lost 50-55 KB of its 60 KB free within 10 s of a
+return (finding F51, spec 048 research R1).
+
+Spec 048 gives the minute after a return its own schedule (`ConnectionBudget::NetworkReturn`). A
+return is the link coming back, or, when an access point keeps its clients while its uplink is down,
+a client connecting after 30 s with none.
+
+| What | In the first 30 s | 30-60 s | After |
+|---|---|---|---|
+| Inbound connections open at once (`InboundGate`, at accept) | 3, past the first only with 16 KB in one block | 4, the same rule | 8 |
+| Built replies sent at once (the memory guard) | 1 | 2 | 2 |
+| MQTT connect (`MqttRetry`) | from 10 s, with 16 KB in one block | 5 s apart, doubled after a failure up to 30 s | 6 KB in one block |
+| Discovery configs (`HaDiscovery::Pacer`) | one per 200 ms with 16 KB in one block, skipped when the broker kept this boot's set | the same | 6 KB in one block |
+| Queued alerts | from 15 s, one per 5 s | one per 5 s | one a second |
+| Safety polls | at once, unchanged | | |
+
+A connection over the limit is answered a fixed `503` (`Retry-After: 2`) as it is accepted: no
+request object is made for it. `GET /api/diag/heap` marks the trend's minutes with a return and lists
+the last 8 returns with the heap's lows over the minute after each, sampled ten times a second.
+
+On the bench, cutting the roof's network five times while it is polled (the `--cut` and
+`--restore` commands are whatever takes your network away):
+
+```bash
+python3 tools/soak/return_soak.py --host 192.168.1.245 --cycles 5 --down 90 --up 120 \
+    --cut "..." --restore "..." \
+    --also /api/status@1 "/api/v1/dome/0/shutterstatus?ClientID=1&ClientTransactionID=1@1"
+```
+
+A pass: no restart, the reserve never spent, a return recorded for every cut, and the largest
+block at or above 16 KB after each.
 
 ## Stack depth of a settings save (fix 041)
 

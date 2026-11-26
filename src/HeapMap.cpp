@@ -4,6 +4,8 @@
 #include "HeapTrend.h"
 #include "HeapReserve.h"
 #include "Logger.h"
+#include "NetState.h"
+#include "NetworkReturn.h"
 #include <Arduino.h>
 #include <atomic>
 #include <cstdio>
@@ -38,6 +40,7 @@ namespace SQM
             struct Work
             {
                 HeapSafe::HeapCensus census;
+                ConnectionBudget::NetworkReturn returns; // spec 048: copied before the walk
                 TaskStatus_t status[MAX_TASKS];
                 HeapSafe::TaskStack tasks[MAX_TASKS];
                 size_t taskCount = 0;
@@ -79,7 +82,7 @@ namespace SQM
             }
 
             // Spec 045: the last hour, a minute at a time, newest first.
-            void writeTrend(HeapSafe::ChunkText &out)
+            void writeTrend(HeapSafe::ChunkText &out, const ConnectionBudget::NetworkReturn &returns)
             {
                 const HeapSafe::HeapTrend &trend = HeapSafe::trend();
                 char text[160];
@@ -94,15 +97,38 @@ namespace SQM
                 for (size_t i = 0; i < trend.size(); ++i)
                 {
                     const HeapSafe::HeapTrend::Minute &m = trend.at(i);
+                    // Spec 048: the minutes a network return happened in.
                     n = snprintf(
                         text,
                         sizeof(text),
-                        "  minute %5u  largest %6u B  free %6u B\n",
+                        "  minute %5u  largest %6u B  free %6u B%s\n",
                         static_cast<unsigned>(m.index),
                         static_cast<unsigned>(m.lowestLargest),
-                        static_cast<unsigned>(m.lowestFree));
+                        static_cast<unsigned>(m.lowestFree),
+                        ConnectionBudget::returnedInMinute(returns, m.index) ? "  <- network return" : "");
                     if (n > 0)
                         out.append(text, static_cast<size_t>(n) < sizeof(text) ? static_cast<size_t>(n) : sizeof(text) - 1);
+                }
+            }
+
+            // Spec 048: each network return kept, with what followed it.
+            void writeReturns(HeapSafe::ChunkText &out, const ConnectionBudget::NetworkReturn &returns)
+            {
+                char text[320];
+                int n = snprintf(
+                    text,
+                    sizeof(text),
+                    "Network returns (newest first; %u since start; the heap's lows over the %u s after each):\n",
+                    static_cast<unsigned>(returns.returns()),
+                    static_cast<unsigned>(ConnectionBudget::RETURN_FOLLOW_MS / 1000));
+                if (n > 0)
+                    out.append(text, static_cast<size_t>(n) < sizeof(text) ? static_cast<size_t>(n) : sizeof(text) - 1);
+                const uint32_t now = millis();
+                for (size_t i = 0; i < returns.size(); ++i)
+                {
+                    const size_t length = ConnectionBudget::describe(returns.at(i), now, text, sizeof(text) - 1);
+                    text[length] = '\n';
+                    out.append(text, length + 1);
                 }
             }
         } // namespace
@@ -110,6 +136,7 @@ namespace SQM
         void upkeep()
         {
             constexpr uint32_t TREND_EVERY_MS = 1000;
+            constexpr uint32_t RETURN_SAMPLE_MS = 100;
             static uint32_t spentSeen = 0;
             static uint32_t lastTrendMs = 0;
             HeapSafe::HeapReserve &reserve = HeapSafe::reserve();
@@ -122,11 +149,17 @@ namespace SQM
             const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
             if (!reserve.held() && HeapSafe::HeapReserve::refillFits(largest))
                 reserve.refill();
+            // Spec 048: ten times a second while a network return is followed,
+            // so its short lows are seen; into its record and the trend.
+            const bool following = NetState::phase() != ConnectionBudget::ReturnPhase::Settled;
             const uint32_t now = millis();
-            if (now - lastTrendMs >= TREND_EVERY_MS)
+            if (now - lastTrendMs >= (following ? RETURN_SAMPLE_MS : TREND_EVERY_MS))
             {
                 lastTrendMs = now;
-                HeapSafe::trend().sample(now, largest, static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT)));
+                const uint32_t freeBytes = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+                HeapSafe::trend().sample(now, largest, freeBytes);
+                if (following)
+                    NetState::noteHeap(largest, freeBytes);
             }
         }
 
@@ -142,10 +175,12 @@ namespace SQM
                 return false;
             }
             readTasks(*work);
+            NetState::copyReturns(work->returns);
             summary(out);
             heap_caps_walk(MALLOC_CAP_8BIT, walkBlock, &work->census);
             work->census.write(out);
-            writeTrend(out);
+            writeTrend(out, work->returns);
+            writeReturns(out, work->returns);
             running.store(false);
             return true;
         }
