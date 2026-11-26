@@ -464,6 +464,10 @@ void handleSafety()
     std::string gaveUp;
     if (roofControl.takeWaitAlert(gaveUp))
         closeOnUnsafe.parkWaitFailed(gaveUp);
+    // Spec 039: a person set the park check aside: an information alert.
+    std::string overridden;
+    if (roofControl.takeOverrideAlert(overridden))
+        closeOnUnsafe.parkOverridden(overridden);
 }
 
 // Spec 023: NTP and command-line OTA start the first time the device is on a

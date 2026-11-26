@@ -203,7 +203,8 @@ namespace DemoRoof
     {
         stepGuard();
         const Roof::Status &status = controller.status();
-        if (RoofIo::interlockLost(status, gates, guard.closeParkOverride(), guard.closeNinaLost())) // spec 030: N.I.N.A. lost
+        if (RoofIo::interlockLost(
+                status, gates, guard.closeParkOverride(), guard.closeNinaLost(), guard.openParkOverride())) // specs 030, 039
             latchExternal(
                 RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f));
         else if (RoofIo::openMustStop(status, gates, guard.openOverride()))

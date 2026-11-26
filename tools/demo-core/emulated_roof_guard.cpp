@@ -60,7 +60,7 @@ namespace DemoRoof
         if (outcome.accepted && !stopping)
         {
             moveOrigin = origin;
-            guard.ran(command, RoofIo::allowedOverrides(command, origin, overrides), gates); // spec 027
+            guard.ran(command, origin, overrides, gates); // spec 027; spec 039: filtered by origin
         }
         syncFault();
         return outcome;
@@ -119,7 +119,7 @@ namespace DemoRoof
     // RoofControlGuard's snapshot: an Open override or a confirmed close in effect.
     uint8_t EmulatedRoof::overrideBits() const
     {
-        return static_cast<uint8_t>(guard.openOverride() | (guard.closeParkOverride() ? RoofIo::OverridePark : 0));
+        return guard.inEffect(); // spec 039: an open's park override too
     }
 
     // RoofControl::automaticClose: withdrawn if a person stopped the roof since the decision.
@@ -153,7 +153,7 @@ namespace DemoRoof
         if (outcome.accepted)
         {
             moveOrigin = Roof::Origin::Automatic;
-            guard.ran(Roof::Command::Close, allowed, gates); // the park re-check, N.I.N.A.-lost included
+            guard.ran(Roof::Command::Close, Roof::Origin::Automatic, allowed, gates); // the park re-check, N.I.N.A.-lost included
         }
         syncFault();
         return outcome;

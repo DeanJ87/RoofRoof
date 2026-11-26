@@ -455,10 +455,10 @@ void test_nina_lost_with_switches_needs_every_switch_closed_throughout(void)
     TEST_ASSERT_TRUE(interlockLost(closing, gates, false, true));
     // Kept through the close by the guard, as a person's park override is.
     MoveGuard guard;
-    guard.ran(Roof::Command::Close, OverrideNinaLost, gates);
+    guard.ran(Roof::Command::Close, Roof::Origin::Automatic, OverrideNinaLost, gates);
     TEST_ASSERT_TRUE(guard.closeNinaLost());
     TEST_ASSERT_FALSE(guard.closeParkOverride());
-    guard.ran(Roof::Command::Open, 0, gates);
+    guard.ran(Roof::Command::Open, Roof::Origin::Person, 0, gates);
     TEST_ASSERT_FALSE(guard.closeNinaLost());
 }
 

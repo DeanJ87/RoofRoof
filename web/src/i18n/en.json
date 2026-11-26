@@ -678,8 +678,9 @@
   "move.dialog.closeWhy": "Close anyway skips the park check for this one close. Look at the telescope first.",
   "move.dialog.hardWhy": "These checks can't be set aside: the roof moves once they clear.",
   "move.dialog.openAnyway": "Open anyway",
+  "move.dialog.openParkRisk": "Mount not confirmed parked: the roof passes over the telescope. Check the camera first.",
+  "move.dialog.openParkWhy": "Open anyway sets these checks aside for this opening. Look at the telescope first. Rain or a lost weather source still closes it.",
   "move.dialog.openWhy": "Open anyway sets these checks aside until the roof closes or they clear. Rain or a lost weather source still closes it.",
-  "move.dialog.parkFirst": "N.I.N.A. is asked to park first; the roof opens once it's parked.",
   "move.dialog.parkRisk": "The mount isn't confirmed parked: the roof could hit the telescope.",
   "move.dialog.title": {
     "one": "{count} reason {action} is blocked",

@@ -86,7 +86,7 @@ namespace SQM
         if (outcome.accepted)
         {
             moveOrigin = Roof::Origin::Automatic;
-            guard.ran(Roof::Command::Close, allowed, now); // the park re-check, N.I.N.A.-lost included
+            guard.ran(Roof::Command::Close, Roof::Origin::Automatic, allowed, now); // the park re-check, N.I.N.A.-lost included
         }
         applyOutput();
         syncFault(RoofIo::FaultCause::Logic);
@@ -114,7 +114,7 @@ namespace SQM
         closePending = false;
         const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin, closeOverrides);
         if (outcome.accepted)
-            guard.ran(Roof::Command::Close, closeOverrides, currentGates());
+            guard.ran(Roof::Command::Close, closeOrigin, closeOverrides, currentGates());
         notice = outcome.accepted ? "Waiting close started" : "Waiting close refused: " + outcome.text;
     }
 } // namespace SQM

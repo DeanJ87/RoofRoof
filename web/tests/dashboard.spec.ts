@@ -362,6 +362,33 @@ test('a silent SQMeter: one short line per fact, the full reason in the move dia
   await panelChoice(page, 'SQMeter offline: Off');
 });
 
+// Spec 039: the camera shows the mount parked but N.I.N.A. doesn't say so: a person opens past the park.
+test('Open anyway past the park: a red warning, then the roof opens without the park', async ({ page }) => {
+  // inventory: roof-buttons
+  test.setTimeout(120_000);
+  await open(page);
+  await roofReady(page);
+  await fast(page);
+  await panelChoice(page, 'Park fails: On');
+  await panelChoice(page, 'Mount: Parked: Unpark');
+  await expect
+    .poll(async () => (await page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.parkConfirmed)) as boolean, {
+      timeout: 20_000,
+    })
+    .toBe(false);
+  // The page has caught up with the device: the park is listed under the buttons.
+  await expect(item(page, 'roof-buttons')).toContainText('Mount not parked', { timeout: 20_000 });
+  await item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('heading', { name: /reasons? Open is blocked$/ })).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toContainText('Park check:');
+  await expect(dialog.locator('.note-bad')).toContainText('the roof passes over the telescope');
+  await dialog.getByRole('button', { name: 'Open anyway' }).click();
+  await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('open');
+  expect(await page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.parkConfirmed)).toBe(false);
+  await panelChoice(page, 'Park fails: Off');
+});
+
 // Spec 020: under the daylight line, where the location came from and how old it is; a dead SQMeter keeps the last one.
 test('daylight: the location from SQMeter, its age, and SQMeter offline', async ({ page }) => {
   // inventory: roof-daylight

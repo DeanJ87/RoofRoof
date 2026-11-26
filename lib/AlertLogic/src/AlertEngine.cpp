@@ -74,24 +74,16 @@ namespace SQM
             // In AlertType order; the names are the event keys in webhook and
             // MQTT payloads and the alert settings.
             static constexpr const char *NAMES[] = {
-                "alerts_on",
-                "test",
-                "client_lost",
-                "client_back",
-                "client_disconnected",
-                "mount_not_parked",
-                "roof_not_closed",
-                "move_fault",
-                "supply_low",
-                "unsafe_closing",
-                "roof_closed",
-                "safety_lost",
-                "daylight_open",
-                "daylight_closed",
-                "daylight_unknown",
-                "test_box",
-                "nina_lost",
-                "needs_person",
+                "alerts_on",           "test",
+                "client_lost",         "client_back",
+                "client_disconnected", "mount_not_parked",
+                "roof_not_closed",     "move_fault",
+                "supply_low",          "unsafe_closing",
+                "roof_closed",         "safety_lost",
+                "daylight_open",       "daylight_closed",
+                "daylight_unknown",    "test_box",
+                "nina_lost",           "needs_person",
+                "check_overridden",
             };
             static_assert(sizeof(NAMES) / sizeof(NAMES[0]) == ALERT_TYPE_COUNT, "a name for every AlertType");
             const size_t index = static_cast<size_t>(type);

@@ -87,7 +87,7 @@ namespace
         }
         const Roof::CommandResult result = bench.roof.command(Command::Close, origin);
         if (result.accepted)
-            guard.ran(Command::Close, allowed, ninaDown());
+            guard.ran(Command::Close, origin, allowed, ninaDown());
         return result;
     }
 
