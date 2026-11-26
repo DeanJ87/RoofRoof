@@ -176,6 +176,7 @@ The roof's events come from the roof controller, the weather inputs and the [clo
 - the device restarted with the roof **not reading closed** at a known position. Sent once and not repeated: an open roof at a known position is not a fault (a restart while imaging, say), but you are told;
 - the **Hall sensor reads at a rail** at any time, at once, with its reading and what to do, and again at the reminder interval while it lasts;
 - the automatic close **can't move** the roof (a fault latched, or the roof controller didn't start): **Roof can't close by itself**, repeated;
+- the automatic close is wanted while the roof is **not at an end** (stopped part-way, position unknown, faulted) and the mount isn't parked: **Roof not at an end: mount not parked**, repeated. Neither may move: a slew would hit the roof's beams and a close would hit the telescope ([Close on unsafe weather](close-on-unsafe.md#the-telescope-moves-only-with-the-roof-at-an-end));
 - a close ran **from an unknown position**, **blind** (the Hall sensor is dead) or **without N.I.N.A.'s park**: the title names which ([Close on unsafe weather](close-on-unsafe.md#alerts)).
 
 The dashboard and Home Assistant show the same condition while it holds ([Dashboard](dashboard.md), [Home Assistant](../integration/home-assistant.md)). Earlier releases could leave a "can't move" unannounced: an alert raised in the first seconds after a restart, before the network was up, counted as having no channel and was dropped. It is now held and sent when a channel can take it.

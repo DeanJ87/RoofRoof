@@ -158,7 +158,10 @@ void test_new_rain_after_a_weather_halt_kept_by_daylight()
     TEST_ASSERT_EQUAL(Phase::Halted, r.seq.phase());
     r.in.weatherSafe = false;
     Counts c = r.runTo(r.in.nowMs + 60000, 1000);
-    TEST_ASSERT_TRUE(c.requests >= 1);
+    // Spec 043: stopped part-way, so no park request (a slew under the beams);
+    // the mount is parked, so the new attempt closes.
+    TEST_ASSERT_EQUAL(0, c.requests);
+    TEST_ASSERT_TRUE(c.closes >= 1);
 }
 
 // Review round 5: a failing weather attempt kept going by daylight becomes

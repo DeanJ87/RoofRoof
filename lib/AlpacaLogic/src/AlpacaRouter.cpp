@@ -258,6 +258,9 @@ namespace SQM
             if (call.info.typeKey == "dome")
                 if (std::optional<Response> dome = domeMethod(call))
                     return *dome;
+            if (call.info.typeKey == "switch")
+                if (std::optional<Response> device = switchMethod(call))
+                    return *device;
             return badRequest(BAD_REQUEST);
         }
 

@@ -9,6 +9,7 @@
 
 #include "CommandCheck.h"
 #include "DomeBridge.h"
+#include "MountMove.h"
 #include "RoofAlerts.h"
 #include "RoofText.h"
 
@@ -79,7 +80,8 @@ namespace DemoRoof
         const uint8_t allowed = RoofIo::allowedOverrides(command, origin, overrides);
         const RoofIo::CommandCheck check = checkNow(command, origin, allowed, false);
         const RoofIo::CommandCheck aside = checkNow(command, origin, allowed, true);
-        const RoofIo::Admission admission = guard.admit({command, origin, allowed}, check, aside, static_cast<uint32_t>(nowMs));
+        const RoofIo::Admission admission =
+            guard.admit({command, origin, allowed, controller.status()}, check, aside, static_cast<uint32_t>(nowMs));
         const Roof::State state = controller.status().state;
         switch (admission.action)
         {
@@ -105,7 +107,7 @@ namespace DemoRoof
             waitCheck = checkNow(wait.command(), wait.origin(), wait.overrides(), true);
         const Roof::Command command = wait.command();
         const RoofIo::GuardStep step = guard.step(controller.status(), false, gates, waitCheck, static_cast<uint32_t>(nowMs));
-        if (step.requestPark && !parkCfg.ninaUrl.empty())
+        if (step.requestPark && !parkCfg.ninaUrl.empty() && RoofIo::parkRequestAllowed(controller.status())) // spec 043
             parkMount();
         if (step.gaveUp)
             critical.push_back(CloseSeq::parkWaitAlert(wait.endText()));

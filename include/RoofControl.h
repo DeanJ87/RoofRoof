@@ -22,6 +22,7 @@
 #include "Config.h"
 #include "FaultRecord.h"
 #include "MotionGuards.h"
+#include "MountMove.h"
 #include "MoveGuard.h"
 #include "ParkRule.h"
 #include "PlatformHold.h"
@@ -144,6 +145,9 @@ namespace SQM
         // uploads, NVS) and restarts wait while it is (RoofIo::platformActionRefused).
         bool moving() const;
         Roof::State state() const { return static_cast<Roof::State>(stateNow.load()); }
+        // Spec 043 (constitution 10.1.0, II): N.I.N.A. may be asked to park (a slew)
+        // now: the roof at rest at a magnet (RoofIo::parkRequestAllowed).
+        bool parkRequestAllowed() const { return RoofIo::parkRequestAllowed(state()); }
         // A close is waiting for an upload or MQTT connect (MQTT reconnects wait meanwhile).
         bool closeWaiting() const { return closeWaitingNow.load(); }
         // Any task (spec 010): under the roof's lock, if the roof isn't moving

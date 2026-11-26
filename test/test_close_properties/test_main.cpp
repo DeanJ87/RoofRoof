@@ -96,8 +96,8 @@ namespace
         uint32_t attemptLimitMs = DEFAULT_PARK_TIMEOUT_MS;
         bool closingRun = false;
         uint64_t closingSinceMs = 0;
-        bool alertedEver[9][14] = {};
-        uint64_t alertedAtMs[9][14] = {};
+        bool alertedEver[9][15] = {};
+        uint64_t alertedAtMs[9][15] = {};
         bool halted = false;          // a close outlasted its guard
         uint64_t closeBarUntilMs = 0; // a refused or interrupted close: no close before this
         uint64_t quietUnsafeMs = 0;   // unsafe and not closed, with nothing done or raised

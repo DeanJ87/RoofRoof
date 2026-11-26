@@ -69,8 +69,8 @@ namespace
     Roof::CommandResult closeAsTheFirmware(Bench &bench, MoveGuard &guard, Origin origin, uint8_t requested, std::string &reason)
     {
         const uint8_t allowed = allowedOverrides(Command::Close, origin, requested);
-        const Admission admission =
-            guard.admit({Command::Close, origin, allowed}, check(bench, origin, allowed), check(bench, origin, allowed, true), 0);
+        const Admission admission = guard.admit(
+            {Command::Close, origin, allowed, bench.roof.status()}, check(bench, origin, allowed), check(bench, origin, allowed, true), 0);
         if (admission.action != Admit::Run)
         {
             reason = admission.action == Admit::Wait ? "waiting" : admission.reason;
@@ -129,13 +129,17 @@ void test_every_check_before_the_run_needs_the_override(void)
     TEST_ASSERT_TRUE(check(bench, Origin::Person, OverridePark).accepted);
 }
 
-void test_without_the_override_it_waits_for_the_park(void)
+// Spec 043 (constitution 10.2.0, II): with the position unknown a park (a
+// slew) could hit the beams, so the Close doesn't wait for one: it is refused
+// for the park, and only the person's confirmed close (above) goes past it.
+void test_without_the_override_it_is_refused_and_no_park_is_asked(void)
 {
     Bench bench = unknownAfterAClearedFault();
     MoveGuard guard = guardWithNina();
     std::string reason;
     TEST_ASSERT_FALSE(closeAsTheFirmware(bench, guard, Origin::Person, 0, reason).accepted);
-    TEST_ASSERT_EQUAL_STRING("waiting", reason.c_str());
+    TEST_ASSERT_EQUAL_STRING("mountNotParked", reason.c_str());
+    TEST_ASSERT_FALSE(guard.wait().waiting());
     TEST_ASSERT_EQUAL(Roof::State::Unknown, bench.roof.status().state);
 }
 
@@ -157,7 +161,7 @@ int main(int, char **)
     UNITY_BEGIN();
     RUN_TEST(test_a_persons_confirmed_close_from_unknown_runs);
     RUN_TEST(test_every_check_before_the_run_needs_the_override);
-    RUN_TEST(test_without_the_override_it_waits_for_the_park);
+    RUN_TEST(test_without_the_override_it_is_refused_and_no_park_is_asked);
     RUN_TEST(test_a_client_cant_override_the_park);
     return UNITY_END();
 }

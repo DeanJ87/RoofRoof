@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "MotionGuards.h"
+#include "MountMove.h"
 
 // The transitions (specs/005-close-on-unsafe/data-model.md). Each phase's
 // function checks its conditions in the table's order.
@@ -19,7 +20,7 @@ namespace SQM
                 return nowMs > sinceMs ? nowMs - sinceMs : 0;
             }
             static_assert(static_cast<size_t>(Event::NeedsPerson) < 9, "alertedAtMs has a row for every event");
-            static_assert(static_cast<size_t>(Cause::NinaLost) < 14, "alertedAtMs has a column for every cause");
+            static_assert(static_cast<size_t>(Cause::RoofBetweenEnds) < 15, "alertedAtMs has a column for every cause");
         } // namespace
 
         bool Sequence::Run::lasted(bool holds, uint64_t nowMs, uint64_t ms)
@@ -149,6 +150,10 @@ namespace SQM
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
+            // Spec 043 (constitution 10.2.0, II): part-open, unknown or faulted with
+            // the mount not parked: neither a park request nor a close is safe.
+            if (betweenEndsUnparked(in))
+                return betweenEnds();
             if (paused.has && elapsed(paused.endedAtMs, in.nowMs) < policy.rearmSafeMs)
                 return resume(in);
             return attempt(in);
@@ -178,7 +183,7 @@ namespace SQM
             Decision out = enter(Phase::WaitPark, Event::Started);
             parkRefusals = 0;
             attemptLimitMs = parkTimeoutMs; // a settings change applies from the next attempt
-            out.action = requestIfDue(in.nowMs);
+            out.action = requestIfDue(in);
             return out;
         }
 
@@ -242,6 +247,15 @@ namespace SQM
                 // so no "mount not parked" (its alert would name the wrong input).
                 return out;
             }
+            // Spec 043: the roof was stopped part-way (or its position lost)
+            // while waiting: no park request from here, and a person must check.
+            return betweenEndsUnparked(in) ? betweenEnds() : waitOn(in);
+        }
+
+        // The wait itself: its back-off or its park limit, and the park request.
+        Decision Sequence::waitOn(const Inputs &in)
+        {
+            Decision out;
             const uint64_t since = elapsed(phaseSinceMs, in.nowMs);
             // Both waits count unsafe time, with a wall-clock cap for one
             // stretched by many short safe spells.
@@ -257,7 +271,7 @@ namespace SQM
                 out.limitMs = since >= attemptLimitMs ? attemptLimitMs : capMs; // the limit that ran out
                 return out;
             }
-            out.action = requestIfDue(in.nowMs);
+            out.action = requestIfDue(in);
             return out;
         }
 
@@ -349,15 +363,7 @@ namespace SQM
             // say) still stands the sequence down once it can.
             if (personStopped && current == Phase::CannotMove)
                 return enter(Phase::HeldByPerson, Event::StoppedByPerson);
-            // A person made the position known or cleared the fault (spec 030:
-            // or a blind close may run): resume without a new park request
-            // until the back-off ends.
-            if (current == Phase::CannotMove && !blocksAttempt(in))
-            {
-                lastCritical.has = false; // "can't close by itself" no longer holds: nothing to remind of
-                return enter(Phase::RetryWait);
-            }
-            return Decision{};
+            return current == Phase::CannotMove ? cannotMove(in) : Decision{};
         }
 
         uint64_t Sequence::standDownLeftMs() const
@@ -493,6 +499,8 @@ namespace SQM
                 closeKindNina = false;
             }
             current = next;
+            if (next == Phase::CannotMove)
+                cannotCause = cause; // spec 043: what holds it there
             closeUnanswered = false;
             phaseSinceMs = lastNowMs;
             phaseWallStartMs = lastNowMs;
@@ -512,8 +520,13 @@ namespace SQM
             return out;
         }
 
-        Action Sequence::requestIfDue(uint64_t nowMs)
+        Action Sequence::requestIfDue(const Inputs &in)
         {
+            const uint64_t nowMs = in.nowMs;
+            // Spec 043 (constitution 10.2.0, II): a park is a slew: never asked
+            // for unless the roof is at an end.
+            if (!RoofIo::mountMayMove(in.roof))
+                return Action::None;
             if (!policy.requestPark)
                 return Action::None; // spec 022: only waits for the park
             if (requested && elapsed(lastRequestMs, nowMs) < policy.parkRequestGapMs)

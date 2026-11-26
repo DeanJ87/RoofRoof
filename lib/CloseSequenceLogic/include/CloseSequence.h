@@ -97,7 +97,8 @@ namespace SQM
             Closing,      // the close was commanded, or one was already running
             RetryWait,    // an attempt failed: no request until the back-off ends
             HeldByPerson, // a person stopped the sequence
-            CannotMove,   // a fault is latched (no blind close), the roof controller didn't start, or a blind close ran
+            CannotMove,   // a fault is latched (no blind close), the roof controller didn't start, a blind close ran,
+                          // or (spec 043) the roof isn't at an end with the mount not parked
             Halted,       // a close outlasted its guard and was stopped: waits for a person
         };
 
@@ -147,6 +148,10 @@ namespace SQM
             WasUnknown,     // spec 030: the close started from an unknown position
             ClosedBlind,    // spec 030: the blind close ran (the Hall sensor is dead)
             NinaLost,       // spec 030: the close ran without N.I.N.A.'s park
+            // Spec 043 (constitution 10.2.0, II): the roof isn't at an end (part-open,
+            // position unknown, faulted) and the mount isn't parked: no park request
+            // (a slew would hit the beams) and no close (onto an unparked mount).
+            RoofBetweenEnds,
         };
 
         // Spec 030: the input a ParkNotConfirmed alert names in its title
@@ -294,10 +299,16 @@ namespace SQM
             bool interrupted(const Inputs &in, bool personStopped, Decision &out);
             Decision closeNow(const Inputs &in);
             bool blocksAttempt(const Inputs &in) const;
+            // Spec 043: the roof isn't at an end and the mount isn't parked (nor
+            // may the N.I.N.A.-lost close go ahead): no park request, no close.
+            bool betweenEndsUnparked(const Inputs &in) const;
+            Decision betweenEnds();
+            Decision cannotMove(const Inputs &in); // CloseSequenceEnds.cpp
+            Decision waitOn(const Inputs &in);
             Decision closeNotice(Decision decision);
             Decision failAttempt(Event event, Cause cause, Action action);
             Decision enter(Phase next, Event event = Event::None, Cause cause = Cause::None);
-            Action requestIfDue(uint64_t nowMs);
+            Action requestIfDue(const Inputs &in);
             Decision withAlert(Decision decision);
 
             Phase current = Phase::Idle;
@@ -372,6 +383,7 @@ namespace SQM
                 bool unsent = false;
             };
             LastCritical lastCritical;
+            Cause cannotCause = Cause::None; // spec 043: why the sequence entered CannotMove
             // An attempt ended by a safe verdict, kept so a short safe spell
             // doesn't restart its clock (resume()).
             struct Pause
@@ -397,8 +409,8 @@ namespace SQM
             bool closeFailedOnce = false; // a close was refused or interrupted...
             uint64_t closeFailedAtMs = 0; // ...here: no close for RETRY_AFTER_MS
             // When each event and cause last alerted (index: Event, Cause).
-            bool alertedEver[9][14] = {};
-            uint64_t alertedAtMs[9][14] = {};
+            bool alertedEver[9][15] = {};
+            uint64_t alertedAtMs[9][15] = {};
             bool remindNow = false; // restored after a restart: remind on the first step
             bool restorePending = false;
             // Spec 013: the episode was started by daylight with the weather safe.
@@ -430,6 +442,8 @@ namespace SQM
             std::string refusal;             // the refused close's text
             ParkGap parkGap = ParkGap::None; // spec 030: parkGapOf(park result)
             Roof::State roof = Roof::State::Unknown;
+            // Spec 043: RoofIo::mountBlockedText for the roof now ("Roof part-open (42 %) with ...").
+            std::string betweenEnds;
         };
         // The park's text for the reasons: Safety::describe(park), and while
         // park requests are off (spec 022) a note that none was sent.

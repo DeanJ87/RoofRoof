@@ -1,5 +1,6 @@
 #include "DomeBridge.h"
 
+#include "MountMove.h"
 #include "RoofText.h"
 
 namespace SQM
@@ -50,6 +51,18 @@ namespace SQM
             // Stopped part-way or unknown: neither open nor closed, so neither
             // "wait for open" nor "wait for closed" is satisfied by it.
             return at(ShutterState::Error, false);
+        }
+
+        std::vector<Alpaca::SwitchReading> switchReadings(const Roof::Status &status, bool running)
+        {
+            std::vector<Alpaca::SwitchReading> out;
+            out.reserve(MOUNT_SWITCH_COUNT);
+            for (uint8_t i = 0; i < MOUNT_SWITCH_COUNT; ++i)
+            {
+                const MountSwitch which = static_cast<MountSwitch>(i);
+                out.push_back({mountSwitchName(which), mountSwitchDescription(which), mountSwitchValue(which, status, running)});
+            }
+            return out;
         }
 
         std::string domeWaitPrefix(const WaitView &wait)

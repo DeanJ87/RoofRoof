@@ -8,6 +8,7 @@
 
 #include "DeviceCore.h"
 #include "Logger.h"
+#include "MountMove.h"
 #include "RoofControl.h"
 #include "RoofText.h"
 #include "SafetyInputs.h"
@@ -226,6 +227,7 @@ namespace SQM
         reasons.parkGap = CloseSeq::parkGapOf(safety.park()); // spec 030
         reasons.fault = RoofIo::describeFault(snap.fault);
         reasons.roof = snap.status.state;
+        reasons.betweenEnds = RoofIo::mountBlockedText(snap.status, snap.travelMm); // spec 043
         const std::string weather = Safety::describe(safety.weather());
         personStopsSeen = snap.personStops;
         const CloseSeq::Decision answer = carryOut(decision, safety, roof, reasons.refusal);
@@ -363,7 +365,11 @@ namespace SQM
         {
         case CloseSeq::Action::RequestPark:
             // Spec 024: with the park switches alone and no address, only the wait.
-            if (safety.ninaSet())
+            // Spec 043 (constitution 10.2.0, II): checked again at the sender with
+            // the roof as it is now: a park is a slew, safe only at an end.
+            if (safety.ninaSet() && !roof.parkRequestAllowed())
+                Logger::warn(TAG, "Not asking N.I.N.A. to park: the roof isn't at an end");
+            else if (safety.ninaSet())
             {
                 Logger::info(TAG, "Asking N.I.N.A. to park the mount");
                 safety.requestPark();

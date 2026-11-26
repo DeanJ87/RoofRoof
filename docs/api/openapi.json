@@ -4,7 +4,7 @@
     "title": "RoofRoof REST API",
     "version": "0.1.0+dev",
     "summary": "The REST API of a RoofRoof roll-off-roof controller.",
-    "description": "Every `/api/*` route a RoofRoof roll-off-roof controller serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (alert `title` and `message`, `error`) may be reworded between releases: key on the alert `event`, not its text.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here. The device offers one Alpaca device, the roof as a Dome (`/api/v1/dome/0/*`); it has no password (the Alpaca design), and its open and close pass the same safety checks as the REST commands. See https://ascom-standards.org/api/.",
+    "description": "Every `/api/*` route a RoofRoof roll-off-roof controller serves on port 80. Generated from the firmware's route registry and its contract schemas, so it matches the device.\n\n**The same in every language**: numbers are JSON numbers with `.` as the decimal point, units and field names are never translated, and timestamps are Unix seconds or ISO 8601. Text for people (alert `title` and `message`, `error`) may be reworded between releases: key on the alert `event`, not its text.\n\n**Password**: when protection is on, routes that change something need HTTP Basic auth with the device's username and password.\n\n**ASCOM Alpaca** (`/api/v1/*`, `/management/*`) follows the ASCOM Alpaca standard and isn't repeated here. The device offers two Alpaca devices, the roof as a Dome (`/api/v1/dome/0/*`) and a read-only Switch saying whether the telescope may move (`/api/v1/switch/0/*`); it has no password (the Alpaca design), and its open and close pass the same safety checks as the REST commands. See https://ascom-standards.org/api/.",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -241,6 +241,7 @@
                     "positionMm": 0,
                     "positionPercent": 0,
                     "target": null,
+                    "mountMayMove": true,
                     "driving": false,
                     "fromUnknown": false,
                     "blind": false,
@@ -10485,6 +10486,10 @@
                   "number"
                 ]
               },
+              "mountMayMove": {
+                "type": "boolean",
+                "description": "Spec 043: the roof is at rest at its closed or open magnet, so the telescope may slew, park or unpark (the Alpaca Switch \"Mount may move\")."
+              },
               "moveElapsedMs": {
                 "type": "number"
               },
@@ -10825,6 +10830,7 @@
               "maxWatchdogBeatAgeMs",
               "minSupplyVolts",
               "motorAmps",
+              "mountMayMove",
               "moveElapsedMs",
               "moveTimeoutMs",
               "needsPerson",

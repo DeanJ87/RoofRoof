@@ -22,8 +22,9 @@ namespace SQM
         struct MoveGuardSettings
         {
             ParkWaitSettings wait;
-            bool ninaSet = false;    // a N.I.N.A. address is set
-            bool requestPark = true; // park.requestPark
+            bool ninaSet = false;     // a N.I.N.A. address is set
+            bool requestPark = true;  // park.requestPark
+            uint32_t travelMm = 1850; // roof.travelMm, for spec 043's text
         };
 
         // park.timeoutSeconds, autoClose.parkRequestSeconds and .parkHoldSeconds,
@@ -62,11 +63,17 @@ namespace SQM
             // aside. A different command replaces a wait under way; the same
             // command refused for the park again joins it (no second park
             // request, the time limit unchanged).
+            // Spec 043 (constitution 10.2.0, II): `roof` is where the roof is now. A
+            // wait asks N.I.N.A. to park, a slew, so it starts only with the roof at
+            // an end (MountMove); otherwise the command is refused for the park,
+            // saying the roof isn't at an end (a person may still confirm past it).
+            // The default (unknown) never waits.
             struct Request
             {
                 Roof::Command command = Roof::Command::Close;
                 Roof::Origin origin = Roof::Origin::Person;
                 uint8_t overrides = 0;
+                Roof::Status roof;
             };
             Admission admit(const Request &request, const CommandCheck &check, const CommandCheck &parkAside, uint32_t nowMs);
             // Spec 027: the automatic close is about to run: a waiting Open is
@@ -81,7 +88,8 @@ namespace SQM
             // Any accepted stop or abort.
             void stopped();
             // One control step. `waitCheck`: the waiting command's check with
-            // the park set aside (ignored while nothing waits).
+            // the park set aside (ignored while nothing waits). Spec 043: a wait
+            // whose roof is no longer at an end ends (refused), never asking again.
             GuardStep step(
                 const Roof::Status &status, bool closePending, const GateInputs &gates, const CommandCheck &waitCheck, uint32_t nowMs);
             // The waiting command ran and was refused: the wait failed with `text`.
@@ -121,6 +129,10 @@ namespace SQM
 
         // "Waiting for the mount to park: N.I.N.A. was asked; the Close runs once the park holds".
         std::string parkWaitText(Roof::Command command);
+        // Spec 043: why a command refused for the park doesn't wait: the roof
+        // isn't at an end ("Roof part-open (42 %) with the mount not parked: ...
+        // N.I.N.A. was not asked to park"), "" when it is.
+        std::string parkWaitUnsafe(const Roof::Status &roof, uint32_t travelMm);
         // The override names in effect, for the status ("weatherNotSafe", "daylight", "mountNotParked").
         const char *overrideName(uint8_t bit);
         // Spec 039: the log line and alert text when a person's Open or Close

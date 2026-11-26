@@ -325,6 +325,20 @@
       "demoCannot": "The demo device refuses an invalid pin set, so its pins are always valid"
     },
     {
+      "id": "roof-mount-may-move",
+      "label": "roof.mount.label",
+      "sources": ["status.roof.mountMayMove"],
+      "requiredBy": "043 FR-007",
+      "visibility": {
+        "rule": "when",
+        "when": "the firmware reports it (spec 043 and later)"
+      },
+      "priority": 2,
+      "location": "card:roof",
+      "test": "roof-mount-may-move",
+      "note": "One row under Mount park: May move at either magnet, Keep still otherwise, why behind its ?. The same fact N.I.N.A. reads as the Alpaca Switch \"Mount may move\"; said nowhere else."
+    },
+    {
       "id": "roof-close-phase",
       "label": "roof.closePhase.label",
       "sources": ["status.roof.closePhase", "status.roof.closeRearmSeconds", "status.roof.closeRearmLapse"],

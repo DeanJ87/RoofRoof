@@ -189,6 +189,14 @@ export const parkPill = (roof: RoofStatus): PillView => {
     : { label: t('roof.park.notParked'), tone: 'pill-amber', text: deviceText(roof.parkText) };
 };
 
+// Spec 043: the telescope may move only with the roof at an end; null on firmware that doesn't say.
+export const mountPill = (roof: RoofStatus): PillView | null => {
+  if (roof.mountMayMove === undefined) return null;
+  return roof.mountMayMove
+    ? { label: t('roof.mount.mayMove'), tone: 'pill-green', text: t('roof.mount.mayMoveHint') }
+    : { label: t('roof.mount.keepStill'), tone: 'pill-amber', text: t('roof.mount.keepStillHint') };
+};
+
 // The automatic close (spec 005): attempting, held by a person's Stop, or stuck.
 const ATTEMPTING: RoofClosePhase[] = ['waitPark', 'closing', 'retryWait'];
 export const closeAttempting = (phase: RoofClosePhase) => ATTEMPTING.includes(phase);

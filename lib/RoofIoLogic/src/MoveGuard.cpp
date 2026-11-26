@@ -2,6 +2,7 @@
 
 #include <ArduinoJson.h>
 
+#include "MountMove.h"
 #include "RoofText.h"
 
 namespace SQM
@@ -16,6 +17,7 @@ namespace SQM
             s.wait.holdMs = config.autoClose.parkHoldSeconds * 1000u;
             s.ninaSet = !config.park.ninaUrl.empty();
             s.requestPark = config.park.requestPark;
+            s.travelMm = config.roof.travelMm;
             return s;
         }
 
@@ -34,6 +36,10 @@ namespace SQM
             const std::string impossible = parkWaitImpossible(settings.ninaSet, settings.requestPark);
             if (!impossible.empty())
                 return Admission{Admit::Refuse, check.reason, check.text + ": " + impossible};
+            // Spec 043: the wait asks N.I.N.A. to park, a slew: only with the roof at an end.
+            const std::string unsafe = parkWaitUnsafe(request.roof, settings.travelMm);
+            if (!unsafe.empty())
+                return Admission{Admit::Refuse, check.reason, check.text + ": " + unsafe};
             parkWait.start(command, origin, request.overrides, nowMs, settings.wait);
             return Admission{Admit::Wait, "", parkWaitText(command)};
         }
@@ -85,6 +91,14 @@ namespace SQM
                 out.refused = true;
                 return out;
             }
+            // Spec 043: the roof left its end while waiting (a jog, say): no more park requests.
+            const std::string unsafe = parkWaitUnsafe(status, settings.travelMm);
+            if (!unsafe.empty())
+            {
+                parkWait.refuse(unsafe);
+                out.refused = true;
+                return out;
+            }
             const ParkWaitStep step = parkWait.step(parkHolds(gates), nowMs);
             out.requestPark = step.requestPark;
             out.run = step.end == ParkWaitEnd::Ran;
@@ -122,6 +136,13 @@ namespace SQM
         {
             return std::string("Waiting for the mount to park: N.I.N.A. was asked; the ") + commandWord(command) +
                    " runs once the park holds";
+        }
+
+        std::string parkWaitUnsafe(const Roof::Status &roof, uint32_t travelMm)
+        {
+            if (mountMayMove(roof))
+                return "";
+            return mountBlockedText(roof, travelMm) + " N.I.N.A. was not asked to park";
         }
 
         std::string parkOverrideText(Roof::Command command, const GateInputs &gates)

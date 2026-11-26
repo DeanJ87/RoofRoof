@@ -75,6 +75,7 @@ Shortened above: the document also carries heap and stack figures, `partitions` 
 | `state` | `unknown`, `closed`, `open`, `opening`, `closing`, `stopped` or `error` |
 | `positionKnown`, `positionMm`, `positionPercent` | 0 is closed; `null` while the position is unknown |
 | `target` | `open` or `closed` while opening or closing, else `null` |
+| `mountMayMove` | spec 043: the roof is at rest at its closed or open magnet, so the telescope may slew, park or unpark; `false` part-open, moving, position unknown or faulted (the Alpaca Switch `Mount may move`, [ASCOM Alpaca](../user-guide/alpaca.md#the-switch-mount-may-move)) |
 | `driving` | the motor driver is on (false during the 500 ms dead time) |
 | `fromUnknown` | the move started from an unknown position (slow, to the first magnet); a person's, or the [automatic close's](../user-guide/close-on-unsafe.md#closing-when-the-position-is-unknown) |
 | `blind` | spec 030: the move is a [blind close](../user-guide/roof-motion.md#blind-close): the Hall sensor is dead (a Hall rail fault is latched) and the automatic close drives towards closed on time alone, at the slow duty. `state` reads `closing` while it runs and `error` again afterwards |
@@ -1112,6 +1113,7 @@ RoofRoof is an ASCOM Alpaca server with one device, the roof as a Dome - see [AS
 | `GET /management/v1/description` | Server description: `Manufacturer` `RoofRoof`, `ServerName` the device name |
 | `GET /management/v1/configureddevices` | The configured devices: the Dome (`DeviceType` `Dome`, number 0, `UniqueID` `roofroof-<MAC>-dome-0`) while Alpaca is on, else an empty list |
 | `GET /setup` | Redirects to **Settings → Network → ASCOM Alpaca** in the web UI |
-| `/api/v1/dome/0/...` | The Dome's members ([ASCOM Alpaca](../user-guide/alpaca.md#what-the-dome-does)); any other device: HTTP `400` |
+| `/api/v1/dome/0/...` | The Dome's members ([ASCOM Alpaca](../user-guide/alpaca.md#what-the-dome-does)) |
+| `/api/v1/switch/0/...` | Spec 043: the read-only Switch's members ([ASCOM Alpaca](../user-guide/alpaca.md#the-switch-mount-may-move)); any other device: HTTP `400` |
 
 A UDP listener on port `32227` answers Alpaca discovery broadcasts (`alpacadiscovery1` → `{"AlpacaPort":80}`) whenever Alpaca is enabled in settings - this requires a device restart to start/stop.

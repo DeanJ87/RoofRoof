@@ -17,7 +17,7 @@ namespace SQM
         const uint8_t allowed = RoofIo::allowedOverrides(command, origin, overrides);
         const RoofIo::CommandCheck check = checkNow(command, origin, allowed);
         const RoofIo::CommandCheck aside = checkNow(command, origin, allowed, true);
-        const RoofIo::Admission admission = guard.admit({command, origin, allowed}, check, aside, millis());
+        const RoofIo::Admission admission = guard.admit({command, origin, allowed, controller.status()}, check, aside, millis());
         const Roof::State state = controller.status().state;
         switch (admission.action)
         {

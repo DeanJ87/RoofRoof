@@ -271,6 +271,8 @@ namespace SQM
             // The roof as the Dome (spec 006), through RoofControl with the client origin.
             Alpaca::DomeStatus domeStatus() const override;
             Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action) override;
+            // Spec 043: the roof's position for the telescope as read-only switches.
+            std::vector<Alpaca::SwitchReading> switches() const override;
 
         private:
             WebServer &owner;

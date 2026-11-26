@@ -493,6 +493,17 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the follow-ups F-1 to F-6 in spec.md (rain, jog toward open, calibration run,
   the suspect switch, the supply, `autoClose.remoteStop`).
 
+### 043 The telescope moves only with the roof at an end (base: main after 041)
+
+- **Scope:**
+  - Constitution 10.2.0 (II, IV): RoofRoof never asks N.I.N.A. to park (a slew) unless the roof is
+    at rest at a magnet; part-open with the mount not parked, nothing moves and a person is called.
+  - One predicate (`RoofIo::mountMayMove`) in the close sequence, the park wait and both senders.
+  - A read-only Alpaca Switch: "Mount may move", "Roof fully open", "Roof fully closed"; ConformU.
+  - The Roof card's Telescope row, `roof.mountMayMove`, the N.I.N.A. hardening guide.
+- **Out of scope:** a Home Assistant entity for it; watching N.I.N.A.'s own slews (RoofRoof can't
+  stop them, the sequence must gate them).
+
 ## Merge order
 
 ```text

@@ -224,6 +224,9 @@ export interface RoofStatus {
   positionMm: number | null;
   positionPercent: number | null;
   target: 'open' | 'closed' | null;
+  // Spec 043 (absent on older firmware): the roof is at rest at its closed or open magnet, so the
+  // telescope may slew, park or unpark (the Alpaca Switch "Mount may move").
+  mountMayMove?: boolean;
   driving: boolean;
   fromUnknown: boolean;
   // Spec 030 (absent on older firmware): the move is a blind close (the Hall sensor dead, on time alone).

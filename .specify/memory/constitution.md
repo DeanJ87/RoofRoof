@@ -1,6 +1,31 @@
 <!--
 Sync Impact Report
-- Version: 10.1.0 -> 11.0.0 (MAJOR: Principle III lets a person's Stop of the automatic close lapse by
+- Version: 11.0.0 -> 11.1.0 (MINOR: Principle II gains a rule for the telescope, and Principle IV a
+  second Alpaca device. Nothing is relaxed: the automatic close and a command's park wait ask for a
+  park in fewer cases than before.)
+- Modified: II. Close Only Onto a Parked Mount. New: **the telescope moves only with the roof at an
+  end**. A slew, a park and an unpark are safe only with the roof at rest on its closed or open
+  magnet; part-open, moving, with the position unknown or a fault latched, the telescope hits the
+  roof's beams, which is worse than rain. RoofRoof never asks N.I.N.A. to park (a slew) unless the
+  roof is at an end: neither the automatic close (also from an unknown position, and before a blind
+  close) nor a command's park wait. With the roof not at an end and the mount not parked, nothing
+  moves: no park request, no close (the roof can't close onto an unparked mount either), and the
+  critical needs-a-person alert ("Roof part-open (N %) with the mount not parked: moving the roof or
+  the telescope would hit the beams. A person must check.") is reminded until the roof is at an end,
+  the mount is parked or nothing wants the roof closed. With the mount already parked those closes
+  go ahead as before. The owner's N.I.N.A.-lost close (off by default) is unchanged: it asks for no
+  park. A person may still move either through the existing confirmed paths, warned.
+- Modified: IV. Standards Conformance. The device also offers a read-only Alpaca **Switch** (device 0,
+  ISwitchV3): "Mount may move" (the roof at an end), "Roof fully open", "Roof fully closed", so an
+  imaging sequence can gate its own slews. No client can write it. ConformU covers it as it covers
+  the Dome.
+- Why: finding F41 (spec 043): a roof stopped part-way (a person's Stop, a fault, a crash, a power
+  cut) with the mount unparked, then unsafe weather: the automatic close asked N.I.N.A. to park, and
+  the telescope slewed under the part-open roof.
+- Templates: no change. Docs: docs/user-guide/alpaca.md, docs/user-guide/close-on-unsafe.md,
+  docs/user-guide/dashboard.md, docs/user-guide/alerts.md, docs/api/rest.md,
+  specs/043-slew-only-at-ends/spec.md.
+- Earlier: 10.1.0 -> 11.0.0 (MAJOR: Principle III lets a person's Stop of the automatic close lapse by
   itself, as an owner setting, so the close can move the roof after a person stopped it.)
 - Modified: III. Unsafe Ends Closed, "A person's stop". New: **the stop may lapse**
   (`autoClose.personStopLapse`, spec 044). `never` (the default, and after an upgrade) is the rule as
@@ -532,6 +557,21 @@ Closing onto an unparked telescope is the most expensive failure this device can
   switches on separate cables are recommended and a single switch is warned about wherever the
   source is set; and a fitted switch that hasn't read open over 3 roof openings in a row is suspect
   and refuses Open until it has been seen open.
+- **The telescope moves only with the roof at an end** (11.1.0). A slew, a park and an unpark are
+  safe only while the roof is at rest on its closed magnet or its open magnet; part-open, moving,
+  with the position unknown or a fault latched, the telescope hits the roof's beams, which is worse
+  than rain. RoofRoof MUST NEVER trigger a slew otherwise: it asks N.I.N.A. to park (the automatic
+  close, a command's park wait) only with the roof at an end, checked by one predicate in `lib/`
+  where the request is decided and again where it is sent. With the roof not at an end and the
+  mount not parked, nothing moves by itself: no park request, no close (onto an unparked mount),
+  and a critical needs-a-person alert saying where the roof is ("Roof part-open (N %) with the
+  mount not parked: moving the roof or the telescope would hit the beams. A person must check."),
+  reminded until the roof is at an end, the mount is parked, or nothing wants the roof closed. With
+  the mount parked, the closes Principle I allows (from an unknown position, blind) go ahead as
+  before. The device tells imaging apps through its Alpaca Switch "Mount may move" and Dome
+  `ShutterStatus` (open only at the open magnet), so a sequence can gate its own slews. A person
+  may still move the roof or the mount through the confirmed paths below, warned; an automation
+  never can.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed. The automatic
   close keeps asking for the park for as long as the roof should close, and the critical alert names
@@ -660,11 +700,15 @@ N.I.N.A. drives the roof as an Alpaca Dome, and it must behave exactly as the sp
 - The Dome implements `OpenShutter`, `CloseShutter`, `AbortSlew`, `ShutterStatus` and `Slewing`,
   with `CanSetShutter` true. Every other capability reports false, and its methods return
   NotImplemented. The advertised interface version MUST match what is implemented.
+- The Switch (11.1.0) is read-only: its switches report the roof at an end ("Mount may move") and
+  at each magnet; `CanWrite` and `CanAsync` are false, and writing, renaming or the asynchronous
+  members return NotImplemented. No Alpaca client can change a safety decision through it.
 - `CloseShutter` and `OpenShutter` return at once and report progress through `ShutterStatus`.
   A move the safety rules refuse returns an Alpaca error saying why (Principles II and III). It
   never silently does nothing.
 - Every change to the Alpaca code MUST pass ASCOM ConformU (conformance and the Alpaca protocol
-  check) with zero errors, issues and configuration alerts, in CI against the simulator.
+  check) with zero errors, issues and configuration alerts, in CI against the simulator, for every
+  device it offers.
 - ConformU moves the shutter. It runs against real hardware only in bench mode (no motor) or with
   a person at the roof.
 - The device UniqueID and discovery MUST stay stable across releases.
@@ -835,4 +879,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 11.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 11.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

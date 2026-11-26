@@ -149,6 +149,7 @@
     "positionMm": 0,
     "positionPercent": 0,
     "target": null,
+    "mountMayMove": true,
     "driving": false,
     "fromUnknown": false,
     "blind": false,

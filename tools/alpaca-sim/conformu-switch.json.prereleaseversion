@@ -1,0 +1,6 @@
+{
+  "SwitchEnableSet": true,
+  "SwitchReadDelay": 50,
+  "SwitchWriteDelay": 50,
+  "SwitchExtendedNumberTestRange": 5
+}

@@ -152,6 +152,17 @@ namespace SQM
                 case Event::CloseFailed:
                     return {"Roof didn't close", closeFailedMessage(decision, why)};
                 case Event::CannotClose:
+                    if (decision.cause == Cause::RoofBetweenEnds) // spec 043
+                        return {
+                            "Roof not at an end: mount not parked",
+                            withWhy(
+                                because + ". " +
+                                    (why.empty() ? std::string("The roof isn't at an end with the mount not parked: moving the roof or "
+                                                               "the telescope would hit the beams. A person must check.")
+                                                 : why) +
+                                    " RoofRoof doesn't ask N.I.N.A. to park or close the roof until the roof is at an end or the "
+                                    "mount is parked.",
+                                "")};
                     if (decision.cause == Cause::RoofNotStarted)
                         return {
                             "Roof can't close by itself",
@@ -232,6 +243,8 @@ namespace SQM
                 return reasons.fault;
             case Cause::Refused:
                 return reasons.refusal;
+            case Cause::RoofBetweenEnds:
+                return reasons.betweenEnds; // spec 043
             case Cause::Interrupted:
             case Cause::TooLong:
             case Cause::NotStarted:
@@ -290,7 +303,8 @@ namespace SQM
                 "closeNotStarted",
                 "wasUnknown",
                 "closedBlind",
-                "ninaLost"};
+                "ninaLost",
+                "roofBetweenEnds"};
             const size_t index = static_cast<size_t>(cause);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }

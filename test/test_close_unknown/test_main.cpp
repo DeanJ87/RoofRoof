@@ -47,6 +47,7 @@ namespace
         std::vector<Decision> events;
         int closes = 0;
         int blindCloses = 0;
+        int parkRequests = 0; // spec 043: a park is a slew
         uint8_t maxDuty = 0;
         float startMm = 0.0f;
         bool movedBeforePark = false;
@@ -64,6 +65,8 @@ namespace
 
         void carryOut(const Decision &d)
         {
+            if (d.action == Action::RequestPark)
+                ++parkRequests;
             if (d.action == Action::Stop)
                 b.roof.command(Roof::Command::Stop, Roof::Origin::Automatic);
             if (d.action != Action::Close && d.action != Action::BlindClose)
@@ -160,11 +163,16 @@ void test_w05_closes_slowly_to_the_closed_magnet_once_the_park_is_confirmed(void
     site.runFor(120000); // N.I.N.A. hasn't parked yet: nothing moves
     TEST_ASSERT_FALSE(site.movedBeforePark);
     TEST_ASSERT_EQUAL(0, site.closes);
-    TEST_ASSERT_EQUAL(Phase::WaitPark, site.seq.phase());
+    // Spec 043: part-open with the mount not parked: no park request (a slew
+    // under the beams) and a person is needed.
+    TEST_ASSERT_EQUAL(0, site.parkRequests);
+    TEST_ASSERT_EQUAL(Phase::CannotMove, site.seq.phase());
+    TEST_ASSERT_EQUAL(1, site.count(Event::CannotClose, Cause::RoofBetweenEnds));
     TEST_ASSERT_TRUE(b.roof.output().command == Driver::Command::Off);
-    site.parked = true;
+    site.parked = true; // a person parked the mount: the close goes ahead as before
     site.runFor(PARK_SETTLE_MS + 300);
     TEST_ASSERT_EQUAL(1, site.closes);
+    TEST_ASSERT_EQUAL(0, site.parkRequests);
     TEST_ASSERT_TRUE(b.state() == State::Closing);
     TEST_ASSERT_TRUE(b.roof.status().fromUnknown);
     TEST_ASSERT_EQUAL_UINT32(Roof::unknownMoveTimeoutMs(Roof::Settings()), b.roof.status().moveTimeoutMs);
@@ -195,11 +203,16 @@ void test_w05_without_the_park_never_moves(void)
     Site site(b);
     site.startMm = mm;
     site.weatherSafe = false;
-    site.runFor(3600000); // an hour of park requests and alerts
+    site.runFor(3600000); // an hour: spec 043, no park requests, the needs-person alert reminded
     TEST_ASSERT_FALSE(site.movedBeforePark);
     TEST_ASSERT_EQUAL(0, site.closes);
+    TEST_ASSERT_EQUAL(0, site.parkRequests);
     TEST_ASSERT_TRUE(b.state() == State::Unknown);
-    TEST_ASSERT_TRUE(site.count(Event::ParkNotConfirmed, Cause::ParkTimeout) >= 1);
+    TEST_ASSERT_EQUAL(1, site.count(Event::CannotClose, Cause::RoofBetweenEnds));
+    int reminders = 0;
+    for (const Decision &d : site.events)
+        reminders += d.reminder && d.event == Event::CannotClose && d.cause == Cause::RoofBetweenEnds ? 1 : 0;
+    TEST_ASSERT_TRUE(reminders >= 1);
 }
 
 void test_the_unknown_close_ending_on_the_wrong_magnet_faults_and_still_says_so(void)
@@ -238,7 +251,10 @@ void test_blind_close_runs_once_after_the_park_and_asks_for_a_person(void)
     site.weatherSafe = false;
     site.runFor(60000);
     TEST_ASSERT_FALSE(site.movedBeforePark); // the park first
-    TEST_ASSERT_EQUAL(Phase::WaitPark, site.seq.phase());
+    // Spec 043: the position unknown (the Hall dead): no park request, a person must check.
+    TEST_ASSERT_EQUAL(0, site.parkRequests);
+    TEST_ASSERT_EQUAL(Phase::CannotMove, site.seq.phase());
+    TEST_ASSERT_EQUAL(1, site.count(Event::CannotClose, Cause::RoofBetweenEnds));
     site.parked = true;
     site.runFor(PARK_SETTLE_MS + 300);
     TEST_ASSERT_EQUAL(1, site.blindCloses);
