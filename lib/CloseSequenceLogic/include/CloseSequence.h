@@ -148,7 +148,7 @@ namespace SQM
             WasUnknown,     // spec 030: the close started from an unknown position
             ClosedBlind,    // spec 030: the blind close ran (the Hall sensor is dead)
             NinaLost,       // spec 030: the close ran without N.I.N.A.'s park
-            // Spec 043 (constitution 10.2.0, II): the roof isn't at an end (part-open,
+            // Spec 043 (constitution 11.1.0, II): the roof isn't at an end (part-open,
             // position unknown, faulted) and the mount isn't parked: no park request
             // (a slew would hit the beams) and no close (onto an unparked mount).
             RoofBetweenEnds,

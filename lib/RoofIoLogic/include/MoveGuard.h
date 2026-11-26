@@ -63,7 +63,7 @@ namespace SQM
             // aside. A different command replaces a wait under way; the same
             // command refused for the park again joins it (no second park
             // request, the time limit unchanged).
-            // Spec 043 (constitution 10.2.0, II): `roof` is where the roof is now. A
+            // Spec 043 (constitution 11.1.0, II): `roof` is where the roof is now. A
             // wait asks N.I.N.A. to park, a slew, so it starts only with the roof at
             // an end (MountMove); otherwise the command is refused for the park,
             // saying the roof isn't at an end (a person may still confirm past it).

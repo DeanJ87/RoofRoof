@@ -129,7 +129,7 @@ void test_every_check_before_the_run_needs_the_override(void)
     TEST_ASSERT_TRUE(check(bench, Origin::Person, OverridePark).accepted);
 }
 
-// Spec 043 (constitution 10.2.0, II): with the position unknown a park (a
+// Spec 043 (constitution 11.1.0, II): with the position unknown a park (a
 // slew) could hit the beams, so the Close doesn't wait for one: it is refused
 // for the park, and only the person's confirmed close (above) goes past it.
 void test_without_the_override_it_is_refused_and_no_park_is_asked(void)

@@ -496,7 +496,7 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 ### 043 The telescope moves only with the roof at an end (base: main after 041)
 
 - **Scope:**
-  - Constitution 10.2.0 (II, IV): RoofRoof never asks N.I.N.A. to park (a slew) unless the roof is
+  - Constitution 11.1.0 (II, IV): RoofRoof never asks N.I.N.A. to park (a slew) unless the roof is
     at rest at a magnet; part-open with the mount not parked, nothing moves and a person is called.
   - One predicate (`RoofIo::mountMayMove`) in the close sequence, the park wait and both senders.
   - A read-only Alpaca Switch: "Mount may move", "Roof fully open", "Roof fully closed"; ConformU.

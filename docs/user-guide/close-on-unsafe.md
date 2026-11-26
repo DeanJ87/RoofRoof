@@ -34,7 +34,7 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceEnds.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/src/CloseSequenceLapse.cpp lib/CloseSequenceLogic/src/CloseSequenceRestore.cpp lib/CloseSequenceLogic/src/WeatherHold.cpp lib/CloseSequenceLogic/src/NinaLost.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: ca4b16423a06bd61
+fingerprint: c3e1b7915cc89986
 -->
 <figure class="diagram" markdown>
 
@@ -145,7 +145,7 @@ unless it clears"), and the status has it as `roof.weatherHold` (`countedSeconds
 
 At any position between the closed and open magnets the telescope hits the roof's beams if it slews,
 and a park is a slew. A collision is worse than rain, so RoofRoof asks N.I.N.A. to park only with the
-roof at rest on one of its magnets (constitution 10.2.0, II). The rule is one predicate in the
+roof at rest on one of its magnets (constitution 11.1.0, II). The rule is one predicate in the
 firmware's logic, checked where the request is decided and again where it is sent, for the automatic
 close and for a command's [park wait](alpaca.md#the-park-wait) alike.
 
@@ -379,7 +379,11 @@ When it lapses, the device logs it, sends the critical alert **Hold lapsed: clos
 still raining** (or "... still unsafe") through the roof-not-closed event (never below Urgent, past
 the alert pause, sent again until a channel takes it), and arms the automatic close again. The
 close then starts at once and goes through every step and check as any other: a park request, the
-park confirmed, then the close; the roof never closes onto a mount that isn't confirmed parked. A
+park confirmed, then the close; the roof never closes onto a mount that isn't confirmed parked. With the roof
+stopped part-way (a Stop usually leaves it there) the park is asked for only once the roof is at an
+end: part-open with the mount not parked, nothing moves and **Roof not at an end: mount not parked**
+asks a person to check ([The telescope moves only with the roof at an
+end](#the-telescope-moves-only-with-the-roof-at-an-end)). A
 Stop of that close stands it down again, with its own count.
 
 A lapse never applies to a close that took too long (`Halted`), to a Stop of a close that only

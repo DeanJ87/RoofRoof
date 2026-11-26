@@ -1,6 +1,6 @@
 // Spec 030 (FR-001..FR-004, SC-001): the weather hold. A blip never starts the
 // automatic close; rain does at once, and so does a failed rain sensor
-// (constitution 10.2.0); a silent SQMeter is still held; a flapping verdict
+// (constitution 11.1.0); a silent SQMeter is still held; a flapping verdict
 // closes once. The real
 // sequence is stepped every 100 ms with the roof open and the park confirmed,
 // the weather seen through the hold as CloseOnUnsafe does.
@@ -428,7 +428,7 @@ void test_an_override_after_the_hold_fired_ends_it(void)
     TEST_ASSERT_TRUE(r.saw(Event::EndedSafe));
 }
 
-// Owner decision (constitution 10.2.0): a failed rain sensor is treated like
+// Owner decision (constitution 11.1.0): a failed rain sensor is treated like
 // rain, because it may be failing because it is wet. Only those two skip it.
 void test_only_rain_and_a_failed_rain_sensor_skip_the_hold(void)
 {

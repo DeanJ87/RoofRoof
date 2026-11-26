@@ -219,7 +219,7 @@ void test_the_automatic_close_calls_off_a_waiting_open_only(void)
 
 // The phase: asking until a park is seen after the wait began, then holding;
 // a park that breaks goes back to asking; nothing is kept over a restart.
-// Spec 043 (constitution 10.2.0, II): a park is a slew, so a wait (which asks
+// Spec 043 (constitution 11.1.0, II): a park is a slew, so a wait (which asks
 // N.I.N.A. to park) starts only with the roof at an end. Part-open, unknown,
 // moving or faulted: refused for the park, saying why, and nothing asked.
 void test_no_wait_and_no_park_request_unless_the_roof_is_at_an_end(void)

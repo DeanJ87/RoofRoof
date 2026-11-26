@@ -2,7 +2,7 @@
 
 #include "MountMove.h"
 
-// Spec 043 (constitution 10.2.0, II): the telescope moves only with the roof at
+// Spec 043 (constitution 11.1.0, II): the telescope moves only with the roof at
 // an end. A park is a slew, so the sequence asks for one only then; with the
 // roof between its ends and the mount not parked it moves nothing (no park
 // request, no close onto an unparked mount) and a person must check

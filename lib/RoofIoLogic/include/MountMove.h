@@ -1,6 +1,6 @@
 #pragma once
 
-// Spec 043 (constitution 10.2.0, II): the telescope may move (any slew, a park
+// Spec 043 (constitution 11.1.0, II): the telescope may move (any slew, a park
 // or an unpark included) only with the roof at one of its ends: at the closed
 // magnet or the open magnet, at rest. Part-open, moving, with the position
 // unknown or a fault latched, a slew can hit the roof's beams, which is worse

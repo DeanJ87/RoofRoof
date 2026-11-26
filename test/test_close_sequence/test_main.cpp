@@ -95,7 +95,7 @@ void test_a_waiting_close_is_watched_without_a_park_request()
     TEST_ASSERT_EQUAL(Phase::Closing, r.seq.phase());
 }
 
-// Spec 043 (constitution 10.2.0, II): a park is a slew, never asked for between
+// Spec 043 (constitution 11.1.0, II): a park is a slew, never asked for between
 // the ends (test_mount_may_move has the rest); parked, the attempt starts.
 void test_an_opening_or_stopped_roof_starts_the_sequence()
 {

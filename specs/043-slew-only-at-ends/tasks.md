@@ -1,6 +1,6 @@
 # Tasks: The Telescope Moves Only With the Roof at an End
 
-- [x] T001 Constitution 10.2.0: Principle II's rule, Principle IV's Switch, Sync Impact Report
+- [x] T001 Constitution 11.1.0: Principle II's rule, Principle IV's Switch, Sync Impact Report
 - [x] T002 `MountMove` (predicate, texts, switch table) in lib/RoofIoLogic
 - [x] T003 Close sequence: no request between the ends, `Cause::RoofBetweenEnds`, `cannotMove()`, texts and alert cause
 - [x] T004 MoveGuard: `Request::roof`, no wait between the ends, a wait ends when the roof leaves its end

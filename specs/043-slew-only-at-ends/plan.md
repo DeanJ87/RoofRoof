@@ -1,6 +1,6 @@
 # Plan: The Telescope Moves Only With the Roof at an End
 
-**Spec**: [spec.md](spec.md) | **Constitution**: 10.2.0 (I-IV, V, VII, IX)
+**Spec**: [spec.md](spec.md) | **Constitution**: 11.1.0 (I-IV, V, VII, IX)
 
 ## Approach
 
@@ -26,7 +26,7 @@
 6. **Status and UI**: `roof.mountMayMove`; the Roof card's Telescope row; schema, OpenAPI example,
    inventory, i18n.
 7. **Docs**: alpaca.md (the Switch, hardening), close-on-unsafe.md (the new section, DIA-22),
-   alerts.md, dashboard.md, rest.md, changelog, roadmap; constitution 10.2.0.
+   alerts.md, dashboard.md, rest.md, changelog, roadmap; constitution 11.1.0.
 
 ## Constitution check
 

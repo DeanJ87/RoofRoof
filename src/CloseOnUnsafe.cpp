@@ -365,7 +365,7 @@ namespace SQM
         {
         case CloseSeq::Action::RequestPark:
             // Spec 024: with the park switches alone and no address, only the wait.
-            // Spec 043 (constitution 10.2.0, II): checked again at the sender with
+            // Spec 043 (constitution 11.1.0, II): checked again at the sender with
             // the roof as it is now: a park is a slew, safe only at an end.
             if (safety.ninaSet() && !roof.parkRequestAllowed())
                 Logger::warn(TAG, "Not asking N.I.N.A. to park: the roof isn't at an end");

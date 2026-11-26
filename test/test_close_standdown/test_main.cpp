@@ -134,7 +134,7 @@ void test_unknown_position_attempts_after_two_seconds()
     TEST_ASSERT_EQUAL(0, c.requests);
     TEST_ASSERT_EQUAL(0u, c.events.size());
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
-    // Spec 043 (constitution 10.2.0, II): the position unknown with the mount
+    // Spec 043 (constitution 11.1.0, II): the position unknown with the mount
     // not parked: no park request (a slew could hit the beams), a person is needed.
     const Decision d = r.at(T0 - 50 + UNKNOWN_CONFIRM_MS);
     assertEvent(d, Event::CannotClose, Cause::RoofBetweenEnds);

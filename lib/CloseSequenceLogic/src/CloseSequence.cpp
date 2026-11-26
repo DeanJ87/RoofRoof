@@ -150,7 +150,7 @@ namespace SQM
             }
             if (in.roof == Roof::State::Closing || in.closePending)
                 return enter(Phase::Closing, Event::Started); // a close already running: watch it
-            // Spec 043 (constitution 10.2.0, II): part-open, unknown or faulted with
+            // Spec 043 (constitution 11.1.0, II): part-open, unknown or faulted with
             // the mount not parked: neither a park request nor a close is safe.
             if (betweenEndsUnparked(in))
                 return betweenEnds();
@@ -523,7 +523,7 @@ namespace SQM
         Action Sequence::requestIfDue(const Inputs &in)
         {
             const uint64_t nowMs = in.nowMs;
-            // Spec 043 (constitution 10.2.0, II): a park is a slew: never asked
+            // Spec 043 (constitution 11.1.0, II): a park is a slew: never asked
             // for unless the roof is at an end.
             if (!RoofIo::mountMayMove(in.roof))
                 return Action::None;

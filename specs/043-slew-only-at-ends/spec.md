@@ -1,6 +1,6 @@
 # Feature Specification: The Telescope Moves Only With the Roof at an End
 
-**Feature Branch**: `spec/043-slew-only-at-ends` | **Created**: 2026-11-26 | **Constitution**: 10.1.0 -> 10.2.0 (II, IV)
+**Feature Branch**: `spec/043-slew-only-at-ends` | **Created**: 2026-11-26 | **Constitution**: 11.0.0 -> 11.1.0 (II, IV)
 
 ## Context
 
@@ -112,7 +112,7 @@ the fallback when the Switch slot is taken. Both come from the same predicate.
 
 - I: position known only at a magnet or by the estimate; the automatic close's exceptions (unknown
   position, blind) stay, gated on the park.
-- II: close only onto a parked mount (unchanged); **new (10.2.0)**: the telescope moves only with the
+- II: close only onto a parked mount (unchanged); **new (11.1.0)**: the telescope moves only with the
   roof at an end; RoofRoof never triggers a slew otherwise; a person keeps the confirmed paths.
 - III: the steps of the unsafe sequence; step 2 (ask N.I.N.A. to park) now only at an end.
 - IV: a second Alpaca device, read-only, ConformU in CI.
@@ -155,7 +155,7 @@ alert already carry the full sentence; the move dialog shows the refusal's own t
   position isn't trusted.
 - The Switch is named **RoofRoof** like the Dome (different N.I.N.A. equipment slots), with its
   description saying what it is.
-- Constitution amendment is MINOR (10.2.0): it adds a rule and a device, relaxes nothing.
+- Constitution amendment is MINOR (11.1.0): it adds a rule and a device, relaxes nothing.
 
 ## Follow-ups (not in this spec)
 

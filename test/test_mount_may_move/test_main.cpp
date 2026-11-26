@@ -1,4 +1,4 @@
-// Spec 043 (constitution 10.2.0, II): the telescope may move (a slew, a park,
+// Spec 043 (constitution 11.1.0, II): the telescope may move (a slew, a park,
 // an unpark) only with the roof at an end. RoofRoof never asks N.I.N.A. to park
 // unless the roof is at rest on its closed or open magnet; part-open, moving,
 // unknown or faulted with the mount not parked, it neither parks nor closes
@@ -269,6 +269,36 @@ void test_the_nina_lost_close_is_not_held_back(void)
     TEST_ASSERT_TRUE(next.ninaLost);
 }
 
+// Spec 044's lapse starts a normal attempt: with the roof stopped part-way (a
+// person's Stop leaves it there) and the mount not parked, it must not ask
+// N.I.N.A. to park: the needs-person event instead.
+void test_a_lapsed_stop_part_way_asks_no_park(void)
+{
+    Rig r;
+    Policy p;
+    p.stopLapse = StopLapse::Always;
+    r.seq.setPolicy(p);
+    r.in.raining = true;
+    r.startUnsafe(); // roof open: the park is asked for
+    r.in.personStops = 1;
+    r.in.roof = State::Stopped; // the person stopped the roof part-way
+    assertEvent(r.at(T0 + 1000), Event::StoppedByPerson, Cause::None);
+    bool lapsed = false;
+    int requests = 0;
+    bool needsPerson = false;
+    for (uint64_t t = T0 + 2000; t <= T0 + 2 * 3600000ULL; t += 1000)
+    {
+        const Decision d = r.at(t);
+        lapsed = lapsed || d.event == Event::HoldLapsed;
+        requests += d.action == Action::RequestPark ? 1 : 0;
+        needsPerson = needsPerson || (d.event == Event::CannotClose && d.cause == Cause::RoofBetweenEnds);
+    }
+    TEST_ASSERT_TRUE(lapsed);
+    TEST_ASSERT_EQUAL(0, requests);
+    TEST_ASSERT_TRUE(needsPerson);
+    TEST_ASSERT_EQUAL(Phase::CannotMove, r.seq.phase());
+}
+
 void test_the_alert_says_what_to_do(void)
 {
     Rig r;
@@ -302,6 +332,7 @@ int main(int, char **)
     RUN_TEST(test_parked_while_part_open_the_close_goes_ahead_without_a_request);
     RUN_TEST(test_safe_again_the_hold_ends_and_unsafe_again_alerts_afresh);
     RUN_TEST(test_the_nina_lost_close_is_not_held_back);
+    RUN_TEST(test_a_lapsed_stop_part_way_asks_no_park);
     RUN_TEST(test_the_alert_says_what_to_do);
     return UNITY_END();
 }
