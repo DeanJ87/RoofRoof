@@ -12,11 +12,15 @@
 //   more) without its target magnet. By then the profile is at the slow duty
 //   (the estimate has arrived), so the roof isn't pushed into its end stop at
 //   speed until the timeout (a shifted magnet in the field).
-// - No movement: driving without a supply sag of roof.motionSagVolts (held
-//   CONFIRM_MS, after the start-up surge) and without a Hall change of
+// - No movement: driving without a supply sag of roof.motionSagVolts (any
+//   reading after the start-up surge) and without a Hall change of
 //   MOTION_HALL_COUNTS within roof.motionCheckMs (twice that for a calibration
 //   leg or a jog). The Hall reading is flat between the magnets, so the sag is
 //   the usual sign; a slow duty too low to move the roof shows neither.
+//   Spec 040 (F34): the deepest sag in the window counts, not one held
+//   CONFIRM_MS: at full speed the PWM-loaded supply reading is noisy and dips
+//   back under the threshold between readings, so a held sag never confirmed
+//   and a moving roof was stopped part-way.
 
 namespace SQM
 {
@@ -28,7 +32,6 @@ namespace SQM
             move.watchSinceMs = readings.nowMs;
             move.watchHall = readings.hallCounts;
             move.deepestSag = 0.0f;
-            move.sagging = Pending{};
             move.overrunMs = 0;
             if (move.fromUnknown || move.calibration || config.endOverrunPercent == 0)
                 return;
@@ -61,7 +64,7 @@ namespace SQM
             const bool readable = supplyReadable(readings.supplyVolts) && supplyReadable(move.restVolts);
             const float sag = readable ? move.restVolts - readings.supplyVolts : 0.0f;
             move.deepestSag = std::max(move.deepestSag, sag);
-            const bool sagged = confirmed(move.sagging, sag >= config.motionSagVolts, nowMs);
+            const bool sagged = sag >= config.motionSagVolts; // the window's peak reaches it (spec 040)
             const bool hallMoved = std::abs(static_cast<int>(readings.hallCounts) - move.watchHall) >= MOTION_HALL_COUNTS;
             if (sagged || hallMoved)
             {

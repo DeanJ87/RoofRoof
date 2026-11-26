@@ -20,3 +20,7 @@ Assessed against spec.md (FR-001 to FR-016), plan.md and the constitution (9.1.0
 requirement has code and a native or web test; nothing left to build. The doubt across a restart
 once the fault is cleared, and the movement sag at the slow duty on the real roof, are recorded as
 assumptions and bench checks, not gaps.
+
+## Phase 3: Field fix (spec 040, F34)
+
+- [x] T014 The movement sag counts in any reading after the surge, not held `CONFIRM_MS`: a full-speed open latched `noMovement` 21 s in with a 0.63 V deepest sag (`RoofControllerWatch.cpp`); the fault text names what was missing; native tests (`test/test_roof_motion_sag`) for a noisy sag, an occasional deep sag, a flat supply and the surge

@@ -202,7 +202,6 @@ namespace SQM
                 uint32_t watchSinceMs = 0;
                 uint16_t watchHall = 0;
                 float deepestSag = 0.0f;
-                Pending sagging;
             };
 
             // Move decisions (RoofControllerStep.cpp).

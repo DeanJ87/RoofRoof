@@ -92,7 +92,7 @@ is clearly at the magnet.
 
 ### User Story 6 - Driving without moving is a fault (P1)
 
-1. A move whose supply never sags by 0.2 V (held 250 ms) and whose Hall reading doesn't change by
+1. A move whose supply never sags by 0.2 V (in any reading after the first second, spec 040) and whose Hall reading doesn't change by
    60 counts for 10 s, after the first second, stops with "No movement detected" and the alert.
 2. A person's jog or a calibration leg gets twice the time.
 3. A healthy roof (about 1 V of sag at full duty, 0.4 V at a 40 % slow duty) never trips it.
@@ -144,7 +144,7 @@ is clearly at the magnet.
   (measured: ms driven; limit: the overrun limit), unless an early reading is being held.
 - **FR-014**: Any move or calibration leg MUST latch `noMovement` (measured: the deepest sag in the
   window; limit: the setting) when, after the first `BLIND_SURGE_MS` (1 s) of driving, neither a
-  supply sag of `roof.motionSagVolts` (default 0.2 V, 0 = off, else 0.05-2) held `CONFIRM_MS` nor a
+  supply sag of `roof.motionSagVolts` (default 0.2 V, 0 = off, else 0.05-2) in any reading (spec 040; was held `CONFIRM_MS`) nor a
   Hall change of `MOTION_HALL_COUNTS` (60) has been seen for `roof.motionCheckSeconds` (default 10,
   range 5-60); twice that for a calibration leg or a person's jog.
 - **FR-015**: `noEndMagnet` and `noMovement` MUST raise needs-person at once like `endTooEarly`.
