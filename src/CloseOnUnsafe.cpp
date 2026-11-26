@@ -249,7 +249,7 @@ namespace SQM
         CloseSeq::WeatherHold::Step step;
         step.nowMs = in.nowMs;
         step.weatherSafe = in.weatherSafe;
-        step.rain = (reasons & Safety::ReasonRain) != 0;
+        step.atOnce = CloseSeq::skipsHold(reasons);
         step.overrideActive = (overrideBits & RoofIo::OverrideWeather) != 0;
         {
             std::lock_guard<std::mutex> held(daylightLock);

@@ -29,7 +29,7 @@ namespace SQM
         // person's stop (stand-down and its critical alert) instead of being refused.
         bool remoteStop = false;
         // Spec 030: the unsafe time (added up) before the automatic close
-        // starts; rain starts it at once. 0: no hold (spec 005's behaviour).
+        // starts; rain or a failed rain sensor starts it at once. 0: no hold (spec 005's behaviour).
         uint32_t unsafeHoldSeconds = 60;
         // Spec 030 (owner option, off): with park.source nina or ninaAndSwitches,
         // unsafe weather and N.I.N.A. lost this long without a break, close

@@ -117,7 +117,7 @@ namespace
             WeatherHold::Step s;
             s.nowMs = nowMs;
             s.weatherSafe = in.weatherSafe;
-            s.rain = (verdict.reasons & Safety::ReasonRain) != 0;
+            s.atOnce = skipsHold(verdict.reasons);
             in.weatherSafe = hold.update(s);
             note(seq.step(in), result);
         }

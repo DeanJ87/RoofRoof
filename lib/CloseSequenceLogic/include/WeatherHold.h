@@ -4,13 +4,17 @@
 // close. The verdict itself is never delayed (Open is refused and an opening
 // roof stops at once); only the sequence's view of the weather is held. The
 // hold adds up the unsafe time and lets the close start once it reaches
-// autoClose.unsafeHoldSeconds; rain starts it at once. Once fired it stays
+// autoClose.unsafeHoldSeconds; rain and a failed rain sensor start it at
+// once (a rain sensor that fails may be failing because it is wet; a silent,
+// stale or unreadable source is still held). Once fired it stays
 // fired until the weather has been safe for the hold's length without a
 // break, and that safe spell is also what forgets the time added up, so a
 // flapping verdict still gets there (and starts one close, not one per blip).
 // Pure: time and inputs come in, the weather as the sequence sees it goes out.
 
 #include <cstdint>
+
+#include "SafetyInput.h"
 
 namespace SQM
 {
@@ -21,6 +25,16 @@ namespace SQM
         constexpr uint64_t UNSAFE_HOLD_MAX_MS = 300000;
         // The most one step adds to a count (a late step can't fire the hold alone).
         constexpr uint64_t HOLD_MAX_STEP_MS = 1000;
+        // The weather reasons that skip the hold (constitution III): rain, and
+        // a failed rain sensor, which may have failed because it is wet. Every
+        // other reason, a missing, stale or unreadable source included, is held.
+        constexpr uint32_t HOLD_SKIP_REASONS = Safety::ReasonRain | Safety::ReasonRainSensorFault;
+
+        // Whether the verdict's reasons start the close at once.
+        constexpr bool skipsHold(uint32_t weatherReasons)
+        {
+            return (weatherReasons & HOLD_SKIP_REASONS) != 0;
+        }
 
         class WeatherHold
         {
@@ -30,7 +44,7 @@ namespace SQM
             {
                 uint64_t nowMs = 0;
                 bool weatherSafe = false;    // the verdict is Safe, after spec 027's override
-                bool rain = false;           // the verdict's reasons hold rain (any source, even a stale one)
+                bool atOnce = false;         // skipsHold(): rain or a failed rain sensor (any source, even a stale one)
                 bool overrideActive = false; // a person's weather override is in effect (spec 027)
                 uint64_t holdMs = UNSAFE_HOLD_MS;
             };

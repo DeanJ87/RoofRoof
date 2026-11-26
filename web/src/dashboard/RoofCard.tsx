@@ -155,7 +155,7 @@ export const DaylightRow: FunctionalComponent<{ daylight: RoofDaylight; location
   );
 };
 
-// Spec 030: the weather hold counting down to the automatic close (rain needs none).
+// Spec 030: the weather hold counting down to the automatic close (rain and a failed rain sensor need none).
 const WeatherHold: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
   const hold = roof.weatherHold;
   if (!hold || hold.fired || hold.leftSeconds < 0) return null;

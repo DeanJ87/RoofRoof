@@ -34,7 +34,7 @@ namespace SQM
             stepped = true;
             lastMs = step.nowMs;
             holdMs = std::min(step.holdMs, UNSAFE_HOLD_MAX_MS);
-            const bool unsafe = !step.weatherSafe || step.rain;
+            const bool unsafe = !step.weatherSafe || step.atOnce;
             counting = unsafe;
             // Spec 027: the overridden reasons never start a close behind the person's back.
             if (holdMs == 0 || (step.overrideActive && !unsafe))
@@ -47,7 +47,7 @@ namespace SQM
             {
                 safeMs = 0;
                 countMs += dt;
-                if (step.rain || countMs >= holdMs)
+                if (step.atOnce || countMs >= holdMs)
                     isFired = true;
             }
             else
