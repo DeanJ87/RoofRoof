@@ -311,9 +311,11 @@ jobs:
       # fail above 95% - and the change from the target branch's record.
       - name: Firmware flash budget
         run: |
-          python3 -m unittest tools/firmware/test_firmware_tools.py tools/firmware/test_isr_audit.py tools/firmware/test_heap_audit.py tools/firmware/test_heap_budget.py
+          python3 -m unittest tools/firmware/test_firmware_tools.py tools/firmware/test_isr_audit.py tools/firmware/test_heap_audit.py tools/firmware/test_heap_budget.py tools/firmware/test_stack_depth.py
           # Spec 038: stacks and buffers kept from the heap for good, plus static data, within budget.
           python3 tools/firmware/heap_budget.py
+          # Fix 041: a settings save's deepest path fits the task it runs on, never async_tcp.
+          python3 tools/firmware/stack_depth.py
           if [ -n "${BASE_REF}" ]; then
             git fetch --depth=1 origin "${BASE_REF}"
             python3 tools/firmware/flash_budget.py --envs esp32dev --base-ref FETCH_HEAD | tee "$RUNNER_TEMP/flash.txt"

@@ -23,8 +23,8 @@ namespace SQM
         // Room left beside a WebSocket frame for the network's own buffers.
         constexpr uint32_t FRAME_MARGIN_BYTES = 4096;
 
-        // The Alpaca API, the roof's commands (Stop among them) and the
-        // uploads: never refused by the guard.
+        // The Alpaca API, the roof's commands (Stop, Close and clear-fault
+        // among them), a restart and the uploads: never refused by the guard.
         bool essential(const char *path, bool isPost);
         // Whether a request may run with this heap.
         bool admit(const char *path, bool isPost, uint32_t largestBlock, uint32_t freeHeap);

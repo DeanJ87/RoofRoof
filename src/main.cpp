@@ -113,8 +113,8 @@ void applySavedConfig()
 bool updateConfigCallback(const WebServer::EditConfig &edit)
 {
     const std::lock_guard<std::mutex> held(configSaveLock);
-    // On the heap: this runs on the async_tcp task, whose stack can't hold
-    // several ~2 KB settings copies (spec 022 bench: a save overflowed it).
+    // On the heap: several ~2 KB settings copies add up on a stack (spec 022;
+    // fix 041: the web server runs this on its save task, SaveTask).
     const std::unique_ptr<Config> next(new Config(config));
     if (!edit(config, *next))
         return false;

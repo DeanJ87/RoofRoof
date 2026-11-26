@@ -10,6 +10,7 @@
 #include "RoofControl.h"
 #include "RoofReadings.h"
 #include "SafetyPoller.h"
+#include "SaveTask.h"
 #include "WebServerShared.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
@@ -122,8 +123,17 @@ namespace SQM
           mqttClient(mqtt),
           getConfigCallback(getConfig),
           // A save bumps configRevision (/api/status), under the save lock
-          // (src/main.cpp): open pages reload the settings.
-          updateConfigCallback(std::move(updateConfig))
+          // (src/main.cpp): open pages reload the settings. Fix 041: every
+          // save runs on the save task, never on the caller's stack (from
+          // async_tcp's 8 KB a settings save overflowed it); when that task
+          // can't be started `edit` isn't called (editAsFlashWrite answers 503).
+          updateConfigCallback(
+              [save = std::move(updateConfig)](const EditConfig &edit)
+              {
+                  bool saved = false;
+                  SaveTask::run([&]() { saved = save(edit); });
+                  return saved;
+              })
     {
         // Spec 021: from a random value, so a page loaded before a restart never
         // matches a later revision by chance and skips the stale check.

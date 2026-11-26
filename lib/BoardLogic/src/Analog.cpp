@@ -65,10 +65,10 @@ namespace SQM
                         {input,
                          false,
                          format(
-                             "%s divider: at its highest (%.1f V) the input would put %.2f V on the pin, over 3.3 V",
+                             "%s divider: at its highest (%s V) the input would put %s V on the pin, over 3.3 V",
                              label,
-                             static_cast<double>(sensorMax),
-                             static_cast<double>(atPin))});
+                             fixedText(static_cast<double>(sensorMax), 1).str(),
+                             fixedText(static_cast<double>(atPin), 2).str())});
             }
 
             struct TrimLimits
@@ -92,7 +92,9 @@ namespace SQM
                     out.push_back({limits.input, true, format("%s trim: the gain must be between 0.8 and 1.25", label)});
                 if (!(std::fabs(t.offset) <= limits.maxOffset))
                     out.push_back(
-                        {limits.input, true, format("%s trim: the offset must be within %.1f %s", label, maxOffset, limits.unit)});
+                        {limits.input,
+                         true,
+                         format("%s trim: the offset must be within %s %s", label, fixedText(maxOffset, 1).str(), limits.unit)});
             }
 
             // With current sense on, over-current must be able to trip: the highest
@@ -123,28 +125,28 @@ namespace SQM
                         {limits.input,
                          true,
                          format(
-                             "%s: it can read at most %.1f A, below the current limit (%.1f A), so over-current could never trip",
+                             "%s: it can read at most %s A, below the current limit (%s A), so over-current could never trip",
                              limits.label,
-                             static_cast<double>(highest),
-                             static_cast<double>(g.maxCurrentAmps))});
+                             fixedText(static_cast<double>(highest), 1).str(),
+                             fixedText(static_cast<double>(g.maxCurrentAmps), 1).str())});
                 if (g.minRunningAmps > 0.0f && !(driven < g.minRunningAmps))
                     out.push_back(
                         {limits.input,
                          true,
                          format(
-                             "%s trim: at the slow duty the offset reads %.2f A, not below the minimum running current (%.1f A), so a "
+                             "%s trim: at the slow duty the offset reads %s A, not below the minimum running current (%s A), so a "
                              "broken sense wire would pass",
                              limits.label,
-                             static_cast<double>(driven),
-                             static_cast<double>(g.minRunningAmps))});
+                             fixedText(static_cast<double>(driven), 2).str(),
+                             fixedText(static_cast<double>(g.minRunningAmps), 1).str())});
                 if (!(driven >= -MAX_CURRENT_OFFSET_AMPS))
                     out.push_back(
                         {limits.input,
                          true,
                          format(
-                             "%s trim: at the slow duty the offset reads %.2f A, below -0.5 A: a running motor could read as unreadable",
+                             "%s trim: at the slow duty the offset reads %s A, below -0.5 A: a running motor could read as unreadable",
                              limits.label,
-                             static_cast<double>(driven))});
+                             fixedText(static_cast<double>(driven), 2).str())});
             }
 
             // The supply trim may raise a reading at the low-supply limit by at most
@@ -159,10 +161,10 @@ namespace SQM
                         {"supply",
                          true,
                          format(
-                             "Supply sense trim: at the minimum supply (%.1f V) it reads %.2f V high, over 1 V, which could hide a low "
+                             "Supply sense trim: at the minimum supply (%s V) it reads %s V high, over 1 V, which could hide a low "
                              "supply",
-                             static_cast<double>(g.minSupplyVolts),
-                             static_cast<double>(raise))});
+                             fixedText(static_cast<double>(g.minSupplyVolts), 1).str(),
+                             fixedText(static_cast<double>(raise), 2).str())});
             }
         } // namespace
 
@@ -204,6 +206,60 @@ namespace SQM
                     return true;
                 }
             return false;
+        }
+
+        namespace
+        {
+            // a * b exactly, as hi + lo (Dekker's product: no fused multiply-add needed).
+            void exactProduct(double a, double b, double &hi, double &lo)
+            {
+                constexpr double SPLIT = 134217729.0; // 2^27 + 1
+                hi = a * b;
+                double t = SPLIT * a;
+                const double aHi = t - (t - a);
+                const double aLo = a - aHi;
+                t = SPLIT * b;
+                const double bHi = t - (t - b);
+                const double bLo = b - bHi;
+                lo = ((aHi * bHi - hi) + aHi * bLo + aLo * bHi) + aLo * bLo;
+            }
+
+            // a * scale (a >= 0) rounded to a whole number as printf rounds:
+            // by the exact value, ties (only values held exactly) to even.
+            long long roundedScaled(double a, double scale)
+            {
+                double hi = 0.0;
+                double lo = 0.0;
+                exactProduct(a, scale, hi, lo);
+                double whole = std::floor(hi);
+                if (hi == whole && lo < 0.0)
+                    whole -= 1.0;
+                const double past = (hi - (whole + 0.5)) + lo; // above, at or below the half
+                const auto k = static_cast<long long>(whole);
+                if (past > 0.0 || (past == 0.0 && k % 2 != 0))
+                    return k + 1;
+                return k;
+            }
+        } // namespace
+
+        FixedText fixedText(double value, int places)
+        {
+            FixedText out{};
+            if (std::isnan(value) || std::isinf(value) || std::fabs(value) > 1e12)
+            {
+                std::snprintf(out.text, sizeof(out.text), "%s", std::isnan(value) ? "nan" : (value < 0 ? "-inf" : "inf"));
+                return out;
+            }
+            long long scale = 1;
+            for (int i = 0; i < places; ++i)
+                scale *= 10;
+            const long long n = roundedScaled(std::fabs(value), static_cast<double>(scale));
+            const char *sign = std::signbit(value) ? "-" : "";
+            if (places <= 0)
+                std::snprintf(out.text, sizeof(out.text), "%s%lld", sign, n);
+            else
+                std::snprintf(out.text, sizeof(out.text), "%s%lld.%0*lld", sign, n / scale, places, n % scale);
+            return out;
         }
 
         std::vector<AnalogIssue> checkAnalog(const AnalogConfig &a, const AnalogGates &gates)

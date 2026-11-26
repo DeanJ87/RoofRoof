@@ -105,6 +105,16 @@ namespace SQM
             float slowDutyPercent = 40.0f;
         };
         std::vector<AnalogIssue> checkAnalog(const AnalogConfig &analog, const AnalogGates &gates);
+
+        // A number as "%.<places>f" shows it (places 0-3), without the C
+        // library's float formatting: that mallocs (newlib's _dtoa_r) and the
+        // analog checks run deep in every settings save (fix 041).
+        struct FixedText
+        {
+            char text[32];
+            const char *str() const { return text; }
+        };
+        FixedText fixedText(double value, int places);
         // The highest current a sense input can report at full duty: the lower of
         // the ADC's full scale and the IS output's own top (IS_MAX_VOLTS_IN), scaled.
         float highestSenseAmps(const Divider &divider, const Trim &trim, float ampsPerVolt);

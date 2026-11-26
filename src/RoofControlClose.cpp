@@ -112,7 +112,7 @@ namespace SQM
         if (decision.action != RoofIo::BlockerAction::Proceed)
             return;
         closePending = false;
-        const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin);
+        const Outcome outcome = runLocked(Roof::Command::Close, closeOrigin, closeOverrides);
         if (outcome.accepted)
             guard.ran(Roof::Command::Close, closeOverrides, currentGates());
         notice = outcome.accepted ? "Waiting close started" : "Waiting close refused: " + outcome.text;

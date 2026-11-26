@@ -5,6 +5,7 @@
 #include "NetState.h"
 #include "PinSetup.h"
 #include "PlatformGuard.h"
+#include "SaveTask.h"
 #include "WebServer.h"
 #include "WebServerShared.h"
 #include <ArduinoJson.h>
@@ -182,8 +183,12 @@ namespace SQM
                     return false;
                 return stampTestBox(live, next, body, reason);
             });
-        // Spec 022 bench: a save once overflowed this task's stack; log the headroom it left.
-        Logger::info(TAG, "Config save: async_tcp stack low-water %u B", static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
+        // Fix 041: the save runs on its own task (SaveTask); log the headroom both left.
+        Logger::info(
+            TAG,
+            "Config save: stack low-water %u B on the save task, %u B on async_tcp",
+            static_cast<unsigned>(SaveTask::lastStackLeft()),
+            static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
         if (!held.empty())
             request->send(409, "application/json", createErrorJson(held.c_str()).c_str());
         else if (saved || !reason.empty() || stale.stale)

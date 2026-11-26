@@ -41,6 +41,8 @@ On demand (taken while in use, then freed):
 | Consumer | Before 038 | After 038 | Notes |
 |---|---:|---:|---|
 | `alerts` task stack | 8,192 | 8,192 | started for an HTTPS alert, exits when idle |
+| `config_save` task stack (fix 041) | - | 10,240 | every web settings save, while it runs (was on `async_tcp`) |
+| `backup_job` task stack | 8,192 | 10,240 (fix 041) | a backup or a restore preview |
 | TLS session (alert, https SQMeter) | about 25-40 KB | same | dynamic buffers, 16 KB in / 4 KB out at most |
 | Unsent data per connection | up to 5,744 | up to 5,744 | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT`; halving it stalled MQTT after a network return |
 | Status reply | 3 KB pool + 1 KB pieces | same | at most 2 replies in flight (spec 037) |
@@ -64,6 +66,7 @@ On the board:
 | Check | Floor | Where |
 |---|---|---|
 | Kept for good (stacks, buffers, static data) | `tools/firmware/heap-budget.json` | CI, after the firmware build |
+| A settings save's deepest path, with 1 KB to spare, within its task's stack; never on `async_tcp` | `tools/firmware/stack_depth.py` | CI, after the firmware build |
 | Largest block at rest | 40 KB | `ws_soak.py --clients 0 --also --minutes 3 --floor 40960` |
 | Spec 037 soak, 10 minutes | largest 20 KB, free 15 KB | `ws_soak.py --clients 4 --floor 20480 --free-floor 15360 --also ...` |
 
@@ -87,3 +90,17 @@ clock. On main that took the heap's lowest point to 352 B. Now the safety polls 
 MQTT waits until the network has been up 3 s and the alert outbox 8 s
 (`ConnectionBudget::NetworkSettle`). Check it on the bench by blocking the roof's access point for
 2 minutes while `ws_soak.py` samples, then reading `heap8Bit.minFree`.
+
+## Stack depth of a settings save (fix 041)
+
+Spec 038 sized `async_tcp` from the peaks the crash snapshots had recorded; a settings save wasn't
+among them, and on the board it overflowed the 8 KB stack (stack left 0-8 B, in the analog check's
+`snprintf` of a float, under `Config::applyJson`'s 3 KB frame). Saves now run on their own task
+(`include/SaveTask.h`), and `tools/firmware/stack_depth.py` reads the build: each function's frame
+from its `entry` instruction, its direct calls, and the deepest path from the save's stages. On the
+fix's build: deepest 6,288 B of the save task's 10,240 B, and 7,216 B of the backup task's 10,240 B.
+It is an upper bound (it takes the worst branch everywhere, a malloc's own path included).
+
+On the bench, after a save: the log line "Config save: stack low-water N B on the save task, M B on
+async_tcp" gives what was left on both; N should stay above 2 KB.
+

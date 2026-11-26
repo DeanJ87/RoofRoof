@@ -264,8 +264,9 @@ namespace SQM
         void syncFault(RoofIo::FaultCause causeIfNew);
         void refreshSnapshot();
         Outcome outcomeOf(const Roof::CommandResult &result);
-        Outcome runLocked(Roof::Command command, Roof::Origin origin);
-        Outcome precheck(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0) const;
+        // Fix 041: the overrides always named, so a re-check can't drop a person's confirmed close.
+        Outcome runLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides);
+        Outcome precheck(Roof::Command command, Roof::Origin origin, uint8_t overrides) const;
         RoofIo::CommandCheck checkNow(Roof::Command command, Roof::Origin origin, uint8_t overrides = 0, bool parkAside = false) const;
         Outcome admitLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides, const RoofIo::Blockers &now);
         void stepGuard(const RoofIo::GateInputs &now);

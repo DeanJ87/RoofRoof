@@ -115,9 +115,11 @@ namespace SQM
         return outcome;
     }
 
-    RoofControl::Outcome RoofControl::runLocked(Roof::Command command, Roof::Origin origin)
+    // Fix 041: with the command's overrides; without them a person's confirmed
+    // close passed admission, then was refused here for the park it overrode.
+    RoofControl::Outcome RoofControl::runLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides)
     {
-        const Outcome pre = precheck(command, origin);
+        const Outcome pre = precheck(command, origin, overrides);
         if (!pre.accepted)
             return pre;
         return runChecked(command, origin);
@@ -203,7 +205,7 @@ namespace SQM
             return pre;
         const Roof::State state = controller.status().state;
         if (command == Roof::Command::Close && (state == Roof::State::Closed || state == Roof::State::Closing))
-            return runLocked(command, origin); // nothing to win
+            return runLocked(command, origin, overrides); // nothing to win
         const RoofIo::BlockerDecision decision = RoofIo::blockerDecision(command, now);
         if (decision.action == RoofIo::BlockerAction::Refuse)
             return blockedOutcome(now, state);
@@ -218,7 +220,7 @@ namespace SQM
             refreshSnapshot();
             return Outcome{true, "", std::string("Close starts once this has stopped: ") + RoofIo::blockerText(now), state, true};
         }
-        const Outcome outcome = runLocked(command, origin);
+        const Outcome outcome = runLocked(command, origin, overrides);
         if (outcome.accepted)
             guard.ran(command, RoofIo::allowedOverrides(command, origin, overrides), currentGates()); // spec 027
         if (command == Roof::Command::Open && outcome.accepted)

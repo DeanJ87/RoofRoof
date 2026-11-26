@@ -1,9 +1,13 @@
 #include "WebReply.h"
 
+#include <Arduino.h>
+
 #include "ConnectionBudget.h"
 #include "FramePool.h"
 #include "HeapReserve.h"
 #include "HeapGuard.h"
+#include "Logger.h"
+#include "ReplyLedger.h"
 #include <AsyncWebSocket.h>
 #include <ESPAsyncWebServer.h>
 #include <algorithm>
@@ -23,7 +27,7 @@ namespace SQM
         {
             std::atomic<uint32_t> refusedCount{0};
             std::atomic<uint32_t> skippedCount{0};
-            std::atomic<uint32_t> repliesInFlight{0}; // spec 037: ChunkTextResponses alive
+            HeapSafe::ReplyLedger replies; // spec 037: ChunkTextResponses alive; fix 041: and since when
 
             constexpr const char *BUSY_BODY = "{\"error\":\"The device is busy: try again\"}";
 
@@ -50,10 +54,10 @@ namespace SQM
                     _code = code;
                     _contentType = type;
                     _contentLength = text_.size();
-                    ++repliesInFlight;
+                    slot_ = replies.open(millis());
                 }
 
-                ~ChunkTextResponse() override { --repliesInFlight; }
+                ~ChunkTextResponse() override { replies.close(slot_); }
 
                 bool _sourceValid() const override { return true; }
 
@@ -67,7 +71,24 @@ namespace SQM
             private:
                 HeapSafe::ChunkText text_;
                 size_t offset_ = 0;
+                size_t slot_ = HeapSafe::ReplyLedger::NO_SLOT;
             };
+
+            // Fix 041: replies stuck in sending (their connection stopped
+            // moving) no longer hold the cap; logged when their number changes.
+            uint32_t repliesSending()
+            {
+                static std::atomic<uint32_t> staleSeen{0};
+                const uint32_t now = millis();
+                const uint32_t stale = replies.stale(now);
+                if (staleSeen.exchange(stale) != stale && stale > 0)
+                    Logger::warn(
+                        "WebReply",
+                        "%u replies still sending after %u s: no longer counted against the cap",
+                        static_cast<unsigned>(stale),
+                        static_cast<unsigned>(HeapSafe::ReplyLedger::STALE_MS / 1000));
+                return replies.sending(now);
+            }
 
             // Spec 037: frames come from buffers kept for the device's lifetime.
             HeapSafe::FramePool framePool;
@@ -129,6 +150,18 @@ namespace SQM
             sendText(request, code, "application/json", std::move(text));
         }
 
+        void sendSmallJson(AsyncWebServerRequest *request, int code, const JsonDocument &doc)
+        {
+            char text[SMALL_JSON_BYTES];
+            if (measureJson(doc) >= sizeof(text))
+            {
+                sendJson(request, code, doc);
+                return;
+            }
+            serializeJson(doc, text, sizeof(text));
+            request->send(code, "application/json", text);
+        }
+
         bool textAll(AsyncWebSocket &socket, const HeapSafe::ChunkText &text)
         {
             auto frame = frameOf(text);
@@ -163,7 +196,7 @@ namespace SQM
                 {
                     const uint32_t freeHeap = static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT));
                     if (HeapSafe::admit(request->url().c_str(), request->method() == HTTP_POST, guardBlock(), freeHeap) &&
-                        HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesInFlight.load()))
+                        HeapSafe::replySlotFree(request->url().c_str(), request->method() == HTTP_POST, repliesSending()))
                         next();
                     else
                         sendBusy(request);

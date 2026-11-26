@@ -12,6 +12,7 @@
 #include "ChunkText.h"
 
 #include <ArduinoJson.h>
+#include <cstddef>
 #include <cstdint>
 
 class AsyncWebServer;
@@ -29,6 +30,12 @@ namespace SQM
         // Serializes `doc` into pieces and sends it; 503 when its pool or a
         // piece couldn't be allocated.
         void sendJson(AsyncWebServerRequest *request, int code, const JsonDocument &doc);
+        // Fix 041: a short reply (a roof command's outcome) sent from a buffer
+        // on the stack, as a plain response: no pieces and no 2.9 KB send
+        // buffer from the heap, so it goes out while the heap is short or the
+        // reply cap is held. Longer than SMALL_JSON_BYTES: sendJson.
+        constexpr size_t SMALL_JSON_BYTES = 768;
+        void sendSmallJson(AsyncWebServerRequest *request, int code, const JsonDocument &doc);
         // The shared 503 (contracts/busy-reply.md), counted.
         void sendBusy(AsyncWebServerRequest *request);
 

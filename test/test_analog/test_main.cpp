@@ -2,6 +2,7 @@
 // presets, the 3.3 V warnings, the scaling and the supply calibration.
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <unity.h>
 
@@ -339,6 +340,38 @@ void test_nan_in_nan_out(void)
     TEST_ASSERT_TRUE(std::isnan(scaledSenseAmps(NAN, a.currentR, a.currentRTrim, 8.5f)));
 }
 
+// Fix 041: the checks' numbers without the C library's float formatting, as it shows them.
+void test_fixed_text_matches_printf(void)
+{
+    const double values[] = {0.0,  -0.0,  0.05,  0.125,  -0.125, 0.5,    1.0,     3.3,      3.35,  9.96,
+                             9.95, 12.0,  14.99, -0.5,   -0.004, 0.004,  1e-9,    123.456,  -77.7, 250.0,
+                             2.55, 1.005, 0.995, 99.999, 1000.0, 0.0625, -2.6875, 5.000001, 8.5,   0.3};
+    char expected[48];
+    for (double v : values)
+        for (int places = 0; places <= 3; ++places)
+        {
+            std::snprintf(expected, sizeof(expected), "%.*f", places, v);
+            TEST_ASSERT_EQUAL_STRING_MESSAGE(expected, fixedText(v, places).str(), expected);
+        }
+    // A reading float becomes a double first, as the checks pass it.
+    for (float f = -1.0f; f < 15.0f; f += 0.037f)
+    {
+        std::snprintf(expected, sizeof(expected), "%.2f", static_cast<double>(f));
+        TEST_ASSERT_EQUAL_STRING_MESSAGE(expected, fixedText(static_cast<double>(f), 2).str(), expected);
+    }
+    // Near-ties: every half-step of the last place shown.
+    for (int i = -2000; i <= 2000; ++i)
+        for (int places = 1; places <= 2; ++places)
+        {
+            const double v = i * (places == 1 ? 0.05 : 0.005);
+            std::snprintf(expected, sizeof(expected), "%.*f", places, v);
+            TEST_ASSERT_EQUAL_STRING_MESSAGE(expected, fixedText(v, places).str(), expected);
+        }
+    TEST_ASSERT_EQUAL_STRING("nan", fixedText(NAN, 1).str());
+    TEST_ASSERT_EQUAL_STRING("inf", fixedText(INFINITY, 1).str());
+    TEST_ASSERT_EQUAL_STRING("-inf", fixedText(-INFINITY, 2).str());
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -363,5 +396,6 @@ int main(int, char **)
     RUN_TEST(test_a_named_preset_matches_within_a_tolerance);
     RUN_TEST(test_an_unusable_divider_reads_unreadable);
     RUN_TEST(test_nan_in_nan_out);
+    RUN_TEST(test_fixed_text_matches_printf);
     return UNITY_END();
 }
