@@ -256,7 +256,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: d4f8464f7040c07b
+fingerprint: defdc1d67a3a626c
 -->
 <figure class="diagram" markdown>
 

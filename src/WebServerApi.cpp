@@ -32,8 +32,8 @@ namespace SQM
         // one buffer, shrunk to the text's size and held by the response until
         // it is sent. Null when either can't be had.
         // Spec 045: a save's largest single allocation is the parse of what was
-        // sent (its size + 6.5 KB, Config::applyJson) or the settings document
-        // (9.5 KB), and before them the save task's 10 KB stack; the strings
+        // sent (ConfigJson::parseCapacity: its size + 7 KB, spec 046) or the settings
+        // document (ConfigJson::CAPACITY, 10 KB), and before them the save task's 10 KB stack; the strings
         // are sized once (they doubled to 16 KB). Was a fixed 20 KB block,
         // which the heap reported as 20,468 B (TLSF's class boundary) after an
         // hour of requests: every save refused.
@@ -42,7 +42,7 @@ namespace SQM
 
         size_t saveBlockBytes(size_t bodyBytes)
         {
-            return std::max(ConfigJson::CAPACITY, bodyBytes + 6656) + SAVE_BLOCK_MARGIN_BYTES;
+            return std::max(ConfigJson::CAPACITY, ConfigJson::parseCapacity(bodyBytes)) + SAVE_BLOCK_MARGIN_BYTES;
         }
 
         // Before the save task starts: its stack (10 KB) or the largest
