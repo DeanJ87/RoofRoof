@@ -329,7 +329,7 @@
   "device.roof.motorCurrentMeasuredALimitA": "Motor current {measured} A >= {limit} A",
   "device.roof.motorCurrentUnreadableLimitLimitA": "Motor current unreadable (limit {limit} A)",
   "device.roof.noEndMagnetWhereExpectedDriven": "No end magnet where expected: driven {measured} s >= {limit} s",
-  "device.roof.noMovementDetectedSupplySagMeasured": "No movement detected: supply sag {measured} V < {limit} V and the Hall reading unchanged",
+  "device.roof.noMovementDetectedNoSupplySag": "No movement detected: no supply sag of {limit} V or Hall change (deepest sag {measured} V)",
   "device.roof.noTargetMagnetAfterMeasuredS": "No target magnet after {measured} s >= {limit} s timeout",
   "device.roof.openingIsnTAvailableWhileThe": "Opening isn't available while the setup hotspot is on",
   "device.roof.parkSwitchWhichHasnTOpened": "Park switch {which} hasn't opened in 3 roof openings (stuck or shorted?): move the mount off park once",

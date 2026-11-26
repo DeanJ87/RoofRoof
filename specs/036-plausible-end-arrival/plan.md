@@ -15,7 +15,7 @@ other end's magnet or new Hall settings. `NeedsPerson` treats `EndTooEarly` like
 `RoofControllerWatch.cpp` adds the other two checks to every step of a move: at the drive's start
 it stamps the overrun limit (from `expectedMoveMs` of the distance to go, moves from a known
 position only) and the supply at rest; `checkOverrun` runs in `checkTimes` before the timeout, and
-`checkMovement` after the electrical checks, restarting its window on a sag held `CONFIRM_MS` or a
+`checkMovement` after the electrical checks, restarting its window on a sag reading (spec 040; was held `CONFIRM_MS`) or a
 Hall change. Three more settings: `roof.endOverrunPercent`, `roof.motionSagVolts`,
 `roof.motionCheckSeconds`; the simulated roof sags 1.0 V at full duty, as the field roof does.
 
