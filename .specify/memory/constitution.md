@@ -1,6 +1,32 @@
 <!--
 Sync Impact Report
-- Version: 11.0.0 -> 11.1.0 (MINOR: Principle II gains a rule for the telescope, and Principle IV a
+- Version: 11.1.0 -> 12.0.0 (MAJOR: Principle II relaxes its re-check during a move. A park reading
+  past its freshness no longer stops a move that started with the park confirmed.)
+- Modified: II. Close Only Onto a Parked Mount. The re-check bullet no longer says "evidence past its
+  freshness stops the motor the same way". New: **a command is a command**. An open or a close (any
+  origin) that started with the park confirmed by a fresh reading and every fitted switch closed
+  goes on to its end when N.I.N.A. merely stops answering (no reply, the network down, an
+  unreadable reply, an API error, its last reading past its freshness), on N.I.N.A.'s last answer
+  having said parked. It still stops on a fresh answer that says "not parked" (not at park,
+  slewing, mount not connected), the sources disagreeing, a switch, any fault, Stop, a stalled
+  hand-over of the safety inputs, and for an open the weather and daylight. The start rule is
+  unchanged. A move that finishes this way is logged and raises an information alert. The
+  interlock's fault names the move's direction ("Park lost during the open").
+- New risk (II): a mount unparked while N.I.N.A. can't be read (by a person, or N.I.N.A.'s own
+  sequence) is seen only by the park switches; the roof can go on over it, and with N.I.N.A. as the
+  only park source nothing sees it. Mitigations: a move only starts on a fresh confirmed park, so
+  the window is one move's travel; any fresh answer from N.I.N.A. stops it at once; the switches
+  are read every control step; the log and the alert say it happened; a stalled controller still
+  stops it.
+- Why: owner decision (spec 047, findings F36/F36b): three times on the real roof a close (and once
+  an open) started with the park confirmed, the network dropped, the park reading went stale, and
+  the interlock stopped the roof part-open, where neither the roof nor the telescope may move
+  (11.1.0). "A command is a command: if the WiFi drops it shouldn't just stick."
+- Modified: "Who May Set a Check Aside": the automatic exceptions name the move that goes on when
+  N.I.N.A. stops answering (II).
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/safety-inputs.md,
+  docs/user-guide/alerts.md, docs/api/rest.md, specs/047-moves-finish-on-stale/spec.md.
+- Earlier: 11.0.0 -> 11.1.0 (MINOR: Principle II gains a rule for the telescope, and Principle IV a
   second Alpaca device. Nothing is relaxed: the automatic close and a command's park wait ask for a
   park in fewer cases than before.)
 - Modified: II. Close Only Onto a Parked Mount. New: **the telescope moves only with the roof at an
@@ -440,7 +466,8 @@ while N.I.N.A. says it isn't).
   it says: the automatic close from an unknown position and its blind close (I), the close when
   N.I.N.A. is lost (II), the Hall rail fault clearing itself at rest (I), a remote stop counting as a
   person's (`autoClose.remoteStop`, III), a person's stop lapsing (`autoClose.personStopLapse`, III,
-  11.0.0) and the test box's bypasses (II, III).
+  11.0.0), a move that started on a confirmed park going on when N.I.N.A. stops answering (II,
+  12.0.0) and the test box's bypasses (II, III).
 - The override bits are filtered by origin where a command is checked and where an override is
   kept, and a native test proves no automation's command carries one.
 - A check a person can't yet get past is a gap, listed with the spec that found it (spec 039).
@@ -608,12 +635,25 @@ Closing onto an unparked telescope is the most expensive failure this device can
   setting wrong, "toward closed" drives the roof open over an unparked telescope until the person
   lets go.
 - The park interlock is re-checked throughout an open and a close (not a person's confirmed close
-  or open). A mount that reports unparked, or a fitted
-  park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
-  source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
-  unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
-  motor the same way. With the park switches only, no N.I.N.A. reading is relied on: the switches
-  are read every control step.
+  or open). A mount that reports unparked (a fresh N.I.N.A. answer: not at park, slewing, mount not
+  connected), N.I.N.A. and the switches disagreeing, or a fitted park switch that opens or can't be
+  read, stops the motor as a motion fault, named by the move's direction ("Park lost during the
+  open"). The re-check uses each source's latest good reading. With the park switches only, no
+  N.I.N.A. reading is relied on: the switches are read every control step.
+- **A command is a command** (owner decision, 12.0.0). A move that started with the park confirmed
+  by a fresh reading (and every fitted switch closed) goes on to its end when N.I.N.A. merely stops
+  answering: no reply, the network down, an unreadable reply, an API error, or its last reading
+  past its freshness. N.I.N.A.'s silence is not a report that the mount moved, and a roof stopped
+  part-way is the worst place for it (the rule above: neither the roof nor the telescope may move
+  there). It goes on only on N.I.N.A.'s last answer having said parked, with the switches as read
+  now; it still stops on a fresh answer that says "not parked", a switch, any fault, Stop, a stalled
+  hand-over of the safety inputs (5 s), and for an open the weather and daylight. It never starts a
+  move: every start needs the park confirmed by a fresh reading, as before. A move that finishes this
+  way is logged, and raises an information alert ("Finished the close without a fresh park reading
+  (N.I.N.A. unreachable)"). Risk: if the mount is unparked (a person, or N.I.N.A.'s own sequence,
+  unparks it) while N.I.N.A. can't be read, nothing but the park switches sees it, and the roof can
+  go on over a telescope that is no longer parked; with N.I.N.A. as the only park source nothing
+  sees it at all.
 - **Test-box exception.** On a box with no telescope under it, the owner may set the park source
   to "no telescope". Bypasses exist only as explicit, visible, owner-set test-box settings: off by
   default, changed only by an authenticated settings save, shown on every page and every interface
@@ -879,4 +919,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 11.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 12.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

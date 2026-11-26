@@ -71,6 +71,10 @@ void test_external_fault_texts_by_cause(void)
     assertText(
         "Park lost during the close: park not confirmed, park switch 2 not closed",
         describeFault(externalRecord(FaultCause::ParkInterlock, InterlockParkResult | InterlockSwitch2, 0)));
+    // Spec 047: an open stopped by the interlock says so (it said "close").
+    assertText(
+        "Park lost during the open: park not confirmed",
+        describeFault(externalRecord(FaultCause::ParkInterlock, InterlockParkResult | InterlockDuringOpen, 0)));
     assertText(
         "Stored fault unreadable: the fault saved before the restart couldn't be read back", describeFault(storedUnreadableRecord()));
     assertText(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NinaApi.h"
+#include "PollSchedule.h"
 #include "SafetyInput.h"
 #include "SafetySettings.h"
 #include "SqmeterSecrets.h"
@@ -89,6 +90,9 @@ namespace SQM
         // Set by the main loop every pass: the roof moves, a close waits or
         // the close sequence works. No location read starts meanwhile.
         void setRoofBusy(bool busy) { roofBusy.store(busy); }
+        // Spec 047: the roof is moving: the weather is polled every
+        // Safety::SQMETER_MOVING_POLL_MS instead of SQMETER_POLL_MS.
+        void setRoofMoving(bool moving) { roofMoving.store(moving); }
         // The latest location read and its site generation, under the lock.
         Site::LocationRead locationRead(uint32_t &generation) const;
         // The latest read of SQMeter's settings (spec 020's sync), under the lock.
@@ -123,8 +127,8 @@ namespace SQM
         static Site::Fetch fetchJson(const Site::Endpoint &from, const JsonDocument &filter, JsonDocument &doc, const FetchLimits &limits);
 
     private:
-        static constexpr uint32_t SQMETER_POLL_MS = 5000;
-        static constexpr uint32_t NINA_POLL_MS = 2000;
+        // Spec 047: the poll intervals and SQMeter's reply time are
+        // Safety::PollSchedule's (lib/SafetyInputLogic/include/PollSchedule.h).
         static constexpr uint32_t TICK_MS = 100;
         // Spec 020 FR-039: room for a TLS handshake (an https:// SQMeter).
         static constexpr uint32_t TASK_STACK_BYTES = 8192;
@@ -162,8 +166,9 @@ namespace SQM
         Site::Endpoint siteSecrets;  // spec 024: SQMeter's /api/secrets while the MQTT or alerts group follows it
         Site::SecretsRead secrets;   // spec 024: under the lock; never in `state`
         // The poll schedule: the poller task's own (a settings change makes
-        // that part due at once).
-        uint64_t nextSqmeterMs = 0;
-        uint64_t nextNinaMs = 0;
+        // that part due at once). Spec 047: N.I.N.A. before each weather
+        // poll, the weather faster while the roof moves.
+        Safety::PollSchedule schedule;
+        std::atomic<bool> roofMoving{false};
     };
 } // namespace SQM

@@ -263,6 +263,30 @@ It applies to the automatic close only, never to Alpaca, MQTT or a person's comm
 re-check while the close runs. A Wake-me alert, **Roof closed without N.I.N.A.'s park**, says it
 happened.
 
+### A move under way when N.I.N.A. stops answering
+
+A command is a command. An open or a close (the automatic close, a person's, Alpaca's or MQTT's)
+starts only on a park confirmed by a fresh reading, and every fitted switch closed. Once it runs, N.I.N.A.
+going quiet (unreachable, the network or the access point down, a read timing out, its last
+reading older than 10 s) doesn't stop it: it goes on to its end on N.I.N.A.'s last answer, which
+said parked. Stopping part-way would leave the roof part-open, the one place where neither the roof
+nor the telescope may move ([above](#the-telescope-moves-only-with-the-roof-at-an-end)).
+
+It still stops, as before, on:
+
+- a fresh answer from N.I.N.A. that the mount isn't parked, is slewing or isn't connected (N.I.N.A.
+  answered and said so), or N.I.N.A. and the switches disagreeing;
+- a fitted park switch opening or becoming unreadable;
+- any motion fault, and Stop;
+- for an open, the weather turning unsafe and the daylight close.
+
+When a move goes on this way the log says "Close continues without a fresh park reading (N.I.N.A.
+unreachable): it started with the park confirmed", and when it reaches its end the log and the
+information alert **Finished without a fresh park reading** (`finished_without_park`, Normal, no
+setting of its own) say "Finished the close without a fresh park reading (N.I.N.A. unreachable)"
+(or "the open"). The next move needs a fresh park again, so with N.I.N.A. still silent the roof
+then stays where it is, at an end ([When N.I.N.A. can't be reached](#when-nina-cant-be-reached)).
+
 
 ## Park before every move
 
@@ -474,6 +498,7 @@ pause, the cooldown); see [Alerts](alerts.md#the-roof).
 | Alert | Means | What to do |
 |---|---|---|
 | **Mount didn't park**, or **Can't close: N.I.N.A. unreachable, mount park unknown** (or **... N.I.N.A. and the park switches disagree**) | The park wasn't confirmed in time; the message gives the park result's reasons (`N.I.N.A. unreachable`, `park switch 1 open`, `sources disagree`...). The title names N.I.N.A. when it is the input that is missing. The roof is open and the attempts carry on, with a reminder, for as long as the close is wanted. | Park the mount (N.I.N.A., or by hand), or bring N.I.N.A. back. Once the park is confirmed, the roof closes by itself. Or close it yourself once parked. |
+| **Finished without a fresh park reading** (information) | An open or close that started with the park confirmed reached its end while N.I.N.A. wasn't answering ([A move under way when N.I.N.A. stops answering](#a-move-under-way-when-nina-stops-answering)). | Check N.I.N.A. and the network. Nothing more moves until the park is confirmed again. |
 | **Roof didn't close** | The close faulted, was refused (with the reason), stopped part-way, or took too long (then it stays stopped and isn't tried again until the roof has been closed or the weather has been safe for 10 minutes; after that, a later unsafe spell starts a new automatic close). | Look at the roof. After a fault, fix the cause and clear the fault; the close resumes once the mount is confirmed parked. After "took too long", close it yourself once you've checked it. |
 | **Roof can't close by itself** | A fault is latched, or the roof controller didn't start. Nothing is sent or moved. With a Hall rail fault and `roof.blindClose` off it says so too. (A roof whose position is merely unknown no longer lands here: it closes slowly to the first magnet.) | Clear the fault. If it is still unsafe, the roof closes once the mount is confirmed parked. |
 | **Roof not at an end: mount not parked** | The weather (or daylight) wants the roof closed, but it is stopped part-way, of unknown position or faulted, and the mount isn't parked: neither may move ([The telescope moves only with the roof at an end](#the-telescope-moves-only-with-the-roof-at-an-end)). The message says where the roof is (`Roof part-open (42 %) ...`). Reminded every 30 minutes while it holds. | Check the roof and the telescope. Park the mount by hand if it is clear of the beams, or move the roof to a magnet (the dashboard's Open or Close, confirming past the park). Either lets the close go ahead. |

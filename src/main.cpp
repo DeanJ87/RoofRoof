@@ -454,6 +454,10 @@ void handleSafety()
     std::string overridden;
     if (roofControl.takeOverrideAlert(overridden))
         closeOnUnsafe.parkOverridden(overridden);
+    // Spec 047: a move finished without a fresh park reading: an information alert.
+    std::string staleFinish;
+    if (roofControl.takeStaleAlert(staleFinish))
+        closeOnUnsafe.finishedOnStale(staleFinish);
 }
 
 // Spec 023: NTP and command-line OTA start the first time the device is on a
@@ -575,8 +579,9 @@ void loop()
     if (mqttClient)
         mqttClient->handle();
     handleSafety();
-    siteSync.handle(roofBusy()); // spec 020
-    WiringRun::handle();         // spec 023
+    siteSync.handle(roofBusy());                      // spec 020
+    safetyPoller.setRoofMoving(roofControl.moving()); // spec 047: the weather polled faster while moving
+    WiringRun::handle();                              // spec 023
     diagnostics.handle();
     CrashLog::snapshot(Roof::stateName(roofControl.state()), roofControl.stackFreeBytes()); // spec 029
     diagnostics.passEnded();

@@ -206,8 +206,8 @@ namespace DemoRoof
         const Roof::Status &status = controller.status();
         if (RoofIo::interlockLost(
                 status, gates, guard.closeParkOverride(), guard.closeNinaLost(), guard.openParkOverride())) // specs 030, 039
-            latchExternal(
-                RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(gates)), 0.0f));
+            latchExternal(RoofIo::externalRecord(
+                RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockRecordBits(status, gates)), 0.0f));
         else if (RoofIo::openMustStop(status, gates, guard.openOverride()))
             controller.command(Roof::Command::Stop, Roof::Origin::Automatic);
     }

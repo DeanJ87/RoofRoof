@@ -249,6 +249,17 @@ void test_critical_reminder_title_keeps_still()
 
 // --- Rules and samples ---
 
+namespace
+{
+    // Spec 039: the park override's information alert has no setting of its own;
+    // spec 047: nor the finish on a stale park reading.
+    bool hasNoSetting(Alerts::AlertType type)
+    {
+        return type == Alerts::AlertType::AlertsOn || type == Alerts::AlertType::Test || type == Alerts::AlertType::CheckOverridden ||
+               type == Alerts::AlertType::FinishedUnconfirmed;
+    }
+} // namespace
+
 void test_rules_follow_the_roof_levels()
 {
     Config cfg = Config::createDefault();
@@ -267,8 +278,7 @@ void test_rules_follow_the_roof_levels()
     for (size_t i = 0; i < Alerts::ALERT_TYPE_COUNT; ++i)
     {
         const Alerts::AlertType type = static_cast<Alerts::AlertType>(i);
-        // Spec 039: the park override's information alert has no setting of its own.
-        if (type == Alerts::AlertType::AlertsOn || type == Alerts::AlertType::Test || type == Alerts::AlertType::CheckOverridden)
+        if (hasNoSetting(type))
             continue;
         TEST_ASSERT_NOT_NULL_MESSAGE(Core::eventSettingFor(cfg.alerts, type), Alerts::alertTypeName(type));
     }
@@ -279,6 +289,7 @@ void test_the_override_alert_has_no_setting()
 {
     const Config cfg = Config::createDefault();
     TEST_ASSERT_NULL(Core::eventSettingFor(cfg.alerts, Alerts::AlertType::CheckOverridden));
+    TEST_ASSERT_NULL(Core::eventSettingFor(cfg.alerts, Alerts::AlertType::FinishedUnconfirmed)); // spec 047
 }
 
 void test_engine_roof_alerts_get_their_settings()

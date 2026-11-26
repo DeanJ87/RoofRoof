@@ -44,25 +44,26 @@ namespace SQM
         {
             // In AlertType order (lib/AlertLogic/include/AlertEngine.h).
             static constexpr const char *TAGS[] = {
-                "house",          // AlertsOn
-                "test_tube",      // Test
-                "satellite",      // ClientLost
-                "link",           // ClientBack
-                "electric_plug",  // ClientDisconnected
-                "rotating_light", // MountNotParked
-                "rotating_light", // RoofNotClosed
-                "warning",        // MoveFault
-                "battery",        // SupplyLow
-                "umbrella",       // UnsafeClosing
-                "house",          // RoofClosed
-                "cloud",          // SafetyLost
-                "sunny",          // DaylightOpen
-                "house",          // DaylightClosed
-                "question",       // DaylightUnknown
-                "construction",   // TestBox
-                "electric_plug",  // NinaLost
-                "rotating_light", // NeedsPerson
-                "warning",        // CheckOverridden
+                "house",              // AlertsOn
+                "test_tube",          // Test
+                "satellite",          // ClientLost
+                "link",               // ClientBack
+                "electric_plug",      // ClientDisconnected
+                "rotating_light",     // MountNotParked
+                "rotating_light",     // RoofNotClosed
+                "warning",            // MoveFault
+                "battery",            // SupplyLow
+                "umbrella",           // UnsafeClosing
+                "house",              // RoofClosed
+                "cloud",              // SafetyLost
+                "sunny",              // DaylightOpen
+                "house",              // DaylightClosed
+                "question",           // DaylightUnknown
+                "construction",       // TestBox
+                "electric_plug",      // NinaLost
+                "rotating_light",     // NeedsPerson
+                "warning",            // CheckOverridden
+                "information_source", // FinishedUnconfirmed
             };
             static_assert(sizeof(TAGS) / sizeof(TAGS[0]) == Alerts::ALERT_TYPE_COUNT, "a tag for every AlertType");
             const size_t index = static_cast<size_t>(type);

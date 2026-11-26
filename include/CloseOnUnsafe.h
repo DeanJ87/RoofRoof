@@ -38,6 +38,8 @@ namespace SQM
         void parkWaitFailed(const std::string &text);
         // Spec 039: a person's Open or Close set the park check aside: the information alert.
         void parkOverridden(const std::string &text);
+        // Spec 047: a move finished without a fresh park reading (information).
+        void finishedOnStale(const std::string &text);
         // Spec 030: where the critical alerts go (the alert outbox): queued until
         // a channel takes them (`resolvable`: dropped when the condition ends),
         // resolved when it ends, and the longest gap between two sends.

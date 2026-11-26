@@ -421,6 +421,7 @@ namespace SQM
         gates.parkText = parkText;
         gates.ninaGrace = hold.riding;
         gates.parkFreshUntilMs = hold.freshUntilMs;
+        gates.parkUnanswered = hold.unanswered; // spec 047
         gates.daylightCloses = daylightCloses;
         gates.daylightText = daylightText;
         safetyHandedOver = true;

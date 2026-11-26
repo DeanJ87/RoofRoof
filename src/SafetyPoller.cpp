@@ -21,13 +21,11 @@ namespace SQM
     namespace
     {
         constexpr const char *TAG = "Safety";
-        // Connect and wait-for-reply timeouts (spec 004 FR-010, FR-018).
-        constexpr uint16_t HTTP_TIMEOUT_MS = 3000;
-        // The body is read until this long after the request started. Connecting
-        // (3 s) and each header line (3 s) have their own timeouts, and the DNS
-        // lookup none, so a broken server can hold the poller longer; its
-        // readings then go stale, which is unsafe (spec 004 FR-010).
-        constexpr uint32_t HTTP_TOTAL_MS = 6000;
+        // Connect and wait-for-reply timeouts, and the whole request's (spec 004
+        // FR-010, FR-018; spec 047: SQMeter's 8 s, Safety::SQMETER_LIMITS). The
+        // body is read until the whole request's time is up. The DNS lookup has
+        // no timeout of its own, so a broken server can hold the poller longer;
+        // its readings then go stale, which is unsafe (spec 004 FR-010).
         // N.I.N.A.'s full mount info is about 4 KB; SQMeter's safety document under 1 KB.
         constexpr size_t MAX_BODY_BYTES = 8192;
 
@@ -130,10 +128,10 @@ namespace SQM
         // One GET set up: the timeouts, no reuse, HTTP/1.0 (no chunked replies:
         // the body is read as it comes), and SQMeter's login (spec 020: HTTP
         // Basic on every request when one is set; never logged).
-        bool startGet(HTTPClient &http, WiFiClient &client, const Site::Endpoint &to, uint32_t timeoutMs)
+        bool startGet(HTTPClient &http, WiFiClient &client, const Site::Endpoint &to, uint32_t connectMs, uint32_t replyMs)
         {
-            http.setTimeout(static_cast<uint16_t>(timeoutMs));
-            http.setConnectTimeout(static_cast<int32_t>(timeoutMs));
+            http.setTimeout(static_cast<uint16_t>(replyMs));
+            http.setConnectTimeout(static_cast<int32_t>(connectMs));
             http.setReuse(false);
             http.useHTTP10(true);
             if (!beginRequest(http, client, to.url))
@@ -143,7 +141,8 @@ namespace SQM
             return true;
         }
 
-        Safety::HttpOutcome httpGet(const Site::Endpoint &to, uint32_t tlsWaitMs = SafetyPoller::TLS_POLL_WAIT_MS)
+        Safety::HttpOutcome httpGet(
+            const Site::Endpoint &to, const Safety::HttpLimits &limits, uint32_t tlsWaitMs = SafetyPoller::TLS_POLL_WAIT_MS)
         {
             Safety::HttpOutcome reply;
             reply.credentials = to.sendsPassword();
@@ -152,7 +151,7 @@ namespace SQM
                 reply.error = "Not connected to a network";
                 return reply;
             }
-            const uint64_t deadline = SafetyPoller::nowMs() + HTTP_TOTAL_MS;
+            const uint64_t deadline = SafetyPoller::nowMs() + limits.totalMs;
             Connection connection(to.url, tlsWaitMs);
             if (!connection.ready())
             {
@@ -160,7 +159,7 @@ namespace SQM
                 return reply;
             }
             HTTPClient http;
-            if (!startGet(http, connection.client(), to, HTTP_TIMEOUT_MS))
+            if (!startGet(http, connection.client(), to, limits.connectMs, limits.replyMs))
             {
                 reply.error = "invalid URL";
                 return reply;
@@ -233,13 +232,13 @@ namespace SQM
                 refused.error = "request type not supported yet";
                 return refused;
             }
-            return httpGet(Site::Endpoint{joinUrl(base, request.path), "", ""});
+            return httpGet(Site::Endpoint{joinUrl(base, request.path), "", ""}, Safety::NINA_LIMITS);
         }
     } // namespace
 
     Safety::HttpOutcome SafetyPoller::getOnce(const Site::Endpoint &to, uint32_t tlsWaitMs)
     {
-        return httpGet(to, tlsWaitMs);
+        return httpGet(to, Safety::SQMETER_LIMITS, tlsWaitMs); // spec 047: as the weather poll makes it
     }
 
     void SafetyPoller::setUploadBusy(bool (*busy)())
@@ -270,7 +269,7 @@ namespace SQM
             return fetch;
         }
         HTTPClient http;
-        if (!startGet(http, connection.client(), from, limits.connectMs))
+        if (!startGet(http, connection.client(), from, limits.connectMs, limits.connectMs))
         {
             fetch.error = "invalid URL";
             return fetch;
@@ -435,29 +434,33 @@ namespace SQM
             {
                 api = Nina::makeApi(now.ninaApi);
                 seenNina = ninaGeneration;
-                nextNinaMs = 0; // new settings: poll at once
+                schedule.ninaChanged(); // new settings: poll at once
             }
             if (seenSqmeter != sqmeterGeneration)
             {
                 seenSqmeter = sqmeterGeneration;
-                nextSqmeterMs = 0;
+                schedule.sqmeterChanged();
             }
             // A request is answered once, never kept for later: a park sent
             // long after it was asked for could stop a night's imaging.
             if (parkRequested.exchange(false))
                 sendPark(*api, now, ninaGeneration);
             // N.I.N.A. first: its reading must stay fresh for the park check.
-            if (!now.ninaUrl.empty() && nowMs() >= nextNinaMs)
+            // Spec 047: also just before a weather poll, which may take 8 s.
+            const bool moving = roofMoving.load();
+            const Safety::PollPass pass = schedule.plan(nowMs(), !now.ninaUrl.empty(), now.sqmeterEnabled, moving);
+            if (pass.nina)
             {
-                nextNinaMs = nowMs() + NINA_POLL_MS;
+                const uint64_t started = nowMs();
                 pollNina(*api, now, ninaGeneration);
+                schedule.ninaRead(started, nowMs());
             }
-            const bool safetyPolled = now.sqmeterEnabled && nowMs() >= nextSqmeterMs;
-            if (safetyPolled)
+            if (pass.sqmeter)
             {
-                nextSqmeterMs = nowMs() + SQMETER_POLL_MS;
+                schedule.sqmeterPolled(nowMs());
                 pollSqmeter(now, sqmeterGeneration);
             }
+            const bool safetyPolled = pass.sqmeter;
             maybeReadSite(safetyPolled, now.sqmeterEnabled);
             // Constitution VI: stack headroom is measured on the bench.
             const UBaseType_t stackFree = uxTaskGetStackHighWaterMark(nullptr);
@@ -473,7 +476,8 @@ namespace SQM
     // Replies are dropped if that part's settings changed while the request ran.
     void SafetyPoller::pollSqmeter(const Targets &now, uint32_t generation)
     {
-        const Safety::HttpOutcome reply = httpGet(Site::Endpoint{now.sqmeterUrl, now.sqmeterUsername, now.sqmeterPassword});
+        const Safety::HttpOutcome reply =
+            httpGet(Site::Endpoint{now.sqmeterUrl, now.sqmeterUsername, now.sqmeterPassword}, Safety::SQMETER_LIMITS);
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.sqmeterGeneration)
             Safety::recordHttpReply(state.sqmeter, reply, nowMs());
@@ -496,7 +500,7 @@ namespace SQM
         pass.enabled = !status.url.empty();
         pass.busy = roofBusy.load();
         pass.safetyPolled = safetyPolled;
-        pass.safetyNextMs = safetyOn ? (nextSqmeterMs == 0 ? 1 : nextSqmeterMs) : 0;
+        pass.safetyNextMs = safetyOn ? schedule.sqmeterNextMs(pass.nowMs, roofMoving.load()) : 0;
         pass.generation = generation;
         if (locationSchedule.due(pass))
         {

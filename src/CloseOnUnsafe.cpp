@@ -351,6 +351,11 @@ namespace SQM
         send(CloseSeq::parkOverrideAlert(text), false); // it happened, whatever the roof does next
     }
 
+    void CloseOnUnsafe::finishedOnStale(const std::string &text)
+    {
+        send(CloseSeq::staleFinishAlert(text), false); // spec 047: it happened
+    }
+
     // Spec 030: through the alert outbox, sent again until a channel takes it.
     void CloseOnUnsafe::send(const Alerts::Alert &alert, bool resolvable)
     {

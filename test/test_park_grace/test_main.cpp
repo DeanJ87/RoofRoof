@@ -3,6 +3,9 @@
 // and stops on any evidence of "not parked" (constitution II). The pure parts:
 // the memory (ParkRule rememberNina), the hold (closeHold) and, with the gates
 // (RoofGates closeMayContinue / interlockLost), the timeline of a close.
+// Spec 047 (constitution 12.0.0, II): past the freshness a move that started
+// with the park confirmed goes on (CloseHold::unanswered); the ride-through
+// itself is unchanged (it says how fresh the relied-on reading is).
 
 #include <string>
 #include <unity.h>
@@ -65,6 +68,7 @@ namespace
         g.parked = hold.parked;
         g.ninaGrace = hold.riding;
         g.parkFreshUntilMs = hold.freshUntilMs;
+        g.parkUnanswered = hold.unanswered; // spec 047
         g.nowMs = nowMs;
         g.fittedSwitches = in.fittedSwitches;
         g.switch1 = RoofIo::Contact::Closed;
@@ -167,6 +171,7 @@ void test_ride_through_boundary_at_the_freshness_limit(void)
     TEST_ASSERT_FALSE(h.riding);
     TEST_ASSERT_FALSE(h.parked);
     TEST_ASSERT_EQUAL_UINT64(0, h.freshUntilMs);
+    TEST_ASSERT_TRUE(h.unanswered); // spec 047: the last answer said parked
 }
 
 void test_failure_then_not_parked_evidence_stops_the_ride(void)
@@ -229,9 +234,10 @@ void test_no_ride_without_a_memory_or_for_other_reasons(void)
         evaluate(m, inputsAt(good(), T0));
         TEST_ASSERT_FALSE(evaluate(m, inputsAt(failed(s, T0 + 1000), T0 + 1000)).riding);
     }
-    // A good reading gone stale is not a read failure.
+    // A good reading gone stale is not a read failure (spec 047: it is unanswered).
     NinaMemory m;
     TEST_ASSERT_FALSE(evaluate(m, inputsAt(good(), T0 + NINA_FRESH_MS + 1)).riding);
+    TEST_ASSERT_TRUE(evaluate(m, inputsAt(good(), T0 + NINA_FRESH_MS + 1)).unanswered);
     // A new N.I.N.A. address: the old server's reading proves nothing.
     NinaMemory moved;
     evaluate(moved, inputsAt(good(), T0));
@@ -260,27 +266,38 @@ void test_bench_timeline_a_three_second_timeout_then_recovery(void)
     TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), gatesFrom(in, h, T0 + 9800)));
 }
 
-void test_silent_nina_stops_the_close_at_the_freshness_bound(void)
+// Spec 047 (findings F36/F36b): a silent N.I.N.A. no longer stops the close at
+// the freshness bound; it goes on, on a stale park reading.
+void test_silent_nina_no_longer_stops_the_close_at_the_freshness_bound(void)
 {
     NinaMemory m;
     evaluate(m, inputsAt(good(), T0));
     const ParkInputs in = inputsAt(failed(ReadingStatus::Unreachable, T0 + 8000), T0 + 8000);
     const CloseHold h = evaluate(m, in);
-    // The loop's last evaluation was at 8 s; the control task's own clock bounds it.
     TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS)));
+    TEST_ASSERT_FALSE(RoofIo::movesOnStale(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS)));
     const RoofIo::GateInputs late = gatesFrom(in, h, T0 + NINA_FRESH_MS + 1);
-    TEST_ASSERT_TRUE(RoofIo::interlockLost(closing(), late));
-    TEST_ASSERT_EQUAL_UINT32(RoofIo::InterlockNinaStale, RoofIo::interlockBits(late));
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), late));
+    TEST_ASSERT_TRUE(RoofIo::movesOnStale(closing(), late));
+    TEST_ASSERT_EQUAL_UINT32(0, RoofIo::interlockBits(late));
+    // And long after, the loop still evaluating: N.I.N.A. down for minutes.
+    const ParkInputs minutes = inputsAt(failed(ReadingStatus::Unreachable, T0 + 180000), T0 + 180000);
+    const CloseHold later = evaluate(m, minutes);
+    TEST_ASSERT_FALSE(later.riding);
+    TEST_ASSERT_TRUE(later.unanswered);
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), gatesFrom(minutes, later, T0 + 180100)));
 }
 
-void test_a_good_reading_is_bounded_by_the_control_task_too(void)
+void test_a_good_reading_past_its_freshness_goes_on_on_stale(void)
 {
     NinaMemory m;
     const ParkInputs in = inputsAt(good(), T0 + 9900); // the close started on a 9.9 s old reading
     const CloseHold h = evaluate(m, in);
     TEST_ASSERT_TRUE(h.parked);
     TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS)));
-    TEST_ASSERT_TRUE(RoofIo::interlockLost(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS + 1)));
+    TEST_ASSERT_FALSE(RoofIo::movesOnStale(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS)));
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS + 1)));
+    TEST_ASSERT_TRUE(RoofIo::movesOnStale(closing(), gatesFrom(in, h, T0 + NINA_FRESH_MS + 1)));
 }
 
 void test_a_switch_opening_during_the_ride_stops_in_that_step(void)
@@ -311,7 +328,9 @@ void test_the_ride_never_starts_a_close(void)
 // --- The gates' rule (RoofGates closeMayContinue) -----------------------------
 
 // Spec 021: a move rides through a missed N.I.N.A. reply only while the
-// reading it relies on is fresh, with every fitted switch closed now.
+// reading it relies on is fresh, with every fitted switch closed now. Spec
+// 047: past it, only parkUnanswered (handed over with it on the device) goes
+// on; a ride-through handed over alone stays bounded.
 void test_close_may_continue_on_a_fresh_ride_through(void)
 {
     RoofIo::GateInputs riding = parkedGates(1);
@@ -335,15 +354,18 @@ void test_close_may_continue_on_a_fresh_ride_through(void)
     TEST_ASSERT_FALSE(RoofIo::closeMayContinue(unbounded));
 }
 
-void test_a_parked_reading_is_bounded_during_a_move(void)
+// Spec 047: a parked reading past its freshness no longer stops a move.
+void test_a_parked_reading_past_its_freshness_goes_on(void)
 {
     RoofIo::GateInputs in = parkedGates(0);
     in.parkFreshUntilMs = 30000;
     in.nowMs = 30000;
     TEST_ASSERT_FALSE(RoofIo::interlockLost(inState(Roof::State::Closing), in));
+    TEST_ASSERT_FALSE(RoofIo::movesOnStale(inState(Roof::State::Closing), in));
     in.nowMs = 30001;
-    TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), in));
-    TEST_ASSERT_EQUAL_UINT32(RoofIo::InterlockNinaStale, RoofIo::interlockBits(in));
+    TEST_ASSERT_FALSE(RoofIo::interlockLost(inState(Roof::State::Closing), in));
+    TEST_ASSERT_TRUE(RoofIo::movesOnStale(inState(Roof::State::Closing), in));
+    TEST_ASSERT_EQUAL_UINT32(0, RoofIo::interlockBits(in));
     // The start check is unchanged: the hand-over's park result alone.
     TEST_ASSERT_EQUAL(RoofIo::GateRefusal::None, RoofIo::gateCommand(Roof::Command::Close, in));
 }
@@ -353,11 +375,13 @@ void test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it(void)
     RoofIo::GateInputs riding = parkedGates(0);
     riding.parked = false;
     riding.ninaGrace = true;
+    riding.parkUnanswered = true; // spec 047
     riding.parkFreshUntilMs = 60000;
     riding.nowMs = 1000;
     TEST_ASSERT_EQUAL(RoofIo::GateRefusal::MountNotParked, RoofIo::gateCommand(Roof::Command::Close, riding));
     const RoofIo::GateInputs stale = RoofIo::currentGates(riding, true, RoofIo::SAFETY_HANDOVER_STALE_MS + 1);
     TEST_ASSERT_FALSE(stale.ninaGrace);
+    TEST_ASSERT_FALSE(stale.parkUnanswered); // a stalled loop is not N.I.N.A. not answering
     TEST_ASSERT_TRUE(RoofIo::interlockLost(inState(Roof::State::Closing), stale));
     TEST_ASSERT_TRUE(RoofIo::currentGates(riding, true, RoofIo::SAFETY_HANDOVER_STALE_MS).ninaGrace);
     Roof::Status leg = inState(Roof::State::Opening);
@@ -379,12 +403,12 @@ int main(int, char **)
     RUN_TEST(test_no_ride_on_a_remembered_reading_that_was_not_parked);
     RUN_TEST(test_no_ride_without_a_memory_or_for_other_reasons);
     RUN_TEST(test_bench_timeline_a_three_second_timeout_then_recovery);
-    RUN_TEST(test_silent_nina_stops_the_close_at_the_freshness_bound);
-    RUN_TEST(test_a_good_reading_is_bounded_by_the_control_task_too);
+    RUN_TEST(test_silent_nina_no_longer_stops_the_close_at_the_freshness_bound);
+    RUN_TEST(test_a_good_reading_past_its_freshness_goes_on_on_stale);
     RUN_TEST(test_a_switch_opening_during_the_ride_stops_in_that_step);
     RUN_TEST(test_the_ride_never_starts_a_close);
     RUN_TEST(test_close_may_continue_on_a_fresh_ride_through);
-    RUN_TEST(test_a_parked_reading_is_bounded_during_a_move);
+    RUN_TEST(test_a_parked_reading_past_its_freshness_goes_on);
     RUN_TEST(test_a_ride_through_never_starts_a_close_and_a_stale_handover_ends_it);
     return UNITY_END();
 }

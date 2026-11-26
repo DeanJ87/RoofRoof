@@ -48,9 +48,13 @@ namespace SQM
             // ordinary alert at the normal level (the pause, the send mode and
             // the master switch hold it), with no setting of its own.
             CheckOverridden,
+            // Spec 047: a move that started with the park confirmed reached its
+            // end while N.I.N.A. wasn't answering. Information, like
+            // CheckOverridden: Normal, no setting of its own.
+            FinishedUnconfirmed,
         };
         // Keep in step with the enum: alertTypeName() is a table indexed by it.
-        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::CheckOverridden) + 1;
+        constexpr size_t ALERT_TYPE_COUNT = static_cast<size_t>(AlertType::FinishedUnconfirmed) + 1;
 
         // The roof events constitution II and III require: never off, never
         // held back by the pause, the grace or the master switch.

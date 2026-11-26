@@ -136,6 +136,17 @@ namespace SQM
             return alert;
         }
 
+        Alerts::Alert staleFinishAlert(const std::string &text)
+        {
+            Alerts::Alert alert;
+            alert.type = Alerts::AlertType::FinishedUnconfirmed;
+            alert.level = Alerts::AlertLevel::Normal;
+            alert.title = "Finished without a fresh park reading";
+            alert.message = text + ".";
+            alert.vars = {{"reason", text}, {"details", alert.message}};
+            return alert;
+        }
+
         bool closedAfterAttempt(Phase before, Event event)
         {
             // A person closing the roof after a stop or a halted close counts

@@ -43,6 +43,9 @@ namespace SQM
         // Spec 039: a person's Open or Close set the park check aside
         // (RoofIo::parkOverrideText): an information alert at the normal level.
         Alerts::Alert parkOverrideAlert(const std::string &text);
+        // Spec 047: a move finished without a fresh park reading (RoofIo::staleRideText):
+        // FinishedUnconfirmed at Normal, no setting of its own.
+        Alerts::Alert staleFinishAlert(const std::string &text);
 
         // The sequence is attempting a close: waiting for the park, closing,
         // or waiting to try again (not when it can't move or is stood down).
