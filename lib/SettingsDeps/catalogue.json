@@ -111,6 +111,8 @@
     "park.switches",
     "park.timeoutSeconds",
     "mqtt.changeMinSeconds",
+    "mqtt.telemetry.enabled",
+    "mqtt.telemetry.restVoltsSeconds",
     "autoClose.rearmMinutes",
     "autoClose.parkRequestSeconds",
     "autoClose.parkHoldSeconds",

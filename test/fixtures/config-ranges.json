@@ -225,6 +225,12 @@
       "max": 60
     },
     {
+      "path": "mqtt.telemetry.restVoltsSeconds",
+      "int": true,
+      "min": 0,
+      "max": 3600
+    },
+    {
       "path": "daylight.bandDeg",
       "min": 0.1,
       "max": 2

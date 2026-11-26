@@ -23,6 +23,8 @@ export interface MQTTConfig {
   homeAssistant?: { enabled: boolean; discoveryPrefix: string };
   roofCommands?: boolean; // open, close and stop from <topic>/roof/set (spec 008), default off
   changeMinSeconds?: number; // spec 014: at rest, a change is published at most this often (1..60 s)
+  // Spec 046: <topic>/telemetry (1 Hz while moving, the supply every restVoltsSeconds at rest; 0: none) and <topic>/move.
+  telemetry?: { enabled: boolean; restVoltsSeconds: number };
 }
 
 export interface OTAConfig {

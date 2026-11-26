@@ -23,13 +23,20 @@ namespace
         return text.str();
     }
 
-    // Sets "a.b" in doc to value, creating the nested object.
+    // Sets "a.b" (or "a.b.c") in doc to value, creating the nested objects.
     void setPath(JsonDocument &doc, const std::string &path, JsonVariantConst value)
     {
-        const size_t dot = path.find('.');
-        JsonObject section =
-            doc[path.substr(0, dot)].isNull() ? doc.createNestedObject(path.substr(0, dot)) : doc[path.substr(0, dot)].as<JsonObject>();
-        section[path.substr(dot + 1)] = value;
+        JsonObject section = doc.as<JsonObject>();
+        if (section.isNull())
+            section = doc.to<JsonObject>();
+        std::string rest = path;
+        for (size_t dot = rest.find('.'); dot != std::string::npos; dot = rest.find('.'))
+        {
+            const std::string key = rest.substr(0, dot);
+            section = section[key].isNull() ? section.createNestedObject(key) : section[key].as<JsonObject>();
+            rest = rest.substr(dot + 1);
+        }
+        section[rest] = value;
     }
 
     bool accepts(JsonObjectConst range, double value, std::string *error)

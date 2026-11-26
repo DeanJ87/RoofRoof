@@ -103,6 +103,7 @@ namespace SQM
             bool kept = false; // loaded from the kept file: no uptime, no profile
             bool fromUnknown = false;
             bool calibration = false; // a leg of spec 016's calibration run
+            bool blind = false;       // spec 046: a blind close (spec 030); not kept
 
             uint32_t durationMs() const { return endMs - startMs; }
             float sagVolts() const { return restVolts - minVolts; } // NaN unless both are known

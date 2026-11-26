@@ -107,6 +107,8 @@ namespace SQM
         s.minSupplyVolts = settings.roof.minSupplyVolts;
         s.currentSense = settings.roof.currentSenseEnabled;
         s.motorAmps = motorAmps;
+        s.dutyPercent = static_cast<uint8_t>((static_cast<uint32_t>(controller.output().duty) * 100u + 127u) / 255u); // spec 046
+        s.origin = moveOrigin;
         s.maxCurrentAmps = settings.roof.maxCurrentAmps;
         s.fittedSwitches = settings.fittedSwitches;
         if (!pinsValid)

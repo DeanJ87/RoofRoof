@@ -21,6 +21,8 @@ Under the **base topic** (**Settings → Network → MQTT → Base topic**, defa
 | `<base>/alerts/armed/set` | subscribed | no | `1`/`0`, `on`/`off` or `true`/`false` resumes or pauses alerts |
 | `<base>/diag` | published | no | The live [diagnostics](../user-guide/diagnostics.md) document, with **Diagnostics over MQTT** on, every 60 s at rest |
 | `<base>/diag/move` | published | no | One finished move's summary, with **Diagnostics over MQTT** on |
+| `<base>/telemetry` | published | no | [Telemetry](../user-guide/mqtt.md#telemetry-influxdb) for long-term logging, with **Publish telemetry** on (the default): about once a second while the roof moves, the supply at rest; no entity |
+| `<base>/move` | published | no | One record per finished move, with **Publish telemetry** and advanced diagnostics on; no entity |
 | `<discovery prefix>/<component>/<device id>/<object>/config` | published | yes | Home Assistant discovery, with discovery on (prefix default `homeassistant`); emptied when discovery is switched off or moved |
 
 With **SQMeter over MQTT** as a weather source, the device also subscribes to SQMeter's own `<sqmeter>/availability`, `<sqmeter>/safe` and `<sqmeter>/safety` (base topic `safety.mqtt.topic`, default `sqmeter`). It never publishes to them.

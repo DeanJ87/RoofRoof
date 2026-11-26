@@ -31,6 +31,7 @@ export const mockConfig: Config = {
     homeAssistant: { enabled: false, discoveryPrefix: 'homeassistant' },
     roofCommands: false,
     changeMinSeconds: 1,
+    telemetry: { enabled: true, restVoltsSeconds: 60 },
   },
   ota: {
     enabled: false,

@@ -232,6 +232,42 @@ const RoofCommandsGroup: FunctionalComponent<SettingsTabProps> = ({ config, upda
   </Group>
 );
 
+// Spec 046: telemetry for long-term logging (1 Hz while the roof moves, the supply at rest).
+const TelemetryGroup: FunctionalComponent<SettingsTabProps> = ({ config, update, error }) => {
+  const telemetry = { enabled: true, restVoltsSeconds: 60, ...config.mqtt.telemetry };
+  const base = config.mqtt.topic || 'roofroof';
+  return (
+    <Group title={t('settings.network.telemetry')}>
+      <Toggle
+        dataField="mqttTelemetry"
+        label={t('settings.network.publishTelemetry')}
+        checked={telemetry.enabled}
+        onChange={(v) => update(['mqtt', 'telemetry'], { ...telemetry, enabled: v })}
+        hint={t('settings.network.telemetryHint', { base })}
+      />
+      {telemetry.enabled && (
+        <div class="form-grid indent">
+          <Field
+            label={t('settings.network.telemetrySupplyEvery')}
+            error={error('mqtt.telemetry.restVoltsSeconds')}
+            hint={t('settings.network.telemetrySupplyEveryHint')}
+          >
+            <NumberInput
+              dataField="mqttTelemetryRest"
+              integer
+              min={0}
+              max={3600}
+              unit="s"
+              value={telemetry.restVoltsSeconds}
+              onChange={(v) => update(['mqtt', 'telemetry'], { ...telemetry, restVoltsSeconds: Math.max(0, Math.min(3600, v || 0)) })}
+            />
+          </Field>
+        </div>
+      )}
+    </Group>
+  );
+};
+
 // Home Assistant MQTT discovery.
 const HomeAssistantGroup: FunctionalComponent<SettingsTabProps> = ({ config, update, error, deps, fix }) => {
   const homeAssistant = { ...defaultHomeAssistant, ...config.mqtt.homeAssistant };
@@ -305,6 +341,7 @@ const NetworkTab: FunctionalComponent<NetworkTabProps> = (props) => {
             <MqttTest config={config} test={mqttTest} />
 
             <RoofCommandsGroup {...props} />
+            <TelemetryGroup {...props} />
             <HomeAssistantGroup {...props} />
           </>
         ) : (

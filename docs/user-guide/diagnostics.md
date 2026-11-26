@@ -112,6 +112,8 @@ With diagnostics, **Diagnostics over MQTT** and [MQTT](mqtt.md) on, the device p
 | `<base>/diag` | The live document | Every 60 seconds at rest |
 | `<base>/diag/move` | One move summary | Once for each finished move, once the roof is at rest |
 
+For a long-term record in InfluxDB, [MQTT telemetry](mqtt.md#telemetry-influxdb) publishes each finished move's record on `<base>/move` (with **Publish telemetry** on, needing only advanced diagnostics, not **Diagnostics over MQTT**).
+
 Nothing is published while the roof moves, a close waits or the automatic close is attempting, so diagnostics never takes part of the budget the roof's own state document needs. Neither topic is retained.
 
 ---

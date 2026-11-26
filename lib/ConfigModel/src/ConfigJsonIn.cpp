@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "ConfigInternal.h"
+#include "ConfigJson.h"
 #include "ConfigPins.h"
 #include "NetAddress.h"
 #include "RoofMeasured.h"
@@ -157,6 +158,9 @@ namespace SQM
             mqtt.take("publishIntervalMs", m.publishIntervalMs);
             mqtt.take("roofCommands", m.roofCommands);
             mqtt.take("changeMinSeconds", m.changeMinSeconds);
+            const Section telemetry = mqtt.child("telemetry"); // spec 046
+            telemetry.take("enabled", m.telemetry.enabled);
+            telemetry.take("restVoltsSeconds", m.telemetry.restVoltsSeconds);
         }
 
         void applyAccess(const Section &doc, Config &cfg, bool keepSecrets)
@@ -532,7 +536,7 @@ namespace SQM
     {
         // Parsing copies every string, and custom alert texts can make the JSON
         // much bigger than the defaults.
-        DynamicJsonDocument doc(json.size() + 6656 > 8704 ? json.size() + 6656 : 8704);
+        DynamicJsonDocument doc(ConfigJson::parseCapacity(json.size())); // spec 046: +512 for mqtt.telemetry
         const DeserializationError error = deserializeJson(doc, json);
         if (error)
             return setError(errorOut, std::string("Settings JSON couldn't be read: ") + error.c_str());

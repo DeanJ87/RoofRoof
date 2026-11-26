@@ -19,9 +19,16 @@ interface Range {
 
 const ranges = (rangesJson as { ranges: Range[] }).ranges;
 
+// "a.b" or "a.b.c": the objects on the way are copied, the rest of each kept.
 const setPath = (target: Record<string, unknown>, path: string, value: unknown) => {
-  const [section, key] = path.split('.');
-  target[section] = { ...(target[section] as object), [key]: value };
+  const [key, ...rest] = path.split('.');
+  if (rest.length === 0) {
+    target[key] = value;
+    return;
+  }
+  const child = { ...(target[key] as Record<string, unknown>) };
+  setPath(child, rest.join('.'), value);
+  target[key] = child;
 };
 
 const accepts = (range: Range, value: number) => {

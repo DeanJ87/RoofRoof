@@ -46,6 +46,16 @@ export const mqttConfigSchema = z
       .min(1, t('validation.configSchema.changeGapMustBeBetween'))
       .max(60, t('validation.configSchema.changeGapMustBeBetween'))
       .optional(),
+    telemetry: z
+      .object({
+        enabled: z.boolean(),
+        restVoltsSeconds: z
+          .number()
+          .int()
+          .min(0, t('validation.configSchema.telemetryIntervalMustBeBetween'))
+          .max(3600, t('validation.configSchema.telemetryIntervalMustBeBetween')),
+      })
+      .optional(),
   })
   // D-33 (a constraint): the device's own message.
   .refine((data) => !data.enabled || data.broker.trim().length > 0, {

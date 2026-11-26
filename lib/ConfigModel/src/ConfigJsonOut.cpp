@@ -105,6 +105,9 @@ namespace SQM
             homeAssistant["discoveryPrefix"] = c.mqtt.discoveryPrefix;
             mqtt["roofCommands"] = c.mqtt.roofCommands;
             mqtt["changeMinSeconds"] = c.mqtt.changeMinSeconds;
+            JsonObject telemetry = mqtt.createNestedObject("telemetry"); // spec 046
+            telemetry["enabled"] = c.mqtt.telemetry.enabled;
+            telemetry["restVoltsSeconds"] = c.mqtt.telemetry.restVoltsSeconds;
 
             JsonObject ota = doc.createNestedObject("ota");
             ota["enabled"] = c.ota.enabled;
