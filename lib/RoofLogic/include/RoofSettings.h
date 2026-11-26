@@ -140,7 +140,7 @@ namespace SQM
             // another limit; the stored setting is 105-200).
             uint8_t endOverrunPercent = 115;
             // Spec 036: driving shows movement by a supply sag of at least this much
-            // (held CONFIRM_MS) or a Hall change of MOTION_HALL_COUNTS within
+            // (any reading after the surge, spec 040) or a Hall change of MOTION_HALL_COUNTS within
             // motionCheckMs (twice that for a calibration leg or jog); 0 = off. The
             // logic's default is off (a bare Settings drives a model with no supply
             // sag); the stored setting's default is RoofConfig's 0.2 V.

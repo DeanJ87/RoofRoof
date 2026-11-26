@@ -124,7 +124,7 @@ namespace SQM
                 case Roof::FaultKind::NoEndMagnet:
                     return format("No end magnet where expected: driven %.1f s >= %.1f s", seconds(f.measured), seconds(f.limit));
                 case Roof::FaultKind::NoMovement:
-                    return format("No movement detected: supply sag %.2f V < %.2f V and the Hall reading unchanged", measured, limit);
+                    return format("No movement detected: no supply sag of %.2f V or Hall change (deepest sag %.2f V)", limit, measured);
                 default:
                     return format("Fault raised: %g (limit %g)", measured, limit);
                 }

@@ -42,9 +42,6 @@ kept, and pin finding F31 with an end-to-end test.
 ## F31 finding
 
 The library path already carries SQMeter's reasons into the refusal (spec 030): the end-to-end test
-passes on main's code too, for HTTP and MQTT, Client and MQTT origins. A bare "Weather not safe:
-unsafe" can't come from the current verdict text (it always names a source and why). Likely origins
-of the report: firmware older than spec 030, or SQMeter's MQTT `<base>/safety` not republished when
-its reasons change while it stays unsafe (SQMeter publishes on a change of `safe` or every
-republish period), which leaves RoofRoof's MQTT source with the earlier reasons. The test now pins
-the behaviour; the SQMeter side is noted for SQMeter.
+passes on main's code too, for HTTP and MQTT, Client and MQTT origins. The reported "Weather not
+safe: unsafe" came from a truncated log line in the test harness, not from the firmware. The test
+stays as the guard: it fails if a refusal ever loses the weather source's own reasons.

@@ -20,7 +20,9 @@ and a deliberate confirmation. **Automations** (an Alpaca client such as N.I.N.A
 Assistant, the controller's own automatic moves) must never get past one.
 
 Finding F31 is folded in: an Alpaca or MQTT Open refused for the weather must say the weather
-source's own reasons (SQMeter's "Hold: Owner away (set from Home Assistant)"), not only "unsafe".
+source's own reasons (SQMeter's "Hold: Owner away (set from Home Assistant)"), not only "unsafe". The
+firmware already did (spec 030); the bare "unsafe" seen was a truncated log line in the test
+harness. An end-to-end test now guards it.
 
 ## User Scenarios & Testing
 
