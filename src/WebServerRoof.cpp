@@ -439,15 +439,19 @@ namespace SQM
         // Spec 032: not started with too little of the pass left (cut short, it
         // would drop the connection for the rest of the move); the next check
         // tries again.
-        if (!roofStateSchedule.due(key, connection, now, config.mqtt.publishIntervalMs) || !mqttClient->mayWrite())
-            return;
-        const time_t epoch = time(nullptr);
-        DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
-        RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
-        // A failed publish isn't retried at once (the link is going, and the
-        // reconnect publishes again); while the roof is busy the next try waits
-        // BUSY_MIN_MS (research R4, spec 032).
-        const bool ok = mqttClient->publishSubtopicJson(RoofIo::Mqtt::STATE_SUBTOPIC, doc, true);
-        roofStateSchedule.published(key, connection, now, ok);
+        if (roofStateSchedule.due(key, connection, now, config.mqtt.publishIntervalMs) && mqttClient->mayWrite())
+        {
+            const time_t epoch = time(nullptr);
+            DynamicJsonDocument doc(RoofIo::Mqtt::STATE_DOC_CAPACITY);
+            RoofIo::Mqtt::writeState(doc.to<JsonObject>(), snapshot, static_cast<uint32_t>(epoch), epoch >= Core::CLOCK_VALID_EPOCH);
+            // A failed publish isn't retried at once (the link is going, and the
+            // reconnect publishes again); while the roof is busy the next try waits
+            // BUSY_MIN_MS (research R4, spec 032).
+            const bool ok = mqttClient->publishSubtopicJson(RoofIo::Mqtt::STATE_SUBTOPIC, doc, true);
+            roofStateSchedule.published(key, connection, now, ok);
+        }
+        // Spec 046: after the state document, from the same snapshot, with
+        // what is left of the pass (mayWrite again).
+        publishTelemetry(snapshot);
     }
 } // namespace SQM

@@ -73,6 +73,10 @@ namespace SQM
         // pool couldn't be allocated is not sent.
         bool publishJson(const std::string &topic, const JsonDocument &doc, bool retained);
         bool publishSubtopicJson(const std::string &subtopic, const JsonDocument &doc, bool retained);
+        // Spec 046: `length` bytes already written into a caller's fixed buffer,
+        // to <base topic>/<subtopic> (built on the stack; PubSubClient copies
+        // into its own buffer). No heap. False when not sent.
+        bool publishSubtopicBytes(const char *subtopic, const char *payload, size_t length, bool retained);
 
         // Any task (a settings save runs on the web server's task): only hands
         // the settings over. handle() applies them on the main loop, so the
@@ -109,6 +113,8 @@ namespace SQM
         uint32_t connections = 0;
         static constexpr const char *TAG = "MQTT";
         static constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
+        // A base topic (up to 128 characters) and a short subtopic (spec 046).
+        static constexpr size_t TOPIC_BYTES = 160;
         // Reads (and the CONNACK wait) give up after this many seconds: well
         // under the roof's 5 s safety hand-over limit (spec 003 research R8).
         static constexpr uint16_t SOCKET_TIMEOUT_S = 3;

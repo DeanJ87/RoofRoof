@@ -356,6 +356,20 @@ namespace SQM
         return publishJson(config.topic + "/" + subtopic, doc, retained);
     }
 
+    bool MQTTClient::publishSubtopicBytes(const char *subtopic, const char *payload, size_t length, bool retained)
+    {
+        if (!config.enabled || !mqttClient || !mqttClient->connected())
+            return false;
+        char topic[TOPIC_BYTES];
+        const int n = snprintf(topic, sizeof(topic), "%s/%s", config.topic.c_str(), subtopic);
+        if (n < 0 || static_cast<size_t>(n) >= sizeof(topic))
+            return false;
+        const bool ok = mqttClient->publish(topic, reinterpret_cast<const uint8_t *>(payload), static_cast<unsigned int>(length), retained);
+        if (ok)
+            lastPublish = millis();
+        return ok;
+    }
+
     std::string MQTTClient::getAvailabilityTopic() const
     {
         return config.topic + "/availability";

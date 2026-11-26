@@ -103,6 +103,10 @@ namespace SQM
             bool currentSense = false;
             std::string pinSetupText; // spec 023: the fault's text while the pins in effect are invalid
             float motorAmps = 0.0f;   // NaN when off or unreadable
+            // Spec 046 (MQTT telemetry): the PWM duty applied now (0-100) and the
+            // origin of the last accepted open or close. Not in the documents.
+            uint8_t dutyPercent = 0;
+            Roof::Origin origin = Roof::Origin::Person;
             float maxCurrentAmps = 10.0f;
             uint8_t fittedSwitches = 0;
             Contact switch1 = Contact::Unreadable;

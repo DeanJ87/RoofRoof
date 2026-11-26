@@ -89,7 +89,8 @@ Some settings only work when something else is on - MQTT alerts need MQTT, inter
     "publishIntervalMs": 60000,
     "homeAssistant": { "enabled": false, "discoveryPrefix": "homeassistant" },
     "roofCommands": false,
-    "changeMinSeconds": 1
+    "changeMinSeconds": 1,
+    "telemetry": { "enabled": true, "restVoltsSeconds": 60 }
   },
   "ota": { "enabled": false, "password": "" },
   "auth": { "enabled": false, "username": "admin", "password": "" },
@@ -254,6 +255,8 @@ The JSON Schema is `config.schema.json`; the [API Reference](../api/reference.md
 | `homeAssistant.discoveryPrefix` | string | `"homeassistant"` | Discovery prefix |
 | `roofCommands` | bool | `false` | Accept open, close and stop on `<topic>/roof/set`, with an Alpaca client's limits ([Roof commands](mqtt.md#roof-commands)). Config saved before this setting existed loads with it off |
 | `changeMinSeconds` | int | `1` | At rest, a change of the roof's state document is published at most this often (1-60 s). While the roof moves or a close waits the fixed busy cadence applies ([MQTT](mqtt.md#the-roof-document)). Shown as **MQTT change gap** in **Settings → Roof → Automatic close → Advanced** |
+| `telemetry.enabled` | bool | `true` | Publish `<topic>/telemetry` (about once a second while the roof moves, the supply at rest) and `<topic>/move` (one record per finished move, with advanced diagnostics on), neither retained ([Telemetry](mqtt.md#telemetry-influxdb)). Shown as **Publish telemetry** in **Settings → Network → MQTT → Telemetry** |
+| `telemetry.restVoltsSeconds` | int | `60` | At rest, the supply goes out on `<topic>/telemetry` this often, or sooner on a 0.2 V change (0-3600 s; 0: nothing at rest). Shown as **Supply at rest every** |
 
 ### ArduinoOTA
 

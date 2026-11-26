@@ -75,6 +75,18 @@ namespace SQM
                    w.reconnectDelayMs <= w.maxReconnectDelayMs;
         }
 
+        // How often MQTT publishes: the interval, the change gap (spec 014), telemetry (spec 046).
+        bool validateMqttTiming(const MQTTConfig &m, std::string *error)
+        {
+            if (m.publishIntervalMs < 1000 || m.publishIntervalMs > 86400000)
+                return setError(error, "MQTT publish interval is invalid");
+            if (m.changeMinSeconds < MQTTConfig::MIN_CHANGE_MIN_SECONDS || m.changeMinSeconds > MQTTConfig::MAX_CHANGE_MIN_SECONDS)
+                return setError(error, "MQTT: change gap must be between 1 and 60 seconds");
+            if (m.telemetry.restVoltsSeconds > MQTTConfig::Telemetry::MAX_REST_VOLTS_SECONDS)
+                return setError(error, "MQTT: telemetry supply interval must be between 0 and 3600 seconds");
+            return true;
+        }
+
         bool validateWifiAndMqtt(const Config &c, std::string *error)
         {
             const WiFiConfig &w = c.wifi;
@@ -90,12 +102,7 @@ namespace SQM
                 return setError(error, "MQTT topic: use letters, numbers, _ and -, with / between levels");
             if (c.mqtt.homeAssistant && !validTopic(c.mqtt.discoveryPrefix))
                 return setError(error, "MQTT discovery prefix: use letters, numbers, _ and -, with / between levels");
-            if (c.mqtt.publishIntervalMs < 1000 || c.mqtt.publishIntervalMs > 86400000)
-                return setError(error, "MQTT publish interval is invalid");
-            if (c.mqtt.changeMinSeconds < MQTTConfig::MIN_CHANGE_MIN_SECONDS ||
-                c.mqtt.changeMinSeconds > MQTTConfig::MAX_CHANGE_MIN_SECONDS)
-                return setError(error, "MQTT: change gap must be between 1 and 60 seconds");
-            return true;
+            return validateMqttTiming(c.mqtt, error);
         }
 
         bool validateAuthAndNtp(const Config &c, std::string *error)

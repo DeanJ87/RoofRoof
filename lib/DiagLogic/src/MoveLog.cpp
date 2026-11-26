@@ -103,6 +103,7 @@ namespace SQM
             s.target = sample.status.target;
             s.fromUnknown = sample.status.fromUnknown;
             s.calibration = sample.status.calibrating;
+            s.blind = sample.status.blind;
             s.hallStart = sample.status.hallCounts;
             s.hallEnd = sample.status.hallCounts;
             notePeak(sample, s);
@@ -126,6 +127,7 @@ namespace SQM
             s.endMs = sample.nowMs;
             s.hallEnd = sample.status.hallCounts;
             s.endState = sample.status.state;
+            s.blind = s.blind || sample.status.blind;
             const int fromStart = static_cast<int>(sample.status.hallCounts) - s.hallStart;
             const int peakFromStart = static_cast<int>(s.hallPeak) - s.hallStart;
             if (std::abs(fromStart) > std::abs(peakFromStart))

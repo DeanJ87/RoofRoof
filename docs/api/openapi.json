@@ -7029,6 +7029,22 @@
               "roofCommands": {
                 "type": "boolean"
               },
+              "telemetry": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "restVoltsSeconds": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "restVoltsSeconds"
+                ],
+                "additionalProperties": false
+              },
               "topic": {
                 "type": "string"
               },
@@ -7045,6 +7061,7 @@
               "port",
               "publishIntervalMs",
               "roofCommands",
+              "telemetry",
               "topic",
               "username"
             ],
@@ -8236,6 +8253,18 @@
               },
               "roofCommands": {
                 "type": "boolean"
+              },
+              "telemetry": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "restVoltsSeconds": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
               },
               "topic": {
                 "type": "string"

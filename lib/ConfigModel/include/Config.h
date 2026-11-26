@@ -59,6 +59,15 @@ namespace SQM
         uint32_t changeMinSeconds = 1;
         static constexpr uint32_t MIN_CHANGE_MIN_SECONDS = 1;
         static constexpr uint32_t MAX_CHANGE_MIN_SECONDS = 60;
+        // Spec 046: <topic>/telemetry (about 1 Hz while the roof moves, the
+        // supply every restVoltsSeconds at rest; 0: nothing at rest) and
+        // <topic>/move (one record per finished move, with diagnostics on).
+        struct Telemetry
+        {
+            bool enabled = true;
+            uint32_t restVoltsSeconds = 60;
+            static constexpr uint32_t MAX_REST_VOLTS_SECONDS = 3600;
+        } telemetry;
     };
 
     struct OTAConfig

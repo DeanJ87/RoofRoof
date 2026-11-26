@@ -19,6 +19,7 @@
 #include "RoofTypes.h"
 #include "SettingsDeps.h"
 #include "SqmeterSecrets.h"
+#include "Telemetry.h"
 #include "TimeManager.h"
 #include "WebReply.h"
 #include <ArduinoJson.h>
@@ -253,6 +254,16 @@ namespace SQM
         static constexpr uint32_t ROOF_STATE_CHECK_MS = 100;
         uint32_t lastRoofStateCheck = 0;
         std::vector<RoofIo::Mqtt::Result> pendingRoofResults; // published on the next pass, outside PubSubClient's callback
+        // Spec 046 (src/WebServerTelemetry.cpp): <base>/telemetry and <base>/move,
+        // from the state check's snapshot, into fixed stack buffers.
+        void publishTelemetry(const RoofIo::Snapshot &snapshot);
+        void publishMoveRecord(const RoofIo::Snapshot &snapshot, uint32_t now);
+        Telemetry::Schedule telemetrySchedule;
+        Telemetry::MoveCue telemetryMoveCue;
+        bool telemetryMovePending = false;
+        uint32_t telemetryMoveConnection = 0; // the MQTT connection the pending record finished on
+        uint32_t lastTelemetryMoveCheck = 0;
+        static constexpr uint32_t TELEMETRY_MOVE_CHECK_MS = 1000;
         void sendPendingAlertTest();
         void startAlpacaDiscovery();
         static void handleNotFound(AsyncWebServerRequest *request);

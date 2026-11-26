@@ -1,5 +1,5 @@
 ---
-description: "RoofRoof's MQTT topics: the roof's state document, open, close and stop commands and their results, availability, alerts and the alerts pause switch, SQMeter's safety topics it listens to, and Home Assistant discovery with a roof cover."
+description: "RoofRoof's MQTT topics: the roof's state document, open, close and stop commands and their results, availability, alerts and the alerts pause switch, telemetry and move records for InfluxDB through Telegraf, SQMeter's safety topics it listens to, and Home Assistant discovery with a roof cover."
 ---
 
 # MQTT Integration
@@ -49,6 +49,8 @@ The base topic may use letters, numbers, `_` and `-`, with `/` between levels. `
 | `<base>/alerts/armed` | Yes | `1` sending alerts, `0` paused | On change and reconnect |
 | `<base>/diag` | No | The [diagnostics](diagnostics.md) live document (the same as [`GET /api/diag`](../api/rest.md#get-apidiag)) | With **Diagnostics over MQTT** on: every 60 s at rest; nothing while the roof is busy |
 | `<base>/diag/move` | No | One finished move's summary | With **Diagnostics over MQTT** on: once per finished move, once the roof is at rest |
+| `<base>/telemetry` | No | Telemetry for long-term logging ([below](#telemetry-influxdb)): the full sample while the roof moves, `{"ts","volts"}` at rest | With **Publish telemetry** on (the default): about once a second while the roof moves and for 3 s after; at rest every `mqtt.telemetry.restVoltsSeconds` (60 s) or sooner on a 0.2 V change |
+| `<base>/move` | No | One record per finished move ([below](#telemetry-influxdb)) | With **Publish telemetry** and [advanced diagnostics](diagnostics.md) on: once per finished move |
 | `<base>/alerts/armed/set` | - | Subscribed: `1`/`0`, `on`/`off`, `true`/`false` resume or pause alerts | Command |
 
 With **SQMeter over MQTT** switched on as a weather source (see [Safety inputs](safety-inputs.md)), RoofRoof also listens to SQMeter's own topics on the same broker, under SQMeter's base topic (`safety.mqtt.topic`, default `sqmeter`):
@@ -103,6 +105,117 @@ The state document also carries what an observatory dashboard needs (spec 027), 
 
 With [advanced diagnostics](diagnostics.md) and **Settings → Device → Diagnostics → Diagnostics over MQTT** on, the device publishes `<base>/diag` (the live document) every 60 seconds and `<base>/diag/move` (one move summary) once for each finished move. Both wait until the roof is at rest: not moving, no close waiting and the automatic close not attempting. Neither is retained. They use none of the budget of the roof's state document.
 
+## Telemetry (InfluxDB)
+
+For a long-term record of the roof (for example InfluxDB through Telegraf), RoofRoof publishes two small JSON documents, neither retained, at QoS 0. **Settings → Network → MQTT → Telemetry**: **Publish telemetry** (`mqtt.telemetry.enabled`, on by default) and **Supply at rest every** (`mqtt.telemetry.restVoltsSeconds`, 60 s, 0-3600; 0 sends nothing at rest). Nothing high-rate goes out while the roof is idle: the full sample only while it moves.
+
+**`<base>/telemetry`**, while the roof is opening or closing, and for 3 s after it stops (to catch the end), about once a second (the first at once when the move starts):
+
+```json
+{"ts":1764150000123,"state":"closing","pos":42.3,"hall":2050,"volts":12.41,"duty":100,"phase":"closing","target":"closed","origin":"automatic"}
+```
+
+At rest only the supply, every **Supply at rest every** seconds, or sooner when it has changed by 0.2 V or more since the last sample (but never more often than every 10 s):
+
+```json
+{"ts":1764150060123,"volts":12.60}
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `ts` | integer | Unix time in milliseconds; before the clock is set, the uptime in milliseconds (below 10<sup>12</sup>) |
+| `state` | string | `unknown`, `closed`, `open`, `opening`, `closing`, `stopped`, `error` |
+| `pos` | number or `null` | Position in percent, 0 closed to 100 open (one decimal); `null` while it isn't known |
+| `hall` | integer | The Hall sensor's raw reading (ADC counts) |
+| `volts` | number or `null` | The 12 V supply (two decimals); `null` when unreadable |
+| `duty` | integer | The motor's PWM duty applied now, percent (0 in the dead time and after the stop) |
+| `phase` | string | The automatic close's phase: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove`, `halted` |
+| `target` | string | The end the move goes to: `open` or `closed` (the last move's, after it ends) |
+| `origin` | string | Who asked for the move: `person`, `client` (Alpaca), `mqtt`, `automatic` |
+
+**`<base>/move`**, one record for each finished move, a second or so after it ends. It is the move's summary from [advanced diagnostics](diagnostics.md) (the same as in [`GET /api/diag/moves`](../api/rest.md#get-apidiagmoves)), so it needs **Settings → Device → Diagnostics → Advanced diagnostics** on; the 1 Hz telemetry doesn't.
+
+```json
+{"ts":1764150057000,"id":12,"origin":"automatic","target":"closed","endState":"closed","result":"arrived","fault":null,"durationMs":57000,"drivenMs":56000,"hallStart":2900,"hallEnd":1050,"hallPeak":1010,"hallPeakMs":56500,"restVolts":12.61,"minVolts":11.90,"sagVolts":0.71,"peakAmps":6.40,"averageAmps":3.25,"fromUnknown":false,"blind":false,"calibration":false}
+```
+
+| Field | Type | Meaning |
+|---|---|---|
+| `ts` | integer | When the move ended: Unix milliseconds (uptime milliseconds before the clock is set) |
+| `id` | integer | The move's number in the diagnostics log |
+| `origin` | string | `person`, `client`, `mqtt`, `automatic` |
+| `target` | string | `open` or `closed` |
+| `endState` | string | The state it ended in (as `state` above) |
+| `result` | string | `arrived` (at its target's magnet), `stopped` (part-way: a stop, an abort, a reversal), `fault` |
+| `fault` | string or `null` | With `result` `fault`: its kind (`timeout`, `didNotLeave`, `wrongMagnet`, `hallRail`, `overCurrent`, `currentUnreadable`, `supplyLow`, `lateStep`, `driveBudget`, `external`, `endTooEarly`, `noEndMagnet`, `noMovement`); otherwise `null` |
+| `durationMs` | integer | From the start of the move to its end |
+| `drivenMs` | integer | How long the motor was driven |
+| `hallStart`, `hallEnd` | integer | The Hall reading at the start and the end |
+| `hallPeak`, `hallPeakMs` | integer | The reading furthest from `hallStart`, and when (ms from the start) |
+| `restVolts` | number or `null` | The supply at rest before the move |
+| `minVolts` | number or `null` | The lowest supply while driven |
+| `sagVolts` | number or `null` | `restVolts` − `minVolts` |
+| `peakAmps`, `averageAmps` | number or `null` | The motor current while driven; only with current sense fitted (`roof.currentSenseEnabled`), otherwise left out |
+| `fromUnknown` | boolean | The move started from an unknown position |
+| `blind` | boolean | A blind close (the automatic close from an unknown position) |
+| `calibration` | boolean | A leg of the calibration run |
+
+Nothing is queued: a document that can't go (MQTT down, or no time left in the main loop's pass while the roof moves) is dropped, and a move that finishes while MQTT is down has no record (the device keeps its last moves in `/api/diag/moves`). While the roof moves, the telemetry shares the state document's write budget (each write at most 250 ms, never started without it) and goes out after it.
+
+### Telegraf
+
+An example for Telegraf's `mqtt_consumer` with the `json_v2` parser (InfluxDB 2, bucket `roofroof`). Use your broker, login and base topic. `ts` becomes the point's time.
+
+```toml
+[[inputs.mqtt_consumer]]
+  name_override = "roof_telemetry"
+  servers = ["tcp://broker.local:1883"]
+  topics = ["roofroof/telemetry"]
+  username = "telegraf"
+  password = "${MQTT_PASSWORD}"
+  qos = 0
+  data_format = "json_v2"
+  [[inputs.mqtt_consumer.json_v2]]
+    [[inputs.mqtt_consumer.json_v2.object]]
+      path = "@this"
+      timestamp_key = "ts"
+      timestamp_format = "unix_ms"
+      [inputs.mqtt_consumer.json_v2.object.fields]
+        hall = "int"
+        duty = "int"
+
+[[inputs.mqtt_consumer]]
+  name_override = "roof_move"
+  servers = ["tcp://broker.local:1883"]
+  topics = ["roofroof/move"]
+  username = "telegraf"
+  password = "${MQTT_PASSWORD}"
+  qos = 0
+  data_format = "json_v2"
+  [[inputs.mqtt_consumer.json_v2]]
+    [[inputs.mqtt_consumer.json_v2.object]]
+      path = "@this"
+      timestamp_key = "ts"
+      timestamp_format = "unix_ms"
+      tags = ["origin", "target", "result"]
+      [inputs.mqtt_consumer.json_v2.object.fields]
+        id = "int"
+        durationMs = "int"
+        drivenMs = "int"
+        hallStart = "int"
+        hallEnd = "int"
+        hallPeak = "int"
+        hallPeakMs = "int"
+
+[[outputs.influxdb_v2]]
+  urls = ["http://influxdb.local:8086"]
+  token = "${INFLUX_TOKEN}"
+  organization = "home"
+  bucket = "roofroof"
+```
+
+`null` values are skipped, so a sample at rest writes only `volts`. The string fields (`state`, `phase`, `target`, `origin`, `endState`, `fault`) are stored as string fields; make them tags instead if you group by them.
+
 ## Roof commands
 
 With **Settings → Network → MQTT → Accept roof commands** on (`mqtt.roofCommands`, off by default), RoofRoof acts on `OPEN`, `CLOSE` and `STOP` sent to `<base>/roof/set` on its own broker. Home Assistant's cover sends exactly these.
@@ -143,14 +256,14 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: 0d9ccfa62de2cacf
+fingerprint: d4f8464f7040c07b
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart LR
     accTitle: MQTT topic map
-    accDescr: RoofRoof listens on roof/set (only with roof commands on, never retained, through the same checks as every command), alerts/armed/set and, when SQMeter over MQTT is a weather source, SQMeter's availability, safe and safety topics; it publishes state, roof/result, availability, alerts and alerts/armed under its base topic, plus Home Assistant discovery under the discovery prefix.
+    accDescr: RoofRoof listens on roof/set (only with roof commands on, never retained, through the same checks as every command), alerts/armed/set and, when SQMeter over MQTT is a weather source, SQMeter's availability, safe and safety topics; it publishes state, roof/result, availability, alerts, alerts/armed, and with telemetry on telemetry and move, under its base topic, plus Home Assistant discovery under the discovery prefix.
     ROOFSET["roof/set<br/>OPEN, CLOSE, STOP; only with roof commands on,<br/>never retained, the same checks as every command"] -->|command| D["RoofRoof"]
     SET["alerts/armed/set<br/>1/0, on/off, true/false"] -->|command| D
     SQM["sqmeter/availability, /safe, /safety<br/>SQMeter's topics, when that source is on"] -->|weather| D
@@ -159,6 +272,7 @@ flowchart LR
     D --> AVAIL["availability: online or offline<br/>retained, last will"]
     D --> ALERTS["alerts<br/>not retained, one message per alert"]
     D --> ARMED["alerts/armed: 1 sending, 0 paused<br/>retained, on change and reconnect"]
+    D --> TELE["telemetry: 1 Hz while moving, the supply at rest;<br/>move: one record per move<br/>not retained, with telemetry on"]
     D --> DISC["homeassistant/.../config<br/>retained, when discovery is on: Connectivity, the Roof cover,<br/>its sensors, fault and needs-a-person sensor; the Alerts switch<br/>(whenever discovery is on)"]
 ```
 
@@ -173,7 +287,8 @@ flowchart LR
     - `roof/result` - one answer per message on `roof/set`, not retained;
     - `availability` - `online`, or `offline` as the last will, retained;
     - `alerts` - one message per alert, not retained (with the MQTT alert channel on);
-    - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect.
+    - `alerts/armed` - `1` sending / `0` paused, retained, on change and on reconnect;
+    - `telemetry` - about once a second while the roof moves, only the supply at rest, and `move` - one record per finished move, neither retained (with telemetry on; `move` also needs advanced diagnostics).
 
     It listens on `roof/set` (`OPEN`, `CLOSE`, `STOP`), acted on only with roof commands switched on, never when retained, and always through the same weather, park and motion checks as every other command. It listens on `alerts/armed/set` (`1`/`0`, `on`/`off`, `true`/`false`) to resume or pause alerts.
 

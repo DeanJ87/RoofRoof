@@ -54,6 +54,40 @@ describe('MQTT publish settings', () => {
     expect(saved.mqtt.roofCommands).toBe(true);
   });
 
+  // Spec 046: telemetry is on by default; the supply interval goes with it, 0 allowed.
+  it('sets the telemetry supply interval and turns telemetry off', async () => {
+    let saved: any = null;
+    server.use(
+      http.get('/api/config', () =>
+        HttpResponse.json({ ...mockConfig, mqtt: { ...mockConfig.mqtt, enabled: true, broker: '192.168.1.5', topic: 'obs' } }),
+      ),
+      http.post('/api/config', async ({ request }) => {
+        saved = await request.json();
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    window.history.replaceState(null, '', '/settings?tab=network');
+    render(<Settings />);
+
+    const toggle = (await screen.findByLabelText('Publish telemetry')) as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+    expect(screen.getByText(/obs\/telemetry about once a second/)).toBeInTheDocument();
+    const rest = document.querySelector('[data-field="mqttTelemetryRest"]') as HTMLInputElement;
+    expect(rest.value).toBe('60');
+    fireEvent.input(rest, { target: { value: '0' } });
+    fireEvent.change(rest, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    expect(saved).toEqual({ mqtt: { telemetry: { restVoltsSeconds: 0 } } }); // only what changed (spec 021)
+
+    saved = null;
+    fireEvent.click(toggle);
+    expect(document.querySelector('[data-field="mqttTelemetryRest"]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(saved).not.toBeNull());
+    expect(saved.mqtt.telemetry.enabled).toBe(false);
+  });
+
   it('rejects a base topic with MQTT wildcards', async () => {
     server.use(
       http.get('/api/config', () =>
