@@ -585,6 +585,9 @@
         "closePhase": {
           "type": "string"
         },
+        "closeRearmLapse": {
+          "type": "boolean"
+        },
         "closeRearmSeconds": {
           "type": [
             "integer",
@@ -1058,6 +1061,7 @@
         "calibrating",
         "closePending",
         "closePhase",
+        "closeRearmLapse",
         "closeRearmSeconds",
         "currentSense",
         "daylight",

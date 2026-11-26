@@ -253,6 +253,8 @@ export interface RoofStatus {
   closePhase: RoofClosePhase;
   // Spec 026: a stand-down's seconds left if nothing wants the roof closed meanwhile (null: not counting; absent: older firmware).
   closeRearmSeconds?: number | null;
+  // Spec 044: those seconds count down to a person's Stop lapsing (the close then goes ahead), not to the safe spell.
+  closeRearmLapse?: boolean;
   // Spec 030 (absent on older firmware): the automatic close's weather hold: unsafe seconds added up,
   // seconds left before the close is wanted (-1: not counting) and whether it has fired.
   weatherHold?: { countedSeconds: number; leftSeconds: number; fired: boolean };

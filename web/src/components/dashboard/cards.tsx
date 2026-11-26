@@ -25,6 +25,7 @@ export const dashboardCards = (ctx: CardContext): MasonryItem[] => [
         config={ctx.config?.roof}
         confirm={ctx.config?.ui?.confirmOpenClose ?? false}
         rearmMinutes={ctx.config?.autoClose?.rearmMinutes}
+        autoClose={ctx.config?.autoClose}
       />
     ),
   },

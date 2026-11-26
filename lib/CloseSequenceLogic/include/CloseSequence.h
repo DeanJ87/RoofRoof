@@ -15,6 +15,7 @@
 #include <string>
 
 #include "ClosePolicy.h"
+#include "HoldLapse.h"
 #include "ParkRule.h"
 #include "PlatformHold.h"
 #include "RoofGates.h"
@@ -84,6 +85,9 @@ namespace SQM
             // a close wanted for the weather (never daylight alone) may go
             // ahead without N.I.N.A.'s park.
             bool ninaLost = false;
+            // Spec 044: the verdict's reasons hold rain or a failed rain sensor
+            // (any source): what autoClose.personStopLapse "rain" counts.
+            bool raining = false;
         };
 
         enum class Phase : uint8_t
@@ -121,6 +125,10 @@ namespace SQM
             // blind (ClosedBlind) or without N.I.N.A.'s park (NinaLost): a person
             // must check the roof.
             NeedsPerson,
+            // Spec 044: a person's stop lapsed (autoClose.personStopLapse) with the
+            // weather still unsafe: the close is armed again and starts at once.
+            // Not critical: the caller logs it and raises its own alert.
+            HoldLapsed,
         };
 
         enum class Cause : uint8_t
@@ -171,6 +179,11 @@ namespace SQM
             // (RoofIo::OverrideNinaLost); a NeedsPerson event's close did.
             bool ninaLost = false;
             ParkGap parkGap = ParkGap::None; // spec 030
+            // Spec 044: a HoldLapsed event's weather: rain (or a failed rain sensor).
+            bool lapsedInRain = false;
+            // Spec 044: the policy's lapse of a person's stop, for the wording.
+            StopLapse stopLapse = StopLapse::Never;
+            uint64_t stopHoldMs = STOP_HOLD_MS;
         };
 
         // Spec 026: why a person's release of a stand-down is refused now, or
@@ -226,6 +239,9 @@ namespace SQM
             // last step; NOT_COUNTING when not stood down or while something
             // wants the roof closed (the count then starts again once it doesn't).
             uint64_t standDownLeftMs() const;
+            // Spec 044: standDownLeftMs() counts down to a person's stop lapsing
+            // (the close then starts), not to the safe spell re-arming it.
+            bool standDownLapses() const;
             // Spec 013: the current episode was started by daylight and the
             // weather has stayed safe since (false while idle with nothing wanted).
             bool daylightEpisode() const { return daylightOnly; }
@@ -274,6 +290,7 @@ namespace SQM
             Decision attempt(const Inputs &in);
             Decision closing(const Inputs &in, bool personStopped);
             Decision stoodDown(const Inputs &in, bool personStopped);
+            void trackLapse(const Inputs &given, bool personStopped);
             bool interrupted(const Inputs &in, bool personStopped, Decision &out);
             Decision closeNow(const Inputs &in);
             bool blocksAttempt(const Inputs &in) const;
@@ -299,6 +316,9 @@ namespace SQM
             Run parkHeld;               // the park result says parked
             Run unknown;                // the roof's position is unknown
             Run safe;                   // the verdict is safe
+            HoldLapse holdLapse;        // spec 044: a person's stop lapsing
+            bool lapseDue = false;      // this step: the stop has lapsed
+            bool lapseInRain = false;   // and it was raining
             // Spec 013: unsafe weather added up while a person's daylight
             // stand-down holds (from one step to the next, both not safe).
             uint64_t heldUnsafeMs = 0;

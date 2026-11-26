@@ -114,6 +114,39 @@ const AlpacaNote: FunctionalComponent<SettingsTabProps> = ({ config, goTo }) =>
     </>
   );
 
+// Spec 044: whether a person's Stop of the automatic close lapses by itself, and after how long.
+// "Never" (the default) holds until someone acts; the minutes show only when it can lapse.
+const StopLapseRows: FunctionalComponent<Props> = (props) => {
+  const a = props.autoClose;
+  const lapse = a.personStopLapse ?? 'never';
+  return (
+    <div class="form-grid">
+      <Field label={t('settings.roof.stopLapse')} hint={t('settings.roof.stopLapseHint')} error={props.error('autoClose.personStopLapse')}>
+        <SelectInput
+          dataField="autoClose.personStopLapse"
+          value={lapse}
+          options={[
+            { value: 'never', label: t('settings.roof.stopLapseNever') },
+            { value: 'rain', label: t('settings.roof.stopLapseRain') },
+            { value: 'always', label: t('settings.roof.stopLapseAlways') },
+          ]}
+          onChange={(v) => props.update(['autoClose', 'personStopLapse'], v)}
+        />
+      </Field>
+      {(lapse !== 'never' || props.error('autoClose.stopHoldMinutes') !== undefined) && (
+        <PolicyNumber
+          props={props}
+          at={['autoClose', 'stopHoldMinutes']}
+          label={t('settings.roof.stopHold')}
+          hint={t('settings.roof.stopHoldHint')}
+          unit={t('settings.roof.unitMinutes')}
+          value={a.stopHoldMinutes ?? 5}
+        />
+      )}
+    </div>
+  );
+};
+
 const AutoCloseCard: FunctionalComponent<Props> = (props) => {
   const a = props.autoClose;
   return (
@@ -156,6 +189,7 @@ const AutoCloseCard: FunctionalComponent<Props> = (props) => {
           />
         </Field>
       </div>
+      <StopLapseRows {...props} />
       <Toggle
         dataField="autoClose.remoteStop"
         label={t('settings.roof.remoteStop')}

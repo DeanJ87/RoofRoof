@@ -1,6 +1,31 @@
 <!--
 Sync Impact Report
-- Version: 10.0.0 -> 10.1.0 (MINOR: Principle III is tightened. A failed rain sensor starts the
+- Version: 10.1.0 -> 11.0.0 (MAJOR: Principle III lets a person's Stop of the automatic close lapse by
+  itself, as an owner setting, so the close can move the roof after a person stopped it.)
+- Modified: III. Unsafe Ends Closed, "A person's stop". New: **the stop may lapse**
+  (`autoClose.personStopLapse`, spec 044). `never` (the default, and after an upgrade) is the rule as
+  it was: the stand-down never lapses while unsafe. `rain` lets it lapse after
+  `autoClose.stopHoldMinutes` (5 min, 2-60) of rain or a failed rain sensor, added up since the stop;
+  `always` after that long of any unsafe weather. A new Stop starts the count over. A lapse is logged
+  and raises a critical alert ("Hold lapsed: closing because it's still raining"), and the close then
+  goes through every step and gate (park request, park confirmed, close); a halted close and a
+  daylight close's stop never lapse.
+- Modified: "Who May Set a Check Aside": the automatic exceptions name the lapse of a person's stop
+  (III, off by default).
+- New risk (III): with the lapse set, the roof can start closing by itself minutes after a person
+  stopped it, while that person may still be at the roof (a Stop pressed because the close would
+  collide, not yet fixed). Mitigations: off by default and after an upgrade; only the owner sets it;
+  at least 2 minutes; only while it is still raining (or unsafe, for `always`); a new Stop restarts
+  the full count, and the dashboard, the status and Home Assistant count it down; the stop's own
+  alert says when it lapses and the lapse raises a critical alert; the close still needs the park
+  confirmed, so it never closes onto an unparked mount.
+- Why: owner decision (spec 044): a Stop forgotten in the rain leaves the telescope wet until
+  someone acts on the alert; an owner who worries about that more than a close they didn't expect
+  may choose to let the stop lapse in rain, or in any unsafe weather.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/configuration.md,
+  docs/api/rest.md, docs/integration/home-assistant.md, docs/user-guide/mqtt.md,
+  specs/044-stop-hold-setting/spec.md.
+- Earlier: 10.0.0 -> 10.1.0 (MINOR: Principle III is tightened. A failed rain sensor starts the
   automatic close at once, as rain does. Nothing is relaxed.)
 - Modified: III. Unsafe Ends Closed, the weather hold. A failed rain sensor (SQMeter's rain-sensor
   fault, `reasonFlags` bit 10) skips `autoClose.unsafeHoldSeconds` like rain. It keeps its own
@@ -389,7 +414,8 @@ while N.I.N.A. says it isn't).
   exceptions are the owner-decided ones Principles I-III state, each off by default or bounded as
   it says: the automatic close from an unknown position and its blind close (I), the close when
   N.I.N.A. is lost (II), the Hall rail fault clearing itself at rest (I), a remote stop counting as a
-  person's (`autoClose.remoteStop`, III) and the test box's bypasses (II, III).
+  person's (`autoClose.remoteStop`, III), a person's stop lapsing (`autoClose.personStopLapse`, III,
+  11.0.0) and the test box's bypasses (II, III).
 - The override bits are filtered by origin where a command is checked and where an override is
   kept, and a native test proves no automation's command carries one.
 - A check a person can't yet get past is a gap, listed with the spec that found it (spec 039).
@@ -607,6 +633,15 @@ Doubt about the weather MUST resolve to "unsafe".
   is armed again, when the roof reads closed, when the weather has been safe for the re-arm spell,
   when a person at the roof releases it while nothing wants the roof closed, or at once when an
   Open (a person's or a client's) starts the roof moving. Ending it never moves the roof.
+  - **The stop may lapse** (11.0.0, owner setting `autoClose.personStopLapse`, spec 044). `never`
+    (the default, and after an upgrade): the stand-down never lapses while unsafe. `rain`: it also
+    ends once it has rained (or the rain sensor has failed) for `autoClose.stopHoldMinutes` (2-60
+    min), added up since the stop and forgotten after a break as long; `always`: after that long of
+    any unsafe weather. A new Stop starts the count over. A lapse MUST be logged and raise a critical
+    alert, and the close then MUST go through every step and gate as any other (park request, park
+    confirmed, close). A halted close and the stop of a close only daylight wants never lapse. While
+    it counts, the status MUST show the time left. Risk: the roof can start closing minutes after a
+    person stopped it, with that person still at the roof.
 - Alerts, MQTT and the web UI report the verdict. They MUST never be able to change it, or the
   motion decisions taken from it.
 - Every unsafe reason, fault and refusal MUST state the measured value and the limit, or the
@@ -800,4 +835,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 10.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 11.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

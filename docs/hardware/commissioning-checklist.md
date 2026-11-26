@@ -198,6 +198,7 @@ Between steps: park, close, present the closed magnet, so the stand-down and the
 | `daylight.mode` / `daylight.sunAltitudeDeg` / `daylight.bandDeg` | |
 | `autoClose.rearmMinutes` / `remindMinutes` / `notStarted` / `remoteStop` | |
 | `autoClose.unsafeHoldSeconds` / `ninaLostClose` / `ninaLostMinutes` | |
+| `autoClose.personStopLapse` / `stopHoldMinutes` | |
 | `autoClose.parkRequestSeconds` / `parkHoldSeconds` / `retryMinutes` / `closeStartSeconds` / `closeGuardSeconds` | |
 | `location.latitude` / `location.longitude` | |
 

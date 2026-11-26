@@ -88,6 +88,7 @@ namespace DemoRoof
         s.closePhase = CloseSeq::phaseName(sequence.phase());
         const uint64_t leftMs = sequence.standDownLeftMs(); // spec 026
         s.closeRearmSeconds = leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000);
+        s.closeRearmLapse = sequence.standDownLapses(); // spec 044
         s.daylight = CloseSeq::daylightStatus(daylightView);
         // Spec 030 (CloseOnUnsafe::weatherHoldStatus and needsPersonStatus).
         s.weatherHold.countedSeconds = static_cast<int32_t>(std::min<uint64_t>(weatherHold.countedMs() / 1000, INT32_MAX));

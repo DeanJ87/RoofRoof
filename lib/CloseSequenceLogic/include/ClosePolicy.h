@@ -29,6 +29,18 @@ namespace SQM
         // A critical event alerts at most this often, and is raised again this
         // often while the roof stays open after it.
         constexpr uint64_t REMIND_MS = 1800000;
+        // Spec 044 (autoClose.stopHoldMinutes): a person's stop lapses after this
+        // much rain or unsafe weather, when autoClose.personStopLapse says it may.
+        constexpr uint64_t STOP_HOLD_MS = 300000;
+
+        // Spec 044 (autoClose.personStopLapse): what makes a person's stop of the
+        // automatic close lapse by itself. Never is spec 030's behaviour.
+        enum class StopLapse : uint8_t
+        {
+            Never,  // held until the roof is closed, an Open moves it, a release or the safe spell
+            Rain,   // lapses after STOP_HOLD_MS of rain (or a failed rain sensor)
+            Always, // lapses after STOP_HOLD_MS of any unsafe weather
+        };
 
         struct Policy
         {
@@ -52,6 +64,9 @@ namespace SQM
             // source): close without N.I.N.A.'s park once it has been lost this long.
             bool ninaLostClose = false;
             uint64_t ninaLostMs = 300000;
+            // Spec 044 (autoClose.personStopLapse, autoClose.stopHoldMinutes).
+            StopLapse stopLapse = StopLapse::Never;
+            uint64_t stopHoldMs = STOP_HOLD_MS;
         };
 
         // The ranges (research R3), in ms. The floors and ceilings keep the
@@ -75,6 +90,8 @@ namespace SQM
         constexpr PolicyRange REMIND_RANGE{600000, 7200000};
         constexpr PolicyRange UNSAFE_HOLD_RANGE{0, 300000};
         constexpr PolicyRange NINA_LOST_RANGE{60000, 3600000};
+        // Spec 044: never shorter than 2 minutes, so a person has time to act.
+        constexpr PolicyRange STOP_HOLD_RANGE{120000, 3600000};
 
         // `policy` with every value inside its range.
         Policy clamp(const Policy &policy);

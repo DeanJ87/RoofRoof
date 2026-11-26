@@ -122,6 +122,8 @@
     "autoClose.unsafeHoldSeconds",
     "autoClose.ninaLostClose",
     "autoClose.ninaLostMinutes",
+    "autoClose.personStopLapse",
+    "autoClose.stopHoldMinutes",
     "ui.confirmOpenClose",
     "diag.enabled",
     "sqmeterSync.time.syncedAt",

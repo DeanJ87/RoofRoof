@@ -40,6 +40,17 @@ namespace SQM
                                          : "the weather has been safe for " + minutes(decision.rearmMs);
             }
 
+            // Spec 044: when a person's stop lapses by itself (autoClose.personStopLapse);
+            // "" when it doesn't (the default, and a daylight close's stop).
+            std::string lapseText(const Decision &decision)
+            {
+                if (decision.stopLapse == StopLapse::Never || decision.daylight)
+                    return "";
+                const std::string weather = decision.stopLapse == StopLapse::Rain ? "rain" : "unsafe weather";
+                return " After " + minutes(decision.stopHoldMs) + " of " + weather +
+                       " the hold lapses and the close goes ahead by itself; press Stop again to hold it longer.";
+            }
+
             std::string triesAgain(const Decision &decision)
             {
                 return "it tries again in " + minutes(decision.retryMs);
@@ -152,13 +163,25 @@ namespace SQM
                     return {"Roof can't close by itself", withWhy(because + " and a fault is latched. Fault:", why)};
                 case Event::NeedsPerson:
                     return needsPersonMessage(decision, why);
+                case Event::HoldLapsed: // spec 044
+                {
+                    const char *still = decision.lapsedInRain ? "still raining" : "still unsafe";
+                    return {
+                        std::string("Hold lapsed: closing because it's ") + still,
+                        withWhy(
+                            "A person's Stop held the automatic close; after " + minutes(decision.stopHoldMs) + " of " +
+                                (decision.stopLapse == StopLapse::Rain ? "rain" : "unsafe weather") +
+                                " the hold lapsed (autoClose.personStopLapse), so the close goes ahead: the mount is asked "
+                                "to park and the roof closes once the park is confirmed. Press Stop to hold it again. Weather:",
+                            why)};
+                }
                 case Event::StoppedByPerson:
                     return {
                         "Automatic close stopped",
                         std::string(decision.remoteStop ? "An imaging app or MQTT" : "A person") +
                             " stopped the roof during the automatic close. It stays open " +
                             (decision.daylight ? "in daylight" : "while unsafe") + " until someone closes it or " + rearmText(decision) +
-                            "."};
+                            "." + lapseText(decision)};
                 default:
                     break;
                 }
@@ -245,7 +268,8 @@ namespace SQM
                 "closeFailed",
                 "cannotClose",
                 "stoppedByPerson",
-                "needsPerson"};
+                "needsPerson",
+                "holdLapsed"};
             const size_t index = static_cast<size_t>(event);
             return index < sizeof(NAMES) / sizeof(NAMES[0]) ? NAMES[index] : "?";
         }

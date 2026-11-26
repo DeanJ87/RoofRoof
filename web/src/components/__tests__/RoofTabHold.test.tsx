@@ -49,6 +49,28 @@ describe('Roof tab: weather hold, N.I.N.A. lost, blind close (spec 030)', () => 
     expect(sent!.roof).toEqual({ blindSagVolts: 2.5 });
   });
 
+  it("spec 044: a person's Stop lapses: Never by default, the minutes shown once it can lapse", async () => {
+    mockDevice();
+    let sent: Config | null = null;
+    server.use(
+      http.post('/api/config', async ({ request }) => {
+        sent = (await request.json()) as Config;
+        return HttpResponse.json({ success: true });
+      }),
+    );
+    await openRoofTab();
+    const lapse = (await findField('autoClose.personStopLapse')) as unknown as HTMLSelectElement;
+    expect(lapse.value).toBe('never');
+    expect(field('autoClose.stopHoldMinutes')).toBeNull();
+    fireEvent.change(lapse, { target: { value: 'rain' } });
+    fireEvent.change(await findField('autoClose.stopHoldMinutes'), { target: { value: '61' } });
+    expect(await screen.findByText('Stop hold must be between 2 and 60 minutes')).toBeInTheDocument();
+    fireEvent.change(field('autoClose.stopHoldMinutes')!, { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(sent).not.toBeNull());
+    expect(sent!.autoClose).toEqual({ personStopLapse: 'rain', stopHoldMinutes: 8 });
+  });
+
   it('refuses an unsafe hold above 300 s, and hides the stall sag while the blind close is off', async () => {
     mockDevice();
     await openRoofTab();

@@ -51,7 +51,7 @@ Unless a row says otherwise, an entity is available while `<base>/availability` 
 | Mount parked | `binary_sensor`, `mount_parked` | - | on while `roof.parkConfirmed` | device online |
 | Automatic close | `sensor`, `close_phase` | text | `roof.closePhase`: `idle`, `waitPark`, `closing`, `retryWait`, `heldByPerson`, `cannotMove` or `halted` | device online |
 | Automatic close held | `binary_sensor`, `close_held` | problem | on while `roof.closePhase` is `heldByPerson` or `halted` | device online |
-| Hold lapses in | `sensor`, `hold_lapses` | duration, s | `roof.closeRearmSeconds`: seconds until a held close lapses; unknown when nothing is counting down | device online |
+| Hold lapses in | `sensor`, `hold_lapses` | duration, s | `roof.closeRearmSeconds`: seconds until a held close lapses (after the safe spell, or, with `autoClose.personStopLapse` set, until a person's Stop lapses in the rain and the close goes ahead); unknown when nothing is counting down | device online |
 | Roof blocked | `sensor`, `blocked` | text | `roof.blocked`: why the roof can't move now; empty when nothing blocks it | device online |
 | Waiting for park | `sensor`, `park_wait` | duration, s | `roof.parkWait.leftSeconds` while an Open or Close waits for the park, else 0 | device online |
 | Daylight | `sensor`, `daylight` | text | `roof.daylightState` | device online |

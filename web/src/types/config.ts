@@ -138,6 +138,8 @@ export interface SetupConfig {
 }
 // The automatic close's policy (spec 014): specs 005 and 013's fixed values as settings.
 export type NotStartedPolicy = 'halt' | 'retry';
+// Spec 044: when a person's Stop of the automatic close lapses by itself.
+export type PersonStopLapse = 'never' | 'rain' | 'always';
 export interface AutoCloseConfig {
   rearmMinutes: number; // 5..60
   parkRequestSeconds: number; // 10..120
@@ -151,6 +153,8 @@ export interface AutoCloseConfig {
   unsafeHoldSeconds: number; // 0..300 (spec 030)
   ninaLostClose: boolean; // spec 030: close without N.I.N.A.'s park once it has been lost a while
   ninaLostMinutes: number; // 1..60
+  personStopLapse: PersonStopLapse; // spec 044: 'never' by default
+  stopHoldMinutes: number; // 2..60
 }
 export interface UiConfig {
   confirmOpenClose: boolean; // Open and Close ask first; Stop never does

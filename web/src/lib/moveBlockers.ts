@@ -33,6 +33,9 @@ export interface Blocker {
 export interface BlockerContext {
   live: boolean; // the page has live data from the device
   rearmMinutes: number; // autoClose.rearmMinutes
+  // Spec 044: autoClose.personStopLapse and stopHoldMinutes (absent: never).
+  stopLapse?: 'never' | 'rain' | 'always';
+  stopHoldMinutes?: number;
   nowMs: number; // the browser's clock, for "clears at 00:25"
 }
 
@@ -63,10 +66,21 @@ const settings = (section: string, label: MessageKey): BlockerFix => ({ label: t
 const STAND_DOWN = ['heldByPerson', 'halted'];
 const WORKING = ['waitPark', 'closing', 'retryWait'];
 
-/** When a stand-down lapses by itself: the time left while it counts down, else after the re-arm spell. */
+/**
+ * When a stand-down lapses by itself: the time left while it counts down (spec 044: to a person's Stop
+ * lapsing, the close then going ahead, or to the re-arm spell), else after the re-arm spell.
+ */
 const standDownClears = (roof: RoofStatus, ctx: BlockerContext): string => {
   const seconds = roof.closeRearmSeconds;
+  const rain = ctx.stopLapse === 'rain';
+  if (typeof seconds === 'number' && roof.closeRearmLapse)
+    return t(rain ? 'move.clears.lapseInRain' : 'move.clears.lapseIn', { time: minSec(seconds) });
   if (typeof seconds === 'number') return t('move.clears.in', { time: minSec(seconds) });
+  if (roof.closePhase === 'heldByPerson' && ctx.stopLapse && ctx.stopLapse !== 'never')
+    return t(rain ? 'move.clears.afterSafeOrRain' : 'move.clears.afterSafeOrUnsafe', {
+      minutes: ctx.rearmMinutes,
+      hold: ctx.stopHoldMinutes ?? 5,
+    });
   return t('move.clears.afterSafe', { minutes: ctx.rearmMinutes });
 };
 

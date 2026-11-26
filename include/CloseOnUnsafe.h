@@ -76,7 +76,9 @@ namespace SQM
         CloseSeq::Phase phase() const { return static_cast<CloseSeq::Phase>(phaseNow.load()); }
         // Spec 026, any task: the stand-down's seconds left if nothing wants the
         // roof closed meanwhile (-1: not counting down), as of the last step.
-        int32_t standDownSeconds() const { return standDownLeftS.load(); }
+        // Spec 044: with whether they count down to a person's stop lapsing
+        // (the close then starts), not to the safe spell.
+        RoofIo::CloseRearm standDown() const { return {standDownLeftS.load(), standDownLapsing.load()}; }
         // Spec 030, any task: the weather hold as of the last step (status document).
         RoofIo::WeatherHoldStatus weatherHoldStatus() const;
         // Spec 030, any task: the roof needs a person (the status, MQTT and the
@@ -102,6 +104,7 @@ namespace SQM
         void logHoldEnd(CloseSeq::Phase before, const CloseSeq::Inputs &in) const;
         void updateConditions(const RoofIo::Snapshot &snap, SafetyInputs &safety);
         void holdWeather(CloseSeq::Inputs &in, uint8_t overrideBits, uint32_t reasons);
+        void shareStandDown(); // spec 026/044: the countdown for the status
         void watchNina(CloseSeq::Inputs &in, const RoofIo::Snapshot &snap, const Safety::ParkResult &park);
         void send(const Alerts::Alert &alert, bool resolvable = true);
         void settleAlerts(const RoofIo::Snapshot &snap, bool roofStarted); // spec 030
@@ -110,6 +113,7 @@ namespace SQM
         std::atomic<uint8_t> phaseNow{static_cast<uint8_t>(CloseSeq::Phase::Idle)};
         std::atomic<uint32_t> parkTimeoutMs{CloseSeq::DEFAULT_PARK_TIMEOUT_MS};
         std::atomic<int32_t> standDownLeftS{-1};
+        std::atomic<bool> standDownLapsing{false};  // spec 044
         std::atomic<bool> nothingWantsClose{false}; // the last step: weather safe and no daylight close
         std::atomic<bool> releaseWanted{false};
         AlertOut alertOut;

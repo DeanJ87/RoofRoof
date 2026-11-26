@@ -212,8 +212,7 @@ namespace SQM
         const CloseSeq::Decision decision = sequence.step(in);
         phaseNow.store(static_cast<uint8_t>(sequence.phase()));
         nothingWantsClose.store(in.weatherSafe && !in.daylight);
-        const uint64_t leftMs = sequence.standDownLeftMs();
-        standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
+        shareStandDown();
         logHoldEnd(before, in);
         keep();
         settleAlerts(snap, in.roofStarted); // spec 030
@@ -241,6 +240,13 @@ namespace SQM
         }
     }
 
+    void CloseOnUnsafe::shareStandDown()
+    {
+        const uint64_t leftMs = sequence.standDownLeftMs();
+        standDownLeftS.store(leftMs == CloseSeq::NOT_COUNTING ? -1 : static_cast<int32_t>((leftMs + 999) / 1000));
+        standDownLapsing.store(sequence.standDownLapses()); // spec 044
+    }
+
     // Spec 030: the sequence sees the weather through the hold (the verdict
     // itself, Open's refusal and an opening roof's stop are not delayed).
     // Daylight is left as it is.
@@ -255,6 +261,7 @@ namespace SQM
             std::lock_guard<std::mutex> held(daylightLock);
             step.holdMs = policy.unsafeHoldMs;
         }
+        in.raining = CloseSeq::rainForLapse(reasons); // spec 044: what autoClose.personStopLapse "rain" counts
         const bool wasFired = weatherHold.fired();
         in.weatherSafe = weatherHold.update(step);
         if (weatherHold.fired() != wasFired)
@@ -394,6 +401,14 @@ namespace SQM
             return;
         CloseSeq::Decision decision = given;
         decision.parkGap = reasons.parkGap; // spec 030: the title names the missing input
+        if (decision.event == CloseSeq::Event::HoldLapsed)
+        {
+            // Spec 044: the roof is about to move by itself after a person's stop.
+            const Alerts::Alert alert = CloseSeq::holdLapsedAlert(decision, weather);
+            Logger::warn(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
+            send(alert, false); // it happened: kept until a channel takes it
+            return;
+        }
         if (!CloseSeq::isCritical(decision.event))
         {
             if (decision.event == CloseSeq::Event::Started && decision.daylight)

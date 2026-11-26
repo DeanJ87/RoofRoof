@@ -103,7 +103,8 @@ namespace SQM
         void setClosePhase(ClosePhase source) { closePhase = std::move(source); }
         // Spec 026 (any task): the stand-down's seconds left (-1: not counting),
         // and a person's release of it (nullptr: accepted, else why not).
-        using StandDownSeconds = std::function<int32_t()>;
+        // Spec 044: with whether those seconds count down to a person's stop lapsing.
+        using StandDownSeconds = std::function<RoofIo::CloseRearm()>;
         using ReleaseHold = std::function<const char *()>;
         void setCloseHold(StandDownSeconds seconds, ReleaseHold release)
         {

@@ -89,7 +89,7 @@ The state document also carries what an observatory dashboard needs (spec 027), 
 | `roof.override`, `roof.openOverridable` | the person's confirmed overrides in effect (`weatherNotSafe`, `daylight`, `mountNotParked`), and what a person could override for an Open now |
 | `roof.nina` | `{set, state, reachable, connected, atPark, ageSeconds}`: N.I.N.A.'s health (no `text` here) |
 | `roof.sqmeter` | `{on, state, lastReplySeconds}`: the weather source's health (`lastReplySeconds` `null` without a good reply; no `text` here) |
-| `roof.closeRearmSeconds` | seconds until a held automatic close lapses, or `null` |
+| `roof.closeRearmSeconds` | seconds until a held automatic close lapses (the safe spell, or a person's Stop lapsing with `autoClose.personStopLapse` set), or `null` |
 | `roof.needsPerson` | `{active}`: the roof needs a person (a restart with the position unknown or a fault latched, a Hall sensor failure, the automatic close unable to move). Its text is in `GET /api/status` only. A change of `active` publishes the document at once |
 | `roof.blind` | the move is a [blind close](close-on-unsafe.md#blind-close-when-the-hall-sensor-has-failed) (the Hall sensor is dead; closing on time alone) |
 | `roof.daylightState` | `off`, `unknown`, `night` or `day` |
@@ -143,7 +143,7 @@ Every message on `roof/set` gets an answer on `<base>/roof/result` (not retained
 <!-- diagram: DIA-09
 sources: src/WebServerAlerts.cpp#WebServer::publishArmedState src/WebServerStatus.cpp#WebServer::publishDiscovery src/MQTTClient.cpp src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/WebServerRoof.cpp lib/RoofIoLogic/include/RoofMqtt.h
 blocking: false
-fingerprint: b84b2511c83dfdfc
+fingerprint: 0d9ccfa62de2cacf
 -->
 <figure class="diagram" markdown>
 
