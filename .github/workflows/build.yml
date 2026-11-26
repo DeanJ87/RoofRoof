@@ -269,6 +269,7 @@ jobs:
           python3 tools/test_contract_check.py
           python3 tools/soak/test_connection_soak.py
           python3 tools/soak/test_ws_soak.py
+          python3 tools/soak/test_return_soak.py
           python3 tools/test_decode_crash.py
 
       # The demo runs this firmware code in the browser (web/src/demo/core);

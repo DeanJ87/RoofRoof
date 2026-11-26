@@ -1528,10 +1528,10 @@
     "GET /api/diag/heap": {
       "tag": "Diagnostics",
       "summary": "Heap census",
-      "description": "Spec 038: where the byte-addressable heap went, as plain text: the totals, each heap region's size, free space and largest free block, the blocks in use and free by size, the 16 largest blocks in use (a task's stack is named), and every task's stack block and the least it has had left since start. The walk holds the heap's lock for a few milliseconds, so it is refused (409) while the roof moves or a close waits. Needs the password when protection is on.",
+      "description": "Spec 038: where the byte-addressable heap went, as plain text: the totals, each heap region's size, free space and largest free block, the blocks in use and free by size, the 16 largest blocks in use (a task's stack is named), and every task's stack block and the least it has had left since start; spec 045 the free blocks with what is in use between them and the last hour minute by minute; spec 048 the minutes a network return happened in and the last 8 returns with the heap's lows over the minute after each. The walk holds the heap's lock for a few milliseconds, so it is refused (409) while the roof moves or a close waits. Needs the password when protection is on.",
       "responses": {
         "200": {
-          "plain": "`Heap (8-bit): ...` totals and the emergency reserve, then `Regions`, `Blocks by size`, `Largest blocks in use` and `Task stacks`, one item per line.",
+          "plain": "`Heap (8-bit): ...` totals and the emergency reserve, then `Regions`, `Blocks by size`, `Largest blocks in use`, `Task stacks`, `Free blocks of 1 KB or more`, `Trend` and `Network returns`, one item per line.",
           "example": "Heap (8-bit): free 52100 B in 31 blocks, largest 41972 B, lowest since start 18320 B; in use 171300 B in 912 blocks; reserve held, spent 0 times\nRegions (start, size, free, largest free, blocks used/free):\n  0x3ffc2e20  119264 B  free  45120  largest  41972  blocks 640/12\nBlocks by size (used count/bytes, free count/bytes):\n  <=32   used  310    7420 B  free    4      96 B\nLargest blocks in use:\n  0x3ffc5a10  10260 B  stack of loopTask\nTask stacks (heap block, least left since start):\n  loopTask          10260 B  least left   3010 B\n"
         },
         "401": "error",

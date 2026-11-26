@@ -3986,7 +3986,7 @@
           "Diagnostics"
         ],
         "summary": "Heap census",
-        "description": "Spec 038: where the byte-addressable heap went, as plain text: the totals, each heap region's size, free space and largest free block, the blocks in use and free by size, the 16 largest blocks in use (a task's stack is named), and every task's stack block and the least it has had left since start. The walk holds the heap's lock for a few milliseconds, so it is refused (409) while the roof moves or a close waits. Needs the password when protection is on.\n\nNeeds the password when protection is on.",
+        "description": "Spec 038: where the byte-addressable heap went, as plain text: the totals, each heap region's size, free space and largest free block, the blocks in use and free by size, the 16 largest blocks in use (a task's stack is named), and every task's stack block and the least it has had left since start; spec 045 the free blocks with what is in use between them and the last hour minute by minute; spec 048 the minutes a network return happened in and the last 8 returns with the heap's lows over the minute after each. The walk holds the heap's lock for a few milliseconds, so it is refused (409) while the roof moves or a close waits. Needs the password when protection is on.\n\nNeeds the password when protection is on.",
         "security": [
           {
             "deviceLogin": []
@@ -3994,7 +3994,7 @@
         ],
         "responses": {
           "200": {
-            "description": "`Heap (8-bit): ...` totals and the emergency reserve, then `Regions`, `Blocks by size`, `Largest blocks in use` and `Task stacks`, one item per line.",
+            "description": "`Heap (8-bit): ...` totals and the emergency reserve, then `Regions`, `Blocks by size`, `Largest blocks in use`, `Task stacks`, `Free blocks of 1 KB or more`, `Trend` and `Network returns`, one item per line.",
             "content": {
               "text/plain": {
                 "schema": {

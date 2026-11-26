@@ -1018,7 +1018,10 @@ Free blocks of 1 KB or more, in address order (in use before each: bytes, blocks
   0x3ffe9c40  21012 B  after   5632 B in   1 blocks, largest  5632 B
 Trend (lowest largest block / lowest free, per minute, newest first; 15 min 18420 B, 60 min 12276 B):
   minute    74  largest  20468 B  free  41796 B
-  minute    73  largest  18420 B  free  40112 B
+  minute    73  largest  18420 B  free  40112 B  <- network return
+Network returns (newest first; 1 since start; the heap's lows over the 60 s after each):
+  minute    73, uptime 4380 s: link back after 121 s; lowest largest 18420 B, free 40112 B; 9 busy at connect, at most 3 open; MQTT after 10.2 s; discovery kept by the broker
+  minute     0, uptime 6 s: first on a network; lowest largest 30708 B, free 52240 B; 0 busy at connect, at most 2 open; MQTT after 10.0 s; discovery published again
 ```
 
 | Part | Meaning |
@@ -1029,7 +1032,8 @@ Trend (lowest largest block / lowest free, per minute, newest first; 15 min 1842
 | `Largest blocks in use` | The 16 largest, with the task whose stack it is |
 | `Task stacks` | Every task, its stack's heap block (`-` when the stack isn't on this heap) and the least it has had left since start |
 | `Free blocks of 1 KB or more` | Spec 045: up to 24 free blocks in address order, each with what is in use between it and the one before it in its region (bytes, blocks and the largest of them, a task's stack named). A few small blocks between two large free ones is what cut the largest block apart |
-| `Trend` | Spec 045: each minute of the last hour (minutes since start), its lowest largest free block and lowest free heap; the lowest largest block over 15 and 60 minutes is also in `/api/status` `heap8Bit` |
+| `Trend` | Spec 045: each minute of the last hour (minutes since start), its lowest largest free block and lowest free heap; the lowest largest block over 15 and 60 minutes is also in `/api/status` `heap8Bit`. Spec 048: `<- network return` marks a minute the network came back in; while a return is followed the heap is read ten times a second instead of once |
+| `Network returns` | Spec 048: the last 8 times the device came onto the network: the first time (`first on a network`), the link coming back (`link back after N s`), or with the link kept, the first request after 30 s or more with none (`requests back after N s without any (link kept)`). For each: the lowest largest free block and free heap over the 60 s after it (read ten times a second), the connections answered `503` at accept and the most open at once, when MQTT connected again, and whether Home Assistant discovery was sent again or kept by the broker. `(still following)` while the minute isn't over |
 
 ---
 
