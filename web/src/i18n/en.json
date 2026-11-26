@@ -1460,7 +1460,7 @@
   "settings.roof.unitMinutes": "min",
   "settings.roof.unitSeconds": "s",
   "settings.roof.unsafeHold": "Unsafe hold",
-  "settings.roof.unsafeHoldHint": "Unsafe weather must last this long before the roof closes; rain closes it at once. A silent SQMeter adds its stale time.",
+  "settings.roof.unsafeHoldHint": "Unsafe weather must last this long before the roof closes; rain or a failed rain sensor closes it at once. A silent SQMeter adds its stale time.",
   "settings.roof.weatherSources": "Weather sources",
   "settings.roof.weatherSourcesHint": "Any source that says unsafe makes the weather unsafe, and so does one that is missing or stale.",
   "settings.save": "Save",

@@ -108,7 +108,7 @@ Print this page (the browser's print view drops the menus) and tick each box as 
 | ☐ 7.3 | Stop during the close: stops, **Automatic close stopped**, nothing more; stop in the 4 s before the close: no close | |
 | ☐ 7.4 | After a stop, restart: still stood down, **Still:** alert; then safe and **Open**: armed again, unsafe starts a new run | |
 | ☐ 7.5 | Between the magnets, restart: **Roof needs a person**; unsafe: after the hold the roof closes slowly and **Roof closed from an unknown position** arrives with the magnet, a `timeout` fault without it | |
-| ☐ 7.5a | A 10 s unsafe blip and a 15 s silent SQMeter move nothing; about 90 s of silence starts the close; rain starts it at once | |
+| ☐ 7.5a | A 10 s unsafe blip and a 15 s silent SQMeter move nothing; about 90 s of silence starts the close; rain, or a failed rain sensor, starts it at once | |
 | ☐ 7.6a | Hall sensor unplugged, unsafe: **Roof needs a person** at once, one blind close for the move's limit, **Roof closed blind: check the roof**; no second one until the fault is cleared; with `roof.blindClose` off, nothing moves | |
 | ☐ 7.6b | N.I.N.A. closed, unsafe: **Can't close: N.I.N.A. unreachable, mount park unknown** repeating, roof stays open; opt-in close (if used) closes with the switches closed, not with one open | |
 | ☐ 7.6 | Flapping verdict: requests at most every 30 s, **Mount didn't park** still arrives | |

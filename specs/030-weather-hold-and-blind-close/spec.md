@@ -38,6 +38,8 @@ blip and too little to a real failure:
   `autoClose.unsafeHoldSeconds` (default 60 s, 0-300; 0 is the old behaviour).
 - Q: Which reasons skip the hold? → A: **Rain** (SQMeter's rain flag, bit 9, from any source, even a
   stale one): the close starts at once. A failed rain sensor (bit 10) is "any other reason": held.
+  *(Superseded by fix 042, constitution 10.1.0: a failed rain sensor starts the close at once, as
+  rain does; a silent, stale or unreadable source is still held.)*
 - Q: A silent SQMeter? → A: The source turns stale after `safety.staleSeconds` (default 30 s) without
   a good reply; the stale (or unreachable, unreadable, offline) source is then held like any other
   reason. A silent SQMeter therefore starts the close after `staleSeconds + unsafeHoldSeconds`
@@ -255,7 +257,8 @@ controls in the Automatic close and Roof cards; `InfoTip` for each. Copy follows
 ## Assumptions decided for the owner
 
 1. **Rain sensor fault is held**, not immediate: only rain itself is "rain". A failed RG-15 makes the
-   verdict unsafe at once (Open refused) and closes after the hold.
+   verdict unsafe at once (Open refused) and closes after the hold. *(Superseded by fix 042: the owner decided a failed
+   rain sensor closes at once, since it may have failed because it is wet.)*
 2. **Clear spell = the hold** (60 s): one setting for both, so safe must last as long as unsafe had to.
 3. **Unknown-position close** stops at the first magnet, like a person's: if it is the open magnet
    (wrong direction setting), that is the existing wrong-magnet fault.

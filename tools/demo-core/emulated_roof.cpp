@@ -489,7 +489,7 @@ namespace DemoRoof
         CloseSeq::WeatherHold::Step step;
         step.nowMs = in.nowMs;
         step.weatherSafe = in.weatherSafe;
-        step.rain = (verdict.reasons & Safety::ReasonRain) != 0;
+        step.atOnce = CloseSeq::skipsHold(verdict.reasons);
         step.overrideActive = (overrideBits() & RoofIo::OverrideWeather) != 0;
         step.holdMs = policy.unsafeHoldMs;
         in.weatherSafe = weatherHold.update(step);

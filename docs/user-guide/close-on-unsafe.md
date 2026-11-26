@@ -6,7 +6,8 @@ description: "What RoofRoof does when the weather turns unsafe, or the sun is up
 
 When the weather is not safe and the roof is not closed, RoofRoof closes it by itself. A blip never
 moves the roof: the close starts only once the weather has been unsafe for a while (the
-[weather hold](#the-weather-hold), 60 s by default), except in rain, which starts it at once. Then:
+[weather hold](#the-weather-hold), 60 s by default), except in rain or with a failed rain sensor,
+which start it at once. Then:
 
 1. it asks N.I.N.A. to park the mount (when a N.I.N.A. address is set);
 2. it waits until the park is **confirmed**: the [park rule](safety-inputs.md#park) (as the park
@@ -33,14 +34,14 @@ a wet telescope can be dried, a crushed one can't be fixed.
 <!-- diagram: DIA-22
 sources: lib/CloseSequenceLogic/src/CloseSequence.cpp lib/CloseSequenceLogic/src/CloseSequenceDaylight.cpp lib/CloseSequenceLogic/src/CloseSequenceRestore.cpp lib/CloseSequenceLogic/src/WeatherHold.cpp lib/CloseSequenceLogic/src/NinaLost.cpp lib/CloseSequenceLogic/include/CloseSequence.h
 blocking: true
-fingerprint: 06ab5432b006df74
+fingerprint: 47bcd4e35d5add9e
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 stateDiagram-v2
     accTitle: The close on unsafe weather
-    accDescr: From idle, an unsafe verdict that has lasted through the weather hold (rain at once), with the roof not closed, starts an attempt that asks N.I.N.A. to park (unless park requests are off: then it only waits for the park); a roof already closing is only watched. A roof whose position is unknown starts the same attempt once the reading has settled for 2 s, and so does a roof with a Hall rail fault latched while a blind close is still allowed. When the park has held for 4 s the roof is closed, or driven blind towards closed when the Hall sensor is dead; with the opt-in, a N.I.N.A. lost for the set time and every fitted park switch closed also allow the close. Reaching the closed magnet ends the sequence, with a critical needs-a-person notice when the close started from an unknown position or without N.I.N.A.'s park. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. Any other fault, or a roof controller that did not start, stands the sequence down until a person acts; so does a blind close that has ended by its limit, a stall or a fault, with a critical alert asking a person to check the roof. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes, or earlier when a person at the roof releases the hold while it is safe; a stood-down one also ends when an Open (a person's or an imaging app's) starts the roof moving. A weather that has been safe through the hold's clear spell before the close was commanded ends the sequence; a close already commanded runs to the end. A person's confirmed open (the weather SQMeter alone calls unsafe, or daylight) keeps those reasons from starting the sequence while it is in effect; rain and any doubt about the source still do. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
+    accDescr: From idle, an unsafe verdict that has lasted through the weather hold (rain or a failed rain sensor at once), with the roof not closed, starts an attempt that asks N.I.N.A. to park (unless park requests are off: then it only waits for the park); a roof already closing is only watched. A roof whose position is unknown starts the same attempt once the reading has settled for 2 s, and so does a roof with a Hall rail fault latched while a blind close is still allowed. When the park has held for 4 s the roof is closed, or driven blind towards closed when the Hall sensor is dead; with the opt-in, a N.I.N.A. lost for the set time and every fitted park switch closed also allow the close. Reaching the closed magnet ends the sequence, with a critical needs-a-person notice when the close started from an unknown position or without N.I.N.A.'s park. A park not confirmed in time, a refused, interrupted or too-long close leads to a five-minute wait, during which a confirmed park still closes the roof, then a new attempt. Any other fault, or a roof controller that did not start, stands the sequence down until a person acts; so does a blind close that has ended by its limit, a stall or a fault, with a critical alert asking a person to check the roof. A close that outlasts its guard is stopped and the sequence halts. A person's stop (also while it can't move) stands it down; halted and stood-down sequences end when the roof is closed or it has been safe for 10 minutes, or earlier when a person at the roof releases the hold while it is safe; a stood-down one also ends when an Open (a person's or an imaging app's) starts the roof moving. A weather that has been safe through the hold's clear spell before the close was commanded ends the sequence; a close already commanded runs to the end. A person's confirmed open (the weather SQMeter alone calls unsafe, or daylight) keeps those reasons from starting the sequence while it is in effect; rain, a failed rain sensor and any doubt about the source still do. With the daylight close on, "not safe" also means the sun is up and "safe" means neither; when the weather turns unsafe after a daylight-only attempt, a waiting or can't-move sequence starts again at once, a halted one or one a person stood down after 30 s of unsafe weather in all. The times are the defaults of settings; with "Close didn't start" set to try again, a waiting close that doesn't start in time is called off and leads to the wait instead of the halt.
     [*] --> Idle
     Idle --> WaitPark: not safe past the weather hold, roof not closed (park request; also from an unknown position or with a Hall fault a blind close may answer)
     Idle --> Closing: not safe, a close already running
@@ -77,14 +78,14 @@ stateDiagram-v2
     CannotMove --> Idle: weather unsafe, daylight-only attempt (starts again)
 ```
 
-<figcaption>The close on unsafe weather (and, with the daylight close on, in daylight: "not safe" then also means the sun is up). The times shown are the defaults; each is a setting. The weather hold (60 s of unsafe weather added up, rain at once) comes before the first step; its safe spell is the same length. With park requests off (park.requestPark) no park request is sent: the sequence only waits for the park. From waiting or closing, a fault with no blind close allowed, or a roof controller that didn't start, also stands the sequence down (CannotMove), and the roof reading closed always ends it. A roof whose position is unknown no longer stands it down: it closes slowly to the first magnet.</figcaption>
+<figcaption>The close on unsafe weather (and, with the daylight close on, in daylight: "not safe" then also means the sun is up). The times shown are the defaults; each is a setting. The weather hold (60 s of unsafe weather added up, rain or a failed rain sensor at once) comes before the first step; its safe spell is the same length. With park requests off (park.requestPark) no park request is sent: the sequence only waits for the park. From waiting or closing, a fault with no blind close allowed, or a roof controller that didn't start, also stands the sequence down (CannotMove), and the roof reading closed always ends it. A roof whose position is unknown no longer stands it down: it closes slowly to the first magnet.</figcaption>
 </figure>
 
 ??? info "Diagram in words"
 
     The times below are the defaults; each is a setting ([Settings of the automatic close](#settings-of-the-automatic-close)).
 
-    1. While the weather is safe, or the roof is closed, nothing happens (`Idle`). A blip doesn't count: the sequence sees the weather as unsafe only once the [weather hold](#the-weather-hold) has fired, which is at once for rain and after 60 s of added-up unsafe time otherwise.
+    1. While the weather is safe, or the roof is closed, nothing happens (`Idle`). A blip doesn't count: the sequence sees the weather as unsafe only once the [weather hold](#the-weather-hold) has fired, which is at once for rain or a failed rain sensor and after 60 s of added-up unsafe time otherwise.
     2. When the weather is not safe and the roof is open, stopped part-way, opening or of unknown position, an attempt starts: N.I.N.A. is asked to park (`WaitPark`), unless **May ask N.I.N.A. to park** is off, when the sequence only waits for a park confirmed some other way. A position that is unknown must have stayed so for 2 s first (the moments after a restart don't count). The same holds for a roof with a Hall rail fault latched while a [blind close](#blind-close-when-the-hall-sensor-has-failed) is still allowed. If a close is already running (a person's, or one waiting for an upload to stop), it is only watched (`Closing`).
     3. When the park result has said parked for 4 s without a break, the roof is closed (`Closing`). From an unknown position this is a [slow close to the first magnet](#closing-when-the-position-is-unknown); with the Hall sensor dead it is a [blind close](#blind-close-when-the-hall-sensor-has-failed). With the [opt-in](#the-opt-in-close-without-ninas-park) on, N.I.N.A. lost for the set time with every fitted park switch reading closed stands in for the park. Reaching the closed magnet ends the sequence; a close that started from an unknown position, or without N.I.N.A.'s park, then raises a critical "needs a person" notice.
     4. If the park isn't confirmed within `park.timeoutSeconds` (at once if N.I.N.A. isn't set up), a critical alert says the mount didn't park (or, when N.I.N.A. can't be read, that it can't close because N.I.N.A. is unreachable) and the roof stays open (`RetryWait`). For 5 minutes no park request is sent, but a confirmed park still closes the roof. Then a new attempt starts, for as long as the close is wanted.
@@ -109,7 +110,10 @@ the close's start waits.
   0 to 300; 0 starts the close as soon as the verdict turns unsafe, as before). The close is wanted
   when the total reaches the hold.
 - **Rain at once.** SQMeter's rain flag starts the close with no wait, from any source, even a stale
-  one. A failed rain sensor is not rain: it is held like any other reason.
+  one. So does a **failed rain sensor** (SQMeter's rain-sensor fault, `reasonFlags` bit 10): a gauge
+  that fails may be failing because it is wet. It keeps its own reason, so the alerts and the
+  dashboard say "rain sensor fault", not "rain". A silent, stale or unreadable SQMeter is not a
+  failed rain sensor: it is held like any other reason.
 - **A clear spell.** Time added up is forgotten only after the weather has been safe for as long as
   the hold. Once the close is wanted, it stays wanted until then, so a verdict that flaps every 5 s
   reaches the hold in about two minutes, starts one close, and doesn't call it off at each safe
@@ -314,7 +318,7 @@ names it.
 
 | What | Limit (default) | Setting | Then |
 |---|---|---|---|
-| The weather unsafe before the close is wanted (the [weather hold](#the-weather-hold)) | 60 s added up (0-300); rain at once | `autoClose.unsafeHoldSeconds` | the close starts (park request) |
+| The weather unsafe before the close is wanted (the [weather hold](#the-weather-hold)) | 60 s added up (0-300); rain or a failed rain sensor at once | `autoClose.unsafeHoldSeconds` | the close starts (park request) |
 | The park confirmed | 240 s (30-1800); immediately without N.I.N.A. | `park.timeoutSeconds` | "Mount didn't park" (critical); the roof stays open. The same limit ends a waiting Open or Close ([Park before every move](#park-before-every-move)) |
 | Between park requests | at least 30 s, whatever the weather does; repeated every 30 s while waiting | `autoClose.parkRequestSeconds` | - |
 | The park must hold before closing | 4 s without a break | `autoClose.parkHoldSeconds` | - |
@@ -348,7 +352,7 @@ No value in any range can make the roof close onto an unparked mount (unless you
 [N.I.N.A.-lost close](#the-opt-in-close-without-ninas-park) on), open by itself, open from an
 unknown position or stay open in unsafe weather without a critical alert:
 
-- the weather hold is at most 5 minutes, and rain ignores it;
+- the weather hold is at most 5 minutes, and rain and a failed rain sensor ignore it;
 - the park hold can only be made longer than 4 s (two N.I.N.A. readings), and the close still checks the park itself;
 - the close start limit is never below 25 s, well over the 15 s a network change holds a close;
 - the reminder interval spaces the critical alerts but never turns them off;

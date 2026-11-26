@@ -1,6 +1,20 @@
 <!--
 Sync Impact Report
-- Version: 9.1.0 -> 10.0.0 (MAJOR: Principle II lets a person open past the park, which relaxes it;
+- Version: 10.0.0 -> 10.1.0 (MINOR: Principle III is tightened. A failed rain sensor starts the
+  automatic close at once, as rain does. Nothing is relaxed.)
+- Modified: III. Unsafe Ends Closed, the weather hold. A failed rain sensor (SQMeter's rain-sensor
+  fault, `reasonFlags` bit 10) skips `autoClose.unsafeHoldSeconds` like rain. It keeps its own
+  reason ("rain sensor fault") in alerts and the UI. A missing, stale, unreachable, unreadable or
+  offline source is still held, so a SQMeter that restarts doesn't close the roof. The hold's risk
+  statement no longer covers a failed rain sensor.
+- Why: owner decision (fix 042): a rain sensor that fails may be failing because it is wet, so
+  waiting out the hold could leave the roof open in rain. A silent SQMeter keeps the hold: that is
+  what stops its brown-outs closing the roof.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/safety-inputs.md,
+  docs/user-guide/configuration.md, docs/user-guide/dashboard.md, docs/reference/troubleshooting.md,
+  docs/hardware/commissioning.md, docs/hardware/commissioning-checklist.md,
+  specs/030-weather-hold-and-blind-close/spec.md (marked superseded).
+- Earlier: 9.1.0 -> 10.0.0 (MAJOR: Principle II lets a person open past the park, which relaxes it;
   a new section states who may set a safety check aside.)
 - Added: "Who May Set a Check Aside" (before Principle I). The owner is the source of truth. A
   person, authenticated at the web UI, who can look at the roof or its camera, may be given a way
@@ -560,9 +574,11 @@ Doubt about the weather MUST resolve to "unsafe".
 - **The weather hold** (8.0.0). The verdict turns unsafe at once, but the sequence starts only once
   the unsafe time, added up and forgotten only after a safe spell as long, reaches
   `autoClose.unsafeHoldSeconds` (default 60 s, 0-300 s); once started, a safe spell shorter than the
-  hold doesn't call it off. Rain starts it at once. A person's Open override in effect empties the
-  hold. Risk: weather other than rain, and a silent source (its stale time plus the hold), close
-  later than they would without the hold.
+  hold doesn't call it off. Rain starts it at once, and so does a failed rain sensor (10.1.0: a rain
+  sensor that fails may be failing because it is wet); it keeps its own reason, never reported as
+  rain. A missing, stale or unreadable source is not a failed rain sensor and is held. A person's
+  Open override in effect empties the hold. Risk: weather other than rain or a failed rain sensor,
+  and a silent source (its stale time plus the hold), close later than they would without the hold.
 - The weather verdict comes from SQMeter: `GET /api/safety` (its `safe` flag and `reasonFlags`,
   bit 9 rain and bit 10 rain-sensor fault) and/or its retained MQTT `<base>/safe`. Any source that says unsafe makes the verdict unsafe. A
   missing, stale or unparseable source counts as unsafe, and so does a rain sensor that has failed.
@@ -784,4 +800,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 10.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 10.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

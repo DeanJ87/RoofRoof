@@ -1,9 +1,12 @@
 // Spec 030 (FR-001..FR-004, SC-001): the weather hold. A blip never starts the
-// automatic close; rain does at once; a flapping verdict closes once. The real
+// automatic close; rain does at once, and so does a failed rain sensor
+// (constitution 10.1.0); a silent SQMeter is still held; a flapping verdict
+// closes once. The real
 // sequence is stepped every 100 ms with the roof open and the park confirmed,
 // the weather seen through the hold as CloseOnUnsafe does.
 
 #include <unity.h>
+#include <cstring>
 #include <vector>
 
 #include "CloseSequence.h"
@@ -39,7 +42,7 @@ namespace
         WeatherHold hold;
         Inputs in;
         uint64_t holdMs = UNSAFE_HOLD_MS;
-        bool rain = false;
+        uint32_t reasons = 0; // the verdict's reasons, mapped as CloseOnUnsafe does
         bool overrideActive = false;
         // The roof follows the close: Closing once commanded, Closed this long after.
         bool simulateRoof = true;
@@ -62,7 +65,7 @@ namespace
             WeatherHold::Step s;
             s.nowMs = in.nowMs;
             s.weatherSafe = weatherSafe;
-            s.rain = rain;
+            s.atOnce = skipsHold(reasons);
             s.overrideActive = overrideActive;
             s.holdMs = holdMs;
             Inputs given = in;
@@ -134,29 +137,33 @@ namespace
             w.httpLimitMs = 30000;
             w.startedAtMs = 0;
         }
-        void reply(uint64_t nowMs, bool safe)
+        // `flags`: SQMeter's reasonFlags when unsafe (bit 4 cloud cover by default).
+        void reply(uint64_t nowMs, bool safe, uint32_t flags = 1u << 4)
         {
             Safety::SqmeterReply r;
             r.safe = safe;
-            r.reasonFlags = safe ? 0 : (1u << 4);
+            r.reasonFlags = safe ? 0 : flags;
             w.http.recordGood(r, nowMs);
         }
-        bool safeAt(uint64_t nowMs)
+        Safety::WeatherVerdict at(uint64_t nowMs)
         {
             w.nowMs = nowMs;
-            return Safety::evaluateWeather(w).safe();
+            return Safety::evaluateWeather(w);
         }
     };
 
-    // Steps the rig for `ms` with SQMeter answering safe every 5 s unless `silent`.
-    void runSqmeter(HoldRig &r, Sqmeter &q, uint64_t ms, bool silent)
+    // Steps the rig for `ms` with SQMeter answering every 5 s unless `silent`
+    // (safe, or unsafe with `flags`), the hold fed the verdict's reasons.
+    void runSqmeter(HoldRig &r, Sqmeter &q, uint64_t ms, bool silent, bool safe = true, uint32_t flags = 1u << 4)
     {
         for (uint64_t t = 0; t < ms; t += STEP_MS)
         {
             r.in.nowMs += STEP_MS;
             if (!silent && r.in.nowMs % 5000 == 0)
-                q.reply(r.in.nowMs, true);
-            r.stepOnce(q.safeAt(r.in.nowMs));
+                q.reply(r.in.nowMs, safe, flags);
+            const Safety::WeatherVerdict v = q.at(r.in.nowMs);
+            r.reasons = v.reasons;
+            r.stepOnce(v.safe());
         }
     }
 } // namespace
@@ -307,7 +314,7 @@ void test_61_s_unsafe_starts_the_close(void)
 void test_rain_starts_the_close_at_once(void)
 {
     HoldRig r;
-    r.rain = true;
+    r.reasons = Safety::ReasonRain;
     r.run(STEP_MS, false);
     TEST_ASSERT_EQUAL(1, r.tally.requests);
     TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
@@ -403,7 +410,7 @@ void test_an_override_resets_the_hold(void)
     TEST_ASSERT_EQUAL_UINT64(0, r.hold.countedMs());
     TEST_ASSERT_FALSE(r.hold.fired());
     // Rain (never overridden) still fires at once.
-    r.rain = true;
+    r.reasons = Safety::ReasonRain;
     r.run(STEP_MS, false);
     TEST_ASSERT_TRUE(r.hold.fired());
     TEST_ASSERT_EQUAL(1, r.tally.requests);
@@ -421,6 +428,71 @@ void test_an_override_after_the_hold_fired_ends_it(void)
     TEST_ASSERT_TRUE(r.saw(Event::EndedSafe));
 }
 
+// Owner decision (constitution 10.1.0): a failed rain sensor is treated like
+// rain, because it may be failing because it is wet. Only those two skip it.
+void test_only_rain_and_a_failed_rain_sensor_skip_the_hold(void)
+{
+    TEST_ASSERT_TRUE(skipsHold(Safety::ReasonRain));
+    TEST_ASSERT_TRUE(skipsHold(Safety::ReasonRainSensorFault));
+    TEST_ASSERT_TRUE(skipsHold(Safety::ReasonRainSensorFault | Safety::ReasonSourceStale));
+    for (uint32_t held :
+         {0u,
+          (uint32_t)Safety::ReasonWeatherUnsafe,
+          (uint32_t)Safety::ReasonSourceStale,
+          (uint32_t)Safety::ReasonSourceUnreachable,
+          (uint32_t)Safety::ReasonSourceUnreadable,
+          (uint32_t)Safety::ReasonSourceOffline,
+          (uint32_t)Safety::ReasonNoWeatherSource})
+        TEST_ASSERT_FALSE(skipsHold(held));
+}
+
+void test_a_failed_rain_sensor_starts_the_close_at_once(void)
+{
+    HoldRig r;
+    Sqmeter q;
+    q.reply(r.in.nowMs, true);
+    runSqmeter(r, q, 20000, false);
+    TEST_ASSERT_EQUAL(0, r.tally.requests);
+    const uint64_t before = r.in.nowMs;
+    // SQMeter reports its rain sensor failed (reasonFlags bit 10) at its next poll.
+    runSqmeter(r, q, 5000, false, false, Safety::SQMETER_RAIN_SENSOR_FAULT);
+    TEST_ASSERT_TRUE(r.hold.fired());
+    TEST_ASSERT_EQUAL(1, r.tally.requests);
+    TEST_ASSERT_UINT64_WITHIN(5000, before, r.tally.firstRequestMs);
+    TEST_ASSERT_EQUAL(Phase::WaitPark, r.seq.phase());
+    // Its own reason, not rain: the alerts and the UI say "rain sensor fault".
+    const Safety::WeatherVerdict v = q.at(r.in.nowMs);
+    TEST_ASSERT_EQUAL_UINT32(Safety::ReasonRainSensorFault, v.reasons);
+    TEST_ASSERT_NOT_NULL(strstr(Safety::describe(v).c_str(), "rain sensor fault"));
+    runSqmeter(r, q, 5000, false, false, Safety::SQMETER_RAIN_SENSOR_FAULT);
+    TEST_ASSERT_EQUAL(1, r.tally.closes);
+}
+
+void test_rain_from_sqmeter_starts_the_close_at_once(void)
+{
+    HoldRig r;
+    Sqmeter q;
+    q.reply(r.in.nowMs, true);
+    runSqmeter(r, q, 20000, false);
+    const uint64_t before = r.in.nowMs;
+    runSqmeter(r, q, 5000, false, false, Safety::SQMETER_RAIN);
+    TEST_ASSERT_EQUAL(1, r.tally.requests);
+    TEST_ASSERT_UINT64_WITHIN(5000, before, r.tally.firstRequestMs);
+}
+
+void test_other_unsafe_weather_from_sqmeter_is_still_held(void)
+{
+    HoldRig r;
+    Sqmeter q;
+    q.reply(r.in.nowMs, true);
+    runSqmeter(r, q, 20000, false);
+    runSqmeter(r, q, 55000, false, false); // cloud cover: held
+    TEST_ASSERT_EQUAL(0, r.tally.requests);
+    TEST_ASSERT_FALSE(r.hold.fired());
+    runSqmeter(r, q, 10000, false, false);
+    TEST_ASSERT_EQUAL(1, r.tally.requests);
+}
+
 int main(int, char **)
 {
     UNITY_BEGIN();
@@ -434,6 +506,10 @@ int main(int, char **)
     RUN_TEST(test_a_silent_sqmeter_closes_after_stale_plus_hold);
     RUN_TEST(test_61_s_unsafe_starts_the_close);
     RUN_TEST(test_rain_starts_the_close_at_once);
+    RUN_TEST(test_only_rain_and_a_failed_rain_sensor_skip_the_hold);
+    RUN_TEST(test_a_failed_rain_sensor_starts_the_close_at_once);
+    RUN_TEST(test_rain_from_sqmeter_starts_the_close_at_once);
+    RUN_TEST(test_other_unsafe_weather_from_sqmeter_is_still_held);
     RUN_TEST(test_a_flapping_verdict_closes_exactly_once);
     RUN_TEST(test_a_flapping_verdict_reaches_the_hold_in_about_two_minutes);
     RUN_TEST(test_safe_for_the_hold_while_waiting_calls_the_attempt_off);
