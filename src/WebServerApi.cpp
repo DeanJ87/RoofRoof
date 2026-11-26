@@ -31,10 +31,40 @@ namespace SQM
         // abort()). Here every large allocation is checked: the JSON pool, then
         // one buffer, shrunk to the text's size and held by the response until
         // it is sent. Null when either can't be had.
-        // A save's largest single allocation is a settings string of up to 16 KB
-        // (a doubling std::string); with the other copies it needs about 48 KB.
-        constexpr size_t SAVE_MIN_BLOCK_BYTES = 20 * 1024;
+        // Spec 045: a save's largest single allocation is the parse of what was
+        // sent (its size + 6.5 KB, Config::applyJson) or the settings document
+        // (9.5 KB), and before them the save task's 10 KB stack; the strings
+        // are sized once (they doubled to 16 KB). Was a fixed 20 KB block,
+        // which the heap reported as 20,468 B (TLSF's class boundary) after an
+        // hour of requests: every save refused.
+        constexpr size_t SAVE_BLOCK_MARGIN_BYTES = 2048;
         constexpr size_t SAVE_MIN_FREE_BYTES = 48 * 1024;
+
+        size_t saveBlockBytes(size_t bodyBytes)
+        {
+            return std::max(ConfigJson::CAPACITY, bodyBytes + 6656) + SAVE_BLOCK_MARGIN_BYTES;
+        }
+
+        // Before the save task starts: its stack (10 KB) or the largest
+        // document, whichever is bigger, must fit in the largest block.
+        // Once it has started (its stack taken), the document is checked again.
+        size_t saveStartBytes(size_t bodyBytes)
+        {
+            return std::max<size_t>(saveBlockBytes(bodyBytes), SaveTask::STACK_BYTES + SAVE_BLOCK_MARGIN_BYTES);
+        }
+
+        bool saveBlockFits(size_t bodyBytes)
+        {
+            return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) >= saveBlockBytes(bodyBytes);
+        }
+
+        bool saveStartFits(size_t bodyBytes)
+        {
+            return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) >= saveStartBytes(bodyBytes) &&
+                   ESP.getFreeHeap() >= SAVE_MIN_FREE_BYTES;
+        }
+
+        constexpr const char *SAVE_SHORT_BODY = "{\"error\":\"The device is short of memory: nothing was saved, try again\"}";
 
         std::shared_ptr<char> settingsJson(const Config &cfg, size_t &length)
         {
@@ -144,25 +174,33 @@ namespace SQM
         // Spec 029 research R13: a save builds several settings-sized strings
         // and documents; without C++ exceptions a failed allocation aborts the
         // device. Refused while memory is short instead (nothing is saved).
-        if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < SAVE_MIN_BLOCK_BYTES || ESP.getFreeHeap() < SAVE_MIN_FREE_BYTES)
+        const size_t bodyBytes = measureJson(json);
+        if (!saveStartFits(bodyBytes))
         {
-            request->send(503, "application/json", "{\"error\":\"The device is short of memory: nothing was saved, try again\"}");
+            request->send(503, "application/json", SAVE_SHORT_BODY);
             return;
         }
 
         std::string body;
+        body.reserve(bodyBytes); // spec 045: sized once, not doubled
         serializeJson(json, body);
         // Spec 021: checked and merged onto the live settings under the save
         // lock, so no other save lands in between; a page's stale fields refused.
         std::string reason;
         std::string held;
         ConfigSave::Check stale;
+        bool memoryShort = false;
         // Spec 024: SQMeter's secrets from the last copy, for a "(from SQMeter)" field.
         const std::unique_ptr<CopiedSecrets> copiedNow = heldCopied();
         const bool saved = editAsFlashWrite(
             request,
             [&](const Config &live, Config &next)
             {
+                // Spec 045: with the save task's stack taken, the documents
+                // must still fit (they would fail as "invalid" otherwise).
+                memoryShort = !saveBlockFits(body.size());
+                if (memoryShort)
+                    return false;
                 stale = ConfigSave::checkSave(body, configRevision.load(), [&live]() { return live.toJson(true); });
                 if (stale.stale)
                     return false;
@@ -189,7 +227,9 @@ namespace SQM
             "Config save: stack low-water %u B on the save task, %u B on async_tcp",
             static_cast<unsigned>(SaveTask::lastStackLeft()),
             static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
-        if (!held.empty())
+        if (memoryShort)
+            request->send(503, "application/json", SAVE_SHORT_BODY);
+        else if (!held.empty())
             request->send(409, "application/json", createErrorJson(held.c_str()).c_str());
         else if (saved || !reason.empty() || stale.stale)
             answerConfigSave(request, saved, reason, stale);

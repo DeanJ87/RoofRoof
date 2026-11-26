@@ -55,17 +55,30 @@ namespace SQM
         const char *operator[](size_t i) const { return reasons[i]; }
     };
 
+    // Spec 045: fixed-size, so the recent alerts take no heap (they were
+    // strings and template values: a dozen blocks per alert, kept until twenty
+    // more alerts had come). Longer texts are cut, marked "...".
     struct AlertRecord
     {
+        static constexpr size_t TITLE_BYTES = 64;
+        static constexpr size_t MESSAGE_BYTES = 192;
+        static constexpr size_t DETAIL_BYTES = 32;
+
         uint32_t id = 0;
         uint32_t uptimeSeconds = 0;
         int64_t epochSeconds = 0; // 0 if the clock wasn't set
-        Alerts::Alert alert;
+        // Zero by default, so the ring of them is zero-filled static data (.bss).
+        Alerts::AlertType type{};
+        Alerts::AlertLevel level{};
+        char title[TITLE_BYTES] = {};
+        char message[MESSAGE_BYTES] = {};
         DeliveryStatus status[ALERT_CHANNEL_COUNT] = {};
-        std::string detail[ALERT_CHANNEL_COUNT];
+        char detail[ALERT_CHANNEL_COUNT][DETAIL_BYTES] = {};
         // Spec 030: the channels skipped for now (no network, the broker not
         // connected, another HTTPS request, an update): sending again may work.
         uint8_t skippedForNow = 0;
+
+        void setDetail(size_t channel, const char *text);
     };
 
     // Delivers alerts. MQTT is published synchronously from the caller's
@@ -97,7 +110,11 @@ namespace SQM
             uint8_t channelMask = ALERT_CHANNELS_ALL,
             const ChannelBlocks &blocked = ChannelBlocks{});
 
-        std::vector<AlertRecord> recent() const;
+        // Spec 045: each recent alert, newest first, under the lock: no copy
+        // of the list (it was copied onto the heap for every read). `visit`
+        // must not call back into the dispatcher.
+        using RecentVisit = void (*)(const AlertRecord &record, void *context);
+        void visitRecent(RecentVisit visit, void *context) const;
         // How record `id` went over all its channels (spec 005 resends a
         // critical alert no channel took). Any task.
         enum class Outcome : uint8_t
@@ -116,8 +133,9 @@ namespace SQM
         // for this; RoofRoof has no battery or sleep). Any task.
         bool idle() const;
 
-    private:
         static constexpr size_t MAX_RECORDS = 20;
+
+    private:
         static constexpr size_t QUEUE_LENGTH = 8;
         static constexpr uint32_t TASK_STACK_WORDS = 8192;
         // The HTTPS task only exists while there's something to send: its
@@ -154,7 +172,7 @@ namespace SQM
         uint32_t store(AlertRecord &record); // the record's new id, 0 if it couldn't be stored
         void queueHttp(uint32_t recordId, uint8_t channelMask, Job *job);
         void ensureTask();
-        void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail);
+        void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const char *detail);
 
         bool sendPushover(const Job &job, std::string &detail);
         bool sendNtfy(const Job &job, std::string &detail);
@@ -166,7 +184,6 @@ namespace SQM
         std::atomic<bool> taskRunning{false};
         std::atomic<bool> delivering{false};
         SemaphoreHandle_t mutex = nullptr;
-        std::vector<AlertRecord> records;
         uint32_t nextId = 1;
         std::atomic<uint32_t> revision{0};
     };

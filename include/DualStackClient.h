@@ -29,7 +29,14 @@ namespace SQM
         // seconds. Asked at every write; 0 means no time left: the
         // connection is dropped at once. Without one (the default) writes and
         // reads are NetworkClient's.
-        void setWriteBudget(std::function<uint32_t()> budgetMs) { writeBudget = std::move(budgetMs); }
+        // Spec 045: the read buffer is taken at its full size here (at start),
+        // once: grown as packets came, each step was a new block made at run
+        // time and kept for the connection's life, in the middle of the heap.
+        void setWriteBudget(std::function<uint32_t()> budgetMs)
+        {
+            writeBudget = std::move(budgetMs);
+            rx.reserve(RX_LIMIT);
+        }
         using WiFiClient::write;
         size_t write(const uint8_t *buf, size_t size) override;
         size_t write(uint8_t data) override { return write(&data, 1); }

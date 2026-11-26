@@ -138,7 +138,9 @@
                     "free": 98000,
                     "largest": 51200,
                     "minFree": 61000,
-                    "reserveSpent": 0
+                    "reserveSpent": 0,
+                    "largestLow15m": 45044,
+                    "largestLow60m": 40948
                   },
                   "heapSize": 327680,
                   "stackFree": {
@@ -10133,6 +10135,14 @@
               "reserveSpent": {
                 "type": "number",
                 "description": "Spec 038: times the emergency heap reserve was given up so an allocation could succeed, since start."
+              },
+              "largestLow15m": {
+                "type": "number",
+                "description": "Spec 045: the lowest largest free block over the last 15 minutes (one reading a second), bytes."
+              },
+              "largestLow60m": {
+                "type": "number",
+                "description": "Spec 045: the lowest largest free block over the last 60 minutes (one reading a second), bytes."
               }
             },
             "required": [

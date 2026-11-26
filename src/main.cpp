@@ -19,6 +19,7 @@
 #include "Config.h"
 #include "FirmwareMarker.h"
 #include "FlashGuard.h"
+#include "HeapMap.h"
 #include "HeapReserve.h"
 #include <esp_heap_caps.h>
 #include "HeapTrace.h"
@@ -387,21 +388,6 @@ void startServices()
     HeapTrace::mark("setup complete");
 }
 
-// Spec 038: the emergency reserve is taken back once there is room, and its
-// use is logged (the new-handler that spends it can't log).
-void keepHeapReserve()
-{
-    static uint32_t spentSeen = 0;
-    HeapSafe::HeapReserve &reserve = HeapSafe::reserve();
-    if (reserve.spent() != spentSeen)
-    {
-        spentSeen = reserve.spent();
-        Logger::warn("Heap", "Out of memory: the emergency reserve was used (%u times since start)", static_cast<unsigned>(spentSeen));
-    }
-    if (!reserve.held() && HeapSafe::HeapReserve::refillFits(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)))
-        reserve.refill();
-}
-
 // Spec 020: no SQMeter read, copy or save while the roof is busy (spec 010).
 bool roofBusy()
 {
@@ -574,7 +560,7 @@ void loop()
     if (timeManager)
         timeManager->handle();
     webServer->handle();
-    keepHeapReserve();
+    HeapMap::upkeep(); // spec 038 reserve, spec 045 trend
 
     // SQMeter spec 027 FR-021: a new firmware is only kept once it has
     // started properly; one that fails before this point rolls back on its

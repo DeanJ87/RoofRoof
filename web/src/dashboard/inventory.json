@@ -596,6 +596,16 @@
       "shownOn": "API (docs: troubleshooting)"
     },
     {
+      "match": "status.heap8Bit.largestLow15m",
+      "reason": "Device internals for troubleshooting (spec 045: the heap's trend over a session); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
+      "match": "status.heap8Bit.largestLow60m",
+      "reason": "Device internals for troubleshooting (spec 045: the heap's trend over a session); read from the API and tools/soak/ws_soak.py",
+      "shownOn": "API (docs: troubleshooting)"
+    },
+    {
       "match": "status.maxAllocHeap",
       "reason": "Device internals for troubleshooting",
       "shownOn": "System"

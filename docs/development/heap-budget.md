@@ -17,6 +17,9 @@ it current when a change adds a task, a kept buffer or static data.
 - `tools/soak/ws_soak.py`: at rest and under load, with floors (below).
 - `tools/firmware/heap_budget.py`: what the firmware keeps for good, from the sources and the
   `.elf` (CI, after the build).
+- Spec 045: `/api/status` `heap8Bit.largestLow15m` / `largestLow60m`, and in the census the last
+  hour minute by minute (`Trend`) and the free blocks of 1 KB or more with what is in use between
+  them (`Free blocks ...`): what cut the largest block apart.
 
 ## The budget
 
@@ -33,6 +36,8 @@ Kept for the device's lifetime (bytes):
 | Frame pool (spec 037) | 10,240 | 10,240 | 2 x 5 KB live-update frames |
 | MQTT buffer | 3,072 | 3,072 | the largest MQTT document |
 | Emergency reserve | 0 | 2,048 | given up instead of `abort()` |
+| MQTT read buffer (spec 045) | grown to up to 4,096 at run time | 4,096 at start | `DualStackClient::rx`, taken whole when MQTT starts |
+| Recent alerts (spec 045) | 4,620 on the heap + 2 strings per alert | 8,200 static | 20 fixed records: title 64, message 192, detail 32 per channel |
 | WiFi static RX buffers | 6,400 | 6,400 | 4 x 1.6 KB, set by the Arduino core at run time |
 | **Sum of the above** | **127,004** | **119,852** | **-7.2 KB** |
 
@@ -72,6 +77,42 @@ On the board:
 
 To record growth on purpose: `python3 tools/firmware/heap_budget.py --update-baseline --reason "..."`
 after a build, and update the tables here.
+
+## Over a session (spec 045)
+
+The free heap can stay the same while the largest block falls: something made at run time and
+kept lands inside the largest free block and cuts it. On main e3a09a4 the region holding the
+largest block went from 63 KB largest to 38.7 KB within 15 minutes of a page being open on the
+dashboard and stayed there with the page closed (free unchanged, about 50 more blocks in use than
+at start). The rules since spec 045:
+
+- **Nothing kept is made at run time when it can be kept from the start**: live frames are written
+  in place in the frame pool, the recent alerts are static records, the MQTT read buffer is taken
+  whole when MQTT starts, the WebSocket bookkeeping is copied onto the stack.
+- **A page costs one file once**: the hashed `/assets/` files are cached by the browser for a year
+  (a new UI has new names); a reload fetches `index.html` only. Without the cache a page load was
+  six streams of about 10 KB each at once.
+- **A page asks once**: the banners read the live status the page already receives, not
+  `GET /api/status` every 5-10 s.
+- **A memory rule asks for what the work needs**, measured (`measureJson`), not a fixed size: the
+  heap reports its largest block at class boundaries (20,468 B for a 20 KB block), so "at least 20
+  KB" refused every settings save.
+
+On the bench, beside the harness's load for an hour:
+
+```bash
+python3 tools/soak/ws_soak.py --host 192.168.1.245 --clients 2 --minutes 60 --page-load 30 \
+    --also /api/status@1 "/api/v1/dome/0/shutterstatus?ClientID=1&ClientTransactionID=1@1" \
+    --floor 16384 --max-drift 12288
+```
+
+`largestDrift` is how far the best largest block of the last 5 samples fell below that of the
+first 5; a pass keeps it within 12 KB. Read `GET /api/diag/heap` at the end: its free-block map
+names what sits between the large free blocks.
+
+There is no automatic restart for fragmentation (spec 045 research R6): what is still made at run
+time is bounded (16 TCP connections, 3 pages, the queues' fixed room) and freed when its connection
+ends.
 
 ## When the heap runs out anyway
 

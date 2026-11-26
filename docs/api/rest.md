@@ -1013,6 +1013,12 @@ Largest blocks in use:
   0x3ffc5a10  10260 B  stack of loopTask
 Task stacks (heap block, least left since start):
   loopTask          10260 B  least left   3010 B
+Free blocks of 1 KB or more, in address order (in use before each: bytes, blocks, largest):
+  0x3ffe4a10  20480 B  after    412 B in   3 blocks, largest   212 B
+  0x3ffe9c40  21012 B  after   5632 B in   1 blocks, largest  5632 B
+Trend (lowest largest block / lowest free, per minute, newest first; 15 min 18420 B, 60 min 12276 B):
+  minute    74  largest  20468 B  free  41796 B
+  minute    73  largest  18420 B  free  40112 B
 ```
 
 | Part | Meaning |
@@ -1022,6 +1028,8 @@ Task stacks (heap block, least left since start):
 | `Blocks by size` | Blocks in use and free in 8 size classes: many small free blocks between used ones is fragmentation |
 | `Largest blocks in use` | The 16 largest, with the task whose stack it is |
 | `Task stacks` | Every task, its stack's heap block (`-` when the stack isn't on this heap) and the least it has had left since start |
+| `Free blocks of 1 KB or more` | Spec 045: up to 24 free blocks in address order, each with what is in use between it and the one before it in its region (bytes, blocks and the largest of them, a task's stack named). A few small blocks between two large free ones is what cut the largest block apart |
+| `Trend` | Spec 045: each minute of the last hour (minutes since start), its lowest largest free block and lowest free heap; the lowest largest block over 15 and 60 minutes is also in `/api/status` `heap8Bit` |
 
 ---
 

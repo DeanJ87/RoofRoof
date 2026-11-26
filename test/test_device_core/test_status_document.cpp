@@ -33,6 +33,14 @@ namespace
         return c;
     }
 
+    // Spec 037/038/045: the 8-bit heap, with the trend's lows (appendMemory).
+    void heap8BitSection(JsonDocument &doc)
+    {
+        JsonObject heap8 = doc.createNestedObject("heap8Bit");
+        for (const char *key : {"free", "largest", "minFree", "reserveSpent", "largestLow15m", "largestLow60m"})
+            heap8[key] = 4294967295U;
+    }
+
     // src/WebServerStatus.cpp appendFirmware, appendRuntime, appendMemory,
     // appendPartitions, appendTime, appendWifi (with Ipv6Network::appendStatus),
     // appendMqttStatus and appendConnections. A std::string or String value is
@@ -68,6 +76,7 @@ namespace
               "fsTotal",
               "fsUsed"})
             doc[key] = 4294967295U;
+        heap8BitSection(doc);
 
         JsonObject partitions = doc.createNestedObject("partitions");
         for (const char *key : {"runningSlot", "bootSlot", "nextSlot"})
@@ -239,6 +248,7 @@ namespace
          "bootCount",
          "fsTotal",
          "fsUsed",
+         "heap8Bit",
          "partitions",
          "time",
          "ntp"},

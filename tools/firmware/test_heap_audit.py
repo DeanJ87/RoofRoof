@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # "path: destination" -> why it is safe.
 ALLOWED: dict[str, str] = {
-    "src/WebServerApi.cpp: body": "the settings save's request body, re-serialized for the save checks; refused with 503 "
-    "below a 20 KB block and 48 KB free (spec 029 R13)",
+    "src/WebServerApi.cpp: body": "the settings save's request body, re-serialized for the save checks, reserved once "
+    "from measureJson; refused with 503 unless the save's own largest allocation fits (spec 029 R13, spec 045)",
     "lib/AlpacaLogic/src/RouterInternal.h: response.body": "an Alpaca reply of a few hundred bytes, reserved once from "
     "measureJson (no growth)",
     "lib/DiagLogic/src/DiagMoves.cpp: text": "one move summary (at most SUMMARY_DOC_CAPACITY's text), reserved once from "
@@ -30,7 +30,8 @@ ALLOWED: dict[str, str] = {
     "lib/DeviceCore/src/AlertDelivery.cpp: out": "an outgoing alert message (768-byte document) on the alert task, not a " "reply",
     "lib/ConfigModel/src/ConfigJsonOut.cpp: json": "the stored settings text for NVS; saves are refused while memory is "
     "short (spec 029 R13)",
-    "lib/ConfigModel/src/ConfigJsonOut.cpp: output": "the settings text for the save checks and backups, guarded as above",
+    "lib/ConfigModel/src/ConfigJsonOut.cpp: output": "the settings text for the save checks and backups, reserved once "
+    "from measureJson (spec 045), guarded as above",
     "lib/ConfigBackup/src/BackupRules.cpp: out": "a backup, built one request at a time after its own free-memory check " "(spec 024)",
     "lib/ConfigBackup/src/BackupFile.cpp: out": "a backup file, guarded as above",
     "lib/ConfigBackup/src/BackupFile.cpp: out.settings": "a backup's settings, guarded as above",

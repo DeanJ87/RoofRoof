@@ -1,5 +1,5 @@
 {
-  "limitBytes": 115500,
-  "staticBytes": 61228,
-  "reason": "Spec 038: loop 10 KB, async_tcp 8 KB, esp_timer 4 KB stacks; 2 KB emergency reserve"
+  "limitBytes": 128980,
+  "staticBytes": 70612,
+  "reason": "Spec 045: the recent alerts in a static ring (8.2 KB, was a 4.6 KB list and two strings per alert on the heap), the dispatcher's record (0.4 KB), the heap trend (0.7 KB); the MQTT read buffer (4 KB) now counted, taken whole when MQTT starts instead of grown at run time"
 }

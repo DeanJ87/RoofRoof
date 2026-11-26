@@ -1,7 +1,10 @@
 #include "HeapMap.h"
 
 #include "HeapCensus.h"
+#include "HeapTrend.h"
 #include "HeapReserve.h"
+#include "Logger.h"
+#include <Arduino.h>
 #include <atomic>
 #include <cstdio>
 #include <esp_heap_caps.h>
@@ -74,7 +77,58 @@ namespace SQM
                 if (n > 0)
                     out.append(text, static_cast<size_t>(n) < sizeof(text) ? static_cast<size_t>(n) : sizeof(text) - 1);
             }
+
+            // Spec 045: the last hour, a minute at a time, newest first.
+            void writeTrend(HeapSafe::ChunkText &out)
+            {
+                const HeapSafe::HeapTrend &trend = HeapSafe::trend();
+                char text[160];
+                int n = snprintf(
+                    text,
+                    sizeof(text),
+                    "Trend (lowest largest block / lowest free, per minute, newest first; 15 min %u B, 60 min %u B):\n",
+                    static_cast<unsigned>(trend.lowestLargest(15)),
+                    static_cast<unsigned>(trend.lowestLargest(60)));
+                if (n > 0)
+                    out.append(text, static_cast<size_t>(n) < sizeof(text) ? static_cast<size_t>(n) : sizeof(text) - 1);
+                for (size_t i = 0; i < trend.size(); ++i)
+                {
+                    const HeapSafe::HeapTrend::Minute &m = trend.at(i);
+                    n = snprintf(
+                        text,
+                        sizeof(text),
+                        "  minute %5u  largest %6u B  free %6u B\n",
+                        static_cast<unsigned>(m.index),
+                        static_cast<unsigned>(m.lowestLargest),
+                        static_cast<unsigned>(m.lowestFree));
+                    if (n > 0)
+                        out.append(text, static_cast<size_t>(n) < sizeof(text) ? static_cast<size_t>(n) : sizeof(text) - 1);
+                }
+            }
         } // namespace
+
+        void upkeep()
+        {
+            constexpr uint32_t TREND_EVERY_MS = 1000;
+            static uint32_t spentSeen = 0;
+            static uint32_t lastTrendMs = 0;
+            HeapSafe::HeapReserve &reserve = HeapSafe::reserve();
+            if (reserve.spent() != spentSeen)
+            {
+                spentSeen = reserve.spent();
+                Logger::warn(
+                    "Heap", "Out of memory: the emergency reserve was used (%u times since start)", static_cast<unsigned>(spentSeen));
+            }
+            const uint32_t largest = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+            if (!reserve.held() && HeapSafe::HeapReserve::refillFits(largest))
+                reserve.refill();
+            const uint32_t now = millis();
+            if (now - lastTrendMs >= TREND_EVERY_MS)
+            {
+                lastTrendMs = now;
+                HeapSafe::trend().sample(now, largest, static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_8BIT)));
+            }
+        }
 
         bool text(HeapSafe::ChunkText &out)
         {
@@ -91,6 +145,7 @@ namespace SQM
             summary(out);
             heap_caps_walk(MALLOC_CAP_8BIT, walkBlock, &work->census);
             work->census.write(out);
+            writeTrend(out);
             running.store(false);
             return true;
         }

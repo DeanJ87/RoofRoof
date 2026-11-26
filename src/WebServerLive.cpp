@@ -67,13 +67,23 @@ namespace SQM
         // The library calls our connect handler while holding its own lock, so
         // never hold wsClientsLock while calling into the socket: copy, check,
         // write back.
-        std::map<uint32_t, uint32_t> snapshot;
+        // Spec 045: copied onto the stack (a map copy was a few heap nodes
+        // twice a second); more than fit are checked on a later pass.
+        constexpr size_t SNAPSHOT_MAX = 8;
+        std::pair<uint32_t, uint32_t> snapshot[SNAPSHOT_MAX];
+        size_t count = 0;
         {
             const std::lock_guard<std::mutex> lock(wsClientsLock);
-            snapshot = clients;
+            for (const auto &entry : clients)
+            {
+                if (count == SNAPSHOT_MAX)
+                    break;
+                snapshot[count++] = entry;
+            }
         }
-        for (auto &entry : snapshot)
+        for (size_t i = 0; i < count; ++i)
         {
+            auto &entry = snapshot[i];
             if (entry.second >= WS_REFUSED)
                 continue; // being refused (capWebSocketClients)
             // By id, under the socket's own lock: the network task can drop a
@@ -90,11 +100,11 @@ namespace SQM
             }
         }
         const std::lock_guard<std::mutex> lock(wsClientsLock);
-        for (const auto &entry : snapshot)
+        for (size_t i = 0; i < count; ++i)
         {
-            auto found = clients.find(entry.first);
+            auto found = clients.find(snapshot[i].first);
             if (found != clients.end())
-                found->second = entry.second;
+                found->second = snapshot[i].second;
         }
     }
 
@@ -107,6 +117,28 @@ namespace SQM
         if (wsStatus.count() == 0)
             return;
 
+        // Spec 045: written straight into a pooled frame, nothing from the heap.
+        // Every one still being sent: skipped, as frameOf() would have after
+        // writing the whole document into pieces.
+        WebReply::Frame frame = WebReply::pooledFrame();
+        if (!frame)
+        {
+            WebReply::noteSkipped();
+            WebReply::heartbeatAll(wsStatus);
+            return;
+        }
+        {
+            HeapSafe::ChunkText text = HeapSafe::ChunkText::over(frame->data(), frame->size());
+            writeStatus(text);
+            if (text.ok())
+            {
+                if (!WebReply::frameAll(wsStatus, std::move(frame), text.size()))
+                    WebReply::heartbeatAll(wsStatus);
+                return;
+            }
+            // Longer than a pooled frame: from pieces, as before.
+        }
+        frame.reset();
         HeapSafe::ChunkText text;
         writeStatus(text);
         if (!WebReply::textAll(wsStatus, text))
@@ -115,6 +147,19 @@ namespace SQM
 
     void WebServer::sendFirstStatus(AsyncWebSocketClient *client) const
     {
+        // Spec 045: into a pooled frame when one is free (the network task:
+        // its own section pool, not the loop's).
+        if (WebReply::Frame frame = WebReply::pooledFrame())
+        {
+            HeapSafe::ChunkText text = HeapSafe::ChunkText::over(frame->data(), frame->size());
+            writeStatus(text);
+            if (text.ok())
+            {
+                if (!WebReply::frameTo(client, std::move(frame), text.size()))
+                    WebReply::heartbeat(client);
+                return;
+            }
+        }
         HeapSafe::ChunkText text;
         writeStatus(text);
         if (!WebReply::text(client, text))

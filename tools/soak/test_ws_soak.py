@@ -32,6 +32,41 @@ class WsSoakTest(unittest.TestCase):
         restarted = rows + [{"boot": 1, "uptime": 5, "largest": 50000, "free": 60000}]
         self.assertEqual(soak.verdict(restarted, 0), (True, False))
 
+    def test_drift_compares_the_best_of_the_start_and_the_end(self):
+        rows = [
+            {"boot": 1, "uptime": i, "largest": v, "free": 60000} for i, v in enumerate([61000, 30000, 58000, 40000, 50000] + [20000] * 5)
+        ]
+        self.assertEqual(soak.drift(rows), 61000 - 20000)
+        self.assertEqual(soak.verdict(rows, 0, max_drift=50000), (False, True))
+        self.assertEqual(soak.verdict(rows, 0, max_drift=12288), (False, False))
+        steady = [{"boot": 1, "uptime": i, "largest": 40000 + (i % 2) * 20000, "free": 60000} for i in range(12)]
+        self.assertEqual(soak.drift(steady), 0)
+        self.assertEqual(soak.drift([]), 0)
+
+    def test_page_assets_from_index_html(self):
+        html = (
+            '<link rel="icon" href="/favicon.svg"><script type="module" crossorigin src="/assets/App-DT.js"></script>'
+            '<link rel="stylesheet" href="/assets/CRK.css"><link rel="modulepreload" href="/assets/App-DT.js">'
+            '<a href="#top">x</a><a href="/">home</a>'
+        )
+        self.assertEqual(soak.page_assets(html), ["/favicon.svg", "/assets/App-DT.js", "/assets/CRK.css"])
+
+    def test_a_page_load_fetches_the_files_and_keeps_the_hashed_ones(self):
+        index = b'<script src="/assets/a.js"></script><link href="/assets/b.css"><link href="/favicon.svg">'
+        fetched: list[str] = []
+
+        def get(path, timeout=8):
+            fetched.append(path)
+            return (200, index) if path == "/" else (503 if path == "/favicon.svg" else 200, b"")
+
+        cached: set[str] = set()
+        self.assertEqual(soak.fetch_page(get, cached), (False, 3))  # the icon was busy
+        self.assertEqual(cached, {"/assets/a.js", "/assets/b.css"})
+        fetched.clear()
+        soak.fetch_page(get, cached)
+        self.assertEqual(sorted(fetched), ["/", "/favicon.svg"])  # the hashed files came from the cache
+        self.assertEqual(soak.fetch_page(lambda path, timeout=8: (500, b""))[0], False)
+
     def test_request_is_an_upgrade(self):
         request = soak.websocket_request("10.0.0.5", "/ws/status").decode()
         self.assertTrue(request.startswith("GET /ws/status HTTP/1.1\r\n"))
