@@ -22,6 +22,13 @@ The same can happen with RoofRoof's own requests: the automatic close and a comm
 again every park request gap (30 s by default), and a park that takes longer than that is stopped by
 RoofRoof's own next request.
 
+**Finding M06 (the real OnStepX, 2026-11-26 ~21:20).** A park sent while the mount slews a goto (not
+only a park) fails the same way: the plugin calls `StopSlew()` and then `ParkTelescope()` at once,
+OnStepX refuses `:hP#` while decelerating (`CE_SLEW_IN_MOTION`), and the mount ends stopped, not
+parked, with nothing retrying. So the limit's fallback can't be "send the park anyway": it stops the
+slew on its own first (`GET /v2/api/equipment/mount/slew/stop`, ninaAPI's `MountStopSlew`, which
+calls only `StopSlew()`), then waits for the mount to be still.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - N.I.N.A. is already parking (P1)
@@ -50,8 +57,12 @@ to read slewing yet is not asked twice.
 
 ### User Story 4 - A slew that doesn't end (P2)
 
-The mount reads slewing for 3 minutes: a mount slewing that long is not parking. RoofRoof sends the
-park anyway (the plugin then stops the slew and parks), with a warning in the log saying so.
+The mount reads slewing for 3 minutes: a mount slewing that long is not parking. The one deliberate
+stop: RoofRoof asks N.I.N.A. to stop the slew alone (`mount/slew/stop`, no park), with a warning in
+the log ("No sign the mount stopped slewing in 180 s: asking N.I.N.A. to stop the slew, then to park
+once the mount is still"), and reads N.I.N.A. at once. A reading taken after the stop that says the
+mount is still: the park is sent, once (nothing if it reads parked). Still slewing 30 s after the
+stop: the park is sent anyway, with a second warning.
 
 ### Edge cases
 
@@ -83,9 +94,12 @@ park anyway (the plugin then stops the slew and parks), with a warning in the lo
   - any other good reading: send once;
   - failed: wait while N.I.N.A.'s last good reading is within `NINA_FRESH_MS` and says slewing;
     otherwise send once (the behaviour before this spec).
-- **FR-002**: A wait ends at `PARK_SLEW_WAIT_MS` (180 s from the first request) by sending the park,
-  logged as a warning. It is below the park time limit's default (240 s), so a command's park wait
-  and the automatic close can still see that park.
+- **FR-002**: At `PARK_SLEW_WAIT_MS` (180 s from the first request) the slew is stopped on its own
+  (`StopSlew`: `Nina::Api::stopSlewRequest`, `GET /v2/api/equipment/mount/slew/stop`, logged as a
+  warning; not recorded as a park). The request then waits on: a reading taken after the stop decides
+  as in FR-001. Still slewing at `PARK_STOP_WAIT_MS` (30 s) after the stop, the park is sent anyway
+  (`SendAtLimit`, logged as a warning). 180 s + 30 s is below the park time limit's default (240 s),
+  so a command's park wait and the automatic close can still see that park.
 - **FR-003**: The roof is checked (`RoofIo::parkRequestAllowed`) where the request is decided (as
   before) and again at the moment of sending, after any wait: the main loop hands the poller
   `SafetyPoller::setMountMayMove` every pass. Not at an end drops the request, logged.
@@ -104,7 +118,7 @@ park anyway (the plugin then stops the slew and parks), with a warning in the lo
 
 - II (12.1.0, new bullet): **a park request never stops a slew**. RoofRoof doesn't ask N.I.N.A. to
   park while a fresh reading says the mount is slewing (or already says it is parked); it waits, up
-  to 180 s, then asks once. The park check is unchanged: only `AtPark` in a fresh reading (with the
+  to 180 s, then stops the slew on its own and parks once the mount is still (anyway 30 s later). The park check is unchanged: only `AtPark` in a fresh reading (with the
   switches) confirms it, never N.I.N.A.'s answer to the request.
 - II (11.1.0): a park is a slew, asked for only with the roof at an end, checked where it's decided
   and where it's sent (now after the wait too).
@@ -117,8 +131,11 @@ park anyway (the plugin then stops the slew and parks), with a warning in the lo
 - slewing, then parked: nothing sent ("already parked");
 - slewing, then stopped not parked: sent once;
 - already at park: nothing sent;
-- slewing through the limit: sent at the limit, as `SendAtLimit`;
-- repeated requests while waiting: one send, the limit from the first;
+- at the limit: the stop slew (not a park), then decelerating waits, then still: the park once;
+- still slewing 30 s after the stop: the park anyway (`SendAtLimit`), once; parked after the stop:
+  nothing; the roof leaving its end after the stop: no park;
+- repeated requests while waiting: one stop, one send, the limit from the first;
+- `test_nina`: the stop slew's path and its replies ("Stopped slew", not connected, unexpected, not JSON);
 - the roof leaves its end during the wait: nothing sent, the wait ends;
 - a request just after RoofRoof's own send waits for a reading taken after the settle time;
 - a reading taken before the request decides nothing;
@@ -132,5 +149,8 @@ park anyway (the plugin then stops the slew and parks), with a warning in the lo
 - [ ] Bench or roof: park the mount from N.I.N.A., then make the weather unsafe within a few seconds:
   the log shows the wait and "already parked"; the mount parks; the roof closes.
 - [ ] Start a goto in N.I.N.A. and make the weather unsafe: the park is sent once the goto ends.
+- [ ] A slew that outlasts 180 s (e.g. tracking a long, slow goto, or a simulator stuck slewing): the
+  log shows the stop slew, then the park once the mount reads still; OnStep parks (no
+  `CE_SLEW_IN_MOTION`).
 - [ ] A slow park (OnStep): the close sequence's next request (30 s later) waits; one park in
   N.I.N.A.'s log.

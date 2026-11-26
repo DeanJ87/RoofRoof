@@ -544,7 +544,8 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Scope:**
   - Constitution 12.1.0 (II): no park request while a reading taken after it says the mount is
     slewing (findings F57/F59: N.I.N.A.'s API stops a park under way to start a new one); parked:
-    nothing sent; otherwise once. Requests join a waiting one; 180 s limit, then sent anyway; the
+    nothing sent; otherwise once. Requests join a waiting one; at 180 s the slew is stopped on its own (M06),
+    then the park once still (anyway 30 s after the stop); the
     roof re-checked at the send. The park text says why it waits.
 - **Out of scope:** a setting for the wait's limit; a way for a requester to withdraw a request;
   049 (paused).

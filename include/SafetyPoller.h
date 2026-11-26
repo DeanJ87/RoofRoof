@@ -146,9 +146,10 @@ namespace SQM
         void run();
         void pollSqmeter(const Targets &targets, uint32_t generation);
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
-        void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation);
-        // Spec 050: a waiting park request, decided on the latest reading: true to send it now.
-        bool stepPark(const Targets &targets, uint32_t generation);
+        // Spec 050: `stopOnly` sends the stop slew instead (no park, not recorded as one).
+        void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation, bool stopOnly);
+        // Spec 050: a waiting park request, decided on the latest reading: what to send now.
+        Safety::ParkSendEvent stepPark(const Targets &targets, uint32_t generation);
         void pollLocation(const Site::Endpoint &from, uint32_t generation);
         // Spec 020: a location read in this pass, if due (never in a pass that
         // polled SQMeter's safety, never while the roof is busy).

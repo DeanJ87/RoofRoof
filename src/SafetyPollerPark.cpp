@@ -30,7 +30,7 @@ namespace SQM
         return copy;
     }
 
-    bool SafetyPoller::stepPark(const Targets &now, uint32_t generation)
+    Safety::ParkSendEvent SafetyPoller::stepPark(const Targets &now, uint32_t generation)
     {
         Safety::ParkSendInputs in;
         in.ninaSet = !now.ninaUrl.empty();
@@ -51,9 +51,17 @@ namespace SQM
         case Safety::ParkSendEvent::Dropped:
             Logger::warn(TAG, "Not asking N.I.N.A. to park: the roof isn't at an end");
             break;
+        case Safety::ParkSendEvent::StopSlew:
+            Logger::warn(
+                TAG,
+                "No sign the mount stopped slewing in %u s: asking N.I.N.A. to stop the slew, then to park once the mount is still",
+                WAIT_S);
+            break;
         case Safety::ParkSendEvent::SendAtLimit:
             Logger::warn(
-                TAG, "No sign the mount stopped slewing in %u s: asking N.I.N.A. to park anyway (it stops the slew first)", WAIT_S);
+                TAG,
+                "The mount still reads slewing %u s after the stop: asking N.I.N.A. to park anyway",
+                static_cast<unsigned>(Safety::PARK_STOP_WAIT_MS / 1000));
             break;
         case Safety::ParkSendEvent::Send:
         case Safety::ParkSendEvent::None:
@@ -63,6 +71,6 @@ namespace SQM
         if (generation == state.ninaGeneration)
             state.parkWaitingForSlew = parkSender.waitingForSlew();
         xSemaphoreGive(mutex);
-        return event == Safety::ParkSendEvent::Send || event == Safety::ParkSendEvent::SendAtLimit;
+        return event;
     }
 } // namespace SQM

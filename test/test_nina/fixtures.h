@@ -61,4 +61,7 @@ namespace Fixtures
         R"({"Response":"","Error":"Mount not connected","StatusCode":409,"Success":false,"Type":"API"})";
 
     inline const char *const PARK_UNEXPECTED_TEXT = R"({"Response":"Unparking","Error":"","StatusCode":200,"Success":true,"Type":"API"})";
+
+    // Spec 050: GET /v2/api/equipment/mount/slew/stop (ninaAPI MountStopSlew).
+    inline const char *const STOP_SLEW_OK = R"({"Response":"Stopped slew","Error":"","StatusCode":200,"Success":true,"Type":"API"})";
 } // namespace Fixtures

@@ -29,8 +29,12 @@ namespace SQM
         {
             // Only a reading taken after the request, and after our own send
             // has had time to show, decides.
+            // After the stop at the limit, only a reading taken after it.
             const uint64_t settled = sentEver ? sentAtMs + PARK_SENT_SETTLE_MS : 0;
-            return settled > askedAtMs ? settled : askedAtMs;
+            uint64_t from = settled > askedAtMs ? settled : askedAtMs;
+            if (stopSent && stopAtMs + 1 > from)
+                from = stopAtMs + 1;
+            return from;
         }
 
         ParkSender::Mount ParkSender::judge(const Nina::MountReading &r, uint64_t nowMs) const
@@ -71,9 +75,8 @@ namespace SQM
             // No address: as before (the sender records it as refused).
             if (!in.ninaSet)
                 return sendNow(ParkSendEvent::Send, now);
-            const bool atLimit = now - askedAtMs >= PARK_SLEW_WAIT_MS;
             if (in.reading.takenAtMs < decidesFromMs())
-                return atLimit ? sendNow(ParkSendEvent::SendAtLimit, now) : ParkSendEvent::None;
+                return stillSlewing(now);
             switch (judge(in.reading, now))
             {
             case Mount::Parked:
@@ -84,12 +87,30 @@ namespace SQM
             case Mount::Slewing:
                 break;
             }
-            if (atLimit)
-                return sendNow(ParkSendEvent::SendAtLimit, now);
-            if (slewSeen)
-                return ParkSendEvent::None;
+            const ParkSendEvent limit = stillSlewing(now);
+            if (limit != ParkSendEvent::None || slewSeen)
+                return limit;
             slewSeen = true;
             return ParkSendEvent::Waiting;
+        }
+
+        ParkSendEvent ParkSender::stillSlewing(uint64_t nowMs)
+        {
+            // M06: a park sent into a slew fails (the API stops it and parks at
+            // once; OnStep refuses while decelerating). At the limit the slew
+            // is stopped on its own, and the park waits for the mount to be still.
+            if (!stopSent)
+            {
+                if (nowMs - askedAtMs < PARK_SLEW_WAIT_MS)
+                    return ParkSendEvent::None;
+                stopSent = true;
+                slewSeen = true;
+                stopAtMs = nowMs;
+                return ParkSendEvent::StopSlew;
+            }
+            if (nowMs - stopAtMs < PARK_STOP_WAIT_MS)
+                return ParkSendEvent::None;
+            return sendNow(ParkSendEvent::SendAtLimit, nowMs);
         }
     } // namespace Safety
 } // namespace SQM

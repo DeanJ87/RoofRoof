@@ -447,8 +447,9 @@ namespace SQM
                 pollNina(*api, now, ninaGeneration);
                 schedule.ninaRead(started, nowMs());
             }
-            if (parkSender.waiting() && stepPark(now, ninaGeneration))
-                sendPark(*api, now, ninaGeneration);
+            const Safety::ParkSendEvent parkStep = parkSender.waiting() ? stepPark(now, ninaGeneration) : Safety::ParkSendEvent::None;
+            if (Safety::asksNina(parkStep))
+                sendPark(*api, now, ninaGeneration, parkStep == Safety::ParkSendEvent::StopSlew);
             if (pass.sqmeter)
             {
                 schedule.sqmeterPolled(nowMs());
@@ -567,17 +568,23 @@ namespace SQM
         xSemaphoreGive(mutex);
     }
 
-    void SafetyPoller::sendPark(const Nina::Api &api, const Targets &now, uint32_t generation)
+    void SafetyPoller::sendPark(const Nina::Api &api, const Targets &now, uint32_t generation, bool stopOnly)
     {
         Nina::ParkReply parsed{Nina::ParkOutcome::Refused, "N.I.N.A. not configured"};
         if (!now.ninaUrl.empty())
         {
-            // v2's park is a GET (research R2).
-            const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, api.parkRequest());
-            parsed =
-                reply.status > 0 ? api.parsePark(reply.status, reply.body) : Nina::ParkReply{Nina::ParkOutcome::Unreadable, reply.error};
+            // v2's park (and spec 050's stop slew) is a GET (research R2).
+            const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, stopOnly ? api.stopSlewRequest() : api.parkRequest());
+            parsed = reply.status <= 0 ? Nina::ParkReply{Nina::ParkOutcome::Unreadable, reply.error}
+                     : stopOnly        ? api.parseStopSlew(reply.status, reply.body)
+                                       : api.parsePark(reply.status, reply.body);
         }
-        Logger::info(TAG, "N.I.N.A. park request: %s", parsed.detail.c_str());
+        Logger::info(TAG, "N.I.N.A. %s request: %s", stopOnly ? "stop slew" : "park", parsed.detail.c_str());
+        if (stopOnly)
+        {
+            schedule.ninaWanted(); // the park waits for a reading that says the mount is still
+            return;
+        }
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.ninaGeneration)
         {

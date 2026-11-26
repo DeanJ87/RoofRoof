@@ -170,6 +170,20 @@ void test_parse_park_not_json_unreadable(void)
     TEST_ASSERT_EQUAL_STRING("HTTP 500", reply.detail.c_str());
 }
 
+// Spec 050: the stop slew (no park), sent at the slew wait's limit.
+void test_v2_stop_slew(void)
+{
+    const Request request = API.stopSlewRequest();
+    TEST_ASSERT_TRUE(request.method == Method::Get);
+    TEST_ASSERT_EQUAL_STRING("/v2/api/equipment/mount/slew/stop", request.path.c_str());
+    TEST_ASSERT_TRUE(API.parseStopSlew(200, Fixtures::STOP_SLEW_OK).outcome == ParkOutcome::Accepted);
+    const ParkReply refused = API.parseStopSlew(409, Fixtures::PARK_NOT_CONNECTED);
+    TEST_ASSERT_TRUE(refused.outcome == ParkOutcome::Refused);
+    TEST_ASSERT_EQUAL_STRING("Mount not connected", refused.detail.c_str());
+    TEST_ASSERT_TRUE(API.parseStopSlew(200, Fixtures::PARK_PARKING).outcome == ParkOutcome::Unreadable);
+    TEST_ASSERT_TRUE(API.parseStopSlew(500, Fixtures::NOT_JSON).outcome == ParkOutcome::Unreadable);
+}
+
 void test_failed_reading_is_not_parked(void)
 {
     const MountReading reading = failedReading(ReadingStatus::Unreachable, "connection refused", NOW_MS);
@@ -240,6 +254,7 @@ int main(int, char **)
     RUN_TEST(test_parse_park_not_connected_refused);
     RUN_TEST(test_parse_park_unexpected_text_unreadable);
     RUN_TEST(test_parse_park_not_json_unreadable);
+    RUN_TEST(test_v2_stop_slew);
     RUN_TEST(test_failed_reading_is_not_parked);
     RUN_TEST(test_make_api_v2);
     RUN_TEST(test_parse_api_version);

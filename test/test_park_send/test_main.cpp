@@ -125,8 +125,10 @@ void test_still_and_not_parked_sends_at_once(void)
     TEST_ASSERT_EQUAL(ParkSendEvent::None, sender.step(at(3000, good(3000, false, false))));
 }
 
-// A slew that never ends: sent at the limit, once, flagged as such.
-void test_slewing_past_the_limit_sends_anyway(void)
+// M06: a park sent into a goto fails too (the API stops the slew and parks at
+// once; OnStep refuses while decelerating). At the limit the slew is stopped on
+// its own (no park); the park goes once a reading after the stop says still.
+void test_at_the_limit_the_slew_is_stopped_then_parked_when_still(void)
 {
     ParkSender sender;
     sender.request(1000);
@@ -134,9 +136,66 @@ void test_slewing_past_the_limit_sends_anyway(void)
     const uint64_t limitAt = 1000 + PARK_SLEW_WAIT_MS;
     TEST_ASSERT_EQUAL(0, run(sender, 1000, limitAt - 1, {UINT64_MAX, false}, &last));
     TEST_ASSERT_EQUAL(ParkSendEvent::Waiting, last);
-    TEST_ASSERT_EQUAL(ParkSendEvent::SendAtLimit, sender.step(at(limitAt, good(limitAt, true, false))));
-    TEST_ASSERT_FALSE(sender.waiting());
+    TEST_ASSERT_EQUAL(ParkSendEvent::StopSlew, sender.step(at(limitAt, good(limitAt, true, false))));
+    TEST_ASSERT_TRUE(asksNina(ParkSendEvent::StopSlew));
+    TEST_ASSERT_FALSE(sends(ParkSendEvent::StopSlew)); // not a park
+    TEST_ASSERT_TRUE(sender.waiting());
+    TEST_ASSERT_TRUE(sender.stopped());
+    TEST_ASSERT_TRUE(sender.waitingForSlew());
+    // A reading from the moment of the stop decides nothing; decelerating waits.
+    TEST_ASSERT_EQUAL(ParkSendEvent::None, sender.step(at(limitAt + 100, good(limitAt, false, false))));
     TEST_ASSERT_EQUAL(ParkSendEvent::None, sender.step(at(limitAt + 2000, good(limitAt + 2000, true, false))));
+    TEST_ASSERT_EQUAL(ParkSendEvent::None, sender.step(at(limitAt + 4000, good(limitAt + 4000, true, false))));
+    // Still: the park, once.
+    TEST_ASSERT_EQUAL(ParkSendEvent::Send, sender.step(at(limitAt + 6000, good(limitAt + 6000, false, false))));
+    TEST_ASSERT_FALSE(sender.waiting());
+    TEST_ASSERT_EQUAL(ParkSendEvent::None, sender.step(at(limitAt + 8000, good(limitAt + 8000, false, false))));
+}
+
+// Still slewing PARK_STOP_WAIT_MS after the stop: the park anyway (warned), once.
+void test_still_slewing_after_the_stop_sends_the_park_anyway(void)
+{
+    ParkSender sender;
+    sender.request(1000);
+    const uint64_t limitAt = 1000 + PARK_SLEW_WAIT_MS;
+    int stops = 0;
+    int parks = 0;
+    ParkSendEvent last = ParkSendEvent::None;
+    for (uint64_t t = 1000; t <= limitAt + PARK_STOP_WAIT_MS + 10000; t += NINA_POLL_MS)
+    {
+        const ParkSendEvent e = sender.step(at(t, good(t, true, false)));
+        stops += e == ParkSendEvent::StopSlew ? 1 : 0;
+        parks += sends(e) ? 1 : 0;
+        if (e != ParkSendEvent::None)
+            last = e;
+        if (t < limitAt + PARK_STOP_WAIT_MS)
+            TEST_ASSERT_EQUAL(0, parks);
+    }
+    TEST_ASSERT_EQUAL(1, stops);
+    TEST_ASSERT_EQUAL(1, parks);
+    TEST_ASSERT_EQUAL(ParkSendEvent::SendAtLimit, last);
+    TEST_ASSERT_FALSE(sender.waiting());
+}
+
+// Parked after the stop (it was parking after all): nothing sent.
+void test_parked_after_the_stop_sends_nothing(void)
+{
+    ParkSender sender;
+    sender.request(1000);
+    const uint64_t limitAt = 1000 + PARK_SLEW_WAIT_MS;
+    TEST_ASSERT_EQUAL(ParkSendEvent::StopSlew, sender.step(at(limitAt, good(limitAt, true, false))));
+    TEST_ASSERT_EQUAL(ParkSendEvent::AlreadyParked, sender.step(at(limitAt + 2000, good(limitAt + 2000, false, true))));
+}
+
+// The roof leaves its end after the stop: no park.
+void test_roof_leaving_its_end_after_the_stop_sends_no_park(void)
+{
+    ParkSender sender;
+    sender.request(1000);
+    const uint64_t limitAt = 1000 + PARK_SLEW_WAIT_MS;
+    TEST_ASSERT_EQUAL(ParkSendEvent::StopSlew, sender.step(at(limitAt, good(limitAt, true, false))));
+    TEST_ASSERT_EQUAL(ParkSendEvent::Dropped, sender.step(at(limitAt + 2000, good(limitAt + 2000, false, false), false)));
+    TEST_ASSERT_FALSE(sender.waiting());
 }
 
 // The close sequence and a command's park wait ask again and again while one
@@ -147,14 +206,17 @@ void test_duplicate_requests_while_waiting_send_once(void)
     TEST_ASSERT_TRUE(sender.request(1000));
     sender.step(at(1000, good(1000, true, false)));
     int sent = 0;
-    for (uint64_t t = 3000; t <= 1000 + PARK_SLEW_WAIT_MS; t += NINA_POLL_MS)
+    int stops = 0;
+    for (uint64_t t = 3000; t <= 1000 + PARK_SLEW_WAIT_MS + PARK_STOP_WAIT_MS; t += NINA_POLL_MS)
     {
         if (t % 30000 < NINA_POLL_MS)
             TEST_ASSERT_FALSE(sender.request(t));
-        if (sends(sender.step(at(t, good(t, true, false)))))
-            ++sent;
+        const ParkSendEvent e = sender.step(at(t, good(t, true, false)));
+        stops += e == ParkSendEvent::StopSlew ? 1 : 0;
+        sent += sends(e) ? 1 : 0;
     }
-    TEST_ASSERT_EQUAL(1, sent); // at the first request's limit
+    TEST_ASSERT_EQUAL(1, stops); // at the first request's limit
+    TEST_ASSERT_EQUAL(1, sent);  // the stop's own limit later
     TEST_ASSERT_FALSE(sender.waiting());
 }
 
@@ -281,7 +343,10 @@ int main(int, char **)
     RUN_TEST(test_slewing_then_stopped_sends_once);
     RUN_TEST(test_already_at_park_sends_nothing);
     RUN_TEST(test_still_and_not_parked_sends_at_once);
-    RUN_TEST(test_slewing_past_the_limit_sends_anyway);
+    RUN_TEST(test_at_the_limit_the_slew_is_stopped_then_parked_when_still);
+    RUN_TEST(test_still_slewing_after_the_stop_sends_the_park_anyway);
+    RUN_TEST(test_parked_after_the_stop_sends_nothing);
+    RUN_TEST(test_roof_leaving_its_end_after_the_stop_sends_no_park);
     RUN_TEST(test_duplicate_requests_while_waiting_send_once);
     RUN_TEST(test_our_own_park_is_never_asked_twice);
     RUN_TEST(test_roof_leaving_its_end_drops_the_request);
