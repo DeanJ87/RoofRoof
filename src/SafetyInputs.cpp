@@ -184,6 +184,8 @@ namespace SQM
         park.switch2 = switch2;
         park.nowMs = nowMs;
         parkResult = Safety::evaluatePark(park);
+        // Spec 050: the text says why no park request has gone out.
+        parkResult.askWaiting = !parkResult.parked && snap.parkWaitingForSlew;
         // Spec 021: the last good reading, kept across failed reads, and the hold
         // a move under way may ride on.
         Safety::rememberNina(ninaMemory, snap.nina, snap.ninaGeneration);

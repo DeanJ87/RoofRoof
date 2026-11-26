@@ -1,5 +1,6 @@
 #include "ParkRule.h"
 
+#include "ParkSend.h"
 #include "SafetyInput.h"
 
 namespace SQM
@@ -163,6 +164,7 @@ namespace SQM
             append(text, b & ParkSwitch2Unreadable, "Park switch 2 unreadable");
             append(text, b & ParkSourcesDisagree, "N.I.N.A. and the park switches disagree");
             append(text, b & ParkNoSwitchFitted, "no park switch fitted");
+            append(text, r.askWaiting, PARK_ASK_WAITING_TEXT); // spec 050
             return "not parked: " + text;
         }
     } // namespace Safety

@@ -66,6 +66,8 @@ namespace SQM
             // New settings: that source is polled at once.
             void ninaChanged() { ninaEver = false; }
             void sqmeterChanged() { sqmeterEver = false; }
+            // Spec 050: a park request wants a reading now.
+            void ninaWanted() { ninaEver = false; }
             // When the weather poll is next due (spec 020's site reads keep
             // clear of it); `nowMs` when it is due now.
             uint64_t sqmeterNextMs(uint64_t nowMs, bool moving) const;

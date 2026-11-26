@@ -1,6 +1,20 @@
 <!--
 Sync Impact Report
-- Version: 11.1.0 -> 12.0.0 (MAJOR: Principle II relaxes its re-check during a move. A park reading
+- Version: 12.0.0 -> 12.1.0 (MINOR: Principle II gains a rule for park requests. Nothing is
+  relaxed: RoofRoof sends fewer park requests than before, never more.)
+- Modified: II. Close Only Onto a Parked Mount. New: **a park request never stops a slew**. N.I.N.A.'s
+  Advanced API stops a slewing mount before it parks it, and a mount already parking reads slewing,
+  so RoofRoof doesn't ask N.I.N.A. to park while a reading taken after the request (or the last good
+  one, within its freshness) says the mount is slewing; at park it sends nothing; otherwise it asks
+  once. A slew that hasn't ended after 180 s gets the park anyway, logged. Requests while one waits
+  join it. The roof-at-an-end rule (11.1.0) is checked again when it is sent. The park check is
+  unchanged: only AtPark in a fresh reading (with the switches) confirms the park.
+- Why: findings F57/F59 (spec 050), twice on the real OnStep mount: N.I.N.A.'s sequence parked the
+  mount, RoofRoof's automatic close asked for the park a few seconds later, the API stopped the park
+  part-way and the mount was left unparked; the roof (rightly) couldn't close.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/alpaca.md,
+  specs/050-park-only-when-still/spec.md.
+- Earlier: 11.1.0 -> 12.0.0 (MAJOR: Principle II relaxes its re-check during a move. A park reading
   past its freshness no longer stops a move that started with the park confirmed.)
 - Modified: II. Close Only Onto a Parked Mount. The re-check bullet no longer says "evidence past its
   freshness stops the motor the same way". New: **a command is a command**. An open or a close (any
@@ -599,6 +613,17 @@ Closing onto an unparked telescope is the most expensive failure this device can
   `ShutterStatus` (open only at the open magnet), so a sequence can gate its own slews. A person
   may still move the roof or the mount through the confirmed paths below, warned; an automation
   never can.
+- **A park request never stops a slew** (12.1.0). N.I.N.A.'s Advanced API stops a slewing mount
+  before parking it, and a mount already parking reads slewing, so a second park request can leave
+  the mount stopped part-way, not parked. RoofRoof MUST NOT send a park request while N.I.N.A.'s
+  latest reading taken since the request (or, when N.I.N.A. can't be read, its last good reading
+  within its freshness) says the mount is slewing: the request waits, and is decided on the next
+  such reading. A reading that says parked ends it with nothing sent; one that says neither slewing
+  nor parked (or none that can be read, as before) sends it once. Requests while one waits join it,
+  and a request soon after RoofRoof's own send is decided only on a reading taken once the mount
+  has had time to show that park. A slew still going after 180 s is not a park: the request is sent
+  then, and logged. The roof must still be at an end when it is sent (above). N.I.N.A.'s answer to
+  the request never confirms the park; only AtPark in a fresh reading does.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed. The automatic
   close keeps asking for the park for as long as the roof should close, and the critical alert names
@@ -919,4 +944,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 12.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 12.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

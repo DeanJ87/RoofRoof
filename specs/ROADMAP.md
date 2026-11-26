@@ -539,6 +539,16 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
     `tools/soak/return_soak.py` cuts the network N times.
 - **Out of scope:** the safety poller (spec 047), WiFi and lwIP buffers, a move's own heap use.
 
+### 050 A park request never stops a slew (base: main after 048)
+
+- **Scope:**
+  - Constitution 12.1.0 (II): no park request while a reading taken after it says the mount is
+    slewing (findings F57/F59: N.I.N.A.'s API stops a park under way to start a new one); parked:
+    nothing sent; otherwise once. Requests join a waiting one; 180 s limit, then sent anyway; the
+    roof re-checked at the send. The park text says why it waits.
+- **Out of scope:** a setting for the wait's limit; a way for a requester to withdraw a request;
+  049 (paused).
+
 ## Merge order
 
 ```text
