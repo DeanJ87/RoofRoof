@@ -132,17 +132,21 @@ const imagingAppItems = ({ config, status }: GlanceInput): GlanceItem[] => {
   if (!clients || status?.alpaca?.enabled === false) return [];
   // Not connected only needs a look when alerts wait for an imaging app.
   const needed = config?.alerts?.enabled && config.alerts.sendMode === 'whileConnected';
-  return Object.entries(clients).map(([device, state]) => {
-    const view = describeClient(state);
-    const severity = view.tone === 'muted' && !needed ? 'idle' : SEVERITY[view.tone];
-    return item('imaging-app', severity, {
-      label: t('status.imagingApp'),
-      state: view.state,
-      sub: device,
-      checked: view.checked,
-      detail: state.silent ? t('status.goneQuietHint') : undefined,
+  // Spec 043: the read-only Switch is optional for a sequence: a tile only once an app uses it.
+  const used = ([device, state]: [string, (typeof clients)[string]]) => device !== 'switch' || state.connected || state.watching;
+  return Object.entries(clients)
+    .filter(used)
+    .map(([device, state]) => {
+      const view = describeClient(state);
+      const severity = view.tone === 'muted' && !needed ? 'idle' : SEVERITY[view.tone];
+      return item('imaging-app', severity, {
+        label: t('status.imagingApp'),
+        state: view.state,
+        sub: device,
+        checked: view.checked,
+        detail: state.silent ? t('status.goneQuietHint') : undefined,
+      });
     });
-  });
 };
 
 // The roof's problems (spec 009 FR-015, FR-016; DS-07): a latched fault, and an
