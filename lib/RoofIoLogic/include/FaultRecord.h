@@ -19,7 +19,7 @@ namespace SQM
         {
             Logic,            // lib/RoofLogic's own fault kinds
             Watchdog,         // the control task stopped stepping with the driver on (gap ms / limit ms)
-            ParkInterlock,    // the park confirmation was lost during a close (interlock bits / 0)
+            ParkInterlock,    // the park confirmation was lost during a move (interlock bits, spec 047 InterlockDuringOpen / 0)
             StoredUnreadable, // the saved record couldn't be read back
             WatchdogStopped,  // the watchdog timer itself stopped with the driver on (beat age ms / limit ms)
             BenchSupply,      // bench firmware on a powered roof (spec 011): real supply volts or NaN / limit volts

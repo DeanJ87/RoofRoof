@@ -516,6 +516,17 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** the web server library's and lwIP's own allocations, WiFi buffers, TLS, a
   static save stack and an automatic restart (research R4, R6).
 
+### 047 A move finishes when N.I.N.A. stops answering (base: main after 046)
+
+- **Scope:**
+  - Constitution 12.0.0 (II): a move that started on a confirmed park goes on to its end when
+    N.I.N.A. merely stops answering (findings F36/F36b); a fresh "not parked", a switch, a fault and
+    Stop still stop it. A log line and an information alert when it finishes that way.
+  - The interlock's fault names the move's direction ("Park lost during the open").
+  - SQMeter's reply may take 8 s; the weather every 1.5 s while the roof moves; N.I.N.A. read
+    before each weather poll so a slow SQMeter can't starve the park reading (F45/F46).
+- **Out of scope:** a separate task for N.I.N.A. (a second 8 KB stack; spec.md says why not).
+
 ## Merge order
 
 ```text

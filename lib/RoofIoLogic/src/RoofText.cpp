@@ -75,7 +75,12 @@ namespace SQM
                         static_cast<double>(r.fault.measured),
                         static_cast<double>(r.fault.limit));
                 case FaultCause::ParkInterlock:
-                    return "Park lost during the close: " + failedParkInputs(static_cast<uint32_t>(r.fault.measured));
+                {
+                    // Spec 047: named by the move's direction (faults stored before it say "close").
+                    const uint32_t bits = static_cast<uint32_t>(r.fault.measured);
+                    const char *move = (bits & InterlockDuringOpen) != 0 ? "open" : "close";
+                    return std::string("Park lost during the ") + move + ": " + failedParkInputs(bits & ~InterlockDuringOpen);
+                }
                 case FaultCause::WatchdogStopped:
                     return format(
                         "Watchdog timer stopped: last check %.0f ms ago > %.0f ms",

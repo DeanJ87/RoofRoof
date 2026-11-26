@@ -100,9 +100,17 @@ namespace SQM
             bool riding = false;
             uint64_t freshUntilMs = 0; // the relied-on reading's takenAtMs + ninaMaxAgeMs; 0 when neither
             uint32_t ageMs = 0;        // that reading's age now
+            // Spec 047 (constitution 12.0.0, II): not parked only because
+            // N.I.N.A. has no fresh answer (no reply, an unreadable reply, an
+            // API error, or its last reading past its freshness), and that last
+            // answer, with the switches as read now, said parked. Riding
+            // implies it. Unbounded in time: a move that started with the park
+            // confirmed goes on to its end on it; it never starts one.
+            bool unanswered = false;
         };
 
-        // `result` is evaluatePark(inputs). A ride-through never starts a move:
+        // `result` is evaluatePark(inputs). A ride-through (and spec 047's
+        // unanswered park) never starts a move:
         // only the park result confirms a park for a start. With the switches
         // alone (spec 024) nothing rides and nothing is bounded by N.I.N.A.
         CloseHold closeHold(const ParkInputs &inputs, const ParkResult &result, const NinaMemory &memory);

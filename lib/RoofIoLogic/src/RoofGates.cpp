@@ -28,6 +28,7 @@ namespace SQM
             stale.parked = false;
             stale.parkText = text;
             stale.ninaGrace = false;
+            stale.parkUnanswered = false; // spec 047: a stalled handover is not N.I.N.A. not answering
             return stale;
         }
 
@@ -118,44 +119,84 @@ namespace SQM
             }
         } // namespace
 
-        bool closeMayContinue(const GateInputs &in)
+        bool parkHoldsFresh(const GateInputs &in)
         {
             return (in.parked || in.ninaGrace) && readingFresh(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
         }
 
+        namespace
+        {
+            // Spec 047 (constitution 12.0.0, II): staleness alone never stops a
+            // move; the main loop drops `parked` and `parkUnanswered` the moment
+            // a fresh answer says "not parked". A ride-through handed over
+            // without `parkUnanswered` (the demo, the tests) stays bounded.
+            bool parkResultHolds(const GateInputs &in)
+            {
+                return in.parked || in.parkUnanswered || (in.ninaGrace && readingFresh(in));
+            }
+        } // namespace
+
+        bool closeMayContinue(const GateInputs &in)
+        {
+            return parkResultHolds(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
+        }
+
+        namespace
+        {
+            // The park interlock watches this move: a close, an open or a
+            // calibration leg, except the moves a person (or the N.I.N.A.-lost
+            // close) runs without it.
+            bool parkWatched(const Roof::Status &status, bool parkOverridden, bool openParkOverridden)
+            {
+                // Spec 016: any calibration leg too. Until the person confirms the open
+                // end, a leg may drive the roof the other way (a motor wired backwards).
+                // Spec 027: an open too (the roof passes over the telescope either way).
+                if (parkOverridden && status.state == Roof::State::Closing)
+                    return false;
+                // Spec 039 (constitution 10.0.0, II): a person's confirmed open past
+                // the park; every other stop (weather, faults, Stop) still applies.
+                if (openParkOverridden && status.state == Roof::State::Opening && !status.calibrating && !status.jogging)
+                    return false;
+                // Spec 033 (constitution 9.0.0, II): a person at the roof jogging it
+                // toward closed watches the telescope themselves.
+                if (status.jogging && status.target == Roof::End::Closed)
+                    return false;
+                return status.state == Roof::State::Closing || status.state == Roof::State::Opening || status.calibrating;
+            }
+        } // namespace
+
         bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden, bool ninaLost, bool openParkOverridden)
         {
-            // Spec 016: any calibration leg too. Until the person confirms the open
-            // end, a leg may drive the roof the other way (a motor wired backwards).
-            // Spec 027: an open too (the roof passes over the telescope either way).
-            if (parkOverridden && status.state == Roof::State::Closing)
-                return false;
-            // Spec 039 (constitution 10.0.0, II): a person's confirmed open past
-            // the park; every other stop (weather, faults, Stop) still applies.
-            if (openParkOverridden && status.state == Roof::State::Opening && !status.calibrating && !status.jogging)
-                return false;
-            // Spec 033 (constitution 9.0.0, II): a person at the roof jogging it
-            // toward closed watches the telescope themselves.
-            if (status.jogging && status.target == Roof::End::Closed)
+            if (!parkWatched(status, parkOverridden, openParkOverridden))
                 return false;
             if (ninaLost && status.state == Roof::State::Closing)
                 return !switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
-            const bool watched = status.state == Roof::State::Closing || status.state == Roof::State::Opening || status.calibrating;
-            return watched && !closeMayContinue(in);
+            return !closeMayContinue(in);
+        }
+
+        bool movesOnStale(const Roof::Status &status, const GateInputs &in, bool parkOverridden, bool ninaLost, bool openParkOverridden)
+        {
+            if (!parkWatched(status, parkOverridden, openParkOverridden) || (ninaLost && status.state == Roof::State::Closing))
+                return false;
+            return closeMayContinue(in) && !parkHoldsFresh(in);
         }
 
         uint32_t interlockBits(const GateInputs &in)
         {
             uint32_t bits = 0;
-            if (!in.parked && !in.ninaGrace)
-                bits |= InterlockParkResult;
-            else if (!readingFresh(in))
-                bits |= InterlockNinaStale;
+            if (!parkResultHolds(in))
+                bits |= in.ninaGrace ? InterlockNinaStale : InterlockParkResult;
             if (in.fittedSwitches >= 1 && in.switch1 != Contact::Closed)
                 bits |= InterlockSwitch1;
             if (in.fittedSwitches >= 2 && in.switch2 != Contact::Closed)
                 bits |= InterlockSwitch2;
             return bits;
+        }
+
+        uint32_t interlockRecordBits(const Roof::Status &status, const GateInputs &in)
+        {
+            const bool opening = status.state == Roof::State::Opening;
+            return interlockBits(in) | (opening ? static_cast<uint32_t>(InterlockDuringOpen) : 0u);
         }
 
         bool openMustStop(const Roof::Status &status, const GateInputs &in, uint8_t overrides)

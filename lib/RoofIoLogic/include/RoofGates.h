@@ -43,6 +43,10 @@ namespace SQM
             // `parkFreshUntilMs` (0: no bound, as in the demo and the tests).
             bool ninaGrace = false;
             uint64_t parkFreshUntilMs = 0;
+            // Spec 047 (constitution 12.0.0, II): Safety::CloseHold::unanswered.
+            // N.I.N.A. hasn't answered within its freshness, and its last
+            // answer said parked: a move under way goes on to its end.
+            bool parkUnanswered = false;
             uint64_t nowMs = 0; // when checked, on the clock N.I.N.A.'s readings are stamped with
             // Spec 024: the park switch (1 or 2) the stuck-switch check holds
             // suspect (Safety::stuckSwitch), 0 when none: Open is refused.
@@ -71,7 +75,14 @@ namespace SQM
             InterlockParkResult = 1u << 0, // spec 004's park result is not "parked"
             InterlockSwitch1 = 1u << 1,    // fitted switch 1 doesn't read closed
             InterlockSwitch2 = 1u << 2,    // fitted switch 2 doesn't read closed
-            InterlockNinaStale = 1u << 3,  // spec 021: the relied-on N.I.N.A. reading is past its freshness
+            // Spec 021: the relied-on N.I.N.A. reading is past its freshness. Spec
+            // 047: only for a ride-through handed over without parkUnanswered
+            // (never on the device: a move goes on when N.I.N.A. merely doesn't
+            // answer); kept for faults stored before it.
+            InterlockNinaStale = 1u << 3,
+            // Spec 047: the stopped move was an open (the fault's text says so);
+            // set by interlockRecordBits, never by interlockBits.
+            InterlockDuringOpen = 1u << 4,
         };
 
         // Spec 027: what a person may confirm past (bits of a command's
@@ -119,11 +130,18 @@ namespace SQM
         // Stop and abort are never gated. `overrides` (OverrideBit) sets the
         // matching refusals aside; the caller decides who may set them.
         GateRefusal gateCommand(Roof::Command command, const GateInputs &in, uint8_t overrides = 0);
-        // Spec 021: a move under way may go on: the park result says parked, or it
-        // rides through a missed N.I.N.A. reply (ninaGrace); every fitted switch
-        // reads closed now; and the reading relied on is still fresh at `nowMs`.
-        // Never used to start a move (gateCommand uses parkHolds).
+        // Spec 021: a move under way may go on: every fitted switch reads closed
+        // now, and the park result says parked, or it rides through a missed
+        // N.I.N.A. reply (ninaGrace, while fresh), or (spec 047, constitution 12.0.0)
+        // N.I.N.A. hasn't answered and its last answer said parked
+        // (parkUnanswered), however long ago. Only a fresh answer that says
+        // "not parked" (not at park, slewing, mount not connected, the sources
+        // disagreeing), a switch or the handover going stale (currentGates)
+        // stops it. Never used to start a move (gateCommand uses parkHolds).
         bool closeMayContinue(const GateInputs &in);
+        // Spec 047: the park holds on a fresh N.I.N.A. reading (the park result,
+        // or the ride-through within `parkFreshUntilMs`) and the switches.
+        bool parkHoldsFresh(const GateInputs &in);
         // A close, an open (spec 027) or (spec 016) any calibration leg is under
         // way, including its dead time, and the park no longer holds (spec 033:
         // never for a person's jog toward closed: they watch the telescope)
@@ -139,8 +157,20 @@ namespace SQM
             bool parkOverridden = false,
             bool ninaLost = false,
             bool openParkOverridden = false);
+        // Spec 047: the move under way is one interlockLost watches and goes on
+        // only because N.I.N.A. hasn't answered (closeMayContinue without
+        // parkHoldsFresh): it finishes on a stale park reading.
+        bool movesOnStale(
+            const Roof::Status &status,
+            const GateInputs &in,
+            bool parkOverridden = false,
+            bool ninaLost = false,
+            bool openParkOverridden = false);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
+        // Spec 047: interlockBits for the fault record, with InterlockDuringOpen
+        // when the move stopped was an open (its text names the direction).
+        uint32_t interlockRecordBits(const Roof::Status &status, const GateInputs &in);
         // An open (or, spec 019, a jog toward open; spec 033: never one toward closed) is under way and the verdict
         // is no longer safe, or daylight wants the roof closed: stop it.
         // Spec 027: an Open override in effect (OverrideBit) sets its reasons aside.

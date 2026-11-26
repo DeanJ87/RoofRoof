@@ -224,12 +224,17 @@ namespace SQM
         const Roof::Status &status = controller.status();
         const RoofIo::GateInputs now = currentGates();
         stepGuard(now); // spec 027: the wait for the park, the overrides in effect
+        // Spec 047 (constitution 12.0.0, II): a move that started with the park
+        // confirmed goes on when N.I.N.A. merely stops answering; logged when
+        // it begins, logged and alerted when it reaches its end that way.
+        stepStaleRide(status, now);
         // Constitution II: a close (spec 027: or an open) stops as a motion
         // fault when the park is lost; not a person's confirmed close or open.
         // Spec 030: N.I.N.A. lost; spec 039: a person's confirmed open past the park.
         if (RoofIo::interlockLost(status, now, guard.closeParkOverride(), guard.closeNinaLost(), guard.openParkOverride()))
         {
-            latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(now)), 0.0f));
+            latchExternal(RoofIo::externalRecord(
+                RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockRecordBits(status, now)), 0.0f));
             return;
         }
         // Constitution III: no opening while the weather isn't safe; spec 013:
@@ -240,6 +245,20 @@ namespace SQM
             applyOutput();
             notice = "Opening stopped: " + RoofIo::describeGate(RoofIo::openRefusal(now, guard.openOverride()), now);
         }
+    }
+
+    // Under the lock, every control step (spec 047).
+    void RoofControl::stepStaleRide(const Roof::Status &status, const RoofIo::GateInputs &now)
+    {
+        const bool onStale = RoofIo::movesOnStale(status, now, guard.closeParkOverride(), guard.closeNinaLost(), guard.openParkOverride());
+        const RoofIo::StaleStep ride = staleRide.step(status, onStale);
+        if (ride == RoofIo::StaleStep::None)
+            return;
+        notice = RoofIo::staleRideText(ride, staleRide.target());
+        if (ride != RoofIo::StaleStep::Finished)
+            return;
+        staleText = notice;
+        staleAlertWanted.store(true);
     }
 
     // The raw Hall readings up to the fault, oldest first: a burst of noise

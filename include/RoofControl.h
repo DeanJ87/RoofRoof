@@ -29,6 +29,7 @@
 #include "RoofController.h"
 #include "RoofGates.h"
 #include "RoofStatus.h"
+#include "StaleRide.h"
 #include "SafetyInput.h"
 #include "SwitchInput.h"
 #include "SwitchWatch.h"
@@ -85,6 +86,10 @@ namespace SQM
         // Main loop, spec 039: a person's Open or Close set the park aside; its
         // text for the information alert (once per override).
         bool takeOverrideAlert(std::string &text);
+        // Main loop, spec 047: a move that started with the park confirmed
+        // reached its end without a fresh park reading; its text for the
+        // information alert (once per move).
+        bool takeStaleAlert(std::string &text);
         // Spec 005's automatic close: refused (CloseSeq::PERSON_STOP_REASON)
         // if a person has stopped the roof since the snapshot that showed
         // `personStopsSeen`, checked under the same lock as the command, so
@@ -279,6 +284,7 @@ namespace SQM
         std::string noteParkOverride(const std::string &text);
         Outcome admitLocked(Roof::Command command, Roof::Origin origin, uint8_t overrides, const RoofIo::Blockers &now);
         void stepGuard(const RoofIo::GateInputs &now);
+        void stepStaleRide(const Roof::Status &status, const RoofIo::GateInputs &now); // spec 047
         RoofIo::CommandCheck checkWait() const;
         Outcome runChecked(Roof::Command command, Roof::Origin origin);
         static Outcome blockedOutcome(const RoofIo::Blockers &now, Roof::State state);
@@ -319,10 +325,12 @@ namespace SQM
         uint32_t personStops = 0;
         uint32_t remoteStops = 0; // spec 014: those of personStops that were a remote stop honoured by autoClose.remoteStop
         Roof::Origin closeOrigin = Roof::Origin::Person;
-        uint8_t closeOverrides = 0; // spec 027: a person's confirmed close, deferred
-        RoofIo::MoveGuard guard;    // spec 027: the wait for the park and the overrides in effect
-        std::string waitAlertText;  // a wait that gave up, for the main loop's alert
-        std::string overrideText;   // spec 039: a person's park override, for the main loop's alert
+        uint8_t closeOverrides = 0;  // spec 027: a person's confirmed close, deferred
+        RoofIo::MoveGuard guard;     // spec 027: the wait for the park and the overrides in effect
+        std::string waitAlertText;   // a wait that gave up, for the main loop's alert
+        std::string overrideText;    // spec 039: a person's park override, for the main loop's alert
+        RoofIo::StaleRide staleRide; // spec 047: a move going on without a fresh park reading
+        std::string staleText;       // spec 047: such a move finished, for the main loop's alert
         bool safetyHandedOver = false;
         uint32_t safetyAtMs = 0;
         RoofIo::FaultRecord fault;      // the latched fault and its cause
@@ -371,6 +379,7 @@ namespace SQM
         std::atomic<bool> parkRequestWanted{false}; // spec 027
         std::atomic<bool> waitAlertWanted{false};
         std::atomic<bool> overrideAlertWanted{false}; // spec 039
+        std::atomic<bool> staleAlertWanted{false};    // spec 047
         std::atomic<bool> calibratingNow{false};      // spec 016: calibration.active(), for moving()
         std::function<RoofIo::Blockers()> blockers;
         std::function<void(const RoofIo::BlockerDecision &)> closeHook;

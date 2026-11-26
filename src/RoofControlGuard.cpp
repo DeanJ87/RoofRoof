@@ -97,6 +97,15 @@ namespace SQM
         return true;
     }
 
+    bool RoofControl::takeStaleAlert(std::string &text)
+    {
+        if (!staleAlertWanted.exchange(false) || lock == nullptr)
+            return false;
+        RoofLocked held(lock);
+        text = staleText;
+        return true;
+    }
+
     void RoofControl::refreshSnapshot()
     {
         RoofIo::Snapshot s;

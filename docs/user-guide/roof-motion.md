@@ -313,9 +313,10 @@ Before the motion logic sees a command:
 - **Open** is also refused, with the [park switches only](safety-inputs.md#park-switches-only), while
   a park switch hasn't opened in the last 3 roof openings (`parkSwitchCheck`).
 - **Close** is refused unless the mount is confirmed parked by the park source: N.I.N.A. reports it
-  at park, every fitted park switch reads closed, or both ([Safety inputs](safety-inputs.md#park)). During the close this is checked every step; if it no longer
+  at park, every fitted park switch reads closed, or both ([Safety inputs](safety-inputs.md#park)). During the close (and an open) this is checked every step; if it no longer
   holds, the motor stops with an `external` fault, cause `parkInterlock`, naming the input that
-  failed. The weather never blocks a close.
+  failed and the move ("Park lost during the open"). N.I.N.A. merely not answering is not "no longer
+  holds" (spec 047): the move goes on to its end on N.I.N.A.'s last answer. The weather never blocks a close.
 - An Open or Close refused only for the park **waits for it** when N.I.N.A. can be asked, and moves
   only once the park has held ([Park before every move](close-on-unsafe.md#park-before-every-move)).
   A person may [close once without the park](close-on-unsafe.md#a-persons-confirmed-close).
@@ -385,9 +386,12 @@ And before a move starts, **a close always wins**:
 ### If WiFi or power is lost mid-move
 
 - **WiFi lost.** The move carries on under the control task, which doesn't depend on WiFi: it ends
-  on its magnet or at its timeout. An open stops as soon as the weather can't be confirmed safe; a
-  close stops with a `parkInterlock` fault as soon as N.I.N.A. can't confirm the park (constitution
-  II). The device keeps trying the saved network; the setup hotspot only opens at start-up.
+  on its magnet or at its timeout. An open stops once the weather can't be confirmed safe (the
+  weather source's stale time). N.I.N.A. going quiet doesn't stop either move: one that started with
+  the park confirmed goes on to its end, and says so in the log and an information alert (spec 047,
+  constitution 12.0.0, II; [A move under way when N.I.N.A. stops answering](close-on-unsafe.md#a-move-under-way-when-nina-stops-answering)).
+  A park switch opening still stops it with a `parkInterlock` fault. The device keeps trying the
+  saved network; the setup hotspot only opens at start-up.
 - **Power lost or a reset** (brown-out, crash, watchdog). The driver's enable line has a pull-down,
   so the motor stops at once and the worm gear holds the roof. After the restart the position is
   unknown unless a magnet is read, nothing moves until a command or the automatic close, and a latched fault is still latched.
