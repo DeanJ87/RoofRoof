@@ -431,10 +431,10 @@ namespace SQM
         void writeRecentAlert(JsonObject item, const AlertRecord &record, uint32_t nowSeconds)
         {
             item["id"] = record.id;
-            item["event"] = Alerts::alertTypeName(record.alert.type);
-            item["title"] = record.alert.title;
-            item["message"] = record.alert.message;
-            item["level"] = Alerts::alertLevelName(record.alert.level);
+            item["event"] = Alerts::alertTypeName(record.type);
+            item["title"] = static_cast<const char *>(record.title); // referenced: the record outlives the section
+            item["message"] = static_cast<const char *>(record.message);
+            item["level"] = Alerts::alertLevelName(record.level);
             item["ageSeconds"] = nowSeconds - record.uptimeSeconds;
             if (record.epochSeconds != 0)
                 item["timestamp"] = record.epochSeconds;
@@ -445,7 +445,7 @@ namespace SQM
                     continue;
                 JsonObject ch = channels.createNestedObject(alertChannelName(static_cast<AlertChannel>(i)));
                 ch["status"] = deliveryStatusName(record.status[i]);
-                ch["detail"] = record.detail[i];
+                ch["detail"] = static_cast<const char *>(record.detail[i]);
             }
         }
     } // namespace
@@ -453,7 +453,6 @@ namespace SQM
     // Spec 031: one record at a time from a small pool (it was one 8 KB pool).
     void WebServer::handleAlertsRecent(AsyncWebServerRequest *request)
     {
-        const std::vector<AlertRecord> records = alertDispatcher->recent();
         DynamicJsonDocument doc(RECENT_ALERT_DOC_BYTES);
         HeapSafe::ChunkText text;
         HeapSafe::JsonStream json(text);
@@ -463,12 +462,23 @@ namespace SQM
         json.members(doc);
         json.beginArray("alerts");
         const uint32_t nowSeconds = millis() / 1000;
-        for (auto it = records.rbegin(); it != records.rend(); ++it) // newest first
+        // Spec 045: one record at a time straight from the dispatcher's ring
+        // (the whole list was copied onto the heap), newest first.
+        struct Visit
         {
-            doc.clear();
-            writeRecentAlert(doc.to<JsonObject>(), *it, nowSeconds);
-            json.element(doc);
-        }
+            JsonDocument &doc;
+            HeapSafe::JsonStream &json;
+            uint32_t nowSeconds;
+        } visit{doc, json, nowSeconds};
+        alertDispatcher->visitRecent(
+            [](const AlertRecord &record, void *context)
+            {
+                Visit &v = *static_cast<Visit *>(context);
+                v.doc.clear();
+                writeRecentAlert(v.doc.to<JsonObject>(), record, v.nowSeconds);
+                v.json.element(v.doc);
+            },
+            &visit);
         json.endArray();
         json.endObject();
         WebReply::sendText(request, 200, "application/json", std::move(text));

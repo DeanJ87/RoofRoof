@@ -27,7 +27,7 @@ export interface SystemStatus {
   freeHeap: number;
   minFreeHeap?: number;
   maxAllocHeap?: number;
-  heap8Bit?: { free: number; largest: number; minFree: number; reserveSpent?: number }; // spec 037: what malloc uses; 038: reserve
+  heap8Bit?: { free: number; largest: number; minFree: number; reserveSpent?: number; largestLow15m?: number; largestLow60m?: number }; // spec 037: what malloc uses; 038: reserve; 045: trend
   heapSize: number;
   stackFree?: { asyncTcp: number; loop: number; roof: number };
   heapStages?: { stage: string; free: number; largest: number }[];

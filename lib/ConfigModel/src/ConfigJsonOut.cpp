@@ -239,6 +239,7 @@ namespace SQM
         DynamicJsonDocument doc(4096);
         appendAlerts(doc.to<JsonObject>(), alerts, redactSecrets, part);
         std::string json;
+        json.reserve(measureJson(doc)); // spec 045: sized once
         serializeJson(doc, json);
         return json;
     }
@@ -248,6 +249,10 @@ namespace SQM
         DynamicJsonDocument doc(ConfigJson::CAPACITY);
         ConfigJson::write(*this, doc, redactSecrets, includeAlerts);
         std::string output;
+        // Spec 045: sized once. Grown a character at a time, the string doubled
+        // to 16 KB (and needed the old 8 KB beside it) for 8 KB of settings: the
+        // largest block a save needed.
+        output.reserve(measureJson(doc));
         serializeJson(doc, output);
         return output;
     }

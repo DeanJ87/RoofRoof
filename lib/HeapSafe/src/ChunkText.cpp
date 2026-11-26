@@ -14,6 +14,20 @@ namespace SQM
         {
         }
 
+        ChunkText ChunkText::over(uint8_t *buffer, size_t capacity)
+        {
+            ChunkText text(0);
+            text.external = true;
+            if (buffer == nullptr)
+                capacity = 0;
+            capacity = std::min(capacity, MAX_PIECES * PIECE_BYTES);
+            text.limit = capacity;
+            text.maxPieces = (capacity + PIECE_BYTES - 1) / PIECE_BYTES;
+            for (size_t i = 0; i < text.maxPieces; ++i)
+                text.pieces[i] = reinterpret_cast<char *>(buffer) + i * PIECE_BYTES;
+            return text;
+        }
+
         ChunkText::~ChunkText()
         {
             release();
@@ -23,7 +37,9 @@ namespace SQM
             : maxPieces(other.maxPieces),
               allocator(other.allocator),
               length(other.length),
-              failed(other.failed)
+              failed(other.failed),
+              external(other.external),
+              limit(other.limit)
         {
             std::copy(std::begin(other.pieces), std::end(other.pieces), std::begin(pieces));
             std::fill(std::begin(other.pieces), std::end(other.pieces), nullptr);
@@ -41,6 +57,8 @@ namespace SQM
                 allocator = other.allocator;
                 length = other.length;
                 failed = other.failed;
+                external = other.external;
+                limit = other.limit;
                 other.length = 0;
             }
             return *this;
@@ -50,7 +68,8 @@ namespace SQM
         {
             for (char *&piece : pieces)
             {
-                std::free(piece);
+                if (!external)
+                    std::free(piece);
                 piece = nullptr;
             }
         }
@@ -61,7 +80,7 @@ namespace SQM
             if (failed)
                 return false;
             const size_t index = length / PIECE_BYTES;
-            if (index >= maxPieces)
+            if (index >= maxPieces || length >= limit)
             {
                 failed = true;
                 return false;
@@ -89,7 +108,7 @@ namespace SQM
             while (written < count && reserveTail())
             {
                 const size_t offset = length % PIECE_BYTES;
-                const size_t n = std::min(count - written, PIECE_BYTES - offset);
+                const size_t n = std::min({count - written, PIECE_BYTES - offset, limit - length});
                 std::memcpy(pieces[length / PIECE_BYTES] + offset, data + written, n);
                 length += n;
                 written += n;
@@ -130,7 +149,8 @@ namespace SQM
 
         void ChunkText::clear()
         {
-            release();
+            if (!external)
+                release(); // the caller's buffer stays in place
             length = 0;
             failed = false;
         }

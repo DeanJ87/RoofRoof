@@ -153,6 +153,8 @@ namespace SQM
     private:
         static constexpr const char *TAG = "WebServer";
         static constexpr uint16_t PORT = 80;
+        // Spec 045: /assets/ files carry their content's hash in their names.
+        static constexpr const char *ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
         static constexpr uint32_t ALERT_PASS_INTERVAL_MS = 1000;
         static constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 10000;
 
@@ -496,6 +498,8 @@ namespace SQM
         bool requestAuthorised(AsyncWebServerRequest *request) const;
         // Spec 031: /api/status and the live frame, in sections (src/WebServerStatus.cpp).
         void writeStatus(HeapSafe::ChunkText &out) const;
+        // Spec 045: with the caller's section pool (the live frame's, kept).
+        void writeStatus(HeapSafe::ChunkText &out, JsonDocument &doc) const;
         // writeStatus() sections, in document order.
         void appendFirmware(JsonDocument &doc) const;
         void appendRuntime(JsonDocument &doc) const;

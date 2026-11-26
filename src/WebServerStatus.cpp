@@ -3,6 +3,7 @@
 #include "FirmwareMarker.h"
 #include "HeapReserve.h"
 #include "HeapTrace.h"
+#include "HeapTrend.h"
 #include "Ipv6Network.h"
 #include "Logger.h"
 #include "RoofControl.h"
@@ -177,6 +178,10 @@ namespace SQM
             heap8["largest"] = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
             heap8["minFree"] = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
             heap8["reserveSpent"] = HeapSafe::reserve().spent(); // spec 038
+            // Spec 045: the lowest largest block over the last 15 and 60
+            // minutes (one reading a second): fragmentation over a session.
+            heap8["largestLow15m"] = HeapSafe::trend().lowestLargest(15);
+            heap8["largestLow60m"] = HeapSafe::trend().lowestLargest(60);
             doc["heapSize"] = ESP.getHeapSize();
             doc["cpuFreqMHz"] = ESP.getCpuFreqMHz();
             doc["flashSize"] = ESP.getFlashChipSize();
@@ -374,6 +379,11 @@ namespace SQM
     void WebServer::writeStatus(HeapSafe::ChunkText &out) const
     {
         DynamicJsonDocument doc(Core::STATUS_SECTION_CAPACITY);
+        writeStatus(out, doc);
+    }
+
+    void WebServer::writeStatus(HeapSafe::ChunkText &out, JsonDocument &doc) const
+    {
         HeapSafe::JsonStream json(out);
         const auto section = [&doc, &json](auto write)
         {

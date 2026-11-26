@@ -2,7 +2,8 @@ import { FunctionalComponent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { route, useRouter } from 'preact-router';
 import { Banner } from './ui';
-import { TEST_BOX_CHANGED, fetchStatus } from '../lib/settingsApi';
+import { TEST_BOX_CHANGED } from '../lib/settingsApi';
+import { useLiveStatus } from '../hooks/useLiveStatus';
 import type { RoofTestBox } from '../types';
 import { formatDateTime } from '../i18n/format';
 import { listReasons } from './settings/restart';
@@ -11,8 +12,8 @@ import { t } from '../i18n';
 // Spec 022 (constitution 3.0.0): while a test-box bypass is set, every page
 // says so, naming each bypass in effect and when it ends, or that they
 // expired. Red while a check is bypassed, amber while every check applies.
-// Read every 5 s while one is set (30 s otherwise), and at once after a
-// settings save (TEST_BOX_CHANGED).
+// From the page's live status (spec 045); without it, read every 5 s while one
+// is set (30 s otherwise), and at once after a settings save (TEST_BOX_CHANGED).
 
 // Every 5 s while a bypass is set, every 30 s otherwise (and at once after a save).
 const POLL_SET_MS = 5000;
@@ -82,24 +83,11 @@ export const testBoxView = (box: RoofTestBox | undefined): TestBoxView | null =>
 
 /** The live test box state from the status: read every 5 s while set, 30 s otherwise, and after a save. */
 export const useTestBoxStatus = () => {
-  const [box, setBox] = useState<RoofTestBox | undefined>(undefined);
-  const set = Boolean(box?.set);
-  useEffect(() => {
-    let live = true;
-    const read = () =>
-      fetchStatus()
-        // An error answer (null) keeps the last known state: one failed read never hides the banner.
-        .then((status) => live && status && setBox(status.roof?.testBox))
-        .catch(() => undefined);
-    read();
-    const timer = setInterval(read, set ? POLL_SET_MS : POLL_IDLE_MS);
-    window.addEventListener(TEST_BOX_CHANGED, read);
-    return () => {
-      live = false;
-      clearInterval(timer);
-      window.removeEventListener(TEST_BOX_CHANGED, read);
-    };
-  }, [set]);
+  // Spec 045: from the live status; polled only without it (5 s while set, 30 s otherwise, and after a save).
+  const [set, setSet] = useState(false);
+  const box = useLiveStatus((status) => status.roof?.testBox, set ? POLL_SET_MS : POLL_IDLE_MS, TEST_BOX_CHANGED);
+  const nowSet = Boolean(box?.set);
+  useEffect(() => setSet(nowSet), [nowSet]);
   return box;
 };
 

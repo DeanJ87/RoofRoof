@@ -174,6 +174,38 @@ namespace SQM
             return frame && client->text(frame);
         }
 
+        Frame pooledFrame()
+        {
+            return framePool.take(HeapSafe::FramePool::CAPACITY);
+        }
+
+        bool frameAll(AsyncWebSocket &socket, Frame frame, size_t length)
+        {
+            if (!frame || length == 0 || length > frame->size())
+            {
+                ++skippedCount;
+                return false;
+            }
+            frame->resize(length); // shorter: within its capacity, nothing allocated
+            return socket.textAll(frame) != AsyncWebSocket::DISCARDED;
+        }
+
+        bool frameTo(AsyncWebSocketClient *client, Frame frame, size_t length)
+        {
+            if (!frame || length == 0 || length > frame->size())
+            {
+                ++skippedCount;
+                return false;
+            }
+            frame->resize(length);
+            return client->text(frame);
+        }
+
+        void noteSkipped()
+        {
+            ++skippedCount;
+        }
+
         void heartbeatAll(AsyncWebSocket &socket)
         {
             socket.textAll(ConnectionBudget::HEARTBEAT);

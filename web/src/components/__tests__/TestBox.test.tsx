@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { http, HttpResponse } from 'msw';
 import Settings from '../Settings';
@@ -9,7 +9,17 @@ import { server } from '../../test/mswServer';
 import { mockDevice } from '../../test/mockDevice';
 import { mockConfig, mockStatus } from '../../mocks/data';
 import { parkPill, weatherPill } from '../../lib/roofView';
-import type { RoofStatus, RoofTestBox } from '../../types';
+import type { RoofStatus, RoofTestBox, SystemStatus } from '../../types';
+
+// Spec 045: the banner takes the live status when the page's socket has one;
+// these tests give it none (null), so it reads GET /api/status as before.
+vi.mock('../../hooks/useWebSocket', () => ({ useWebSocket: vi.fn() }));
+import { useWebSocket } from '../../hooks/useWebSocket';
+const liveStatus = (data: SystemStatus | null) =>
+  vi.mocked(useWebSocket<SystemStatus>).mockReturnValue({ data, connected: data !== null, lastMessageAt: data ? Date.now() : null });
+beforeEach(() => {
+  liveStatus(null);
+});
 
 // Spec 022: the test box's bypasses: the banner on every page, the dashboard's
 // "Test box bypass", the Settings → Roof entry and the test box page.
@@ -32,6 +42,22 @@ const withBox = (testBox: RoofTestBox) =>
   server.use(http.get('/api/status', () => HttpResponse.json({ ...mockStatus, roof: { ...mockStatus.roof, testBox } })));
 
 describe('TestBoxBanner', () => {
+  it('takes the bypasses from the live status without reading GET /api/status (spec 045)', async () => {
+    let reads = 0;
+    server.use(
+      http.get('/api/status', () => {
+        reads += 1;
+        return HttpResponse.json(mockStatus);
+      }),
+    );
+    liveStatus({ ...mockStatus, roof: { ...mockStatus.roof, testBox: box() } } as SystemStatus);
+    render(<TestBoxBanner />);
+    const banner = await screen.findByRole('status');
+    expect(banner).toHaveClass('banner', 'banner-bad');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(reads).toBe(0);
+  });
+
   it('a red banner: a short headline naming each bypass, the deadline and the rules on a second line', async () => {
     withBox(box());
     render(<TestBoxBanner />);

@@ -14,6 +14,8 @@
 #include <ArduinoJson.h>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 class AsyncWebServer;
 class AsyncWebServerRequest;
@@ -44,6 +46,18 @@ namespace SQM
         // is still being sent. True when queued.
         bool textAll(AsyncWebSocket &socket, const HeapSafe::ChunkText &text);
         bool text(AsyncWebSocketClient *client, const HeapSafe::ChunkText &text);
+        // Spec 045: a frame written in place. `pooledFrame` hands out a free
+        // pooled buffer at its full size (nullptr: every one is still being
+        // sent); the caller writes into it with HeapSafe::ChunkText::over and
+        // sends the `length` bytes written. No pieces and no copy: a status
+        // frame was 5 KB of pieces and a 3 KB pool, twice a second while the
+        // roof moves, each taken amid the network's own buffers.
+        using Frame = std::shared_ptr<std::vector<uint8_t>>;
+        Frame pooledFrame();
+        bool frameAll(AsyncWebSocket &socket, Frame frame, size_t length);
+        bool frameTo(AsyncWebSocketClient *client, Frame frame, size_t length);
+        // Counted as skipped (no free buffer and no memory for pieces).
+        void noteSkipped();
         // Spec 037: the short ConnectionBudget::HEARTBEAT in place of a frame
         // that couldn't be sent (a few bytes from the heap).
         void heartbeatAll(AsyncWebSocket &socket);

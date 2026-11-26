@@ -504,6 +504,18 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** a Home Assistant entity for it; watching N.I.N.A.'s own slews (RoofRoof can't
   stop them, the sequence must gate them).
 
+### 045 The heap over a session (base: main after 042)
+
+- **Scope:**
+  - Live frames written in place in the frame pool; `/assets/` cached as immutable; the banners
+    from the live status (finding F40b: a page open on the dashboard).
+  - The recent alerts in a static ring; a settings save's strings sized once and its memory check
+    from its own need (F40: every save refused).
+  - The heap's trend (`heap8Bit.largestLow15m/60m`, the census's last hour) and the census's map
+    of what separates the free blocks; `ws_soak.py --page-load --max-drift`.
+- **Out of scope:** the web server library's and lwIP's own allocations, WiFi buffers, TLS, a
+  static save stack and an automatic restart (research R4, R6).
+
 ## Merge order
 
 ```text

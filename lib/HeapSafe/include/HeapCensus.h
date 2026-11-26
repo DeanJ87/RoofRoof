@@ -33,6 +33,11 @@ namespace SQM
             static constexpr size_t MAX_REGIONS = 8;
             static constexpr size_t BUCKETS = 8; // up to 32, 128, 512 B, 1, 2, 4, 8 KB, larger
             static constexpr size_t TOP_USED = 16;
+            // Spec 045: the free blocks of at least FREE_MAP_MIN_BYTES in
+            // address order, each with what is in use between it and the
+            // previous one: what cuts the largest free block apart.
+            static constexpr size_t FREE_MAP = 24;
+            static constexpr size_t FREE_MAP_MIN_BYTES = 1024;
 
             struct Region
             {
@@ -53,6 +58,14 @@ namespace SQM
                 uintptr_t address = 0;
                 size_t bytes = 0;
             };
+            struct FreeSpan
+            {
+                uintptr_t address = 0; // the free block
+                size_t bytes = 0;
+                size_t usedBefore = 0;     // bytes in use since the previous one (in this region)
+                uint32_t blocksBefore = 0; // blocks in use since then
+                Block largestBefore;       // the largest of them
+            };
 
             // The tasks whose stacks the walk should name (kept, not copied;
             // their blockBytes are filled in by add()).
@@ -69,6 +82,8 @@ namespace SQM
             const Bucket &freeBucket(size_t index) const { return freeBuckets[index]; }
             size_t topCount() const { return tops; }
             const Block &top(size_t index) const { return topBlocks[index]; }
+            size_t freeSpanCount() const { return spans; }
+            const FreeSpan &freeSpan(size_t index) const { return spanList[index]; }
             // The watched task whose stack starts inside the block at
             // `address` (allowing for the allocator's header), or nullptr.
             TaskStack *stackAt(uintptr_t address) const;
@@ -83,6 +98,8 @@ namespace SQM
             void writeBuckets(ChunkText &out) const;
             void writeTops(ChunkText &out) const;
             void writeTasks(ChunkText &out) const;
+            void writeFreeMap(ChunkText &out) const;
+            void noteForMap(uintptr_t regionStart, uintptr_t address, size_t bytes, bool used);
 
             Region regionList[MAX_REGIONS];
             size_t regions = 0;
@@ -90,6 +107,10 @@ namespace SQM
             Bucket freeBuckets[BUCKETS];
             Block topBlocks[TOP_USED]; // largest first
             size_t tops = 0;
+            FreeSpan spanList[FREE_MAP];
+            size_t spans = 0;
+            uintptr_t mapRegion = 0; // the region the blocks below were in
+            FreeSpan pending;        // what is in use since the last listed free block
             TaskStack *watched = nullptr;
             size_t watchedCount = 0;
         };

@@ -69,6 +69,7 @@ namespace SQM
             Region *region = regionFor(regionStart, regionEnd);
             if (region == nullptr)
                 return false;
+            noteForMap(regionStart, address, bytes, used);
             Bucket &bucket = (used ? usedBuckets : freeBuckets)[bucketOf(bytes)];
             ++bucket.count;
             bucket.bytes += bytes;
@@ -86,6 +87,53 @@ namespace SQM
             if (bytes > region->largestFree)
                 region->largestFree = bytes;
             return true;
+        }
+
+        void HeapCensus::noteForMap(uintptr_t regionStart, uintptr_t address, size_t bytes, bool used)
+        {
+            if (regionStart != mapRegion)
+            {
+                mapRegion = regionStart;
+                pending = FreeSpan{};
+            }
+            if (used)
+            {
+                pending.usedBefore += bytes;
+                ++pending.blocksBefore;
+                if (bytes > pending.largestBefore.bytes)
+                    pending.largestBefore = {address, bytes};
+                return;
+            }
+            if (bytes < FREE_MAP_MIN_BYTES)
+                return; // a small hole: counted with what is in use around it
+            if (spans < FREE_MAP)
+            {
+                pending.address = address;
+                pending.bytes = bytes;
+                spanList[spans++] = pending;
+            }
+            pending = FreeSpan{};
+        }
+
+        void HeapCensus::writeFreeMap(ChunkText &out) const
+        {
+            line(out, "Free blocks of 1 KB or more, in address order (in use before each: bytes, blocks, largest):");
+            for (size_t i = 0; i < spans; ++i)
+            {
+                const FreeSpan &s = spanList[i];
+                const TaskStack *stack = stackAt(s.largestBefore.address);
+                line(
+                    out,
+                    "  0x%08" PRIxPTR " %6u B  after %6u B in %3u blocks, largest %5u B%s%s%s",
+                    s.address,
+                    static_cast<unsigned>(s.bytes),
+                    static_cast<unsigned>(s.usedBefore),
+                    static_cast<unsigned>(s.blocksBefore),
+                    static_cast<unsigned>(s.largestBefore.bytes),
+                    stack != nullptr ? " (stack of " : "",
+                    stack != nullptr ? stack->name : "",
+                    stack != nullptr ? ")" : "");
+            }
         }
 
         void HeapCensus::watch(TaskStack *tasks, size_t taskCount)
@@ -169,6 +217,7 @@ namespace SQM
             writeBuckets(out);
             writeTops(out);
             writeTasks(out);
+            writeFreeMap(out);
         }
     } // namespace HeapSafe
 } // namespace SQM

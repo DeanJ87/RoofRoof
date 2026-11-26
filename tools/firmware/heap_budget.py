@@ -43,6 +43,8 @@ CONSUMERS = {
     "frame pool slots": ("lib/HeapSafe/include/FramePool.h", r"SLOTS = (\d+)"),
     "emergency reserve": ("lib/HeapSafe/include/HeapReserve.h", r"BYTES = (\d+)"),
     "MQTT buffer": ("lib/RoofIoLogic/include/RoofMqtt.h", r"CLIENT_BUFFER_BYTES = (\d+)"),
+    # Spec 045: the MQTT connection's read buffer, taken whole when MQTT starts (it grew as packets came).
+    "MQTT read buffer": ("include/DualStackClient.h", r"RX_LIMIT = (\d+)"),
 }
 
 

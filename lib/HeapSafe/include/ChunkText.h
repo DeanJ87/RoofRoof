@@ -26,6 +26,11 @@ namespace SQM
         {
         public:
             explicit ChunkText(size_t maxPieces = MAX_PIECES, Allocate allocate = std::malloc);
+            // Spec 045: a text written into the caller's buffer (a pooled
+            // frame), in place and contiguous: nothing is allocated or freed,
+            // and past `capacity` bytes the text fails as when a piece can't
+            // be had. The buffer must outlive the text.
+            static ChunkText over(uint8_t *buffer, size_t capacity);
             ~ChunkText();
             ChunkText(const ChunkText &) = delete;
             ChunkText &operator=(const ChunkText &) = delete;
@@ -64,6 +69,8 @@ namespace SQM
             Allocate allocator;
             size_t length = 0;
             bool failed = false;
+            bool external = false;                   // spec 045: the pieces are the caller's buffer
+            size_t limit = MAX_PIECES * PIECE_BYTES; // spec 045: bytes it may hold
         };
     } // namespace HeapSafe
 } // namespace SQM

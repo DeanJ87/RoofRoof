@@ -14,7 +14,9 @@
 #include "NetState.h"
 #include <WiFiClientSecure.h>
 #include "DualStackClient.h"
+#include "FixedRing.h"
 #include "NetAddress.h"
+#include <cstring>
 #include <ctime>
 #include <memory>
 #include <new>
@@ -24,6 +26,8 @@ namespace SQM
     namespace
     {
         constexpr const char *TAG = "Alerts";
+        // Spec 045: the recent alerts, static data (one dispatcher), under its mutex.
+        HeapSafe::FixedRing<AlertRecord, AlertDispatcher::MAX_RECORDS> recentRecords;
         constexpr int HTTP_TIMEOUT_MS = 10000;
         constexpr size_t MAX_ERROR_BODY_CHARS = 120;
 
@@ -134,7 +138,7 @@ namespace SQM
                     continue;
                 wanted[i] = false;
                 record.status[i] = DeliveryStatus::Skipped;
-                record.detail[i] = blocked[i];
+                record.setDetail(i, blocked[i]);
                 record.skippedForNow |= static_cast<uint8_t>(blocked.forNow & (1u << i));
             }
         }
@@ -205,7 +209,6 @@ namespace SQM
     {
         mutex = xSemaphoreCreateMutex();
         queue = xQueueCreate(QUEUE_LENGTH, sizeof(Job *));
-        records.reserve(MAX_RECORDS + 1); // spec 035: taken once, never grown on a send
     }
 
     void AlertDispatcher::ensureTask()
@@ -234,10 +237,16 @@ namespace SQM
     {
         // Spec 011: a bench board's alerts can't be mistaken for the roof's.
         const Alerts::Alert alert = Core::benchLabelled(given, Bench::BUILD);
-        AlertRecord record;
+        // Spec 045: built in static room (the main loop is the only caller),
+        // not a 600 B record on the loop's stack.
+        static AlertRecord record;
+        std::memset(static_cast<void *>(&record), 0, sizeof(record)); // every field is set below or zero
         record.uptimeSeconds = millis() / 1000;
         record.epochSeconds = epochNow();
-        record.alert = alert;
+        record.type = alert.type;
+        record.level = alert.level;
+        HeapSafe::copyCut(record.title, sizeof(record.title), alert.title.c_str(), alert.title.size());
+        HeapSafe::copyCut(record.message, sizeof(record.message), alert.message.c_str(), alert.message.size());
 
         bool wanted[ALERT_CHANNEL_COUNT];
         wantedChannels(cfg, channelMask, wanted);
@@ -249,7 +258,7 @@ namespace SQM
             const std::string payload = Delivery::alertJson(alert, deviceName, record.epochSeconds);
             const bool ok = mqtt != nullptr && mqtt->publishSubtopic("alerts", payload, false);
             record.status[0] = ok ? DeliveryStatus::Sent : DeliveryStatus::Failed;
-            record.detail[0] = ok ? "Published" : "MQTT not connected";
+            record.setDetail(0, ok ? "Published" : "MQTT not connected");
         }
 
         const uint8_t httpMask = markPending(record, wanted);
@@ -278,8 +287,9 @@ namespace SQM
         if (id == 0 || !mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
             return Outcome::Failed;
         Outcome result = Outcome::Failed;
-        for (const AlertRecord &record : records)
+        for (size_t i = 0; i < recentRecords.size(); ++i)
         {
+            const AlertRecord &record = recentRecords.at(i);
             if (record.id != id)
                 continue;
             bool sent = false, pending = false, failed = false;
@@ -307,9 +317,7 @@ namespace SQM
         if (!mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
             return 0;
         record.id = nextId++;
-        records.push_back(record);
-        if (records.size() > MAX_RECORDS)
-            records.erase(records.begin());
+        recentRecords.push(record); // spec 045: copied into the fixed ring, the oldest overwritten
         ++revision;
         xSemaphoreGive(mutex);
         return record.id;
@@ -397,7 +405,7 @@ namespace SQM
             TlsLock::Guard tls(30000);
             if (!tls.ok())
             {
-                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Another HTTPS request is in progress");
+                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "HTTPS busy with another request");
                 continue;
             }
 
@@ -409,7 +417,7 @@ namespace SQM
                 vTaskDelay(pdMS_TO_TICKS(3000));
                 ok = (this->*sender.send)(job, detail);
             }
-            setStatus(job.recordId, sender.channel, ok ? DeliveryStatus::Sent : DeliveryStatus::Failed, detail);
+            setStatus(job.recordId, sender.channel, ok ? DeliveryStatus::Sent : DeliveryStatus::Failed, detail.c_str());
             if (!ok)
                 Logger::warn(TAG, "%s delivery failed: %s", alertChannelName(sender.channel), detail.c_str());
         }
@@ -441,23 +449,19 @@ namespace SQM
         return httpPost(request, TlsTrust{job.cfg.webhookInsecureTls, ALERT_ROOT_CA_PEM}, detail);
     }
 
-    void AlertDispatcher::setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const std::string &detail)
+    void AlertDispatcher::setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const char *detail)
     {
         if (!mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
             return;
-        for (AlertRecord &record : records)
+        if (AlertRecord *record = recentRecords.findNewest([recordId](const AlertRecord &r) { return r.id == recordId; }))
         {
-            if (record.id == recordId)
-            {
-                const size_t index = static_cast<size_t>(channel);
-                record.status[index] = status;
-                record.detail[index] = detail;
-                // The delivery task only skips for now (network, update, HTTPS busy).
-                if (status == DeliveryStatus::Skipped)
-                    record.skippedForNow |= static_cast<uint8_t>(1u << index);
-                ++revision;
-                break;
-            }
+            const size_t index = static_cast<size_t>(channel);
+            record->status[index] = status;
+            record->setDetail(index, detail);
+            // The delivery task only skips for now (network, update, HTTPS busy).
+            if (status == DeliveryStatus::Skipped)
+                record->skippedForNow |= static_cast<uint8_t>(1u << index);
+            ++revision;
         }
         xSemaphoreGive(mutex);
     }
@@ -466,21 +470,25 @@ namespace SQM
     {
         if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
         {
-            records.clear(); // the room stays (spec 035)
+            recentRecords.clear(); // the room stays (static, spec 045)
             ++revision;
             xSemaphoreGive(mutex);
         }
     }
 
-    std::vector<AlertRecord> AlertDispatcher::recent() const
+    void AlertDispatcher::visitRecent(RecentVisit visit, void *context) const
     {
-        std::vector<AlertRecord> copy;
-        if (mutex && xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) == pdTRUE)
-        {
-            copy = records;
-            xSemaphoreGive(mutex);
-        }
-        return copy;
+        if (!mutex || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE)
+            return;
+        for (size_t i = recentRecords.size(); i > 0; --i)
+            visit(recentRecords.at(i - 1), context);
+        xSemaphoreGive(mutex);
+    }
+
+    void AlertRecord::setDetail(size_t channel, const char *text)
+    {
+        if (channel < ALERT_CHANNEL_COUNT)
+            HeapSafe::copyCut(detail[channel], sizeof(detail[channel]), text);
     }
 
 } // namespace SQM

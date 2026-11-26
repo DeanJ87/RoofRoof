@@ -409,6 +409,11 @@ namespace SQM
                 });
         }
 
+        // Spec 045: the built assets are named by their content's hash (web/vite.config.ts),
+        // so a browser keeps them: opening or reloading a page then fetches only
+        // index.html instead of about 200 KB over five connections at once
+        // (each up to 9 KB of the heap while it streams). A new UI has new names.
+        server.serveStatic("/assets/", LittleFS, "/assets/").setCacheControl(ASSET_CACHE_CONTROL);
         // Serve files from LittleFS
         server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html").setCacheControl("no-cache, no-store, must-revalidate");
     }
