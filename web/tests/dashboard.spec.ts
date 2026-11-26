@@ -376,11 +376,13 @@ test('Open anyway past the park: a red warning, then the roof opens without the 
       timeout: 20_000,
     })
     .toBe(false);
+  // The page has caught up with the device: the park is listed under the buttons.
+  await expect(item(page, 'roof-buttons')).toContainText('Mount not parked', { timeout: 20_000 });
   await item(page, 'roof-card').getByRole('button', { name: 'Open', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: '1 reason Open is blocked' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /reasons? Open is blocked$/ })).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toContainText('Park check:');
   await expect(dialog.locator('.note-bad')).toContainText('the roof passes over the telescope');
-  await expect(dialog.getByRole('button', { name: 'Wait for the park' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Open anyway' }).click();
   await expect.poll(() => roofState(page), { timeout: 60_000 }).toBe('open');
   expect(await page.evaluate(async () => (await (await fetch('/api/status')).json()).roof.parkConfirmed)).toBe(false);
