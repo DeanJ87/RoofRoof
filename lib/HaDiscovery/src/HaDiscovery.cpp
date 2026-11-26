@@ -299,20 +299,121 @@ namespace SQM
             }
         } // namespace
 
-        void forEach(
-            const Device &device,
-            const Groups &groups,
-            const std::function<void(const std::string &topic, const JsonDocument *config)> &publish)
+        size_t count()
+        {
+            return sizeof(ENTITIES) / sizeof(ENTITIES[0]);
+        }
+
+        void publishOne(size_t index, const Device &device, const Groups &groups, JsonDocument &doc, const Publish &publish)
+        {
+            if (index >= count())
+                return;
+            const Entity &entity = ENTITIES[index];
+            const std::string topic = device.prefix + "/" + entity.component + "/" + device.id + "/" + entity.object + "/config";
+            const bool on = enabled(entity.group, groups);
+            if (on)
+                writeConfig(doc, device, entity, groups);
+            publish(topic, on ? &doc : nullptr);
+        }
+
+        void forEach(const Device &device, const Groups &groups, const Publish &publish)
         {
             // One pool for every entity (spec 031: published straight from it).
             DynamicJsonDocument doc(CONFIG_DOC_BYTES);
-            for (const Entity &entity : ENTITIES)
+            for (size_t i = 0; i < count(); ++i)
+                publishOne(i, device, groups, doc, publish);
+        }
+
+        uint32_t markerOf(const std::string &key)
+        {
+            uint32_t hash = 2166136261u; // FNV-1a
+            for (const char c : key)
             {
-                const std::string topic = device.prefix + "/" + entity.component + "/" + device.id + "/" + entity.object + "/config";
-                const bool on = enabled(entity.group, groups);
-                if (on)
-                    writeConfig(doc, device, entity, groups);
-                publish(topic, on ? &doc : nullptr);
+                hash ^= static_cast<uint8_t>(c);
+                hash *= 16777619u;
+            }
+            return hash == 0 ? 1 : hash; // 0 is "none"
+        }
+
+        void markerText(uint32_t marker, char (&out)[MARKER_TEXT_BYTES])
+        {
+            static const char DIGITS[] = "0123456789abcdef";
+            for (size_t i = 0; i < 8; ++i)
+                out[i] = DIGITS[(marker >> (28 - 4 * i)) & 0xF];
+            out[8] = '\0';
+        }
+
+        uint32_t parseMarker(const char *text, size_t length)
+        {
+            if (length != 8)
+                return 0;
+            uint32_t value = 0;
+            for (size_t i = 0; i < length; ++i)
+            {
+                const char c = text[i];
+                const int digit = c >= '0' && c <= '9' ? c - '0' : (c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1);
+                if (digit < 0)
+                    return 0;
+                value = (value << 4) | static_cast<uint32_t>(digit);
+            }
+            return value;
+        }
+
+        void Pacer::start(uint32_t key, uint32_t nowMs, bool trustMarker)
+        {
+            active = true;
+            this->key = key;
+            startedMs = nowMs;
+            lastMs = nowMs;
+            index = 0;
+            trust = trustMarker;
+            seen = false;
+            markerSent = false;
+            wasSkipped = false;
+        }
+
+        void Pacer::markerSeen(uint32_t marker)
+        {
+            // Only before the first entity went out: once publishing, it finishes.
+            if (active && index == 0 && marker == key)
+                seen = true;
+        }
+
+        Pacer::Step Pacer::next(uint32_t nowMs, size_t entities) const
+        {
+            if (!active)
+                return {Kind::Done, 0};
+            if (index == 0 && !markerSent && trust && seen)
+                return {Kind::Skip, 0};
+            if (index == 0 && trust && nowMs - startedMs < MARKER_WAIT_MS)
+                return {Kind::Wait, 0};
+            const bool gapPassed = index == 0 || nowMs - lastMs >= GAP_MS;
+            if (!gapPassed)
+                return {Kind::Wait, 0};
+            if (index < entities)
+                return {Kind::Entity, index};
+            return {Kind::Marker, 0};
+        }
+
+        void Pacer::done(const Step &step, uint32_t nowMs)
+        {
+            switch (step.kind)
+            {
+            case Kind::Entity:
+                ++index;
+                lastMs = nowMs;
+                break;
+            case Kind::Marker:
+                markerSent = true;
+                active = false;
+                break;
+            case Kind::Skip:
+                wasSkipped = true;
+                active = false;
+                break;
+            case Kind::Wait:
+            case Kind::Done:
+                break;
             }
         }
     } // namespace HaDiscovery

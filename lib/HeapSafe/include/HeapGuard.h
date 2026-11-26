@@ -40,6 +40,8 @@ namespace SQM
         // Whether one more reply may be built; pages, files and essential
         // requests are never held back by it.
         bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight);
+        // Spec 048: the same with a cap of `limit` (one in a network return's window).
+        bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight, uint32_t limit);
         // Whether a WebSocket frame of `length` bytes may be allocated.
         bool frameFits(size_t length, uint32_t largestBlock);
         // Whether a new connection may be accepted.
