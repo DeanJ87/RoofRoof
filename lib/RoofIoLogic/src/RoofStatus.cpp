@@ -1,4 +1,6 @@
 #include "RoofStatus.h"
+
+#include "MountMove.h"
 #include "SwitchWatch.h"
 
 #include <cmath>
@@ -59,6 +61,8 @@ namespace SQM
                     out["target"] = Roof::endName(st.target);
                 else
                     out["target"] = nullptr;
+                // Spec 043: the roof at an end: the telescope may slew, park or unpark.
+                out["mountMayMove"] = mountMayMove(st);
             }
 
             void writeFault(JsonObject out, const Snapshot &s)

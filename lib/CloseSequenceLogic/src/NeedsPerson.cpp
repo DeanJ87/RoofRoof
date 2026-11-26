@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+#include "MountMove.h"
 #include "RoofText.h"
 
 namespace SQM
@@ -167,7 +168,11 @@ namespace SQM
             }
             if (condition == Condition::None)
             {
-                line = cannotMove ? "The automatic close can't move the roof. " + stuckText(roof, in.roofStarted) : std::string();
+                // Spec 043: stopped part-way (nothing else wrong) with the mount not parked.
+                const std::string stuck = stuckText(roof, in.roofStarted);
+                const std::string why =
+                    stuck.empty() && !RoofIo::mountMayMove(roof.status) ? RoofIo::mountBlockedText(roof.status, roof.travelMm) : stuck;
+                line = cannotMove ? "The automatic close can't move the roof. " + why : std::string();
                 return false;
             }
             line = stuckText(roof, in.roofStarted);

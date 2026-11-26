@@ -12,6 +12,7 @@
 #include "DeviceCore.h"
 #include "DomeBridge.h"
 #include "MotionGuards.h"
+#include "MountMove.h"
 #include "ParkRule.h"
 #include "RoofAlerts.h"
 #include "RoofSettings.h"
@@ -436,6 +437,7 @@ namespace DemoRoof
         reasons.parkGap = CloseSeq::parkGapOf(park); // spec 030
         reasons.fault = RoofIo::describeFault(fault);
         reasons.roof = controller.status().state;
+        reasons.betweenEnds = RoofIo::mountBlockedText(controller.status(), roofCfg.travelMm); // spec 043
         carryOut(decision, reasons);
     }
 
@@ -444,7 +446,8 @@ namespace DemoRoof
         switch (decision.action)
         {
         case CloseSeq::Action::RequestPark:
-            if (!parkCfg.ninaUrl.empty())
+            // Spec 043: as CloseOnUnsafe: checked again at the sender.
+            if (!parkCfg.ninaUrl.empty() && RoofIo::parkRequestAllowed(controller.status()))
                 parkMount();
             break;
         case CloseSeq::Action::Close:

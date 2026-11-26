@@ -118,6 +118,7 @@ export const mockStatus: SystemStatus = {
     positionKnown: true,
     positionMm: 0,
     positionPercent: 0,
+    mountMayMove: true,
     target: null,
     driving: false,
     fromUnknown: false,

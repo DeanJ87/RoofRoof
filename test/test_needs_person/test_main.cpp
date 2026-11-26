@@ -250,6 +250,25 @@ void test_the_close_sequence_unable_to_move_shows_and_the_sequence_reminds(void)
     TEST_ASSERT_TRUE(has(only.watcher.text(), "can't move the roof"));
 }
 
+// Spec 043: stopped part-way with the mount not parked, nothing else wrong:
+// the banner says where the roof is and why nothing moves.
+void test_stopped_part_way_says_the_roof_and_the_beams(void)
+{
+    RoofIo::Snapshot roof = closed();
+    roof.status.state = Roof::State::Stopped;
+    roof.status.hall = Roof::HallLevel::Between;
+    roof.status.positionKnown = true;
+    roof.travelMm = 2000;
+    roof.status.positionMm = 840.0f;
+    Watch w;
+    w.run(roof, 0, 6000);
+    w.phase = Phase::CannotMove;
+    w.run(roof, 7000, 7000);
+    TEST_ASSERT_TRUE(w.watcher.active());
+    TEST_ASSERT_TRUE(
+        has(w.watcher.text(), "Roof part-open (42 %) with the mount not parked: moving the roof or the telescope would hit the beams"));
+}
+
 // The field's silent "cannotMove": the sequence's CannotClose is now the
 // critical needs_person alert, raised at once and reminded while it holds.
 void test_the_sequence_unable_to_move_raises_needs_person_with_reminders(void)
@@ -287,5 +306,6 @@ int main(int, char **)
     RUN_TEST(test_an_end_read_too_early_alerts_at_once_and_reminds);
     RUN_TEST(test_the_close_sequence_unable_to_move_shows_and_the_sequence_reminds);
     RUN_TEST(test_the_sequence_unable_to_move_raises_needs_person_with_reminders);
+    RUN_TEST(test_stopped_part_way_says_the_roof_and_the_beams);
     return UNITY_END();
 }

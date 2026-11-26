@@ -74,6 +74,13 @@ namespace
             return RoofIo::domeStatus(bench.roof.status(), false, true);
         }
 
+        // Spec 043: the Switch's read-only switches.
+        std::vector<SwitchReading> switches()
+        {
+            catchUp();
+            return RoofIo::switchReadings(bench.roof.status(), true);
+        }
+
         // The firmware's decision (RoofIo::checkCommand, as RoofControl::precheck),
         // then the motion logic. Not simulated: uploads and MQTT (so no close
         // waits), the automatic close, and Alpaca switched off.
@@ -137,7 +144,7 @@ namespace
         {
         }
         bool alpacaEnabled() const override { return true; }
-        std::vector<DeviceInfo> devices() const override { return {domeDeviceInfo()}; }
+        std::vector<DeviceInfo> devices() const override { return {domeDeviceInfo(), switchDeviceInfo()}; }
         std::string serverName() const override { return "RoofRoof simulator"; }
         std::string location() const override { return ""; }
         std::string timestampUtc() const override
@@ -151,6 +158,7 @@ namespace
         }
         DomeStatus domeStatus() const override { return roof.status(); }
         DomeAnswer domeCommand(DomeAction action) override { return roof.command(action); }
+        std::vector<SwitchReading> switches() const override { return roof.switches(); }
 
     private:
         SimRoof &roof;

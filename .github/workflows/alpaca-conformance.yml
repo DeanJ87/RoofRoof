@@ -3,8 +3,9 @@ name: Alpaca conformance (ConformU)
 # Runs ASCOM ConformU against tools/alpaca-sim, which serves the firmware's
 # Alpaca API (Alpaca::Router in lib/AlpacaLogic) with the roof's Dome: spec
 # 002's motion logic driving a simulated roof, through the firmware's gate
-# checks and Dome mapping (lib/RoofIoLogic). Any error, issue or configuration
-# alert fails the job (constitution IV).
+# checks and Dome mapping (lib/RoofIoLogic), and (spec 043) its read-only
+# Switch ("Mount may move"). Any error, issue or configuration alert fails the
+# job (constitution IV).
 #
 # It also runs when code the Dome depends on changes (the roof logic, the
 # gates, the simulated roof, the web server's Alpaca backend), so those changes
@@ -98,7 +99,7 @@ jobs:
           mkdir -p conformu-results
           failed=0
           {
-            echo "## ConformU $CONFORMU_VERSION against the Alpaca simulator's Dome"
+            echo "## ConformU $CONFORMU_VERSION against the Alpaca simulator's Dome and Switch"
             echo
             echo "| Check | Result |"
             echo "|---|---|"
@@ -120,26 +121,51 @@ jobs:
             # Show what went wrong right in the job log.
             grep -E " (ERROR|ISSUE|INFO) " "$out" || true
           done
+          # Spec 043: the read-only Switch. The settings turn the write tests on
+          # (each write must answer NotImplemented: a skipped test is a
+          # configuration alert) and shorten the delays.
+          url="http://127.0.0.1:11111/api/v1/switch/0"
+          for check in conformance alpacaprotocol; do
+            out="conformu-results/switch-$check.txt"
+            if [ "$check" = conformance ]; then
+              set -- --settingsfile "$PWD/tools/alpaca-sim/conformu-switch.json" --resultsfile "conformu-results/switch-$check.json"
+            else
+              set --
+            fi
+            if "$RUNNER_TEMP/conformu/conformu" "$check" "$url" "$@" > "$out" 2>&1; then
+              result="passed"
+            else
+              result="**failed** (exit $?)"
+              failed=1
+            fi
+            echo "| switch $check | $result |" >> "$GITHUB_STEP_SUMMARY"
+            grep -E " (ERROR|ISSUE|INFO) " "$out" || true
+          done
           kill "$sim"
           wait "$sim" 2>/dev/null || true
           # Constitution IV: zero errors, issues AND configuration alerts. The
           # exit code doesn't count configuration alerts, so read the results.
-          if ! python3 - conformu-results/dome-conformance.json <<'PY'
+          if ! python3 - conformu-results/dome-conformance.json conformu-results/switch-conformance.json <<'PY'
           import json, sys
-          r = json.load(open(sys.argv[1]))
-          counts = {k: r.get(k) for k in ("ErrorCount", "IssueCount", "ConfigurationAlertCount")}
-          print("ConformU counts:", counts)
-          sys.exit(0 if all(v == 0 for v in counts.values()) else 1)
+          ok = True
+          for path in sys.argv[1:]:
+              r = json.load(open(path))
+              counts = {k: r.get(k) for k in ("ErrorCount", "IssueCount", "ConfigurationAlertCount")}
+              print("ConformU counts", path, counts)
+              ok = ok and all(v == 0 for v in counts.values())
+          sys.exit(0 if ok else 1)
           PY
           then
             echo "| conformance results | **errors, issues or configuration alerts** |" >> "$GITHUB_STEP_SUMMARY"
             failed=1
           fi
           # The protocol check writes no results file: require its all-clear line.
-          if ! grep -q "no errors, issues or information alerts" conformu-results/dome-alpacaprotocol.txt; then
-            echo "| alpacaprotocol results | **errors, issues or alerts** |" >> "$GITHUB_STEP_SUMMARY"
-            failed=1
-          fi
+          for device in dome switch; do
+            if ! grep -q "no errors, issues or information alerts" "conformu-results/$device-alpacaprotocol.txt"; then
+              echo "| $device alpacaprotocol results | **errors, issues or alerts** |" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
           # The shutter tests must have run (open and close of the simulated roof).
           for line in "The shutter opened asynchronously" "The shutter closed asynchronously"; do
             if ! grep -q "$line" conformu-results/dome-conformance.txt; then

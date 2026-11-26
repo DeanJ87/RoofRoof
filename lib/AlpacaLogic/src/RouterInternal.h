@@ -96,6 +96,8 @@ namespace SQM
 
             // The Dome's own members (AlpacaDome.cpp); nullopt for a method it doesn't have.
             std::optional<Response> domeMethod(DeviceCall &call);
+            // The Switch's own members (AlpacaSwitch.cpp, spec 043).
+            std::optional<Response> switchMethod(DeviceCall &call);
         } // namespace Internal
     } // namespace Alpaca
 } // namespace SQM

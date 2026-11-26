@@ -7,8 +7,10 @@
 // (constitution IV).
 
 #include <string>
+#include <vector>
 
 #include "AlpacaDome.h"
+#include "AlpacaSwitch.h"
 #include "FaultRecord.h"
 #include "RoofStatus.h"
 #include "RoofTypes.h"
@@ -24,6 +26,11 @@ namespace SQM
         // opening or closing (Slewing true); a wait that gave up or was refused
         // reads error until the next command.
         Alpaca::DomeStatus domeStatus(const Roof::Status &status, bool closePending, bool running, const WaitView &wait = WaitView());
+
+        // Spec 043: the Alpaca Switch's read-only switches (MountMove's
+        // MountSwitch order: "Mount may move", "Roof fully open", "Roof fully
+        // closed"), all false while the controller isn't running.
+        std::vector<Alpaca::SwitchReading> switchReadings(const Roof::Status &status, bool running);
 
         // Spec 027: the Dome description's prefix while ShutterStatus reads
         // error after a failed park wait ("Last move not run: <why>: "), "" else,

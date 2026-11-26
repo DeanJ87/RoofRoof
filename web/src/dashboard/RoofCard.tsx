@@ -7,6 +7,7 @@ import { Button, Card, InfoTip, Note, Pill, ReadingRow } from '../components/ui'
 import {
   clearFaultReason,
   closePhasePill,
+  mountPill,
   parkPill,
   roofView,
   weatherPill,
@@ -168,6 +169,7 @@ const WeatherHold: FunctionalComponent<{ roof: RoofStatus }> = ({ roof }) => {
 
 const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus; ctx: BlockerContext }> = ({ roof, location, ctx }) => {
   const phase = closePhasePill(roof.closePhase);
+  const mount = mountPill(roof); // spec 043
   // Spec 026: a stand-down says when it clears, with Release hold while that is allowed; spec 034: the
   // pill above and its "?" already say what it is, so only that line.
   const hold = roof.closePhase === 'heldByPerson' || roof.closePhase === 'halted' ? closePhaseBlocker(roof, ctx) : null;
@@ -176,6 +178,7 @@ const Checks: FunctionalComponent<{ roof: RoofStatus; location?: LocationStatus;
       <HealthRow label={t('roof.weather.label')} pill={weatherPill(roof)} line={sqmeterLine(roof)} />
       <WeatherHold roof={roof} />
       <HealthRow label={t('roof.park.label')} pill={parkPill(roof)} line={ninaLine(roof)} />
+      {mount && <PillRow label={t('roof.mount.label')} pill={mount} id="roof-mount-may-move" />}
       {roof.daylight && <DaylightRow daylight={roof.daylight} location={location} />}
       {phase && <PillRow label={t('roof.closePhase.label')} pill={phase} id="roof-close-phase" />}
       {hold && <MoveBlockers blockers={[hold]} brief />}

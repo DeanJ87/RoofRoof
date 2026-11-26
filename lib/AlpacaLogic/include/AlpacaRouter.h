@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AlpacaDome.h"
+#include "AlpacaSwitch.h"
 
 #include <cstdint>
 #include <string>
@@ -32,7 +33,7 @@ namespace SQM
         };
 
         // The most Alpaca devices one server offers (fixed arrays: activity,
-        // client watch, connection memory). The Dome is the only one (spec 006).
+        // client watch, connection memory): the Dome (spec 006) and the Switch (spec 043).
         constexpr size_t MAX_DEVICES = 2;
 
         // One Alpaca device as the management API lists it.
@@ -51,6 +52,9 @@ namespace SQM
         // the description; the name and UniqueID never change. Spec 022:
         // `testBox` (TestBox::domePrefix, "TEST BOX (bypassed: ...): ") goes first.
         DeviceInfo domeDeviceInfo(const char *simulation = "off", const std::string &testBox = std::string());
+        // Spec 043: the one Switch the device offers: number 0, interface version 3
+        // (ISwitchV3), read-only. `simulation` as for the Dome.
+        DeviceInfo switchDeviceInfo(const char *simulation = "off");
 
         // What the router needs from the device.
         class Backend
@@ -69,6 +73,9 @@ namespace SQM
             // for a connected client; the backend applies the roof's own checks.
             virtual DomeStatus domeStatus() const = 0;
             virtual DomeAnswer domeCommand(DomeAction action) = 0;
+            // Spec 043: the Switch's read-only switches now, in their fixed order
+            // (the order is the Switch Id); none for a backend without the Switch.
+            virtual std::vector<SwitchReading> switches() const { return {}; }
         };
 
         struct ServerIdentity

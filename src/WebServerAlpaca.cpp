@@ -108,7 +108,19 @@ namespace SQM
             const RoofIo::Snapshot snap = owner.roof->snapshot();
             wait = RoofIo::domeOverridePrefix(snap.overrideBits) + RoofIo::domeWaitPrefix(snap.parkWait);
         }
-        return {Alpaca::domeDeviceInfo(Bench::SIMULATION, wait + TestBox::domePrefix(owner.testBoxState()))};
+        // Spec 043: the Switch second, so the Dome keeps index 0 (activity, connection memory).
+        return {
+            Alpaca::domeDeviceInfo(Bench::SIMULATION, wait + TestBox::domePrefix(owner.testBoxState())),
+            Alpaca::switchDeviceInfo(Bench::SIMULATION)};
+    }
+
+    // Spec 043: "Mount may move" and the two ends, from the roof's snapshot.
+    std::vector<Alpaca::SwitchReading> WebServer::AlpacaBackend::switches() const
+    {
+        const RoofControl *roof = owner.roof;
+        if (roof == nullptr || !roof->running())
+            return RoofIo::switchReadings(Roof::Status(), false);
+        return RoofIo::switchReadings(roof->snapshot().status, true);
     }
 
     Alpaca::DomeStatus WebServer::AlpacaBackend::domeStatus() const

@@ -22,6 +22,7 @@
 #include "ConfigPins.h"
 #include "ConfigSave.h"
 #include "DeviceCore.h"
+#include "DomeBridge.h"
 #include "SettingsDeps.h"
 #include "SqmeterSecrets.h"
 #include "SqmeterSite.h"
@@ -80,13 +81,16 @@ public:
     // The roof's Dome (spec 006), on the simulated roof (spec 011).
     std::vector<Alpaca::DeviceInfo> devices() const override
     {
-        return {Alpaca::domeDeviceInfo("demo", TestBox::domePrefix(roof.testBox()))}; // spec 022: the test box first
+        // Spec 022: the test box first; spec 043: the Switch second.
+        return {Alpaca::domeDeviceInfo("demo", TestBox::domePrefix(roof.testBox())), Alpaca::switchDeviceInfo("demo")};
     }
     std::string serverName() const override { return cfg.deviceName; }
     std::string location() const override { return ""; }
     std::string timestampUtc() const override { return Core::isoUtc(epoch); }
     Alpaca::DomeStatus domeStatus() const override { return roof.domeStatus(); }
     Alpaca::DomeAnswer domeCommand(Alpaca::DomeAction action) override { return roof.domeCommand(action); }
+    // Spec 043: the roof's position for the telescope.
+    std::vector<Alpaca::SwitchReading> switches() const override { return RoofIo::switchReadings(roof.snapshot().status, true); }
 
     // --- The roof (spec 011) -------------------------------------------------
     // POST /api/roof/<name> (open, close, stop, clear-fault), as a person.

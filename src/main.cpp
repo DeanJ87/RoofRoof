@@ -455,8 +455,8 @@ void handleSafety()
         handedCloses = closesNow;
     }
     closeOnUnsafe.handle(*safetyInputs, roofControl);
-    // Spec 027: a command waiting for the park asks N.I.N.A.; a wait that gave up alerts.
-    if (roofControl.takeParkRequest() && safetyInputs->ninaSet())
+    // Spec 027: a command waiting for the park asks N.I.N.A. (spec 043: only at an end); a wait that gave up alerts.
+    if (roofControl.takeParkRequest() && safetyInputs->ninaSet() && roofControl.parkRequestAllowed())
     {
         Logger::info("Roof", "Asking N.I.N.A. to park the mount before the roof moves");
         safetyInputs->requestPark();

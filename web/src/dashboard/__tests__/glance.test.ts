@@ -141,6 +141,18 @@ describe('glanceItems', () => {
     expect(glanceItems(input({ status: none })).some((i) => i.id === 'imaging-app')).toBe(false);
   });
 
+  it('shows the read-only Switch only once an imaging app uses it (spec 043)', () => {
+    const quiet = { connected: false, watching: false, silent: false, lastCheckedAgeMs: null, clientId: null };
+    const unused = withStatus((s) => {
+      s.alpaca!.clients = { dome: { ...quiet }, switch: { ...quiet } };
+    });
+    expect(glanceItems(input({ status: unused })).filter((i) => i.id === 'imaging-app')).toHaveLength(1);
+    const used = withStatus((s) => {
+      s.alpaca!.clients = { dome: { ...quiet }, switch: { ...quiet, connected: true } };
+    });
+    expect(glanceItems(input({ status: used })).filter((i) => i.id === 'imaging-app')).toHaveLength(2);
+  });
+
   it('leaves settings not in effect to Settings', () => {
     const effective: EffectiveReport = {
       facts: {} as EffectiveReport['facts'],

@@ -134,15 +134,19 @@ void test_unknown_position_attempts_after_two_seconds()
     TEST_ASSERT_EQUAL(0, c.requests);
     TEST_ASSERT_EQUAL(0u, c.events.size());
     TEST_ASSERT_EQUAL(Phase::Idle, r.seq.phase());
+    // Spec 043 (constitution 11.1.0, II): the position unknown with the mount
+    // not parked: no park request (a slew could hit the beams), a person is needed.
     const Decision d = r.at(T0 - 50 + UNKNOWN_CONFIRM_MS);
-    assertEvent(d, Event::Started, Cause::None);
-    TEST_ASSERT_EQUAL(Action::RequestPark, d.action);
-    // Nothing moves until the park is confirmed.
+    assertEvent(d, Event::CannotClose, Cause::RoofBetweenEnds);
+    TEST_ASSERT_EQUAL(Action::None, d.action);
+    // Nothing moves, and nothing is asked, until the park is confirmed.
     c = r.runTo(T0 + 60000, 100);
     TEST_ASSERT_EQUAL(0, c.closes);
-    r.in.parked = true;
+    TEST_ASSERT_EQUAL(0, c.requests);
+    r.in.parked = true; // a person parked the mount
     c = r.runTo(T0 + 60000 + PARK_SETTLE_MS + 200, 100);
     TEST_ASSERT_EQUAL(1, c.closes);
+    TEST_ASSERT_EQUAL(0, c.requests);
 }
 
 void test_unknown_position_with_the_roof_not_started_cannot_close()

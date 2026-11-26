@@ -221,6 +221,7 @@ test('the dashboard is the Status card, the Roof card and Device & Network, noth
 test('Roof card: state, position, buttons with reasons, checks, readings and the Hall scale', async ({ page }) => {
   // inventory: roof-card  inventory: roof-position  inventory: roof-buttons
   // inventory: roof-checks  inventory: roof-readings  inventory: roof-hall  inventory: roof-daylight
+  // inventory: roof-mount-may-move
   await open(page);
   const roof = item(page, 'roof-card');
   await expect(roof.locator('.card-actions .pill')).toHaveText('Closed');
@@ -234,6 +235,9 @@ test('Roof card: state, position, buttons with reasons, checks, readings and the
   await expect(roof.getByRole('button', { name: 'Stop', exact: true })).toHaveCount(0);
   await expect(item(page, 'roof-checks')).toContainText('Safe');
   await expect(item(page, 'roof-checks')).toContainText('Parked');
+  // Spec 043: closed is an end, so the telescope may move.
+  await expect(item(page, 'roof-mount-may-move')).toContainText('Telescope');
+  await expect(item(page, 'roof-mount-may-move')).toContainText('May move');
   await expect(item(page, 'roof-daylight')).toContainText('Daylight');
   await expect(item(page, 'roof-readings')).toContainText('Supply');
   await expect(item(page, 'roof-hall').getByRole('img', { name: /^Hall reading \d+ of 4095; low threshold/ })).toBeVisible();

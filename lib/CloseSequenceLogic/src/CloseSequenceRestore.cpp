@@ -65,7 +65,7 @@ namespace SQM
             const bool closingThen = saved.phase == Phase::Closing;
             const bool eventOk = isCritical(saved.event) || (!standDown && saved.event == Event::None);
             if ((!standDown && !waitingThen && !idleThen && !closingThen) || !eventOk ||
-                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::NinaLost))
+                static_cast<size_t>(saved.cause) > static_cast<size_t>(Cause::RoofBetweenEnds))
                 return;
             restoring = saved;
             if (idleThen)

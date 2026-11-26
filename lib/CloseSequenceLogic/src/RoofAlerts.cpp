@@ -25,6 +25,8 @@ namespace SQM
                     return "Closed from an unknown position";
                 case Cause::NinaLost:
                     return "Closed without N.I.N.A.'s park";
+                case Cause::RoofBetweenEnds:
+                    return "Roof not at an end, mount not parked"; // spec 043
                 default:
                     break;
                 }

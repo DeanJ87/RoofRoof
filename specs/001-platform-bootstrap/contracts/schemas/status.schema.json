@@ -734,6 +734,10 @@
             "number"
           ]
         },
+        "mountMayMove": {
+          "type": "boolean",
+          "description": "Spec 043: the roof is at rest at its closed or open magnet, so the telescope may slew, park or unpark (the Alpaca Switch \"Mount may move\")."
+        },
         "moveElapsedMs": {
           "type": "number"
         },
@@ -1074,6 +1078,7 @@
         "maxWatchdogBeatAgeMs",
         "minSupplyVolts",
         "motorAmps",
+        "mountMayMove",
         "moveElapsedMs",
         "moveTimeoutMs",
         "needsPerson",
